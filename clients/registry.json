@@ -1,7 +1,7 @@
 {
   "clients": {
     "leaddrive": {
-      "name": "LeadDrive Inc.",
+      "name": "LeadDrive CRM — \"FANUM\" MMC",
       "server": "13.140.132.245",
       "sshUser": "root",
       "sshKey": "~/.ssh/id_ed25519",
@@ -11,7 +11,7 @@
       "port": 3001,
       "pm2Name": "leaddrive-v2",
       "status": "active",
-      "notes": "Основной инстанс — LeadDrive Inc., Warsaw"
+      "notes": "Основной shared-инстанс LeadDrive CRM. Оператор: \"FANUM\" MMC, Баку. Старые LeadDrive Inc./Warsaw данные запрещено возвращать."
     },
     "zeytunpharm": {
       "name": "Zeytuun Pharmaceuticals",

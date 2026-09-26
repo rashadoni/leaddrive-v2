@@ -135,6 +135,23 @@ describe("GET /api/v1/mtm/analytics", () => {
   // Existing fields non-regression
   // ─────────────────────────────────────────────────────────────────────────
 
+  it("does not count routes planned for the future in plan fulfilment", async () => {
+    // Review of #209: an agent at 100% today with next week already planned
+    // read ~20% because the route window had no upper bound.
+    setupBaseMocks()
+    const res = await GET(makeReq("?period=weekly"))
+    expect(res.status).toBe(200)
+    const tomorrow = Date.now() + 24 * 60 * 60 * 1000
+    for (const call of [
+      vi.mocked(prisma.mtmRoute.groupBy).mock.calls[0][0] as any,
+      vi.mocked(prisma.mtmRoute.aggregate).mock.calls[0][0] as any,
+    ]) {
+      expect(call.where.date.gte).toBeInstanceOf(Date)
+      expect(call.where.date.lte).toBeInstanceOf(Date)
+      expect(call.where.date.lte.getTime()).toBeLessThanOrEqual(tomorrow)
+    }
+  })
+
   it("returns existing kpi fields (non-regression)", async () => {
     setupBaseMocks()
     vi.mocked(prisma.mtmTask.count)

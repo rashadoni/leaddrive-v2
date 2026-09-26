@@ -25,6 +25,11 @@ import {
   type OperationalVisitEvidence,
 } from "@/lib/mtm/operational-week"
 import { buildOperationalTaskQueue } from "@/lib/mtm/operational-task-queue"
+import { groupMtmWeekAlerts, projectMtmWeekAlert, type MtmWeekAlert } from "@/lib/mtm/week-alert-groups"
+import { mtmManagerWorkdayState, type MtmWorkdayRow } from "@/lib/mtm/workday-open-anomaly"
+import { workforceSessionRoleAllows } from "@/lib/with-workforce-rls-auth"
+import { resolveWorkforceWorkdayManagerActions } from "@/lib/workforce/workday-manager-actions"
+import type { WorkforceWorkdayManagerActions } from "@/lib/workforce/workday-reopen-contract"
 
 const PENDING_PLAN_CHANGE_STATUSES = ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"] as const
 const VISIBLE_PLAN_CHANGE_STATUSES = [
@@ -35,6 +40,8 @@ const VISIBLE_PLAN_CHANGE_STATUSES = [
 ] as const
 const ACTIVE_TASK_STATUSES = ["PENDING", "IN_PROGRESS", "OVERDUE"] as const
 const WEEK_RATE_LIMIT = { maxRequests: 30, windowMs: 60_000 }
+/** Unresolved alerts in the window. 18 a day is real (prod 2026-09-14); 200 is a week of that. */
+const WEEK_ALERT_LIMIT = 200
 
 const operationalTaskSelect = {
   id: true,
@@ -58,6 +65,8 @@ const agentSelect = {
   name: true,
   role: true,
   teamId: true,
+  // Never serialized: it only tells a web admin's own linked card apart.
+  userId: true,
   lastSeenAt: true,
   team: {
     select: {
@@ -70,6 +79,32 @@ const agentSelect = {
 } as const
 
 type AgentRow = Prisma.MtmAgentGetPayload<{ select: typeof agentSelect }>
+
+/**
+ * The shift fields the manager-state helper reads. Declared locally on
+ * purpose (review of #210): the rows of the Promise.all tuple below infer as
+ * `{}` under this client's extended types, and new code must not add to the
+ * known `{}` errors — it converts once, here, to exactly these fields.
+ */
+interface WeekWorkdayStateRow {
+  status: string
+  workDate: Date
+  startedAt: Date | null
+  pausedAt: Date | null
+  completedAt: Date | null
+}
+
+function weekWorkdayStateRow(value: unknown, workDateKey?: string | null): MtmWorkdayRow | null {
+  if (!value || typeof value !== "object") return null
+  const row = value as WeekWorkdayStateRow
+  return {
+    status: String(row.status),
+    workDate: workDateKey ?? row.workDate ?? null,
+    startedAt: row.startedAt ?? null,
+    pausedAt: row.pausedAt ?? null,
+    completedAt: row.completedAt ?? null,
+  }
+}
 
 function denied(code: string, status = 403) {
   return NextResponse.json({
@@ -172,8 +207,34 @@ function routeDateKey(value: Date): string {
   return value.toISOString().slice(0, 10)
 }
 
+type VisitEvidenceCounts = {
+  notes?: string | null
+  resultNotes?: string | null
+  _count?: { photos?: number } | null
+  actionResults?: Array<{ actionKey: string }> | null
+}
+
+/**
+ * What a manager can see about a visit without opening it: how long, how many
+ * photos, whether it was signed and whether a note exists. Counts only — the
+ * note text stays on the visit page (prod audit 2026-09-14, item 6).
+ */
+function visitEvidence(visit: OperationalVisitEvidence & VisitEvidenceCounts) {
+  const actions = Array.isArray(visit.actionResults) ? visit.actionResults : []
+  const durationMinutes = visit.checkOutAt
+    ? Math.max(0, Math.round((visit.checkOutAt.getTime() - visit.checkInAt.getTime()) / 60_000))
+    : null
+  return {
+    durationMinutes,
+    photoCount: typeof visit._count?.photos === "number" ? visit._count.photos : 0,
+    hasSignature: actions.some((action) => action.actionKey === "SIGNATURE"),
+    hasNote: actions.some((action) => action.actionKey === "VISIT_NOTE")
+      || Boolean(visit.notes?.trim() || visit.resultNotes?.trim()),
+  }
+}
+
 function sourceVisit(
-  visit: OperationalVisitEvidence & { notes?: string | null; resultNotes?: string | null },
+  visit: OperationalVisitEvidence & VisitEvidenceCounts,
   match: string,
 ) {
   return {
@@ -183,7 +244,10 @@ function sourceVisit(
     status: visit.status,
     checkInAt: visit.checkInAt,
     checkOutAt: visit.checkOutAt,
-    reason: visit.resultNotes ?? visit.notes ?? null,
+    // Review of #210: visit note text is not a manager-facing fact. It is kept
+    // only as the reason of a CANCELLED visit, where it explains the gap.
+    reason: visit.status === "CANCELLED" ? visit.resultNotes ?? visit.notes ?? null : null,
+    ...visitEvidence(visit),
   }
 }
 
@@ -202,7 +266,7 @@ function publicVisit(visit: {
   customer: unknown
   contact: unknown
   attribution: "PRIMARY" | "PARTICIPANT"
-}) {
+} & VisitEvidenceCounts) {
   return {
     id: visit.id,
     customerId: visit.customerId,
@@ -218,6 +282,7 @@ function publicVisit(visit: {
     customer: visit.customer,
     contact: visit.contact,
     attribution: visit.attribution,
+    ...visitEvidence(visit),
   }
 }
 
@@ -350,6 +415,34 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     ],
   }
 
+  // Prod 2026-09-14: 18 unresolved OUT_OF_ZONE alerts for the selected agent
+  // that day, and «Diqqət tələb edir» showed none. Same selected-agent scope
+  // as every other fact above; resolved rows are history, not attention.
+  // Awaited separately so the fact tuple below keeps its original shape.
+  const alertsPromise = prisma.mtmAlert.findMany({
+    where: {
+      organizationId: auth.orgId,
+      agentId: selectedAgent.id,
+      isResolved: false,
+      createdAt: { gte: window.activityStart, lt: window.activityEnd },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    take: WEEK_ALERT_LIMIT + 1,
+    select: {
+      id: true,
+      type: true,
+      category: true,
+      title: true,
+      description: true,
+      metadata: true,
+      createdAt: true,
+    },
+  })
+  // Prisma queries are lazy: attaching a handler starts it now, in parallel
+  // with the tuple, and keeps an early tuple failure from leaving this
+  // rejection unhandled. The `await` below still rethrows it.
+  alertsPromise.catch(() => undefined)
+
   const [
     roster,
     routesRaw,
@@ -461,6 +554,11 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
           where: { agentId: selectedAgent.id, role: { not: "OBSERVER" } },
           orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
           select: { id: true, agentId: true, role: true, joinedAt: true, leftAt: true },
+        },
+        _count: { select: { photos: true } },
+        actionResults: {
+          where: { status: "COMPLETED", actionKey: { in: ["SIGNATURE", "VISIT_NOTE"] } },
+          select: { actionKey: true },
         },
       },
     }),
@@ -651,6 +749,14 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
   const activeTasksTruncated = activeTasksRaw.length > OPERATIONAL_WEEK_LIMITS.tasks
   const planChangesCapped = planChangesRaw.slice(0, OPERATIONAL_WEEK_LIMITS.planChanges)
   const planChangesTruncated = planChangesRaw.length > OPERATIONAL_WEEK_LIMITS.planChanges
+  const alertsRaw = await alertsPromise
+  const alertRows = Array.isArray(alertsRaw) ? alertsRaw : []
+  const alertsTruncated = alertRows.length > WEEK_ALERT_LIMIT
+  const alerts = alertRows
+    .slice(0, WEEK_ALERT_LIMIT)
+    .map((row) => projectMtmWeekAlert(row, timezone))
+    .filter((alert): alert is MtmWeekAlert => Boolean(alert))
+  const alertGroups = groupMtmWeekAlerts(alerts, timezone)
 
   const routes = routesCapped.flatMap((route) => {
     if (route.publishedVersion === null) return []
@@ -684,6 +790,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
   if (tasksTruncated) truncatedSources.add("TASKS")
   if (activeTasksTruncated) truncatedSources.add("ACTIVE_TASKS")
   if (planChangesTruncated) truncatedSources.add("PLAN_CHANGES")
+  if (alertsTruncated) truncatedSources.add("ALERTS")
 
   let plannedStops = 0
   let actualStops = 0
@@ -849,6 +956,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
       routes: dayRoutes,
       unplannedVisits: dayUnplannedVisits.map(publicVisit),
       tasks: dayTasks,
+      alertGroups: alertGroups.filter((group) => group.date === dateKey),
     }
   })
 
@@ -970,6 +1078,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
       tasks: tasks.length,
       activeTasks: activeTasks.length,
       planChanges: planChanges.length,
+      alerts: alerts.length,
     },
   }
   const selectedAgentData = {
@@ -995,6 +1104,47 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     requiresPriorDayClosure: activeWorkdayIsPriorDay,
     outsideSelectedWindow: activeWorkdayDate < window.start || activeWorkdayDate >= window.endExclusive,
   } : null
+  // One manager-facing sentence for the shift (prod 2026-09-14): a row open
+  // since 11 Sep is "left open (3 days)", not "not started today" plus an
+  // instruction to close it that only the agent can follow.
+  const managerWorkdayState = canReadWorkforce
+    ? mtmManagerWorkdayState({
+        today: weekWorkdayStateRow(workdayByDay.get(today)),
+        active: weekWorkdayStateRow(activeWorkdayRaw, activeWorkdayDate),
+        now: generatedAt,
+        todayKey: today,
+      })
+    : null
+  // Reopen / undo-reopen of today's workday, evaluated with the services' own
+  // predicates. Their endpoints accept only a signed-in browser session, and
+  // never act on the viewer's own day, so an agent, a mobile token or an API
+  // key gets none; a session whose role lacks Workforce write learns why.
+  let managerActions: WorkforceWorkdayManagerActions | null = null
+  if (canReadWorkforce && actor.role !== "AGENT" && auth.principal === "web" && auth.principalType === "session") {
+    const agentUserId = selectedAgent.userId
+    try {
+      // One snapshot: the row, its journal and its blockers must agree, or a
+      // reopen committed between two reads would look like a broken history.
+      managerActions = await prisma.$transaction(
+        (tx: Prisma.TransactionClient) => resolveWorkforceWorkdayManagerActions(tx, {
+          organizationId: auth.orgId,
+          userId: auth.userId,
+          principalType: auth.principalType,
+          actor,
+          sessionPermitted: workforceSessionRoleAllows(auth.role, "write"),
+          agentId: selectedAgent.id,
+          agentUserId,
+          today,
+          now: generatedAt,
+        }),
+        { isolationLevel: "RepeatableRead" },
+      )
+    } catch (error) {
+      // Like the capability lookup above: the week stays readable and the
+      // unverified actions fail closed.
+      console.warn("[MTM/week GET] Workforce manager actions unavailable", error)
+    }
+  }
   const snapshotSource = {
     protocolVersion: 1,
     period: {
@@ -1010,14 +1160,20 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     },
     selectedAgent: selectedAgentData,
     days,
-    queues: { planChanges, pendingPlanChanges, activeTasks },
+    queues: {
+      planChanges,
+      pendingPlanChanges,
+      activeTasks,
+      alerts: { items: alerts, groups: alertGroups, truncated: alertsTruncated },
+    },
     coverage,
     gps,
-    workdayContext: { activeWorkday: activeWorkdayData },
+    workdayContext: { activeWorkday: activeWorkdayData, managerState: managerWorkdayState, managerActions },
     completeness,
   }
   // Source identity deliberately excludes projections that advance with the
-  // clock (`workedSeconds`, `isToday`, available actions and GPS freshness).
+  // clock (`workedSeconds`, `isToday`, available actions — the manager's
+  // included — and GPS freshness).
   // The cached payload can be refreshed in place while its source snapshot
   // remains stable until a business/telemetry fact actually changes.
   const stableDays = days.map(({ isToday: _isToday, ...day }) => {

@@ -1,4 +1,5 @@
 import type { MtmRouteTravelPlan, MtmRouteTravelPolicy } from "@/lib/mtm/route-travel"
+import type { MtmRoutePointVisitFact } from "@/lib/mtm/route-point-execution"
 
 /**
  * Mirrors the Prisma enum. INCOMPLETE is written only by the
@@ -25,6 +26,7 @@ export interface MtmRouteCustomer {
   contactPerson?: string | null
   latitude?: number | null
   longitude?: number | null
+  geofenceRadius?: number | null
 }
 
 export interface MtmRouteAssignment {
@@ -49,6 +51,14 @@ export interface MtmRoutePoint {
   } | null
   visitedAt?: string | null
   plannedTime?: string | null
+  /**
+   * The stop's visits. The list payload carries times only; the detail
+   * payload adds check-in/out positions (in-scope agents), photo count and
+   * whether a signature and a note exist.
+   */
+  visits?: MtmRoutePointVisitFact[] | null
+  /** Detail payload only: the customer's radius, or the organization default. */
+  geofenceRadiusMeters?: number | null
   changeRequests?: Array<{
     id: string
     changeType: "REMOVE_STOP" | "ADD_STOP" | "CONFLICT_OVERRIDE"

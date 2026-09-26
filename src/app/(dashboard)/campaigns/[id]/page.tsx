@@ -20,6 +20,8 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import dynamic from "next/dynamic"
 import { HelpButton } from "@/components/help/help-button"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
+import { InfoHint } from "@/components/info-hint"
+import { rateOf, recordedCount, type CampaignAnalyticsRecord } from "@/lib/campaigns/analytics"
 import type { Edge, Node } from "@xyflow/react"
 
 type CampaignFlowData = { nodes: Node[]; edges: Edge[] }
@@ -153,15 +155,44 @@ export default function CampaignDetailPage() {
   if (!campaign) return <div className="text-center py-12 text-muted-foreground">{tc("noData")}</div>
 
   const totalSent = campaign.totalSent ?? 0
-  const totalOpened = campaign.totalOpened ?? 0
   const totalClicked = campaign.totalClicked ?? 0
-  const totalBounced = campaign.totalBounced ?? 0
-  const totalUnsub = campaign.totalUnsubscribed ?? 0
-  const totalSpam = campaign.totalSpam ?? 0
-  const delivered = totalSent - totalBounced
-  const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0
-  const clickRate = totalSent > 0 ? Math.round((totalClicked / totalSent) * 100) : 0
-  const bounceRate = totalSent > 0 ? Math.round((totalBounced / totalSent) * 100) : 0
+  // Only what the campaign's records hold (src/lib/campaigns/analytics.ts):
+  // opens, clicks, bounces and spam complaints are written for email alone,
+  // so on SMS, WhatsApp and Telegram — and before anything is sent — they are
+  // «—», not 0. Until 2026-09-21 an SMS campaign read «0%» opens here, and
+  // «Sent» was sent minus a bounce count nothing wrote.
+  const record: CampaignAnalyticsRecord = {
+    id: campaign.id,
+    name: campaign.name ?? "",
+    type: campaign.type,
+    status: campaign.status,
+    totalRecipients: campaign.totalRecipients ?? 0,
+    totalSent,
+    totalOpened: campaign.totalOpened ?? 0,
+    totalClicked,
+    totalBounced: campaign.totalBounced ?? 0,
+    totalSpam: campaign.totalSpam ?? 0,
+    createdAt: campaign.createdAt,
+  }
+  const opened = recordedCount(record, "totalOpened")
+  const clicked = recordedCount(record, "totalClicked")
+  const bounced = recordedCount(record, "totalBounced")
+  const spam = recordedCount(record, "totalSpam")
+  // Email sends skip recipients who had already unsubscribed and count them;
+  // no other channel writes the column.
+  const unsubscribed = campaign.type === "email" && (totalSent > 0 || (campaign.totalUnsubscribed ?? 0) > 0)
+    ? campaign.totalUnsubscribed ?? 0
+    : null
+  const percentOf = (counter: "totalOpened" | "totalClicked" | "totalBounced") => {
+    const rate = rateOf([record], counter)
+    return rate ? Math.round(rate.percent) : null
+  }
+  const openRate = percentOf("totalOpened")
+  const clickRate = percentOf("totalClicked")
+  const bounceRate = percentOf("totalBounced")
+  const countText = (n: number | null) => (n === null ? "—" : n.toLocaleString())
+  const percentText = (n: number | null) => (n === null ? "—" : `${n}%`)
+  const engagementNotRecorded = totalSent > 0 && campaign.type !== "email"
   const typeLabels: Record<string, string> = {
     email: t("typeEmail"),
     sms: t("typeSms"),
@@ -250,38 +281,41 @@ export default function CampaignDetailPage() {
             <span className="text-xs font-medium opacity-80">{t("sent")}</span>
             <CheckCircle2 className="h-4 w-4 opacity-80" />
           </div>
-          <span className="text-2xl font-bold">{delivered.toLocaleString()}</span>
+          <span className="text-2xl font-bold" data-testid="campaign-kpi-sent">{totalSent.toLocaleString()}</span>
         </div>
         <div className="bg-amber-500 text-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80">Bounces</span>
+            <span className="text-xs font-medium opacity-80 flex items-center gap-1">Bounces <InfoHint text={t("hintBounces")} size={12} className="[&_svg]:!text-white/80" /></span>
             <XCircle className="h-4 w-4 opacity-80" />
           </div>
-          <span className="text-2xl font-bold">{totalBounced}</span>
+          <span className="text-2xl font-bold" data-testid="campaign-kpi-bounces">{countText(bounced)}</span>
         </div>
         <div className="bg-orange-500 text-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80">Unsubscribes</span>
+            <span className="text-xs font-medium opacity-80 flex items-center gap-1">Unsubscribes <InfoHint text={t("hintUnsubscribes")} size={12} className="[&_svg]:!text-white/80" /></span>
             <Users className="h-4 w-4 opacity-80" />
           </div>
-          <span className="text-2xl font-bold">{totalUnsub}</span>
+          <span className="text-2xl font-bold" data-testid="campaign-kpi-unsubscribes">{countText(unsubscribed)}</span>
         </div>
         <div className="bg-red-500 text-white rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80">Spam</span>
+            <span className="text-xs font-medium opacity-80 flex items-center gap-1">Spam <InfoHint text={t("hintSpam")} size={12} className="[&_svg]:!text-white/80" /></span>
             <AlertTriangle className="h-4 w-4 opacity-80" />
           </div>
-          <span className="text-2xl font-bold">{totalSpam}</span>
+          <span className="text-2xl font-bold" data-testid="campaign-kpi-spam">{countText(spam)}</span>
         </div>
       </div>
 
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <ColorStatCard label={t("opens")} value={totalOpened.toLocaleString()} icon={<Eye className="h-4 w-4" />} hint={t("hintOpens")} />
-        <ColorStatCard label={t("openRate")} value={`${openRate}%`} icon={<BarChart3 className="h-4 w-4" />} hint={t("hintOpenRate")} />
-        <ColorStatCard label={t("clicks")} value={totalClicked.toLocaleString()} icon={<MousePointerClick className="h-4 w-4" />} hint={t("hintClicks")} />
-        <ColorStatCard label={t("clickRate")} value={`${clickRate}%`} icon={<BarChart3 className="h-4 w-4" />} hint={t("hintClickRate")} />
+        <ColorStatCard label={t("opens")} value={countText(opened)} icon={<Eye className="h-4 w-4" />} hint={t("hintOpens")} />
+        <ColorStatCard label={t("openRate")} value={percentText(openRate)} icon={<BarChart3 className="h-4 w-4" />} hint={t("hintOpenRate")} />
+        <ColorStatCard label={t("clicks")} value={countText(clicked)} icon={<MousePointerClick className="h-4 w-4" />} hint={t("hintClicks")} />
+        <ColorStatCard label={t("clickRate")} value={percentText(clickRate)} icon={<BarChart3 className="h-4 w-4" />} hint={t("hintClickRate")} />
       </div>
+      {engagementNotRecorded && (
+        <p className="text-xs text-muted-foreground -mt-3">{t("detailEngagementEmailOnly")}</p>
+      )}
 
       <AdvisorRecordWidget entityType="campaign" entityId={campaign.id} orgId={orgId ? String(orgId) : undefined} title="Advisor risk" />
 
@@ -421,17 +455,19 @@ export default function CampaignDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {[
-                  { label: tab("openRate"), pct: openRate, color: "bg-blue-500" },
-                  { label: tab("clickRate"), pct: clickRate, color: "bg-green-500" },
-                  { label: t("bounceRate") || "Bounce rate", pct: bounceRate, color: "bg-red-400" },
+                  { key: "open", label: tab("openRate"), pct: openRate, color: "bg-blue-500" },
+                  { key: "click", label: tab("clickRate"), pct: clickRate, color: "bg-green-500" },
+                  { key: "bounce", label: t("bounceRate") || "Bounce rate", pct: bounceRate, color: "bg-red-400" },
                 ].map(r => (
-                  <div key={r.label}>
+                  <div key={r.key} data-testid={`campaign-rate-${r.key}`}>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-muted-foreground">{r.label}</span>
-                      <span className="font-semibold">{r.pct}%</span>
+                      <span className="font-semibold">{percentText(r.pct)}</span>
                     </div>
                     <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                      <div className={`h-full ${r.color} rounded-full transition-all`} style={{ width: `${Math.max(r.pct, 2)}%` }} />
+                      {r.pct !== null && (
+                        <div className={`h-full ${r.color} rounded-full transition-all`} style={{ width: `${Math.min(Math.max(r.pct, 2), 100)}%` }} />
+                      )}
                     </div>
                   </div>
                 ))}

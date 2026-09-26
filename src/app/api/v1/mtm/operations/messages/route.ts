@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { NextResponse } from "next/server"
+import { notifyAgents } from "@/lib/mtm/push-notify"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { writeMtmAudit } from "@/lib/mtm-audit"
@@ -181,6 +182,18 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
       })
       return { threadId: thread.id, message }
     })
+
+    // Fire-and-forget: the message is sent when it is in the database, not
+    // when Google acknowledges it. The text is the manager's own subject —
+    // a push can land on a locked screen in front of the customer.
+    void notifyAgents({
+      client: prisma,
+      organizationId: auth.orgId,
+      agentIds: uniqueAgentIds,
+      title: input.type === "BROADCAST" ? sanitizedSubject! : `${auth.name || auth.email}`,
+      body: sanitizedBody,
+      data: { target: "Messages", threadId: result.threadId },
+    }).catch((error) => console.warn("[MTM/operations/messages POST] push failed", error))
 
     await writeMtmAudit({
       organizationId: auth.orgId,

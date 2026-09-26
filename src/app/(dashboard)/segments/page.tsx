@@ -41,6 +41,7 @@ function getConditionChips(conditions: Record<string, any>, labelMap: Record<str
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 export default function SegmentsPage() {
   const { data: session } = useSession()
@@ -134,15 +135,15 @@ export default function SegmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="segments" /> <HelpButton slug="segments" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <Button data-tour-id="segments-new" onClick={() => { setEditData(undefined); setShowForm(true) }} className="gap-1.5">
-          <Plus className="h-4 w-4" /> {t("newSegment")}
-        </Button>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <TourReplayButton tourId="segments" /> <HelpButton slug="segments" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
+        actions={
+          <Button data-tour-id="segments-new" onClick={() => { setEditData(undefined); setShowForm(true) }} className="gap-1.5">
+            <Plus className="h-4 w-4" /> {t("newSegment")}
+          </Button>
+        }
+      />
 
       <PageDescription text={t("pageDescription")} />
       <DidYouKnow page="segments" className="mb-4" />

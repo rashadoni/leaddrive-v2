@@ -174,6 +174,125 @@ describe("middleware", async () => {
     expect(res.status).toBe(200)
   })
 
+  it("keeps admin demo previews behind authentication", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/demo-preview/request-1",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+    }))
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/login")
+    expect(res.headers.get("location")).toContain("callbackUrl=%2Fdemo-preview%2Frequest-1")
+  })
+
+  it("serves the demo request page on the app host as a stable edge fallback", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/demo",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+    }))
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+    expect(forwardedRequestHeader(res, "x-request-pathname")).toBe("/demo")
+  })
+
+  it.each(["/legal/privacy", "/legal/terms", "/legal/data-deletion"])(
+    "serves %s on the app host for Meta App Review",
+    async (pathname) => {
+      const res = await authMiddleware(makeReq({
+        pathname,
+        host: "app.leaddrivecrm.org",
+        auth: null,
+      }))
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get("location")).toBeNull()
+      expect(forwardedRequestHeader(res, "x-request-pathname")).toBe(pathname)
+    },
+  )
+
+  it("lets a legal ?lang= link override the locale cookie for Meta reviewers", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/legal/privacy?lang=en",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+      cookies: { NEXT_LOCALE: "ru" },
+    }))
+
+    expect(res.status).toBe(200)
+    expect(forwardedRequestHeader(res, "x-locale")).toBe("en")
+  })
+
+  it.each(["/demo-open", "/demo-access/abc123"])(
+    "pins %s to the scenario language whatever the visitor's cookie says",
+    async (pathname) => {
+      // The demo's guide text exists only in Azerbaijani. Letting the root
+      // provider follow the cookie produced a Russian sidebar beside
+      // Azerbaijani instructions; pinning it here also spares the visitor a
+      // second complete message bundle.
+      const res = await authMiddleware(makeReq({
+        pathname,
+        host: "app.leaddrivecrm.org",
+        auth: null,
+        cookies: { NEXT_LOCALE: "ru" },
+      }))
+
+      expect(res.status).toBe(200)
+      expect(forwardedRequestHeader(res, "x-locale")).toBe("az")
+    },
+  )
+
+  it("leaves every other public page on the visitor's own language", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/demo",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+      cookies: { NEXT_LOCALE: "ru" },
+    }))
+
+    expect(res.status).toBe(200)
+    expect(forwardedRequestHeader(res, "x-locale")).toBe("ru")
+  })
+
+  it("does not forward an unsupported legal locale", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/legal/privacy?lang=invalid",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+    }))
+
+    expect(res.status).toBe(200)
+    expect(forwardedRequestHeader(res, "x-locale")).toBeNull()
+  })
+
+  it.each(["zeytun", "fanumsec", "brandprotection", "future-client"])(
+    "serves public legal documents on dynamic tenant host %s",
+    async (slug) => {
+      const res = await authMiddleware(makeReq({
+        pathname: "/legal/privacy",
+        host: slug + ".leaddrivecrm.org",
+        auth: null,
+      }))
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get("location")).toBeNull()
+      expect(forwardedRequestHeader(res, "x-tenant-slug")).toBe(slug)
+    },
+  )
+
+  it("continues redirecting other marketing pages from the app host", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/pricing",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+    }))
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toBe("https://leaddrivecrm.org/pricing")
+  })
+
   it.each([
     ["app.leaddrivecrm.org", "/login"],
     ["localhost", "/api/health"],
@@ -490,6 +609,50 @@ describe("middleware", async () => {
     const res = await authMiddleware(req)
     expect(res.status).toBe(429)
     expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("public:203.0.113.10")
+  })
+
+  it("keeps the legacy demo request endpoint public but rate-limited", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(true)
+    const req = makeReq({
+      pathname: "/api/v1/demo-request",
+      method: "POST",
+      auth: null,
+      headers: { "x-real-ip": "203.0.113.12" },
+    })
+    const res = await authMiddleware(req)
+
+    expect(res.status).toBe(200)
+    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("public:203.0.113.12")
+  })
+
+  it("isolates Demo Center events in a hashed capability bucket", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(false)
+    const capability = "a".repeat(64)
+    const req = makeReq({
+      pathname: `/api/v1/public/demo-access/${capability}/events`,
+      method: "POST",
+      auth: null,
+      headers: { "x-real-ip": "203.0.113.11" },
+    })
+    const res = await authMiddleware(req)
+
+    expect(res.status).toBe(429)
+    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("demo:203.0.113.11:hash_aaaaaaaa")
+  })
+
+  it("isolates Demo Center lifecycle probes in the same hashed capability bucket", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(false)
+    const capability = "b".repeat(64)
+    const req = makeReq({
+      pathname: `/api/v1/public/demo-access/${capability}?probe=1`,
+      method: "GET",
+      auth: null,
+      headers: { "x-real-ip": "203.0.113.13" },
+    })
+    const res = await authMiddleware(req)
+
+    expect(res.status).toBe(429)
+    expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("demo:203.0.113.13:hash_bbbbbbbb")
   })
 
   it("isolates public buckets by the client IP supplied by a trusted Cloudflare peer", async () => {

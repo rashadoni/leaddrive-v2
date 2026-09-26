@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { MAX_PAGE_LIMIT } from "./_constants"
+import { activityPeriodStart, MAX_PAGE_LIMIT, VIEWER_READ_ACTION_SUFFIXES, VIEWER_READ_ACTIONS } from "./_constants"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { productCapabilitiesForMixedSurface } from "@/lib/workforce-capability"
+import {
+  fieldScopeAgentIdWhere,
+  isAgentInFieldScope,
+  mtmAgentOutOfScopeResponse,
+  mtmFieldScopeRequiredResponse,
+  resolveMtmFieldScope,
+} from "@/lib/mtm/field-access"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { isValidTimezone } from "@/lib/timezone"
 
 const CHECK_IN_ACTIONS = ["CHECK_IN", "CHECK_IN_FORCED"] as const
 // Compliance lens: geofence bypasses + failed mobile logins. Kept in sync with
@@ -32,6 +41,10 @@ function routeCapabilityDisabled() {
 function routeAuditWhere(organizationId: string, workforceEnabled: boolean): Prisma.MtmAuditLogWhereInput {
   return {
     organizationId,
+    AND: [
+      ...VIEWER_READ_ACTION_SUFFIXES.map((suffix) => ({ NOT: { action: { endsWith: suffix } } })),
+      { action: { notIn: [...VIEWER_READ_ACTIONS] } },
+    ],
     ...(workforceEnabled ? {} : {
       NOT: {
         OR: [
@@ -44,16 +57,113 @@ function routeAuditWhere(organizationId: string, workforceEnabled: boolean): Pri
   }
 }
 
-/** Inclusive local-midnight start for the selected period, or null for "all". */
-function periodStart(period: string, now: Date): Date | null {
-  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (period === "all") return null
-  if (period === "7d") { const s = new Date(midnight); s.setDate(s.getDate() - 6); return s }
-  if (period === "30d") { const s = new Date(midnight); s.setDate(s.getDate() - 29); return s }
-  return midnight // "today" (default)
+function jsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
 }
 
-export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId }) => {
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+type ActivityLog = {
+  entity: string
+  entityId: string | null
+  newData: unknown
+  oldData: unknown
+  actorUserId?: string | null
+}
+
+/**
+ * The office user who acted, when the row knows it. New rows carry
+ * `actorUserId` (audit 2026-09-21); settings changes and field assignments
+ * already recorded it inside their payload.
+ */
+function actorUserIdOf(log: ActivityLog): string | null {
+  const data = jsonRecord(log.newData)
+  return stringValue(log.actorUserId)
+    ?? stringValue(jsonRecord(data.actor).userId)
+    ?? stringValue(data.actor)
+    ?? stringValue(data.assignedBy)
+}
+
+/** Names of the office users behind a page of rows, looked up once. */
+async function activityActors(orgId: string, logs: ActivityLog[]): Promise<Array<{ userId: string; name: string } | null>> {
+  const ids = [...new Set(logs.map(actorUserIdOf).filter((id): id is string => Boolean(id)))]
+  const users = ids.length
+    ? await prisma.user.findMany({ where: { organizationId: orgId, id: { in: ids } }, select: { id: true, name: true, email: true } })
+    : []
+  const nameOf = new Map<string, string | null>((users ?? []).map((user: { id: string; name: string | null; email: string | null }) => [user.id, stringValue(user.name) ?? stringValue(user.email)] as const))
+  return logs.map((log) => {
+    const userId = actorUserIdOf(log)
+    const name = userId ? nameOf.get(userId) ?? null : null
+    return userId && name ? { userId, name } : null
+  })
+}
+
+/**
+ * What a row is about, in words a manager reads: the customer's name, and the
+ * visit or route it links to. New sync rows carry the name; older ones carry
+ * only a customerId or the visit id, so the name is looked up once per page.
+ */
+async function activitySubjects(orgId: string, logs: ActivityLog[]) {
+  const visitIdOf = (log: ActivityLog) =>
+    log.entity === "visit" ? stringValue(log.entityId) : stringValue(jsonRecord(log.newData).visitId)
+  // A customer or field-organization edit is about the row it names.
+  const customerIdOf = (log: ActivityLog) =>
+    stringValue(jsonRecord(log.newData).customerId)
+    ?? stringValue(jsonRecord(log.oldData).customerId)
+    ?? (log.entity === "customer" ? stringValue(log.entityId) : null)
+  const routeIdOf = (log: ActivityLog) =>
+    log.entity === "route" ? stringValue(log.entityId) : stringValue(jsonRecord(log.newData).routeId)
+
+  const customerIds = new Set<string>()
+  const visitIds = new Set<string>()
+  for (const log of logs) {
+    const data = jsonRecord(log.newData)
+    if (stringValue(data.customerName)) continue
+    const customerId = customerIdOf(log)
+    if (customerId) customerIds.add(customerId)
+    else {
+      const visitId = visitIdOf(log)
+      if (visitId) visitIds.add(visitId)
+    }
+  }
+  const [customers, visits] = await Promise.all([
+    customerIds.size
+      ? prisma.mtmCustomer.findMany({ where: { organizationId: orgId, id: { in: [...customerIds] } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+    visitIds.size
+      ? prisma.mtmVisit.findMany({ where: { organizationId: orgId, id: { in: [...visitIds] } }, select: { id: true, customer: { select: { name: true } } } })
+      : Promise.resolve([]),
+  ])
+  const customerName = new Map((customers ?? []).map((c: { id: string; name: string }) => [c.id, c.name] as const))
+  const visitCustomer = new Map((visits ?? []).map((v: { id: string; customer: { name: string } | null }) => [v.id, v.customer?.name ?? null] as const))
+
+  return logs.map((log) => {
+    const data = jsonRecord(log.newData)
+    const visitId = visitIdOf(log)
+    const customerId = customerIdOf(log)
+    return {
+      customerName: stringValue(data.customerName)
+        ?? (customerId ? customerName.get(customerId) ?? null : null)
+        ?? (visitId ? visitCustomer.get(visitId) ?? null : null),
+      visitId,
+      routeId: routeIdOf(log),
+    }
+  })
+}
+
+export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
+  const { orgId } = auth
+  // The feed and its counters are about people: a manager sees their own
+  // agents' events. Organization-level entries without an agent (settings,
+  // policy changes by web users) stay visible to admins only.
+  const scope = await resolveMtmFieldScope(prisma, {
+    organizationId: orgId,
+    userId: auth.userId,
+    webRole: auth.role,
+  })
+  if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
 
   const { searchParams } = new URL(req.url)
   const type = searchParams.get("type") || "" // CHECK_IN, CHECK_OUT, PHOTO, TASK, CHECK_IN_FORCED
@@ -62,18 +172,20 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId }) => {
   const period = searchParams.get("period") || "today"
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
   const limit = Math.min(MAX_PAGE_LIMIT, Math.max(1, parseInt(searchParams.get("limit") || "50")))
+  if (agentId && !isAgentInFieldScope(scope, agentId)) return mtmAgentOutOfScopeResponse()
 
   try {
     const capabilities = await productCapabilitiesForMixedSurface(orgId, "MTM/activity GET")
     if (!capabilities.routeField) return routeCapabilityDisabled()
-    const now = new Date()
-    const start = periodStart(period, now)
+    const settings = await getMtmSettings(orgId)
+    const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+    const start = activityPeriodStart(period, new Date(), timezone)
 
     // KPI counts are scoped to the SELECTED period (+ agent) — this fixes the old
     // bug where cards were hard-coded to "today" while the feed showed all time.
     // KPIs intentionally ignore the type/violations filters so the cards stay a
     // stable overview while the list below narrows.
-    const kpiWhere = routeAuditWhere(orgId, capabilities.workforceHrm)
+    const kpiWhere: Prisma.MtmAuditLogWhereInput = { ...routeAuditWhere(orgId, capabilities.workforceHrm), ...fieldScopeAgentIdWhere(scope) }
     if (start) kpiWhere.createdAt = { gte: start }
     if (agentId) kpiWhere.agentId = agentId
 
@@ -88,7 +200,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId }) => {
 
     // Activity feed = period + agent + (violations OR type) filters, paginated.
     // Action names match writers in visits/[id]/route.ts and photos/route.ts.
-    const auditWhere = routeAuditWhere(orgId, capabilities.workforceHrm)
+    const auditWhere: Prisma.MtmAuditLogWhereInput = { ...routeAuditWhere(orgId, capabilities.workforceHrm), ...fieldScopeAgentIdWhere(scope) }
     if (start) auditWhere.createdAt = { gte: start }
     if (agentId) auditWhere.agentId = agentId
     if (violations) auditWhere.action = { in: [...VIOLATION_ACTIONS] }
@@ -98,6 +210,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId }) => {
     else if (type === "CHECK_IN_FORCED") auditWhere.action = "CHECK_IN_FORCED"
     else if (type === "CHECK_OUT") auditWhere.action = "CHECK_OUT"
     else if (type === "PHOTO") auditWhere.action = "PHOTO_UPLOAD"
+    else if (type === "ROUTE") auditWhere.action = { in: ["ROUTE_START", "ROUTE_COMPLETE"] }
     else if (type === "TASK") auditWhere.action = { in: ["TASK_CREATE", "TASK_UPDATE", "TASK_COMPLETE", "TASK_DELETE"] }
 
     const [logs, total] = await Promise.all([
@@ -114,11 +227,14 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId }) => {
       prisma.mtmAuditLog.count({ where: auditWhere }),
     ])
 
+    const [subjects, actors] = await Promise.all([activitySubjects(orgId, logs), activityActors(orgId, logs)])
+
     return NextResponse.json({
       success: true,
       data: {
         kpi: { totalActivities, totalCheckIns, totalCheckOuts, totalPhotos, totalViolations },
-        logs,
+        logs: logs.map((log: (typeof logs)[number], index: number) => ({ ...log, subject: subjects[index], actor: actors[index] })),
+        timezone,
         total,
         page,
         limit,

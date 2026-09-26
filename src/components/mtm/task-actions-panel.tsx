@@ -375,7 +375,7 @@ export function MtmTaskActionsPanel({
           {!online ? <div className="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-200" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0" />{t("executionOfflineHint")}</div> : null}
           {execution ? (
             <div className="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700" role="status" aria-live="polite">
-              <div className="flex items-center justify-between gap-2"><span className="text-xs font-medium">{t("offlineOperation")}</span><Badge variant={execution.status === "conflict" ? "warning" : execution.status === "error" ? "destructive" : "info"}>{t(`executionQueueStatuses.${execution.status}` as never)}</Badge></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-medium">{t("offlineOperation")}</span><Badge variant={execution.status === "conflict" ? "warning" : execution.status === "error" ? "destructive" : "info"}>{t(`executionQueueStatuses.${execution.status}` as never)}</Badge></div>
               <p className="text-xs leading-5 text-muted-foreground">{executionMessage || t(execution.status === "conflict" ? "executionConflictHint" : execution.status === "error" ? "executionSyncFailed" : online ? "executionSyncing" : "executionQueuedOffline")}</p>
               <div className="flex flex-wrap gap-2">
                 {execution.status === "error" ? <Button type="button" variant="outline" className="min-h-11" onClick={() => void retryExecution()}><RefreshCw className="h-4 w-4" />{t("retrySync")}</Button> : null}
@@ -403,15 +403,15 @@ export function MtmTaskActionsPanel({
           <div className="space-y-1.5"><Label htmlFor="task-review-comment">{t("reviewComment")}</Label><Textarea id="task-review-comment" value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} rows={3} maxLength={2000} /></div>
           <div className="space-y-1.5"><Label htmlFor="task-return-reason">{t("returnReason")}</Label><Textarea id="task-return-reason" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} rows={3} maxLength={2000} placeholder={t("returnReasonPlaceholder")} /></div>
           {reviewMessage ? <p className={`text-xs leading-5 ${reviewPhase === "error" || reviewPhase === "conflict" ? "text-red-700 dark:text-red-300" : "text-muted-foreground"}`} role="status">{reviewMessage}</p> : null}
-          <div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={reviewPhase === "saving"} onClick={() => void review("RETURN")}><RotateCcw className="h-4 w-4" />{t("returnTask")}</Button><Button type="button" className="min-h-11" disabled={reviewPhase === "saving"} onClick={() => void review("ACCEPT")}><CheckCircle2 className="h-4 w-4" />{t("acceptTask")}</Button></div>
+          <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-11 flex-1 basis-32" disabled={reviewPhase === "saving"} onClick={() => void review("RETURN")}><RotateCcw className="h-4 w-4" />{t("returnTask")}</Button><Button type="button" className="min-h-11 flex-1 basis-32" disabled={reviewPhase === "saving"} onClick={() => void review("ACCEPT")}><CheckCircle2 className="h-4 w-4" />{t("acceptTask")}</Button></div>
         </section>
       ) : null}
 
       {canDuplicate ? (
         <section className="space-y-4 border-b border-zinc-200 pb-6 dark:border-zinc-700">
           <PanelHeading title={t("duplicateTask")} hint={t("duplicateTaskHint")} />
-          <div className="space-y-1.5"><Label htmlFor="duplicate-due">{t("targetDueDate")} *</Label><Input id="duplicate-due" type="datetime-local" value={duplicate.targetDueDate} onChange={(event) => setDuplicate((current) => ({ ...current, targetDueDate: event.target.value }))} disabled={duplicate.locked} required aria-required="true" /></div>
-          <div className="space-y-1.5"><Label htmlFor="duplicate-start">{t("targetScheduledStart")}</Label><Input id="duplicate-start" type="datetime-local" value={duplicate.targetScheduledStartAt} onChange={(event) => setDuplicate((current) => ({ ...current, targetScheduledStartAt: event.target.value }))} disabled={duplicate.locked} /></div>
+          <div className="space-y-1.5"><Label htmlFor="duplicate-due">{t("targetDueDate")} *</Label><Input id="duplicate-due" type="datetime-local" className="min-w-0 max-w-full" value={duplicate.targetDueDate} onChange={(event) => setDuplicate((current) => ({ ...current, targetDueDate: event.target.value }))} disabled={duplicate.locked} required aria-required="true" /></div>
+          <div className="space-y-1.5"><Label htmlFor="duplicate-start">{t("targetScheduledStart")}</Label><Input id="duplicate-start" type="datetime-local" className="min-w-0 max-w-full" value={duplicate.targetScheduledStartAt} onChange={(event) => setDuplicate((current) => ({ ...current, targetScheduledStartAt: event.target.value }))} disabled={duplicate.locked} /></div>
           <p className="text-xs text-muted-foreground">{t("duplicateTimezone", { timezone })}</p>
           <TaskScheduleDstNotice adjustments={duplicatePreview.authoringDst} />
           {duplicate.locked ? <p className="text-xs leading-5 text-amber-800 dark:text-amber-200" role="status">{t("duplicateUncertainHint")}</p> : null}

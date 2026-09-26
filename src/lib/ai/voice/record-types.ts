@@ -113,6 +113,30 @@ export function recordRoute(type: string, id: string): string | null {
 }
 
 /**
+ * The inverse: which record, if any, is this path showing?
+ *
+ * It reads the same table as `recordRoute`, so a record type added above is
+ * understood in both directions at once. This is how "change the phone" finds
+ * its lead — from the browser's own location, never from model output, and the
+ * id is still re-checked against the caller's tenant and record filters on the
+ * server before anything is prepared.
+ */
+export function recordFromPath(
+  pathname: string,
+): Readonly<{ type: VoiceRecordType; id: string }> | null {
+  for (const type of RECORD_TYPE_NAMES) {
+    const prefix = `${RECORD_TYPES[type].route}/`
+    if (!pathname.startsWith(prefix)) continue
+    const rest = pathname.slice(prefix.length)
+    // A detail page only: `/leads/abc123`, not `/leads/abc123/edit` and not
+    // a named sub-route like `/tasks/board`.
+    if (!/^[A-Za-z0-9_-]{6,64}$/.test(rest)) continue
+    return { type, id: rest }
+  }
+  return null
+}
+
+/**
  * Types read_record can read. Lives here, in the client-safe module, because
  * the tool registry is imported by the browser voice console: importing it
  * from record-read.ts dragged @/lib/prisma (and node:async_hooks) into the

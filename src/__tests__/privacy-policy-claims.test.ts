@@ -31,7 +31,7 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
   const p = privacy(locale)
 
   it("names the actual legal entity", () => {
-    expect(p.p1).toContain("Fanumsec MMC")
+    expect(p.p1).toContain("FANUM")
     expect(p.p1).not.toContain("LeadDrive Inc")
   })
 
@@ -43,8 +43,11 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
   })
 
   it("names every subprocessor that receives personal data", () => {
-    const listed = [p.p5_l1, p.p5_l2, p.p5_l3, p.p5_l4, p.p5_l5, p.p5_l6, p.p5_l7].join(" ")
-    for (const provider of ["Contabo", "Hetzner", "Cloudflare", "Meta", "Anthropic", "OpenAI", "Google", "Sentry"]) {
+    const listed = [
+      p.p5_l1, p.p5_l2, p.p5_l3, p.p5_l4, p.p5_l5,
+      p.p5_l6, p.p5_l7, p.p5_l8, p.p5_l9,
+    ].join(" ")
+    for (const provider of ["Contabo", "Cloudflare", "Meta", "Anthropic", "OpenAI", "Google", "Sentry"]) {
       expect(listed, `${provider} receives personal data and must be named`).toContain(provider)
     }
   })
@@ -62,10 +65,46 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
   })
 
   it("states the real deletion window instead of promising the impossible", () => {
-    // Object Lock keeps backups immutable for up to 400 days. "Deleted
-    // immediately" is a promise the system cannot keep.
+    // "Deleted immediately" is a promise no system with backups can keep, so the note must state a
+    // real active-systems window.
     expect(p.p7_note).toBeTruthy()
-    expect(p.p7_note).toContain("400")
+    expect(p.p7_note).toMatch(/30/)
+  })
+
+  it("does not claim a backup protection that production does not run", () => {
+    // F-13, second pass — verified on production 2026-09-20.
+    //
+    // The policy used to promise "encrypted backups under immutable retention … up to 400 days …
+    // destroyed automatically". The repository does contain that path
+    // (`scripts/backup/postgres-backup.sh`: age encryption, S3 Object Lock in COMPLIANCE mode,
+    // 16/63/400-day tiers) — but it was NOT running: `leaddrive-postgres-backup.timer` was disabled
+    // and inactive, and its last attempt on 2026-09-07 failed on the restore canary. What actually
+    // ran was an unencrypted `pg_dump` rsynced to a second host with no automatic pruning.
+    //
+    // So this guard is not about wording. Before anyone restores the stronger sentence, the timer
+    // has to be enabled, green, and uploading under Object Lock — otherwise the policy goes back to
+    // describing a control that is switched off, which is precisely the finding F-13 was raised for.
+    // p5_l2 is included deliberately: the subprocessor list made the same promise in a second
+    // place, attributed to Hetzner in Helsinki. Hetzner was decommissioned in September 2026 and
+    // holds nothing; the offsite copies sit on a second Contabo host (verified 2026-09-20 by
+    // finding them there). A policy claim is only as true as its least-checked sentence.
+    const backupClaims = `${p.p4} ${p.p7_note} ${p.p5_l2}`
+    expect(backupClaims).not.toMatch(/encrypted backups|зашифрованные резервные|şifrəli backup/i)
+    expect(backupClaims).not.toMatch(/immutable retention|неизменяемы в течение срока|dəyişdirilməzdir/i)
+    expect(backupClaims).not.toMatch(/destroyed automatically|уничтожаются автоматически|avtomatik məhv/i)
+    expect(backupClaims).not.toMatch(/\b400\b/)
+  })
+
+  it("does not name a subprocessor that no longer processes anything", () => {
+    // Hetzner was dropped in September 2026 and the server deleted. Naming it as the holder of
+    // backups points a data subject's rights, and a regulator's letter, at a company that has none
+    // of their data.
+    const allSubprocessors = [
+      p.p5_l1, p.p5_l2, p.p5_l3, p.p5_l4, p.p5_l5,
+      p.p5_l6, p.p5_l7, p.p5_l8, p.p5_l9,
+    ].join(" ")
+    expect(allSubprocessors).not.toMatch(/Hetzner/i)
+    expect(allSubprocessors).not.toMatch(/Helsinki|Хельсинки/i)
   })
 
   it("discloses Workforce location purpose, lifecycle, roles and employee rights", () => {
@@ -82,7 +121,7 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
 describe("the privacy page renders the corrected sections", () => {
   const page = readFileSync("src/app/(marketing)/legal/privacy/page.tsx", "utf8")
 
-  it.each(["p5_l1", "p5_l5", "p5_l7", "p5_note", "p7_note"])(
+  it.each(["p5_l1", "p5_l5", "p5_l7", "p5_l9", "p5_note", "p7_note"])(
     "renders %s — a translated key nothing displays is not a disclosure",
     key => {
       expect(page).toContain(`t("${key}")`)
@@ -114,8 +153,9 @@ describe("the site names one legal entity, in one place", () => {
   const constants = readFileSync("src/lib/constants.ts", "utf8")
 
   it("declares the entity centrally", () => {
-    expect(constants).toContain('COMPANY_LEGAL_NAME = "Fanumsec MMC"')
-    expect(constants).toMatch(/COMPANY_LEGAL_ADDRESS = "Baku, Azerbaijan"/)
+    expect(constants).toContain("COMPANY_LEGAL_NAME = '\"FANUM\" MMC'")
+    expect(constants).toContain("VÖEN 1704197981")
+    expect(constants).toMatch(/COMPANY_LEGAL_ADDRESS = "Abbasqulu Abbaszadə 13\/5, AZ1073, Baku, Azerbaijan"/)
   })
 
   it.each([
@@ -124,7 +164,8 @@ describe("the site names one legal entity, in one place", () => {
     "src/app/(marketing)/legal/data-deletion/page.tsx",
   ])("%s takes the contact identity from the constant", path => {
     const source = readFileSync(path, "utf8")
-    expect(source).toContain("{COMPANY_LEGAL_NAME}, {COMPANY_LEGAL_ADDRESS}")
+    expect(source).toContain("COMPANY_LEGAL_NAME")
+    expect(source).toContain("COMPANY_LEGAL_ADDRESS")
     expect(source, "a hardcoded copy is how these drifted from the policy text").not.toContain("LeadDrive Inc")
   })
 
@@ -151,7 +192,7 @@ describe("the site names one legal entity, in one place", () => {
     const all = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
 
     it("names the real provider in the Terms of Service", () => {
-      expect(all.terms.p1).toContain("Fanumsec MMC")
+      expect(all.terms.p1).toContain("FANUM")
       expect(all.terms.p1).not.toContain("LeadDrive Inc")
     })
 

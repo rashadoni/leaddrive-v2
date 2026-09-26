@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react"
+import type { NavOrgSettingKey } from "@/lib/nav-items"
 import {
   Activity,
   AlertTriangle,
@@ -11,6 +12,7 @@ import {
   FileBarChart,
   FileBadge,
   MapPin,
+  PackageOpen,
   Radio,
   Route,
   Settings,
@@ -24,7 +26,7 @@ import {
 // up as its own identifier. "plan" was renamed to "routes" in all three
 // locales (task T16) — the pill said "Plan" while the page it opened, the
 // breadcrumbs and the URL all said routes.
-export type MtmPrimaryLabelKey = "today" | "routes" | "map" | "visits" | "results"
+export type MtmPrimaryLabelKey = "today" | "routes" | "calendar" | "map" | "visits" | "results"
 export type MtmToolGroupKey = "work" | "reference" | "control" | "analytics" | "administration"
 
 export interface MtmPrimaryNavigationItem {
@@ -38,6 +40,8 @@ export interface MtmToolNavigationItem {
   icon: LucideIcon
   /** Reuses the established, fully localized label in the `nav` namespace. */
   navKey: string
+  /** Organization switch that hides this tool when explicitly false. */
+  orgSetting?: NavOrgSettingKey
 }
 
 export interface MtmToolNavigationGroup {
@@ -54,6 +58,8 @@ export interface MtmToolNavigationGroup {
 export const MTM_PRIMARY_NAVIGATION = [
   { href: "/mtm", icon: CalendarDays, labelKey: "today" },
   { href: "/mtm/routes", icon: Route, labelKey: "routes" },
+  // Owner 2026-09-23: the calendar left the routes section and became its own.
+  { href: "/mtm/calendar", icon: CalendarDays, labelKey: "calendar" },
   { href: "/mtm/map", icon: MapPin, labelKey: "map" },
   { href: "/mtm/visits", icon: CheckSquare, labelKey: "visits" },
   { href: "/mtm/analytics", icon: BarChart3, labelKey: "results" },
@@ -68,15 +74,16 @@ export const MTM_TOOL_GROUPS = [
     key: "work",
     items: [
       { href: "/mtm/tasks", icon: ClipboardList, navKey: "mtmTasks" },
-      { href: "/mtm/promotions", icon: FileBadge, navKey: "mtmPromotions" },
+      { href: "/mtm/promotions", icon: FileBadge, navKey: "mtmPromotions", orgSetting: "pharmacyPromotionsEnabled" },
     ],
   },
   {
     key: "reference",
     items: [
       { href: "/mtm/customers", icon: Building2, navKey: "mtmCustomers" },
-      { href: "/mtm/contacts", icon: Users, navKey: "mtmContacts" },
+      { href: "/mtm/contacts", icon: Users, navKey: "mtmContacts", orgSetting: "fieldContactsEnabled" },
       { href: "/mtm/agents", icon: UserCog, navKey: "mtmAgents" },
+      { href: "/mtm/products", icon: PackageOpen, navKey: "mtmProducts" },
     ],
   },
   {
@@ -102,6 +109,21 @@ export const MTM_TOOL_GROUPS = [
     ],
   },
 ] as const satisfies readonly MtmToolNavigationGroup[]
+
+/**
+ * Tool groups as a given organization should see them. A switch hides only
+ * when explicitly false; a group left without items disappears.
+ */
+export function visibleMtmToolGroups(
+  orgSettings: Partial<Record<NavOrgSettingKey, boolean>> = {},
+): MtmToolNavigationGroup[] {
+  return MTM_TOOL_GROUPS
+    .map((group) => ({
+      key: group.key,
+      items: (group.items as readonly MtmToolNavigationItem[]).filter((item) => !item.orgSetting || orgSettings[item.orgSetting] !== false),
+    }))
+    .filter((group) => group.items.length > 0)
+}
 
 export const MTM_ALL_NAVIGATION_HREFS = [
   ...MTM_PRIMARY_NAVIGATION.map((item) => item.href),

@@ -34,6 +34,15 @@ vi.mock("@google/genai", () => ({
     }
     constructor(input: unknown) { gemini.constructorArgs.push(input) }
   },
+  // The console now imports the audio policy, which names these enums. They
+  // are string enums, so the real values are the strings themselves.
+  ActivityHandling: {
+    START_OF_ACTIVITY_INTERRUPTS: "START_OF_ACTIVITY_INTERRUPTS",
+    NO_INTERRUPTION: "NO_INTERRUPTION",
+  },
+  StartSensitivity: { START_SENSITIVITY_LOW: "START_SENSITIVITY_LOW" },
+  EndSensitivity: { END_SENSITIVITY_LOW: "END_SENSITIVITY_LOW" },
+  TurnCoverage: { TURN_INCLUDES_ONLY_ACTIVITY: "TURN_INCLUDES_ONLY_ACTIVITY" },
 }))
 
 vi.mock("next/navigation", () => ({
@@ -70,17 +79,36 @@ vi.mock("next-intl", () => ({
       : labels[key] ?? key,
     { has: () => false },
   ),
+  // The console now also renders the receipt surface, which formats dates.
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
 }))
 
 import { VoiceConsole } from "@/components/ai/voice-console"
 
 class FakeTrack {
   stop = vi.fn()
+  getSettings() {
+    return {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      sampleRate: 48_000,
+      channelCount: 1,
+    }
+  }
+  getCapabilities() {
+    return {
+      echoCancellation: [true, false],
+      noiseSuppression: [true, false],
+      autoGainControl: [true, false],
+    }
+  }
 }
 
 class FakeStream {
   track = new FakeTrack()
   getTracks() { return [this.track] }
+  getAudioTracks() { return [this.track] }
 }
 
 class FakePort {
@@ -295,6 +323,39 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
     expect(container.textContent).toContain("Preparing an answer")
   })
 
+  // The room is chosen before the token is minted, because the barge-in policy
+  // is sealed into that token: the browser cannot loosen it mid-session.
+  it("asks the server to mint the token for the room the user picked", async () => {
+    try { window.localStorage.setItem("leaddrive:voice-audio-mode", "noisy") } catch { /* ignore */ }
+    await start()
+    const mint = fetchMock.mock.calls.find(([input]) => String(input).endsWith("/session/token"))
+    expect(JSON.parse(String((mint?.[1] as RequestInit).body))).toEqual({
+      voiceSessionId: "voice-session-1",
+      audioMode: "noisy",
+    })
+    try { window.localStorage.removeItem("leaddrive:voice-audio-mode") } catch { /* ignore */ }
+  })
+
+  it("defaults to the desk policy when nothing was chosen on this device", async () => {
+    await start()
+    const mint = fetchMock.mock.calls.find(([input]) => String(input).endsWith("/session/token"))
+    expect(JSON.parse(String((mint?.[1] as RequestInit).body))).toMatchObject({ audioMode: "auto" })
+  })
+
+  it("reports requested and applied microphone processing without device data", async () => {
+    await start()
+    const settingsTrace = fetchMock.mock.calls.map(([input, init]) => ({
+      url: String(input),
+      body: init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : null,
+    })).find(({ url, body }) => url.endsWith("/voice/trace") && body?.tool === "voice_audio_settings")
+
+    expect(settingsTrace?.body).toEqual(expect.objectContaining({
+      args: { keys: [] },
+      outcome: "req_on.ec_1_y.ns_1_y.ag_1_y.sr_48000.ch_1",
+    }))
+    expect(JSON.stringify(settingsTrace)).not.toContain("deviceId")
+  })
+
   it("streams 16 kHz microphone PCM directly into Gemini Live", async () => {
     await start()
     const capture = FakeWorkletNode.nodes.get("gemini-live-capture")!
@@ -326,18 +387,46 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
 
     act(() => gemini.callbacks!.onmessage({ serverContent: { interrupted: true } }))
     expect(playback.port.sent.at(-1)?.message).toEqual({ type: "interrupt", generation: 1 })
+    expect(fetchMock.mock.calls.some(([input, init]) =>
+      String(input).endsWith("/voice/trace")
+      && JSON.parse(String(init?.body)).outcome === "provider_interrupted",
+    )).toBe(true)
   })
 
-  it("flushes queued playback synchronously on local speech before Gemini confirms interruption", async () => {
+  it("keeps queued playback when local loudness has not been confirmed as speech", async () => {
     await start()
     const capture = FakeWorkletNode.nodes.get("gemini-live-capture")!
     const playback = FakeWorkletNode.nodes.get("gemini-live-playback")!
     act(() => gemini.callbacks!.onmessage({
       serverContent: { modelTurn: { parts: [{ inlineData: { data: "AAA=", mimeType: "audio/pcm;rate=24000" } }] } },
     }))
-    act(() => capture.port.emit({ type: "activity", active: true }))
-    expect(playback.port.sent.at(-1)?.message).toEqual({ type: "interrupt", generation: 1 })
+    const interruptsBefore = playback.port.sent.filter(
+      ({ message }) => (message as { type?: string }).type === "interrupt",
+    ).length
+
+    act(() => capture.port.emit({ type: "signal_activity", active: true }))
+
+    expect(playback.port.sent.filter(
+      ({ message }) => (message as { type?: string }).type === "interrupt",
+    )).toHaveLength(interruptsBefore)
+    expect(container.textContent).toContain("Speaking")
+    expect(fetchMock.mock.calls.some(([input, init]) =>
+      String(input).endsWith("/voice/trace")
+      && JSON.parse(String(init?.body)).outcome === "local_signal_started",
+    )).toBe(true)
+  })
+
+  it("moves turn state only after provider-confirmed speech", async () => {
+    await start()
+    act(() => gemini.callbacks!.onmessage({
+      serverContent: { inputTranscription: { text: "hello", finished: false } },
+    }))
     expect(container.textContent).toContain("I can hear you")
+
+    act(() => gemini.callbacks!.onmessage({
+      serverContent: { inputTranscription: { text: "", finished: true } },
+    }))
+    expect(container.textContent).toContain("Preparing an answer")
   })
 
   it("fails closed once without enqueueing malformed provider audio", async () => {
@@ -372,6 +461,76 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
     expect(container.textContent).not.toContain("Connection stopped")
     expect(stream.track.stop).not.toHaveBeenCalled()
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/session/end"))).toBe(false)
+  })
+
+  // The owner's report: "when it moves to another section the microphone
+  // switches off". Moving to a section is when the assistant reads a page it
+  // has not seen, and every non-2xx used to count as a lost connection — two
+  // of them ended the conversation as "lost the link to CRM data".
+  describe("a refused read is not a lost connection", () => {
+    async function readWith(status: number, body: unknown, id: string) {
+      fetchMock.mockImplementationOnce(async () => json(body, status))
+      await act(async () => {
+        gemini.callbacks!.onmessage({
+          toolCall: { functionCalls: [{ id, name: "get_leads_summary", args: {} }] },
+        })
+        await flush()
+      })
+    }
+
+    function outputFor(id: string): string {
+      const call = gemini.session.sendToolResponse.mock.calls
+        .map(([arg]) => arg as { functionResponses: Array<{ id: string; response: { output: unknown } }> })
+        .flatMap((arg) => arg.functionResponses)
+        .find((response) => response.id === id)
+      return JSON.stringify(call?.response.output ?? null)
+    }
+
+    it("keeps talking after several refused reads", async () => {
+      await start()
+      await readWith(400, { error: "Unknown filter" }, "bad-1")
+      await readWith(400, { error: "Unknown filter" }, "bad-2")
+      await readWith(403, { error: "Forbidden" }, "bad-3")
+
+      // Past two heartbeats: the old failure streak would have stopped here.
+      await act(async () => {
+        vi.advanceTimersByTime(40_000)
+        await flush()
+      })
+
+      expect(container.textContent).not.toContain("Lost the link to CRM data")
+      expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/session/end"))).toBe(false)
+    })
+
+    it("hands the refusal back to the model, so it can correct itself", async () => {
+      await start()
+      await readWith(400, { error: "Unknown filter" }, "bad-arg")
+      const output = outputFor("bad-arg")
+      expect(output).toContain("REFUSED (400)")
+      expect(output).toContain("Unknown filter")
+      expect(output).toContain("The CRM is reachable")
+    })
+
+    // The server's tool-call ceiling answers 409. That is the conversation's
+    // budget being spent, and the user should hear so — not a dropped line.
+    it("turns the server's tool ceiling into a spoken limit, not a hang-up", async () => {
+      await start()
+      await readWith(409, { error: "Session is not active or has reached its tool-call limit" }, "limit")
+      expect(outputFor("limit")).toContain("TOOL_BUDGET_SESSION")
+      expect(container.textContent).not.toContain("Lost the link to CRM data")
+    })
+
+    // The guard still has a job: a server that is actually failing.
+    it("still stops when the CRM itself is failing", async () => {
+      await start()
+      await readWith(502, { error: "Bad gateway" }, "down-1")
+      await readWith(503, { error: "Unavailable" }, "down-2")
+      await act(async () => {
+        vi.advanceTimersByTime(40_000)
+        await flush()
+      })
+      expect(container.textContent).toContain("Lost the link to CRM data")
+    })
   })
 
   it("returns browser navigation tool results through Gemini's function-response channel", async () => {
@@ -579,7 +738,10 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
       })
       await flush()
     })
-    const traceCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith("/voice/trace"))
+    const traceCall = fetchMock.mock.calls.find(([input, init]) => {
+      if (!String(input).endsWith("/voice/trace")) return false
+      return JSON.parse(String(init?.body)).tool === "navigate_to_section"
+    })
     const traceBody = JSON.parse(String(traceCall?.[1]?.body))
     expect(traceBody.args).toEqual({ keys: ["section", "filter"] })
     expect(JSON.stringify(traceBody)).not.toContain("customer private query")
@@ -638,7 +800,9 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
     const capture = FakeWorkletNode.nodes.get("gemini-live-capture")!
     act(() => {
       gemini.callbacks!.onmessage({ sessionResumptionUpdate: { resumable: true, newHandle: "resume-speech" } })
-      capture.port.emit({ type: "activity", active: true })
+      gemini.callbacks!.onmessage({
+        serverContent: { inputTranscription: { text: "part", finished: false } },
+      })
     })
     let release!: () => void
     gemini.connectBarrier = new Promise<void>((resolve) => { release = resolve })
@@ -652,7 +816,9 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
       gemini.connectBarrier = null
       await flush()
     })
-    act(() => capture.port.emit({ type: "activity", active: false }))
+    act(() => gemini.callbacks!.onmessage({
+      serverContent: { inputTranscription: { text: "", finished: true } },
+    }))
     expect(gemini.session.sendRealtimeInput).toHaveBeenLastCalledWith({
       text: expect.stringContaining("ask them to repeat only their last sentence"),
     })

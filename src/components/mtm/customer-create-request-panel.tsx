@@ -265,7 +265,7 @@ export function MtmCustomerCreateRequestPanel({ open, routeId, orgId, onClose, o
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div><Label htmlFor="customer-request-name">{t("customerName")} *</Label><Input id="customer-request-name" value={form.name} onChange={(event) => setField("name", event.target.value)} autoComplete="organization" /></div>
-                <div><Label htmlFor="customer-request-type">{t("customerObjectType")} *</Label><Select id="customer-request-type" value={form.objectType} onChange={(event) => setField("objectType", event.target.value)}>{["PHARMACY", "CLINIC", "DOCTOR", "STORE", "OTHER"].map((value) => <option key={value} value={value}>{t(`customerType.${value}`)}</option>)}</Select></div>
+                <div><Label htmlFor="customer-request-type">{t("customerObjectType")} *</Label><Select id="customer-request-type" value={form.objectType} onChange={(event) => setField("objectType", event.target.value)}>{["PHARMACY", "CLINIC", "STORE", "OTHER"].map((value) => <option key={value} value={value}>{t(`customerType.${value}`)}</option>)}</Select></div>
                 <div><Label htmlFor="customer-request-phone">{t("phone")}</Label><Input id="customer-request-phone" value={form.phone} onChange={(event) => setField("phone", event.target.value)} inputMode="tel" autoComplete="tel" placeholder="+994 50 000 00 00" /></div>
                 <div><Label htmlFor="customer-request-code">{t("externalCode")}</Label><Input id="customer-request-code" value={form.externalCode} onChange={(event) => setField("externalCode", event.target.value)} /></div>
               </div>

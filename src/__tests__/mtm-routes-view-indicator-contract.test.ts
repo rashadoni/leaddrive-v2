@@ -30,36 +30,19 @@ import { describe, expect, it } from "vitest"
 describe("MTM routes view indicator", () => {
   const page = readFileSync("src/app/(dashboard)/mtm/routes/page.tsx", "utf8")
 
-  it("names the active advanced view on the dropdown itself", () => {
-    // Not a fixed "More views": someone who left the page in the matrix and
-    // came back needs the button to say matrix.
-    expect(page).toContain('const advancedViewLabel = viewMode === "list"')
-    expect(page).toContain('{advancedViewLabel}<ChevronDown')
-    expect(page).toContain("aria-label={advancedViewLabel}")
-    expect(page).toContain("title={advancedViewLabel}")
-  })
-
-  it("marks the calendar button pressed, not merely coloured", () => {
-    expect(page).toContain('aria-pressed={viewMode === "calendar"}')
-    expect(page).toContain('variant={viewMode === "calendar" ? "default" : "ghost"}')
-  })
-
-  it("tints the dropdown while an advanced view is active", () => {
-    // Without this the row looks like nothing is selected whenever the active
-    // view lives behind the dropdown.
-    expect(page).toContain('const advancedViewActive = viewMode === "list" || viewMode === "matrix" || viewMode === "approvals"')
-    expect(page).toContain('advancedViewActive ? "border-primary/35 bg-primary/5 text-primary"')
-  })
-
-  it("falls back to the generic tools label while a primary view is active", () => {
-    // This is W-08 itself: the dropdown must not keep the name of the last
-    // secondary view once the calendar or the week is the active one.
-    expect(page).toContain("        : planningToolsLabel")
-    expect(page).toContain('const planningToolsLabel = t(capabilities.canReview ? "controlAndReports" : "routePlanningTools")')
-    // Derived from viewMode on every render — there is no remembered label to
-    // go stale.
-    expect(page).not.toContain("setAdvancedViewLabel")
-    expect(page).not.toContain("useState(advancedViewLabel")
+  it("shows every view as its own pressed-or-not tab, with no dropdown to hide one", () => {
+    // Owner 2026-09-25: four views hid behind a dropdown next to two visible
+    // ones. Each view is now a tab in one row; aria-pressed tells a screen
+    // reader, the filled variant shows it to someone glancing at the row.
+    expect(page).toContain('data-testid="mtm-route-view-tabs"')
+    expect(page).not.toContain("advancedViewLabel")
+    expect(page).not.toContain("advancedViewsOpen")
+    for (const view of ["calendar", "week", "list", "matrix", "approvals"]) {
+      expect(page).toContain(`aria-pressed={viewMode === "${view}"}`)
+      expect(page).toContain(`variant={viewMode === "${view}" ? "default" : "ghost"}`)
+    }
+    // Excel is an action, not a view: a button with words beside «Plan route».
+    expect(page.indexOf('data-testid="mtm-routes-excel-exchange"')).toBeLessThan(page.indexOf('data-testid="mtm-route-builder-open"'))
   })
 
   it("has a label for every advanced view in every language", () => {

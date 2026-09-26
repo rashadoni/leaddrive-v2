@@ -9,6 +9,7 @@ export type RouteFieldContactPageContext = {
   agentId: string
   asOf: string
   search: string
+  type: string
 }
 
 type RouteFieldContactPageCursor = RouteFieldContactPageContext & {
@@ -36,6 +37,7 @@ function isCursor(value: unknown): value is RouteFieldContactPageCursor {
     && isNonEmptyString(cursor.agentId)
     && isNonEmptyString(cursor.asOf)
     && typeof cursor.search === "string"
+    && typeof cursor.type === "string"
     && typeof cursor.lastDisplayName === "string"
     && isNonEmptyString(cursor.lastId)
     && typeof cursor.exp === "number"
@@ -88,6 +90,7 @@ export function readRouteFieldContactPage(
     || decoded.agentId !== expected.agentId
     || decoded.asOf !== expected.asOf
     || decoded.search !== expected.search
+    || decoded.type !== expected.type
   ) throw new RouteFieldContactPageCursorError()
   return decoded
 }

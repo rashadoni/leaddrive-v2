@@ -64,7 +64,7 @@ function sessionMtmApiBlocked(authUser: SessionModuleGateUser): boolean {
 // click redirects are loaded by unauthenticated recipients (email clients, SMS).
 // Without this, the auth middleware 307→/login and open/click/attribution silently
 // under-count. The routes themselves are RLS-context-wrapped (runWithRlsBypass).
-const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/"]
+const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/"]
 const publicExactPaths = new Set(["/manifest.json", "/sw.js", "/unsubscribe"])
 
 /**
@@ -133,8 +133,20 @@ const VOICE_AGENT_INTERNAL_PATHS = new Set([
   VOICE_AGENT_CALL_CONTINUATION_PATH,
 ])
 
+// `/demo-open` is public and deliberately NOT a marketing path: the open demo
+// is a full-screen product surface, so it must not inherit the marketing
+// layout (navbar, footer, floating buttons, live-chat widget) the way
+// anything under `/demo/` does. It sits beside `/demo-access` and
+// `/demo-preview` at the app root for that reason.
+
 // Marketing-only paths served on leaddrivecrm.org
 const marketingPaths = ["/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing"]
+
+// The marketing apex currently sits behind a Cloudflare-managed site that
+// redirects unknown paths to `/`. Keep the demo request and legal pages
+// available on the application host as stable fallbacks. Meta App Review must
+// be able to open the policies without relying on a separate edge route table.
+const appHostedMarketingPaths = ["/demo", "/legal"]
 
 // Hostnames for domain-based routing (from env or defaults)
 function getMarketingHosts(): string[] {
@@ -162,6 +174,10 @@ function isAppHost(host: string): boolean {
 
 function isMarketingPath(pathname: string): boolean {
   return marketingPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))
+}
+
+function isAppHostedMarketingPath(pathname: string): boolean {
+  return appHostedMarketingPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))
 }
 
 // Tenant Builder: subdomain routing for {slug}.leaddrivecrm.org
@@ -245,7 +261,12 @@ function withCspHeaders(response: NextResponse, nonce: string, allowSameOriginFr
     response.headers.set("X-Frame-Options", "DENY")
   }
   response.headers.set("X-Content-Type-Options", "nosniff")
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  const isPrivateDemo = !!pathname && matchesPublicPath(pathname, "/demo-access/")
+  response.headers.set("Referrer-Policy", isPrivateDemo ? "no-referrer" : "strict-origin-when-cross-origin")
+  if (isPrivateDemo) {
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private")
+    response.headers.set("Pragma", "no-cache")
+  }
   response.headers.set("X-XSS-Protection", "1; mode=block")
   const cameraPolicy = pathname === "/loyalty/pos" ? "camera=(self)" : "camera=()"
   // `pathname` is optional here — 29 of the 31 call sites omit it (marketing-host
@@ -336,7 +357,7 @@ const authMiddleware = auth(async (req) => {
 
   if (!CRM_ONLY_MODE && isAppHost(host)) {
     // On app domain: marketing paths → redirect to marketing domain
-    if (isMarketingPath(pathname)) {
+    if (isMarketingPath(pathname) && !isAppHostedMarketingPath(pathname)) {
       const marketingUrl = new URL(`${process.env.NEXT_PUBLIC_MARKETING_URL || "https://leaddrivecrm.org"}${pathname}`)
       marketingUrl.search = req.nextUrl.search
       return withCspHeaders(NextResponse.redirect(marketingUrl), nonce)
@@ -438,11 +459,26 @@ const authMiddleware = auth(async (req) => {
 
   // Rate limit public API POST endpoints (these bypass auth but must not bypass
   // rate limits). This must run BEFORE the public-path early return below.
-  if (pathname.startsWith("/api/v1/public/") && req.method === "POST") {
+  if ((pathname.startsWith("/api/v1/public/") || pathname === "/api/v1/demo-request") && req.method === "POST") {
     const ip = clientIp(req)
 
+    // A guided demo emits lifecycle events while the prospect navigates. Give
+    // each capability link its own API-sized bucket so normal interaction (or
+    // colleagues sharing one corporate NAT) cannot exhaust the 10/min public
+    // lead-form bucket. Hash the bearer token before it enters memory/logs.
+    if (pathname.startsWith("/api/v1/public/demo-access/")) {
+      const capability = pathname.split("/")[5] || pathname
+      const capabilityHash = await hashForRateLimit(capability)
+      const key = `demo:${ip}:${capabilityHash}`
+      if (!checkRateLimit(key, RATE_LIMIT_CONFIG.api)) {
+        log429("demo", key, pathname.replace(capability, "[redacted]"))
+        return withCspHeaders(
+          NextResponse.json({ error: "Too many demo requests. Please slow down." }, { status: 429 }),
+          nonce,
+        )
+      }
     // Stricter limit for AI chat (expensive)
-    if (pathname.includes("/portal-chat")) {
+    } else if (pathname.includes("/portal-chat")) {
       const key = `chat:${ip}`
       if (!checkRateLimit(key, RATE_LIMIT_CONFIG.ai)) {
         log429("chat", key, pathname)
@@ -468,9 +504,12 @@ const authMiddleware = auth(async (req) => {
   // otherwise enumeration requests return early without consuming a bucket.
   if (pathname.startsWith("/api/v1/public/") && req.method === "GET") {
     const ip = clientIp(req)
-    const key = `pub-get:${ip}`
+    const isDemoAccess = pathname.startsWith("/api/v1/public/demo-access/")
+    const capability = isDemoAccess ? pathname.split("/")[5] || pathname : null
+    const capabilityHash = capability ? await hashForRateLimit(capability) : null
+    const key = capabilityHash ? `demo:${ip}:${capabilityHash}` : `pub-get:${ip}`
     if (!checkRateLimit(key, RATE_LIMIT_CONFIG.api)) {
-      log429("public-get", key, pathname)
+      log429(isDemoAccess ? "demo" : "public-get", key, capability ? pathname.replace(capability, "[redacted]") : pathname)
       return withCspHeaders(
         NextResponse.json({ error: "Too many requests" }, { status: 429 }),
         nonce,
@@ -482,10 +521,32 @@ const authMiddleware = auth(async (req) => {
   if (publicExactPaths.has(pathname) || publicPaths.some((p) => matchesPublicPath(pathname, p))) {
     const requestHeaders = trustedRequestHeaders(req, tenantSlug)
     requestHeaders.set("x-nonce", nonce)
-    // Inject locale for i18n on public/marketing pages
+    // Legal documents expose stable reviewer-facing language links. next-intl loads the message
+    // bundle from x-locale before the page renders, so reading ?lang= only inside the page is too
+    // late: every link otherwise renders in the request default (currently Russian). A valid legal
+    // query wins over the browser cookie; malformed values fall back to the normal cookie/default.
     const localeCookie = req.cookies.get("NEXT_LOCALE")?.value
-    if (localeCookie) {
-      requestHeaders.set("x-locale", localeCookie)
+    const legalLocaleQuery = pathname.startsWith("/legal/")
+      ? req.nextUrl.searchParams.get("lang")
+      : null
+    // The guided demo exists in exactly one language — the scenario's — so it
+    // is pinned here rather than by nesting a second provider inside the page.
+    // Nesting worked, but the visitor then downloaded two complete message
+    // bundles: the root one in their cookie language plus Azerbaijani on top,
+    // 3.1 MB of HTML on the page whose whole job is to sell the product.
+    // Setting the locale before the root provider renders means one bundle.
+    // The literal is guarded against the manifest by a test; importing the
+    // scenario here would drag it into the middleware bundle.
+    const demoLocale =
+      matchesPublicPath(pathname, "/demo-open") || matchesPublicPath(pathname, "/demo-access/")
+        ? "az"
+        : null
+    const publicLocale = demoLocale
+      ?? (legalLocaleQuery === "en" || legalLocaleQuery === "ru" || legalLocaleQuery === "az"
+        ? legalLocaleQuery
+        : localeCookie)
+    if (publicLocale) {
+      requestHeaders.set("x-locale", publicLocale)
     }
     return withCspHeaders(
       NextResponse.next({ request: { headers: requestHeaders } }),

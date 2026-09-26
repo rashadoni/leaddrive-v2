@@ -116,6 +116,38 @@ describe("POST /api/v1/mtm/mobile/route-commands", () => {
     expect(mocks.writeMtmAudit).toHaveBeenCalledTimes(1)
   })
 
+  it("admits UPDATE_PUBLISHED under self-plan permission and audits it as a route update", async () => {
+    mocks.executeMtmMobileRouteCommand.mockResolvedValue({
+      responseStatus: 200,
+      replayed: false,
+      result: { success: true, data: { id: "route-1", status: "PLANNED", version: 5, publishedVersion: 5 } },
+      audit: {
+        action: "ROUTE_UPDATE",
+        routeId: "route-1",
+        agentId: "agent-1",
+        oldData: { version: 4, stops: [] },
+        newData: { version: 5, stops: [], command: "UPDATE_PUBLISHED" },
+      },
+    })
+    const body = {
+      operationId: "route-command-update-published-001",
+      command: "UPDATE_PUBLISHED",
+      routeId: "route-1",
+      payload: { expectedVersion: 4, points: [{ customerId: "customer-1", plannedTime: "2026-09-02T09:00:00.000Z" }] },
+    }
+
+    const response = await POST(request(body))
+
+    expect(response.status).toBe(200)
+    expect(mocks.requireMobilePermission).toHaveBeenCalledWith(mocks.auth, "ROUTE_SELF_PLAN")
+    expect(mocks.executeMtmMobileRouteCommand).toHaveBeenCalledWith({ auth: mocks.auth, deviceId: "rf-device-1", command: body })
+    expect(mocks.writeMtmAudit).toHaveBeenCalledWith(expect.objectContaining({
+      action: "ROUTE_UPDATE",
+      oldData: { version: 4, stops: [] },
+      newData: { version: 5, stops: [], command: "UPDATE_PUBLISHED" },
+    }))
+  })
+
   it("requires route-execute permission for an explicit route start", async () => {
     const body = {
       operationId: "route-command-start-001",

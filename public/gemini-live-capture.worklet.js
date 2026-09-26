@@ -19,7 +19,7 @@ class GeminiLiveCaptureProcessor extends AudioWorkletProcessor {
       Number.isFinite(configuredChunk) && configuredChunk >= 32 ? Math.floor(configuredChunk) : 512,
     )
     this.offset = 0
-    this.speaking = false
+    this.signalActive = false
     this.quietFrames = 0
   }
 
@@ -60,20 +60,23 @@ class GeminiLiveCaptureProcessor extends AudioWorkletProcessor {
     }
     this.resample(channel)
 
-    // UI-only activity estimate. Gemini's server-side VAD remains authoritative.
+    // UI-only signal estimate. This says only that the microphone input is
+    // louder than the local floor; music, a ringtone, or office noise can all
+    // trigger it. It must never be treated as confirmed speech or barge-in.
+    // Gemini's server-side VAD remains authoritative.
     const rms = Math.sqrt(energy / Math.max(1, channel.length))
     if (rms >= 0.012) {
       this.quietFrames = 0
-      if (!this.speaking) {
-        this.speaking = true
-        this.port.postMessage({ type: "activity", active: true })
+      if (!this.signalActive) {
+        this.signalActive = true
+        this.port.postMessage({ type: "signal_activity", active: true })
       }
-    } else if (this.speaking) {
+    } else if (this.signalActive) {
       this.quietFrames += 1
       if (this.quietFrames >= 50) {
-        this.speaking = false
+        this.signalActive = false
         this.quietFrames = 0
-        this.port.postMessage({ type: "activity", active: false })
+        this.port.postMessage({ type: "signal_activity", active: false })
       }
     }
     return true

@@ -275,7 +275,7 @@ export function CoveragePolicyAdmin() {
         <div className="p-4">
           <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{t("registryTitle")}</h3><Badge variant="outline">{policies.length}</Badge></div>
           <p className="mt-1 text-xs text-muted-foreground">{t("registryDescription")}</p>
-          <div className="mt-3 max-h-[34rem] space-y-3 overflow-y-auto pr-1">
+          <div className="mt-3 space-y-3">
             {loading && !policies.length ? <div className="grid min-h-32 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" /></div> : null}
             {!loading && !policies.length ? <div className="border border-dashed p-4 text-sm text-muted-foreground">{t("empty")}</div> : null}
             {policies.map((policy) => (

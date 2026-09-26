@@ -19,7 +19,9 @@ function leafPaths(value: unknown, prefix = ""): string[] {
 
 function taskListSource(ui: string): string {
   const start = ui.indexOf("activeTasks.slice(0, 5).map")
-  const end = ui.indexOf('t("noActiveTasks")', start)
+  // Owner 2026-09-22: an empty task list is no longer announced; the list ends
+  // where its section does.
+  const end = ui.indexOf("</section> : null}", start)
   expect(start).toBeGreaterThan(-1)
   expect(end).toBeGreaterThan(start)
   return ui.slice(start, end)
@@ -69,9 +71,9 @@ describe("SWM-15C operational-week task UI contract", () => {
 
   it("aligns visual and DOM focus order across compact and desktop layouts", () => {
     const ui = source(operationalWeekPath)
-    const compactRail = ui.indexOf('<aside className="md:grid md:grid-cols-2 min-[1600px]:hidden"')
-    const agenda = ui.indexOf('<div className="min-w-0 border-t border-zinc-200 dark:border-zinc-700 min-[1600px]:border-t-0">', compactRail)
-    const desktopRail = ui.indexOf('<aside className="hidden min-[1600px]:sticky min-[1600px]:top-4 min-[1600px]:block', agenda)
+    const compactRail = ui.indexOf('<aside className="md:max-[100rem]:grid md:max-[100rem]:grid-cols-2 min-[100rem]:hidden"')
+    const agenda = ui.indexOf('<div className="min-w-0 border-t border-zinc-200 dark:border-zinc-700 min-[100rem]:border-t-0">', compactRail)
+    const desktopRail = ui.indexOf('<aside className="hidden min-w-0 min-[100rem]:block', agenda)
 
     expect(ui).toContain('function renderAttentionRailContent(railId: "compact" | "desktop")')
     expect(ui).toContain('{renderAttentionRailContent("compact")}')
@@ -84,9 +86,15 @@ describe("SWM-15C operational-week task UI contract", () => {
   it("keeps the five-day agenda full-width until the attention rail fits", () => {
     const ui = source(operationalWeekPath)
 
-    expect(ui).toContain("min-[1600px]:grid-cols-[minmax(0,1fr)_20rem]")
-    expect(ui).toContain("md:grid md:grid-cols-2 min-[1600px]:hidden")
-    expect(ui).toContain("hidden min-[1600px]:sticky")
+    // rem, not px: Tailwind v4 emits `min-[1600px]:` BEFORE `md:`, so
+    // `md:grid … min-[1600px]:hidden` kept the compact rail visible at 1600 px
+    // and squeezed the week into the 20rem column (the owner saw the
+    // attention block twice). `min-[100rem]:` sorts after every theme
+    // breakpoint, and the compact rail's range no longer overlaps at all.
+    expect(ui).toContain("min-[100rem]:grid-cols-[minmax(0,1fr)_20rem]")
+    expect(ui).toContain("md:max-[100rem]:grid md:max-[100rem]:grid-cols-2 min-[100rem]:hidden")
+    expect(ui).toContain('<aside className="hidden min-w-0 min-[100rem]:block min-[100rem]:border-l"')
+    expect(ui).not.toContain("min-[1600px]:")
     expect(ui).toContain('query?.days === 5 ? "min-w-[900px] grid-cols-5"')
     expect(ui).not.toContain("xl:grid-cols-[minmax(0,1fr)_20rem]")
   })

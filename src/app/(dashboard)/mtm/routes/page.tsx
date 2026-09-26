@@ -27,7 +27,8 @@ import dynamic from "next/dynamic"
 import type { MtmRouteAssignment, MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import {
   Route, MapPin, User, CheckCircle2, Plus, Pencil, Trash2, Search, Send,
-  ArrowLeft, List, CalendarDays, Clock, Navigation, ChevronDown, Eye, X, Columns3, ClipboardCheck, Users, FileSpreadsheet, TableProperties,
+  ArrowLeft, List, CalendarDays, Clock, Navigation, Eye, X, Columns3, ClipboardCheck, Users, UserRound, FileSpreadsheet, TableProperties,
+  Camera, PenLine, StickyNote, ArrowDownUp,
 } from "lucide-react"
 import { mtmRouteReturnTarget, type MtmRouteAssignmentDirection } from "@/lib/mtm/route-links"
 import { fetchMtmRoutesInRange } from "@/lib/mtm/route-range-client"
@@ -42,6 +43,10 @@ import {
 } from "@/lib/mtm/route-planner-context"
 import { formatDate, formatTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { MtmAgentPeriodView } from "@/components/mtm/agent-period-view"
+import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
+import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
+import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 
 const MtmRouteMap = dynamic(() => import("@/components/mtm/route-map"), { ssr: false })
 
@@ -61,7 +66,7 @@ const pointStatusLabelKey: Partial<Record<MtmRoutePoint["status"], "pointStatusP
   SKIPPED: "pointStatusSkipped",
 }
 
-type RouteViewMode = "list" | "matrix" | "week" | "calendar" | "approvals"
+type RouteViewMode = "list" | "matrix" | "week" | "calendar" | "approvals" | "agent"
 
 interface RouteBuilderPreset {
   date?: string
@@ -99,12 +104,25 @@ function localDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
+/**
+ * «Not visited» is a verdict, so it needs the moment to have passed: the route
+ * is closed, or the stop's planned time is behind us. Review of #205: stops
+ * planned for later today on a running route already read «Not visited».
+ */
+function isStopOverdue(point: MtmRoutePoint, routeStatus: MtmRouteRecord["status"], now = Date.now()): boolean {
+  if (point.status !== "PENDING") return false
+  if (routeStatus === "COMPLETED" || routeStatus === "INCOMPLETE" || routeStatus === "CANCELLED") return true
+  if (routeStatus !== "IN_PROGRESS" && routeStatus !== "PLANNED") return false
+  const planned = point.plannedTime ? Date.parse(point.plannedTime) : Number.NaN
+  return Number.isFinite(planned) && planned < now
+}
+
 function routeAssignmentDirection(value: string | null): MtmRouteAssignmentDirection | undefined {
   return value === "DOCTOR" || value === "PHARMACY" || value === "ORGANIZATION" ? value : undefined
 }
 
 function routeViewMode(value: string | null): RouteViewMode | null {
-  return value === "calendar" || value === "week" || value === "list" || value === "matrix" || value === "approvals"
+  return value === "calendar" || value === "week" || value === "list" || value === "matrix" || value === "approvals" || value === "agent"
     ? value
     : null
 }
@@ -113,15 +131,26 @@ function canUseRouteView(mode: RouteViewMode, canReview: boolean) {
   return canReview || (mode !== "week" && mode !== "approvals")
 }
 
-export default function MtmRoutesPage() {
+/**
+ * Owner 2026-09-23: «remove the calendar from this section and make a separate
+ * Calendar section, opening on the team calendar». Both surfaces are the same
+ * workspace — the routes, their planner and their dialogs — so the section
+ * only decides which views it offers and which one it opens on.
+ */
+export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" | "calendar" } = {}) {
+  const calendarSurface = surface === "calendar"
   const { data: session } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
   const t = useTranslations("mtmRoutesPage")
   const statusT = useTranslations("mtmStatus")
   const locale = useLocale()
+  const tPlace = useTranslations("mtmPlaceCheck")
   const tf = useTranslations("mtmForms")
   const [routes, setRoutes] = useState<MtmRouteRecord[]>([])
+  // The server's count for the same filter. The chip read «Hamısı (200)» —
+  // the page size — while 432 routes existed (audit 2026-09-14).
+  const [routesTotal, setRoutesTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [builderOpen, setBuilderOpen] = useState(false)
   const [builderPreset, setBuilderPreset] = useState<RouteBuilderPreset | null>(null)
@@ -131,9 +160,8 @@ export default function MtmRoutesPage() {
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
   const [sortBy, setSortBy] = useState("date_desc")
-  const [viewMode, setViewMode] = useState<RouteViewMode>("calendar")
+  const [viewMode, setViewMode] = useState<RouteViewMode>(calendarSurface ? "calendar" : "list")
   const [viewPreferenceReady, setViewPreferenceReady] = useState(false)
-  const [advancedViewsOpen, setAdvancedViewsOpen] = useState(false)
   const [selectedRoute, setSelectedRoute] = useState<MtmRouteRecord | null>(null)
   const [routeDetailLoading, setRouteDetailLoading] = useState(false)
   const [focusedRouteUnavailable, setFocusedRouteUnavailable] = useState(false)
@@ -308,6 +336,7 @@ export default function MtmRoutesPage() {
         ? nextRoutes.find((route) => route.id === routeToRestore) ?? null
         : null
       setRoutes(nextRoutes)
+      setRoutesTotal(Number.isFinite(Number(r.data.total)) ? Number(r.data.total) : nextRoutes.length)
       setCapabilities(r.data.capabilities ?? EMPTY_ROUTE_CAPABILITIES)
       setFocusedRouteUnavailable(focusedUnavailable)
       selectedRouteRef.current = nextSelectedRoute
@@ -747,25 +776,33 @@ export default function MtmRoutesPage() {
     return { completion, duration }
   }, [selectedRoute])
   const selectedRoutePoints = selectedRoute?.points ?? []
-  const canEditRoute = (route: MtmRouteRecord) => route.status === "DRAFT"
-    && route.historicalAccessOnly !== true
-    && (capabilities.canReview || (capabilities.canCreateRoute && route.agentId === capabilities.actorAgentId))
+  const selectedRouteExecution = useMemo(
+    () => summarizeMtmRouteExecution(selectedRoute?.points ?? []),
+    [selectedRoute],
+  )
+  const tenantTime = (value: string | null | undefined) =>
+    value ? formatTime(new Date(value), locale, { hour: "2-digit", minute: "2-digit", timeZone: timezone }) : ""
+  const durationLabel = (minutes: number) => {
+    const parts = mtmDurationParts(minutes)
+    return parts.hours > 0
+      ? t("stopFact.durationHoursMinutes", parts)
+      : t("stopFact.durationMinutes", { minutes: parts.minutes })
+  }
+  // Published and started routes open the builder's published-edit mode for
+  // managers, supervisors and admins; the server re-checks scope and locks
+  // stops with field history (PUT /api/v1/mtm/routes/[id]).
+  const canEditRoute = (route: MtmRouteRecord) => route.historicalAccessOnly !== true && (
+    route.status === "DRAFT"
+      ? capabilities.canReview || (capabilities.canCreateRoute && route.agentId === capabilities.actorAgentId)
+      : (route.status === "PLANNED" || route.status === "IN_PROGRESS") && capabilities.canReview
+  )
   const preferredPlanningAgentId = !capabilities.canReview && capabilities.actorAgentId
     ? capabilities.actorAgentId
     : selectedRoute?.agentId
     ?? routes.find((route) => route.status === "IN_PROGRESS")?.agentId
     ?? routes[0]?.agentId
     ?? null
-  const advancedViewActive = viewMode === "list" || viewMode === "matrix" || viewMode === "approvals"
   const primaryCalendarLabel = t(capabilities.canReview ? "viewTeamCalendar" : "viewMyCalendar")
-  const planningToolsLabel = t(capabilities.canReview ? "controlAndReports" : "routePlanningTools")
-  const advancedViewLabel = viewMode === "list"
-    ? t(capabilities.canReview ? "viewList" : "viewMyRoutes")
-    : viewMode === "matrix"
-      ? t("viewMatrix")
-      : viewMode === "approvals"
-        ? t("viewApprovals")
-        : planningToolsLabel
 
   if (loading) return (
     <div className="space-y-3" aria-busy="true">
@@ -779,7 +816,10 @@ export default function MtmRoutesPage() {
 
   return (
     <div className="space-y-3">
-      <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700 xl:flex-row xl:items-center">
+      {/* Prod 2026-09-26 at 1568 px: with six view tabs in one row next to the
+          heading, the row wrapped and its second line lay over the heading.
+          The heading keeps its own line; the tabs and actions take the next. */}
+      <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700">
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <Route className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0">
@@ -797,26 +837,25 @@ export default function MtmRoutesPage() {
           */}
           <HelpButton slug="mtm-routes" className="shrink-0" />
         </div>
-        <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center xl:w-auto">
+        <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center">
+          {/* Owner 2026-09-25: «if I as the architect can't make sense of it, an
+              ordinary user won't». Four views hid behind a dropdown next to two
+              visible ones; every view is now its own tab in one row, and the
+              Excel exchange is a button with words, not a menu item. */}
           <nav data-testid="mtm-route-view-switcher" className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label={t("primaryViews")}>
-            <div className={`grid shrink-0 gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700 ${capabilities.canReview ? "grid-cols-2" : "grid-cols-1"}`} role="group" aria-label={t("primaryViews")}>
-              <Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => { setViewMode("calendar"); setAdvancedViewsOpen(false) }}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button>
-              {capabilities.canReview ? <Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => { setViewMode("week"); setAdvancedViewsOpen(false) }}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button> : null}
+            <div data-testid="mtm-route-view-tabs" className="flex min-w-0 flex-wrap gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
+              {calendarSurface ? <Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("calendar")}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button> : null}
+              {calendarSurface && capabilities.canReview ? <Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button> : null}
+              <Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button>
+              <Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("matrix")}><TableProperties className="mr-1 h-4 w-4" />{t("viewMatrix")}</Button>
+              {/* Owner 2026-09-25: one agent over any period, not only a week. */}
+              <Button data-testid="mtm-routes-view-agent" aria-pressed={viewMode === "agent"} variant={viewMode === "agent" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("agent")}><UserRound className="mr-1 h-4 w-4" />{t("viewAgentPeriod")}</Button>
+              {capabilities.canReview ? <Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}</Button> : null}
             </div>
-            <details data-testid="mtm-routes-more-views" className="group relative shrink-0" open={advancedViewsOpen} onToggle={(event) => setAdvancedViewsOpen(event.currentTarget.open)}>
-              <summary data-testid="mtm-routes-more-views-toggle" aria-label={advancedViewLabel} title={advancedViewLabel} className={`flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:min-h-10 [&::-webkit-details-marker]:hidden ${advancedViewActive ? "border-primary/35 bg-primary/5 text-primary" : "border-zinc-200 bg-card hover:bg-muted/60 dark:border-zinc-700"}`}>
-                {advancedViewLabel}<ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="absolute right-0 z-20 mt-2 grid min-w-56 gap-1 rounded-xl border border-zinc-200 bg-card p-2 shadow-lg dark:border-zinc-700">
-                <Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" className="min-h-11 justify-start" onClick={() => { setViewMode("list"); setAdvancedViewsOpen(false) }}><List className="mr-2 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button>
-                <Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "secondary" : "ghost"} size="sm" className="min-h-11 justify-start" onClick={() => { setViewMode("matrix"); setAdvancedViewsOpen(false) }}><TableProperties className="mr-2 h-4 w-4" />{t("viewMatrix")}</Button>
-                {capabilities.canReview ? <Button aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "secondary" : "ghost"} size="sm" className="min-h-11 justify-start" onClick={() => { setViewMode("approvals"); setAdvancedViewsOpen(false) }}><ClipboardCheck className="mr-2 h-4 w-4" />{t("viewApprovals")}</Button> : null}
-                {capabilities.canReview ? <Button data-testid="mtm-routes-excel-exchange" variant="ghost" size="sm" className="min-h-11 justify-start" onClick={() => { setExcelOpen(true); setAdvancedViewsOpen(false) }}><FileSpreadsheet className="mr-2 h-4 w-4" />{t("excelExchange")}</Button> : null}
-              </div>
-            </details>
           </nav>
           <div className="flex shrink-0 items-center justify-end gap-2">
             {returnTarget ? <Button asChild variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10"><Link href={returnTarget.href}><ArrowLeft className="mr-1 h-4 w-4" />{t(returnTarget.label)}</Link></Button> : null}
+            {capabilities.canReview ? <Button data-testid="mtm-routes-excel-exchange" variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10" onClick={() => setExcelOpen(true)}><FileSpreadsheet className="mr-1 h-4 w-4" />{t("excelExchange")}</Button> : null}
             <Button data-testid="mtm-route-builder-open" className="min-h-11 flex-1 whitespace-nowrap px-4 sm:flex-none lg:min-h-10" onClick={() => openNewRoute()} disabled={!capabilities.canCreateRoute} title={!capabilities.canCreateRoute ? t("selfPlanningDisabled") : undefined}><Plus className="mr-1 h-4 w-4" /> {t("add")}</Button>
           </div>
         </div>
@@ -934,34 +973,92 @@ export default function MtmRoutesPage() {
           <div className="grid grid-cols-2 divide-x divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700 sm:grid-cols-5 sm:divide-y-0">
             <div className="p-3 text-center"><CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-green-500" /><div className="text-lg font-bold">{selectedRoute.visitedPoints}/{selectedRoute.totalPoints}</div><div className="text-[10px] text-muted-foreground">{t("completed")}</div></div>
             <div className="p-3 text-center"><Navigation className="mx-auto mb-1 h-4 w-4 text-blue-500" /><div className="text-lg font-bold">{routeMetrics?.completion ?? 0}%</div><div className="text-[10px] text-muted-foreground">{t("execution")}</div></div>
-            <div className="p-3 text-center"><Clock className="mx-auto mb-1 h-4 w-4 text-amber-500" /><div className="text-lg font-bold">{routeMetrics?.duration ? `${Math.floor(routeMetrics.duration / 60)}h ${routeMetrics.duration % 60}m` : "—"}</div><div className="text-[10px] text-muted-foreground">{t("duration")}</div></div>
+            <div className="p-3 text-center"><Clock className="mx-auto mb-1 h-4 w-4 text-amber-500" /><div className="text-lg font-bold">{routeMetrics?.duration ? durationLabel(routeMetrics.duration) : "—"}</div><div className="text-[10px] text-muted-foreground">{t("duration")}</div></div>
             <div className="p-3 text-center"><MapPin className="mx-auto mb-1 h-4 w-4 text-fuchsia-500" /><div className="text-lg font-bold">{selectedRoute.totalPoints}</div><div className="text-[10px] text-muted-foreground">{t("points")}</div></div>
             <div className="p-3 text-center"><Route className="mx-auto mb-1 h-4 w-4 text-cyan-600" /><div className="text-lg font-bold">{selectedRoute.distanceKm ? `${selectedRoute.distanceKm} km` : "—"}</div><div className="text-[10px] text-muted-foreground">{t("distance")}</div></div>
           </div>
           {selectedRoutePoints.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden" style={{ height: 300 }}><MtmRouteMap points={selectedRoutePoints} /></div>
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden" style={{ height: 360 }}><MtmRouteMap points={selectedRoutePoints} timezone={timezone} /></div>
           )}
           <MtmRouteTravelPanel
             route={selectedRoute}
-            canCalculate={canEditRoute(selectedRoute)}
+            canCalculate={selectedRoute.status === "DRAFT" && canEditRoute(selectedRoute)}
             locale={locale}
             orgId={orgId ? String(orgId) : undefined}
           />
           {selectedRoutePoints.length > 0 && (
             <div className="space-y-1">
-              {[...selectedRoutePoints].sort((a: MtmRoutePoint, b: MtmRoutePoint) => a.orderIndex - b.orderIndex).map((p: MtmRoutePoint, i: number) => (
-                <div key={p.id} className="border-b border-zinc-200 py-2 text-xs last:border-b-0 dark:border-zinc-700">
+              {[...selectedRoutePoints].sort((a: MtmRoutePoint, b: MtmRoutePoint) => a.orderIndex - b.orderIndex).map((p: MtmRoutePoint, i: number) => {
+                // Plan versus fact (audit 2026-09-14): the row used to show one
+                // time — the check-out — and nothing about lateness, order,
+                // zone or what was collected.
+                const fact = selectedRouteExecution.points.find((item) => item.pointId === p.id)
+                const visit = fact?.visit ?? null
+                // The rule of the visit review (visitPlaceSummary): the detail
+                // payload already resolved the customer's radius or the
+                // organization default into geofenceRadiusMeters.
+                // A co-participant outside the reader's scope comes with its
+                // coordinates withheld: that is not "no GPS", so no verdict.
+                const place = visit && !visit.locationHidden ? visitPlaceSummary({
+                  ...visit,
+                  customer: { latitude: p.customer?.latitude, longitude: p.customer?.longitude, geofenceRadius: p.geofenceRadiusMeters ?? p.customer?.geofenceRadius },
+                }) : null
+                return (
+                <div key={p.id} data-testid="mtm-route-detail-stop" className="border-b border-zinc-200 py-2 text-xs last:border-b-0 dark:border-zinc-700">
                   <div className="flex items-center gap-2">
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${p.status === "VISITED" ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
-                  <span className="flex-1">{p.customer?.name || "—"}</span>
+                  <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${p.status === "VISITED" ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
+                  <span className="min-w-0 flex-1 font-medium">
+                    {visit ? (
+                      <Link className="hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}>{p.customer?.name || "—"}</Link>
+                    ) : (p.customer?.name || "—")}
+                  </span>
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${p.status === "VISITED" ? "bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-300" : "bg-muted/50 text-muted-foreground"}`}>{t(pointStatusLabelKey[p.status] ?? "pointStatusUnknown")}</span>
                   {p.changeRequests?.some((request) => request.changeType === "REMOVE_STOP") ? (
                     <span className="border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">{t("removalPending")}</span>
                   ) : null}
-                  {p.visitedAt && <span className="text-muted-foreground">{formatTime(new Date(p.visitedAt), locale)}</span>}
                   {selectedRoute.historicalAccessOnly !== true && (selectedRoute.status === "PLANNED" || selectedRoute.status === "IN_PROGRESS") && p.status !== "VISITED" && !p.changeRequests?.some((request) => request.changeType === "REMOVE_STOP") ? (
                     <Button variant="ghost" size="sm" onClick={() => { setRemovalPointId(p.id); setRemovalReason("") }}>{t("requestRemoval")}</Button>
                   ) : null}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-7 text-muted-foreground">
+                    <span>{p.plannedTime ? t("stopFact.planned", { time: tenantTime(p.plannedTime) }) : t("stopFact.notPlanned")}</span>
+                    {fact?.checkInAt && visit ? (
+                      <span className="font-medium text-foreground">
+                        {fact.checkOutAt
+                          ? t("stopFact.fact", { from: tenantTime(fact.checkInAt), to: tenantTime(fact.checkOutAt) })
+                          : t("stopFact.factOpen", { from: tenantTime(fact.checkInAt) })}
+                        {fact.durationMinutes !== null ? ` · ${durationLabel(fact.durationMinutes)}` : ""}
+                      </span>
+                    ) : p.visitedAt ? (
+                      <span>{t("stopFact.closedAt", { time: tenantTime(p.visitedAt) })}</span>
+                    ) : isStopOverdue(p, selectedRoute.status) ? (
+                      <span>{t("stopFact.notVisited")}</span>
+                    ) : null}
+                    {fact?.timing === "LATE" && fact.delayMinutes !== null ? (
+                      <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300">{t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })}</span>
+                    ) : fact?.timing === "EARLY" && fact.delayMinutes !== null ? (
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">{t("stopFact.early", { delay: durationLabel(Math.abs(fact.delayMinutes)) })}</span>
+                    ) : fact?.timing === "ON_TIME" ? (
+                      <span className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950/20 dark:text-green-300">{t("stopFact.onTime")}</span>
+                    ) : null}
+                    {fact?.outOfOrder && fact.actualSequence !== null ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><ArrowDownUp className="h-3 w-3" />{t("stopFact.outOfOrder", { actual: fact.actualSequence })}</span>
+                    ) : null}
+                    {visit?.locationHidden ? (
+                      <span data-place-verdict="location_hidden" className="text-[10px] text-muted-foreground">{tPlace("locationHidden")}</span>
+                    ) : place ? <VisitPlaceBadge place={place} size="xs" /> : null}
+                    {visit?.photoCount ? (
+                      <span className="inline-flex items-center gap-1"><Camera className="h-3 w-3" />{t("stopFact.photos", { count: visit.photoCount })}</span>
+                    ) : null}
+                    {visit?.hasSignature ? (
+                      <span className="inline-flex items-center" title={t("stopFact.signature")} aria-label={t("stopFact.signature")}><PenLine className="h-3 w-3" /></span>
+                    ) : null}
+                    {visit?.hasNote ? (
+                      <span className="inline-flex items-center" title={t("stopFact.note")} aria-label={t("stopFact.note")}><StickyNote className="h-3 w-3" /></span>
+                    ) : null}
+                    {visit ? (
+                      <Link className="ml-auto text-primary hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}>{t("stopFact.openVisit")}</Link>
+                    ) : null}
                   </div>
                   {removalPointId === p.id ? (
                     <div className="mt-2 flex flex-col gap-2 pl-7 sm:flex-row">
@@ -971,7 +1068,8 @@ export default function MtmRoutesPage() {
                     </div>
                   ) : null}
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
             </section>
@@ -982,7 +1080,7 @@ export default function MtmRoutesPage() {
       {viewMode === "list" ? (
         <>
           <div data-testid="mtm-route-status-filters" role="group" aria-label={t("routeSummary")} className="flex flex-wrap gap-2">
-            <Button aria-pressed={activeFilter === "all"} variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({routes.length})</Button>
+            <Button aria-pressed={activeFilter === "all"} variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{routesTotal > routes.length ? t("allLatest", { shown: routes.length, total: routesTotal }) : `${t("all")} (${routes.length})`}</Button>
             {(["DRAFT", "PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE", "CANCELLED"] as const).map(s => (
               <Button key={s} aria-pressed={activeFilter === s} variant={activeFilter === s ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(s)}>
                 {mtmStatusLabel(statusT, "route", s)} ({statusCounts[s] || 0})
@@ -1074,6 +1172,7 @@ export default function MtmRoutesPage() {
         <MtmRouteWeekPlan
           orgId={orgId ? String(orgId) : undefined}
           locale={locale}
+          timezone={timezone}
           refreshVersion={calendarRefreshVersion}
           initialDate={plannerContext.date}
           onSelectRoute={openRouteDetails}
@@ -1083,6 +1182,8 @@ export default function MtmRoutesPage() {
           selfAgentId={capabilities.actorAgentId}
           onCreateRoute={({ date, agentId }) => openNewRoute({ date, agentId, returnView: "week" })}
         />
+      ) : viewMode === "agent" ? (
+        <MtmAgentPeriodView timezone={timezone} initialAgentId={capabilities.canReview ? null : capabilities.actorAgentId} />
       ) : viewMode === "approvals" ? (
         <div className="space-y-4">
           <MtmRouteNeedsAttention orgId={orgId ? String(orgId) : undefined} active refreshVersion={approvalRefreshVersion} />
@@ -1112,4 +1213,8 @@ export default function MtmRoutesPage() {
       <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("delete")} itemName={deleteItem?.name || tf("thisRoute")} />
     </div>
   )
+}
+
+export default function MtmRoutesPage() {
+  return <MtmRoutesWorkspace />
 }

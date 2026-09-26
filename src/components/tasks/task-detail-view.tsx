@@ -690,6 +690,7 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
+import { VOICE_RECORD_CHANGED_EVENT, type VoiceRecordChangedDetail } from "@/lib/ai/voice/voice-confirmation"
 
 /**
  * Full task detail + edit UI. Rendered two ways:
@@ -961,6 +962,16 @@ export function TaskDetailView({ taskIdProp, modal = false, onClose, onMutated, 
   }, [taskId, orgId, t])
 
   useEffect(() => { fetchTask() }, [fetchTask])
+  // A voice edit to THIS task was just saved: show the new values, so the
+  // user can see on the card whether everything is right.
+  useEffect(() => {
+    const onChanged = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceRecordChangedDetail>).detail
+      if (detail?.entityType === "task" && detail.entityId === taskId) void fetchTask()
+    }
+    window.addEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
+    return () => window.removeEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
+  }, [fetchTask, taskId])
 
   const handleStatusChange = async (newStatus: string) => {
     if (!task || newStatus === task.status) return

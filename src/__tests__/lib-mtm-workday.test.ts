@@ -676,6 +676,104 @@ describe("MTM mobile workday", () => {
     expect(db.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
   })
 
+  describe("the first transition after a manager reopen", () => {
+    // FINISH 13:00, reopened by the manager at 13:20 (server time); the REOPEN
+    // is recorded at the 13:00 finish it reopens.
+    function reopenedDb() {
+      const db = makeMtmPrismaMock()
+      vi.mocked(db.mtmAgentWorkday.findFirst).mockResolvedValue(workday({
+        status: "PAUSED",
+        pausedAt: new Date("2026-07-15T13:00:00.000Z"),
+      }) as never)
+      vi.mocked(db.mtmAgentWorkdayEvent.findFirst)
+        .mockResolvedValueOnce(null as never)
+        .mockResolvedValueOnce({
+          occurredAt: new Date("2026-07-15T13:00:00.000Z"),
+          type: "REOPEN",
+          appliedAt: new Date("2026-07-15T13:20:00.000Z"),
+          serverReceivedAt: new Date("2026-07-15T13:20:00.000Z"),
+        } as never)
+      vi.mocked(db.mtmAgentWorkday.update).mockResolvedValue(workday() as never)
+      vi.mocked(db.mtmAgentWorkdayEvent.create).mockResolvedValue({ id: "event-after-reopen" } as never)
+      return db
+    }
+
+    it.each(["RESUME", "FINISH"] as const)("refuses a %s claiming the closed time before the reopen", async (action) => {
+      const db = reopenedDb()
+      const parsed = parseMtmWorkdayEvent({
+        action,
+        workdayId: "workday-1",
+        occurredAt: "2026-07-15T13:06:00.000Z",
+      }, `event-${action}`, "Asia/Baku", new Date("2026-07-15T13:21:00.000Z"))
+
+      await expect(applyMtmWorkdayEvent(db as never, SCOPE, parsed.input!)).resolves.toMatchObject({
+        status: "conflict",
+        code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
+        riskCodes: ["CLAIM_BEFORE_REOPEN"],
+        recovery: { reason: { code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER", messageKey: "eventOrder" } },
+      })
+      expect(db.mtmAgentWorkday.update).not.toHaveBeenCalled()
+      expect(db.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
+      // The latest event is chosen by instant, then by server application time.
+      expect(db.mtmAgentWorkdayEvent.findFirst).toHaveBeenLastCalledWith({
+        where: { workdayId: "workday-1", organizationId: "org-1" },
+        orderBy: [{ occurredAt: "desc" }, { appliedAt: { sort: "desc", nulls: "last" } }, { id: "desc" }],
+        select: { occurredAt: true, type: true, appliedAt: true, serverReceivedAt: true },
+      })
+    })
+
+    it("accepts a claim within the clock-skew allowance and banks the pause up to it", async () => {
+      const db = reopenedDb()
+      const parsed = parseMtmWorkdayEvent({
+        action: "RESUME",
+        workdayId: "workday-1",
+        occurredAt: "2026-07-15T13:17:00.000Z",
+      }, "event-resume-within-skew", "Asia/Baku", new Date("2026-07-15T13:21:00.000Z"))
+
+      await expect(applyMtmWorkdayEvent(db as never, SCOPE, parsed.input!)).resolves.toMatchObject({ status: "ok" })
+      expect(db.mtmAgentWorkday.update).toHaveBeenCalledWith(expect.objectContaining({
+        data: { status: "STARTED", pausedAt: null, totalPausedSeconds: 17 * 60 },
+      }))
+    })
+
+    it("fails closed when the REOPEN carries no server time", async () => {
+      const db = reopenedDb()
+      vi.mocked(db.mtmAgentWorkdayEvent.findFirst)
+        .mockReset()
+        .mockResolvedValueOnce(null as never)
+        .mockResolvedValueOnce({
+          occurredAt: new Date("2026-07-15T13:00:00.000Z"),
+          type: "REOPEN",
+          appliedAt: null,
+          serverReceivedAt: null,
+        } as never)
+      const parsed = parseMtmWorkdayEvent({
+        action: "RESUME",
+        workdayId: "workday-1",
+        occurredAt: "2026-07-15T13:30:00.000Z",
+      }, "event-resume-unknown-reopen", "Asia/Baku", new Date("2026-07-15T13:31:00.000Z"))
+
+      await expect(applyMtmWorkdayEvent(db as never, SCOPE, parsed.input!)).resolves.toMatchObject({
+        status: "conflict",
+        riskCodes: ["CLAIM_BEFORE_REOPEN"],
+      })
+    })
+  })
+
+  it.each(["reopen:operation-1", "reopen-undo:operation-1"])(
+    "refuses a client event keyed like a manager workday action (%s)",
+    (clientEventId) => {
+      expect(parseMtmWorkdayEvent({
+        action: "FINISH",
+        workdayId: "workday-1",
+        occurredAt: "2026-07-15T13:00:00.000Z",
+      }, clientEventId, "Asia/Baku", new Date("2026-07-15T13:00:05.000Z"))).toEqual({
+        input: null,
+        error: "clientEventId uses a prefix reserved for manager workday actions",
+      })
+    },
+  )
+
   it("replays an exact transport-independent event under the shared lock", async () => {
     const db = makeMtmPrismaMock()
     vi.mocked(db.mtmAgentWorkdayEvent.findFirst).mockResolvedValue({

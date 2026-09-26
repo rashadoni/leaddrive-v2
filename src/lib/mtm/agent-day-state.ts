@@ -18,8 +18,11 @@
  * draw historical segments, which is a different question.
  */
 
+import { mtmManagerWorkdayState, type MtmWorkdayRow } from "@/lib/mtm/workday-open-anomaly"
+
 export type MtmAgentDayRecord = {
   status: "STARTED" | "PAUSED" | "COMPLETED"
+  workDate?: string | Date | null
   startedAt?: string | Date | null
   pausedAt?: string | Date | null
   completedAt?: string | Date | null
@@ -34,6 +37,14 @@ export type MtmAgentPresence =
   | { kind: "paused"; since: string | null }
   /** The day was closed, and closing is final and once per day. */
   | { kind: "finished"; at: string | null }
+  /**
+   * Prod 2026-09-14: a shift open for days read "working" on the map and "not
+   * started" here. Past 16 h or across days it is an anomaly the agent did not
+   * close — see `workday-open-anomaly.ts`. Reported only when the caller passes
+   * the clock (and ideally the newest open row), so existing callers keep
+   * their exact output until they opt in.
+   */
+  | { kind: "left-open"; since: string | null; workDate: string | null; days: number; hours: number }
 
 function iso(value: string | Date | null | undefined): string | null {
   if (!value) return null
@@ -41,7 +52,16 @@ function iso(value: string | Date | null | undefined): string | null {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null
 }
 
-export function mtmAgentPresence(day: MtmAgentDayRecord): MtmAgentPresence {
+export function mtmAgentPresence(
+  day: MtmAgentDayRecord,
+  options?: { now: Date; todayKey?: string | null; active?: MtmWorkdayRow | null },
+): MtmAgentPresence {
+  if (options) {
+    const state = mtmManagerWorkdayState({ today: day ?? null, active: options.active ?? null, now: options.now, todayKey: options.todayKey })
+    if (state.kind === "left-open") {
+      return { kind: "left-open", since: state.since, workDate: state.workDate, days: state.days, hours: state.hours }
+    }
+  }
   if (!day) return { kind: "not-started" }
   // COMPLETED is checked first on purpose: a day can be finished while
   // `pausedAt` still holds the last break, and "finished" is the newer truth.
@@ -56,5 +76,7 @@ export function mtmAgentPresence(day: MtmAgentDayRecord): MtmAgentPresence {
  * running shift leaves the absence of points meaning something.
  */
 export function mtmAgentSilenceExplained(presence: MtmAgentPresence): boolean {
+  // A shift left open explains nothing: the phone may still be sending points
+  // into it, or may be dead. "left-open" therefore stays unexplained.
   return presence.kind === "paused" || presence.kind === "finished" || presence.kind === "not-started"
 }

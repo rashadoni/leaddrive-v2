@@ -1,0 +1,16 @@
+-- Owner-approved manager reopen of today's finished workday (2026-09-15).
+--
+-- AlterEnum only, deliberately alone in its migration: PostgreSQL forbids
+-- using an enum value inside the transaction that added it, and the reopen
+-- ledger and completed-workday guard in the next migration rely on it.
+--
+-- No event row is rewritten. REOPEN is not an employee action: the
+-- MtmWorkdayAction parser shared by the web week endpoint and mobile sync keeps
+-- accepting only START, PAUSE, RESUME and FINISH, so no client can send it.
+-- IF NOT EXISTS keeps a re-apply a no-op.
+--
+-- Rollback: never drop this value, and keep the REOPEN case of the journal
+-- replay in any code revert. Code from before this change cannot read REOPEN
+-- rows: the Prisma client throws on the unknown enum value and the old replay
+-- rejects the event type, so every reader of a reopened day would fail.
+ALTER TYPE "MtmWorkdayEventType" ADD VALUE IF NOT EXISTS 'REOPEN';

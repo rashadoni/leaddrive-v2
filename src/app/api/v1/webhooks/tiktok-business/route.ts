@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma, logAudit } from "@/lib/prisma"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
+import { scoreLeadNow } from "@/lib/ai/lead-scoring"
 import { parseTikTokLeadAdWebhook, type ParsedTikTokLeadAdEvent } from "@/lib/channels/tiktok-webhook-events"
 import { connectionCan, type ChannelConnectionLike } from "@/lib/channels/platform-connections"
 import { ingestMentionWithResult } from "@/lib/social/ingest-mention"
@@ -337,6 +338,12 @@ export async function POST(req: NextRequest) {
           ),
         ))
       }
+    }
+
+    // Scored once each event's lock transaction has committed, never inside it.
+    // Only new leads: a matched existing lead keeps the score it already has.
+    for (const result of results) {
+      if (result.status === "lead_created") await scoreLeadNow(connection.organizationId, result.leadId)
     }
 
     await prisma.channelConnection.updateMany({

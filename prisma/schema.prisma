@@ -161,6 +161,8 @@ model Organization {
   mtmContactTransfers                 MtmContactTransferOperation[]
   mtmContactAssignmentOperations      MtmContactAssignmentOperation[]
   mtmContactChangeRequests            MtmContactChangeRequest[]
+  mtmContactCreateRequests               MtmContactCreateRequest[]
+  mtmDeviceTokens                        MtmDeviceToken[]
   mtmDoctorScoringFormulas            MtmDoctorScoringFormula[]
   mtmDoctorAssessments                MtmDoctorAssessment[]
   mtmContactDictionaries              MtmContactDictionary[]
@@ -184,6 +186,10 @@ model Organization {
   mtmMessageReceipts                  MtmMessageReceipt[]
   mtmDocuments                        MtmDocument[]
   mtmDocumentAssignments              MtmDocumentAssignment[]
+  mtmProductGroups                       MtmProductGroup[]
+  mtmProductGroupMembers                 MtmProductGroupMember[]
+  mtmProducts                            MtmProduct[]
+  mtmPresentationSessions                MtmPresentationSession[]
   mtmMediaObjects                     MtmMediaObject[]
   mtmHrmRequests                      MtmHrmRequest[]
   workforcePolicies                   WorkforcePolicy[]
@@ -211,6 +217,7 @@ model Organization {
   workforceExceptionDecisions         WorkforceExceptionDecision[]
   workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceTimeCorrections            WorkforceTimeCorrection[]
+  workforceWorkdayReopens             WorkforceWorkdayReopen[]
   workforceTimesheetApprovals         WorkforceTimesheetApproval[]
   workforceAttendanceQrStations        WorkforceAttendanceQrStation[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
@@ -289,6 +296,8 @@ model Organization {
   voiceSessions                   VoiceSession[]
   voiceSessionTurns               VoiceSessionTurn[]
   voiceMonthlyUsage               VoiceMonthlyUsage[]
+  aiActionIntents                 AiActionIntent[]
+  aiActionIntentEvents            AiActionIntentEvent[]
   voiceCallSessions               VoiceCallSession[]
   voiceCallQueues                 VoiceCallQueue[]
   voiceCallQueueItems             VoiceCallQueueItem[]
@@ -686,6 +695,7 @@ model User {
   workforceExceptionDecisionsActed      WorkforceExceptionDecision[]   @relation("WorkforceExceptionDecisionActor")
   workforceExceptionEmployeeResponsesActed WorkforceExceptionEmployeeResponse[] @relation("WorkforceExceptionEmployeeResponseActor")
   workforceTimeCorrectionsActed       WorkforceTimeCorrection[]      @relation("WorkforceTimeCorrectionActor")
+  workforceWorkdayReopensActed        WorkforceWorkdayReopen[]       @relation("WorkforceWorkdayReopenActor")
   workforceTimesheetApprovalsApproved WorkforceTimesheetApproval[]   @relation("WorkforceTimesheetApprovalApprovedBy")
   workforceTimesheetApprovalsCorrected WorkforceTimesheetApproval[]  @relation("WorkforceTimesheetApprovalCorrectionActor")
   workforceAttendanceQrStationsCreated         WorkforceAttendanceQrStation[]        @relation("WorkforceAttendanceQrStationCreatedBy")
@@ -750,6 +760,10 @@ model User {
   // (toUser side).
   delegatingApprovals UserApprovalDelegate[] @relation("DelegatingUser")
   delegateApprovals   UserApprovalDelegate[] @relation("DelegateRecipient")
+
+  // Explicitly confirmed CRM mutations proposed by the in-CRM voice assistant.
+  aiActionIntents AiActionIntent[] @relation("AiActionIntentUser")
+  aiActionIntentEvents AiActionIntentEvent[] @relation("AiActionIntentEventUser")
 
   @@unique([organizationId, email])
   @@unique([organizationId, id])
@@ -2976,6 +2990,87 @@ model AiPendingAction {
   @@map("ai_pending_actions")
 }
 
+/// Durable proposal/confirmation boundary for CRM writes initiated by the
+/// in-CRM voice assistant. Raw payload means provider tool arguments only;
+/// microphone audio and full transcripts are deliberately not stored here.
+/// State and cross-field coherence are enforced again by database CHECKs in
+/// the migration because Prisma cannot express the lifecycle invariants.
+model AiActionIntent {
+  id                      String           @id @default(cuid())
+  organizationId          String
+  organization            Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId                   String
+  user                     User             @relation("AiActionIntentUser", fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  voiceSessionId           String
+  voiceSession             VoiceSession     @relation(fields: [organizationId, voiceSessionId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  parentIntentId           String?
+  parentIntent             AiActionIntent?  @relation("AiActionIntentTree", fields: [organizationId, parentIntentId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  childIntents             AiActionIntent[] @relation("AiActionIntentTree")
+  events                   AiActionIntentEvent[]
+  actionType               String           @db.VarChar(64)
+  rawPayload               Json             @default("{}")
+  normalizedPayload        Json             @default("{}")
+  preview                  Json             @default("{}")
+  warnings                 Json             @default("[]")
+  state                    String           @default("collecting") @db.VarChar(32)
+  revision                 Int              @default(1)
+  payloadHash              String           @db.Char(64)
+  idempotencyKey           String           @db.VarChar(200)
+  providerToolCallId       String?          @db.VarChar(255)
+  targetEntityType         String?          @db.VarChar(64)
+  targetEntityId           String?          @db.VarChar(191)
+  expectedUpdatedAt        DateTime?
+  resultEntityType         String?          @db.VarChar(64)
+  resultEntityId           String?          @db.VarChar(191)
+  resultPayload            Json?
+  errorCode                String?          @db.VarChar(64)
+  errorDetail              Json?
+  expiresAt                DateTime
+  confirmedAt              DateTime?
+  executionStartedAt       DateTime?
+  executionLeaseToken      String?          @db.Uuid
+  executionLeaseExpiresAt  DateTime?
+  completedAt              DateTime?
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
+
+  @@unique([organizationId, id], map: "ai_action_intents_org_id_key")
+  @@unique([organizationId, userId, idempotencyKey], map: "ai_action_intents_org_user_idempotency_key")
+  @@unique([organizationId, voiceSessionId, providerToolCallId], map: "ai_action_intents_org_session_provider_call_key")
+  @@index([organizationId, userId, state, createdAt], map: "ai_action_intents_org_user_state_created_idx")
+  @@index([organizationId, voiceSessionId, state], map: "ai_action_intents_org_session_state_idx")
+  @@index([organizationId, state, expiresAt], map: "ai_action_intents_org_state_expiry_idx")
+  @@index([organizationId, targetEntityType, targetEntityId], map: "ai_action_intents_org_target_idx")
+  @@index([organizationId, resultEntityType, resultEntityId], map: "ai_action_intents_org_result_idx")
+  @@index([organizationId, parentIntentId], map: "ai_action_intents_org_parent_idx")
+  @@map("ai_action_intents")
+}
+
+/// Append-only evidence for user-visible confirmation and later execution
+/// transitions. Event payloads contain bounded metadata only, never microphone
+/// audio, transcripts, raw CRM payloads, confirmation tokens or secrets.
+model AiActionIntentEvent {
+  id               String         @id @default(cuid())
+  organizationId   String
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  intentId         String
+  intent           AiActionIntent @relation(fields: [organizationId, intentId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  userId           String
+  user             User           @relation("AiActionIntentEventUser", fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  eventType        String         @db.VarChar(64)
+  intentRevision   Int
+  payloadHash      String         @db.Char(64)
+  correlationId    String?        @db.VarChar(191)
+  eventData        Json           @default("{}")
+  createdAt        DateTime       @default(now())
+
+  @@unique([organizationId, id], map: "ai_action_intent_events_org_id_key")
+  @@unique([organizationId, intentId, eventType, correlationId], map: "ai_action_intent_events_correlation_key")
+  @@index([organizationId, intentId, createdAt], map: "ai_action_intent_events_org_intent_created_idx")
+  @@index([organizationId, userId, createdAt], map: "ai_action_intent_events_org_user_created_idx")
+  @@map("ai_action_intent_events")
+}
+
 model KbEmbedding {
   id             String                     @id @default(cuid())
   organizationId String
@@ -3263,8 +3358,8 @@ model ChannelMessage {
   @@index([organizationId, contactId])
   @@index([organizationId, leadId])
   @@index([conversationId])
-  // NOTE: TWO PARTIAL unique indexes back inbound dedup (P2002 race guard); Prisma's @@unique
-  // can't express a partial (WHERE) index, so neither is declared here. Do NOT "fix" the
+  // NOTE: THREE PARTIAL unique indexes back inbound dedup (P2002 race guard); Prisma's @@unique
+  // can't express a partial (WHERE) index, so none of them is declared here. Do NOT "fix" the
   // resulting migrate-diff drift by dropping them:
   //   • `channel_messages_inbound_external_uniq` on (organizationId, externalId)
   //     WHERE direction='inbound' AND channelType IN ('sms','email') AND externalId IS NOT NULL
@@ -3272,6 +3367,10 @@ model ChannelMessage {
   //   • `channel_messages_tiktok_inbound_external_uniq` on (organizationId, externalId)
   //     WHERE direction='inbound' AND channelType='tiktok' AND externalId IS NOT NULL
   //     — migration 20260620050000_inbound_tiktok_external_unique (G3, chatwoot bridge).
+  //   • `channel_messages_meta_inbound_external_uniq` on (organizationId, externalId)
+  //     WHERE direction='inbound' AND channelType IN ('whatsapp','facebook','instagram')
+  //     AND externalId IS NOT NULL
+  //     — migration 20260920160000_meta_inbound_idempotency (Meta App Review security gate).
   @@map("channel_messages")
 }
 
@@ -4947,6 +5046,7 @@ enum MtmDoctorScoringFormulaStatus {
 }
 
 enum MtmContactDictionaryKind {
+  CLIENT_TYPE
   PSYCHOTYPE
   PRODUCT_CATEGORY
   BRAND_CATEGORY
@@ -5045,6 +5145,7 @@ enum MtmVisitActionKey {
   CHECKLIST
   FEEDBACK
   NEXT_ACTION
+  SIGNATURE
 }
 
 enum MtmRequirementMode {
@@ -5057,6 +5158,11 @@ enum MtmVisitActionStatus {
   PENDING
   COMPLETED
   WAIVED
+}
+
+enum MtmProductGroupMemberRole {
+  MANAGER
+  AGENT
 }
 
 enum MtmApprovalStatus {
@@ -5401,6 +5507,10 @@ enum MtmWorkdayEventType {
   PAUSE
   RESUME
   FINISH
+  /// Written only by the audited manager reopen of today's finished workday
+  /// (WorkforceWorkdayReopen). It is not an employee action: MtmWorkdayAction
+  /// and every client transport parser keep rejecting it.
+  REOPEN
 }
 
 enum MtmWorkCalendarDayKind {
@@ -5662,6 +5772,8 @@ model MtmAgent {
   managedCustomers          MtmCustomer[]                @relation("MtmCustomerManagingManager")
   contactAssignments        MtmContactAgentAssignment[]
   contactChangeRequests     MtmContactChangeRequest[]
+  contactCreateRequests                MtmContactCreateRequest[]
+  deviceTokens                         MtmDeviceToken[]
   enteredDoctorAssessments  MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentEnteredBy")
   reviewedDoctorAssessments MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentReviewedBy")
   fieldPotentials           MtmFieldPotential[]          @relation("MtmFieldPotentialAgent")
@@ -5691,6 +5803,7 @@ model MtmAgent {
   workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceAccessGrantsScoped WorkforceAccessGrant[] @relation("WorkforceAccessGrantScopeAgent")
   workforceTimeCorrections  WorkforceTimeCorrection[]
+  workforceWorkdayReopens   WorkforceWorkdayReopen[]
   workforceTimesheetApprovals WorkforceTimesheetApproval[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
   workforceAttendanceDeviceAttestationChallenges WorkforceAttendanceDeviceAttestationChallenge[]
@@ -5707,6 +5820,8 @@ model MtmAgent {
   pharmacyRewardRequests    MtmPharmacyRewardClaim[]        @relation("MtmPharmacyRewardClaimAgent")
   pharmacyPromotionEvents   MtmPharmacyPromotionEvent[]     @relation("MtmPharmacyEventAgent")
   pharmacyPromotionOperations MtmPharmacyPromotionOperation[] @relation("MtmPharmacyOperationAgent")
+  productGroupMemberships              MtmProductGroupMember[]
+  presentationSessions                 MtmPresentationSession[]
 
   onboarding MtmOnboarding?
 
@@ -5858,6 +5973,7 @@ model MtmCustomer {
   visits                 MtmVisit[]
   tasks                  MtmTask[]
   approvedRequests       MtmCustomerCreateRequest[]
+  approvedContactCreateRequests MtmContactCreateRequest[]
   externalSalesDocuments MtmExternalSalesDocument[]
   salesPlanLines         MtmSalesPlanLine[]
   contactWorkplaces      MtmContactWorkplace[]
@@ -5871,6 +5987,7 @@ model MtmCustomer {
   departments              MtmCustomerDepartment[]
   coordinateVerifications  MtmCustomerCoordinateVerification[]
   documents                MtmDocument[]
+  presentationSessions          MtmPresentationSession[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -6031,6 +6148,9 @@ model MtmContact {
   addressDistrict       String?
   addressStreet         String?
   productCategory       String?
+  /// Values for fields defined by the active CLIENT_TYPE dictionary entry.
+  /// The signed dictionary is the schema; this JSON stores only tenant data.
+  categoryData          Json                @default("{}")
   verificationStatus    String              @default("UNVERIFIED")
   consentStatus         String              @default("UNKNOWN")
   contactPreference     String?
@@ -6052,6 +6172,7 @@ model MtmContact {
   visits            MtmVisit[]
   commitments       MtmCommitment[]
   changeRequests    MtmContactChangeRequest[]
+  approvedCreateRequests   MtmContactCreateRequest[]        @relation("MtmApprovedContactCreateRequests")
   doctorAssessments MtmDoctorAssessment[]
   dictionaryAssignments MtmContactDictionaryAssignment[]
   pharmacyPromotionTargets MtmPharmacyPromotionTarget[]
@@ -6244,6 +6365,72 @@ model MtmContactChangeRequest {
   @@index([organizationId, contactId, submittedAt])
   @@index([requestedByAgentId, status])
   @@map("mtm_contact_change_requests")
+}
+
+/// Agent-proposed doctor/contact. Approval creates the contact, its clinic
+/// workplace and the requesting agent's assignment in one transaction.
+/// Where a push can actually be delivered: one row per installation.
+///
+/// The field app talks to Firebase Cloud Messaging, which addresses a device
+/// by a token it issues and rotates on its own. The token is the address, not
+/// a secret about the agent, and it belongs to the installation — signing out
+/// removes it, because the next person to sign in on that phone must not
+/// receive the previous agent's notifications.
+model MtmDeviceToken {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId        String
+  agent          MtmAgent     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
+  token          String
+  platform       String       @default("android")
+  /// Installation identity, so a reinstall replaces its own row instead of
+  /// leaving a dead token behind.
+  deviceId       String?
+  appVersion     String?
+  lastSeenAt     DateTime     @default(now())
+  /// Set when FCM says the token is gone, instead of deleting the history.
+  disabledAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, token])
+  @@index([organizationId, agentId, disabledAt])
+  @@map("mtm_device_tokens")
+}
+
+model MtmContactCreateRequest {
+  id                 String            @id @default(cuid())
+  organizationId     String
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedByAgentId String
+  requestedByAgent   MtmAgent          @relation(fields: [organizationId, requestedByAgentId], references: [organizationId, id], onDelete: Cascade)
+  status             MtmApprovalStatus @default(SUBMITTED)
+  idempotencyKey     String
+  requestHash        String
+  displayName        String
+  specialtyName      String?
+  phone              String?
+  clinicName         String
+  address            String?
+  notes              String?
+  duplicateSnapshot  Json?
+  approvedContactId  String?
+  approvedContact    MtmContact?       @relation("MtmApprovedContactCreateRequests", fields: [organizationId, approvedContactId], references: [organizationId, id], onDelete: Restrict)
+  approvedCustomerId String?
+  approvedCustomer   MtmCustomer?      @relation(fields: [organizationId, approvedCustomerId], references: [organizationId, id], onDelete: Restrict)
+  reviewedBy         String?
+  decisionComment    String?
+  submittedAt        DateTime          @default(now())
+  reviewedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, submittedAt])
+  @@index([requestedByAgentId, status])
+  @@index([approvedContactId])
+  @@map("mtm_contact_create_requests")
 }
 
 model MtmContactWorkplace {
@@ -6786,6 +6973,12 @@ model MtmVisit {
   checkInLng      Float?
   checkOutLat     Float?
   checkOutLng     Float?
+  // The customer pin and check-in zone as they were at check-in. Place checks
+  // read these, so editing a customer's coordinates later does not rewrite
+  // the verdict of visits already made. Null on visits made before 2026-09-15.
+  checkInCustomerLat    Float?
+  checkInCustomerLng    Float?
+  checkInGeofenceRadius Int?
   duration        Int? // minutes
   notes           String?
   outcome         MtmVisitOutcome?
@@ -6807,6 +7000,7 @@ model MtmVisit {
   documents              MtmDocument[]
   fieldPotentialEvidence MtmFieldPotentialEvidence[]
   pharmacyPromotionExecutions MtmPharmacyPromotionExecution[]
+  presentationSessions        MtmPresentationSession[]
 
   @@unique([organizationId, id])
   @@index([organizationId])
@@ -7306,6 +7500,7 @@ model MtmAgentWorkday {
   workforceExceptionCases WorkforceExceptionCase[]
   workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceTimeCorrections WorkforceTimeCorrection[]
+  workforceReopens         WorkforceWorkdayReopen[]
 
   @@unique([organizationId, agentId, workDate])
   @@unique([organizationId, id])
@@ -7357,6 +7552,7 @@ model MtmAgentWorkdayEvent {
   workforceAttendanceEvidences WorkforceAttendanceEvidence[]
   workforceAttendanceReviewCase WorkforceAttendanceReviewCase?
   workforceExceptionCases WorkforceExceptionCase[]
+  workforceWorkdayReopen  WorkforceWorkdayReopen?
 
   @@unique([organizationId, agentId, clientEventId])
   @@unique([organizationId, id])
@@ -7573,6 +7769,8 @@ model MtmDocument {
   /// relation and continue to resolve through their existing local key.
   mediaObject MtmMediaObject? @relation("MtmDocumentObject")
   assignments MtmDocumentAssignment[]
+  products                  MtmProduct[]
+  presentationSessions      MtmPresentationSession[]
   messages    MtmMessage[]
   pharmacyPromotionEvidence MtmPharmacyPromotionEvidence[] @relation("MtmPharmacyEvidenceDocument")
 
@@ -7607,6 +7805,120 @@ model MtmDocumentAssignment {
   @@unique([documentId, agentId])
   @@index([organizationId, agentId, assignedAt])
   @@map("mtm_document_assignments")
+}
+
+/// Hierarchical catalog used to decide which product presentations are
+/// available to each field agent. This is deliberately independent from the
+/// HR/team hierarchy: one manager or agent can work with several portfolios.
+model MtmProductGroup {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parentId       String?
+  parent         MtmProductGroup?  @relation("MtmProductGroupTree", fields: [organizationId, parentId], references: [organizationId, id], onDelete: Restrict)
+  children       MtmProductGroup[] @relation("MtmProductGroupTree")
+  name           String
+  description    String?
+  sortOrder      Int               @default(0)
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  members  MtmProductGroupMember[]
+  products MtmProduct[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, parentId, name])
+  @@index([organizationId, parentId, isActive, sortOrder])
+  @@map("mtm_product_groups")
+}
+
+model MtmProductGroupMember {
+  id             String                    @id @default(cuid())
+  organizationId String
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  groupId        String
+  group          MtmProductGroup           @relation(fields: [organizationId, groupId], references: [organizationId, id], onDelete: Cascade)
+  agentId        String
+  agent          MtmAgent                  @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
+  role           MtmProductGroupMemberRole
+  assignedBy     String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([organizationId, groupId, agentId])
+  @@index([organizationId, agentId, role])
+  @@map("mtm_product_group_members")
+}
+
+/// A product is represented in the field by its current presentation file.
+/// Sessions retain their own document/version snapshot, so replacing the
+/// current file never rewrites historical evidence.
+model MtmProduct {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  organization        Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  groupId             String
+  group               MtmProductGroup @relation(fields: [organizationId, groupId], references: [organizationId, id], onDelete: Restrict)
+  name                String
+  description         String?
+  presentationVersion String?
+  documentId          String?
+  document            MtmDocument?    @relation(fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict)
+  sortOrder           Int             @default(0)
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  presentationSessions MtmPresentationSession[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, groupId, name])
+  @@index([organizationId, groupId, isActive, sortOrder])
+  @@index([organizationId, documentId])
+  @@map("mtm_products")
+}
+
+/// Durable proof that the authenticated agent opened a presentation. Progress
+/// can advance until close; a closed session is immutable at the API boundary.
+/// It intentionally proves app activity, not that the customer watched it.
+model MtmPresentationSession {
+  id                    String       @id @default(cuid())
+  organizationId        String
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientSessionId       String
+  visitId               String
+  visit                 MtmVisit     @relation(fields: [organizationId, visitId], references: [organizationId, id], onDelete: Restrict)
+  agentId               String
+  agent                 MtmAgent     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  customerId            String
+  customer              MtmCustomer  @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Restrict)
+  productId             String
+  product               MtmProduct   @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict)
+  documentId            String?
+  document              MtmDocument? @relation(fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict)
+  presentationVersion   String?
+  openedAt              DateTime
+  lastViewedAt          DateTime
+  closedAt              DateTime?
+  activeDurationSeconds Int          @default(0)
+  openLat               Float?
+  openLng               Float?
+  closeLat              Float?
+  closeLng              Float?
+  pageCount             Int?
+  lastPage              Int?
+  pagesViewed           Json?
+  pageEvents            Json?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@unique([organizationId, agentId, clientSessionId])
+  @@unique([organizationId, id])
+  @@index([organizationId, visitId, openedAt])
+  @@index([organizationId, productId, openedAt])
+  @@index([organizationId, agentId, openedAt])
+  @@map("mtm_presentation_sessions")
 }
 
 model MtmMessage {
@@ -8377,6 +8689,43 @@ model WorkforceTimeCorrection {
   @@map("workforce_time_corrections")
 }
 
+// Append-only fact for a manager reopening today's finished workday. The
+// completed state and the reopen both stay in history: the canonical journal
+// keeps its FINISH and gains a REOPEN event, and this row records who, when,
+// why and the exact before/after projection. The migration prevents
+// UPDATE/DELETE and the completed-workday guard accepts COMPLETED -> PAUSED
+// only against this transaction's own row.
+model WorkforceWorkdayReopen {
+  id              String                @id @default(cuid())
+  organizationId  String
+  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId         String
+  agent           MtmAgent              @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  workdayId       String
+  workday         MtmAgentWorkday       @relation(fields: [organizationId, workdayId], references: [organizationId, id], onDelete: Restrict)
+  /// The REOPEN event this fact explains, in the canonical workday journal.
+  eventId         String
+  event           MtmAgentWorkdayEvent  @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Restrict)
+  operationId     String
+  /// Proves a repeated operation id carries the exact same reopen request.
+  requestHash     String                @db.VarChar(64)
+  actorUserId     String
+  actorUser       User                  @relation("WorkforceWorkdayReopenActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  reason          String
+  beforeFacts     Json
+  afterFacts      Json
+  occurredAt      DateTime
+  createdAt       DateTime              @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@unique([organizationId, eventId])
+  @@index([organizationId, workdayId, occurredAt])
+  @@index([organizationId, agentId, occurredAt])
+  @@index([organizationId, actorUserId, occurredAt])
+  @@map("workforce_workday_reopens")
+}
+
 // An approved period is immutable. A subsequent correction appends another
 // record that points to it; exports choose their approved revision explicitly.
 model WorkforceTimesheetApproval {
@@ -8965,6 +9314,10 @@ model MtmAuditLog {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   agentId        String?
   agent          MtmAgent?    @relation(fields: [agentId], references: [id], onDelete: SetNull) // F-18: enable join for agent name in reports/activity
+  /// The signed-in office user who acted (audit 2026-09-21). Null for mobile
+  /// agents (agentId names them), API keys, jobs and rows written before it.
+  /// No relation: a deleted user must not erase who did what.
+  actorUserId    String?
   action         String
   entity         String
   entityId       String?
@@ -21133,7 +21486,8 @@ model VoiceSession {
   createdAt                DateTime     @default(now())
   updatedAt                DateTime     @updatedAt
 
-  turns VoiceSessionTurn[]
+  turns         VoiceSessionTurn[]
+  actionIntents AiActionIntent[]
 
   @@unique([organizationId, id], map: "voice_sessions_org_id_key")
   @@index([organizationId, status], map: "voice_sessions_org_status_idx")
@@ -21171,4 +21525,151 @@ model VoiceMonthlyUsage {
 
   @@unique([organizationId, userId, yearMonth], map: "voice_monthly_usage_org_user_month_key")
   @@map("voice_monthly_usage")
+}
+
+// Private Demo Center control-plane records. These rows do not belong to a
+// customer tenant: only explicit RLS-bypass operations and superadmins may
+// access them. Prospects never receive a tenant session or tenant API access.
+model DemoRequest {
+  id               String    @id @default(cuid())
+  name             String
+  company          String
+  jobTitle         String?
+  email            String
+  emailNormalized  String
+  emailDomain      String
+  phone            String?
+  message          String?   @db.Text
+  requestedModules String[]  @default([])
+  locale           String    @default("az")
+  status           String    @default("SUBMITTED") // SUBMITTED | UNDER_REVIEW | FULFILLED | REJECTED
+  source           String    @default("website")
+  consentAt        DateTime
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  /// The one lead this verified prospect became in LeadDrive's own CRM.
+  /// A control-plane reference into another tenant: no foreign key, never
+  /// returned by any public route. See src/lib/demo-center/prospect-lead.ts.
+  internalLeadId             String?
+  internalLeadOrganizationId String?
+  leadLinkStatus             String?   // PENDING | LINKED | FAILED | UNCONFIGURED
+  leadLinkedAt               DateTime?
+  /// Also the claim's lease: a PENDING row older than the lease may be re-claimed.
+  leadLinkUpdatedAt          DateTime?
+  leadLinkError              String?
+
+  grants DemoGrant[]
+
+  @@index([status, createdAt], map: "demo_requests_status_created_idx")
+  @@index([emailNormalized, createdAt], map: "demo_requests_email_created_idx")
+  @@index([emailDomain], map: "demo_requests_domain_idx")
+  @@map("demo_requests")
+}
+
+model DemoGrant {
+  id                     String      @id @default(cuid())
+  requestId              String
+  request                DemoRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  status                 String      @default("ISSUING") // ISSUING | SENT | OTP_SENT | OTP_VERIFIED | ACTIVE | COMPLETED | EXPIRED | REVOKED | DELIVERY_FAILED
+  tokenHash              String      @unique
+  tokenHint              String
+  moduleIds              String[]
+  /// Guided scenario this grant was issued for. Null on grants issued before
+  /// scenarios existed — those keep opening the module player. Set together
+  /// with scenarioVersion or not at all (demo_grants_scenario_pair_check).
+  scenarioId             String?
+  scenarioVersion        Int?
+  /// The admin allowed a real AI call to the prospect's verified phone for
+  /// this grant. Off unless ticked at issue time.
+  liveCallEnabled        Boolean     @default(false)
+  locale                 String      @default("az")
+  watermark              String
+  linkExpiresAt          DateTime
+  sessionDurationMinutes Int         @default(120)
+  inactivityMinutes      Int         @default(30)
+  otpHash                String?
+  otpExpiresAt           DateTime?
+  otpSentAt              DateTime?
+  otpAttempts            Int         @default(0)
+  otpSendCount           Int         @default(0)
+  verificationHash       String?     @unique
+  verificationExpiresAt  DateTime?
+  verifiedAt             DateTime?
+  sentAt                 DateTime?
+  openedAt               DateTime?
+  deliveryMessageId      String?
+  deliveryError          String?
+  sessionHash            String?     @unique
+  sessionStartedAt       DateTime?
+  sessionLastSeenAt      DateTime?
+  sessionExpiresAt       DateTime?
+  completedAt            DateTime?
+  revokedAt              DateTime?
+  revokedBy              String?
+  revocationReason       String?
+  createdBy              String
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  events             DemoAccessEvent[]
+  phoneVerifications DemoPhoneVerification[]
+
+  @@index([requestId, createdAt], map: "demo_grants_request_created_idx")
+  @@index([status, linkExpiresAt], map: "demo_grants_status_expiry_idx")
+  @@index([sessionHash, status], map: "demo_grants_session_status_idx")
+  @@map("demo_grants")
+}
+
+/// The journal of a prospect proving a phone and agreeing to one AI call.
+/// One row per phone per grant; the code hash, its limits, the moment the
+/// phone was proven and the exact consent wording the prospect agreed to.
+model DemoPhoneVerification {
+  id             String    @id @default(cuid())
+  grantId        String
+  grant          DemoGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  phoneE164      String
+  otpHash        String?
+  otpExpiresAt   DateTime?
+  otpSentAt      DateTime?
+  otpSendCount   Int       @default(0)
+  otpAttempts    Int       @default(0)
+  verifiedAt     DateTime?
+  consentAt      DateTime?
+  consentVersion String?
+  /// Proof by Telegram (owner, 2026-09-22): SHA-256 of the one-time t.me link
+  /// token, when it lapses, how many links this row issued, and the Telegram
+  /// user who last opened it.
+  telegramLinkHash       String?   @unique(map: "demo_phone_verifications_telegram_link_key")
+  telegramLinkExpiresAt  DateTime?
+  telegramLinkIssueCount Int       @default(0)
+  telegramUserId         String?
+  /// "<chat id>:<message id>" of the contact that proved the phone; one message proves once.
+  telegramProofMessage   String?   @unique(map: "demo_phone_verifications_telegram_proof_key")
+  /// "sms" | "telegram" — which proof the verification rests on.
+  verifiedVia            String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([grantId, phoneE164], map: "demo_phone_verifications_grant_phone_key")
+  @@index([telegramUserId], map: "demo_phone_verifications_telegram_user_idx")
+  @@map("demo_phone_verifications")
+}
+
+model DemoAccessEvent {
+  id         String    @id @default(cuid())
+  grantId    String
+  grant      DemoGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  eventType  String
+  moduleId   String?
+  stepId     String?
+  metadata   Json      @default("{}")
+  occurredAt DateTime  @default(now())
+
+  @@index([grantId, occurredAt], map: "demo_access_events_grant_time_idx")
+  @@index([eventType, occurredAt], map: "demo_access_events_type_time_idx")
+  @@map("demo_access_events")
 }

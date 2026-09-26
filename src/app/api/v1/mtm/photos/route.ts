@@ -20,6 +20,13 @@ import { checkGpsVsCustomer, checkBurstUpload, BURST_WINDOW_SECONDS } from "@/li
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { canMutateMtmVisit, mutableVisitWhere } from "@/lib/mtm/visit-scope"
 import {
+  isAgentInFieldScope,
+  mtmAgentOutOfScopeResponse,
+  mtmFieldScopeRequiredResponse,
+  mtmPhotoFieldScopeWhere,
+  resolveMtmFieldScope,
+} from "@/lib/mtm/field-access"
+import {
   readMtmMobileMediaUploadPolicy,
   releaseMtmMobileMediaUpload,
   mtmMobileMediaDeviceCohortRequiredResponse,
@@ -37,6 +44,7 @@ import {
   reserveMtmMediaObject,
 } from "@/lib/mtm/media-object-lifecycle"
 import { readMtmMediaObjectStorageConfig } from "@/lib/mtm/media-object-storage"
+import { mtmPhotoThumbnailUrl } from "@/lib/mtm/photo-thumbnail-url"
 // Static import (not dynamic) so Next.js's output-file-tracing pulls
 // heic-convert into .next/standalone/node_modules. Dynamic
 // `await import("heic-convert")` left the module out of the prod
@@ -544,6 +552,9 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
             clientPhotoId,
             checksumSha256: exactReplayInput.checksumSha256,
             url,
+            // Served lazily by the upload proxy under the same authorization
+            // as `url`; grids use it instead of the 4080 px original.
+            thumbnailUrl: mtmPhotoThumbnailUrl(url),
             category,
             latitude,
             longitude,
@@ -736,7 +747,17 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
   }
 })
 
-export const GET = withRouteFieldRlsAuth("read", async (req, { orgId }) => {
+export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
+  const { orgId } = auth
+  // The gallery used to return the newest photos of the whole company to any
+  // manager, and a field agent's token could pull the same list.
+  const scope = await resolveMtmFieldScope(prisma, {
+    organizationId: orgId,
+    userId: auth.userId,
+    webRole: auth.role,
+    agentId: auth.agentId,
+  })
+  if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
 
   const { searchParams } = new URL(req.url)
   const agentId = searchParams.get("agentId") || ""
@@ -750,7 +771,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, { orgId }) => {
   const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "50")))
 
   try {
-    const where: Prisma.MtmPhotoWhereInput = { organizationId: orgId }
+    if (agentId && !isAgentInFieldScope(scope, agentId)) return mtmAgentOutOfScopeResponse()
+    const where: Prisma.MtmPhotoWhereInput = { organizationId: orgId, ...mtmPhotoFieldScopeWhere(scope) }
     if (agentId) where.agentId = agentId
     if (visitId) where.visitId = visitId
     if (parsedStatus) where.status = parsedStatus

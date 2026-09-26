@@ -28,7 +28,10 @@ vi.mock("@/lib/prisma", () => {
     // the legacy 5 names, so a POST with type "task" stays valid.
     taskType: { findMany: vi.fn().mockResolvedValue([]) },
     // Co-assignees: org-membership validation + replace-set rows.
-    user: { count: vi.fn().mockResolvedValue(0) },
+    user: {
+      count: vi.fn().mockResolvedValue(0),
+      findFirst: vi.fn().mockImplementation(async ({ where }: any) => ({ id: where.id })),
+    },
     taskCollaborator: {
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -64,6 +67,9 @@ vi.mock("@/lib/api-auth", () => ({
 
 vi.mock("@/lib/field-filter", () => ({
   getFieldPermissions: vi.fn().mockResolvedValue([]),
+  // Strict loader used by the command layer; same fixture, it only
+  // differs when the table cannot be read.
+  requireFieldPermissions: vi.fn().mockResolvedValue([]),
   filterEntityFields: vi.fn().mockImplementation((data: any) => data),
   filterWritableFields: vi.fn().mockImplementation((data: any) => data),
 }))
@@ -85,6 +91,7 @@ import { GET as GET_BY_ID, PATCH, DELETE } from "@/app/api/v1/tasks/[id]/route"
 import { prisma } from "@/lib/prisma"
 import { getSession, getOrgId, requireAuth, isAuthError } from "@/lib/api-auth"
 import { createNotification } from "@/lib/notifications"
+import { getFieldPermissions, filterWritableFields } from "@/lib/field-filter"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { recalcProjectCompletion } from "@/lib/project-rollup"
 import { spawnNextRecurringTask } from "@/lib/recurrence/spawn"
@@ -315,6 +322,86 @@ describe("POST /api/v1/tasks", () => {
     const body = await res.json()
     expect(body.success).toBe(true)
     expect(body.data.id).toBe("t-new")
+  })
+
+  it("rejects unknown command fields instead of silently stripping them", async () => {
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
+
+    const res = await POST(makeRequest("http://localhost/api/v1/tasks", {
+      method: "POST",
+      body: JSON.stringify({ title: "New Task", fabricatedByModel: true }),
+    }))
+
+    expect(res.status).toBe(400)
+    expect(prisma.task.create).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when field permissions reject a supplied field", async () => {
+    vi.mocked(getSession).mockResolvedValue({ ...SESSION, role: "sales" } as any)
+    vi.mocked(getFieldPermissions).mockResolvedValueOnce({ description: "visible" })
+    vi.mocked(filterWritableFields).mockImplementationOnce((data: any) => {
+      const allowed = { ...data }
+      delete allowed.description
+      return allowed
+    })
+
+    const res = await POST(makeRequest("http://localhost/api/v1/tasks", {
+      method: "POST",
+      body: JSON.stringify({ title: "New Task", description: "must not be silently dropped" }),
+    }))
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({
+      error: "Forbidden",
+      code: "FORBIDDEN_FIELD",
+    })
+    expect(prisma.task.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects an assignee outside the organization", async () => {
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
+    vi.mocked((prisma as any).user.findFirst).mockResolvedValueOnce(null)
+
+    const res = await POST(makeRequest("http://localhost/api/v1/tasks", {
+      method: "POST",
+      body: JSON.stringify({ title: "New Task", assignedTo: "other-org-user" }),
+    }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain("active member")
+    expect(prisma.task.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects a related record outside the organization", async () => {
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
+    vi.mocked(prisma.lead.findFirst).mockResolvedValueOnce(null)
+
+    const res = await POST(makeRequest("http://localhost/api/v1/tasks", {
+      method: "POST",
+      body: JSON.stringify({ title: "New Task", relatedType: "lead", relatedId: "other-org-lead" }),
+    }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe("Related record not found")
+    expect(prisma.task.create).not.toHaveBeenCalled()
+  })
+
+  it("runs task, collaborators, and created activity in one transaction", async () => {
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
+    ;(prisma as any).user.count.mockResolvedValueOnce(1)
+    vi.mocked(prisma.task.create).mockResolvedValueOnce({
+      id: "t-atomic", title: "Atomic", status: "pending", priority: "medium",
+    } as any)
+
+    const res = await POST(makeRequest("http://localhost/api/v1/tasks", {
+      method: "POST",
+      body: JSON.stringify({ title: "Atomic", collaboratorIds: ["u-2"] }),
+    }))
+
+    expect(res.status).toBe(201)
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect((prisma as any).taskCollaborator.createMany).toHaveBeenCalled()
+    expect((prisma as any).taskActivity.create).toHaveBeenCalled()
   })
 
   // ── Board (division) creates ──
@@ -553,7 +640,7 @@ describe("GET /api/v1/tasks/:id", () => {
       checklist: [], comments: [],
     }
     vi.mocked(prisma.task.findFirst).mockResolvedValue(task as any)
-    prismaMock.deal.findFirst.mockResolvedValue({ title: "Big Deal" } as any)
+    prismaMock.deal.findFirst.mockResolvedValue({ name: "Big Deal" } as any)
 
     const res = await GET_BY_ID(makeRequest("http://localhost/api/v1/tasks/t1"), makeParams("t1"))
     expect(res.status).toBe(200)

@@ -26,7 +26,8 @@ vi.mock("@/lib/mobile-auth", () => ({
 import { GET as listTeams, POST as createTeam } from "@/app/api/v1/mtm/teams/route"
 import { GET as getTeam, PATCH as patchTeam, DELETE as deleteTeam } from "@/app/api/v1/mtm/teams/[id]/route"
 import { prisma } from "@/lib/prisma"
-import { getOrgId } from "@/lib/api-auth"
+import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
+import { getOrgId, getSession } from "@/lib/api-auth"
 import { getMobileAuth } from "@/lib/mobile-auth"
 
 const ORG = "org-mars"
@@ -57,6 +58,9 @@ function deleteReq(url: string): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Route tests reuse user ids with different cards; never serve a memoized actor.
+  resetMtmFieldScopeMemo()
+  vi.mocked(getSession).mockResolvedValue(null)
   vi.mocked(getOrgId).mockResolvedValue(ORG)
   vi.mocked(getMobileAuth).mockReturnValue(null)
 })
@@ -380,5 +384,97 @@ describe("DELETE /api/v1/mtm/teams/[id]", () => {
       { params: Promise.resolve({ id: "t1" }) },
     )
     expect(res.status).toBe(403)
+  })
+})
+
+// ─── Browser sessions: structure writes and member lists (audit 2026-09-14) ──
+
+describe("teams for browser sessions", () => {
+  function asWebUser(role: string) {
+    vi.mocked(getSession).mockResolvedValue({
+      orgId: ORG, userId: "web-user", role, email: "web@example.com", name: "Web",
+    } as any)
+  }
+
+  it("refuses a web manager moving a team into another region — it would pull its agents into their territory", async () => {
+    asWebUser("manager")
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ role: "MANAGER" } as any)
+
+    const res = await patchTeam(
+      patchReq("http://localhost/api/v1/mtm/teams/t1", { regionId: "r-mine" }),
+      { params: Promise.resolve({ id: "t1" }) },
+    )
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: "MTM_STRUCTURE_ADMIN_REQUIRED" })
+    expect(prisma.mtmTeam.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("refuses team creation and deletion to a web manager as well", async () => {
+    asWebUser("manager")
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null)
+
+    const created = await createTeam(jsonReq("http://localhost/api/v1/mtm/teams", { name: "X" }))
+    expect(created.status).toBe(403)
+    const deleted = await deleteTeam(deleteReq("http://localhost/api/v1/mtm/teams/t1"), { params: Promise.resolve({ id: "t1" }) })
+    expect(deleted.status).toBe(403)
+    expect(prisma.mtmTeam.create).not.toHaveBeenCalled()
+    expect(prisma.mtmTeam.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("lets a web administrator and an MTM ADMIN card change a team's region", async () => {
+    vi.mocked(prisma.mtmRegion.findFirst).mockResolvedValue({ id: "r2" } as any)
+    vi.mocked(prisma.mtmTeam.updateMany).mockResolvedValue({ count: 1 })
+    vi.mocked(prisma.mtmTeam.findFirst).mockResolvedValue({ id: "t1", name: "Alpha", region: { id: "r2", name: "North" } } as any)
+
+    asWebUser("admin")
+    const byAdmin = await patchTeam(
+      patchReq("http://localhost/api/v1/mtm/teams/t1", { regionId: "r2" }),
+      { params: Promise.resolve({ id: "t1" }) },
+    )
+    expect(byAdmin.status).toBe(200)
+
+    asWebUser("manager")
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ role: "ADMIN" } as any)
+    const byMtmAdmin = await patchTeam(
+      patchReq("http://localhost/api/v1/mtm/teams/t1", { regionId: "r2" }),
+      { params: Promise.resolve({ id: "t1" }) },
+    )
+    expect(byMtmAdmin.status).toBe(200)
+  })
+
+  it("shows a web manager only the team members inside their field scope", async () => {
+    asWebUser("manager")
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "mgr-1", role: "MANAGER", canPlanOwnRoutes: true, canSelfPublishRoutes: false } as any)
+    vi.mocked(prisma.mtmAgent.findUnique).mockResolvedValue({ id: "mgr-1", teamId: null } as any)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValueOnce([{ id: "a1" }] as any).mockResolvedValue([] as any)
+    vi.mocked(prisma.mtmTeam.findFirst).mockResolvedValue({ id: "t1", name: "Alpha", agents: [] } as any)
+
+    const res = await getTeam(req("http://localhost/api/v1/mtm/teams/t1"), { params: Promise.resolve({ id: "t1" }) })
+
+    expect(res.status).toBe(200)
+    const args = vi.mocked(prisma.mtmTeam.findFirst).mock.calls[0][0] as any
+    expect(args.include.agents.where).toEqual({ status: "ACTIVE", id: { in: ["a1", "mgr-1"] } })
+  })
+
+  it("refuses team members to a web manager without an MTM card", async () => {
+    asWebUser("manager")
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null)
+
+    const res = await getTeam(req("http://localhost/api/v1/mtm/teams/t1"), { params: Promise.resolve({ id: "t1" }) })
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: "MTM_FIELD_SCOPE_REQUIRED" })
+    expect(prisma.mtmTeam.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("keeps the member list organization-wide for a web administrator", async () => {
+    asWebUser("admin")
+    vi.mocked(prisma.mtmTeam.findFirst).mockResolvedValue({ id: "t1", name: "Alpha", agents: [] } as any)
+
+    await getTeam(req("http://localhost/api/v1/mtm/teams/t1"), { params: Promise.resolve({ id: "t1" }) })
+
+    const args = vi.mocked(prisma.mtmTeam.findFirst).mock.calls[0][0] as any
+    expect(args.include.agents.where).toEqual({ status: "ACTIVE" })
   })
 })

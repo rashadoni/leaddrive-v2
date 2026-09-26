@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet"
 import L from "leaflet"
+import Link from "next/link"
 import { CartoVectorBasemap } from "./carto-vector-basemap"
 import { formatDateTime, formatTime } from "@/lib/format-date"
 
@@ -24,6 +25,11 @@ export interface RouteStop {
   name: string
   address?: string
   visitedAt?: string
+  plannedTime?: string | null
+  /** From the stop's visit: when the agent actually arrived and left. */
+  checkInAt?: string | null
+  checkOutAt?: string | null
+  visitId?: string | null
 }
 
 // F-38: shared type. `AgentLocation` previously lived here too, conflicting
@@ -59,6 +65,8 @@ interface Props {
 const statusColors: Record<string, string> = {
   CHECKED_IN: "#22c55e",
   ON_ROAD: "#3b82f6",
+  STOPPED: "#f59e0b",
+  ROUTE_FINISHED: "#047857",
   LATE: "#ef4444",
   OFFLINE: "#94a3b8",
 }
@@ -174,32 +182,67 @@ function InvalidateSize() {
   return null
 }
 
-function FitBounds({ agents, plannedRoute }: { agents: LiveMapAgent[]; plannedRoute: RouteStop[] }) {
+function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgent[]; plannedRoute: RouteStop[]; focusAgentId: string | null }) {
   const map = useMap()
   const lastFitRef = useRef("")
   useEffect(() => {
+    // With an employee selected and their day's stops loaded, frame that
+    // employee and those stops — not the whole fleet, which zoomed back out
+    // and hid the route the manager had just asked for.
+    const focusedAgent = focusAgentId && plannedRoute.length > 0
+      ? agents.find((a) => a.agentId === focusAgentId)
+      : undefined
+    const framedAgents = focusAgentId && plannedRoute.length > 0
+      ? (focusedAgent ? [focusedAgent] : [])
+      : agents
     const points: L.LatLngTuple[] = [
-      ...agents.map((a) => [a.latitude, a.longitude] as L.LatLngTuple),
+      ...framedAgents.map((a) => [a.latitude, a.longitude] as L.LatLngTuple),
       ...plannedRoute.map((s) => [s.latitude, s.longitude] as L.LatLngTuple),
     ].filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng))
+    const focusMode = Boolean(focusAgentId && plannedRoute.length > 0)
+    // In focus mode the frame belongs to the selection, not to the agent's
+    // live position: refitting every time the marker moved ~11 m kept undoing
+    // the manager's own zoom (review of #205). Fit again only when the
+    // selection, the stops, or the agent's visibility change.
+    const sig = focusMode
+      ? `focus:${focusAgentId}:${focusedAgent ? "agent" : "no-agent"}:${plannedRoute.map((s) => `${s.orderIndex}@${s.latitude.toFixed(4)},${s.longitude.toFixed(4)}`).join("|")}`
+      : points.map((p) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join("|")
+    if (focusMode && points.length === 1) {
+      if (sig === lastFitRef.current) return
+      lastFitRef.current = sig
+      map.setView(points[0], 15)
+      return
+    }
     if (points.length < 2) return
-    // Avoid re-fitting on every render when set of coords didn't change
-    const sig = points.map((p) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join("|")
+    // Avoid re-fitting on every render when the frame did not change
     if (sig === lastFitRef.current) return
     lastFitRef.current = sig
-    map.fitBounds(L.latLngBounds(points), { padding: [60, 60] })
-  }, [map, agents, plannedRoute])
+    map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 16 })
+  }, [map, agents, plannedRoute, focusAgentId])
   return null
 }
 
 function FocusAgent({ agents, focusAgentId }: { agents: LiveMapAgent[]; focusAgentId: string | null }) {
   const map = useMap()
+  const lastFocusedRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!focusAgentId) return
+    if (!focusAgentId) {
+      lastFocusedRef.current = null
+      return
+    }
+    // Fly once per selection. Every poll hands a new agents array, and flying
+    // again on each one yanked the map away from the route being inspected.
+    if (lastFocusedRef.current === focusAgentId) return
     const agent = agents.find((a) => a.agentId === focusAgentId)
-    if (agent) map.flyTo([agent.latitude, agent.longitude], 15, { duration: 0.5 })
+    if (!agent) return
+    lastFocusedRef.current = focusAgentId
+    map.flyTo([agent.latitude, agent.longitude], 15, { duration: 0.5 })
   }, [map, focusAgentId, agents])
   return null
+}
+
+function stopTime(value: string | null | undefined, locale: string, timeZone?: string): string {
+  return value ? formatTime(new Date(value), locale, timeZone ? { hour: "2-digit", minute: "2-digit", timeZone } : undefined) : ""
 }
 
 function normalizeLongitude(value: number): number {
@@ -423,7 +466,7 @@ export default function MtmLiveMap({
           scrollWheelZoom
         >
           <InvalidateSize />
-          <FitBounds agents={agents} plannedRoute={plannedRoute} />
+          <FitBounds agents={agents} plannedRoute={plannedRoute} focusAgentId={focusAgentId} />
           <FocusAgent agents={agents} focusAgentId={focusAgentId} />
           <ViewportReporter onChange={handleViewportChange} />
 
@@ -494,11 +537,27 @@ export default function MtmLiveMap({
                   </div>
                   <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
                     {tMap("routeStopStatus.label")}: {tMap(`routeStopStatus.${stop.status.toLowerCase()}`)}
-                    {stop.visitedAt && <> · {formatTime(new Date(stop.visitedAt), locale, timeZone ? { timeZone } : undefined)}</>}
                   </div>
+                  {stop.plannedTime ? (
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                      {tMap("routeStop.planned", { time: stopTime(stop.plannedTime, locale, timeZone) })}
+                    </div>
+                  ) : null}
+                  {stop.checkInAt ? (
+                    <div style={{ fontSize: 11, color: "#334155", fontWeight: 600, marginTop: 2 }}>
+                      {stop.checkOutAt
+                        ? tMap("routeStop.fact", { from: stopTime(stop.checkInAt, locale, timeZone), to: stopTime(stop.checkOutAt, locale, timeZone) })
+                        : tMap("routeStop.factOpen", { from: stopTime(stop.checkInAt, locale, timeZone) })}
+                    </div>
+                  ) : null}
                   {stop.address && (
                     <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{stop.address}</div>
                   )}
+                  {stop.visitId ? (
+                    <div style={{ fontSize: 12, marginTop: 4 }}>
+                      <Link href={`/mtm/visits?visitId=${encodeURIComponent(stop.visitId)}`}>{tMap("routeStop.openVisit")}</Link>
+                    </div>
+                  ) : null}
                 </div>
               </Popup>
             </Marker>

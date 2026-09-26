@@ -15,7 +15,7 @@ import { LeadSourcesDonut } from "@/components/dashboard/lead-sources-donut"
 import { RecentDeals } from "@/components/dashboard/recent-deals"
 import { AiLeadScoring } from "@/components/dashboard/ai-lead-scoring"
 import { ActivityFeed } from "@/components/dashboard/activity-feed"
-import { CampaignStats } from "@/components/dashboard/campaign-stats"
+import { CampaignStats, campaignRateLabel } from "@/components/dashboard/campaign-stats"
 import { UpcomingEvents } from "@/components/dashboard/upcoming-events"
 import { WeeklyMetrics } from "@/components/dashboard/weekly-metrics"
 import { ChurnRiskWidget } from "@/components/dashboard/churn-risk-widget"
@@ -167,7 +167,9 @@ export default function DashboardPage() {
           <KpiCard
             title={t("kpiCampaigns")}
             value={campaigns?.length || 0}
-            sub={campaigns?.length > 0 ? `↗ ${campaigns[0]?.openRate || 0}% ${t("openRate")}` : undefined}
+            sub={campaigns?.length > 0
+              ? `${typeof campaigns[0]?.openRate === "number" ? "↗ " : ""}${campaignRateLabel(campaigns[0]?.openRate)} ${t("openRate")}`
+              : undefined}
             icon={<Megaphone className="h-5 w-5" />}
             color="#ec4899"
           />

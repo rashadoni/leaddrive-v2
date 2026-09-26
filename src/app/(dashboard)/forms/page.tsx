@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import type { FormStatus } from "@/lib/form-builder/types"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 interface FormRow {
   id: string
@@ -60,20 +61,22 @@ export default function FormsListPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <HelpButton slug="forms" variant="label" /></h1>
+      <PageHeader
+        title={<>{t("title")} <HelpButton slug="forms" variant="label" /></>}
+        description={
           <p className="text-sm text-muted-foreground">
             {t("subtitleBeforeUrl")}{" "}
             <code>/f/{`{slug}`}</code>{" "}
             {t("subtitleAfterUrl")}
           </p>
-        </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          {t("actions.newForm")}
-        </Button>
-      </div>
+        }
+        actions={
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            {t("actions.newForm")}
+          </Button>
+        }
+      />
 
       {loading ? (
         <p className="text-sm text-muted-foreground">{t("loading")}</p>

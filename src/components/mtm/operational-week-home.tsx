@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
+import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import {
   AlertTriangle,
   ArrowUpRight,
+  BellRing,
   BatteryMedium,
   Building2,
   CalendarDays,
@@ -25,12 +28,16 @@ import {
   Loader2,
   MapPin,
   MapPinOff,
+  Navigation,
+  History,
   PauseCircle,
   PlayCircle,
   RefreshCw,
+  RotateCcw,
   Route as RouteIcon,
   ShieldAlert,
   Square,
+  Undo2,
   UserRound,
   Wifi,
   WifiOff,
@@ -63,10 +70,20 @@ import {
   type OperationalWeekTaskAttention,
 } from "@/lib/mtm/operational-week-client"
 import { cn } from "@/lib/utils"
+import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
 import { createDateFormatter } from "@/lib/format-date"
+import type { MtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
+import { summarizeTeamToday, teamRowWhereabouts, teamTodayForScope, teamTodayScopeKey, type ClassifiedTeamRow } from "@/lib/mtm/team-today-summary"
+import {
+  WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH,
+  WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH,
+  type WorkforceWorkdayManagerActionBlockedReason,
+} from "@/lib/workforce/workday-reopen-contract"
 
 type WeekDays = 1 | 5 | 7
 type WorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
+type ManagerWorkdayActionKind = "reopen" | "undoReopen"
+const MANAGER_WORKDAY_ACTION_KINDS: readonly ManagerWorkdayActionKind[] = ["reopen", "undoReopen"]
 
 const OPERATIONAL_TASK_ATTENTION = new Set<OperationalWeekTaskAttention>(["OVERDUE", "RETURNED", "ACTIVE"])
 const OPERATIONAL_TASK_ATTENTION_RANK: Record<OperationalWeekTaskAttention, number> = { OVERDUE: 0, RETURNED: 1, ACTIVE: 2 }
@@ -91,6 +108,55 @@ const WORKDAY_RECOVERY_MESSAGE_KEYS = new Set([
   "workdayUnavailable",
   "operationMismatch",
   "refresh",
+])
+/** A message key, or one per action when the message names the action it unlocks. */
+type ManagerWorkdayMessageKey = string | Readonly<Record<ManagerWorkdayActionKind, string>>
+/**
+ * `managerWorkday.failure.*` message per refusal of the manager's reopen or
+ * undo-reopen. Keyed by the shared contract, so a refusal the server can send
+ * — as a 409/403 or as a week `blockedReason` — cannot lack a message.
+ */
+const MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS: Record<WorkforceWorkdayManagerActionBlockedReason, ManagerWorkdayMessageKey> = {
+  WORKFORCE_WORKDAY_REOPEN_IDEMPOTENCY_MISMATCH: "idempotencyMismatch",
+  WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED: "notCompleted",
+  WORKFORCE_WORKDAY_REOPEN_NOT_TODAY: "notToday",
+  WORKFORCE_WORKDAY_REOPEN_VERSION_CONFLICT: "versionConflict",
+  WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS: "openShiftExists",
+  WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED: "timesheetApproved",
+  WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING: "correctionPending",
+  WORKFORCE_WORKDAY_REOPEN_CORRECTED: "corrected",
+  WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID: "historyInvalid",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED: "undoNotReopened",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_TODAY: "undoNotToday",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_VERSION_CONFLICT: "versionConflict",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_IDEMPOTENCY_MISMATCH: "idempotencyMismatch",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID: "historyInvalid",
+  WORKFORCE_SESSION_PERMISSION_REQUIRED: "forbidden",
+  WORKFORCE_SCOPE_DENIED: "forbidden",
+  // As on the Workforce access screen, a missing mandatory MFA factor is a
+  // localized instruction — here with where it is switched on.
+  WORKFORCE_ATTENDANCE_MFA_REQUIRED: { reopen: "mfaRequiredReopen", undoReopen: "mfaRequiredUndo" },
+}
+const MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS: Readonly<Record<string, ManagerWorkdayMessageKey>> = {
+  ...MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS,
+  WORKFORCE_DIRECT_TIME_CORRECTION_RATE_LIMITED: "rateLimited",
+}
+/**
+ * Refusals explained under the workday header instead of a button. The
+ * others are ordinary states — a running shift is simply not finished yet.
+ * The server reports missing MFA only on a day the manager could otherwise
+ * change, so that instruction never appears on an unfinished day.
+ */
+const MANAGER_WORKDAY_EXPLAINED_REFUSALS = new Set<string>([
+  "WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS",
+  "WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED",
+  "WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING",
+  "WORKFORCE_WORKDAY_REOPEN_CORRECTED",
+  "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID",
+  "WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID",
+  "WORKFORCE_SESSION_PERMISSION_REQUIRED",
+  "WORKFORCE_SCOPE_DENIED",
+  "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
 ])
 
 interface WeekQuery {
@@ -158,6 +224,51 @@ interface WeekPoint {
   actualAt: string | null
   cancellationReason: string | null
   cancellationSource: string | null
+  checkOutAt: string | null
+  durationMinutes: number | null
+  photoCount: number | null
+  hasSignature: boolean
+  hasNote: boolean
+}
+
+interface AlertGroup {
+  key: string
+  type: string
+  category: string
+  date: string
+  hour: number
+  count: number
+  lastAt: string | null
+  maxDistanceMeters: number | null
+  messageKey: string | null
+  messageParams: Record<string, string | number> | null
+  fallbackText: string | null
+}
+
+interface TeamTodayRow {
+  agentId: string
+  name: string
+  teamName: string | null
+  lastGpsAt: string | null
+  route: { visited: number; total: number } | null
+  visits: Array<{ id: string; customerName: string | null; status: string; checkInAt: string | null; checkOutAt: string | null }>
+  visitCount: number
+  openAlerts: number
+  workday: MtmManagerWorkdayState | null
+  /** Absent in responses from before «where is he going» existed. */
+  nextStop: { customerName: string | null; plannedAt: string | null } | null
+}
+
+interface TeamToday {
+  /** `teamTodayScopeKey` of the filters the payload was fetched for. */
+  scopeKey: string
+  timezone: string
+  today: string
+  generatedAt: string | null
+  rows: TeamTodayRow[]
+  partial: boolean
+  visitsTruncated: boolean
+  workdayEnabled: boolean
 }
 
 interface WeekRoute {
@@ -191,6 +302,7 @@ interface WeekDay {
   routes: WeekRoute[]
   unplannedVisits: WeekPoint[]
   tasks: WeekTask[]
+  alertGroups: AlertGroup[]
 }
 
 interface PlanChange {
@@ -242,6 +354,28 @@ interface WorkdayCapability {
   outsideSelectedWindow: boolean
 }
 
+interface ManagerWorkdayAction {
+  allowed: boolean
+  workdayId: string | null
+  updatedAt: string | null
+  blockedReason: string | null
+}
+
+interface ManagerWorkdayActions {
+  reopen: ManagerWorkdayAction
+  undoReopen: ManagerWorkdayAction
+  /** False only when the server said the manager has no 2FA: then the dialog recommends it. */
+  mfaEnrolled: boolean
+}
+
+interface ManagerWorkdayDialogTarget {
+  kind: ManagerWorkdayActionKind
+  workdayId: string
+  expectedUpdatedAt: string
+  /** Generated once per opened dialog: a retry repeats the action, never doubles it. */
+  operationId: string
+}
+
 interface WeekFacts {
   timezone: string
   today: string
@@ -258,6 +392,12 @@ interface WeekFacts {
   pendingPlanChanges: PlanChange[]
   contract: WeekContract
   workdayCapability: WorkdayCapability
+  alertGroups: AlertGroup[]
+  alertCount: number
+  alertsTruncated: boolean
+  managerWorkday: MtmManagerWorkdayState | null
+  /** Absent in snapshots cached before the manager actions existed. */
+  managerWorkdayActions?: ManagerWorkdayActions | null
 }
 
 interface BaseCoverageGroup {
@@ -626,6 +766,171 @@ function normalizePoint(value: unknown, index: number, routeId: string | null): 
       || firstString(actualEvidence, "checkInAt", "checkedInAt", "visitedAt", "completedAt"),
     cancellationReason: firstString(source, "cancellationReason", "cancelReason", "reason") || firstString(cancellationEvidence, "reason"),
     cancellationSource: firstString(cancellationEvidence, "source"),
+    checkOutAt: firstString(source, "checkOutAt") || firstString(actualEvidence, "checkOutAt"),
+    durationMinutes: firstNumber(source, "durationMinutes") ?? firstNumber(actualEvidence, "durationMinutes"),
+    photoCount: firstNumber(source, "photoCount") ?? firstNumber(actualEvidence, "photoCount"),
+    hasSignature: source.hasSignature === true || actualEvidence.hasSignature === true,
+    hasNote: source.hasNote === true || actualEvidence.hasNote === true,
+  }
+}
+
+function normalizeAlertGroups(value: unknown): AlertGroup[] {
+  return list(value).flatMap((item): AlertGroup[] => {
+    const source = record(item)
+    const latest = record(source.latest)
+    const key = firstString(source, "key")
+    const type = firstString(source, "type")
+    const date = firstString(source, "date")
+    const hour = firstNumber(source, "hour")
+    const count = firstNumber(source, "count")
+    if (!key || !type || !date || hour === null || count === null) return []
+    const params = record(latest.messageParams)
+    return [{
+      key,
+      type,
+      category: firstString(source, "category") || "WARNING",
+      date,
+      hour,
+      count,
+      lastAt: firstString(source, "lastAt"),
+      maxDistanceMeters: firstNumber(source, "maxDistanceMeters"),
+      messageKey: firstString(latest, "messageKey"),
+      messageParams: Object.keys(params).length
+        ? Object.fromEntries(Object.entries(params).filter((entry): entry is [string, string | number] => typeof entry[1] === "string" || typeof entry[1] === "number"))
+        : null,
+      fallbackText: firstString(latest, "fallbackText"),
+    }]
+  })
+}
+
+function asLeftOpen(state: MtmManagerWorkdayState | null): Extract<MtmManagerWorkdayState, { kind: "left-open" }> | null {
+  return state && state.kind === "left-open" ? state : null
+}
+
+function normalizeManagerWorkday(value: unknown): MtmManagerWorkdayState | null {
+  const source = record(value)
+  const kind = firstString(source, "kind")
+  switch (kind) {
+    case "not-started": return { kind: "not-started" }
+    case "working": return { kind: "working", since: firstString(source, "since") }
+    case "paused": return { kind: "paused", since: firstString(source, "since") }
+    case "finished": return { kind: "finished", at: firstString(source, "at") }
+    case "left-open": return {
+      kind: "left-open",
+      since: firstString(source, "since"),
+      workDate: firstString(source, "workDate"),
+      days: Math.max(0, firstNumber(source, "days") ?? 0),
+      hours: Math.max(0, firstNumber(source, "hours") ?? 0),
+      status: firstString(source, "status") === "PAUSED" ? "PAUSED" : "STARTED",
+    }
+    default: return null
+  }
+}
+
+function normalizeManagerWorkdayAction(value: unknown): ManagerWorkdayAction | null {
+  const source = record(value)
+  if (typeof source.allowed !== "boolean") return null
+  const workdayId = firstString(source, "workdayId")
+  const updatedAt = firstString(source, "updatedAt")
+  return {
+    // Without its target and version the request cannot be sent: never offer it.
+    allowed: source.allowed === true && Boolean(workdayId && updatedAt),
+    workdayId,
+    updatedAt,
+    blockedReason: firstString(source, "blockedReason"),
+  }
+}
+
+function normalizeManagerWorkdayActions(value: unknown): ManagerWorkdayActions | null {
+  const source = record(value)
+  const reopen = normalizeManagerWorkdayAction(source.reopen)
+  const undoReopen = normalizeManagerWorkdayAction(source.undoReopen)
+  return reopen && undoReopen ? { reopen, undoReopen, mfaEnrolled: source.mfaEnrolled !== false } : null
+}
+
+function managerWorkdayFailureMessageKey(code: string | null, kind: ManagerWorkdayActionKind): string | null {
+  if (!code || !Object.prototype.hasOwnProperty.call(MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS, code)) return null
+  const key = MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS[code]
+  return typeof key === "string" ? key : key[kind]
+}
+
+function clientOperationId(prefix: string): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+/**
+ * The last team list, kept for the tab's lifetime. Numbers of another scope
+ * are never shown (the key is part of the entry), and a stale list is labelled
+ * «обновляется» until the fresh one lands.
+ */
+const TEAM_TODAY_CACHE_KEY = "mtm:week:team-today"
+
+function rememberTeamToday(payload: TeamToday): void {
+  try {
+    window.sessionStorage.setItem(`${TEAM_TODAY_CACHE_KEY}:${payload.scopeKey}`, JSON.stringify(payload))
+  } catch {}
+}
+
+function readTeamToday(scopeKey: string): TeamToday | null {
+  try {
+    const raw = window.sessionStorage.getItem(`${TEAM_TODAY_CACHE_KEY}:${scopeKey}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as TeamToday
+    return parsed && parsed.scopeKey === scopeKey && Array.isArray(parsed.rows) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function normalizeTeamToday(value: unknown, scopeKey: string): TeamToday | null {
+  const source = record(record(value).data)
+  if (firstString(source, "mode") !== "TEAM_TODAY") return null
+  const rows = list(source.rows).flatMap((item): TeamTodayRow[] => {
+    const row = record(item)
+    const agent = record(row.agent)
+    const agentId = firstString(agent, "id")
+    if (!agentId) return []
+    const route = record(row.route)
+    const total = firstNumber(route, "total")
+    return [{
+      agentId,
+      name: firstString(agent, "name") || "—",
+      teamName: firstString(agent, "teamName"),
+      lastGpsAt: firstString(row, "lastGpsAt"),
+      route: total === null ? null : { visited: Math.max(0, firstNumber(route, "visited") ?? 0), total },
+      visits: list(row.visits).map((visitValue) => {
+        const visit = record(visitValue)
+        return {
+          id: firstString(visit, "id") || "",
+          customerName: firstString(visit, "customerName"),
+          status: (firstString(visit, "status") || "").toUpperCase(),
+          checkInAt: firstString(visit, "checkInAt"),
+          checkOutAt: firstString(visit, "checkOutAt"),
+        }
+      }).filter((visit) => visit.id),
+      openAlerts: Math.max(0, firstNumber(row, "openAlerts") ?? 0),
+      visitCount: Math.max(0, firstNumber(row, "visitCount") ?? 0),
+      workday: normalizeManagerWorkday(row.workday),
+      nextStop: (() => {
+        const next = record(row.nextStop)
+        return row.nextStop && typeof row.nextStop === "object"
+          ? { customerName: firstString(next, "customerName"), plannedAt: firstString(next, "plannedAt") }
+          : null
+      })(),
+    }]
+  })
+  const completeness = record(source.completeness)
+  return {
+    scopeKey,
+    timezone: firstString(source, "timezone") || "UTC",
+    today: firstString(source, "today") || "",
+    generatedAt: firstString(source, "generatedAt"),
+    rows,
+    partial: list(completeness.truncatedSources).includes("FILTER_AGENTS"),
+    visitsTruncated: list(completeness.truncatedSources).includes("VISITS"),
+    workdayEnabled: record(record(source.capabilities).workday).enabled === true,
   }
 }
 
@@ -634,7 +939,9 @@ function normalizeRoute(value: unknown, index: number): WeekRoute {
   const id = firstString(source, "id", "routeId") || `route-${index + 1}`
   return {
     id,
-    name: firstString(source, "name", "title") || id,
+    // Prod 2026-09-14: an unnamed route rendered its cuid. The card now
+    // builds "Marşrut · 14 sen" from the day instead (see renderDay).
+    name: firstString(source, "name", "title") || "",
     status: (firstString(source, "status", "state") || "PUBLISHED").toUpperCase(),
     publishedVersion: firstNumber(source, "publishedVersion", "version"),
     pointsTruncated: booleanValue(source.pointsTruncated),
@@ -715,6 +1022,7 @@ function normalizeDay(value: unknown): WeekDay | null {
       }, visitIndex, firstString(visitSource, "routeId"))
     }),
     tasks: list(source.tasks).map(normalizeTask),
+    alertGroups: normalizeAlertGroups(source.alertGroups),
   }
 }
 
@@ -879,6 +1187,11 @@ function normalizeWeekResponse(value: unknown): NormalizedWeekResponse {
         activeStartedAt: firstString(activeWorkday, "startedAt"),
         outsideSelectedWindow: booleanValue(activeWorkday.outsideSelectedWindow),
       },
+      alertGroups: normalizeAlertGroups(record(queues.alerts).groups),
+      alertCount: list(record(queues.alerts).items).length,
+      alertsTruncated: booleanValue(record(queues.alerts).truncated),
+      managerWorkday: normalizeManagerWorkday(workdayContext.managerState),
+      managerWorkdayActions: normalizeManagerWorkdayActions(workdayContext.managerActions),
     },
   }
 }
@@ -975,7 +1288,15 @@ function requestErrorMessage(status: number): "permission" | "notFound" | "rateL
 export function OperationalWeekHome({ organizationId, viewerId }: OperationalWeekHomeProps) {
   const t = useTranslations("mtmDashboardPage.operationalWeek")
   const taskT = useTranslations("mtmTasksPage")
+  const alertT = useTranslations("mtmAlertsPage")
   const locale = useLocale()
+  // Read on the server and in the first client frame, before `query` exists:
+  // the layout of that frame must match the link that was opened.
+  const searchParams = useSearchParams()
+  // With field contacts off a contact name stays readable (it is part of the
+  // visit), but it no longer links to a contact card the organization hid.
+  const { data: fieldContactsSession } = useSession()
+  const { enabled: fieldContactsEnabled } = useMtmFieldContacts(fieldContactsSession?.user)
   const [query, setQuery] = useState<WeekQuery | null>(null)
   const [filters, setFilters] = useState<WeekFilters>(EMPTY_FILTERS)
   const [facts, setFacts] = useState<WeekFacts | null>(null)
@@ -998,10 +1319,20 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
   const [cancellationTarget, setCancellationTarget] = useState<{ point: WeekPoint; day: WeekDay } | null>(null)
   const [cancellationReasonCode, setCancellationReasonCode] = useState("CUSTOMER_REQUEST")
   const [cancellationDetails, setCancellationDetails] = useState("")
+  const [managerWorkdayTarget, setManagerWorkdayTarget] = useState<ManagerWorkdayDialogTarget | null>(null)
+  const [managerWorkdayReason, setManagerWorkdayReason] = useState("")
+  const [managerWorkdayPending, setManagerWorkdayPending] = useState(false)
+  /** `final`: the day moved on (409), so this dialog can no longer succeed. */
+  const [managerWorkdayError, setManagerWorkdayError] = useState<{ message: string; final: boolean } | null>(null)
   const [planMutationId, setPlanMutationId] = useState<string | null>(null)
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({})
   const [rescheduleDates, setRescheduleDates] = useState<Record<string, string>>({})
   const [cancellationsExpanded, setCancellationsExpanded] = useState(false)
+  const [idleExpanded, setIdleExpanded] = useState(false)
+  const [teamToday, setTeamToday] = useState<TeamToday | null>(null)
+  const [teamFromCache, setTeamFromCache] = useState(false)
+  const [teamPhase, setTeamPhase] = useState<"idle" | "loading" | "ready" | "error">("idle")
+  const teamRequestIdRef = useRef(0)
   const requestIdRef = useRef(0)
   const coverageRequestIdRef = useRef(0)
   const coverageRowsRequestIdRef = useRef(0)
@@ -1186,6 +1517,72 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken, requestKey])
 
+  // Prod 2026-09-14: without a selected employee the Panel was blank. A
+  // supervisor's default is the scoped team today; a row opens the week.
+  const teamViewActive = Boolean(query && !query.agentId)
+  // Before the first client effect `query` is null, so that frame (and the
+  // SSR HTML) reads the layout from the URL itself: a manager opening /mtm
+  // does not watch the week heading and five card skeletons flash and vanish
+  // at hydration, and a deep link `/mtm?weekAgentId=…` («back to the week»
+  // from /mtm/visits) does not announce a team load it never requests.
+  const urlAgentId = searchParams.get("weekAgentId") || ""
+  const teamLayout = query ? teamViewActive : !urlAgentId
+  const teamScopeKey = query ? teamTodayScopeKey(query) : ""
+  // The bootstrap already named a refusal the team request on the same scope
+  // repeats (no permission, employee unavailable): a second alert with a
+  // «Retry» that repeats the 403 helps nobody. A timeout or a 429 on the
+  // filter bootstrap says nothing about /week/team, which may have answered
+  // with three open shifts a second ago: that line stays on screen, and the
+  // summary carries its own retry by `teamPhase`.
+  const bootstrapFailed = phase === "permission" || phase === "notFound"
+  // The payload for the filters on screen. A summary fetched for «all teams»
+  // is not shown under a team picked a moment later, even when the new
+  // request fails: the numbers of another scope would stay there for ever.
+  const currentTeamToday = teamTodayForScope(teamToday, teamScopeKey)
+  useEffect(() => {
+    const requestId = ++teamRequestIdRef.current
+    if (!query || query.agentId) {
+      setTeamPhase("idle")
+      return
+    }
+    const controller = new AbortController()
+    const scopeKey = teamTodayScopeKey(query)
+    // Owner 2026-09-23: «I open the Panel, it opens, and a second later the
+    // panel is gone». Reading fourteen agents takes seconds, and the screen
+    // showed «loading» every time it was opened. The last list is kept and
+    // shown at once; the fresh one replaces it when it arrives.
+    const cached = readTeamToday(scopeKey)
+    if (cached) {
+      setTeamToday((current) => current && current.scopeKey === scopeKey ? current : cached)
+      setTeamFromCache(true)
+    }
+    setTeamPhase((current) => current === "ready" ? current : "loading")
+    const params = new URLSearchParams()
+    if (query.regionId) params.set("regionId", query.regionId)
+    if (query.teamId) params.set("teamId", query.teamId)
+    void (async () => {
+      try {
+        const { response, body } = await fetchOperationalWeekJsonWithTimeout(`/api/v1/mtm/week/team?${params.toString()}`, {
+          signal: controller.signal,
+          cache: "no-store",
+          headers: organizationId ? { "x-organization-id": String(organizationId) } : {},
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const normalized = normalizeTeamToday(body, scopeKey)
+        if (!normalized) throw new Error("Invalid team response")
+        if (requestId !== teamRequestIdRef.current) return
+        setTeamToday(normalized)
+        setTeamFromCache(false)
+        setTeamPhase("ready")
+        rememberTeamToday(normalized)
+      } catch {
+        if (controller.signal.aborted || requestId !== teamRequestIdRef.current) return
+        setTeamPhase("error")
+      }
+    })()
+    return () => controller.abort()
+  }, [organizationId, query?.agentId, query?.regionId, query?.teamId, refreshToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const agentId = facts?.selectedAgent.id || ""
     const period = monthWindow(query?.date || "")
@@ -1244,7 +1641,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
   useEffect(() => {
     if (!query) return
     const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible" && !inFlightRef.current && !mutatingAction && !planMutationId && facts) {
+      if (document.visibilityState === "visible" && !inFlightRef.current && !mutatingAction && !planMutationId && (facts || !query.agentId)) {
         setRefreshToken((value) => value + 1)
       }
     }, 60_000)
@@ -1288,11 +1685,13 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     const refreshOnVisible = () => {
       if (document.visibilityState !== "visible") return
       setFreshnessEpoch(Date.now())
-      if (facts && !inFlightRef.current && !mutatingAction && !planMutationId) setRefreshToken((value) => value + 1)
+      // The team view polls once a minute, but a manager who comes back to
+      // the tab after an hour should not read a summary up to 60 s stale.
+      if ((facts || teamViewActive) && !inFlightRef.current && !mutatingAction && !planMutationId) setRefreshToken((value) => value + 1)
     }
     document.addEventListener("visibilitychange", refreshOnVisible)
     return () => document.removeEventListener("visibilitychange", refreshOnVisible)
-  }, [facts, mutatingAction, planMutationId])
+  }, [facts, mutatingAction, planMutationId, teamViewActive])
 
   useEffect(() => {
     if (!query || !facts?.days.length) return
@@ -1479,6 +1878,77 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     }
   }
 
+  function managerWorkdayFailureMessage(code: string | null, kind: ManagerWorkdayActionKind, status = 0): string {
+    const key = managerWorkdayFailureMessageKey(code, kind)
+    if (key) return t(`managerWorkday.failure.${key}`)
+    if (status === 401 || status === 403) return t("managerWorkday.failure.forbidden")
+    if (status === 429) return t("managerWorkday.failure.rateLimited")
+    return t("managerWorkday.failure.generic")
+  }
+
+  function openManagerWorkdayDialog(kind: ManagerWorkdayActionKind) {
+    if (managerWorkdayPending || phase !== "ready" || cachedSnapshot) return
+    const action = facts?.managerWorkdayActions?.[kind]
+    if (!action?.allowed || !action.workdayId || !action.updatedAt) return
+    setManagerWorkdayReason("")
+    setManagerWorkdayError(null)
+    setManagerWorkdayTarget({
+      kind,
+      workdayId: action.workdayId,
+      expectedUpdatedAt: action.updatedAt,
+      operationId: clientOperationId(kind === "reopen" ? "workday-reopen" : "workday-reopen-undo"),
+    })
+  }
+
+  function closeManagerWorkdayDialog() {
+    if (managerWorkdayPending) return
+    setManagerWorkdayTarget(null)
+    setManagerWorkdayReason("")
+    setManagerWorkdayError(null)
+  }
+
+  const managerWorkdayReasonLength = managerWorkdayReason.trim().length
+  const managerWorkdayReasonValid = managerWorkdayReasonLength >= WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH
+    && managerWorkdayReasonLength <= WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH
+
+  async function submitManagerWorkdayAction() {
+    const target = managerWorkdayTarget
+    if (!target || managerWorkdayPending || !managerWorkdayReasonValid || managerWorkdayError?.final) return
+    setManagerWorkdayPending(true)
+    setManagerWorkdayError(null)
+    const action = target.kind === "reopen" ? "reopen" : "reopen/undo"
+    try {
+      const { response, body } = await fetchOperationalWeekJsonWithTimeout(`/api/v1/workforce/workdays/${encodeURIComponent(target.workdayId)}/${action}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(organizationId ? { "x-organization-id": String(organizationId) } : {}),
+        },
+        body: JSON.stringify({
+          operationId: target.operationId,
+          expectedUpdatedAt: target.expectedUpdatedAt,
+          reason: managerWorkdayReason.trim(),
+        }),
+      })
+      const result = record(body)
+      if (!response.ok || result.success !== true) {
+        const final = response.status === 409
+        setManagerWorkdayError({ message: managerWorkdayFailureMessage(firstString(result, "code"), target.kind, response.status), final })
+        // The day changed under the manager: show its current state behind the message.
+        if (final) refreshAfterPlanMutation()
+        return
+      }
+      toast.success(t(target.kind === "reopen" ? "managerWorkday.reopenSucceeded" : "managerWorkday.undoSucceeded"))
+      setManagerWorkdayTarget(null)
+      setManagerWorkdayReason("")
+      refreshAfterPlanMutation()
+    } catch {
+      setManagerWorkdayError({ message: t("managerWorkday.failure.generic"), final: false })
+    } finally {
+      setManagerWorkdayPending(false)
+    }
+  }
+
   const effectiveAgentId = facts?.selectedAgent.id || query?.agentId || ""
   const workdayMutationLive = phase === "ready" && cachedSnapshot === null
   const selectedDay = facts?.days.find((day) => day.date === query?.day) || facts?.days[0] || null
@@ -1512,6 +1982,105 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     }
   }
 
+  const managerView = facts ? facts.scopeRole !== "AGENT" : true
+  const leftOpenWorkday = asLeftOpen(facts?.managerWorkday ?? null)
+
+  function shortTime(value: string | null, timezone: string): string {
+    return formatTenantTimestamp(value, locale, timezone, { hour: "2-digit", minute: "2-digit", hour12: false })
+  }
+
+  /** One sentence for a shift the agent left open (prod 2026-09-14). */
+  function leftOpenLabel(state: Extract<MtmManagerWorkdayState, { kind: "left-open" }>, timezone: string): string {
+    return t("workdayLeftOpen", {
+      date: state.since ? formatTenantTimestamp(state.since, locale, timezone, { day: "numeric", month: "short" }) : "—",
+      time: shortTime(state.since, timezone),
+      duration: state.days > 0 ? t("workdayOpenDays", { count: state.days }) : t("workdayOpenHours", { count: state.hours }),
+    })
+  }
+
+  function managerWorkdayPresentation(state: MtmManagerWorkdayState, timezone: string) {
+    switch (state.kind) {
+      case "left-open": return { icon: AlertTriangle as typeof Info, label: leftOpenLabel(state, timezone), className: "text-red-700 dark:text-red-300" }
+      case "working": return workdayPresentation("ACTIVE")
+      case "paused": return workdayPresentation("PAUSED")
+      case "finished": return workdayPresentation("CLOSED")
+      default: return workdayPresentation("NOT_STARTED")
+    }
+  }
+
+  /** Workday label for a day card or the strip; today follows the manager state. */
+  function dayWorkdayPresentation(day: WeekDay) {
+    // The third-person "agent did not close it" sentence is for a manager; an
+    // agent reading about themselves keeps the plain workday state.
+    if (managerView && day.isToday && facts?.managerWorkday) return managerWorkdayPresentation(facts.managerWorkday, facts.timezone)
+    return workdayPresentation(day.workday.state)
+  }
+
+  /**
+   * The manager's side of today's workday for the selected employee: reopen
+   * a finished day, undo that reopen, or one line on why neither is possible.
+   * A saved snapshot offers no action; a refresh in flight only disables it.
+   */
+  function renderManagerWorkdayControls() {
+    const actions = facts?.managerWorkdayActions
+    if (!actions || !managerView || facts?.workdayCapability.canMutateSelf || cachedSnapshot) return null
+    if (actions.reopen.allowed) {
+      return (
+        <Button type="button" className="min-h-11" data-testid="mtm-week-workday-reopen" disabled={managerWorkdayPending || !workdayMutationLive} onClick={() => openManagerWorkdayDialog("reopen")}>
+          <RotateCcw className="h-4 w-4" />{t("managerWorkday.reopenAction")}
+        </Button>
+      )
+    }
+    if (actions.undoReopen.allowed) {
+      return (
+        <Button type="button" variant="outline" className="min-h-11" data-testid="mtm-week-workday-reopen-undo" disabled={managerWorkdayPending || !workdayMutationLive} onClick={() => openManagerWorkdayDialog("undoReopen")}>
+          <Undo2 className="h-4 w-4" />{t("managerWorkday.undoAction")}
+        </Button>
+      )
+    }
+    const refusalKind = MANAGER_WORKDAY_ACTION_KINDS.find((kind) => {
+      const reason = actions[kind].blockedReason
+      return Boolean(reason && MANAGER_WORKDAY_EXPLAINED_REFUSALS.has(reason))
+    })
+    return refusalKind ? (
+      <span className="inline-flex items-center gap-2 text-xs text-muted-foreground" data-testid="mtm-week-workday-manager-blocked">
+        <Info className="h-4 w-4 shrink-0" />{managerWorkdayFailureMessage(actions[refusalKind].blockedReason, refusalKind)}
+      </span>
+    ) : null
+  }
+
+  function alertTypeLabel(type: string): string {
+    return alertT.has(`typeLabel_${type}` as never) ? alertT(`typeLabel_${type}` as never) : alertT("typeLabel_OTHER")
+  }
+
+  function alertGroupSentence(group: AlertGroup): string | null {
+    if (group.messageKey && group.messageParams && alertT.has(`messages.${group.messageKey}` as never)) {
+      try {
+        return alertT(`messages.${group.messageKey}` as never, group.messageParams as never)
+      } catch {
+        return group.fallbackText
+      }
+    }
+    return group.fallbackText
+  }
+
+  function renderAlertGroup(group: AlertGroup, compact: boolean) {
+    const from = `${String(group.hour).padStart(2, "0")}:00`
+    const to = `${String((group.hour + 1) % 24).padStart(2, "0")}:00`
+    const sentence = compact ? null : alertGroupSentence(group)
+    return (
+      <li key={group.key} className={cn("text-xs", compact ? "py-1" : "py-2")}>
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span className={cn("font-semibold", group.category === "CRITICAL" ? "text-red-700 dark:text-red-300" : "text-amber-800 dark:text-amber-300")}>{alertTypeLabel(group.type)}</span>
+          <span className="tabular-nums text-muted-foreground">{from}–{to}</span>
+          <span className="tabular-nums">· {t("alertTimes", { count: group.count })}</span>
+          {group.maxDistanceMeters !== null ? <span className="tabular-nums text-muted-foreground">· {t("alertDistance", { value: group.maxDistanceMeters })}</span> : null}
+        </p>
+        {sentence ? <p className="mt-0.5 leading-5 text-muted-foreground">{sentence}</p> : null}
+      </li>
+    )
+  }
+
   function gpsPresentation(evidence: GpsEvidence) {
     if (evidence.reason === "PERMISSION_NOT_GRANTED") return { icon: ShieldAlert, label: t("gps.noPermission"), className: "text-red-700 dark:text-red-300" }
     const presentedFreshness = operationalWeekGpsPresentationFreshness(evidence.freshness, phase, {
@@ -1521,9 +2090,9 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
       delayedSeconds: evidence.delayedSeconds,
     })
     switch (presentedFreshness) {
-      case "ONLINE": return { icon: Wifi, label: t("gps.online"), className: "text-emerald-700 dark:text-emerald-300" }
-      case "DELAYED": return { icon: Clock3, label: t("gps.delayed"), className: "text-amber-700 dark:text-amber-300" }
-      case "STALE": return { icon: WifiOff, label: t("gps.stale"), className: "text-zinc-600 dark:text-zinc-300" }
+      case "ONLINE": return { icon: Wifi, label: t("gps.online"), className: "text-emerald-700 dark:text-emerald-300", seen: true }
+      case "DELAYED": return { icon: Clock3, label: t("gps.delayed"), className: "text-amber-700 dark:text-amber-300", seen: true }
+      case "STALE": return { icon: WifiOff, label: t("gps.stale"), className: "text-zinc-600 dark:text-zinc-300", seen: false }
       case "NO_PERMISSION": return { icon: ShieldAlert, label: t("gps.noPermission"), className: "text-red-700 dark:text-red-300" }
       case "NO_LOCATION": return { icon: MapPinOff, label: t("gps.noLocation"), className: "text-muted-foreground" }
       default: return { icon: MapPinOff, label: t("gps.unknown"), className: "text-muted-foreground" }
@@ -1591,7 +2160,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     return null
   }
 
-  function renderPoint(point: WeekPoint, day: WeekDay) {
+  function renderPoint(point: WeekPoint, day: WeekDay, displayNumber: number) {
     if (!query || !facts) return null
     const presentation = pointPresentation(point.status)
     const PointIcon = presentation.icon
@@ -1609,8 +2178,9 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     return (
       <article key={point.id} className="border-t border-zinc-200 py-3 first:border-t-0 dark:border-zinc-700">
         <div className="flex items-start gap-2.5">
+          {/* Prod 2026-09-14: orderIndex is 0-based and cards read «0», «1». */}
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums">
-            {point.order}
+            {displayNumber}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -1626,7 +2196,12 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                 ) : (
                   <span className="text-sm font-semibold">{t("unknownOrganization")}</span>
                 )}
-                {point.contactId && point.contactName ? (
+                {point.contactId && point.contactName && !fieldContactsEnabled ? (
+                  <span className="flex min-h-11 items-center gap-1 text-xs text-muted-foreground md:min-h-0">
+                    <ContactRound className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{point.contactName}</span>
+                  </span>
+                ) : point.contactId && point.contactName ? (
                   <Link
                     className="flex min-h-11 items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-0"
                     href={withReturnTo(`/mtm/contacts/${encodeURIComponent(point.contactId)}`, context)}
@@ -1650,6 +2225,19 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               <div><dt className="text-muted-foreground">{t("planned")}</dt><dd className="font-medium">{formatTenantTimestamp(point.plannedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" })}</dd></div>
               <div><dt className="text-muted-foreground">{t("actual")}</dt><dd className="font-medium">{formatTenantTimestamp(point.actualAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" })}</dd></div>
             </dl>
+            {point.visitId && point.actualAt ? (
+              <p className="mt-1.5 text-xs tabular-nums text-foreground" data-testid="mtm-week-visit-evidence">
+                {[
+                  point.checkOutAt
+                    ? t("visitEvidence.inOut", { in: shortTime(point.actualAt, facts.timezone), out: shortTime(point.checkOutAt, facts.timezone) })
+                    : t("visitEvidence.inOnly", { in: shortTime(point.actualAt, facts.timezone) }),
+                  point.durationMinutes !== null ? t("visitEvidence.minutes", { count: point.durationMinutes }) : null,
+                  point.photoCount ? t("visitEvidence.photos", { count: point.photoCount }) : null,
+                  point.hasSignature ? t("visitEvidence.signature") : null,
+                  point.hasNote ? t("visitEvidence.note") : null,
+                ].filter(Boolean).join(" · ")}
+              </p>
+            ) : null}
             {point.status === "CANCELLED" || point.status === "CANCELED" ? (
               <p className="mt-2 text-xs text-red-700 dark:text-red-300">
                 {point.cancellationReason
@@ -1692,10 +2280,13 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
 
   function renderDay(day: WeekDay, compact = false) {
     if (!query || !facts) return null
-    const workday = workdayPresentation(day.workday.state)
-    const gps = gpsPresentation(facts.gps)
+    const fullWorkday = dayWorkdayPresentation(day)
+    // The banner above the week tells the left-open story in full; the day
+    // card only names the state (owner 2026-09-22: one fact, said once).
+    const workday = managerView && day.isToday && leftOpenWorkday ? { ...fullWorkday, label: t("workdayLeftOpenShort") } : fullWorkday
     const WorkdayIcon = workday.icon
-    const GpsIcon = gps.icon
+    const dayAlertGroups = day.alertGroups ?? []
+    const dayHasCounts = day.summary.planned + day.summary.actual + day.summary.cancelled > 0
     const orderedRoutes = day.routes.map((route) => ({
       ...route,
       points: [...route.points].sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)),
@@ -1721,44 +2312,60 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{formatCalendarDay(day.date, locale, { weekday: "short" })}</p>
               <p className="text-base font-semibold tabular-nums">{formatCalendarDay(day.date, locale, { day: "numeric", month: "short" })}</p>
             </button>
-            <span className="text-xs text-muted-foreground">{t(planRowsMayBeTruncated ? "visibleStopsCount" : "stopsCount", { count: pointCount })}</span>
+            {pointCount ? <span className="text-xs text-muted-foreground">{t(planRowsMayBeTruncated ? "visibleStopsCount" : "stopsCount", { count: pointCount })}</span> : null}
           </div>
           <div className="mt-2 grid gap-1.5 text-xs">
             {facts.workdayCapability.enabled ? <span className={cn("inline-flex items-center gap-1.5", workday.className)}><WorkdayIcon className="h-3.5 w-3.5" />{workday.label}</span> : null}
-            {day.isToday ? <span className={cn("inline-flex items-center gap-1.5", gps.className)}><GpsIcon className="h-3.5 w-3.5" />{gps.label}</span> : null}
           </div>
-          <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">
+          {dayHasCounts ? <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">
             <span className="inline-flex items-center gap-1" aria-label={t("plannedCount", { count: day.summary.planned })}><Clock3 className="h-3 w-3" />{t("plannedShort")} {day.summary.planned}</span>
             <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300" aria-label={t("actualCount", { count: day.summary.actual })}><CheckCircle2 className="h-3 w-3" />{t("actualShort")} {day.summary.actual}</span>
             <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-300" aria-label={t("cancelledCount", { count: day.summary.cancelled })}><XCircle className="h-3 w-3" />{t("cancelledShort")} {day.summary.cancelled}</span>
-          </div>
+          </div> : null}
           {facts.workdayCapability.enabled && day.workday.startedAt ? <p className="mt-2 text-[11px] text-muted-foreground">{t("dayStarted", { time: formatTenantTimestamp(day.workday.startedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
           {facts.workdayCapability.enabled && day.workday.finishedAt ? <p className="mt-1 text-[11px] text-muted-foreground">{t("dayFinished", { time: formatTenantTimestamp(day.workday.finishedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
         </header>
         <div className="px-3">
-          {pointCount ? orderedRoutes.map((route) => (
-            <section key={route.id} aria-label={route.name || route.id}>
-              {route.name ? (
+          {dayAlertGroups.length ? (
+            <div className="border-b border-zinc-200 py-2 dark:border-zinc-700" data-testid="mtm-week-day-alerts">
+              <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300"><BellRing className="h-3.5 w-3.5" />{t("dayAlerts", { count: dayAlertGroups.reduce((total, group) => total + group.count, 0) })}</p>
+              <ul>{dayAlertGroups.slice(0, 4).map((group) => renderAlertGroup(group, true))}</ul>
+              <Link href={withReturnTo(`/mtm/alerts?agentId=${encodeURIComponent(effectiveAgentId)}`, context)} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">
+                {dayAlertGroups.length > 4 ? t("moreAlertGroups", { count: dayAlertGroups.length - 4 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+          ) : null}
+          {pointCount ? orderedRoutes.map((route) => {
+            // An unnamed route used to show its cuid; name it by its day.
+            const routeLabel = route.name || t("routeFallbackName", { date: formatCalendarDay(day.date, locale, { day: "numeric", month: "short" }) })
+            return (
+              <section key={route.id} aria-label={routeLabel}>
                 <div className="flex items-center justify-between gap-2 border-b border-zinc-200 py-2 text-xs dark:border-zinc-700">
                   <Link href={withReturnTo(`/mtm/routes?routeId=${encodeURIComponent(route.id)}`, context)} className="inline-flex min-h-11 min-w-0 items-center gap-1.5 font-medium hover:text-primary hover:underline md:min-h-0">
-                    <RouteIcon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{route.name}</span>
+                    <RouteIcon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{routeLabel}</span>
                   </Link>
-                  {route.publishedVersion !== null ? <span className="shrink-0 text-muted-foreground">v{route.publishedVersion}</span> : null}
+                  {!managerView && route.publishedVersion !== null ? <span className="shrink-0 text-muted-foreground">v{route.publishedVersion}</span> : null}
                 </div>
-              ) : null}
-              {route.points.map((point) => renderPoint(point, day))}
-            </section>
-          )) : (
-            <div className="flex min-h-32 flex-col items-center justify-center gap-2 py-6 text-center">
-              {planRowsMayBeTruncated ? <AlertTriangle className="h-5 w-5 text-amber-600" /> : <CalendarDays className="h-5 w-5 text-muted-foreground" />}
-              <p className="text-sm font-medium">{t(planRowsMayBeTruncated ? "planRowsLimited" : "noPublishedPlan")}</p>
-              <p className="max-w-[32ch] text-xs text-muted-foreground">{t(planRowsMayBeTruncated ? "planRowsLimitedHint" : "noPublishedPlanHint")}</p>
-            </div>
+                {route.points.map((point, index) => renderPoint(point, day, index + 1))}
+              </section>
+            )
+          }) : (
+            planRowsMayBeTruncated ? (
+              <div className="flex min-h-32 flex-col items-center justify-center gap-2 py-6 text-center">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <p className="text-sm font-medium">{t("planRowsLimited")}</p>
+                <p className="max-w-[32ch] text-xs text-muted-foreground">{t("planRowsLimitedHint")}</p>
+              </div>
+            ) : (
+              // A day without a route is one quiet line, not an icon, a title and
+              // a sentence explaining that nothing is there.
+              <p data-testid="mtm-week-day-no-route" className="py-4 text-sm text-muted-foreground">{t("noRouteThisDay")}</p>
+            )
           )}
           {day.unplannedVisits.length ? (
             <div className="border-t border-zinc-200 py-2 dark:border-zinc-700">
               <p className="pb-1 text-xs font-semibold text-muted-foreground">{t("unplannedVisits")}</p>
-              {day.unplannedVisits.map((visit) => renderPoint(visit, day))}
+              {day.unplannedVisits.map((visit, index) => renderPoint(visit, day, index + 1))}
             </div>
           ) : null}
           {day.tasks.length ? (
@@ -1847,7 +2454,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                 disabled={Boolean(planMutationId)}
               />
             </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 min-[1600px]:grid-cols-1">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 min-[100rem]:grid-cols-1">
               <Button type="button" size="sm" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "APPROVED")}>{t("approveCancellation")}</Button>
               <Button type="button" size="sm" variant="secondary" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "RESCHEDULE")}>{t("rescheduleCancellation")}</Button>
               <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "NEEDS_INFO")}>{t("returnCancellation")}</Button>
@@ -1943,13 +2550,22 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
 
   function renderAttentionRailContent(railId: "compact" | "desktop") {
     if (!facts) return null
+    const attentionTodayInPeriod = facts.days.some((day) => day.date === facts.today)
+    const attentionHasAlerts = (facts.alertGroups ?? []).some((group) => !attentionTodayInPeriod || group.date === facts.today)
+    const attentionHasPlanChanges = pendingCancellations.length > 0
+      || pendingOtherPlanChanges.length > 0
+      || facts.planChanges.some((change) => !facts.pendingPlanChanges.some((pending) => pending.id === change.id))
     return (
       <>
         <div data-testid={`mtm-swm15-coverage-${railId}`} className="px-4 py-5 lg:px-5">
+          {/* Owner 2026-09-22: a period without a plan read «0 / 0 / 0 — not
+              calculated»; it is one sentence. */}
+          {facts.summary.planned === 0 && facts.summary.actual === 0 && facts.summary.cancelled === 0 ? (
+            <p data-testid={`mtm-week-no-plan-${railId}`} className="text-sm text-muted-foreground">{t("noPlanInPeriod")}</p>
+          ) : <>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">{t("publishedPlan")}</p>
-              <h3 className="mt-1 text-base font-semibold">{t("coverageTitle")}</h3>
+              <h3 className="text-base font-semibold">{t("coverageTitle")}</h3>
             </div>
             <span className="text-3xl font-semibold tabular-nums">{coveragePercentage === null ? "—" : `${Math.round(coveragePercentage)}%`}</span>
           </div>
@@ -1975,13 +2591,15 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                 ? t("coverageNotApplicable")
                 : facts.summary.formula || t("coverageFormula", { numerator: facts.summary.numerator ?? facts.summary.actual, denominator: facts.summary.denominator ?? facts.summary.planned })}
           </p>
-          {facts.lastSourceAt ? <p className="mt-2 text-xs text-muted-foreground">{t("sourceUpdatedAt", { date: formatTenantTimestamp(facts.lastSourceAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) })}</p> : null}
+          </>}
 
+          {/* The base coverage block is shown only with numbers: «formula not
+              signed by the administrator» is a setup fact, not the agent's. */}
+          {baseCoveragePhase === "ready" && baseCoverage?.available && baseCoverage.totals && !cachedSnapshot ? (
           <section className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-700" data-testid="mtm-base-coverage">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary"><Building2 className="h-3.5 w-3.5" />{t("baseCoverageEyebrow")}</p>
-                <h4 className="mt-1 text-sm font-semibold">{t("baseCoverageTitle")}</h4>
+                <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold"><Building2 className="h-4 w-4 text-primary" />{t("baseCoverageTitle")}</h4>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {baseCoverage?.period.start
                     ? t("baseCoveragePeriod", { date: formatCalendarDay(baseCoverage.period.start, locale, { month: "long", year: "numeric" }) })
@@ -2058,7 +2676,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                             <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
                               {rows.map((row) => {
                                 const detailPath = row.subjectType === "DOCTOR"
-                                  ? `/mtm/contacts/${encodeURIComponent(row.subjectId)}`
+                                  ? (fieldContactsEnabled ? `/mtm/contacts/${encodeURIComponent(row.subjectId)}` : null)
                                   : row.customerId
                                     ? `/mtm/customers/${encodeURIComponent(row.customerId)}`
                                     : null
@@ -2117,13 +2735,39 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               </div>
             ) : null}
           </section>
+          ) : null}
         </div>
 
-        <section className="border-t border-zinc-200 px-4 py-5 dark:border-zinc-700 md:border-l md:border-t-0 min-[1600px]:border-l-0 min-[1600px]:border-t min-[1600px]:px-5">
+        <section className="border-t border-zinc-200 px-4 py-5 dark:border-zinc-700 md:border-l md:border-t-0 min-[100rem]:border-l-0 min-[100rem]:border-t min-[100rem]:px-5">
           <h3 className="text-base font-semibold">{t("needsAttention")}</h3>
-          <div className="mt-4 space-y-5">
-            <section>
-              <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-800 dark:text-red-200"><XCircle className="h-4 w-4" />{t("pendingCancellations")}</h4><Badge variant={pendingCancellations.length ? "destructive" : "outline"}>{pendingCancellations.length}</Badge></div>
+          {/* Owner 2026-09-22: sections with a zero and a sentence explaining the
+              zero («Оповещения 0 — нерешённых нет») are gone; only what has
+              something to act on is shown, or one calm line. */}
+          {!attentionHasAlerts && !attentionHasPlanChanges && !activeTasks.length ? (
+            <p data-testid={`mtm-week-attention-calm-${railId}`} className="mt-3 text-sm text-muted-foreground">{t("nothingNeedsAttention")}</p>
+          ) : null}
+          <div className="mt-4 space-y-5 [&>section:first-child]:border-t-0 [&>section:first-child]:pt-0">
+            {(() => {
+              const todayInPeriod = facts.days.some((day) => day.date === facts.today)
+              const groups = (facts.alertGroups ?? []).filter((group) => !todayInPeriod || group.date === facts.today)
+              const total = groups.reduce((sum, group) => sum + group.count, 0)
+              if (!groups.length) return null
+              const alertsHref = withReturnTo(
+                `/mtm/alerts?agentId=${encodeURIComponent(effectiveAgentId)}`,
+                query ? returnPath(query, effectiveAgentId, selectedDay?.date || query.day) : "/mtm",
+              )
+              return (
+                <section data-testid={`mtm-week-alerts-${railId}`}>
+                  <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-800 dark:text-amber-300"><BellRing className="h-4 w-4" />{t(todayInPeriod ? "alertsToday" : "alertsInPeriod")}</h4><Badge variant={total ? "warning" : "outline"}>{total}{facts.alertsTruncated ? "+" : ""}</Badge></div>
+                  <ul className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-700">{groups.slice(0, 6).map((group) => renderAlertGroup(group, false))}</ul>
+                  <Link href={alertsHref} className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                    {groups.length > 6 ? t("moreAlertGroups", { count: groups.length - 6 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3 shrink-0" />
+                  </Link>
+                </section>
+              )
+            })()}
+            {attentionHasPlanChanges ? <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+              {pendingCancellations.length ? <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-800 dark:text-red-200"><XCircle className="h-4 w-4" />{t("pendingCancellations")}</h4><Badge variant="destructive">{pendingCancellations.length}</Badge></div> : null}
               {pendingCancellations.length ? (
                 <>
                   <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -2151,7 +2795,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                     </div>
                   ) : null}
                 </>
-              ) : <p className="mt-2 text-xs text-muted-foreground">{t("noPendingCancellations")}</p>}
+              ) : null}
               {pendingOtherPlanChanges.length ? (
                 <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-700">
                   <div className="flex items-center justify-between gap-2"><h5 className="text-xs font-semibold text-muted-foreground">{t("pendingPlanChanges")}</h5><Badge variant="warning">{pendingOtherPlanChanges.length}</Badge></div>
@@ -2166,8 +2810,8 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                   </ul>
                 </div>
               ) : null}
-            </section>
-            <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+            </section> : null}
+            {activeTasks.length ? <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
               <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold"><ClipboardList className="h-4 w-4 text-primary" />{t("activeTasks")}</h4><Badge variant={activeTasks.length ? "info" : "outline"}>{activeTasks.length}</Badge></div>
               {activeTasks.length ? (
                 <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-label={t("taskAttentionSummary", { overdue: overdueTaskCount, returned: returnedTaskCount })}>
@@ -2194,18 +2838,21 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                             </Link>
                             <Badge variant={attention.variant} className="shrink-0">{attention.label}</Badge>
                           </div>
-                          <p className="mt-1 text-[11px] text-muted-foreground" title={task.id} aria-label={t("taskId", { id: task.id })}>
-                            {t("taskId", { id: task.id.length > 12 ? `${task.id.slice(0, 6)}…${task.id.slice(-4)}` : task.id })}
-                            {task.version === null ? null : <span> · {t("taskVersion", { version: task.version })}</span>}
-                          </p>
+                          {/* Prod 2026-09-14: «ID cmqm7j…p468 · versiya 1» means nothing to a manager. */}
+                          {!managerView ? (
+                            <p className="mt-1 text-[11px] text-muted-foreground" title={task.id} aria-label={t("taskId", { id: task.id })}>
+                              {t("taskId", { id: task.id.length > 12 ? `${task.id.slice(0, 6)}…${task.id.slice(-4)}` : task.id })}
+                              {task.version === null ? null : <span> · {t("taskVersion", { version: task.version })}</span>}
+                            </p>
+                          ) : null}
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             <Badge variant={task.status === "OVERDUE" ? "destructive" : "outline"}>{taskStatusLabel(task.status)}</Badge>
                             <Badge variant={task.priority === "URGENT" || task.priority === "HIGH" ? "warning" : "outline"}>{taskPriorityLabel(task.priority)}</Badge>
                           </div>
                           {(task.scheduledStartAt || task.dueAt) ? (
                             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                              <div><dt className="text-muted-foreground">{t("taskScheduledStart")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.scheduledStartAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div>
-                              <div><dt className="text-muted-foreground">{t("taskDue")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.dueAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div>
+                              {task.scheduledStartAt ? <div><dt className="text-muted-foreground">{t("taskScheduledStart")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.scheduledStartAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div> : null}
+                              {task.dueAt ? <div><dt className="text-muted-foreground">{t("taskDue")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.dueAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div> : null}
                             </dl>
                           ) : null}
                           {task.returnReason ? <p className="mt-2 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-950 dark:bg-amber-950/25 dark:text-amber-100">{t("taskReturnedReason", { reason: task.returnReason })}</p> : null}
@@ -2220,16 +2867,288 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                     </Link>
                   </div>
                 </>
-              ) : <p className="mt-2 text-xs text-muted-foreground">{t("noActiveTasks")}</p>}
-            </section>
+              ) : null}
+            </section> : null}
           </div>
         </section>
       </>
     )
   }
 
-  return (
-    <section data-testid="mtm-operational-week" aria-labelledby="operational-week-title" className="border-y border-zinc-200 bg-card dark:border-zinc-700">
+  /**
+   * One row of the team list. Audit 2026-09-21: the table's six columns
+   * repeated «0», «—», «Визитов нет» for every idle agent; a row now names
+   * only the facts it has, and the left edge (red / amber) is the group —
+   * there are no "Problems (3)" headings repeating the summary's numbers.
+   */
+  function renderTeamRow(entry: ClassifiedTeamRow<TeamTodayRow>, tone: "problem" | "active" | "idle") {
+    if (!query || !teamToday) return null
+    const { row } = entry
+    const timezone = teamToday.timezone
+    const openWeek = () => updateQuery({ ...query, agentId: row.agentId, day: teamToday.today || query.day, date: teamToday.today || query.date })
+    // Stage A of "close this shift": there is no server operation that closes
+    // another agent's shift (POST /api/v1/mtm/week/workday is self-only and
+    // reopen/undo work on COMPLETED days only), so a «Close» button would be
+    // a lie. The honest action opens the agent's week, where the left-open
+    // banner and the manager's controls already are. Stage B swaps this
+    // handler and the button key once a manager FINISH exists.
+    const openLeftOpenShift = openWeek
+    const leftOpen = entry.flags.includes("shift-left-open")
+    const accent = tone === "problem"
+      ? (leftOpen ? "border-l-2 border-l-red-600" : "border-l-2 border-l-amber-500")
+      : tone === "idle" ? "text-muted-foreground" : null
+    // «Not started» is the absence of a fact, not a fact — no chip for it.
+    const workday = teamToday.workdayEnabled && row.workday && row.workday.kind !== "not-started" ? managerWorkdayPresentation(row.workday, timezone) : null
+    const WorkdayIcon = workday?.icon
+    return (
+      <li key={row.agentId} className={cn("grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 border-t border-zinc-200 px-4 py-2.5 hover:bg-muted/40 dark:border-zinc-700 lg:px-5", accent)} onClick={openWeek}>
+        <div className="min-w-0">
+          <button type="button" className="min-h-11 text-left font-semibold hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-0" onClick={(event) => { event.stopPropagation(); openWeek() }}>{row.name}</button>
+          {row.teamName ? <span className="ml-2 text-xs text-muted-foreground">{row.teamName}</span> : null}
+          {(() => {
+            // Owner 2026-09-22: the row first says where the agent is and
+            // where they are going; the facts line below is the detail.
+            const where = teamRowWhereabouts(row)
+            if (!where) return null
+            const name = (value: string | null) => value || t("teamWhereUnknownCustomer")
+            const text = where.kind === "at-customer"
+              ? t("teamWhereAtCustomer", { customer: name(where.customerName), time: shortTime(where.since, timezone) })
+              : where.kind === "heading"
+                ? where.plannedAt
+                  ? t("teamWhereHeadingAt", { customer: name(where.customerName), time: shortTime(where.plannedAt, timezone) })
+                  : t("teamWhereHeading", { customer: name(where.customerName) })
+                : where.kind === "day-done"
+                  ? where.at ? t("teamWhereDayDoneAt", { time: shortTime(where.at, timezone) }) : t("teamWhereDayDone")
+                  : t("teamWhereLastVisit", { customer: name(where.customerName), time: shortTime(where.until, timezone) })
+            const WhereIcon = where.kind === "at-customer" ? MapPin : where.kind === "heading" ? Navigation : where.kind === "day-done" ? CheckCircle2 : History
+            return (
+              <p data-testid="mtm-week-team-row-where" className={cn("mt-0.5 flex items-center gap-1.5 text-sm", where.kind === "at-customer" ? "font-medium text-emerald-700 dark:text-emerald-300" : where.kind === "heading" ? "text-foreground" : "text-muted-foreground")}>
+                <WhereIcon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{text}</span>
+              </p>
+            )
+          })()}
+          <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+            {workday && WorkdayIcon ? <span className={cn("inline-flex items-start gap-1.5", workday.className)}><WorkdayIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />{workday.label}</span> : null}
+            {entry.flags.includes("in-field-no-plan") ? (
+              <span className="text-amber-700 dark:text-amber-300">{t("teamNoRoute")}</span>
+            ) : row.route ? (
+              <span className="tabular-nums">{t("teamRouteProgress", { visited: row.route.visited, total: row.route.total })}</span>
+            ) : (
+              <span className="text-muted-foreground">{t("teamNoRoute")}</span>
+            )}
+            {entry.openVisitSince ? <span className="font-medium tabular-nums">{t("teamRowOpenVisit", { time: shortTime(entry.openVisitSince, timezone) })}</span> : null}
+            {row.visitCount > 0 ? <span className="text-muted-foreground">{t("teamRowVisits", { count: row.visitCount })}</span> : null}
+            {entry.flags.includes("in-field-no-gps") ? (
+              <span className="text-amber-700 dark:text-amber-300">{t("teamNoGpsToday")}</span>
+            ) : row.lastGpsAt ? (
+              // Always grey: a last known position, never "live" (same rule as the map).
+              <span className="tabular-nums text-muted-foreground">{t("teamRowLastGps", { time: shortTime(row.lastGpsAt, timezone) })}</span>
+            ) : null}
+            {row.openAlerts > 0 ? (
+              <Link href={`/mtm/alerts?agentId=${encodeURIComponent(row.agentId)}`} onClick={(event) => event.stopPropagation()} className="text-amber-700 underline-offset-2 hover:underline dark:text-amber-300">{t("teamRowOpenAlerts", { count: row.openAlerts })}</Link>
+            ) : null}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-start gap-2">
+          {row.lastGpsAt ? (
+            <Link href={`/mtm/map?agentId=${encodeURIComponent(row.agentId)}`} onClick={(event) => event.stopPropagation()} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">
+              <MapPin className="h-3.5 w-3.5" />{t("teamRowOnMap")}
+            </Link>
+          ) : null}
+          {leftOpen ? (
+            <Button type="button" variant="outline" size="sm" className="min-h-11 shrink-0 md:min-h-0" onClick={(event) => { event.stopPropagation(); openLeftOpenShift() }}>{t("teamOpenWeek")}</Button>
+          ) : null}
+        </div>
+      </li>
+    )
+  }
+
+  /**
+   * The team view: one line of facts, then only the rows that carry a fact.
+   * Audit 2026-09-21 on prod: 17 × 6 cells, three meaningful, and the
+   * 19-day open shift in the last column in the same font as «Не начат».
+   * Every number here comes from `summarizeTeamToday`; JSX computes nothing.
+   */
+  function renderTeamToday() {
+    const scoped = currentTeamToday
+    const summary = scoped ? summarizeTeamToday(scoped.rows, { workdayEnabled: scoped.workdayEnabled, partial: scoped.partial, visitsTruncated: scoped.visitsTruncated }) : null
+    const timezone = scoped?.timezone || "UTC"
+    // No date before the query exists: the server's date and the browser's
+    // can differ at hydration, and the heading must not.
+    const titleDate = scoped?.today || query?.date || null
+    return (
+      <section data-testid="mtm-week-team-today" aria-labelledby="mtm-week-team-today-title">
+        <h3 id="mtm-week-team-today-title" className="sr-only">
+          {titleDate ? t("teamTodayTitle", { date: formatCalendarDay(titleDate, locale, { weekday: "long", day: "numeric", month: "long" }) }) : t("teamTodayTitleNoDate")}
+        </h3>
+        {!scoped || !summary ? (
+          teamPhase === "error" ? (
+            <p role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm lg:px-5">
+              <WifiOff className="h-4 w-4 text-red-600" />
+              <span className="font-semibold">{t("teamLoadFailed")}</span>
+              <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-0" onClick={() => setRefreshToken((value) => value + 1)}>{t("retry")}</Button>
+            </p>
+          ) : (
+            // A text line, not a block skeleton: the summary is one line, so
+            // a 128 px placeholder promised more than what arrives. Only the
+            // very first open ever sees it — afterwards the last list is shown.
+            <p role="status" className="px-4 py-3 text-sm text-muted-foreground lg:px-5">{t("teamLoading")}</p>
+          )
+        ) : (
+          <>
+            {teamPhase === "error" ? (
+              // The numbers shown are still true "as of" the time in the last
+              // segment, so the list stays and only the refresh failure is named.
+              <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 bg-red-50 px-4 py-2 text-sm text-red-900 dark:bg-red-950/25 dark:text-red-100 lg:px-5">
+                <WifiOff className="h-4 w-4" />
+                <span className="font-medium">{t("teamLoadFailed")}</span>
+                <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-0" onClick={() => setRefreshToken((value) => value + 1)}>{t("retry")}</Button>
+              </p>
+            ) : null}
+            {summary.total === 0 ? (
+              <p className="px-4 py-3 text-sm font-semibold lg:px-5">{t("noEmployeesTitle")}</p>
+            ) : (
+              <>
+                {/* No separator glyph in the DOM: at 294 px a «·» would wrap to the
+                    start of a line. The gap is the separator. No aria-live: the
+                    60-second poll would announce the summary every minute. */}
+                <p data-testid="mtm-week-team-summary" className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3 text-sm lg:px-5">
+                  <span className="text-base font-semibold">
+                    {summary.inFieldBasis === "workday"
+                      ? t("summaryInField", { count: summary.inField, total: summary.total })
+                      : t("summaryOnVisit", { count: summary.inField, total: summary.total })}
+                  </span>
+                  {summary.openShifts.oldest ? (
+                    <span className="font-semibold text-red-700 dark:text-red-300">
+                      {t("summaryOpenShifts", {
+                        count: summary.openShifts.count,
+                        duration: summary.openShifts.oldest.days > 0
+                          ? t("workdayOpenDays", { count: summary.openShifts.oldest.days })
+                          : t("workdayOpenHours", { count: summary.openShifts.oldest.hours }),
+                      })}
+                    </span>
+                  ) : null}
+                  {summary.planned === 0 ? (
+                    <span>{t("summaryNoPlans")}</span>
+                  ) : summary.withoutPlan > 0 ? (
+                    <span>{t("summaryWithoutPlan", { count: summary.withoutPlan })}</span>
+                  ) : null}
+                  {summary.partial ? <span className="text-amber-700 dark:text-amber-300">{t("summaryScopeTruncated", { count: summary.total })}</span> : null}
+                  {summary.visitsTruncated ? <span className="text-amber-700 dark:text-amber-300">{t("teamVisitsTruncated")}</span> : null}
+                  {scoped.generatedAt ? <span className="tabular-nums text-muted-foreground">{t("summaryAsOf", { time: shortTime(scoped.generatedAt, timezone) })}</span> : null}
+                  {teamFromCache && teamPhase === "loading" ? <span className="text-muted-foreground">{t("teamRefreshing")}</span> : null}
+                </p>
+                <ul className="border-t border-zinc-200 dark:border-zinc-700">
+                  {/* Owner 2026-09-22: who is where comes first; problems follow. */}
+                  {summary.active.map((entry) => renderTeamRow(entry, "active"))}
+                  {summary.problems.map((entry) => renderTeamRow(entry, "problem"))}
+                  {summary.idle.length > 0 ? (
+                    // Fourteen «Не начат» rows fold into one line; the count lives
+                    // only here. Without workforce-hrm "not started" is unprovable,
+                    // so the tenant reads "no activity" instead.
+                    <li className="border-t border-zinc-200 px-4 py-2 text-sm text-muted-foreground dark:border-zinc-700 lg:px-5">
+                      <button type="button" data-testid="mtm-week-team-idle-toggle" className="inline-flex min-h-11 items-center gap-2 md:min-h-0" aria-expanded={idleExpanded} aria-controls="mtm-week-team-idle" onClick={() => setIdleExpanded((value) => !value)}>
+                        {scoped.workdayEnabled ? t("teamIdleCollapsed", { count: summary.idle.length }) : t("teamIdleNoActivity", { count: summary.idle.length })}
+                        <span className="underline">{idleExpanded ? t("teamIdleHide") : t("teamIdleShow")}</span>
+                      </button>
+                    </li>
+                  ) : null}
+                  {idleExpanded && summary.idle.length > 0 ? (
+                    <li className="p-0">
+                      <ul id="mtm-week-team-idle">
+                        {summary.idle.map((entry) => renderTeamRow(entry, "idle"))}
+                      </ul>
+                    </li>
+                  ) : null}
+                </ul>
+              </>
+            )}
+          </>
+        )}
+      </section>
+    )
+  }
+
+  /**
+   * Filters and the refresh button. In the team view the endpoint is always
+   * "today" for the tenant, so the period (1/5/7), the date and the arrows
+   * controlled nothing and are not drawn; the eyebrow, the description and
+   * «Last successful response: —» were instruction, not fact (audit 2026-09-21).
+   */
+  function renderScopeControls(compact: boolean) {
+    const regionField = (
+      <label className="grid gap-1 text-sm font-medium">
+        <span>{t("region")}</span>
+        <select
+          className="h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
+          value={query?.regionId || ""}
+          onChange={(event) => query && updateQuery({ ...query, regionId: event.target.value, teamId: "", agentId: "" }, "region")}
+          disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.regions.length === 0}
+        >
+          <option value="">{t("allRegions")}</option>
+          {filters.regions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+        </select>
+      </label>
+    )
+    const teamField = (
+      <label className="grid gap-1 text-sm font-medium">
+        <span>{t("team")}</span>
+        <select
+          className="h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
+          value={query?.teamId || ""}
+          onChange={(event) => query && updateQuery({ ...query, teamId: event.target.value, agentId: "" }, "team")}
+          disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.teams.length === 0}
+        >
+          <option value="">{t("allTeams")}</option>
+          {filters.teams.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+        </select>
+      </label>
+    )
+    const employeeField = (
+      <label className="grid gap-1 text-sm font-medium">
+        <span>{t("employee")}</span>
+        <select
+          className="h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
+          value={effectiveAgentId}
+          onChange={(event) => query && updateQuery({ ...query, agentId: event.target.value })}
+          disabled={!query || Boolean(mutatingAction) || phase === "loading" && displayedAgentOptions.length === 0}
+        >
+          <option value="">{t("chooseEmployee")}</option>
+          {displayedAgentOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+        </select>
+      </label>
+    )
+    const refreshButton = (
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-11 w-11"
+        onClick={() => !inFlightRef.current && setRefreshToken((value) => value + 1)}
+        disabled={!query || phase === "loading" || phase === "refreshing" || Boolean(mutatingAction)}
+        aria-label={t("refresh")}
+        title={t("refresh")}
+      >
+        <RefreshCw className={cn("h-4 w-4", phase === "refreshing" && "animate-spin motion-reduce:animate-none")} />
+      </Button>
+    )
+    if (compact) {
+      // The section's h2 is rendered by the caller, above the team summary,
+      // so a screen reader's heading list keeps the section before its content.
+      return (
+        <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700 lg:px-5">
+          <div className="flex items-end gap-3">
+            <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-3">
+              {regionField}
+              {teamField}
+              {employeeField}
+            </div>
+            {refreshButton}
+          </div>
+        </div>
+      )
+    }
+    return (
       <div className="px-4 py-5 lg:px-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
@@ -2237,67 +3156,24 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               <CalendarDays className="h-4 w-4" />{t("eyebrow")}
             </div>
             <h2 id="operational-week-title" className="mt-1 text-xl font-semibold tracking-tight">{t("title")}</h2>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("description")}</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <div className="text-right text-xs text-muted-foreground">
-              <p>{t("lastSuccessfulResponse")}</p>
-              <p className="font-medium tabular-nums text-foreground">
-                {facts?.generatedAt ? formatTenantTimestamp(facts.generatedAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) : "—"}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-11 w-11"
-              onClick={() => !inFlightRef.current && setRefreshToken((value) => value + 1)}
-              disabled={!query || phase === "loading" || phase === "refreshing" || Boolean(mutatingAction)}
-              aria-label={t("refresh")}
-              title={t("refresh")}
-            >
-              <RefreshCw className={cn("h-4 w-4", phase === "refreshing" && "animate-spin motion-reduce:animate-none")} />
-            </Button>
+            {facts ? (
+              <div className="text-right text-xs text-muted-foreground">
+                <p>{t("lastSuccessfulResponse")}</p>
+                <p className="font-medium tabular-nums text-foreground">
+                  {facts.generatedAt ? formatTenantTimestamp(facts.generatedAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) : "—"}
+                </p>
+              </div>
+            ) : null}
+            {refreshButton}
           </div>
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(10rem,1fr)_minmax(10rem,1fr)_minmax(12rem,1.25fr)_auto]">
-          <label className="grid gap-1 text-sm font-medium">
-            <span>{t("region")}</span>
-            <select
-              className="h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
-              value={query?.regionId || ""}
-              onChange={(event) => query && updateQuery({ ...query, regionId: event.target.value, teamId: "", agentId: "" }, "region")}
-              disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.regions.length === 0}
-            >
-              <option value="">{t("allRegions")}</option>
-              {filters.regions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-medium">
-            <span>{t("team")}</span>
-            <select
-              className="h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
-              value={query?.teamId || ""}
-              onChange={(event) => query && updateQuery({ ...query, teamId: event.target.value, agentId: "" }, "team")}
-              disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.teams.length === 0}
-            >
-              <option value="">{t("allTeams")}</option>
-              {filters.teams.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-medium">
-            <span>{t("employee")}</span>
-            <select
-              className="h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
-              value={effectiveAgentId}
-              onChange={(event) => query && updateQuery({ ...query, agentId: event.target.value })}
-              disabled={!query || Boolean(mutatingAction) || phase === "loading" && displayedAgentOptions.length === 0}
-            >
-              <option value="">{t("chooseEmployee")}</option>
-              {displayedAgentOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-            </select>
-          </label>
+          {regionField}
+          {teamField}
+          {employeeField}
           <div className="grid gap-1">
             <span className="text-sm font-medium">{t("period")}</span>
             <div className="flex min-h-11 items-center rounded-full border border-zinc-200 p-1 dark:border-zinc-700" role="group" aria-label={t("period") }>
@@ -2335,6 +3211,16 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           </div>
         </div>
       </div>
+    )
+  }
+
+  return (
+    <section data-testid="mtm-operational-week" aria-labelledby="operational-week-title" className="border-y border-zinc-200 bg-card dark:border-zinc-700">
+      {/* Audit 2026-09-21: the first fact stands above any filter or heading.
+          The section's own heading stays first for screen readers only. */}
+      {teamLayout ? <h2 id="operational-week-title" className="sr-only">{t("title")}</h2> : null}
+      {teamLayout && !bootstrapFailed ? renderTeamToday() : null}
+      {renderScopeControls(teamLayout)}
 
       {(phase === "offline" || phase === "snapshot") && cachedSnapshot ? (
         <div className={cn("flex flex-col gap-2 border-t border-zinc-200 px-4 py-3 text-sm dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between", snapshotExpired ? "bg-red-50 text-red-900 dark:bg-red-950/25 dark:text-red-100" : "bg-amber-50 text-amber-900 dark:bg-amber-950/25 dark:text-amber-100")} role="status">
@@ -2382,7 +3268,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{facts.selectedAgent.name.slice(0, 1).toUpperCase()}</span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{facts.selectedAgent.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{[facts.selectedAgent.teamName, facts.selectedAgent.regionName].filter(Boolean).join(" · ") || t("scopeConfirmed")}</p>
+                <p className="truncate text-xs text-muted-foreground">{[facts.selectedAgent.teamName, facts.selectedAgent.regionName].filter(Boolean).join(" · ")}</p>
               </div>
             </div>
             {facts.workdayCapability.enabled ? <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:border-l lg:border-t-0 lg:px-5">
@@ -2392,7 +3278,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                     {mutatingAction === action ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : action === "START" || action === "RESUME" ? <PlayCircle className="h-4 w-4" /> : action === "PAUSE" ? <PauseCircle className="h-4 w-4" /> : <Square className="h-4 w-4" />}
                     {actionLabel(action)}
                   </Button>
-                )) : <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><ShieldAlert className="h-4 w-4" />{facts.workdayCapability.canMutateSelf ? t("workdayNoActions") : t("workdayReadOnly")}</span>}
+                )) : renderManagerWorkdayControls() ?? <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><ShieldAlert className="h-4 w-4" />{facts.workdayCapability.canMutateSelf ? t("workdayNoActions") : t("workdayReadOnly")}</span>}
               </div>
               {confirmingFinish ? (
                 <div className="mt-3 border border-red-200 bg-red-50 p-3 text-sm text-red-950 dark:border-red-900 dark:bg-red-950/25 dark:text-red-100" role="alert">
@@ -2409,7 +3295,13 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             </div> : null}
           </div>
 
-          {facts.workdayCapability.enabled && facts.workdayCapability.requiresPriorDayClosure ? (
+          {facts.workdayCapability.enabled && leftOpenWorkday && !facts.workdayCapability.canMutateSelf ? (
+            <div className="border-t border-zinc-200 bg-red-50 px-4 py-3 text-sm text-red-950 dark:border-zinc-700 dark:bg-red-950/25 dark:text-red-100" role="status" data-testid="mtm-week-workday-left-open">
+              <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{leftOpenLabel(leftOpenWorkday, facts.timezone)}</p>
+            </div>
+          ) : null}
+          {/* The close/continue instruction is for the agent who can act on it. */}
+          {facts.workdayCapability.enabled && facts.workdayCapability.canMutateSelf && facts.workdayCapability.requiresPriorDayClosure ? (
             <div className="border-t border-zinc-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-zinc-700 dark:bg-amber-950/25 dark:text-amber-100" role="status">
               <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{t("priorWorkdayTitle")}</p>
               <p className="mt-1 text-xs leading-5">{t("priorWorkdayHint", {
@@ -2419,30 +3311,26 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             </div>
           ) : null}
 
-          {selectedDay ? (
-            <div className={cn("grid border-t border-zinc-200 bg-muted/20 dark:border-zinc-700 sm:grid-cols-2", facts.workdayCapability.enabled ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
-              {facts.workdayCapability.enabled ? (() => {
-                const workday = workdayPresentation(selectedDay.workday.state)
-                const WorkdayIcon = workday.icon
-                return <div className="px-4 py-3 lg:px-5"><p className="text-xs text-muted-foreground">{t("workdayState")}</p><p className={cn("mt-1 inline-flex items-center gap-1.5 text-sm font-medium", workday.className)}><WorkdayIcon className="h-4 w-4" />{workday.label}</p></div>
-              })() : null}
-              {(() => {
-                const gps = gpsPresentation(facts.gps)
-                const GpsIcon = gps.icon
-                return <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 sm:border-l sm:border-t-0 lg:px-5"><p className="text-xs text-muted-foreground">{t("gpsFreshness")}</p><p className={cn("mt-1 inline-flex items-center gap-1.5 text-sm font-medium", gps.className)}><GpsIcon className="h-4 w-4" />{gps.label}</p></div>
-              })()}
-              <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:border-l lg:border-t-0 lg:px-5"><p className="text-xs text-muted-foreground">{t("lastCoordinate")}</p><p className="mt-1 text-sm font-medium tabular-nums">{formatTenantTimestamp(facts.gps.recordedAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</p></div>
-              <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:border-l lg:border-t-0 lg:px-5">
-                <p className="text-xs text-muted-foreground">{t("locationEvidence")}</p>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm">
-                  <span className="inline-flex items-center gap-1"><Crosshair className="h-3.5 w-3.5" />{facts.gps.accuracy === null ? "—" : t("accuracyMeters", { value: Math.round(facts.gps.accuracy) })}</span>
-                  <span className="inline-flex items-center gap-1"><BatteryMedium className="h-3.5 w-3.5" />{facts.gps.battery === null ? "—" : `${Math.round(facts.gps.battery)}%`}</span>
-                </div>
-                {gpsReasonLabel(facts.gps.reason) ? <p className="mt-1 text-xs text-muted-foreground">{gpsReasonLabel(facts.gps.reason)}</p> : null}
-                <Link href={withReturnTo(`/mtm/map?mode=history&agentId=${encodeURIComponent(effectiveAgentId)}&date=${encodeURIComponent(selectedDay.date)}`, returnPath(query!, effectiveAgentId, selectedDay.date))} className="mt-2 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openGpsHistory")}<ArrowUpRight className="h-3 w-3" /></Link>
+          {/* Owner 2026-09-22: «глаза разбегаются». Four cells — workday state,
+              GPS freshness, last coordinate, «coordinate data» — said one
+              thing: when the agent was last heard from. One line says it. */}
+          {selectedDay ? (() => {
+            const leftOpenShown = Boolean(facts.workdayCapability.enabled && leftOpenWorkday && !facts.workdayCapability.canMutateSelf)
+            const workday = facts.workdayCapability.enabled && !leftOpenShown ? dayWorkdayPresentation(selectedDay) : null
+            const WorkdayIcon = workday?.icon
+            const gps = gpsPresentation(facts.gps)
+            const GpsIcon = gps.icon
+            const seenAt = facts.gps.recordedAt ? formatTenantTimestamp(facts.gps.recordedAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) : null
+            const gpsText = seenAt && "seen" in gps ? t(gps.seen ? "gpsSeenAt" : "gpsSilentSince", { time: seenAt }) : gps.label
+            return (
+              <div data-testid="mtm-week-status-line" className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-zinc-200 bg-muted/20 px-4 py-2.5 text-sm dark:border-zinc-700 lg:px-5">
+                {workday && WorkdayIcon ? <span className={cn("inline-flex items-center gap-1.5 font-medium", workday.className)}><WorkdayIcon className="h-4 w-4" />{workday.label}</span> : null}
+                <span className={cn("inline-flex items-center gap-1.5 font-medium", gps.className)}><GpsIcon className="h-4 w-4" />{gpsText}</span>
+                {gpsReasonLabel(facts.gps.reason) ? <span className="text-xs text-muted-foreground">{gpsReasonLabel(facts.gps.reason)}</span> : null}
+                <Link href={withReturnTo(`/mtm/map?mode=history&agentId=${encodeURIComponent(effectiveAgentId)}&date=${encodeURIComponent(selectedDay.date)}`, returnPath(query!, effectiveAgentId, selectedDay.date))} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openGpsPath")}<ArrowUpRight className="h-3 w-3" /></Link>
               </div>
-            </div>
-          ) : null}
+            )
+          })() : null}
 
           {gpsNeedsRecovery && facts ? (
             <section
@@ -2478,12 +3366,12 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             </section>
           ) : null}
 
-          <div className="grid border-t border-zinc-200 dark:border-zinc-700 min-[1600px]:grid-cols-[minmax(0,1fr)_20rem]">
-            <aside className="md:grid md:grid-cols-2 min-[1600px]:hidden" aria-label={t("needsAttention") }>
+          <div className="grid border-t border-zinc-200 dark:border-zinc-700 min-[100rem]:grid-cols-[minmax(0,1fr)_20rem]">
+            <aside className="md:max-[100rem]:grid md:max-[100rem]:grid-cols-2 min-[100rem]:hidden" aria-label={t("needsAttention") }>
               {renderAttentionRailContent("compact")}
             </aside>
 
-            <div className="min-w-0 border-t border-zinc-200 dark:border-zinc-700 min-[1600px]:border-t-0">
+            <div className="min-w-0 border-t border-zinc-200 dark:border-zinc-700 min-[100rem]:border-t-0">
               {compactWeekProjection ? <div>
                 <div className="flex gap-1 overflow-x-auto px-3 py-2" role="group" aria-label={t("chooseDay") }>
                   {facts.days.map((day) => (
@@ -2507,12 +3395,12 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               </div> : null}
             </div>
 
-            <aside className="hidden min-[1600px]:sticky min-[1600px]:top-4 min-[1600px]:block min-[1600px]:max-h-[calc(100vh-2rem)] min-[1600px]:self-start min-[1600px]:overflow-y-auto min-[1600px]:border-l" aria-label={t("needsAttention") }>
+            <aside className="hidden min-w-0 min-[100rem]:block min-[100rem]:border-l" aria-label={t("needsAttention") }>
               {renderAttentionRailContent("desktop")}
             </aside>
           </div>
         </>
-      ) : phase === "loading" || phase === "idle" ? (
+      ) : (phase === "loading" || phase === "idle") && !teamLayout ? (
         <div className="border-t border-zinc-200 px-4 py-8 dark:border-zinc-700" role="status" aria-live="polite">
           <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
             {Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-44 animate-pulse bg-muted/60 motion-reduce:animate-none" />)}
@@ -2538,11 +3426,11 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           <WifiOff className="h-7 w-7 text-red-600" /><h3 className="text-base font-semibold">{t("loadFailedTitle")}</h3><p className="max-w-lg text-sm text-muted-foreground">{t("loadFailedHint")}</p>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => setRefreshToken((value) => value + 1)}>{t("retry")}</Button>
         </div>
-      ) : (
+      ) : !teamLayout ? (
         <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-zinc-200 px-4 py-8 text-center dark:border-zinc-700" role="status">
           <UserRound className="h-7 w-7 text-muted-foreground" /><h3 className="text-base font-semibold">{displayedAgentOptions.length ? t("chooseEmployeeTitle") : t("noEmployeesTitle")}</h3><p className="max-w-lg text-sm text-muted-foreground">{displayedAgentOptions.length ? t("chooseEmployeeHint") : t("noEmployeesHint")}</p>
         </div>
-      )}
+      ) : null}
       <Dialog open={Boolean(cancellationTarget)} onOpenChange={(open) => {
         if (!open && !planMutationId) {
           setCancellationTarget(null)
@@ -2589,6 +3477,64 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             <Button type="button" disabled={Boolean(planMutationId)} onClick={() => void submitCancellationRequest()}>
               {planMutationId?.startsWith("request:") ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
               {t("sendCancellationRequest")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(managerWorkdayTarget)} onOpenChange={(open) => {
+        if (!open) closeManagerWorkdayDialog()
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoTitle" : "managerWorkday.reopenTitle")}</DialogTitle>
+            <DialogDescription>{facts?.selectedAgent.name || "—"}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4" data-testid="mtm-week-workday-manager-dialog">
+            <p className="bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+              {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoConsequence" : "managerWorkday.reopenConsequence")}
+              {" "}{t("managerWorkday.historyNote")}
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="operational-week-manager-workday-reason">{t("managerWorkday.reasonLabel")}</Label>
+              <Textarea
+                id="operational-week-manager-workday-reason"
+                value={managerWorkdayReason}
+                onChange={(event) => setManagerWorkdayReason(event.target.value)}
+                rows={4}
+                maxLength={WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH}
+                placeholder={t("managerWorkday.reasonPlaceholder")}
+                disabled={managerWorkdayPending}
+                required
+                data-dialog-initial-focus
+                aria-invalid={managerWorkdayReason.length > 0 && !managerWorkdayReasonValid}
+                aria-describedby="operational-week-manager-workday-reason-hint"
+              />
+              <p id="operational-week-manager-workday-reason-hint" className="text-xs text-muted-foreground">
+                {t("managerWorkday.reasonHint", {
+                  min: WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH,
+                  max: WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH,
+                  count: managerWorkdayReasonLength,
+                })}
+              </p>
+            </div>
+            {facts?.managerWorkdayActions?.mfaEnrolled === false ? (
+              <p className="inline-flex items-start gap-2 text-xs text-muted-foreground" data-testid="mtm-week-workday-mfa-recommended">
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />{t("managerWorkday.mfaRecommended")}
+              </p>
+            ) : null}
+            {managerWorkdayError ? (
+              <p className="text-sm text-red-700 dark:text-red-300" role="alert" data-testid="mtm-week-workday-manager-error">{managerWorkdayError.message}</p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={managerWorkdayPending} onClick={closeManagerWorkdayDialog}>{t("cancelDialog")}</Button>
+            <Button
+              type="button"
+              disabled={managerWorkdayPending || !managerWorkdayReasonValid || Boolean(managerWorkdayError?.final)}
+              onClick={() => void submitManagerWorkdayAction()}
+            >
+              {managerWorkdayPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
+              {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.confirmUndo" : "managerWorkday.confirmReopen")}
             </Button>
           </DialogFooter>
         </DialogContent>

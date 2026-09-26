@@ -5,6 +5,65 @@ import { isAdmin } from "@/lib/constants"
 const permissionCache = new Map<string, { data: Record<string, string>; expiresAt: number }>()
 const CACHE_TTL = 60_000 // 60 seconds
 
+/**
+ * The permission set could not be read. Not the same thing as "no restrictions
+ * are configured", which is why it is an error rather than an empty map.
+ */
+export class FieldPermissionsUnavailableError extends Error {
+  readonly code = "FIELD_PERMISSIONS_UNAVAILABLE"
+  constructor(readonly entityType: string) {
+    super(`Field permissions for ${entityType} could not be read`)
+    this.name = "FieldPermissionsUnavailableError"
+  }
+}
+
+async function readFieldPermissions(
+  orgId: string,
+  roleId: string,
+  entityType: string,
+): Promise<Record<string, string>> {
+  const permissions = await prisma.fieldPermission.findMany({
+    where: { organizationId: orgId, roleId, entityType },
+  })
+  const map: Record<string, string> = {}
+  for (const p of permissions as Array<{ fieldName: string; access: string }>) {
+    map[p.fieldName] = p.access
+  }
+  return map
+}
+
+/**
+ * Field permissions for a WRITE (roadmap C1.9).
+ *
+ * `getFieldPermissions` below answers an unreadable table with an empty map,
+ * which the rest of the code correctly reads as "nothing is restricted". On a
+ * read path that is a tolerable default. On a write path it is the opposite of
+ * the intended rule: a database blip would make every restricted field
+ * editable, and — worse — the lenient loader used to cache that emptiness for
+ * a minute, turning one bad second into sixty.
+ *
+ * So the write path gets its own loader. It shares the cache for successes
+ * only, and a failure is raised, never stored.
+ */
+export async function requireFieldPermissions(
+  orgId: string,
+  roleId: string,
+  entityType: string,
+): Promise<Record<string, string>> {
+  const cacheKey = `${orgId}:${roleId}:${entityType}`
+  const cached = permissionCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) return cached.data
+
+  let map: Record<string, string>
+  try {
+    map = await readFieldPermissions(orgId, roleId, entityType)
+  } catch {
+    throw new FieldPermissionsUnavailableError(entityType)
+  }
+  permissionCache.set(cacheKey, { data: map, expiresAt: Date.now() + CACHE_TTL })
+  return map
+}
+
 export async function getFieldPermissions(
   orgId: string,
   roleId: string,
@@ -20,8 +79,11 @@ export async function getFieldPermissions(
       where: { organizationId: orgId, roleId, entityType },
     })
   } catch {
-    // Table may not exist yet — return empty (no restrictions)
-    permissionCache.set(cacheKey, { data: {}, expiresAt: Date.now() + CACHE_TTL })
+    // Read path: an unreadable table means no restrictions are applied, which
+    // is the historical behaviour for list and detail responses. The failure is
+    // deliberately NOT cached — poisoning the cache for a minute turned a
+    // one-second blip into a sixty-second hole, and the write path above reads
+    // the same cache.
     return {}
   }
 

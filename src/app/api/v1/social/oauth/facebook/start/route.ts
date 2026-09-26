@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import { withSocialConnectAuth } from "@/lib/social/oauth-access"
-import { getTenantMetaApp } from "@/lib/social/tenant-meta-app"
+import { getTenantMetaApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app"
 import { normalizeOAuthReturnKey } from "@/lib/social/oauth-return"
+import { resolveOAuthReturnChannel } from "@/lib/social/oauth-return-channel"
 
 /**
  * Start Facebook (Meta Graph) OAuth flow. The same token covers Instagram
@@ -25,13 +26,34 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   // the callback resolves redirects with new URL(path, origin), so accepting a path would be an open
   // redirect). Absent/unknown => null => the historical /social-monitoring destination.
   const returnKey = normalizeOAuthReturnKey(new URL(req.url).searchParams.get("from"))
+  // `?channelId=<id>` — the row the user pressed Connect on. The callback hands it back (or the row it
+  // actually wired) so the card reopens THAT channel; without it the card fell back to "some row of this
+  // type", which on a workspace holding several customers' Pages was another customer's channel. Only
+  // meaningful on a channel return target, and only for a row of this org and of that card's type.
+  const originChannelId = returnKey
+    ? await resolveOAuthReturnChannel(orgId, returnKey, new URL(req.url).searchParams.get("channelId"))
+    : null
+
+  // `?app=<channelConfigId>` PINS this flow to one specific Meta app row (the App Review staging
+  // path). It is the isolated route: the named row's creds are the only ones acceptable, and there is
+  // NO env fallback — see getPinnedMetaApp. Without it, nothing below changes for any existing caller.
+  const pinnedConfigId = new URL(req.url).searchParams.get("app")?.trim() || null
+  const pinnedApp = pinnedConfigId ? await getPinnedMetaApp(orgId, pinnedConfigId, "facebook") : null
+  if (pinnedConfigId && !pinnedApp) {
+    // Fail closed and say why. Silently continuing on the shared production app would hand the caller
+    // a consent screen for an app they did not ask for — the exact mix-up this parameter prevents.
+    return NextResponse.json(
+      { error: "That Meta app configuration is not usable for a Facebook connection. It must belong to this workspace and carry App ID, App Secret and verify token, and it must not be an Instagram-Login row." },
+      { status: 400 },
+    )
+  }
 
   // Model B (per-tenant Meta app): prefer the tenant's own appId from their FB/IG ChannelConfig.
   // Fall back to env (LeadDrive's own shared app) for backward compat. The redirect URI is always
   // the shared LeadDrive callback — each tenant registers it in their own Meta app's OAuth settings,
   // and the callback resolves the org from the signed `state` (so one URI serves every tenant).
-  const tenantApp = await getTenantMetaApp(orgId)
-  const appId = tenantApp?.appId || process.env.FACEBOOK_APP_ID
+  const tenantApp = pinnedApp ? null : await getTenantMetaApp(orgId)
+  const appId = pinnedApp?.appId || tenantApp?.appId || process.env.FACEBOOK_APP_ID
   const redirectUri = process.env.FACEBOOK_REDIRECT_URI
   if (!appId || !redirectUri) {
     return NextResponse.json(
@@ -41,11 +63,19 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   }
 
   const state = base64url(crypto.randomBytes(16))
-  // Without ?from the payload stays byte-for-byte what it always was, so the signed-state shape
-  // (and every flow that depends on it) is untouched for the existing entry points.
-  const payload = JSON.stringify(
-    returnKey ? { orgId, state, ts: Date.now(), ret: returnKey } : { orgId, state, ts: Date.now() },
-  )
+  // Without ?from, ?app and ?channelId the payload stays byte-for-byte what it always was, so the
+  // signed-state shape (and every flow that depends on it) is untouched for the existing entry points.
+  //
+  // `app` carries the pinned config id across to the callback INSIDE the HMAC-signed payload. That is
+  // what makes the pin hold end-to-end: the callback re-resolves the app from this id rather than
+  // re-running the org-wide `updatedAt DESC` lookup, so the app that issued the code is always the app
+  // whose secret redeems it — even if another config row in the tenant is edited mid-flow.
+  const payloadFields: Record<string, unknown> = { orgId, state, ts: Date.now() }
+  if (returnKey) payloadFields.ret = returnKey
+  if (pinnedApp) payloadFields.app = pinnedApp.configId
+  // Signed like everything else here, and still re-checked against the org on the way back.
+  if (originChannelId) payloadFields.channelId = originChannelId
+  const payload = JSON.stringify(payloadFields)
   const secret = process.env.NEXTAUTH_SECRET || "ld-social-oauth"
   const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex")
   // Carry the signed payload in the OAuth `state` param (FB echoes it back to the callback on ANY
@@ -77,17 +107,53 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   // no ChannelConfig yet — without this the flow would request monitoring scopes only, the callback's
   // subscribePageToMessages would fail on permissions, and the user would see a green "connected"
   // channel whose inbox never receives a single DM.
+  // A pinned (App Review staging) flow ALWAYS asks for the inbox scopes: those permissions —
+  // pages_messaging, pages_manage_metadata, instagram_manage_messages — are the ones under review, so
+  // a consent screen that omitted them would be worthless as evidence for the submission.
   const usesSocialInbox = Boolean(returnKey) || (await prisma.channelConfig.count({
     where: { organizationId: orgId, channelType: { in: ["facebook", "instagram"] }, isActive: true },
   })) > 0
-  const scopes = [...monitoringScopes, ...(usesSocialInbox ? inboxScopes : [])].join(",")
+
+  // A STAGED (App Review) Facebook Messenger connect asks for the Messenger surface and nothing else.
+  //
+  // The full list above is what a LeadDrive-app tenant needs: monitoring reads plus Instagram. A new
+  // app under review has none of that enabled, and Facebook does not ignore the extras — it refuses
+  // the whole dialog. Observed on 2026-09-20 against app 2414060595720618:
+  //   "Invalid Scopes: pages_read_engagement, pages_read_user_content, instagram_basic,
+  //    instagram_manage_messages"
+  // The same dialog opened immediately once the request was reduced to the five below, which are
+  // exactly the permissions the Messenger submission covers. Instagram is a SEPARATE app and a
+  // separate submission (see oauth/instagram/start), so asking for it here can only break this one.
+  const stagedMessengerScopes = [
+    "public_profile",
+    "pages_show_list",
+    "business_management",
+    "pages_messaging",
+    "pages_manage_metadata",
+  ]
+  const scopes = pinnedApp
+    ? stagedMessengerScopes.join(",")
+    : [...monitoringScopes, ...(usesSocialInbox ? inboxScopes : [])].join(",")
 
   const url = new URL("https://www.facebook.com/v21.0/dialog/oauth")
   url.searchParams.set("client_id", appId)
   url.searchParams.set("redirect_uri", redirectUri)
   url.searchParams.set("state", signedState)
-  url.searchParams.set("scope", scopes)
   url.searchParams.set("response_type", "code")
+
+  // Facebook Login for Business: the permissions live in a CONFIGURATION, not in `scope`. Meta's
+  // documentation is explicit that "config_id has replaced scope (which should not be used)", and an
+  // app configured that way both rejects a scope request and, if one does slip through, records the
+  // grant against the assets the person selected rather than against their Page roles — which is why
+  // a fully-consented login came back with an empty /me/accounts and `no_admined_pages`.
+  //
+  // So when the tenant has entered a configuration id we send THAT and omit `scope` entirely. When
+  // they have not, we keep the historical scope request, which is what every existing tenant uses.
+  if (pinnedApp?.loginConfigId) {
+    url.searchParams.set("config_id", pinnedApp.loginConfigId)
+  } else {
+    url.searchParams.set("scope", scopes)
+  }
 
   const res = NextResponse.redirect(url.toString())
   res.cookies.set("ld_fb_oauth", signedState, {

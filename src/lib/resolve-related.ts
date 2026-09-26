@@ -20,8 +20,8 @@ export async function resolveRelated(
       return e ? { name: e.fullName || "" } : null
     }
     case "deal": {
-      const e = await prisma.deal.findFirst({ where: { id, organizationId: orgId }, select: { title: true } })
-      return e ? { name: e.title || "" } : null
+      const e = await prisma.deal.findFirst({ where: { id, organizationId: orgId }, select: { name: true } })
+      return e ? { name: e.name || "" } : null
     }
     case "lead": {
       const e = await prisma.lead.findFirst({ where: { id, organizationId: orgId }, select: { contactName: true, companyName: true } })

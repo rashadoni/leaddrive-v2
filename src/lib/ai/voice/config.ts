@@ -54,6 +54,29 @@ export type VoicePilotConfig = {
 }
 
 /**
+ * The kill switch for voice WRITES, separate from the one for voice itself.
+ *
+ * Reading the CRM aloud and preparing a change to it are different features
+ * with different risk, and until now they shared one switch: the pilot
+ * allowlist. Turning off the writes meant turning off the assistant, losing a
+ * read capability that has been working for weeks — which is exactly the kind
+ * of cost that stops a switch from being pulled when it should be.
+ *
+ * Default ON, deliberately, and this is the one place the fail-closed habit of
+ * this module does not apply: the writes are already deployed and in use, so
+ * treating an unset variable as "off" would be a silent rollback disguised as
+ * a safety feature. Off is therefore explicit — `VOICE_WRITE_ENABLED=false` —
+ * and anything else that is not a recognised falsy word leaves writes on.
+ *
+ * Read per request like the rest of this module, so a PM2 restart applies it
+ * immediately and no warm process keeps serving the old answer.
+ */
+export function voiceWritesEnabled(): boolean {
+  const raw = (process.env.VOICE_WRITE_ENABLED ?? "").trim().toLowerCase()
+  return !(raw === "false" || raw === "0" || raw === "off" || raw === "no")
+}
+
+/**
  * Read fresh on every call rather than at module load: the value must not be
  * frozen into a warm lambda/PM2 process after a deploy changes it.
  */

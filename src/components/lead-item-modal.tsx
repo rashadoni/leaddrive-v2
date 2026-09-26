@@ -15,6 +15,7 @@ import {
   Globe, DollarSign, Calendar, Clock, Tag, User,
 } from "lucide-react"
 import { getLeadScoreFactorLabel } from "@/lib/leads/score-factor-labels"
+import { modelConversionProbability } from "@/lib/leads/conversion-probability"
 import { cn } from "@/lib/utils"
 
 interface LeadItem {
@@ -292,7 +293,8 @@ export function LeadItemModal({ open, onOpenChange, lead, orgId, onSaved, onConv
   const details = (displayLead.scoreDetails as any) || {}
   const reasoning = details.reasoning
   const factors = details.factors || {}
-  const conversionProb = details.conversionProb ?? Math.round(displayLead.score * 0.85)
+  // Only Da Vinci's own estimate — never the score × 0.85.
+  const conversionProb = modelConversionProbability(details)
   const daysSinceCreation = Math.floor((Date.now() - new Date(displayLead.createdAt).getTime()) / 86400000)
 
   const tabs = [
@@ -353,8 +355,8 @@ export function LeadItemModal({ open, onOpenChange, lead, orgId, onSaved, onConv
                   <div className="text-2xl font-bold text-primary">{displayLead.score}</div>
                   <div className="text-[10px] text-muted-foreground">Score</div>
                 </div>
-                <div className="text-center mr-2 hidden sm:block">
-                  <div className="text-lg font-bold text-muted-foreground">{conversionProb}%</div>
+                <div className="text-center mr-2 hidden sm:block" title={conversionProb == null ? t("convProbNone") : undefined}>
+                  <div className="text-lg font-bold text-muted-foreground">{conversionProb == null ? "—" : `${conversionProb}%`}</div>
                   <div className="text-[10px] text-muted-foreground">{t("modalConversion")}</div>
                 </div>
                 {displayLead.estimatedValue ? (
@@ -918,12 +920,14 @@ export function LeadItemModal({ open, onOpenChange, lead, orgId, onSaved, onConv
                     <div className="text-xs text-muted-foreground mt-1">{t("modalScore")}</div>
                   </CardContent></Card>
                   <Card><CardContent className="pt-4 pb-4">
-                    <div className={cn("text-3xl font-bold", conversionProb >= 50 ? "text-green-600" : conversionProb >= 30 ? "text-yellow-600" : "text-red-500")}>
-                      {conversionProb}%
+                    <div className={cn("text-3xl font-bold", conversionProb == null ? "text-muted-foreground" : conversionProb >= 50 ? "text-green-600" : conversionProb >= 30 ? "text-yellow-600" : "text-red-500")}>
+                      {conversionProb == null ? "—" : `${conversionProb}%`}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">{t("modalConversion")}</div>
+                    {conversionProb == null && <div className="text-[10px] text-muted-foreground">{t("convProbNoneShort")}</div>}
                   </CardContent></Card>
                 </div>
+                {conversionProb == null && <p className="text-xs text-muted-foreground">{t("convProbNone")}</p>}
 
                 {Object.keys(factors).length > 0 && (
                   <div>

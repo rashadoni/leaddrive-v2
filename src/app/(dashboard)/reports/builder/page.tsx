@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 import {
   BarChart,
   Bar,
@@ -677,27 +678,27 @@ export default function ReportBuilderPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{tr("title")}<HelpButton slug="report-builder" variant="label" /></h1>
-          <PageDescription text={tr("subtitle")} />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setExportDialogOpen(true)}
-            disabled={!previewData || previewData.rows.length === 0}
-          >
-            <Download className="h-4 w-4 mr-1" />
-            {tr("export")}
-          </Button>
-          <Button size="sm" onClick={() => setSaveDialogOpen(true)}>
-            <Save className="h-4 w-4 mr-1" />
-            {tr("saveReport")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={<>{tr("title")}<HelpButton slug="report-builder" variant="label" /></>}
+        description={<PageDescription text={tr("subtitle")} />}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportDialogOpen(true)}
+              disabled={!previewData || previewData.rows.length === 0}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              {tr("export")}
+            </Button>
+            <Button size="sm" onClick={() => setSaveDialogOpen(true)}>
+              <Save className="h-4 w-4 mr-1" />
+              {tr("saveReport")}
+            </Button>
+          </>
+        }
+      />
 
       {/* Main layout: left config + right preview */}
       <div className="flex gap-4 items-start">

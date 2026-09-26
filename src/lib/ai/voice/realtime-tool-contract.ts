@@ -8,6 +8,7 @@ import {
   type VoiceSectionLocale,
 } from "./section-aliases"
 import { VOICE_SECTION_KEYS } from "./sections"
+import { voiceProposeTools } from "./propose-tools"
 
 /** Provider-neutral JSON Schema used by Gemini Live function declarations. */
 export type VoiceToolParameters = {
@@ -227,6 +228,8 @@ function clientTools(sectionKeys: readonly string[], catalog: string): VoiceFunc
 export function voiceTools(
   sectionKeys: readonly string[] = VOICE_SECTION_KEYS,
   locale: string = "az",
+  /** When writes are switched off, the proposal tools are not published at all. */
+  writesEnabled = true,
 ): VoiceFunctionTool[] {
   const allowed = VOICE_SECTION_KEYS.filter((section) => sectionKeys.includes(section))
   const catalog = sectionCatalog(allowed, realtimeCatalogLocale(locale))
@@ -236,5 +239,10 @@ export function voiceTools(
   return [
     ...clientTools(allowed, catalog),
     ...serverToolNames.map((name) => serverTool(name, allowed)),
+    // Proposal tools. They prepare a receipt and nothing else; there is no
+    // `commit_*` counterpart anywhere in this contract, by design. With the
+    // write switch off they are absent rather than failing on call: a tool the
+    // model is given and then refused teaches it to retry.
+    ...(writesEnabled ? voiceProposeTools() : []),
   ]
 }

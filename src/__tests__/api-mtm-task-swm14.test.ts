@@ -986,3 +986,82 @@ describe("SWM-14 review, duplicate, evidence, and bulk contracts", () => {
     }))
   })
 })
+
+describe("undated open tasks are a visible group, not the last row of page 3", () => {
+  // Prod 2026-09-14: «Gözləyir: 3» on the web, nothing to do on the phone.
+  // The three were PENDING without a due date, sorted after every dated task.
+  it("lifts undated open tasks out of the paginated list and counts them once", async () => {
+    const undated = [task({ id: "task-6", title: "Tapşırıq 6", dueDate: null })]
+    vi.mocked(prisma.mtmTask.findMany)
+      .mockResolvedValueOnce([task({ id: "dated", dueDate: new Date("2026-09-20T00:00:00.000Z") })] as never)
+      .mockResolvedValueOnce(undated as never)
+    // Counts in call order: the page total, the late tasks (computed from the
+    // due date since 2026-09-24), those awaiting review (2026-09-25), the
+    // undated group.
+    vi.mocked(prisma.mtmTask.count)
+      .mockResolvedValueOnce(1 as never)
+      .mockResolvedValueOnce(0 as never)
+      .mockResolvedValueOnce(0 as never)
+      .mockResolvedValueOnce(3 as never)
+    vi.mocked(prisma.mtmTask.groupBy).mockResolvedValue([{ status: "PENDING", _count: { _all: 4 } }] as never)
+
+    const response = await listTasks(request("/api/v1/mtm/tasks?undated=group&agentId=agent-1"))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.undatedOpen).toMatchObject({ total: 3, tasks: [{ id: "task-6" }] })
+    expect(body.data.total).toBe(1)
+    // The status summary still speaks for the whole filtered set.
+    expect(body.data.summary).toEqual({ PENDING: 4, OPEN: 4, OVERDUE: 0, AWAITING_REVIEW: 0 })
+
+    const [listCall, undatedCall] = vi.mocked(prisma.mtmTask.findMany).mock.calls.map((call) => call[0] as any)
+    expect(listCall.where.NOT).toEqual({ dueDate: null, status: { in: ["PENDING", "IN_PROGRESS", "OVERDUE"] } })
+    expect(undatedCall.where.AND).toContainEqual({ agentId: "agent-1" })
+    expect(undatedCall.where.AND).toContainEqual({ dueDate: null, status: { in: ["PENDING", "IN_PROGRESS", "OVERDUE"] } })
+    // The group never widens the caller's scope.
+    expect(undatedCall.where.AND).toContainEqual({ agentId: { in: ["agent-1"] } })
+    const groupByWhere = (vi.mocked(prisma.mtmTask.groupBy).mock.calls[0][0] as any).where
+    expect(groupByWhere.NOT).toBeUndefined()
+  })
+
+  it("keeps a status filter on the group", async () => {
+    await listTasks(request("/api/v1/mtm/tasks?undated=group&status=IN_PROGRESS"))
+    const undatedCall = vi.mocked(prisma.mtmTask.findMany).mock.calls[1][0] as any
+    expect(undatedCall.where.status).toBe("IN_PROGRESS")
+  })
+
+  it("has no group for a closed-status filter", async () => {
+    const response = await listTasks(request("/api/v1/mtm/tasks?undated=group&status=COMPLETED"))
+    const body = await response.json()
+    expect(body.data.undatedOpen).toBeUndefined()
+    expect((vi.mocked(prisma.mtmTask.findMany).mock.calls[0][0] as any).where.NOT).toBeUndefined()
+  })
+
+  it("leaves the legacy phone list and other callers exactly as they were", async () => {
+    authState.principal = "mobile"
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue(agent as never)
+    const mobile = await (await listTasks(request("/api/v1/mtm/tasks?undated=group"))).json()
+    expect(mobile.data.undatedOpen).toBeUndefined()
+    expect((vi.mocked(prisma.mtmTask.findMany).mock.calls[0][0] as any).where.NOT).toBeUndefined()
+
+    authState.principal = "web"
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue(manager as never)
+    const web = await (await listTasks(request("/api/v1/mtm/tasks?limit=1"))).json()
+    expect(web.data.undatedOpen).toBeUndefined()
+  })
+
+  it("is requested by the tasks page and rendered before the list", async () => {
+    const { readFileSync } = await import("node:fs")
+    const page = readFileSync("src/app/(dashboard)/mtm/tasks/page.tsx", "utf8")
+    expect(page).toContain('query.set("undated", "group")')
+    const group = page.indexOf('data-testid="mtm-tasks-undated-group"')
+    expect(group).toBeGreaterThan(0)
+    expect(group).toBeLessThan(page.indexOf("tasks={pageTasks}"))
+    // The total next to the list is the pressed chip's count, which the server
+    // takes over the whole filtered set — undated group included (2026-09-24).
+    expect(page).toContain("count: data?.summary?.OPEN ?? 0")
+    // Selecting the page merges into the selection instead of dropping ticked undated tasks.
+    expect(page).toContain("[...new Set([...current, ...pageIds])]")
+    expect(page).not.toContain("setSelected(allPageSelected ? [] :")
+  })
+})

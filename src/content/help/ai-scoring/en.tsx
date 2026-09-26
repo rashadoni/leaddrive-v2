@@ -7,7 +7,8 @@
  * the result table, sorting, "Score All Leads" and per-row "Recalculate".
  * Facts cross-checked against src/app/(dashboard)/ai-scoring/page.tsx and
  * src/app/api/v1/lead-scoring/route.ts (getGrade thresholds, rule-based factor
- * weights, conversionProb = score * 0.85, PiiMasker mask/unmask).
+ * weights, conversionProb only when the model returned one — no rule-based
+ * probability, and GET returns null otherwise — PiiMasker mask/unmask).
  * Agent configuration is NOT covered here.
  */
 import {
@@ -50,10 +51,10 @@ export default function AiScoringHelpEn() {
         <dl className="rounded-md border p-3">
           <HelpDef term="Score">An integer 0–100 — the lead&apos;s quality rating. Shown in bold in the &ldquo;Score&rdquo; column.</HelpDef>
           <HelpDef term="Grade (A–F)">The letter equivalent of the score by fixed thresholds: A = 80–100, B = 60–79, C = 40–59, D = 20–39, F = under 20. Shown as a colored pill (A green, B blue, C yellow, D orange, F red).</HelpDef>
-          <HelpDef term="Conversion">The lead&apos;s probability of converting to a sale (%). Green at 50%+, amber at 30–49%, red below.</HelpDef>
+          <HelpDef term="Conversion">The lead&apos;s probability of converting to a sale (%), as Da Vinci estimated it. Green at 50%+, amber at 30–49%, red below; “—” when there is no estimate.</HelpDef>
           <HelpDef term="Performance Stats">Da Vinci&apos;s short reasoning for the score — the strengths that lifted it and the gaps that held it back. Has a purple sparkle icon next to it; shows &ldquo;—&rdquo; if there&apos;s no reasoning.</HelpDef>
           <HelpDef term="Avg score">The average score across all leads, out of 100. 0 if there are no leads.</HelpDef>
-          <HelpDef term="Probability">The average conversion probability across all leads (%).</HelpDef>
+          <HelpDef term="Probability">The average over the leads Da Vinci estimated (%), with how many of the leads that is; “—” when none has an estimate.</HelpDef>
           <HelpDef term="Total Sessions">The number of leads that have actually been scored at least once.</HelpDef>
           <HelpDef term="Da Vinci badge">A sparkle-icon &ldquo;Da Vinci&rdquo; badge under the subtitle — appears only when the last run used a real AI key; otherwise a transparent rule-based formula runs.</HelpDef>
         </dl>
@@ -165,9 +166,10 @@ export default function AiScoringHelpEn() {
           fallback — that&apos;s still reliable and built from transparent weights: email (+15), phone
           (+10), company (+10), source (referral +20 / website +15 / email +10 / any other +5), priority
           (high +15 / medium +10 / otherwise +5), status (converted +20 / qualified +15 / contacted
-          +10), estimated value (+10), and notes over 10 chars (+5); the total is capped at 100, and
-          conversion is derived from the score (about 85% of it). The only difference is that the{" "}
-          <strong>Performance Stats</strong> reasoning is shorter.
+          +10), estimated value (+10), and notes over 10 chars (+5); the total is capped at 100. The
+          rule-based scheme estimates no conversion probability, so <strong>Conversion</strong> shows
+          “—”, and its <strong>Performance Stats</strong> reasoning is shorter. A Da Vinci probability
+          also lasts only until the lead next changes: any edit rescores the lead without one.
         </p>
       </HelpCallout>
 

@@ -13,6 +13,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "
 import { Plus, Copy, Link as LinkIcon, TrendingUp, TrendingDown, Users, Star, Mail, Send } from "lucide-react"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 interface Survey {
   id: string
@@ -187,18 +188,20 @@ export default function SurveysPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             <Star className="h-6 w-6 text-amber-500" /> {t("pageTitle")}
             <HelpButton slug="surveys" variant="label" />
-          </h1>
-          <p className="text-sm text-muted-foreground">{t("pageSubtitle")}</p>
-        </div>
-        <Button onClick={() => setShowForm(true)} className="gap-1.5">
-          <Plus className="h-4 w-4" /> {t("newSurvey")}
-        </Button>
-      </div>
+          </>
+        }
+        description={<p className="text-sm text-muted-foreground">{t("pageSubtitle")}</p>}
+        actions={
+          <Button onClick={() => setShowForm(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" /> {t("newSurvey")}
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="animate-pulse space-y-3">

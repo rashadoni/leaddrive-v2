@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { ChevronDown, Grid2X2 } from "lucide-react"
 import {
@@ -14,14 +15,17 @@ import { cn } from "@/lib/utils"
 import {
   isMtmNavigationItemActive,
   MTM_PRIMARY_NAVIGATION,
-  MTM_TOOL_GROUPS,
+  visibleMtmToolGroups,
 } from "@/lib/mtm/navigation"
+import { useMtmOrgSettings } from "@/hooks/use-mtm-org-settings"
 
 export function MtmModuleNavigation() {
   const pathname = usePathname()
   const t = useTranslations("mtmModuleNavigation")
   const tNav = useTranslations("nav")
-  const activeTool = MTM_TOOL_GROUPS.flatMap((group) => group.items)
+  const { data: session } = useSession()
+  const toolGroups = visibleMtmToolGroups(useMtmOrgSettings(session?.user))
+  const activeTool = toolGroups.flatMap((group) => group.items)
     .find((item) => isMtmNavigationItemActive(item.href, pathname))
 
   return (
@@ -85,7 +89,7 @@ export function MtmModuleNavigation() {
             </div>
 
             <div className="grid gap-x-6 gap-y-5 p-4 sm:grid-cols-2">
-              {MTM_TOOL_GROUPS.map((group) => (
+              {toolGroups.map((group) => (
                 <section key={group.key} aria-labelledby={`mtm-tool-group-${group.key}`}>
                   <h2
                     id={`mtm-tool-group-${group.key}`}

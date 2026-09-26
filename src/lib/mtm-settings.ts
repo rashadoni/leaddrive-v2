@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { coerceMtmBooleanSetting, coerceMtmNumberSetting } from "@/lib/mtm/setting-values"
 import {
   coerceMtmContactRequiredFields,
   MTM_CONTACT_REQUIRED_FIELD_DEFAULTS,
@@ -103,6 +104,21 @@ export const MTM_SETTING_DEFAULTS = {
   enforceWorkCalendarForRoutes: false,
   visitPoliciesEnabled: true,
   excelImportsEnabled: true,
+  // Field contacts (doctors, pharmacists… attached to customer places). Pharma
+  // tenants depend on them; an order-taking field tenant finds the menu entry
+  // confusing. OFF hides the web menu entries and tells the field app to hide
+  // its contact screens (bootstrap `policies.fieldContactsEnabled`). It never
+  // deletes data and never gates the contact APIs: visits, imports and old
+  // APKs keep reading contacts. Default ON — no change for existing tenants.
+  fieldContactsEnabled: true,
+  // Pharmacy promotions as a whole (menu, /mtm/promotions pages, the customer
+  // card tab, the agent app's promotion screens via bootstrap
+  // `policies.pharmacyPromotionsEnabled`). Pharma tenants need them; an
+  // order-taking tenant does not. OFF only hides: promotion APIs, the offline
+  // outbox drain and all data stay. Independent of
+  // `pharmacyPromotionPostingEnabled`, which governs submit/review/posting.
+  // Default ON — no change for existing tenants.
+  pharmacyPromotionsEnabled: true,
 } as const
 
 type WidenSetting<T> = T extends boolean
@@ -129,14 +145,12 @@ function coerce<K extends keyof MtmSettingsShape>(
 ): MtmSettingsShape[K] {
   const fallback = MTM_SETTING_DEFAULTS[key] as MtmSettingsShape[K]
   if (raw == null) return fallback
+  // Shared with every single-key runtime read (src/lib/mtm/setting-values.ts).
   if (typeof fallback === "number") {
-    const n = typeof raw === "string" ? Number(raw) : Number(raw)
-    return (Number.isFinite(n) ? n : fallback) as MtmSettingsShape[K]
+    return coerceMtmNumberSetting(raw, fallback) as MtmSettingsShape[K]
   }
   if (typeof fallback === "boolean") {
-    if (typeof raw === "boolean") return raw as MtmSettingsShape[K]
-    if (typeof raw === "string") return (raw === "true") as MtmSettingsShape[K]
-    return fallback
+    return coerceMtmBooleanSetting(raw, fallback) as MtmSettingsShape[K]
   }
   if (Array.isArray(fallback)) {
     if (key === "contactRequiredFields") {

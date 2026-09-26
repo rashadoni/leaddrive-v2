@@ -23,6 +23,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS } from "@/lib/constants"
+import { formatBucket, formatExtras, leadBucket, type MoneyBucket } from "@/lib/deal-money"
+import type { InvoiceMoney } from "@/lib/invoices/stats"
 
 interface Invoice {
   id: string
@@ -32,18 +34,17 @@ interface Invoice {
   companyId?: string
   status: string
   totalAmount?: number
+  paidAmount?: number
   currency: string
+  issueDate?: string
   dueDate?: string
   balanceDue?: number
   createdAt: string
+  /** Recorded payments — present because the list asks for them (include=payments). */
+  payments?: { amount: number; currency: string; paymentDate: string }[]
 }
 
 interface InvoiceStats {
-  totalInvoiced: number
-  totalPaid: number
-  totalOutstanding: number
-  totalOverdue: number
-  currency: string
   totalCount: number
   draftCount: number
   sentCount: number
@@ -52,10 +53,29 @@ interface InvoiceStats {
   partiallyPaidCount: number
   cancelledCount: number
   thisMonthCount: number
-  thisMonthAmount: number
   thisYearCount: number
-  thisYearAmount: number
-  avgAmount: number
+  /** Money per currency, largest first — never one sum across currencies (src/lib/invoices/stats.ts). */
+  money: InvoiceMoney
+  /** The currency with the most invoiced; an empty figure is shown in it. */
+  currency: string
+}
+
+const NO_MONEY: InvoiceMoney = { invoiced: [], paid: [], outstanding: [], overdue: [], thisMonth: [], thisYear: [] }
+
+/** The largest currency in full, the others after it ("+ 900 $ · 1") — never one sum. */
+function moneyFigure(list: MoneyBucket[], fallback: string): { value: string; extras: string | null } {
+  const { primary, extras } = leadBucket(list, fallback)
+  return { value: formatBucket(primary), extras: formatExtras(extras) }
+}
+
+type StatTile = {
+  icon: React.ReactNode
+  label: string
+  value: string
+  sub: string
+  filter: string | null
+  /** false: the value is money, not a number of invoices. */
+  unit?: boolean
 }
 
 const statusBadge = (status: string, label: string) => {
@@ -83,6 +103,7 @@ const statusBadge = (status: string, label: string) => {
 
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
+import { PageHeader } from "@/components/page-header"
 
 export default function InvoicesPage() {
   const { data: session } = useSession()
@@ -95,14 +116,14 @@ export default function InvoicesPage() {
   const dealIdFilter = searchParams.get("dealId")
   useAutoTour("invoices")
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [invoiceTotal, setInvoiceTotal] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>("")
   const [tab, setTab] = useState<"analytics" | "list">("list")
   const [stats, setStats] = useState<InvoiceStats>({
-    totalInvoiced: 0, totalPaid: 0, totalOutstanding: 0, totalOverdue: 0, currency: DEFAULT_CURRENCY,
     totalCount: 0, draftCount: 0, sentCount: 0, paidCount: 0, overdueCount: 0,
-    partiallyPaidCount: 0, cancelledCount: 0, thisMonthCount: 0, thisMonthAmount: 0,
-    thisYearCount: 0, thisYearAmount: 0, avgAmount: 0,
+    partiallyPaidCount: 0, cancelledCount: 0, thisMonthCount: 0, thisYearCount: 0,
+    money: NO_MONEY, currency: DEFAULT_CURRENCY,
   })
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteName, setDeleteName] = useState("")
@@ -112,13 +133,33 @@ export default function InvoicesPage() {
   const orgId = (session?.user as { organizationId?: string })?.organizationId
   const headers: Record<string, string> = { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) }
 
+  // Every money figure below is per currency: the largest shown in full, the
+  // others listed after it. Nothing is added across currencies.
+  const invoicedFigure = moneyFigure(stats.money.invoiced, stats.currency)
+  const paidFigure = moneyFigure(stats.money.paid, stats.currency)
+  const outstandingFigure = moneyFigure(stats.money.outstanding, stats.currency)
+  const overdueFigure = moneyFigure(stats.money.overdue, stats.currency)
+  const monthFigure = moneyFigure(stats.money.thisMonth, stats.currency)
+  const yearFigure = moneyFigure(stats.money.thisYear, stats.currency)
+  const moneyLine = (figure: { value: string; extras: string | null }) => [figure.value, figure.extras].filter(Boolean).join("  ")
+  // Billed invoices only: a draft is counted in the Drafts tile, not here.
+  const billedCount = (list: MoneyBucket[]) => list.reduce((n, b) => n + b.count, 0)
+  const averages = stats.money.invoiced.filter((b) => b.count > 0).map((b) => ({ ...b, value: b.value / b.count }))
+  const progress = stats.money.invoiced
+    .filter((b) => b.value > 0)
+    .map((b) => {
+      const paid = stats.money.paid.find((p) => p.currency === b.currency)?.value ?? 0
+      return { currency: b.currency, invoiced: b.value, paid, percent: (paid / b.value) * 100 }
+    })
+  const money2 = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
   const fetchStats = async () => {
     try {
       const res = await fetch("/api/v1/invoices/stats", {
         headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
       })
       const json = await res.json()
-      if (json.success) setStats(json.data)
+      if (json.success) setStats({ ...json.data, money: { ...NO_MONEY, ...json.data.money } })
     } catch (err) { console.error(err) }
   }
 
@@ -126,13 +167,16 @@ export default function InvoicesPage() {
     setLoading(true)
     try {
       const res = await fetch(
-        `/api/v1/invoices?limit=500${statusFilter ? `&status=${statusFilter}` : ""}${dealIdFilter ? `&dealId=${dealIdFilter}` : ""}`,
+        `/api/v1/invoices?limit=500&include=payments${statusFilter ? `&status=${statusFilter}` : ""}${dealIdFilter ? `&dealId=${dealIdFilter}` : ""}`,
         {
           headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
         }
       )
       const json = await res.json()
-      if (json.success) setInvoices(json.data.invoices)
+      if (json.success) {
+        setInvoices(json.data.invoices)
+        setInvoiceTotal(typeof json.data.total === "number" ? json.data.total : undefined)
+      }
     } catch (err) {
       console.error(err)
     } finally {
@@ -314,73 +358,77 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="invoices" /><HelpButton slug="invoices" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Tab switcher */}
-          <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/50 p-0.5">
-            <button
-              onClick={() => setTab("analytics")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                tab === "analytics" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <BarChart3 className="h-4 w-4" />
-              {tc("analytics")}
-            </button>
-            <button
-              onClick={() => setTab("list")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                tab === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <List className="h-4 w-4" />
-              {tc("list")}
-            </button>
-          </div>
-          <Button variant="outline" onClick={() => router.push("/invoices/recurring")}>
-            <RefreshCw className="h-4 w-4 mr-1" /> {t("recurringInvoices")}
-          </Button>
-          <Button data-tour-id="invoices-new" onClick={() => router.push("/invoices/create")}>
-            <Plus className="h-4 w-4 mr-1" /> {t("newInvoice")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <TourReplayButton tourId="invoices" /><HelpButton slug="invoices" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
+        actions={
+          <>
+            {/* Tab switcher */}
+            <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/50 p-0.5">
+              <button
+                onClick={() => setTab("analytics")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  tab === "analytics" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <BarChart3 className="h-4 w-4" />
+                {tc("analytics")}
+              </button>
+              <button
+                onClick={() => setTab("list")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  tab === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <List className="h-4 w-4" />
+                {tc("list")}
+              </button>
+            </div>
+            <Button variant="outline" onClick={() => router.push("/invoices/recurring")}>
+              <RefreshCw className="h-4 w-4 mr-1" /> {t("recurringInvoices")}
+            </Button>
+            <Button data-tour-id="invoices-new" onClick={() => router.push("/invoices/create")}>
+              <Plus className="h-4 w-4 mr-1" /> {t("newInvoice")}
+            </Button>
+          </>
+        }
+      />
       <PageDescription text={t("pageDescription")} />
 
       <DidYouKnow page="invoices" className="mb-4" />
 
-      {/* Row 1 — Financial summary */}
+      {/* Row 1 — Financial summary: the largest currency, the others under it */}
       <div data-tour-id="invoices-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <ColorStatCard
           label={t("statTotalInvoiced")}
-          value={`${stats.totalInvoiced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${stats.currency}`}
+          value={invoicedFigure.value}
+          subValue={invoicedFigure.extras ?? undefined}
           icon={<DollarSign className="h-5 w-5" />}
          
           hint={t("hintTotalInvoiced")}
         />
         <ColorStatCard
           label={t("statPaid")}
-          value={`${stats.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${stats.currency}`}
+          value={paidFigure.value}
+          subValue={paidFigure.extras ?? undefined}
           icon={<CheckCircle className="h-5 w-5" />}
          
           hint={t("hintTotalPaid")}
         />
         <ColorStatCard
           label={t("statOutstanding")}
-          value={`${stats.totalOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${stats.currency}`}
+          value={outstandingFigure.value}
+          subValue={outstandingFigure.extras ?? undefined}
           icon={<Clock className="h-5 w-5" />}
          
           hint={t("hintTotalOutstanding")}
         />
         <ColorStatCard
           label={t("statOverdue")}
-          value={`${stats.totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${stats.currency}`}
+          value={overdueFigure.value}
+          subValue={overdueFigure.extras ?? undefined}
           icon={<AlertTriangle className="h-5 w-5" />}
          
           hint={t("hintTotalOverdue")}
@@ -391,14 +439,21 @@ export default function InvoicesPage() {
         <>
           {/* Row 2 — Detailed analytics (clickable filters) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { icon: <CalendarDays className="h-3.5 w-3.5" />, label: t("thisMonth"), value: `${stats.thisMonthCount}`, sub: `${stats.thisMonthAmount.toLocaleString()} ${stats.currency}`, filter: null },
-              { icon: <TrendingUp className="h-3.5 w-3.5" />, label: t("thisYear"), value: `${stats.thisYearCount}`, sub: `${stats.thisYearAmount.toLocaleString()} ${stats.currency}`, filter: null },
+            {([
+              { icon: <CalendarDays className="h-3.5 w-3.5" />, label: t("thisMonth"), value: `${billedCount(stats.money.thisMonth)}`, sub: moneyLine(monthFigure), filter: null },
+              { icon: <TrendingUp className="h-3.5 w-3.5" />, label: t("thisYear"), value: `${billedCount(stats.money.thisYear)}`, sub: moneyLine(yearFigure), filter: null },
               { icon: <Send className="h-3.5 w-3.5" />, label: t("statSentCount"), value: `${stats.sentCount}`, sub: `${stats.totalCount} ${t("ofTotal")}`, filter: "sent" },
               { icon: <FileText className="h-3.5 w-3.5" />, label: t("statDrafts"), value: `${stats.draftCount}`, sub: t("notSent"), filter: "draft" },
-              { icon: <BarChart3 className="h-3.5 w-3.5" />, label: t("statAvgInvoice"), value: `${Math.round(stats.avgAmount).toLocaleString()}`, sub: stats.currency, filter: null },
+              {
+                icon: <BarChart3 className="h-3.5 w-3.5" />,
+                label: t("statAvgInvoice"),
+                value: averages[0] ? Math.round(averages[0].value).toLocaleString() : "—",
+                sub: averages[0] ? [averages[0].currency, ...averages.slice(1).map(formatBucket)].join(" · ") : t("noBilledYet"),
+                filter: null,
+                unit: false,
+              },
               { icon: <XCircle className="h-3.5 w-3.5" />, label: t("statPartialCancel"), value: `${stats.partiallyPaidCount} / ${stats.cancelledCount}`, sub: t("partialCancelSub"), filter: "partially_paid" },
-            ].map(({ icon, label, value, sub, filter }) => (
+            ] satisfies StatTile[]).map(({ icon, label, value, sub, filter, unit }: StatTile) => (
               <div
                 key={label}
                 onClick={() => filter && setStatusFilter(prev => prev === filter ? "" : filter)}
@@ -409,29 +464,38 @@ export default function InvoicesPage() {
                   <span className="text-xs font-medium">{label}</span>
                   {filter && statusFilter === filter && <span className="ml-auto text-xs text-primary font-medium">✕</span>}
                 </div>
-                <p className="text-lg font-bold">{value} <span className="text-xs font-normal text-muted-foreground">{t("invoiceShort")}</span></p>
+                <p className="text-lg font-bold">{value}{unit !== false && <> <span className="text-xs font-normal text-muted-foreground">{t("invoiceShort")}</span></>}</p>
                 <p className="text-xs text-muted-foreground">{sub}</p>
               </div>
             ))}
           </div>
 
-          {/* Payment progress bar */}
-          {stats.totalInvoiced > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card px-4 py-3 space-y-2">
+          {/* Payment progress bar — per currency: the largest drawn, the others listed */}
+          {progress.length > 0 && (
+            <div data-testid="invoices-payment-progress" className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card px-4 py-3 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">{t("paymentProgress")}</span>
                 <span className="text-muted-foreground">
-                  {stats.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {stats.totalInvoiced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {stats.currency}
+                  {money2(progress[0].paid)} / {money2(progress[0].invoiced)} {progress[0].currency}
                   {" "}·{" "}
-                  <span className="font-semibold text-green-600">{Math.round((stats.totalPaid / stats.totalInvoiced) * 100)}%</span>
+                  <span className="font-semibold text-green-600">{Math.round(progress[0].percent)}%</span>
                 </span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full bg-green-500 transition-all duration-500"
-                  style={{ width: `${Math.min((stats.totalPaid / stats.totalInvoiced) * 100, 100)}%` }}
+                  style={{ width: `${Math.min(progress[0].percent, 100)}%` }}
                 />
               </div>
+              {progress.length > 1 && (
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {progress.slice(1).map((p) => (
+                    <span key={p.currency}>
+                      {p.currency}: {money2(p.paid)} / {money2(p.invoiced)} · {Math.round(p.percent)}%
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-green-500" />{t("status.paid")}: {stats.paidCount} {t("invoiceShort")}</span>
                 <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-orange-400" />{t("waiting")}: {stats.sentCount} {t("invoiceShort")}</span>
@@ -445,23 +509,17 @@ export default function InvoicesPage() {
           <InvoicesAnalytics
             invoices={invoices.map(inv => ({
               id: inv.id,
-              invoiceNumber: inv.invoiceNumber,
-              title: inv.title,
-              amount: inv.totalAmount || 0,
-              paidAmount: (inv as any).paidAmount || 0,
               status: inv.status,
+              amount: inv.totalAmount || 0,
+              paidAmount: inv.paidAmount || 0,
               currency: inv.currency,
+              issueDate: inv.issueDate,
               dueDate: inv.dueDate,
-              company: inv.company ? { name: inv.company.name } : undefined,
               createdAt: inv.createdAt,
+              payments: inv.payments,
             }))}
-            stats={{
-              totalInvoiced: stats.totalInvoiced,
-              totalPaid: stats.totalPaid,
-              totalOutstanding: stats.totalOutstanding,
-              totalOverdue: stats.totalOverdue,
-            }}
-            currency={stats.currency || DEFAULT_CURRENCY}
+            total={invoiceTotal}
+            orgId={orgId}
           />
         </>
       ) : (

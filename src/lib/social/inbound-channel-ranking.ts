@@ -1,4 +1,4 @@
-import { isIgLogin } from "@/lib/social/tenant-meta-app"
+import { isIgLogin, isAppReviewOnly } from "@/lib/social/tenant-meta-app"
 import { sanitizeLog } from "@/lib/sanitize"
 
 /**
@@ -19,6 +19,13 @@ import { sanitizeLog } from "@/lib/sanitize"
  * came to say «Подключено» over a channel whose DMs were going to another workspace.
  *
  * The ranking is a TOTAL order, so the winner never depends on scan order:
+ *  0. A row staged for App Review (`settings.appReviewOnly`) ranks after every live claim. Staging exists
+ *     so a Meta app under review can reach ONLY what it was pointed at; without this step the order below
+ *     would hand it live traffic. Found 2026-09-21: the review tenant's staged Instagram-Login row for
+ *     @leaddrive.az is an IG-Login row, so on `webhooks/instagram` step 1 ranked it above Fanumsec's live
+ *     claim — once Meta starts delivering (the app is published), real customers' Direct would have landed
+ *     in the review sandbox. De-preferred, not excluded: a staged row that is the ONLY claimant (a
+ *     dedicated review test account) still ingests.
  *  1. The row's login surface. Each webhook serves one Meta app:
  *       - `webhooks/facebook` (Facebook Login) puts non-IG-Login rows first;
  *       - `webhooks/instagram` (Instagram Login, "Path B") puts `settings.igLogin=true` rows first.
@@ -51,9 +58,10 @@ function inboundRank(
   row: RankableChannel,
   platform: MetaSurface,
   endpoint: InboundEndpoint,
-): [number, number, number, string] {
+): [number, number, number, number, string] {
   const onOwnSurface = endpoint === "instagramLogin" ? isIgLogin(row.settings) : !isIgLogin(row.settings)
   return [
+    isAppReviewOnly(row.settings) ? 1 : 0,
     onOwnSurface ? 0 : 1,
     row.channelType === platform ? 0 : 1,
     row.createdAt ? new Date(row.createdAt).getTime() : 0,
@@ -100,7 +108,7 @@ export function reportInboundAmbiguity(
       .join(" | ")
     console.warn(
       `${tag} AMBIGUOUS pageId=${safePageId} (${platform}) — ${ranked.length} active channel configs across ${orgs.size} org(s) claim it: ${claims}. ` +
-        `Routed to org=${ranked[0].organizationId} config=${ranked[0].id} by deterministic order (${ownSurface} → channelType=${platform} → oldest createdAt → id). ` +
+        `Routed to org=${ranked[0].organizationId} config=${ranked[0].id} by deterministic order (live before App-Review-staged → ${ownSurface} → channelType=${platform} → oldest createdAt → id). ` +
         `${orgs.size > 1 ? "CROSS-TENANT: only one of these orgs owns this page — deactivate the stale claim." : "Same-org duplicate — deactivate the unused config."}`,
     )
     return

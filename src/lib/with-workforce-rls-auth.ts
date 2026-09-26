@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { checkPermission, type Action } from "@/lib/permissions"
+import { checkPermission, type Action, type Role } from "@/lib/permissions"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { withRlsAuth, withRlsSessionAuth } from "@/lib/with-rls"
 import type { AuthResult } from "@/lib/api-auth"
@@ -47,6 +47,15 @@ function workforceGranularAccessDenied(): NextResponse {
     error: "This Workforce action requires an effective Workforce role grant.",
     code: "WORKFORCE_GRANULAR_ACCESS_REQUIRED",
   }, { status: 403 })
+}
+
+/**
+ * The CRM-role half of `withWorkforceSessionAuth(action)`. A read model that
+ * advertises a session-only Workforce action asks this, so it never offers
+ * the action to a role its endpoint would refuse.
+ */
+export function workforceSessionRoleAllows(role: string, action: Action): boolean {
+  return checkPermission(role as Role, "workforce", action)
 }
 
 function isWorkforcePolicyAdministrator(role: string | null | undefined): boolean {
@@ -108,7 +117,7 @@ export function withWorkforceSessionAuth<C = unknown>(
   handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
 ) {
   const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
-    if (!checkPermission(auth.role, "workforce", action)) return workforceSessionPermissionDenied(action)
+    if (!workforceSessionRoleAllows(auth.role, action)) return workforceSessionPermissionDenied(action)
     const denied = await workforceCapabilityResponse(auth.orgId)
     if (denied) return denied
     return handler(req, auth, ctx)

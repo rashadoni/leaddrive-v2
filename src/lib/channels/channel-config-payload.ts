@@ -1,5 +1,24 @@
 export type SmsProvider = "atl" | "twilio" | "vonage"
 
+/**
+ * The channel types this form configures — the type picker in components/channel-config-form is typed against
+ * this list. The PUT route refuses rows that have a screen of their own (Social Monitoring, Slack, Teams, VoIP —
+ * lib/channels/dedicated-channel-types) and leaves the settings of any other row alone
+ * (lib/channels/server-owned-settings).
+ */
+export const CHANNEL_FORM_TYPES = [
+  "email",
+  "telegram",
+  "whatsapp",
+  "sms",
+  "facebook",
+  "instagram",
+  "vkontakte",
+  "chatwoot",
+] as const
+
+export type ChannelFormType = (typeof CHANNEL_FORM_TYPES)[number]
+
 export interface ChannelConfigFormData {
   configName: string
   channelType: string
@@ -26,6 +45,8 @@ export interface ChannelConfigFormData {
   verifyToken: string
   displayName: string
   igLogin: boolean
+  appReviewOnly: boolean
+  loginConfigId: string
   chatwootBaseUrl: string
   chatwootAccountId: string
   chatwootWebhookSecret: string
@@ -112,11 +133,31 @@ export function buildChannelPayload(form: ChannelConfigFormData) {
     appId: form.appId || undefined,
     appSecret: form.appSecret || undefined,
     pageId: form.pageId || undefined,
+    // Only the keys this form owns. The keys other screens and endpoints write (the reply policy, the Meta
+    // subscription outcome, WhatsApp templates, webhook secrets, …) are kept by the PUT route —
+    // lib/channels/meta-server-settings for Facebook/Instagram, lib/channels/server-owned-settings for the
+    // rest — so they are neither echoed back here nor erased by a save.
     settings: {
       ...(form.chatId ? { chatId: form.chatId } : {}),
       ...(form.accountSid ? { accountSid: form.accountSid } : {}),
       ...(form.confirmationCode ? { confirmationCode: form.confirmationCode } : {}),
       ...(form.channelType === "instagram" && form.igLogin ? { igLogin: true } : {}),
+      // A STAGED Meta app, isolated from the tenant's live channels: `appReviewOnly` hides the row
+      // from the org-wide resolvers in lib/social/tenant-meta-app.ts, so entering a second Meta app
+      // (e.g. one under App Review) cannot become the app that an existing channel's reconnect runs
+      // through. It must be re-sent on every save — this builder rebuilds `settings` from scratch, so
+      // omitting it here would silently clear the flag on the next edit and promote the staged app to
+      // the tenant default, which is the precise accident the flag exists to prevent.
+      ...((form.channelType === "facebook" || form.channelType === "instagram") && form.appReviewOnly
+        ? { appReviewOnly: true }
+        : {}),
+      // Facebook Login for Business configuration id. Meta's docs state that "config_id has replaced
+      // scope (which should not be used)", so an app set up that way needs this instead of a scope
+      // list — without it the dialog rejects the request and, if it opens at all, the grant lands on
+      // the selected assets and /me/accounts comes back empty.
+      ...((form.channelType === "facebook" || form.channelType === "instagram") && form.loginConfigId.trim()
+        ? { loginConfigId: form.loginConfigId.trim() }
+        : {}),
     },
     isActive: form.isActive,
   } as Record<string, unknown>

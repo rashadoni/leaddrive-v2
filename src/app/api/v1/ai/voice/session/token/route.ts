@@ -7,7 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { checkVoicePilotAccess } from "@/lib/ai/voice/gate"
 import { getOrgModuleContext } from "@/lib/api-auth"
 import { accessibleVoiceSectionKeys } from "@/lib/ai/voice/read-access"
-import { MAX_SESSION_SECONDS, readVoicePilotConfig } from "@/lib/ai/voice/config"
+import { MAX_SESSION_SECONDS, readVoicePilotConfig, voiceWritesEnabled } from "@/lib/ai/voice/config"
 import {
   createGeminiLiveToken,
   GEMINI_LIVE_API_VERSION,
@@ -15,9 +15,16 @@ import {
 } from "@/lib/ai/voice/gemini-live"
 import { guardInteractiveJsonMutation } from "@/lib/social/review-apply-request"
 import { geminiVoiceMarker } from "@/lib/ai/voice/session-marker"
+import { VOICE_AUDIO_MODES } from "@/lib/ai/voice/audio-policy"
 
 const bodySchema = z.object({
   voiceSessionId: z.string().min(6).max(64),
+  /**
+   * Which room the user is in. A closed enum, not a set of tuning knobs: the
+   * browser picks between two policies this file owns, and cannot loosen the
+   * detector, the model, the prompt or the tools by editing a request.
+   */
+  audioMode: z.enum(VOICE_AUDIO_MODES).optional(),
 }).strict()
 
 /**
@@ -92,6 +99,11 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
       firstName: (me?.name ?? "").trim().split(/\s+/)[0] ?? "",
       allowedSections,
       maxSessionSeconds: MAX_SESSION_SECONDS,
+      ...(parsed.data.audioMode ? { audioMode: parsed.data.audioMode } : {}),
+      // Resolved here and sealed into the token: the tools and the prompt the
+      // model receives must agree with the switch, or it will offer to prepare
+      // actions the server then refuses.
+      writesEnabled: voiceWritesEnabled(),
     })
 
     const finalized = await prisma.voiceSession.updateMany({

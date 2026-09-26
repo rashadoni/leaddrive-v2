@@ -129,7 +129,9 @@ let txMock: {
   mtmSetting: { findFirst: ReturnType<typeof vi.fn> }
   mtmAlert: { create: ReturnType<typeof vi.fn> }
   mtmVisitParticipant: { createMany: ReturnType<typeof vi.fn> }
-  mtmRoute: { updateMany: ReturnType<typeof vi.fn> }
+  mtmRoute: { updateMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> }
+  mtmAuditLog: { create: ReturnType<typeof vi.fn> }
+  $executeRaw: ReturnType<typeof vi.fn>
 }
 
 const uuid = () => "123e4567-e89b-42d3-a456-426614174000"
@@ -180,7 +182,9 @@ beforeEach(() => {
     mtmSetting: { findFirst: vi.fn().mockResolvedValue(null) },
     mtmAlert: { create: vi.fn().mockResolvedValue({}) },
     mtmVisitParticipant: { createMany: vi.fn().mockResolvedValue({}) },
-    mtmRoute: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    mtmRoute: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findFirst: vi.fn().mockResolvedValue(null) },
+    mtmAuditLog: { create: vi.fn().mockResolvedValue({}) },
+    $executeRaw: vi.fn().mockResolvedValue(0),
   }
   vi.mocked(prisma.$transaction).mockImplementation(((cb: (tx: unknown) => unknown) => cb(txMock)) as never)
 })
@@ -410,6 +414,34 @@ describe("POST /api/v1/mtm/sync/push", () => {
     expect(txMock.mtmVisit.create).not.toHaveBeenCalled()
   })
 
+  it("still refuses an out-of-zone check-in but creates no alert when alertOutOfZone is off", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", latitude: 40.0, longitude: 49.0, geofenceRadius: 100 })
+    txMock.mtmSetting.findFirst.mockImplementation(async ({ where }: { where: { key: string } }) => (
+      where.key === "alertOutOfZone" ? { value: false } : null
+    ))
+    const res = await POST(req({ operations: [
+      checkinOp(uuid(), { checkInLat: 41.0, checkInLng: 50.0 }),
+      checkinOp(uuid(), { checkInLat: 41.0, checkInLng: 50.0 }),
+    ] }), undefined as never)
+    const results = (await res.json()).data.results
+    expect(results.map((item: { result: { status: string } }) => item.result.status)).toEqual(["out_of_zone", "out_of_zone"])
+    expect(txMock.mtmAlert.create).not.toHaveBeenCalled()
+    expect(txMock.mtmVisit.create).not.toHaveBeenCalled()
+    // One read per request, however many out-of-zone operations the batch carries.
+    const alertReads = txMock.mtmSetting.findFirst.mock.calls.filter(([args]: [{ where: { key: string } }]) => args.where.key === "alertOutOfZone")
+    expect(alertReads).toHaveLength(1)
+  })
+
+  it("creates the out-of-zone alert when alertOutOfZone is explicitly on", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", latitude: 40.0, longitude: 49.0, geofenceRadius: 100 })
+    txMock.mtmSetting.findFirst.mockImplementation(async ({ where }: { where: { key: string } }) => (
+      where.key === "alertOutOfZone" ? { value: true } : null
+    ))
+    const res = await POST(req({ operations: [checkinOp(uuid(), { checkInLat: 41.0, checkInLng: 50.0 })] }), undefined as never)
+    expect((await res.json()).data.results[0].result.status).toBe("out_of_zone")
+    expect(txMock.mtmAlert.create).toHaveBeenCalledTimes(1)
+  })
+
   it("check-in conflicts when a targeted route point isn't available to the agent", async () => {
     const res = await POST(req({ operations: [checkinOp(uuid(), { routePointId: "rp-1" })] }), undefined as never)
     expect((await res.json()).data.results[0].result.status).toBe("route_point_unavailable")
@@ -545,5 +577,73 @@ describe("POST /api/v1/mtm/sync/push", () => {
   it("visit_action errors on missing required fields", async () => {
     const res = await POST(req({ operations: [{ operationId: uuid(), entity: "visits", op: "update", data: { kind: "visit_action", visitId: "v1" } }] }), undefined as never)
     expect((await res.json()).data.results[0].status).toBe("error")
+  })
+})
+
+// Prod 2026-09-14: the PWA's offline check-ins and check-outs never reached the
+// activity journal. They now write audit rows through the transaction client.
+describe("POST /api/v1/mtm/sync/push — activity audit rows", () => {
+  const checkin = (operationId: string, extra: Record<string, unknown> = {}) => ({
+    operationId, entity: "visits", op: "create", data: { kind: "checkin", customerId: "cust-1", ...extra },
+  })
+
+  it("check-in writes CHECK_IN (and ROUTE_START for a planned route) via the tx client", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", name: "Aptek 24", latitude: 40, longitude: 49, geofenceRadius: null })
+    txMock.mtmRoutePoint.findFirst.mockResolvedValue({
+      id: "rp-1", routeId: "r-1", customerId: "cust-1", contactId: null,
+      route: { status: "PLANNED", assignments: [] },
+    })
+    const res = await POST(req({ operations: [checkin(uuid(), { routePointId: "rp-1" })] }), undefined as never)
+    expect((await res.json()).data.results[0].status).toBe("ok")
+
+    const rows = txMock.mtmAuditLog.create.mock.calls.map((call) => call[0].data)
+    expect(rows.map((row) => row.action)).toEqual(["CHECK_IN", "ROUTE_START"])
+    expect(rows[0]).toMatchObject({
+      agentId: "mtm-agent-1", entity: "visit", entityId: "visit-new",
+      newData: expect.objectContaining({ customerName: "Aptek 24", operationId: uuid(), source: "web_sync" }),
+    })
+    expect(txMock.mtmAuditLog.create.mock.invocationCallOrder[1])
+      .toBeLessThan(txMock.mtmSyncOperation.create.mock.invocationCallOrder[0])
+  })
+
+  it("check-out writes CHECK_OUT once; an idempotent replay of a checked-out visit writes nothing", async () => {
+    txMock.mtmVisit.findFirst.mockResolvedValue({ agentId: "mtm-agent-1", customerId: "cust-1", routeId: null, customer: { name: "Aptek 24" }, route: null })
+    vi.mocked(completeMtmVisit).mockResolvedValueOnce({ status: "completed", visit: { id: "v1" }, idempotent: false } as never)
+    await POST(req({ operations: [checkoutOp()] }), undefined as never)
+    expect(txMock.mtmAuditLog.create.mock.calls.map((call) => call[0].data.action)).toEqual(["CHECK_OUT"])
+
+    txMock.mtmAuditLog.create.mockClear()
+    vi.mocked(completeMtmVisit).mockResolvedValueOnce({ status: "completed", visit: { id: "v1" }, idempotent: true } as never)
+    await POST(req({ operations: [checkoutOp("223e4567-e89b-42d3-a456-426614174000")] }), undefined as never)
+    expect(txMock.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("an audit insert failure rolls back only its savepoint: the check-in is written and pinned ok", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    txMock.mtmAuditLog.create.mockRejectedValue(new Error("audit table unavailable"))
+    const res = await POST(req({ operations: [checkin(uuid())] }), undefined as never)
+    consoleError.mockRestore()
+
+    expect((await res.json()).data.results[0].status).toBe("ok")
+    expect(txMock.mtmVisit.create).toHaveBeenCalledTimes(1)
+    expect(txMock.mtmSyncOperation.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "ok" }) }))
+    const sql = txMock.$executeRaw.mock.calls.map((call) => (call[0] as TemplateStringsArray).join("?"))
+    expect(sql).toEqual(["SAVEPOINT field_sync_audit", "ROLLBACK TO SAVEPOINT field_sync_audit", "RELEASE SAVEPOINT field_sync_audit"])
+  })
+
+  it("dates an offline check-in by when it happened, not when it synced", async () => {
+    txMock.mtmVisit.create.mockResolvedValue({ id: "visit-new", status: "CHECKED_IN", checkInAt: new Date("2026-09-13T14:40:00.000Z") })
+    await POST(req({ operations: [checkin(uuid(), { checkInAt: "2026-09-13T14:40:00.000Z" })] }), undefined as never)
+    const row = txMock.mtmAuditLog.create.mock.calls[0][0].data
+    expect(row.createdAt.toISOString()).toBe("2026-09-13T14:40:00.000Z")
+    expect(row.newData.occurredAt).toBe("2026-09-13T14:40:00.000Z")
+    expect(Date.parse(row.newData.syncedAt)).toBeGreaterThan(Date.parse("2026-09-13T14:40:00.000Z"))
+  })
+
+  it("a previously pinned operation replays without any audit write", async () => {
+    vi.mocked(prisma.mtmSyncOperation.findMany).mockResolvedValue([{ operationId: uuid(), status: "ok", result: {} }] as never)
+    await POST(req({ operations: [checkin(uuid())] }), undefined as never)
+    expect(txMock.mtmAuditLog.create).not.toHaveBeenCalled()
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 })

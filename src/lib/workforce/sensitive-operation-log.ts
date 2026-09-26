@@ -8,6 +8,8 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "review-exception-decision-write"
     | "review-exception-response-write"
     | "review-workday-correction"
+    | "review-workday-reopen"
+    | "review-workday-reopen-undo"
     | "review-timesheet-approval-export"
     | "preview-timesheet-approval-export"
     | "authorize-approved-timesheet-report"

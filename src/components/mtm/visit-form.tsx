@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
+import { explainMtmApiErrorOr, useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -20,8 +20,9 @@ interface VisitFormProps {
 export function MtmVisitForm({ open, onOpenChange, onSaved, initialData, orgId }: VisitFormProps) {
   const tc = useTranslations("common")
   const tf = useTranslations("mtmForms")
+  const explainError = useMtmApiError()
   const isEdit = !!initialData?.id
-  const [form, setForm] = useState({ agentId: "", customerId: "", status: "CHECKED_IN", notes: "", latitude: "", longitude: "" })
+  const [form, setForm] = useState({ agentId: "", customerId: "", notes: "" })
   const [agents, setAgents] = useState<any[]>([])
   const [customers, setCustomers] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
@@ -31,8 +32,7 @@ export function MtmVisitForm({ open, onOpenChange, onSaved, initialData, orgId }
     if (open) {
       setForm({
         agentId: initialData?.agentId || "", customerId: initialData?.customerId || "",
-        status: initialData?.status || "CHECKED_IN", notes: initialData?.notes || "",
-        latitude: initialData?.checkInLat?.toString() || "", longitude: initialData?.checkInLng?.toString() || "",
+        notes: initialData?.notes || "",
       })
       setError("")
       const headers = orgId ? { "x-organization-id": orgId } : {} as Record<string, string>
@@ -40,7 +40,10 @@ export function MtmVisitForm({ open, onOpenChange, onSaved, initialData, orgId }
         fetch("/api/v1/mtm/agents?limit=200", { headers }).then(r => r.json()),
         fetch("/api/v1/mtm/customers?limit=200", { headers }).then(r => r.json()),
       ]).then(([a, c]) => {
+        // Without a field card the agent list is refused; say so instead of
+        // leaving the dropdown silently empty.
         if (a.success) setAgents(a.data.agents || [])
+        else setError(explainError(a))
         if (c.success) setCustomers(c.data.customers || [])
       }).catch(() => {})
     }
@@ -60,7 +63,7 @@ export function MtmVisitForm({ open, onOpenChange, onSaved, initialData, orgId }
         body: JSON.stringify(form),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || tc("failedToSave"))
+      if (!res.ok) throw new Error(explainMtmApiErrorOr(explainError, json, res.status, json.error || tc("failedToSave")))
       onSaved()
       onOpenChange(false)
     } catch (err: any) { setError(err.message) } finally { setSaving(false) }
@@ -89,19 +92,9 @@ export function MtmVisitForm({ open, onOpenChange, onSaved, initialData, orgId }
                 </Select>
               </div>
             </div>
-            {isEdit && (
-              <div>
-                <Label htmlFor="status">{tc("status")}</Label>
-                <Select value={form.status} onChange={e => update("status", e.target.value)}>
-                  <option value="CHECKED_IN">{tf("checkedIn")}</option>
-                  <option value="CHECKED_OUT">{tf("checkedOut")}</option>
-                </Select>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label htmlFor="latitude">{tf("latitude")}</Label><Input id="latitude" type="number" step="any" value={form.latitude} onChange={e => update("latitude", e.target.value)} /></div>
-              <div><Label htmlFor="longitude">{tf("longitude")}</Label><Input id="longitude" type="number" step="any" value={form.longitude} onChange={e => update("longitude", e.target.value)} /></div>
-            </div>
+            {/* Owner 2026-09-25: the agent opens and closes a visit himself, and
+                its GPS comes only from his device. The office corrects who,
+                where and the note — no status, no coordinates. */}
             <div><Label htmlFor="notes">{tc("notes")}</Label><Textarea id="notes" value={form.notes} onChange={e => update("notes", e.target.value)} rows={2} /></div>
           </div>
         </DialogContent>

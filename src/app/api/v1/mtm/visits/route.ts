@@ -8,6 +8,7 @@ import { writeMtmAudit } from "@/lib/mtm-audit"
 import { VisitCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { notifyAgent } from "@/lib/mtm-notify"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { checkInGeofenceRadius, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import {
@@ -79,7 +80,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     }
     const include = {
       agent: { select: { id: true, name: true } },
-      customer: { select: { id: true, name: true, address: true, latitude: true, longitude: true } },
+      customer: { select: { id: true, name: true, address: true, city: true, latitude: true, longitude: true, geofenceRadius: true } },
       contact: { select: { id: true, displayName: true, type: true, specialtyName: true } },
       participants: {
         select: { agentId: true, role: true, joinedAt: true, leftAt: true },
@@ -157,6 +158,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         limit,
         range,
         timezone,
+        // Org-level geofence for customers without their own radius, so the
+        // page measures a visit against the radius its check-in used.
+        geofenceRadius: settings.geofenceRadius,
       },
     })
   } catch (e) {
@@ -277,8 +281,8 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       const customer = scopedCustomer
       const orgSettings = await getMtmSettings(orgId)
       // F-22: prefer per-customer override, fall back to org-level setting (default 100m)
-      const geofenceRadius =
-        customer.geofenceRadius != null ? customer.geofenceRadius : orgSettings.geofenceRadius
+      // Same clamp (25..10000 m, else 100 m) as both sync paths.
+      const geofenceRadius = checkInGeofenceRadius(customer.geofenceRadius, orgSettings.geofenceRadius)
 
       const distanceMeters = calculateDistance(
         latitude,
@@ -437,6 +441,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
           checkInAt,
           checkInLat: latitude,
           checkInLng: longitude,
+          ...(await mtmVisitPlaceSnapshot(tx, orgId, scopedCustomer)),
           notes: notes || null,
         },
       })

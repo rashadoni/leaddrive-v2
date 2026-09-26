@@ -7,9 +7,20 @@ import bcrypt from "bcryptjs"
 import { AgentCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { resolveAgentScope, isValidMtmAgentRole } from "@/lib/mtm/territory-scope"
-import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { mtmFieldScopeRequiredResponse, resolveMtmFieldScope } from "@/lib/mtm/field-access"
+import {
+  MTM_SCOPED_MANAGEABLE_AGENT_ROLES,
+  mtmScopedAgentLinkForbidden,
+  mtmScopedAgentRoleForbidden,
+  mtmScopedAgentTerritoryForbidden,
+  resolveMtmAgentAdministration,
+} from "@/lib/mtm/agent-administration"
 import { mtmAgentPresence, type MtmAgentPresence } from "@/lib/mtm/agent-day-state"
-import { mtmWorkdayPauses, serializeMtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
+import {
+  MTM_WORKDAY_PAUSE_EVENT_TYPES,
+  mtmWorkdayPauses,
+  serializeMtmWorkdayPauses,
+} from "@/lib/mtm/workday-pauses"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
@@ -17,6 +28,11 @@ import type { RlsAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { passwordPolicyError } from "@/lib/password-policy"
+import {
+  mtmAgentActivityWindow,
+  mtmAgentAppActivity,
+  mtmAgentCardActivity,
+} from "@/lib/mtm/agent-card-activity"
 
 const AGENT_RESPONSE_SELECT = {
   id: true,
@@ -40,26 +56,6 @@ const AGENT_RESPONSE_SELECT = {
   manager: { select: { id: true, name: true } },
   team: { select: { id: true, name: true, region: { select: { id: true, name: true } } } },
 } satisfies Prisma.MtmAgentSelect
-
-async function canManageAgents({ orgId, session }: RlsAuth): Promise<boolean> {
-  // Agent credentials and authorization links are privileged web operations.
-  // Mobile JWTs and API keys reach withRls without a browser session and fail.
-  if (!session) return false
-  if (checkPermission(session.role, "mtm", "admin")) return true
-  const actor = await resolveMtmRouteActor(prisma, {
-    organizationId: orgId,
-    userId: session.userId,
-    webRole: session.role,
-  })
-  return actor?.role === "ADMIN"
-}
-
-function agentAdministrationDenied() {
-  return NextResponse.json(
-    { error: "Web administrator access required", code: "MTM_AGENT_ADMIN_REQUIRED" },
-    { status: 403 },
-  )
-}
 
 /**
  * Момент ухода на перерыв и момент закрытия дня — это данные о персонале.
@@ -123,6 +119,10 @@ export const GET = withRls(async (req, auth) => {
     // Mobile callers (MANAGER/SUPERVISOR) are scoped to their team/region.
     // AGENT callers see only themselves.
     const mobileAuth = getMobileAuth(req)
+    // The linked web login's email is for the web page's search only: a phone
+    // token or an integration key has no reason to learn anyone's sign-in
+    // address (review of #214).
+    const exposeLoginEmail = Boolean(session) && !mobileAuth?.agentId
     if (mobileAuth?.agentId) {
       const callerAgent = await prisma.mtmAgent.findFirst({
         where: { id: mobileAuth.agentId, organizationId: orgId },
@@ -149,6 +149,16 @@ export const GET = withRls(async (req, auth) => {
         // check and this query. Do not widen that race to organization-wide.
         where.id = { in: [] }
       }
+    } else if (session) {
+      // Web users see the cards of their field scope. Before, every web user
+      // with MTM read saw every employee's phone, email, team and manager.
+      const scope = await resolveMtmFieldScope(prisma, {
+        organizationId: orgId,
+        userId: session.userId,
+        webRole: session.role,
+      })
+      if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
+      if (scope.kind === "agents") where.id = { in: scope.agentIds }
     }
 
     const [agents, total] = await Promise.all([
@@ -157,7 +167,18 @@ export const GET = withRls(async (req, auth) => {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { name: "asc" },
-        select: AGENT_RESPONSE_SELECT,
+        select: {
+          ...AGENT_RESPONSE_SELECT,
+          // Read only to answer two yes/no questions below; the token itself
+          // and the coordinates never leave this handler.
+          expoPushToken: true,
+          latestLocation: { select: { receivedAt: true } },
+          // The linked web login's email, so the page can find a manager by the
+          // address they sign in with (prod 2026-09-15: «rashad@guven.az» lived
+          // only on the login). Web sessions only; flattened below, the user
+          // row never leaves.
+          ...(exposeLoginEmail ? { user: { select: { email: true } } } : {}),
+        },
       }),
       prisma.mtmAgent.count({ where }),
     ])
@@ -191,15 +212,15 @@ export const GET = withRls(async (req, auth) => {
             where: {
               organizationId: orgId,
               workdayId: { in: days.map((day) => day.id) },
-              type: { in: ["PAUSE", "RESUME", "FINISH"] },
+              type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
             },
             orderBy: { occurredAt: "asc" },
-            select: { workdayId: true, type: true, occurredAt: true },
+            select: { workdayId: true, type: true, occurredAt: true, appliedAt: true },
           })
-          const byWorkday = new Map<string, Array<{ type: string; occurredAt: Date }>>()
+          const byWorkday = new Map<string, Array<{ type: string; occurredAt: Date; appliedAt: Date | null }>>()
           for (const event of events) {
             const list = byWorkday.get(event.workdayId) ?? []
-            list.push({ type: event.type, occurredAt: event.occurredAt })
+            list.push({ type: event.type, occurredAt: event.occurredAt, appliedAt: event.appliedAt })
             byWorkday.set(event.workdayId, list)
           }
           for (const day of days) {
@@ -211,17 +232,67 @@ export const GET = withRls(async (req, auth) => {
       }
     }
 
+    // Card figures (visits and plan fulfilment over the analytics "weekly"
+    // window). Like presence, an enrichment: a failure costs the figure, not
+    // the list of people.
+    const activityByAgent = new Map<string, { visits: number; plannedPoints: number; visitedPoints: number }>()
+    let activityAvailable = false
+    if (agents.length) {
+      try {
+        const agentIds = agents.map((agent) => agent.id)
+        const activitySettings = await getMtmSettings(orgId)
+        const activityWindow = mtmAgentActivityWindow(new Date(), activitySettings.timezone)
+        const [visitRows, routeRows] = await Promise.all([
+          prisma.mtmVisit.groupBy({
+            by: ["agentId"],
+            where: { organizationId: orgId, agentId: { in: agentIds }, createdAt: { gte: activityWindow.visitsSince }, deletedAt: null },
+            _count: { _all: true },
+          }),
+          prisma.mtmRoute.groupBy({
+            by: ["agentId"],
+            where: { organizationId: orgId, agentId: { in: agentIds }, date: activityWindow.routeDate, deletedAt: null, totalPoints: { gt: 0 } },
+            _sum: { totalPoints: true, visitedPoints: true },
+          }),
+        ])
+        for (const row of visitRows as Array<{ agentId: string; _count?: { _all?: number } }>) {
+          const current = activityByAgent.get(row.agentId) ?? { visits: 0, plannedPoints: 0, visitedPoints: 0 }
+          current.visits = row._count?._all ?? 0
+          activityByAgent.set(row.agentId, current)
+        }
+        for (const row of routeRows as Array<{ agentId: string; _sum?: { totalPoints?: number | null; visitedPoints?: number | null } }>) {
+          const current = activityByAgent.get(row.agentId) ?? { visits: 0, plannedPoints: 0, visitedPoints: 0 }
+          current.plannedPoints = row._sum?.totalPoints ?? 0
+          current.visitedPoints = row._sum?.visitedPoints ?? 0
+          activityByAgent.set(row.agentId, current)
+        }
+        activityAvailable = true
+      } catch (activityError) {
+        console.error("[MTM/agents GET] activity unavailable", activityError)
+      }
+    }
+
     const showTimes = await mayReadWorkdayTimes(auth)
+    const now = new Date()
 
     return NextResponse.json({
       success: true,
       data: {
-        agents: agents.map((agent) => {
+        agents: agents.map((row) => {
+          const { expoPushToken, latestLocation, ...rest } = row
+          const { user, ...agent } = rest as typeof rest & { user?: { email: string | null } | null }
           const presence = mtmAgentPresence(dayByAgent.get(agent.id))
           return {
             ...agent,
+            ...(exposeLoginEmail ? { userEmail: user?.email ?? null } : {}),
             presence: showTimes ? presence : withoutTimes(presence),
             breaks: showTimes ? (breaksByAgent.get(agent.id) ?? []) : [],
+            activity: activityAvailable ? mtmAgentCardActivity(activityByAgent.get(agent.id) ?? {}) : null,
+            app: mtmAgentAppActivity({
+              lastLocationAt: latestLocation?.receivedAt ?? null,
+              lastSeenAt: agent.lastSeenAt ?? null,
+              hasPushToken: Boolean(expoPushToken),
+              now,
+            }),
           }
         }),
         total,
@@ -238,12 +309,28 @@ export const GET = withRls(async (req, auth) => {
 export const POST = withRls(async (req, auth) => {
   const { orgId } = auth
   try {
-    if (!await canManageAgents(auth)) return agentAdministrationDenied()
+    const administration = await resolveMtmAgentAdministration(prisma, auth)
+    if (administration.kind === "denied") return administration.response
 
     const raw = await req.json()
     const parsed = parseBody(AgentCreateSchema, raw)
     if (!parsed.ok) return parsed.response
     const body = parsed.data
+
+    if (administration.kind === "scoped") {
+      // A manager hires into their own team line: field roles only, no web
+      // login link, and a manager inside their scope (themselves by default)
+      // so the new card is visible to them the moment it exists.
+      if (!MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(body.role ?? "AGENT")) return mtmScopedAgentRoleForbidden()
+      // A supervisor's scope is their team. A new card has no team yet, so it
+      // cannot be shown to sit in the manager's territory — administrator work.
+      if (body.role === "SUPERVISOR") return mtmScopedAgentTerritoryForbidden()
+      if (body.userId) return mtmScopedAgentLinkForbidden()
+      if (body.managerId && !administration.agentIds.includes(body.managerId)) {
+        return NextResponse.json({ error: "Manager is outside your field scope", code: "MTM_AGENT_OUT_OF_SCOPE" }, { status: 403 })
+      }
+      body.managerId = body.managerId ?? administration.actor.agentId
+    }
 
     if (body.userId) {
       const linkedUser = await prisma.user.findFirst({

@@ -44,6 +44,8 @@ import { LeadBrowserCallAction } from "@/components/leads/lead-browser-call-acti
 import { LeadVoicePermission } from "@/components/leads/lead-voice-permission"
 import { CollapsibleSection } from "@/components/crm/collapsible-section"
 import { CustomerDetailsCards } from "@/components/crm/customer-details-cards"
+import { VOICE_RECORD_CHANGED_EVENT, type VoiceRecordChangedDetail } from "@/lib/ai/voice/voice-confirmation"
+import { modelConversionProbability } from "@/lib/leads/conversion-probability"
 
 // Shared between the timeline icon lookup AND the Add Activity Type select options.
 // Order here defines the order in the Select dropdown.
@@ -408,6 +410,18 @@ export default function LeadDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, orgId])
 
+  // A voice edit to THIS lead was just saved: show the new values, so the user
+  // can see on the card whether everything is right.
+  useEffect(() => {
+    const onChanged = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceRecordChangedDetail>).detail
+      if (detail?.entityType === "lead" && detail.entityId === id) void fetchLead()
+    }
+    window.addEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
+    return () => window.removeEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, orgId])
+
   const handleStatusChange = async (newStatus: string) => {
     if (!lead || lead.status === newStatus || updatingStatus) return
     setUpdatingStatus(true)
@@ -716,8 +730,9 @@ export default function LeadDetailPage() {
   const daysSinceCreated = Math.floor(
     (Date.now() - new Date(lead.createdAt).getTime()) / 86400000
   )
-  const rawConversionProb = (lead.scoreDetails as any)?.conversionProb ?? Math.round(normalizedScore * 0.85)
-  const conversionProb = Math.min(100, Math.max(0, Math.round(Number(rawConversionProb) || 0)))
+  // Only Da Vinci's own estimate. The card used to show the score × 0.85 for
+  // every lead the model had not estimated — which, on prod, was all of them.
+  const conversionProb = modelConversionProbability(lead.scoreDetails)
   const role = session?.user?.role ?? ""
   const canOverrideSalesReport = ["admin", "manager", "superadmin"].includes(role)
   const canReportSalesCall = canOverrideSalesReport
@@ -1687,12 +1702,14 @@ export default function LeadDetailPage() {
                 <div className="text-xs text-muted-foreground mt-1">{t("modalScore") || "Score"}</div>
               </CardContent></Card>
               <Card><CardContent className="pt-4 pb-4">
-                <div className={cn("text-3xl font-bold", conversionProb >= 50 ? "text-green-600" : conversionProb >= 30 ? "text-yellow-600" : "text-red-500")}>
-                  {conversionProb}%
+                <div className={cn("text-3xl font-bold", conversionProb == null ? "text-muted-foreground" : conversionProb >= 50 ? "text-green-600" : conversionProb >= 30 ? "text-yellow-600" : "text-red-500")}>
+                  {conversionProb == null ? "—" : `${conversionProb}%`}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">{t("modalConversion") || "Conversion"}</div>
+                {conversionProb == null && <div className="text-[10px] text-muted-foreground">{t("convProbNoneShort")}</div>}
               </CardContent></Card>
             </div>
+            {conversionProb == null && <p className="text-xs text-muted-foreground">{t("convProbNone")}</p>}
 
             {lead.scoreDetails?.factors && (
               <div className="space-y-2">

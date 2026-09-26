@@ -125,6 +125,53 @@ describe("MTM location history calculations", () => {
     expect(downsampleHistoryPoints(points, 3).map((item) => item.id)).toEqual(["a", "c", "e"])
   })
 
+  /**
+   * A break the agent pressed is not a GPS failure. Reporting it as one puts
+   * "GPS quality problems" on an ordinary lunch hour and buries the outages
+   * that are real among them.
+   */
+  it("calls a gap a pause when the workday was on hold for it", () => {
+    const points = [point("a", 0), point("b", 1), point("c", 40), point("d", 41)]
+    const pauses = [{
+      startedAt: new Date("2026-07-15T08:01:30.000Z"),
+      endedAt: new Date("2026-07-15T08:39:30.000Z"),
+    }]
+    const [gap] = detectHistoryGaps(points, 300, pauses)
+    expect(gap).toMatchObject({ id: "gap-b-c", reason: "WORKDAY_PAUSED" })
+
+    // The same silence with no pause behind it stays a telemetry gap.
+    expect(detectHistoryGaps(points, 300)[0]).toMatchObject({ reason: "TELEMETRY_GAP" })
+  })
+
+  it("does not let a short pause explain a long silence", () => {
+    const points = [point("a", 0), point("b", 1), point("c", 40)]
+    const brief = [{
+      startedAt: new Date("2026-07-15T08:01:00.000Z"),
+      endedAt: new Date("2026-07-15T08:06:00.000Z"),
+    }]
+    expect(detectHistoryGaps(points, 300, brief)[0]).toMatchObject({ reason: "TELEMETRY_GAP" })
+  })
+
+  it("keeps a paused gap out of the GPS-quality findings and names it in the timeline", () => {
+    const points = [point("a", 0), point("b", 1), point("c", 40), point("d", 41)]
+    const pauses = [{
+      startedAt: new Date("2026-07-15T08:01:00.000Z"),
+      endedAt: new Date("2026-07-15T08:40:00.000Z"),
+    }]
+    const gaps = detectHistoryGaps(points, 300, pauses)
+    const anomalies = detectHistoryAnomalies({
+      acceptedPoints: points, rawPoints: points, gaps, maxAccuracyMeters: 100, impossibleSpeedKmh: 180,
+    })
+    expect(anomalies.filter((anomaly) => anomaly.type === "MISSING_SEGMENT")).toEqual([])
+    const timeline = buildHistoryTimeline({
+      workday: null, plannedStops: [], visits: [], stops: [], gaps, anomalies,
+    })
+    expect(timeline.find((event) => event.id === gaps[0].id)).toMatchObject({
+      kind: "WORKDAY_PAUSE",
+      source: "WORKDAY",
+    })
+  })
+
   it("detects impossible jumps, missing segments and low-accuracy evidence deterministically", () => {
     const accepted = [
       point("a", 0),

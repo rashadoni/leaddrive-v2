@@ -1,3 +1,5 @@
+import { compareProbabilities, modelConversionProbability } from "@/lib/leads/conversion-probability"
+
 export const DEFAULT_LEAD_SORT = "newest"
 
 export type SortableLead = {
@@ -26,13 +28,13 @@ function compareOldest(a: SortableLead, b: SortableLead): number {
   return byDate || a.id.localeCompare(b.id)
 }
 
-function conversionProbability(lead: SortableLead): number {
-  const details = lead.scoreDetails
-  if (details && typeof details === "object" && !Array.isArray(details)) {
-    const value = (details as Record<string, unknown>).conversionProb
-    if (typeof value === "number" && Number.isFinite(value)) return value
-  }
-  return Math.round(lead.score * 0.85)
+/**
+ * By the probability a scoring model produced, highest or lowest first. A lead
+ * with none sorts after every lead that has one, in both directions — it used
+ * to be ranked as if its probability were the score × 0.85.
+ */
+function compareProbability(a: SortableLead, b: SortableLead, direction: "asc" | "desc"): number {
+  return compareProbabilities(modelConversionProbability(a.scoreDetails), modelConversionProbability(b.scoreDetails), direction)
 }
 
 /**
@@ -49,8 +51,8 @@ export function compareLeads(a: SortableLead, b: SortableLead, sortBy: string): 
     case "name_desc": primary = b.contactName.localeCompare(a.contactName); break
     case "company_asc": primary = (a.companyName || "").localeCompare(b.companyName || ""); break
     case "company_desc": primary = (b.companyName || "").localeCompare(a.companyName || ""); break
-    case "conversion_desc": primary = conversionProbability(b) - conversionProbability(a); break
-    case "conversion_asc": primary = conversionProbability(a) - conversionProbability(b); break
+    case "conversion_desc": primary = compareProbability(a, b, "desc"); break
+    case "conversion_asc": primary = compareProbability(a, b, "asc"); break
     case "source_asc": primary = (a.source || "").localeCompare(b.source || ""); break
     case "source_desc": primary = (b.source || "").localeCompare(a.source || ""); break
     case "status_asc": primary = a.status.localeCompare(b.status); break

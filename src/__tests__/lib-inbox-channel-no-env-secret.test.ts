@@ -8,19 +8,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
  * on the tenant's Meta-app config row.
  */
 
-const { findFirst, create } = vi.hoisted(() => ({
-  findFirst: vi.fn(async () => null), // no existing row → create path
+const { findMany, create } = vi.hoisted(() => ({
+  findMany: vi.fn(async () => [] as any[]), // no existing row → create path
   create: vi.fn(async ({ data }: any) => ({ id: "cfg_new", ...data })),
 }))
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { channelConfig: { findFirst, create, update: vi.fn() } },
+  prisma: { channelConfig: { findMany, create, update: vi.fn() } },
 }))
 vi.mock("@/lib/social/meta-subscribe", () => ({ subscribePageToMessages: vi.fn(async () => ({ success: true })) }))
 
 import { ensureInboxChannelForPage } from "@/lib/social/inbox-channel"
 
-beforeEach(() => { findFirst.mockClear(); create.mockClear() })
+beforeEach(() => { findMany.mockClear(); create.mockClear() })
 afterEach(() => { delete process.env.FACEBOOK_APP_ID; delete process.env.FACEBOOK_APP_SECRET })
 
 describe("ensureInboxChannelForPage — no env-secret on page rows", () => {

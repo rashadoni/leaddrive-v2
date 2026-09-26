@@ -4,6 +4,8 @@ import { isMtmApiPath, isMtmMobileApiPath } from "@/lib/mtm/mobile-api-path"
 describe("versioned MTM mobile API path boundary", () => {
   it("admits v1 compatibility and only reviewed v2 mobile handlers", () => {
     expect(isMtmApiPath("/api/v1/mtm/mobile/sync/pull")).toBe(true)
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/contact-create-requests")).toBe(true)
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/contact-create-requests/")).toBe(true)
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/planning-targets")).toBe(true)
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/contacts/contact-1")).toBe(true)
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/organizations/customer-1/")).toBe(true)
@@ -11,11 +13,24 @@ describe("versioned MTM mobile API path boundary", () => {
     expect(isMtmApiPath("/api/v2/mtm/unknown")).toBe(false)
     expect(isMtmApiPath("/api/v2/mtm/mobile/unknown")).toBe(false)
     expect(isMtmApiPath("/api/v2/mtm/mobile/route-fieldx/planning-targets")).toBe(false)
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/contact-create-requests/request-1")).toBe(false)
     expect(isMtmApiPath("/api/v3/mtm/mobile/sync/routes")).toBe(false)
 
     expect(isMtmMobileApiPath("/api/v1/mtm/mobile/sync/pull")).toBe(true)
+    expect(isMtmMobileApiPath("/api/v2/mtm/mobile/route-field/contact-create-requests")).toBe(true)
     expect(isMtmMobileApiPath("/api/v2/mtm/mobile/sync/routes")).toBe(true)
     expect(isMtmMobileApiPath("/api/v2/mtm/routes")).toBe(false)
     expect(isMtmMobileApiPath("/api/v2/mtm/mobile/unknown")).toBe(false)
+  })
+})
+
+describe("push registration is a mobile path", () => {
+  it("lets a mobile token reach the device registry", () => {
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/device-tokens")).toBe(true)
+    expect(isMtmMobileApiPath("/api/v2/mtm/mobile/route-field/device-tokens")).toBe(true)
+  })
+
+  it("keeps the allowlist exact", () => {
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/device-tokens/device-1")).toBe(false)
   })
 })

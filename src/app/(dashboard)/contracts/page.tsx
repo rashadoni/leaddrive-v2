@@ -31,6 +31,7 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { SavedViewBar, type SavedView } from "@/components/saved-view-bar"
+import { PageHeader } from "@/components/page-header"
 
 interface AuditEntry {
   id: string
@@ -763,43 +764,43 @@ export default function ContractsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="contracts" /></h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <HelpButton slug="contracts" variant="label" />
-          <a
-            href={`/api/v1/contracts/export${(() => {
-              const p = new URLSearchParams()
-              if (selectedTagIds.length > 0) p.set("tagIds", selectedTagIds.join(","))
-              if (filterValueMin) p.set("valueMin", filterValueMin)
-              if (filterValueMax) p.set("valueMax", filterValueMax)
-              if (filterStartFrom) p.set("startFrom", filterStartFrom)
-              if (filterStartTo) p.set("startTo", filterStartTo)
-              if (filterEndFrom) p.set("endFrom", filterEndFrom)
-              if (filterEndTo) p.set("endTo", filterEndTo)
-              if (filterType) p.set("type", filterType)
-              if (filterHasDeviations) p.set("hasDeviations", "true")
-              if (activeFilter !== "all" && activeFilter !== "expiring_soon") p.set("status", activeFilter)
-              return p.toString() ? `?${p.toString()}` : ""
-            })()}`}
-            download
-            className="inline-flex items-center gap-1.5 text-sm h-9 px-3 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors font-medium"
-            title={t("exportXlsx")}
-          >
-            <Download className="h-4 w-4" />
-            {t("exportXlsx")}
-          </a>
-          <Button variant="outline" onClick={openFromTemplate}>
-            <Layers className="h-4 w-4 mr-1" /> {t("newFromTemplate")}
-          </Button>
-          <Button onClick={() => { setEditData(undefined); setShowForm(true) }} data-tour-id="contracts-new">
-            <Plus className="h-4 w-4 mr-1" /> {t("newContract")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <TourReplayButton tourId="contracts" /></>}
+        description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
+        actions={
+          <>
+            <HelpButton slug="contracts" variant="label" />
+            <a
+              href={`/api/v1/contracts/export${(() => {
+                const p = new URLSearchParams()
+                if (selectedTagIds.length > 0) p.set("tagIds", selectedTagIds.join(","))
+                if (filterValueMin) p.set("valueMin", filterValueMin)
+                if (filterValueMax) p.set("valueMax", filterValueMax)
+                if (filterStartFrom) p.set("startFrom", filterStartFrom)
+                if (filterStartTo) p.set("startTo", filterStartTo)
+                if (filterEndFrom) p.set("endFrom", filterEndFrom)
+                if (filterEndTo) p.set("endTo", filterEndTo)
+                if (filterType) p.set("type", filterType)
+                if (filterHasDeviations) p.set("hasDeviations", "true")
+                if (activeFilter !== "all" && activeFilter !== "expiring_soon") p.set("status", activeFilter)
+                return p.toString() ? `?${p.toString()}` : ""
+              })()}`}
+              download
+              className="inline-flex items-center gap-1.5 text-sm h-9 px-3 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors font-medium"
+              title={t("exportXlsx")}
+            >
+              <Download className="h-4 w-4" />
+              {t("exportXlsx")}
+            </a>
+            <Button variant="outline" onClick={openFromTemplate}>
+              <Layers className="h-4 w-4 mr-1" /> {t("newFromTemplate")}
+            </Button>
+            <Button onClick={() => { setEditData(undefined); setShowForm(true) }} data-tour-id="contracts-new">
+              <Plus className="h-4 w-4 mr-1" /> {t("newContract")}
+            </Button>
+          </>
+        }
+      />
 
       <PageDescription text={t("pageDescription")} />
       <DidYouKnow page="contracts" className="mb-4" />

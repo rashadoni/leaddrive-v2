@@ -28,7 +28,6 @@ import {
   X,
 } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
-import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,6 +37,7 @@ import { Select } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { createDateFormatter } from "@/lib/format-date"
+import { defaultBroadcastAudience, operationsRoleKey } from "@/lib/mtm/operations-audience"
 
 type Agent = {
   id: string
@@ -130,6 +130,7 @@ function AudiencePicker({
   clearLabel,
   selectedLabel,
   emptyLabel,
+  roleLabel,
 }: {
   agents: Agent[]
   selected: string[]
@@ -141,15 +142,16 @@ function AudiencePicker({
   clearLabel: string
   selectedLabel: (count: number) => string
   emptyLabel: string
+  roleLabel: (role: string) => string
 }) {
   const [search, setSearch] = useState("")
   const visible = useMemo(() => {
     const query = search.trim().toLocaleLowerCase()
     if (!query) return agents
-    return agents.filter((agent) => [agent.name, agent.role, agent.team?.name]
+    return agents.filter((agent) => [agent.name, agent.role, roleLabel(agent.role), agent.team?.name]
       .filter(Boolean)
       .some((value) => value!.toLocaleLowerCase().includes(query)))
-  }, [agents, search])
+  }, [agents, roleLabel, search])
 
   function toggle(agentId: string) {
     if (!multiple) {
@@ -162,24 +164,26 @@ function AudiencePicker({
   }
 
   return (
-    <section className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700" aria-label={title}>
-      <div className="flex flex-col gap-2 border-b border-zinc-200 bg-muted/30 p-3 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+    <section data-testid="mtm-operations-audience" className="border-t border-zinc-200 pt-4 dark:border-zinc-700" aria-label={title}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           <p className="text-sm font-medium">{title}</p>
           <p className="text-xs text-muted-foreground">{selectedLabel(selected.length)}</p>
         </div>
         {multiple ? (
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             <Button type="button" size="sm" variant="ghost" onClick={() => onChange(agents.map((agent) => agent.id))}>{selectAllLabel}</Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => onChange([])} disabled={selected.length === 0}>{clearLabel}</Button>
           </div>
         ) : null}
       </div>
-      <div className="relative border-b border-zinc-200 p-2 dark:border-zinc-700">
-        <Search className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      <div className="relative mt-3">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchPlaceholder} className="h-9 pl-9" />
       </div>
-      <div className="max-h-56 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700">
+      {/* The list grows with the page. It used to be a 14rem scroll box that
+          showed four people out of sixteen. */}
+      <div className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
         {visible.map((agent) => {
           const checked = selected.includes(agent.id)
           return (
@@ -187,16 +191,17 @@ function AudiencePicker({
               key={agent.id}
               type="button"
               onClick={() => toggle(agent.id)}
-              className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              aria-pressed={checked}
+              className="flex min-h-12 w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${checked ? "border-primary bg-primary text-primary-foreground" : "border-zinc-300 dark:border-zinc-600"}`}>
                 {checked ? <Check className="h-3 w-3" aria-hidden="true" /> : null}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{agent.name}</span>
-                <span className="block truncate text-xs text-muted-foreground">{agent.team?.name || agent.role}</span>
+                <span className="block break-words text-sm font-medium">{agent.name}</span>
+                {agent.team?.name ? <span className="block break-words text-xs text-muted-foreground">{agent.team.name}</span> : null}
               </span>
-              <Badge variant="outline" className="text-[10px]">{agent.role}</Badge>
+              <Badge variant="outline" className="shrink-0 text-[11px]">{roleLabel(agent.role)}</Badge>
             </button>
           )
         })}
@@ -270,7 +275,7 @@ export default function MtmOperationsPage() {
   useEffect(() => {
     if (!data || defaultMessageAudienceApplied.current) return
     defaultMessageAudienceApplied.current = true
-    setMessageRecipients(data.agents.map((agent) => agent.id))
+    setMessageRecipients(defaultBroadcastAudience(data.agents))
   }, [data])
 
   async function sendMessage() {
@@ -382,6 +387,7 @@ export default function MtmOperationsPage() {
   useEffect(() => {
     if (data && !data.capabilities.canReviewHrm && activeSection === "hrm") setActiveSection("messages")
   }, [activeSection, data])
+  const roleLabel = useCallback((role: string) => t(`roles.${operationsRoleKey(role)}`), [t])
   const dateTime = (value: string) => createDateFormatter(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
   const dateOnly = (value: string) => createDateFormatter(locale, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(value))
 
@@ -411,15 +417,6 @@ export default function MtmOperationsPage() {
         {canReviewHrm ? <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300"><CalendarCheck2 className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.pendingHrm ?? 0}</p><p className="text-xs text-muted-foreground">{t("pendingHrm")}</p></div></CardContent></Card> : null}
       </div>
 
-      <MtmWorkflowGuide
-        title={t("clarityGuide.title")}
-        description={t("clarityGuide.description")}
-        steps={[
-          { title: t("messagesTab"), description: t("composeDescription"), icon: Send, active: activeSection === "messages", onClick: () => setActiveSection("messages") },
-          { title: t("documentsTab"), description: t("assignDocumentDescription"), icon: FileText, active: activeSection === "documents", onClick: () => setActiveSection("documents") },
-          ...(canReviewHrm ? [{ title: t("hrmTab"), description: t("hrmRequestsDescription"), icon: CalendarCheck2, active: activeSection === "hrm", onClick: () => setActiveSection("hrm") }] : []),
-        ]}
-      />
 
       <Tabs value={activeSection} onValueChange={(value) => setActiveSection(value as "messages" | "documents" | "hrm")}>
         <TabsList className={`grid h-auto w-full sm:w-auto ${canReviewHrm ? "grid-cols-3" : "grid-cols-2"}`}>
@@ -434,14 +431,14 @@ export default function MtmOperationsPage() {
               <CardHeader className="p-5 pb-3"><CardTitle className="flex items-center gap-2 text-base"><Send className="h-4 w-4 text-primary" />{t("composeTitle")}</CardTitle><CardDescription>{t("composeDescription")}</CardDescription></CardHeader>
               <CardContent className="space-y-4 p-5 pt-0">
                 <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-1">
-                  <Button type="button" variant={messageType === "BROADCAST" ? "default" : "ghost"} onClick={() => { setMessageType("BROADCAST"); setMessageRecipients(data?.agents.map((agent) => agent.id) ?? []) }}><Radio className="mr-2 h-4 w-4" />{t("broadcast")}</Button>
+                  <Button type="button" variant={messageType === "BROADCAST" ? "default" : "ghost"} onClick={() => { setMessageType("BROADCAST"); setMessageRecipients(defaultBroadcastAudience(data?.agents ?? [])) }}><Radio className="mr-2 h-4 w-4" />{t("broadcast")}</Button>
                   <Button type="button" variant={messageType === "DIRECT" ? "default" : "ghost"} onClick={() => { setMessageType("DIRECT"); setMessageRecipients([]); setAcknowledgementRequired(false); setKeyMessage(false) }}><UserRound className="mr-2 h-4 w-4" />{t("direct")}</Button>
                 </div>
                 {messageType === "BROADCAST" ? <div><Label htmlFor="operations-message-subject">{t("subject")} *</Label><Input id="operations-message-subject" value={messageSubject} onChange={(event) => setMessageSubject(event.target.value)} placeholder={t("subjectPlaceholder")} className="mt-1.5" /></div> : null}
                 <div><Label htmlFor="operations-message-body">{t("message")} *</Label><Textarea id="operations-message-body" value={messageBody} onChange={(event) => setMessageBody(event.target.value)} placeholder={t("messagePlaceholder")} rows={6} className="mt-1.5 resize-y" maxLength={4000} /><p className="mt-1 text-right text-[11px] text-muted-foreground">{messageBody.length}/4000</p></div>
-                {messageType === "BROADCAST" ? <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700"><input type="checkbox" checked={acknowledgementRequired || keyMessage} disabled={keyMessage} onChange={(event) => setAcknowledgementRequired(event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary disabled:cursor-not-allowed" /><span><span className="block text-sm font-medium">{t("requireAcknowledgement")}</span><span className="block text-xs text-muted-foreground">{t("requireAcknowledgementHint")}</span></span></label> : null}
+                {messageType === "BROADCAST" ? <label className="flex cursor-pointer items-start gap-3 py-1"><input type="checkbox" checked={acknowledgementRequired || keyMessage} disabled={keyMessage} onChange={(event) => setAcknowledgementRequired(event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary disabled:cursor-not-allowed" /><span><span className="block text-sm font-medium">{t("requireAcknowledgement")}</span><span className="block text-xs text-muted-foreground">{t("requireAcknowledgementHint")}</span></span></label> : null}
                 {messageType === "BROADCAST" ? (
-                  <div className="space-y-3 border border-zinc-200 p-3 dark:border-zinc-700">
+                  <div className="space-y-3">
                     <label className="flex cursor-pointer items-start gap-3">
                       <input
                         type="checkbox"
@@ -489,7 +486,7 @@ export default function MtmOperationsPage() {
                     ) : null}
                   </div>
                 ) : null}
-                <AudiencePicker agents={data?.agents ?? []} selected={messageRecipients} onChange={setMessageRecipients} multiple={messageType === "BROADCAST"} title={messageType === "BROADCAST" ? t("audience") : t("recipient")} searchPlaceholder={t("searchAgents")} selectAllLabel={t("selectAll")} clearLabel={t("clear")} selectedLabel={(count) => t("selectedAgents", { count })} emptyLabel={t("noAgents")} />
+                <AudiencePicker agents={data?.agents ?? []} selected={messageRecipients} onChange={setMessageRecipients} multiple={messageType === "BROADCAST"} title={messageType === "BROADCAST" ? t("audience") : t("recipient")} searchPlaceholder={t("searchAgents")} selectAllLabel={t("selectAll")} clearLabel={t("clear")} selectedLabel={(count) => t("selectedAgents", { count })} emptyLabel={t("noAgents")} roleLabel={roleLabel} />
                 <Button className="w-full" onClick={sendMessage} disabled={sendingMessage || !messageBody.trim() || messageRecipients.length === 0 || !keyMessageRangeValid || (messageType === "BROADCAST" && !messageSubject.trim())}>{sendingMessage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{messageType === "BROADCAST" ? t("sendBroadcast") : t("sendDirect")}</Button>
               </CardContent>
             </Card>
@@ -497,7 +494,7 @@ export default function MtmOperationsPage() {
             <Card>
               <CardHeader className="p-5 pb-3"><CardTitle className="text-base">{t("messageHistory")}</CardTitle><CardDescription>{t("messageHistoryDescription")}</CardDescription></CardHeader>
               <CardContent className="p-0">
-                <div className="max-h-[760px] divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700">
+                <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
                   {(data?.threads ?? []).map((thread) => (
                     <article key={thread.id} className="space-y-3 p-4 first:pt-2 sm:p-5">
                       <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Badge variant={thread.type === "BROADCAST" ? "brand" : "outline"}>{thread.type === "BROADCAST" ? t("broadcast") : t("direct")}</Badge><span className="text-xs text-muted-foreground">{dateTime(thread.lastMessageAt)}</span></div><h3 className="mt-2 truncate text-sm font-semibold">{thread.subject || thread.participants.map((participant) => participant.agent.name).join(", ") || t("conversation")}</h3></div></div>
@@ -517,18 +514,18 @@ export default function MtmOperationsPage() {
             <Card>
               <CardHeader className="p-5 pb-3"><CardTitle className="flex items-center gap-2 text-base"><Upload className="h-4 w-4 text-primary" />{t("assignDocument")}</CardTitle><CardDescription>{t("assignDocumentDescription")}</CardDescription></CardHeader>
               <CardContent className="space-y-4 p-5 pt-0">
-                <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-200"><CloudOff className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="text-sm font-medium">{t("privateStorageTitle")}</p><p className="mt-0.5 text-xs opacity-80">{t("privateStorageDescription")}</p></div></div>
+                <div className="flex items-start gap-3 rounded-lg bg-emerald-50/60 p-3 text-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-200"><CloudOff className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="text-sm font-medium">{t("privateStorageTitle")}</p><p className="mt-0.5 text-xs opacity-80">{t("privateStorageDescription")}</p></div></div>
                 <div><Label htmlFor="operations-document-title">{t("documentTitle")}</Label><Input id="operations-document-title" value={documentTitle} onChange={(event) => setDocumentTitle(event.target.value)} placeholder={t("documentTitlePlaceholder")} className="mt-1.5" /></div>
                 <div><Label htmlFor="operations-document-file">{t("file")} *</Label><Input id="operations-document-file" type="file" onChange={(event) => setDocumentFile(event.target.files?.[0] ?? null)} className="mt-1.5 h-auto py-2" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.zip" />{documentFile ? <p className="mt-1 text-xs text-muted-foreground">{documentFile.name} · {formatBytes(documentFile.size)}</p> : <p className="mt-1 text-xs text-muted-foreground">{t("fileLimit")}</p>}</div>
-                <div className="grid gap-3 sm:grid-cols-2"><label className="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700"><input type="checkbox" checked={documentRequired} onChange={(event) => setDocumentRequired(event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" /><span><span className="block text-sm font-medium">{t("requiredDocument")}</span><span className="block text-xs text-muted-foreground">{t("requiredDocumentHint")}</span></span></label><div><Label htmlFor="operations-document-expiry">{t("expiresOn")}</Label><Input id="operations-document-expiry" type="date" value={documentExpiresOn} onChange={(event) => setDocumentExpiresOn(event.target.value)} className="mt-1.5" /></div></div>
-                <AudiencePicker agents={data?.agents ?? []} selected={documentRecipients} onChange={setDocumentRecipients} multiple title={t("audience")} searchPlaceholder={t("searchAgents")} selectAllLabel={t("selectAll")} clearLabel={t("clear")} selectedLabel={(count) => t("selectedAgents", { count })} emptyLabel={t("noAgents")} />
+                <div className="grid gap-3 sm:grid-cols-2"><label className="flex cursor-pointer items-start gap-3 py-1"><input type="checkbox" checked={documentRequired} onChange={(event) => setDocumentRequired(event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" /><span><span className="block text-sm font-medium">{t("requiredDocument")}</span><span className="block text-xs text-muted-foreground">{t("requiredDocumentHint")}</span></span></label><div><Label htmlFor="operations-document-expiry">{t("expiresOn")}</Label><Input id="operations-document-expiry" type="date" value={documentExpiresOn} onChange={(event) => setDocumentExpiresOn(event.target.value)} className="mt-1.5" /></div></div>
+                <AudiencePicker agents={data?.agents ?? []} selected={documentRecipients} onChange={setDocumentRecipients} multiple title={t("audience")} searchPlaceholder={t("searchAgents")} selectAllLabel={t("selectAll")} clearLabel={t("clear")} selectedLabel={(count) => t("selectedAgents", { count })} emptyLabel={t("noAgents")} roleLabel={roleLabel} />
                 <Button className="w-full" onClick={uploadDocument} disabled={uploadingDocument || !documentFile || documentRecipients.length === 0}>{uploadingDocument ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{t("uploadAndAssign")}</Button>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="p-5 pb-3"><CardTitle className="text-base">{t("documentLibrary")}</CardTitle><CardDescription>{t("documentLibraryDescription")}</CardDescription></CardHeader>
-              <CardContent className="p-0"><div className="max-h-[820px] divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-700">{(data?.documents ?? []).map((document) => { const read = document.assignments.filter((assignment) => assignment.readAt).length; const required = document.assignments.filter((assignment) => assignment.required).length; return <article key={document.id} className="space-y-3 p-4 sm:p-5"><div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><FileText className="h-4 w-4" /></span><div className="min-w-0 flex-1"><h3 className="truncate text-sm font-semibold">{document.title || document.fileName}</h3><p className="truncate text-xs text-muted-foreground">{document.fileName} · {formatBytes(document.sizeBytes)} · {dateTime(document.createdAt)}</p></div><Button asChild variant="outline" size="sm"><a href={document.downloadUrl}><Download className="mr-1 h-3.5 w-3.5" />{t("download")}</a></Button></div><div className="flex flex-wrap gap-2"><Badge variant="outline">{t("assignedCount", { count: document.assignments.length })}</Badge><Badge variant={read === document.assignments.length && read > 0 ? "success" : "warning"}>{t("readCount", { read, total: document.assignments.length })}</Badge>{required > 0 ? <Badge variant="destructive">{t("requiredCount", { count: required })}</Badge> : null}</div><div className="flex flex-wrap gap-1.5">{document.assignments.slice(0, 12).map((assignment) => <span key={assignment.id} className={`rounded-full border px-2 py-0.5 text-[11px] ${assignment.readAt ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-300" : "border-zinc-200 text-muted-foreground dark:border-zinc-700"}`}>{assignment.agent.name}{assignment.readAt ? " ✓" : ""}</span>)}</div></article> })}{(data?.documents.length ?? 0) === 0 ? <div className="flex min-h-48 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground"><FileLock2 className="h-5 w-5" />{t("noDocuments")}</div> : null}</div></CardContent>
+              <CardContent className="p-0"><div className="divide-y divide-zinc-200 dark:divide-zinc-700">{(data?.documents ?? []).map((document) => { const read = document.assignments.filter((assignment) => assignment.readAt).length; const required = document.assignments.filter((assignment) => assignment.required).length; return <article key={document.id} className="space-y-3 p-4 sm:p-5"><div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><FileText className="h-4 w-4" /></span><div className="min-w-0 flex-1"><h3 className="truncate text-sm font-semibold">{document.title || document.fileName}</h3><p className="truncate text-xs text-muted-foreground">{document.fileName} · {formatBytes(document.sizeBytes)} · {dateTime(document.createdAt)}</p></div><Button asChild variant="outline" size="sm" className="shrink-0"><a href={document.downloadUrl}><Download className="mr-1 h-3.5 w-3.5" />{t("download")}</a></Button></div><div className="flex flex-wrap gap-2"><Badge variant="outline">{t("assignedCount", { count: document.assignments.length })}</Badge><Badge variant={read === document.assignments.length && read > 0 ? "success" : "warning"}>{t("readCount", { read, total: document.assignments.length })}</Badge>{required > 0 ? <Badge variant="destructive">{t("requiredCount", { count: required })}</Badge> : null}</div><div className="flex flex-wrap gap-1.5">{document.assignments.slice(0, 12).map((assignment) => <span key={assignment.id} className={`rounded-full border px-2 py-0.5 text-[11px] ${assignment.readAt ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-300" : "border-zinc-200 text-muted-foreground dark:border-zinc-700"}`}>{assignment.agent.name}{assignment.readAt ? " ✓" : ""}</span>)}</div></article> })}{(data?.documents.length ?? 0) === 0 ? <div className="flex min-h-48 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground"><FileLock2 className="h-5 w-5" />{t("noDocuments")}</div> : null}</div></CardContent>
             </Card>
           </div>
         </TabsContent>

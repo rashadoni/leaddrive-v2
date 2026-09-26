@@ -28,6 +28,89 @@ export function sanitizeRichHtml(input: string): string {
   })
 }
 
+// Declarations inside an inline `style=""` that must never survive. Modern
+// browsers and mail clients no longer execute `expression()` or a CSS
+// `url(javascript:…)`, but isomorphic-dompurify (jsdom, no browser CSS filter)
+// does NOT strip them on its own, so we scrub them ourselves rather than store
+// or send the literal token. `-moz-binding` / `behavior:` are the historical
+// CSS-to-script bridges; `url(data:|vbscript:)` closes the remaining sneaks.
+const DANGEROUS_CSS =
+  /(expression\s*\(|javascript:|vbscript:|-moz-binding|behavior\s*:|url\s*\(\s*["']?\s*(?:javascript|vbscript|data):)/i
+
+/**
+ * Sanitizer for OUTBOUND email HTML — the profile applied at the send choke
+ * point (`sendEmail`) and when a template / campaign / workflow body is saved.
+ *
+ * Deliberately WIDER than `sanitizeRichHtml`: a real email needs tables and
+ * inline `style`/`bgcolor`/alignment, so stripping those — as `sanitizeRichHtml`
+ * does — would flatten every template. What makes HTML dangerous is removed
+ * regardless of the allowlist: `<script>`, every `on*` handler and
+ * `javascript:`/`vbscript:` URIs (DOMPurify), plus the CSS-borne vectors above
+ * (scoped hook). So `<img src=x onerror=alert(2)>` → `<img src="x">` — exactly
+ * the class of payload that reached real inboxes 2026-07-24.
+ *
+ * `<style>` BLOCKS are forbidden, not allowed: email should carry inline styles
+ * (the visual editor is configured to inline them), and a surviving `<style>`
+ * is both an `@import` exfil surface and CSS that jsdom-DOMPurify does not deep-
+ * clean. Document wrappers (`html`/`head`/`body`) and redirect/base-hijack tags
+ * (`meta`/`base`/`link`) are dropped — DOMPurify keeps the body content and
+ * discards the wrappers. Interactive/embedding tags are forbidden outright.
+ *
+ * `{{variable}}` placeholders survive untouched (plain text to the parser), so
+ * this is safe on an unrendered stored template as well as on final HTML.
+ */
+export function sanitizeEmailHtml(input: string): string {
+  // Scoped hook (add/remove in try/finally — the DOMPurify instance is shared
+  // with the other sanitizers in this module, same discipline as
+  // sanitizeContractBody): drop dangerous declarations from a `style` value,
+  // and the whole attribute if nothing safe remains.
+  const styleHook = (_node: unknown, data: { attrName: string; attrValue: string; keepAttr: boolean }) => {
+    if (data.attrName !== "style" || !DANGEROUS_CSS.test(data.attrValue)) return
+    const kept = data.attrValue.split(";").filter((d) => d.trim() && !DANGEROUS_CSS.test(d))
+    if (kept.length) data.attrValue = kept.join(";")
+    else data.keepAttr = false
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  DOMPurify.addHook("uponSanitizeAttribute", styleHook as any)
+  try {
+    return DOMPurify.sanitize(input, {
+      // FORCE_BODY keeps parsing consistent for fragments that lead with an
+      // otherwise head-hoisted tag.
+      FORCE_BODY: true,
+      ALLOWED_TAGS: [
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "p", "br", "hr", "div", "span", "center", "font", "small", "sub", "sup",
+        "ul", "ol", "li",
+        "strong", "em", "b", "i", "u", "s", "del", "blockquote", "pre", "code",
+        "a", "img",
+        "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "colgroup", "col",
+      ],
+      ALLOWED_ATTR: [
+        "href", "src", "alt", "title", "target", "rel", "width", "height",
+        "style", "class", "id", "dir", "lang",
+        "align", "valign", "bgcolor", "color", "size", "face", "border",
+        "cellpadding", "cellspacing",
+      ],
+      ALLOW_DATA_ATTR: false,
+      FORBID_TAGS: [
+        "script", "style", "iframe", "object", "embed", "form", "input", "button",
+        "textarea", "select", "option", "link", "base", "meta", "noscript",
+      ],
+    })
+  } finally {
+    DOMPurify.removeHook("uponSanitizeAttribute")
+  }
+}
+
+/**
+ * Reduce an untrusted string to plain text (all markup removed) — for values
+ * that must never carry HTML, such as an email `subject`. Decodes entities the
+ * parser resolves and returns text content only.
+ */
+export function stripHtmlToText(input: string): string {
+  return DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+}
+
 /**
  * Sanitizer for the Contract Editor body (Slice 1, Step 3 + toolbar Phases 1-3).
  * Tighter than `sanitizeRichHtml`: only the tags the contract serializer

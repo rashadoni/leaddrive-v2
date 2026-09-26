@@ -1,3 +1,4 @@
+import { routeTransitionActions, writeFieldSyncAudit } from "@/lib/mtm/field-sync-audit"
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -16,6 +17,7 @@ import {
 import { calculateDistance } from "@/lib/geo-utils"
 import { MTM_CHECK_IN_ERROR, checkInConflict, type MtmCheckInErrorCode, type MtmCheckInErrorDetails } from "@/lib/mtm/check-in-errors"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { BrandPotentialCreateSchema, BrandPotentialEndSchema, VisitActionResultSchema } from "@/lib/mtm-validators"
 import { brandPotentialRequestHash, utcBrandPotentialDate } from "@/lib/mtm/brand-potential"
@@ -209,11 +211,6 @@ function needsWorkforceMobileWriteFence(
 
 function validCoordinate(value: unknown, min: number, max: number): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max
-}
-
-function geofenceRadius(value: unknown): number {
-  const parsed = typeof value === "number" ? value : Number(value)
-  return Number.isFinite(parsed) && parsed >= 25 && parsed <= 10_000 ? parsed : 100
 }
 
 function operationDate(value: unknown): Date {
@@ -539,6 +536,10 @@ export const POST = withMobileRls(async (req, auth) => {
       workforceMobileWriteFenceUnavailable = true
     }
   }
+
+  // alertOutOfZone gates only the OUT_OF_ZONE alert row, never the refusal.
+  // Read lazily, once per request, the first time a check-in is out of zone.
+  const alertOutOfZoneEnabled = createAlertOutOfZoneReader(orgId)
 
   for (const op of operations) {
     // `op ?? {}`: a null/undefined array element must fail as a malformed op,
@@ -994,7 +995,7 @@ export const POST = withMobileRls(async (req, auth) => {
                   deletedAt: null,
                   AND: [customerMutationScopeForActor(visitActor, checkInAt)],
                 },
-                select: { id: true, latitude: true, longitude: true, geofenceRadius: true },
+                select: { id: true, name: true, latitude: true, longitude: true, geofenceRadius: true },
               }),
               tx.mtmVisit.findFirst({
                 where: { organizationId: orgId, agentId, status: "CHECKED_IN", deletedAt: null },
@@ -1066,7 +1067,7 @@ export const POST = withMobileRls(async (req, auth) => {
               if (distanceMeters != null && distanceMeters > geofenceRadius(radius)) {
                 const roundedDistance = Math.round(distanceMeters)
                 const allowedRadius = geofenceRadius(radius)
-                await tx.mtmAlert.create({
+                if (await alertOutOfZoneEnabled(tx)) await tx.mtmAlert.create({
                   data: {
                     organizationId: orgId,
                     agentId,
@@ -1149,6 +1150,7 @@ export const POST = withMobileRls(async (req, auth) => {
                     checkInAt,
                     checkInLat: data.checkInLat ?? null,
                     checkInLng: data.checkInLng ?? null,
+                    ...(await mtmVisitPlaceSnapshot(tx, orgId, customer)),
                     notes: data.notes ?? null,
                   },
                   select: { id: true, status: true, checkInAt: true, customerId: true, contactId: true, routeId: true, routePointId: true },
@@ -1161,26 +1163,32 @@ export const POST = withMobileRls(async (req, auth) => {
                   visitType: typeof data.visitType === "string" ? data.visitType : undefined,
                   at: visit.checkInAt,
                 })
-                if (forceOverrideMeta) {
-                  await tx.mtmAuditLog.create({
-                    data: {
-                      organizationId: orgId,
-                      agentId,
-                      action: "CHECK_IN_FORCED",
-                      entity: "visit",
-                      entityId: visit.id,
-                      metadataKind: "force_checkin",
-                      newData: {
-                        customerId,
-                        routeId: routePoint?.routeId ?? null,
-                        routePointId: routePoint?.id ?? null,
-                        actorRole: auth.role,
-                        forceOverride: true,
-                        ...forceOverrideMeta,
-                      },
-                    },
-                  })
-                }
+                // Activity journal: one row per accepted check-in, written with
+                // the visit and the operation pin (exactly once per operationId,
+                // see field-sync-audit.ts). A forced check-in is its own action.
+                await writeFieldSyncAudit(tx, [{
+                  organizationId: orgId,
+                  agentId,
+                  action: forceOverrideMeta ? "CHECK_IN_FORCED" : "CHECK_IN",
+                  operationId,
+                  source: "mobile_sync",
+                  visitId: visit.id,
+                  routeId: routePoint?.routeId ?? null,
+                  customerId,
+                  customerName: customer.name ?? null,
+                  occurredAt: visit.checkInAt,
+                  metadataKind: forceOverrideMeta ? "force_checkin" : "field_sync",
+                  ...(forceOverrideMeta
+                    ? {
+                        extra: {
+                          routePointId: routePoint?.id ?? null,
+                          actorRole: auth.role,
+                          forceOverride: true,
+                          ...forceOverrideMeta,
+                        },
+                      }
+                    : {}),
+                }])
                 if (routePoint) {
                   const participants = routePoint.route.assignments.filter((assignment) => assignment.agentId !== agentId)
                   if (participants.length > 0) {
@@ -1240,6 +1248,12 @@ export const POST = withMobileRls(async (req, auth) => {
                 opStatus = "conflict"
                 errorMsg = "Visit changed or is no longer owned by agent"
               } else {
+                const routeBefore = existing.routeId
+                  ? await tx.mtmRoute.findFirst({
+                      where: { id: existing.routeId, organizationId: orgId },
+                      select: { status: true },
+                    })
+                  : null
                 const completion = await completeMtmVisit(tx, {
                   organizationId: orgId,
                   visitId: data.id,
@@ -1260,6 +1274,33 @@ export const POST = withMobileRls(async (req, auth) => {
                   opStatus = "conflict"
                   errorMsg = "Visit not found or not owned by agent"
                 } else {
+                  if (!completion.idempotent) {
+                    const [customerRow, routeAfter] = await Promise.all([
+                      tx.mtmCustomer.findFirst({
+                        where: { id: existing.customerId, organizationId: orgId },
+                        select: { name: true },
+                      }),
+                      existing.routeId && routeBefore
+                        ? tx.mtmRoute.findFirst({ where: { id: existing.routeId, organizationId: orgId }, select: { status: true } })
+                        : Promise.resolve(null),
+                    ])
+                    const shared = {
+                      organizationId: orgId,
+                      agentId,
+                      operationId,
+                      source: "mobile_sync" as const,
+                      visitId: completion.visit.id,
+                      routeId: existing.routeId ?? null,
+                      customerId: existing.customerId,
+                      customerName: customerRow?.name ?? null,
+                      occurredAt: completion.visit.checkOutAt,
+                    }
+                    await writeFieldSyncAudit(tx, [
+                      { ...shared, action: "CHECK_OUT", metadataKind: "check_out" },
+                      ...routeTransitionActions(routeBefore?.status, routeAfter?.status)
+                        .map((action) => ({ ...shared, action })),
+                    ])
+                  }
                   serverId = completion.visit.id
                   serverData = completion.visit
                 }

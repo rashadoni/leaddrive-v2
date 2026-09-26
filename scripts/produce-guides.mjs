@@ -33,6 +33,23 @@
  *     section…   optional scenario keys to limit the run (default: all)
  *
  * FLAGS (env)
+ *   GUIDE_VIDEO_W / GUIDE_VIDEO_H  frame + viewport size (default 1280×720);
+ *              e.g. 1080×1080 (feed) or 1080×1920 (Reels) for marketing cuts
+ *   GUIDE_OUT_DIR  write mp4/poster/srt here instead of video/player — use it
+ *              for anything that must NOT land in the help-video manifest
+ *   GUIDE_BURN_SUBS=1  burn the scene narration into the picture as subtitles
+ *              (an .srt is always written next to the mp4)
+ *   GUIDE_DEVICE_SCALE  render at N device px per CSS px; the CSS viewport becomes
+ *              frame ÷ N (1080×1920 at 2 → a 540×960 phone-sized page, so the
+ *              app renders its mobile layout at full video resolution). Done with
+ *              a real window DPR (--force-device-scale-factor + window size, no
+ *              viewport emulation): the screencast only ever delivers CSS-pixel
+ *              frames under emulated deviceScaleFactor, and Playwright pads rather
+ *              than upscales them.
+ *   GUIDE_TIMEZONE / GUIDE_BROWSER_LOCALE  browser clock + number/time format,
+ *              e.g. Asia/Baku + az-AZ so on-screen times read like a Baku user's
+ *   GUIDE_TIGHT=1  cut the silent page-load gaps between scenes (every route
+ *              change otherwise leaves 2–4 s of loading with no voice)
  *   FORCE=1    re-record/overwrite existing valid videos (else resume = skip)
  *   CLEAN=1    delete the target {slug}.{lang}.VOICE.mp4/.poster.jpg first
  *              (implied by FORCE)
@@ -61,7 +78,7 @@ const repoRoot = resolve(__dirname, "..");
 const scenarioPath = resolve(repoRoot, "video/scenarios/browser-guided.json");
 const navItemsPath = resolve(repoRoot, "src/lib/nav-items.ts");
 const tourDefinitionsPath = resolve(repoRoot, "src/lib/tour-definitions.ts");
-const outDir = resolve(repoRoot, "video/player");
+const outDir = resolve(repoRoot, process.env.GUIDE_OUT_DIR || "video/player");
 const tmpRoot = resolve(repoRoot, "video/.tmp-guides");
 const audioRoot = resolve(tmpRoot, "audio");
 
@@ -118,8 +135,14 @@ const PREROLL_SETTLE_MS = Number(process.env.GUIDE_PREROLL_MS || 900);
 // Viewport == video size (1:1) so there is no scaling: the poster screenshot
 // matches the recorded frame exactly, cursor coords need no remapping, and the
 // aspect ratio can't distort or letterbox.
-const videoSize = { width: 1280, height: 720 };
-const viewport = { ...videoSize };
+const videoSize = {
+  width: Number(process.env.GUIDE_VIDEO_W || 1280),
+  height: Number(process.env.GUIDE_VIDEO_H || 720),
+};
+const deviceScale = Number(process.env.GUIDE_DEVICE_SCALE || 1);
+const BURN_SUBS = envFlag("GUIDE_BURN_SUBS");
+const TIGHT = envFlag("GUIDE_TIGHT");
+const viewport = { width: Math.round(videoSize.width / deviceScale), height: Math.round(videoSize.height / deviceScale) };
 
 // CSS injected at document-start on EVERY page (so it also covers the clean
 // poster, taken before the cursor). Hides the floating help widget AND the
@@ -136,6 +159,20 @@ const GUIDE_CSS = [
   "#ld-pilot-cursor:after{content:'';position:absolute;left:8px;top:3px;width:0;height:0;border-right:13px solid transparent;border-bottom:19px solid #111827;transform:rotate(-24deg);}",
   ".ld-pilot-pulse{position:fixed;z-index:2147483645;width:64px;height:64px;border:4px solid #FF4D00;border-radius:999px;pointer-events:none;transform:translate(-50%,-50%) scale(.3);opacity:.75;animation:ldPilotPulse .5s ease-out forwards;}",
   "@keyframes ldPilotPulse{to{transform:translate(-50%,-50%) scale(1.25);opacity:0;}}",
+  // Marketing overlays (h.card / h.caption). Injected DOM only — the product is
+  // never modified. Sizes use vmin so one scenario reads at 1:1 and 9:16 alike.
+  "#ld-reel-card{pointer-events:none;position:fixed;inset:0;z-index:2147483640;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.4vmin;padding:8vmin;text-align:center;color:#fff;font-family:Inter,system-ui,sans-serif;animation:ldReelIn .45s ease-out both;}",
+  "#ld-reel-card .t{font-size:8.2vmin;font-weight:800;line-height:1.08;letter-spacing:-.02em;max-width:88vmin;}",
+  "#ld-reel-card .s{font-size:4.6vmin;font-weight:500;opacity:.88;max-width:84vmin;}",
+  "#ld-reel-card img{height:11vmin;margin-bottom:1vmin;}",
+  "#ld-reel-card .cta{margin-top:2vmin;padding:2.4vmin 6vmin;border-radius:999px;background:#FF4D00;color:#fff;font-size:4.8vmin;font-weight:700;box-shadow:0 1.6vmin 4vmin rgba(255,77,0,.35);}",
+  "#ld-reel-card .u{font-size:3.4vmin;opacity:.8;letter-spacing:.02em;}",
+  "#ld-reel-card .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:1.4vmin;max-width:84vmin;}",
+  "#ld-reel-card .chips span{padding:1vmin 2.4vmin;border-radius:999px;background:rgba(255,255,255,.14);font-size:3vmin;font-weight:600;}",
+  "#ld-reel-caption{pointer-events:none;position:fixed;left:50%;top:3.2vmin;z-index:2147483641;transform:translateX(-50%);max-width:90vw;padding:1.8vmin 3.6vmin;border-radius:2vmin;background:rgba(17,24,39,.9);color:#fff;font-family:Inter,system-ui,sans-serif;font-size:4.2vmin;font-weight:700;line-height:1.2;text-align:center;box-shadow:0 1.2vmin 3.6vmin rgba(15,23,42,.3);animation:ldReelIn .35s ease-out both;}",
+  "#ld-reel-caption em{font-style:normal;color:#FF7A3D;}",
+  "@keyframes ldReelIn{from{opacity:0;transform:translate(var(--ld-tx,0),1.2vmin)}to{opacity:1;transform:translate(var(--ld-tx,0),0)}}",
+  "#ld-reel-caption{--ld-tx:-50%;}",
 ].join("\n");
 
 // Gemini native TTS config. Supports MULTIPLE keys (rotation / daily-quota
@@ -292,12 +329,19 @@ async function produceLanguage(lang) {
   // 3) One login per language (single "role"), then record every section.
   const api = await request.newContext({ baseURL: baseUrl });
   const userId = await loginWithRetry(api);
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: deviceScale > 1
+      ? [`--force-device-scale-factor=${deviceScale}`, `--window-size=${viewport.width},${viewport.height}`, "--hide-scrollbars"]
+      : [],
+  });
+  globalThis.__guideViewport = viewport; // scenarios read it: viewportSize() is null without emulation
   const context = await browser.newContext({
     storageState: await api.storageState(),
-    viewport,
-    deviceScaleFactor: 1,
+    ...(deviceScale > 1 ? { viewport: null } : { viewport, deviceScaleFactor: 1 }),
     recordVideo: { dir: tmpRoot, size: videoSize },
+    ...(process.env.GUIDE_TIMEZONE ? { timezoneId: process.env.GUIDE_TIMEZONE } : {}),
+    ...(process.env.GUIDE_BROWSER_LOCALE ? { locale: process.env.GUIDE_BROWSER_LOCALE } : {}),
   });
   await context.addCookies([{ name: "NEXT_LOCALE", value: lang, url: baseUrl }]);
   await installInitScripts(context, lang, userId);
@@ -383,6 +427,13 @@ async function recordSection(context, slug, lang, audio, out, poster) {
         await gotoRoute(unit.route);
         await injectCursor(page); // navigation blew away the overlay
       }
+      // A scene may name the element its picture depends on (`ready`); the
+      // voice waits for it, so a page that fetches after mount (analytics
+      // KPIs) is not caught mid-spinner.
+      if (unit.ready) {
+        const loc = await firstLocator(page, unit.ready);
+        await loc?.waitFor({ state: "visible", timeout: 15000 }).catch(() => {});
+      }
 
       offsets[i] = Date.now() - t0;           // when scene i's voice begins
       sceneRef.startMs = offsets[i];
@@ -404,8 +455,16 @@ async function recordSection(context, slug, lang, audio, out, poster) {
     await page.close(); // finalizes this page's webm
   }
 
-  const webm = await page.video().path();
-  muxSection(webm, audio, offsets, out);
+  // saveAs() waits until the encoder has flushed the whole file; path() alone
+  // can hand over a webm that is still being written — at 1080×1080 the tail
+  // (the end card) went missing and tpad froze the last written frame.
+  const recorded = await page.video().path();
+  const webm = recorded.replace(/\.webm$/, ".final.webm");
+  await page.video().saveAs(webm);
+  rmSync(recorded, { force: true });
+  const cues = isDo ? buildCues(units, audio, offsets, lang) : [];
+  const ends = units.map((_, i) => (typeof offsets[i] === "number" ? offsets[i] + (audio[i]?.durationMs ?? 0) + TAIL_MS : undefined));
+  muxSection(webm, audio, offsets, out, cues, ends);
   rmSync(webm, { force: true });
 
   if (!posterSaved || !existsSync(poster)) {
@@ -465,7 +524,7 @@ async function performAction(page, step) {
 // ═════════════════════════════════════════════════════════════════════════
 // ffmpeg mux: overlay per-scene narration onto the recorded webm
 // ═════════════════════════════════════════════════════════════════════════
-function muxSection(webm, audio, offsetsMs, out) {
+function muxSection(webm, audio, offsetsMs, out, cues = [], endsMs = []) {
   // Trim the dead "page still loading" head: recording starts at page creation,
   // but scene 0's narration only begins at offsets[0] — which can be ~20s on
   // live pages (map, feeds) where networkidle settles slowly, leaving a silent
@@ -474,8 +533,34 @@ function muxSection(webm, audio, offsetsMs, out) {
   const LEAD_IN_MS = 400;
   const defined = offsetsMs.filter((o) => typeof o === "number" && o >= 0);
   const headTrimMs = defined.length ? Math.max(0, Math.round(Math.min(...defined) - LEAD_IN_MS)) : 0;
+  // `map(ms)` turns a recording time into an output time. Default: the head
+  // trim only. GUIDE_TIGHT: keep just each scene's window [voice − lead-in,
+  // voice end + tail] and splice them, so page loads between scenes vanish.
+  let segments = null;
+  let map = (ms) => ms - headTrimMs;
+  if (TIGHT && defined.length) {
+    const raw = [];
+    for (let i = 0; i < offsetsMs.length; i += 1) {
+      if (typeof offsetsMs[i] !== "number") continue;
+      const next = offsetsMs.slice(i + 1).find((o) => typeof o === "number");
+      const end = next === undefined ? endsMs[i] + END_PAD_MS : Math.min(next - LEAD_IN_MS, endsMs[i]);
+      raw.push({ src: Math.max(0, offsetsMs[i] - LEAD_IN_MS), end: Math.max(end, offsetsMs[i] + 200) });
+    }
+    segments = [];
+    for (const seg of raw) {
+      const last = segments[segments.length - 1];
+      if (last && seg.src - last.end < 250) last.end = Math.max(last.end, seg.end);
+      else segments.push({ ...seg });
+    }
+    let dst = 0;
+    for (const seg of segments) { seg.dst = dst; dst += seg.end - seg.src; }
+    map = (ms) => {
+      const seg = segments.find((sg) => ms >= sg.src && ms < sg.end) || segments.findLast((sg) => ms >= sg.src) || segments[0];
+      return seg.dst + (ms - seg.src);
+    };
+  }
   const inputs = ["-y", "-hide_banner", "-loglevel", "error"];
-  if (headTrimMs > 0) inputs.push("-ss", (headTrimMs / 1000).toFixed(3));
+  if (!segments && headTrimMs > 0) inputs.push("-ss", (headTrimMs / 1000).toFixed(3));
   inputs.push("-i", webm);
   const filters = [];
   const mixLabels = [];
@@ -485,7 +570,7 @@ function muxSection(webm, audio, offsetsMs, out) {
     if (!audio[i]?.path || !existsSync(audio[i].path)) continue;
     inputs.push("-i", audio[i].path);
     n += 1;
-    const off = Math.max(0, Math.round((offsetsMs[i] ?? 0) - headTrimMs));
+    const off = Math.max(0, Math.round(map(offsetsMs[i] ?? 0)));
     filters.push(`[${n}:a]adelay=${off}|${off}[a${n}]`);
     mixLabels.push(`[a${n}]`);
     audioEndMs = Math.max(audioEndMs, off + (audio[i].durationMs || 0));
@@ -497,7 +582,28 @@ function muxSection(webm, audio, offsetsMs, out) {
   // last frame past the last voice, then cut the output exactly at the voice end
   // (+ a short tail) — so every scene's narration plays fully, with no dead air.
   const outSec = ((audioEndMs + 900) / 1000).toFixed(2);
-  filters.unshift(`[0:v]scale=${videoSize.width}:${videoSize.height},format=yuv420p,tpad=stop_mode=clone:stop_duration=${outSec}[v]`);
+  // Subtitles: cue times are video-ms; shift them by the same head trim as the
+  // audio. The .srt always lands next to the mp4; burning is opt-in.
+  let subsFilter = "";
+  if (cues.length) {
+    const srt = out.replace(/\.mp4$/, ".srt");
+    writeFileSync(srt, toSrt(cues.map((c) => ({ ...c, startMs: map(c.startMs), endMs: map(c.endMs) }))));
+    if (BURN_SUBS) {
+      // libass scales FontSize/MarginV from a 288-px-tall script to the frame
+      // HEIGHT, so a 9:16 frame would get letters twice as big as a 1:1 one;
+      // scale by width/height to keep the same pixel size on both.
+      const fontSize = Math.max(6, Math.round(12 * Math.min(1, videoSize.width / videoSize.height)));
+      const style = `FontName=DejaVu Sans,FontSize=${fontSize},Bold=1,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=18,Alignment=2`;
+      subsFilter = `,subtitles=filename='${srt.replace(/'/g, "\\'")}':force_style='${style}'`;
+    }
+  }
+  const post = `scale=${videoSize.width}:${videoSize.height},format=yuv420p,tpad=stop_mode=clone:stop_duration=${outSec}${subsFilter}[v]`;
+  if (segments) {
+    const cut = segments.map((sg, k) => `[0:v]trim=start=${(sg.src / 1000).toFixed(3)}:end=${(sg.end / 1000).toFixed(3)},setpts=PTS-STARTPTS[s${k}]`);
+    filters.unshift(...cut, `${segments.map((_, k) => `[s${k}]`).join("")}concat=n=${segments.length}:v=1:a=0,${post}`);
+  } else {
+    filters.unshift(`[0:v]${post}`);
+  }
   filters.push(`${mixLabels.join("")}amix=inputs=${n}:normalize=0:dropout_transition=0[aout]`);
 
   execFileSync("ffmpeg", [
@@ -510,6 +616,46 @@ function muxSection(webm, audio, offsetsMs, out) {
     "-t", outSec, // output length = last narration end (+tail); video is padded to reach it
     out,
   ], { stdio: "inherit" });
+}
+
+// Subtitle cues from the narration itself: each scene's voice text is split
+// into short sentence-sized chunks, and the scene's measured audio length is
+// shared between them by character count — so the text tracks the voice without
+// a separate timing pass. `scene.subtitle{lang}` overrides the spoken text.
+function buildCues(units, audio, offsets, lang) {
+  const cues = [];
+  const MAX = Number(process.env.GUIDE_SUB_CHARS || 64);
+  for (let i = 0; i < units.length; i += 1) {
+    const text = localized(units[i].subtitle, lang) || localized(units[i].voice, lang) || "";
+    const dur = audio[i]?.durationMs || 0;
+    if (!text.trim() || !dur || typeof offsets[i] !== "number") continue;
+    const chunks = [];
+    for (const sentence of text.split(/(?<=[.!?…])\s+/).filter(Boolean)) {
+      let line = "";
+      for (const word of sentence.split(/\s+/)) {
+        if (line && (line + " " + word).length > MAX) { chunks.push(line); line = word; }
+        else line = line ? `${line} ${word}` : word;
+      }
+      if (line) chunks.push(line);
+    }
+    const total = chunks.reduce((a, c) => a + c.length, 0) || 1;
+    let t = offsets[i];
+    for (const c of chunks) {
+      const len = (c.length / total) * dur;
+      cues.push({ startMs: Math.round(t), endMs: Math.round(t + len), text: c });
+      t += len;
+    }
+  }
+  return cues;
+}
+
+function toSrt(cues) {
+  const ts = (ms) => {
+    const v = Math.max(0, Math.round(ms));
+    const pad = (n, w = 2) => String(n).padStart(w, "0");
+    return `${pad(Math.floor(v / 3600000))}:${pad(Math.floor(v / 60000) % 60)}:${pad(Math.floor(v / 1000) % 60)},${pad(v % 1000, 3)}`;
+  };
+  return cues.map((c, i) => `${i + 1}\n${ts(c.startMs)} --> ${ts(c.endMs)}\n${c.text}\n`).join("\n");
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -834,6 +980,78 @@ function makeHelpers(page, scene) {
       await loc?.click({ timeout: 6000 }).catch(() => {});
       await loc?.selectText().catch(() => {});
       await loc?.pressSequentially(String(text), { delay: 26, timeout: 20000 }).catch(() => {});
+    },
+    // Full-screen card over the live page (hook / end frame). `dim` 0…1 is how
+    // dark the page behind gets; `logo` shows /logo.svg; `chips` a row of tags.
+    async card({ title = "", sub = "", cta = "", url = "", chips = [], logo = false, dim = 0.6 } = {}) {
+      await page.evaluate((o) => {
+        document.getElementById("ld-reel-card")?.remove();
+        const el = document.createElement("div");
+        el.id = "ld-reel-card";
+        el.style.background = `rgba(10,14,26,${o.dim})`;
+        const add = (tag, cls, text) => { const n = document.createElement(tag); n.className = cls; n.textContent = text; el.appendChild(n); return n; };
+        if (o.logo) { const img = document.createElement("img"); img.src = "/logo.svg"; img.alt = ""; el.appendChild(img); }
+        if (o.title) add("div", "t", o.title);
+        if (o.sub) add("div", "s", o.sub);
+        if (o.chips.length) { const row = add("div", "chips", ""); for (const c of o.chips) { const s = document.createElement("span"); s.textContent = c; row.appendChild(s); } }
+        if (o.cta) add("div", "cta", o.cta);
+        if (o.url) add("div", "u", o.url);
+        document.body.appendChild(el);
+      }, { title, sub, cta, url, chips, logo, dim }).catch(() => {});
+    },
+    // Short headline pill at the top of the frame (subtitles own the bottom).
+    // `*word*` renders the word in the accent colour. `box` moves it off the
+    // top centre onto an empty zone of the page, e.g. { left: "62vw", top:
+    // "42vh", width: "34vw" }. Overlays never take pointer events, so the
+    // scenario can keep clicking the page underneath.
+    async caption(text, { box = null } = {}) {
+      await page.evaluate(({ t, box }) => {
+        document.getElementById("ld-reel-caption")?.remove();
+        if (!t) return;
+        const el = document.createElement("div");
+        el.id = "ld-reel-caption";
+        if (box) {
+          el.style.setProperty("--ld-tx", "0");
+          el.style.left = box.left; el.style.top = box.top; el.style.maxWidth = box.width; el.style.width = box.width;
+        }
+        for (const [i, part] of t.split("*").entries()) {
+          const n = document.createElement(i % 2 ? "em" : "span");
+          n.textContent = part;
+          el.appendChild(n);
+        }
+        document.body.appendChild(el);
+      }, { t: text, box }).catch(() => {});
+    },
+    async clearOverlays() {
+      await page.evaluate(() => { for (const id of ["ld-reel-card", "ld-reel-caption"]) document.getElementById(id)?.remove(); }).catch(() => {});
+    },
+    // Zoom the app onto one zone (for 9:16, where the four-pane inbox is
+    // unreadable at full width). Transforms the app root, not <body>, so the
+    // fixed cursor and overlays keep screen coordinates. `scale` ≤ 1 or a null
+    // selector resets. Playwright boxes follow transforms, so clicks still land.
+    async focus(sel, scale = 1.6) {
+      // Measure the zone untransformed, so re-focusing never compounds.
+      await page.evaluate(() => {
+        for (const r of document.body.children) { r.style.transition = "none"; r.style.transform = ""; }
+      }).catch(() => {});
+      const loc = sel ? await firstLocator(page, sel) : null;
+      const box = loc ? await loc.boundingBox().catch(() => null) : null;
+      await page.evaluate(({ box, scale, vw, vh }) => {
+        const roots = [...document.body.children].filter((n) => !/^ld-/.test(n.id || "")
+          && !n.classList.contains("ld-pilot-pulse") && n.tagName !== "SCRIPT");
+        for (const r of roots) {
+          r.style.transition = "transform .6s ease";
+          if (!box || scale <= 1) { r.style.transform = ""; continue; }
+          const cx = box.x + box.width / 2;
+          const cy = box.y + box.height / 2;
+          // Keep the zone centred but never pan past the page edge.
+          const tx = Math.min(0, Math.max(vw - vw * scale, vw / 2 - cx * scale));
+          const ty = Math.min(0, Math.max(vh - vh * scale, vh / 2 - cy * scale));
+          r.style.transformOrigin = "0 0";
+          r.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+        }
+      }, { box, scale, vw: viewport.width, vh: viewport.height }).catch(() => {});
+      await page.waitForTimeout(650);
     },
   };
 }

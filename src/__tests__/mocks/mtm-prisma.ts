@@ -172,6 +172,10 @@ export interface MtmPrismaMock {
   mtmMessageReceipt: ModelMock
   mtmDocument: ModelMock
   mtmDocumentAssignment: ModelMock
+  mtmProductGroup: ModelMock
+  mtmProductGroupMember: ModelMock
+  mtmProduct: ModelMock
+  mtmPresentationSession: ModelMock
   mtmHrmRequest: ModelMock
   mtmRoute: ModelMock
   mtmRoutePoint: ModelMock
@@ -238,6 +242,7 @@ export interface MtmPrismaMock {
   workforceAttendanceVerification: ModelMock
   workforceMobileWriteFence: ModelMock
   workforceTimeCorrection: ModelMock
+  workforceWorkdayReopen: ModelMock
   workforceTimesheetApproval: ModelMock
   // Region/team hierarchy (M4-5)
   mtmRegion: ModelMock
@@ -245,6 +250,8 @@ export interface MtmPrismaMock {
   // Onboarding (M5+)
   mtmOnboarding: ModelMock
   mtmCustomerCreateRequest: ModelMock
+  mtmContactCreateRequest: ModelMock
+  mtmDeviceToken: ModelMock
   mtmContactChangeRequest: ModelMock
   mtmImportJob: ModelMock
   mtmImportRowError: ModelMock
@@ -310,6 +317,8 @@ export interface MtmPrismaMock {
 export function makeMtmPrismaMock(): MtmPrismaMock {
   const workforceTimeCorrection = makeModel()
   workforceTimeCorrection.create.mockResolvedValue({ id: "workforce-time-correction-1" })
+  const workforceWorkdayReopen = makeModel()
+  workforceWorkdayReopen.create.mockResolvedValue({ id: "workforce-workday-reopen-1" })
   const mock: MtmPrismaMock = {
     mtmAgent: makeModel(),
     mtmAgentLocation: makeModel(),
@@ -345,6 +354,10 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmMessageReceipt: makeModel(),
     mtmDocument: makeModel(),
     mtmDocumentAssignment: makeModel(),
+    mtmProductGroup: makeModel(),
+    mtmProductGroupMember: makeModel(),
+    mtmProduct: makeModel(),
+    mtmPresentationSession: makeModel(),
     mtmHrmRequest: makeModel(),
     mtmRoute: makeModel(),
     mtmRoutePoint: makeModel(),
@@ -411,11 +424,14 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforceAttendanceVerification: makeModel(),
     workforceMobileWriteFence: makeModel(),
     workforceTimeCorrection,
+    workforceWorkdayReopen,
     workforceTimesheetApproval: makeModel(),
     mtmRegion: makeModel(),
     mtmTeam: makeModel(),
     mtmOnboarding: makeModel(),
     mtmCustomerCreateRequest: makeModel(),
+    mtmContactCreateRequest: makeModel(),
+    mtmDeviceToken: makeModel(),
     mtmContactChangeRequest: makeModel(),
     mtmImportJob: makeModel(),
     mtmImportRowError: makeModel(),

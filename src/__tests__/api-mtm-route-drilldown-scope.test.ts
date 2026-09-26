@@ -106,6 +106,57 @@ beforeEach(() => {
 })
 
 describe("MTM route exact drilldown scope", () => {
+  it("keeps a co-participant's visit times but hides where they checked in (review of #205)", async () => {
+    const visit = (id: string, agentId: string) => ({
+      id,
+      agentId,
+      status: "CHECKED_OUT",
+      checkInAt: new Date("2026-04-10T09:00:00.000Z"),
+      checkOutAt: new Date("2026-04-10T09:20:00.000Z"),
+      checkInLat: 40.47,
+      checkInLng: 49.86,
+      checkOutLat: 40.471,
+      checkOutLng: 49.861,
+      notes: null,
+      resultNotes: null,
+      _count: { photos: 0 },
+      actionResults: [],
+    })
+    vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue(route({
+      points: [{
+        id: "point-1",
+        customerId: "customer-1",
+        contactId: null,
+        orderIndex: 0,
+        status: "VISITED",
+        plannedTime: null,
+        customer: { id: "customer-1", name: "Store", latitude: 40.4, longitude: 49.8, geofenceRadius: 150 },
+        changeRequests: [],
+        visits: [visit("visit-own", ACTOR), visit("visit-secret", "agent-secret-participant")],
+      }],
+    }) as never)
+
+    const response = await GET_DETAIL(request("/api/v1/mtm/routes/route-historical"), detailContext("route-historical"))
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    const [own, secret] = json.data.points[0].visits
+    expect(own).toMatchObject({ id: "visit-own", checkInLat: 40.47, checkInLng: 49.86, checkOutLat: 40.471, checkOutLng: 49.861, locationHidden: false })
+    expect(secret).toMatchObject({
+      id: "visit-secret",
+      checkInAt: "2026-04-10T09:00:00.000Z",
+      checkOutAt: "2026-04-10T09:20:00.000Z",
+      checkInLat: null,
+      checkInLng: null,
+      checkOutLat: null,
+      checkOutLng: null,
+      // Redaction is explicit, so the page does not read it as "no GPS" (review of #208).
+      locationHidden: true,
+    })
+    expect(json.data.points[0].geofenceRadiusMeters).toBe(150)
+    expect(JSON.stringify(json.data.points[0].visits)).not.toContain("agent-secret-participant")
+  })
+
   it("returns a published route for a non-observer assignment active on its route day, outside list limits", async () => {
     vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue(route() as never)
 

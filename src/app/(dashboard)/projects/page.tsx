@@ -46,6 +46,7 @@ interface Project {
 
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
+import { PageHeader } from "@/components/page-header"
 
 export default function ProjectsPage() {
   const router = useRouter()
@@ -305,20 +306,20 @@ export default function ProjectsPage() {
   return (
     <MotionPage>
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="projects" /> <HelpButton slug="projects" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportCSV}>
-            <Download className="h-4 w-4 mr-1" /> {t("export")}
-          </Button>
-          <Button onClick={() => { setEditData(undefined); setShowForm(true) }} data-tour-id="projects-new">
-            <Plus className="h-4 w-4 mr-1" /> {t("newProject")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <TourReplayButton tourId="projects" /> <HelpButton slug="projects" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
+        actions={
+          <>
+            <Button variant="outline" onClick={exportCSV}>
+              <Download className="h-4 w-4 mr-1" /> {t("export")}
+            </Button>
+            <Button onClick={() => { setEditData(undefined); setShowForm(true) }} data-tour-id="projects-new">
+              <Plus className="h-4 w-4 mr-1" /> {t("newProject")}
+            </Button>
+          </>
+        }
+      />
 
       <PageDescription text={t("pageDescription")} />
       <DidYouKnow page="projects" className="mb-4" />

@@ -10,7 +10,7 @@
  *      one org+agent and PATCH cannot leak across tenants.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
 
 vi.mock("@/lib/prisma", async () => {
@@ -70,7 +70,8 @@ import { POST as CreateVisit } from "@/app/api/v1/mtm/visits/route"
 import { POST as MobileLocationPost } from "@/app/api/v1/mtm/mobile/location/route"
 
 import { prisma } from "@/lib/prisma"
-import { getOrgId, requireAuth } from "@/lib/api-auth"
+import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
+import { getOrgId, getSession, requireAuth } from "@/lib/api-auth"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { notifyAgent } from "@/lib/mtm-notify"
 
@@ -112,6 +113,8 @@ function getReq(url: string): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Route tests reuse user ids with different cards; never serve a memoized actor.
+  resetMtmFieldScopeMemo()
   vi.mocked(requireAuth).mockResolvedValue({
     orgId: ORG,
     role: "admin",
@@ -270,6 +273,93 @@ describe("PATCH /api/v1/mtm/notifications (web)", () => {
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     const res = await WebNotifPatch(jsonReq("/api/v1/mtm/notifications", "PATCH", { isRead: true }))
     expect(res.status).toBe(400)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WEB: field scope for browser sessions (audit 2026-09-14)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("web notifications follow the session's field scope", () => {
+  function asWebUser(role: string) {
+    vi.mocked(getSession).mockResolvedValue({
+      orgId: ORG, userId: "web-user", role, email: "web@example.com", name: "Web",
+    } as never)
+  }
+
+  /** MANAGER card mgr-1 without a team, one direct report: AGENT. */
+  function withManagerCard() {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "mgr-1", role: "MANAGER", canPlanOwnRoutes: true, canSelfPublishRoutes: false } as never)
+    vi.mocked(prisma.mtmAgent.findUnique).mockResolvedValue({ id: "mgr-1", teamId: null } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValueOnce([{ id: AGENT }] as never).mockResolvedValue([] as never)
+  }
+
+  afterEach(() => {
+    vi.mocked(getSession).mockResolvedValue(null)
+    vi.mocked(prisma.mtmAgent.findFirst).mockReset()
+  })
+
+  it("limits a manager's inbox and unread count to their agents", async () => {
+    asWebUser("manager")
+    withManagerCard()
+    vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([]).mockResolvedValueOnce([{ count: 0 }])
+
+    const res = await WebNotifGet(getReq("/api/v1/mtm/notifications"))
+
+    expect(res.status).toBe(200)
+    for (const call of vi.mocked(prisma.$queryRaw).mock.calls) {
+      const query = sqlText(call)
+      expect(query).toContain(`"agentId" IN`)
+      expect(query).toContain(AGENT)
+      expect(query).toContain("mgr-1")
+    }
+  })
+
+  it("rejects an agentId outside the manager's scope", async () => {
+    asWebUser("manager")
+    withManagerCard()
+
+    const res = await WebNotifGet(getReq("/api/v1/mtm/notifications?agentId=agent-other-team"))
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: "MTM_AGENT_OUT_OF_SCOPE" })
+    expect(prisma.$queryRaw).not.toHaveBeenCalled()
+  })
+
+  it("marks read only inside the scope, even with all:true", async () => {
+    asWebUser("manager")
+    withManagerCard()
+    vi.mocked(prisma.$executeRaw).mockResolvedValue(3)
+
+    await WebNotifPatch(jsonReq("/api/v1/mtm/notifications", "PATCH", { all: true, isRead: true }))
+
+    const query = sqlText(vi.mocked(prisma.$executeRaw).mock.calls[0])
+    expect(query).toContain(`"agentId" IN`)
+    expect(query).toContain(AGENT)
+  })
+
+  it("refuses a web manager without an MTM card", async () => {
+    asWebUser("manager")
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null)
+
+    const res = await WebNotifGet(getReq("/api/v1/mtm/notifications"))
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: "MTM_FIELD_SCOPE_REQUIRED" })
+    const patch = await WebNotifPatch(jsonReq("/api/v1/mtm/notifications", "PATCH", { all: true, isRead: true }))
+    expect(patch.status).toBe(403)
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+  })
+
+  it("keeps an administrator's inbox organization-wide with any agentId", async () => {
+    asWebUser("admin")
+    vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([]).mockResolvedValueOnce([{ count: 0 }])
+
+    const res = await WebNotifGet(getReq("/api/v1/mtm/notifications?agentId=agent-other-team"))
+
+    expect(res.status).toBe(200)
+    const query = sqlText(vi.mocked(prisma.$queryRaw).mock.calls[0])
+    expect(query).toContain("agent-other-team")
+    expect(query).not.toContain(`"agentId" IN`)
   })
 })
 

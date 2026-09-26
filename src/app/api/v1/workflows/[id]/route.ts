@@ -3,6 +3,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { validateOutboundWebhookUrl } from "@/lib/integrations/webhook-url-guard"
+import { sanitizeWorkflowActionConfig } from "@/lib/workflow-template"
 
 const MAX_WORKFLOW_ACTIONS = 100
 const MAX_WORKFLOW_WEBHOOKS = 10
@@ -121,7 +122,8 @@ export const PUT = withRlsAuth("settings", "write", async (req, { orgId }, { par
             data: actions.map((a, i) => ({
               ruleId: id,
               actionType: a.actionType,
-              actionConfig: a.actionConfig || {},
+              // Strip HTML/XSS from the customer-facing fields before storing.
+              actionConfig: sanitizeWorkflowActionConfig(a.actionConfig || {}),
               actionOrder: a.actionOrder ?? i,
             })),
           })

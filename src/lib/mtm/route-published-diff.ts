@@ -1,0 +1,425 @@
+import { Prisma } from "@prisma/client"
+
+/**
+ * Changing a route that is already published (PLANNED or IN_PROGRESS).
+ *
+ * A draft may drop all its points and create new ones: nothing references
+ * them yet. A published point is referenced by visits, route change requests,
+ * KPI plan facts and live-feed alerts, so replacing it would orphan that
+ * history. This module keeps every point whose target stays in the route,
+ * soft-deletes only removed points (the tombstone is the sync marker) and
+ * creates rows only for new targets.
+ *
+ * One function is shared by the mobile UPDATE_PUBLISHED command and the web
+ * PUT /api/v1/mtm/routes/[id] so the two paths cannot disagree on what is
+ * locked.
+ */
+
+/** Approval statuses that still wait for a decision. */
+export const MTM_PENDING_ROUTE_CHANGE_REQUEST_STATUSES = ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"] as const
+
+export interface PublishedRouteExistingPoint {
+  id: string
+  customerId: string
+  contactId: string | null
+  orderIndex: number
+  plannedTime: Date | null
+  status: string
+  /** Non-deleted visits linked to this point. */
+  visitCount: number
+  /** Route change requests on this point that still wait for a decision. */
+  pendingChangeRequestCount: number
+}
+
+export interface PublishedRouteRequestedPoint {
+  customerId: string
+  contactId?: string | null
+  plannedTime?: string | Date | null
+}
+
+export interface PublishedRouteKeptPoint {
+  id: string
+  orderIndex: number
+  plannedTime: Date | null
+  /** False when neither order nor planned time changes: no write needed. */
+  changed: boolean
+  locked: boolean
+}
+
+export interface PublishedRouteAddedPoint {
+  customerId: string
+  contactId: string | null
+  orderIndex: number
+  plannedTime: Date | null
+}
+
+export type PublishedRoutePointDiff =
+  | {
+      ok: true
+      kept: PublishedRouteKeptPoint[]
+      removed: PublishedRouteExistingPoint[]
+      added: PublishedRouteAddedPoint[]
+    }
+  | {
+      ok: false
+      code: "ROUTE_VISITED_POINTS_LOCKED" | "ROUTE_POINT_CHANGE_PENDING"
+      pointIds: string[]
+    }
+
+/** Identity of a stop: the same doctor at a different clinic is a new stop. */
+export function publishedRoutePointIdentity(point: { customerId: string; contactId?: string | null }): string {
+  return JSON.stringify([point.customerId, point.contactId ?? null])
+}
+
+/**
+ * A point carries field history once it has a visit or has left PENDING.
+ * Such a point may not be removed, reordered relative to other locked points,
+ * or retimed.
+ */
+export function isPublishedRoutePointLocked(point: Pick<PublishedRouteExistingPoint, "status" | "visitCount">): boolean {
+  return point.status !== "PENDING" || point.visitCount > 0
+}
+
+function toDate(value: string | Date | null | undefined): Date | null {
+  if (value === null || value === undefined) return null
+  return value instanceof Date ? value : new Date(value)
+}
+
+/** The web builder edits times as HH:mm; seconds are not a plan change. */
+function sameMinute(left: Date | null, right: Date | null): boolean {
+  if (left === null || right === null) return left === right
+  return Math.floor(left.getTime() / 60_000) === Math.floor(right.getTime() / 60_000)
+}
+
+export function diffPublishedRoutePoints(
+  existingPoints: readonly PublishedRouteExistingPoint[],
+  requestedPoints: readonly PublishedRouteRequestedPoint[],
+): PublishedRoutePointDiff {
+  const existing = [...existingPoints].sort((left, right) => left.orderIndex - right.orderIndex || left.id.localeCompare(right.id))
+  const existingByIdentity = new Map<string, PublishedRouteExistingPoint>()
+  const duplicateRows: PublishedRouteExistingPoint[] = []
+  for (const point of existing) {
+    const identity = publishedRoutePointIdentity(point)
+    if (existingByIdentity.has(identity)) duplicateRows.push(point)
+    else existingByIdentity.set(identity, point)
+  }
+  const requestedIdentities = requestedPoints.map(publishedRoutePointIdentity)
+  const requestedSet = new Set(requestedIdentities)
+
+  const removed = [
+    ...[...existingByIdentity.entries()]
+      .filter(([identity]) => !requestedSet.has(identity))
+      .map(([, point]) => point),
+    ...duplicateRows,
+  ]
+
+  // Locked points: none removed, same relative order, same planned time.
+  const lockedViolations = new Set<string>()
+  for (const point of removed) {
+    if (isPublishedRoutePointLocked(point)) lockedViolations.add(point.id)
+  }
+  const lockedExistingOrder = [...existingByIdentity.values()]
+    .filter((point) => isPublishedRoutePointLocked(point) && requestedSet.has(publishedRoutePointIdentity(point)))
+    .map((point) => point.id)
+  const lockedRequestedOrder = requestedIdentities
+    .map((identity) => existingByIdentity.get(identity))
+    .filter((point): point is PublishedRouteExistingPoint => Boolean(point && isPublishedRoutePointLocked(point)))
+    .map((point) => point.id)
+  lockedExistingOrder.forEach((id, index) => {
+    if (lockedRequestedOrder[index] !== id) lockedViolations.add(id)
+  })
+  requestedPoints.forEach((requested, index) => {
+    const point = existingByIdentity.get(requestedIdentities[index]!)
+    if (point && isPublishedRoutePointLocked(point) && !sameMinute(point.plannedTime, toDate(requested.plannedTime))) {
+      lockedViolations.add(point.id)
+    }
+  })
+  if (lockedViolations.size > 0) {
+    return {
+      ok: false,
+      code: "ROUTE_VISITED_POINTS_LOCKED",
+      pointIds: existing.filter((point) => lockedViolations.has(point.id)).map((point) => point.id),
+    }
+  }
+
+  const pendingRemovals = removed.filter((point) => point.pendingChangeRequestCount > 0).map((point) => point.id)
+  if (pendingRemovals.length > 0) {
+    return { ok: false, code: "ROUTE_POINT_CHANGE_PENDING", pointIds: pendingRemovals }
+  }
+
+  const kept: PublishedRouteKeptPoint[] = []
+  const added: PublishedRouteAddedPoint[] = []
+  requestedPoints.forEach((requested, orderIndex) => {
+    const point = existingByIdentity.get(requestedIdentities[orderIndex]!)
+    const locked = point ? isPublishedRoutePointLocked(point) : false
+    if (!point) {
+      added.push({
+        customerId: requested.customerId,
+        contactId: requested.contactId ?? null,
+        orderIndex,
+        plannedTime: toDate(requested.plannedTime),
+      })
+      return
+    }
+    // A locked time is compared at minute precision above; keep the stored
+    // value so a rounding client cannot rewrite history by a few seconds.
+    const plannedTime = locked ? point.plannedTime : toDate(requested.plannedTime)
+    kept.push({
+      id: point.id,
+      orderIndex,
+      plannedTime,
+      changed: point.orderIndex !== orderIndex || point.plannedTime?.getTime() !== plannedTime?.getTime(),
+      locked,
+    })
+  })
+
+  return { ok: true, kept, removed, added }
+}
+
+/** The point select both write paths use to build the diff input. */
+export const publishedRoutePointDiffSelect = {
+  id: true,
+  customerId: true,
+  contactId: true,
+  orderIndex: true,
+  plannedTime: true,
+  status: true,
+  _count: {
+    select: {
+      visits: { where: { deletedAt: null } },
+      changeRequests: {
+        where: { status: { in: [...MTM_PENDING_ROUTE_CHANGE_REQUEST_STATUSES] } },
+      },
+    },
+  },
+} satisfies Prisma.MtmRoutePointSelect
+
+export function toPublishedRouteExistingPoint(point: {
+  id: string
+  customerId: string
+  contactId: string | null
+  orderIndex: number
+  plannedTime: Date | null
+  status: string
+  _count?: { visits?: number; changeRequests?: number }
+}): PublishedRouteExistingPoint {
+  return {
+    id: point.id,
+    customerId: point.customerId,
+    contactId: point.contactId,
+    orderIndex: point.orderIndex,
+    plannedTime: point.plannedTime,
+    status: point.status,
+    visitCount: point._count?.visits ?? 0,
+    pendingChangeRequestCount: point._count?.changeRequests ?? 0,
+  }
+}
+
+/** The ordered point list the route has after the diff (for dedupe/conflicts). */
+export function publishedRouteResultPoints(
+  requestedPoints: readonly PublishedRouteRequestedPoint[],
+  diff: Extract<PublishedRoutePointDiff, { ok: true }>,
+): Array<{ customerId: string; contactId: string | null; plannedTime: Date | null; deletedAt: null }> {
+  const keptByIndex = new Map(diff.kept.map((point) => [point.orderIndex, point]))
+  return requestedPoints.map((point, index) => ({
+    customerId: point.customerId,
+    contactId: point.contactId ?? null,
+    plannedTime: keptByIndex.has(index) ? keptByIndex.get(index)!.plannedTime : toDate(point.plannedTime),
+    deletedAt: null,
+  }))
+}
+
+/**
+ * Raised when a point changed between the read and the write (a check-in or a
+ * change request landed in between). Callers roll the transaction back.
+ */
+export class PublishedRoutePointsChangedError extends Error {
+  constructor() {
+    super("Route points changed concurrently")
+    this.name = "PublishedRoutePointsChangedError"
+  }
+}
+
+type PointWriteClient = Pick<Prisma.TransactionClient, "mtmRoutePoint">
+type PointLockClient = Pick<Prisma.TransactionClient, "$executeRaw" | "$queryRaw" | "mtmRoutePoint">
+
+/**
+ * The per-point advisory key. Check-in (src/lib/mtm/visit-requirements.ts)
+ * and published-route edits must use this one function: a different string
+ * would hash to a different lock and silently reopen the race.
+ */
+export function mtmRoutePointCheckInLockKey(organizationId: string, routePointId: string): string {
+  return `mtm-route-point-check-in:${organizationId}:${routePointId}`
+}
+
+/**
+ * Lock every current point of the route against check-in, then read the
+ * points again.
+ *
+ * Why this is needed. A check-in never writes the point row: the web
+ * check-in (POST /api/v1/mtm/visits) takes the per-point advisory lock plus
+ * SELECT … FOR UPDATE on the point and inserts a visit; mobile sync push takes
+ * the row lock with a no-op UPDATE and inserts a visit. Under READ COMMITTED a
+ * removal guarded only by `visits: none` evaluates its NOT EXISTS subquery on
+ * the statement snapshot, which cannot see a visit inserted by a transaction
+ * that commits while the UPDATE waits — the visit would end up on a
+ * soft-deleted stop.
+ *
+ * What this does. (1) The same advisory lock as check-in, one per point in
+ * sorted id order, so two editors and a check-in never wait on each other in
+ * a cycle. (2) Row locks with SELECT … FOR UPDATE ORDER BY id, which also
+ * serializes with the sync-push no-op UPDATE. (3) A NEW statement reads status,
+ * visits and pending change requests: under READ COMMITTED it takes a fresh
+ * snapshot, so every check-in that held a lock before us is visible, and every
+ * later check-in re-reads the point after our commit and finds it deleted.
+ *
+ * Callers take these locks BEFORE updating the route row. Check-in holds the
+ * point locks while it moves the route PLANNED → IN_PROGRESS, so taking the
+ * route row first would invert the order and deadlock.
+ *
+ * Returns null when a point appeared or disappeared since `pointIds` was
+ * read: the caller then answers a version conflict instead of editing an
+ * unlocked stop.
+ */
+export async function lockPublishedRoutePoints(
+  tx: PointLockClient,
+  input: { organizationId: string; routeId: string; pointIds: readonly string[] },
+): Promise<PublishedRouteExistingPoint[] | null> {
+  const ids = [...new Set(input.pointIds)].sort()
+  for (const id of ids) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${mtmRoutePointCheckInLockKey(input.organizationId, id)}, 0))`
+  }
+  if (ids.length > 0) {
+    await tx.$queryRaw`
+      SELECT "id"
+      FROM "mtm_route_points"
+      WHERE "organizationId" = ${input.organizationId}
+        AND "id" IN (${Prisma.join(ids)})
+      ORDER BY "id"
+      FOR UPDATE
+    `
+  }
+  const fresh = await tx.mtmRoutePoint.findMany({
+    where: { routeId: input.routeId, organizationId: input.organizationId, deletedAt: null },
+    select: publishedRoutePointDiffSelect,
+    orderBy: { orderIndex: "asc" },
+  })
+  const freshIds = fresh.map((point) => point.id).sort()
+  if (freshIds.length !== ids.length || freshIds.some((id, index) => id !== ids[index])) return null
+  return fresh.map(toPublishedRouteExistingPoint)
+}
+
+/** Same kept/removed/added decision, used to confirm a pre-lock diff. */
+export function samePublishedRoutePointDiff(
+  left: Extract<PublishedRoutePointDiff, { ok: true }>,
+  right: Extract<PublishedRoutePointDiff, { ok: true }>,
+): boolean {
+  const shape = (diff: Extract<PublishedRoutePointDiff, { ok: true }>) => JSON.stringify({
+    kept: diff.kept.map((point) => [point.id, point.orderIndex, point.plannedTime?.getTime() ?? null, point.changed, point.locked]),
+    removed: diff.removed.map((point) => point.id).sort(),
+    added: diff.added.map((point) => [point.customerId, point.contactId, point.orderIndex, point.plannedTime?.getTime() ?? null]),
+  })
+  return shape(left) === shape(right)
+}
+
+/**
+ * Prisma codes for a transaction that lost to concurrency or ran out of time:
+ * P2034 write conflict / deadlock, P2028 interactive transaction timed out or
+ * already closed (waiting on point locks behind a long check-in counts here),
+ * P2024 no pool connection in time. Nothing was committed in any of them.
+ */
+const RETRYABLE_ROUTE_TRANSACTION_PRISMA_CODES = new Set(["P2034", "P2028", "P2024"])
+
+/**
+ * Postgres deadlock (40P01), serialization failure (40001) or a Prisma
+ * transaction/pool timeout. All are safe to retry after a reload; answering
+ * 500 would tell Route Field the server is down.
+ */
+export function isRetryableRouteTransactionConflict(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (RETRYABLE_ROUTE_TRANSACTION_PRISMA_CODES.has(error.code)) return true
+    const meta = error.meta as Record<string, unknown> | undefined
+    if (meta && (meta.code === "40P01" || meta.code === "40001")) return true
+  }
+  const message = error instanceof Error ? error.message : ""
+  return /\b(40P01|40001)\b|deadlock detected|could not serialize access/i.test(message)
+}
+
+/**
+ * Apply an accepted diff computed from `lockPublishedRoutePoints` rows. The
+ * SQL fences repeat the facts the diff trusted (PENDING, no visit, no pending
+ * change request); they are a second line behind the locks, not a substitute
+ * for them (see lockPublishedRoutePoints). A count mismatch throws and the
+ * caller's transaction rolls back.
+ */
+export async function applyPublishedRoutePointDiff(
+  tx: PointWriteClient,
+  input: {
+    organizationId: string
+    routeId: string
+    diff: Extract<PublishedRoutePointDiff, { ok: true }>
+    now: Date
+  },
+): Promise<void> {
+  if (input.diff.removed.length > 0) {
+    const removed = await tx.mtmRoutePoint.updateMany({
+      where: {
+        id: { in: input.diff.removed.map((point) => point.id) },
+        routeId: input.routeId,
+        organizationId: input.organizationId,
+        deletedAt: null,
+        status: "PENDING",
+        visits: { none: { deletedAt: null } },
+        changeRequests: { none: { status: { in: [...MTM_PENDING_ROUTE_CHANGE_REQUEST_STATUSES] } } },
+      },
+      data: { deletedAt: input.now, version: { increment: 1 } },
+    })
+    if (removed.count !== input.diff.removed.length) throw new PublishedRoutePointsChangedError()
+  }
+
+  for (const point of input.diff.kept) {
+    if (!point.changed) continue
+    const updated = await tx.mtmRoutePoint.updateMany({
+      where: {
+        id: point.id,
+        routeId: input.routeId,
+        organizationId: input.organizationId,
+        deletedAt: null,
+        // An unlocked stop may be moved or retimed only while it is still
+        // without field history; a locked stop only changes position.
+        ...(point.locked ? {} : { status: "PENDING" as const, visits: { none: { deletedAt: null } } }),
+      },
+      data: {
+        orderIndex: point.orderIndex,
+        plannedTime: point.plannedTime,
+        version: { increment: 1 },
+      },
+    })
+    if (updated.count !== 1) throw new PublishedRoutePointsChangedError()
+  }
+
+  if (input.diff.added.length > 0) {
+    await tx.mtmRoutePoint.createMany({
+      data: input.diff.added.map((point) => ({
+        organizationId: input.organizationId,
+        routeId: input.routeId,
+        customerId: point.customerId,
+        contactId: point.contactId,
+        orderIndex: point.orderIndex,
+        plannedTime: point.plannedTime,
+      })),
+    })
+  }
+}
+
+/** Stops as audit evidence: enough to see what changed, no customer names. */
+export function publishedRouteAuditStops(
+  points: ReadonlyArray<{ id?: string; customerId: string; contactId?: string | null; plannedTime?: string | Date | null }>,
+): Array<{ id: string | null; customerId: string; contactId: string | null; plannedTime: string | null }> {
+  return points.map((point) => ({
+    id: point.id ?? null,
+    customerId: point.customerId,
+    contactId: point.contactId ?? null,
+    plannedTime: toDate(point.plannedTime)?.toISOString() ?? null,
+  }))
+}

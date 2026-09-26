@@ -111,4 +111,61 @@ describe("voice orb", () => {
 
     slot.remove()
   })
+
+  it("docks in the header slot on every page, including ones that would float", async () => {
+    // The corner orb sat on top of page controls (owner report 2026-09-14).
+    // The header slot is always on screen, so the corner is never used while
+    // it exists — even where the layout asks for a floating launcher.
+    const headerSlot = document.createElement("div")
+    headerSlot.id = "header-voice-assistant-slot"
+    document.body.appendChild(headerSlot)
+    auth.status = "authenticated"
+
+    await act(async () => {
+      root.render(createElement(VoiceOrb, { showFloatingLauncher: true, inlineLauncherAvailable: false }))
+    })
+
+    // No observer callback is ever fired here, on purpose: in a real browser
+    // the empty header slot is display:none (`empty:hidden`) and would never
+    // report intersecting. The first version of this test fired `true` by
+    // hand and so passed while the orb stayed in the corner in Chromium.
+    expect(observers).toHaveLength(0)
+    expect(headerSlot.querySelector('[data-placement="inline"]')).not.toBeNull()
+    expect(container.querySelector('[data-placement="floating"]')).toBeNull()
+
+    headerSlot.remove()
+  })
+
+  it("keeps the header placement even if an observer would call the slot invisible", async () => {
+    const headerSlot = document.createElement("div")
+    headerSlot.id = "header-voice-assistant-slot"
+    document.body.appendChild(headerSlot)
+    auth.status = "authenticated"
+
+    await act(async () => {
+      root.render(createElement(VoiceOrb, { showFloatingLauncher: false, inlineLauncherAvailable: true }))
+    })
+    await act(async () => { observers.forEach((fire) => fire(false)) })
+
+    expect(headerSlot.querySelector('[data-placement="inline"]')).not.toBeNull()
+    expect(container.querySelector('[data-placement="floating"]')).toBeNull()
+
+    headerSlot.remove()
+  })
+
+  it("stays hidden in the header when the gate says no", async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ allowed: false }) })
+    const headerSlot = document.createElement("div")
+    headerSlot.id = "header-voice-assistant-slot"
+    document.body.appendChild(headerSlot)
+    auth.status = "authenticated"
+
+    await render()
+    await act(async () => { observers.forEach((fire) => fire(true)) })
+
+    expect(headerSlot.querySelector("button")).toBeNull()
+    expect(container.querySelector("button")).toBeNull()
+
+    headerSlot.remove()
+  })
 })

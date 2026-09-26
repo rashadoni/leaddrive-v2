@@ -4,7 +4,7 @@ import { createHash } from "node:crypto"
 export const MTM_MOBILE_ROUTE_COMMAND_SCHEMA_VERSION = 1
 export const MTM_MOBILE_ROUTE_COMMAND_RECEIPT_RETENTION_DAYS = 90
 
-export type MtmMobileRouteCommandName = "CREATE_DRAFT" | "UPDATE_DRAFT" | "PUBLISH" | "START"
+export type MtmMobileRouteCommandName = "CREATE_DRAFT" | "UPDATE_DRAFT" | "PUBLISH" | "START" | "UPDATE_PUBLISHED"
 
 export interface MtmMobileRouteCommandHashInput {
   command: MtmMobileRouteCommandName

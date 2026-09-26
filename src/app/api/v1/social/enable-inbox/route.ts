@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { withRls, withRlsAuth } from "@/lib/with-rls"
 import { decryptToken } from "@/lib/secure-token"
 import { ensureInboxChannelForPage } from "@/lib/social/inbox-channel"
+import { metaSubscriptionDeferred } from "@/lib/channels/live-connection"
 
 /**
  * Backfill (FB/IG inbox Slice 3): for the org's already-connected Facebook/Instagram SocialAccounts
@@ -64,8 +65,8 @@ export const POST = withRlsAuth("inbox", "write", async (_req, { orgId }) => {
 
 /**
  * Inbox-status for the org's FB/IG accounts — drives the Social Monitoring "reconnect" banner.
- * `needsReconnect` is true when pages are wired (ChannelConfig exists) but Meta isn't delivering DMs
- * (settings.inboxSubscribed !== true) — almost always a missing DM scope, fixed by re-OAuth.
+ * `needsReconnect` is true when pages are wired (ChannelConfig exists) but Meta refused the DM
+ * subscription (settings.inboxSubscribed === false) — almost always a missing DM scope, fixed by re-OAuth.
  */
 export const GET = withRls(async (_req, { orgId }) => {
   const [totalAccounts, channels] = await Promise.all([
@@ -93,7 +94,11 @@ export const GET = withRls(async (_req, { orgId }) => {
     subscribed,
     // Only flag a re-connect when a managed channel EXPLICITLY failed its subscribe (inboxSubscribed
     // === false). Channels with no flag (legacy/manually-entered configs, never auto-wired) are not
-    // "failed" — excluding them keeps the banner from sticking on stale rows.
-    needsReconnect: channels.some((c: { settings: unknown }) => subFlag(c) === false),
+    // "failed" — excluding them keeps the banner from sticking on stale rows. Nor is a staged App Review
+    // row: it carries the same false without anyone having asked Meta (lib/channels/live-connection,
+    // `subscriptionPending`), and a re-connect cannot fix a refusal that never happened.
+    needsReconnect: channels.some(
+      (c: { settings: unknown }) => subFlag(c) === false && !metaSubscriptionDeferred(c.settings),
+    ),
   })
 })

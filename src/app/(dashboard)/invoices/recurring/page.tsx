@@ -28,7 +28,8 @@ import {
   Play,
   Pause,
 } from "lucide-react"
-import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS } from "@/lib/constants"
+import { CURRENCY_SYMBOLS } from "@/lib/constants"
+import { useCurrencyField } from "@/lib/use-org-default-currency"
 import { HelpButton } from "@/components/help/help-button"
 
 interface RecurringInvoice {
@@ -83,7 +84,6 @@ const defaultForm = {
   startDate: "",
   endDate: "",
   maxOccurrences: "",
-  currency: DEFAULT_CURRENCY,
   includeVat: false,
   taxRate: "0.18",
   paymentTerms: "",
@@ -104,6 +104,8 @@ export default function RecurringInvoicesPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState(defaultForm)
+  // A new rule starts in the organisation's currency, not the browser's "USD".
+  const { currency, setCurrency, resetCurrency } = useCurrencyField()
   const [items, setItems] = useState<RecurringInvoiceItem[]>([emptyItem()])
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -164,7 +166,7 @@ export default function RecurringInvoicesPage() {
         titleTemplate: form.titleTemplate || `${form.title} — {month} {year}`,
         frequency: form.frequency,
         intervalCount: Number(form.intervalCount) || 1,
-        currency: form.currency,
+        currency,
         includeVat: form.includeVat,
         taxRate: parseFloat(form.taxRate) || 0,
         items: items.filter((i) => i.name.trim() !== ""),
@@ -185,6 +187,7 @@ export default function RecurringInvoicesPage() {
       if (res.ok) {
         setDialogOpen(false)
         setForm(defaultForm)
+        resetCurrency()
         setItems([emptyItem()])
         fetchRules()
       }
@@ -656,10 +659,8 @@ export default function RecurringInvoicesPage() {
               <div className="space-y-1">
                 <Label>{t("currency")}</Label>
                 <Select
-                  value={form.currency}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, currency: e.target.value }))
-                  }
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
                 >
                   {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
                     <option key={code} value={code}>{code} {sym}</option>

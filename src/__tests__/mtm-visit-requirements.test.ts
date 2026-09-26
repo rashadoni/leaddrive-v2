@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   completeMtmVisit,
+  createVisitRequirementSnapshot,
   getVisitCompletionReadiness,
   lockAndVerifyMtmRoutePointForCheckIn,
   lockMtmActiveVisitSlot,
 } from "@/lib/mtm/visit-requirements"
+import { lockPublishedRoutePoints, mtmRoutePointCheckInLockKey } from "@/lib/mtm/route-published-diff"
 
 function transactionClient(visit: Record<string, unknown>) {
   return {
@@ -105,6 +107,38 @@ describe("visit completion requirements", () => {
     }))
   })
 
+  it("check-in and a published-route edit take the very same per-point advisory lock", async () => {
+    const checkInRaw = vi.fn().mockResolvedValue(0)
+    await lockAndVerifyMtmRoutePointForCheckIn({
+      $executeRaw: checkInRaw,
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      mtmRoutePoint: { findFirst: vi.fn().mockResolvedValue(null) },
+    } as never, {
+      organizationId: "org-1",
+      agentId: "agent-1",
+      routePointId: "point-1",
+      routeId: "route-1",
+      customerId: "customer-1",
+      contactId: null,
+    })
+    const editRaw = vi.fn().mockResolvedValue(0)
+    await lockPublishedRoutePoints({
+      $executeRaw: editRaw,
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      mtmRoutePoint: { findMany: vi.fn().mockResolvedValue([]) },
+    } as never, { organizationId: "org-1", routeId: "route-1", pointIds: ["point-1"] })
+
+    const checkInKey = (checkInRaw.mock.calls[0] as unknown as [TemplateStringsArray, string])[1]
+    const editKey = (editRaw.mock.calls[0] as unknown as [TemplateStringsArray, string])[1]
+    expect(checkInKey).toBe(mtmRoutePointCheckInLockKey("org-1", "point-1"))
+    expect(editKey).toBe(checkInKey)
+    // Both must hash the key the same way, not just build the same string.
+    expect((checkInRaw.mock.calls[0]![0] as TemplateStringsArray).join("?"))
+      .toContain("hashtextextended(")
+    expect((editRaw.mock.calls[0]![0] as TemplateStringsArray).join("?").replace(/\s+/g, ""))
+      .toBe((checkInRaw.mock.calls[0]![0] as TemplateStringsArray).join("?").replace(/\s+/g, ""))
+  })
+
   it("returns structured missing requirements and counts photo evidence", async () => {
     const tx = transactionClient(activeVisit)
     const result = await getVisitCompletionReadiness(tx as never, { organizationId: "org-1", visitId: "visit-1" })
@@ -127,6 +161,24 @@ describe("visit completion requirements", () => {
     expect(tx.mtmVisit.update).not.toHaveBeenCalled()
     expect(tx.mtmRoutePoint.updateMany).not.toHaveBeenCalled()
     expect(tx.mtmRoute.update).not.toHaveBeenCalled()
+  })
+
+  it("does not let retired prototype steps block an existing visit", async () => {
+    const tx = transactionClient({
+      ...activeVisit,
+      requirementSnapshot: {
+        requirements: [
+          { id: "req-checklist", actionKey: "CHECKLIST", minCount: 1, allowWaiver: false },
+          { id: "req-next", actionKey: "NEXT_ACTION", minCount: 1, allowWaiver: false },
+        ],
+      },
+      actionResults: [],
+      _count: { photos: 0 },
+    })
+
+    const result = await completeMtmVisit(tx as never, { organizationId: "org-1", visitId: "visit-1" })
+
+    expect(result.status).toBe("completed")
   })
 
   it("completes explicitly and marks the linked stop and route once requirements pass", async () => {
@@ -163,5 +215,88 @@ describe("visit completion requirements", () => {
 
     expect(result).toMatchObject({ status: "completed", idempotent: true })
     expect(tx.mtmVisit.update).not.toHaveBeenCalled()
+  })
+})
+
+describe("requirement snapshot honours the visit-policy switch", () => {
+  function snapshotTx(settings: Record<string, unknown>) {
+    return {
+      mtmAgent: { findFirst: vi.fn().mockResolvedValue({ id: "agent-1", teamId: null }) },
+      mtmCustomer: { findFirst: vi.fn().mockResolvedValue({ id: "customer-1", category: "A", objectType: "DOCTOR" }) },
+      mtmSetting: {
+        findFirst: vi.fn(({ where }: { where: { key: string } }) => Promise.resolve(
+          where.key in settings ? { value: settings[where.key] } : null,
+        )),
+      },
+      mtmVisitPolicy: {
+        findMany: vi.fn().mockResolvedValue([{
+          id: "policy-strict",
+          name: "Strict",
+          teamId: null,
+          visitType: "DEFAULT",
+          priority: 1,
+          effectiveFrom: new Date("2026-01-01"),
+          actions: [{ actionKey: "PRESENTATION", mode: "REQUIRED", minCount: 1, conditions: null, allowWaiver: false }],
+        }]),
+      },
+      mtmVisitRequirementSnapshot: { create: vi.fn().mockResolvedValue({ id: "snapshot-1", requirements: [] }) },
+    }
+  }
+  const input = { organizationId: "org-1", visitId: "visit-1", agentId: "agent-1", customerId: "customer-1" }
+
+  it("snapshots no REQUIRED rule action while the switch is off", async () => {
+    const tx = snapshotTx({ visitPoliciesEnabled: false })
+    await createVisitRequirementSnapshot(tx as never, input)
+    const data = tx.mtmVisitRequirementSnapshot.create.mock.calls[0][0].data
+    expect(data.sourcePolicyId).toBeNull()
+    expect(data.requirements.create.filter((item: { actionKey: string }) => ["CHECKLIST", "NEXT_ACTION"].includes(item.actionKey)).every((item: { mode: string }) => item.mode === "HIDDEN")).toBe(true)
+    expect(data.requirements.create.filter((item: { actionKey: string }) => !["CHECKLIST", "NEXT_ACTION"].includes(item.actionKey)).every((item: { mode: string }) => item.mode === "OPTIONAL")).toBe(true)
+  })
+
+  it("snapshots the active rule while the switch is on", async () => {
+    const tx = snapshotTx({ visitPoliciesEnabled: true })
+    await createVisitRequirementSnapshot(tx as never, input)
+    const data = tx.mtmVisitRequirementSnapshot.create.mock.calls[0][0].data
+    expect(data.sourcePolicyId).toBe("policy-strict")
+    expect(data.requirements.create.find((item: { actionKey: string }) => item.actionKey === "PRESENTATION").mode).toBe("REQUIRED")
+  })
+})
+
+describe("check-out never demands more photos than an agent may upload", () => {
+  const overCapVisit = {
+    ...activeVisit,
+    requirementSnapshot: { requirements: [{ id: "req-photo", actionKey: "PHOTO", minCount: 15, allowWaiver: false }] },
+    actionResults: [],
+    _count: { photos: 10 },
+  }
+
+  function withSetting(visit: Record<string, unknown>, value: unknown) {
+    return {
+      ...transactionClient(visit),
+      mtmSetting: { findFirst: vi.fn().mockResolvedValue(value === undefined ? null : { value }) },
+    }
+  }
+
+  it("treats a PHOTO minimum above maxPhotosPerVisit as met at the cap, with a warning", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const tx = withSetting(overCapVisit, 10)
+    const result = await completeMtmVisit(tx as never, { organizationId: "org-1", visitId: "visit-1" })
+    expect(result.status).toBe("completed")
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("capping"), expect.objectContaining({ minCount: 15, maxPhotosPerVisit: 10 }))
+    warn.mockRestore()
+  })
+
+  it("still reports the capped count while below the cap (default cap 10 when unset)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const tx = withSetting({ ...overCapVisit, _count: { photos: 4 } }, undefined)
+    const result = await getVisitCompletionReadiness(tx as never, { organizationId: "org-1", visitId: "visit-1" })
+    expect(result.missing).toEqual([expect.objectContaining({ actionKey: "PHOTO", requiredCount: 10, completedCount: 4 })])
+    warn.mockRestore()
+  })
+
+  it("does not read the setting when the photo minimum is already met", async () => {
+    const tx = withSetting({ ...overCapVisit, requirementSnapshot: { requirements: [{ id: "r", actionKey: "PHOTO", minCount: 2, allowWaiver: false }] }, _count: { photos: 3 } }, 10)
+    await getVisitCompletionReadiness(tx as never, { organizationId: "org-1", visitId: "visit-1" })
+    expect(tx.mtmSetting.findFirst).not.toHaveBeenCalled()
   })
 })

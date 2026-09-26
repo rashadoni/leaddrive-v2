@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
 import {
@@ -37,6 +38,7 @@ import {
   type RouteBuilderInlineAssignable,
 } from "@/components/mtm/route-builder-inline-assignment-panel"
 import { dateInputValueInTimezone, formatInTimezone, localDateTimeToUtc } from "@/lib/timezone"
+import { isRouteBuilderStopLocked, routeBuilderStopPlannedTimeForSave } from "@/lib/mtm/route-builder-stop-time"
 import {
   MTM_ROUTE_TIME_SLOTS,
   normalizeMtmRouteTimeSlot,
@@ -45,6 +47,7 @@ import type { MtmRouteAssignment, MtmRouteCustomer, MtmRoutePoint, MtmRouteRecor
 import {
   coerceMtmRouteTargetTypes,
   routeTargetLabel,
+  routeTargetTypesForPlanning,
   type MtmRouteTargetType,
 } from "@/lib/mtm/route-target-types"
 import type { MtmRoutePlannerContext, MtmRoutePlannerFilters } from "@/lib/mtm/route-planner-context"
@@ -64,6 +67,15 @@ type Stop = {
   } | null
   status?: MtmRoutePoint["status"]
   plannedTime?: string | null
+  /**
+   * Published edit only. The stored ISO time and the slot it was shown as:
+   * the time input snaps to :00/:30, so a visit planned at 10:15 would be
+   * sent back as 10:00 and read by the server as a retimed locked stop.
+   */
+  originalPlannedTime?: string | null
+  originalSlot?: string | null
+  /** Published edit only: the stop already has a (possibly open) visit. */
+  hasVisit?: boolean
 }
 type CandidateDirection = MtmRoutePlannerContext["direction"] & string
 type CandidateSort = "NAME" | "PRIORITY" | "LAST_VISIT" | "COVERAGE_GAP"
@@ -279,6 +291,13 @@ function parseStoredRouteBuilderDraft(raw: string): StoredRouteBuilderDraft | nu
         contact: entry.contact ? entry.contact as Stop["contact"] : null,
         status: typeof entry.status === "string" ? (entry.status as Stop["status"]) : undefined,
         plannedTime,
+        ...(entry.originalPlannedTime === null || typeof entry.originalPlannedTime === "string"
+          ? {
+              originalPlannedTime: entry.originalPlannedTime,
+              originalSlot: typeof entry.originalSlot === "string" ? entry.originalSlot : null,
+            }
+          : {}),
+        ...(entry.hasVisit === true ? { hasVisit: true } : {}),
       }]
     })
     if (stops.length !== form.stops.length) return null
@@ -431,6 +450,7 @@ export function MtmRouteBuilder({
   onRequestCustomer,
 }: RouteBuilderProps) {
   const t = useTranslations("mtmRoutesPage")
+  const explainError = useMtmApiError()
   const statusT = useTranslations("mtmStatus")
   const locale = useLocale()
   const [name, setName] = useState("")
@@ -567,15 +587,19 @@ export function MtmRouteBuilder({
     setParticipantIds(initialParticipants)
     const initialStops = (initialData?.points ?? []).flatMap((point: MtmRoutePoint): Stop[] => {
       const customerId = point.customerId ?? point.customer?.id
+      const slot = point.plannedTime
+        ? normalizeMtmRouteTimeSlot(formatInTimezone(point.plannedTime, timezone, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).slice(0, 5))
+        : null
       return customerId && point.customer ? [{
         customerId,
         contactId: point.contactId ?? null,
         customer: point.customer,
         contact: point.contact ?? null,
         status: point.status,
-        plannedTime: point.plannedTime
-          ? normalizeMtmRouteTimeSlot(formatInTimezone(point.plannedTime, timezone, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).slice(0, 5))
-          : null,
+        plannedTime: slot,
+        originalPlannedTime: point.plannedTime ?? null,
+        originalSlot: slot,
+        hasVisit: (point.visits?.length ?? 0) > 0,
       }] : []
     })
     setStops(initialStops)
@@ -657,8 +681,11 @@ export function MtmRouteBuilder({
     Promise.all([agentsPromise, settingsPromise])
       .then(([agentResult, settingsResult]) => {
         if (agentResult.success) setAgents(agentResult.data.agents ?? [])
+        else setError(explainError(agentResult))
         if (settingsResult.success) {
-          const configured = coerceMtmRouteTargetTypes(settingsResult.data?.routeTargetTypes)
+          const configured = routeTargetTypesForPlanning(
+            coerceMtmRouteTargetTypes(settingsResult.data?.routeTargetTypes),
+          )
           setRouteTargetTypes(configured)
           const requestedDirection = initialData ? "ORGANIZATION" : initialDirection ?? initialPlannerContext?.direction ?? "ORGANIZATION"
           const selectedTarget = configured.find((target) => target.enabled && target.direction === requestedDirection)
@@ -700,7 +727,7 @@ export function MtmRouteBuilder({
         })
     }
     return () => controller.abort()
-  }, [draftStorageKey, initialAgentId, initialContactId, initialCustomerId, initialData, initialDate, initialDirection, initialPlannerContext, open, orgId, t, timezone])
+  }, [draftStorageKey, explainError, initialAgentId, initialContactId, initialCustomerId, initialData, initialDate, initialDirection, initialPlannerContext, open, orgId, t, timezone])
 
   useEffect(() => {
     if (!open || !draftReady || !draftStorageKey || recoverableDraft) return
@@ -1328,9 +1355,11 @@ export function MtmRouteBuilder({
         points: stops.map((stop) => ({
           customerId: stop.customerId,
           contactId: stop.contactId ?? null,
-          plannedTime: stop.plannedTime
-            ? localDateTimeToUtc(`${date}T${stop.plannedTime}`, timezone).toISOString()
-            : null,
+          plannedTime: routeBuilderStopPlannedTimeForSave(stop, {
+            date,
+            timezone,
+            publishedEdit: Boolean(initialData?.id) && initialData?.status !== "DRAFT",
+          }),
         })),
       }
       const routeIdToEdit = persistedRouteId
@@ -1354,7 +1383,17 @@ export function MtmRouteBuilder({
         if (result.code === "ROUTE_DUPLICATE" && result.duplicate?.id) setDuplicate(result.duplicate)
         throw new Error(result.code === "ROUTE_VERSION_CONFLICT"
           ? t("versionConflict")
-          : result.error ?? t("saveFailed"))
+          : result.code === "ROUTE_VISITED_POINTS_LOCKED"
+            ? t("publishedEditLockedStopsError")
+            : result.code === "ROUTE_POINT_CHANGE_PENDING"
+              ? t("publishedEditPendingRequestError")
+              : result.code === "ROUTE_PUBLISHED_FIELDS_LOCKED"
+                ? t("publishedEditFieldsLockedError")
+                : result.code === "ROUTE_POINT_TIME_CONFLICT"
+                  ? t("sameRouteTimeConflictError")
+                  : result.code === "ROUTE_CONFLICT"
+                    ? t("routePublishConflictError")
+                    : result.error ?? t("saveFailed"))
       }
 
       const routeId = routeIdToEdit ?? result.data?.id
@@ -1710,6 +1749,7 @@ export function MtmRouteBuilder({
                 id="route-builder-primary"
                 ref={agentSelectRef}
                 value={primaryAgentId}
+                disabled={isPublishedEdit}
                 onChange={(event) => {
                   setPrimaryAgentId(event.target.value)
                   setParticipantIds((current) => current.filter((id) => id !== event.target.value))
@@ -1738,7 +1778,7 @@ export function MtmRouteBuilder({
             ) : (
               <div>
                 <Label htmlFor="route-builder-date">{t("singleRouteDate")} *</Label>
-                <Input ref={dateInputRef} id="route-builder-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+                <Input ref={dateInputRef} id="route-builder-date" type="date" value={date} disabled={isPublishedEdit} onChange={(event) => setDate(event.target.value)} required />
               </div>
             )}
           </div>
@@ -1767,6 +1807,7 @@ export function MtmRouteBuilder({
                         <input
                           type="checkbox"
                           checked={checked}
+                          disabled={isPublishedEdit}
                           onChange={() => toggleParticipant(agent.id)}
                           className="h-4 w-4 accent-primary"
                         />
@@ -1794,7 +1835,6 @@ export function MtmRouteBuilder({
             <div className="mb-2 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">{t("stepAddCustomers")}</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">{t("stepAddCustomersHint")}</p>
               </div>
               <span className="text-xs tabular-nums text-muted-foreground">{t("stopCount", { count: stops.length })}</span>
             </div>
@@ -1830,7 +1870,7 @@ export function MtmRouteBuilder({
                   {stops.length > 0 ? (
                     <ol className="divide-y divide-zinc-200 dark:divide-zinc-700">
                       {stops.map((stop, index) => {
-                        const locked = isPublishedEdit && stop.status !== undefined && stop.status !== "PENDING"
+                        const locked = isPublishedEdit && isRouteBuilderStopLocked(stop)
                         const stopName = stop.contact?.displayName ?? stop.customer.name
                         return (
                           <li key={stopKey(stop)} className="flex min-h-14 items-center gap-2 px-3 py-2">
@@ -2423,7 +2463,7 @@ export function MtmRouteBuilder({
               ) : null}
               <div className="divide-y divide-zinc-200 border-b border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
               {stops.map((stop, index) => {
-                const locked = isPublishedEdit && stop.status !== undefined && stop.status !== "PENDING"
+                const locked = isPublishedEdit && isRouteBuilderStopLocked(stop)
                 const stopMeetingNotices = stop.plannedTime
                   ? meetingAvailabilityByStop.get(meetingAvailabilityKey(
                       stop.customerId,

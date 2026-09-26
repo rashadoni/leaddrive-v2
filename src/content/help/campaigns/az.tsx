@@ -37,7 +37,8 @@ export default function CampaignsHelpAz() {
           <HelpKey>Siyahı</HelpKey>) və mavi <HelpKey>Yeni kampaniya</HelpKey> düyməsi. Onların altında
           beş status kartı durur: <strong>Qaralama</strong>, <strong>Planlaşdırılıb</strong>,{" "}
           <strong>Göndərilir</strong>, <strong>Göndərildi</strong> və <strong>Ləğv edildi</strong> —
-          hər biri həmin statusda olan kampaniyaların sayını göstərir.
+          hər biri həmin statusda olan kampaniyaların sayını göstərir. Kartın nəyi saydığını adının
+          yanındakı ⓘ nişanı göstərir.
         </p>
         <p>
           <HelpKey>Siyahı</HelpKey> tabında status kartlarının altında bir axtarış sahəsi, sonra isə
@@ -49,11 +50,11 @@ export default function CampaignsHelpAz() {
         </p>
         <dl className="rounded-md border p-3">
           <HelpDef term="Qaralama">Hələ göndərilməyən, redaktə edilə bilən kampaniya.</HelpDef>
-          <HelpDef term="Planlaşdırılıb">Gələcək bir tarixə göndərmə üçün təyin edilmiş kampaniya.</HelpDef>
+          <HelpDef term="Planlaşdırılıb">Göndərmə vaxtı təyin olunmuş kampaniya. Həmin vaxt özü göndərilir; o vaxta qədər onu dəyişmək və ya dərhal göndərmək olar.</HelpDef>
           <HelpDef term="Göndərilir">Hazırda alıcılara göndərilməkdə olan kampaniya.</HelpDef>
           <HelpDef term="Göndərildi">Göndərmə bitmiş kampaniya — bundan sonra kart yalnız oxunan icmal kimi açılır.</HelpDef>
           <HelpDef term="Ləğv edildi">Dayandırılmış və ya ləğv edilmiş kampaniya.</HelpDef>
-          <HelpDef term="Növ">Kanal: <strong>Email</strong> (📧) və ya <strong>SMS</strong> (📱).</HelpDef>
+          <HelpDef term="Növ">Kanal: <strong>Email</strong>, <strong>SMS</strong>, <strong>WhatsApp</strong> və ya <strong>Telegram</strong>.</HelpDef>
           <HelpDef term="Alıcılar">Kampaniyanın hədəflədiyi kontakt/lid sayı (kartda insan ikonası ilə göstərilir).</HelpDef>
           <HelpDef term="A/B test">İki və ya daha çox variantı (mövzu, məzmun və ya göndərmə vaxtı) kiçik auditoriyada yoxlayıb qalibi seçmək imkanı.</HelpDef>
         </dl>
@@ -100,6 +101,9 @@ export default function CampaignsHelpAz() {
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             Şablon siyahısı yüklənənə qədər «Yüklənir...», sonra «— Şablonsuz —» və mövcud şablonlar
             görünür. «Göndərmə planla» sahəsi tarix-vaxt seçicisidir; büdcə yalnız rəqəm qəbul edir.
+            Yeni kampaniyada tarix sadəcə qeyddir — kampaniya qaralama olaraq qalır. Avtomatik
+            göndərilməsi üçün onu açıb «Yazmaq» vkladkasında <HelpKey>Planlaşdır</HelpKey> düyməsini
+            basın.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>
@@ -225,9 +229,17 @@ export default function CampaignsHelpAz() {
           <strong>Avtomatlaşdırma</strong> və <strong>Şablonlar</strong> ümumi panelləri yer alır.
         </p>
         <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-          KPI kartları və huni dəyərləri sizin kampaniyalarınızın faktiki göndərmə / açılma / klik
-          cəmlərindən hesablanır. Hələ heç nə göndərilməyibsə bu göstəricilər 0%-ə yaxın görünür və
-          «Ən yaxşı kampaniyalar» panelində «Hələ kampaniya yoxdur» yazılır.
+          Bütün rəqəmlər təşkilatınızın öz qeydlərindən götürülür. Açılma və klik faizləri yalnız bu
+          addımı qeydə alan kanalın kampaniyaları üzrə hesablanır, ona görə SMS göndərişləri açılma
+          faizini aşağı salmır. Açılma, klik və bounce yalnız e-poçt kampaniyalarında qeydə alınır;
+          bounce e-poçt provayderinin çatdırılma hesabatlarından gəlir. Rəqəmi heç bir qeyd
+          saxlamırsa — məsələn, hələ heç bir e-poçt kampaniyası göndərilməyibsə bounce, və ya
+          kampaniyaya bağlı qazanılmış sövdələşmə yoxdursa ROI — kartda «—» və səbəbi görünür.
+          ROI «Kampaniya ROI» səhifəsindəki eyni rəqəmdir: yalnız qazanılmış sövdələşmələr və
+          göndərilmiş kampaniyaların büdcələri bir valyutada olanda rəqəm görünür.
+          «Ən yaxşı kampaniyalar» klik sayına görə sıralanır. «Seqmentlər», «Avtomatlaşdırma» və
+          «Şablonlar» panelləri real seqmentlərinizi, zəncirlərinizi və e-poçt şablonlarınızı sayır,
+          yoxdursa bunu yazır.
         </HelpCallout>
       </HelpSection>
 

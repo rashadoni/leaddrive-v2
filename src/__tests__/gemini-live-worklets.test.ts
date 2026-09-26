@@ -1,42 +1,10 @@
-import { readFileSync } from "node:fs"
-import { runInNewContext } from "node:vm"
 import { describe, expect, it } from "vitest"
-
-type WorkletPort = {
-  onmessage: ((event: { data: unknown }) => void) | null
-  messages: unknown[]
-  postMessage: (message: unknown) => void
-}
-
-type WorkletInstance = {
-  port: WorkletPort
-  process: (inputs: Float32Array[][], outputs?: Float32Array[][]) => boolean
-  count?: number
-  capacity?: number
-}
-
-function loadProcessor(path: string, contextSampleRate: number): new (options?: unknown) => WorkletInstance {
-  let Processor: (new (options?: unknown) => WorkletInstance) | null = null
-  class AudioWorkletProcessor {
-    port: WorkletPort = {
-      onmessage: null,
-      messages: [],
-      postMessage: (message) => { this.port.messages.push(message) },
-    }
-  }
-  runInNewContext(readFileSync(path, "utf8"), {
-    AudioWorkletProcessor,
-    Float32Array,
-    Math,
-    Number,
-    sampleRate: contextSampleRate,
-    registerProcessor: (_name: string, implementation: new (options?: unknown) => WorkletInstance) => {
-      Processor = implementation
-    },
-  })
-  if (!Processor) throw new Error(`Worklet did not register: ${path}`)
-  return Processor
-}
+import { SYNTHETIC_BACKGROUND_FIXTURES } from "./fixtures/voice-audio-signals"
+import {
+  loadAudioWorkletProcessor as loadProcessor,
+  messagesByType,
+  processMonoSignal,
+} from "./helpers/audio-worklet-harness"
 
 describe("Gemini Live audio worklets", () => {
   it("statefully resamples a 48 kHz capture context to 16 kHz chunks", () => {
@@ -51,6 +19,33 @@ describe("Gemini Live audio worklets", () => {
     expect(audio.samples).toHaveLength(512)
     expect(audio.samples.every((sample) => Math.abs(sample - 0.25) < 0.0001)).toBe(true)
   })
+
+  it("reports loud input only as UI signal activity", () => {
+    const Capture = loadProcessor("public/gemini-live-capture.worklet.js", 48_000)
+    const capture = new Capture({ processorOptions: { targetSampleRate: 16_000 } })
+
+    capture.process([[new Float32Array(128).fill(0.25)]])
+    expect(capture.port.messages).toContainEqual({ type: "signal_activity", active: true })
+    expect(capture.port.messages.some(
+      (message) => (message as { type?: string }).type === "activity",
+    )).toBe(false)
+
+    for (let i = 0; i < 50; i += 1) capture.process([[new Float32Array(128)]])
+    expect(capture.port.messages).toContainEqual({ type: "signal_activity", active: false })
+  })
+
+  it.each(Object.entries(SYNTHETIC_BACKGROUND_FIXTURES))(
+    "never emits an interruption for the synthetic %s fixture",
+    (_name, createFixture) => {
+      const Capture = loadProcessor("public/gemini-live-capture.worklet.js", 48_000)
+      const capture = new Capture({ processorOptions: { targetSampleRate: 16_000 } })
+
+      processMonoSignal(capture, createFixture())
+
+      expect(messagesByType(capture, "interrupt")).toHaveLength(0)
+      expect(messagesByType(capture, "activity")).toHaveLength(0)
+    },
+  )
 
   it("bounds playback, resamples 24 kHz output, and fences stale generations", () => {
     const Playback = loadProcessor("public/gemini-live-playback.worklet.js", 48_000)

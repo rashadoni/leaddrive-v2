@@ -127,11 +127,14 @@ export function ContentSearchBar({ compact = false }: { compact?: boolean }) {
         <Search className="h-4 w-4" aria-hidden="true" />
         <span className="hidden sm:inline">{t("aiSearch")}</span>
       </button>
-      {/* The global VoiceOrb portals its control here on dense MTM pages.
-          The host collapses completely for users outside the voice pilot. */}
+      {/* Fallback host for the global VoiceOrb when the shell has no header
+          slot. Empty, it collapses to zero width (the negative margin cancels
+          the form's gap) but keeps a box: `empty:hidden` made it display:none,
+          a display:none element never intersects, and the orb only moved in
+          once the slot was seen intersecting — a deadlock. */}
       <div
         id="dashboard-voice-assistant-slot"
-        className="flex h-11 w-11 shrink-0 items-center justify-center empty:hidden"
+        className={`flex h-11 w-11 shrink-0 items-center justify-center empty:w-0 ${compact ? "empty:-ml-2" : "empty:-ml-3"}`}
       />
     </form>
   )

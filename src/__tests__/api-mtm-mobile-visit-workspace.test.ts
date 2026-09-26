@@ -101,3 +101,43 @@ describe("GET /api/v1/mtm/mobile/visits/[id]/workspace", () => {
     })
   })
 })
+
+describe("mobile workspace PHOTO minimum", () => {
+  function visitWithPhotoMinimum(minCount: number) {
+    return {
+      id: "visit-1",
+      customerId: "customer-1",
+      status: "CHECKED_IN",
+      requirementSnapshot: {
+        requirements: [
+          { id: "req-photo", actionKey: "PHOTO", mode: "REQUIRED", minCount },
+          { id: "req-note", actionKey: "VISIT_NOTE", mode: "REQUIRED", minCount: 3 },
+        ],
+      },
+      actionResults: [],
+      customer: { id: "customer-1", name: "Clinic One" },
+    }
+  }
+
+  it("never sends the app a PHOTO minimum above maxPhotosPerVisit", async () => {
+    vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue(visitWithPhotoMinimum(15) as any)
+    vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue({ value: 10 } as any)
+    const response = await GET(request(), { params: Promise.resolve({ id: "visit-1" }) })
+    const requirements = (await response.json()).data.visit.requirementSnapshot.requirements
+    expect(requirements.find((item: any) => item.actionKey === "PHOTO").minCount).toBe(10)
+    expect(requirements.find((item: any) => item.actionKey === "VISIT_NOTE").minCount).toBe(3)
+  })
+
+  it("falls back to the default cap of 10 and skips the read when no photo minimum needs it", async () => {
+    vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue(visitWithPhotoMinimum(15) as any)
+    vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue(null)
+    const capped = await GET(request(), { params: Promise.resolve({ id: "visit-1" }) })
+    expect((await capped.json()).data.visit.requirementSnapshot.requirements[0].minCount).toBe(10)
+
+    vi.mocked(prisma.mtmSetting.findFirst).mockClear()
+    vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue(visitWithPhotoMinimum(1) as any)
+    const plain = await GET(request(), { params: Promise.resolve({ id: "visit-1" }) })
+    expect((await plain.json()).data.visit.requirementSnapshot.requirements[0].minCount).toBe(1)
+    expect(prisma.mtmSetting.findFirst).not.toHaveBeenCalled()
+  })
+})

@@ -16,7 +16,10 @@ import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-
 import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
 import {
   replayWorkforceWorkdayFacts,
+  WORKFORCE_WORKDAY_JOURNAL_ORDER,
+  WORKFORCE_WORKDAY_JOURNAL_SELECT,
   workforceReplayMatchesWorkdayCorrectionFacts,
+  workforceWorkdayEventFact,
   WorkforceWorkdayFactsReplayError,
 } from "@/lib/workforce/workday-facts-replay"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
@@ -401,8 +404,8 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
         const [events, corrections] = await Promise.all([
           tx.mtmAgentWorkdayEvent.findMany({
             where: { organizationId, agentId: request.agentId, workdayId: workday.id },
-            orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
-            select: { id: true, type: true, occurredAt: true },
+            orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
+            select: WORKFORCE_WORKDAY_JOURNAL_SELECT,
           }),
           tx.workforceTimeCorrection.findMany({
             where: { organizationId, agentId: request.agentId, workdayId: workday.id },
@@ -412,11 +415,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
         try {
           const replayed = replayWorkforceWorkdayFacts({
             workdayId: workday.id,
-            events: events.map((event) => ({
-              id: event.id,
-              type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
-              occurredAt: event.occurredAt.toISOString(),
-            })),
+            events: events.map(workforceWorkdayEventFact),
             corrections,
           })
           if (!workforceReplayMatchesWorkdayCorrectionFacts(replayed, previousWorkday)) {
@@ -426,11 +425,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
           }
           replayWorkforceWorkdayFacts({
             workdayId: workday.id,
-            events: events.map((event) => ({
-              id: event.id,
-              type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
-              occurredAt: event.occurredAt.toISOString(),
-            })),
+            events: events.map(workforceWorkdayEventFact),
             corrections: [...corrections, {
               id: "pending-request-correction",
               beforeFacts: previousWorkday,

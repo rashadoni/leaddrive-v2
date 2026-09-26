@@ -886,6 +886,115 @@ const BD_FILTER_TYPE = ["main select >> nth=1", "main"];
 const BD_FILTER_PRIORITY = ["main select >> nth=3", "main select >> nth=2", "main"];
 const BD_COLUMNS = ["main :text('BACKLOG')", "main :text('Backlog')", "main"];
 
+// ── omnichannel-reel — MARKETING cut, not a help guide ──────────────────────
+// Storyboard: docs/omnichannel-reel-scenario.md (WhatChimp formula: night →
+// AI answers → team takes over → morning, all answered → channels → CTA).
+// Record with GUIDE_OUT_DIR (never video/player), GUIDE_VIDEO_W/H 1080×1080 or
+// 1080×1920 and GUIDE_BURN_SUBS=1. Owner decisions 2026-09-21: CTA is
+// «Demo sorğusu» (the site's own button — there is no self-serve trial), and
+// Instagram/Facebook stay OUT of the channel list until Meta App Review passes.
+// Nothing here saves: the assignee picker and the lead dialog are opened and
+// dismissed. «Cavab təklif et» does call the AI (one aiInteractionLog row, a
+// few cents of budget) and fills the composer without sending.
+// Inbox has no tour ids: rows are role=button, rail items are plain buttons with
+// hard-coded English channel labels (src/lib/inbox-channels.ts).
+const RL_ROW = ["section div[role='button'][tabindex='0']"];
+const RL_IN_BUBBLE = [".justify-start .rounded-bl-md", "main"];
+const RL_AI_BTN = ["[title='AI cavab təklifi']"];
+const RL_AI_SUGGEST = ["button:has-text('Cavab təklif et')"];
+const RL_COMPOSER = ["input[placeholder^='Mesajınızı yazın']"];
+const RL_ASSIGN = ["[title='Təyin et']"];
+const RL_CONVERT = ["button:has-text('Lidə çevir')"];
+const RL_DIALOG_CANCEL = ["[role='dialog'] button:has-text('Ləğv et')", "[role='dialog'] [aria-label='Bağla']"];
+const RL_THREAD = ["main section:nth-of-type(3)", "main"];
+const RL_CB_MASTER = ["[data-tour-id='cb-master']"];
+const RL_CB_RULE = ["[data-tour-id='cb-rules'] .divide-y > div", "[data-tour-id='cb-rules']"];
+const RL_FRT = ["div.border.rounded-lg:has(:text-is('İlk cavabın medianı'))", ":text-is('İlk cavabın medianı')"];
+const RL_BY_CHANNEL = ["div:has(> :text-is('Kanallar üzrə'))", ":text-is('Kanallar üzrə')"];
+const RL_RAIL = ["aside:has(nav) nav", "aside nav"];
+const RL_CHANNELS = ["WhatsApp", "Telegram", "TikTok", "SMS", "Email", "Web Chat", "VoIP"];
+const railItem = (name) => [`aside nav button:has-text('${name}')`];
+// 9:16 is recorded as a phone (GUIDE_DEVICE_SCALE=2 → 540×960 CSS px): the
+// inbox panes then sit side by side in a horizontal scroller and opening a
+// thread pans to it, so nothing is zoomed and scrollLeft is left alone. The
+// square (1080 CSS px, three panes) is zoomed onto the active zone instead.
+const tall = (p) => { const v = p.viewportSize() || globalThis.__guideViewport; return Boolean(v && v.height > v.width); };
+const zoom = async (p, h, sel, scale = 1.45) => { if (!tall(p)) await h.focus(sel, scale); };
+// Square only: at 1080 px the thread header overflows and Playwright's
+// scroll-into-view pans the whole inbox sideways — snap every scroller back.
+const unscroll = (p) => tall(p) ? Promise.resolve() : p.evaluate(() => {
+  for (const el of document.querySelectorAll("*")) if (el.scrollLeft) el.scrollLeft = 0;
+  window.scrollTo(0, window.scrollY);
+}).catch(() => {});
+// Click only what is really there: h.click falls back to the centre of <main>
+// when a selector misses, which in the inbox opens a random thread.
+const clickIf = async (p, h, sel) => {
+  if (await p.locator(sel[0]).first().isVisible().catch(() => false)) await h.click(sel);
+};
+// Square frames: after the zoom the thread fills the right half and its empty
+// middle is the one free zone — the top centre would cover the list's 02:14
+// row. On the phone the top centre sits over the app bar and is fine.
+const threadBox = (p) => (tall(p) ? null : { left: "58vw", top: "42vh", width: "38vw" });
+// Analytics cards render only after their request returns; without this the
+// frame catches the spinner and h.moveTo falls back to the middle of <main>.
+const waitFor = (p, sel, ms = 15000) => p.locator(sel[0]).first().waitFor({ state: "visible", timeout: ms }).catch(() => {});
+// The AI suggestion takes a few seconds; wait for the composer to fill.
+const waitComposer = (p, ms) => p.waitForFunction(
+  () => (document.querySelector("input[placeholder^='Mesajınızı yazın']")?.value || "").length > 20,
+  null, { timeout: ms },
+).catch(() => {});
+
+// ── demo-* — the guided demo's intro clips ──────────────────────────────────
+// Filmed on the demo stand (scripts/seeds/demo-journey-clips.mjs plus the
+// Omni-channel reel's inbox), never on a customer's records: on 2026-09-21 the
+// help library's leads and boards clips turned out to show LeadDrive Inc.'s
+// own data, so the demo got clips of its own. Azerbaijani only — the demo is.
+// Nothing here saves: the only clicks open a record, switch a view or close a
+// modal, and every click goes through clickIf, because h.click falls back to
+// the centre of <main> when a selector misses. waitFor comes first wherever a
+// list loads late, for the same reason on the hover side. In the inbox the
+// Omni-channel reel's 02:14 thread is hovered, never opened; the one thread
+// opened (Aysu Nəbiyeva, 0 unread) was agreed with that session.
+// Left out on purpose: the campaigns «Analitika» tab (its segment, automation
+// and revenue widgets are not computed from this tenant's records) and the
+// lead's «Da Vinci ilə yenidən hesabla» and «AI ilə zəng et» buttons.
+// A product tour can still start when a record opens (the task modal's did
+// on 2026-09-21, tour ids in localStorage notwithstanding). Hide its card by
+// its inline z-index (src/components/tour/tour-step.tsx) — never click it.
+const hideTourCards = (p) => p.addStyleTag({ content: "[style*='z-index: 10002']{display:none!important}" }).catch(() => {});
+// Bring a row to the middle of the screen before the narration talks about
+// it; scrollIntoViewIfNeeded alone leaves it on the bottom edge.
+const centre = (p, sel) => p.locator(sel[0]).first().evaluate((el) => el.scrollIntoView({ block: "center" })).catch(() => {});
+const DC_STATS = ["[data-tour-id='campaigns-stats']", "main"];
+const DC_LIST = ["[data-tour-id='campaigns-list']", "main"];
+const DC_HERO = ["[data-tour-id='campaigns-list'] h3:has-text('Payız kolleksiyası')"];
+const DC_KPIS = ["main .grid:has(.bg-green-500)", "main"];
+const DC_RATES = ["main :text('Delivery Rates')", "main"];
+const DC_MONEY = ["main :text('Financial')", "main"];
+
+const DI_ROW = (name) => [`section div[role='button'][tabindex='0']:has-text('${name}')`];
+const DI_UNANSWERED = ["section div[role='button'][tabindex='0'] :text-is('Cavabsız')"];
+const DI_CREATE_LEAD = ["button:has-text('Lid yarat')", "main"];
+
+const DB_TITLE = ["main h1", "main"];
+const DB_SALES = ["main a:has-text('Satış')"];
+const DB_MARKETING = ["main a:has-text('Marketinq')"];
+const DB_COLUMNS = ["main :text-is('IN PROGRESS')", "main :text-is('BACKLOG')", "main"];
+const DB_CARD = ["main span:text-is('SAT-1')"];
+const DB_MODAL_CLOSE = ["div.fixed.inset-0 > div > button[aria-label]"];
+const DB_LOAD = ["main :text('İcraçılara görə yük')", "main"];
+
+const DL_HEAD = ["[data-tour-id='leads-list']", "main"];
+const DL_SCORE = ["[data-tour-id='leads-score']", "main"];
+const DL_BOARD = ["[data-tour-id='leads-convert']", "main"];
+const DL_HERO = ["[data-tour-id='leads-convert'] :text('Leyla Məmmədova')"];
+const DL_KPIS = ["main :text('Bal / Dərəcə')", "main"];
+const DL_DAVINCI_TAB = ["main button:has-text('Da Vinci Reytinq')"];
+const DL_DAVINCI_CARD = ["main :text('Qiymətləndirmə faktorları')", "main :text('Da Vinci Təhlil')", "main"];
+const DL_ACTIVITY_TAB = ["main button:has-text('Fəaliyyətlər')"];
+const DL_TIMELINE = ["main :text('Fəaliyyət zaman cədvəli')", "main"];
+const DL_CONVERT = ["main button:has-text('Sövdələşməyə çevir')"];
+
 export default {
   boards: {
     route: "/boards",
@@ -3409,6 +3518,348 @@ export default {
           ru: "И весь состав сгруппирован по менеджеру — структура команды прямо перед вами: кто кому подчиняется, насколько велика каждая группа. Вот раздел «Агенты»: не визитница, а командный центр — добавляйте, открывайте, связывайтесь и ведите всю полевую команду с одного экрана.",
         },
         do: async (p, l, h) => { await h.moveTo(AG_GROUP); await h.hover(AG_GROUP); },
+      },
+    ],
+  },
+
+  "omnichannel-reel": {
+    route: "/inbox",
+    title: { az: "Omni-channel Inbox", en: "Omni-channel Inbox", ru: "Omni-channel Inbox" },
+    scenes: [
+      // 1 — Hook: night, a customer writes.
+      {
+        voice: {
+          az: "Gecə saat ikidir. Müştəri yazır: «Kimsə var?» Kim cavab verir?",
+          ru: "Два часа ночи. Клиент пишет: «Есть кто-нибудь?» Кто отвечает?",
+        },
+        do: async (p, l, h) => {
+          await h.card({ title: "Gecə 2:14. Müştəri yazır.", sub: "Kim cavab verir?", dim: 0.62 });
+          // Behind the card: open the 02:14 thread and ask the AI for a reply
+          // now — the answer takes 5–8 s, longer than scene 2's narration, so
+          // it lands while scene 2 is on screen instead of after it.
+          await p.locator(RL_ROW[0]).first().click({ timeout: 8000 }).catch(() => {});
+          await unscroll(p);
+          await p.locator(RL_AI_BTN[0]).first().click({ timeout: 5000 }).catch(() => {});
+          await p.locator(RL_AI_SUGGEST[0]).first().click({ timeout: 3000 }).catch(() => {});
+          await unscroll(p);
+        },
+      },
+      // 2 — AI drafts the reply from the knowledge base.
+      {
+        voice: {
+          az: "LeadDrive-da süni intellekt cavabı hazırlayır: müştərinin sualına saniyələr içində, sizin bilik bazanızdan.",
+          ru: "В LeadDrive ответ готовит ИИ: на вопрос клиента — за секунды, из вашей базы знаний.",
+        },
+        do: async (p, l, h) => {
+          await h.clearOverlays();
+          await h.caption("*AI cavab təklifi* — saniyələr içində", { box: threadBox(p) });
+          await zoom(p, h, RL_THREAD);
+          await h.moveTo(RL_IN_BUBBLE);
+          await h.holdUntil(0.3);
+          await h.moveTo(RL_AI_BTN);
+          await waitComposer(p, 6000);
+          await h.holdUntil(0.6);
+          await h.moveTo(RL_COMPOSER);
+        },
+      },
+      // 3 — Chatbot auto-replies, 24/7.
+      {
+        route: "/inbox/chatbot-rules",
+        ready: RL_CB_MASTER,
+        voice: {
+          az: "Gecə də, bayramda da — avtomatik cavablar işləyir, müştəri gözləmir.",
+          ru: "И ночью, и в праздники — автоответы работают, клиент не ждёт.",
+        },
+        do: async (p, l, h) => {
+          await h.caption("Avtomatik cavab: *AKTİV* · 24/7");
+          await zoom(p, h, RL_CB_MASTER, 1.3);
+          await h.moveTo(RL_CB_MASTER);
+          await h.holdUntil(0.55);
+          await h.moveTo(RL_CB_RULE);
+        },
+      },
+      // 4 — The team takes the hard question: assign, convert to a lead.
+      {
+        route: "/inbox",
+        ready: RL_ROW,
+        voice: {
+          az: "Çətin sualı komanda götürür: bir kliklə əməkdaşa təyin edin, söhbəti lidə çevirin — satıcı artıq işə başlayır.",
+          ru: "Сложный вопрос берёт команда: одним кликом назначаете сотрудника, превращаете чат в лид — продавец уже в работе.",
+        },
+        do: async (p, l, h) => {
+          await h.caption("Çətin sualı *komanda* götürür", { box: threadBox(p) });
+          await p.locator(RL_ROW[0]).first().click({ timeout: 8000 }).catch(() => {});
+          await unscroll(p);
+          await zoom(p, h, RL_THREAD);
+          await clickIf(p, h, RL_ASSIGN);      // opens the picker — selecting would PATCH
+          await unscroll(p);
+          await h.holdUntil(0.35);
+          await p.keyboard.press("Escape").catch(() => {});
+          await h.caption("");                 // the lead dialog fills the frame
+          await clickIf(p, h, RL_CONVERT);     // dialog open = read-only GET
+          await unscroll(p);
+          await h.holdUntil(0.85);
+          await clickIf(p, h, RL_DIALOG_CANCEL);
+        },
+      },
+      // 5 — Morning: analytics.
+      {
+        route: "/inbox/analytics",
+        ready: RL_FRT,
+        voice: {
+          az: "Səhər açılır — hər söhbətə cavab verilib. İlk cavab vaxtı, həll olunan söhbətlər, kanallar üzrə yük — hamısı bir ekranda.",
+          ru: "Утро — на каждый чат отвечено. Время первого ответа, решённые чаты, нагрузка по каналам — всё на одном экране.",
+        },
+        do: async (p, l, h) => {
+          await h.caption("Səhər 7:24. *Hər söhbətə cavab verilib.*");
+          await waitFor(p, RL_FRT);
+          await zoom(p, h, RL_FRT, 1.3);
+          await h.moveTo(RL_FRT);
+          await h.holdUntil(0.55);
+          await waitFor(p, RL_BY_CHANNEL, 5000);
+          await zoom(p, h, RL_BY_CHANNEL, 1.3);
+          await h.moveTo(RL_BY_CHANNEL);
+        },
+      },
+      // 6 — One inbox, every channel (no Instagram/Facebook — owner, 2026-09-21).
+      {
+        route: "/inbox",
+        ready: RL_RAIL,
+        voice: {
+          az: "WhatsApp, Telegram, TikTok, SMS, e-poçt, saytdakı çat və zənglər — hamısı bir gələnlər qutusunda.",
+          ru: "WhatsApp, Telegram, TikTok, SMS, почта, чат на сайте и звонки — всё в одном инбоксе.",
+        },
+        do: async (p, l, h) => {
+          await h.caption("Bir gələnlər qutusu. *Bütün kanallar.*", { box: threadBox(p) });
+          await zoom(p, h, RL_RAIL, 1.4);
+          for (const [i, name] of RL_CHANNELS.entries()) {
+            await h.moveTo(railItem(name));
+            await h.holdUntil(0.1 + (0.8 * (i + 1)) / RL_CHANNELS.length);
+          }
+        },
+      },
+      // 7 — End card + CTA.
+      {
+        voice: {
+          az: "LeadDrive. Bir gələnlər qutusu, bir süni intellekt. Bu gün başlayın.",
+          ru: "LeadDrive. Один инбокс, один ИИ. Начните сегодня.",
+        },
+        do: async (p, l, h) => {
+          await h.focus(null);
+          await h.clearOverlays();
+          await h.card({
+            logo: true,
+            title: "LeadDrive",
+            sub: "Bir gələnlər qutusu. Bir AI.",
+            chips: ["WhatsApp", "Telegram", "TikTok", "SMS", "E-poçt", "Veb-çat", "Zənglər"],
+            cta: "Demo sorğusu",
+            url: "leaddrivecrm.org",
+            dim: 0.94,
+          });
+        },
+      },
+    ],
+  },
+  "demo-campaigns": {
+    route: "/campaigns",
+    title: { az: "Kampaniyalar" },
+    scenes: [
+      {
+        voice: { az: "Bu, «Kampaniyalar» bölməsidir: e-poçt, SMS, WhatsApp və Telegram göndərişləri bir siyahıdadır. Yuxarıda kampaniyalar statuslara görə sayılır — qaralama, planlaşdırılıb, göndərilir, göndərildi və ləğv edildi." },
+        do: async (p, l, h) => {
+          await hideTourCards(p);
+          await waitFor(p, DC_HERO);
+          await h.hover(DC_STATS);
+          await h.holdUntil(0.62);
+          await h.moveTo(DC_LIST);
+        },
+      },
+      {
+        voice: { az: "Hər kartda kanal, alıcıların sayı və nəticə görünür. Məsələn, payız kolleksiyası e-poçtla göndərilib: min səkkiz yüz qırx yeddi alıcıdan min səkkiz yüz iyirmi doqquzuna çatıb." },
+        do: async (p, l, h) => {
+          await centre(p, DC_HERO);
+          await h.hover(DC_HERO);
+          await h.holdUntil(0.8);
+        },
+      },
+      {
+        voice: { az: "Kampaniyanı açırıq. Yuxarıda nəticə var: neçə nəfərə çatdı, neçəsi açdı, neçəsi linkə keçdi — say və faizlə. Bu məktubu hər on nəfərdən dördü açıb." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DC_HERO);
+          await waitFor(p, DC_KPIS);
+          await h.holdUntil(0.35);
+          await h.hover(DC_KPIS);
+        },
+      },
+      {
+        voice: { az: "Aşağıda çatdırılma faizləri və xərc var: büdcə üç yüz qırx manat idi, göndəriş isə üç yüz on səkkiz manata başa gəlib." },
+        do: async (p, l, h) => {
+          await h.hover(DC_RATES);
+          await h.holdUntil(0.5);
+          await h.moveTo(DC_MONEY);
+        },
+      },
+      {
+        voice: { az: "Beləliklə, hansı kanalın işlədiyi təxminlə yox, rəqəmlə görünür — və növbəti kampaniyanın büdcəsi də buna görə qurulur." },
+        do: async (p, l, h) => {
+          await h.hover(DC_KPIS);
+        },
+      },
+    ],
+  },
+
+  "demo-inbox": {
+    route: "/inbox",
+    title: { az: "Gələnlər qutusu" },
+    scenes: [
+      {
+        voice: { az: "Bu, «Gələnlər» qutusudur: WhatsApp, Telegram, SMS, e-poçt, zənglər və sayt çatı — bütün kanallar bir siyahıda. Solda süzgəclər var: hamısı, mənim, təyin edilməyib və çatbot." },
+        do: async (p, l, h) => {
+          await hideTourCards(p);
+          await waitFor(p, DI_ROW("Aysu Nəbiyeva"));
+          await h.hover(RL_RAIL);
+          await h.holdUntil(0.7);
+          await h.moveTo(RL_ROW);
+        },
+      },
+      {
+        voice: { az: "Hər dialoqda müştəri, son mesaj və vəziyyət görünür. «Cavabsız» nişanı kimin cavab gözlədiyini dərhal göstərir — gecə saat ikidə yazan müştəri də itmir." },
+        do: async (p, l, h) => {
+          await h.moveTo(DI_ROW("Nərmin Əliyeva"));
+          await h.holdUntil(0.5);
+          await h.moveTo(DI_UNANSWERED);
+        },
+      },
+      {
+        voice: { az: "Dialoqu açırıq: ortada yazışma, sağda müştərinin kartı — əlaqə məlumatları və bir kliklə lid yaratmaq düyməsi. Cavab yazmaq və məsul şəxs təyin etmək də elə buradadır." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DI_ROW("Aysu Nəbiyeva"));
+          await h.sleep(1500);
+          await unscroll(p);
+          await h.holdUntil(0.3);
+          await h.moveTo(RL_THREAD);
+          await h.holdUntil(0.6);
+          await h.moveTo(DI_CREATE_LEAD);
+        },
+      },
+      {
+        voice: { az: "Beləliklə, heç bir müraciət kanallar arasında itmir: hamısı bir növbədədir, hər birinin məsulu və vəziyyəti var." },
+        do: async (p, l, h) => {
+          await h.moveTo(RL_ROW);
+        },
+      },
+    ],
+  },
+
+  "demo-boards": {
+    route: "/boards",
+    title: { az: "Lövhələr" },
+    scenes: [
+      {
+        voice: { az: "«Lövhələr» — komandanın gündəlik işi. Hər şöbənin öz lövhəsi var: burada «Satış» və «Marketinq». Kartda lövhənin adı, rəhbəri və içindəki tapşırıqların sayı görünür." },
+        do: async (p, l, h) => {
+          await hideTourCards(p);
+          await waitFor(p, DB_SALES);
+          await h.hover(DB_TITLE);
+          await h.holdUntil(0.45);
+          await h.moveTo(DB_SALES);
+          await h.holdUntil(0.75);
+          await h.moveTo(DB_MARKETING);
+        },
+      },
+      {
+        voice: { az: "«Satış» lövhəsini açırıq. Sütunlar işin mərhələləridir, kartlar isə tapşırıqlar: nömrəsi, adı, bağlı lid, son tarix, məsul şəxs və çek-list üzrə icra faizi." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DB_SALES);
+          await waitFor(p, DB_CARD);
+          await h.holdUntil(0.4);
+          await h.hover(DB_COLUMNS);
+          await h.holdUntil(0.75);
+          await h.moveTo(DB_CARD);
+        },
+      },
+      {
+        voice: { az: "Yuxarıdakı süzgəclər lövhəni daraldır: «Mənə təyin olunanlar», tapşırığın növü, prioriteti və məsul şəxs. Beləcə hər kəs öz işini görür." },
+        do: async (p, l, h) => {
+          await h.moveTo(BD_ASSIGNED_ME);
+          await h.holdUntil(0.4);
+          await h.moveTo(BD_FILTER_TYPE);
+          await h.holdUntil(0.7);
+          await h.moveTo(BD_FILTER_PRIORITY);
+        },
+      },
+      {
+        voice: { az: "Kartı açırıq: status, prioritet, son tarix və çek-list bir yerdədir, tapşırıq isə lidə bağlıdır. Bu, satış meneceri Tural Kərimovun Northline Logistics üçün hazırladığı təklifdir." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DB_CARD);
+          await hideTourCards(p);
+          await h.sleep(1500);
+          await h.holdUntil(0.85);
+          await clickIf(p, h, DB_MODAL_CLOSE);
+        },
+      },
+      {
+        voice: { az: "«Hesabatlar» görünüşü isə rəhbər üçündür: kimdə nə qədər iş var, nə gecikir və tapşırıqlar nə sürətlə bağlanır." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, BD_VIEW_REPORTS);
+          await h.sleep(1500);
+          await h.holdUntil(0.55);
+          await h.moveTo(DB_LOAD);
+        },
+      },
+    ],
+  },
+
+  "demo-leads": {
+    route: "/leads",
+    title: { az: "Lidlər" },
+    scenes: [
+      {
+        voice: { az: "Bu, «Lidlər» bölməsidir — satışın başlanğıcı. Saytdan, Instagram-dan, WhatsApp-dan gələn hər müraciət burada bir kart olur və heç biri itmir. Yuxarıda ümumi say, çevrilənlər, orta bal və isti lidlər görünür." },
+        do: async (p, l, h) => {
+          await hideTourCards(p);
+          await waitFor(p, DL_HERO);
+          await h.hover(DL_HEAD);
+          await h.holdUntil(0.6);
+          await h.hover(DL_SCORE);
+        },
+      },
+      {
+        voice: { az: "Kartlar mərhələlərə düzülüb: yeni, əlaqə quruldu, kvalifikasiya edildi, çevrildi və itirildi. Hər kartda ad, şirkət, məsul satıcı, bal və gözlənilən məbləğ var — kimə birinci zəng etmək lazım olduğu dərhal görünür." },
+        do: async (p, l, h) => {
+          await showBlock(p, "leads-convert");
+          await h.hover(DL_BOARD);
+          await h.holdUntil(0.7);
+          await h.moveTo(DL_HERO);
+        },
+      },
+      {
+        voice: { az: "Lidin kartını açırıq: bal və dərəcə, təxmini dəyər, prioritet və müştərinin nə istədiyi — hamısı bir ekranda." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DL_HERO);
+          await waitFor(p, DL_DAVINCI_TAB);
+          await h.holdUntil(0.35);
+          await h.hover(DL_KPIS);
+        },
+      },
+      {
+        voice: { az: "«Da Vinci Reytinq» vərəqi balın nədən yığıldığını göstərir: əlaqə tamlığı, əlaqə səviyyəsi, sövdələşmə potensialı. «Fəaliyyətlər» vərəqində isə bütün zənglər, məktublar və görüşlər var." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DL_DAVINCI_TAB);
+          await waitFor(p, DL_DAVINCI_CARD);
+          await h.hover(DL_DAVINCI_CARD);
+          await h.holdUntil(0.6);
+          await clickIf(p, h, DL_ACTIVITY_TAB);
+          await waitFor(p, DL_TIMELINE);
+          await h.moveTo(DL_TIMELINE);
+        },
+      },
+      {
+        voice: { az: "Lid hazır olanda «Sövdələşməyə çevir» düyməsi onu bir addımda satış hunisinə keçirir — ad, şirkət və məbləğ yenidən yazılmır." },
+        do: async (p, l, h) => {
+          await h.hover(DL_CONVERT);
+          await h.holdUntil(0.8);
+        },
       },
     ],
   },

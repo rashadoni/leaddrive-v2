@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRls } from "@/lib/with-rls"
+import { sanitizeEmailHtml, stripHtmlToText } from "@/lib/sanitize"
 
 const createTemplateSchema = z.object({
   name: z.string().min(1).max(255),
@@ -63,6 +64,10 @@ export const POST = withRls(async (req, { orgId }) => {
       data: {
         organizationId: orgId,
         ...parsed.data,
+        // Stored HTML is sent by `sendEmail` and previewed in the UI — strip
+        // XSS on the way in (send re-sanitizes as the authoritative gate).
+        htmlBody: sanitizeEmailHtml(parsed.data.htmlBody),
+        subject: stripHtmlToText(parsed.data.subject),
       },
     })
     return NextResponse.json({ success: true, data: template }, { status: 201 })

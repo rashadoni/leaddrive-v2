@@ -75,4 +75,17 @@ describe("voice lifecycle trace privacy", () => {
     expect(text).not.toContain(privateWords)
     expect(text).not.toContain("injected")
   })
+
+  it("stores bounded audio diagnostics without transcript or device identifiers", async () => {
+    const privateWords = "private-device-id customer speech"
+    await POST(request(
+      "voice_audio_settings",
+      { deviceId: privateWords, transcript: privateWords },
+      "req_on.ec_1_y.ns_0_y.ag_1_y.sr_48000.ch_1",
+    ))
+
+    const text = deps.create.mock.calls[0]?.[0]?.data?.text as string
+    expect(text).toBe("req_on.ec_1_y.ns_0_y.ag_1_y.sr_48000.ch_1 {\"keys\":[]}")
+    expect(text).not.toContain(privateWords)
+  })
 })

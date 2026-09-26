@@ -1343,9 +1343,9 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
   "mtm-tasks": {
     title: { en: "Field Tasks", ru: "Полевые задачи", az: "Sahə tapşırıqları" },
     subtitle: {
-      en: "Assign tasks to field agents, track progress on a Kanban board, and close them by status.",
-      ru: "Назначайте задачи полевым агентам, отслеживайте на доске Канбан и закрывайте по статусу.",
-      az: "Sahə agentlərinə tapşırıq verin, gedişatı Kanban lövhəsində izləyin və status üzrə bağlayın.",
+      en: "See what is overdue and what waits for your review, and open a task in one click.",
+      ru: "Что просрочено и что ждёт вашей приёмки — и задача открывается одним кликом.",
+      az: "Nəyin gecikdiyini və nəyin qəbulunuzu gözlədiyini görün, tapşırığı bir kliklə açın.",
     },
     content: {
       en: lazy(() => import("./mtm-tasks/en")),

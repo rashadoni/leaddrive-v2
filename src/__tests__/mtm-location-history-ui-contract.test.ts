@@ -59,11 +59,12 @@ describe("SWM-10 GPS history presentation contract", () => {
   it("lays out the full filter row from the panel width instead of the viewport", () => {
     expect(panel).toContain('data-testid="mtm-location-history-filter-form"')
     expect(panel).toContain('className="@container rounded-lg')
-    expect(panel).toContain("@min-[64rem]:grid-cols-[minmax(220px,1.4fr)_160px_130px_130px_150px_auto]")
+    // Two date columns since the range (owner 2026-09-22).
+    expect(panel).toContain("@min-[64rem]:grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto]")
     expect(panel).toContain('data-testid="mtm-location-history-accuracy"')
     expect(panel).toContain('data-testid="mtm-location-history-submit"')
     expect(panel).toContain("@min-[64rem]:w-auto")
-    expect(panel).not.toContain("lg:grid-cols-[minmax(220px,1.4fr)_160px_130px_130px_150px_auto]")
+    expect(panel).not.toContain("lg:grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto]")
     expect(panel).not.toContain("lg:w-auto")
   })
 
@@ -93,6 +94,53 @@ describe("SWM-10 GPS history presentation contract", () => {
     expect(map).toContain("...fullActualPath")
   })
 
+  it("judges each visit with the visit review's rule instead of calling every visit confirmed (audit 2026-09-14)", () => {
+    expect(panel).toContain("visitPlaceSummary(visit, data.policy.geofenceRadiusMeters)")
+    expect(panel).toContain("<VisitPlaceBadge place={place} showDistanceDetail />")
+    expect(panel).not.toContain('<CheckCircle2 className="h-3.5 w-3.5" />{t("confirmed")}</span>')
+    for (const messages of locales) {
+      expect(messages.mtmMap.history.geofence).toBeUndefined()
+      expect(messages.mtmPlaceCheck.distanceDetail).toContain("{radius}")
+    }
+  })
+
+  it("says the workday is open since an earlier day instead of «no workday» (audit 2026-09-14)", () => {
+    expect(panel).toContain("data.carriedOverWorkday ? (")
+    expect(panel).toContain('t("workdayOpenSince", {')
+    expect(panel).toContain('t("workdayCarriedClosed", {')
+    for (const messages of locales) {
+      expect(messages.mtmMap.history.workdayOpenSince).toContain("{since}")
+      expect(messages.mtmMap.history.workdayCarriedClosed).toContain("{since}")
+      expect(messages.mtmMap.history.workdayCarriedClosed).toContain("{until}")
+    }
+  })
+
+  it("opens today from midnight to now, not a fixed 07:00–19:00 that hid evening visits", () => {
+    expect(panel).not.toContain('useState("07:00")')
+    expect(panel).not.toContain('useState("19:00")')
+    expect(panel).toContain("defaultHistoryWindow(")
+    expect(panel).toContain("workday?.startedAt ?? (body.data as HistoryData).summary.firstPointAt")
+    expect(panel).toContain('searchParams.get("from")')
+    // Never an empty 00:00–00:00 window in the first minute after midnight.
+    expect(panel).toContain("function tenantClockNowCeil(timezone: string)")
+    expect(panel).toContain("const effectiveTo = autoWindowRef.current && isToday ? tenantClockNowCeil(timezone) : to")
+  })
+
+  it("keeps developer wording and small scrolling frames out of the page", () => {
+    expect(panel).not.toContain("max-h-[390px]")
+    expect(panel).not.toContain("max-h-[360px]")
+    expect(panel).not.toContain("data.policy.distanceFormula")
+    expect(panel).not.toContain('t("autoTracking')
+    expect(panel).toContain("Math.round(stop.averageAccuracy)")
+    for (const messages of locales) {
+      const history = messages.mtmMap.history
+      expect(history.methodNote).not.toContain("{formula}")
+      expect(history.autoTrackingUnavailable).toBeUndefined()
+      expect(JSON.stringify(history)).not.toMatch(/haversine|imitasiya|UTC|имитир|simulated|deterministic|детерминир|deterministik/i)
+    }
+    expect(locales[2].mtmMap.history.anomalies).toBe("GPS keyfiyyət problemləri")
+  })
+
   it("keeps stop evidence visible in every locale", () => {
     expect(panel).toContain('t("battery")')
     expect(map).toContain("stop.batteryStart")
@@ -102,6 +150,26 @@ describe("SWM-10 GPS history presentation contract", () => {
       expect(history.replayTitle).toEqual(expect.any(String))
       expect(history.replayPosition).toEqual(expect.any(String))
       expect(history.playbackRate).toEqual(expect.any(String))
+    }
+  })
+
+  // Owner 2026-09-22: «why can't I set a range of dates to see where he was these days».
+  it("chooses a range of up to two weeks and lists each day's shift", async () => {
+    const { clampHistoryEndDate } = await import("@/lib/mtm/history-range")
+    expect(clampHistoryEndDate("2026-09-20", "2026-09-22")).toBe("2026-09-22")
+    expect(clampHistoryEndDate("2026-09-20", "2026-09-19")).toBe("2026-09-20")
+    expect(clampHistoryEndDate("2026-09-20", "2026-10-30")).toBe("2026-10-03")
+    // Owner 2026-09-22: an earlier start leaves the end on today.
+    expect(clampHistoryEndDate("2026-09-15", "2026-09-22")).toBe("2026-09-22")
+    expect(panel).toContain("const end = clampHistoryEndDate(start, toDate)")
+    expect(panel).not.toContain("toDate === date ? start :")
+    expect(panel).toContain('data-testid="mtm-location-history-date-to"')
+    expect(panel).toContain('if (toDate !== date) params.set("toDate", toDate)')
+    expect(panel).toContain('data-testid="mtm-history-range-workdays"')
+    for (const messages of locales) {
+      for (const key of ["dateFrom", "dateTo", "rangeHint", "workdayStillOpen", "noWorkdaysInRange"]) {
+        expect(messages.mtmMap.history[key]).toEqual(expect.any(String))
+      }
     }
   })
 })

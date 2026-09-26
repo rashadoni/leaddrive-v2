@@ -9,6 +9,8 @@ export type WorkforceWorkdayTransitionRiskCode =
   | "DUPLICATE_ACTIVE_SHIFT_ATTEMPT"
   | "CLAIM_BEFORE_WORKDAY_START"
   | "CLAIM_PRECEDES_ACCEPTED_EVENT"
+  /** The first claim after a manager reopen predates the reopen itself. */
+  | "CLAIM_BEFORE_REOPEN"
 
 export type MtmWorkdayCanonicalState = "NOT_FOUND" | "UNKNOWN" | "STARTED" | "PAUSED" | "COMPLETED"
 
@@ -134,7 +136,27 @@ export type MtmWorkdayApplyOptions = {
 }
 
 const WORKDAY_ACTIONS = new Set<MtmWorkdayAction>(["START", "PAUSE", "RESUME", "FINISH"])
-const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
+/** How far a client's claimed time may run ahead of the server's clock. */
+export const MTM_WORKDAY_MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
+const MAX_CLOCK_SKEW_MS = MTM_WORKDAY_MAX_CLOCK_SKEW_MS
+
+/**
+ * clientEventId prefixes written only by a manager's server-side action on an
+ * employee's workday: the reopen of a finished day and the undo of that
+ * reopen. No client transport may use them, so a journal event carrying one
+ * is known to be the manager's action, never the employee's.
+ */
+export const MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX = "reopen:"
+export const MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX = "reopen-undo:"
+
+export function isMtmWorkdayReopenUndoEventKey(clientEventId: string | null | undefined): boolean {
+  return typeof clientEventId === "string" && clientEventId.startsWith(MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX)
+}
+
+function isManagerWorkdayEventKey(clientEventId: string): boolean {
+  return clientEventId.startsWith(MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX)
+    || clientEventId.startsWith(MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX)
+}
 /** The owner-approved maximum age for an offline Workforce attendance claim. */
 export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
 export const WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION = 1
@@ -426,6 +448,9 @@ export function parseMtmWorkdayEvent(
 ): MtmWorkdayEventParseResult {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return { input: null, error: "Workday event data must be an object" }
+  }
+  if (isManagerWorkdayEventKey(clientEventId)) {
+    return { input: null, error: "clientEventId uses a prefix reserved for manager workday actions" }
   }
   const value = data as Record<string, unknown>
   const action = value.action
@@ -831,8 +856,10 @@ export async function applyMtmWorkdayEvent(
 
   const lastEvent = await db.mtmAgentWorkdayEvent.findFirst({
     where: { workdayId: workday.id, organizationId: scope.organizationId },
-    orderBy: { occurredAt: "desc" },
-    select: { occurredAt: true },
+    // Reverse journal order: a REOPEN shares its instant with the FINISH it
+    // reopens, and only the server's application time tells them apart.
+    orderBy: [{ occurredAt: "desc" }, { appliedAt: { sort: "desc", nulls: "last" } }, { id: "desc" }],
+    select: { occurredAt: true, type: true, appliedAt: true, serverReceivedAt: true },
   })
   const riskCodes: WorkforceWorkdayTransitionRiskCode[] = []
   if (input.occurredAt.getTime() < workday.startedAt.getTime()) {
@@ -840,6 +867,17 @@ export async function applyMtmWorkdayEvent(
   }
   if (lastEvent && input.occurredAt.getTime() < lastEvent.occurredAt.getTime()) {
     riskCodes.push("CLAIM_PRECEDES_ACCEPTED_EVENT")
+  }
+  // A reopen is recorded at the finish it reopens, yet the day stayed closed
+  // until the manager acted. The employee's first transition afterwards may
+  // not claim that closed time as work: it must be no earlier than the
+  // reopen's server time, less the clock skew any claim is allowed. A REOPEN
+  // without a server time cannot prove anything and refuses every claim.
+  if (lastEvent?.type === "REOPEN") {
+    const reopenedAt = lastEvent.appliedAt ?? lastEvent.serverReceivedAt
+    if (!reopenedAt || input.occurredAt.getTime() < reopenedAt.getTime() - MAX_CLOCK_SKEW_MS) {
+      riskCodes.push("CLAIM_BEFORE_REOPEN")
+    }
   }
   if (riskCodes.length > 0) {
     return conflict(

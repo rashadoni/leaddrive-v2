@@ -2,24 +2,47 @@
 
 import { cn } from "@/lib/utils"
 
-export function MiniBarChart({ data, color = "bg-violet-400", height = "h-8" }: { data: number[]; color?: string; height?: string }) {
+/**
+ * Every bar is drawn at least 4% tall so a small value stays visible — and so,
+ * by default, is a zero. `zeroIsEmpty` draws a zero as nothing, so an empty
+ * week cannot pass for a week with a little money in it. `titles` labels each
+ * bar on hover.
+ */
+export function MiniBarChart({
+  data,
+  color = "bg-violet-400",
+  height = "h-8",
+  zeroIsEmpty = false,
+  titles,
+}: {
+  data: number[]
+  color?: string
+  height?: string
+  zeroIsEmpty?: boolean
+  titles?: string[]
+}) {
   const max = Math.max(...data, 1)
   return (
     <div className={cn("flex items-end gap-[2px]", height)}>
       {data.map((v, i) => (
         <div
           key={i}
+          title={titles?.[i]}
           className={cn("flex-1 rounded-t-sm", color)}
-          style={{ height: `${Math.max((v / max) * 100, 4)}%` }}
+          style={{ height: zeroIsEmpty && !(v > 0) ? "0%" : `${Math.max((v / max) * 100, 4)}%` }}
         />
       ))}
     </div>
   )
 }
 
-export function MiniLineChart({ data, color = "stroke-emerald-400" }: { data: number[]; color?: string }) {
+/**
+ * `max` puts several lines on one scale. Without it each line is stretched to
+ * its own peak, so 30 opens draw as high as 3,000 sends.
+ */
+export function MiniLineChart({ data, color = "stroke-emerald-400", max: scaleMax }: { data: number[]; color?: string; max?: number }) {
   if (data.length < 2) return null
-  const max = Math.max(...data, 1)
+  const max = Math.max(...data, scaleMax ?? 0, 1)
   const min = Math.min(...data, 0)
   const range = max - min || 1
   const w = 120

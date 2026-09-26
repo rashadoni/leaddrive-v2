@@ -3,6 +3,7 @@
 import "leaflet/dist/leaflet.css"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { CircleMarker, MapContainer, Polyline, Popup, useMap } from "react-leaflet"
+import { HISTORY_MAP_COLORS, splitHistoryPathAtGaps } from "@/lib/mtm/history-path"
 import L from "leaflet"
 import { useTranslations } from "next-intl"
 import { formatInTimezone } from "@/lib/timezone"
@@ -77,16 +78,23 @@ type Gap = {
   endLongitude: number
 }
 
-function ResizeAndFit({ coordinates }: { coordinates: L.LatLngTuple[] }) {
+type Focus = {
+  from: string
+  to: string
+  latitude: number | null
+  longitude: number | null
+} | null
+
+function ResizeAndFit({ coordinates, maxZoom }: { coordinates: L.LatLngTuple[]; maxZoom?: number }) {
   const map = useMap()
   useEffect(() => {
     const timer = setTimeout(() => {
       map.invalidateSize()
-      if (coordinates.length === 1) map.setView(coordinates[0], 15)
-      if (coordinates.length > 1) map.fitBounds(L.latLngBounds(coordinates), { padding: [36, 36] })
+      if (coordinates.length === 1) map.setView(coordinates[0], maxZoom ?? 15)
+      if (coordinates.length > 1) map.fitBounds(L.latLngBounds(coordinates), { padding: [36, 36], maxZoom })
     }, 50)
     return () => clearTimeout(timer)
-  }, [coordinates, map])
+  }, [coordinates, map, maxZoom])
   return null
 }
 
@@ -101,6 +109,7 @@ export default function LocationHistoryMap({
   locale,
   timezone,
   playbackIndex,
+  focus = null,
 }: {
   points: Point[]
   stops: Stop[]
@@ -118,6 +127,8 @@ export default function LocationHistoryMap({
   locale: string
   timezone: string
   playbackIndex: number
+  /** A leg picked in the day's trip: its stretch of track is drawn on top and framed. */
+  focus?: Focus
 }) {
   const t = useTranslations("mtmMap.history")
   const containerRef = useRef<HTMLDivElement>(null)
@@ -133,9 +144,9 @@ export default function LocationHistoryMap({
     () => layers.actual ? points.map((point) => [point.latitude, point.longitude] as L.LatLngTuple) : [],
     [layers.actual, points],
   )
-  const actualPath = useMemo(
-    () => visiblePoints.map((point) => [point.latitude, point.longitude] as L.LatLngTuple),
-    [visiblePoints],
+  const actualRuns = useMemo(
+    () => splitHistoryPathAtGaps(visiblePoints, gaps) as L.LatLngTuple[][],
+    [gaps, visiblePoints],
   )
   const activePoint = visiblePoints.at(-1) ?? null
   const playbackAt = playbackPoint ? new Date(playbackPoint.recordedAt).getTime() : Number.POSITIVE_INFINITY
@@ -185,6 +196,25 @@ export default function LocationHistoryMap({
     () => workdayMarkers.filter((marker) => new Date(marker.at).getTime() <= playbackAt),
     [playbackAt, workdayMarkers],
   )
+  const focusPath = useMemo(() => {
+    if (!focus) return []
+    const from = Date.parse(focus.from)
+    const to = Date.parse(focus.to)
+    return points
+      .filter((point) => {
+        const at = Date.parse(point.recordedAt)
+        return at >= from && at <= to
+      })
+      .map((point) => [point.latitude, point.longitude] as L.LatLngTuple)
+  }, [focus, points])
+  const focusFrame = useMemo(() => {
+    if (!focus) return null
+    const place = focus.latitude != null && focus.longitude != null
+      ? [[focus.latitude, focus.longitude] as L.LatLngTuple]
+      : []
+    const frame = [...focusPath, ...place]
+    return frame.length ? frame : null
+  }, [focus, focusPath])
   const coordinates = useMemo(() => [
     ...fullActualPath,
     ...plannedPaths.flatMap((route) => route.coordinates),
@@ -218,16 +248,22 @@ export default function LocationHistoryMap({
     <div ref={containerRef} className="relative h-full min-h-[360px] w-full">
       {ready && (
         <MapContainer center={center} zoom={12} className="h-full w-full" scrollWheelZoom>
-          <ResizeAndFit coordinates={coordinates} />
+          <ResizeAndFit coordinates={focusFrame ?? coordinates} maxZoom={focusFrame ? 16 : undefined} />
           <CartoVectorBasemap />
-          {actualPath.length > 1 && (
-            <Polyline positions={actualPath} pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.78 }} />
+          {actualRuns.map((run, index) => (
+            <Polyline key={`actual-${index}`} positions={run} pathOptions={{ color: HISTORY_MAP_COLORS.track, weight: 4, opacity: 0.78 }} />
+          ))}
+          {focusPath.length > 1 && (
+            <Polyline positions={focusPath} pathOptions={{ color: HISTORY_MAP_COLORS.current, weight: 7, opacity: 0.95 }} />
+          )}
+          {focus && focus.latitude != null && focus.longitude != null && (
+            <CircleMarker center={[focus.latitude, focus.longitude]} radius={14} pathOptions={{ color: HISTORY_MAP_COLORS.current, fillOpacity: 0.15, weight: 3 }} />
           )}
           {plannedPaths.map((route) => route.coordinates.length > 1 && (
-            <Polyline key={`plan-${route.id}`} positions={route.coordinates} pathOptions={{ color: "#7c3aed", weight: 3, opacity: 0.72, dashArray: "8 6" }} />
+            <Polyline key={`plan-${route.id}`} positions={route.coordinates} pathOptions={{ color: HISTORY_MAP_COLORS.plan, weight: 3, opacity: 0.72, dashArray: "8 6" }} />
           ))}
           {gapSegments.map((gap) => (
-            <Polyline key={gap.id} positions={gap.coordinates} pathOptions={{ color: "#dc2626", weight: 4, opacity: 0.9, dashArray: "3 6" }} />
+            <Polyline key={gap.id} positions={gap.coordinates} pathOptions={{ color: HISTORY_MAP_COLORS.gap, weight: 4, opacity: 0.9, dashArray: "3 6" }} />
           ))}
           {layers.planned && plannedRoutes.flatMap((route) => route.points).map((point) =>
             point.customer.latitude != null && point.customer.longitude != null ? (
@@ -235,7 +271,7 @@ export default function LocationHistoryMap({
                 key={`planned-${point.id}`}
                 center={[point.customer.latitude, point.customer.longitude]}
                 radius={7}
-                pathOptions={{ color: "#6d28d9", fillColor: "#8b5cf6", fillOpacity: 0.75, weight: 2 }}
+                pathOptions={{ color: "#6d28d9", fillColor: HISTORY_MAP_COLORS.plan, fillOpacity: 0.75, weight: 2 }}
               >
                 <Popup><strong>{point.orderIndex + 1}. {point.label}</strong><div>{t(`pointStatus.${point.status}`)}</div>{point.plannedTime && <div>{formatMoment(point.plannedTime)}</div>}</Popup>
               </CircleMarker>
@@ -249,7 +285,7 @@ export default function LocationHistoryMap({
               center={[point.latitude, point.longitude]}
               radius={isActive ? 8 : index === 0 ? 5 : 2}
               pathOptions={isActive
-                ? { color: "#9a3412", fillColor: "#fb923c", fillOpacity: 0.95, weight: 3 }
+                ? { color: "#9a3412", fillColor: HISTORY_MAP_COLORS.current, fillOpacity: 0.95, weight: 3 }
                 : { color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 0.75, weight: 1 }}
             >
               <Popup>
@@ -267,7 +303,7 @@ export default function LocationHistoryMap({
               key={stop.id}
               center={[stop.latitude, stop.longitude]}
               radius={9}
-              pathOptions={{ color: "#b45309", fillColor: "#f59e0b", fillOpacity: 0.8, weight: 2 }}
+              pathOptions={{ color: "#b45309", fillColor: HISTORY_MAP_COLORS.stop, fillOpacity: 0.8, weight: 2 }}
             >
               <Popup>
                 <div className="space-y-1 text-xs">
@@ -287,7 +323,7 @@ export default function LocationHistoryMap({
               key={`visit-${visit.id}`}
               center={[visit.latitude, visit.longitude]}
               radius={7}
-              pathOptions={{ color: "#047857", fillColor: "#10b981", fillOpacity: 0.8, weight: 2 }}
+              pathOptions={{ color: "#047857", fillColor: HISTORY_MAP_COLORS.visit, fillOpacity: 0.8, weight: 2 }}
             >
               <Popup>
                 <div className="space-y-1 text-xs">

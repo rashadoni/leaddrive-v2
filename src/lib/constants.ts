@@ -58,6 +58,7 @@ export const STAGE_COLORS: Record<string, string> = {
 
 // ── Contact Info ─────────────────────────────────────────
 export const COMPANY_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "info@leaddrivecrm.org"
+export const COMPANY_PRIVACY_EMAIL = process.env.NEXT_PUBLIC_PRIVACY_EMAIL || "info@fanumsec.com"
 
 // ── Legal identity ────────────────────────────────────────
 // Finding F-11 (docs/isms/ISMS-02-gap-analysis.md). The privacy policy named
@@ -70,8 +71,9 @@ export const COMPANY_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "info@lead
 // data subject exercises rights against and a regulator writes to. It must
 // match the entity that actually processes the data, in the country where it
 // actually operates.
-export const COMPANY_LEGAL_NAME = "Fanumsec MMC"
-export const COMPANY_LEGAL_ADDRESS = "Baku, Azerbaijan"
+export const COMPANY_LEGAL_NAME = '"FANUM" MMC'
+export const COMPANY_LEGAL_ADDRESS = "Abbasqulu Abbaszadə 13/5, AZ1073, Baku, Azerbaijan"
+export const COMPANY_REGISTRATION_NUMBER = "VÖEN 1704197981"
 export const COMPANY_LEGAL_LOCALITY = "Baku"
 export const COMPANY_LEGAL_COUNTRY_CODE = "AZ"
 export const NOREPLY_EMAIL = process.env.EMAIL_FROM_ADDRESS || process.env.NOREPLY_EMAIL || "noreply@leaddrivecrm.org"

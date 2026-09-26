@@ -78,6 +78,8 @@ interface ColorStatCardProps {
   lines?: { label: string; value: string }[]
   hint?: string
   animate?: boolean
+  /** Let a long label wrap instead of truncating — for tiles that sit two to a row on a phone. */
+  wrapLabel?: boolean
 }
 
 export function ColorStatCard({
@@ -89,6 +91,7 @@ export function ColorStatCard({
   lines,
   hint,
   animate = false,
+  wrapLabel = false,
 }: ColorStatCardProps) {
   const numericTarget = extractNumber(value)
   const animatedNum = useCountUp(animate && numericTarget !== null ? numericTarget : 0, 900)
@@ -101,9 +104,10 @@ export function ColorStatCard({
         className
       )}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground truncate">
+      <div className="flex items-center justify-between gap-2">
+        {/* min-w-0: without it a long label pushes the icon out of the card. */}
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={cn("text-xs font-medium text-muted-foreground", wrapLabel ? "break-words leading-snug" : "truncate")}>
             {label}
           </span>
           {hint && <InfoHint text={hint} size={12} />}

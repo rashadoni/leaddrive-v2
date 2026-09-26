@@ -9,6 +9,10 @@ import { publicChannelConfig } from "@/lib/channels/public-channel-config"
 import { channelIdsClaimedElsewhere } from "@/lib/channels/inbound-claim"
 import { emailIntakeSettingsError } from "@/lib/ticketing/email-intake"
 import { validateChatwootBaseUrl } from "@/lib/chatwoot"
+import { auditChannelChange, changedCredentialFields } from "@/lib/channels/channel-credential-audit"
+import { isMetaInboxChannelType, mergeMetaSettingsForUpdate } from "@/lib/channels/meta-server-settings"
+import { channelSettingsForUpdate } from "@/lib/channels/server-owned-settings"
+import { DEDICATED_CHANNEL_TYPES, dedicatedChannelTypeError } from "@/lib/channels/dedicated-channel-types"
 
 const updateChannelSchema = z.object({
   channelType: z.string().min(1).optional(),
@@ -83,7 +87,7 @@ export async function PUT(
 ) {
   const gate = await gateChannelsAccess(req)
   if (gate instanceof NextResponse) return gate
-  const { orgId } = gate
+  const { orgId, userId } = gate
   const { id } = await params
   const body = await req.json()
   const parsed = updateChannelSchema.safeParse(body)
@@ -96,12 +100,10 @@ export async function PUT(
       if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
       const d = parsed.data
-      if (row.channelType === "voip" || d.channelType === "voip") {
-        return NextResponse.json(
-          { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
-          { status: 403 },
-        )
-      }
+      // A row owned by its own screen is not edited here, nor another row turned into one
+      // (lib/channels/dedicated-channel-types).
+      const dedicatedError = dedicatedChannelTypeError(row.channelType, d.channelType)
+      if (dedicatedError) return NextResponse.json({ error: dedicatedError }, { status: 403 })
       const isWa = row?.channelType === "whatsapp" || d.channelType === "whatsapp"
       const credentialsError = whatsappChannelCredentialsError(d, row)
       if (credentialsError) return NextResponse.json({ error: credentialsError }, { status: 400 })
@@ -114,6 +116,30 @@ export async function PUT(
           configName: d.configName ?? row.configName,
           settings: d.settings ?? row.settings,
         })
+      // The form sends `settings` rebuilt from its own fields only; on a Meta row that must not erase the
+      // keys the server wrote (lib/channels/meta-server-settings).
+      const isMeta = isMetaInboxChannelType(row.channelType) || isMetaInboxChannelType(d.channelType)
+
+      // "Leave blank to keep the stored value" is the contract the UI states and the form honours
+      // (`buildChannelPayload` turns an empty field into `undefined`). The API did not enforce it:
+      // `z.string().optional()` accepts "", and the payload is spread straight into `updateMany`, so
+      // a PUT carrying `{"appSecret": ""}` silently overwrote a live credential with an empty string
+      // and broke the channel — a webhook signature check and an OAuth exchange both fail closed on
+      // an empty secret, so the failure would surface later, as "messages stopped arriving".
+      //
+      // Clearing a credential on purpose has its own route: DELETE nulls all of them together and
+      // writes a `disconnect` audit entry. So a blank here can only ever mean "keep".
+      for (const field of ["botToken", "apiKey", "appSecret", "accessToken", "verifyToken"] as const) {
+        // `d` is the object the update below spreads, so drop the key there rather than relying on
+        // it aliasing `parsed.data`.
+        if (typeof d[field] === "string" && d[field]!.trim() === "") delete d[field]
+      }
+
+      // Every other type: a save must not erase what other screens and endpoints wrote, nor touch the settings of a
+      // row the form does not configure at all (lib/channels/server-owned-settings).
+      const otherTypeSettings = !isMeta && d.settings !== undefined
+        ? { settings: channelSettingsForUpdate(row.channelType, d.settings, row.settings) }
+        : {}
 
       const data = isWa
         ? {
@@ -121,13 +147,16 @@ export async function PUT(
             apiKey:      d.accessToken       ?? d.apiKey,
             phoneNumber: d.phoneNumberId     ?? d.phoneNumber,
             webhookUrl:  d.businessAccountId ?? d.webhookUrl,
+            ...otherTypeSettings,
           }
         : isTikTokChatwoot
           ? {
               ...d,
               settings: tiktokChannelConfigSettings(mergeTikTokSettingsForUpdate(d.settings ?? {}, row.settings)),
             }
-        : d
+        : isMeta && d.settings !== undefined
+          ? { ...d, settings: mergeMetaSettingsForUpdate(d.settings, row.settings) }
+        : { ...d, ...otherTypeSettings }
 
       if ((data.channelType ?? row.channelType) === "chatwoot") {
         try {
@@ -144,7 +173,7 @@ export async function PUT(
         where: {
           id,
           organizationId: orgId,
-          channelType: { not: "voip" },
+          channelType: { notIn: DEDICATED_CHANNEL_TYPES },
         },
         data,
       })
@@ -153,16 +182,17 @@ export async function PUT(
           where: { id, organizationId: orgId },
           select: { channelType: true },
         })
-        if (current?.channelType === "voip") {
-          return NextResponse.json(
-            { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
-            { status: 403 },
-          )
-        }
+        const currentError = dedicatedChannelTypeError(current?.channelType)
+        if (currentError) return NextResponse.json({ error: currentError }, { status: 403 })
         return NextResponse.json({ error: "Not found" }, { status: 404 })
       }
       const updated = await prisma.channelConfig.findFirst({ where: { id, organizationId: orgId } })
       if (updated) {
+        await auditChannelChange({
+          req, orgId, userId, action: "update",
+          channelId: updated.id, channelType: updated.channelType, configName: updated.configName,
+          credentialFields: changedCredentialFields(body),
+        })
         await syncTikTokDmConnectionForChannelConfig(updated).catch((error) => {
           console.error("[channels PUT] TikTok ChannelConnection sync failed", error)
         })
@@ -185,29 +215,71 @@ export async function DELETE(
 ) {
   const gate = await gateChannelsAccess(req)
   if (gate instanceof NextResponse) return gate
-  const { orgId } = gate
+  const { orgId, userId } = gate
   const { id } = await params
 
   return runWithTenant(gate.orgId, async () => {
     try {
       const row = await prisma.channelConfig.findFirst({
         where: { id, organizationId: orgId },
-        select: { channelType: true },
+        select: { channelType: true, pageId: true },
       })
       if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-      if (row.channelType === "voip") {
-        return NextResponse.json(
-          { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
-          { status: 403 },
-        )
+      const dedicatedError = dedicatedChannelTypeError(row.channelType)
+      if (dedicatedError) return NextResponse.json({ error: dedicatedError }, { status: 403 })
+
+      if (["facebook", "instagram", "whatsapp"].includes(row.channelType)) {
+        await prisma.channelConfig.updateMany({
+          where: { id, organizationId: orgId },
+          data: {
+            isActive: false,
+            botToken: null,
+            apiKey: null,
+            appSecret: null,
+            accessToken: null,
+            verifyToken: null,
+          },
+        })
+        await prisma.channelConnection.updateMany({
+          where: { organizationId: orgId, channelConfigId: id },
+          data: {
+            status: "disabled",
+            apiKey: null,
+            accessToken: null,
+            refreshToken: null,
+            secretRef: null,
+          },
+        })
+        if ((row.channelType === "facebook" || row.channelType === "instagram") && row.pageId) {
+          await prisma.socialAccount.updateMany({
+            where: {
+              organizationId: orgId,
+              platform: row.channelType,
+              handle: row.pageId,
+            },
+            data: {
+              isActive: false,
+              accessToken: null,
+              tokenExpiresAt: null,
+            },
+          })
+        }
+        await auditChannelChange({
+          req, orgId, userId, action: "disconnect",
+          channelId: id, channelType: row.channelType,
+          // Disconnect clears every credential column; naming them is what makes the trail useful
+          // when asked "when did this integration stop holding tokens".
+          credentialFields: ["apiKey", "appSecret", "accessToken", "verifyToken", "botToken"],
+        })
+        return NextResponse.json({ success: true, data: { disconnected: id } })
       }
 
       const result = await prisma.channelConfig.deleteMany({
         where: {
           id,
           organizationId: orgId,
-          channelType: { not: "voip" },
+          channelType: { notIn: DEDICATED_CHANNEL_TYPES },
         },
       })
       if (result.count === 0) {
@@ -215,14 +287,14 @@ export async function DELETE(
           where: { id, organizationId: orgId },
           select: { channelType: true },
         })
-        if (current?.channelType === "voip") {
-          return NextResponse.json(
-            { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
-            { status: 403 },
-          )
-        }
+        const currentError = dedicatedChannelTypeError(current?.channelType)
+        if (currentError) return NextResponse.json({ error: currentError }, { status: 403 })
         return NextResponse.json({ error: "Not found" }, { status: 404 })
       }
+      await auditChannelChange({
+        req, orgId, userId, action: "delete",
+        channelId: id, channelType: row.channelType,
+      })
       return NextResponse.json({ success: true, data: { deleted: id } })
     } catch (e) {
       console.error(e)

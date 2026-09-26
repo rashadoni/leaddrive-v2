@@ -90,7 +90,7 @@ describe("every tracking redirect route verifies the signature", () => {
 describe("generated links carry a signature", () => {
   it.each([
     ["src/lib/email.ts", "email click wrapper"],
-    ["src/app/api/v1/campaigns/[id]/send/route.ts", "campaign SMS link"],
+    ["src/lib/campaigns/send-campaign.ts", "campaign SMS link"],
   ])("%s signs its redirect target", path => {
     expect(readFileSync(path, "utf8")).toContain("withSignedRedirect")
   })

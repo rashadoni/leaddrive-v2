@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils"
 import { canManageSequenceSettings } from "@/lib/sequence-settings-access"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { PageHeader } from "@/components/page-header"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1448,21 +1449,25 @@ export default function SequencesPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             <Zap className="h-6 w-6 text-primary" />
             {t("title")}
             <HelpButton slug="sequences" variant="label" />
-          </h1>
+          </>
+        }
+        description={
           <p className="text-muted-foreground text-sm mt-0.5">
             {t("subtitle")}
           </p>
-        </div>
-        <Button onClick={() => { setEditTarget(null); setShowForm(true) }}>
-          <Plus className="h-4 w-4 mr-2" /> {t("newSequence")}
-        </Button>
-      </div>
+        }
+        actions={
+          <Button onClick={() => { setEditTarget(null); setShowForm(true) }}>
+            <Plus className="h-4 w-4 mr-2" /> {t("newSequence")}
+          </Button>
+        }
+      />
 
       {actionError && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">

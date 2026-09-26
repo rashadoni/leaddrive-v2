@@ -42,6 +42,8 @@ const CLIENT_TOOLS = new Set([
   "voice_realtime_error",
   "voice_gemini_error",
   "voice_transcription",
+  "voice_audio_settings",
+  "voice_audio_event",
 ])
 const ARG_LIMIT = 120
 
@@ -53,6 +55,8 @@ const ALLOWED_ARG_KEYS: Readonly<Record<string, readonly string[]>> = {
   voice_realtime_error: ["code"],
   voice_gemini_error: ["code"],
   voice_transcription: ["status"],
+  voice_audio_settings: [],
+  voice_audio_event: ["event"],
 }
 
 function safeDiagnosticIdentifier(value: unknown, fallback: string): string {
