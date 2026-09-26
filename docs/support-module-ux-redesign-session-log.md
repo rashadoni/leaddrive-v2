@@ -692,3 +692,35 @@ full high-density matrix evidence on the same SHA.
 Next: checkpoint and push this evidence-isolation correction, rerun the desktop
 exact-SHA gate, inspect its artifact, then run mobile touchscreen and the full
 high-density matrix on the same green SHA.
+
+### Workstream 5 fourth browser self-audit
+
+- Exact-SHA run `36273186696` passed the dedicated KB validation, disposable
+  fixtures, Chromium installation and the rebuilt cold production artifact.
+  The independently downloaded artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36273186696`.
+- All nine mutating recovery outcomes pass again. Both manager static scenarios
+  now pass: their browser-error arrays are empty and axe, touch-target,
+  overflow, environment, primary-work and performance gates are green. This
+  proves the evidence-only Serwist opt-out without weakening worker isolation.
+- The sole failure is the customer authentication cell with
+  `portal_authentication_failed`. App logs show the actual response is `429`
+  from the shared `public-post` bucket. The earlier conclusion that static
+  pre-authentication alone prevents this exhaustion is superseded: the mutating
+  flow runs first and already generates browser CSP reports.
+- Proxy inspection found a real rate-limit partition bug. CSP reports first
+  consume their intended `csp-report:<ip>` bucket but, on acceptance, fall
+  through into the generic `/api/v1/public/*` POST branch and also consume
+  `public:<ip>`. The existing CSP test only exercised rejection by the first
+  bucket, so it could not detect accepted-request fallthrough. The generic
+  branch now excludes `CSP_REPORT_URI`, and a new test asserts an accepted CSP
+  report never touches a `public:` key.
+- The focused middleware suite passes 21/21 and `git diff --check` passes.
+  File-wide ESLint for `src/proxy.ts` is **NOT PASSING** because of nine
+  pre-existing `no-explicit-any` findings at unchanged lines 395, 693, 805,
+  825-829 and 835; the new diff has no lint finding. No rule, assertion,
+  timeout, scenario, auth, a11y or performance gate was disabled or suppressed.
+
+Next: checkpoint and push the CSP/public rate-limit partition fix, then repeat
+the mandatory exact-SHA desktop run and inspect all flow/static evidence before
+starting mobile and high-density gates.

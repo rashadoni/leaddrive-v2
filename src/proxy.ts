@@ -459,7 +459,11 @@ const authMiddleware = auth(async (req) => {
 
   // Rate limit public API POST endpoints (these bypass auth but must not bypass
   // rate limits). This must run BEFORE the public-path early return below.
-  if ((pathname.startsWith("/api/v1/public/") || pathname === "/api/v1/demo-request") && req.method === "POST") {
+  if (
+    ((pathname.startsWith("/api/v1/public/") && pathname !== CSP_REPORT_URI)
+      || pathname === "/api/v1/demo-request")
+    && req.method === "POST"
+  ) {
     const ip = clientIp(req)
 
     // A guided demo emits lifecycle events while the prospect navigates. Give

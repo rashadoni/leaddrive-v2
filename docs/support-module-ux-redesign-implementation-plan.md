@@ -1411,6 +1411,21 @@ Current verification evidence (2026-09-05):
   ESLint and the corrected browser contract pass; the KB flow contract also
   passes. No product, a11y, touch, performance, scenario or timeout gate was
   removed or relaxed. A new exact-SHA desktop rerun remains mandatory.
+- Exact-SHA run `36273186696` passed the dedicated validation, fixtures and the
+  rebuilt production artifact. The service-worker correction is proven: 9/9
+  flow outcomes pass and both manager static cells pass with empty browser-error
+  arrays and zero axe, touch, overflow, environment or primary-work findings.
+  Only customer authentication is blocked by `429`. This disproves the earlier
+  assumption that pre-authentication inside the static runner alone would avoid
+  the exhausted bucket: the preceding mutating flow already emits CSP reports.
+  Root cause is a production proxy fallthrough where an accepted CSP report
+  consumes both its dedicated `csp-report` bucket and the general `public-post`
+  bucket. The general branch now explicitly excludes `CSP_REPORT_URI`, and a
+  new accepted-report regression test proves no `public:` key is consumed.
+  CSP middleware tests pass 21/21 and `git diff --check` passes. File-wide
+  proxy ESLint remains **NOT PASSING** on nine pre-existing `no-explicit-any`
+  findings outside this diff; no rule was disabled or suppressed. A newer
+  exact-SHA hosted validation/build/capture remains mandatory.
 
 ## 13. Workstream 6 — Ticket Categories
 
