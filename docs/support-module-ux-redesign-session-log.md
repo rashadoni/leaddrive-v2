@@ -449,3 +449,28 @@ single new exact SHA before closing Workstream 4.
 Next: run the focused runner contract/syntax/lint/diff checks, checkpoint and
 push the harness correction, then repeat the exact-SHA high, desktop keyboard
 and mobile touchscreen gates because the evidence source SHA changed.
+
+### Native-control touch follow-up
+
+- The first scroll-aware checkpoint was `42d16717f`. Exact-SHA mobile run
+  `36262569629` passed source validation, fixtures and production build, but the
+  recording step still timed out on the element-level `touchstart` marker.
+- Its retained `375x812` screenshot proves the scroll correction worked: the
+  native audio control is centered in the viewport and changed to the localized
+  Paused state after the Playwright touchscreen tap. Chromium's user-agent
+  shadow control did not surface its internal touch event to the `<audio>` host,
+  so the marker was not a valid native-control observation contract.
+- The same screenshot exposed a real UI race. Chromium emitted `pause` after a
+  failed native media start, and the player's `onPause` handler could overwrite
+  the earlier `error` state with `paused`, hiding the retry path specifically
+  under the mobile native-control event order.
+- Physical touch evidence now verifies that `document.elementFromPoint()` at
+  the measured tap coordinate resolves to the exact test-id target, then uses
+  `page.touchscreen.tap()` and requires the resulting player error or native
+  `play` event. Target scrolling, minimum 44 px sizing, retry, playback and all
+  timeouts remain required. The player now preserves terminal `error` across a
+  subsequent `pause` event.
+
+Next: run only the changed runner/player contracts and scoped static checks,
+checkpoint this product-plus-evidence correction, then obtain mobile, desktop
+and high exact-SHA evidence before closing Workstream 4.

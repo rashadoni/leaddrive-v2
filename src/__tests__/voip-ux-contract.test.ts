@@ -55,6 +55,7 @@ describe("VoIP workspace UX contract", () => {
     expect(player).toContain('event.key !== " " && event.key !== "Enter"')
     expect(player).toContain("event.currentTarget.play()")
     expect(player).toContain("event.currentTarget.pause()")
+    expect(player).toContain('current === "ended" || current === "error"')
     expect(player).toContain('data-testid="call-recording-player"')
     expect(player).toContain('data-testid="call-recording-retry"')
     expect(player).toContain('className="h-11 w-full max-w-full"')

@@ -70,7 +70,7 @@ export function CallRecordingPlayer({
           }
         }}
         onPlaying={() => setState("playing")}
-        onPause={() => setState((current) => current === "ended" ? current : "paused")}
+        onPause={() => setState((current) => current === "ended" || current === "error" ? current : "paused")}
         onEnded={() => setState("ended")}
         onWaiting={() => setState("loading")}
         onError={() => setState("error")}

@@ -200,8 +200,19 @@ async function physicalTap(page, locator, position = "center") {
   }
   const x = position === "native-audio-play" ? box.x + 22 : box.x + box.width / 2
   const y = position === "native-audio-play" ? box.y + 22 : box.y + box.height / 2
+  const expectedTestId = await locator.getAttribute("data-testid")
+  if (!expectedTestId) throw new Error("touch_target_test_id_missing")
+  const hitTarget = await page.evaluate(({ x, y, expectedTestId }) => {
+    let candidate = document.elementFromPoint(x, y)
+    while (candidate) {
+      if (candidate.getAttribute("data-testid") === expectedTestId) return expectedTestId
+      candidate = candidate.parentElement
+    }
+    return null
+  }, { x, y, expectedTestId })
+  if (hitTarget !== expectedTestId) throw new Error(`touch_target_hit_test_failed:${expectedTestId}`)
   await page.touchscreen.tap(x, y)
-  return { width: Math.round(box.width), height: Math.round(box.height) }
+  return { width: Math.round(box.width), height: Math.round(box.height), hitTarget }
 }
 
 const page = await context.newPage()
@@ -395,14 +406,7 @@ try {
     let audioTouchTarget = null
     let retryTouchTarget = null
     if (usesTouchInput) {
-      await visibleAudio.evaluate((element) => {
-        element.dataset.evidenceTouchObserved = "false"
-        element.addEventListener("touchstart", () => {
-          element.dataset.evidenceTouchObserved = "true"
-        }, { once: true })
-      })
       audioTouchTarget = await physicalTap(page, visibleAudio, "native-audio-play")
-      await page.locator("[data-testid='call-recording-audio'][data-evidence-touch-observed='true']:visible").waitFor({ state: "visible", timeout: 10_000 })
     } else {
       await visibleAudio.focus()
       if (!await visibleAudio.evaluate((element) => element === document.activeElement)) throw new Error("recording_keyboard_focus_missing")
@@ -425,17 +429,12 @@ try {
     }
     await visibleAudio.evaluate((element) => {
       element.dataset.evidencePlayObserved = "false"
-      element.dataset.evidenceTouchObserved = "false"
       element.addEventListener("play", () => {
         element.dataset.evidencePlayObserved = "true"
-      }, { once: true })
-      element.addEventListener("touchstart", () => {
-        element.dataset.evidenceTouchObserved = "true"
       }, { once: true })
     })
     if (usesTouchInput) {
       audioTouchTarget = await physicalTap(page, visibleAudio, "native-audio-play")
-      await page.locator("[data-testid='call-recording-audio'][data-evidence-touch-observed='true']:visible").waitFor({ state: "visible", timeout: 10_000 })
     } else {
       await visibleAudio.focus()
       if (!await visibleAudio.evaluate((element) => element === document.activeElement)) throw new Error("recording_recovery_keyboard_focus_missing")
