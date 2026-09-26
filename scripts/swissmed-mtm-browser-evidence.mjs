@@ -390,7 +390,12 @@ const scenarios = [
     id: "SWM-13",
     name: "Plan and GPS KPI",
     path: () => "/mtm/analytics",
-    waitFor: "[data-testid=mtm-explainable-kpi][data-state=ready]",
+    // The registry is folded under the manager's view (owner 2026-09-26).
+    waitFor: "[data-testid=mtm-team-results][data-state=ready]",
+    prepare: async (page) => {
+      await page.getByTestId("mtm-analytics-formulas").locator("summary").click()
+      await page.locator("[data-testid=mtm-explainable-kpi][data-state=ready]").waitFor({ state: "visible", timeout: 30_000 })
+    },
   },
   {
     id: "SWM-02",
