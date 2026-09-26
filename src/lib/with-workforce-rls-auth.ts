@@ -410,16 +410,16 @@ export function withWorkforceSessionEmploymentConfigurationAuth<C = unknown>(
 /**
  * Controlled C7 cutover for the tenant-wide, raw-proof-free exception queue.
  *
- * A case list has no immutable historic team/site snapshot that can safely
- * authorize a bulk read. Before a tenant enables the explicit grant fence we
- * retain the established session-admin boundary. Once enabled, only an
- * organization-scoped `HR_ADMIN` grant with `TEAM_EXCEPTION_READ` can read
- * the whole queue; a current employee team is never inferred for a past case.
- * A later indexed team/site queue may use a separately reviewed historic scope
- * model, but must not silently reuse this tenant-wide reader.
+ * Before a tenant enables the explicit grant fence we retain the established
+ * session-admin boundary. An organization aggregate/queue can continue to ask
+ * this wrapper for the organization-wide `HR_ADMIN` grant. A metadata-first
+ * queue may instead select `PER_CASE`: the wrapper then verifies only session,
+ * capability and cutover while the handler must apply immutable historical
+ * team/site grants to every candidate before loading sensitive detail.
  */
 export function withWorkforceSessionExceptionQueueAuth<C = unknown>(
   handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+  granularScope: "ORGANIZATION" | "PER_CASE" = "ORGANIZATION",
 ) {
   const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
     let authorized = false
@@ -434,6 +434,11 @@ export function withWorkforceSessionExceptionQueueAuth<C = unknown>(
 
       if (!workforceGranularAccessEnabled(organization.features)) {
         if (!isWorkforcePolicyAdministrator(auth.role)) return workforcePolicyAdminDenied()
+        authorized = true
+      } else if (granularScope === "PER_CASE") {
+        // The scoped handler owns the bounded metadata scan and per-resource
+        // grant evaluation. Do not pre-authorize it from a CRM role or require
+        // an organization grant that would exclude legitimate team/site scope.
         authorized = true
       } else {
         const access = await decidePersistedWorkforceAccess({
@@ -456,6 +461,42 @@ export function withWorkforceSessionExceptionQueueAuth<C = unknown>(
       }, { status: 503 })
     }
     return authorized ? handler(req, auth, ctx) : workforceGranularAccessDenied()
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
+
+/**
+ * Session boundary for a token-located exception decision after the explicit
+ * granular-access cutover. The caller's CRM role is deliberately irrelevant:
+ * the decision service rechecks the exact persisted TEAM_EXCEPTION_DECIDE
+ * grant for the historical case resource inside its write transaction.
+ *
+ * Legacy mode remains read-only. Requiring the cutover here prevents an action
+ * token issued before a tenant rollback from using old grant rows as authority.
+ */
+export function withWorkforceSessionExceptionDecisionAuth<C = unknown>(
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return workforceCapabilityDisabled()
+      }
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        return workforceGranularAccessDenied()
+      }
+      return handler(req, auth, ctx)
+    } catch (error) {
+      console.error("[withWorkforceSessionExceptionDecisionAuth] authorization lookup failed", error)
+      return NextResponse.json({
+        error: "Unable to verify Workforce exception-decision access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
   })
   return wrapped as WrappedWorkforceRouteHandler<C>
 }

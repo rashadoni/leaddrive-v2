@@ -34,6 +34,7 @@ import {
   withWorkforceRlsAuth,
   withWorkforceSessionAdminAuth,
   withWorkforceSessionEmploymentConfigurationAuth,
+  withWorkforceSessionExceptionDecisionAuth,
   withWorkforceSessionExceptionQueueAuth,
   withWorkforceSessionGrantManagementAuth,
   withWorkforceSessionPilotFenceAuth,
@@ -434,6 +435,18 @@ describe("withWorkforceSessionExceptionQueueAuth", () => {
     }))
   })
 
+  it("defers granular per-case authorization to the queue handler", async () => {
+    entitled(["workforce-hrm", "workforce-granular-access-v1"])
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+
+    sessionRole.value = "support"
+    const response = await withWorkforceSessionExceptionQueueAuth(handler, "PER_CASE")(request())
+
+    expect(response.status).toBe(200)
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+  })
+
   it("does not fall back to a CRM administrator when a rolled-out tenant has no effective grant", async () => {
     entitled(["workforce-hrm", "workforce-granular-access-v1"])
     vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([])
@@ -455,6 +468,41 @@ describe("withWorkforceSessionExceptionQueueAuth", () => {
 
     expect(response.status).toBe(503)
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE" })
+    expect(handler).not.toHaveBeenCalled()
+  })
+})
+
+describe("withWorkforceSessionExceptionDecisionAuth", () => {
+  function entitled(features: string[]) {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise",
+      addons: [],
+      features,
+      modules: { "workforce-hrm": true, mtm: false },
+    } as never)
+  }
+
+  it("defers exact decision authority to persisted per-case grants instead of a CRM role", async () => {
+    entitled(["workforce-hrm", "workforce-granular-access-v1"])
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+
+    sessionRole.value = "support"
+    const response = await withWorkforceSessionExceptionDecisionAuth(handler)(request())
+
+    expect(response.status).toBe(200)
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+  })
+
+  it("keeps the decision endpoint unavailable after granular-access rollback", async () => {
+    entitled(["workforce-hrm"])
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+
+    sessionRole.value = "admin"
+    const response = await withWorkforceSessionExceptionDecisionAuth(handler)(request())
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_GRANULAR_ACCESS_REQUIRED" })
     expect(handler).not.toHaveBeenCalled()
   })
 })
