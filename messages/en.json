@@ -12593,6 +12593,11 @@
     "openOnMap": "Open on the map"
   },
   "mtmRoutesPage": {
+    "calendarTitle": "Calendar",
+    "weekIdleAgents": "{count, plural, one {# employee without a plan this week} other {# employees without a plan this week}}",
+    "weekShowIdle": "Show",
+    "weekHideIdle": "Hide",
+    "weekStopsMissed": "{count, plural, one {# stop not done} other {# stops not done}}",
     "viewAgentPeriod": "Agent over a period",
     "primaryViews": "Choose how to view the plan",
     "moreViews": "More views",

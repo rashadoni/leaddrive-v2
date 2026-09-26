@@ -12593,6 +12593,11 @@
     "openOnMap": "Открыть на карте"
   },
   "mtmRoutesPage": {
+    "calendarTitle": "Календарь",
+    "weekIdleAgents": "{count, plural, one {# сотрудник без плана на этой неделе} few {# сотрудника без плана на этой неделе} many {# сотрудников без плана на этой неделе} other {# сотрудника без плана на этой неделе}}",
+    "weekShowIdle": "Показать",
+    "weekHideIdle": "Скрыть",
+    "weekStopsMissed": "{count, plural, one {не выполнена # точка} few {не выполнены # точки} many {не выполнено # точек} other {не выполнено # точки}}",
     "viewAgentPeriod": "Агент за период",
     "primaryViews": "Выберите вид плана",
     "moreViews": "Другие режимы",

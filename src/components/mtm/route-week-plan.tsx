@@ -108,6 +108,16 @@ function dateFromKey(value: string): Date {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00`) : new Date()
 }
 
+/** Agent ids that have at least one route in the loaded week. */
+function routesByAgentAndDateKeys(routes: readonly MtmRouteRecord[]): string[] {
+  const ids: string[] = []
+  for (const route of routes) {
+    if (route.agentId) ids.push(route.agentId)
+    for (const assignment of route.assignments ?? []) ids.push(assignment.agentId)
+  }
+  return ids
+}
+
 export function MtmRouteWeekPlan({
   orgId,
   locale,
@@ -219,6 +229,21 @@ export function MtmRouteWeekPlan({
   }, [allAgents])
   const hiddenCount = allAgents.length - agents.length
 
+  // Routes audit 2026-09-26: alphabetical order put four agents without a
+  // single route on top and the working ones below. Agents with a plan this
+  // week come first; the rest fold into one line, still one click away for
+  // planning (and always shown while searching or when nobody has a plan).
+  const [showIdle, setShowIdle] = useState(false)
+  const busyAgentIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const key of routesByAgentAndDateKeys(routesForWeek)) ids.add(key)
+    return ids
+  }, [routesForWeek])
+  const busyAgents = agents.filter((agent) => busyAgentIds.has(agent.id))
+  const idleAgents = agents.filter((agent) => !busyAgentIds.has(agent.id))
+  const foldIdle = !showIdle && !agentSearch && busyAgents.length > 0 && idleAgents.length > 0
+  const visibleAgents = foldIdle ? busyAgents : [...busyAgents, ...idleAgents]
+
   const routesByAgentAndDate = useMemo(() => {
     const result = new Map<string, MtmRouteRecord[]>()
     for (const route of routesForWeek) {
@@ -307,7 +332,7 @@ export function MtmRouteWeekPlan({
             ))}
           </div>
 
-          {agents.map((agent) => (
+          {visibleAgents.map((agent) => (
             <div key={agent.id} className="grid min-h-16 grid-cols-[180px_repeat(7,minmax(100px,1fr))] border-b border-zinc-200 last:border-b-0 dark:border-zinc-700">
               <div className="sticky left-0 z-10 border-r border-zinc-200 bg-card px-3 py-2 text-sm font-medium dark:border-zinc-700">{agent.name}</div>
               {days.map((day) => {
@@ -348,7 +373,10 @@ export function MtmRouteWeekPlan({
                           ) : null}
                         </span>
                         <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{route.name ? `${route.name} · ` : ""}{mtmStatusLabel(statusT, "route", route.status)}</span>
+                          <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{route.name ? `${route.name} · ` : ""}{(route.status === "COMPLETED" || route.status === "INCOMPLETE") && route.visitedPoints < route.totalPoints
+                            // «Tamamlanıb» at 3 of 5 stops read as a job done (audit 2026-09-26).
+                            ? <span className="text-amber-700 dark:text-amber-300">{t("weekStopsMissed", { count: route.totalPoints - route.visitedPoints })}</span>
+                            : mtmStatusLabel(statusT, "route", route.status)}</span>
                         </span>
                       </button>
                       )
@@ -376,6 +404,12 @@ export function MtmRouteWeekPlan({
             </div>
           ))}
 
+          {idleAgents.length > 0 && busyAgents.length > 0 && !agentSearch ? (
+            <div data-testid="mtm-week-idle-agents" className="flex items-center gap-3 border-b border-zinc-200 px-3 py-2 text-sm text-muted-foreground dark:border-zinc-700">
+              <span>{t("weekIdleAgents", { count: idleAgents.length })}</span>
+              <Button type="button" variant="outline" size="sm" className="min-h-10" onClick={() => setShowIdle((current) => !current)}>{showIdle ? t("weekHideIdle") : t("weekShowIdle")}</Button>
+            </div>
+          ) : null}
           {agents.length > 0 && hiddenCount > 0 ? (
             <div className="border-t border-zinc-200 px-3 py-1.5 text-xs text-muted-foreground dark:border-zinc-700">
               {t("weekAgentsHidden", { count: hiddenCount })}

@@ -103,3 +103,14 @@ describe("the agent period screen", () => {
     expect(page).toContain('data-testid="mtm-routes-view-agent"')
   })
 })
+
+describe("routes audit 2026-09-26: team week and titles", () => {
+  it("puts agents with a plan first, folds the rest, and does not call 3 of 5 stops «completed»", () => {
+    const week = readFileSync("src/components/mtm/route-week-plan.tsx", "utf8")
+    expect(week).toContain("const visibleAgents = foldIdle ? busyAgents : [...busyAgents, ...idleAgents]")
+    expect(week).toContain('data-testid="mtm-week-idle-agents"')
+    expect(week).toContain('t("weekStopsMissed", { count: route.totalPoints - route.visitedPoints })')
+    const page = readFileSync("src/app/(dashboard)/mtm/routes/page.tsx", "utf8")
+    expect(page).toContain('t(calendarSurface ? "calendarTitle" : "title")')
+  })
+})
