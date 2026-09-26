@@ -81,10 +81,20 @@ PROTECTION_JSON="$(gh api "repos/${REPO}/branches/${BRANCH}/protection" \
   -H "Accept: application/vnd.github+json" \
   -H "X-GitHub-Api-Version: 2022-11-28")"
 
+# The update API accepts app_id=-1 to explicitly allow any publisher, then
+# normalizes that sentinel to app_id=null in branch-protection readback.
 if ! jq -e '
   .required_status_checks.strict == false
   and (
-    [.required_status_checks.checks[] | {context, app_id}] | sort_by(.context)
+    [.required_status_checks.checks[] | {
+      context,
+      app_id: (
+        if .context == "agent-review" and has("app_id") and .app_id == null
+        then -1
+        else .app_id
+        end
+      )
+    }] | sort_by(.context)
   ) == ([
     {"context":"pr-scope","app_id":15368},
     {"context":"static-checks","app_id":15368},

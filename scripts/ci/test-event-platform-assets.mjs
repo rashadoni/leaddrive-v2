@@ -503,6 +503,16 @@ assert.equal(
   0,
   `agent-review publisher behavior failed:\n${publisherTest.stdout}\n${publisherTest.stderr}`,
 )
+const protectionReadbackTest = spawnSync(
+  process.execPath,
+  [path.join(repoRoot, "scripts/ci/test-configure-main-protection.mjs")],
+  { cwd: repoRoot, encoding: "utf8" },
+)
+assert.equal(
+  protectionReadbackTest.status,
+  0,
+  `main-protection readback behavior failed:\n${protectionReadbackTest.stdout}\n${protectionReadbackTest.stderr}`,
+)
 assert.ok(
   (githubDeploy.match(/GitHub production environment must allow exactly the main branch/g) ?? []).length === 3
     && githubDeploy.includes("Require historical build to come only from main")
