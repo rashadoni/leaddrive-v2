@@ -219,3 +219,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. Terminal resolution/reopen remain fenced and no completion or phase-gate credit is added.
 - Precise stopping point: all three second-review findings, unit regressions, seven-test PostgreSQL proof and local targeted gates are repaired and green in the uncommitted tree; latest `origin/main` is fetched but not integrated.
 - Next action: create a path-scoped repair checkpoint, merge `origin/main` `13277465d731cdfc106e7942c0a2b97ffa38d0b5`, rerun every targeted gate, freeze the new complete diff and require an independent zero-finding rereview before push or PR creation.
+
+## 2026-09-26 — C6 global-key repair integrated and locally reverified
+
+- All second-review repairs, regressions and evidence were preserved in path-scoped checkpoint `49c92cbe2`. Current `origin/main` `13277465d731cdfc106e7942c0a2b97ffa38d0b5` was then merged without conflict as `47c3d55a56e9755e7893a58a431fc5ce582aeaef`; its seven changed files are the unrelated PR #448 demo-request CORS slice.
+- On that exact integrated source tree, eight focused files pass 173 tests and seven opt-in real-PostgreSQL races skip locally. Targeted ESLint passes; recursive RLS scan reports 552 organization-scoped models and zero gaps; event assets report 27 domains, 86 topics and five concrete schemas; runner policy passes all 37 workflows; diff whitespace passes.
+- Full local typecheck/build, browser E2E, Android, load, physical-device and pilot checks remain `NOT RUN` under the Contabo workload policy. The seven PostgreSQL races, configured typecheck/build and all five required exact-head GitHub contexts remain delegated to CI.
+- The worktree still uses an untracked `node_modules` symlink to an existing complete cache with exact package-lock SHA-256 `54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`; it must be unlinked after local/reviewer work without touching the foreign cache target.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. Terminal resolution/reopen remain fenced and no completion or phase-gate credit is added.
+- Precise stopping point: latest main is integrated and every permitted local gate is green; only this append-only receipt delta remains uncommitted, and no independent review exists for the new complete diff.
+- Next action: checkpoint the receipt, compute the exact base/head/fingerprint/size, obtain James's zero-finding complete-diff review, then push and open the sub-400 KB draft PR without publishing the retired `agent-review` status.

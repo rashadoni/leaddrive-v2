@@ -162,9 +162,11 @@ required GitHub checks.
   tree (`54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`).
 
 Current `origin/main` advanced afterward to
-`13277465d731cdfc106e7942c0a2b97ffa38d0b5`; its unrelated demo-request CORS
-slice must be integrated and the same gates repeated before the next frozen
-review scope.
+`13277465d731cdfc106e7942c0a2b97ffa38d0b5` through an unrelated demo-request
+CORS slice. It was merged without conflict as local integration commit
+`47c3d55a56e9755e7893a58a431fc5ce582aeaef`; the same 173-passed / 7-skipped
+focused suite, targeted ESLint, RLS scan, delivery assets, runner policy and
+diff whitespace all passed again on that exact integrated source tree.
 
 `NOT RUN` locally by Contabo workload policy: full typecheck, production build,
 browser E2E, Android/Gradle, load, physical-device and pilot checks. Exact-head
