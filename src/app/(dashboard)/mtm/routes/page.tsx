@@ -1244,7 +1244,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           onCreateRoute={({ date, agentId }) => openNewRoute({ date, agentId, returnView: "week" })}
         />
       ) : viewMode === "agent" ? (
-        <MtmAgentPeriodView timezone={timezone} initialAgentId={capabilities.canReview ? null : capabilities.actorAgentId} />
+        <MtmAgentPeriodView timezone={timezone} initialAgentId={capabilities.canReview ? searchParams.get("agentId") : capabilities.actorAgentId} />
       ) : viewMode === "approvals" ? (
         approvalCounts && approvalTotal === 0 ? (
           <div data-testid="mtm-approvals-empty" role="status" className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-card px-4 py-4 text-sm dark:border-zinc-700">

@@ -15,7 +15,13 @@ import { TONE_CLASSES, type Tone } from "@/lib/mtm/activity-actions"
 
 export type ReportType = "agent" | "visit" | "route" | "photo" | "route_execution" | "action_compliance" | "promises" | "sales"
 export const MANAGEMENT_REPORT_TYPES: ReportType[] = ["route_execution", "action_compliance", "promises", "sales"]
-export const REPORT_TYPES: ReportType[] = ["agent", "visit", "route", "photo", ...MANAGEMENT_REPORT_TYPES]
+/**
+ * The cards on /mtm/reports. «route» is not one of them any more (owner
+ * 2026-09-26: «убери дублирования»): «План и выполнение маршрутов»
+ * (route_execution) answers the same question better — by the route's own
+ * date, with team and region. The type stays for a tab opened before.
+ */
+export const REPORT_TYPES: ReportType[] = ["agent", "visit", "photo", ...MANAGEMENT_REPORT_TYPES]
 
 export type ColKind = "text" | "status" | "role" | "number" | "percent" | "minutes" | "date"
 export interface ReportColumn { key: string; labelKey: string; kind: ColKind }
