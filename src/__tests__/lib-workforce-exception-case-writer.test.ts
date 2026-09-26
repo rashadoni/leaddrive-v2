@@ -139,7 +139,6 @@ describe("Workforce immutable exception-case writer", () => {
     }))
 
     db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce({ id: "case-1" })
-    db.workforceExceptionDecision.create.mockRejectedValueOnce({ code: "P2002" })
     db.workforceExceptionDecision.findFirst.mockResolvedValueOnce({ id: "decision-1", ...decisionDraft })
     await expect(appendAuthorizedWorkforceExceptionDecision({ db, draft: decisionDraft, authorize: allow }))
       .resolves.toEqual({ decisionId: "decision-1", idempotent: true })
@@ -147,16 +146,30 @@ describe("Workforce immutable exception-case writer", () => {
 
   it("does not accept a changed decision under a replayed operation id", async () => {
     db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce({ id: "case-1" })
-    db.workforceExceptionDecision.create.mockRejectedValueOnce({ code: "P2002" })
     db.workforceExceptionDecision.findFirst.mockResolvedValueOnce({
       id: "decision-1",
       ...decisionDraft,
+      caseId: "case-other",
       decisionCode: "REJECTED",
     })
     await expect(appendAuthorizedWorkforceExceptionDecision({ db, draft: decisionDraft, authorize: allow }))
       .rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
       code: "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
     })
+  })
+
+  it("does not query an aborted transaction after a residual decision unique violation", async () => {
+    db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce({ id: "case-1" })
+    db.workforceExceptionDecision.findFirst.mockResolvedValueOnce(null)
+    db.workforceExceptionDecision.create.mockRejectedValueOnce({ code: "P2002" })
+
+    await expect(appendAuthorizedWorkforceExceptionDecision({ db, draft: decisionDraft, authorize: allow }))
+      .rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
+        code: "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
+      })
+
+    expect(db.workforceExceptionDecision.findFirst).toHaveBeenCalledTimes(1)
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
   it("serializes lifecycle evaluation after the case lock and keeps a completed decision retry idempotent", async () => {
@@ -192,6 +205,9 @@ describe("Workforce immutable exception-case writer", () => {
       validateContext,
     })).resolves.toEqual({ decisionId: "decision-resolved", idempotent: true })
     expect(db.workforceExceptionDecision.findMany).toHaveBeenCalledTimes(1)
+    expect(db.$executeRaw.mock.calls.map((call) => call[1])).toContain(
+      "workforce-exception-decision-operation:org-1:decision-resolve-1",
+    )
   })
 
   it("refuses a new append at the 64-decision bound after checking exact replay", async () => {

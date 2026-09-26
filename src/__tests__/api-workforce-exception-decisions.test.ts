@@ -111,6 +111,11 @@ describe("Workforce action-token exception-decision API", () => {
       data: { decisionCode: "ACKNOWLEDGE" },
     })
     expect(prisma.workforceAccessGrant.findMany).toHaveBeenCalledTimes(2)
+    expect(prisma.organization.findUnique).toHaveBeenCalledTimes(2)
+    expect(prisma.$transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      { isolationLevel: "ReadCommitted" },
+    )
     expect(prisma.workforceExceptionDecision.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ caseId: "case_1", actorUserId: "user_1", decisionCode: "ACKNOWLEDGE" }),
     }))
@@ -151,6 +156,76 @@ describe("Workforce action-token exception-decision API", () => {
     expect(response.status).toBe(404)
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_EXCEPTION_DECISION_UNAVAILABLE" })
     expect(prisma.workforceExceptionCase.findFirst).not.toHaveBeenCalled()
+    expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
+  })
+
+  it("rechecks tenant capability after the case lock before appending", async () => {
+    vi.mocked(prisma.organization.findUnique)
+      .mockResolvedValueOnce({
+        plan: "enterprise",
+        addons: [],
+        features: ["workforce-hrm", "workforce-granular-access-v1"],
+        modules: { "workforce-hrm": true },
+      } as never)
+      .mockResolvedValueOnce({
+        plan: "enterprise",
+        addons: [],
+        features: ["workforce-granular-access-v1"],
+        modules: { "workforce-hrm": false },
+      } as never)
+
+    const response = await callPost(request({
+      actionToken: actionToken(),
+      operationId: "decision-op-post-lock-rollback",
+      reason: "Capability changed while the writer waited.",
+    }), auth)
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "WORKFORCE_EXCEPTION_DECISION_CONTEXT_INVALID",
+    })
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
+      "workforce-exception-decision:org_1:case_1",
+      "workforce-exception-decision-operation:org_1:decision-op-post-lock-rollback",
+    ])
+    expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
+  })
+
+  it("rebuilds historical scope after the case lock before rechecking the grant", async () => {
+    vi.mocked(prisma.workforceExceptionCase.findFirst)
+      .mockResolvedValueOnce(caseRow as never)
+      .mockResolvedValueOnce({
+        ...caseRow,
+        workdayEvent: null,
+        workday: { startedAt: new Date("2026-09-02T09:00:00.000Z") },
+      } as never)
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([{
+        id: "membership_1",
+        teamId: "team_1",
+        effectiveAt: new Date("2026-08-01T00:00:00.000Z"),
+      }] as never)
+      .mockResolvedValueOnce([{
+        id: "membership_2",
+        teamId: "team_2",
+        effectiveAt: new Date("2026-09-01T00:00:00.000Z"),
+      }] as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany)
+      .mockResolvedValueOnce([grantRow] as never)
+      .mockResolvedValueOnce([grantRow] as never)
+
+    const response = await callPost(request({
+      actionToken: actionToken(),
+      operationId: "decision-op-post-lock-resource-change",
+      reason: "The workday scope changed while the writer waited.",
+    }), auth)
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "WORKFORCE_EXCEPTION_DECISION_CONTEXT_INVALID",
+    })
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2)
+    expect(prisma.workforceAccessGrant.findMany).toHaveBeenCalledTimes(2)
     expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
   })
 
