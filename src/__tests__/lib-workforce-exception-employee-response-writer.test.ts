@@ -26,7 +26,11 @@ const db = {
 
 const allow = vi.fn().mockResolvedValue(true)
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  db.workforceExceptionDecision.findMany.mockResolvedValue([])
+  db.workforceExceptionEmployeeResponse.findFirst.mockResolvedValue(null)
+})
 
 describe("Workforce immutable employee exception response writer", () => {
   it("writes one authorized raw-proof-free response and metadata-only audit", async () => {
@@ -68,6 +72,10 @@ describe("Workforce immutable employee exception response writer", () => {
 
     await expect(appendAuthorizedWorkforceExceptionEmployeeResponse({ db, draft, authorize: allow }))
       .resolves.toEqual({ responseId: "response-1", idempotent: true })
+    expect(db.$executeRaw.mock.calls.map((call) => call[1])).toEqual([
+      "workforce-exception-decision:org-1:case-1",
+      "workforce-exception-employee-response:org-1:agent-1:employee-response-001",
+    ])
     expect(db.workforceExceptionEmployeeResponse.create).not.toHaveBeenCalled()
     expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
 
@@ -78,6 +86,35 @@ describe("Workforce immutable employee exception response writer", () => {
       .rejects.toMatchObject<Partial<WorkforceExceptionEmployeeResponseWriterError>>({
         code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
       })
+  })
+
+  it("rejects a cross-case response-id collision after both global-key locks", async () => {
+    db.workforceExceptionEmployeeResponse.findFirst.mockResolvedValueOnce({
+      id: "response-other-case", ...draft, caseId: "case-other",
+    })
+
+    await expect(appendAuthorizedWorkforceExceptionEmployeeResponse({ db, draft, authorize: allow }))
+      .rejects.toMatchObject<Partial<WorkforceExceptionEmployeeResponseWriterError>>({
+        code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
+      })
+
+    expect(db.$executeRaw.mock.calls.map((call) => call[1])).toEqual([
+      "workforce-exception-decision:org-1:case-1",
+      "workforce-exception-employee-response:org-1:agent-1:employee-response-001",
+    ])
+    expect(db.workforceExceptionEmployeeResponse.create).not.toHaveBeenCalled()
+  })
+
+  it("does not query an aborted transaction after a residual unique violation", async () => {
+    db.workforceExceptionEmployeeResponse.create.mockRejectedValueOnce({ code: "P2002" })
+
+    await expect(appendAuthorizedWorkforceExceptionEmployeeResponse({ db, draft, authorize: allow }))
+      .rejects.toMatchObject<Partial<WorkforceExceptionEmployeeResponseWriterError>>({
+        code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
+      })
+
+    expect(db.workforceExceptionEmployeeResponse.findFirst).toHaveBeenCalledTimes(1)
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
   it("rejects a new response after resolution but preserves an exact completed replay", async () => {

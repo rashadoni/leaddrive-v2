@@ -10,6 +10,7 @@ import {
   WorkforceExceptionLinkedMutationError,
   type WorkforceExceptionLinkedMutationDb,
 } from "@/lib/workforce/exception-linked-mutation"
+import { lockWorkforceHrmRequestClientKey } from "@/lib/workforce/hrm-request-idempotency"
 
 const WorkforceDateKey = z.string().refine(isDateKey, "must be a real YYYY-MM-DD date")
 const WorkforceLocalDateTime = z.string().regex(
@@ -197,6 +198,14 @@ export async function submitWorkforceSelfRequest(
   }
 
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // clientRequestId is unique across every case for this employee. Take its
+    // global fence before the first replay read, then take any case fence only
+    // for a genuinely new linked mutation.
+    await lockWorkforceHrmRequestClientKey(tx, {
+      organizationId: context.organizationId,
+      agentId,
+      clientRequestId: context.input.clientRequestId,
+    })
     const existing = await tx.mtmHrmRequest.findFirst({
       where: {
         organizationId: context.organizationId,

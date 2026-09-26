@@ -166,7 +166,7 @@ describe("Workforce employee self-service requests", () => {
       code: "WORKFORCE_EXCEPTION_LINKED_MUTATION_RESOLVED",
     })
 
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
     expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
   })
 
@@ -196,7 +196,8 @@ describe("Workforce employee self-service requests", () => {
       timezone: "Asia/Baku",
     })).resolves.toMatchObject({ kind: "success", idempotent: true })
 
-    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
+      .toEqual(["workforce-hrm-request:org-workforce:agent-1:request-key-123"])
     expect(prisma.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
   })
 
@@ -230,7 +231,11 @@ describe("Workforce employee self-service requests", () => {
       timezone: "Asia/Baku",
     })).resolves.toMatchObject({ kind: "success", idempotent: true })
 
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
+      .toEqual([
+        "workforce-hrm-request:org-workforce:agent-1:request-key-123",
+        "workforce-exception-decision:org-workforce:case-1",
+      ])
     expect(prisma.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
   })
@@ -259,6 +264,11 @@ describe("Workforce employee self-service requests", () => {
       code: "WORKFORCE_SELF_REQUEST_IDEMPOTENCY_MISMATCH",
     })
     expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
+      .toEqual([
+        "workforce-hrm-request:org-workforce:agent-1:request-key-123",
+        "workforce-hrm-request:org-workforce:agent-1:request-key-123",
+      ])
   })
 
   it("does not submit a correction for a different employee workday", async () => {

@@ -95,7 +95,10 @@ import {
 } from "@/lib/mtm/mobile-hrm"
 import { recordMtmMobileV1SyncActivity } from "@/lib/mtm/mobile-sync-telemetry"
 import { evaluateWorkforceMobileWriteAccess } from "@/lib/workforce/mobile-write-fence"
-import { workforceHrmRequestSubmissionMatches } from "@/lib/workforce/hrm-request-idempotency"
+import {
+  lockWorkforceHrmRequestClientKey,
+  workforceHrmRequestSubmissionMatches,
+} from "@/lib/workforce/hrm-request-idempotency"
 import { lockWorkforceExceptionDecisionStream } from "@/lib/workforce/exception-case-writer"
 import {
   requireWorkforceExceptionLinkedMutationAfterLock,
@@ -2393,6 +2396,11 @@ export const POST = withMobileRls(async (req, auth) => {
           && opType === "create"
           && hrmRequestCreateInput
         ) {
+          await lockWorkforceHrmRequestClientKey(tx, {
+            organizationId: orgId,
+            agentId,
+            clientRequestId: hrmRequestCreateInput.clientRequestId,
+          })
           const existing = await tx.mtmHrmRequest.findFirst({
             where: {
               organizationId: orgId,

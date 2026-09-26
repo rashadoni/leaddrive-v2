@@ -184,7 +184,10 @@ describe("Workforce action-token exception-decision API", () => {
     await expect(response.json()).resolves.toMatchObject({
       code: "WORKFORCE_EXCEPTION_DECISION_CONTEXT_INVALID",
     })
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
+      "workforce-exception-decision:org_1:case_1",
+      "workforce-exception-decision-operation:org_1:decision-op-post-lock-rollback",
+    ])
     expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
   })
 

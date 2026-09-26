@@ -2,11 +2,20 @@ import { randomUUID } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
-import { lockWorkforceExceptionDecisionStream } from "@/lib/workforce/exception-case-writer"
+import {
+  lockWorkforceExceptionDecisionOperation,
+  lockWorkforceExceptionDecisionStream,
+} from "@/lib/workforce/exception-case-writer"
+import type { WorkforceExceptionEmployeeResponseDraft } from "@/lib/workforce/exception-employee-response"
+import {
+  appendAuthorizedWorkforceExceptionEmployeeResponse,
+  type WorkforceExceptionEmployeeResponseWriterDb,
+} from "@/lib/workforce/exception-employee-response-writer"
 import {
   lockWorkforceExceptionLinkedMutation,
   type WorkforceExceptionLinkedMutationDb,
 } from "@/lib/workforce/exception-linked-mutation"
+import { lockWorkforceHrmRequestClientKey } from "@/lib/workforce/hrm-request-idempotency"
 
 const databaseUrl = process.env.WORKFORCE_EXCEPTION_LOCK_TEST_DATABASE_URL
 const integrationDatabaseUrl = databaseUrl ?? "postgresql://disabled:disabled@127.0.0.1:1/disabled"
@@ -54,10 +63,34 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     await observer.$executeRawUnsafe(`
       CREATE TABLE "${schema}"."linked_requests" (
         "organization_id" TEXT NOT NULL,
+        "agent_id" TEXT NOT NULL DEFAULT 'agent-lock-proof',
         "case_id" TEXT NOT NULL,
         "client_request_id" TEXT NOT NULL,
         "status" TEXT NOT NULL,
-        PRIMARY KEY ("organization_id", "client_request_id")
+        PRIMARY KEY ("organization_id", "agent_id", "client_request_id")
+      )
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE TABLE "${schema}"."employee_responses" (
+        "id" TEXT PRIMARY KEY,
+        "organization_id" TEXT NOT NULL,
+        "case_id" TEXT NOT NULL,
+        "agent_id" TEXT NOT NULL,
+        "workday_id" TEXT NOT NULL,
+        "segment_id" TEXT,
+        "correction_request_id" TEXT,
+        "response_code" TEXT NOT NULL,
+        "client_response_id" TEXT NOT NULL,
+        "actor_user_id" TEXT NOT NULL,
+        UNIQUE ("organization_id", "agent_id", "client_response_id")
+      )
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE TABLE "${schema}"."decision_operations" (
+        "organization_id" TEXT NOT NULL,
+        "case_id" TEXT NOT NULL,
+        "operation_id" TEXT NOT NULL,
+        PRIMARY KEY ("organization_id", "operation_id")
       )
     `)
   })
@@ -84,6 +117,68 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
           return (rows[0]?.decisions ?? [])
             .slice(0, args.take)
             .map((decisionCode) => ({ decisionCode }))
+        },
+      },
+    }
+  }
+
+  function employeeResponseDb(
+    tx: Prisma.TransactionClient,
+    hooks: {
+      onCreate?: () => void | Promise<void>
+      onAudit?: () => void | Promise<void>
+    } = {},
+  ): WorkforceExceptionEmployeeResponseWriterDb {
+    const linkedDb = linkedMutationDb(tx)
+    return {
+      ...linkedDb,
+      workforceExceptionEmployeeResponse: {
+        findFirst: async (args) => {
+          const rows = await tx.$queryRawUnsafe<Array<WorkforceExceptionEmployeeResponseDraft & { id: string }>>(`
+            SELECT "id",
+                   "organization_id" AS "organizationId",
+                   "case_id" AS "caseId",
+                   "agent_id" AS "agentId",
+                   "workday_id" AS "workdayId",
+                   "segment_id" AS "segmentId",
+                   "correction_request_id" AS "correctionRequestId",
+                   "response_code" AS "responseCode",
+                   "client_response_id" AS "clientResponseId",
+                   "actor_user_id" AS "actorUserId"
+              FROM "${schema}"."employee_responses"
+             WHERE "organization_id" = $1
+               AND "agent_id" = $2
+               AND "client_response_id" = $3
+          `, args.where.organizationId, args.where.agentId, args.where.clientResponseId)
+          return rows[0] ?? null
+        },
+        create: async ({ data }) => {
+          await hooks.onCreate?.()
+          const id = `response-${randomUUID()}`
+          await tx.$executeRawUnsafe(`
+            INSERT INTO "${schema}"."employee_responses" (
+              "id", "organization_id", "case_id", "agent_id", "workday_id",
+              "segment_id", "correction_request_id", "response_code",
+              "client_response_id", "actor_user_id"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          `,
+          id,
+          data.organizationId,
+          data.caseId,
+          data.agentId,
+          data.workdayId,
+          data.segmentId,
+          data.correctionRequestId,
+          data.responseCode,
+          data.clientResponseId,
+          data.actorUserId)
+          return { id, ...data }
+        },
+      },
+      mtmAuditLog: {
+        create: async () => {
+          await hooks.onAudit?.()
+          return { id: `audit-${randomUUID()}` }
         },
       },
     }
@@ -325,6 +420,207 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     }
     await first
     await expect(second).resolves.toBe("completed")
+  }, 15_000)
+
+  it("serializes one employee response id across different exception cases", async () => {
+    const caseA = `response-case-a-${randomUUID()}`
+    const caseB = `response-case-b-${randomUUID()}`
+    const agentId = `response-agent-${randomUUID()}`
+    const clientResponseId = `response-client-${randomUUID()}`
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."case_decisions" ("organization_id", "case_id")
+      VALUES ($1, $2), ($1, $3)
+    `, organizationId, caseA, caseB)
+
+    let createCount = 0
+    const winnerInserted = deferred<void>()
+    const releaseWinner = deferred<void>()
+    const winner = terminalClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      return appendAuthorizedWorkforceExceptionEmployeeResponse({
+        db: employeeResponseDb(tx, {
+          onCreate: () => { createCount += 1 },
+          onAudit: async () => {
+            winnerInserted.resolve()
+            await releaseWinner.promise
+          },
+        }),
+        draft: {
+          organizationId,
+          caseId: caseA,
+          agentId,
+          workdayId: "workday-a",
+          segmentId: null,
+          correctionRequestId: null,
+          responseCode: "ACKNOWLEDGED",
+          clientResponseId,
+          actorUserId: "employee-user",
+        },
+        authorize: async () => true,
+      })
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    })
+
+    await winnerInserted.promise
+    const waiterPid = deferred<number>()
+    const waiter = linkedClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
+        "SELECT pg_backend_pid()::int AS pid",
+      )
+      waiterPid.resolve(backend.pid)
+      return appendAuthorizedWorkforceExceptionEmployeeResponse({
+        db: employeeResponseDb(tx, { onCreate: () => { createCount += 1 } }),
+        draft: {
+          organizationId,
+          caseId: caseB,
+          agentId,
+          workdayId: "workday-b",
+          segmentId: null,
+          correctionRequestId: null,
+          responseCode: "ACKNOWLEDGED",
+          clientResponseId,
+          actorUserId: "employee-user",
+        },
+        authorize: async () => true,
+      })
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    }).then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (error: unknown) => ({ status: "rejected" as const, error }),
+    )
+
+    try {
+      await waitForAdvisoryLockWait(await waiterPid.promise)
+    } finally {
+      releaseWinner.resolve()
+    }
+    await expect(winner).resolves.toMatchObject({ idempotent: false })
+    await expect(waiter).resolves.toMatchObject({
+      status: "rejected",
+      error: { code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT" },
+    })
+    expect(createCount).toBe(1)
+    const stored = await observer.$queryRawUnsafe<Array<{ case_id: string }>>(`
+      SELECT "case_id" FROM "${schema}"."employee_responses"
+       WHERE "organization_id" = $1 AND "agent_id" = $2 AND "client_response_id" = $3
+    `, organizationId, agentId, clientResponseId)
+    expect(stored).toEqual([{ case_id: caseA }])
+  }, 15_000)
+
+  it("serializes one HR request client key before selecting a linked case", async () => {
+    const caseA = `request-case-a-${randomUUID()}`
+    const caseB = `request-case-b-${randomUUID()}`
+    const agentId = `request-agent-${randomUUID()}`
+    const clientRequestId = `request-client-${randomUUID()}`
+    const winnerInserted = deferred<void>()
+    const releaseWinner = deferred<void>()
+    const winner = terminalClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      await lockWorkforceHrmRequestClientKey(tx, { organizationId, agentId, clientRequestId })
+      await lockWorkforceExceptionDecisionStream(tx, { organizationId, caseId: caseA })
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."linked_requests" (
+          "organization_id", "agent_id", "case_id", "client_request_id", "status"
+        ) VALUES ($1, $2, $3, $4, 'PENDING')
+      `, organizationId, agentId, caseA, clientRequestId)
+      winnerInserted.resolve()
+      await releaseWinner.promise
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    })
+
+    await winnerInserted.promise
+    const waiterPid = deferred<number>()
+    const waiter = linkedClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
+        "SELECT pg_backend_pid()::int AS pid",
+      )
+      waiterPid.resolve(backend.pid)
+      await lockWorkforceHrmRequestClientKey(tx, { organizationId, agentId, clientRequestId })
+      const rows = await tx.$queryRawUnsafe<Array<{ case_id: string }>>(`
+        SELECT "case_id" FROM "${schema}"."linked_requests"
+         WHERE "organization_id" = $1 AND "agent_id" = $2 AND "client_request_id" = $3
+      `, organizationId, agentId, clientRequestId)
+      if (rows[0]) return { replayCaseId: rows[0].case_id, inserted: false }
+      await lockWorkforceExceptionDecisionStream(tx, { organizationId, caseId: caseB })
+      throw new Error("global request lock did not expose the committed winner")
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    })
+
+    try {
+      await waitForAdvisoryLockWait(await waiterPid.promise)
+    } finally {
+      releaseWinner.resolve()
+    }
+    await winner
+    await expect(waiter).resolves.toEqual({ replayCaseId: caseA, inserted: false })
+  }, 15_000)
+
+  it("serializes one decision operation id across different case streams", async () => {
+    const caseA = `decision-case-a-${randomUUID()}`
+    const caseB = `decision-case-b-${randomUUID()}`
+    const operationId = `decision-operation-${randomUUID()}`
+    const winnerInserted = deferred<void>()
+    const releaseWinner = deferred<void>()
+    const winner = terminalClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      await lockWorkforceExceptionDecisionStream(tx, { organizationId, caseId: caseA })
+      await lockWorkforceExceptionDecisionOperation(tx, { organizationId, operationId })
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."decision_operations" (
+          "organization_id", "case_id", "operation_id"
+        ) VALUES ($1, $2, $3)
+      `, organizationId, caseA, operationId)
+      winnerInserted.resolve()
+      await releaseWinner.promise
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    })
+
+    await winnerInserted.promise
+    const waiterPid = deferred<number>()
+    const waiter = linkedClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      await lockWorkforceExceptionDecisionStream(tx, { organizationId, caseId: caseB })
+      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
+        "SELECT pg_backend_pid()::int AS pid",
+      )
+      waiterPid.resolve(backend.pid)
+      await lockWorkforceExceptionDecisionOperation(tx, { organizationId, operationId })
+      const rows = await tx.$queryRawUnsafe<Array<{ case_id: string }>>(`
+        SELECT "case_id" FROM "${schema}"."decision_operations"
+         WHERE "organization_id" = $1 AND "operation_id" = $2
+      `, organizationId, operationId)
+      if (rows[0]) return { replayCaseId: rows[0].case_id, inserted: false }
+      throw new Error("global operation lock did not expose the committed winner")
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    })
+
+    try {
+      await waitForAdvisoryLockWait(await waiterPid.promise)
+    } finally {
+      releaseWinner.resolve()
+    }
+    await winner
+    await expect(waiter).resolves.toEqual({ replayCaseId: caseA, inserted: false })
   }, 15_000)
 
   it("observes exact submit and cancellation replays after waiting for the case lock", async () => {

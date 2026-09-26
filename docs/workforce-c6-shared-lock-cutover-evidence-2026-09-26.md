@@ -57,10 +57,10 @@ reviewed, merged, deployed and proven on PostgreSQL.
 ## Real PostgreSQL proof
 
 `src/__tests__/lib-workforce-exception-lock-postgres.test.ts` uses independent
-Prisma clients and three separate scratch tables (decision stream, linked
-mutations and linked-request replay state). It inspects `pg_stat_activity` to
-prove the second backend is actually waiting on an advisory lock rather than
-relying on timing sleeps.
+Prisma clients and five separate scratch tables (decision stream, linked
+mutations, linked-request replay state, employee responses and decision
+operation ids). It inspects `pg_stat_activity` to prove the second backend is
+actually waiting on an advisory lock rather than relying on timing sleeps.
 
 It covers both orders:
 
@@ -74,7 +74,17 @@ It covers both orders:
   and completes without an opposite-order deadlock; and
 - exact replay: a submit waiter sees no uncommitted row before the lock and the
   committed `PENDING` row after it; a cancellation waiter analogously sees
-  `PENDING` before the lock and `CANCELLED` after it.
+  `PENDING` before the lock and `CANCELLED` after it;
+- employee response id: the real writer holds a response inserted for case A,
+  a case-B writer is observed waiting on the employee-global response-id
+  fence, then rejects the committed cross-case collision without a second
+  create;
+- HR request id: the waiter is observed on the employee-global request-key
+  fence before choosing case B, then sees the committed case-A record and does
+  not enter a second case stream; and
+- decision operation id: writers hold different case locks, serialize on the
+  organization-global operation fence and expose the case-A winner to the
+  case-B waiter without a second insert.
 
 The test is wired as a blocking step in both `.github/workflows/pr-checks.yml`
 and `.github/workflows/deploy.yml`, using their disposable PostgreSQL service.
@@ -101,7 +111,28 @@ needed, re-reads the correction request under the workday lock, rebuilds the
 historical team/site resource from the post-lock case row, and resolves exact
 web/mobile submit and cancellation replays before the lifecycle guard. Unit
 regressions and the expanded real-PostgreSQL proof cover all three findings.
-A new complete-tree independent rereview remains mandatory.
+
+The second complete-diff review used base
+`a18728b2b2ef20d9ac5f6f568647a23263db51ce`, head
+`31c9ba28587e7ce6831551782d43c659c54ab6b1`, binary-diff SHA-256
+`d8232e78547a69c2cce55cc1e74134f458ed2688df811a3032ebcdbb40d34eff`
+and a `115,161`-byte / 20-file scope. It also correctly returned RED with three
+P2 findings; that receipt is superseded:
+
+1. employee response uniqueness is global to organization/employee/response
+   id but the replay read was protected only by a case fence;
+2. HR request uniqueness is global to organization/employee/client request id
+   but linked web/mobile submission could race through different cases; and
+3. decision operation ids are organization-global but replay reads were
+   protected only by the selected case fence.
+
+Each path now takes its exact database-uniqueness advisory fence before the
+replay read. Both decision writers and the employee-response writer treat any
+residual `P2002` as a controlled rollback conflict and never issue a query in
+an already-aborted PostgreSQL transaction. Web and mobile HR request writers
+take the request-key fence before either an initial replay read or a case
+choice. Unit regressions and the three new observed-wait PostgreSQL races cover
+these findings. A new complete-tree independent rereview remains mandatory.
 
 ## Delivery-gate reconciliation
 
@@ -115,8 +146,8 @@ required GitHub checks.
 
 ## Local evidence in this tree
 
-- PASS — 7 focused Vitest files: 161 tests passed.
-- SKIPPED — 4 real-PostgreSQL race tests because no approved local scratch URL
+- PASS — 8 focused Vitest files: 173 tests passed.
+- SKIPPED — 7 real-PostgreSQL race tests because no approved local scratch URL
   was supplied; the new blocking PR/deploy steps must run them.
 - PASS — targeted ESLint for every changed TypeScript and test file.
 - PASS — recursive RLS context scan: 552 organization-scoped models, 0 gaps.
@@ -124,11 +155,16 @@ required GitHub checks.
   5 concrete schemas.
 - PASS — GitHub runner policy across 37 workflow files.
 - PASS — `git diff --check` before the documentation checkpoint.
-- PASS — the same focused tests, ESLint, RLS scan and delivery asset contract
-  after integrating exact current `origin/main` SHA
+- PASS — these repaired focused tests, ESLint, RLS scan, delivery asset
+  contract, runner policy and diff whitespace on the tree based on
   `a18728b2b2ef20d9ac5f6f568647a23263db51ce`. The successful repeat used an
   existing dependency cache whose package-lock SHA-256 exactly matched this
   tree (`54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`).
+
+Current `origin/main` advanced afterward to
+`13277465d731cdfc106e7942c0a2b97ffa38d0b5`; its unrelated demo-request CORS
+slice must be integrated and the same gates repeated before the next frozen
+review scope.
 
 `NOT RUN` locally by Contabo workload policy: full typecheck, production build,
 browser E2E, Android/Gradle, load, physical-device and pilot checks. Exact-head

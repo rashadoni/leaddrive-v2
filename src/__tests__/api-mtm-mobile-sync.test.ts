@@ -1589,6 +1589,8 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       }),
     }))
     expect(JSON.stringify(vi.mocked(prisma.mtmAuditLog.create).mock.calls)).not.toContain("Annual leave")
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
+      .toContain("workforce-hrm-request:org-1:agent-1:hrm-client-0001")
   })
 
   it("does not replay a mobile HR request when its client request id has different details", async () => {
@@ -1636,6 +1638,8 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         status: "conflict",
       }),
     }))
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
+      .toContain("workforce-hrm-request:org-1:agent-1:hrm-client-0001")
   })
 
   it("refuses a new mobile correction after its linked exception resolves", async () => {
@@ -1734,7 +1738,10 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       select: { decisionCode: true },
     })
     expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
-      .toContain("workforce-exception-decision:org-1:case-1")
+      .toEqual(expect.arrayContaining([
+        "workforce-hrm-request:org-1:agent-1:correction-client-1",
+        "workforce-exception-decision:org-1:case-1",
+      ]))
   })
 
   it("replays an exact linked mobile correction found only after the case lock", async () => {
@@ -1789,7 +1796,10 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
     expect(prisma.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
     expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
-      .toContain("workforce-exception-decision:org-1:case-1")
+      .toEqual(expect.arrayContaining([
+        "workforce-hrm-request:org-1:agent-1:correction-race-client-1",
+        "workforce-exception-decision:org-1:case-1",
+      ]))
   })
 
   it("does not reveal or link an unavailable mobile exception source", async () => {
