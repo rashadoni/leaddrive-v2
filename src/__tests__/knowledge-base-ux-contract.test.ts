@@ -5,6 +5,11 @@ import { describe, expect, it } from "vitest"
 const source = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8")
 
 describe("knowledge base UX contract", () => {
+  it("keeps a stable accessible document title across list filter navigation", () => {
+    const layout = source("src/app/(dashboard)/knowledge-base/layout.tsx")
+    expect(layout).toContain('title: "Knowledge Base · LeadDrive CRM"')
+  })
+
   it("uses a two-pane desktop library and an equivalent mobile category selector", () => {
     const page = source("src/app/(dashboard)/knowledge-base/page.tsx")
     expect(page).toContain('className="hidden w-60')

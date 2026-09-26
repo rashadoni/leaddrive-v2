@@ -1386,6 +1386,16 @@ Current verification evidence (2026-09-05):
   changed-source ESLint has zero errors and the three affected contract suites
   pass 31/31 assertions. Obsolete run `36268966684` was canceled before its
   build; a new checkpoint and exact-SHA rerun are required.
+- Exact-SHA run `36270351888` proves the new section validation and production
+  build green. Its artifact advances the flow to 8/9 passed outcomes and shows
+  portal list/static capture fully clean. The remaining edit-form injection was
+  bypassed after the production service worker claimed the page, and one list
+  capture observed a transient empty document title after soft filter
+  navigation. Evidence contexts now block service workers so synthetic failure
+  routes and CSP interception cannot be bypassed, while a route layout supplies
+  stable Knowledge Base metadata. The expanded seven-file scan passes with zero
+  findings, changed-source ESLint passes, runner syntax passes, and the affected
+  contracts pass 32/32. A newer exact-SHA desktop rerun remains required.
 
 ## 13. Workstream 6 — Ticket Categories
 

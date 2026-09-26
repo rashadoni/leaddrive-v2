@@ -185,6 +185,7 @@ const contextOptions = {
   colorScheme: theme,
   reducedMotion: "reduce",
   hasTouch: viewportName !== "desktop",
+  serviceWorkers: "block",
 }
 const managerContext = await browser.newContext(contextOptions)
 const customerContext = await browser.newContext(contextOptions)

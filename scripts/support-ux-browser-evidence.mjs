@@ -184,7 +184,7 @@ async function authenticate(context, role) {
 }
 
 async function authenticateRole(browser, role) {
-  const context = await browser.newContext({ baseURL: baseUrl })
+  const context = await browser.newContext({ baseURL: baseUrl, serviceWorkers: "block" })
   try {
     const portalUser = await authenticate(context, role)
     return {
@@ -649,6 +649,7 @@ try {
             colorScheme: theme,
             reducedMotion: "reduce",
             hasTouch: expectsTouch,
+            serviceWorkers: "block",
             storageState: authenticated.storageState,
           })
           await context.route("**/api/v1/public/csp-report", async (route) => {

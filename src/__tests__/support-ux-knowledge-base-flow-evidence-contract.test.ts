@@ -53,6 +53,7 @@ describe("Knowledge Base mutating evidence contract", () => {
     expect(flow).toContain("document.elementFromPoint")
     expect(flow).toContain("box.width < 44 || box.height < 44")
     expect(flow).toContain("page.touchscreen.tap(point.x, point.y)")
+    expect(flow).toContain('serviceWorkers: "block"')
     expect(flow).toContain("physicalTouchRetry")
   })
 

@@ -338,6 +338,7 @@ jobs:
             scripts/support-ux-performance-compare.mjs \
             scripts/check-support-ux-anti-patterns.mjs \
             scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/knowledge-base/layout.tsx \
             src/app/\(dashboard\)/knowledge-base/page.tsx \
             src/app/\(dashboard\)/knowledge-base/\[id\]/page.tsx \
             src/app/portal/knowledge-base/page.tsx \

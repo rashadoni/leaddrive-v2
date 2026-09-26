@@ -624,3 +624,33 @@ gates on the new commit; retain `36268522169` only as diagnostic evidence.
 Next: checkpoint and push the diagnostic correction, rerun the mandatory
 desktop gate with the dedicated KB validation step, inspect its artifact, then
 run mobile touchscreen and full high-density matrix gates on the same SHA.
+
+### Workstream 5 second browser self-audit
+
+- Exact-SHA run `36270351888` passed the dedicated Knowledge Base validation,
+  disposable fixtures, Chromium installation and the cold production build.
+  Its independently downloaded artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36270351888`.
+- The auth, article error/permission recovery, publication boundary, fail-safe
+  fixture restore, portal list recovery and portal article recovery corrections
+  are proven: eight of nine flow outcomes pass. Static article and portal
+  scenarios pass with zero axe, browser, touch-target, overflow, environment or
+  primary-work findings. The list's previous contrast failure is gone.
+- One late edit-form category injection remained unobserved. Earlier request
+  routes work before the production service worker claims the page; the late
+  category request can then bypass Playwright routing. Other current Support
+  flow runners already block service workers for this exact reason. Both the KB
+  mutating context and shared static capture contexts now set
+  `serviceWorkers: "block"`, which also makes the existing CSP-report route
+  reliable instead of generating public rate-limit noise.
+- The list's only static failure was a transient empty document title after a
+  soft filter navigation. A server Knowledge Base route layout now declares
+  stable `Knowledge Base · LeadDrive CRM` metadata for list and detail routes.
+- Runner syntax, changed-source ESLint, the expanded seven-file anti-pattern
+  scan and 32/32 affected contract assertions pass. No failure injection,
+  fixture cleanup, accessibility, touch, scenario, timeout or build gate was
+  relaxed.
+
+Next: checkpoint and push the service-worker/title correction, repeat the
+desktop exact-SHA gate, inspect the artifact, then run mobile touchscreen and
+full high-density matrix evidence on the same SHA.

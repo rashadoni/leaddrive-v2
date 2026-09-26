@@ -107,6 +107,7 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain("async function authenticateRole(browser, role)");
     expect(runner).toContain("authenticated = await authenticateRole(browser, role)");
     expect(runner).toContain("storageState: authenticated.storageState");
+    expect(runner.match(/serviceWorkers: "block"/g)).toHaveLength(2);
     expect(runner).toContain(
       "primeEvidenceStorage(context, theme, authenticated.portalUser)",
     );
