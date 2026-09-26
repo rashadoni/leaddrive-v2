@@ -71,6 +71,8 @@ type TaskListData = {
   summary?: Record<string, number>
   /** Undated open tasks, lifted above the paginated list (task-undated-group.ts). */
   undatedOpen?: { tasks: TaskSummary[]; total: number }
+  /** The contact the list is narrowed to, by name. */
+  contactName?: string
 }
 
 type LoadPhase = "loading" | "ready" | "permission" | "error"
@@ -196,6 +198,7 @@ export default function MtmTasksPage() {
         undatedOpen: payload.undatedOpen && Array.isArray(payload.undatedOpen.tasks)
           ? { tasks: payload.undatedOpen.tasks, total: Number(payload.undatedOpen.total) || payload.undatedOpen.tasks.length }
           : undefined,
+        contactName: typeof payload.contact?.displayName === "string" ? payload.contact.displayName : undefined,
       })
       setSelected([])
       setPhase("ready")
@@ -338,10 +341,9 @@ export default function MtmTasksPage() {
         {contactId ? (
           <div className="flex flex-wrap items-center gap-2" role="status">
             <Badge variant="info" className="min-h-8 gap-2 px-3">
-              {t("contactContext", { id: contactId })}
+              {t("contactContext", { name: data?.contactName ?? "…" })}
               <button type="button" className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-full hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:hover:bg-white/10" onClick={() => { setContactId(""); setPage(1) }} aria-label={t("clearContactContext")}><X className="h-3.5 w-3.5" /></button>
             </Badge>
-            <span className="text-xs text-muted-foreground">{t("contactContextHint")}</span>
           </div>
         ) : null}
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
