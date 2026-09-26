@@ -269,3 +269,33 @@ accepted and must not be repeated.
 Next: checkpoint this journal update, push the integrated feature branch,
 confirm no equivalent Support UX evidence job is active, and dispatch the one
 corrected high-profile static VoIP matrix on the resulting exact SHA.
+
+## 2026-09-26 — High-profile build failure diagnosed and corrected
+
+- Corrected high-profile run `36249945686` targeted exact SHA
+  `5c07248cd542ddd24b3ba6f79591cf6370bd6044`. The section-scoped VoIP gate and
+  500-call fixture creation passed. The production build then failed after
+  about ten minutes with exit 134 and a V8 heap OOM near the unchanged 8 GiB
+  limit; capture was skipped and the artifact upload correctly failed because
+  no evidence directory existed.
+- The retained log exposed a concrete workflow drift rather than a product
+  conclusion: the Support evidence build did not run the established
+  `prepare-hosted-build-runner.sh` step and omitted
+  `LEADDRIVE_COLD_PRODUCTION_BUILD=1`. Current production and labelled PR builds
+  require both so Next uses bounded swap, disables the unused filesystem cache,
+  and compiles server/edge/client graphs in sequential disposable workers.
+  Current `main` production run `36248740896` succeeded under that exact
+  contract with the same 8 GiB Node heap.
+- The evidence workflow now uses the same reviewed preparation step and cold
+  production-build flag and disables core dumps before `next build`. The Node
+  heap limit, job timeout, one-CPU constraint, webpack requirement, and all
+  evidence gates remain unchanged. A contract assertion prevents this memory
+  isolation from silently disappearing again.
+- The focused workflow contract test passed 17/17 assertions, the workflow
+  parses as YAML, and `git diff --check` is green. A blind rerun was not
+  attempted.
+
+Next: checkpoint the workflow correction, integrate the newest `origin/main`,
+re-run only merge-affected targeted gates, push, and dispatch one fresh
+high-profile matrix on the new exact SHA after confirming the evidence queue is
+idle.

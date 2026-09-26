@@ -299,6 +299,9 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("npx playwright install --with-deps chromium");
     expect(workflow).not.toMatch(/\bsudo\b/);
     expect(workflow).toContain("npx next build --webpack");
+    expect(workflow).toContain("bash scripts/ci/prepare-hosted-build-runner.sh");
+    expect(workflow).toContain('LEADDRIVE_COLD_PRODUCTION_BUILD: "1"');
+    expect(workflow).toContain("ulimit -c 0");
     expect(workflow).toContain("node .next/standalone/server.js");
     expect(workflow).toContain("cp -R .next/static .next/standalone/.next/static");
     expect(workflow).toContain("cp -R public .next/standalone/public");

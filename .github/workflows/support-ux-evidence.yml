@@ -143,6 +143,9 @@ jobs:
         with:
           node-version: 20
 
+      - name: Prepare bounded GitHub-hosted build memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+
       - run: npm ci
 
       - name: Validate visual comparison inputs
@@ -511,8 +514,10 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192
           NEXT_BUILD_CPUS: "1"
           NEXT_WEBPACK_PARALLELISM: "1"
+          LEADDRIVE_COLD_PRODUCTION_BUILD: "1"
           NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: ${{ secrets.CARTO_BASEMAPS_API_KEY }}
         run: |
+          ulimit -c 0
           npx next build --webpack
           mkdir -p .next/standalone/.next
           cp -R .next/static .next/standalone/.next/static
