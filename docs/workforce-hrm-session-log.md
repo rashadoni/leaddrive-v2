@@ -42,3 +42,11 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Local `git diff --check` passes. Focused Vitest/typecheck/full build/browser/Android/load are `NOT RUN` locally because the worktree has no dependencies and heavy gates belong to CI.
 - Precise stopping point: checkpoint only the reviewer-finding repair, push it, publish a new exact-SHA pending `agent-review`, then wait for machine CI and independent rereview of the complete delta.
 - Next action: fix any CI/rereview finding without weakening gates; only a green exact head may merge and enter the documented `main` → `deploy.yml` release path.
+
+## 2026-09-26 — exact-head typecheck repair
+
+- Independent rereview of `a5c9c0ee7f2eb1c7c7b39b631c7f408eb646e236` is GREEN with zero findings. Android, `pr-scope`, `runner-policy`, `scan` and `static-checks` passed; exact-SHA `agent-review` was published only after that result.
+- Required `typecheck` failed on two new TS2322 pairs: both routes passed the preflight helper's explicit `null` to an optional transaction input accepting `WorkforceAttendancePlayIntegrityPreflight | undefined`.
+- Both boundaries now normalize `null` to `undefined`; no baseline or gate changed. Local typecheck remains `NOT RUN` because dependencies are absent and heavy verification belongs to CI.
+- Precise stopping point: checkpoint and push the two-line type-boundary repair without staging the preserved delivery-control patch.
+- Next action: require fresh exact-SHA machine CI and independent rereview before merge.

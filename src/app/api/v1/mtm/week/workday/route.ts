@@ -326,7 +326,7 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
             evidence: input.attendance,
             capabilities: attendanceCapabilities,
             principal: auth.principal,
-            playIntegrityPreflight,
+            playIntegrityPreflight: playIntegrityPreflight ?? undefined,
           })
           if (prepared) {
             await recordWorkforceAttendanceVerification(tx, prepared, event.id)

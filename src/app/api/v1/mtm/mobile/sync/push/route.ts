@@ -2795,7 +2795,7 @@ export const POST = withMobileRls(async (req, auth) => {
                 evidence: workdayInput.attendance,
                 capabilities: attendanceCapabilities,
                 principal: "mobile",
-                playIntegrityPreflight,
+                playIntegrityPreflight: playIntegrityPreflight ?? undefined,
               })
               if (prepared) {
                 await recordWorkforceAttendanceVerification(tx, prepared, event.id)
