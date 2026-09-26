@@ -388,3 +388,33 @@ Next: checkpoint and push the two UI corrections. Because the visible product
 SHA changed, run high static, desktop keyboard recovery, and mobile physical-
 touch recovery again on that one new exact SHA; do not repeat baseline, typical
 static, or empty evidence.
+
+### Recovery audit follow-up
+
+- The first accessibility checkpoint was `db0ab4fc4`. Exact-SHA high run
+  `36255938579` completed `SUCCESS`; its retained artifact again proves 72/72
+  passing high-density cells, all `500/20/25` and role contracts matched, with
+  zero reported browser, axe, custom accessibility, touch, environment,
+  primary-work, or overflow failures. Observed maxima improved to 534 ms load
+  p75, 442 ms filter p75, 48 ms interaction p75, and `0.009392899609308647`
+  CLS.
+- Exact-SHA desktop recovery run `36257305927` passed section validation, seed,
+  and production build. The new flow artifact shows that the outline retry
+  corrected the serious contrast violation and eight of nine flows now pass.
+  The only remaining failure is the connection recovery's settled audit:
+  Chromium still reports a running transition on `voip-retry-connection` after
+  disabled-to-ready state, even though both the shared Button primitive and the
+  local control already carry `motion-reduce:transition-none` and the audit
+  waits 250 ms.
+- The operational connection recovery control now has an unconditional inline
+  `transition: none`, removing an animation that conveys no useful status and
+  avoiding dependency on utility-order/media-query resolution. The evidence
+  runner, settle delay, `document.getAnimations()` criterion, and all failure
+  thresholds remain unchanged.
+- Focused VoIP UI/flow tests pass 13/13, targeted ESLint passes, the scoped
+  anti-pattern scan passes the changed page with zero findings, and `git diff
+  --check` is green.
+
+Next: checkpoint and push this final transition correction, then obtain high,
+desktop keyboard recovery, and mobile physical-touch recovery evidence on that
+single new exact SHA before closing Workstream 4.

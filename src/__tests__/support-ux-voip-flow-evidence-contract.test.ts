@@ -69,6 +69,7 @@ describe("VoIP mutating evidence contract", () => {
     expect(page).toContain('className="mt-4 min-h-11 motion-reduce:transition-none"')
     expect(page).toContain('data-testid="voip-retry-connection" variant="outline"')
     expect(page).toContain('className="min-h-11 motion-reduce:transition-none"')
+    expect(page).toContain('style={{ transition: "none" }}')
     expect(player).toContain('data-testid="call-recording-audio"')
     expect(player).toContain('data-testid="call-recording-retry"')
   })
