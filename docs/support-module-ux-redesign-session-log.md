@@ -474,3 +474,28 @@ and mobile touchscreen gates because the evidence source SHA changed.
 Next: run only the changed runner/player contracts and scoped static checks,
 checkpoint this product-plus-evidence correction, then obtain mobile, desktop
 and high exact-SHA evidence before closing Workstream 4.
+
+## 2026-09-26 — Workstream 4 complete
+
+- Product/evidence checkpoint `8b6f2bcba` passed exact-SHA mobile touchscreen
+  run `36264001612`. Its independently inspected artifact has 9/9 passed flows,
+  16 clean audits, `playwright-touchscreen` input, exact audio/retry hit targets
+  sized `253x44` and `107x44`, forced error, successful retry and native
+  five-second playback. The final recording screenshot was manually inspected
+  and shows the active native player in the RU dark 375 px layout.
+- Desktop keyboard run `36265201707` passed on the same SHA. Its artifact has
+  9/9 flows and 16 clean audits and proves keyboard focus, error, retry and
+  native playback recovery.
+- High-density run `36266370312` passed on the same SHA. Independent inspection
+  confirms 72/72 rows and screenshots, complete role/locale/theme/viewport
+  coverage, `500/20/25` density, correct admin versus read-only controls, and
+  zero browser, axe/custom accessibility, touch-target, overflow, environment
+  or primary-work findings. Maxima were 688 ms load p75, 507 ms filter p75,
+  48 ms interaction p75 and `0.009392899609308647` CLS.
+- Final self-audit found no weakened assertion, timeout, density, accessibility,
+  performance or role gate. The implementation plan now marks
+  `SUPUX-VOIP-001` through `SUPUX-VOIP-007` complete.
+
+Next: checkpoint the VoIP plan/journal closure, then restore and verify
+Workstream 5 Knowledge Base from implementation checkpoint `a0a68b220` and
+recovery checkpoint `7e489b1e7` without replacing newer shared evidence code.

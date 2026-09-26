@@ -1143,7 +1143,7 @@ Current verification evidence (2026-09-13):
 
 ## 11. Workstream 4 — VoIP Calls
 
-**Status: IN PROGRESS — implementation and recovery-evidence checkpoints complete; rendered CI/browser gates pending**
+**Status: DONE — exact-SHA implementation, recovery, density, accessibility, performance, keyboard and touchscreen gates green**
 **Route:** `/support/voip`
 **Primary file:** `src/app/(dashboard)/support/voip/page.tsx`
 
@@ -1154,18 +1154,18 @@ not safely responsive, and recording playback is a tiny icon-only link.
 Target UX: a responsive call timeline with accurate aggregates, connection
 health, and useful recording/contact actions.
 
-- [ ] **SUPUX-VOIP-001** Create or reuse one aggregate contract for total,
+- [x] **SUPUX-VOIP-001** Create or reuse one aggregate contract for total,
   inbound, outbound, missed, and average duration over the same filter/time range.
-- [ ] **SUPUX-VOIP-002** Debounce search and cancel stale requests.
-- [ ] **SUPUX-VOIP-003** Preserve visible connection/test/settings status while
+- [x] **SUPUX-VOIP-002** Debounce search and cancel stale requests.
+- [x] **SUPUX-VOIP-003** Preserve visible connection/test/settings status while
   reducing header competition.
-- [ ] **SUPUX-VOIP-004** Add responsive call rows/cards instead of relying on a
+- [x] **SUPUX-VOIP-004** Add responsive call rows/cards instead of relying on a
   clipped desktop table.
-- [ ] **SUPUX-VOIP-005** Replace the icon-only recording link with an accessible
+- [x] **SUPUX-VOIP-005** Replace the icon-only recording link with an accessible
   inline player, duration, loading, unavailable, and error states.
-- [ ] **SUPUX-VOIP-006** Add contextual call-back/open-contact actions where
+- [x] **SUPUX-VOIP-006** Add contextual call-back/open-contact actions where
   permissions and data allow.
-- [ ] **SUPUX-VOIP-007** Distinguish no calls from load failure.
+- [x] **SUPUX-VOIP-007** Distinguish no calls from load failure.
 
 Acceptance:
 
@@ -1224,6 +1224,29 @@ Current verification evidence (2026-09-05):
   `34000191517` was accepted into the queue but then ended in GitHub Actions
   `startup_failure` before job creation, so rendered execution remains **NOT
   RUN** and no VOIP checkbox is closed.
+
+Final completion evidence (2026-09-26):
+
+- Final implementation/evidence SHA `8b6f2bcba3001dbff413d6450a78fc447c72ac8d`
+  passed mobile touchscreen run `36264001612`, desktop keyboard run
+  `36265201707`, and high-density matrix run `36266370312` in GitHub Actions.
+- Both interaction artifacts contain 9/9 passed recovery outcomes and 16/16
+  clean state audits. Desktop proves keyboard focus restoration and native
+  playback. Mobile proves Playwright touchscreen input, exact coordinate
+  hit-testing, a `253x44` native audio target, a `107x44` retry target, forced
+  media error, retry, and native five-second playback.
+- The high artifact contains 72/72 passed rows and PNGs across all three roles,
+  AZ/RU/EN, light/dark and 1440/1024/768/375 widths. Every cell matches
+  `500 total / 20 pages / 25 rendered`; admin/read-only role contracts match.
+  Browser, axe/custom accessibility, touch-target, overflow, environment and
+  primary-work issue totals are zero. Observed maxima are 688 ms load p75,
+  507 ms filter p75, 48 ms interaction p75 and
+  `0.009392899609308647` cumulative layout shift.
+- The two retained failed mobile artifacts are diagnostic evidence: they found
+  an off-viewport tap in the harness and a real native-control error/pause race.
+  Checkpoints `42d16717f` and `8b6f2bcba` corrected those causes without
+  reducing scenarios, timeouts, 44 px sizing, touch, accessibility or
+  performance gates. Workstream 4 is complete.
 
 ## 12. Workstream 5 — Knowledge Base
 
