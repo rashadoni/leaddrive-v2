@@ -347,3 +347,44 @@ queue-idle check.
 Next: checkpoint and push this fixture correction, confirm the Support evidence
 queue is idle, then dispatch one fresh high-profile static matrix on the exact
 new SHA. Do not repeat the already-green baseline, typical, or empty profiles.
+
+## 2026-09-26 — High-density matrix passed; desktop recovery audit corrected
+
+- Checkpoint `b445b5dc4` was pushed and exact-SHA high run `36253067239`
+  completed `SUCCESS`. The section-scoped gate, rolling-window 500-call seed,
+  bounded cold production build, browser capture, and artifact upload all
+  passed.
+- Independent artifact inspection confirmed 72 screenshots and 72/72 passed
+  result rows across the complete role/locale/theme/viewport matrix. Every
+  density contract matched `500 total / 20 pages / 25 rendered`; all 24 admin
+  cells exposed `admin` management mode with one settings link, while all 48
+  agent/manager cells exposed read-only mode with zero settings links. Totals
+  were zero for browser errors, axe/custom accessibility issues, touch-target
+  issues, environment mismatch, primary-work misses, horizontal overflow, and
+  development Chrome hosts. Observed maxima were 637 ms load p75, 514 ms filter
+  p75, 48 ms interaction p75, and `0.009392899609308647` CLS. Representative
+  AZ/light desktop and RU/dark mobile captures were manually inspected and had
+  readable, unclipped call-journal composition.
+- Desktop mutating run `36254601143` then passed its VoIP gate, rolling-window
+  typical seed, and cold production build but failed the flow gate. Its retained
+  artifact proves 9 executed outcomes: seven passed, including stale-search
+  abort protection, empty/error/permission states, and full keyboard recording
+  error/retry/playback with restored native-audio focus. Two audits failed:
+  initial-load Retry used the primary orange treatment with insufficient text
+  contrast, and connection Retry retained a color transition after state change
+  under reduced motion.
+- The product UI, not the runner, was corrected. Initial-load Retry now uses the
+  outline action treatment, and both recovery buttons opt transitions out under
+  `prefers-reduced-motion`. No runner assertion, axe rule, target-size threshold,
+  scenario, timeout, or resource limit changed.
+- Focused VoIP UI/flow tests pass 13/13, targeted ESLint passes, `git diff
+  --check` is green, and the correctly scoped Support anti-pattern scan passes
+  the changed VoIP page with zero findings. An earlier invocation supplied an
+  unsupported CLI flag and therefore fell back to the whole default Support
+  surface, reporting the already-planned findings of later workstreams; the
+  supported `SUPPORT_UX_SCAN_ROOTS` invocation produced the relevant result.
+
+Next: checkpoint and push the two UI corrections. Because the visible product
+SHA changed, run high static, desktop keyboard recovery, and mobile physical-
+touch recovery again on that one new exact SHA; do not repeat baseline, typical
+static, or empty evidence.

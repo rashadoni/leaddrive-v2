@@ -269,7 +269,7 @@ export default function VoipCallsPage() {
             {forbidden ? t("permissionDescription") : t("loadFailedDescription")}
           </p>
           {!forbidden && (
-            <Button data-testid="voip-retry-load" className="mt-4 min-h-11" onClick={() => setRetryVersion((value) => value + 1)}>
+            <Button data-testid="voip-retry-load" variant="outline" className="mt-4 min-h-11 motion-reduce:transition-none" onClick={() => setRetryVersion((value) => value + 1)}>
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               {t("retry")}
             </Button>
@@ -314,7 +314,7 @@ export default function VoipCallsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button data-testid="voip-retry-connection" variant="outline" size="sm" className="min-h-11" onClick={() => void (canManageConnection ? testConnection() : refreshConnection())} disabled={connectionState === "checking"}>
+          <Button data-testid="voip-retry-connection" variant="outline" size="sm" className="min-h-11 motion-reduce:transition-none" onClick={() => void (canManageConnection ? testConnection() : refreshConnection())} disabled={connectionState === "checking"}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             {canManageConnection ? t("testConnection") : t("refreshConnection")}
           </Button>

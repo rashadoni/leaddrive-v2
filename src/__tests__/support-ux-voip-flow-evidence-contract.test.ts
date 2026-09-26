@@ -65,6 +65,10 @@ describe("VoIP mutating evidence contract", () => {
       'data-testid="voip-refresh-error"',
       '"voip-no-results" : "voip-empty-state"',
     ]) expect(page).toContain(marker)
+    expect(page).toContain('data-testid="voip-retry-load" variant="outline"')
+    expect(page).toContain('className="mt-4 min-h-11 motion-reduce:transition-none"')
+    expect(page).toContain('data-testid="voip-retry-connection" variant="outline"')
+    expect(page).toContain('className="min-h-11 motion-reduce:transition-none"')
     expect(player).toContain('data-testid="call-recording-audio"')
     expect(player).toContain('data-testid="call-recording-retry"')
   })
