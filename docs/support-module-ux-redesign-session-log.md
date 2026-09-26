@@ -418,3 +418,34 @@ static, or empty evidence.
 Next: checkpoint and push this final transition correction, then obtain high,
 desktop keyboard recovery, and mobile physical-touch recovery evidence on that
 single new exact SHA before closing Workstream 4.
+
+## 2026-09-26 — Final-SHA VoIP evidence and mobile harness correction
+
+- Final product checkpoint `49754acee` passed desktop keyboard recovery run
+  `36258532529`: all 9 outcomes and 16 state audits passed, with keyboard focus,
+  recording retry/native playback, reduced motion, accessibility, overflow and
+  touch-target contracts clean.
+- The same SHA passed high-density run `36259783962`. Independent artifact
+  inspection confirmed 72/72 result rows and PNGs across agent/manager/admin,
+  AZ/RU/EN, light/dark and 1440/1024/768/375 widths. All cells matched
+  `500 total / 20 pages / 25 rendered`, all role contracts matched, and browser,
+  axe/custom accessibility, touch, overflow, environment and primary-work issue
+  totals were zero. Observed maxima were 741 ms load p75, 488 ms filter p75,
+  48 ms interaction p75 and `0.009392899609308647` CLS.
+- Mobile touchscreen run `36261470377` passed source validation, fixtures,
+  production build and eight of nine recovery outcomes. Its retained artifact
+  proves `playwright-touchscreen` input and clean state audits; recording
+  recovery alone timed out waiting for the audio element's touch marker.
+- The failure screenshot is exactly the `375x812` viewport at the top of the
+  page, while the audio player is below the fold. The evidence helper measured
+  the off-viewport audio box and sent a touchscreen coordinate without first
+  scrolling the target into view. The product UI, target-size threshold,
+  touchscreen API, touch event, playback event and timeout contracts were not
+  implicated.
+- `physicalTap` now calls `scrollIntoViewIfNeeded()` before measuring and tapping
+  every touch target. The flow contract test requires this behavior; no
+  scenario, threshold or assertion was removed or weakened.
+
+Next: run the focused runner contract/syntax/lint/diff checks, checkpoint and
+push the harness correction, then repeat the exact-SHA high, desktop keyboard
+and mobile touchscreen gates because the evidence source SHA changed.

@@ -31,6 +31,7 @@ describe("VoIP mutating evidence contract", () => {
     expect(flow).toContain('page.keyboard.press("Space")')
     expect(flow).toContain("usesTouchInput")
     expect(flow).toContain("page.touchscreen.tap")
+    expect(flow).toContain("locator.scrollIntoViewIfNeeded()")
     expect(flow).toContain('element.addEventListener("touchstart"')
     expect(flow).toContain('inputModality: usesTouchInput ? "playwright-touchscreen" : "keyboard"')
     expect(flow).toContain("touchInputEmulated: usesTouchInput")

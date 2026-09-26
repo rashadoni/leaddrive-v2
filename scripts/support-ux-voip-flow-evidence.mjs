@@ -192,6 +192,7 @@ async function captureObservedState(page, id) {
 }
 
 async function physicalTap(page, locator, position = "center") {
+  await locator.scrollIntoViewIfNeeded()
   const box = await locator.boundingBox()
   if (!box) throw new Error("touch_target_not_visible")
   if (box.width < 44 || box.height < 44) {
