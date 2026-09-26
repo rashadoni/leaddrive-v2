@@ -183,6 +183,7 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
             ))}
           </div>
 
+          <div className="overflow-x-auto">
           <table data-testid="mtm-agent-period-days" className="w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground">
               <tr>
@@ -228,6 +229,7 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
               })}
             </tbody>
           </table>
+          </div>
         </div>
       ) : null}
     </section>
