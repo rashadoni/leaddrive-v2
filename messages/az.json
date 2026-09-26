@@ -12584,6 +12584,7 @@
     "openOnMap": "Günün marşrutunu xəritədə aç"
   },
   "mtmRoutesPage": {
+    "testAccounts": "Test hesabları",
     "calendarTitle": "Təqvim",
     "weekIdleAgents": "Bu həftə planı olmayan əməkdaş: {count}",
     "weekShowIdle": "Göstər",
@@ -12659,10 +12660,9 @@
     "draft": "Qaralama",
     "viewList": "Bütün marşrutlar",
     "viewMyRoutes": "Mənim marşrutlarım",
-    "viewMatrix": "Həftə planı",
+    "viewMatrix": "Həftəni planlaşdır",
     "matrixTitle": "Bir neçə gün üçün ziyarət planı",
-    "weekPlannerTitle": "Həftə planı günlər üzrə",
-    "weekPlannerSubtitle": "Həftəni nəzərdən keçirin və lazım olan günü gün planlayıcısında açın.",
+    "weekPlannerTitle": "Həftəni günlər üzrə planlaşdır",
     "weekPlannerWeekStarts": "Həftənin başlanğıcı",
     "weekPlannerPreviousWeek": "Əvvəlki həftə",
     "weekPlannerNextWeek": "Növbəti həftə",
@@ -12691,7 +12691,6 @@
     "weekPlannerNoChanges": "Bütün dəyişikliklər saxlanılıb",
     "weekPlannerReset": "Dəyişiklikləri ləğv et",
     "weekPlannerSave": "Həftə planını saxla",
-    "weekPlannerReadOnlyHint": "Həftə planında günlər yalnız nəzərdən keçirilir. Dəyişikliklər gün planlayıcısında edilir.",
     "matrixSubtitle": "Müştərini seçin, sonra onun ziyarət ediləcəyi iş günlərini qeyd edin. Hər gün üçün ayrıca redaktə edilə bilən marşrut qaralaması yaranır.",
     "matrixLoadFailed": "Planlaşdırma matrisini yükləmək mümkün olmadı.",
     "matrixSaveFailed": "Matris dəyişikliklərinin hamısını tətbiq etmək mümkün olmadı.",

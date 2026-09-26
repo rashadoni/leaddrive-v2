@@ -28,7 +28,10 @@ describe("R3 day-by-day weekly overview contract", () => {
     expect(planner).toContain('data-testid="mtm-week-planner-open-day"')
     expect(planner).toContain('data-testid="mtm-matrix-candidate"')
     expect(planner).toContain('aria-label={`${t("openDayPlanner")}: ${dayLabel(day.date, locale)}`}')
-    expect(planner).toContain('role="status"')
+    // The footer that explained «days are only viewed here» was removed in the
+    // routes audit 2026-09-26: the screen does not explain itself; each day's
+    // «open day planner» button says where edits happen.
+    expect(planner).not.toContain('t("weekPlannerReadOnlyHint")')
     expect(planner).not.toContain("async function saveWeek")
     expect(planner).not.toContain('method: "PUT"')
     expect(planner).not.toContain('method: "POST"')
@@ -71,14 +74,12 @@ describe("R3 day-by-day weekly overview contract", () => {
   it("localizes the complete weekly workflow", () => {
     const keys = [
       "weekPlannerTitle",
-      "weekPlannerSubtitle",
       "weekPlannerWeekStarts",
       "weekPlannerDaySummary",
       "weekPlannerDayEmpty",
       "weekPlannerStopsTitle",
       "weekPlannerAddTitle",
       "weekPlannerSearchPlaceholder",
-      "weekPlannerReadOnlyHint",
       "weekPlannerOpenDayHint",
     ]
     for (const locale of ["ru", "az", "en"]) {
