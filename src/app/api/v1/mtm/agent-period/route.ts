@@ -69,7 +69,15 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     }),
     prisma.mtmVisit.findMany({
       where: { organizationId: auth.orgId, agentId, deletedAt: null, checkInAt: { gte: rangeStart, lt: rangeEnd } },
-      select: { checkInAt: true, status: true },
+      orderBy: { checkInAt: "asc" },
+      select: {
+        id: true,
+        checkInAt: true,
+        checkOutAt: true,
+        status: true,
+        customer: { select: { name: true } },
+        contact: { select: { displayName: true } },
+      },
     }),
     prisma.mtmRoute.findMany({
       where: {

@@ -67,6 +67,7 @@ describe("one agent over a period", () => {
     // 09:20 → last fix 13:00 Baku, not «now» days later.
     expect(tuesday.fieldSeconds).toBe((3 * 60 + 40) * 60)
     expect(tuesday.visits).toBe(1) // the cancelled one does not count
+    expect(period.days[0].visitList.map((visit) => visit.checkInAt)).toEqual(["2026-09-21T05:45:00.000Z", "2026-09-21T07:00:00.000Z"])
     // Fixes an hour apart are not driving: nobody knows the road in between.
     expect(tuesday.distanceMeters).toBe(0)
   })
@@ -91,10 +92,13 @@ describe("ready periods", () => {
 })
 
 describe("the agent period screen", () => {
-  it("reads the new endpoint, unfolds a day from the GPS history and links to the map", () => {
+  it("reads the new endpoint, shows every day open with its visits, and links to the map", () => {
+    // Owner 2026-09-26: «expanded, more informative — whom he met on which
+    // date and how long».
     const view = readFileSync("src/components/mtm/agent-period-view.tsx", "utf8")
     expect(view).toContain("/api/v1/mtm/agent-period?")
-    expect(view).toContain("/api/v1/mtm/location-history?")
+    expect(view).toContain("day.visitList.map((visit) =>")
+    expect(view).toContain('<span className="block truncate font-medium text-foreground">{visit.customerName}</span>')
     expect(view).toContain('data-testid="mtm-agent-period-cards"')
     expect(view).toContain('data-testid="mtm-agent-period-days"')
     expect(view).toContain("/mtm/map?mode=history&agentId=")

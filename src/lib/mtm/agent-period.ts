@@ -27,6 +27,14 @@ export type AgentPeriodDay = {
   workday: { startedAt: string; completedAt: string | null; carriedOver: boolean } | null
   fieldSeconds: number
   visits: number
+  /**
+   * Owner 2026-09-26: «no information whom he met on which date and how long
+   * he spent — too few details». Each visit of the day, in time order.
+   */
+  visitList: AgentPeriodVisit[]
+  /** First and last GPS fix of the day, when the phone reported at all. */
+  firstPointAt: string | null
+  lastPointAt: string | null
   planned: number
   visitedPoints: number
   distanceMeters: number
@@ -47,8 +55,25 @@ export type AgentPeriod = {
   }
 }
 
+export type AgentPeriodVisit = {
+  id: string
+  customerName: string
+  contactName: string | null
+  checkInAt: string
+  checkOutAt: string | null
+  durationSeconds: number | null
+  status: string
+}
+
 type Workday = { workDate: Date; startedAt: Date; completedAt: Date | null; totalPausedSeconds: number }
-type Visit = { checkInAt: Date; status: string }
+type Visit = {
+  id?: string
+  checkInAt: Date
+  checkOutAt?: Date | null
+  status: string
+  customer?: { name: string } | null
+  contact?: { displayName: string | null } | null
+}
 type Route = { date: Date; status: string; totalPoints: number; visitedPoints: number }
 
 export function periodDays(from: string, to: string): string[] {
@@ -126,7 +151,19 @@ export function buildAgentPeriod(input: {
     const routes = input.routes.filter((route) => route.date.toISOString().slice(0, 10) === date && route.status !== "DRAFT" && route.status !== "CANCELLED")
     const planned = routes.reduce((sum, route) => sum + route.totalPoints, 0)
     const visitedPoints = routes.reduce((sum, route) => sum + route.visitedPoints, 0)
-    const visits = input.visits.filter((visit) => visit.status !== "CANCELLED" && keyOf(visit.checkInAt) === date).length
+    const dayVisits = input.visits
+      .filter((visit) => visit.status !== "CANCELLED" && keyOf(visit.checkInAt) === date)
+      .sort((a, b) => a.checkInAt.getTime() - b.checkInAt.getTime())
+    const visits = dayVisits.length
+    const visitList: AgentPeriodVisit[] = dayVisits.map((visit) => ({
+      id: visit.id ?? "",
+      customerName: visit.customer?.name ?? "—",
+      contactName: visit.contact?.displayName ?? null,
+      checkInAt: visit.checkInAt.toISOString(),
+      checkOutAt: visit.checkOutAt?.toISOString() ?? null,
+      durationSeconds: visit.checkOutAt ? Math.max(0, Math.round((visit.checkOutAt.getTime() - visit.checkInAt.getTime()) / 1_000)) : null,
+      status: visit.status,
+    }))
     const distanceMeters = dayPoints.length > 1
       ? drivingDistanceMeters(prepareHistoryPoints([...dayPoints], input.maxAccuracyMeters).points)
       : 0
@@ -166,6 +203,9 @@ export function buildAgentPeriod(input: {
       workday: workday ? { startedAt: workday.startedAt.toISOString(), completedAt: workday.completedAt?.toISOString() ?? null, carriedOver: Boolean(carried) } : null,
       fieldSeconds,
       visits,
+      visitList,
+      firstPointAt: dayPoints.length ? new Date(Math.min(...dayPoints.map((point) => point.recordedAt.getTime()))).toISOString() : null,
+      lastPointAt: dayPoints.length ? new Date(Math.max(...dayPoints.map((point) => point.recordedAt.getTime()))).toISOString() : null,
       planned,
       visitedPoints,
       distanceMeters,
