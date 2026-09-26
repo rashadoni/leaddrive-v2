@@ -12,6 +12,7 @@ import {
   workforceDeviceAttendanceChallenge,
 } from "@/lib/workforce/attendance-security"
 import {
+  preflightWorkforceAttendancePlayIntegrity,
   prepareWorkforceAttendanceVerification,
   recordWorkforceAttendanceVerification,
 } from "@/lib/workforce/attendance-trust"
@@ -102,6 +103,29 @@ describe("Workforce attendance trust preparation", () => {
     await expect(prepare()).resolves.toBeNull()
     expect(prisma.workforceAttendanceQrStation.findFirst).not.toHaveBeenCalled()
     expect(prisma.workforceAttendanceVerification.create).not.toHaveBeenCalled()
+  })
+
+  it("does not spend a Google decode outside an exact Play Integrity policy action", async () => {
+    vi.mocked(prisma.workforcePolicy.findMany).mockResolvedValue([
+      policy({ expectedWorkSeconds: 28_800 }),
+    ] as never)
+    const decode = vi.fn(async () => null)
+
+    await expect(preflightWorkforceAttendancePlayIntegrity(prisma as never, {
+      organizationId: ORGANIZATION_ID,
+      agentId: AGENT_ID,
+      event: { ...EVENT, workDateKey: "2026-08-29" },
+      evidence: {
+        device: { enrollmentId: "enrollment_1", signature: "unused" },
+        playIntegrityToken: "opaque-standard-api-token",
+      },
+      capabilities: { qrEnabled: true, deviceTrustEnabled: true },
+      principal: "mobile",
+      now: NOW,
+      playIntegrityDecode: decode,
+    })).resolves.toBeNull()
+    expect(decode).not.toHaveBeenCalled()
+    expect(prisma.workforceAttendanceDeviceEnrollment.findFirst).not.toHaveBeenCalled()
   })
 
   it("validates a tenant-bound QR before appending its nonce fingerprint to the canonical event", async () => {
@@ -264,33 +288,50 @@ describe("Workforce attendance trust preparation", () => {
       schemaVersion: EVENT.schemaVersion,
     })
 
+    const evidence = {
+      device: { enrollmentId: "enrollment_1", signature },
+      playIntegrityToken: "opaque-standard-api-token",
+    }
+    const decode = vi.fn(async () => ({
+      requestDetails: {
+        requestHash: expectedRequestHash,
+        requestPackageName: "com.leaddrive.workforce",
+        timestampMillis: String(NOW.getTime()),
+      },
+      appIntegrity: {
+        appRecognitionVerdict: "PLAY_RECOGNIZED" as const,
+        packageName: "com.leaddrive.workforce",
+        certificateSha256Digest: ["a".repeat(43)],
+        versionCode: "12",
+      },
+      deviceIntegrity: { deviceRecognitionVerdict: ["MEETS_DEVICE_INTEGRITY"] },
+      accountDetails: { appLicensingVerdict: "LICENSED" as const },
+    }))
+    const playIntegrityPreflight = await preflightWorkforceAttendancePlayIntegrity(prisma as never, {
+      organizationId: ORGANIZATION_ID,
+      agentId: AGENT_ID,
+      event: { ...EVENT, workDateKey: "2026-08-29" },
+      evidence,
+      capabilities: { qrEnabled: true, deviceTrustEnabled: true },
+      principal: "mobile",
+      now: NOW,
+      playIntegrityDecode: decode,
+    })
+    expect(playIntegrityPreflight).toMatchObject({
+      status: "DECODED",
+      tokenFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    })
+
     const prepared = await prepareWorkforceAttendanceVerification(prisma as never, {
       organizationId: ORGANIZATION_ID,
       agentId: AGENT_ID,
       workday: WORKDAY,
       event: EVENT,
-      evidence: {
-        device: { enrollmentId: "enrollment_1", signature },
-        playIntegrityToken: "opaque-standard-api-token",
-      },
+      evidence,
       capabilities: { qrEnabled: true, deviceTrustEnabled: true },
       principal: "mobile",
       now: NOW,
-      playIntegrityDecode: async () => ({
-        requestDetails: {
-          requestHash: expectedRequestHash,
-          requestPackageName: "com.leaddrive.workforce",
-          timestampMillis: String(NOW.getTime()),
-        },
-        appIntegrity: {
-          appRecognitionVerdict: "PLAY_RECOGNIZED",
-          packageName: "com.leaddrive.workforce",
-          certificateSha256Digest: ["a".repeat(43)],
-          versionCode: "12",
-        },
-        deviceIntegrity: { deviceRecognitionVerdict: ["MEETS_DEVICE_INTEGRITY"] },
-        accountDetails: { appLicensingVerdict: "LICENSED" },
-      }),
+      playIntegrityPreflight: playIntegrityPreflight ?? undefined,
     })
 
     expect(prepared?.facts).toEqual([
@@ -302,6 +343,18 @@ describe("Workforce attendance trust preparation", () => {
       }),
     ])
     expect(JSON.stringify(prepared)).not.toContain("opaque-standard-api-token")
+    await expect(prepareWorkforceAttendanceVerification(prisma as never, {
+      organizationId: ORGANIZATION_ID,
+      agentId: AGENT_ID,
+      workday: WORKDAY,
+      event: EVENT,
+      evidence,
+      capabilities: { qrEnabled: true, deviceTrustEnabled: true },
+      principal: "mobile",
+      now: new Date(NOW.getTime() + 121_000),
+      playIntegrityPreflight: playIntegrityPreflight ?? undefined,
+    })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REQUIRED" })
+    expect(decode).toHaveBeenCalledTimes(1)
   })
 
   it("does not let an active device enrolled to another employee prove this employee's attendance", async () => {

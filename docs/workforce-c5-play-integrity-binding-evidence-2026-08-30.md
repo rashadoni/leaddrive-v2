@@ -44,21 +44,16 @@ of these server-only configuration values are valid:
 - minimum version and device-integrity tier; and
 - bounded verdict age and licensing policy.
 
-The raw Standard API token, Google payload and service credential never leave
-that boundary. It returns only the fixed accepted/review/rejected assessment;
-missing or invalid configuration, transport failure and malformed payload fail
-closed. A policy must explicitly list `attendance.playIntegrity.requiredActions`
-and must require the same action's verified device-trust factor. Without that
-policy the decoder is not invoked and legacy attendance behaviour is unchanged.
+The raw token, provider payload and credential never leave that boundary. Only
+an opaque in-memory assessor reaches the write path; it is not logged or stored.
+Decode requires an explicit Play-Integrity action plus device-trust policy;
+missing configuration, transport failure and malformed payload fail closed.
 
-For a policy-enabled mobile action, the existing transactional attendance path
-requires the current device signature first, then verifies the exact request
-hash with Google. Only the tenant-bound SHA-256 fingerprint of the opaque
-token is written as a `PLAY_INTEGRITY` row in the existing append-only
-verification ledger. The v5 workday transport binds a separate non-reversible
-fingerprint into idempotency; it never stores or returns the token. The new
-additive schema migrations first create the PostgreSQL enum value and only in
-a separate transaction add its constraint/trigger, preserving v1-v4 events.
+A read-only policy/device preflight checks the signature before Google decode,
+so provider I/O holds no Prisma connection or lock. The transaction rechecks
+policy, enrollment, attestation/signature, token fingerprint, exact-action hash
+and receipt freshness. Only the tenant-bound fingerprint reaches the append-only
+ledger and v5 idempotency; schema changes remain additive for v1-v4 facts.
 
 The Android client ships a default-zero public Cloud-project-number field, so
 an unconfigured APK cannot request a token. After an authenticated manifest

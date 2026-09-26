@@ -33,8 +33,9 @@ export type MtmWorkdayConflictRecovery = {
 
 /**
  * Transient H5 evidence. It is intentionally never copied into the immutable
- * workday event: QR and device material are validated inside the transaction
- * and only their dedicated audit-safe verification facts are persisted.
+ * workday event: QR/device material and an externally decoded Play Integrity
+ * receipt are validated inside the transaction and only their dedicated
+ * audit-safe verification facts are persisted.
  */
 export type MtmWorkdayAttendanceEvidence = {
   qrToken?: string
@@ -48,7 +49,7 @@ export type MtmWorkdayAttendanceEvidence = {
     provider: "FUSED" | "GPS" | "NETWORK" | "PASSIVE" | "UNKNOWN"
     isMock: boolean
   }
-  /** Encrypted Standard API token; validate in-transaction and never persist it. */
+  /** Encrypted Standard API token; decode before and assess inside the write transaction; never persist it. */
   playIntegrityToken?: string
 }
 

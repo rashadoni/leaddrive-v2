@@ -33,3 +33,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - `git diff --check` is available locally. The two focused Vitest files are `NOT RUN` locally because this worktree intentionally has no installed dependencies; an attempted cached-dependency execution could not resolve worktree ESM dependencies, and its generated cache was moved out of the worktree. Exact-SHA GitHub `static-checks` remains the authoritative rerun.
 - Precise stopping point: checkpoint and push the two-test integration repair plus this journal entry, then require a fresh exact-SHA machine gate and independent review.
 - Next action: push without staging the preserved delivery-control patch, monitor replacement CI, and have the independent reviewer cover both the original PR range and the new integration delta.
+
+## 2026-09-26 — independent-review security repair prepared
+
+- Independent review returned RED on exact head `d3a2b5e35add34855bba0cd674ac5ca144c4475c`: unknown attestation enums could pass as hardware, Google decode ran under Prisma/workday locks, and README denied the implemented next-segment reminder.
+- Attestation now uses explicit hardware-level allowlists plus runtime claim-shape checks. Play Integrity now decodes after read-only policy/device preflight but before either write transaction; the transaction rechecks policy, enrollment, attestation/signature, token fingerprint, exact-action hash and freshness before raw-free persistence. Decoder failure is data so a concurrent exact replay can still return before verification.
+- README/C5 evidence match the implementation. No tenant policy, credential, capability or production state changed. The unrelated delivery-control patch remains unstaged.
+- Local `git diff --check` passes. Focused Vitest/typecheck/full build/browser/Android/load are `NOT RUN` locally because the worktree has no dependencies and heavy gates belong to CI.
+- Precise stopping point: checkpoint only the reviewer-finding repair, push it, publish a new exact-SHA pending `agent-review`, then wait for machine CI and independent rereview of the complete delta.
+- Next action: fix any CI/rereview finding without weakening gates; only a green exact head may merge and enter the documented `main` → `deploy.yml` release path.

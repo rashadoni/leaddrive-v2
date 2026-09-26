@@ -105,6 +105,18 @@ describe("Workforce Android key-attestation gate", () => {
     }))).toMatchObject({ code: "WORKFORCE_ANDROID_ATTESTATION_CHAIN_INVALID" })
   })
 
+  it("fails closed for unknown, missing or malformed runtime attestation claims", () => {
+    for (const malformedClaims of [
+      { ...claims, attestationSecurityLevel: "UNKNOWN" },
+      { ...claims, keySecurityLevel: undefined },
+      { ...claims, applicationSigningCertificateSha256: "a".repeat(64) },
+    ]) {
+      expect(verifyWorkforceAndroidKeyAttestation(input({
+        inspector: { inspect: () => malformedClaims as never },
+      }))).toMatchObject({ code: "WORKFORCE_ANDROID_ATTESTATION_CLAIMS_INVALID" })
+    }
+  })
+
   it("accepts only the official status-list shape and preserves serial-number revocations", () => {
     expect(
       parseWorkforceGoogleAttestationStatusList({

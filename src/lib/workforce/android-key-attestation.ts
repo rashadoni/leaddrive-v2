@@ -260,35 +260,49 @@ function validRevocation(input: WorkforceAndroidAttestationRevocation): boolean 
     && input.revokedCertificateSha256.every(validFingerprint)
 }
 
-function validClaims(input: {
-  claims: WorkforceAndroidAttestationClaims
-  policy: WorkforceAndroidAttestationPolicy
-  chainLength: number
-}): boolean {
-  const expectedChallenge = strictBase64(input.policy.expectedChallengeBase64, 512)
-  const attestedChallenge = strictBase64(input.claims.challengeBase64, 512)
-  const hardwareBacked = input.claims.attestationSecurityLevel !== "SOFTWARE"
-    && input.claims.keySecurityLevel !== "SOFTWARE"
+function hardwareSecurityLevel(value: unknown): value is "TRUSTED_ENVIRONMENT" | "STRONGBOX" {
+  return value === "TRUSTED_ENVIRONMENT" || value === "STRONGBOX"
+}
+
+function stringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string")
+}
+
+function validClaims(
+  claims: unknown,
+  policy: WorkforceAndroidAttestationPolicy,
+  chainLength: number,
+): claims is WorkforceAndroidAttestationClaims {
+  const value = record(claims)
+  if (!value
+    || !hardwareSecurityLevel(value.attestationSecurityLevel)
+    || !hardwareSecurityLevel(value.keySecurityLevel)
+    || !stringArray(value.applicationPackageNames)
+    || !stringArray(value.applicationSigningCertificateSha256)
+    || !stringArray(value.keyPurposes)
+    || !stringArray(value.keyDigests)) return false
+
+  const expectedChallenge = strictBase64(policy.expectedChallengeBase64, 512)
+  const attestedChallenge = strictBase64(value.challengeBase64 as string, 512)
   return expectedChallenge != null
     && attestedChallenge != null
     && equalBytes(expectedChallenge, attestedChallenge)
-    && Number.isInteger(input.claims.attestationCertificateIndex)
-    && input.claims.attestationCertificateIndex >= 0
-    && input.claims.attestationCertificateIndex < input.chainLength
-    && hardwareBacked
-    && input.claims.verifiedBootState === "VERIFIED"
-    && input.claims.deviceLocked
-    && equalStringSets(input.claims.applicationPackageNames, input.policy.application.packageNames)
+    && Number.isInteger(value.attestationCertificateIndex)
+    && (value.attestationCertificateIndex as number) >= 0
+    && (value.attestationCertificateIndex as number) < chainLength
+    && value.verifiedBootState === "VERIFIED"
+    && value.deviceLocked === true
+    && equalStringSets(value.applicationPackageNames, policy.application.packageNames)
     && equalStringSets(
-      input.claims.applicationSigningCertificateSha256.map((value) => value.toLowerCase()),
-      input.policy.application.signingCertificateSha256.map((value) => value.toLowerCase()),
+      value.applicationSigningCertificateSha256.map((fingerprint) => fingerprint.toLowerCase()),
+      policy.application.signingCertificateSha256.map((fingerprint) => fingerprint.toLowerCase()),
     )
-    && input.claims.keyPurposes.includes("SIGN")
-    && input.claims.keyAlgorithm === "EC_P256"
-    && input.claims.keyDigests.includes("SHA256")
-    && input.claims.perUseStrongBiometric
-    && input.claims.uniqueIdEmpty
-    && !input.claims.containsDeviceIdentifiers
+    && value.keyPurposes.includes("SIGN")
+    && value.keyAlgorithm === "EC_P256"
+    && value.keyDigests.includes("SHA256")
+    && value.perUseStrongBiometric === true
+    && value.uniqueIdEmpty === true
+    && value.containsDeviceIdentifiers === false
 }
 
 /**
@@ -337,25 +351,21 @@ export function verifyWorkforceAndroidKeyAttestation(input: {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_REVOKED_OR_STALE" }
   }
 
-  let claims: WorkforceAndroidAttestationClaims
+  let claims: unknown
   try {
     claims = input.inspector.inspect(parsed.der)
   } catch {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_EXTENSION_UNAVAILABLE" }
   }
   if (
-    !validClaims({
-      claims,
-      policy: input.policy,
-      chainLength: parsed.chain.length,
-    })
+    !validClaims(claims, input.policy, parsed.chain.length)
   ) {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_CLAIMS_INVALID" }
   }
-  // `validClaims` rejects software-backed attestations. Repeat the discriminant
-  // check here so the accepted-result type remains aligned with that security
-  // boundary even if the validation implementation changes later.
-  if (claims.attestationSecurityLevel === "SOFTWARE") {
+  // Repeat the positive allowlist at the accepted-result boundary. Unknown ASN.1
+  // enum values must never become hardware-backed merely because they are not
+  // the known SOFTWARE value.
+  if (!hardwareSecurityLevel(claims.attestationSecurityLevel)) {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_CLAIMS_INVALID" }
   }
   return {

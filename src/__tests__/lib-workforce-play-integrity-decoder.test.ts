@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   assessConfiguredWorkforcePlayIntegrity,
+  decodeConfiguredWorkforcePlayIntegrityToken,
   WorkforcePlayIntegrityDecoderError,
 } from "@/lib/workforce/play-integrity-decoder"
 import { workforcePlayIntegrityRequestHash } from "@/lib/workforce/play-integrity"
@@ -60,6 +61,28 @@ describe("configured Workforce Play Integrity server decoder", () => {
       decode,
       now: NOW,
     })).resolves.toEqual({ status: "ACCEPTED", code: "WORKFORCE_PLAY_INTEGRITY_ACCEPTED" })
+  })
+
+  it("returns only an opaque receipt and reassesses freshness at the caller's write time", async () => {
+    const receipt = await decodeConfiguredWorkforcePlayIntegrityToken({
+      token: TOKEN,
+      env,
+      decode: async () => acceptedPayload,
+    })
+
+    expect(Object.keys(receipt)).toEqual(["assess"])
+    expect(JSON.stringify(receipt)).not.toContain(TOKEN)
+    expect(receipt.assess({ expectedRequestHash: REQUEST_HASH, now: NOW })).toEqual({
+      status: "ACCEPTED",
+      code: "WORKFORCE_PLAY_INTEGRITY_ACCEPTED",
+    })
+    expect(receipt.assess({
+      expectedRequestHash: REQUEST_HASH,
+      now: new Date(NOW.getTime() + 121_000),
+    })).toMatchObject({
+      status: "REJECTED",
+      code: "WORKFORCE_PLAY_INTEGRITY_VERDICT_STALE",
+    })
   })
 
   it("fails closed without a complete enabled decoder configuration", async () => {

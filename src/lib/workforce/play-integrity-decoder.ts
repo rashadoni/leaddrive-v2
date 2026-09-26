@@ -51,6 +51,34 @@ export type WorkforcePlayIntegrityDecodedToken = (input: {
   credentials: Record<string, unknown>
 }) => Promise<GoogleDecodedPayload>
 
+/**
+ * Ephemeral, normalized output from Google's server decoder. It contains no
+ * raw JWE, service credential or unvalidated provider payload and must never be
+ * persisted. The caller assesses it against the exact action at write time.
+ */
+export type WorkforceConfiguredPlayIntegrityReceipt = {
+  assess(input: {
+    expectedRequestHash: string
+    now?: Date
+  }): WorkforcePlayIntegrityAssessment
+}
+
+function normalizedReceipt(
+  policy: WorkforcePlayIntegrityPolicy,
+  verdict: WorkforcePlayIntegrityVerdict,
+): WorkforceConfiguredPlayIntegrityReceipt {
+  return Object.freeze({
+    assess(input: { expectedRequestHash: string; now?: Date }) {
+      return assessWorkforcePlayIntegrity({
+        expectedRequestHash: input.expectedRequestHash,
+        policy,
+        verdict,
+        now: input.now,
+      })
+    },
+  })
+}
+
 function optionalText(value: unknown, pattern: RegExp): string | null {
   if (value === null || value === undefined) return null
   if (typeof value === "string" && pattern.test(value)) return value
@@ -161,18 +189,16 @@ async function decodeWithGoogle(input: {
 }
 
 /**
- * Decode a Standard API token only on the server and immediately reduce it to
- * a fixed integrity assessment. No raw token, decoded payload or service
- * credential is returned to a route, durable store, logger or caller.
+ * Decode a Standard API token before opening a write transaction. Only the
+ * normalized in-memory receipt crosses this boundary; raw token/provider data
+ * and credentials are never returned, logged or stored.
  */
-export async function assessConfiguredWorkforcePlayIntegrity(input: {
+export async function decodeConfiguredWorkforcePlayIntegrityToken(input: {
   token: string
-  expectedRequestHash: string
-  now?: Date
   env?: PlayIntegrityEnvironment
   decode?: WorkforcePlayIntegrityDecodedToken
-}): Promise<WorkforcePlayIntegrityAssessment> {
-  if (typeof input.token !== "string" || !input.token.trim() || input.token.length > TOKEN_MAX_LENGTH || !SHA256_BASE64URL.test(input.expectedRequestHash)) {
+}): Promise<WorkforceConfiguredPlayIntegrityReceipt> {
+  if (typeof input.token !== "string" || !input.token.trim() || input.token.length > TOKEN_MAX_LENGTH) {
     throw new WorkforcePlayIntegrityDecoderError("WORKFORCE_PLAY_INTEGRITY_DECODE_INVALID")
   }
   const configuration = configuredPolicy(input.env ?? process.env)
@@ -188,10 +214,31 @@ export async function assessConfiguredWorkforcePlayIntegrity(input: {
     if (error instanceof WorkforcePlayIntegrityDecoderError) throw error
     throw new WorkforcePlayIntegrityDecoderError("WORKFORCE_PLAY_INTEGRITY_DECODE_UNAVAILABLE")
   }
-  return assessWorkforcePlayIntegrity({
+  return normalizedReceipt(configuration.policy, decodedVerdict(payload))
+}
+
+/**
+ * Convenience wrapper for non-transactional callers. Attendance writes use
+ * `decodeConfiguredWorkforcePlayIntegrityToken` first and perform this pure
+ * exact-action/freshness assessment only after their write transaction opens.
+ */
+export async function assessConfiguredWorkforcePlayIntegrity(input: {
+  token: string
+  expectedRequestHash: string
+  now?: Date
+  env?: PlayIntegrityEnvironment
+  decode?: WorkforcePlayIntegrityDecodedToken
+}): Promise<WorkforcePlayIntegrityAssessment> {
+  if (!SHA256_BASE64URL.test(input.expectedRequestHash)) {
+    throw new WorkforcePlayIntegrityDecoderError("WORKFORCE_PLAY_INTEGRITY_DECODE_INVALID")
+  }
+  const receipt = await decodeConfiguredWorkforcePlayIntegrityToken({
+    token: input.token,
+    ...(input.env ? { env: input.env } : {}),
+    ...(input.decode ? { decode: input.decode } : {}),
+  })
+  return receipt.assess({
     expectedRequestHash: input.expectedRequestHash,
-    policy: configuration.policy,
-    verdict: decodedVerdict(payload),
     now: input.now,
   })
 }
