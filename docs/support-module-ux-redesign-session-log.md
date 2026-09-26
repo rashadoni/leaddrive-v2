@@ -244,3 +244,28 @@ Next: create and push the stable corrective checkpoint, confirm no equivalent
 Support UX evidence job is active, and dispatch the corrected exact-SHA high
 static matrix. The already-green baseline, typical, and empty matrices remain
 accepted and must not be repeated.
+
+## 2026-09-26 — Current `origin/main` integrated before evidence
+
+- The corrective evidence contract was checkpointed as `696ee48b8`. A fresh
+  fetch then showed that the long-running branch was 645 commits behind current
+  `origin/main` (`9be24152d`), so dispatching from the stale base would not have
+  represented the current product or a mergeable pull request.
+- Current `origin/main` was merged as `065faec5c`. The only content conflict was
+  the VoIP page: `main` still contained the superseded page-local metrics,
+  raw-keystroke search, color-heavy cards, and unconditional admin controls.
+  The checkpointed redesign was retained exactly for that file; all other
+  current-main changes were integrated without conflict.
+- Post-merge self-audit passed the exact section-scoped suite: 12 Vitest files,
+  155/155 assertions; the full changed/related ESLint target; the five-file
+  VoIP anti-pattern scan with zero findings; both evidence-runner syntax checks;
+  YAML parsing of the workflow; and branch-vs-main `git diff --check`.
+- Translation parity was re-run because `main` changed all locale catalogs. It
+  passed with 23,602 EN leaf keys and zero missing/extra RU or AZ keys. Full
+  local build remains intentionally NOT RUN under the Contabo workload
+  contract; the isolated GitHub Actions build is mandatory for the next exact
+  SHA.
+
+Next: checkpoint this journal update, push the integrated feature branch,
+confirm no equivalent Support UX evidence job is active, and dispatch the one
+corrected high-profile static VoIP matrix on the resulting exact SHA.
