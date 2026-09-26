@@ -60,3 +60,22 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Work continues in the same worktree on new branch `codex/workforce-agent-review-gate`, based exactly on the deployed merge SHA. Live protection currently preserves five GitHub Actions checks with `app_id=15368`, `enforce_admins=true`, a non-null zero-approval PR-only rule and force-push/deletion disabled, but lacks required `agent-review`.
 - Precise stopping point: the PR #198 release is complete; the preserved delivery-control patch is still uncommitted and must not be applied in its unsafe legacy form.
 - Next action: create a separate reviewed delivery-control PR that adds exact-SHA `agent-review` without weakening admin enforcement, PR-only protection or app bindings, then verify the live readback after merge.
+
+## 2026-09-26 — exact-SHA review gate prepared without changing live protection
+
+- Read-only REST inspection established the exact live baseline: `strict=false`; five required GitHub Actions contexts with `app_id=15368`; `enforce_admins=true`; a non-null PR-only rule with zero required approvals; force pushes and deletion disabled. `agent-review` alone was absent, so the process gate remained `14/15` despite PR #198's independently reviewed release.
+- The isolated delivery-control patch now uses the `checks` API instead of legacy `contexts`, preserves all five Actions app bindings, adds `agent-review` with the documented any-app binding, keeps admin/PR/force-push/deletion safeguards, and fails if the post-write REST readback differs from the six-context contract.
+- The new status publisher accepts only a full lowercase 40-character SHA, re-reads one open PR targeting `main`, requires an exact current-head match and refuses an API failure or incomplete response before posting. Behavioral coverage rejects an abbreviated SHA, invalid state, API failure, missing data, stale head, wrong base and closed PR, then proves exact-head `pending` and `success` publication.
+- Targeted local evidence: both shell syntax checks PASS; `node scripts/ci/test-publish-agent-review-status.mjs` PASS; `node scripts/ci/test-event-platform-assets.mjs` PASS (`27` domains, `86` topics, `5` concrete schemas); `git diff --check` PASS. Full build, broad typecheck, browser E2E, Android and load tests are `NOT RUN` because this is a delivery-script/docs slice and heavy checks belong to CI/approved workers.
+- Live branch protection has deliberately not been mutated. Progress remains `81/161`, `14/15`, C5 81% and C9 99%; no product or gate credit is claimed before reviewed merge and exact live readback.
+- Precise stopping point: local fail-closed implementation and targeted evidence are ready; independent read-only pre-commit review of the current diff is running.
+- Next action: resolve every real review finding, checkpoint only task-owned paths, push a sub-400 KB PR and require exact-head independent review plus all machine checks before normal merge; apply and verify the configurator only from reviewed `main`.
+
+## 2026-09-26 — delivery-control pre-commit review GREEN
+
+- Independent review found one real P2: `docs/DEPLOYMENT.md`, `docs/DELIVERY-ARCHITECTURE.md` and the delivery asset assertion still justified the removed production environment reviewer with a stale private-repository/Enterprise limitation even though `rashadoni/leaddrive-v2` is public.
+- The three locations now state the actual boundary: this solo-owner repository has no separately governed human identity that can approve a deployment while self-review is prevented. Independent review is enforced before merge by the exact-SHA `agent-review`; the production environment remains restricted to `main`.
+- Fresh rereview of the complete shared working tree returned GREEN with zero remaining findings. It confirmed the exact six contexts and app bindings, admin/PR/force-push/deletion invariants, positive and negative configurator mock-readback, fail-closed publisher cases and a complete diff size of `55,180` bytes.
+- GitHub's supported-version documentation confirms the pinned REST version `2022-11-28` remains supported through 2028-03-10, so no opportunistic API migration is included in this safety slice.
+- Precise stopping point: local implementation, targeted evidence and independent pre-commit review are green; live protection remains unchanged.
+- Next action: create the checkpoint commit, push the isolated branch, open a draft PR, publish `agent-review=pending` for its exact head and require fresh exact-head review plus all machine checks before normal merge.

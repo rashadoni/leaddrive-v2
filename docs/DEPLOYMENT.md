@@ -35,17 +35,19 @@ before production access if it is missing.
 
 These workflows also used to demand a `required_reviewers` rule with **Prevent
 self-review**. That requirement was removed on 2026-09-06. GitHub offers
-required reviewers on environments only for public repositories on the Free,
-Pro and Team plans; this repository is private on Pro, so the setting does not
-exist here and the check could never pass. It did not protect production, it
+environment reviewers, but this solo-owner repository has no separately
+governed human reviewer identity that can satisfy an independent approval with
+self-review prevented. The old rule therefore did not protect production; it
 made every path to production impassable — the merged work of an entire day sat
 undeployed behind it.
 
 What replaces it is `docs/DELIVERY-ARCHITECTURE.md` layer 2: every pull request
-is read by an agent that did not write it, and `agent-review` is the one
-required check on `main`. Re-adding the reviewer requirement without moving the
-repository to an Enterprise organisation will stop all deployments again; a CI
-assertion in `scripts/ci/test-event-platform-assets.mjs` guards against that.
+is read by an agent that did not write it. `agent-review` is the sixth required
+context on `main`, alongside `pr-scope`, `static-checks`, `typecheck`,
+`runner-policy` and `scan`; it never replaces those machine gates. Re-adding an
+environment-reviewer requirement before provisioning a genuinely independent
+human reviewer would stop all deployments again. CI assertions in
+`scripts/ci/test-event-platform-assets.mjs` guard both boundaries.
 
 Each production artifact is retained by GitHub Actions for 30 days, contains no
 runtime secret, and is named `leaddrive-prod-<SHA>`. A normal application

@@ -13,14 +13,13 @@
   `.github/workflows/deploy.yml`; never copy or build a feature worktree on the
   production host.
 
-## GitHub return — prepared 2026-09-09
+## GitHub production route — verified 2026-09-26
 
-The owner authorized returning source control and normal Linux CI to a new,
-public GitHub repository. The cutover is not active until the new repository is
-created, its public-history secret scan is clean, required checks pass, and one
-production release is verified. Until that proof, Azure and the existing
-Contabo CI agent are a temporary bridge; do not run the same commit in two CI
-providers merely to make it finish sooner.
+The GitHub cutover is complete. `rashadoni/leaddrive-v2` is the only active
+source and CI repository, and a reviewed `main` SHA has completed the
+SHA-bound production workflow with an exact public build-info match. Azure and
+legacy Contabo CI are not fallback release paths; the old Azure history is an
+archive only.
 
 GitHub-hosted macOS runners are prohibited. Native macOS/iOS jobs, if a project
 actually needs them, must use the owner's physical Mac with
@@ -28,12 +27,10 @@ actually needs them, must use the owner's physical Mac with
 builds use GitHub-hosted Linux. The executable policy is
 `scripts/ci/check-github-runner-policy.mjs`; do not weaken or bypass it.
 
-After the new GitHub path passes a PR cycle and a production release, remove
-only the Contabo/Azure CI agents and queues. Production sites, databases,
-backups, DNS and persistent services are outside that shutdown. Keep the full
-legacy history in the private Azure archive; the public GitHub repository starts
-from a scanned clean snapshot. Validate `/api/v1/public/build-info` before
-reporting a release.
+Production sites, databases, backups, DNS and persistent services remain on
+their registered targets. Never route a change through the archived Azure
+pipelines or an old CI agent. Validate `/api/v1/public/build-info` before
+reporting every release.
 
 Default mode is **Codex-only**. There is no cross-agent baton file and no
 cross-agent handoff protocol. Codex owns normal product work, checkpoint
@@ -43,12 +40,11 @@ commits, verification, and user-facing status.
 file on anything about how a change reaches production.** Four layers, in short:
 
 1. `main` accepts pull requests only. No direct push.
-2. Every pull request passes the checks GitHub itself runs, all required on
-   `main`: `pr-scope`, `static-checks`, `typecheck`, `runner-policy`, `scan`.
-   The `agent-review` check was retired on 2026-09-11 by the owner: without an
-   `ANTHROPIC_API_KEY` it reported green on every PR by design, and it was the
-   only required context, so tests and typecheck were not required at all. Do
-   not bring it back or add a paid AI reviewer to CI in its place.
+2. Every pull request passes six required contexts on `main`: the five GitHub
+   Actions checks `pr-scope`, `static-checks`, `typecheck`, `runner-policy`,
+   `scan`, plus `agent-review`, published for the exact PR head SHA by an agent
+   that did not author the change. Self-review does not count. Do not replace
+   this with a workflow that reports green when no reviewer ran.
 3. Production deploys only from `main`, with the atomic swap, health check and
    rollback that already exist.
 4. Before merging anything a user will see, show the owner a short plain-language
@@ -116,9 +112,9 @@ Report the outcome, not each step. "Merged #1102, deployed, /api/v1/ping ok"
 is the whole update the owner wants.
 
 That authorization now runs through `docs/DELIVERY-ARCHITECTURE.md`: carry the
-change yourself, but merge only once the five required checks are green, and for anything a
-user will see, get the owner's go-ahead on the short list first. Neither step is
-a request for permission to work — they are part of the work.
+change yourself, but merge only once all six required contexts are green, and
+for anything a user will see, get the owner's go-ahead on the short list first.
+Neither step is a request for permission to work — they are part of the work.
 
 What this authorization does NOT cover, because no amount of autonomy makes
 these safe:

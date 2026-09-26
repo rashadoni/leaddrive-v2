@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { readFile, readdir } from "node:fs/promises"
 import path from "node:path"
@@ -388,14 +389,14 @@ for (const requiredSshGuard of [
 ]) {
   assert.ok(productionSshAction.includes(requiredSshGuard), `shared production SSH guard is missing: ${requiredSshGuard}`)
 }
-// The independent-reviewer half of this guard was removed on 2026-09-06: GitHub
-// only offers required_reviewers for private repositories on Enterprise, so the
-// check could never pass on this plan and made every path to production
+// The independent human-reviewer half of this guard was removed on 2026-09-06:
+// this solo-owner repository has no separately governed human identity that can
+// approve with self-review prevented, so the rule made every production path
 // impassable rather than protected. Layer 2 of docs/DELIVERY-ARCHITECTURE.md
-// replaces it — an agent that did not write the change reviews every pull
-// request, and `agent-review` is the required check on main. What is asserted
-// here is the half that does work: production is reachable only from main, and
-// the guard still fails closed when GitHub cannot be inspected at all.
+// supplies independent review before merge: an agent that did not write the
+// change reviews every pull request, and `agent-review` is required on main.
+// What is asserted here is the environment control that can be satisfied:
+// production is reachable only from main, and inspection failures stay closed.
 assert.ok(
   productionEnvironmentGuard.includes('GH_TOKEN: ${{ inputs.github-token }}')
     && productionEnvironmentGuard.includes("deployment_branch_policy")
@@ -410,22 +411,20 @@ assert.ok(
 assert.ok(
   !/select\(\s*\.type\s*==\s*"required_reviewers"/u.test(productionEnvironmentGuard)
     && !/select\(\s*\.type\s*==\s*"required_reviewers"/u.test(githubDeploy),
-  "the reviewer requirement is deliberately gone; re-adding it makes production undeployable on this plan",
+  "the human environment-reviewer rule must stay absent until an independent human identity is provisioned",
 )
 // The first agent review of the architecture pull request made this point: an
 // assertion that only forbids the old gate would let someone delete the new one
 // and leave the repository with neither. So the replacement is asserted to
 // exist, by name, together with the script that makes it a required check.
 //
-// 2026-09-11: the replacement is no longer `agent-review`. The owner dropped it —
-// without an ANTHROPIC_API_KEY it reported green on every PR by design, and it
-// was the ONLY required context, so tests and typecheck were not required at
-// all. What is required now is what GitHub itself runs. The principle above
-// still holds and is asserted below: the gate must exist, must run on every
-// pull request, and must be what main actually requires.
+// `agent-review` is required in addition to the five machine checks. The old
+// workflow is deliberately absent because it could report green without a
+// reviewer; a separate agent publishes the status for the exact reviewed SHA.
 const prChecksWorkflow = await readText(".github/workflows/pr-checks.yml")
 const mainProtectionScript = await readText("scripts/ci/configure-main-protection.sh")
-const requiredContexts = ["pr-scope", "static-checks", "typecheck", "runner-policy", "scan"]
+const agentReviewPublisher = await readText("scripts/ci/publish-agent-review-status.sh")
+const requiredContexts = ["pr-scope", "static-checks", "typecheck", "runner-policy", "scan", "agent-review"]
 // "Runs on every pull request" means no path filter of either sign on the
 // pull_request trigger. The fourth agent review pointed out that checking only
 // `paths:` would let a `paths-ignore:` slip through, and it was right.
@@ -453,9 +452,56 @@ assert.ok(
   "static-checks and typecheck may skip only via pr-scope",
 )
 assert.ok(
-  requiredContexts.every((context) => mainProtectionScript.includes(`"${context}"`))
-    && !mainProtectionScript.includes('"agent-review"'),
-  "main must require the checks GitHub actually runs — pr-scope, static-checks, typecheck, runner-policy, scan — and not the retired agent-review",
+  requiredContexts.every((context) => mainProtectionScript.includes(`"context": "${context}"`)),
+  "main protection must name all five machine checks plus independent agent-review",
+)
+const protectionPayloadMatch = mainProtectionScript.match(/--input - <<'JSON'\n([\s\S]*?)\nJSON/u)
+assert.ok(protectionPayloadMatch, "main protection must send one reviewable JSON payload")
+const protectionPayload = JSON.parse(protectionPayloadMatch[1])
+assert.deepEqual(
+  protectionPayload.required_status_checks,
+  {
+    strict: false,
+    checks: [
+      { context: "pr-scope", app_id: 15368 },
+      { context: "static-checks", app_id: 15368 },
+      { context: "typecheck", app_id: 15368 },
+      { context: "runner-policy", app_id: 15368 },
+      { context: "scan", app_id: 15368 },
+      { context: "agent-review", app_id: -1 },
+    ],
+  },
+  "machine checks must retain the GitHub Actions app binding while agent-review accepts the exact-SHA status publisher",
+)
+assert.equal(protectionPayload.enforce_admins, true, "administrators must not bypass main protection")
+assert.deepEqual(
+  protectionPayload.required_pull_request_reviews,
+  {
+    dismiss_stale_reviews: false,
+    require_code_owner_reviews: false,
+    required_approving_review_count: 0,
+    require_last_push_approval: false,
+  },
+  "main must retain a PR-only rule without inventing an unavailable human approval",
+)
+assert.equal(protectionPayload.allow_force_pushes, false, "main must reject force pushes")
+assert.equal(protectionPayload.allow_deletions, false, "main must reject branch deletion")
+assert.ok(
+  agentReviewPublisher.includes("HEAD_SHA must be a full lowercase 40-character commit SHA")
+    && agentReviewPublisher.includes('BASE_REF}" != "main')
+    && agentReviewPublisher.includes('PR_STATE}" != "open')
+    && agentReviewPublisher.includes("refusing stale review"),
+  "agent-review publisher must fail closed on abbreviated/stale SHA, wrong base, and closed PR",
+)
+const publisherTest = spawnSync(
+  process.execPath,
+  [path.join(repoRoot, "scripts/ci/test-publish-agent-review-status.mjs")],
+  { cwd: repoRoot, encoding: "utf8" },
+)
+assert.equal(
+  publisherTest.status,
+  0,
+  `agent-review publisher behavior failed:\n${publisherTest.stdout}\n${publisherTest.stderr}`,
 )
 assert.ok(
   (githubDeploy.match(/GitHub production environment must allow exactly the main branch/g) ?? []).length === 3
