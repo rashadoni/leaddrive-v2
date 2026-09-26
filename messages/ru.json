@@ -13242,7 +13242,9 @@
       "weekSummaryNoTime": "{visited}/{total}",
       "weekLate": "Опоздание"
     },
-    "allLatest": "Все (последние {shown} из {total})"
+    "allLatest": "Все (последние {shown} из {total})",
+    "loadMoreRoutes": "Показать ещё {count}",
+    "loadMoreRoutesFailed": "Не удалось загрузить следующие маршруты. Попробуйте ещё раз."
   },
   "mtmOperationsPage": {
     "title": "Связь с командой",

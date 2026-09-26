@@ -13238,7 +13238,9 @@
       "weekSummaryNoTime": "{visited}/{total}",
       "weekLate": "Gecikmə"
     },
-    "allLatest": "Hamısı (son {shown} / {total})"
+    "allLatest": "Hamısı (son {shown} / {total})",
+    "loadMoreRoutes": "Daha {count} göstər",
+    "loadMoreRoutesFailed": "Növbəti marşrutları yükləmək alınmadı. Yenidən cəhd edin."
   },
   "mtmOperationsPage": {
     "title": "Komanda ilə əlaqə",

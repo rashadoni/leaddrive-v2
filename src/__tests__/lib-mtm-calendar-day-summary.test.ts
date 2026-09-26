@@ -68,3 +68,23 @@ describe("the team calendar cell and day list", () => {
     expect(calendar).not.toContain('isPastDay ? "bg-card opacity-60"')
   })
 })
+
+describe("routes audit 2026-09-26: all routes", () => {
+  const page = readFileSync("src/app/(dashboard)/mtm/routes/page.tsx", "utf8")
+
+  it("is one row per route — who, when, what came of it — not half a screen of chips and buttons", () => {
+    const list = page.slice(page.indexOf('data-testid="mtm-route-list-item"'), page.indexOf('data-testid="mtm-route-list-load-more"'))
+    expect(list).not.toContain("route.points.map((p: MtmRoutePoint, i: number) =>")
+    expect(list).not.toContain('{t("viewRoute")}')
+    expect(list).toContain("onClick={() => openRouteDetails(route)}")
+    expect(list).toContain("{route.visitedPoints}/{route.totalPoints}")
+    expect(list).toContain('t("weekStopsMissed", { count: route.totalPoints - route.visitedPoints })')
+  })
+
+  it("reaches every route, not only the latest 200", () => {
+    expect(page).toContain("fetch(`/api/v1/mtm/routes?limit=200&page=${nextPage}`, { headers })")
+    expect(page).toContain("{routesTotal > routes.length ? (")
+    // A reload in between must not glue an old page onto the new list.
+    expect(page).toContain("if (routeRequestRef.current.id !== requestId) return")
+  })
+})

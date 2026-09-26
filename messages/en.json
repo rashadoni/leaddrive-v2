@@ -13242,7 +13242,9 @@
       "weekSummaryNoTime": "{visited}/{total}",
       "weekLate": "Late"
     },
-    "allLatest": "All (latest {shown} of {total})"
+    "allLatest": "All (latest {shown} of {total})",
+    "loadMoreRoutes": "Show {count} more",
+    "loadMoreRoutesFailed": "Could not load more routes. Try again."
   },
   "mtmOperationsPage": {
     "title": "Team messages",
