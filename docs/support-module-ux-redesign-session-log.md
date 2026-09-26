@@ -312,3 +312,38 @@ idle.
 
 Next: push this exact tree and run one corrected high-profile matrix after the
 queue-idle check.
+
+## 2026-09-26 — High-density rolling-window fixture defect corrected
+
+- Exact-SHA run `36251269001` on
+  `836288b134bc80739537d074191ac5080a7b90a4` passed the section-scoped VoIP
+  gate, persisted all 500 call fixtures, and passed the isolated cold
+  production build. This confirms that the prior exit-134 failure was repaired
+  by the reviewed build-isolation contract.
+- Capture completed all 72 static cells across agent/manager/admin, AZ/RU/EN,
+  light/dark, and desktop/tablet/narrow-tablet/mobile and retained artifact
+  `support-ux-evidence-836288b134bc80739537d074191ac5080a7b90a4-high-capture`.
+  Every cell was clean for axe, custom accessibility findings, horizontal
+  overflow, touch targets, browser errors, environment matching, primary-work
+  visibility, and role permissions. The fail-closed density contract alone
+  rejected every cell because the UI correctly reported 416 calls, 17 pages,
+  and 25 rendered rows instead of `500/20/25`.
+- Root cause was fixture aging within the product's required rolling-30-day
+  predicate: 500 calls had been spaced one hour apart behind a fixed visual
+  epoch, leaving the oldest 84 outside the live query window. The production
+  API predicate, pagination, and `500/20/25` evidence gate remain unchanged.
+- Call-only fixtures now anchor to the beginning of the current UTC day and use
+  a 30-minute interval, while non-call visual fixtures retain their fixed
+  epoch. The seed additionally counts the rolling-window rows and aborts unless
+  all selected 0/5/50/500 calls are queryable. This prevents a persisted-row
+  count from falsely passing again when the rendered contract cannot see the
+  same rows.
+- Focused verification passed 24/24 assertions across the seed and browser
+  contracts, targeted ESLint passed for the changed seed and test, and
+  `git diff --check` is green. Self-audit confirmed that no timeout, resource
+  limit, browser matrix, accessibility/performance gate, or acceptance
+  threshold was relaxed.
+
+Next: checkpoint and push this fixture correction, confirm the Support evidence
+queue is idle, then dispatch one fresh high-profile static matrix on the exact
+new SHA. Do not repeat the already-green baseline, typical, or empty profiles.

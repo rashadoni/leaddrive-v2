@@ -52,9 +52,12 @@ describe("Support UX evidence seed safety contract", () => {
     expect(seed).toContain("index % 5 === 0 ? null")
   })
 
-  it("keeps user-visible fixture dates stable across visual comparison runs", () => {
+  it("keeps non-call fixture dates stable and call fixtures inside the rolling API window", () => {
     expect(seed).toContain("const EVIDENCE_FIXTURE_EPOCH_MS = Date.UTC(2026, 8, 14, 0, 0, 0)")
-    expect(seed).toContain("createdAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000)")
+    expect(seed).toContain("const CALL_FIXTURE_INTERVAL_MS = 30 * 60 * 1000")
+    expect(seed).toContain("const callFixtureAnchorMs = new Date().setUTCHours(0, 0, 0, 0)")
+    expect(seed).toContain("createdAt: new Date(callFixtureAnchorMs - (index + 1) * CALL_FIXTURE_INTERVAL_MS)")
+    expect(seed).toContain("Support evidence rolling call fixture mismatch")
     expect(seed).not.toContain("Date.now()")
   })
 
@@ -83,6 +86,7 @@ describe("Support UX evidence seed safety contract", () => {
     expect(seed).toContain("Array.from({ length: count }")
     expect(seed).toContain("prisma.callLog.count")
     expect(seed).toContain("callLogCount !== count")
+    expect(seed).toContain("rollingCallLogCount !== count")
     expect(seed).toContain("fixtureCounts: { callLogs: callLogCount }")
     expect(seed).not.toContain("Array.from({ length: 8 }")
   })

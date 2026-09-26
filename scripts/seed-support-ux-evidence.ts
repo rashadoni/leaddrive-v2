@@ -13,6 +13,7 @@ const SEED_CONFIRMATION = "ephemeral-support-ux-v1"
 // user-visible fixture dates stable so a harmless clock tick cannot create a
 // visual regression.
 const EVIDENCE_FIXTURE_EPOCH_MS = Date.UTC(2026, 8, 14, 0, 0, 0)
+const CALL_FIXTURE_INTERVAL_MS = 30 * 60 * 1000
 const LOCAL_DATABASE_HOSTS = new Set(["127.0.0.1", "localhost", "::1"])
 
 function requiredEnv(name: string): string {
@@ -402,6 +403,10 @@ async function main(): Promise<void> {
     })
   }
 
+  // The journal intentionally requests a rolling 30-day window. Anchor call
+  // fixtures to the current UTC day so this CI-only dataset cannot silently
+  // age out while the remaining screenshot fixtures stay visually stable.
+  const callFixtureAnchorMs = new Date().setUTCHours(0, 0, 0, 0)
   await prisma.callLog.createMany({
     data: Array.from({ length: count }, (_, index) => ({
       organizationId: organization.id,
@@ -422,15 +427,27 @@ async function main(): Promise<void> {
       providerOutcome: "connected",
       // The VoIP timeline deliberately renders `createdAt`, so pin it with the
       // call interval rather than leaving Prisma's default clock value here.
-      createdAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000),
-      startedAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000),
-      endedAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000 + (90 + index * 15) * 1000),
+      createdAt: new Date(callFixtureAnchorMs - (index + 1) * CALL_FIXTURE_INTERVAL_MS),
+      startedAt: new Date(callFixtureAnchorMs - (index + 1) * CALL_FIXTURE_INTERVAL_MS),
+      endedAt: new Date(callFixtureAnchorMs - (index + 1) * CALL_FIXTURE_INTERVAL_MS + (90 + index * 15) * 1000),
     })),
   })
 
   const callLogCount = await prisma.callLog.count({ where: { organizationId: organization.id } })
   if (callLogCount !== count) {
     throw new Error(`Support evidence call fixture count mismatch: expected ${count}, received ${callLogCount}`)
+  }
+  const rollingCallLogCount = await prisma.callLog.count({
+    where: {
+      organizationId: organization.id,
+      createdAt: {
+        gte: new Date(callFixtureAnchorMs - 30 * 24 * 60 * 60 * 1000),
+        lte: new Date(),
+      },
+    },
+  })
+  if (rollingCallLogCount !== count) {
+    throw new Error(`Support evidence rolling call fixture mismatch: expected ${count}, received ${rollingCallLogCount}`)
   }
 
   const entitlement = await prisma.entitlement.create({
