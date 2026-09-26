@@ -51,7 +51,7 @@ export const REPORTS: Record<ReportType, ReportDef> = {
       { key: "date", labelKey: "colDate", kind: "date" },
       { key: "agent", labelKey: "colAgent", kind: "text" },
       { key: "status", labelKey: "colStatus", kind: "status" },
-      { key: "points", labelKey: "colPoints", kind: "number" },
+      { key: "points", labelKey: "colPoints", kind: "text" },
       { key: "duration", labelKey: "colDuration", kind: "minutes" },
     ],
   },

@@ -16900,7 +16900,7 @@
     "records": "{count} records",
     "lastGenerated": "Last generated: {date}",
     "view": "View",
-    "backToReports": "← Back to Reports",
+    "backToReports": "Back to Reports",
     "noData": "No data for this report type",
     "type_daily": "Daily Report",
     "type_daily_desc": "Daily visit and task results analysis",
