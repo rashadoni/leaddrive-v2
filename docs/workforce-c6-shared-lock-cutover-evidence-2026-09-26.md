@@ -132,7 +132,18 @@ residual `P2002` as a controlled rollback conflict and never issue a query in
 an already-aborted PostgreSQL transaction. Web and mobile HR request writers
 take the request-key fence before either an initial replay read or a case
 choice. Unit regressions and the three new observed-wait PostgreSQL races cover
-these findings. A new complete-tree independent rereview remains mandatory.
+these findings. They required a new complete-tree independent rereview rather
+than inheriting credit from either superseded RED receipt.
+
+The third, complete-tree independent review covered base
+`13277465d731cdfc106e7942c0a2b97ffa38d0b5` through head
+`632ecdf77e6a43e01090bbfe43f0d6bfd3fd97d2`, binary-diff SHA-256
+`712ff622dd7c0ebf86127740ba099f65bab6218c0cb9d8cbe0ed94a15dbe4330`,
+`155,648` bytes and 22 files. It returned GREEN with zero findings after
+independently rechecking identity, every earlier repair, the complete lock
+graph, API replay/mismatch behavior, tenant/grant/resource revalidation,
+PostgreSQL proof fidelity and CI wiring. The reviewer made no edits, commits,
+pushes or status publications.
 
 ## Delivery-gate reconciliation
 
