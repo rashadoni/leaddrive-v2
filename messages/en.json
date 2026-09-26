@@ -12545,20 +12545,52 @@
     }
   },
   "mtmAgentPeriod": {
-    "chooseAgent": "— Choose an employee —",
-    "chooseAgentHint": "Choose an employee to see their routes and visits for the period.",
     "agent": "Employee",
+    "chooseAgent": "— Choose an employee —",
+    "chooseAgentHint": "Choose an employee to see their work over the period.",
     "from": "From",
     "to": "To",
-    "lastDays": "{count, plural, one {Last # day} other {Last # days}}",
-    "clamped": "A period longer than {days} days is cut to the last {days}.",
-    "summary": "{routes} routes · {done} of {planned} stops done · {visits} visits · {days} days with work",
-    "loadFailed": "Could not load the data. Try again.",
     "loading": "Loading",
-    "empty": "No routes and no visits for this employee in this period.",
-    "noVisits": "No visits",
-    "stops": "{done} of {planned} stops",
-    "dayOnMap": "Day on the map"
+    "loadFailed": "Could not load the data. Try again.",
+    "presets": {
+      "thisWeek": "This week",
+      "lastWeek": "Last week",
+      "thisMonth": "This month",
+      "last30": "Last 30 days"
+    },
+    "cards": {
+      "workDays": "Work days",
+      "inField": "In the field",
+      "visitsPlan": "Visits / plan",
+      "distance": "Distance"
+    },
+    "columns": {
+      "day": "Day",
+      "workday": "Workday",
+      "visits": "Visits",
+      "distance": "Distance",
+      "status": "Result"
+    },
+    "statuses": {
+      "FULL": "Complete",
+      "PARTIAL": "{count, plural, one {# stop left} other {# stops left}}",
+      "NOT_WORKED": "Did not work",
+      "UNPLANNED": "No plan",
+      "DAY_OFF": "Day off",
+      "UPCOMING": "Upcoming"
+    },
+    "open": "open",
+    "minutes": "{minutes} min",
+    "hoursMinutes": "{hours} h {minutes} min",
+    "started": "started the day",
+    "ended": "closed the day",
+    "lastSignal": "last signal",
+    "onRoad": "on the road {duration}, {distance}",
+    "noSignal": "no data {duration}",
+    "pause": "break {duration}",
+    "stop": "stop {duration}",
+    "noTrack": "No GPS this day.",
+    "openOnMap": "Open on the map"
   },
   "mtmRoutesPage": {
     "viewAgentPeriod": "Agent over a period",

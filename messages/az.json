@@ -12541,20 +12541,52 @@
     }
   },
   "mtmAgentPeriod": {
-    "chooseAgent": "— Əməkdaş seçin —",
-    "chooseAgentHint": "Dövr üzrə marşrut və ziyarətləri görmək üçün əməkdaş seçin.",
     "agent": "Əməkdaş",
+    "chooseAgent": "— Əməkdaş seçin —",
+    "chooseAgentHint": "Dövr üzrə işini görmək üçün əməkdaş seçin.",
     "from": "Başlanğıc",
     "to": "Son",
-    "lastDays": "Son {count} gün",
-    "clamped": "{days} gündən uzun dövr son {days} günə qısaldılıb.",
-    "summary": "Marşrut {routes} · nöqtə {done} / {planned} · ziyarət {visits} · işli gün {days}",
-    "loadFailed": "Məlumatı yükləmək alınmadı. Yenidən cəhd edin.",
     "loading": "Yüklənir",
-    "empty": "Bu dövrdə əməkdaşın nə marşrutu, nə ziyarəti var.",
-    "noVisits": "Ziyarət yoxdur",
-    "stops": "{done} / {planned} nöqtə",
-    "dayOnMap": "Gün xəritədə"
+    "loadFailed": "Məlumatı yükləmək alınmadı. Yenidən cəhd edin.",
+    "presets": {
+      "thisWeek": "Bu həftə",
+      "lastWeek": "Keçən həftə",
+      "thisMonth": "Bu ay",
+      "last30": "Son 30 gün"
+    },
+    "cards": {
+      "workDays": "İş günləri",
+      "inField": "Sahədə",
+      "visitsPlan": "Ziyarətlər / plan",
+      "distance": "Yol"
+    },
+    "columns": {
+      "day": "Gün",
+      "workday": "İş günü",
+      "visits": "Ziyarət",
+      "distance": "Yol",
+      "status": "Nəticə"
+    },
+    "statuses": {
+      "FULL": "Tam",
+      "PARTIAL": "{count} nöqtə qalıb",
+      "NOT_WORKED": "İşləməyib",
+      "UNPLANNED": "Plansız",
+      "DAY_OFF": "İstirahət",
+      "UPCOMING": "Qarşıda"
+    },
+    "open": "açıqdır",
+    "minutes": "{minutes} dəq",
+    "hoursMinutes": "{hours} s {minutes} dəq",
+    "started": "günə başladı",
+    "ended": "günü bağladı",
+    "lastSignal": "son siqnal",
+    "onRoad": "yolda {duration}, {distance}",
+    "noSignal": "məlumat yoxdur {duration}",
+    "pause": "fasilə {duration}",
+    "stop": "dayanma {duration}",
+    "noTrack": "Bu gün GPS yoxdur.",
+    "openOnMap": "Xəritədə aç"
   },
   "mtmRoutesPage": {
     "viewAgentPeriod": "Agent dövr üzrə",
