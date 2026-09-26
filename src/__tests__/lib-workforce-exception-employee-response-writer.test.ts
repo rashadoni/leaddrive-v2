@@ -19,6 +19,7 @@ const draft = createWorkforceExceptionEmployeeResponseDraft({
 
 const db = {
   $executeRaw: vi.fn().mockResolvedValue(undefined),
+  workforceExceptionDecision: { findMany: vi.fn().mockResolvedValue([]) },
   workforceExceptionEmployeeResponse: { create: vi.fn(), findFirst: vi.fn() },
   mtmAuditLog: { create: vi.fn().mockResolvedValue({ id: "audit-1" }) },
 }
@@ -37,7 +38,7 @@ describe("Workforce immutable employee exception response writer", () => {
     expect(allow).toHaveBeenCalledWith({
       operation: "EMPLOYEE_RESPONSE_APPEND", organizationId: "org-1", caseId: "case-1", agentId: "agent-1", actorUserId: "user-1",
     })
-    expect(db.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(db.$executeRaw).toHaveBeenCalledTimes(2)
     expect(db.workforceExceptionEmployeeResponse.create).toHaveBeenCalledWith({ data: draft })
     expect(db.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
@@ -63,14 +64,13 @@ describe("Workforce immutable employee exception response writer", () => {
   })
 
   it("treats an exact unique-key replay as idempotent but rejects changed content", async () => {
-    db.workforceExceptionEmployeeResponse.create.mockRejectedValueOnce({ code: "P2002" })
     db.workforceExceptionEmployeeResponse.findFirst.mockResolvedValueOnce({ id: "response-1", ...draft })
 
     await expect(appendAuthorizedWorkforceExceptionEmployeeResponse({ db, draft, authorize: allow }))
       .resolves.toEqual({ responseId: "response-1", idempotent: true })
+    expect(db.workforceExceptionEmployeeResponse.create).not.toHaveBeenCalled()
     expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
 
-    db.workforceExceptionEmployeeResponse.create.mockRejectedValueOnce({ code: "P2002" })
     db.workforceExceptionEmployeeResponse.findFirst.mockResolvedValueOnce({
       id: "response-1", ...draft, caseId: "case-other",
     })
@@ -78,5 +78,23 @@ describe("Workforce immutable employee exception response writer", () => {
       .rejects.toMatchObject<Partial<WorkforceExceptionEmployeeResponseWriterError>>({
         code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
       })
+  })
+
+  it("rejects a new response after resolution but preserves an exact completed replay", async () => {
+    db.workforceExceptionDecision.findMany.mockResolvedValue([
+      { decisionCode: "ACKNOWLEDGE" },
+      { decisionCode: "RESOLVE_NO_CHANGE" },
+    ])
+
+    await expect(appendAuthorizedWorkforceExceptionEmployeeResponse({ db, draft, authorize: allow }))
+      .rejects.toMatchObject<Partial<WorkforceExceptionEmployeeResponseWriterError>>({
+        code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE",
+      })
+    expect(db.workforceExceptionEmployeeResponse.create).not.toHaveBeenCalled()
+
+    db.workforceExceptionEmployeeResponse.findFirst.mockResolvedValueOnce({ id: "response-1", ...draft })
+    await expect(appendAuthorizedWorkforceExceptionEmployeeResponse({ db, draft, authorize: allow }))
+      .resolves.toEqual({ responseId: "response-1", idempotent: true })
+    expect(db.workforceExceptionDecision.findMany).toHaveBeenCalledTimes(1)
   })
 })

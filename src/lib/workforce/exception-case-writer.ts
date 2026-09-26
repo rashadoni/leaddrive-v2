@@ -402,7 +402,7 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
   const priorDecisionCodes = prior.map((decision) => decision.decisionCode)
   // This callback deliberately runs only after the stream lock, exact replay
   // check and ordered history read. A route can therefore validate linked
-  // response/correction state in the same serializable transaction without a
+  // response/correction state in the same transaction without a
   // stale preflight authorizing an incompatible resolution.
   await input.validateContext({ draft: basic, priorDecisions: prior })
   const canonical = createDraftPolicyWorkforceExceptionDecisionDraft({

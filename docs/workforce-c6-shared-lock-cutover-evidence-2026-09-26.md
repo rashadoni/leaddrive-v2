@@ -1,0 +1,119 @@
+# Workforce C6 shared-lock cutover evidence — 2026-09-26
+
+Status: **RED-review findings repaired; independent rereview and real-PostgreSQL CI pending**.
+
+This slice started from deployed `main` SHA
+`13cc5bd51a76f28f8c9d434ab0f6e9337e4b95af`. Immediately before its frozen
+review, current `origin/main` SHA `5ab179e524b3047132201eb5170a631fa9d0b63c`
+was merged without conflict; its only intervening product paths are unrelated
+MTM planner UI/i18n files. The slice closes the concurrency prerequisite found
+during the scoped exception-workbench review; it does not enable terminal
+resolution or reopen actions and adds no roadmap credit.
+
+## Safety invariant
+
+Every new mutation linked to a Workforce exception case must:
+
+1. run inside the caller's existing database transaction;
+2. acquire the canonical transaction-scoped advisory lock
+   `workforce-exception-decision:<organizationId>:<caseId>`;
+3. read the bounded immutable decision stream only after that lock;
+4. fail closed if the stream is invalid, capacity-bound or resolved; and
+5. keep the same lock until the linked write commits or rolls back.
+
+An exact completed replay is resolved before the lifecycle guard. A client
+retry therefore stays idempotent after later case resolution, while changed
+content and every genuinely new post-resolution mutation are rejected.
+
+## Covered writers
+
+- employee acknowledgement/correction-response append;
+- web self-service linked correction submission and cancellation;
+- manager approval/rejection of a linked correction request;
+- legacy mobile sync linked correction submission and cancellation.
+
+The source inventory contains no other `MtmHrmRequest` or employee-response
+writer for an exception-linked record. The mobile compatibility path returns a
+generic unavailable conflict and does not turn a case id into an oracle.
+
+## Terminal transaction isolation
+
+The manager exception-decision service now uses explicit PostgreSQL
+`READ COMMITTED`. This is deliberate: a repeatable/serializable snapshot can
+be opened by authorization preflight before the transaction waits for the case
+advisory lock, then remain older than a linked writer that commits while the
+terminal transaction is waiting. Under `READ COMMITTED`, the post-lock
+statement receives a fresh snapshot. Tenant capability, granular cutover,
+live grant and bounded linked context are rechecked after the lock immediately
+before the immutable decision append.
+
+Terminal resolution/reopen remain absent from the offered action set. Their
+separate follow-up may consume this foundation only after this cutover is
+reviewed, merged, deployed and proven on PostgreSQL.
+
+## Real PostgreSQL proof
+
+`src/__tests__/lib-workforce-exception-lock-postgres.test.ts` uses independent
+Prisma clients and three separate scratch tables (decision stream, linked
+mutations and linked-request replay state). It inspects `pg_stat_activity` to
+prove the second backend is actually waiting on an advisory lock rather than
+relying on timing sleeps.
+
+It covers both orders:
+
+- terminal-first: the linked writer waits, reads the committed terminal stream
+  after the lock, rejects as resolved and writes no linked mutation;
+- linked-first: the terminal transaction sees `0` before waiting and `1` after
+  acquiring the lock, then appends its terminal decision. This proves the
+  post-lock `READ COMMITTED` snapshot observes the mutation in the other table;
+- cross-domain order: two writers that need both fences take
+  `workday -> exception case`, so the second waits on the workday advisory lock
+  and completes without an opposite-order deadlock; and
+- exact replay: a submit waiter sees no uncommitted row before the lock and the
+  committed `PENDING` row after it; a cancellation waiter analogously sees
+  `PENDING` before the lock and `CANCELLED` after it.
+
+The test is wired as a blocking step in both `.github/workflows/pr-checks.yml`
+and `.github/workflows/deploy.yml`, using their disposable PostgreSQL service.
+It skips locally unless the dedicated opt-in scratch URL is present.
+
+## Independent review findings and repairs
+
+The first frozen independent review used base
+`5ab179e524b3047132201eb5170a631fa9d0b63c`, fingerprint
+`496c3914d6091a91134b8a2b96ea9e372e3d8990c462d6d145002d1e62c52238`
+and a `74,164`-byte upper bound. It correctly returned RED with three P2
+findings; that fingerprint is superseded and cannot authorize a checkpoint or
+merge:
+
+1. manager correction approval took `case -> workday`, opposite the existing
+   timesheet path;
+2. the post-lock decision grant recheck reused the pre-lock historical
+   resource; and
+3. linked submit/cancel did not repeat their exact idempotency read after
+   waiting for the case lock.
+
+The repair establishes one `workday -> case` order whenever both fences are
+needed, re-reads the correction request under the workday lock, rebuilds the
+historical team/site resource from the post-lock case row, and resolves exact
+web/mobile submit and cancellation replays before the lifecycle guard. Unit
+regressions and the expanded real-PostgreSQL proof cover all three findings.
+A new complete-tree independent rereview remains mandatory.
+
+## Local evidence in this tree
+
+- PASS — 7 focused Vitest files: 161 tests passed.
+- SKIPPED — 4 real-PostgreSQL race tests because no approved local scratch URL
+  was supplied; the new blocking PR/deploy steps must run them.
+- PASS — targeted ESLint for every changed TypeScript and test file.
+- PASS — recursive RLS context scan: 552 organization-scoped models, 0 gaps.
+- PASS — event-platform/delivery asset contract: 27 domains, 86 topics,
+  5 concrete schemas.
+- PASS — `git diff --check` before the documentation checkpoint.
+- PASS — the same focused tests, ESLint, RLS scan and delivery asset contract
+  after integrating current `origin/main`.
+
+`NOT RUN` locally by Contabo workload policy: full typecheck, production build,
+browser E2E, Android/Gradle, load, physical-device and pilot checks. Exact-head
+GitHub gates, the opt-in PostgreSQL proof and an independent read-only review
+remain mandatory before merge.

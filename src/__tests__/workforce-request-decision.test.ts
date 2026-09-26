@@ -16,6 +16,7 @@ const PENDING_CORRECTION = {
   startDate: new Date("2026-08-28T00:00:00.000Z"),
   endDate: new Date("2026-08-28T00:00:00.000Z"),
   correctionWorkdayId: "workday-1",
+  exceptionCaseId: null,
   requestedStartAt: null,
   requestedEndAt: new Date("2026-08-28T07:30:00.000Z"),
   reason: "Fix finish time",
@@ -77,6 +78,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmHrmRequest.updateMany).mockResolvedValue({ count: 1 } as never)
   vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(startedJournal() as never)
   vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([] as never)
+  vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([] as never)
 })
 
 describe("decideWorkforceRequest time corrections", () => {
@@ -187,10 +189,36 @@ describe("decideWorkforceRequest time corrections", () => {
     expect(prisma.workforceTimeCorrection.create).not.toHaveBeenCalled()
   })
 
-  it("rejects an effective range whose one-sided finish precedes the stored start", async () => {
+  it("locks a linked case before deciding its request and rejects a resolved lifecycle", async () => {
+    const linkedRequest = { ...PENDING_CORRECTION, exceptionCaseId: "case-1" }
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(linkedRequest as never)
+    vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([
+      { decisionCode: "ACKNOWLEDGE" },
+      { decisionCode: "RESOLVE_NO_CHANGE" },
+    ] as never)
+
+    await expect(decideWorkforceRequest({
+      organizationId: "org-workforce",
+      userId: "manager-1",
+      actor: { agentId: null, role: "MANAGER", scopedAgentIds: null },
+      requestId: "request-1",
+      input: { decision: "REJECTED", note: "No correction required" },
+      includeRouteConflicts: false,
+    })).resolves.toMatchObject({
+      kind: "conflict",
+      code: "WORKFORCE_EXCEPTION_LINKED_MUTATION_RESOLVED",
+    })
+
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmNotification.create).not.toHaveBeenCalled()
+  })
+
+  it("locks workday before linked case and rejects a finish preceding the stored start", async () => {
+    const linkedRequest = { ...PENDING_CORRECTION, exceptionCaseId: "case-1" }
     vi.mocked(prisma.mtmHrmRequest.findFirst)
-      .mockResolvedValueOnce(PENDING_CORRECTION as never)
-      .mockResolvedValueOnce(PENDING_CORRECTION as never)
+      .mockResolvedValueOnce(linkedRequest as never)
+      .mockResolvedValueOnce(linkedRequest as never)
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
       id: "workday-1",
       startedAt: new Date("2026-08-28T08:00:00.000Z"),
@@ -213,6 +241,10 @@ describe("decideWorkforceRequest time corrections", () => {
     expect(prisma.mtmAgentWorkday.update).not.toHaveBeenCalled()
     expect(prisma.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
     expect(prisma.mtmNotification.create).not.toHaveBeenCalled()
+    const lockKeys = vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])
+    expect(lockKeys.indexOf("mtm-workday:org-workforce:agent-1")).toBeGreaterThanOrEqual(0)
+    expect(lockKeys.indexOf("workforce-exception-decision:org-workforce:case-1"))
+      .toBeGreaterThan(lockKeys.indexOf("mtm-workday:org-workforce:agent-1"))
   })
 
   it("commits a complete correction audit record with the workday update", async () => {
