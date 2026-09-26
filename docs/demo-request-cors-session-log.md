@@ -83,3 +83,17 @@ Checks run in this worktree:
 Stopping point after this phase: implementation and focused local checks are
 complete. Next action is an exact-path checkpoint commit, feature-branch push,
 and draft pull request; merge and deployment remain explicitly out of scope.
+
+## 2026-09-26 — checkpoint and pull request
+
+- Implementation checkpoint: `398e5fece` (`fix: allow marketing demo request CORS`).
+- Feature branch `codex/demo-request-cors` was pushed to the active GitHub
+  repository.
+- Draft pull request opened: https://github.com/rashadoni/leaddrive-v2/pull/448
+- No merge and no production deployment were performed.
+
+Current stopping point: the requested independent CORS repair is implemented,
+locally verified, pushed, and awaiting GitHub PR checks/review in draft PR #448.
+The next action belongs to the coordinating task: decide when to mark the PR
+ready and continue its own release sequence. This subtask must not merge or
+deploy it.
