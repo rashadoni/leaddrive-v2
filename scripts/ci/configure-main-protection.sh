@@ -11,14 +11,20 @@
 #     no branch deletion)
 #   - the checks GitHub itself runs must be green before merge: `pr-scope`,
 #     `static-checks`, `typecheck`, `runner-policy`, `scan`
-#   - `agent-review` must be published for the exact head SHA after review by
-#     an agent that did not author the change
 #   - no required approvals: the owner works alone, and a rule nobody can
 #     satisfy is how production became undeployable in the first place
 #
-# Старый workflow `agent-review` не возвращается: без `ANTHROPIC_API_KEY` он
-# зеленел вхолостую. Гейт теперь дополняет пять машинных проверок и публикуется
-# только после фактического независимого ревью точного SHA.
+# 2026-09-11, решение владельца: обязательная проверка `agent-review` снята
+# вместе со своим workflow. Её завели, когда искали, как сэкономить на старом
+# аккаунте, и без секрета `ANTHROPIC_API_KEY` она намеренно зеленела вхолостую.
+# Хуже того, она была ЕДИНСТВЕННОЙ обязательной: тесты и тайпчек обязательными
+# не были вовсе, и красный PR проходил гейт. Теперь обязательно то, что
+# реально проверяет код.
+#
+# 2026-09-26 её вернули как статус «независимого ревью точного SHA» (#439/#440);
+# публиковать его было некому, и он встал на каждом PR. Владелец снял её в тот
+# же день: «удали её, чтоб для других сессий также не выскакивала». Readback
+# ниже падает, если `agent-review` снова оказалась среди обязательных.
 #
 # Usage:  bash scripts/ci/configure-main-protection.sh [owner/repo]
 set -euo pipefail
@@ -31,7 +37,7 @@ command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
 
 echo "Configuring branch protection on ${REPO}@${BRANCH}"
 
-# Каждый из шести контекстов обязан появляться на КАЖДОМ PR, иначе PR вне его
+# Каждый из пяти контекстов обязан появляться на КАЖДОМ PR, иначе PR вне его
 # путей навсегда повиснет на «Expected — waiting for status». Поэтому:
 #   - `pr-checks.yml` запускается без path-фильтров, а тяжёлые `static-checks`
 #     и `typecheck` пропускаются через `pr-scope`, если PR — только документация
@@ -53,8 +59,7 @@ gh api -X PUT "repos/${REPO}/branches/${BRANCH}/protection" \
       { "context": "static-checks", "app_id": 15368 },
       { "context": "typecheck", "app_id": 15368 },
       { "context": "runner-policy", "app_id": 15368 },
-      { "context": "scan", "app_id": 15368 },
-      { "context": "agent-review", "app_id": -1 }
+      { "context": "scan", "app_id": 15368 }
     ]
   },
   "enforce_admins": true,
@@ -81,27 +86,19 @@ PROTECTION_JSON="$(gh api "repos/${REPO}/branches/${BRANCH}/protection" \
   -H "Accept: application/vnd.github+json" \
   -H "X-GitHub-Api-Version: 2022-11-28")"
 
-# The update API accepts app_id=-1 to explicitly allow any publisher, then
-# normalizes that sentinel to app_id=null in branch-protection readback.
+# Exactly these five, each bound to the GitHub Actions app: a status with the
+# same name from anyone else does not satisfy them, and an extra context (the
+# retired `agent-review` above all) fails the readback.
 if ! jq -e '
   .required_status_checks.strict == false
   and (
-    [.required_status_checks.checks[] | {
-      context,
-      app_id: (
-        if .context == "agent-review" and has("app_id") and .app_id == null
-        then -1
-        else .app_id
-        end
-      )
-    }] | sort_by(.context)
+    [.required_status_checks.checks[] | {context, app_id}] | sort_by(.context)
   ) == ([
     {"context":"pr-scope","app_id":15368},
     {"context":"static-checks","app_id":15368},
     {"context":"typecheck","app_id":15368},
     {"context":"runner-policy","app_id":15368},
-    {"context":"scan","app_id":15368},
-    {"context":"agent-review","app_id":-1}
+    {"context":"scan","app_id":15368}
   ] | sort_by(.context))
   and .enforce_admins.enabled == true
   and .required_pull_request_reviews != null
