@@ -231,9 +231,9 @@ export function MtmRoutePlanningMatrix({
     ]).then(([agentResult, settingsResult]) => {
       if (!agentResult?.success) setError(explainError(agentResult))
       const rows = (agentResult.data?.agents ?? []) as Agent[]
-      // Routes audit 2026-09-26: [QA-SWISSMED] test accounts sat among real
-      // people. Real people first; test accounts after them in their own group
-      // (the SwissMed evidence run still selects its QA agent here by id).
+      // Routes audit 2026-09-26: «[QA-…]» test accounts sat among real people.
+      // Real people first; test accounts after them in their own group (the
+      // browser evidence run still selects its QA agent here by id).
       const visibleAgents = !canManageAssignments && selfAgentId
         ? rows.filter((agent) => agent.id === selfAgentId)
         : [...visibleWeekPlanAgents(rows), ...rows.filter(isQaWeekPlanAgent)]
