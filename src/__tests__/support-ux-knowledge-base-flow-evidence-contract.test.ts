@@ -77,6 +77,8 @@ describe("Knowledge Base mutating evidence contract", () => {
     expect(portal).toContain('data-testid="portal-knowledge-article-row"')
     expect(list).toContain("bg-orange-700")
     expect(portalLayout).toContain('aria-label={t("signOut")}')
+    expect(portalLayout).toContain('import { ThemeProvider } from "@/components/theme-provider"')
+    expect(portalLayout).toContain("<ThemeProvider>")
     expect(portalLayout).toContain("text-orange-700")
     expect(portalLayout).toContain("md:not-sr-only")
     expect(portalLayout).toContain("user?.companyName")

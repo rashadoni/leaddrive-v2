@@ -762,3 +762,38 @@ starting mobile and high-density gates.
 
 Next: checkpoint and push the mobile product correction, then repeat desktop,
 mobile touchscreen and the full high-density matrix on that single exact SHA.
+
+### Workstream 5 sixth browser self-audit and applied-theme gate
+
+- Exact-SHA desktop run `36276933587` on
+  `a9cc972fc6b7c4829f5b7770d41828dd8c638687` passed section validation,
+  fixtures, cold production build, all 9/9 mutating flows and 3/3 static cells.
+  Keyboard recovery, publication fixture restoration, empty browser/axe/touch/
+  overflow/environment/primary-work findings and manual list/detail/portal
+  review are confirmed. Its artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36276933587`.
+- Mobile RU/dark run `36278078793` on the same SHA also passed validation,
+  hosted build, 9/9 flows and 3/3 static cells. Library and portal retry prove
+  `playwright-touchscreen`, successful center hit-testing and respective
+  144x44/134x44 targets; fixture restoration is true. Static cells have zero
+  axe, browser, touch, overflow, environment and primary-work findings. Its
+  artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36278078793`.
+- Manual screenshot review caught a gap not represented by that environment
+  result: the customer portal was still visually light in a requested dark
+  cell. The portal route is outside the dashboard layout that owns the shared
+  nonce-aware `ThemeProvider`; the runner checked only the emulated
+  `prefers-color-scheme`, not the root class actually consumed by Tailwind dark
+  variants. The prior environment-green conclusion is therefore superseded.
+- The same `ThemeProvider` now wraps authenticated and public portal routes.
+  Static evidence records `activeTheme` from the root class and treats a
+  requested/applied mismatch as an environment failure in addition to the
+  unchanged locale, color-scheme, reduced-motion and touch checks. This
+  strengthens rather than suppresses the gate.
+- Resource inspection showed 16 GiB available memory, 331 GiB free disk and
+  zero active pressure. Runner syntax, the seven-file scoped anti-pattern scan,
+  changed-source ESLint, `git diff --check` and both affected contract suites
+  (22/22 assertions) pass.
+
+Next: checkpoint and push the portal theme/gate correction, then repeat the
+mandatory desktop, mobile and high-density matrices on the new exact SHA.

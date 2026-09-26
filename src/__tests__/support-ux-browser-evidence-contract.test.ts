@@ -207,6 +207,8 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain("inspectKeyboard");
     expect(runner).toContain('page.keyboard.press("Tab")');
     expect(runner).toContain("documentLang");
+    expect(runner).toContain("activeTheme");
+    expect(runner).toContain("metrics.environment.activeTheme !== theme");
     expect(runner).toContain("prefersDark");
     expect(runner).toContain("reducedMotion");
     expect(runner).toContain("maxTouchPoints");

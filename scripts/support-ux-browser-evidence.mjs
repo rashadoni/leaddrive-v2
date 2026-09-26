@@ -443,6 +443,7 @@ async function inspectPage(page, workspaceSelector, primarySelector) {
         : null,
       environment: {
         documentLang: document.documentElement.lang,
+        activeTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
         prefersDark: matchMedia("(prefers-color-scheme: dark)").matches,
         reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
         maxTouchPoints: navigator.maxTouchPoints,
@@ -756,6 +757,7 @@ try {
                   + metrics.accessibility.missingImageAlt
                   + metrics.accessibility.duplicateIds.length
                 const environmentMismatch = !metrics.environment.documentLang.toLowerCase().startsWith(locale)
+                  || metrics.environment.activeTheme !== theme
                   || metrics.environment.prefersDark !== (theme === "dark")
                   || !metrics.environment.reducedMotion
                   || (expectsTouch && metrics.environment.maxTouchPoints < 1)

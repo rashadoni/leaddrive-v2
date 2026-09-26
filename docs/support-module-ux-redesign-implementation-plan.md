@@ -1452,6 +1452,23 @@ Current verification evidence (2026-09-05):
   `git diff --check` passes. Because these visible product changes create a new
   SHA, desktop, mobile and the complete high-density matrix all remain required
   on that single newer checkpoint before any KB checkbox closes.
+- Runs `36276933587` (EN/light/desktop) and `36278078793` (RU/dark/mobile) both
+  pass hosted validation/build, 9/9 mutating flows and 3/3 static cells on
+  `a9cc972fc6b7c4829f5b7770d41828dd8c638687`. Mobile proves physical
+  touchscreen recovery on 144x44 and 134x44 targets, hit-testing and fixture
+  restoration; every browser, axe, touch, overflow, environment and primary
+  work issue collection is empty under the existing gate.
+- Manual mobile screenshot review nevertheless found that the portal remained
+  visually light during the requested dark matrix cell. Root cause is that the
+  nonce-aware `ThemeProvider` was mounted only by the dashboard layout, while
+  the evidence runner equated dark color-scheme emulation with applied theme.
+  The portal layout now mounts the same provider on both authenticated and
+  public portal routes. Evidence records the actual root `activeTheme` and
+  fails the environment gate when it differs from the requested matrix theme.
+  Runner syntax, scoped scanning, changed-source ESLint, 22/22 affected
+  contracts and whitespace validation pass. These two runs are retained as
+  diagnostic evidence; all mandatory matrices must use the newer theme-aware
+  checkpoint.
 
 ## 13. Workstream 6 — Ticket Categories
 
