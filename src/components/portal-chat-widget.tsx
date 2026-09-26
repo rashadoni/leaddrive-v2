@@ -75,7 +75,7 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
     return map[s] || s
   }, [t])
 
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
@@ -225,7 +225,7 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
     }
   }, [statusLabel, t])
 
-  // Poll every 10 seconds when there are tracked tickets (always poll, chat always open)
+  // Poll every 10 seconds when there are tracked tickets, even while the panel is closed.
   useEffect(() => {
     if (trackedTickets.length === 0) return
     pollTickets()

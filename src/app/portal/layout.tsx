@@ -77,7 +77,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </div>
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground sm:inline">{user?.fullName || ""}</span>
-            <span className="hidden text-xs text-muted-foreground md:inline">{user?.companyName || ""}</span>
+            <span className="sr-only text-xs text-muted-foreground md:not-sr-only">{user?.companyName || ""}</span>
             <button type="button" aria-label={t("signOut")} onClick={handleLogout} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <LogOut className="h-4 w-4" />
             </button>

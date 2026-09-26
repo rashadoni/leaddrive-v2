@@ -459,6 +459,13 @@ export default function KnowledgeBasePage() {
         </div>
       )}
 
+      {categoriesError && (
+        <div data-testid="knowledge-base-categories-error" role="alert" className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p>{categoriesError}</p>
+          {categoriesErrorRetryable && <Button data-testid="knowledge-base-categories-retry" variant="outline" className="min-h-11 shrink-0" onClick={() => void fetchCategories()}><RotateCcw />{t("retry")}</Button>}
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
         <aside className="hidden w-60 shrink-0 rounded-xl border bg-card p-2 lg:block" aria-label={t("categoryFilterLabel")}>
           <CategoryFilterButton
@@ -497,12 +504,6 @@ export default function KnowledgeBasePage() {
               />
             ) : null
           })()}
-          {categoriesError && (
-            <div data-testid="knowledge-base-categories-error" role="alert" className="mt-2 rounded-lg border border-destructive/30 p-2 text-xs">
-              <p>{categoriesError}</p>
-              {categoriesErrorRetryable && <button data-testid="knowledge-base-categories-retry" className="mt-1 min-h-11 rounded-sm font-medium underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => void fetchCategories()}>{t("retry")}</button>}
-            </div>
-          )}
         </aside>
 
         <section className="min-w-0 flex-1 rounded-xl border bg-card" aria-label={t("librarySummaryLabel")}>
@@ -795,9 +796,9 @@ function ArticleRow({
     <article data-testid="knowledge-base-article-row" data-article-id={article.id} className="grid min-h-[4.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b px-3 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
       <div className="flex min-w-0 items-start gap-2">
         <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0">
-          <Link href={href} className="block truncate text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
-            {article.title}
+        <div className="min-w-0 flex-1">
+          <Link href={href} className="flex min-h-11 items-center text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+            <span className="truncate">{article.title}</span>
           </Link>
           {preview && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{preview}</p>}
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground sm:hidden">

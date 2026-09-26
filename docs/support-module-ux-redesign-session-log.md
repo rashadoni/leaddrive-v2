@@ -724,3 +724,41 @@ high-density matrix on the same green SHA.
 Next: checkpoint and push the CSP/public rate-limit partition fix, then repeat
 the mandatory exact-SHA desktop run and inspect all flow/static evidence before
 starting mobile and high-density gates.
+
+### Workstream 5 fifth browser self-audit and mobile correction
+
+- Exact-SHA desktop run `36274423477` at
+  `5e2fdcf0920726be848ce1ad35a7a365ea97e172` passed the dedicated Knowledge
+  Base validation, disposable fixtures, Chromium installation, cold production
+  build and capture. All 9/9 mutating recovery outcomes and 3/3 static cells
+  pass; errors and axe, touch, overflow, environment and primary-work findings
+  are empty. Keyboard activation and `fixtureRestored: true` are recorded.
+- Its independently retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36274423477`. Manual review
+  of the list, detail, portal and publication screenshots confirms the intended
+  compact hierarchy and healthy loaded/recovery compositions.
+- Mobile RU/dark run `36275584366` on the same SHA passed validation and hosted
+  build but failed capture with 6/9 flows. The library recovery itself proves a
+  real Playwright touchscreen hit on a 144x44 target. The artifact at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36275584366` exposed four
+  product issues rather than harness looseness: category recovery existed only
+  in a desktop-hidden aside; two title links were 20 px high; an initially open
+  portal chat intercepted the portal retry/article taps; and mobile CSS removed
+  the tenant name from rendered text, so screenshot safety correctly failed
+  closed.
+- The category recovery alert is now outside the responsive rail/list split,
+  article title links have a real 44 px minimum flex target, the portal chat
+  starts closed while tracked-ticket polling remains independent, and the
+  company name remains screen-reader/safety-visible on mobile with a visual
+  desktop reveal. The touchscreen hit-test and tenant assertion are unchanged.
+- Resource inspection before verification showed 15 GiB available memory,
+  331 GiB free disk and zero current memory pressure. The section-scoped
+  anti-pattern scan passes all seven visible TSX files with zero findings. The
+  affected browser/KB evidence contracts pass 22/22 assertions. Changed-source
+  ESLint has zero errors and reports only the unchanged portal-chat
+  `handleCreateTicket` unused-helper warning; `git diff --check` passes. Full
+  local build/typecheck remains **NOT RUN** under the recorded remote-alt
+  workload rule; the exact-SHA hosted build remains mandatory.
+
+Next: checkpoint and push the mobile product correction, then repeat desktop,
+mobile touchscreen and the full high-density matrix on that single exact SHA.

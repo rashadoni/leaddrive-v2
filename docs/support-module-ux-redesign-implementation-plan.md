@@ -1426,6 +1426,32 @@ Current verification evidence (2026-09-05):
   proxy ESLint remains **NOT PASSING** on nine pre-existing `no-explicit-any`
   findings outside this diff; no rule was disabled or suppressed. A newer
   exact-SHA hosted validation/build/capture remains mandatory.
+- Exact-SHA desktop run `36274423477` at `5e2fdcf0920726be848ce1ad35a7a365ea97e172`
+  passed the dedicated validation, disposable fixtures, cold production build,
+  all 9/9 mutating recovery outcomes and all 3/3 static cells. Every axe,
+  browser-error, touch-target, overflow, environment and primary-work issue
+  collection is empty. Keyboard retry and fixture restoration are explicitly
+  proven. The independently retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36274423477`; manual review
+  confirms the list, detail, portal and publication states are coherent.
+- Mobile RU/dark diagnostic run `36275584366` on that same SHA passed hosted
+  validation/build and 6/9 flow outcomes. It proved the library retry with a
+  physical Playwright touchscreen hit on a 144x44 target, while correctly
+  exposing four product defects: the category recovery alert was nested in a
+  desktop-only aside, article title links were only 20 px high, the portal chat
+  opened over the content and intercepted touches, and the mobile portal header
+  removed the tenant name from rendered text so the screenshot safety check
+  failed closed. No touch or tenant-safety assertion was relaxed.
+- The category alert now sits before the responsive list/rail layout, title
+  links are genuine `min-h-11` flex targets, the portal chat starts closed while
+  continuing tracked-ticket polling, and the company name remains accessible
+  to assistive/safety inspection at mobile widths via `sr-only`/`md:not-sr-only`.
+  The seven-file scoped anti-pattern scan passes with zero findings; the two
+  affected evidence contracts pass 22/22 assertions; changed-source ESLint has
+  zero errors and only the unchanged portal-chat unused-helper warning; and
+  `git diff --check` passes. Because these visible product changes create a new
+  SHA, desktop, mobile and the complete high-density matrix all remain required
+  on that single newer checkpoint before any KB checkbox closes.
 
 ## 13. Workstream 6 — Ticket Categories
 

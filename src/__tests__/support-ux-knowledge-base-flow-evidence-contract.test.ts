@@ -78,9 +78,16 @@ describe("Knowledge Base mutating evidence contract", () => {
     expect(list).toContain("bg-orange-700")
     expect(portalLayout).toContain('aria-label={t("signOut")}')
     expect(portalLayout).toContain("text-orange-700")
+    expect(portalLayout).toContain("md:not-sr-only")
+    expect(portalLayout).toContain("user?.companyName")
     expect(portalChat).toContain('aria-label={t("chatSend")}')
     expect(portalChat).toContain('aria-label={open ? t("chatClose") : t("chatOpen")}')
     expect(portalChat).toContain('aria-label={t("chatPlaceholder")}')
+    expect(portalChat).toContain("const [open, setOpen] = useState(false)")
+    expect(list).toContain('className="flex min-h-11 items-center text-sm font-medium')
+    expect(list.indexOf('data-testid="knowledge-base-categories-error"')).toBeLessThan(
+      list.indexOf('className="flex flex-col gap-3 lg:flex-row'),
+    )
     expect(portalChat).not.toContain("glass-panel")
     expect(portalChat).not.toContain("shadow-2xl")
     expect(portalChat).not.toContain("bg-gradient")
