@@ -611,6 +611,26 @@ describe("middleware", async () => {
     expect(vi.mocked(checkRateLimit).mock.calls[0]?.[0]).toBe("public:203.0.113.10")
   })
 
+  it("keeps allowed-origin CORS headers on an early demo-request 429", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(false)
+    const req = makeReq({
+      pathname: "/api/v1/public/demo-requests",
+      host: "app.leaddrivecrm.org",
+      method: "POST",
+      auth: null,
+      headers: {
+        origin: "https://leaddrivecrm.org",
+        "x-real-ip": "203.0.113.14",
+      },
+    })
+
+    const res = await authMiddleware(req)
+
+    expect(res.status).toBe(429)
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://leaddrivecrm.org")
+    expect(res.headers.get("Vary")?.split(",").map((field) => field.trim())).toContain("Origin")
+  })
+
   it("keeps the legacy demo request endpoint public but rate-limited", async () => {
     vi.mocked(checkRateLimit).mockReturnValue(true)
     const req = makeReq({

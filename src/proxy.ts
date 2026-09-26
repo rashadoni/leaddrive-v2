@@ -10,6 +10,7 @@ import { isMtmApiPath } from "@/lib/mtm/mobile-api-path"
 import { FIELD_TENANT_CAPABILITY_IDS, isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { resolveTenantLandingPath } from "@/lib/tenant-landing"
 import { clientIp } from "@/lib/request-ip"
+import { isDemoRequestApiPath, withDemoRequestCors } from "@/lib/demo-request-cors"
 
 type SessionModuleGateUser = {
   role?: string
@@ -492,8 +493,15 @@ const authMiddleware = auth(async (req) => {
       const key = `public:${ip}`
       if (!checkRateLimit(key, RATE_LIMIT_CONFIG.public)) {
         log429("public-post", key, pathname)
+        const response = NextResponse.json(
+          { error: "Too many requests. Please try again later." },
+          { status: 429 },
+        )
+        if (isDemoRequestApiPath(pathname)) {
+          withDemoRequestCors(req, response)
+        }
         return withCspHeaders(
-          NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 }),
+          response,
           nonce,
         )
       }
