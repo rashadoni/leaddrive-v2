@@ -201,7 +201,7 @@ export function VoiceCallingHours() {
 
         {loading ? (
           <div className="flex items-center gap-2 py-5 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             {t("businessHoursLoading")}
           </div>
         ) : (
@@ -255,7 +255,7 @@ export function VoiceCallingHours() {
         ) : null}
 
         <Button type="button" onClick={save} disabled={loading || saving}>
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Save className="mr-2 h-4 w-4" />}
           {saving ? t("businessHoursSaving") : t("businessHoursSave")}
         </Button>
       </CardContent>

@@ -18,6 +18,10 @@ const sidebar = readFileSync("src/components/sidebar.tsx", "utf8");
 const dashboardLayout = readFileSync("src/app/(dashboard)/layout.tsx", "utf8");
 const screenshotHelper = readFileSync("scripts/support-ux-screenshot.mjs", "utf8");
 const header = readFileSync("src/components/header.tsx", "utf8");
+const voipPage = readFileSync(
+  "src/app/(dashboard)/support/voip/page.tsx",
+  "utf8",
+);
 const flowRunners = readdirSync("scripts")
   .filter((file) => file.startsWith("support-ux-") && file.endsWith("-flow-evidence.mjs"))
   .map((file) => readFileSync(`scripts/${file}`, "utf8"));
@@ -327,6 +331,27 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain("[data-testid='voip-call-timeline']");
     expect(runner).toContain("scenario.ready");
   });
+
+  it("fails high-profile VoIP evidence unless the real aggregate and pagination are bounded", () => {
+    expect(runner).toContain('new Set(["high", "500"])')
+    expect(runner).toContain("totalCalls: 500")
+    expect(runner).toContain("totalPages: 20")
+    expect(runner).toContain("renderedCalls: 25")
+    expect(runner).toContain('profileContract.status === "mismatched"')
+    expect(runner).toContain("dataProfileContract: profileContract")
+    expect(voipPage).toContain("data-total-calls={summary?.total ?? 0}")
+    expect(voipPage).toContain("data-total-pages={totalPages}")
+    expect(voipPage).toContain("data-rendered-calls={calls.length}")
+  })
+
+  it("fails VoIP role evidence when admin-only connection controls leak or disappear", () => {
+    expect(runner).toContain("function roleContract(scenario, role, metrics)")
+    expect(runner).toContain('role.key === "admin" ? "admin" : "read-only"')
+    expect(runner).toContain('role.key === "admin" ? 1 : 0')
+    expect(runner).toContain('scopedRoleContract.status === "mismatched"')
+    expect(runner).toContain("roleContract: scopedRoleContract")
+    expect(voipPage).toContain('data-management-mode={canManageConnection ? "admin" : "read-only"}')
+  })
 
   it("dismisses first-visit tours and accepts a queue that already fits without page scroll", () => {
     expect(runner).toContain('page.getByTestId("tour-overlay")');

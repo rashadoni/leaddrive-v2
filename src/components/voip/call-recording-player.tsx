@@ -23,6 +23,7 @@ export function CallRecordingPlayer({
 }) {
   const t = useTranslations("voip")
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const restoreFocusAfterLoadRef = useRef(false)
   const [state, setState] = useState<PlaybackState>("idle")
   const [mediaDuration, setMediaDuration] = useState<number | null>(null)
 
@@ -33,6 +34,7 @@ export function CallRecordingPlayer({
   const retry = () => {
     const audio = audioRef.current
     if (!audio) return
+    restoreFocusAfterLoadRef.current = true
     setState("loading")
     audio.load()
   }
@@ -60,7 +62,13 @@ export function CallRecordingPlayer({
         aria-label={t("recordingFor", { call: callLabel })}
         className="h-11 w-full max-w-full"
         onLoadStart={() => setState("loading")}
-        onCanPlay={() => setState("ready")}
+        onCanPlay={() => {
+          setState("ready")
+          if (restoreFocusAfterLoadRef.current) {
+            restoreFocusAfterLoadRef.current = false
+            window.requestAnimationFrame(() => audioRef.current?.focus())
+          }
+        }}
         onPlaying={() => setState("playing")}
         onPause={() => setState((current) => current === "ended" ? current : "paused")}
         onEnded={() => setState("ended")}

@@ -78,4 +78,12 @@ describe("Support UX evidence seed safety contract", () => {
     expect(workflow).toContain(".fixtures.slaPolicyId // empty")
     expect(workflow).toContain(".fixtures.entitlementId // empty")
   })
+
+  it("applies the selected density profile to VoIP fixtures and verifies the persisted count", () => {
+    expect(seed).toContain("Array.from({ length: count }")
+    expect(seed).toContain("prisma.callLog.count")
+    expect(seed).toContain("callLogCount !== count")
+    expect(seed).toContain("fixtureCounts: { callLogs: callLogCount }")
+    expect(seed).not.toContain("Array.from({ length: 8 }")
+  })
 })

@@ -280,7 +280,14 @@ export default function VoipCallsPage() {
   }
 
   return (
-    <div data-testid="voip-workspace" data-state={loading && calls.length === 0 ? "loading" : "ready"} className="mx-auto max-w-[1180px] space-y-3 pb-8 sm:space-y-4">
+    <div
+      data-testid="voip-workspace"
+      data-state={loading && calls.length === 0 ? "loading" : "ready"}
+      data-total-calls={summary?.total ?? 0}
+      data-total-pages={totalPages}
+      data-rendered-calls={calls.length}
+      className="mx-auto max-w-[1180px] space-y-3 pb-8 sm:space-y-4"
+    >
       <header className="border-b pb-3 sm:pb-4">
         <div className="flex items-center gap-2">
           <Phone className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
@@ -290,7 +297,7 @@ export default function VoipCallsPage() {
         <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
-      <aside data-testid="voip-connection-state" data-state={connectionState} className="flex flex-col gap-3 rounded-lg border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between" aria-label={t("connectionStatus")}>
+      <aside data-testid="voip-connection-state" data-state={connectionState} data-management-mode={canManageConnection ? "admin" : "read-only"} className="flex flex-col gap-3 rounded-lg border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between" aria-label={t("connectionStatus")}>
         <div className="flex min-h-11 items-center gap-2" aria-live="polite">
           {connectionState === "checking" ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />

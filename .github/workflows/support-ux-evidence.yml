@@ -258,6 +258,58 @@ jobs:
             src/__tests__/support-ux-anti-pattern-scan.test.ts \
             src/__tests__/support-ux-evidence-seed-contract.test.ts
 
+      - name: Validate section-scoped VoIP evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'voip') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/support/voip,
+            src/app/api/v1/calls,
+            src/components/voip
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-voip-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-voip-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/support/voip/page.tsx \
+            src/app/api/v1/calls/route.ts \
+            src/components/voip/call-recording-player.tsx \
+            src/components/voip/missed-inbound-queue.tsx \
+            src/__tests__/api-voip-channel-admin-gate.test.ts \
+            src/__tests__/lib-calls-access.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-voip-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
+            src/__tests__/voip-business-hours-ui.test.ts \
+            src/__tests__/voip-ux-contract.test.ts
+          npx vitest run \
+            src/__tests__/api-calls.test.ts \
+            src/__tests__/api-voip-channel-admin-gate.test.ts \
+            src/__tests__/lib-calls-access.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-voip-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
+            src/__tests__/voip-business-hours-ui.test.ts \
+            src/__tests__/voip-ux-contract.test.ts
+
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
         run: |

@@ -23,16 +23,25 @@ describe("VoIP mutating evidence contract", () => {
       "stale-refresh-and-recovery",
       "connection-failure-and-recovery",
       "debounced-no-results-and-reset",
+      "stale-search-response-is-aborted",
       "empty-history-and-recovery",
-      "recording-error-keyboard-and-recovery",
+      "recording-error-input-and-recovery",
       "history-permission-state",
     ]) expect(flow).toContain(id)
     expect(flow).toContain('page.keyboard.press("Space")')
+    expect(flow).toContain("usesTouchInput")
+    expect(flow).toContain("page.touchscreen.tap")
+    expect(flow).toContain('element.addEventListener("touchstart"')
+    expect(flow).toContain('inputModality: usesTouchInput ? "playwright-touchscreen" : "keyboard"')
+    expect(flow).toContain("touchInputEmulated: usesTouchInput")
+    expect(flow).toContain("touchPlaybackStarted: usesTouchInput")
+    expect(flow).toContain("element === document.activeElement")
     expect(flow).toContain("const samples = sampleRate * 5")
     expect(flow).toContain("evidencePlayObserved")
     expect(flow).toContain('element.addEventListener("play"')
     expect(flow).toContain("call-recording-player']:visible")
     expect(flow).toContain("raw_keystrokes_requested")
+    expect(flow).toContain("stale_search_overwrote_latest_results")
     expect(flow).toContain("refresh_failure_discarded_summary")
     expect(flow).toContain("nativePlaybackStarted: true")
     expect(flow).toContain("captureObservedState")
@@ -40,7 +49,10 @@ describe("VoIP mutating evidence contract", () => {
     expect(flow).toContain("errorScreenshot")
     expect(flow).toContain("emptyScreenshot")
     expect(flow).toContain('"voip-flow-evidence.json"')
-    expect(flow).toContain("report.results.length !== 8")
+    expect(flow).toContain("state_audit_failed")
+    expect(flow).toContain("window.axe.run")
+    expect(flow).toContain("activeAnimations")
+    expect(flow).toContain("report.results.length !== 9")
   })
 
   it("uses stable selectors for all observable states", () => {
@@ -58,6 +70,10 @@ describe("VoIP mutating evidence contract", () => {
   })
 
   it("runs only when the VoIP scenario is selected", () => {
+    expect(workflow).toContain("Validate section-scoped VoIP evidence")
+    expect(workflow).toContain("contains(inputs.scenarios, 'voip')")
+    expect(workflow).toContain("src/__tests__/api-calls.test.ts")
+    expect(workflow).toContain("src/__tests__/voip-ux-contract.test.ts")
     expect(workflow).toContain("scripts/support-ux-voip-flow-evidence.mjs")
     expect(workflow).toContain("*,voip,*")
     expect(workflow).toContain("voip_flow_status")

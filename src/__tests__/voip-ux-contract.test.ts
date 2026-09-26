@@ -50,6 +50,8 @@ describe("VoIP workspace UX contract", () => {
     expect(player).toContain("recordingLoading")
     expect(player).toContain("recordingError")
     expect(player).toContain("audio.load()")
+    expect(player).toContain("restoreFocusAfterLoadRef.current = true")
+    expect(player).toContain("audioRef.current?.focus()")
     expect(player).toContain('event.key !== " " && event.key !== "Enter"')
     expect(player).toContain("event.currentTarget.play()")
     expect(player).toContain("event.currentTarget.pause()")
@@ -68,6 +70,7 @@ describe("VoIP workspace UX contract", () => {
     expect(page).toContain("canManageConnection ? testConnection() : refreshConnection()")
     expect(page).toContain("connectionAgentHint")
     expect(page).toContain("connectionAdminHint")
+    expect(page).toContain('data-management-mode={canManageConnection ? "admin" : "read-only"}')
   })
 
   it("keeps the primary timeline compact and gates the lead queue by its modules", () => {

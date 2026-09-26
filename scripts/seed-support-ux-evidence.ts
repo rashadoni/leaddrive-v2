@@ -296,6 +296,7 @@ async function main(): Promise<void> {
         customer: { email: credentials.customer.email },
       },
       fixtures: {},
+      fixtureCounts: { callLogs: 0 },
       dataProfile: process.env.SUPPORT_EVIDENCE_DATA_PROFILE || "empty",
       synthetic: true,
     }, null, 2) + "\n", { mode: 0o600 })
@@ -402,7 +403,7 @@ async function main(): Promise<void> {
   }
 
   await prisma.callLog.createMany({
-    data: Array.from({ length: 8 }, (_, index) => ({
+    data: Array.from({ length: count }, (_, index) => ({
       organizationId: organization.id,
       callSid: `support-evidence-${index + 1}`,
       direction: index % 2 === 0 ? "inbound" : "outbound",
@@ -426,6 +427,11 @@ async function main(): Promise<void> {
       endedAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000 + (90 + index * 15) * 1000),
     })),
   })
+
+  const callLogCount = await prisma.callLog.count({ where: { organizationId: organization.id } })
+  if (callLogCount !== count) {
+    throw new Error(`Support evidence call fixture count mismatch: expected ${count}, received ${callLogCount}`)
+  }
 
   const entitlement = await prisma.entitlement.create({
     data: {
@@ -519,6 +525,7 @@ async function main(): Promise<void> {
       entitlementId: entitlement.id,
       closureToken: closure.token,
     },
+    fixtureCounts: { callLogs: callLogCount },
     dataProfile: process.env.SUPPORT_EVIDENCE_DATA_PROFILE || "typical",
     synthetic: true,
   }, null, 2) + "\n", { mode: 0o600 })

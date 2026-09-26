@@ -274,6 +274,34 @@ function performanceComparison(common, performance, metrics, budgets) {
   return compareSupportPerformance(performance, metrics, baseline, budgets)
 }
 
+function dataProfileContract(scenario, metrics) {
+  if (scenario.id !== "voip" || !new Set(["high", "500"]).has(dataProfile)) {
+    return { status: "not_applicable" }
+  }
+  const expected = { totalCalls: 500, totalPages: 20, renderedCalls: 25 }
+  const actual = metrics.voipDensity
+  const matched = actual
+    && actual.totalCalls === expected.totalCalls
+    && actual.totalPages === expected.totalPages
+    && actual.renderedCalls === expected.renderedCalls
+  return { status: matched ? "matched" : "mismatched", expected, actual }
+}
+
+function roleContract(scenario, role, metrics) {
+  if (scenario.id !== "voip") return { status: "not_applicable" }
+  const expectedMode = role.key === "admin" ? "admin" : "read-only"
+  const expectedSettingsLinks = role.key === "admin" ? 1 : 0
+  const actual = metrics.voipRole
+  const matched = actual
+    && actual.managementMode === expectedMode
+    && actual.settingsLinks === expectedSettingsLinks
+  return {
+    status: matched ? "matched" : "mismatched",
+    expected: { managementMode: expectedMode, settingsLinks: expectedSettingsLinks },
+    actual,
+  }
+}
+
 async function inspectPage(page, workspaceSelector, primarySelector) {
   return page.evaluate(({ workspaceSelector, primarySelector }) => {
     const hiddenByClosedDetails = (element) => {
@@ -360,6 +388,17 @@ async function inspectPage(page, workspaceSelector, primarySelector) {
     const mainOverflowX = getComputedStyle(main).overflowX
     const mainScrollableHorizontalOverflow = !["hidden", "clip"].includes(mainOverflowX) && main.scrollWidth > main.clientWidth + 2
     const performanceState = window.__supportUxEvidencePerformance || { cumulativeLayoutShift: 0, eventDurations: [] }
+    const voipWorkspace = document.querySelector("[data-testid='voip-workspace']")
+    const voipDensity = voipWorkspace ? {
+      totalCalls: Number(voipWorkspace.dataset.totalCalls),
+      totalPages: Number(voipWorkspace.dataset.totalPages),
+      renderedCalls: Number(voipWorkspace.dataset.renderedCalls),
+    } : null
+    const voipConnection = document.querySelector("[data-testid='voip-connection-state']")
+    const voipRole = voipConnection ? {
+      managementMode: voipConnection.dataset.managementMode || null,
+      settingsLinks: voipConnection.querySelectorAll("a[href='/settings/voip']").length,
+    } : null
     return {
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -374,6 +413,8 @@ async function inspectPage(page, workspaceSelector, primarySelector) {
       workspaceTop: workspace ? Math.round(workspace.getBoundingClientRect().top) : null,
       blockCount: main.children.length,
       renderedRows: rows,
+      voipDensity,
+      voipRole,
       borderedRoundedBlocks: cards,
       immediatelyVisibleActions: interactive.filter((element) => element.getBoundingClientRect().top < window.innerHeight).length,
       primaryWorkTop: firstWorkRect ? Math.round(firstWorkRect.top) : null,
@@ -729,8 +770,12 @@ try {
                 }
                 const visual = await baselineComparison(fileName, screenshotPath)
                 const comparedPerformance = performanceComparison(common, performance, metrics, scenario.performanceBudget)
+                const profileContract = dataProfileContract(scenario, metrics)
+                const scopedRoleContract = roleContract(scenario, role, metrics)
                 const failed = errors.length || metrics.horizontalOverflow || a11yIssueCount || primaryWorkMiss
                   || axeViolations.length || keyboard.uniqueStops === 0 || environmentMismatch
+                  || profileContract.status === "mismatched"
+                  || scopedRoleContract.status === "mismatched"
                   || (requireBaseline ? visual.status !== "matched" || comparedPerformance.status !== "matched" : visual.status === "changed")
                 report.results.push({
                   ...common,
@@ -746,6 +791,8 @@ try {
                   primaryWorkMiss,
                   errors,
                   visual,
+                  dataProfileContract: profileContract,
+                  roleContract: scopedRoleContract,
                   performance,
                   performanceComparison: comparedPerformance,
                 })
