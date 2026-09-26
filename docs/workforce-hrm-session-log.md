@@ -79,3 +79,23 @@ corrections as new entries that explicitly supersede the earlier fact.
 - GitHub's supported-version documentation confirms the pinned REST version `2022-11-28` remains supported through 2028-03-10, so no opportunistic API migration is included in this safety slice.
 - Precise stopping point: local implementation, targeted evidence and independent pre-commit review are green; live protection remains unchanged.
 - Next action: create the checkpoint commit, push the isolated branch, open a draft PR, publish `agent-review=pending` for its exact head and require fresh exact-head review plus all machine checks before normal merge.
+
+## 2026-09-26 — PR #439 released; GitHub readback normalization isolated
+
+- PR #439 exact head `dca279fd0162e3bc6d23019da1436ad9c2da4e4d` received an independent remote-head review with zero findings and reviewer-published `agent-review=success`. The ready-for-review cycle then passed `pr-scope`, `runner-policy`, `scan`, `static-checks` and `typecheck`; normal merge used the expected-head guard and produced `5b3db2211d4e48c6a79490b711dd634088894fcf` without admin bypass.
+- Deploy run `36255490143` passed quality/security, built and uploaded the SHA-bound artifact, deployed atomically and completed post-deploy smoke. Independent public checks returned HTTP 200/`ok` from `/api/v1/ping` and `artifactSha=5b3db2211d4e48c6a79490b711dd634088894fcf` from `/api/v1/public/build-info`.
+- The merged configurator's live PUT added the sixth required context `agent-review` and preserved `strict=false`, all five machine contexts with `app_id=15368`, `enforce_admins=true`, the non-null zero-approval PR rule, and disabled force pushes/deletion. Live protection was not rolled back or weakened.
+- GitHub accepted the explicit request sentinel `agent-review.app_id=-1` but normalized it to `app_id=null` in both the PUT response and GET readback. The verifier intentionally exited non-zero because it expected literal `-1`; this is a representation bug in the verifier, not an absent gate.
+- A narrow follow-up changes only the semantic readback expectation and adds executable mock coverage: GitHub-normalized `null` passes, while a missing context, wrong machine app binding, admin bypass, missing PR rule, force push or deletion still fails closed. Shell syntax, the new configurator behavior test and the full delivery asset test pass locally.
+- Read-only next-slice analysis selected WF-C6-005 backend exception-workbench safety before any visible WF-C8-005 UI. The backend PR will introduce per-row historical scope, an encrypted short-lived action token, exact lifecycle/correction invariants and in-transaction authorization; a later separately approved UI/i18n PR will consume server-provided actions. No task is credited by planning.
+- Progress remains `81/161`, `14/15`, C5 81% and C9 99%. Full local build, broad typecheck, browser E2E, Android, load and physical evidence remain `NOT RUN` under the Contabo policy.
+- Precise stopping point: production and the six-context live gate are healthy; branch `codex/workforce-agent-review-readback` contains the tested normalization repair but is not yet committed or reviewed.
+- Next action: checkpoint and publish the narrow follow-up, prove that the now-required live `agent-review` blocks then accepts the exact PR head, merge after all gates, rerun the configurator from reviewed `main`, and only then begin the WF-C6-005 backend slice.
+
+## 2026-09-26 — protection-readback follow-up review GREEN
+
+- Independent review found one P2 in the initial semantic normalizer: jq exposes both an explicit JSON `null` and an absent object key as null-like, so a response missing `agent-review.app_id` could have passed.
+- The verifier now applies null-to-`-1` normalization only when `has("app_id")` is true. An explicit GitHub-normalized `null` and a future echoed `-1` remain valid, but an absent binding, missing context, wrong machine app, admin bypass, missing PR rule, force push or deletion all fail closed.
+- Fresh shell syntax, dedicated configurator behavior, full delivery asset and diff-whitespace checks pass. Independent rereview returned GREEN with zero remaining findings and measured the complete follow-up at `13,546` bytes. Heavy build/typecheck/browser/Android/load checks remain `NOT RUN` locally and stay delegated to CI.
+- Precise stopping point: the normalization repair and exact negative coverage are locally green and independently reviewed; live six-context protection remains active.
+- Next action: checkpoint, push and open the narrow PR, publish pending then independently reviewed exact-SHA `agent-review`, wait all machine gates, merge normally and rerun the merged configurator for a zero-exit exact live readback.
