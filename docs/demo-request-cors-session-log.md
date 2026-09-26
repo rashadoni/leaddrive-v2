@@ -97,3 +97,62 @@ locally verified, pushed, and awaiting GitHub PR checks/review in draft PR #448.
 The next action belongs to the coordinating task: decide when to mark the PR
 ready and continue its own release sequence. This subtask must not merge or
 deploy it.
+
+## 2026-09-26 — required CI, merge, and production release start
+
+- The coordinating task marked PR #448 ready and applied the repository's
+  `production-build` label so the full safety-lane gates ran on exact head SHA
+  `02b84ed1c680481eacec79bf09f2e17d378fdf5f`.
+- GitHub Actions run `36270895573` completed successfully: PR scope; production
+  standalone build and output verification; full typecheck plus blocking
+  syntax/module and defect-baseline gates; PostgreSQL/event-platform safety
+  checks; PII lint guard; and blocking unit-test baseline. Runner-policy and
+  secret-scan workflows also passed. A short cancelled duplicate created by
+  the draft-to-ready transition was superseded by this exact-SHA run and was
+  not a product failure.
+- Immediately before the production mutation, routing was revalidated:
+  repository root is this dedicated worktree, origin is
+  `https://github.com/rashadoni/leaddrive-v2.git`, registered production is
+  `13.140.132.245:/opt/leaddrive-v2`, and the only supported release route is
+  protected `main` through `.github/workflows/deploy.yml`.
+- PR #448 was squash-merged at `2026-09-26T21:11:41Z` as exact `main` commit
+  `13277465d731cdfc106e7942c0a2b97ffa38d0b5`.
+- Push-triggered production workflow `36272090842` started on that exact SHA.
+  It is currently running the quality/security gates and building the
+  SHA-bound deployment artifact. No manual copy, direct server deploy, or
+  fallback release path was used.
+
+Current stopping point: the reviewed CORS fix is merged and its exact-SHA
+production workflow is in progress. Next action: wait for the protected deploy
+and its built-in smoke to finish, then independently verify ping/build SHA and
+the allowed/disallowed CORS response matrix before recording the release as
+complete.
+
+## 2026-09-26 — production release and independent smoke complete
+
+- GitHub Actions production workflow `36272090842` completed successfully for
+  exact `main` SHA `13277465d731cdfc106e7942c0a2b97ffa38d0b5`.
+- The workflow passed quality/security gates, built and verified the standalone
+  bundle, uploaded a SHA-bound artifact, staged and atomically installed it on
+  registered production, verified all scheduler and tenant-isolation
+  invariants, and passed public ping, exact revision, login and hashed-asset
+  smoke checks. No direct deployment path was used.
+- Independent post-release checks at approximately `2026-09-26T21:38:55Z`
+  confirmed:
+  - `/api/v1/ping` returned HTTP 200 with `{"ok":true}`;
+  - `/api/v1/public/build-info` returned HTTP 200 and exact `artifactSha`
+    `13277465d731cdfc106e7942c0a2b97ffa38d0b5`;
+  - an OPTIONS preflight from `https://leaddrivecrm.org` returned 204 with the
+    exact origin, `POST, OPTIONS`, `Content-Type`, `Vary: Origin`, and max-age
+    86400;
+  - the same preflight from `https://attacker.invalid` returned no
+    `Access-Control-Allow-Origin` header;
+  - a synthetic allowed-origin POST with the non-empty `website` honeypot
+    returned 201 and the expected allowed-origin header. The handler returns
+    from the honeypot branch before the database create, so this smoke did not
+    create a lead or send a notification.
+
+Current stopping point: the marketing demo-request CORS defect is fixed,
+merged, deployed and independently verified in production. Next action for the
+coordinating hardening task: finish the Cloudflare alias redirect/WAF rules and
+then release the already-green static-site PR.
