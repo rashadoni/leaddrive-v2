@@ -12541,6 +12541,7 @@
     }
   },
   "mtmAgentPeriod": {
+    "firstSignal": "ilk siqnal",
     "storyTotals": "cəmi yolda {duration}, {distance} · digər dayanmalar: {stops}",
     "openSince": "{date} tarixindən açıqdır",
     "agent": "Əməkdaş",

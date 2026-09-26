@@ -159,7 +159,7 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
 
   const tripText = (entry: TripEntry) => {
     switch (entry.kind) {
-      case "START": return `${clock(entry.at!)} ${t("started")}`
+      case "START": return `${clock(entry.at!)} ${t(entry.source === "WORKDAY" ? "started" : "firstSignal")}`
       case "END": return `${clock(entry.at!)} ${t(entry.source === "WORKDAY" ? "ended" : "lastSignal")}`
       case "MOVE": return t("onRoad", { duration: duration(entry.durationSeconds ?? 0), distance: km(entry.distanceMeters ?? 0) })
       case "GAP": return t(entry.reason === "WORKDAY_PAUSED" ? "pause" : "noSignal", { duration: duration(entry.durationSeconds ?? 0) })

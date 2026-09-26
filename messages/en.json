@@ -12545,6 +12545,7 @@
     }
   },
   "mtmAgentPeriod": {
+    "firstSignal": "first signal",
     "storyTotals": "on the road in total {duration}, {distance} · other stops: {stops}",
     "openSince": "open since {date}",
     "agent": "Employee",
