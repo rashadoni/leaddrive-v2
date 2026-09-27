@@ -12,15 +12,14 @@ import { nextWiderPeriod } from "@/lib/mtm/empty-period-fallback"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { mtmPhotoThumbnailUrl, type MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 import { PhotoThumbnailImg } from "@/components/mtm/photo-thumbnail-img"
+import { MtmFilterBar, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
-import { ColorStatCard } from "@/components/color-stat-card"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { Button } from "@/components/ui/button"
-import { Select } from "@/components/ui/select"
 import { Dialog, DialogTitle } from "@/components/ui/dialog"
-import { Camera, Check, X, Trash2, Clock, CheckCircle2, XCircle, LayoutGrid, Columns, CheckSquare, ImageOff, ExternalLink } from "lucide-react"
+import { Camera, Check, X, Trash2, LayoutGrid, Columns, CheckSquare, ImageOff, ExternalLink } from "lucide-react"
 
 const statusColors: Record<string, string> = { PENDING: "bg-amber-100 text-amber-700", APPROVED: "bg-green-100 text-green-700", REJECTED: "bg-red-100 text-red-600" }
 
@@ -82,6 +81,7 @@ export default function MtmPhotosPage() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const t = useTranslations("mtmPhotosPage")
+  const tfl = useTranslations("mtmFilters")
   const tf = useTranslations("mtmForms")
   // A5: статус — идентификатор, а не текст для человека. Раньше страница
   // печатала PENDING и «Photo approved» по-английски в любом интерфейсе.
@@ -271,59 +271,42 @@ export default function MtmPhotosPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
-        {/* The four cards describe the same set — the chosen period — so they add up. */}
-        <ColorStatCard label={t("statTotal")} value={periodTotal} icon={<Camera className="h-4 w-4" />} hint={t("hintTotal")} />
-        <ColorStatCard label={t("statPending")} value={statusCounts["PENDING"] || 0} icon={<Clock className="h-4 w-4" />} hint={t("hintPending")} />
-        <ColorStatCard label={t("statApproved")} value={statusCounts["APPROVED"] || 0} icon={<CheckCircle2 className="h-4 w-4" />} hint={t("hintApproved")} />
-        <ColorStatCard label={t("statRejected")} value={statusCounts["REJECTED"] || 0} icon={<XCircle className="h-4 w-4" />} hint={t("hintRejected")} />
-      </div>
-
+      {/* Owner 2026-09-27: filters in one row. Four stat cards repeated the
+          counts the status chips already carry; period, employee and order
+          were labelled fields on rows of their own. */}
+      <MtmFilterBar testId="mtm-photos-filters">
+        <MtmFilterSelect testId="mtm-photos-period" label={t("periodLabel")} value={period} emptyValue="week" showValue allLabel={t("periodWeek")}
+          options={[{ value: "today", label: t("periodToday") }, { value: "week", label: t("periodWeek") }, { value: "all", label: t("periodAll") }]}
+          onChange={(value) => {
+            setPeriodChosenByUser(true)
+            setWidenedFrom(null)
+            setPeriod(value as PhotoPeriod)
+          }} />
+        <MtmFilterSelect testId="mtm-photos-agent" label={t("agentFilter")} value={agentFilter} allLabel={t("allAgents")}
+          options={[...knownAgents.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => ({ value: id, label: name }))}
+          onChange={setAgentFilter} />
+        <div role="group" aria-label={tfl("status")} className="flex flex-wrap gap-1">
+          <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{t("all")} ({periodTotal})</Button>
+          {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
+            <Button key={s} variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>
+              {t(PHOTO_FILTER_LABELS[s])} ({statusCounts[s] || 0})
+            </Button>
+          ))}
+        </div>
+        <span className="ml-auto">
+          <MtmFilterSelect label={tfl("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
+            options={[{ value: "date_desc", label: t("sortDateDesc") }, { value: "status", label: t("sortStatus") }]}
+            onChange={setSortBy} />
+        </span>
+      </MtmFilterBar>
       {widenedFrom ? (
         <p role="status" data-testid="mtm-photos-widened" className="text-sm text-muted-foreground">
           {t("widenedNotice", { from: t(periodLabelKey(widenedFrom)), to: t(periodLabelKey(period)) })}
         </p>
       ) : null}
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="grid gap-1 text-xs font-medium">
-          {t("periodLabel")}
-          <Select data-testid="mtm-photos-period" value={period} onChange={(event) => {
-            setPeriodChosenByUser(true)
-            setWidenedFrom(null)
-            setPeriod(event.target.value as PhotoPeriod)
-          }} className="min-h-10 w-[180px]">
-            <option value="today">{t("periodToday")}</option>
-            <option value="week">{t("periodWeek")}</option>
-            <option value="all">{t("periodAll")}</option>
-          </Select>
-        </label>
-        <label className="grid gap-1 text-xs font-medium">
-          {t("agentFilter")}
-          <Select data-testid="mtm-photos-agent" value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} className="min-h-10 w-[220px]">
-            <option value="">{t("allAgents")}</option>
-            {[...knownAgents.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-          </Select>
-        </label>
-        {loadedIsPartial ? (
-          <span data-testid="mtm-photos-partial" className="pb-2 text-xs text-muted-foreground">{t("latestOfTotal", { shown: photos.length, total })}</span>
-        ) : null}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({periodTotal})</Button>
-        {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
-          <Button key={s} variant={activeFilter === s ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(s)}>
-            {t(PHOTO_FILTER_LABELS[s])} ({statusCounts[s] || 0})
-          </Button>
-        ))}
-      </div>
-
-      <div className="flex justify-end">
-        <Select value={sortBy} onChange={e => setSortBy(e.target.value)} className="w-[160px]">
-          <option value="date_desc">{t("sortDateDesc")}</option>
-          <option value="status">{t("sortStatus")}</option>
-        </Select>
-      </div>
+      {loadedIsPartial ? (
+        <p data-testid="mtm-photos-partial" className="text-xs text-muted-foreground">{t("latestOfTotal", { shown: photos.length, total })}</p>
+      ) : null}
 
       {/* Batch action bar */}
       {viewMode === "batch" && selectedPhotos.size > 0 && (

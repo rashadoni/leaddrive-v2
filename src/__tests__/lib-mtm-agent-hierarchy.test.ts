@@ -186,7 +186,8 @@ describe("agents page contract", () => {
     expect(page).toContain('data-testid="mtm-agents-managers-tile"')
     expect(page).toContain('activeFilter === "managers"')
     expect(page).toContain("isMtmLeaderRole(a.role)")
-    const tile = page.slice(page.indexOf('data-testid="mtm-agents-managers-tile"') - 400, page.indexOf("</ColorStatCard>") > 0 ? page.indexOf("</ColorStatCard>") : page.indexOf('label={t("statManagers")}') + 200)
+    // 2026-09-27: a pill in the one filter row instead of a stat card.
+    const tile = page.slice(page.indexOf('data-testid="mtm-agents-managers-tile"') - 400, page.indexOf('{t("statManagers")} ({totalManagers})') + 60)
     // aria-label would replace the tile's content, count included.
     expect(tile).not.toContain("aria-label=")
     expect(tile).toContain('aria-describedby="mtm-agents-managers-tile-hint"')

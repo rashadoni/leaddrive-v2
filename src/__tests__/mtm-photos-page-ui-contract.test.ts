@@ -18,13 +18,15 @@ describe("MTM photos page", () => {
   it("lands on this week's photos and filters employees on the server", () => {
     expect(page).toContain('useState<PhotoPeriod>("week")')
     expect(page).toContain('params.set("agentId", agentFilter)')
-    expect(page).toContain('data-testid="mtm-photos-period"')
-    expect(page).toContain('data-testid="mtm-photos-agent"')
+    expect(page).toContain('testId="mtm-photos-period"')
+    expect(page).toContain('testId="mtm-photos-agent"')
   })
 
   it("counts the cards over the chosen period on the server, so «all» is not the page size", () => {
     // Audit 2026-09-26: «Всего 200» while 1367 photos were stored.
-    expect(page).toContain('<ColorStatCard label={t("statTotal")} value={periodTotal}')
+    // The status chips carry the counts; the four stat cards that repeated them are gone (2026-09-27).
+    expect(page).toContain('{t("all")} ({periodTotal})')
+    expect(page).not.toContain("<ColorStatCard")
     expect(page).toContain("setStatusCounts(r.data.byStatus && typeof r.data.byStatus === \"object\" ? r.data.byStatus : {})")
     expect(page).toContain('params.set("since", new Date(mtmPhotoPeriodStart(period, new Date(), timezone)).toISOString())')
     expect(page).toContain('if (activeFilter !== "all") params.set("status", activeFilter)')

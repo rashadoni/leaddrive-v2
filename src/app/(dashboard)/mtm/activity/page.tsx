@@ -6,11 +6,10 @@ import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
 import { mtmActivityEntityText } from "@/lib/mtm/activity-entity"
-import { Activity, LogIn, LogOut, Camera, ShieldAlert, Download, ChevronRight, Lock } from "lucide-react"
+import { Activity, ShieldAlert, Download, ChevronRight, Lock } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
-import { ColorStatCard } from "@/components/color-stat-card"
+import { MtmFilterBar, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
-import { Select } from "@/components/ui/select"
 import { HelpButton } from "@/components/help/help-button"
 import {
   actionMeta, actionLabelKey, TONE_CLASSES, activityRowHref, kindKey,
@@ -29,6 +28,7 @@ interface AgentLite { id: string; name: string }
 
 export default function MtmActivityPage() {
   const t = useTranslations("mtmActivity")
+  const tf = useTranslations("mtmFilters")
   const locale = useLocale()
   const router = useRouter()
   const { data: session } = useSession()
@@ -143,49 +143,36 @@ export default function MtmActivityPage() {
         </Button>
       </div>
 
-      {/* KPI cards — scoped to the selected period. The Violations card doubles
-          as a one-click compliance lens (toggles the violations filter). */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 stagger-children">
-        <ColorStatCard label={t("totalActivity")} value={kpi.totalActivities} animate icon={<Activity className="h-4 w-4" />} hint={t("statsPeriodNote")} />
-        <ColorStatCard label={t("checkIn")} value={kpi.totalCheckIns} animate icon={<LogIn className="h-4 w-4" />} />
-        <ColorStatCard label={t("checkOut")} value={kpi.totalCheckOuts} animate icon={<LogOut className="h-4 w-4" />} />
-        <ColorStatCard label={t("photoUpload")} value={kpi.totalPhotos} animate icon={<Camera className="h-4 w-4" />} />
-        <button type="button" onClick={toggleViolations} className="text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500">
-          <ColorStatCard
-            label={t("violations")}
-            value={kpi.totalViolations}
-            animate
-            icon={<ShieldAlert className="h-4 w-4" />}
-            hint={t("violationsHint")}
-            className={violations
-              ? "ring-2 ring-red-500 border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-500/10"
-              : "hover:border-red-300 dark:hover:border-red-500/40"}
-          />
-        </button>
-      </div>
-
-      {/* Filters: period + agent + type */}
-      <div className="flex items-center gap-2 flex-wrap rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3">
-        <div className="flex gap-1">
-          {PERIODS.map(p => (
-            <Button key={p} size="sm" variant={period === p ? "default" : "outline"} onClick={() => setPeriod(p)}>
-              {t(PERIOD_KEY[p])}
-            </Button>
-          ))}
-        </div>
-        <Select value={agentId} onChange={e => setAgentId(e.target.value)} className="w-[190px]">
-          <option value="">{t("allAgents")}</option>
-          {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </Select>
-        <Select value={type} onChange={e => { setType(e.target.value); setViolations(false) }} className="w-[190px]">
-          <option value="">{t("all")}</option>
-          <option value="CHECK_IN">{t("checkIn")}</option>
-          <option value="CHECK_IN_FORCED">{t("forcedCheckIn")}</option>
-          <option value="CHECK_OUT">{t("checkOut")}</option>
-          <option value="PHOTO">{t("photoUpload")}</option>
-          <option value="ROUTE">{t("typeRoute")}</option>
-          <option value="TASK">{t("tasks")}</option>
-        </Select>
+      {/* Owner 2026-09-27: filters in one row. Five stat cards stood above a
+          card of period buttons and two selects; the «Violations» card was a
+          hidden toggle. Now it is a visible pill, the counts one line. */}
+      <div className="space-y-2">
+        <MtmFilterBar testId="mtm-activity-filters">
+          <MtmFilterSelect testId="mtm-activity-period" label={tf("period")} value={period} emptyValue="7d" showValue allLabel={t(PERIOD_KEY["7d"])}
+            options={PERIODS.map((p) => ({ value: p, label: t(PERIOD_KEY[p]) }))}
+            onChange={(value) => setPeriod(value as Period)} />
+          <MtmFilterSelect testId="mtm-activity-agent" label={tf("employee")} value={agentId} allLabel={t("allAgents")}
+            options={agents.map((a) => ({ value: a.id, label: a.name }))}
+            onChange={setAgentId} />
+          <MtmFilterSelect testId="mtm-activity-type" label={tf("type")} value={type} allLabel={t("all")}
+            options={[
+              { value: "CHECK_IN", label: t("checkIn") },
+              { value: "CHECK_IN_FORCED", label: t("forcedCheckIn") },
+              { value: "CHECK_OUT", label: t("checkOut") },
+              { value: "PHOTO", label: t("photoUpload") },
+              { value: "ROUTE", label: t("typeRoute") },
+              { value: "TASK", label: t("tasks") },
+            ]}
+            onChange={(value) => { setType(value); setViolations(false) }} />
+          <button type="button" data-testid="mtm-activity-violations" aria-pressed={violations} onClick={toggleViolations} title={t("violationsHint")}
+            className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${violations ? "border-red-400 bg-red-50 text-red-700 dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-300" : "border-zinc-200 bg-card text-muted-foreground hover:text-foreground dark:border-zinc-700"}`}>
+            <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+            {t("violations")} ({kpi.totalViolations})
+          </button>
+        </MtmFilterBar>
+        <MtmResultLine aside={t("statsPeriodNote")}>
+          <span className="font-medium text-foreground">{t("totalActivity")}: {kpi.totalActivities}</span> · {t("checkIn")}: {kpi.totalCheckIns} · {t("checkOut")}: {kpi.totalCheckOuts} · {t("photoUpload")}: {kpi.totalPhotos}
+        </MtmResultLine>
       </div>
 
       {errorKey ? (
