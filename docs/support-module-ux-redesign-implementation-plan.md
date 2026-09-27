@@ -2030,6 +2030,30 @@ Additional recovery evidence (2026-09-06):
   `startup_failure` with zero jobs created. Therefore the browser matrix,
   accessibility scan, physical touch proxy, performance sampling and visual
   comparison are still **NOT RUN**; all SUPUX-ENT checkboxes remain open.
+- Current-tree restoration on 2026-09-27 is checkpointed as product commit
+  `23127cd2e` and recovery commit `737f0fd21`. The product patch applied cleanly;
+  API-route behavior was already present in the current history. Recovery
+  conflicts in workflow, browser runner, seed contract and flow runner were
+  resolved byte-for-byte to the current branch's newer shared wrappers and
+  scenario supersets; only the Entitlements page recovery and 7-outcome
+  contract were newly applied.
+- Self-audit found a non-`all` `support-entitlements` dispatch skipped all
+  section validation and the mobile runner declared touch capability while
+  activating Retry through keyboard APIs. A dedicated Entitlements gate now
+  runs the five-root scan, i18n, syntax, scoped source lint, full API/lifecycle/
+  reports/waiver/presentation regression and shared visual/performance
+  contracts. Desktop keeps Enter activation; touch viewports require a real
+  scroll-aware 44x44 hit-tested `page.touchscreen.tap`, record the modality and
+  block service workers for deterministic routed recovery.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  current pressure. The five-file scan reports zero findings, translation
+  parity passes at 23,599 keys, runner syntax and scoped ESLint pass, `git diff
+  --check` passes and 14 suites pass 209/209 assertions. The unchanged legacy
+  reports journey remains in the Vitest regression gate but is intentionally
+  excluded from changed-source ESLint because its 84 historical explicit-any
+  findings are unrelated to this restored slice. No functional regression or
+  browser assertion was removed. Exact-SHA hosted browser evidence remains
+  mandatory before any Entitlements checkbox closes.
 
 ## 16. Workstream 9 — Entitlement Templates
 

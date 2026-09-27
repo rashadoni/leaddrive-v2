@@ -47,6 +47,17 @@ describe("Support Entitlements mutating evidence contract", () => {
     ]) expect(page).toContain(marker)
   })
 
+  it("proves physical touch targets without weakening desktop keyboard evidence", () => {
+    expect(flow).toContain('inputModality: "keyboard"')
+    expect(flow).toContain('inputModality: "playwright-touchscreen"')
+    expect(flow).toContain("scrollIntoViewIfNeeded()")
+    expect(flow).toContain("document.elementFromPoint")
+    expect(flow).toContain("box.width < 44 || box.height < 44")
+    expect(flow).toContain("page.touchscreen.tap(point.x, point.y)")
+    expect(flow).toContain('serviceWorkers: "block"')
+    expect(flow).toContain("physicalTouchRetry")
+  })
+
   it("runs only when the Support Entitlements scenario is selected", () => {
     expect(workflow).toContain("scripts/support-ux-entitlements-flow-evidence.mjs")
     expect(workflow).toContain("*,support-entitlements,*")

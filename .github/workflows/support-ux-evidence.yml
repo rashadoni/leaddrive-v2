@@ -484,6 +484,70 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts
 
+      - name: Validate section-scoped Support Entitlements evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'support-entitlements') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/support/entitlements,
+            src/components/delete-confirm-dialog.tsx,
+            src/components/ui/dialog.tsx,
+            src/components/ui/dropdown-menu.tsx,
+            src/components/ui/sheet.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-entitlements-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-entitlements-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/support/entitlements/page.tsx \
+            src/app/api/v1/entitlements/route.ts \
+            src/app/api/v1/entitlements/\[id\]/route.ts \
+            src/app/api/v1/entitlements/\[id\]/milestones/route.ts \
+            src/app/api/v1/entitlements/\[id\]/milestones/\[milestoneId\]/route.ts \
+            src/components/delete-confirm-dialog.tsx \
+            src/components/ui/dialog.tsx \
+            src/components/ui/dropdown-menu.tsx \
+            src/components/ui/sheet.tsx \
+            src/lib/entitlement-process/presentation.ts \
+            src/__tests__/api-entitlements.test.ts \
+            src/__tests__/api-ticket-entitlement-waive.test.ts \
+            src/__tests__/entitlement-presentation.test.ts \
+            src/__tests__/lib-entitlement-milestone-automation.test.ts \
+            src/__tests__/lib-entitlement-process.test.ts \
+            src/__tests__/support-entitlements-ux-contract.test.ts \
+            src/__tests__/support-ux-entitlements-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-entitlements.test.ts \
+            src/__tests__/api-reports-journeys.test.ts \
+            src/__tests__/api-ticket-entitlement-waive.test.ts \
+            src/__tests__/entitlement-presentation.test.ts \
+            src/__tests__/lib-entitlement-milestone-automation.test.ts \
+            src/__tests__/lib-entitlement-process.test.ts \
+            src/__tests__/support-entitlements-ux-contract.test.ts \
+            src/__tests__/support-ux-entitlements-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
         run: |

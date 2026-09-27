@@ -1249,3 +1249,38 @@ run and inspect the complete high-density SLA matrix before closure.
 Next: create and push the Workstream 7 closure checkpoint, then restore
 Workstream 8 Support Entitlements from product commit `27c571df4` and recovery
 commit `168aa7134`, preserving current shared evidence supersets.
+
+### Workstream 8 restoration and CI-gate self-audit
+
+- Workstream 7 closure is checkpointed and pushed as `4454ad2f9`. Support
+  Entitlements product commit `27c571df4` is restored as `23127cd2e`; recovery
+  commit `168aa7134` is restored as `737f0fd21`.
+- Product restoration applied cleanly to the compact page, translations,
+  presentation helper and contracts; API-route changes were already present in
+  current history. Recovery conflicts affected shared workflow/browser/seed
+  paths and an add/add flow runner. The shared files and runner were resolved
+  byte-for-byte to their pre-cherry-pick current versions, preserving all later
+  scenarios and the common screenshot wrapper while applying the Entitlements-
+  specific page recovery and 7-outcome contract.
+- Self-audit found `support-entitlements` dispatches skipped section validation
+  unless `all` was selected. A dedicated validation step now covers the page,
+  dialog/sheet/menu dependencies, entitlement API routes, presentation helper,
+  API/lifecycle/reports/waiver regressions and shared evidence contracts. The
+  unchanged legacy reports journey stays in Vitest but not changed-source
+  ESLint, avoiding an unrelated 84-cast cleanup without weakening its
+  functional regression coverage.
+- Mobile evidence previously set `hasTouch` but used Enter for Retry. Desktop
+  still records keyboard activation; touch viewports now scroll, require at
+  least 44x44, verify the center hit target and perform a real Playwright
+  touchscreen tap. The result records modality/hit/size and service workers are
+  blocked for deterministic routed recovery.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  current pressure. The five-file scan reports zero findings, i18n parity
+  passes at 23,599 keys, syntax/scoped ESLint/`git diff --check` pass and 14
+  suites pass 209/209 assertions. No scenario, lifecycle, report, touch,
+  keyboard, recovery or visual/performance requirement was weakened.
+
+Next: checkpoint and push the Entitlements section gate and physical-touch
+evidence, then run and inspect exact-SHA desktop mutating, RU/dark physical-
+touch mobile mutating and complete high-density matrices before closing
+Workstream 8.
