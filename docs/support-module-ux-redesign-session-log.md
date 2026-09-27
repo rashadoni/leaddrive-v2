@@ -1445,3 +1445,33 @@ unchanged desktop gate and require 7/7 plus disposable cleanup before mobile.
 
 Next: checkpoint and push the stable confirmation selector, rerun the exact
 desktop gate and require 7/7 plus both cleanup/restoration flags before mobile.
+
+### Workstream 8 desktop pass and mobile density correction
+
+- Stable-confirmation checkpoint `b6cdc2c3b078b8420f14f55b2c01fee7a09facde`
+  passes exact-SHA desktop run `36315786714`: the section gate, fixtures,
+  production build, one static cell and all 7/7 mutating outcomes are green.
+  Keyboard recovery/focus return, 0/1/20/100 records with 100 definitions per
+  term, lifecycle/edit/milestone rollback, `disposableFixtureRemoved: true` and
+  `entitlementRestoredActive: true` are confirmed. Static issue totals are all
+  zero; load p75 is 319 ms, primary work starts at 468 px and CLS is
+  `0.0007984547556182484`. Manual screenshot review is healthy. The artifact is
+  retained at `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36315786714`.
+- RU/dark mobile run `36316737126` on the same SHA passes the section/build
+  gates and 6/7 flows. Real Playwright touchscreen activation succeeds on a
+  hit-tested 144x44 retry target; lifecycle, edit, milestone cleanup and final
+  Active restoration all pass. Dark theme, RU locale, reduced motion,
+  `maxTouchPoints: 1` and no horizontal overflow are confirmed.
+- Mobile evidence exposes three measured density issues: the RU card is 146 px
+  against the unchanged 140 px compact-row limit; five one-column filters place
+  primary work at 904 px; and header squeeze reduces Help to 23x32. The toolbar
+  now uses two columns below `lg` while preserving the five-column desktop
+  layout, mobile card vertical padding is reduced by 8 px, and the page-level
+  Help trigger is fixed at 44x44 with `shrink-0`.
+- Resource inspection shows 16 GiB available memory, 331 GiB free disk and zero
+  pressure. Scoped ESLint, `git diff --check` and both contracts pass 12/12. The
+  140 px row limit, primary-work gate and touch threshold are unchanged.
+
+Next: checkpoint and push the responsive density correction, rerun RU/dark
+mobile on the new exact SHA and require static zeroes, 7/7, physical touch,
+cleanup and Active restoration before the high-density matrix.

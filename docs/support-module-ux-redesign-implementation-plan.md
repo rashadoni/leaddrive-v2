@@ -2112,6 +2112,16 @@ Additional recovery evidence (2026-09-06):
   to the still-open parent Sheet. A stable conditional test-id wrapper now
   scopes the same alert/retry/hidden checks and the row-removal cleanup
   assertion remains mandatory. Syntax/lint/diff and both contracts pass 12/12.
+- Exact-SHA desktop run `36315786714` at `b6cdc2c3b` is fully green: static
+  totals are zero and all 7/7 flows pass, including 0/1/20/100 × 100 definitions,
+  exact focus return, rollback, disposable milestone cleanup and final Active
+  restoration. RU/dark mobile run `36316737126` passes physical 144x44
+  touchscreen recovery and 6/7 flows but fails the unchanged density/static
+  gates: a 146 px RU card, five stacked filters placing primary work at 904 px,
+  and a squeezed 23x32 Help trigger. Mobile cards now use 8 px less vertical
+  padding, filters use two columns below `lg`, and Help is fixed at 44x44;
+  desktop five-column composition is preserved. Scoped lint/diff and both
+  contracts pass 12/12.
 
 ## 16. Workstream 9 — Entitlement Templates
 

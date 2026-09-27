@@ -700,7 +700,7 @@ export default function EntitlementsPage() {
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-muted-foreground" />
             <h1 className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1>
-            <HelpButton slug="entitlements" />
+            <HelpButton slug="entitlements" className="h-11 w-11 shrink-0" />
           </div>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("subtitleCompact")}</p>
           {data && !permissions.canWrite && <p className="mt-1 text-xs text-muted-foreground" data-testid="support-entitlements-read-only">{t("permissionReadOnlyHint")}</p>}
@@ -915,7 +915,7 @@ function EntitlementToolbar({
   const update = (patch: Partial<EntitlementFilters>) => onChange({ ...filters, ...patch })
   return (
     <section aria-label={t("filtersTitle")} className="rounded-xl border bg-card p-2" data-testid="support-entitlements-filters">
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
         <Select aria-label={t("company")} value={filters.companyId} onChange={(event) => update({ companyId: event.target.value })} className="min-h-11" data-testid="support-entitlements-filter-company">
           <option value="">{t("allCompanies")}</option>
           {data.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
@@ -1005,7 +1005,7 @@ function EntitlementMobileList({ entitlements, permissions, formatDate, t, rowRe
   return (
     <div className="divide-y xl:hidden" data-testid="support-entitlements-mobile-list">
       {entitlements.map((entitlement) => (
-        <article key={entitlement.id} className="p-3" data-testid="support-entitlement-row" data-entitlement-id={entitlement.id}>
+        <article key={entitlement.id} className="px-3 py-2" data-testid="support-entitlement-row" data-entitlement-id={entitlement.id}>
           <div className="flex items-start gap-2">
             <button
               ref={(node) => { if (node) rowRefs.current.set(entitlement.id, node); else rowRefs.current.delete(entitlement.id) }}
