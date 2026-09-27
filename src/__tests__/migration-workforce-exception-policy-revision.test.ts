@@ -116,15 +116,26 @@ describe("Workforce exception policy revision migration", () => {
 
   it("has no production consumer or provisioning side effect", () => {
     const productionFiles = productionTypeScriptFiles(join(root, "src"))
-      .filter((path) => !path.endsWith("/lib/workforce/exception-policy-revision.ts"))
+      .filter((path) => ![
+        "/lib/workforce/exception-policy-revision.ts",
+        "/lib/workforce/exception-policy-revision-writer.ts",
+      ].some((suffix) => path.endsWith(suffix)))
 
     for (const path of productionFiles) {
-      expect(readFileSync(path, "utf8"), path).not.toContain(
+      const source = readFileSync(path, "utf8")
+      expect(source, path).not.toContain(
         "@/lib/workforce/exception-policy-revision",
       )
+      expect(source, path).not.toContain("exception-policy-revision-writer")
     }
     expect(
       readFileSync(join(root, "src/lib/workforce/default-configuration-provisioning.ts"), "utf8"),
     ).not.toContain("workforceExceptionPolicyRevision")
+    const writer = readFileSync(
+      join(root, "src/lib/workforce/exception-policy-revision-writer.ts"),
+      "utf8",
+    )
+    expect(writer).not.toContain("workforceExceptionDecision")
+    expect(writer).not.toContain("policyRevisionId")
   })
 })

@@ -16,6 +16,31 @@ import {
 export const WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_HASH_V1 =
   "5651ee6048857f0c62219176dc1e17d411d0769a835be994a1d0cebbf4291c5a" as const
 
+/**
+ * A deliberately small bound for a complete tenant acknowledgement stream.
+ * Reaching it requires an explicit follow-up design rather than turning an
+ * unbounded authority ledger into an application request dependency.
+ */
+export const MAX_WORKFORCE_EXCEPTION_POLICY_REVISIONS = 64
+export const WORKFORCE_EXCEPTION_POLICY_TENANT_RECORD_REASON_CODE =
+  "TENANT_RECORDED_DRAFT" as const
+
+export type WorkforceExceptionPolicyRevisionDraft = {
+  organizationId: string
+  operationId: string
+  policyVersion: typeof WORKFORCE_EXCEPTION_DRAFT_POLICY_VERSION
+  definition: WorkforceExceptionDraftPolicy
+  definitionHash: typeof WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_HASH_V1
+  recordedByUserId: string
+  recordReasonCode: typeof WORKFORCE_EXCEPTION_POLICY_TENANT_RECORD_REASON_CODE
+}
+
+export class WorkforceExceptionPolicyRevisionInputError extends Error {
+  constructor(readonly code: "WORKFORCE_EXCEPTION_POLICY_REVISION_INPUT_INVALID") {
+    super(code)
+  }
+}
+
 export type WorkforceExceptionPolicyRevisionRecord = {
   id: string
   organizationId: string
@@ -59,6 +84,49 @@ const canonicalRecommendedDefinition = canonicalWorkforcePolicyJson(
 const computedRecommendedDefinitionHash = workforcePolicyDefinitionHash(
   WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1,
 )
+
+function opaqueIdentifier(value: unknown): string {
+  if (
+    typeof value !== "string"
+    || !value.trim()
+    || value.length > 191
+    || /[\u0000-\u001f]/u.test(value)
+  ) {
+    throw new WorkforceExceptionPolicyRevisionInputError(
+      "WORKFORCE_EXCEPTION_POLICY_REVISION_INPUT_INVALID",
+    )
+  }
+  return value
+}
+
+/**
+ * Produces the only policy payload this dormant writer is allowed to record.
+ * The caller cannot supply a definition, hash, version or free-form reason.
+ * Persisting this draft remains an acknowledgement, never tenant activation.
+ */
+export function createWorkforceExceptionPolicyRevisionDraft(input: {
+  organizationId: unknown
+  operationId: unknown
+  recordedByUserId: unknown
+}): WorkforceExceptionPolicyRevisionDraft {
+  if (
+    typeof input.operationId !== "string"
+    || !OPERATION_ID_PATTERN.test(input.operationId)
+  ) {
+    throw new WorkforceExceptionPolicyRevisionInputError(
+      "WORKFORCE_EXCEPTION_POLICY_REVISION_INPUT_INVALID",
+    )
+  }
+  return {
+    organizationId: opaqueIdentifier(input.organizationId),
+    operationId: input.operationId,
+    policyVersion: WORKFORCE_EXCEPTION_DRAFT_POLICY_VERSION,
+    definition: WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1,
+    definitionHash: WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_HASH_V1,
+    recordedByUserId: opaqueIdentifier(input.recordedByUserId),
+    recordReasonCode: WORKFORCE_EXCEPTION_POLICY_TENANT_RECORD_REASON_CODE,
+  }
+}
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0

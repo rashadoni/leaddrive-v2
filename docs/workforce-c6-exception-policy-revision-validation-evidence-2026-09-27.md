@@ -117,3 +117,40 @@ terminal action or UI. Reviewer-side `git diff --check` passed. Reviewer-side
 real PostgreSQL, full typecheck/build, browser, Android and load checks were
 `NOT RUN`; the real PostgreSQL proof and all five exact-head GitHub contexts
 remain mandatory before merge. No progress credit is added.
+
+## Reviewed production release
+
+Receipt-integrity review confirmed final PR head
+`0f392a2a0aa4a1a22a8418d8063c6b02e093ad72` with zero P0-P3 findings. The
+complete base-to-head diff remained seven files / 41,774 bytes with SHA-256
+`3fedc0c6e05ea8753ddda2fe417049f92c9aa91f9f4e05a4ea8bd68961bab731`;
+the source-reviewed migration and tests did not change after source GREEN.
+
+PR #454 exact-head run `36304499644` passed `pr-scope`, `static-checks`,
+`typecheck`, `runner-policy` and `scan`. `static-checks` completed in 14m10s
+and executed the five real-PostgreSQL tests, including the two distinct Prisma
+deploy phases and post-validation invariants. Full `tsc --noEmit` and both
+blocking analyzers passed in 12m26s. The production-build job was skipped by
+the normal PR policy and was not a required context.
+
+PR #454 merged normally at `2026-09-27T08:08:48Z` as main SHA
+`0a71fc31967adc2683b6f481f59e516e71ed111c`. Deploy run `36305282373`
+completed GREEN at `2026-09-27T08:33:46Z` through GitHub `main` to the
+registered `13.140.132.245:/opt/leaddrive-v2` target. Quality/security repeated
+the PostgreSQL proof; the workflow built and verified the SHA-stamped
+standalone artifact, staged it immutably, applied the validation through the
+atomic deploy, then passed scheduler, tenant-isolation, public ping, exact
+revision and login/static-asset smoke checks.
+
+Independent no-cache public reads returned `{"ok":true}` from
+`/api/v1/ping` and
+`{"sha":"0a71fc31967a","artifactSha":"0a71fc31967adc2683b6f481f59e516e71ed111c","builtAt":"2026-09-27T08:15:40Z"}`
+from `/api/v1/public/build-info`. The artifact SHA exactly matches merged
+`main`. No Azure, retired host, direct worktree copy or manual server deploy
+was used.
+
+Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. The now-valid
+foreign key is production evidence for technical schema integrity, not a
+writer, consumer, tenant activation, terminal action, UI, task completion or
+phase-gate completion; no progress credit is added. Full browser E2E, Android,
+load, physical-device and human-pilot checks remain `NOT RUN`.
