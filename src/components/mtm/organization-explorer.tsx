@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type FormEvent,
   type KeyboardEvent,
 } from "react"
 import Link from "next/link"
@@ -24,19 +23,17 @@ import {
   ChevronRight,
   ExternalLink,
   Download,
-  Filter,
   MapPin,
   Navigation,
   Pencil,
   Plus,
   RefreshCw,
-  Search,
   Trash2,
   UserRoundCheck,
   UsersRound,
-  X,
 } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
+import { MtmFilterBar, MtmFilterMore, MtmFilterReset, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { HelpButton } from "@/components/help/help-button"
 import { MtmCustomerForm } from "@/components/mtm/customer-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -324,6 +321,8 @@ function FacetSelect({
 export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const t = useTranslations("mtmCustomers")
   const tx = useTranslations("mtmCustomers")
+  const tf = useTranslations("mtmFilters")
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -338,7 +337,6 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const [filters, setFilters] = useState<OrganizationExplorerFilters>(
     EMPTY_ORGANIZATION_FILTERS,
   )
-  const [searchDraft, setSearchDraft] = useState("")
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState<number>(50)
   const [data, setData] = useState<OrganizationListPayload | null>(null)
@@ -397,7 +395,6 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     initialUrlHadState.current = params.size > 0
     const restored = organizationFiltersFromSearchParams(params)
     setFilters(restored)
-    setSearchDraft(restored.search)
     const restoredPage = Number.parseInt(params.get("page") ?? "1", 10)
     const restoredLimit = Number.parseInt(params.get("limit") ?? "50", 10)
     if (restoredPage > 1) setPage(restoredPage)
@@ -411,7 +408,6 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const applySavedView = useCallback((view: OrganizationSavedView) => {
     const restored = organizationSavedViewState(view.filters)
     setFilters(restored.filters)
-    setSearchDraft(restored.filters.search)
     setPage(1)
     setLimit(restored.limit)
     setVisibleColumns(restored.columns)
@@ -596,14 +592,8 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     setActiveSavedViewId("")
   }
 
-  function submitSearch(event: FormEvent) {
-    event.preventDefault()
-    setFilter("search", searchDraft.trim())
-  }
-
   function clearFilters() {
     setFilters(EMPTY_ORGANIZATION_FILTERS)
-    setSearchDraft("")
     setPage(1)
     setSelected(new Set())
     setActiveSavedViewId("")
@@ -1009,11 +999,32 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           <PageDescription
             icon={Building2}
             title={tx("explorer.title")}
-            description={tx("explorer.subtitle")}
           />
           <HelpButton slug="mtm-customers" variant="label" />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1">
+            <MtmFilterSelect testId="organization-saved-view" label={tf("view")} value={activeSavedViewId} allLabel={tx("explorer.savedViewsPlaceholder")} clearable={false}
+              onChange={(value) => {
+                const view = savedViews.find((item) => item.id === value)
+                if (view) applySavedView(view)
+                else setActiveSavedViewId("")
+              }}
+              options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${tx("explorer.sharedView")}` : ""}` }))} />
+            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={tx("explorer.saveCurrentView")} aria-label={tx("explorer.saveCurrentView")} disabled={savedViewsBusy}
+              onClick={() => {
+                setSavedViewName("")
+                setSavedViewDefault(false)
+                setSaveViewOpen(true)
+              }}>
+              <Bookmark className="h-4 w-4" />
+            </Button>
+            {activeSavedView?.canDelete ? (
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={tx("explorer.deleteSavedView")} aria-label={tx("explorer.deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </span>
           <details className="group relative">
             <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground marker:hidden md:min-h-9">
               <Download className="mr-2 h-4 w-4" />
@@ -1077,223 +1088,57 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         </section>
       ) : null}
 
-      <section
-        aria-label={tx("explorer.summary")}
-        className="grid grid-cols-2 divide-x divide-y rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 sm:grid-cols-4 sm:divide-y-0"
-      >
-        {[
-          [tx("explorer.found"), formatNumber.format(total)],
-          [tx("explorer.selected"), formatNumber.format(selected.size)],
-          [tx("explorer.assignedOnPage"), formatNumber.format(assignedOnPage)],
-          [tx("explorer.unassignedOnPage"), formatNumber.format(organizations.length - assignedOnPage)],
-        ].map(([label, value]) => (
-          <div key={label} className="grid gap-1 px-4 py-3">
-            <span className="text-xs font-medium text-muted-foreground">{label}</span>
-            <span className="text-xl font-semibold tabular-nums">{value}</span>
-          </div>
-        ))}
-      </section>
-
-      <section
-        aria-label={tx("explorer.scopeTitle")}
-        className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-card p-3 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div>
-          <p className="text-sm font-semibold">{tx("explorer.scopeTitle")}</p>
-          <p className="text-xs text-muted-foreground">
-            {tx(effectiveScope === "MINE" ? "explorer.scopeMineHint" : "explorer.scopeAllHint")}
-          </p>
-        </div>
-        <div className="flex gap-2" role="group" aria-label={tx("explorer.scopeTitle")}>
-          <Button
-            type="button"
-            variant={effectiveScope === "ALL" ? "default" : "outline"}
-            className="min-h-11 md:min-h-9"
-            onClick={() => setExplorerScope("ALL")}
-          >
-            {tx("explorer.scopeAll")}
-          </Button>
+      {/* Owner 2026-09-27: «слишком много места занимает, не интерактивен, не
+          интуитивен». Four stat cells, a «Рабочая область» card, a saved-views
+          panel, a form with its own «Искать» button and a folded grid of
+          twelve selects stood between the page title and the first row. */}
+      <section data-testid="organization-filters" className="space-y-2">
+        <MtmFilterBar>
+          <MtmFilterSearch
+            testId="organization-search"
+            value={filters.search}
+            onChange={(value) => setFilter("search", value)}
+            placeholder={tx("explorer.searchPlaceholder")}
+            label={tx("explorer.searchLabel")}
+            clearLabel={tf("clearSearch")}
+          />
           {data?.capabilities.actorAgentId ? (
-            <Button
-              type="button"
-              variant={effectiveScope === "MINE" ? "default" : "outline"}
-              className="min-h-11 md:min-h-9"
-              onClick={() => setExplorerScope("MINE")}
-            >
-              {tx("explorer.scopeMine")}
-            </Button>
+            <MtmFilterSelect testId="organization-scope" label={tx("explorer.scopeTitle")} value={effectiveScope} emptyValue="ALL" allLabel={tx("explorer.scopeAll")}
+              options={[{ value: "ALL", label: tx("explorer.scopeAll") }, { value: "MINE", label: tx("explorer.scopeMine") }]}
+              onChange={(value) => { if (value === "MINE") setExplorerScope("MINE"); else setExplorerScope("ALL") }} />
           ) : null}
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
-        <details className="group border-b border-zinc-200 dark:border-zinc-700">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm font-medium marker:hidden">
-            <Bookmark className="h-4 w-4 text-muted-foreground" />
-            {tx("explorer.savedViews")}
-            {activeSavedView ? <span className="max-w-[14rem] truncate rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary" title={activeSavedView.name}>{activeSavedView.name}</span> : null}
-          </summary>
-          <div className="flex flex-col gap-3 border-t border-zinc-200 p-3 dark:border-zinc-700 sm:flex-row sm:items-end sm:justify-between">
-            <div className="grid min-w-0 flex-1 gap-1.5 sm:max-w-md">
-              <Label htmlFor="organization-saved-view" className="text-xs text-muted-foreground">
-                {tx("explorer.savedViews")}
-              </Label>
-              <Select
-                id="organization-saved-view"
-                value={activeSavedViewId}
-                onChange={(event) => {
-                  const view = savedViews.find((item) => item.id === event.target.value)
-                  if (view) applySavedView(view)
-                  else setActiveSavedViewId("")
-                }}
-                className="min-h-11 md:min-h-9"
-                disabled={savedViewsBusy}
-              >
-                <option value="">{tx("explorer.savedViewsPlaceholder")}</option>
-                {savedViews.map((view) => (
-                  <option key={view.id} value={view.id}>
-                    {view.isDefault ? `★ ${view.name}` : view.name}
-                    {view.isShared ? ` · ${tx("explorer.sharedView")}` : ""}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {savedViews.find((view) => view.id === activeSavedViewId)?.canDelete ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="min-h-11 text-destructive md:min-h-9"
-                  disabled={savedViewsBusy}
-                  onClick={() => void deleteActiveSavedView()}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {tx("explorer.deleteSavedView")}
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-11 md:min-h-9"
-                disabled={savedViewsBusy}
-                onClick={() => {
-                  setSavedViewName("")
-                  setSavedViewDefault(false)
-                  setSaveViewOpen(true)
-                }}
-              >
-                <Bookmark className="mr-2 h-4 w-4" />
-                {tx("explorer.saveCurrentView")}
-              </Button>
-            </div>
-          </div>
-        </details>
-        <form
-          onSubmit={submitSearch}
-          className="flex flex-col gap-3 border-b border-zinc-200 p-3 dark:border-zinc-700 xl:flex-row xl:items-end"
-        >
-          <div className="grid min-w-0 flex-1 gap-1.5">
-            <Label htmlFor="organization-search" className="text-xs text-muted-foreground">
-              {tx("explorer.searchLabel")}
-            </Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="organization-search"
-                  value={searchDraft}
-                  onChange={(event) => setSearchDraft(event.target.value)}
-                  placeholder={tx("explorer.searchPlaceholder")}
-                  className="min-h-11 pl-9 md:min-h-9"
-                />
-              </div>
-              <Button type="submit" className="min-h-11 md:min-h-9">
-                {tx("explorer.search")}
-              </Button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:w-[42rem] xl:shrink-0">
-            <FacetSelect
-              id="organization-category"
-              label={tx("explorer.category")}
-              value={filters.category}
-              allLabel={tx("explorer.all")}
-              options={categoryOptions}
-              onChange={(value) => setFilter("category", value)}
-            />
-            <FacetSelect
-              id="organization-status"
-              label={tx("explorer.status")}
-              value={filters.status}
-              allLabel={tx("explorer.all")}
-              options={["ACTIVE", "INACTIVE", "PROSPECT"].map((value) => ({
-                value,
-                label: tx(`explorer.statuses.${value}`),
-              }))}
-              onChange={(value) => setFilter("status", value)}
-            />
-            <FacetSelect
-              id="organization-assignment"
-              label={tx("explorer.assignment")}
-              value={filters.assignmentState}
-              allLabel={tx("explorer.all")}
-              options={["ASSIGNED", "UNASSIGNED"].map((value) => ({
-                value,
-                label: tx(`explorer.assignmentStates.${value}`),
-              }))}
-              onChange={(value) => setFilter("assignmentState", value)}
-            />
-            <FacetSelect
-              id="organization-object-type"
-              label={tx("explorer.objectType")}
-              value={filters.objectType}
-              allLabel={tx("explorer.all")}
-              options={["PHARMACY", "CLINIC", "STORE", "OTHER"].map((value) => ({
-                value,
-                label: tx(`explorer.objectTypes.${value}`),
-              }))}
-              onChange={(value) => setFilter("objectType", value)}
-            />
-          </div>
-        </form>
-
-        <details className="group">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-medium marker:hidden">
-            <span className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              {tx("explorer.advancedFilters")}
-              {activeAdvancedCount > 0 ? (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                  {activeAdvancedCount}
-                </span>
-              ) : null}
-            </span>
-            <span className="text-xs text-muted-foreground group-open:hidden">{tx("explorer.show")}</span>
-            <span className="hidden text-xs text-muted-foreground group-open:inline">{tx("explorer.hide")}</span>
-          </summary>
-          <div className="grid gap-3 border-t border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <FacetSelect id="organization-region" label={tx("explorer.region")} value={filters.region} allLabel={tx("explorer.all")} options={(facets?.region ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("region", value)} />
-            <FacetSelect id="organization-administrative-district" label={tx("explorer.administrativeDistrict")} value={filters.administrativeDistrict} allLabel={tx("explorer.all")} options={(facets?.administrativeDistrict ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("administrativeDistrict", value)} />
-            <FacetSelect id="organization-locality" label={tx("explorer.locality")} value={filters.locality} allLabel={tx("explorer.all")} options={(facets?.locality ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("locality", value)} />
-            <FacetSelect id="organization-city-district" label={tx("explorer.cityDistrict")} value={filters.cityDistrict} allLabel={tx("explorer.all")} options={(facets?.cityDistrict ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("cityDistrict", value)} />
-            <FacetSelect id="organization-specialization" label={tx("explorer.specialization")} value={filters.specialization} allLabel={tx("explorer.all")} options={(facets?.specialization ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("specialization", value)} />
-            <FacetSelect id="organization-kind" label={tx("explorer.organizationKind")} value={filters.organizationKind} allLabel={tx("explorer.all")} options={(facets?.organizationKind ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("organizationKind", value)} />
-            <FacetSelect id="organization-territory" label={tx("explorer.territory")} value={filters.territoryCode} allLabel={tx("explorer.all")} options={(facets?.territoryCode ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("territoryCode", value)} />
-            <FacetSelect id="organization-medical-category" label={tx("explorer.medicalCategory")} value={filters.medicalCategoryCode} allLabel={tx("explorer.all")} options={(facets?.medicalCategories ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, item.code) }))} onChange={(value) => setFilter("medicalCategoryCode", value)} />
-            <FacetSelect id="organization-license" label={tx("explorer.license")} value={filters.licenseStatus} allLabel={tx("explorer.all")} options={(facets?.licenseStatuses ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, tx(`explorer.licenseStatuses.${item.code}`)) }))} onChange={(value) => setFilter("licenseStatus", value)} />
-            <FacetSelect id="organization-polygon" label={tx("explorer.polygon")} value={filters.polygonCode} allLabel={tx("explorer.all")} options={(facets?.polygons ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, item.code) }))} onChange={(value) => setFilter("polygonCode", value)} />
-            <FacetSelect id="organization-manager" label={tx("explorer.manager")} value={filters.managingManagerId} allLabel={tx("explorer.all")} options={(facets?.managers ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("managingManagerId", value)} />
-            <FacetSelect id="organization-agent" label={tx("explorer.owner")} value={filters.assignedAgentId} allLabel={tx("explorer.all")} options={(facets?.assignableAgents ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("assignedAgentId", value)} />
-            <div className="flex items-end">
-              <Button type="button" variant="ghost" className="min-h-11 w-full md:min-h-9" onClick={clearFilters}>
-                <X className="mr-2 h-4 w-4" />
-                {tx("explorer.clearFilters")}
-              </Button>
-            </div>
-          </div>
-        </details>
+          <MtmFilterSelect testId="organization-category" label={tx("explorer.category")} value={filters.category} allLabel={tx("explorer.all")} options={categoryOptions} onChange={(value) => setFilter("category", value)} />
+          <MtmFilterSelect testId="organization-status" label={tx("explorer.status")} value={filters.status} allLabel={tx("explorer.all")}
+            options={["ACTIVE", "INACTIVE", "PROSPECT"].map((value) => ({ value, label: tx(`explorer.statuses.${value}`) }))}
+            onChange={(value) => setFilter("status", value)} />
+          <MtmFilterSelect testId="organization-assignment" label={tx("explorer.assignment")} value={filters.assignmentState} allLabel={tx("explorer.all")}
+            options={["ASSIGNED", "UNASSIGNED"].map((value) => ({ value, label: tx(`explorer.assignmentStates.${value}`) }))}
+            onChange={(value) => setFilter("assignmentState", value)} />
+          <MtmFilterSelect testId="organization-object-type" label={tx("explorer.objectType")} value={filters.objectType} allLabel={tx("explorer.all")}
+            options={["PHARMACY", "CLINIC", "STORE", "OTHER"].map((value) => ({ value, label: tx(`explorer.objectTypes.${value}`) }))}
+            onChange={(value) => setFilter("objectType", value)} />
+          <MtmFilterMore testId="organization-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={activeAdvancedCount} label={tf("more")} />
+          <MtmFilterReset testId="organization-clear-filters" show={activeFilterLabels.length > 0} onReset={clearFilters} label={tf("reset")} />
+        </MtmFilterBar>
+        {advancedOpen ? (
+          <MtmFilterBar testId="organization-advanced-filters">
+            <MtmFilterSelect testId="organization-region" label={tx("explorer.region")} value={filters.region} allLabel={tx("explorer.all")} options={(facets?.region ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("region", value)} />
+            <MtmFilterSelect testId="organization-administrativeDistrict" label={tx("explorer.administrativeDistrict")} value={filters.administrativeDistrict} allLabel={tx("explorer.all")} options={(facets?.administrativeDistrict ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("administrativeDistrict", value)} />
+            <MtmFilterSelect testId="organization-locality" label={tx("explorer.locality")} value={filters.locality} allLabel={tx("explorer.all")} options={(facets?.locality ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("locality", value)} />
+            <MtmFilterSelect testId="organization-cityDistrict" label={tx("explorer.cityDistrict")} value={filters.cityDistrict} allLabel={tx("explorer.all")} options={(facets?.cityDistrict ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("cityDistrict", value)} />
+            <MtmFilterSelect testId="organization-specialization" label={tx("explorer.specialization")} value={filters.specialization} allLabel={tx("explorer.all")} options={(facets?.specialization ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("specialization", value)} />
+            <MtmFilterSelect testId="organization-organizationKind" label={tx("explorer.organizationKind")} value={filters.organizationKind} allLabel={tx("explorer.all")} options={(facets?.organizationKind ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("organizationKind", value)} />
+            <MtmFilterSelect testId="organization-territoryCode" label={tx("explorer.territory")} value={filters.territoryCode} allLabel={tx("explorer.all")} options={(facets?.territoryCode ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("territoryCode", value)} />
+            <MtmFilterSelect testId="organization-medicalCategoryCode" label={tx("explorer.medicalCategory")} value={filters.medicalCategoryCode} allLabel={tx("explorer.all")} options={(facets?.medicalCategories ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, item.code) }))} onChange={(value) => setFilter("medicalCategoryCode", value)} />
+            <MtmFilterSelect testId="organization-licenseStatus" label={tx("explorer.license")} value={filters.licenseStatus} allLabel={tx("explorer.all")} options={(facets?.licenseStatuses ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, tx(`explorer.licenseStatuses.${item.code}`)) }))} onChange={(value) => setFilter("licenseStatus", value)} />
+            <MtmFilterSelect testId="organization-polygonCode" label={tx("explorer.polygon")} value={filters.polygonCode} allLabel={tx("explorer.all")} options={(facets?.polygons ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, item.code) }))} onChange={(value) => setFilter("polygonCode", value)} />
+            <MtmFilterSelect testId="organization-managingManagerId" label={tx("explorer.manager")} value={filters.managingManagerId} allLabel={tx("explorer.all")} options={(facets?.managers ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("managingManagerId", value)} />
+            <MtmFilterSelect testId="organization-assignedAgentId" label={tx("explorer.owner")} value={filters.assignedAgentId} allLabel={tx("explorer.all")} options={(facets?.assignableAgents ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("assignedAgentId", value)} />
+          </MtmFilterBar>
+        ) : null}
+        <MtmResultLine aside={`${tx("explorer.assignedOnPage")}: ${formatNumber.format(assignedOnPage)} · ${tx("explorer.unassignedOnPage")}: ${formatNumber.format(organizations.length - assignedOnPage)}`}>
+          <span className="font-medium text-foreground">{tf("found", { count: formatNumber.format(total) })}</span>
+        </MtmResultLine>
       </section>
 
       {selected.size > 0 ? (

@@ -17,7 +17,7 @@ describe("the shared MTM filter row", () => {
   })
 
   it("shows what a filter is set to, clears it with ×, and keeps a native select for phone and keyboard", () => {
-    expect(bar).toContain("{active ? `${label}: ${current}` : label}")
+    expect(bar).toContain("{active || showValue ? `${label}: ${current}` : label}")
     expect(bar).toContain("onClick={() => onChange(emptyValue)}")
     expect(bar).toContain('className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0"')
   })
@@ -46,5 +46,36 @@ describe("«Клиенты» filters", () => {
     }
     expect(explorer).toContain('updateFilter("coveragePeriod", value)')
     expect(explorer).toContain('updateFilter("objectType", value)')
+  })
+})
+
+describe("«Учреждения» filters", () => {
+  const explorer = readFileSync("src/components/mtm/organization-explorer.tsx", "utf8")
+
+  it("is one row: no stat cells, no «Рабочая область» card, no search button, no folded grid", () => {
+    expect(explorer).toContain('<section data-testid="organization-filters" className="space-y-2">')
+    expect(explorer).not.toContain('aria-label={tx("explorer.summary")}')
+    expect(explorer).not.toContain('{tx("explorer.search")}')
+    expect(explorer).not.toContain('{tx("explorer.advancedFilters")}')
+    expect(explorer).toContain('<MtmFilterSelect testId="organization-scope"')
+    expect(explorer).toContain('<MtmFilterBar testId="organization-advanced-filters">')
+  })
+})
+
+describe("every MTM list uses the one filter row, with no stat tiles above it", () => {
+  it.each([
+    ["visits", "src/app/(dashboard)/mtm/visits/page.tsx"],
+    ["photos", "src/app/(dashboard)/mtm/photos/page.tsx"],
+    ["alerts", "src/app/(dashboard)/mtm/alerts/page.tsx"],
+    ["activity", "src/app/(dashboard)/mtm/activity/page.tsx"],
+    ["agents", "src/app/(dashboard)/mtm/agents/page.tsx"],
+    ["map", "src/app/(dashboard)/mtm/map/page.tsx"],
+    ["routes", "src/app/(dashboard)/mtm/routes/page.tsx"],
+    ["tasks", "src/app/(dashboard)/mtm/tasks/page.tsx"],
+  ])("%s", (_name, path) => {
+    const page = readFileSync(path, "utf8")
+    expect(page).toContain('from "@/components/mtm/filter-bar"')
+    expect(page).toContain("<MtmFilterBar")
+    expect(page).not.toContain("<ColorStatCard")
   })
 })

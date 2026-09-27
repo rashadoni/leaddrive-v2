@@ -11,15 +11,13 @@ import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { MTM_AGENT_APP_ACTIVE_WINDOW_MS } from "@/lib/mtm/agent-card-activity"
 import { buildMtmAgentHierarchy, flattenMtmAgentTeam, isMtmLeaderRole, mtmAgentMatchesSearch, type MtmAgentTeam } from "@/lib/mtm/agent-hierarchy"
 import { PageDescription } from "@/components/page-description"
+import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { HelpButton } from "@/components/help/help-button"
-import { ColorStatCard } from "@/components/color-stat-card"
 import { MtmAgentForm } from "@/components/mtm/agent-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Search, Users, Wifi, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List } from "lucide-react"
+import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List } from "lucide-react"
 
 const roleColors: Record<string, string> = {
   ADMIN: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
@@ -45,6 +43,7 @@ type AgentsView = "cards" | "list"
 export default function MtmAgentsPage() {
   const { data: session } = useSession()
   const t = useTranslations("mtmAgents")
+  const tf = useTranslations("mtmFilters")
   const locale = useLocale()
   const ts = useTranslations("mtmStatus")
   const explainError = useMtmApiError()
@@ -181,7 +180,6 @@ export default function MtmAgentsPage() {
 
   const statusCounts: Record<string, number> = {}
   for (const a of agents) statusCounts[a.status] = (statusCounts[a.status] || 0) + 1
-  const totalActive = statusCounts["ACTIVE"] || 0
   const totalOnline = agents.filter(isOnline).length
   const totalManagers = agents.filter(a => a.role === "MANAGER" || a.role === "SUPERVISOR").length
 
@@ -485,58 +483,53 @@ export default function MtmAgentsPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
-        <ColorStatCard label={t("statTotal")} value={agents.length} icon={<UserCog className="h-4 w-4" />} hint={t("hintTotal")} />
-        <ColorStatCard label={t("statActive")} value={totalActive} icon={<Users className="h-4 w-4" />} hint={t("hintActive")} />
-        <ColorStatCard label={t("statOnline")} value={totalOnline} icon={<Wifi className="h-4 w-4" />} hint={t("hintOnline")} />
-        {/* The managers tile is a filter: click shows managers and supervisors, click again shows everyone. */}
-        <div
-          role="button"
-          tabIndex={0}
-          aria-pressed={activeFilter === "managers"}
-          aria-describedby="mtm-agents-managers-tile-hint"
-          data-testid="mtm-agents-managers-tile"
-          onClick={toggleManagers}
-          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleManagers() } }}
-          className="cursor-pointer rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          <span id="mtm-agents-managers-tile-hint" className="sr-only">{t("filterManagersHint")}</span>
-          <ColorStatCard className={`h-full ${activeFilter === "managers" ? "border-blue-400 ring-1 ring-blue-300 dark:border-blue-700 dark:ring-blue-800" : ""}`} label={t("statManagers")} value={totalManagers} icon={<Users className="h-4 w-4" />} hint={t("hintManagers")} />
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
+      {/* Owner 2026-09-27: filters in one row. Four stat cards (one of them a
+          hidden managers toggle), a row of status buttons and a row of search,
+          order and view — now one row; the counts ride on the chips. */}
+      <MtmFilterBar testId="mtm-agents-filters">
+        <MtmFilterSearch value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tf("clearSearch")} />
         {focusAgentId ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-muted px-3 text-sm dark:border-zinc-600" data-testid="mtm-agent-focus-chip">
+          <span className="inline-flex h-10 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1.5 text-sm text-primary" data-testid="mtm-agent-focus-chip">
             {t("focusChip", { name: focusAgent?.name ?? t("focusUnknown") })}
-            <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10" onClick={() => setFocusAgent("")} aria-label={t("focusClear")}><X className="h-3.5 w-3.5" /></button>
+            <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-primary/15" onClick={() => setFocusAgent("")} aria-label={t("focusClear")}><X className="h-3.5 w-3.5" /></button>
           </span>
         ) : null}
-        <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({agents.length})</Button>
-        <Button variant={activeFilter === "online" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("online")}>{t("filterOnline")} ({totalOnline})</Button>
-        {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map(s => (
-          <Button key={s} variant={activeFilter === s ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(s)}>{t(`filter${s.charAt(0) + s.slice(1).toLowerCase()}` as any)} ({statusCounts[s] || 0})</Button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[12rem]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={t("searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <div role="group" aria-label={tf("status")} className="flex flex-wrap gap-1">
+          <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{t("all")} ({agents.length})</Button>
+          <Button variant={activeFilter === "online" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("online")}>{t("filterOnline")} ({totalOnline})</Button>
+          {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map(s => (
+            <Button key={s} variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>{t(`filter${s.charAt(0) + s.slice(1).toLowerCase()}` as never)} ({statusCounts[s] || 0})</Button>
+          ))}
+          {/* The managers filter: click shows managers and supervisors, click again shows everyone. */}
+          <button
+            type="button"
+            aria-pressed={activeFilter === "managers"}
+            aria-describedby="mtm-agents-managers-tile-hint"
+            data-testid="mtm-agents-managers-tile"
+            onClick={toggleManagers}
+            className={`inline-flex h-10 items-center rounded-full border px-3 text-sm font-medium transition-colors ${activeFilter === "managers" ? "border-primary bg-primary text-primary-foreground" : "border-zinc-200 bg-card hover:bg-muted dark:border-zinc-700"}`}
+          >
+            <span id="mtm-agents-managers-tile-hint" className="sr-only">{t("filterManagersHint")}</span>
+            {t("statManagers")} ({totalManagers})
+          </button>
         </div>
-        <Select value={sortBy} onChange={e => setSortBy(e.target.value)} className="w-[170px]">
-          <option value="activity">{t("sortActivity")}</option>
-          <option value="lastSeen">{t("sortLastSeen")}</option>
-          <option value="name_asc">{t("sortNameAsc")}</option>
-          <option value="name_desc">{t("sortNameDesc")}</option>
-          <option value="role">{t("sortRole")}</option>
-          <option value="status">{t("sortStatus")}</option>
-        </Select>
-        <div className="inline-flex rounded-md border border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewToggle")} data-testid="mtm-agents-view-toggle">
-          <Button variant={view === "cards" ? "default" : "ghost"} size="sm" className="rounded-r-none" aria-pressed={view === "cards"} onClick={() => changeView("cards")}><LayoutGrid className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewCards")}</span><span className="sr-only sm:hidden">{t("viewCards")}</span></Button>
-          <Button variant={view === "list" ? "default" : "ghost"} size="sm" className="rounded-l-none" aria-pressed={view === "list"} onClick={() => changeView("list")}><List className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewList")}</span><span className="sr-only sm:hidden">{t("viewList")}</span></Button>
-        </div>
-      </div>
+        <span className="ml-auto flex items-center gap-2">
+          <MtmFilterSelect label={tf("sort")} value={sortBy} emptyValue="activity" showValue clearable={false} allLabel={t("sortActivity")}
+            options={[
+              { value: "activity", label: t("sortActivity") },
+              { value: "lastSeen", label: t("sortLastSeen") },
+              { value: "name_asc", label: t("sortNameAsc") },
+              { value: "name_desc", label: t("sortNameDesc") },
+              { value: "role", label: t("sortRole") },
+              { value: "status", label: t("sortStatus") },
+            ]}
+            onChange={setSortBy} />
+          <span className="inline-flex rounded-full border border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewToggle")} data-testid="mtm-agents-view-toggle">
+            <Button variant={view === "cards" ? "default" : "ghost"} size="sm" className="h-10 rounded-l-full rounded-r-none" aria-pressed={view === "cards"} onClick={() => changeView("cards")}><LayoutGrid className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewCards")}</span><span className="sr-only sm:hidden">{t("viewCards")}</span></Button>
+            <Button variant={view === "list" ? "default" : "ghost"} size="sm" className="h-10 rounded-l-none rounded-r-full" aria-pressed={view === "list"} onClick={() => changeView("list")}><List className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">{t("viewList")}</span><span className="sr-only sm:hidden">{t("viewList")}</span></Button>
+          </span>
+        </span>
+      </MtmFilterBar>
 
       {filtered.length === 0 ? (
         <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{loadError ? loadError : agents.length === 0 ? t("empty") : t("noResults")}</div>
