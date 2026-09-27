@@ -123,6 +123,9 @@
     <string name="exception_corrections_empty">Özünəxidmət üçün əlçatan istisna kartı yoxdur.</string>
     <string name="exception_correction_select">%1$s · %2$s · %3$s</string>
     <string name="exception_correction_selected">Bu düzəlişi göndərərkən seçilmiş istisna server tərəfindən yenidən yoxlanacaq.</string>
+    <string name="exception_response_acknowledged">Cavabınız cari yoxlama üçün qeydə alınıb.</string>
+    <string name="exception_response_not_acknowledged">Cari yoxlama üçün cavab qeydə alınmayıb.</string>
+    <string name="exception_response_unavailable">Bu yoxlama üçün cavab statusu əlçatan deyil.</string>
     <string name="exception_type_late_start">Gec başlama</string>
     <string name="exception_type_delayed_claim">Gecikmiş davamiyyət müraciəti</string>
     <string name="exception_type_missing_finish">Bitirmə yoxdur</string>

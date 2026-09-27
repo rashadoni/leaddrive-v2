@@ -910,3 +910,35 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Independent read-only comparison selected exactly one next slice: project the released current-cycle response state into the self-scoped mobile endpoint and Android UI. The slice is display-only and must add no acknowledgement writer, POST, outbox, notification, terminal action, proof or raw evidence.
 - Precise stopping point: PR #465 is merged, deployed and exact-SHA smoke-verified; only this three-document release receipt is uncommitted on the clean successor branch and no next-slice source has changed.
 - Next action: checkpoint this release receipt before source changes, then implement the bounded fail-closed mobile projection with focused server/Kotlin contracts, path-triggered Android CI and fresh independent review.
+
+## 2026-09-27 — C6 mobile current-cycle response-state projection pre-review
+
+- The PR #465 production receipt was isolated first in commit `d9a014221ce36cf8a7d73b8b485e253e3e65c00f`. The bounded follow-up adds only a read-only mobile projection of the already released current-cycle employee response state.
+- `resolveMobileAuth` derives `workforceExceptionResponse` from the same fresh Organization features snapshot and canonical rollout resolver, never the JWT/APK, and performs no second Organization lookup. Workforce-disabled/absent/malformed states remain false.
+- The mobile endpoint preserves capability, `WORKTIME_SELF_READ`, active exact-agent, own-case, 100-plus-sentinel, private/no-store and generic correction contracts. Rollout-off selects neither ledger relation; rollout-on selects at most 65 `{decisionCode,caseRevision}` facts and one highest non-null `{observedCaseRevision}`, then reuses the released revision/lifecycle projector.
+- Android parses only exact top-level rollout and per-card enum values; malformed metadata fails closed to `UNAVAILABLE` without hiding a valid correction card. EN/RU/AZ render read-only current-review status through an exhaustive typed mapping. No acknowledgement button, POST, operation ID, outbox, notification, terminal action, reason, proof, location, QR or device data was added.
+- Mobile-auth/API/Android source contracts pass 3 files / 73 tests; unchanged revision/rollout semantics pass 2 files / 20 tests, for 5 files / 93 tests selected. Targeted ESLint on four clean changed TS files has zero errors and one unchanged `_options` warning. Base/current JSON lint comparison for legacy `mobile-auth-scope.test.ts` is exactly 46/46 pre-existing `no-explicit-any` errors; new hunks add none. Diff whitespace passes.
+- `xmllint` is unavailable, so direct XML parsing is `NOT RUN`; exact-head Android lint/unit tests remain mandatory in CI. Full local typecheck/build, browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot evidence is `NOT RUN` under host policy.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. WF-C6-006 remains `PARTIAL`; mobile acknowledgement write, delivery, full appeal UX and real-device evidence remain open.
+- Precise stopping point: 12 runtime/test/resource/build paths plus the new evidence file, roadmap and append-only log are implemented and locally checked in the working tree; the exact-lock dependency symlink is still temporary, no implementation checkpoint exists and nothing is pushed.
+- Next action: run an author-independent read-only preflight over every tracked and untracked task path, repair any real finding, remove only the dependency symlink, checkpoint explicit paths, freeze exact identity and require a fresh complete-diff review before push.
+
+## 2026-09-27 — C6 mobile response projection preflight P3 receipt correction
+
+- The first author-independent complete-snapshot review returned RED with one P3 and no P0-P2. The preceding entry cited the nonexistent full commit SHA `d9a014221ce36cf8a7d73b8b485e253e3e65c00f` for the already isolated PR #465 release receipt.
+- The actual release-receipt commit is `d9a0142216947ae1384946e7d0caf8234c65337d`. This append-only entry supersedes only the incorrect identifier; the historical line remains intact.
+- The rejected review independently matched base/main/merge-base `84c5e9ef2d2409cfb95056a738579a6267cf35b6`, HEAD `d9a0142216947ae1384946e7d0caf8234c65337d`, 16 unique paths / 60,265 combined binary-diff bytes and SHA-256 `271a33522b46cedc8392de20d8f913db052609605db18c1296a98794ba95b4ea`, below 400 KB.
+- Every runtime/query/auth/privacy/Kotlin/UI boundary was otherwise GREEN. Reviewer whitespace, append-only prefix, Android XML and 253-key catalog parity, unchanged lockfile and live PR #465 merge/deploy receipt checks passed; dependency-backed and heavy gates were `NOT RUN` reviewer-side.
+- The RED verdict and fingerprint do not transfer to the corrected snapshot. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
+- Precise stopping point: only three append-only evidence/roadmap/log files changed to record and correct the P3; runtime/test/resource bytes are unchanged, the worktree remains uncommitted and nothing is pushed.
+- Next action: obtain a fresh zero-finding review of every corrected tracked/untracked byte, then remove only the temporary dependency symlink and checkpoint explicit task-owned paths.
+
+## 2026-09-27 — C6 mobile response projection replacement preflight GREEN
+
+- Fresh author-independent review from zero returned GREEN with zero P0-P3 findings on exact base/current main/merge-base `84c5e9ef2d2409cfb95056a738579a6267cf35b6`, HEAD `d9a0142216947ae1384946e7d0caf8234c65337d` plus all tracked changes and both untracked task files.
+- The corrected 16-path combined binary stream was 63,662 bytes with SHA-256 `2bb3d0efdf06317085dfc8f4ac7d3735b6ce682492f2337f89c3cade3fe49729`, below 400 KB. The actual release-receipt SHA exists, the erroneous historical line remains preserved and its append-only correction is explicit.
+- Rollout-off/on query shapes, 101/65/1 bounds, same-row auth snapshot, tenant/self scope, revision/lifecycle fail-closed behavior, privacy, Kotlin exact parsing, EN/RU/AZ read-only UI and no-writer boundary were all reconfirmed.
+- Reviewer whitespace, append-only prefix, XML parse and exact 253/253/253 key parity, lockfile identity and live PR #465 merge/deploy receipt checks passed. Reviewer Vitest, ESLint, typecheck, build, Android/Gradle, browser, load, signed-APK, device and pilot checks were `NOT RUN`; author results were not relabelled.
+- This pre-commit verdict does not transfer to the three new receipt documents or future commit identity. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
+- Precise stopping point: implementation/evidence and corrected preflight are complete; only this three-document GREEN receipt is newly uncommitted, the temporary dependency symlink still exists and nothing is pushed.
+- Next action: remove only the symlink, checkpoint all 16 explicit task paths, verify a clean exact identity and require a fresh author-independent frozen complete-diff review from zero.

@@ -8,6 +8,7 @@ import {
 } from "./session-invalidation"
 import { requireAuthSecret } from "./auth-secret"
 import { isTenantCapabilityEnabled } from "./tenant-capabilities"
+import { resolveWorkforceExceptionResponseRecording } from "./workforce/exception-response-rollout"
 
 export function requireJwtSecret(): string {
   return requireAuthSecret()
@@ -38,6 +39,11 @@ export interface MobileTenantCapabilities {
    */
   attendanceQr?: boolean
   attendanceDeviceTrust?: boolean
+  /**
+   * Fresh, server-only rollout state for the additive employee-response
+   * ledger. It never comes from the JWT or the installed APK.
+   */
+  workforceExceptionResponse?: boolean
 }
 
 // The JWT deliberately carries no tenant entitlement: it is resolved from
@@ -137,6 +143,7 @@ export async function resolveMobileAuth(
     workforceHrm: false,
     attendanceQr: false,
     attendanceDeviceTrust: false,
+    workforceExceptionResponse: false,
   }
 
   try {
@@ -178,6 +185,8 @@ export async function resolveMobileAuth(
       && isTenantCapabilityEnabled("attendance-qr", entitlementFields)
     const attendanceDeviceTrustEnabled = workforceEnabled
       && isTenantCapabilityEnabled("attendance-device-trust", entitlementFields)
+    const workforceExceptionResponseEnabled = workforceEnabled
+      && resolveWorkforceExceptionResponseRecording(agent.organization.features) === "AVAILABLE"
     if (!routeFieldEnabled && !workforceEnabled) {
       console.warn(`[mobile-auth][revocation] Route Field and Workforce are disabled — agentId=${decoded.agentId} orgId=${decoded.orgId}`)
       return null
@@ -187,6 +196,7 @@ export async function resolveMobileAuth(
       workforceHrm: workforceEnabled,
       attendanceQr: attendanceQrEnabled,
       attendanceDeviceTrust: attendanceDeviceTrustEnabled,
+      workforceExceptionResponse: workforceExceptionResponseEnabled,
     }
     const currentAgentFingerprint = createSessionFingerprint({
       principalId: decoded.agentId,

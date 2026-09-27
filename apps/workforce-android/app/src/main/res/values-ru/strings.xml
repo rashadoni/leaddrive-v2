@@ -123,6 +123,9 @@
     <string name="exception_corrections_empty">Нет доступных для самообслуживания карточек исключений.</string>
     <string name="exception_correction_select">%1$s · %2$s · %3$s</string>
     <string name="exception_correction_selected">Сервер повторно проверит выбранное исключение при отправке этой коррекции.</string>
+    <string name="exception_response_acknowledged">Ваш ответ записан для текущей проверки.</string>
+    <string name="exception_response_not_acknowledged">Для текущей проверки ответ не записан.</string>
+    <string name="exception_response_unavailable">Статус ответа для этой проверки недоступен.</string>
     <string name="exception_type_late_start">Позднее начало</string>
     <string name="exception_type_delayed_claim">Задержанное заявление о присутствии</string>
     <string name="exception_type_missing_finish">Нет завершения</string>

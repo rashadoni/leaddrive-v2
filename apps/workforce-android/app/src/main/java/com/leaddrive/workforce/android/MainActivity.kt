@@ -64,6 +64,7 @@ import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestTimelineEntry
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestTimelineEvent
 import com.leaddrive.workforce.android.data.WorkforceSelfException
+import com.leaddrive.workforce.android.data.WorkforceSelfExceptionResponseState
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceLocationProof
 import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryItem
@@ -947,6 +948,15 @@ private fun String.localizedExceptionType(): String = stringResource(
 )
 
 @Composable
+private fun WorkforceSelfExceptionResponseState.localizedLabel(): String = stringResource(
+    when (this) {
+        WorkforceSelfExceptionResponseState.UNAVAILABLE -> R.string.exception_response_unavailable
+        WorkforceSelfExceptionResponseState.NOT_ACKNOWLEDGED -> R.string.exception_response_not_acknowledged
+        WorkforceSelfExceptionResponseState.ACKNOWLEDGED -> R.string.exception_response_acknowledged
+    },
+)
+
+@Composable
 private fun WorkforceWorkdayAction.localizedLabel(): String = stringResource(labelRes())
 
 @StringRes
@@ -1305,6 +1315,7 @@ private fun WorkforceRequests(
                                 ),
                             )
                         }
+                        Text(exception.responseState.localizedLabel())
                     }
                 }
                 if (exceptionCaseId.isNotBlank()) {
