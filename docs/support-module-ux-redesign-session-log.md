@@ -1104,3 +1104,23 @@ Workstream 7 SLA Policies from product commit `61d4087eb` and recovery commit
 Next: checkpoint and push the SLA section-validation correction, then run and
 inspect exact-SHA desktop mutating, physical-touch mobile mutating and complete
 high-density SLA evidence before closing Workstream 7.
+
+### Workstream 7 pre-browser physical-touch self-audit
+
+- The dedicated section gate is checkpointed and pushed as `c0c1f08bc` together
+  with the restored product/recovery commits. Before dispatch, self-audit found
+  that the SLA runner declared `hasTouch` outside desktop but only activated
+  recovery through keyboard APIs.
+- Recovery activation now uses Enter and records keyboard modality on desktop.
+  Touch viewports scroll the target into view, fail below 44x44, verify the
+  center point with `document.elementFromPoint` and perform a real
+  `page.touchscreen.tap`; service workers are blocked so synthetic routed
+  recovery remains deterministic. The result records modality, hit-test and
+  measured target size.
+- Runner syntax, scoped ESLint, `git diff --check` and the strengthened physical-
+  touch flow contract pass 5/5. No touch, keyboard, viewport or failure-
+  recovery requirement was relaxed.
+
+Next: checkpoint and push the physical-touch evidence addition, then run and
+inspect exact-SHA desktop keyboard, RU/dark physical-touch mobile and complete
+high-density SLA evidence.

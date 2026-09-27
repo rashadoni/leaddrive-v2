@@ -1827,6 +1827,13 @@ Current verification evidence (2026-09-05):
   recovery contracts and shared visual/performance evidence tests; workflow
   assertions lock the predicate, scan roots and flow contract. A new exact-SHA
   hosted build/browser run is mandatory before any SLA checkbox closes.
+- Pre-browser self-audit found that the SLA flow declared touch capability
+  outside desktop without proving a physical input. Recovery activation now
+  preserves Enter-key evidence on desktop and uses a scroll-aware 44x44
+  measurement, center-point hit test and real `page.touchscreen.tap` on touch
+  viewports. Service workers are blocked for deterministic routed failures and
+  contract coverage locks both modalities. Runner syntax, scoped ESLint,
+  `git diff --check` and the strengthened flow contract pass 5/5.
 - SLA checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery
