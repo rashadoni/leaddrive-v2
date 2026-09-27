@@ -879,3 +879,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - The GREEN verdict covers the pre-receipt snapshot only and does not transfer to this new append-only receipt or the future commit identity. No task or gate credit is added.
 - Precise stopping point: the complete implementation snapshot has a zero-finding preflight; only this three-document review receipt is newly uncommitted and nothing is pushed.
 - Next action: checkpoint exactly the seven task-owned paths, verify clean status and current main, then require a fresh author-independent frozen complete-diff review from zero.
+
+## 2026-09-27 — C6 self-response frozen review P2 platform scope repaired
+
+- The first frozen clean-head review independently matched base/current main/merge-base `68cf17eddd1d5db8179fe2ec2981506403fc98ca`, head `ea3dd1791215efe9f4504cdcbdd977582f208a4f`, eight paths / 47,601 binary-diff bytes and SHA-256 `2da644671f700ec80506d75b519ed606e52c59411b9b7697c96d3b89a8ae056a`, then returned RED with one P2 and no P0/P1/P3.
+- The task row incorrectly said revision-aware acknowledgement existed across web/mobile. The runtime slice changes only `/api/v1/workforce/exceptions/mine`; the dedicated mobile endpoint and Android model remain response-ledger-free and expose no acknowledgement action.
+- The roadmap now scopes the new response ledger, rollout fence and acknowledgement projection to server/web and explicitly leaves mobile acknowledgement/response-ledger projection open. No runtime/test path changed after the rejected review.
+- Every other frozen-review area was GREEN, including query bounds/minimization, revision/lifecycle/reset behavior, privacy, the earlier P2 repair, release receipt, append-only journal, diff integrity and unchanged numeric progress. Reviewer dependency-backed/heavy gates were `NOT RUN`.
+- The rejected identity and verdict are not transferable. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
+- Precise stopping point: the three-document platform-scope repair is uncommitted on top of clean runtime checkpoint `ea3dd1791`; nothing is pushed.
+- Next action: checkpoint the docs-only repair, recompute the full clean identity and require a fresh author-independent frozen complete-diff rereview from zero.

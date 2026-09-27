@@ -114,6 +114,23 @@ Android, load, physical-device and pilot checks were `NOT RUN`; author results
 were not relabelled. This pre-commit verdict does not transfer to the receipt
 delta or future checkpoint, so a clean frozen-head review remains mandatory.
 
+## Frozen review P2 platform-scope repair
+
+The first frozen clean-head review of base/current main
+`68cf17eddd1d5db8179fe2ec2981506403fc98ca` through head
+`ea3dd1791215efe9f4504cdcbdd977582f208a4f` returned RED with one P2 and no
+P0/P1/P3. The eight-path / 47,601-byte binary diff had SHA-256
+`2da644671f700ec80506d75b519ed606e52c59411b9b7697c96d3b89a8ae056a`.
+
+Runtime, tests and this evidence were sound, but the authoritative WF-C6-006
+roadmap row said revision-aware acknowledgement existed across web and mobile.
+This slice changes only the web self-exception API. The dedicated mobile
+endpoint and Android model intentionally remain response-ledger-free and offer
+no acknowledgement action. The roadmap now scopes the new projection to
+server/web and explicitly keeps mobile acknowledgement/response-ledger
+projection open. No runtime path changed. The RED identity does not transfer;
+a new clean checkpoint and complete frozen rereview are mandatory.
+
 ## Release boundary
 
 This slice does not claim that an employee was notified, saw a request,
