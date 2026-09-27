@@ -1673,3 +1673,35 @@ high-density matrix.
 Next: checkpoint and push the responsive correction, rerun the identical
 RU/dark mobile exact-SHA gate, then proceed to the 24-cell high matrix only
 after static zeroes and all six flows are green.
+
+### Workstream 9 mobile pass and screenshot quality follow-up
+
+- Responsive checkpoint `a661ca6e6ee32e601a33ef2b493bb828d21092c2`
+  passes exact-SHA RU/dark mobile run `36329299612`. All 6/6 flow outcomes pass
+  with real hit-tested 144x44 Playwright touchscreen Retry, terminal permission
+  handling, read-only recovery, 0/1/30 rules, draft protection, reorder,
+  confirmed delete, Discard, failed-save value retention, retry and final
+  fixture restoration.
+- The static cell is fully green: zero runtime, axe, custom accessibility,
+  touch-target, overflow, environment and primary-work findings. Main client
+  and scroll widths are both 311 px, `smallTargets` is zero, first rule starts
+  at 707 px, load p75 is 549 ms and maximum sampled CLS is
+  `0.02739419786939746`. RU, dark theme, reduced motion and
+  `maxTouchPoints: 1` are confirmed. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36329299612`.
+- Manual screenshot review verifies that Help is a full target, Add/Save no
+  longer overflow and primary rules are above the fold. It also catches a
+  quality issue outside the automated failures: the full RU template-active
+  label consumes too much of the shared metadata row and makes the name input
+  needlessly narrow. The switch now uses the shorter localized Active/Inactive
+  text below `sm`, retains the full Template active text from `sm` upward, and
+  exposes the full localized ARIA label at all widths. No section or control
+  moved or disappeared.
+- The three-file anti-pattern scan remains green at zero findings; scoped
+  ESLint, `git diff --check` and the updated UX contract pass 7/7. This is a
+  mobile-visible product change, so one final RU/dark mobile exact-SHA run is
+  required. The already-green desktop layout is unchanged by the responsive
+  label spans and will be covered again by the final high matrix.
+
+Next: checkpoint and push the mobile-label refinement, repeat RU/dark mobile,
+manually inspect the new screenshot, then launch the 24-cell high matrix.

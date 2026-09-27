@@ -45,6 +45,8 @@ describe("entitlement templates UX contract", () => {
     expect(page).toContain('className="h-11 w-11"')
     expect(page).toContain('role="switch" aria-checked={draft.isActive}')
     expect(page).toContain('role="switch" aria-checked={definition.isRequired}')
+    expect(page).toContain('aria-label={t("templateActive")}')
+    expect(page).toContain('className="sm:hidden">{draft.isActive ? t("active") : t("inactive")}')
     expect(page).not.toContain('type="checkbox"')
     expect(page).toContain('HelpButton slug="entitlements" className="h-11 w-11 shrink-0"')
     expect(page).toContain("ConfirmDialog")

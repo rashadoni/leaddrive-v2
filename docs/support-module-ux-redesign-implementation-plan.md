@@ -2314,6 +2314,20 @@ Additional recovery evidence (2026-09-06):
   the rule instructions usable width without changing any evidence threshold.
   The three-file scan reports zero findings; scoped lint/diff pass and the UX
   contract passes 7/7. Exact-SHA mobile evidence must be repeated.
+- Responsive SHA `a661ca6e6` passes replacement RU/dark mobile run
+  `36329299612`: all 6/6 flows and final fixture restoration are green, Retry
+  uses a real hit-tested 144x44 Playwright touchscreen target, and the static
+  cell has zero runtime, axe, custom accessibility, touch, overflow,
+  environment and fold findings. `smallTargets` is zero, main width/scroll
+  width are both 311 px, first rule starts at 707 px, load p75 is 549 ms and
+  maximum sampled CLS is `0.02739419786939746`.
+- Manual review confirms the overflow and fold corrections but also shows the
+  full RU active-switch label leaving the adjacent name input unnecessarily
+  narrow. The switch now displays the shorter localized Active/Inactive state
+  below `sm`, retains the full Template active label on wider layouts, and
+  keeps the full localized accessible name at every width. The same scan,
+  lint/diff and 7/7 contract checks are green; final mobile evidence remains
+  required on the resulting SHA before the high matrix.
 
 ## 17. Workstream 10 — Skill Routing
 
