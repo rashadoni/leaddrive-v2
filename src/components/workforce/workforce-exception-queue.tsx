@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useEffect, useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
@@ -33,6 +33,7 @@ type QueueItem = {
 }
 type SelectedAction = QueueAction & {
   displayReference: string
+  organizationId: string
   operationId: string
 }
 type ActionFeedback = { tone: "success" | "error"; message: string }
@@ -75,6 +76,11 @@ export function WorkforceExceptionQueue() {
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const organizationId = session?.user?.organizationId ? String(session.user.organizationId) : ""
+  const organizationIdRef = useRef(organizationId)
+  const operationIdByTokenRef = useRef(new Map<string, string>())
+  const selectedActionTokenRef = useRef<string | null>(null)
+  const pendingActionRef = useRef<SelectedAction | null>(null)
+  const submittingRef = useRef(false)
   const requestKey = `${organizationId}:${retry}`
   const accessDenied = accessDeniedRequestKey === requestKey
   const ageFormatter = useMemo(
@@ -83,9 +89,20 @@ export function WorkforceExceptionQueue() {
   )
 
   useEffect(() => {
+    organizationIdRef.current = organizationId
+    operationIdByTokenRef.current.clear()
+    selectedActionTokenRef.current = null
+    pendingActionRef.current = null
+    submittingRef.current = false
     setSelectedAction(null)
     setFormError(null)
     setActionFeedback(null)
+    setSubmitting(false)
+    return () => {
+      selectedActionTokenRef.current = null
+      pendingActionRef.current = null
+      submittingRef.current = false
+    }
   }, [organizationId])
 
   useEffect(() => {
@@ -124,13 +141,17 @@ export function WorkforceExceptionQueue() {
     return () => controller.abort()
   }, [organizationId, requestKey, t])
 
-  function closeAction() {
+  function closeAction(force = false) {
+    if (submittingRef.current && !force) return
+    selectedActionTokenRef.current = null
     setSelectedAction(null)
     setFormError(null)
   }
 
-  function refreshQueue(options: { preserveFeedback?: boolean } = {}) {
-    closeAction()
+  function refreshQueue(options: { preserveFeedback?: boolean; afterAction?: boolean } = {}) {
+    if (submittingRef.current && !options.afterAction) return
+    operationIdByTokenRef.current.clear()
+    closeAction(true)
     setLoading(true)
     setError(null)
     if (!options.preserveFeedback) setActionFeedback(null)
@@ -138,45 +159,60 @@ export function WorkforceExceptionQueue() {
   }
 
   function openAction(item: QueueItem, action: QueueAction) {
+    if (submittingRef.current) return
+    const operationId = operationIdByTokenRef.current.get(action.actionToken)
+      ?? globalThis.crypto.randomUUID()
+    operationIdByTokenRef.current.set(action.actionToken, operationId)
+    selectedActionTokenRef.current = action.actionToken
     setSelectedAction({
       ...action,
       displayReference: item.displayReference,
-      operationId: globalThis.crypto.randomUUID(),
+      organizationId,
+      operationId,
     })
     setFormError(null)
     setActionFeedback(null)
   }
 
   async function recordAction() {
-    if (!selectedAction || submitting) return
+    if (!selectedAction || submittingRef.current) return
+    const requestAction = selectedAction
+    pendingActionRef.current = requestAction
+    submittingRef.current = true
 
     setSubmitting(true)
     setFormError(null)
+    const isCurrentRequest = () => (
+      pendingActionRef.current === requestAction
+      && selectedActionTokenRef.current === requestAction.actionToken
+      && organizationIdRef.current === requestAction.organizationId
+    )
     try {
       const response = await fetch("/api/v1/workforce/exception-decisions", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          ...(organizationId ? { "x-organization-id": organizationId } : {}),
+          ...(requestAction.organizationId ? { "x-organization-id": requestAction.organizationId } : {}),
         },
         body: JSON.stringify({
-          actionToken: selectedAction.actionToken,
-          operationId: selectedAction.operationId,
+          actionToken: requestAction.actionToken,
+          operationId: requestAction.operationId,
           reason: ACKNOWLEDGEMENT_REASON,
         }),
       })
       const body = await response.json().catch(() => ({}))
+      if (!isCurrentRequest()) return
 
       if (response.ok
-        && body.success
-        && body.data?.decisionCode === selectedAction.decisionCode) {
-        const actionLabel = t(`actions.${selectedAction.decisionCode}`)
-        const displayReference = selectedAction.displayReference
+        && body.success === true
+        && body.data?.decisionCode === requestAction.decisionCode) {
+        const actionLabel = t(`actions.${requestAction.decisionCode}`)
+        const displayReference = requestAction.displayReference
         setActionFeedback({
           tone: "success",
           message: t("actionRecorded", { action: actionLabel, reference: displayReference }),
         })
-        refreshQueue({ preserveFeedback: true })
+        refreshQueue({ preserveFeedback: true, afterAction: true })
         return
       }
       if (response.status === 403 && body.code === "WORKFORCE_ATTENDANCE_MFA_REQUIRED") {
@@ -185,7 +221,7 @@ export function WorkforceExceptionQueue() {
       }
       if (response.status === 404 || response.status === 409 || response.status === 403) {
         setActionFeedback({ tone: "error", message: t("actionStale") })
-        refreshQueue({ preserveFeedback: true })
+        refreshQueue({ preserveFeedback: true, afterAction: true })
         return
       }
       if (response.status === 429) {
@@ -194,12 +230,17 @@ export function WorkforceExceptionQueue() {
       }
       setFormError(t("actionFailed"))
     } catch {
+      if (!isCurrentRequest()) return
       // Keep both the encrypted action token and operation id stable. An exact
       // retry can then replay safely if the server committed before the
       // connection failed.
       setFormError(t("actionFailed"))
     } finally {
-      setSubmitting(false)
+      if (pendingActionRef.current === requestAction) {
+        pendingActionRef.current = null
+        submittingRef.current = false
+        setSubmitting(false)
+      }
     }
   }
 
@@ -316,6 +357,7 @@ export function WorkforceExceptionQueue() {
                                   className="min-h-11 whitespace-normal text-left"
                                   aria-expanded={actionOpen && selectedAction?.decisionCode === action.decisionCode}
                                   aria-controls={`workforce-exception-action-panel-${itemIndex}`}
+                                  disabled={submitting}
                                   onClick={() => openAction(item, action)}
                                 >
                                   {t(`actions.${action.decisionCode}`)}

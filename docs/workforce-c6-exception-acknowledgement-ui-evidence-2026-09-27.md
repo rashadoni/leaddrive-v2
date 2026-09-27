@@ -61,14 +61,14 @@ evidence table.
 
 ## Current verification
 
-- PASS — focused jsdom interaction contract: 6/6 tests cover the exact
+- PASS — focused jsdom interaction contract: 7/7 tests cover the exact
   allowlist, no token DOM exposure, two-step confirmation, minimized POST,
   fixed reason, stable uncertain replay, stale refresh, generic containment,
-  mismatched-success rejection, localization and 44-pixel/source fences.
-- PASS — related C6 selection: eight files / 53 tests across the queue API,
+  mismatched-success rejection, deferred cross-row locking, localization and
+  44-pixel/source fences.
+- PASS — related C6 selection: eight files / 54 tests across the queue API,
   fixed decision API, token, workbench lifecycle, projection/label, scoped read
-  authorization, aggregate-report UI and new acknowledgement UI. Six files / 34
-  tests and two generated-client API files / 19 tests ran sequentially.
+  authorization, aggregate-report UI and new acknowledgement UI.
 - PASS — targeted ESLint for the component and new test.
 - PASS — translation parity: 23,600 English leaf keys; RU/AZ missing=0,
   extra=0.
@@ -103,3 +103,33 @@ runtime/test/translation path changed after the final 6/6 interaction rerun,
 targeted ESLint, translation parity and diff check. A replacement clean head
 and fresh author-independent complete-diff review remain mandatory before any
 push.
+
+## First frozen review RED and bounded repair
+
+The first clean frozen identity was base/main
+`86fc1d2c23fead588b45c2e700e125a6d98bbe82`, head
+`2bb994de07f381bf6a47eef6977dccb749268748`, nine paths / 76,058 bytes and
+SHA-256
+`d83e6a0a8c9b56f0728617c1c87070debfbe0e0a2516853c5f4aff43322cba0e`.
+Fresh author-independent review returned RED with one P2 and no P0/P1/P3:
+while a POST was pending, another action trigger could replace the selected
+token/UUID, and reopening the same token after an uncertain failure minted a
+new UUID rather than preserving the exact replay identity.
+
+The repair adds a synchronous in-memory submission fence in addition to the
+rendered disabled state, disables every action trigger/refresh/cancel during
+the pending POST, caches one operation UUID per server token until
+reconciliation, and binds response handling to the exact token, organization
+and request object that started the POST. Organization changes or unmounts
+invalidate the pending marker, so an old asynchronous result cannot update a
+new panel. Confirmed success is now literal `success === true` plus the exact
+returned action code.
+
+The interaction test now closes and reopens an action after an uncertain
+failure and proves the same token/UUID body is replayed. A deferred two-row
+test proves all triggers/refresh/cancel stay disabled, a cross-row click cannot
+replace the pending action, only the first token is submitted and the queue
+refresh starts after settlement. The complete related selection passes eight
+files / 54 tests; targeted ESLint passes. The earlier RED identity and checks
+do not transfer: a clean repair checkpoint and fresh complete-diff rereview are
+required before push.

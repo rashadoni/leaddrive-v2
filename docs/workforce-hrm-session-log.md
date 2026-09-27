@@ -687,3 +687,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
 - Precise stopping point: implementation/evidence are committed and main is unchanged; only this three-document checkpoint receipt is uncommitted, so no valid frozen review identity exists yet and nothing is pushed.
 - Next action: checkpoint this receipt, freeze the replacement base/head/path/byte/hash identity and require a fresh author-independent complete-diff review of every changed line before push.
+
+## 2026-09-27 — C6/C8 acknowledgement UI frozen review RED; P2 repaired
+
+- The first frozen identity was exact base/main `86fc1d2c23fead588b45c2e700e125a6d98bbe82`, head `2bb994de07f381bf6a47eef6977dccb749268748`, nine paths / 76,058 binary-diff bytes and SHA-256 `d83e6a0a8c9b56f0728617c1c87070debfbe0e0a2516853c5f4aff43322cba0e`.
+- Fresh author-independent complete-diff review returned RED with one P2 and no P0/P1/P3. While a decision POST was pending, the still-active row triggers could replace selected token/UUID; reopening the same token after an uncertain response also minted a new UUID. That broke the documented exact replay recovery even though the backend prevented data corruption. Nothing was pushed or published.
+- The repair adds a synchronous pending ref and rendered disabled state for every action trigger, refresh and cancel; retains one operation UUID per in-memory token across close/reopen; and accepts async output only for the exact originating token, organization and request marker. Organization change/unmount invalidates the marker, and confirmed success now requires literal `success === true` plus the exact action code.
+- The jsdom contract now passes 7/7 including uncertain close/reopen replay and a deferred two-row race proving the pending token cannot be replaced. The full related selection passes eight files / 54 tests in one exact-lock invocation; targeted ESLint passes. Translation copy now truthfully says the queue is reloading rather than claiming a completed refresh before its GET settles.
+- Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot evidence remains `NOT RUN`. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: the sole P2 is repaired and focused checks are green in the working tree; the repair/evidence is uncommitted, the rejected identity cannot transfer and nothing is pushed.
+- Next action: finish diff/i18n checks, checkpoint the bounded repair, freeze a replacement clean identity and require a fresh zero-finding complete-diff rereview before push.

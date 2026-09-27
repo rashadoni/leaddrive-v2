@@ -39,6 +39,11 @@ const ACK_TOKEN = "v1:ack-token-ciphertext"
 const FIXED_OPERATION_ID = "00000000-0000-4000-8000-000000000001"
 
 type DecisionAction = { decisionCode: string; actionToken: string }
+type MockResponse = {
+  ok: boolean
+  status: number
+  json: () => Promise<unknown>
+}
 
 function queueItem(reference: string, actions: DecisionAction[]) {
   return {
@@ -59,12 +64,22 @@ function queueItem(reference: string, actions: DecisionAction[]) {
   }
 }
 
-function response(status: number, payload: unknown) {
+function response(status: number, payload: unknown): Promise<MockResponse> {
   return Promise.resolve({
     ok: status >= 200 && status < 300,
     status,
     json: () => Promise.resolve(payload),
   })
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (cause: unknown) => void
+  const promise = new Promise<T>((onResolve, onReject) => {
+    resolve = onResolve
+    reject = onReject
+  })
+  return { promise, resolve, reject }
 }
 
 function queueResponse(items: ReturnType<typeof queueItem>[]) {
@@ -92,6 +107,11 @@ function button(label: string): HTMLButtonElement {
     .find((candidate) => candidate.textContent?.includes(label))
   if (!match) throw new Error(`Missing button: ${label}`)
   return match
+}
+
+function buttons(label: string): HTMLButtonElement[] {
+  return Array.from(container.querySelectorAll("button"))
+    .filter((candidate) => candidate.textContent?.includes(label))
 }
 
 beforeEach(() => {
@@ -228,6 +248,8 @@ describe("Workforce exception acknowledgement UI", () => {
     await flush()
     expect(container.textContent).toContain("actionFailed")
 
+    await act(async () => button("cancelAction").click())
+    await act(async () => button("actions.ACKNOWLEDGE").click())
     await act(async () => button("recordAction").click())
     await flush()
 
@@ -235,6 +257,55 @@ describe("Workforce exception acknowledgement UI", () => {
     const retryBody = (fetchMock.mock.calls[2]?.[1] as RequestInit).body
     expect(retryBody).toBe(firstBody)
     expect(globalThis.crypto.randomUUID).toHaveBeenCalledTimes(1)
+  })
+
+  it("locks every action trigger to the submitted token until a deferred POST settles", async () => {
+    const pendingPost = deferred<MockResponse>()
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => queueResponse([
+        queueItem("WF-FIRST", [{ decisionCode: "ACKNOWLEDGE", actionToken: "v1:first-token" }]),
+        queueItem("WF-SECOND", [{ decisionCode: "ACKNOWLEDGE", actionToken: "v1:second-token" }]),
+      ]))
+      .mockImplementationOnce(() => pendingPost.promise)
+      .mockImplementationOnce(() => queueResponse([
+        queueItem("WF-FIRST", []),
+        queueItem("WF-SECOND", [{ decisionCode: "ACKNOWLEDGE", actionToken: "v1:second-token-new" }]),
+      ]))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await renderQueue()
+    const actionTriggers = buttons("actions.ACKNOWLEDGE")
+    expect(actionTriggers).toHaveLength(2)
+    await act(async () => actionTriggers[0]?.click())
+    await act(async () => button("recordAction").click())
+
+    expect(actionTriggers[0]?.disabled).toBe(true)
+    expect(actionTriggers[1]?.disabled).toBe(true)
+    expect(button("refresh").disabled).toBe(true)
+    expect(button("cancelAction").disabled).toBe(true)
+    await act(async () => actionTriggers[1]?.click())
+    expect(globalThis.crypto.randomUUID).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      pendingPost.resolve({
+        ok: true,
+        status: 201,
+        json: () => Promise.resolve({
+          success: true,
+          data: { decisionCode: "ACKNOWLEDGE" },
+        }),
+      })
+      await pendingPost.promise
+    })
+    await flush()
+
+    const posted = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string)
+    expect(posted).toMatchObject({
+      actionToken: "v1:first-token",
+      operationId: FIXED_OPERATION_ID,
+    })
+    expect(container.textContent).toContain("actionRecorded")
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it("discards a stale token, shows generic copy and refreshes the queue", async () => {
