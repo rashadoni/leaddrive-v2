@@ -291,7 +291,7 @@ try {
     if (!await detail.innerText()) throw new Error("calendar_detail_content_missing")
     await page.keyboard.press("Escape")
     await detail.waitFor({ state: "hidden" })
-    const focusRestored = await trigger.isFocused()
+    const focusRestored = await trigger.evaluate((element) => element === document.activeElement)
     if (viewportName === "desktop" && !focusRestored) throw new Error("calendar_detail_focus_not_restored")
     return {
       keyboardOpen: activation.inputModality === "keyboard",

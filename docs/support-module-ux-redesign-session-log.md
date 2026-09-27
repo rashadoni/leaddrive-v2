@@ -1988,3 +1988,28 @@ Next: checkpoint and push the plan/journal state, then run exact-SHA desktop
 keyboard/recovery, RU/dark mobile physical-touch and the full high-density
 locale/theme/viewport matrix. Close Workstream 11 only after all browser gates
 and manual screenshot review are green.
+
+### Workstream 11 first desktop evidence correction
+
+- Exact-SHA EN/light desktop run `36345293286` on `359b1c2f5` passed the new
+  section gate, isolated fixture seed and production build. Static evidence is
+  fully green: Axe/custom accessibility/touch/small-target/overflow/environment/
+  primary-work findings are zero, primary work begins at 312 px, load p75 is
+  556 ms and CLS is `0.0008396649563426996`.
+- Five of six disposable outcomes passed. Keyboard retry, terminal permission,
+  partial-source recovery, empty recovery, 30-item density/outside-hours/show-
+  more, and keyboard week/today navigation all succeeded. The detail/focus
+  outcome opened and closed the sheet but the harness then called the non-
+  existent Playwright Locator method `isFocused`, so the gate correctly failed
+  before claiming focus return. Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36345293286`.
+- Remediation checks focus with an in-page comparison against
+  `document.activeElement`, the actual Playwright-supported mechanism. A
+  contract assertion prevents reintroducing the invalid API; product behavior
+  and every acceptance threshold remain unchanged.
+- Post-fix JavaScript syntax, targeted ESLint, 5/5 flow-contract assertions and
+  `git diff --check` are green with zero memory pressure before the sequential
+  checks.
+
+Next: checkpoint and push the harness fix, then repeat the exact-SHA desktop
+mutation sample before mobile.

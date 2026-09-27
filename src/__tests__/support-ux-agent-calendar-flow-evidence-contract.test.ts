@@ -42,6 +42,7 @@ describe("Agent Calendar flow evidence contract", () => {
     expect(flow).toContain("page.touchscreen.tap(point.x, point.y)")
     expect(flow).toContain("physicalTouchOpen")
     expect(flow).toContain("physicalTouchWeekNavigation")
+    expect(flow).toContain("element === document.activeElement")
   })
 
   it("uses stable selectors for normal and exceptional states", () => {
