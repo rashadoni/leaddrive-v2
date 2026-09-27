@@ -942,3 +942,14 @@ corrections as new entries that explicitly supersede the earlier fact.
 - This pre-commit verdict does not transfer to the three new receipt documents or future commit identity. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
 - Precise stopping point: implementation/evidence and corrected preflight are complete; only this three-document GREEN receipt is newly uncommitted, the temporary dependency symlink still exists and nothing is pushed.
 - Next action: remove only the symlink, checkpoint all 16 explicit task paths, verify a clean exact identity and require a fresh author-independent frozen complete-diff review from zero.
+
+## 2026-09-27 — C6 mobile response projection frozen complete-diff review GREEN
+
+- After removing only the temporary dependency symlink, 15 explicit implementation/evidence paths were checkpointed as `1783d2924ddcaafcac6489f493e63ae8953c2bcc`; together with release-receipt commit `d9a0142216947ae1384946e7d0caf8234c65337d`, the worktree was clean and two commits ahead of exact main.
+- Fresh author-independent review from zero matched clean base/current main/merge-base `84c5e9ef2d2409cfb95056a738579a6267cf35b6`, head `1783d2924ddcaafcac6489f493e63ae8953c2bcc`, 16 paths / 63,464 binary-diff bytes and SHA-256 `6e4ea817cfdc100d417d4921dac4d4b2602043888f87cd7806057da6cb6f830c`, below 400 KB. It returned GREEN with zero P0-P3 findings.
+- Same-row auth rollout, zero second Organization lookup, exact 101/65/1 relations, canonical revision projector, tenant/self/privacy fences, strict Android parser retaining generic cards, exhaustive EN/RU/AZ display and no-writer/POST/outbox/notification/terminal boundary were confirmed.
+- Reviewer diff whitespace, append-only prefixes, exact lockfile, XML parse and 253/253/253 catalog parity, live PR #465 merge/deploy/public receipt and clean start/end checks passed. Reviewer Vitest, ESLint, typecheck, build, Android/Gradle, browser, load, signed APK, device and pilot gates were `NOT RUN`; author results were not relabelled.
+- Live branch protection requires only `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`; `agent-review` remains absent. Its absence is configuration drift, not merge permission, and this independent GREEN verdict is retained as mandatory evidence.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` and no completion credit is added.
+- Precise stopping point: the frozen implementation head is independently GREEN; only this three-document review receipt is uncommitted and nothing is pushed.
+- Next action: checkpoint the receipt-only delta, independently prove all 12 reviewed runtime/test/resource/build blobs byte-identical, then push/open the sub-400 KB PR and require five exact-head web contexts plus path-triggered Android lint/unit CI.
