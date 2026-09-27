@@ -1,7 +1,7 @@
 # Workforce C6 case-revision cutover evidence — 2026-09-27
 
-Status: **first frozen review RED; both findings repaired; replacement
-complete-diff review and exact-head CI pending**.
+Status: **implementation and replacement complete-diff review GREEN;
+receipt-integrity check and exact-head CI pending**.
 
 This slice starts from deployed `main` SHA
 `fdc601599b048734409a1359863ede382d08e768` plus the append-only release
@@ -176,7 +176,19 @@ complete-diff review. The first replacement frozen review then found one P3 in
 this evidence text: it had transposed response/request timestamp field names
 and attributed client time to the response rather than the mobile correction
 request. The factual wording above is repaired; no runtime or migration logic
-changed, and a new frozen identity still requires review.
+changed. The replacement identity and verdict are recorded below.
+
+The replacement review independently verified clean base/merge-base
+`fdc601599b048734409a1359863ede382d08e768` through head
+`55e0b12aa51766375c7f587f5930b9f841cb7310`: 32 files, 191,101 bytes and
+binary-diff SHA-256
+`0cb01f3e46e39e3fa430d8a186a0ca9495f8a0550a1973846008a6fdff73b809`.
+Its fresh full-diff verdict is GREEN with zero P0–P3 findings. The reviewer
+also repeated Prisma validation and the 12-file / 226-test local selection;
+the 11-case real-PostgreSQL file remained correctly skipped without an
+approved URL. This append-only review receipt is not part of that frozen head
+and therefore requires a separate read-only integrity confirmation before
+publication.
 
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal

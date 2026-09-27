@@ -328,3 +328,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - The P3 repair changes no runtime, schema, migration, test, UI, tenant state or progress. Counts remain `81/161`, gates `14/15`, C5 81%, C6 20% and C9 99%.
 - Precise stopping point: the factual evidence repair and append-only receipts are uncommitted, so the prior frozen identity is superseded and remains RED.
 - Next action: verify/checkpoint the documentation-only repair, compute a new clean identity and require a fresh author-independent zero-finding rereview before any push.
+
+## 2026-09-27 — C6 replacement frozen complete-diff review GREEN
+
+- The P3 evidence repair was checkpointed as `55e0b12aa51766375c7f587f5930b9f841cb7310`. A fresh review did not inherit the earlier verdict and independently verified clean base/merge-base `fdc601599b048734409a1359863ede382d08e768`, complete binary-diff SHA-256 `0cb01f3e46e39e3fa430d8a186a0ca9495f8a0550a1973846008a6fdff73b809`, 191,101 bytes and 32 files.
+- Final frozen-source verdict is GREEN with zero P0–P3 findings. The reviewer reread the full diff and reconfirmed the rolling old/new timestamp/revision bridge, all four restartable Prisma phases, exact `TIMESTAMP(3)` fixtures, corrected response `createdAt` / request `submittedAt` evidence, append-only ownership/RLS boundaries, topology/idempotency fences and absence of terminal UI/action/activation.
+- Reviewer-side checks pass `git diff --check`, Prisma validation and the 12-file / 226-test focused selection. The one real-PostgreSQL file / 11 scenarios remains `SKIPPED / NOT RUN` because no approved URL is present; full typecheck/build, browser, Android, load, physical-device and pilot checks remain `NOT RUN` locally.
+- The reviewer made no edits, commits, pushes, status publications or dependency changes. This append-only review receipt is the only new delta and is deliberately not treated as reviewed until a separate read-only integrity check confirms it.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; review itself adds no task or gate credit.
+- Precise stopping point: the complete source/migration/test/evidence patch is independently GREEN; only this three-document review receipt is uncommitted.
+- Next action: checkpoint and independently verify the receipt-only delta, remove the temporary dependency symlink without touching its target, then push/open the sub-400 KB PR and require all five exact-head GitHub contexts.
