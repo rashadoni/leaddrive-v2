@@ -98,6 +98,7 @@ export function MtmFilterSelect({
   allLabel,
   emptyValue = "",
   clearable = true,
+  showValue = false,
   testId,
 }: {
   label: string
@@ -107,13 +108,15 @@ export function MtmFilterSelect({
   allLabel: string
   emptyValue?: string
   clearable?: boolean
+  /** Always «Период: сегодня», even at the default — a period is never «none». */
+  showValue?: boolean
   testId?: string
 }) {
   const active = value !== emptyValue
   const current = options.find((option) => option.value === value)?.label ?? value
   return (
     <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${active ? "border-primary/40 bg-primary/10 pr-1.5 text-primary" : "border-zinc-200 bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:border-zinc-700"}`}>
-      <span className="truncate">{active ? `${label}: ${current}` : label}</span>
+      <span className="truncate">{active || showValue ? `${label}: ${current}` : label}</span>
       {active && clearable ? (
         <button
           type="button"
