@@ -94,8 +94,13 @@ That identity is historical only: remote main advanced through PR #468 to
 `fb1833a1bbbba77f5f9fbd603507144a8a41f0b5`. Its 12 MTM/map paths were
 non-overlapping and were integrated by merge commit
 `6893772b87a1c604d30e5927e3fc6553f41e7f0c`; all checks above were then
-repeated. A fresh clean-head identity and author-independent review remain
-mandatory before publication.
+repeated. Main subsequently advanced through PR #469 to
+`a043fc9f1b41b87c032714d8d4f28e5dde9def3a`; its only changed path was the
+same unrelated MTM map-matching workflow. It was integrated by merge commit
+`03964302087911b19db7c519f8b900acf530f844`, and the 37-test core, 100-test
+expanded selection, 12-case PostgreSQL collection, ESLint and whitespace
+checks were repeated again with the same results. A fresh clean-head identity
+and author-independent review remain mandatory before publication.
 
 Full local typecheck/build, browser E2E, Android/Gradle, load, signed APK,
 physical-device and human-pilot checks are `NOT RUN` under the Contabo workload
