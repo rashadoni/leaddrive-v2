@@ -1,7 +1,8 @@
 # Workforce C6 case-revision cutover evidence — 2026-09-27
 
-Status: **PR #452 blocking-index review finding repaired locally;
-fresh complete-diff review and replacement exact-head CI pending**.
+Status: **PR #452 exact-PostgreSQL online-index proof passed in CI; a subsequent
+C13 additive-contract finding is repaired locally, with fresh review and
+replacement exact-head CI pending**.
 
 This slice starts from deployed `main` SHA
 `fdc601599b048734409a1359863ede382d08e768` plus the append-only release
@@ -291,6 +292,37 @@ assets (27 domains / 86 topics / 5 schemas), main-protection configurator and
 final identity/cleanliness checks passed. Real PostgreSQL, full build/typecheck,
 browser E2E, Android, load and physical/pilot gates were not run by the reviewer;
 the relevant exact-head CI contexts remain mandatory.
+
+## C13 additive-contract CI repair
+
+Replacement run `36290997196` on exact head
+`405342e648e397d5b1ce7bfe4c305ae0f1f659ff` passed `pr-scope`,
+`typecheck` (16m45s), `runner-policy` and `scan`. Inside `static-checks`, the real PostgreSQL
+`Workforce exception shared-lock PostgreSQL race gate` passed: this is the
+first execution evidence that the two one-statement concurrent phases,
+`23505` invalid-index proof, standalone cleanup, exact ledger resolution and
+five-migration replay all work together. The context nevertheless failed later
+because the repository-wide C13 compatibility test lexically rejected the
+intentional phase-2 `UPDATE`.
+
+The failure is not baselined away. `WF-C13-001` prohibits destructive
+backfills, while this phase fills only a newly added structural revision
+ordinal derived from the immutable decision ledger. The repaired C13 contract
+still rejects every `UPDATE` in every other Workforce migration and names only
+the exact revision-backfill phase. For that phase it positively requires one
+top-level update, the exact table/column, stable tenant/case ordering,
+NULL-only source/target predicates, transaction/lock/statement bounds, the
+explicit backfill setting, relation-owner membership, all-other-column
+equality, two guard-function definitions and an uninterrupted append-only
+trigger. Any second migration or broader mutation remains a CI failure. The
+C13 ADR records this narrow amendment instead of silently weakening its
+historical-assurance rule.
+
+The repaired 14-file local selection passes 234 tests with the 11 opt-in
+PostgreSQL tests `SKIPPED / NOT RUN`; the changed contract passes ESLint. The
+previous exact-head PostgreSQL success is diagnostic evidence only: all five
+contexts, complete-diff review and receipt integrity must rerun on the eventual
+replacement head.
 
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal
