@@ -133,3 +133,25 @@ refresh starts after settlement. The complete related selection passes eight
 files / 54 tests; targeted ESLint passes. The earlier RED identity and checks
 do not transfer: a clean repair checkpoint and fresh complete-diff rereview are
 required before push.
+
+## First replacement frozen review RED and cancel-fence repair
+
+The first replacement clean identity was base/main
+`86fc1d2c23fead588b45c2e700e125a6d98bbe82`, head
+`c3aac962ff55fab9107e08852c1de1c190e9029b`, nine paths / 85,303 bytes and
+SHA-256
+`8f4a7e8c9f3259aefecf6a2e5a809e49c94e5043ef27cc453adadcdccfc52bee`.
+Fresh author-independent replacement review returned RED with one P1 and no
+other P0-P3 finding. The cancel button passed `closeAction` directly to React,
+so the click event was interpreted as the internal truthy `force` parameter.
+That handler was type-incompatible with the button contract and a same-tick
+click before the disabled render could bypass the synchronous pending fence.
+
+The bounded repair wraps the public click as `() => closeAction()`, reserving
+the internal forced close for explicit reconciliation paths. The deferred POST
+test now submits, attempts cancel and attempts a second-row action in the same
+React batch before the disabled state renders; the original panel, token and
+operation UUID must remain selected. A source fence also rejects reintroduction
+of the direct event handler. The rejected identity and prior checks do not
+transfer: focused checks, a new clean checkpoint and a fresh complete-diff
+rereview are required before push.

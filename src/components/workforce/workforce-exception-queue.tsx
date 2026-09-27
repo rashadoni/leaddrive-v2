@@ -403,7 +403,7 @@ export function WorkforceExceptionQueue() {
                                 {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
                               </div>
                               <div className="flex flex-wrap gap-2 lg:justify-end">
-                                <Button type="button" variant="ghost" className="min-h-11" disabled={submitting} onClick={closeAction}>
+                                <Button type="button" variant="ghost" className="min-h-11" disabled={submitting} onClick={() => closeAction()}>
                                   {t("cancelAction")}
                                 </Button>
                                 <Button type="submit" className="min-h-11" disabled={submitting}>

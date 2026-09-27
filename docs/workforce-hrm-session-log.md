@@ -697,3 +697,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot evidence remains `NOT RUN`. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
 - Precise stopping point: the sole P2 is repaired and focused checks are green in the working tree; the repair/evidence is uncommitted, the rejected identity cannot transfer and nothing is pushed.
 - Next action: finish diff/i18n checks, checkpoint the bounded repair, freeze a replacement clean identity and require a fresh zero-finding complete-diff rereview before push.
+
+## 2026-09-27 — C6/C8 first replacement review RED; P1 cancel fence repaired
+
+- The first replacement clean identity was exact base/main `86fc1d2c23fead588b45c2e700e125a6d98bbe82`, head `c3aac962ff55fab9107e08852c1de1c190e9029b`, nine paths / 85,303 binary-diff bytes and SHA-256 `8f4a7e8c9f3259aefecf6a2e5a809e49c94e5043ef27cc453adadcdccfc52bee`.
+- Fresh author-independent complete-diff review returned RED with one P1 and no other P0-P3 finding. Direct `onClick={closeAction}` passed the React click event into the internal optional `force` argument. Besides failing the strict handler type, the truthy event could clear the selected token in the same tick before the disabled render and make the pending response inapplicable.
+- The bounded repair invokes `closeAction()` through a zero-argument wrapper, while explicit internal reconciliation retains `closeAction(true)`. The deferred POST contract now submits, attempts cancel and attempts a second-row selection in the same React batch; the original panel, token and UUID must survive. A source assertion rejects the direct event binding.
+- Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot evidence remains `NOT RUN`. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: the sole replacement-review P1 is repaired in the working tree; the rejected identity and its checks do not transfer, the repair is uncommitted and nothing is pushed.
+- Next action: run focused jsdom, the complete related selection, targeted ESLint, i18n/diff checks, checkpoint the exact repair and require a fresh zero-finding complete-diff review before push.

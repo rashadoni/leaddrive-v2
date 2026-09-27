@@ -159,6 +159,8 @@ describe("Workforce exception acknowledgement UI", () => {
     expect(source).toContain('const QUEUE_DECISION_CODES = ["ACKNOWLEDGE"] as const')
     expect(source).toContain('const ACKNOWLEDGEMENT_REASON = "MANAGER_ACKNOWLEDGED_FOR_HUMAN_REVIEW"')
     expect(source).toContain('className="min-h-11 whitespace-normal text-left"')
+    expect(source).toContain("onClick={() => closeAction()}")
+    expect(source).not.toContain("onClick={closeAction}")
     expect(source).not.toMatch(/localStorage|sessionStorage|console\./)
   })
 
@@ -277,13 +279,17 @@ describe("Workforce exception acknowledgement UI", () => {
     const actionTriggers = buttons("actions.ACKNOWLEDGE")
     expect(actionTriggers).toHaveLength(2)
     await act(async () => actionTriggers[0]?.click())
-    await act(async () => button("recordAction").click())
+    await act(async () => {
+      button("recordAction").click()
+      button("cancelAction").click()
+      actionTriggers[1]?.click()
+    })
 
     expect(actionTriggers[0]?.disabled).toBe(true)
     expect(actionTriggers[1]?.disabled).toBe(true)
     expect(button("refresh").disabled).toBe(true)
     expect(button("cancelAction").disabled).toBe(true)
-    await act(async () => actionTriggers[1]?.click())
+    expect(container.querySelector('[data-testid="workforce-exception-action-panel"]')).not.toBeNull()
     expect(globalThis.crypto.randomUUID).toHaveBeenCalledTimes(1)
 
     await act(async () => {
