@@ -21,11 +21,10 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
 import dynamic from "next/dynamic"
 import type { MtmRouteAssignment, MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import {
-  Route, MapPin, User, CheckCircle2, Plus, Pencil, Trash2, Search, Send,
+  Route, MapPin, User, CheckCircle2, Plus, Pencil, Trash2, Send,
   ArrowLeft, List, CalendarDays, Clock, Navigation, RefreshCw, X, Columns3, ClipboardCheck, Users, UserRound, FileSpreadsheet, TableProperties,
   Camera, PenLine, StickyNote, ArrowDownUp,
 } from "lucide-react"
@@ -43,6 +42,7 @@ import {
 import { formatDate, formatTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { MtmAgentPeriodView } from "@/components/mtm/agent-period-view"
+import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { isMtmRouteShortOfPlan } from "@/lib/mtm/calendar-day-summary"
 import { mtmCalendarDayKey } from "@/lib/mtm/calendar-day-tone"
 import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
@@ -144,6 +144,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
   const router = useRouter()
   const searchParams = useSearchParams()
   const t = useTranslations("mtmRoutesPage")
+  const tFilters = useTranslations("mtmFilters")
   const statusT = useTranslations("mtmStatus")
   const locale = useLocale()
   const tPlace = useTranslations("mtmPlaceCheck")
@@ -1134,22 +1135,23 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
 
       {viewMode === "list" ? (
         <>
-          <div data-testid="mtm-route-status-filters" role="group" aria-label={t("routeSummary")} className="flex flex-wrap gap-2">
-            <Button aria-pressed={activeFilter === "all"} variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{routesTotal > routes.length ? t("allLatest", { shown: routes.length, total: routesTotal }) : `${t("all")} (${routes.length})`}</Button>
-            {(["DRAFT", "PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE", "CANCELLED"] as const).map(s => (
-              <Button key={s} aria-pressed={activeFilter === s} variant={activeFilter === s ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(s)}>
-                {mtmStatusLabel(statusT, "route", s)} ({statusCounts[s] || 0})
-              </Button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input data-testid="mtm-route-list-search" placeholder={t("searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
-            <Select value={sortBy} onChange={e => setSortBy(e.target.value)} className="w-[160px]">
-              <option value="date_desc">{t("sortDateDesc")}</option>
-              <option value="date_asc">{t("sortDateAsc")}</option>
-              <option value="status">{t("sortStatus")}</option>
-            </Select>
-          </div>
+          {/* Owner 2026-09-27: filters in one row — search, statuses, order. */}
+          <MtmFilterBar testId="mtm-route-list-filters">
+            <MtmFilterSearch testId="mtm-route-list-search" value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
+            <div data-testid="mtm-route-status-filters" role="group" aria-label={t("routeSummary")} className="flex flex-wrap gap-1">
+              <Button aria-pressed={activeFilter === "all"} variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter("all")}>{routesTotal > routes.length ? t("allLatest", { shown: routes.length, total: routesTotal }) : `${t("all")} (${routes.length})`}</Button>
+              {(["DRAFT", "PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE", "CANCELLED"] as const).map(s => (
+                <Button key={s} aria-pressed={activeFilter === s} variant={activeFilter === s ? "default" : "outline"} size="sm" className="h-10 rounded-full" onClick={() => setActiveFilter(s)}>
+                  {mtmStatusLabel(statusT, "route", s)} ({statusCounts[s] || 0})
+                </Button>
+              ))}
+            </div>
+            <span className="ml-auto">
+              <MtmFilterSelect label={tFilters("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
+                options={[{ value: "date_desc", label: t("sortDateDesc") }, { value: "date_asc", label: t("sortDateAsc") }, { value: "status", label: t("sortStatus") }]}
+                onChange={setSortBy} />
+            </span>
+          </MtmFilterBar>
           {filtered.length === 0 ? (
             <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{routes.length === 0 ? t("empty") : t("noResults")}</div>
           ) : (
