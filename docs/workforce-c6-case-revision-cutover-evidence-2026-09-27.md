@@ -324,6 +324,28 @@ previous exact-head PostgreSQL success is diagnostic evidence only: all five
 contexts, complete-diff review and receipt integrity must rerun on the eventual
 replacement head.
 
+## C13 repair independent review receipt
+
+Fresh author-independent review froze base/merge-base
+`fdc601599b048734409a1359863ede382d08e768` and repaired head
+`f91a52197c2329e46e02f8df7b4ce2309e1dfd88`. The complete 35-file binary diff
+was 244,953 bytes with SHA-256
+`d0486bb6f8a57180c670b82e52154453bf40cd97fbcb3b5483aec0b0edbe3838`.
+The verdict was **GREEN with zero P0-P3 findings**.
+
+The reviewer confirmed that the exact named structural-revision phase remains
+the only Workforce migration with one top-level `UPDATE`; every positive
+target/order/NULL-only/transaction/timeout/setting/owner/all-other-column/
+two-guard/no-disable/no-insert-delete invariant is pinned, and the ADR does not
+reclassify provenance or evidence. The complete tenant/RLS/auth, idempotency,
+revision continuity, terminal fences, five Prisma phases, P3005/25001 repair
+and `23505` invalid-index cleanup/replay contract also remained sound.
+Reviewer-side `git diff --check`, runner policy (37 workflows), RLS scan
+(552 models / 0 gaps), event assets (27 domains / 86 topics / 5 schemas),
+main-protection configurator and final identity/cleanliness checks passed.
+Reviewer-side dependency-backed, real-PostgreSQL and heavy checks were
+`NOT RUN`; all five replacement exact-head contexts remain mandatory.
+
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal
 UI and tenant activation remain separately open.

@@ -413,3 +413,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. No terminal action/UI/tenant activation or task/gate credit is introduced.
 - Precise stopping point: the C13 test and ADR repair are uncommitted; docs/evidence record the failure and local proof. The earlier full-review identity is superseded for release purposes.
 - Next action: finish small static checks, checkpoint only task-owned paths, freeze a new identity and require fresh full-diff review before push.
+
+## 2026-09-27 — PR #452 C13-repair full-diff review GREEN
+
+- The C13 repair was checkpointed as clean head `f91a52197c2329e46e02f8df7b4ce2309e1dfd88`, base/merge-base `fdc601599b048734409a1359863ede382d08e768`, with a 244,953-byte / 35-file binary diff and SHA-256 `d0486bb6f8a57180c670b82e52154453bf40cd97fbcb3b5483aec0b0edbe3838`.
+- A new author-independent reviewer read the complete base-to-head diff and returned GREEN with zero P0-P3 findings. The reviewer confirmed the single exact named structural backfill remains the only Workforce top-level UPDATE and positively pins target/column, tenant/case plus `createdAt,id` order, NULL-only source/target, transaction/timeouts/setting, owner membership, all-other-column equality, two guard definitions and no trigger disable/insert/delete.
+- The review also reconfirmed tenant/RLS/auth, idempotency, revision continuity, terminal fences, five Prisma phases, P3005/25001 handling, exact `23505` invalid-index cleanup/replay and append-only evidence. Reviewer-side diff, runner policy 37 workflows, RLS 552/0, event assets 27/86/5, main-protection configurator and identity/cleanliness checks passed.
+- Reviewer-side Vitest/ESLint/Prisma validate, real PostgreSQL, full typecheck/build, browser E2E, Android, load and physical/pilot checks were `NOT RUN`; the locally recorded 234 passing tests and all five replacement exact-head GitHub contexts remain separate required evidence.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. No terminal action/UI/tenant activation or task/gate credit is introduced.
+- Precise stopping point: source/test/ADR head `f91a52197c2329e46e02f8df7b4ce2309e1dfd88` has a zero-finding full review; only append-only receipt documentation is now changing and the repair has not been pushed.
+- Next action: checkpoint the receipt-only delta, prove all reviewed source paths unchanged, obtain an independent receipt-integrity verdict, then push and require all five exact-head contexts.
