@@ -348,3 +348,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. The repair changes only CI proof fidelity and adds no terminal action/UI/tenant activation or progress credit.
 - Precise stopping point: the P3005 root cause is repaired in the working tree with local static checks green, but the source-test change is uncommitted and invalidates the prior frozen-review identity.
 - Next action: finish the pre-checkpoint audit, record the old-head typecheck outcome, checkpoint the repair/evidence, freeze and independently rereview the full diff, then push and require five replacement exact-head checks.
+
+## 2026-09-27 — PR #452 P3005 repair complete-diff review GREEN
+
+- The baseline repair and failure receipt were checkpointed as `576cdf62027120ad37c311eca379cffa4a495754`. A fresh reviewer did not inherit prior GREEN and independently verified clean base/merge-base `fdc601599b048734409a1359863ede382d08e768`, full binary-diff SHA-256 `e494fb92be01589e60bb89d611ac6080cb7e1d3305b251f69046d841ad6eb2d2`, 199,903 bytes and 32 files.
+- Complete-diff verdict is GREEN with zero P0–P3 findings. The reviewer reconfirmed every runtime/revision/RLS/idempotency/rolling invariant, all four restartable migration phases, prior P1/P2/P3 repairs, terminal fences and the exact CI failure. The no-op marker is resolved before any target directory exists; all target SQL is copied later, target-only ledger counts cannot be satisfied by the marker, and failed index / invalid index / cleanup / rolled-back / replay semantics remain intact.
+- Reviewer-side `git diff --check`, Prisma validate, 12 files / 226 tests and targeted ESLint pass. Eleven real-PostgreSQL scenarios remain `SKIPPED / NOT RUN` without an approved URL. The original PR head's typecheck later completed GREEN in 19m58s, but static-checks remained RED and neither result is credited to this repaired head.
+- The reviewer made no edits, commits, pushes, status publications or dependency mutations. This append-only review receipt is the only uncommitted delta and requires separate integrity review.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. No terminal action/UI/activation or progress credit is added.
+- Precise stopping point: the repaired full source/test/evidence diff is independently GREEN; only the three-document review receipt is uncommitted and the remote PR still points at the older failed head.
+- Next action: checkpoint and independently verify the receipt, remove the temporary dependency symlink without touching its target, push the repaired head, and require all five replacement exact-head checks before merge.

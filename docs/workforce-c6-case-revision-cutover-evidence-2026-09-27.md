@@ -1,7 +1,7 @@
 # Workforce C6 case-revision cutover evidence — 2026-09-27
 
-Status: **PR #452 exact-head `static-checks` RED on test-ledger baseline;
-repair prepared; replacement review and CI rerun pending**.
+Status: **PR #452 test-ledger repair complete-diff review GREEN;
+receipt-integrity check and replacement exact-head CI pending**.
 
 This slice starts from deployed `main` SHA
 `fdc601599b048734409a1359863ede382d08e768` plus the append-only release
@@ -206,6 +206,22 @@ migrations. The 13-file local selection still passes 226 tests with the 11
 PostgreSQL cases skipped, and exact-test ESLint passes. This test-source repair
 supersedes the prior reviewed identity; fresh review and all five replacement
 exact-head contexts are required. No gate is reclassified or weakened.
+
+Fresh author-independent review of the repaired clean tree returned GREEN with
+zero P0–P3 findings. It verified base/merge-base
+`fdc601599b048734409a1359863ede382d08e768`, head
+`576cdf62027120ad37c311eca379cffa4a495754`, 32 files, 199,903 bytes and
+binary-diff SHA-256
+`e494fb92be01589e60bb89d611ac6080cb7e1d3305b251f69046d841ad6eb2d2`.
+The reviewer reconfirmed the complete runtime/migration patch and proved that
+the no-op baseline exists and is resolved before any target directory is added,
+cannot satisfy the target-only `4 successful / 0 unresolved` assertion, and
+does not weaken the failed-index recovery. Reviewer-side Prisma validate, 226
+tests and targeted ESLint pass; 11 real-PostgreSQL scenarios remain `NOT RUN`
+locally. The failed old-head run subsequently completed `typecheck` GREEN in
+19m58s, but that result is not transferred to the repaired head. This review
+receipt requires a docs-only integrity check before push, followed by all five
+replacement contexts.
 
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal
