@@ -1,0 +1,119 @@
+# Workforce C6 dormant exception-policy revision writer evidence — 2026-09-27
+
+Status: **PRE-REVIEW / INACTIVE / NO PROGRESS CREDIT**
+
+This bounded slice starts from exact deployed `main` SHA
+`0a71fc31967adc2683b6f481f59e516e71ed111c`. It adds only a
+transaction-scoped primitive that can append a tenant acknowledgement of the
+already owner-approved `recommended-v1` draft. There is no route, UI, worker,
+provisioner, feature flag, effective window, decision linkage, terminal action
+or tenant activation.
+
+## Server-owned policy identity
+
+The caller can supply only `organizationId`, an opaque `operationId` and the
+accountable `recordedByUserId`. The writer constructs every policy field on
+the server:
+
+- version `recommended-v1`;
+- the exact immutable `WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1`;
+- canonical SHA-256
+  `5651ee6048857f0c62219176dc1e17d411d0769a835be994a1d0cebbf4291c5a`;
+  and
+- reason code `TENANT_RECORDED_DRAFT`.
+
+No caller-controlled definition, hash, version, free-form reason, timestamp or
+revision is accepted. The definition still contains
+`activation: DRAFT_ONLY_NO_TENANT_EFFECT`. The immutable revision row itself
+is the canonical audit fact: tenant, actor, operation, reason, revision, exact
+hash and database timestamp are retained together.
+
+## Authorization, serialization and replay
+
+- An injected `POLICY_REVISION_APPEND` authorization decision must succeed
+  before the first lock or database call. A future caller must bind this to the
+  existing tenant-wide `WORKFORCE_POLICY_DRAFT_WRITE` authority and supply an
+  already tenant-scoped transaction.
+- One PostgreSQL advisory transaction lock serializes the complete policy
+  revision stream for an organization before replay resolution or revision
+  allocation.
+- The writer reads at most 65 ordered rows, validates the complete stream with
+  the released fail-closed resolver, and permits at most 64 revisions. A gap,
+  mixed/unsupported payload, source/hash drift or overflow blocks the write.
+- An exact operation replay returns the original ID/revision without another
+  insert. Reusing the operation for another actor or server-owned payload is a
+  controlled conflict.
+- A residual Prisma `P2002` maps to conflict without querying the already
+  aborted PostgreSQL transaction. FK, RLS and other storage failures propagate
+  unchanged.
+
+The writer never reads or writes exception decisions, never fills
+`policyRevisionId`, and never takes a case/decision lock. Decision linkage and
+its cross-stream lock order remain separate reviewable work.
+
+## Real PostgreSQL contract
+
+The already blocking policy-revision PostgreSQL file is extended without a
+workflow change. Under the production-shaped application role
+`NOSUPERUSER + NOBYPASSRLS` and FORCE RLS, it must prove:
+
+- a first transaction visibly owns the tenant advisory lock while a second
+  application transaction is observed in `pg_stat_activity` waiting on an
+  advisory lock;
+- two concurrent distinct operations commit as contiguous revisions without a
+  gap;
+- two concurrent identical operations persist one row and return one create
+  plus one exact idempotent replay with the same ID/revision;
+- the ordered tenant stream remains contiguous; and
+- the complete decision count and non-null policy-link count are unchanged.
+
+The existing exact file continues to prove same-tenant actor ownership,
+cross-tenant rejection, old-binary compatibility, validated decision FK,
+FORCE RLS, read/append-only grants and owner-level update/delete/table-clear
+rejection.
+
+## Early independent preflight finding and repair
+
+The author-independent pre-check found one P2 in the new PostgreSQL harness.
+The first version asserted the observed advisory wait and second-transaction
+state before releasing the test-only hold on the first transaction. A failed
+assertion could therefore strand both transactions until timeout and obscure
+the real failure with secondary unhandled errors.
+
+The repaired harness attaches `Promise.allSettled` before observation, captures
+the wait result and second-transaction state, releases the hold unconditionally
+in `finally`, awaits both transactions, and only then asserts the observation
+and append results. No writer behavior changed. The focused suite and ESLint
+pass after the repair. Read-only preflight rereview returned GREEN with zero
+remaining P0-P3 findings and made no changes. This is not the later mandatory
+frozen complete-diff review, which remains separate after the clean checkpoint.
+
+## Current local evidence
+
+- PASS — resolver, writer and no-production-consumer source contracts: three
+  files / 28 tests.
+- PASS — C13 compatibility contract: 8 tests.
+- `SKIPPED / NOT RUN` — exact PostgreSQL: 6 tests because no approved local
+  scratch URL is present; exact-head CI execution is mandatory.
+- PASS — targeted ESLint for all five touched source/test files.
+- PASS — Prisma schema validation with a non-connecting validation URL.
+- PASS — recursive RLS context scan: 553 organization-scoped models / zero
+  gaps.
+- PASS — runner policy for 37 workflows, event/delivery assets for 27 domains,
+  86 topics and five concrete schemas, and main-protection configurator.
+- PASS — diff whitespace before the evidence checkpoint.
+- The first test command did not start because this worktree intentionally had
+  no dependency tree; it is `NOT RUN`, not a test failure. A temporary
+  read-only cache with exact package-lock SHA
+  `54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`
+  then produced the PASS/SKIP results without an install or foreign edit.
+- NOT RUN on Contabo — full typecheck/build, browser E2E, Android/Gradle, load,
+  physical-device and human-pilot checks. Typecheck and exact PostgreSQL remain
+  mandatory in GitHub CI; heavy/physical evidence remains delegated to its
+  authorized environments.
+
+Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. This dormant
+writer closes no acceptance item by itself and does not make a policy
+effective. A clean checkpoint, author-independent frozen complete-diff review,
+receipt-integrity review, sub-400 KB PR, all five exact-head contexts, normal
+merge/deploy and exact-SHA public smoke remain mandatory.

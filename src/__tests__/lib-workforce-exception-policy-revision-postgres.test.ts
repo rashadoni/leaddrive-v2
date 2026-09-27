@@ -7,6 +7,10 @@ import { Prisma, PrismaClient } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1 } from "@/lib/workforce/exception-policy-draft"
 import { WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_HASH_V1 } from "@/lib/workforce/exception-policy-revision"
+import {
+  appendAuthorizedWorkforceExceptionPolicyRevision,
+  type WorkforceExceptionPolicyRevisionWriterDb,
+} from "@/lib/workforce/exception-policy-revision-writer"
 
 const databaseUrl = process.env.WORKFORCE_EXCEPTION_LOCK_TEST_DATABASE_URL
 const integrationDatabaseUrl = databaseUrl
@@ -126,6 +130,40 @@ async function withOrganization<T>(
     )
     return action(tx)
   })
+}
+
+function policyRevisionWriterDb(
+  tx: Prisma.TransactionClient,
+  afterLock?: () => Promise<void>,
+): WorkforceExceptionPolicyRevisionWriterDb {
+  return {
+    $executeRaw: async (query, ...values) => {
+      const result = await tx.$executeRaw(query, ...values)
+      await afterLock?.()
+      return result
+    },
+    workforceExceptionPolicyRevision:
+      tx.workforceExceptionPolicyRevision as unknown as
+        WorkforceExceptionPolicyRevisionWriterDb["workforceExceptionPolicyRevision"],
+  }
+}
+
+async function observeAdvisoryWait(client: PrismaClient): Promise<boolean> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const [state] = await client.$queryRawUnsafe<Array<{ waiting: boolean }>>(`
+      SELECT EXISTS (
+        SELECT 1
+          FROM pg_stat_activity
+         WHERE datname = current_database()
+           AND usename = $1
+           AND wait_event_type = 'Lock'
+           AND wait_event = 'advisory'
+      ) AS "waiting"
+    `, applicationRole)
+    if (state?.waiting) return true
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  return false
 }
 
 async function insertPolicyRevision(
@@ -615,5 +653,125 @@ postgresDescribe("Workforce exception policy revision migration (real PostgreSQL
         FROM "${schema}"."workforce_exception_policy_revisions"
     `)
     expect(Number(remaining.count)).toBe(2)
+  })
+
+  it("serializes real application-role appends and makes a concurrent operation replay exact", async () => {
+    const [beforeDecisions] = await observer.$queryRawUnsafe<Array<{
+      rows: bigint
+      linkedRows: bigint
+    }>>(`
+      SELECT count(*) AS "rows",
+             count(*) FILTER (WHERE "policyRevisionId" IS NOT NULL) AS "linkedRows"
+        FROM "${schema}"."workforce_exception_decisions"
+    `)
+
+    let announceFirstLock!: () => void
+    const firstLock = new Promise<void>((resolve) => {
+      announceFirstLock = resolve
+    })
+    let releaseFirstLock!: () => void
+    const holdFirstLock = new Promise<void>((resolve) => {
+      releaseFirstLock = resolve
+    })
+    const authorize = async (input: {
+      operation: "POLICY_REVISION_APPEND"
+      organizationId: string
+      actorUserId: string
+    }) => input.organizationId === organizationA
+      && input.actorUserId === "user-policy-a"
+
+    const first = withOrganization(applicationClient, organizationA, (tx) =>
+      appendAuthorizedWorkforceExceptionPolicyRevision({
+        db: policyRevisionWriterDb(tx, async () => {
+          announceFirstLock()
+          await holdFirstLock
+        }),
+        command: {
+          organizationId: organizationA,
+          operationId: "policy-writer-distinct-a",
+          recordedByUserId: "user-policy-a",
+        },
+        authorize,
+      }))
+    await firstLock
+
+    let secondSettled = false
+    const second = withOrganization(applicationClient, organizationA, (tx) =>
+      appendAuthorizedWorkforceExceptionPolicyRevision({
+        db: policyRevisionWriterDb(tx),
+        command: {
+          organizationId: organizationA,
+          operationId: "policy-writer-distinct-b",
+          recordedByUserId: "user-policy-a",
+        },
+        authorize,
+    })).finally(() => {
+      secondSettled = true
+    })
+    const distinctSettled = Promise.allSettled([first, second])
+    let observedWait = false
+    let secondSettledWhileHeld = false
+    let observationFailure: unknown
+    try {
+      observedWait = await observeAdvisoryWait(observer)
+      secondSettledWhileHeld = secondSettled
+    } catch (error) {
+      observationFailure = error
+    } finally {
+      // Never strand either transaction behind the test-only hold, even when
+      // the observation or its assertions fail.
+      releaseFirstLock()
+    }
+
+    const distinctOutcomes = await distinctSettled
+    const rejected = distinctOutcomes.filter((outcome) => outcome.status === "rejected")
+    expect(rejected).toEqual([])
+    if (observationFailure) throw observationFailure
+    expect(observedWait).toBe(true)
+    expect(secondSettledWhileHeld).toBe(false)
+    const distinct = distinctOutcomes.map((outcome) => {
+      if (outcome.status === "rejected") throw outcome.reason
+      return outcome.value
+    })
+    expect(distinct.map((result) => result.revision).sort()).toEqual([2, 3])
+    expect(distinct.every((result) => !result.idempotent)).toBe(true)
+
+    const sameOperation = {
+      organizationId: organizationA,
+      operationId: "policy-writer-same-operation",
+      recordedByUserId: "user-policy-a",
+    }
+    const replay = await Promise.all([
+      withOrganization(applicationClient, organizationA, (tx) =>
+        appendAuthorizedWorkforceExceptionPolicyRevision({
+          db: policyRevisionWriterDb(tx), command: sameOperation, authorize,
+        })),
+      withOrganization(applicationClient, organizationA, (tx) =>
+        appendAuthorizedWorkforceExceptionPolicyRevision({
+          db: policyRevisionWriterDb(tx), command: sameOperation, authorize,
+        })),
+    ])
+    expect(new Set(replay.map((result) => result.revision))).toEqual(new Set([4]))
+    expect(new Set(replay.map((result) => result.revisionId)).size).toBe(1)
+    expect(replay.map((result) => result.idempotent).sort()).toEqual([false, true])
+
+    const rows = await withOrganization(applicationClient, organizationA, (tx) =>
+      tx.workforceExceptionPolicyRevision.findMany({
+        orderBy: { revision: "asc" },
+        select: { revision: true, operationId: true },
+      }))
+    expect(rows.map((row) => row.revision)).toEqual([1, 2, 3, 4])
+    expect(rows.filter((row) => row.operationId === sameOperation.operationId))
+      .toHaveLength(1)
+
+    const [afterDecisions] = await observer.$queryRawUnsafe<Array<{
+      rows: bigint
+      linkedRows: bigint
+    }>>(`
+      SELECT count(*) AS "rows",
+             count(*) FILTER (WHERE "policyRevisionId" IS NOT NULL) AS "linkedRows"
+        FROM "${schema}"."workforce_exception_decisions"
+    `)
+    expect(afterDecisions).toEqual(beforeDecisions)
   })
 })
