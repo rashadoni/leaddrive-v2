@@ -2122,6 +2122,15 @@ Additional recovery evidence (2026-09-06):
   padding, filters use two columns below `lg`, and Help is fixed at 44x44;
   desktop five-column composition is preserved. Scoped lint/diff and both
   contracts pass 12/12.
+- Exact-SHA RU/dark mobile diagnostic run `36318075157` at `f50cda29c` proves
+  the responsive corrections except for the final viewport boundary: all 7/7
+  mutating outcomes pass, including real Playwright touchscreen activation at
+  144x44, 0/1/20/100 records with 100 definitions, rollback/cleanup and final
+  Active restoration. Static accessibility, touch, overflow and environment
+  totals are zero, while the first row begins exactly at `primaryWorkTop=812`
+  in an 812 px viewport. Mobile workspace gaps now use 12 px instead of 16 px,
+  restoring visible primary work without changing the desktop rhythm or any
+  evidence threshold.
 
 ## 16. Workstream 9 — Entitlement Templates
 

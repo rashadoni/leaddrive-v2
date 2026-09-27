@@ -50,6 +50,7 @@ describe("support entitlements UX contract", () => {
   it("consolidates all five filters into one toolbar with reset and result context", () => {
     const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
     expect(page).toContain("function EntitlementToolbar")
+    expect(page).toContain('className="space-y-3 sm:space-y-4"')
     expect(page).toContain('aria-label={t("filtersTitle")}')
     expect(page).toContain('className="grid grid-cols-2 gap-2 lg:grid-cols-5"')
     expect(page).toContain("activeFilterCount")

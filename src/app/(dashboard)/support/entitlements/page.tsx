@@ -691,7 +691,7 @@ export default function EntitlementsPage() {
 
   return (
     <div
-      className="space-y-4"
+      className="space-y-3 sm:space-y-4"
       data-testid="support-entitlements-workspace"
       data-state={loading ? "loading" : loadError && !data ? "error" : data?.entitlements.length === 0 ? "empty" : "ready"}
     >

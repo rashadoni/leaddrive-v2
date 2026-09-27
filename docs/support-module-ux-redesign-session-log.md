@@ -1475,3 +1475,29 @@ desktop gate and require 7/7 plus both cleanup/restoration flags before mobile.
 Next: checkpoint and push the responsive density correction, rerun RU/dark
 mobile on the new exact SHA and require static zeroes, 7/7, physical touch,
 cleanup and Active restoration before the high-density matrix.
+
+### Workstream 8 mobile primary-work boundary correction
+
+- Responsive checkpoint `f50cda29c1daee106d0ac496f703a96164995891`
+  passes the dedicated section gate, fixtures and production build in exact-SHA
+  RU/dark mobile run `36318075157`. The flow report is fully green at 7/7:
+  physical Playwright touchscreen recovery hits a 144x44 target, densities
+  0/1/20/100 with 100 definitions remain compact, and milestone cleanup plus
+  final Active restoration are true.
+- The static cell has zero axe, custom accessibility, touch-target, overflow,
+  environment and runtime-error findings. The prior 146 px row is now within
+  its unchanged limit and Help is a full touch target. Its only failure is the
+  first record beginning exactly at the 812 px viewport boundary, so
+  `primaryWorkVisible` remains false with `primaryWorkTop=812`.
+- Mobile-only workspace spacing now uses 12 px gaps, saving 16 px across the
+  four block transitions before the list; `sm` and wider retain the existing
+  16 px rhythm. The static contract records this responsive composition. No
+  browser threshold, workflow assertion or functional behavior changed.
+
+Next: run scoped resource-aware lint/diff/contracts, checkpoint and push this
+boundary correction, then repeat the identical RU/dark mobile exact-SHA gate.
+
+- Verification completed with 15 GiB available memory, 331 GiB free disk and
+  zero memory pressure. Scoped ESLint, `git diff --check` and the two affected
+  contracts pass 12/12. Heavy local build/browser gates remain assigned to the
+  exact-SHA GitHub Actions run under the host contract.
