@@ -123,6 +123,9 @@
     <string name="exception_corrections_empty">No self-service exception cards are available.</string>
     <string name="exception_correction_select">%1$s · %2$s · %3$s</string>
     <string name="exception_correction_selected">The selected exception will be checked again by the server when you submit this correction.</string>
+    <string name="exception_response_acknowledged">Your response is recorded for the current review.</string>
+    <string name="exception_response_not_acknowledged">No response is recorded for the current review.</string>
+    <string name="exception_response_unavailable">Response status is unavailable for this review.</string>
     <string name="exception_type_late_start">Late start</string>
     <string name="exception_type_delayed_claim">Delayed attendance claim</string>
     <string name="exception_type_missing_finish">Missing finish</string>

@@ -206,6 +206,8 @@ describe("Workforce Android foundation", () => {
     const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
     const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
+    const responseContract = read("app/src/test/java/com/leaddrive/workforce/android/data/WorkforceExceptionResponseContractTest.kt")
+    const appGradle = read("app/build.gradle.kts")
     const catalogs = [
       read("app/src/main/res/values/strings.xml"),
       read("app/src/main/res/values-ru/strings.xml"),
@@ -218,6 +220,12 @@ describe("Workforce Android foundation", () => {
     expect(api).toContain("WorkforceHistoryRequestState")
     expect(api).toContain('"/api/v1/mtm/mobile/hrm/exceptions"')
     expect(api).toContain("WorkforceSelfException")
+    expect(api).toContain('val responseRecording = data.opt("responseRecording")')
+    expect(api).toContain("enum class WorkforceSelfExceptionResponseState")
+    expect(api).toContain("val responseState: WorkforceSelfExceptionResponseState")
+    expect(api).toContain('if (responseRecording != "AVAILABLE")')
+    expect(api).not.toContain("enumValueOf<WorkforceSelfExceptionResponseState>")
+    expect(api).not.toMatch(/method = "POST",\s*path = "\/api\/v1\/mtm\/mobile\/hrm\/exceptions"/)
     expect(api).toContain('put("exceptionCaseId", it)')
     expect(api).toContain("MAX_HRM_REQUEST_DAYS = 366L")
     expect(api).toContain("Requested finish must be after requested start")
@@ -231,6 +239,10 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("R.string.request_timeline_submitted")
     expect(activity).toContain("R.string.request_status_unknown")
     expect(activity).toContain("R.string.exception_corrections_explainer")
+    expect(activity).toContain("private fun WorkforceSelfExceptionResponseState.localizedLabel()")
+    expect(activity).toContain("Text(exception.responseState.localizedLabel())")
+    expect(activity).not.toContain("Text(exception.responseState.toString())")
+    expect(activity).not.toContain("onAcknowledgeException")
     expect(activity).toContain("exceptionCaseId = exception.caseId")
     expect(activity).toContain("if (correctionWorkdayId != day.workday!!.id) exceptionCaseId = \"\"")
     expect(activity).toContain("ownExceptions.isEmpty()")
@@ -242,11 +254,18 @@ describe("Workforce Android foundation", () => {
     expect(repository).toContain("data class Queued(val localRecovery: WorkforceRequestLocalRecovery)")
     expect(activity).toContain("requestLocalRecovery")
     expect(activity).toContain("R.string.request_local_sync_explainer")
+    expect(responseContract).toContain("exact available contract maps only known card states")
+    expect(responseContract).toContain("missing malformed or disabled rollout always fails closed")
+    expect(responseContract).toContain("available rollout still rejects unknown or malformed card state")
+    expect(appGradle).toContain('testImplementation("junit:junit:4.13.2")')
     for (const catalog of catalogs) {
       expect(catalog).toContain('name="request_local_sync_explainer"')
       expect(catalog).toContain('name="request_local_sync_pending"')
       expect(catalog).toContain('name="request_local_sync_conflict"')
       expect(catalog).toContain('name="request_local_sync_review"')
+      expect(catalog).toContain('name="exception_response_acknowledged"')
+      expect(catalog).toContain('name="exception_response_not_acknowledged"')
+      expect(catalog).toContain('name="exception_response_unavailable"')
     }
   })
 

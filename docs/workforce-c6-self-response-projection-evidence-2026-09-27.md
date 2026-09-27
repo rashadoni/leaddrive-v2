@@ -163,3 +163,32 @@ responded on a physical device or completed an appeal. It activates no tenant
 and changes no attendance, payroll, discipline, correction or terminal state.
 Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or
 phase-gate credit is added.
+
+## PR #465 production release
+
+Receipt integrity preserved all four independently reviewed runtime/test blobs
+byte-identically at final head
+`ce9b77d8711fb6d292017528661e4a8ec1379f20`. The final complete diff from exact
+base `68cf17eddd1d5db8179fe2ec2981506403fc98ca` covered eight paths / 54,853
+binary-diff bytes with SHA-256
+`e448c02b926928a0f81c932a44754db59872a287b3e853bda47da49013e499ef`.
+Both the replacement frozen review and final receipt-integrity review returned
+GREEN with zero P0-P3 findings.
+
+PR #465 passed the five exact-head required contexts: `pr-scope` in 13s,
+`static-checks` in 8m16s, `typecheck` in 16m06s, `runner-policy` in 13s and
+`scan` in 14s. The normal PR production build was skipped by policy. The PR
+merged normally at `2026-09-27T18:48:29Z` as
+`84c5e9ef2d2409cfb95056a738579a6267cf35b6`.
+
+GitHub deploy run `36342013489` completed GREEN at
+`2026-09-27T19:11:17Z`: quality/security took 11m35s, the SHA-bound production
+artifact took 15m42s, and atomic production deployment plus post-deploy smoke
+took 6m56s. Independent no-cache public reads returned `{"ok":true}` and
+`{"sha":"84c5e9ef2d24","artifactSha":"84c5e9ef2d2409cfb95056a738579a6267cf35b6","builtAt":"2026-09-27T18:54:46Z"}`.
+The public artifact SHA exactly matches merged `main`; no direct server deploy,
+retired target/owner or worktree copy was used.
+
+Full browser E2E, Android/Gradle, load, physical-device and human-pilot evidence
+remains `NOT RUN`. WF-C6-006 remains `PARTIAL`, and progress stays `81/161`,
+`14/15`, C5 81%, C6 20% and C9 99%.

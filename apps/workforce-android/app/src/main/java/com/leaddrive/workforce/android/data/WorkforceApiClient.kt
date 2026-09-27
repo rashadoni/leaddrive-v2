@@ -484,10 +484,11 @@ class WorkforceApiClient(
         )
         val data = response.optJSONObject("data")
             ?: throw WorkforceApiException("The Workforce exception response was incomplete.", recoverable = true)
+        val responseRecording = data.opt("responseRecording")
         val values = data.optJSONArray("cases") ?: return@withContext emptyList()
         buildList {
             for (index in 0 until values.length()) {
-                values.optJSONObject(index)?.toSelfException()?.let(::add)
+                values.optJSONObject(index)?.toSelfException(responseRecording)?.let(::add)
             }
         }
     }
@@ -1002,7 +1003,7 @@ private fun JSONObject.toHrmRequest(): WorkforceHrmRequest? {
     )
 }
 
-private fun JSONObject.toSelfException(): WorkforceSelfException? {
+private fun JSONObject.toSelfException(responseRecording: Any?): WorkforceSelfException? {
     val caseId = optString("caseId").takeIf { it.isNotBlank() && it.length <= 128 } ?: return null
     val reference = optString("displayReference").takeIf { it.isNotBlank() && it.length <= 32 } ?: return null
     val type = optString("type").takeIf { it.isNotBlank() && it.length <= 64 } ?: return null
@@ -1016,6 +1017,10 @@ private fun JSONObject.toSelfException(): WorkforceSelfException? {
         type = type,
         workdayId = workdayId,
         workDate = workDate,
+        responseState = resolveWorkforceSelfExceptionResponseState(
+            responseRecording = responseRecording,
+            responseState = opt("responseState"),
+        ),
     )
 }
 
@@ -1244,13 +1249,38 @@ data class WorkforceHistorySnapshot(
     val requests: List<WorkforceHrmRequest>,
 )
 
-/** Raw proof, employee reasons and response-ledger state never enter this card. */
+enum class WorkforceSelfExceptionResponseState {
+    UNAVAILABLE,
+    NOT_ACKNOWLEDGED,
+    ACKNOWLEDGED,
+}
+
+/**
+ * Fail closed unless both the fresh top-level rollout state and the per-card
+ * projection are exact known wire values. Malformed metadata never hides an
+ * otherwise valid generic correction card.
+ */
+internal fun resolveWorkforceSelfExceptionResponseState(
+    responseRecording: Any?,
+    responseState: Any?,
+): WorkforceSelfExceptionResponseState {
+    if (responseRecording != "AVAILABLE") return WorkforceSelfExceptionResponseState.UNAVAILABLE
+    return when (responseState) {
+        "NOT_ACKNOWLEDGED" -> WorkforceSelfExceptionResponseState.NOT_ACKNOWLEDGED
+        "ACKNOWLEDGED" -> WorkforceSelfExceptionResponseState.ACKNOWLEDGED
+        "UNAVAILABLE" -> WorkforceSelfExceptionResponseState.UNAVAILABLE
+        else -> WorkforceSelfExceptionResponseState.UNAVAILABLE
+    }
+}
+
+/** Raw proof, employee reasons and response-ledger identity never enter this card. */
 data class WorkforceSelfException(
     val caseId: String,
     val displayReference: String,
     val type: String,
     val workdayId: String,
     val workDate: String,
+    val responseState: WorkforceSelfExceptionResponseState,
 )
 
 data class WorkforceHistoryDay(
