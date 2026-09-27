@@ -99,6 +99,7 @@ export function MtmFilterSelect({
   emptyValue = "",
   clearable = true,
   showValue = false,
+  disabled = false,
   testId,
 }: {
   label: string
@@ -110,14 +111,15 @@ export function MtmFilterSelect({
   clearable?: boolean
   /** Always «Период: сегодня», even at the default — a period is never «none». */
   showValue?: boolean
+  disabled?: boolean
   testId?: string
 }) {
   const active = value !== emptyValue
-  const current = options.find((option) => option.value === value)?.label ?? value
+  const current = options.find((option) => option.value === value)?.label ?? (value || allLabel)
   return (
-    <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${active ? "border-primary/40 bg-primary/10 pr-1.5 text-primary" : "border-zinc-200 bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:border-zinc-700"}`}>
+    <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${disabled ? "opacity-50" : ""} ${active ? "border-primary/40 bg-primary/10 pr-1.5 text-primary" : "border-zinc-200 bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:border-zinc-700"}`}>
       <span className="truncate">{active || showValue ? `${label}: ${current}` : label}</span>
-      {active && clearable ? (
+      {active && clearable && !disabled ? (
         <button
           type="button"
           className="relative z-10 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-primary/15"
@@ -133,8 +135,9 @@ export function MtmFilterSelect({
         data-testid={testId}
         aria-label={label}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0"
+        className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 disabled:cursor-not-allowed"
       >
         {emptyValue === "" ? <option value="">{allLabel}</option> : null}
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -149,20 +152,24 @@ export function MtmFilterDate({
   value,
   onChange,
   type = "date",
+  min,
   max,
+  disabled = false,
   testId,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
-  type?: "date" | "month"
+  type?: "date" | "month" | "time"
+  min?: string
   max?: string
+  disabled?: boolean
   testId?: string
 }) {
   return (
     <label className="inline-flex h-10 items-center gap-2 rounded-full border border-zinc-200 bg-card px-3 text-sm text-muted-foreground focus-within:ring-2 focus-within:ring-primary/30 dark:border-zinc-700">
       <span>{label}</span>
-      <input data-testid={testId} type={type} max={max} value={value} onChange={(event) => onChange(event.target.value)} className="bg-transparent text-foreground outline-none" />
+      <input data-testid={testId} type={type} min={min} max={max} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} className="bg-transparent text-foreground outline-none" />
     </label>
   )
 }
