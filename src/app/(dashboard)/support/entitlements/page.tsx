@@ -879,13 +879,16 @@ export default function EntitlementsPage() {
         description={t("discardDescription")}
         confirmLabel={t("discardAction")}
       />
-      <ConfirmDialog
-        open={Boolean(deleteDefinitionTarget)}
-        onOpenChange={(open) => { if (!open) setDeleteDefinitionTarget(null) }}
-        onConfirm={deleteMilestone}
-        title={t("deleteMilestoneTitle")}
-        description={deleteDefinitionTarget ? t("deleteMilestoneDescription", { name: deleteDefinitionTarget.name }) : undefined}
-      />
+      {deleteDefinitionTarget && createPortal(
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => { if (!open) setDeleteDefinitionTarget(null) }}
+          onConfirm={deleteMilestone}
+          title={t("deleteMilestoneTitle")}
+          description={t("deleteMilestoneDescription", { name: deleteDefinitionTarget.name })}
+        />,
+        document.body,
+      )}
     </div>
   )
 }

@@ -2098,6 +2098,14 @@ Additional recovery evidence (2026-09-06):
   failure. The Sheet now blocks outside-dismiss while either lifecycle or
   milestone-delete child dialog is open, with its background inert and
   pointer-blocked. Scoped lint/diff and both contracts pass 12/12 unchanged.
+- Exact-SHA run `36313820702` at `776403aee` proves parent Sheet preservation,
+  lifecycle mutation/rollback, visible focus return, edit recovery and final
+  Active restoration. The remaining focus failure is an invalid evidence API
+  call (`Locator.isFocused()`); it is replaced by the same fail-closed DOM
+  equality assertion. The milestone-delete custom dialog is also portalled to
+  `document.body` so Radix includes it in the active modal/accessibility layer
+  above the preserved Sheet. Syntax/lint/diff and both contracts pass 12/12;
+  7/7 hosted outcomes and cleanup remain mandatory.
 
 ## 16. Workstream 9 — Entitlement Templates
 

@@ -26,6 +26,8 @@ describe("Support Entitlements mutating evidence contract", () => {
     ]) expect(flow).toContain(id)
     expect(flow).toContain("definitionsPerTerm: 100")
     expect(flow).toContain("entitlement_detail_focus_not_restored")
+    expect(flow).toContain("node === document.activeElement")
+    expect(flow).not.toContain(".isFocused()")
     expect(flow).toContain("lifecycle_failure_discarded_reason")
     expect(flow).toContain("milestone_delete_failure_removed_definition")
     expect(flow).toContain("entitlementRestoredActive: true")

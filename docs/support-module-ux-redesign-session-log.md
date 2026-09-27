@@ -1392,3 +1392,30 @@ desktop gate on the new exact SHA and inspect every outcome and cleanup field.
 
 Next: checkpoint and push the outside-dismiss correction, rerun the identical
 desktop exact-SHA gate, then inspect all seven outcomes and fixture cleanup.
+
+### Workstream 8 focus-probe and milestone portal correction
+
+- Outside-dismiss checkpoint `776403aeea2fa77c1c6ec63df82cd333d3c3fd7d`
+  passes the section gate, fixtures, production build and clean static evidence
+  in exact-SHA run `36313820702`. Load p75 is 312 ms and CLS is
+  `0.0007984547556182484`; the retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36313820702`.
+- Five of seven outcomes are functionally green. Lifecycle suspend/error/retry,
+  parent Sheet preservation and focus return all succeed; the screenshot shows
+  the exact originating row action focused. The runner then calls nonexistent
+  Playwright `Locator.isFocused()`. It now uses the equivalent direct DOM
+  assertion `node === document.activeElement`; the preceding exact
+  `waitForFunction` and fail-closed error remain unchanged.
+- Edit recovery and final resume restoration pass, including
+  `entitlementRestoredActive: true`. Milestone create/error/retry reaches delete
+  confirmation, but that custom dialog is the only nested dialog still rendered
+  inside the page rather than `document.body`; Radix excludes it from the active
+  accessibility/modal layer behind the Sheet. The milestone confirmation now
+  portals to `document.body`, while the already-added Sheet blocking preserves
+  selected context so its inline synthetic error and retry can execute.
+- Resource inspection shows 16 GiB available memory, 331 GiB free disk and zero
+  pressure. Runner syntax, scoped ESLint, diff check and UX/flow contracts pass
+  12/12. No focus, error, retry, cleanup or restoration assertion was removed.
+
+Next: checkpoint and push the focus-probe/milestone-portal correction, rerun the
+unchanged desktop gate and require 7/7 plus disposable cleanup before mobile.

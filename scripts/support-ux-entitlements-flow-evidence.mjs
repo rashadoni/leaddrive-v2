@@ -281,7 +281,8 @@ try {
     await page.keyboard.press("Escape")
     await page.getByTestId("support-entitlement-detail-sheet").waitFor({ state: "hidden" })
     await page.waitForFunction((id) => document.activeElement?.getAttribute("data-testid") === `support-entitlement-open-${id}`, entitlementId)
-    if (!await trigger.isFocused()) throw new Error("entitlement_detail_focus_not_restored")
+    const triggerFocused = await trigger.evaluate((node) => node === document.activeElement)
+    if (!triggerFocused) throw new Error("entitlement_detail_focus_not_restored")
     return { summaryFirst: true, reasonPreserved: true, lifecycleRollback: true, suspendedForDisposableChecks: true, focusRestored: true }
   })
 
