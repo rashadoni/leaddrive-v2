@@ -1141,3 +1141,21 @@ high-density SLA evidence.
 Next: checkpoint and push the shared Dialog reduced-motion correction, then
 restart exact-SHA desktop evidence; only after its inspected artifact is green
 run RU/dark physical-touch mobile and the complete high-density matrix.
+
+### Workstream 7 regression-test lint correction
+
+- Follow-up exact-SHA run `36302392082` at
+  `798c43bb9b227e070312a1f0c685a1be5d5748f4` passes the corrected five-file
+  scan and 23,599-key translation parity, then fails closed in section-scoped
+  ESLint before fixtures/build. The restored mixed system/SLA regression file
+  contained 43 historical `no-explicit-any` violations.
+- The regression file remains inside the SLA gate because the restored product
+  checkpoint changed its SLA coverage. Mock result casts now use `never`, auth
+  error probing accepts `unknown`, and the transaction mock checks an unknown
+  callback before invoking it. No assertion, route case or lint rule was
+  removed.
+- Scoped ESLint and `git diff --check` pass; all 36 mixed system/SLA regression
+  assertions pass unchanged.
+
+Next: checkpoint and push the typed regression mocks, then rerun the same
+desktop exact-SHA gate and continue only after its artifact is inspected green.

@@ -1843,6 +1843,15 @@ Current verification evidence (2026-09-05):
   reports zero findings, scoped ESLint and `git diff --check` pass, and the
   strengthened SLA visual contract passes 7/7. No scan root, rule or browser
   gate was removed.
+- Follow-up run `36302392082` at
+  `798c43bb9b227e070312a1f0c685a1be5d5748f4` confirms the scan and i18n
+  stages pass, then fails closed in scoped ESLint because the restored mixed
+  system/SLA regression file carried 43 historical `no-explicit-any`
+  violations. The file remains in the section gate because the SLA product
+  checkpoint changed it. Its mock casts now use `never`, auth probing accepts
+  `unknown`, and the transaction mock validates/calls an unknown callback
+  without `any`; all 36 regression assertions remain unchanged and pass.
+  Scoped ESLint and `git diff --check` pass. No lint rule or test was removed.
 - SLA checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery

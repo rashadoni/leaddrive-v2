@@ -30,7 +30,7 @@ vi.mock("@/lib/api-auth", () => ({
   getSession: vi.fn(),
   requireAuth: vi.fn(),
   getOrgModuleContext: vi.fn(),
-  isAuthError: vi.fn().mockImplementation((v: any) => v instanceof Response),
+  isAuthError: vi.fn().mockImplementation((v: unknown) => v instanceof Response),
 }))
 
 vi.mock("@/lib/ai/predictive", () => ({
@@ -90,13 +90,16 @@ function params(id: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(prisma.$transaction).mockImplementation(async (callback: any) => callback({
-    kbCategory: prisma.kbCategory,
-    kbArticle: prisma.kbArticle,
-    slaPolicy: prisma.slaPolicy,
-  }))
+  vi.mocked(prisma.$transaction).mockImplementation(async (callback: unknown) => {
+    if (typeof callback !== "function") throw new TypeError("Expected transaction callback")
+    return callback({
+      kbCategory: prisma.kbCategory,
+      kbArticle: prisma.kbArticle,
+      slaPolicy: prisma.slaPolicy,
+    })
+  })
   vi.mocked(getOrgId).mockResolvedValue("org-1")
-  vi.mocked(getSession).mockResolvedValue(AUTH as any)
+  vi.mocked(getSession).mockResolvedValue(AUTH as never)
   vi.mocked(requireAuth).mockResolvedValue(AUTH as never)
   vi.mocked(getOrgModuleContext).mockResolvedValue({
     plan: "enterprise",
@@ -109,7 +112,7 @@ beforeEach(() => {
 
 describe("Analytics Churn Risk", () => {
   it("GET returns risk data", async () => {
-    vi.mocked(calculateChurnRisk).mockResolvedValue([{ companyId: "c1", risk: 0.8 }] as any)
+    vi.mocked(calculateChurnRisk).mockResolvedValue([{ companyId: "c1", risk: 0.8 }] as never)
 
     const res = await churnRiskGET(req("/api/v1/analytics/churn-risk"))
     const json = await res.json()
@@ -130,7 +133,7 @@ describe("Analytics Churn Risk", () => {
 
 describe("Analytics Deal Prediction", () => {
   it("GET returns prediction", async () => {
-    vi.mocked(predictDealWin).mockResolvedValue({ probability: 0.75, factors: [] } as any)
+    vi.mocked(predictDealWin).mockResolvedValue({ probability: 0.75, factors: [] } as never)
     vi.mocked(prisma.deal.findFirst).mockResolvedValue({ id: "d1" } as never)
 
     const res = await dealPredGET(req("/api/v1/analytics/deal-prediction?dealId=d1"))
@@ -149,7 +152,7 @@ describe("Analytics Deal Prediction", () => {
 
 describe("Analytics Deal Velocity", () => {
   it("GET returns velocity data", async () => {
-    vi.mocked(dealVelocityAnalysis).mockResolvedValue({ avgDays: 30, stages: [] } as any)
+    vi.mocked(dealVelocityAnalysis).mockResolvedValue({ avgDays: 30, stages: [] } as never)
 
     const res = await dealVelGET(req("/api/v1/analytics/deal-velocity"))
     const json = await res.json()
@@ -162,7 +165,7 @@ describe("Analytics Deal Velocity", () => {
 
 describe("Analytics Forecast", () => {
   it("GET returns forecast", async () => {
-    vi.mocked(generateRevenueForecast).mockResolvedValue({ months: [], total: 100000 } as any)
+    vi.mocked(generateRevenueForecast).mockResolvedValue({ months: [], total: 100000 } as never)
 
     const res = await forecastGET(req("/api/v1/analytics/forecast?months=3"))
     const json = await res.json()
@@ -177,7 +180,7 @@ describe("KB Categories", () => {
   it("GET returns categories with article count", async () => {
     vi.mocked(prisma.kbCategory.findMany).mockResolvedValue([
       { id: "cat1", name: "FAQ", _count: { articles: 5 } },
-    ] as any)
+    ] as never)
 
     const res = await kbCatGET(req("/api/v1/kb-categories"))
     const json = await res.json()
@@ -186,7 +189,7 @@ describe("KB Categories", () => {
   })
 
   it("POST creates category", async () => {
-    vi.mocked(prisma.kbCategory.create).mockResolvedValue({ id: "cat2", name: "Guides" } as any)
+    vi.mocked(prisma.kbCategory.create).mockResolvedValue({ id: "cat2", name: "Guides" } as never)
 
     const res = await kbCatPOST(
       req("/api/v1/kb-categories", { method: "POST", body: JSON.stringify({ name: "Guides" }) })
@@ -195,12 +198,12 @@ describe("KB Categories", () => {
   })
 
   it("DELETE removes category and unsets articles", async () => {
-    vi.mocked(prisma.kbCategory.findFirst).mockResolvedValue({ id: "cat1", name: "FAQ", parentId: null, sortOrder: 0 } as any)
-    vi.mocked(prisma.kbCategory.findMany).mockResolvedValue([{ id: "child1" }] as any)
-    vi.mocked(prisma.kbArticle.findMany).mockResolvedValue([{ id: "article1" }, { id: "article2" }] as any)
-    vi.mocked(prisma.kbArticle.updateMany).mockResolvedValue({ count: 2 } as any)
-    vi.mocked(prisma.kbCategory.updateMany).mockResolvedValue({ count: 1 } as any)
-    vi.mocked(prisma.kbCategory.deleteMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.kbCategory.findFirst).mockResolvedValue({ id: "cat1", name: "FAQ", parentId: null, sortOrder: 0 } as never)
+    vi.mocked(prisma.kbCategory.findMany).mockResolvedValue([{ id: "child1" }] as never)
+    vi.mocked(prisma.kbArticle.findMany).mockResolvedValue([{ id: "article1" }, { id: "article2" }] as never)
+    vi.mocked(prisma.kbArticle.updateMany).mockResolvedValue({ count: 2 } as never)
+    vi.mocked(prisma.kbCategory.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.kbCategory.deleteMany).mockResolvedValue({ count: 1 } as never)
 
     const res = await kbCatDELETE(req("/api/v1/kb-categories/cat1", { method: "DELETE" }), params("cat1"))
     const json = await res.json()
@@ -215,9 +218,9 @@ describe("KB Categories", () => {
   })
 
   it("POST restores category dependencies only inside the current tenant", async () => {
-    vi.mocked(prisma.kbCategory.create).mockResolvedValue({ id: "cat1", name: "Guides" } as any)
-    vi.mocked(prisma.kbArticle.updateMany).mockResolvedValue({ count: 2 } as any)
-    vi.mocked(prisma.kbCategory.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.kbCategory.create).mockResolvedValue({ id: "cat1", name: "Guides" } as never)
+    vi.mocked(prisma.kbArticle.updateMany).mockResolvedValue({ count: 2 } as never)
+    vi.mocked(prisma.kbCategory.updateMany).mockResolvedValue({ count: 1 } as never)
 
     const res = await kbCatPOST(req("/api/v1/kb-categories", {
       method: "POST",
@@ -245,7 +248,7 @@ describe("KB Categories", () => {
 
 describe("Lead Rules", () => {
   it("GET returns rules", async () => {
-    vi.mocked(prisma.leadAssignmentRule.findMany).mockResolvedValue([{ id: "lr1", name: "Auto assign" }] as any)
+    vi.mocked(prisma.leadAssignmentRule.findMany).mockResolvedValue([{ id: "lr1", name: "Auto assign" }] as never)
 
     const res = await leadRulesGET(req("/api/v1/lead-rules"))
     const json = await res.json()
@@ -254,7 +257,7 @@ describe("Lead Rules", () => {
   })
 
   it("POST creates rule", async () => {
-    vi.mocked(prisma.leadAssignmentRule.create).mockResolvedValue({ id: "lr2", name: "New" } as any)
+    vi.mocked(prisma.leadAssignmentRule.create).mockResolvedValue({ id: "lr2", name: "New" } as never)
 
     const res = await leadRulesPOST(
       req("/api/v1/lead-rules", {
@@ -267,8 +270,8 @@ describe("Lead Rules", () => {
   })
 
   it("PUT updates rule", async () => {
-    vi.mocked(prisma.leadAssignmentRule.findFirst).mockResolvedValue({ id: "lr1" } as any)
-    vi.mocked(prisma.leadAssignmentRule.update).mockResolvedValue({ id: "lr1", name: "Updated" } as any)
+    vi.mocked(prisma.leadAssignmentRule.findFirst).mockResolvedValue({ id: "lr1" } as never)
+    vi.mocked(prisma.leadAssignmentRule.update).mockResolvedValue({ id: "lr1", name: "Updated" } as never)
 
     const res = await leadRulesPUT(
       req("/api/v1/lead-rules/lr1", { method: "PUT", body: JSON.stringify({ name: "Updated" }) }),
@@ -279,8 +282,8 @@ describe("Lead Rules", () => {
   })
 
   it("DELETE removes rule", async () => {
-    vi.mocked(prisma.leadAssignmentRule.findFirst).mockResolvedValue({ id: "lr1" } as any)
-    vi.mocked(prisma.leadAssignmentRule.delete).mockResolvedValue({} as any)
+    vi.mocked(prisma.leadAssignmentRule.findFirst).mockResolvedValue({ id: "lr1" } as never)
+    vi.mocked(prisma.leadAssignmentRule.delete).mockResolvedValue({} as never)
 
     const res = await leadRulesDELETE(req("/api/v1/lead-rules/lr1", { method: "DELETE" }), params("lr1"))
     const json = await res.json()
@@ -299,7 +302,7 @@ describe("Lead Rules", () => {
 
 describe("SLA Policies", () => {
   it("GET returns policies", async () => {
-    vi.mocked(prisma.slaPolicy.findMany).mockResolvedValue([{ id: "s1", name: "Standard" }] as any)
+    vi.mocked(prisma.slaPolicy.findMany).mockResolvedValue([{ id: "s1", name: "Standard" }] as never)
 
     const res = await slaPoliciesGET(req("/api/v1/sla-policies"))
     const json = await res.json()
@@ -308,7 +311,7 @@ describe("SLA Policies", () => {
   })
 
   it("POST creates policy", async () => {
-    vi.mocked(prisma.slaPolicy.create).mockResolvedValue({ id: "s2", name: "Premium" } as any)
+    vi.mocked(prisma.slaPolicy.create).mockResolvedValue({ id: "s2", name: "Premium" } as never)
 
     const res = await slaPoliciesPOST(
       req("/api/v1/sla-policies", {
@@ -322,13 +325,13 @@ describe("SLA Policies", () => {
   })
 
   it("PUT updates policy", async () => {
-    vi.mocked(prisma.slaPolicy.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.slaPolicy.updateMany).mockResolvedValue({ count: 1 } as never)
     vi.mocked(prisma.slaPolicy.findFirst)
       .mockResolvedValueOnce({
         id: "s1", name: "Standard", priority: "high", firstResponseHours: 1,
         resolutionHours: 4, businessHoursOnly: true, isActive: false,
-      } as any)
-      .mockResolvedValueOnce({ id: "s1", name: "Updated" } as any)
+      } as never)
+      .mockResolvedValueOnce({ id: "s1", name: "Updated" } as never)
 
     const res = await slaPoliciesPUT(
       req("/api/v1/sla-policies/s1", { method: "PUT", body: JSON.stringify({ name: "Updated" }) }),
@@ -341,8 +344,8 @@ describe("SLA Policies", () => {
   it("DELETE removes policy", async () => {
     vi.mocked(prisma.slaPolicy.findFirst).mockResolvedValue({
       id: "s1", _count: { companies: 0, entitlements: 0 },
-    } as any)
-    vi.mocked(prisma.slaPolicy.deleteMany).mockResolvedValue({ count: 1 } as any)
+    } as never)
+    vi.mocked(prisma.slaPolicy.deleteMany).mockResolvedValue({ count: 1 } as never)
 
     const res = await slaPoliciesDELETE(req("/api/v1/sla-policies/s1", { method: "DELETE" }), params("s1"))
     const json = await res.json()
@@ -383,8 +386,8 @@ describe("Tracking Click", () => {
     vi.mocked(prisma.emailLog.findUnique).mockResolvedValue({
       id: "log1", clickedAt: new Date(), campaignId: null, variantId: null,
       contactId: "c1", organizationId: "org-1",
-    } as any)
-    vi.mocked(prisma.webTrackingConfig.findUnique).mockResolvedValue({ enabled: true } as any)
+    } as never)
+    vi.mocked(prisma.webTrackingConfig.findUnique).mockResolvedValue({ enabled: true } as never)
 
     const res = await trackClickGET(req("/api/v1/tracking/click?url=https://example.com/&logId=log1"))
     expect(res.status).toBe(302)
@@ -398,7 +401,7 @@ describe("Tracking Click", () => {
     vi.mocked(prisma.emailLog.findUnique).mockResolvedValue({
       id: "log1", clickedAt: new Date(), campaignId: null, variantId: null,
       contactId: "c1", organizationId: "org-1",
-    } as any)
+    } as never)
     vi.mocked(prisma.webTrackingConfig.findUnique).mockResolvedValue(null)
 
     const res = await trackClickGET(req("/api/v1/tracking/click?url=https://example.com/&logId=log1"))
@@ -418,9 +421,9 @@ describe("Tracking Open", () => {
     vi.mocked(prisma.emailLog.findUnique).mockResolvedValue({
       id: "log1", openedAt: null, campaignId: "camp1", variantId: null,
       contactId: "c1", organizationId: "org-1",
-    } as any)
-    vi.mocked(prisma.emailLog.update).mockResolvedValue({} as any)
-    vi.mocked(prisma.campaign.update).mockResolvedValue({} as any)
+    } as never)
+    vi.mocked(prisma.emailLog.update).mockResolvedValue({} as never)
+    vi.mocked(prisma.campaign.update).mockResolvedValue({} as never)
 
     const res = await trackOpenGET(req("/api/v1/tracking/open?logId=log1"))
     expect(res.headers.get("Content-Type")).toBe("image/gif")
@@ -429,7 +432,7 @@ describe("Tracking Open", () => {
 
   // S6 CPQ slice-3 piece-3 — Quote tracking branch.
   it("GET flips Quote status sent→viewed when quoteToken matches a sent quote", async () => {
-    vi.mocked(prisma.quote.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.quote.updateMany).mockResolvedValue({ count: 1 } as never)
 
     const res = await trackOpenGET(req("/api/v1/tracking/open?quoteToken=abc-123"))
     expect(res.headers.get("Content-Type")).toBe("image/gif")
@@ -443,7 +446,7 @@ describe("Tracking Open", () => {
     // updateMany returns count=0 when WHERE clause doesn't match (status
     // already moved past "sent" — e.g. previous pixel already flipped it,
     // or operator manually transitioned via PATCH).
-    vi.mocked(prisma.quote.updateMany).mockResolvedValue({ count: 0 } as any)
+    vi.mocked(prisma.quote.updateMany).mockResolvedValue({ count: 0 } as never)
 
     const res = await trackOpenGET(req("/api/v1/tracking/open?quoteToken=abc-123"))
     expect(res.headers.get("Content-Type")).toBe("image/gif")
@@ -465,7 +468,7 @@ describe("Tracking Open", () => {
   it("GET handles unknown quoteToken silently (updateMany count=0)", async () => {
     // No matching row — `quote.updateMany` returns `{count: 0}` without
     // erroring. The pixel still loads; the side-effect is just absent.
-    vi.mocked(prisma.quote.updateMany).mockResolvedValue({ count: 0 } as any)
+    vi.mocked(prisma.quote.updateMany).mockResolvedValue({ count: 0 } as never)
 
     const res = await trackOpenGET(req("/api/v1/tracking/open?quoteToken=unknown-token"))
     expect(res.headers.get("Content-Type")).toBe("image/gif")
@@ -480,7 +483,7 @@ describe("Tracking Open", () => {
 
 describe("WhatsApp Send", () => {
   it("POST sends text message", async () => {
-    vi.mocked(sendWhatsAppMessage).mockResolvedValue({ success: true, messageId: "m1" } as any)
+    vi.mocked(sendWhatsAppMessage).mockResolvedValue({ success: true, messageId: "m1" } as never)
 
     const res = await whatsappSendPOST(
       req("/api/v1/whatsapp/send", {
@@ -493,7 +496,7 @@ describe("WhatsApp Send", () => {
   })
 
   it("POST sends template message", async () => {
-    vi.mocked(sendWhatsAppTemplate).mockResolvedValue({ success: true } as any)
+    vi.mocked(sendWhatsAppTemplate).mockResolvedValue({ success: true } as never)
 
     const res = await whatsappSendPOST(
       req("/api/v1/whatsapp/send", {
@@ -517,7 +520,7 @@ describe("WhatsApp Send", () => {
 
 describe("WhatsApp Test", () => {
   it("POST sends test message", async () => {
-    vi.mocked(sendWhatsAppMessage).mockResolvedValue({ success: true } as any)
+    vi.mocked(sendWhatsAppMessage).mockResolvedValue({ success: true } as never)
 
     const res = await whatsappTestPOST(
       req("/api/v1/whatsapp/test", {
