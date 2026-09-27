@@ -74,8 +74,19 @@ describe("ticket categories UX contract", () => {
     const page = source("src/app/(dashboard)/settings/ticket-categories/page.tsx")
     expect(page).toContain("min-h-11")
     expect(page).toContain("motion-reduce:animate-none")
+    expect(page).toContain("bg-orange-700")
+    expect(page).toContain("hover:bg-orange-800")
+    expect(page).toContain('className="absolute inset-0 h-full w-full cursor-pointer opacity-0"')
     expect(page).not.toMatch(/(?:violet|purple|cyan|fuchsia)-/)
     expect(page).not.toContain("bg-gradient")
+  })
+
+  it("lifts discard confirmation above the editor and restores it on cancel", () => {
+    const page = source("src/app/(dashboard)/settings/ticket-categories/page.tsx")
+    expect(page).toContain("setEditorOpen(false)\n      setDiscardOpen(true)")
+    expect(page).toContain("discardConfirmedRef.current = true")
+    expect(page).toContain("if (!discardConfirmedRef.current) setEditorOpen(true)")
+    expect(page).toContain("onOpenChange={setDiscardDialogOpen}")
   })
 
   it("avoids a nested main landmark and keeps lifecycle rows focusable after state changes", () => {

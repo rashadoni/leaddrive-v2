@@ -965,3 +965,31 @@ high-density Ticket Categories evidence before closing Workstream 6.
 Next: checkpoint and push the reduced-motion correction, then restart the
 desktop exact-SHA gate; only after its inspected artifact is green run mobile
 and high-density matrices on that same SHA.
+
+### Workstream 6 third self-audit and rendered recovery correction
+
+- Exact-SHA desktop run `36294653841` at
+  `494a5d85a9332bf68d2ac71bef300415fc080fc2` passes the dedicated validation,
+  disposable fixtures and cold production build. Capture runs all seven
+  recovery outcomes (5 passed) plus the static cell and fails closed. Its
+  retained diagnostic artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36294653841`.
+- Static evidence found primary CTA contrast at 3.61:1 and measured the native
+  show-inactive checkbox at 16x16. The category create/save CTAs now use
+  orange-700/800 with white text. The compact checkbox visual remains, while
+  the real labelled input spans the complete 44 px control and the label exposes
+  focus-within state.
+- Hierarchy recovery incorrectly tried a no-results-only Clear Filters button
+  after entering a query that deliberately matched a child. It now clears the
+  search input directly. Discard confirmation was mounted inside the dashboard
+  stacking context below the portaled Sheet; the dirty editor now closes before
+  confirmation opens, cancel reopens the preserved form, and confirm leaves it
+  closed through an explicit confirmation ref.
+- Resource inspection showed 15 GiB available memory, 331 GiB free disk and
+  zero pressure. Runner syntax, the unchanged four-file scoped scan,
+  changed-source ESLint, `git diff --check` and the four affected suites pass
+  18/18. No contrast, touch, recovery, role or viewport gate was relaxed.
+
+Next: checkpoint and push these rendered product/runner corrections, rerun the
+desktop exact-SHA gate, inspect all seven flows and the static cell, then run
+mobile physical-touch and high-density matrices on that same green SHA.

@@ -134,6 +134,7 @@ export default function TicketCategoriesPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<TicketCategory | null>(null)
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(null)
   const rowRefs = useRef(new Map<string, HTMLDivElement>())
+  const discardConfirmedRef = useRef(false)
 
   const orgHeaders = useMemo<Record<string, string>>(() => (
     orgId ? { "x-organization-id": String(orgId) } : {}
@@ -252,13 +253,24 @@ export default function TicketCategoriesPage() {
   }
 
   const requestEditorClose = () => {
-    if (dirty && !saving) setDiscardOpen(true)
+    if (dirty && !saving) {
+      setEditorOpen(false)
+      setDiscardOpen(true)
+    }
     else setEditorOpen(false)
   }
 
   const discardEditor = async () => {
+    discardConfirmedRef.current = true
     setForm(initialForm)
-    setEditorOpen(false)
+  }
+
+  const setDiscardDialogOpen = (open: boolean) => {
+    setDiscardOpen(open)
+    if (!open) {
+      if (!discardConfirmedRef.current) setEditorOpen(true)
+      discardConfirmedRef.current = false
+    }
   }
 
   const setParentCategory = (parentId: string) => {
@@ -402,7 +414,7 @@ export default function TicketCategoriesPage() {
           <Button variant="outline" asChild className="min-h-11 flex-1 px-4 sm:flex-none">
             <Link href="/tickets?view=reports#ticketing-report"><BarChart3 />{t("viewServiceDesk")}</Link>
           </Button>
-          {canWrite && <Button data-testid="ticket-categories-new-root" className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
+          {canWrite && <Button data-testid="ticket-categories-new-root" className="min-h-11 flex-1 bg-orange-700 px-4 text-white hover:bg-orange-800 sm:flex-none" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
         </div>
       </header>
 
@@ -437,9 +449,12 @@ export default function TicketCategoriesPage() {
               <option value="both">{t("bothScope")}</option>
             </Select>
           </label>
-          <label className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm">
-            <input data-testid="ticket-categories-show-inactive" type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} className="h-4 w-4" />
-            {t("showInactive")}
+          <label className="relative flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm outline-none focus-within:ring-2 focus-within:ring-ring">
+            <input data-testid="ticket-categories-show-inactive" type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+            <span aria-hidden="true" className={cn("flex h-5 w-5 items-center justify-center rounded border", showInactive && "border-orange-700 bg-orange-700 text-white")}>
+              {showInactive && <Check className="h-3.5 w-3.5" />}
+            </span>
+            <span>{t("showInactive")}</span>
           </label>
         </div>
 
@@ -466,7 +481,7 @@ export default function TicketCategoriesPage() {
             <p className="mt-1 max-w-md text-sm text-muted-foreground">{hasFilters ? t("noResultsDescription") : t("noCategoriesHint")}</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {hasFilters && <Button data-testid="ticket-categories-clear-filters" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>}
-              {canWrite && <Button data-testid="ticket-categories-empty-create" className="min-h-11" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
+              {canWrite && <Button data-testid="ticket-categories-empty-create" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
             </div>
           </div>
         ) : (
@@ -670,7 +685,7 @@ export default function TicketCategoriesPage() {
 
           <SheetFooter className="shrink-0 gap-2 border-t bg-background px-5 py-4 sm:space-x-0">
             <Button variant="outline" className="min-h-11" onClick={requestEditorClose} disabled={saving}>{tc("cancel")}</Button>
-            <Button data-testid="ticket-category-save" className="min-h-11" onClick={() => void saveCategory()} disabled={saving || !form.name.trim()}>
+            <Button data-testid="ticket-category-save" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={() => void saveCategory()} disabled={saving || !form.name.trim()}>
               <Check />{saving ? tc("saving") : editingId ? t("saveCategory") : t("createCategory")}
             </Button>
           </SheetFooter>
@@ -679,7 +694,7 @@ export default function TicketCategoriesPage() {
 
       <ConfirmDialog
         open={discardOpen}
-        onOpenChange={setDiscardOpen}
+        onOpenChange={setDiscardDialogOpen}
         onConfirm={discardEditor}
         title={t("discardTitle")}
         description={t("discardDescription")}

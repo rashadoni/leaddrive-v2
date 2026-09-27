@@ -1652,6 +1652,22 @@ Current verification evidence (2026-09-05):
   `motion-reduce:transition-none` to those exact utility groups. The identical
   four-file scoped scan now passes with zero findings, changed-component ESLint
   and `git diff --check` pass. A newer exact-SHA browser run remains mandatory.
+- Exact-SHA run `36294653841` passes the corrected section validation, fixtures
+  and production build, then fails closed in rendered evidence. Its artifact at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36294653841` contains all
+  seven flows (5 passed) and one static cell. It exposed three causes: primary
+  CTA contrast of 3.61:1, a 16x16 inactive-category checkbox target, and two
+  recovery-flow defects (clearing a matching search through a no-results-only
+  button, plus discard confirmation rendered beneath the portaled editor).
+- Category CTAs now use AA-safe orange-700/800 colors; the checkbox keeps a
+  compact visual mark but its native input spans the full 44 px labelled hit
+  area with focus-within feedback. Closing a dirty Sheet first hides it, then
+  opens discard confirmation above it; cancel reopens the preserved editor and
+  confirm leaves it closed. The hierarchy runner clears its matching search via
+  the input itself. Resource inspection remains 15 GiB available, 331 GiB free
+  and zero pressure. Runner syntax, the unchanged four-file scan, changed-source
+  ESLint, `git diff --check` and four focused suites (18/18) pass. A newer
+  exact-SHA desktop/mobile/high trio remains mandatory.
 - CAT checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery

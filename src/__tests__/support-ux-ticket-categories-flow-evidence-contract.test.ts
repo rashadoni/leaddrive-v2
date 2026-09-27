@@ -26,6 +26,7 @@ describe("Ticket Categories mutating evidence contract", () => {
     ]) expect(flow).toContain(id)
     expect(flow).toContain("category_permission_offered_misleading_retry")
     expect(flow).toContain("category_tree_forced_context_failed")
+    expect(flow).toContain('await search.fill("")')
     expect(flow).toContain("category_save_focus_not_restored")
     expect(flow).toContain("deactivation_failure_changed_state")
     expect(flow).toContain("restore_failure_changed_state")

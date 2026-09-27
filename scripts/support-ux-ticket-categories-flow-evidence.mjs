@@ -194,10 +194,12 @@ try {
     await toggle.press("Space")
     if (await toggle.getAttribute("aria-expanded") !== "true") throw new Error("category_tree_keyboard_expand_failed")
     await toggle.press("Space")
-    await page.getByTestId("ticket-categories-search").fill("Sign-in troubleshooting")
+    const search = page.getByTestId("ticket-categories-search")
+    await search.fill("Sign-in troubleshooting")
     if (await toggle.getAttribute("aria-expanded") !== "true" || !await toggle.isDisabled()) throw new Error("category_tree_forced_context_failed")
     if (await page.getByTestId("ticket-category-row").count() < 2) throw new Error("category_tree_missing_parent_context")
-    await page.getByTestId("ticket-categories-clear-filters").click()
+    await search.fill("")
+    await categoryRow(page).waitFor({ state: "visible" })
     return { keyboardDisclosure: true, forcedAncestorContext: true }
   })
 
