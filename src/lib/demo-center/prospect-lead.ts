@@ -85,7 +85,9 @@ async function markRequest(
 ): Promise<void> {
   await runWithRlsBypass(() =>
     prisma.demoRequest.updateMany({
-      where: { id: requestId, leadLinkStatus: { not: "LINKED" } },
+      // `not: "LINKED"` alone is SQL `<> 'LINKED'`, which is never true for
+      // NULL — a fresh request's UNCONFIGURED or FAILED was silently dropped.
+      where: { id: requestId, OR: [{ leadLinkStatus: null }, { leadLinkStatus: { not: "LINKED" } }] },
       data: { ...data, leadLinkUpdatedAt: now },
     }),
   )

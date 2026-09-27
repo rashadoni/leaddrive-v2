@@ -4,6 +4,8 @@ import { demoRejectSchema } from "@/lib/demo-center/validation"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
 
+const REVOCABLE_STATUSES = ["ISSUING", "SENT", "OTP_SENT", "OTP_VERIFIED", "ACTIVE", "DELIVERY_FAILED"]
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const actor = await requireSuperAdmin(request)
   if (actor instanceof NextResponse) return actor
@@ -25,12 +27,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!requestRow.count) return false
 
     const grants = await tx.demoGrant.findMany({
-      where: { requestId: id, status: { in: ["ISSUING", "SENT", "OTP_SENT", "OTP_VERIFIED", "ACTIVE", "DELIVERY_FAILED"] } },
+      where: { requestId: id, status: { in: REVOCABLE_STATUSES } },
       select: { id: true },
     })
     if (grants.length) {
       await tx.demoGrant.updateMany({
-        where: { id: { in: grants.map((grant) => grant.id) } },
+        // The status again: a grant that completed or expired between the
+        // read and this write keeps its real ending instead of becoming REVOKED.
+        where: { id: { in: grants.map((grant) => grant.id) }, status: { in: REVOCABLE_STATUSES } },
         data: {
           status: "REVOKED",
           revokedAt: now,

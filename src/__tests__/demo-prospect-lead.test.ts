@@ -227,7 +227,9 @@ describe("failure", () => {
 
     await expect(ensureDemoProspectLead("request-1", NOW)).resolves.toEqual({ status: "FAILED" })
     expect(prisma.demoRequest.updateMany).toHaveBeenLastCalledWith({
-      where: { id: "request-1", leadLinkStatus: { not: "LINKED" } },
+      // NULL included on purpose — `not` alone never matches a fresh request.
+      // The behaviour itself is held on a real Postgres in demo-center-db-constraints.test.ts.
+      where: { id: "request-1", OR: [{ leadLinkStatus: null }, { leadLinkStatus: { not: "LINKED" } }] },
       data: expect.objectContaining({ leadLinkStatus: "FAILED", leadLinkError: "Error: pipeline lookup failed" }),
     })
   })

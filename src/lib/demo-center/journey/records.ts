@@ -13,6 +13,17 @@ import type { DemoJourneyState } from "./types"
 export const DEMO_SOURCE_CHANNELS = ["website", "instagram", "whatsapp", "referral", "event"] as const
 export type DemoSourceChannel = (typeof DEMO_SOURCE_CHANNELS)[number]
 
+/**
+ * A request's stored source, narrowed to a channel the scenario draws. One
+ * function for every route that rebuilds the story: the page used the
+ * request's channel while the assistant was handed a fixed «website», so Da
+ * Vinci could describe a campaign the prospect was not looking at.
+ */
+export function demoSourceChannelOf(value: string | null | undefined): DemoSourceChannel {
+  const candidate = (value ?? "").toLowerCase()
+  return (DEMO_SOURCE_CHANNELS as readonly string[]).includes(candidate) ? (candidate as DemoSourceChannel) : "website"
+}
+
 export interface DemoProspectIdentity {
   readonly name: string
   readonly company: string

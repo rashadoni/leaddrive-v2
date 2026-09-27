@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getDemoModules } from "@/lib/demo-center/catalog"
 import {
-  DEMO_SOURCE_CHANNELS,
+  demoSourceChannelOf,
   getDemoJourneyScenario,
   type DemoProspectIdentity,
-  type DemoSourceChannel,
 } from "@/lib/demo-center/journey"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
 import { demoCallStatus } from "@/lib/demo-center/demo-call"
@@ -81,7 +80,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           // The player never receives the raw contact details it displays.
           emailMasked: maskEmail(grant.request.email),
           phoneMasked: grant.request.phone ? maskPhone(grant.request.phone) : null,
-          sourceChannel: sourceChannelOf(grant.request.source),
+          sourceChannel: demoSourceChannelOf(grant.request.source),
         }
       : null
     if (state !== "active") {
@@ -154,12 +153,4 @@ function idleExpiry(lastSeenAt: Date | null, inactivityMinutes: number): Date | 
   return lastSeenAt
     ? new Date(lastSeenAt.getTime() + inactivityMinutes * 60_000)
     : null
-}
-
-/** The request's stored source, narrowed to a channel the scenario draws. */
-function sourceChannelOf(value: string | null | undefined): DemoSourceChannel {
-  const candidate = (value ?? "").toLowerCase()
-  return (DEMO_SOURCE_CHANNELS as readonly string[]).includes(candidate)
-    ? (candidate as DemoSourceChannel)
-    : "website"
 }
