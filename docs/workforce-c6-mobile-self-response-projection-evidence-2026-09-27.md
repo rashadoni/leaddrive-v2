@@ -166,3 +166,37 @@ not treated as merge permission. Reviewer dependency-backed and heavy gates
 were `NOT RUN`. Only this evidence file, the roadmap and append-only log may
 change to record the verdict; receipt integrity must prove all 12 reviewed
 runtime/test/resource/build blobs byte-identical before push.
+
+## Production release receipt
+
+Receipt-integrity review proved that the three-document receipt commit changed
+no reviewed runtime, test, Android resource or build blob. Final PR head
+`ec4e46f8bf369f0b1c502a66d9c9024f7516fbd8` had a 16-path / 68,021-byte
+complete binary diff from exact base
+`84c5e9ef2d2409cfb95056a738579a6267cf35b6`, SHA-256
+`30649c2af1fb55c44b1227f52286072296320e90439bfebd14cc9f7a20d9af00`.
+The frozen complete-diff and receipt-integrity reviews were GREEN with zero
+P0-P3 findings.
+
+PR #466 passed `pr-scope`, `static-checks`, `typecheck`, `runner-policy`,
+`scan` and the path-triggered Android debug lint/unit job on that exact head.
+Static checks completed in 12m14s, typecheck in 18m00s and Android in 2m09s;
+the normal PR production build was skipped as designed. PR #466 merged
+normally at `2026-09-27T20:19:39Z` as
+`a7189fd72d62fb0b0f04f327341a0377d1191a41`.
+
+Deploy run `36347616300` completed GREEN at `2026-09-27T20:41:48Z` through
+GitHub `main`. Quality/security, the SHA-bound standalone build and artifact
+publication, immutable staging, atomic production deployment, built-in
+post-deploy smoke and artifact-retention cleanup all passed. Independent
+no-cache production reads returned `{"ok":true}` and
+`{"sha":"a7189fd72d62","artifactSha":"a7189fd72d62fb0b0f04f327341a0377d1191a41","builtAt":"2026-09-27T20:25:19Z"}`.
+The artifact SHA exactly matches merged main; no direct server deploy, old
+host/owner, Azure route or worktree copy was used.
+
+Real browser E2E, load, signed-APK/device and human-pilot checks remain
+`NOT RUN`. Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%;
+WF-C6-006 remains `PARTIAL` and no task or gate credit is added. Work continues
+in the same dedicated part-3 worktree on successor branch
+`codex/workforce-mobile-acknowledgement-api`, created from exact deployed main
+`a7189fd72d62fb0b0f04f327341a0377d1191a41`.
