@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextResponse } from "next/server"
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: {
+  prisma: (() => {
+    const client = {
     ticketQueue: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock("@/lib/prisma", () => ({
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
     ticket: {
       findFirst: vi.fn(),
@@ -26,7 +28,22 @@ vi.mock("@/lib/prisma", () => ({
     ticketComment: {
       create: vi.fn(),
     },
-  },
+    user: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      count: vi.fn(),
+    },
+    organization: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    $transaction: vi.fn(),
+    }
+    client.$transaction.mockImplementation(async (input: unknown) => typeof input === "function"
+      ? (input as (tx: typeof client) => unknown)(client)
+      : Promise.all(input as Promise<unknown>[]))
+    return client
+  })(),
 }))
 
 vi.mock("@/lib/api-auth", () => ({
@@ -45,6 +62,7 @@ import { PATCH as PATCH_QUEUE, DELETE as DELETE_QUEUE } from "@/app/api/v1/ticke
 import { GET as GET_MACROS, POST as POST_MACRO } from "@/app/api/v1/ticket-macros/route"
 import { GET as GET_MACRO, PUT as PUT_MACRO, DELETE as DELETE_MACRO } from "@/app/api/v1/ticket-macros/[id]/route"
 import { POST as APPLY_MACRO } from "@/app/api/v1/ticket-macros/[id]/apply/route"
+import { POST as POST_MACRO_CATEGORY, PATCH as PATCH_MACRO_CATEGORY, DELETE as DELETE_MACRO_CATEGORY } from "@/app/api/v1/ticket-macros/categories/route"
 import { prisma } from "@/lib/prisma"
 import { getOrgId, requireAuth } from "@/lib/api-auth"
 
@@ -60,6 +78,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getOrgId).mockResolvedValue("org-1")
   vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "user-1", role: "admin" } as any)
+  vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: {} } as any)
+  vi.mocked(prisma.organization.update).mockResolvedValue({} as any)
+  vi.mocked(prisma.user.findMany).mockResolvedValue([] as any)
+  vi.mocked(prisma.user.count).mockResolvedValue(0)
 })
 
 // ─── Ticket Queues ──────────────────────────────────────────────────
@@ -196,20 +218,33 @@ describe("DELETE /api/v1/ticket-queues/[id]", () => {
 // ─── Ticket Macros ──────────────────────────────────────────────────
 
 describe("GET /api/v1/ticket-macros", () => {
-  it("returns 401 when no orgId", async () => {
-    vi.mocked(getOrgId).mockResolvedValue(null as any)
+  it("returns 401 when authorization fails", async () => {
+    vi.mocked(requireAuth).mockResolvedValue(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
     const res = await GET_MACROS(makeReq("http://localhost/api/v1/ticket-macros"))
     expect(res.status).toBe(401)
   })
 
-  it("returns macros with optional category filter", async () => {
-    const macros = [{ id: "m1", name: "Close Ticket" }]
+  it("returns macros with shared categories, scoped agents, and permissions", async () => {
+    const macros = [{ id: "m1", name: "Close Ticket", category: "support" }]
     vi.mocked(prisma.ticketMacro.findMany).mockResolvedValue(macros as any)
-    const res = await GET_MACROS(makeReq("http://localhost/api/v1/ticket-macros?category=support"))
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: { ticketMacroCategories: ["Escalations"] } } as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "u1", name: "Agent" }] as any)
+    const res = await GET_MACROS(makeReq("http://localhost/api/v1/ticket-macros"))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.success).toBe(true)
     expect(json.data).toEqual(macros)
+    expect(json.categories).toEqual(expect.arrayContaining(["general", "Escalations", "support"]))
+    expect(json.agents).toEqual([{ id: "u1", name: "Agent" }])
+    expect(json.permissions).toEqual({ canWrite: true })
+  })
+
+  it("allows support to read but reports read-only capability", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "support-1", role: "support" } as any)
+    vi.mocked(prisma.ticketMacro.findMany).mockResolvedValue([])
+    const res = await GET_MACROS(makeReq("http://localhost/api/v1/ticket-macros"))
+    expect(res.status).toBe(200)
+    expect((await res.json()).permissions).toEqual({ canWrite: false })
   })
 })
 
@@ -232,6 +267,26 @@ describe("POST /api/v1/ticket-macros", () => {
     expect(res.status).toBe(201)
     const json = await res.json()
     expect(json.data.name).toBe("Quick Close")
+  })
+
+  it("denies support mutations", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "support-1", role: "support" } as any)
+    const res = await POST_MACRO(makeReq("http://localhost/api/v1/ticket-macros", {
+      method: "POST",
+      body: JSON.stringify({ name: "No", actions: [{ type: "set_status", value: "closed" }] }),
+    }))
+    expect(res.status).toBe(403)
+    expect((await res.json()).code).toBe("MACRO_WRITE_FORBIDDEN")
+  })
+
+  it("rejects an assignee outside the scoped active user list", async () => {
+    vi.mocked(prisma.user.count).mockResolvedValue(0)
+    const res = await POST_MACRO(makeReq("http://localhost/api/v1/ticket-macros", {
+      method: "POST",
+      body: JSON.stringify({ name: "Assign", actions: [{ type: "set_assignee", value: "foreign-user" }] }),
+    }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe("MACRO_ASSIGNEE_INVALID")
   })
 })
 
@@ -256,7 +311,8 @@ describe("PUT /api/v1/ticket-macros/[id]", () => {
 
 describe("DELETE /api/v1/ticket-macros/[id]", () => {
   it("deletes macro and returns deleted id", async () => {
-    vi.mocked(prisma.ticketMacro.deleteMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.ticketMacro.findFirst).mockResolvedValue({ id: "m1" } as any)
+    vi.mocked(prisma.ticketMacro.delete).mockResolvedValue({} as any)
     const res = await DELETE_MACRO(
       makeReq("http://localhost/api/v1/ticket-macros/m1", { method: "DELETE" }),
       makeParams("m1"),
@@ -290,6 +346,7 @@ describe("POST /api/v1/ticket-macros/[id]/apply", () => {
   it("applies set_status action and increments usage count", async () => {
     vi.mocked(prisma.ticketMacro.findFirst).mockResolvedValue({
       id: "m1",
+      isActive: true,
       actions: [{ type: "set_status", value: "resolved" }],
     } as any)
     vi.mocked(prisma.ticket.findFirst)
@@ -313,5 +370,54 @@ describe("POST /api/v1/ticket-macros/[id]/apply", () => {
       where: { id: "m1" },
       data: { usageCount: { increment: 1 } },
     })
+  })
+
+  it("refuses to execute inactive macros", async () => {
+    vi.mocked(prisma.ticketMacro.findFirst).mockResolvedValue({ id: "m1", isActive: false, actions: [] } as any)
+    const res = await APPLY_MACRO(
+      makeReq("http://localhost/api/v1/ticket-macros/m1/apply", { method: "POST", body: JSON.stringify({ ticketId: "t1" }) }),
+      makeParams("m1"),
+    )
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("MACRO_INACTIVE")
+  })
+})
+
+describe("/api/v1/ticket-macros/categories", () => {
+  it("persists a category in organization settings", async () => {
+    const res = await POST_MACRO_CATEGORY(makeReq("http://localhost/api/v1/ticket-macros/categories", {
+      method: "POST",
+      body: JSON.stringify({ name: "Escalations" }),
+    }))
+    expect(res.status).toBe(201)
+    expect(prisma.organization.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "org-1" },
+      data: { settings: { ticketMacroCategories: ["Escalations"] } },
+    }))
+  })
+
+  it("renames the category and every matching macro atomically", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: { ticketMacroCategories: ["Old"] } } as any)
+    vi.mocked(prisma.ticketMacro.updateMany).mockResolvedValue({ count: 2 } as any)
+    const res = await PATCH_MACRO_CATEGORY(makeReq("http://localhost/api/v1/ticket-macros/categories", {
+      method: "PATCH",
+      body: JSON.stringify({ name: "Old", newName: "New" }),
+    }))
+    expect(res.status).toBe(200)
+    expect(prisma.ticketMacro.updateMany).toHaveBeenCalledWith({
+      where: { organizationId: "org-1", category: "Old" },
+      data: { category: "New" },
+    })
+  })
+
+  it("moves macros to General when a shared custom category is deleted", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: { ticketMacroCategories: ["Legacy"] } } as any)
+    vi.mocked(prisma.ticketMacro.updateMany).mockResolvedValue({ count: 3 } as any)
+    const res = await DELETE_MACRO_CATEGORY(makeReq("http://localhost/api/v1/ticket-macros/categories", {
+      method: "DELETE",
+      body: JSON.stringify({ name: "Legacy" }),
+    }))
+    expect(res.status).toBe(200)
+    expect((await res.json()).data.moved).toBe(3)
   })
 })

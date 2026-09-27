@@ -622,7 +622,8 @@ export default function TicketDetailPage() {
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ ticketId }),
       })
-      if (!response.ok) throw new Error(tm("applyError"))
+      const body = await response.json().catch(() => ({})) as { error?: string }
+      if (!response.ok) throw new Error(body.error || tm("applyError"))
       await fetchTicket()
       toast.success(tm("appliedSuccess", { name: macro.name }))
     } catch {

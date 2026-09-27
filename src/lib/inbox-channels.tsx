@@ -308,6 +308,7 @@ export function initials(name: string): string {
 export interface MacroLike {
   id: string
   name: string
+  isActive?: boolean
   actions?: { type: string; value: string }[]
 }
 
@@ -325,6 +326,7 @@ export interface QuickReply {
  */
 export function extractQuickReplies(macros: MacroLike[]): QuickReply[] {
   return macros
+    .filter((macro) => macro.isActive !== false)
     .map((m) => ({
       id: m.id,
       name: m.name,
