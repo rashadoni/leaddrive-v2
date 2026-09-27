@@ -1250,7 +1250,7 @@ Final completion evidence (2026-09-26):
 
 ## 12. Workstream 5 — Knowledge Base
 
-**Status: IN PROGRESS — restored in current tree; exact-SHA CI/browser gates pending**
+**Status: DONE — exact-SHA product, recovery and full browser matrices green**
 **Route:** `/knowledge-base`
 **Primary file:** `src/app/(dashboard)/knowledge-base/page.tsx`
 
@@ -1261,21 +1261,21 @@ the permanent tip delays the article list.
 Target UX: a compact library with a category rail, readable publication state,
 and always-discoverable article actions.
 
-- [ ] **SUPUX-KB-001** Use a two-pane category/list layout where width permits and
+- [x] **SUPUX-KB-001** Use a two-pane category/list layout where width permits and
   an equivalent mobile category selector.
-- [ ] **SUPUX-KB-002** Replace color-only dots with localized Published/Draft
+- [x] **SUPUX-KB-002** Replace color-only dots with localized Published/Draft
   labels and icons.
-- [ ] **SUPUX-KB-003** Replace hover-only edit/delete actions with an accessible
+- [x] **SUPUX-KB-003** Replace hover-only edit/delete actions with an accessible
   row menu.
-- [ ] **SUPUX-KB-004** Add `aria-expanded` and focus behavior to category groups.
-- [ ] **SUPUX-KB-005** Add create CTA to empty/no-result states and error/retry for
+- [x] **SUPUX-KB-004** Add `aria-expanded` and focus behavior to category groups.
+- [x] **SUPUX-KB-005** Add create CTA to empty/no-result states and error/retry for
   article/category operations.
-- [ ] **SUPUX-KB-006** Move persistent educational copy to contextual help.
-- [ ] **SUPUX-KB-007** Confirm destructive category/article behavior, dependency
+- [x] **SUPUX-KB-006** Move persistent educational copy to contextual help.
+- [x] **SUPUX-KB-007** Confirm destructive category/article behavior, dependency
   impact, and confirmation/undo.
-- [ ] **SUPUX-KB-008** Include `/knowledge-base/[id]` in the redesign: readable
+- [x] **SUPUX-KB-008** Include `/knowledge-base/[id]` in the redesign: readable
   article hierarchy, edit/publish state, related content, and stable back context.
-- [ ] **SUPUX-KB-009** Verify customer-visible article state and permissions
+- [x] **SUPUX-KB-009** Verify customer-visible article state and permissions
   against the portal knowledge-base experience.
 
 Acceptance:
@@ -1528,6 +1528,19 @@ Current verification evidence (2026-09-05):
   changed-file ESLint, the seven-file scoped anti-pattern scan and
   `git diff --check` pass. A new exact-SHA desktop/mobile/high trio remains
   mandatory before Workstream 5 closes.
+- Final exact-SHA checkpoint `e16fc08cf` passes EN/light desktop run
+  `36289979254`, RU/dark physical-touch mobile run `36291029964` and full
+  high-density run `36291867844`. Desktop and mobile each prove 9/9 mutating
+  recovery outcomes, 3/3 static cells and restored publication fixture; mobile
+  records real Playwright touchscreen hits on 144x44 and 134x44 controls,
+  applied dark theme, `maxTouchPoints: 1`, and article primary work at 691 px.
+  The high artifact passes all 168/168 role/locale/theme/viewport/scenario
+  cells with zero browser, axe, custom a11y, touch, environment, overflow or
+  primary-work findings. Its worst primary-work position is 743 px, maximum
+  load is 574 ms and maximum cumulative layout shift is
+  `0.023227903289734446`. Manual RU/admin review at tablet, narrow-tablet and
+  mobile confirms the compact hierarchy and preserved Help/action targets.
+  Workstream 5 is complete.
 
 ## 13. Workstream 6 — Ticket Categories
 

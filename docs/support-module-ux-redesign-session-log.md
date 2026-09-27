@@ -895,3 +895,29 @@ physical-touch mobile and the complete 168-cell matrix on one new exact SHA.
 
 Next: checkpoint and push the mobile fold correction, then repeat desktop,
 physical-touch mobile and all 168 high-density cells on one new exact SHA.
+
+### Workstream 5 closure self-audit
+
+- Final product checkpoint `e16fc08cfedfb4c8ea544a7a4bfce6e094889a0e`
+  passes EN/light desktop run `36289979254`, RU/dark mobile run `36291029964`
+  and full high-density run `36291867844`. Retained artifacts are
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36289979254`,
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36291029964` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36291867844`.
+- Desktop and mobile each pass all 9/9 mutating recovery flows and 3/3 static
+  cells with restored publication fixtures and zero browser, axe, custom a11y,
+  touch, overflow, environment or primary-work issues. Mobile records applied
+  dark theme, `maxTouchPoints: 1`, Playwright touchscreen hits on 144x44 and
+  134x44 controls, and article primary work at 691 px.
+- The high artifact passes 168/168 requested cells. Every issue total is zero;
+  worst primary-work position is 743 px, maximum load is 574 ms and maximum
+  cumulative layout shift is `0.023227903289734446`. Manual inspection of the
+  RU/admin light tablet, dark narrow-tablet and dark mobile screenshots confirms
+  the compact information hierarchy, visible article content and preserved
+  Help/action targets.
+- All SUPUX-KB-001 through SUPUX-KB-009 acceptance items are closed. No gate,
+  timeout, scenario, role, locale, theme or viewport was removed or weakened.
+
+Next: create the Workstream 5 closure checkpoint, push it, then start
+Workstream 6 Ticket Categories from its recorded product/recovery commits while
+preserving the newer shared evidence runner.
