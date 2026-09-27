@@ -269,15 +269,18 @@ export function withWorkforceSessionPolicyConfigurationAuth<C = unknown>(
         resource: { organizationId: auth.orgId },
       })
       return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
-    } catch (error) {
-      console.error("[withWorkforceSessionPolicyConfigurationAuth] authorization lookup failed", error)
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "configuration-access-lookup" })
       return NextResponse.json({
         error: "Unable to verify Workforce policy configuration access.",
         code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
       }, { status: 503 })
     }
   })
-  return wrapped as WrappedWorkforceRouteHandler<C>
+  const sensitiveWrapped = async (req: NextRequest, ctx?: C): Promise<Response> => (
+    applyWorkforceSensitiveResponseHeaders(await wrapped(req, ctx as C))
+  )
+  return sensitiveWrapped as WrappedWorkforceRouteHandler<C>
 }
 
 /**

@@ -34,7 +34,10 @@ vi.mock("@/lib/workforce/configuration-management", async () => {
 import { POST as createPolicy } from "@/app/api/v1/workforce/configuration/policies/route"
 import { PATCH as updatePolicy } from "@/app/api/v1/workforce/configuration/policies/[id]/route"
 import { POST as activatePolicy } from "@/app/api/v1/workforce/configuration/policies/[id]/activate/route"
-import { POST as recordExceptionPolicyRevision } from "@/app/api/v1/workforce/configuration/exception-policy/revisions/route"
+import {
+  GET as readExceptionPolicyRevision,
+  POST as recordExceptionPolicyRevision,
+} from "@/app/api/v1/workforce/configuration/exception-policy/revisions/route"
 import { POST as createShift } from "@/app/api/v1/workforce/configuration/shifts/route"
 import { PATCH as updateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/route"
 import { POST as activateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/activate/route"
@@ -158,8 +161,9 @@ beforeEach(() => {
 describe("Workforce draft configuration API", () => {
   it("binds every configuration route to an accountable Workforce session boundary", () => {
     expect(recordExceptionPolicyRevision).toBeTypeOf("function")
+    expect(readExceptionPolicyRevision).toBeTypeOf("function")
     expect(withWorkforceSessionAdminAuth).not.toHaveBeenCalled()
-    expect(withWorkforceSessionPolicyConfigurationAuth).toHaveBeenCalledTimes(5)
+    expect(withWorkforceSessionPolicyConfigurationAuth).toHaveBeenCalledTimes(6)
     expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledTimes(12)
     expect(
       vi.mocked(withWorkforceSessionScheduleConfigurationAuth).mock.calls.map(([permission]) => permission).sort(),

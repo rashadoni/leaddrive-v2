@@ -4,6 +4,11 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionPolicyConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
+  MAX_WORKFORCE_EXCEPTION_POLICY_REVISIONS,
+  resolveWorkforceExceptionPolicyDraftRevision,
+  type WorkforceExceptionPolicyRevisionRecord,
+} from "@/lib/workforce/exception-policy-revision"
+import {
   appendAuthorizedWorkforceExceptionPolicyRevision,
   WorkforceExceptionPolicyRevisionWriterError,
   type WorkforceExceptionPolicyRevisionWriterDb,
@@ -15,12 +20,74 @@ const RevisionRequest = z.object({
   operationId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/u),
 }).strict()
 
+const RevisionRecordSelect: Record<keyof WorkforceExceptionPolicyRevisionRecord, true> = {
+  id: true,
+  organizationId: true,
+  revision: true,
+  operationId: true,
+  policyVersion: true,
+  definition: true,
+  definitionHash: true,
+  recordedByUserId: true,
+  recordReasonCode: true,
+  createdAt: true,
+}
+
 function invalidRequest(): NextResponse {
   return NextResponse.json({
     error: "Invalid Workforce exception-policy revision request.",
     code: "WORKFORCE_EXCEPTION_POLICY_REVISION_INPUT_INVALID",
   }, { status: 400, headers: workforceSensitiveResponseHeaders })
 }
+
+function unavailableReceipt(): NextResponse {
+  return NextResponse.json({
+    error: "The Workforce exception-policy draft receipt is unavailable.",
+    code: "WORKFORCE_EXCEPTION_POLICY_REVISION_RECEIPT_UNAVAILABLE",
+  }, { status: 409, headers: workforceSensitiveResponseHeaders })
+}
+
+/**
+ * Reports only whether this tenant has recorded the exact supported draft.
+ * The receipt is not an active/current/effective policy selection and exposes
+ * neither ledger history nor policy or actor metadata.
+ */
+export const GET = withWorkforceSessionPolicyConfigurationAuth(async (
+  _req: NextRequest,
+  auth,
+) => {
+  try {
+    const history = await prisma.workforceExceptionPolicyRevision.findMany({
+      where: { organizationId: auth.orgId },
+      orderBy: { revision: "asc" },
+      take: MAX_WORKFORCE_EXCEPTION_POLICY_REVISIONS + 1,
+      select: RevisionRecordSelect,
+    })
+    if (history.length > MAX_WORKFORCE_EXCEPTION_POLICY_REVISIONS) {
+      return unavailableReceipt()
+    }
+
+    const resolution = resolveWorkforceExceptionPolicyDraftRevision(history)
+    if (resolution.status === "INVALID") return unavailableReceipt()
+    if (resolution.status === "UNAVAILABLE") {
+      return NextResponse.json({
+        state: "NOT_RECORDED",
+      }, { headers: workforceSensitiveResponseHeaders })
+    }
+    return NextResponse.json({
+      state: "RECORDED_DRAFT",
+      revision: resolution.revision,
+    }, { headers: workforceSensitiveResponseHeaders })
+  } catch {
+    logWorkforceSensitiveOperationFailure({
+      operation: "configuration-exception-policy-revision-read",
+    })
+    return NextResponse.json({
+      error: "Failed to read Workforce exception-policy draft receipt.",
+      code: "WORKFORCE_EXCEPTION_POLICY_REVISION_RECEIPT_READ_UNAVAILABLE",
+    }, { status: 500, headers: workforceSensitiveResponseHeaders })
+  }
+})
 
 /**
  * Records a tenant administrator's acknowledgement of the exact server-owned
