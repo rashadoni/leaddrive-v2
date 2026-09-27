@@ -2140,3 +2140,32 @@ high-density locale/theme/viewport matrix.
 
 Next: checkpoint and push the contrast correction, then repeat the exact-SHA
 desktop evidence gate before proceeding to mobile and the high matrix.
+
+### Workstream 12 closure
+
+- Contrast correction checkpoint `3d9929c4c` was pushed, and exact-SHA desktop
+  run `36356105829` is fully green: section validation, production build, all
+  6/6 disposable keyboard/recovery outcomes and static browser evidence pass.
+  Axe, custom a11y, touch, overflow, environment, primary-work and runtime-error
+  findings are zero; load p75 is 380 ms and CLS is
+  `0.0007984547556182484`. Manual screenshot review accepted the compact rule
+  summary, filter surface, rule controls and corrected primary action.
+- RU/dark/mobile run `36357239462` is fully green. All 13 recorded mutation and
+  recovery activations used measured, center-hit-tested Playwright touchscreen
+  taps with a minimum target dimension of 44 px. Static Axe, a11y, touch,
+  small-target, overflow, environment, primary-work and runtime-error findings
+  are zero; load p75 is 556 ms and CLS is `0.009392899609308647`. Manual review
+  confirms translated content, full-width action, stacked summary/filtering and
+  responsive rule row are readable without horizontal clipping.
+- High-profile run `36358409506` passed exactly 24/24 unique admin × AZ/RU/EN ×
+  light/dark × desktop/tablet/narrow-tablet/mobile cells. Every aggregate issue
+  and error total is zero; worst load p75 is 432 ms, max CLS is
+  `0.009392899609308647`, and primary work starts no lower than 736 px. Manual
+  review accepted representative AZ/light desktop, EN/dark tablet, AZ/dark
+  narrow-tablet and RU/dark mobile captures.
+- Self-audit found no remaining Escalation Rules acceptance gap. All seven
+  SUPUX-ESC requirements are closed in the implementation plan, with no gate
+  relaxed or left unrun.
+
+Next: checkpoint and push Workstream 12 closure documentation, then restore and
+audit Workstream 13 Macros on top of the exact green tree.

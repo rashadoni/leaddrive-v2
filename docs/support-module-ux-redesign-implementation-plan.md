@@ -2700,7 +2700,7 @@ Closure evidence (2026-09-27):
 
 ## 19. Workstream 12 — Escalation Rules
 
-**Status: IN PROGRESS — current-tree product checkpoint `0887bcca5`; recovery/self-audit checkpoint pending; browser/CI gates pending**
+**Status: DONE — product `0887bcca5`; recovery/self-audit `b9b122444`; contrast correction `3d9929c4c`; exact-SHA desktop/mobile/high-matrix gates green**
 **Route:** `/settings/escalation`
 **Primary file:** `src/app/(dashboard)/settings/escalation/page.tsx`
 
@@ -2711,16 +2711,16 @@ the UI, and no preview explains when or how the rule will fire.
 Target UX: a sentence-based rule builder with timing preview, safe editing, and
 conflict awareness.
 
-- [ ] **SUPUX-ESC-001** Add edit and duplicate flows without forcing delete/recreate.
-- [ ] **SUPUX-ESC-002** Express rules as localized sentences: If/when/after/then.
-- [ ] **SUPUX-ESC-003** Add a timing preview relative to SLA and entitlement
+- [x] **SUPUX-ESC-001** Add edit and duplicate flows without forcing delete/recreate.
+- [x] **SUPUX-ESC-002** Express rules as localized sentences: If/when/after/then.
+- [x] **SUPUX-ESC-003** Add a timing preview relative to SLA and entitlement
   milestones.
-- [ ] **SUPUX-ESC-004** Add rule ordering, test/simulation, and conflict warnings
+- [x] **SUPUX-ESC-004** Add rule ordering, test/simulation, and conflict warnings
   when runtime semantics support them.
-- [ ] **SUPUX-ESC-005** Replace status Badge with an accessible switch/button and
+- [x] **SUPUX-ESC-005** Replace status Badge with an accessible switch/button and
   visible save/error feedback.
-- [ ] **SUPUX-ESC-006** Localize targets, duration units, action labels, and errors.
-- [ ] **SUPUX-ESC-007** Replace icon-only deletion and confirm destructive impact.
+- [x] **SUPUX-ESC-006** Localize targets, duration units, action labels, and errors.
+- [x] **SUPUX-ESC-007** Replace icon-only deletion and confirm destructive impact.
 
 Acceptance:
 
@@ -2840,6 +2840,28 @@ Current-tree restoration and self-audit (2026-09-27):
   suites and `git diff --check` are green. Full local TypeScript/build/browser
   remain **NOT RUN** under the documented Contabo workload/default-heap limit;
   exact-SHA GitHub Actions gates remain mandatory before any ESC checkbox closes.
+
+Closure evidence (2026-09-27):
+
+- Desktop run `36356105829` on exact SHA `3d9929c4c` is green for the scoped
+  source gate, production build, all 6/6 disposable keyboard/recovery outcomes
+  and the independent browser audit. Axe, custom accessibility, touch, overflow,
+  environment, primary-work and runtime-error findings are all zero. The prior
+  run `36354864869` had correctly blocked at `3.61:1` primary-action contrast;
+  the workspace now opts into the darker audited Support primary token without
+  changing the Axe threshold. Load p75 is 380 ms and CLS is
+  `0.0007984547556182484`.
+- RU/dark/mobile run `36357239462` is green for the same build and six outcomes.
+  All 13 recorded mutating activations used hit-tested Playwright touchscreen
+  taps; every target was at least 44 px. Static Axe, a11y, touch, small-target,
+  overflow, environment, primary-work and runtime-error findings are zero;
+  load p75 is 556 ms and CLS is `0.009392899609308647`.
+- High-profile matrix run `36358409506` is green with exactly 24/24 unique
+  AZ/RU/EN × light/dark × desktop/tablet/narrow-tablet/mobile cells. All eight
+  aggregate issue/error totals are zero, worst load p75 is 432 ms, maximum CLS
+  is `0.009392899609308647`, and maximum primary-work top is 736 px. Manual
+  review accepted representative AZ/light desktop, EN/dark tablet, AZ/dark
+  narrow-tablet and RU/dark mobile captures. No required gate was waived.
 
 ## 20. Workstream 13 — Macros
 
