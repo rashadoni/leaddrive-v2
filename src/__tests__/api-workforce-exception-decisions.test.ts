@@ -117,7 +117,12 @@ describe("Workforce action-token exception-decision API", () => {
       { isolationLevel: "ReadCommitted" },
     )
     expect(prisma.workforceExceptionDecision.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ caseId: "case_1", actorUserId: "user_1", decisionCode: "ACKNOWLEDGE" }),
+      data: expect.objectContaining({
+        caseId: "case_1",
+        actorUserId: "user_1",
+        decisionCode: "ACKNOWLEDGE",
+        caseRevision: 1,
+      }),
     }))
     expect(JSON.stringify(body)).not.toContain("case_1")
   })
@@ -126,6 +131,7 @@ describe("Workforce action-token exception-decision API", () => {
     vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValueOnce([{
       decisionCode: "ACKNOWLEDGE",
       createdAt: new Date("2026-08-30T09:00:00.000Z"),
+      caseRevision: 1,
     }] as never)
 
     const response = await callPost(request({
@@ -256,6 +262,7 @@ describe("Workforce action-token exception-decision API", () => {
     vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValueOnce([{
       decisionCode: "ACKNOWLEDGE",
       createdAt: new Date("2026-08-30T09:00:00.000Z"),
+      caseRevision: 1,
     }] as never)
 
     const response = await callPost(request({

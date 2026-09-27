@@ -46,14 +46,15 @@ const workforceExceptionDetailSelect = {
   workdayId: true,
   agent: { select: { name: true } },
   decisions: {
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    orderBy: { caseRevision: "asc" },
     take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
-    select: { decisionCode: true, createdAt: true },
+    select: { decisionCode: true, caseRevision: true },
   },
   employeeResponses: {
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    where: { observedCaseRevision: { not: null } },
+    orderBy: [{ observedCaseRevision: "desc" }, { id: "desc" }],
     take: 1,
-    select: { createdAt: true },
+    select: { observedCaseRevision: true },
   },
   correctionRequests: {
     orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
@@ -65,7 +66,7 @@ const workforceExceptionDetailSelect = {
       exceptionCaseId: true,
       type: true,
       status: true,
-      submittedAt: true,
+      exceptionCaseRevision: true,
       workforceTimeCorrections: { take: 2, select: { requestId: true } },
     },
   },
@@ -220,6 +221,7 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
       const item = detailById.get(candidate.id)
       if (!item) return []
       const decisionHistoryComplete = item.decisions.length <= MAX_WORKFORCE_EXCEPTION_DECISIONS
+        && item.decisions.every((decision, index) => decision.caseRevision === index + 1)
       const priorDecisions = item.decisions.slice(0, MAX_WORKFORCE_EXCEPTION_DECISIONS)
       const correctionContextComplete = item.correctionRequests.length
         <= MAX_WORKFORCE_EXCEPTION_CORRECTION_REQUESTS
@@ -234,7 +236,7 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
         .map((request) => ({
           type: request.type,
           status: request.status,
-          submittedAt: request.submittedAt,
+          exceptionCaseRevision: request.exceptionCaseRevision,
           appliedCorrectionCount: request.workforceTimeCorrections.length,
         }))
       const decisionContext = evaluateWorkforceExceptionWorkbenchContext({
@@ -242,7 +244,7 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
         workdayId: item.workdayId,
         priorDecisions,
         decisionHistoryComplete,
-        employeeResponseInstants: item.employeeResponses.map((response) => response.createdAt),
+        employeeResponses: item.employeeResponses,
         correctionRequests,
         correctionContextComplete,
       })

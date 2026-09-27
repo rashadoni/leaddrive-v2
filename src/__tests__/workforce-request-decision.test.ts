@@ -193,8 +193,8 @@ describe("decideWorkforceRequest time corrections", () => {
     const linkedRequest = { ...PENDING_CORRECTION, exceptionCaseId: "case-1" }
     vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(linkedRequest as never)
     vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([
-      { decisionCode: "ACKNOWLEDGE" },
-      { decisionCode: "RESOLVE_NO_CHANGE" },
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
     ] as never)
 
     await expect(decideWorkforceRequest({

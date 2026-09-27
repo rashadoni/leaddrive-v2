@@ -181,10 +181,10 @@ describe("Workforce scoped exception queue API", () => {
       .mockResolvedValueOnce([candidate()] as never)
       .mockResolvedValueOnce([detail("case-00000001", {
         decisions: [
-          { decisionCode: "ACKNOWLEDGE", createdAt: new Date("2026-09-26T09:00:00.000Z") },
-          { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", createdAt: new Date("2026-09-26T11:00:00.000Z") },
+          { decisionCode: "ACKNOWLEDGE", createdAt: new Date("2026-09-26T09:00:00.000Z"), caseRevision: 1 },
+          { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", createdAt: new Date("2026-09-26T11:00:00.000Z"), caseRevision: 2 },
         ],
-        employeeResponses: [{ createdAt: new Date("2026-09-26T10:00:00.000Z") }],
+        employeeResponses: [{ observedCaseRevision: 1 }],
       })] as never)
 
     const response = await callGet(new NextRequest("http://localhost/api/v1/workforce/exceptions"), AUTH)
@@ -210,6 +210,7 @@ describe("Workforce scoped exception queue API", () => {
         decisions: Array.from({ length: 64 }, (_, index) => ({
           decisionCode: "ACKNOWLEDGE",
           createdAt: new Date(1_700_000_000_000 + index),
+          caseRevision: index + 1,
         })),
       })] as never)
 
@@ -234,6 +235,7 @@ describe("Workforce scoped exception queue API", () => {
         decisions: Array.from({ length: 65 }, (_, index) => ({
           decisionCode: index === 0 ? "ACKNOWLEDGE" : "ESCALATE_TO_HR",
           createdAt: new Date(1_700_000_000_000 + index),
+          caseRevision: index + 1,
         })),
       })] as never)
 
@@ -253,5 +255,29 @@ describe("Workforce scoped exception queue API", () => {
     const response = await callGet(new NextRequest("http://localhost/api/v1/workforce/exceptions"), AUTH)
     expect(response.status).toBe(413)
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_EXCEPTION_SCOPE_LIMIT_EXCEEDED" })
+  })
+
+  it("routes a non-contiguous decision revision to integrity review", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: ["workforce-hrm", "workforce-granular-access-v1"],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([grantRow] as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ requestId: "case-00000001", teamId: "team-1" }] as never)
+    vi.mocked(prisma.workforceExceptionCase.findMany)
+      .mockResolvedValueOnce([candidate()] as never)
+      .mockResolvedValueOnce([detail("case-00000001", {
+        decisions: [{
+          decisionCode: "ACKNOWLEDGE",
+          createdAt: new Date("2026-09-26T09:00:00.000Z"),
+          caseRevision: 2,
+        }],
+      })] as never)
+
+    const response = await callGet(new NextRequest("http://localhost/api/v1/workforce/exceptions"), AUTH)
+    const body = await response.json()
+    expect(body.data.cases[0]).toMatchObject({
+      stage: "DATA_INTEGRITY_REVIEW",
+      decisionContext: { actions: [] },
+    })
   })
 })

@@ -10,11 +10,16 @@ export type WorkforceExceptionLinkedMutationDb = {
   workforceExceptionDecision: {
     findMany: (args: {
       where: { organizationId: string; caseId: string }
-      orderBy: readonly [{ createdAt: "asc" }, { id: "asc" }]
+      orderBy: { caseRevision: "asc" }
       take: number
-      select: { decisionCode: true }
-    }) => PromiseLike<readonly { decisionCode: string }[]>
+      select: { decisionCode: true; caseRevision: true }
+    }) => PromiseLike<readonly { decisionCode: string; caseRevision: number }[]>
   }
+}
+
+export type WorkforceExceptionLinkedMutationSnapshot = {
+  /** Current 1-based decision-stream revision; zero means an empty stream. */
+  caseRevision: number
 }
 
 export class WorkforceExceptionLinkedMutationError extends Error {
@@ -35,14 +40,19 @@ export async function requireWorkforceExceptionLinkedMutationAfterLock(input: {
   db: WorkforceExceptionLinkedMutationDb
   organizationId: string
   caseId: string
-}): Promise<void> {
+}): Promise<WorkforceExceptionLinkedMutationSnapshot> {
   const decisions = await input.db.workforceExceptionDecision.findMany({
     where: { organizationId: input.organizationId, caseId: input.caseId },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    orderBy: { caseRevision: "asc" },
     take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
-    select: { decisionCode: true },
+    select: { decisionCode: true, caseRevision: true },
   })
   if (decisions.length >= MAX_WORKFORCE_EXCEPTION_DECISIONS) {
+    throw new WorkforceExceptionLinkedMutationError(
+      "WORKFORCE_EXCEPTION_LINKED_MUTATION_HISTORY_INVALID",
+    )
+  }
+  if (decisions.some((decision, index) => decision.caseRevision !== index + 1)) {
     throw new WorkforceExceptionLinkedMutationError(
       "WORKFORCE_EXCEPTION_LINKED_MUTATION_HISTORY_INVALID",
     )
@@ -58,6 +68,7 @@ export async function requireWorkforceExceptionLinkedMutationAfterLock(input: {
       "WORKFORCE_EXCEPTION_LINKED_MUTATION_RESOLVED",
     )
   }
+  return { caseRevision: decisions.length }
 }
 
 /**
@@ -69,7 +80,7 @@ export async function lockWorkforceExceptionLinkedMutation(input: {
   db: WorkforceExceptionLinkedMutationDb
   organizationId: string
   caseId: string
-}): Promise<void> {
+}): Promise<WorkforceExceptionLinkedMutationSnapshot> {
   await lockWorkforceExceptionDecisionStream(input.db, input)
-  await requireWorkforceExceptionLinkedMutationAfterLock(input)
+  return requireWorkforceExceptionLinkedMutationAfterLock(input)
 }

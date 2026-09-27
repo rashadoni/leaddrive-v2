@@ -245,3 +245,44 @@ absent; no dependency install or symlink restoration was performed. The
 primary's already recorded two-file / six-test run remains the executed local
 test receipt. All five replacement exact-head GitHub contexts are still
 required before merge.
+
+## Reviewed release receipt
+
+The append-only review receipt was independently checked without changing the
+source/workflow patch. The final PR identity was base/merge-base
+`aaeff0dccd2437aa3bba37f74dccf60ff1e46b98`, head
+`d1bbecc0422dc00d67f385c3ee9190066286bf05`, 22 files / 172,093 bytes and
+binary-diff SHA-256
+`2fe1eccc33fc62c213c48654f0cb1a7cac33f0fe70a308f715ac41ffa957ae7d`.
+The receipt-only delta from `167cbc68f4e210ca4bdca38a9b1ab5a37de3c793`
+was exactly three documentation files, 8,115 bytes, 31 additions and no
+deletions; its SHA-256 was
+`c8e24129ddf3f70c9d2142b821b92d2e19081dbfdac69efeee463ca008fab182`.
+The reviewer returned GREEN with zero findings.
+
+Exact-head PR run `36277439694` passed all required delivery contexts:
+`pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`.
+`static-checks` ran the blocking seven-test real-PostgreSQL shared-lock race
+gate. No retired `agent-review` status was restored or published. PR #451 then
+merged through the normal protected path at `2026-09-26T23:08:28Z` as
+`fdc601599b048734409a1359863ede382d08e768`.
+
+Main deploy run `36278500513` completed successfully for that exact merge SHA.
+It passed quality/security, built and verified the standalone application,
+published and downloaded the SHA-bound artifact, deployed atomically to the
+registered production target, verified scheduler and tenant-isolation
+invariants, and passed its public ping, revision and feature smoke checks.
+Independent public reads at `2026-09-26T23:33:47Z` returned:
+
+- `GET https://app.leaddrivecrm.org/api/v1/ping`: HTTP 200,
+  `{"ok":true}`;
+- `GET https://app.leaddrivecrm.org/api/v1/public/build-info`: HTTP 200,
+  `artifactSha=fdc601599b048734409a1359863ede382d08e768`.
+
+The shared-lock cutover is therefore released with exact-artifact evidence.
+This does not enable terminal resolution or reopen, which remain a separate
+reviewed slice. Progress remains `81/161`, phase gates remain `14/15`, C5 is
+81%, C6 is 20% and C9 is 99%. Full local typecheck/build, browser E2E, Android,
+load, physical-device and human-pilot evidence remain `NOT RUN` under the
+Contabo workload policy; the applicable CI typecheck/build and PostgreSQL
+checks above did run and pass.

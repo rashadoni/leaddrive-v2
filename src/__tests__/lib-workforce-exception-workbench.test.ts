@@ -4,18 +4,13 @@ import {
   MAX_WORKFORCE_EXCEPTION_DECISIONS,
 } from "@/lib/workforce/exception-workbench"
 
-const T0 = new Date("2026-09-26T09:00:00.000Z")
-const T1 = new Date("2026-09-26T10:00:00.000Z")
-const T2 = new Date("2026-09-26T11:00:00.000Z")
-const T3 = new Date("2026-09-26T12:00:00.000Z")
-
 function evaluate(overrides: Partial<Parameters<typeof evaluateWorkforceExceptionWorkbenchContext>[0]> = {}) {
   return evaluateWorkforceExceptionWorkbenchContext({
     kind: "LATE_START",
     workdayId: "workday_1",
     priorDecisions: [],
     decisionHistoryComplete: true,
-    employeeResponseInstants: [],
+    employeeResponses: [],
     correctionRequests: [],
     correctionContextComplete: true,
     ...overrides,
@@ -26,7 +21,7 @@ describe("Workforce exception workbench context", () => {
   it("offers only non-terminal exact actions in this concurrency-safe slice", () => {
     expect(evaluate()).toMatchObject({ stage: "OPEN", availableDecisions: ["ACKNOWLEDGE"] })
     expect(evaluate({
-      priorDecisions: [{ decisionCode: "ACKNOWLEDGE", createdAt: T0 }],
+      priorDecisions: [{ decisionCode: "ACKNOWLEDGE", caseRevision: 1 }],
     })).toMatchObject({
       stage: "HR_REVIEW",
       correctionState: "NOT_REQUESTED",
@@ -36,7 +31,7 @@ describe("Workforce exception workbench context", () => {
 
   it("accepts existing escalation history without offering escalation in v1", () => {
     expect(evaluate({
-      priorDecisions: [{ decisionCode: "ESCALATE_TO_HR", createdAt: T0 }],
+      priorDecisions: [{ decisionCode: "ESCALATE_TO_HR", caseRevision: 1 }],
     })).toMatchObject({
       stage: "HR_REVIEW",
       availableDecisions: ["REQUEST_EMPLOYEE_RESPONSE", "REQUEST_TIME_CORRECTION"],
@@ -45,11 +40,11 @@ describe("Workforce exception workbench context", () => {
 
   it("treats an exact linked correction request as the current employee-response signal", () => {
     expect(evaluate({
-      priorDecisions: [{ decisionCode: "REQUEST_TIME_CORRECTION", createdAt: T1 }],
+      priorDecisions: [{ decisionCode: "REQUEST_TIME_CORRECTION", caseRevision: 1 }],
       correctionRequests: [{
         type: "TIME_CORRECTION",
         status: "PENDING",
-        submittedAt: T2,
+        exceptionCaseRevision: 1,
         appliedCorrectionCount: 0,
       }],
     })).toMatchObject({
@@ -63,24 +58,24 @@ describe("Workforce exception workbench context", () => {
   it("does not reuse an employee response recorded before the latest reopen cycle", () => {
     expect(evaluate({
       priorDecisions: [
-        { decisionCode: "ACKNOWLEDGE", createdAt: T0 },
-        { decisionCode: "RESOLVE_NO_CHANGE", createdAt: T1 },
-        { decisionCode: "REOPEN_FOR_REVIEW", createdAt: T2 },
+        { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+        { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
+        { decisionCode: "REOPEN_FOR_REVIEW", caseRevision: 3 },
       ],
-      employeeResponseInstants: [T1],
+      employeeResponses: [{ observedCaseRevision: 2 }],
     })).toMatchObject({
       stage: "HR_REVIEW",
       employeeVisibility: "NOT_RECORDED",
     })
   })
 
-  it("recognizes exact applied-correction proof but keeps resolution unavailable until shared locking", () => {
+  it("recognizes exact applied-correction proof but keeps terminal resolution unavailable", () => {
     expect(evaluate({
-      priorDecisions: [{ decisionCode: "ACKNOWLEDGE", createdAt: T0 }],
+      priorDecisions: [{ decisionCode: "ACKNOWLEDGE", caseRevision: 1 }],
       correctionRequests: [{
         type: "TIME_CORRECTION",
         status: "APPROVED",
-        submittedAt: T1,
+        exceptionCaseRevision: 1,
         appliedCorrectionCount: 1,
       }],
     })).toMatchObject({
@@ -99,7 +94,7 @@ describe("Workforce exception workbench context", () => {
     expect(evaluate({
       kind: "NO_SHOW",
       workdayId: null,
-      priorDecisions: [{ decisionCode: "ACKNOWLEDGE", createdAt: T0 }],
+      priorDecisions: [{ decisionCode: "ACKNOWLEDGE", caseRevision: 1 }],
     })).toMatchObject({ stage: "HR_REVIEW", availableDecisions: [] })
   })
 
@@ -107,7 +102,7 @@ describe("Workforce exception workbench context", () => {
     expect(evaluate({
       priorDecisions: Array.from({ length: MAX_WORKFORCE_EXCEPTION_DECISIONS }, (_, index) => ({
         decisionCode: "ACKNOWLEDGE",
-        createdAt: new Date(T0.getTime() + index),
+        caseRevision: index + 1,
       })),
     })).toMatchObject({
       stage: "HR_REVIEW",
@@ -125,9 +120,51 @@ describe("Workforce exception workbench context", () => {
       correctionRequests: [{
         type: "TIME_CORRECTION",
         status: "APPROVED",
-        submittedAt: T3,
+        exceptionCaseRevision: 0,
         appliedCorrectionCount: 0,
       }],
+    })).toMatchObject({ stage: "DATA_INTEGRITY_REVIEW", availableDecisions: [] })
+  })
+
+  it("uses lock-observed revisions instead of client or transaction timestamps", () => {
+    const priorDecisions = [
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 2 },
+    ]
+    expect(evaluate({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: 1 }],
+    })).toMatchObject({ employeeVisibility: "NOT_RECORDED", availableDecisions: [] })
+    expect(evaluate({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: 2 }],
+    })).toMatchObject({ employeeVisibility: "RECORDED", availableDecisions: ["ACKNOWLEDGE"] })
+  })
+
+  it("never treats legacy or impossible signal revisions as current-cycle proof", () => {
+    const priorDecisions = [{ decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 1 }]
+    expect(evaluate({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: null }],
+      correctionRequests: [{
+        type: "TIME_CORRECTION",
+        status: "PENDING",
+        exceptionCaseRevision: null,
+        appliedCorrectionCount: 0,
+      }],
+    })).toMatchObject({ employeeVisibility: "NOT_RECORDED", availableDecisions: [] })
+    expect(evaluate({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: 2 }],
+    })).toMatchObject({ stage: "DATA_INTEGRITY_REVIEW", availableDecisions: [] })
+  })
+
+  it("fails closed on a non-contiguous revision stream", () => {
+    expect(evaluate({
+      priorDecisions: [
+        { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+        { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 3 },
+      ],
     })).toMatchObject({ stage: "DATA_INTEGRITY_REVIEW", availableDecisions: [] })
   })
 })

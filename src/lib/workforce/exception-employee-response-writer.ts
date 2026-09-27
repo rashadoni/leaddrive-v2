@@ -10,14 +10,31 @@ import {
 } from "@/lib/workforce/exception-linked-mutation"
 
 type StoredResponse = WorkforceExceptionEmployeeResponseDraft & { id: string }
+type WorkforceExceptionEmployeeResponseWriteData = WorkforceExceptionEmployeeResponseDraft & {
+  observedCaseRevision: number
+}
+type CreatedResponse = WorkforceExceptionEmployeeResponseWriteData & { id: string }
 
 export type WorkforceExceptionEmployeeResponseWriterDb = WorkforceExceptionLinkedMutationDb & {
   workforceExceptionEmployeeResponse: {
-    create: (args: { data: WorkforceExceptionEmployeeResponseDraft }) => Promise<StoredResponse>
+    create: (args: { data: WorkforceExceptionEmployeeResponseWriteData }) => Promise<CreatedResponse>
     findFirst: (args: {
       where: { organizationId: string; agentId: string; clientResponseId: string }
       select: { id: true; organizationId: true; caseId: true; agentId: true; workdayId: true; segmentId: true; correctionRequestId: true; responseCode: true; clientResponseId: true; actorUserId: true }
     }) => Promise<StoredResponse | null>
+  }
+  mtmHrmRequest: {
+    findFirst: (args: {
+      where: {
+        id: string
+        organizationId: string
+        agentId: string
+        type: "TIME_CORRECTION"
+        correctionWorkdayId: string
+        exceptionCaseId: string
+      }
+      select: { id: true }
+    }) => PromiseLike<{ id: string } | null>
   }
   mtmAuditLog: {
     create: (args: {
@@ -127,12 +144,14 @@ export async function appendAuthorizedWorkforceExceptionEmployeeResponse(input: 
       "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
     )
   }
+  let observedCaseRevision: number
   try {
-    await requireWorkforceExceptionLinkedMutationAfterLock({
+    const snapshot = await requireWorkforceExceptionLinkedMutationAfterLock({
       db: input.db,
       organizationId: draft.organizationId,
       caseId: draft.caseId,
     })
+    observedCaseRevision = snapshot.caseRevision
   } catch (error) {
     if (error instanceof WorkforceExceptionLinkedMutationError) {
       throw new WorkforceExceptionEmployeeResponseWriterError(
@@ -141,10 +160,30 @@ export async function appendAuthorizedWorkforceExceptionEmployeeResponse(input: 
     }
     throw error
   }
+  if (draft.correctionRequestId !== null) {
+    const correctionRequest = await input.db.mtmHrmRequest.findFirst({
+      where: {
+        id: draft.correctionRequestId,
+        organizationId: draft.organizationId,
+        agentId: draft.agentId,
+        type: "TIME_CORRECTION",
+        correctionWorkdayId: draft.workdayId,
+        exceptionCaseId: draft.caseId,
+      },
+      select: { id: true },
+    })
+    if (!correctionRequest) {
+      throw new WorkforceExceptionEmployeeResponseWriterError(
+        "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE",
+      )
+    }
+  }
 
-  let created: StoredResponse
+  let created: CreatedResponse
   try {
-    created = await input.db.workforceExceptionEmployeeResponse.create({ data: draft })
+    created = await input.db.workforceExceptionEmployeeResponse.create({
+      data: { ...draft, observedCaseRevision },
+    })
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
     // PostgreSQL aborts the transaction on a unique violation. Never try a
@@ -166,6 +205,7 @@ export async function appendAuthorizedWorkforceExceptionEmployeeResponse(input: 
       newData: {
         caseId: draft.caseId,
         workdayId: draft.workdayId,
+        observedCaseRevision,
         segmentLinked: draft.segmentId !== null,
         correctionRequested: draft.responseCode === "CORRECTION_REQUESTED",
       },
