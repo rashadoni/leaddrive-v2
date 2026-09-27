@@ -48,3 +48,16 @@ describe("«Клиенты» filters", () => {
     expect(explorer).toContain('updateFilter("objectType", value)')
   })
 })
+
+describe("«Учреждения» filters", () => {
+  const explorer = readFileSync("src/components/mtm/organization-explorer.tsx", "utf8")
+
+  it("is one row: no stat cells, no «Рабочая область» card, no search button, no folded grid", () => {
+    expect(explorer).toContain('<section data-testid="organization-filters" className="space-y-2">')
+    expect(explorer).not.toContain('aria-label={tx("explorer.summary")}')
+    expect(explorer).not.toContain('{tx("explorer.search")}')
+    expect(explorer).not.toContain('{tx("explorer.advancedFilters")}')
+    expect(explorer).toContain('<MtmFilterSelect testId="organization-scope"')
+    expect(explorer).toContain('<MtmFilterBar testId="organization-advanced-filters">')
+  })
+})
