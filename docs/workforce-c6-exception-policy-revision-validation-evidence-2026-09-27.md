@@ -98,3 +98,22 @@ closes technical schema debt but does not complete WF-C6-002 or any user-visible
 or terminal capability. A clean checkpoint, author-independent frozen review,
 receipt-integrity review, five exact-head GitHub contexts, normal merge/deploy
 and exact-SHA public smoke remain mandatory.
+
+## Independent frozen-diff review
+
+The clean source checkpoint is
+`c1bb838c22d079486207a6463bfa17f286314a6e` over exact base and merge-base
+`330da758f9a5af22da5e6a33795530547e7e4f85`. Its seven-file binary diff is
+37,911 bytes with SHA-256
+`6047e13f0f9c1f6fc8b8c88463dd79ff290b97d22394a3ed3ffc6b48729b08d7`.
+
+A fresh author-independent read-only reviewer verified that identity, read the
+complete diff and returned GREEN with zero P0-P3 findings. The review confirmed
+the atomic fail-closed validation and replay contract, the two distinct Prisma
+phases, unchanged full row snapshots, successful migration ledger state,
+post-validation tenant/RLS/grant/append-only invariants, honest production
+`NOT RUN` evidence and the complete absence of a writer, consumer, activation,
+terminal action or UI. Reviewer-side `git diff --check` passed. Reviewer-side
+real PostgreSQL, full typecheck/build, browser, Android and load checks were
+`NOT RUN`; the real PostgreSQL proof and all five exact-head GitHub contexts
+remain mandatory before merge. No progress credit is added.
