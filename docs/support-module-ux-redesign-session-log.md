@@ -1598,3 +1598,37 @@ the current shared evidence supersets.
 Next: checkpoint and push the restored Workstream 9 gate, then run EN/light
 desktop mutation evidence, RU/dark mobile physical-touch evidence and the full
 AZ/RU/EN × light/dark × four-viewport high-density matrix before closure.
+
+### Workstream 9 desktop evidence and touch-target self-audit
+
+- Exact-SHA EN/light desktop run `36324206265` at `9c58b163c06a7452d43f0602f6760fdf66e1bd42`
+  passes the dedicated Entitlement Templates gate, production build, static
+  capture and all 6/6 mutating outcomes on attempt 2. Attempt 1 stopped before
+  application compilation in the recurring transient `next/font`
+  Google-loader exception; rerunning the same job/SHA passed without a source
+  change.
+- The flow proves keyboard Retry, terminal permission handling, read-only
+  mutation suppression, compact 0/1/30-rule rendering, progressive disclosure,
+  draft recovery across level and route changes, keyboard reorder,
+  confirmed deletion, Discard, failed-save value retention, retry and final
+  fixture restoration. The static cell has zero runtime, axe, custom
+  accessibility, touch-target, overflow, environment and fold findings;
+  primary work starts at 576 px, load p75 is 441 ms and CLS p75 is `0.00505`.
+  Manual screenshot review confirms a healthy hierarchy, compact rule list,
+  legible preview and unobstructed sticky save bar. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36324206265`.
+- The broader metric payload still exposed one 16x16 native checkbox sample.
+  Source review found two such controls: template Active and rule Required.
+  Both are now full 44 px semantic switches with `role="switch"` and
+  `aria-checked`; the static contract also forbids returning to native
+  checkboxes. A strict palette-pattern test initially matched `red-` inside the
+  new `required-switch` test id, so the selector was renamed to
+  `mandatory-switch`; no visual or browser threshold was weakened.
+- Resource inspection before the edit showed 16 GiB available memory, 331 GiB
+  free disk and zero pressure. Scoped ESLint and `git diff --check` pass; the
+  updated Entitlement Templates UX contract passes 7/7. Full local build and
+  browser checks remain NOT RUN under the Contabo workload contract.
+
+Next: checkpoint and push the semantic-switch correction, then rerun the exact
+desktop mutating gate on the new SHA before RU/dark mobile and the full
+high-density matrix.

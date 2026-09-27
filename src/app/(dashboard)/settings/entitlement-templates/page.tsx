@@ -436,7 +436,7 @@ export default function EntitlementTemplatesPage() {
               <div className="mb-3 flex items-center justify-between gap-3"><h2 id="template-meta-title" className="text-base font-semibold">{t("editorTitle", { level: te(`supportLevels.${activeLevel}`) })}</h2>{isDirty && <Badge variant="secondary" className="gap-1"><Clock3 className="h-3 w-3" />{t("draft")}</Badge>}</div>
               <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="space-y-1"><Label htmlFor="template-name">{t("name")}</Label><Input id="template-name" value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} className="min-h-11" disabled={!permissions.canWrite} /></div>
-                <label className="flex min-h-11 items-center gap-2 self-end rounded-lg border px-3 text-sm"><input type="checkbox" checked={draft.isActive} onChange={(event) => updateDraft({ isActive: event.target.checked })} className="h-4 w-4" disabled={!permissions.canWrite} />{t("templateActive")}</label>
+                <Button type="button" variant="outline" role="switch" aria-checked={draft.isActive} className="min-h-11 self-end justify-start" onClick={() => updateDraft({ isActive: !draft.isActive })} disabled={!permissions.canWrite} data-testid="entitlement-template-active-switch"><span aria-hidden className={`h-4 w-4 rounded border ${draft.isActive ? "bg-foreground" : ""}`} />{t("templateActive")}</Button>
               </div>
               <div className="mt-3 space-y-1"><Label htmlFor="template-description">{t("description")}</Label><Textarea id="template-description" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder={t("descriptionPlaceholder")} rows={2} disabled={!permissions.canWrite} /></div>
             </section>
@@ -517,7 +517,7 @@ function RuleEditor({ id, definition, index, disabled, t, te, onChange }: {
         <div className="space-y-1"><Label htmlFor={`${id}-due`}>{t("dueValue")}</Label><Input id={`${id}-due`} type="number" min="1" value={definition.dueValue} onChange={(event) => onChange({ dueValue: Number(event.target.value) })} className="min-h-11" disabled={disabled} /></div>
         <Select label={t("dueUnit")} value={definition.dueUnit} onChange={(event) => onChange({ dueUnit: asDueUnit(event.target.value) })} className="min-h-11" disabled={disabled}><option value="minutes">{te("dueUnits.minutes")}</option><option value="hours">{te("dueUnits.hours")}</option><option value="days">{te("dueUnits.days")}</option></Select>
       </div>
-      <label className="flex min-h-11 items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={definition.isRequired} onChange={(event) => onChange({ isRequired: event.target.checked })} className="h-4 w-4" disabled={disabled} />{t("required")}</label>
+      <Button type="button" variant="outline" role="switch" aria-checked={definition.isRequired} className="min-h-11 justify-start sm:col-span-2" onClick={() => onChange({ isRequired: !definition.isRequired })} disabled={disabled} data-testid="entitlement-template-rule-mandatory-switch"><span aria-hidden className={`h-4 w-4 rounded border ${definition.isRequired ? "bg-foreground" : ""}`} />{t("required")}</Button>
       <p className="text-xs text-muted-foreground sm:col-span-2">{t("rulePosition", { position: index + 1 })}</p>
     </div>
   )

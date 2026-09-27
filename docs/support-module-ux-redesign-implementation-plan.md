@@ -2276,6 +2276,27 @@ Additional recovery evidence (2026-09-06):
   with service workers blocked for deterministic recovery. Hosted production
   build and exact-SHA desktop/mobile/high browser evidence remain mandatory;
   no browser or assertion threshold was relaxed.
+- Exact-SHA EN/light desktop mutation run `36324206265` on `9c58b163c` passes
+  the dedicated section gate, production build, static browser cell and all
+  6/6 disposable outcomes on attempt 2. Attempt 1 failed before application
+  compilation in the known transient `next/font` Google-loader exception; the
+  same job/SHA rerun was green. Evidence confirms keyboard Retry, terminal
+  permission handling, read-only suppression, 0/1/30-rule density, protected
+  draft recovery across level and route changes, reorder/delete/Discard,
+  failed-save value retention, retry and fixture restoration. Static runtime,
+  axe, custom accessibility, touch-target, overflow, environment and fold
+  totals are zero; primary work starts at 576 px, load p75 is 441 ms and CLS
+  p75 is `0.00505`. The desktop screenshot was manually reviewed as healthy.
+- A stricter post-run metric audit found two native 16x16 checkbox controls
+  even though the desktop static gate correctly did not classify them as
+  pointer-target failures. Both template-active and rule-mandatory controls
+  are now 44 px semantic `role="switch"` buttons with `aria-checked`; the
+  contract rejects reintroducing native checkboxes. Scoped ESLint and diff
+  validation pass, and the updated UX contract passes 7/7. The anti-palette
+  source rule was not relaxed: its match inside the original
+  `required-switch` test id was removed by renaming the selector to
+  `mandatory-switch`. Because product source changed, desktop exact-SHA
+  evidence must be repeated before mobile and high-density evidence.
 
 ## 17. Workstream 10 — Skill Routing
 

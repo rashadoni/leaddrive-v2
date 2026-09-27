@@ -43,6 +43,9 @@ describe("entitlement templates UX contract", () => {
     expect(page).toContain('aria-label={t("editRuleNamed"')
     expect(page).toContain('aria-label={t("deleteRuleNamed"')
     expect(page).toContain('className="h-11 w-11"')
+    expect(page).toContain('role="switch" aria-checked={draft.isActive}')
+    expect(page).toContain('role="switch" aria-checked={definition.isRequired}')
+    expect(page).not.toContain('type="checkbox"')
     expect(page).toContain("ConfirmDialog")
   })
 
