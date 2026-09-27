@@ -223,7 +223,7 @@ jobs:
     # (macOS minutes count against the allowance at ten times the Linux rate:
     # 1,444 of them cost more than 96,000 Linux minutes). It now runs on the
     # A public-repository standard Linux runner has 16 GiB, enough for the
-    # bounded 11-GiB Node heap without renting a hosted Mac or using Contabo.
+    # bounded 12-GiB Node heap without renting a hosted Mac or using Contabo.
     #
     # It still skips draft pull requests: the runner is a single shared
     # resource, and an agent's intermediate pushes would only queue behind each
@@ -257,9 +257,11 @@ jobs:
       - name: TypeScript compile-check (advisory diagnostics)
         # The complete diagnostic set remains advisory while the historical
         # baseline exists. Its exit status and selected defect families are
-        # enforced by the two blocking steps below.
+        # enforced by the two blocking steps below. The former 11-GiB ceiling
+        # reproducibly aborted at ~11.1 GiB on 2026-09-27, so keep one bounded
+        # extra GiB of heap while leaving the full compiler pass intact.
         env:
-          NODE_OPTIONS: --max-old-space-size=11264
+          NODE_OPTIONS: --max-old-space-size=12288
         run: |
           set +e
           npx tsc --noEmit 2>&1 | tee tsc-output.log
