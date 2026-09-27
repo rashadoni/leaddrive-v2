@@ -139,3 +139,47 @@ wiring. Reviewer-side diff, Prisma validation, RLS 553/0, runner 37, assets
 ESLint, PostgreSQL and all heavy/physical gates remain `NOT RUN` reviewer-side.
 This receipt-only documentation delta requires an independent integrity check
 before publication.
+
+## PR #453 exact-head gate failure and bounded capacity repair
+
+Receipt-reviewed PR head `31e43ea48bcbd0dd7ba37a6e9a0c77b431eb9ed5`
+entered run `36297739725`. `pr-scope`, `static-checks`, `runner-policy` and
+`scan` passed; the static context executed the exact disposable-PostgreSQL
+migration/RLS/old-binary proof successfully. The required `typecheck` context
+did not pass, so merge was not attempted.
+
+Both the original typecheck job `108559637786` and its failed-job-only rerun
+`108562128928` reproduced Node exit 134 with no TypeScript diagnostic. The
+second run reported old-heap use around 11,061.5 MiB against the former
+11,264-MiB ceiling before `FATAL ERROR: ... heap out of memory`. The existing
+gate correctly treated the crash as unverified and failed rather than reading
+an empty diagnostic set as green.
+
+The bounded repair changes only the full `tsc --noEmit` step from 11,264 to
+12,288 MiB on the existing public `ubuntu-24.04` runner. It retains the exact
+compiler command, `PIPESTATUS` capture, non-compiler-exit rejection and both
+blocking diagnostic/baseline analyzers. A repository asset assertion now
+extracts only the typecheck job and pins the hosted runner, exact bounded heap,
+full compiler command and both gates. No application, migration, Prisma,
+authorization or tenant behavior changed.
+
+The repair checkpoint is
+`44ef9df0efd3bc3593378995269bca3cb9eaa2a6`. From unchanged base/merge-base
+`249466e9ac25eccecefc34b62563b328a8026817`, its complete 15-file / 85,293-byte
+binary diff has SHA-256
+`630559d59268f9863f01670e5a244d3adc96f75e9e02cf8b33c8911fba07be54`.
+The two-file repair delta from `31e43ea48bcbd0dd7ba37a6e9a0c77b431eb9ed5`
+is 2,772 bytes with SHA-256
+`39df66c84e8b0c20429d30dbee877a2fbfffc9b96368424566ba699ae068acd1`.
+
+A fresh author-independent complete-diff review returned GREEN with zero
+P0–P3 findings. It reconfirmed the migration/Prisma/RLS/tenant-delete and
+old-binary contracts as well as the fail-closed capacity repair. Reviewer-side
+diff, event assets 27/86/5, runner policy 37, main-protection, RLS 553/0 and
+Prisma validation checks pass. Exact-head CI/full typecheck, full build,
+browser, Android, load and physical/pilot checks are `NOT RUN` for the repaired
+head and remain mandatory.
+
+Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. This repair
+earns no task or gate credit. A receipt-only integrity review and all five
+replacement exact-head GitHub contexts are required before merge.
