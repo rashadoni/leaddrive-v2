@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import {
@@ -705,7 +706,7 @@ export default function EntitlementsPage() {
           {data && !permissions.canWrite && <p className="mt-1 text-xs text-muted-foreground" data-testid="support-entitlements-read-only">{t("permissionReadOnlyHint")}</p>}
         </div>
         {permissions.canWrite && (
-          <Button className="min-h-11 shrink-0" onClick={openCreate} data-testid="support-entitlements-create"><Plus />{t("createButton")}</Button>
+          <Button className="min-h-11 shrink-0 bg-orange-700 text-white hover:bg-orange-800" onClick={openCreate} data-testid="support-entitlements-create"><Plus />{t("createButton")}</Button>
         )}
       </header>
 
@@ -785,7 +786,7 @@ export default function EntitlementsPage() {
             <Building2 className="h-8 w-8 text-muted-foreground" />
             <h2 className="mt-3 text-base font-semibold">{t("emptyTitle")}</h2>
             <p className="mt-1 max-w-lg text-sm text-muted-foreground">{t("emptyDesc")}</p>
-            {permissions.canWrite && <Button className="mt-4 min-h-11" onClick={openCreate} data-testid="support-entitlements-empty-create"><Plus />{t("createButton")}</Button>}
+            {permissions.canWrite && <Button className="mt-4 min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={openCreate} data-testid="support-entitlements-empty-create"><Plus />{t("createButton")}</Button>}
           </div>
         ) : data && filteredEntitlements.length === 0 ? (
           <div className="flex min-h-48 flex-col items-center justify-center p-6 text-center" data-testid="support-entitlements-no-results">
@@ -1112,7 +1113,7 @@ function SupportTermFormSheet({ open, editing, data, form, error, saving, hasNoS
           </div>
           <SheetFooter className="sticky bottom-0 gap-2 border-t bg-background p-4">
             <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={saving}>{common("cancel")}</Button>
-            <Button type="submit" className="min-h-11" disabled={saving || hasNoSetupOptions} data-testid="support-entitlement-submit">{saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : editing ? <Save /> : <Plus />}{saving ? t("saving") : editing ? t("saveChanges") : t("createDraftCompact")}</Button>
+            <Button type="submit" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" disabled={saving || hasNoSetupOptions} data-testid="support-entitlement-submit">{saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : editing ? <Save /> : <Plus />}{saving ? t("saving") : editing ? t("saveChanges") : t("createDraftCompact")}</Button>
           </SheetFooter>
         </form>
       </SheetContent>
@@ -1252,7 +1253,7 @@ function MilestoneEditor({ entitlement, templates, form, loadingKey, t, onChange
         </div>
       </div>
       <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={form.isRequired} onChange={(event) => onChange({ isRequired: event.target.checked })} className="h-4 w-4" />{t("requiredMilestone")}</label>
-      <div className="flex flex-wrap justify-end gap-2">{editing && <Button type="button" variant="ghost" className="min-h-11" onClick={onReset}>{t("cancelEdit")}</Button>}<Button type="button" className="min-h-11" onClick={onSubmit} disabled={loadingKey === "save"} data-testid="support-entitlement-milestone-submit">{loadingKey === "save" ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : editing ? <Save /> : <Plus />}{editing ? t("saveMilestone") : t("addMilestone")}</Button></div>
+      <div className="flex flex-wrap justify-end gap-2">{editing && <Button type="button" variant="ghost" className="min-h-11" onClick={onReset}>{t("cancelEdit")}</Button>}<Button type="button" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={onSubmit} disabled={loadingKey === "save"} data-testid="support-entitlement-milestone-submit">{loadingKey === "save" ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : editing ? <Save /> : <Plus />}{editing ? t("saveMilestone") : t("addMilestone")}</Button></div>
       {entitlement.definitions.length > 0 && (
         <div className="divide-y border-t pt-2">
           {entitlement.definitions.map((definition) => <div key={definition.id} className="flex items-center gap-2 py-2" data-testid="support-entitlement-milestone-row" data-milestone-id={definition.id}><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{definition.name}</p><p className="truncate text-xs text-muted-foreground">{formatDueWindow(definition.dueWithinSeconds, t)} · {definition.isRequired ? t("required") : t("optional")}</p></div><Button type="button" variant="ghost" className="min-h-11" onClick={() => onEdit(definition)} data-testid={`support-entitlement-milestone-edit-${definition.id}`}><Pencil />{t("edit")}</Button><Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label={t("deleteMilestoneNamed", { name: definition.name })} onClick={() => onDelete(definition)} disabled={loadingKey === `delete:${definition.id}`} data-testid={`support-entitlement-milestone-delete-${definition.id}`}><Trash2 /></Button></div>)}
@@ -1276,7 +1277,7 @@ function LifecycleDialog({ target, reason, error, loading, t, common, onReasonCh
 }) {
   if (!target) return null
   const required = target.action === "cancel"
-  return (
+  return createPortal(
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }} mobileFullscreen widthClassName="max-w-lg">
       <DialogHeader><DialogTitle>{t("lifecycleDialogTitle", { action: t(`actions.${target.action}`) })}</DialogTitle><DialogDescription>{t("lifecycleCurrentState", { company: target.entitlement.companyName || t("unknownCompany"), status: t(`statuses.${target.entitlement.status}`) })}</DialogDescription></DialogHeader>
       <DialogContent>
@@ -1287,7 +1288,8 @@ function LifecycleDialog({ target, reason, error, loading, t, common, onReasonCh
           <p className="text-sm font-medium">{t("lifecycleConfirmQuestion", { action: t(`actions.${target.action}`).toLocaleLowerCase() })}</p>
         </div>
       </DialogContent>
-      <DialogFooter><Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={loading}>{common("cancel")}</Button><Button type="button" variant={target.action === "cancel" || target.action === "expire" ? "destructive" : "default"} className="min-h-11" onClick={onConfirm} disabled={loading || (required && !reason.trim())} data-testid="support-entitlement-lifecycle-confirm">{loading && <Loader2 className="animate-spin motion-reduce:animate-none" />}{t("confirmLifecycleAction", { action: t(`actions.${target.action}`) })}</Button></DialogFooter>
-    </Dialog>
+      <DialogFooter><Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={loading}>{common("cancel")}</Button><Button type="button" variant={target.action === "cancel" || target.action === "expire" ? "destructive" : "default"} className={`min-h-11 ${target.action === "cancel" || target.action === "expire" ? "" : "bg-orange-700 text-white hover:bg-orange-800"}`} onClick={onConfirm} disabled={loading || (required && !reason.trim())} data-testid="support-entitlement-lifecycle-confirm">{loading && <Loader2 className="animate-spin motion-reduce:animate-none" />}{t("confirmLifecycleAction", { action: t(`actions.${target.action}`) })}</Button></DialogFooter>
+    </Dialog>,
+    document.body,
   )
 }

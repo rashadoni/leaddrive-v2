@@ -1284,3 +1284,33 @@ Next: checkpoint and push the Entitlements section gate and physical-touch
 evidence, then run and inspect exact-SHA desktop mutating, RU/dark physical-
 touch mobile mutating and complete high-density matrices before closing
 Workstream 8.
+
+### Workstream 8 rendered modal and contrast correction
+
+- Gate/touch checkpoint `7bcf2a0fbac21583384d3c65bdf61447be3c4274`
+  passes dedicated validation, fixtures and production build in exact-SHA
+  desktop run `36308991093`, then fails closed in capture. Its retained artifact
+  is `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36308991093`.
+- Static EN/light evidence has no runtime, custom accessibility, touch,
+  overflow, environment or primary-work findings, but axe rejects the default
+  primary CTA at 3.61:1. Create/empty/create-form/milestone/lifecycle primary
+  actions now use orange-700/800 with white text. The visual contract permits
+  this explicit functional brand accent while continuing to reject decorative
+  palette tropes.
+- Keyboard recovery/permission, the complete 0/1/20/100 × 100-definition
+  density probe and keyboard filter reset pass. The lifecycle flow then proves
+  a real product defect: its custom dialog is rendered inside the page stacking
+  context while the Radix detail sheet is portalled at `z-50`, so the sheet
+  intercepts the dialog's confirmation even though the dialog itself uses
+  `z-[60]`. The lifecycle dialog now portals to `document.body`, placing its
+  existing layer above the sheet. The remaining edit/milestone/restore failures
+  were cascading state contamination from the blocked lifecycle modal.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  current pressure. The unchanged five-file scan reports zero findings; scoped
+  ESLint, `git diff --check` and two strengthened product/flow contracts pass
+  12/12. No lifecycle, focus, cleanup, density or recovery assertion was
+  weakened.
+
+Next: checkpoint and push the rendered modal/contrast correction, rerun the
+same exact-SHA desktop gate and inspect all 7/7 outcomes before mobile/high
+evidence.

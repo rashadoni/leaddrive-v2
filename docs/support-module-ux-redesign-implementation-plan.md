@@ -2054,6 +2054,23 @@ Additional recovery evidence (2026-09-06):
   findings are unrelated to this restored slice. No functional regression or
   browser assertion was removed. Exact-SHA hosted browser evidence remains
   mandatory before any Entitlements checkbox closes.
+- Exact-SHA desktop diagnostic run `36308991093` at `7bcf2a0fb` passes the new
+  dedicated section gate, fixtures and production build, then fails closed in
+  capture. Static evidence has zero runtime, custom accessibility, touch,
+  overflow, environment and primary-work findings but axe rejects the default
+  primary CTA at 3.61:1. All Entitlements primary CTAs now use AA-safe
+  orange-700/800 with white text; the visual contract distinguishes this
+  functional brand accent from forbidden decorative palette bands.
+- Three of seven desktop flows pass, including keyboard recovery, terminal
+  permission handling, 0/1/20/100 density with 100 definitions per term and
+  keyboard filter reset. The first lifecycle flow exposes a real modal stacking
+  defect: the custom dialog rendered inside the page stacking context while the
+  Radix detail sheet portal remained above it and intercepted pointer input.
+  The lifecycle dialog now portals to `document.body`, where the existing
+  `z-[60]` layer is above the sheet's `z-50`; the following three failures were
+  cascading state contamination from that blocked confirmation. Resource check
+  remains healthy; five-file scan, scoped ESLint, `git diff --check` and two
+  affected suites pass 12/12. No lifecycle or recovery assertion was relaxed.
 
 ## 16. Workstream 9 — Entitlement Templates
 
