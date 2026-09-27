@@ -595,3 +595,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; recording a draft acknowledgement earns no task or gate credit.
 - Precise stopping point: implementation, focused/local static evidence and early independent rereview are GREEN in the working tree; the dependency symlink is a temporary ignored read-only setup artifact, and the slice is not checkpointed or frozen for final review.
 - Next action: remove only the temporary symlink, checkpoint task-owned source/tests/evidence, freeze exact base/head/hash/size and obtain a fresh author-independent complete-diff review before any push.
+
+## 2026-09-27 — C6 session API implementation checkpoint clean
+
+- The temporary dependency symlink was removed without changing its target. Eight task-owned paths were checkpointed as `0fc94d87d5fb144fdf4a6351b6c1a87b99005d1d`; the worktree was clean afterward.
+- A fresh fetch confirmed base/merge-base/current `origin/main` remains exact deployed SHA `99b8ce27077352951769ce4a8c60cf2459e36ebf`; no upstream integration is needed. The preliminary complete diff through the implementation checkpoint is nine paths / 42,686 binary-diff bytes, SHA-256 `03715f4f137c6fbb751aae3abdf6c77ba8740ff5c231b1c71a5dadebef25148b`, including the preceding PR #457 release receipt.
+- This append-only checkpoint receipt changes documentation and therefore supersedes that preliminary frozen identity. No source/test path changed after the GREEN local gates and narrow P2 rereview.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: implementation and evidence are checkpointed, `origin/main` is unchanged, and only this documentation status receipt is uncommitted; no valid final frozen complete-diff review exists yet.
+- Next action: checkpoint the receipt, freeze the replacement base/head/hash/size and require a fresh author-independent review of every changed line before any push.

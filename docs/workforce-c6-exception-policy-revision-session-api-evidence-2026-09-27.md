@@ -1,7 +1,7 @@
 # Workforce C6 session-only exception-policy revision API evidence — 2026-09-27
 
-Status: **PRE-CHECKPOINT / EARLY REVIEW GREEN / EXACT-HEAD CI PENDING / NO
-PROGRESS CREDIT**
+Status: **CLEAN IMPLEMENTATION CHECKPOINT / EARLY REVIEW GREEN / FROZEN REVIEW
+PENDING / EXACT-HEAD CI PENDING / NO PROGRESS CREDIT**
 
 This bounded slice starts from exact deployed `main` SHA
 `99b8ce27077352951769ce4a8c60cf2459e36ebf` plus release-receipt checkpoint
@@ -111,3 +111,16 @@ Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. This slice
 records only a tenant acknowledgement of a literal draft. It does not activate
 or select a policy, create/link a decision, enable terminal behavior, change a
 tenant flag, render UI or backfill historical NULL provenance.
+
+## Clean implementation checkpoint
+
+The task-owned implementation/evidence was checkpointed as
+`0fc94d87d5fb144fdf4a6351b6c1a87b99005d1d` over unchanged exact deployed
+base/merge-base/current `origin/main`
+`99b8ce27077352951769ce4a8c60cf2459e36ebf`. Before this status receipt, the
+complete base-to-head diff was nine paths / 42,686 binary-diff bytes with
+SHA-256 `03715f4f137c6fbb751aae3abdf6c77ba8740ff5c231b1c71a5dadebef25148b`.
+The branch remained clean and `origin/main` had not advanced. This status-only
+documentation delta supersedes that preliminary identity; a new clean head and
+fresh author-independent review of every base-to-head changed line are required
+before push.
