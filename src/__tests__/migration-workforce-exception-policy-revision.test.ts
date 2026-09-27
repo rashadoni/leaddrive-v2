@@ -114,7 +114,7 @@ describe("Workforce exception policy revision migration", () => {
     expect(migration).not.toMatch(/GRANT[^;]*(?:UPDATE|DELETE|TRUNCATE)/iu)
   })
 
-  it("allows only the session acknowledgement route to consume the writer", () => {
+  it("allows only the session receipt route to consume the resolver and writer", () => {
     const acknowledgementRoute = join(
       root,
       "src/app/api/v1/workforce/configuration/exception-policy/revisions/route.ts",
@@ -135,11 +135,17 @@ describe("Workforce exception policy revision migration", () => {
     }
     const route = readFileSync(acknowledgementRoute, "utf8")
     expect(route).toContain("withWorkforceSessionPolicyConfigurationAuth")
+    expect(route).toContain("resolveWorkforceExceptionPolicyDraftRevision")
     expect(route).toContain("appendAuthorizedWorkforceExceptionPolicyRevision")
+    expect(route).toContain("where: { organizationId: auth.orgId }")
+    expect(route).toContain('orderBy: { revision: "asc" }')
+    expect(route).toContain("take: MAX_WORKFORCE_EXCEPTION_POLICY_REVISIONS + 1")
     expect(route).toContain('decision.operation === "POLICY_REVISION_APPEND"')
     expect(route).not.toContain("workforceExceptionDecision")
     expect(route).not.toContain("policyRevisionId")
     expect(route).not.toContain("effectiveFrom")
+    expect(route).not.toContain("workforceExceptionPolicyRevision.update")
+    expect(route).not.toContain("workforceExceptionPolicyRevision.delete")
     expect(
       readFileSync(join(root, "src/lib/workforce/default-configuration-provisioning.ts"), "utf8"),
     ).not.toContain("workforceExceptionPolicyRevision")

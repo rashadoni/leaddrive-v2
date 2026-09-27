@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
 const transactionClient = vi.hoisted(() => ({
@@ -7,9 +7,13 @@ const transactionClient = vi.hoisted(() => ({
 const transaction = vi.hoisted(() => vi.fn(async (
   work: (tx: typeof transactionClient) => Promise<unknown>,
 ) => work(transactionClient)))
+const findMany = vi.hoisted(() => vi.fn())
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { $transaction: transaction },
+  prisma: {
+    $transaction: transaction,
+    workforceExceptionPolicyRevision: { findMany },
+  },
 }))
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionPolicyConfigurationAuth: vi.fn((handler) => handler),
@@ -30,6 +34,15 @@ import {
   appendAuthorizedWorkforceExceptionPolicyRevision,
   WorkforceExceptionPolicyRevisionWriterError,
 } from "@/lib/workforce/exception-policy-revision-writer"
+import {
+  MAX_WORKFORCE_EXCEPTION_POLICY_REVISIONS,
+  WORKFORCE_EXCEPTION_POLICY_TENANT_RECORD_REASON_CODE,
+  WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_HASH_V1,
+} from "@/lib/workforce/exception-policy-revision"
+import {
+  WORKFORCE_EXCEPTION_DRAFT_POLICY_VERSION,
+  WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1,
+} from "@/lib/workforce/exception-policy-draft"
 
 const AUTH = {
   orgId: "org-policy",
@@ -38,9 +51,16 @@ const AUTH = {
 }
 
 type Handler = (request: NextRequest, auth: typeof AUTH) => Promise<Response>
+const get = route.GET as unknown as Handler
 const post = route.POST as unknown as Handler
 
-function request(body: unknown): NextRequest {
+function getRequest(query = ""): NextRequest {
+  return new NextRequest(
+    `http://localhost/api/v1/workforce/configuration/exception-policy/revisions${query}`,
+  )
+}
+
+function postRequest(body: unknown): NextRequest {
   return new NextRequest(
     "http://localhost/api/v1/workforce/configuration/exception-policy/revisions",
     {
@@ -51,8 +71,24 @@ function request(body: unknown): NextRequest {
   )
 }
 
+function storedRevision(revision: number) {
+  return {
+    id: `revision-secret-${revision}`,
+    organizationId: AUTH.orgId,
+    revision,
+    operationId: `policy-ack-${revision}`,
+    policyVersion: WORKFORCE_EXCEPTION_DRAFT_POLICY_VERSION,
+    definition: WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1,
+    definitionHash: WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_HASH_V1,
+    recordedByUserId: AUTH.userId,
+    recordReasonCode: WORKFORCE_EXCEPTION_POLICY_TENANT_RECORD_REASON_CODE,
+    createdAt: new Date(`2026-09-27T00:${String(revision % 60).padStart(2, "0")}:00.000Z`),
+  }
+}
+
 beforeEach(() => {
   transaction.mockReset()
+  findMany.mockReset()
   vi.mocked(appendAuthorizedWorkforceExceptionPolicyRevision).mockReset()
   transaction.mockImplementation(async (
     work: (tx: typeof transactionClient) => Promise<unknown>,
@@ -62,16 +98,140 @@ beforeEach(() => {
     revision: 3,
     idempotent: false,
   })
+  findMany.mockResolvedValue([])
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe("Workforce exception-policy revision API", () => {
-  it("exports only a session-policy POST surface", () => {
-    expect(withWorkforceSessionPolicyConfigurationAuth).toHaveBeenCalledTimes(1)
-    expect(Object.keys(route).sort()).toEqual(["POST"])
+  it("exports only session-policy GET and POST surfaces", () => {
+    expect(withWorkforceSessionPolicyConfigurationAuth).toHaveBeenCalledTimes(2)
+    expect(Object.keys(route).sort()).toEqual(["GET", "POST"])
+  })
+
+  it("returns a tenant-scoped empty draft receipt without a transaction or write", async () => {
+    const response = await get(getRequest(), AUTH)
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff")
+    const payload = await response.json()
+    expect(payload).toEqual({
+      state: "NOT_RECORDED",
+    })
+    expect(Object.keys(payload)).toEqual(["state"])
+    expect(findMany).toHaveBeenCalledWith({
+      where: { organizationId: AUTH.orgId },
+      orderBy: { revision: "asc" },
+      take: MAX_WORKFORCE_EXCEPTION_POLICY_REVISIONS + 1,
+      select: {
+        id: true,
+        organizationId: true,
+        revision: true,
+        operationId: true,
+        policyVersion: true,
+        definition: true,
+        definitionHash: true,
+        recordedByUserId: true,
+        recordReasonCode: true,
+        createdAt: true,
+      },
+    })
+    expect(transaction).not.toHaveBeenCalled()
+    expect(appendAuthorizedWorkforceExceptionPolicyRevision).not.toHaveBeenCalled()
+  })
+
+  it("returns only a draft receipt and latest revision for a valid complete stream", async () => {
+    findMany.mockResolvedValue([storedRevision(1), storedRevision(2)])
+
+    const response = await get(getRequest(), AUTH)
+
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+    expect(payload).toEqual({
+      state: "RECORDED_DRAFT",
+      revision: 2,
+    })
+    expect(Object.keys(payload).sort()).toEqual(["revision", "state"])
+    expect(JSON.stringify(payload)).not.toMatch(
+      /revision-secret|policy-ack|org-policy|tenant-policy-admin|recommended-v1|definition|hash|reason|created|active|current|effective/iu,
+    )
+    expect(transaction).not.toHaveBeenCalled()
+    expect(appendAuthorizedWorkforceExceptionPolicyRevision).not.toHaveBeenCalled()
+  })
+
+  it("ignores caller selectors and always reads the authenticated tenant stream", async () => {
+    findMany.mockResolvedValue([storedRevision(1)])
+
+    const response = await get(getRequest(
+      "?organizationId=other-org&revision=99&active=true",
+    ), AUTH)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      state: "RECORDED_DRAFT",
+      revision: 1,
+    })
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: AUTH.orgId },
+    }))
+  })
+
+  it("maps every malformed or overbound stream to the same generic conflict", async () => {
+    const invalidHistories = [
+      [storedRevision(1), storedRevision(3)],
+      [storedRevision(2), storedRevision(1)],
+      [storedRevision(1), { ...storedRevision(2), organizationId: "other-org" }],
+      [{ ...storedRevision(1), policyVersion: "future-policy" }],
+      [{ ...storedRevision(1), definitionHash: "0".repeat(64) }],
+      [{ ...storedRevision(1), definition: {} }],
+      Array.from(
+        { length: MAX_WORKFORCE_EXCEPTION_POLICY_REVISIONS + 1 },
+        (_, index) => storedRevision(index + 1),
+      ),
+    ]
+
+    for (const history of invalidHistories) {
+      findMany.mockResolvedValueOnce(history)
+      const response = await get(getRequest(), AUTH)
+
+      expect(response.status).toBe(409)
+      expect(response.headers.get("cache-control")).toBe("private, no-store")
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff")
+      await expect(response.json()).resolves.toEqual({
+        error: "The Workforce exception-policy draft receipt is unavailable.",
+        code: "WORKFORCE_EXCEPTION_POLICY_REVISION_RECEIPT_UNAVAILABLE",
+      })
+    }
+    expect(transaction).not.toHaveBeenCalled()
+    expect(appendAuthorizedWorkforceExceptionPolicyRevision).not.toHaveBeenCalled()
+  })
+
+  it("returns a generic read failure without leaking storage details", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    findMany.mockRejectedValue(new Error("secret tenant query detail"))
+
+    const response = await get(getRequest(), AUTH)
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    const payload = await response.json()
+    expect(payload).toEqual({
+      error: "Failed to read Workforce exception-policy draft receipt.",
+      code: "WORKFORCE_EXCEPTION_POLICY_REVISION_RECEIPT_READ_UNAVAILABLE",
+    })
+    expect(JSON.stringify(payload)).not.toContain("secret")
+    expect(log).toHaveBeenCalledWith(
+      "[workforce/privacy] sensitive operation failed",
+      { operation: "configuration-exception-policy-revision-read" },
+    )
+    expect(JSON.stringify(log.mock.calls)).not.toContain("secret")
   })
 
   it("derives tenant and actor from the session and appends inside the tenant transaction", async () => {
-    const response = await post(request({ operationId: "policy-ack-001" }), AUTH)
+    const response = await post(postRequest({ operationId: "policy-ack-001" }), AUTH)
 
     expect(response.status).toBe(201)
     expect(response.headers.get("cache-control")).toBe("private, no-store")
@@ -117,7 +277,7 @@ describe("Workforce exception-policy revision API", () => {
       idempotent: true,
     })
 
-    const response = await post(request({ operationId: "policy-ack-replay" }), AUTH)
+    const response = await post(postRequest({ operationId: "policy-ack-replay" }), AUTH)
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
@@ -140,7 +300,7 @@ describe("Workforce exception-policy revision API", () => {
       { operationId: "policy-ack-001", revision: 99 },
       { operationId: "policy-ack-001", effectiveFrom: "2026-10-01" },
     ]) {
-      const response = await post(request(body), AUTH)
+      const response = await post(postRequest(body), AUTH)
       expect(response.status, JSON.stringify(body)).toBe(400)
       expect(response.headers.get("cache-control")).toBe("private, no-store")
       await expect(response.json()).resolves.toEqual({
@@ -161,7 +321,7 @@ describe("Workforce exception-policy revision API", () => {
       new WorkforceExceptionPolicyRevisionWriterError(code),
     )
 
-    const response = await post(request({ operationId: "policy-ack-conflict" }), AUTH)
+    const response = await post(postRequest({ operationId: "policy-ack-conflict" }), AUTH)
 
     expect(response.status).toBe(409)
     expect(response.headers.get("cache-control")).toBe("private, no-store")
@@ -178,7 +338,7 @@ describe("Workforce exception-policy revision API", () => {
       ),
     )
 
-    const response = await post(request({ operationId: "policy-ack-denied" }), AUTH)
+    const response = await post(postRequest({ operationId: "policy-ack-denied" }), AUTH)
 
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toEqual({
@@ -193,7 +353,7 @@ describe("Workforce exception-policy revision API", () => {
       new Error("secret RLS/FK detail"),
     )
 
-    const response = await post(request({ operationId: "policy-ack-storage" }), AUTH)
+    const response = await post(postRequest({ operationId: "policy-ack-storage" }), AUTH)
 
     expect(response.status).toBe(500)
     expect(response.headers.get("cache-control")).toBe("private, no-store")
@@ -208,6 +368,5 @@ describe("Workforce exception-policy revision API", () => {
       { operation: "configuration-exception-policy-revision-write" },
     )
     expect(JSON.stringify(log.mock.calls)).not.toContain("secret")
-    log.mockRestore()
   })
 })
