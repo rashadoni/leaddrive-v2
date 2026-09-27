@@ -268,6 +268,30 @@ change supersedes every earlier GREEN identity: fresh author-independent
 review, receipt integrity and all five replacement exact-head contexts are
 required.
 
+## Online-split independent review receipt
+
+Fresh author-independent review froze base/merge-base
+`fdc601599b048734409a1359863ede382d08e768` and head
+`e7efdab38992abe28660b0527c9f74362b706074`. The complete 33-file binary diff
+was 225,549 bytes with SHA-256
+`b3d5d57e4a70f42474db9f6957e9a5afc97fa038094b6361b73569fbfb55e03c`.
+The verdict was **GREEN with zero P0-P3 findings** after review of the complete
+runtime, tenant/RLS/auth, idempotency, revision-continuity, terminal-fence,
+five-phase migration and append-only evidence surfaces.
+
+The reviewer independently confirmed both concurrent-index files contain
+exactly one executable statement, the P3005 baseline and SQLSTATE `25001`
+failures remain addressed without weakening the gate, and the opt-in
+PostgreSQL harness requires exact `23505`, one exact invalid unique index,
+standalone cleanup by the production-like `NOSUPERUSER + BYPASSRLS`
+owner-member, exact-row rollback resolution, five successful migrations and
+two exact valid/ready indexes. Reviewer-side `git diff --check`, runner policy
+(37 workflows), RLS scan (552 organization-scoped models / 0 gaps), event
+assets (27 domains / 86 topics / 5 schemas), main-protection configurator and
+final identity/cleanliness checks passed. Real PostgreSQL, full build/typecheck,
+browser E2E, Android, load and physical/pilot gates were not run by the reviewer;
+the relevant exact-head CI contexts remain mandatory.
+
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal
 UI and tenant activation remain separately open.
