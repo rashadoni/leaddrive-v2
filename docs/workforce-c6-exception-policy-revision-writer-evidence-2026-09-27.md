@@ -1,6 +1,7 @@
 # Workforce C6 dormant exception-policy revision writer evidence — 2026-09-27
 
-Status: **PRE-REVIEW / INACTIVE / NO PROGRESS CREDIT**
+Status: **FROZEN COMPLETE-DIFF REVIEW GREEN / INACTIVE / EXACT-HEAD CI
+PENDING / NO PROGRESS CREDIT**
 
 This bounded slice starts from exact deployed `main` SHA
 `0a71fc31967adc2683b6f481f59e516e71ed111c`. It adds only a
@@ -134,3 +135,28 @@ diff whitespace and translation parity (23,587 English leaf keys; RU/AZ
 missing=0 extra=0) pass. The temporary exact-lock dependency symlink is removed
 before checkpointing. A new integrated identity and complete independent
 review are required; no verdict from the superseded identity transfers.
+
+## Independent frozen complete-diff review
+
+The clean replacement identity is base/merge-base/current `origin/main`
+`4e5afe8da053c187e5070fbedd157ade9382817b`, head
+`db506b51a4e8c20b2a94524fdb5d00ac14b12755`, nine changed paths and 61,305
+binary-diff bytes with SHA-256
+`f74233dfe5827c5b0eaeefca31a16f3cd43b98bae8b2914faa9e2bb73cb2892a`.
+
+A fresh author-independent read-only reviewer started from zero, read every
+changed line and returned GREEN with zero P0-P3 findings. The review confirmed
+release-receipt truth, tenant authorization/RLS, server-owned canonical policy
+input, complete ordered history validation and 64-row bound, exact replay and
+conflict behavior, no post-P2002 query, tenant advisory locking, deterministic
+PostgreSQL proof cleanup, Prisma/runtime compatibility, no consumer/decision
+link/activation and honest progress/scope evidence. PR #454 release facts and
+the conflict-free PR #455 integration were independently corroborated.
+
+Reviewer-side diff whitespace, translation parity (23,587/0/0), branch
+protection configurator, event assets (27/86/5), runner policy (37) and the
+production no-consumer scan passed. Reviewer-side exact PostgreSQL, full
+typecheck/build, dependency-backed tests/lint/Prisma/RLS, browser, Android,
+load and physical/pilot checks were `NOT RUN`; the primary's local checks and
+mandatory exact-head CI remain separate evidence. This receipt-only delta must
+receive its own integrity review before push.
