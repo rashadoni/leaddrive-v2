@@ -70,8 +70,14 @@ export async function autoIssueDemoGrant(params: {
       liveCallEnabled: false,
     },
     now,
-  }).catch(() => null)
+  }).catch((error) => {
+    // Said out loud: this swallow hid a CHECK violation on every submission
+    // for three days — the request sat at SUBMITTED and nothing was logged.
+    console.error("[demo-auto-issue] issuing failed", { requestId: params.request.id }, error)
+    return null
+  })
 
+  if (result && !result.ok) console.error("[demo-auto-issue] not issued", { requestId: params.request.id, code: result.code })
   return result?.ok ? "issued" : "failed"
 }
 

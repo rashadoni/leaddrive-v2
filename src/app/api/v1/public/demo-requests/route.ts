@@ -87,7 +87,10 @@ export async function POST(request: Request) {
         requestedModules: true,
       },
     }),
-  ).catch(() => null)
+  ).catch((error) => {
+    console.error("[demo-request] could not store the request", error)
+    return null
+  })
 
   if (!created) {
     return jsonResponse(
@@ -116,7 +119,10 @@ export async function POST(request: Request) {
   // the form's «check your email» is true by the time it is read. A refusal
   // there is not the prospect's problem: the request is stored, the owner has
   // it in Demo Center, and the answer stays the same.
-  const invitation = await autoIssueDemoGrant({ request: created }).catch(() => "failed" as const)
+  const invitation = await autoIssueDemoGrant({ request: created }).catch((error) => {
+    console.error("[demo-request] auto-issue threw", { requestId: created.id }, error)
+    return "failed" as const
+  })
 
   return jsonResponse(
     request,
