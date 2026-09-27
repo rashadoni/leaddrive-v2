@@ -1742,3 +1742,29 @@ Next: checkpoint the Workstream 9 closure, add a bounded retry only for the
 exact confirmed `next/font` Google-loader transient, then restore Workstream 10
 Skill Routing product `b0fbbac1f` and recovery `768146ca3` while preserving the
 current shared evidence supersets.
+
+### Bounded hosted-build transient retry
+
+- The shared Support UX evidence build step now captures the first
+  `npx next build --webpack` exit status and log. It permits exactly one retry
+  only when the log simultaneously contains the `next/font` error banner, the
+  exact `TypeError: Cannot read properties of null (reading '1')` text and the
+  compiled Google font loader path observed in failed attempt 1 of run
+  `36324206265` and the earlier Workstream 8 transient.
+- An unrelated first-attempt failure exits with its original status. The retry
+  runs after `set -e` is restored, so a second failure is fatal and cannot be
+  masked. The production build remains mandatory and the workflow does not
+  change timeouts, memory, browser assertions, evidence thresholds or artifact
+  acceptance.
+- Resource inspection before verification showed 15 GiB available memory,
+  331 GiB free disk and effectively zero pressure. The workflow parses through
+  the installed `js-yaml` dependency, the extracted shell block passes
+  `bash -n`, scoped ESLint and `git diff --check` pass, and the updated shared
+  browser-evidence contract passes 17/17. A local production build is NOT RUN
+  under the Contabo workload contract; the next exact-SHA section run will
+  exercise this path on GitHub-hosted infrastructure.
+
+Next: checkpoint and push the bounded retry, then restore Workstream 10 Skill
+Routing product `b0fbbac1f` and recovery `768146ca3`, preserving the current
+shared workflow/browser supersets and adding its section-scoped gate before
+desktop/mobile/high evidence.

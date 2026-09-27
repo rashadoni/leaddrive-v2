@@ -307,6 +307,13 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("npx playwright install --with-deps chromium");
     expect(workflow).not.toMatch(/\bsudo\b/);
     expect(workflow).toContain("npx next build --webpack");
+    expect(workflow.match(/npx next build --webpack/g)).toHaveLength(2);
+    expect(workflow).toContain('build_status=${PIPESTATUS[0]}');
+    expect(workflow).toContain("An error occurred in `next/font`.");
+    expect(workflow).toContain("TypeError: Cannot read properties of null (reading '1')");
+    expect(workflow).toContain("/@next/font/dist/google/loader.js");
+    expect(workflow).toContain('exit "$build_status"');
+    expect(workflow).toContain("Retrying one confirmed transient next/font Google-loader failure");
     expect(workflow).toContain("bash scripts/ci/prepare-hosted-build-runner.sh");
     expect(workflow).toContain('LEADDRIVE_COLD_PRODUCTION_BUILD: "1"');
     expect(workflow).toContain('LEADDRIVE_DISABLE_SERVICE_WORKER: "1"');

@@ -2347,6 +2347,14 @@ Additional recovery evidence (2026-09-06):
   weakening a gate. Retained artifacts are
   `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36330991043` and
   `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36332223526`.
+- The shared evidence production-build step now retries exactly once only when
+  the first log contains all three signatures of the twice-confirmed hosted
+  transient: the `next/font` error banner, the exact null-index TypeError and
+  the Google font loader path. All other first-attempt failures return their
+  original exit code, and any retry failure remains fatal under `set -e`.
+  Workflow YAML and extracted shell syntax parse successfully; scoped lint,
+  diff and the browser-evidence workflow contract pass 17/17. No product,
+  browser or acceptance threshold changed.
 
 ## 17. Workstream 10 — Skill Routing
 

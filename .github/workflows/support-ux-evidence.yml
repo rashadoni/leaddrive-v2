@@ -806,7 +806,21 @@ jobs:
           NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: ${{ secrets.CARTO_BASEMAPS_API_KEY }}
         run: |
           ulimit -c 0
-          npx next build --webpack
+          build_log="$(mktemp "${RUNNER_TEMP}/support-ux-next-build.XXXXXX.log")"
+          set +e
+          npx next build --webpack 2>&1 | tee "$build_log"
+          build_status=${PIPESTATUS[0]}
+          set -e
+          if [ "$build_status" -ne 0 ]; then
+            if grep -Fq 'An error occurred in `next/font`.' "$build_log" && \
+              grep -Fq "TypeError: Cannot read properties of null (reading '1')" "$build_log" && \
+              grep -Fq '/@next/font/dist/google/loader.js' "$build_log"; then
+              echo "::warning::Retrying one confirmed transient next/font Google-loader failure"
+              npx next build --webpack
+            else
+              exit "$build_status"
+            fi
+          fi
           mkdir -p .next/standalone/.next
           cp -R .next/static .next/standalone/.next/static
           cp -R public .next/standalone/public
