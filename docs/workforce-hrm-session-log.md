@@ -756,3 +756,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. This uncommitted preflight verdict is not transferable to the forthcoming clean head and adds no completion or phase-gate credit.
 - Precise stopping point: the complete implementation, verification and preflight receipt remain uncommitted in the dedicated successor branch; nothing is pushed or opened.
 - Next action: create a path-scoped checkpoint, verify a clean exact base/head/path/byte/hash identity and commission a fresh frozen complete-diff review from zero.
+
+## 2026-09-27 — C6/C8 correction-request frozen complete-diff review GREEN
+
+- The clean frozen identity was base/current `origin/main`/merge-base `4823fa18b07cb9e27128ef8d8e14c07eae9f0e7a`, head `d5e952dca3bedce73fafca94efaf2cc639bf5f00`, nine paths / 53,028 binary-diff bytes and SHA-256 `51b5913e3e8a5a0be8b816dd703eb06749f4fef79222065e91ea93e0c401232a`, below 400 KB. Worktree was clean with no untracked paths at the start and end.
+- A fresh author-independent reviewer reread the complete diff from zero and returned GREEN with zero P0-P3 findings. Server authority, exact-one fail-closed action selection, token/UUID/organization/pending/async fences, fixed minimized POST, exact response-code validation, generic recovery, privacy, a11y, EN/RU/AZ and evidence truth were confirmed.
+- Reviewer-side diff whitespace, JSON parse, translation parity at 23,602/0/0, package-lock hash and PR #460 exact checks/merge/deploy/public artifact receipt passed. Dependency-backed Vitest/ESLint and full typecheck/build/browser/Android/load/device/pilot were `NOT RUN` reviewer-side and are not inferred from the author's results.
+- Live branch protection still requires exactly `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`; `agent-review` is absent and was not treated as merge permission. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: the complete committed runtime/test/evidence identity is independently GREEN; only this three-document review receipt is uncommitted and nothing is pushed.
+- Next action: checkpoint the receipt-only delta, independently prove all five reviewed runtime/test/translation blobs byte-identical, then push/open the sub-400 KB PR and require all five exact-head contexts before merge.
