@@ -15256,6 +15256,13 @@
   "mtmAnalytics": {
     "title": "Analytics"
   },
+    "mtmFilters": {
+      "more": "More filters",
+      "reset": "Reset",
+      "clearSearch": "Clear search",
+      "view": "View",
+      "found": "Found: {count}"
+    },
     "mtmTeamResults": {
       "period": "Period",
       "preset": {
