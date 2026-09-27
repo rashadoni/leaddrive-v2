@@ -142,6 +142,77 @@ describe("Workforce scoped exception queue API", () => {
     })
   })
 
+  it("withholds only the employee-response action when its tenant rollout is absent", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: ["workforce-hrm", "workforce-granular-access-v1"],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([grantRow] as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ requestId: "case-00000001", teamId: "team-1" }] as never)
+    vi.mocked(prisma.workforceExceptionCase.findMany)
+      .mockResolvedValueOnce([candidate()] as never)
+      .mockResolvedValueOnce([detail("case-00000001", {
+        decisions: [{
+          decisionCode: "ACKNOWLEDGE",
+          createdAt: new Date("2026-09-26T09:00:00.000Z"),
+          caseRevision: 1,
+        }],
+      })] as never)
+
+    const response = await callGet(new NextRequest("http://localhost/api/v1/workforce/exceptions"), AUTH)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.cases[0].decisionContext.actions).toHaveLength(1)
+    expect(body.data.cases[0].decisionContext.actions[0].decisionCode).toBe("REQUEST_TIME_CORRECTION")
+  })
+
+  it("issues response and correction tokens after the response-channel rollout", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: [
+        "workforce-hrm",
+        "workforce-granular-access-v1",
+        "workforce-exception-response-v1",
+      ],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([grantRow] as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ requestId: "case-00000001", teamId: "team-1" }] as never)
+    vi.mocked(prisma.workforceExceptionCase.findMany)
+      .mockResolvedValueOnce([candidate()] as never)
+      .mockResolvedValueOnce([detail("case-00000001", {
+        decisions: [{
+          decisionCode: "ACKNOWLEDGE",
+          createdAt: new Date("2026-09-26T09:00:00.000Z"),
+          caseRevision: 1,
+        }],
+      })] as never)
+
+    const response = await callGet(new NextRequest("http://localhost/api/v1/workforce/exceptions"), AUTH)
+    const body = await response.json()
+    const actions = body.data.cases[0].decisionContext.actions
+
+    expect(response.status).toBe(200)
+    expect(actions.map((action: { decisionCode: string }) => action.decisionCode)).toEqual([
+      "REQUEST_EMPLOYEE_RESPONSE",
+      "REQUEST_TIME_CORRECTION",
+    ])
+    expect(actions.map((action: { actionToken: string }) => readWorkforceExceptionActionToken({
+      token: action.actionToken,
+      organizationId: AUTH.orgId,
+      principalUserId: AUTH.userId,
+    }))).toEqual([
+      expect.objectContaining({
+        caseId: "case-00000001",
+        decisionCode: "REQUEST_EMPLOYEE_RESPONSE",
+        decisionCount: 1,
+      }),
+      expect.objectContaining({
+        caseId: "case-00000001",
+        decisionCode: "REQUEST_TIME_CORRECTION",
+        decisionCount: 1,
+      }),
+    ])
+  })
+
   it("denies a cut-over tenant without an exception-read grant before scanning cases", async () => {
     vi.mocked(prisma.organization.findUnique).mockResolvedValue({
       features: ["workforce-hrm", "workforce-granular-access-v1"],

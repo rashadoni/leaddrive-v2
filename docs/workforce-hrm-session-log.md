@@ -776,3 +776,24 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Work continues in the same dedicated part-3 worktree on clean successor branch `codex/workforce-exception-response-rollout-fence`, created from exact deployed main `000eb2532402cf4860afcb270ea8bfac6a6796d0`. Canonical/old worktrees, LeadShelf and foreign branches remain untouched.
 - Precise stopping point: PR #461 is merged, deployed and exact-SHA smoke-verified; only this three-document release receipt is uncommitted on the clean successor branch and no next-slice source has changed.
 - Next action: checkpoint this release receipt, finish the independent one-slice comparison and only then implement its bounded fail-closed contract with focused evidence and fresh review.
+
+## 2026-09-27 — C6 employee-response rollout fence pre-review
+
+- The PR #461 production receipt was first isolated in commit `316caedc933407589aa5f7a5acffb86aed267b15`. Independent comparison then selected exactly one server-only follow-up: prevent a manager from requesting an employee response while that tenant's employee-response channel is rollout-disabled.
+- One pure predicate now treats only `REQUEST_EMPLOYEE_RESPONSE` as dependent on `workforce-exception-response-v1`. The scoped queue applies it before token issuance; ACK and correction-review tokens remain unchanged. The decision service applies it again during tenant preflight before case/grant lookup and after the case/operation locks before any new append.
+- A token minted before rollout removal now fails through the generic unavailable/conflict surfaces and cannot create a decision. Employee self GET/POST scope, rate limit, case/workday binding and database ownership trigger remain unchanged. The released UI still hides employee-response, terminal and unknown actions, and no notification is claimed.
+- The core three-file selection passes 27/27 tests; the adjacent five-file employee-response/workbench selection passes 32/32. Targeted ESLint for all six changed runtime/test files and diff whitespace pass. The exact-lock dependency link was removed after each command.
+- Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot checks remain `NOT RUN` under host policy. Exact-head CI, real PostgreSQL shared-lock coverage and fresh frozen independent review remain mandatory.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. WF-C6-002 and WF-C6-006 remain `PARTIAL`; no task or phase-gate credit is added.
+- Precise stopping point: six runtime/test paths and the three evidence/roadmap/log paths are implemented and locally verified in the working tree; independent read-only preflight is in progress, changes are uncommitted and nothing is pushed.
+- Next action: resolve any preflight finding, checkpoint only the nine task-owned paths, freeze the exact base/head/path/byte/hash identity and require a fresh zero-finding complete-diff review before push.
+
+## 2026-09-27 — C6 response rollout fence preflight GREEN
+
+- Author-independent review covered base `316caedc933407589aa5f7a5acffb86aed267b15` plus every tracked change and the untracked evidence file: nine paths / 34,671 bytes, SHA-256 `77ca058977501c0abe839a401116db46564e571bb9f697d2cfb9f43da4d2672e`. It returned GREEN with zero P0-P3 findings.
+- The reviewer confirmed queue token suppression, response-only preflight rejection, post-lock flag reread/no-new-append, unchanged ACK/correction behavior, tenant/principal binding, exact replay semantics and generic 404/409 containment. The residual post-read READ COMMITTED window is the existing authorization model and is explicitly not claimed as an emergency kill switch.
+- Reviewer diff/whitespace checks and pure helper 3/3 passed. Reviewer API suites were `NOT RUN` because external module resolution stopped before collection; the author's 27/27 plus 32/32 results were not relabelled.
+- The review cache created by that stopped external test attempt was removed from this worktree. No application or tracked file was removed.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
+- Precise stopping point: the preflight is GREEN, its append-only receipt is now in the uncommitted three-document delta, nothing is pushed and the verdict is not transferable to the future committed identity.
+- Next action: checkpoint the nine currently changed paths, verify clean status, compute the complete ten-path PR identity from exact `origin/main` and require a fresh author-independent frozen review from zero.
