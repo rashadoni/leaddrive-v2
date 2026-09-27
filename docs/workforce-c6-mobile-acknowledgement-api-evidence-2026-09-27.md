@@ -134,3 +134,36 @@ the existing rate limiter bounds churn, but exactly-once delivery is not
 claimed before a stable Android outbox operation or separately reviewed
 cycle-deduplication rule exists. Unlinked mobile agents cannot write the
 user-attributed ledger, and no synthetic actor is introduced.
+
+## Production release receipt
+
+The receipt-integrity review returned GREEN with zero P0-P3 findings at final
+head `b3d6871d3f928a66b1729f2e9185c9c847811a9c`. The complete diff from base
+`a043fc9f1b41b87c032714d8d4f28e5dde9def3a` contained 11 paths / 84,643
+binary-diff bytes, SHA-256
+`897f79d8ba75fe4608a92113bcb003b962bb81728294cfc24a90b88623e535ed`.
+Only the three append-only receipt documents changed after the frozen review;
+all seven reviewed runtime/test blobs remained byte-identical.
+
+PR #470 passed `pr-scope`, `runner-policy`, `scan`, `static-checks` and
+`typecheck` at its exact head. `static-checks` completed in 10m25s and included
+the real PostgreSQL Workforce exception shared-lock race gate; `typecheck`
+completed in 13m22s. The ordinary PR production-build job was skipped by
+workflow design, not relabelled as passed. PR #470 merged normally at
+`2026-09-27T21:51:41Z` as main SHA
+`94dce0d423240921d1c3c68c14cb4a135c99e45d`.
+
+Deploy run `36353254435` completed successfully at
+`2026-09-27T22:15:43Z`: quality/security, SHA-bound standalone build and
+artifact publication, atomic production deployment with post-deploy smokes,
+and artifact-retention cleanup all passed. Independent no-cache public reads
+then returned ping `{"ok":true}` and build info with
+`artifactSha=94dce0d423240921d1c3c68c14cb4a135c99e45d`, exactly matching merged main.
+The release used only GitHub `main` through `.github/workflows/deploy.yml`; no
+direct worktree copy, manual server deploy, Azure or retired target was used.
+
+Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot
+checks remain `NOT RUN`. Progress therefore stays `81/161`, `14/15`, C5 81%,
+C6 20% and C9 99%; WF-C6-006 remains `PARTIAL`. The next bounded safety slice
+is web presentation-to-write revision binding. It does not claim an Android
+action/outbox, tenant activation or task completion.
