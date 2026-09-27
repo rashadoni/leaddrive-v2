@@ -37,6 +37,7 @@ describe("Skill Routing mutating evidence contract", () => {
     expect(flow).toContain('inputModality: "keyboard"')
     expect(flow).toContain('inputModality: "playwright-touchscreen"')
     expect(flow).toContain("scrollIntoViewIfNeeded()")
+    expect(flow).toContain('scrollIntoView({ block: "center", inline: "center" })')
     expect(flow).toContain("document.elementFromPoint")
     expect(flow).toContain("box.width < 44 || box.height < 44")
     expect(flow).toContain("page.touchscreen.tap(point.x, point.y)")

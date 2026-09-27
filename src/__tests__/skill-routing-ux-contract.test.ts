@@ -21,7 +21,7 @@ describe("skill routing UX contract", () => {
     const page = source("src/app/(dashboard)/support/skill-routing/page.tsx")
     expect(page).toContain("uncoveredQueuesSummary")
     expect(page).toContain("agentsWithoutSkillsSummary")
-    expect(page).toContain("divide-y")
+    expect(page).toContain("divide-x")
     expect(page).not.toContain("<Card")
     expect(page).not.toContain("DidYouKnow")
   })
@@ -41,10 +41,13 @@ describe("skill routing UX contract", () => {
 
   it("uses focused queue and agent tabs rather than stacking managers on mobile", () => {
     const page = source("src/app/(dashboard)/support/skill-routing/page.tsx")
+    const queues = source("src/components/support/queue-manager.tsx")
     expect(page).toContain('role="tablist"')
     expect(page).toContain('role="tab"')
     expect(page).toContain('mobileView === "queues" ? "block" : "hidden lg:block"')
     expect(page).toContain('setMobileView("agents")')
+    expect(page).toContain("grid grid-cols-3 divide-x")
+    expect(queues).toContain("grid-cols-[minmax(0,1fr)_8rem]")
   })
 
   it("uses semantic controls and accessible live success or rollback feedback", () => {

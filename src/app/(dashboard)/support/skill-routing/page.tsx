@@ -110,7 +110,7 @@ export default function SkillRoutingPage() {
 
   return (
     <div
-      className="space-y-4"
+      className="space-y-3 sm:space-y-4"
       data-testid="skill-routing-workspace"
       data-state={queuesLoading || agentsLoading ? "loading" : queuesError && agentsError ? "error" : partial ? "partial" : "ready"}
     >
@@ -127,10 +127,10 @@ export default function SkillRoutingPage() {
         <p className="pb-2 text-muted-foreground">{t("howItWorksBody")}</p>
       </details>
 
-      <section aria-label={t("coverageTitle")} className="grid divide-y rounded-xl border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0" data-testid="skill-routing-coverage">
-        <div className="p-3"><p className="text-lg font-semibold tabular-nums" data-testid="skill-routing-active-queues">{coverage.activeQueues.length}</p><p className="text-xs text-muted-foreground">{t("activeQueuesSummary")}</p></div>
-        <div className="p-3"><p className="text-lg font-semibold tabular-nums" data-testid="skill-routing-queues-uncovered">{coverage.uncoveredQueues.length}</p><p className="text-xs text-muted-foreground">{t("uncoveredQueuesSummary")}</p></div>
-        <div className="p-3"><p className="text-lg font-semibold tabular-nums" data-testid="skill-routing-agents-without-skills">{coverage.agentsWithoutSkills.length}</p><p className="text-xs text-muted-foreground">{t("agentsWithoutSkillsSummary")}</p></div>
+      <section aria-label={t("coverageTitle")} className="grid grid-cols-3 divide-x rounded-xl border bg-card" data-testid="skill-routing-coverage">
+        <div className="p-2 sm:p-3"><p className="text-lg font-semibold tabular-nums" data-testid="skill-routing-active-queues">{coverage.activeQueues.length}</p><p className="text-[11px] leading-4 text-muted-foreground sm:text-xs">{t("activeQueuesSummary")}</p></div>
+        <div className="p-2 sm:p-3"><p className="text-lg font-semibold tabular-nums" data-testid="skill-routing-queues-uncovered">{coverage.uncoveredQueues.length}</p><p className="text-[11px] leading-4 text-muted-foreground sm:text-xs">{t("uncoveredQueuesSummary")}</p></div>
+        <div className="p-2 sm:p-3"><p className="text-lg font-semibold tabular-nums" data-testid="skill-routing-agents-without-skills">{coverage.agentsWithoutSkills.length}</p><p className="text-[11px] leading-4 text-muted-foreground sm:text-xs">{t("agentsWithoutSkillsSummary")}</p></div>
       </section>
 
       {partial && <div role="status" className="flex items-start gap-2 rounded-lg border p-3 text-sm" data-testid="skill-routing-partial"><AlertCircle className="mt-0.5 h-4 w-4 text-muted-foreground" /><div><p className="font-medium">{t("partialDataTitle")}</p><p className="text-muted-foreground">{queuesError ? t("partialQueuesMissing") : t("partialAgentsMissing")}</p></div></div>}

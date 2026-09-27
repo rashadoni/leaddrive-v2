@@ -2502,6 +2502,19 @@ Current-tree restoration (2026-09-26):
   the unchanged 4.5:1 threshold. Orange actions now use a stable dark-neutral
   foreground with stronger contrast; focused lint, the 0-finding scan, 7/7 UX
   assertions and `git diff --check` are green before a fresh exact-SHA run.
+- Final desktop run `36337966254` on `e07076c0c` is fully green: no Axe,
+  accessibility, touch, overflow, environment or fold findings, zero small
+  targets, primary work at 540 px, load p75 395 ms, filter p75 16 ms and CLS
+  `0.002943936764229145`; all 6/6 disposable outcomes pass and the screenshot
+  is manually accepted. First RU/dark mobile run `36339218299` kept Axe,
+  small-target, overflow and environment totals at zero, and passed 5/6 flows,
+  but correctly failed because the first queue row was below the fold at
+  1059 px and one retry hit-test was intercepted after minimal scrolling. The
+  mobile layout now keeps the three coverage summaries in one compact row,
+  gives queue copy full width and pairs search/filter controls; physical touch
+  targets are explicitly centered within their scroll container before the
+  unchanged DOM hit-test and touchscreen tap. Focused lint, syntax, the
+  0-finding scan, 12/12 contracts and `git diff --check` pass.
 
 ## 18. Workstream 11 — Agent Calendar
 

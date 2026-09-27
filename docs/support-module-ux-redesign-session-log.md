@@ -1862,3 +1862,38 @@ reviewed, run RU/dark mobile physical-touch evidence and the full high matrix.
 Next: checkpoint and push the final contrast token correction, then run a new
 exact-SHA desktop sample. Do not start mobile/high until the desktop cell is
 fully green and its screenshot is manually accepted.
+
+### Workstream 10 desktop pass and mobile fold/touch correction
+
+- EN/light desktop run `36337966254` on `e07076c0c` is fully green: dedicated
+  validation, production build, static browser evidence and all 6/6 mutation
+  outcomes pass. Static totals are zero for Axe, custom accessibility, touch,
+  overflow, environment and primary-work findings; `smallTargets` is zero,
+  primary work begins at 540 px, load p75 is 395 ms, filter p75 16 ms and CLS
+  `0.002943936764229145`. Keyboard recovery and final fixture restoration are
+  true. Manual screenshot review accepts the queue-first hierarchy, compact
+  coverage, dark-on-orange action contrast, unobtrusive 44x44 hitboxes and lack
+  of clipping. Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36337966254`.
+- RU/dark mobile run `36339218299` on the same SHA passed the section gate,
+  production build and 5/6 mutation outcomes. Static Axe, custom accessibility,
+  touch-target, horizontal overflow and environment totals were zero, but the
+  strict primary-work gate failed because the first queue row started at
+  1059 px. The dual-source recovery also rejected one physical tap with
+  `skill_routing_touch_hit_test_failed`; the independent partial-source retry
+  proved an actual Playwright touchscreen tap on a hit-tested 120x44 target.
+  Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36339218299`.
+- Mobile self-audit retains every section but compresses them: the three
+  coverage facts share one row, queue helper copy uses the full card width and
+  search/filter controls share a compact row. Physical retry activation now
+  centers the element inside its actual scroll container before measuring the
+  44x44 minimum and running the unchanged `elementFromPoint` test and
+  `touchscreen.tap`. The first contract pass caught two stale assertions after
+  the layout change; they were updated, and focused syntax/lint, the four-file
+  0-finding scan, 12/12 contracts and `git diff --check` pass on rerun.
+
+Next: checkpoint and push the mobile fold/touch correction, then rerun the
+RU/dark mobile mutation sample on the new exact SHA. Launch the full high matrix
+only after mobile static and all 6/6 mutation outcomes are green and the
+screenshot is manually accepted.

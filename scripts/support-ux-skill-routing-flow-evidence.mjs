@@ -92,6 +92,8 @@ async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
   }
 
   await locator.scrollIntoViewIfNeeded()
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }))
+  await page.waitForTimeout(50)
   const box = await locator.boundingBox()
   if (!box) throw new Error("skill_routing_touch_target_unmeasurable")
   if (box.width < 44 || box.height < 44) {
