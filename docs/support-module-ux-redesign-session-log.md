@@ -921,3 +921,29 @@ physical-touch mobile and all 168 high-density cells on one new exact SHA.
 Next: create the Workstream 5 closure checkpoint, push it, then start
 Workstream 6 Ticket Categories from its recorded product/recovery commits while
 preserving the newer shared evidence runner.
+
+### Workstream 6 restoration and CI-gate self-audit
+
+- Workstream 5 closure is checkpointed and pushed as `7de53359a`. Ticket
+  Categories product commit `3946aa28b` is restored as `709677154`; recovery
+  commit `ac88d8df3` is restored as `554944cb7`.
+- The product cherry-pick conflicted only in the shared confirmation spinner;
+  the current reduced-motion-safe version was preserved. The recovery
+  cherry-pick conflicted only in shared workflow/seed/static/flow contract
+  files. Each was mechanically resolved to the current branch side and then
+  verified byte-for-byte against its pre-cherry-pick stage, preserving the
+  newer full runner while retaining category-specific page and tests.
+- Resource inspection showed 15 GiB available memory, 331 GiB free disk and
+  zero current pressure. The category-scoped anti-pattern scan passes the
+  visible page with zero findings. Four product/recovery suites pass 17/17.
+  Runner syntax and integration ESLint pass; the updated browser workflow
+  contract passes 17/17; `git diff --check` passes.
+- Self-audit found a fail-open CI path: `ticket-categories` is not `all` and did
+  not match any section-specific validation condition. The workflow now has a
+  dedicated Ticket Categories validation step covering scoped scan, i18n,
+  syntax, lint, API/product/recovery contracts and shared visual/performance
+  gates. Contract assertions lock that step and predicate.
+
+Next: checkpoint and push the section-validation correction, then run and
+inspect exact-SHA desktop mutating, physical-touch mobile mutating and complete
+high-density Ticket Categories evidence before closing Workstream 6.

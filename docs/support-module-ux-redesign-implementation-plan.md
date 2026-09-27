@@ -1630,6 +1630,20 @@ Current verification evidence (2026-09-05):
   verification passes eight focused suites with 48/48 assertions,
   changed-source ESLint, `git diff --check`, AZ/RU/EN parity (21,895 leaf keys)
   and the Support UX anti-pattern scan (27 visible TSX files; zero findings).
+- Current-tree restoration on 2026-09-27 is checkpointed as product commit
+  `709677154` and recovery commit `554944cb7`. Shared workflow, seed, static
+  runner and category flow conflicts were resolved in favor of the current
+  branch's byte-identical supersets; the section-specific page and contract
+  additions remain applied. The scoped category scan reports zero findings,
+  the four product/recovery suites pass 17/17, integration ESLint and runner
+  syntax pass, and the strengthened browser workflow contract passes 17/17.
+- Self-audit found that a non-`all` `ticket-categories` dispatch skipped both
+  the existing section validations and the `all` validation block. A dedicated
+  Ticket Categories validation step now runs scoped scan, i18n, syntax, lint,
+  product/API/recovery contracts and shared visual/performance evidence tests.
+  New workflow assertions lock the predicate, source root and flow-contract
+  coverage. A new exact-SHA hosted build/browser run is mandatory before any
+  CAT checkbox closes.
 - CAT checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery
