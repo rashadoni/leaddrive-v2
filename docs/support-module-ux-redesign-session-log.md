@@ -1219,3 +1219,33 @@ physical-touch and full high-density matrices on the same SHA.
 Next: checkpoint and push the responsive selector correction, rerun RU/dark
 mobile evidence on the new exact SHA, inspect all 6/6 outcomes and cleanup, then
 run and inspect the complete high-density SLA matrix before closure.
+
+### Workstream 7 closure self-audit
+
+- Responsive-selector checkpoint `45a2b60e1d5221ea348242467846414713182bb2`
+  passes exact-SHA RU/dark mobile run `36306317998`: one static cell and all 6/6
+  mutating outcomes are green, with a real hit-tested Playwright touchscreen
+  tap on a 144x44 retry target and `disposableFixtureRemoved: true`. Dark theme,
+  reduced motion and `maxTouchPoints: 1` are applied; runtime, axe, custom
+  accessibility, touch, overflow, environment and primary-work findings are
+  zero. Load p75 is 546 ms, primary work begins at 561 px and CLS is
+  `0.009392899609308647`. The retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36306317998`.
+- High-density run `36307388154` passes 24/24 AZ/RU/EN × light/dark × desktop,
+  tablet, narrow-tablet and mobile cells on the same SHA. Every aggregate issue
+  total is zero; maximum primary-work position is 561 px, maximum load p75 is
+  601 ms and maximum CLS is `0.009629902852936656`. Manual AZ desktop/mobile,
+  RU tablet and EN narrow-tablet review confirms healthy localized hierarchy,
+  CTA/action placement, theme behavior and table-to-card responsiveness. Its
+  artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36307388154`.
+- Together with EN/light desktop run `36303939652`, the final evidence covers
+  keyboard recovery, focus-trapped editing and return, physical touch, reduced
+  motion, loading/empty/error/permission/save/refresh/delete recovery,
+  responsive composition, localization, accessibility, performance and visual
+  inspection. SUPUX-SLA-001 through SUPUX-SLA-006 are closed. No scenario,
+  role, locale, theme, viewport, state, assertion or threshold was weakened.
+
+Next: create and push the Workstream 7 closure checkpoint, then restore
+Workstream 8 Support Entitlements from product commit `27c571df4` and recovery
+commit `168aa7134`, preserving current shared evidence supersets.

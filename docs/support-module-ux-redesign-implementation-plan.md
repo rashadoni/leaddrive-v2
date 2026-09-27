@@ -1724,7 +1724,7 @@ Current verification evidence (2026-09-05):
 
 ## 14. Workstream 7 — SLA Policies
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `bad92f916`; CI/browser gates pending**
+**Status: DONE — exact-SHA desktop/mobile/high evidence complete at `45a2b60e1`**
 **Route:** `/settings/sla-policies`
 **Primary files:** `src/app/(dashboard)/settings/sla-policies/page.tsx`,
 `src/components/sla-policy-form.tsx`
@@ -1736,16 +1736,16 @@ the form does not clearly prevent conflicting response/resolution targets.
 Target UX: a readable SLA policy matrix with safe editing and a plain-language
 preview of policy behavior.
 
-- [ ] **SUPUX-SLA-001** Remove duplicate header/card title and repeated copy.
-- [ ] **SUPUX-SLA-002** Present policies as a compact matrix by priority where it
+- [x] **SUPUX-SLA-001** Remove duplicate header/card title and repeated copy.
+- [x] **SUPUX-SLA-002** Present policies as a compact matrix by priority where it
   improves comparison; retain a responsive list alternative.
-- [ ] **SUPUX-SLA-003** Localize priorities, hours/minutes, placeholders, errors,
+- [x] **SUPUX-SLA-003** Localize priorities, hours/minutes, placeholders, errors,
   and accessible names.
-- [ ] **SUPUX-SLA-004** Add preview text for first response, resolution, business
+- [x] **SUPUX-SLA-004** Add preview text for first response, resolution, business
   hours, and escalation implications.
-- [ ] **SUPUX-SLA-005** Validate resolution target against response target and
+- [x] **SUPUX-SLA-005** Validate resolution target against response target and
   detect duplicates/conflicts before submit.
-- [ ] **SUPUX-SLA-006** Replace icon-only actions and add load/save error recovery.
+- [x] **SUPUX-SLA-006** Replace icon-only actions and add load/save error recovery.
 
 Acceptance:
 
@@ -1869,17 +1869,31 @@ Current verification evidence (2026-09-05):
   current pressure. Runner syntax, unchanged five-file scan, changed-source
   ESLint, `git diff --check` and the two affected suites pass 12/12. A newer
   exact-SHA desktop/mobile/high trio remains mandatory.
-- SLA checkboxes remain open until authenticated browser evidence covers
-  375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
-  physical touch, reduced motion, forced loading/empty/error/permission/recovery
-  states, accessibility, performance and visual regression. No browser binary
-  is installed on this Contabo host and browser/build gates belong to CI or the
-  approved worker. Full local typecheck is NOT RUN because the earlier
-  reference-slice attempt exhausted Node's 2 GB heap and the host contract
-  forbids a heavier local retry; GitHub CI remains mandatory. Exact-SHA run
-  `34001984499` for `bad92f916` ended in GitHub Actions `startup_failure`
-  before job creation, so rendered execution is **NOT RUN** and no SLA checkbox
-  is closed.
+- Final exact-SHA desktop run `36303939652` at `8f836d172` passes one EN/light
+  static cell and 6/6 keyboard/recovery outcomes with disposable cleanup.
+  Runtime, axe, custom accessibility, touch, overflow, environment and primary-
+  work issue totals are zero; load p75 is 476 ms, primary work begins at 295 px
+  and CLS is `0.0007984547556182484`. Manual desktop review is healthy.
+- The first RU/dark mobile run `36305026526` proved a healthy static card layout,
+  dark/reduced-motion environment and physical 144x44 touchscreen recovery, but
+  correctly failed four flows because the runner selected hidden desktop row
+  duplicates. Checkpoint `45a2b60e1` makes row/action selectors explicitly
+  visible without changing product UI or assertions. Replacement run
+  `36306317998` passes one static cell and all 6/6 flows, including hit-tested
+  Playwright touchscreen activation and `disposableFixtureRemoved: true`.
+  Static runtime, axe, custom accessibility, touch, overflow, environment and
+  primary-work issue totals are zero; load p75 is 546 ms, primary work begins
+  at 561 px and CLS is `0.009392899609308647`.
+- Final high-density run `36307388154` on the same exact SHA passes 24/24
+  AZ/RU/EN × light/dark × 1440/1024/768/375 cells. Aggregate runtime, axe,
+  custom accessibility, touch, overflow, environment and primary-work totals
+  are all zero. Maximum primary-work position is 561 px, maximum load p75 is
+  601 ms and maximum CLS is `0.009629902852936656`. Manual AZ desktop/mobile,
+  RU tablet and EN narrow-tablet review confirms healthy localization, theme,
+  table/card transitions and action hierarchy. SUPUX-SLA-001 through
+  SUPUX-SLA-006 are closed; no gate was weakened. Full local typecheck remains
+  NOT RUN under the host contract, while the SHA-bound hosted production builds
+  and section gates are green.
 
 ## 15. Workstream 8 — Support Entitlements
 
