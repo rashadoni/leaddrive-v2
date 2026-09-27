@@ -15256,6 +15256,13 @@
   "mtmAnalytics": {
     "title": "Аналитика"
   },
+    "mtmFilters": {
+      "more": "Ещё фильтры",
+      "reset": "Сбросить",
+      "clearSearch": "Очистить поиск",
+      "view": "Вид",
+      "found": "Найдено: {count}"
+    },
     "mtmTeamResults": {
       "period": "Период",
       "preset": {
