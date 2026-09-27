@@ -319,3 +319,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. No terminal action/UI/tenant activation or progress credit was introduced.
 - Precise stopping point: the task-owned repair/evidence delta is ready for a path-scoped checkpoint; no final frozen identity or complete-diff review exists yet.
 - Next action: checkpoint only the listed task paths, verify a clean worktree, compute base/head/hash/size and dispatch the mandatory author-independent frozen review.
+
+## 2026-09-27 — C6 first replacement frozen review RED on evidence P3
+
+- The mandatory reviewer independently verified clean frozen base/merge-base `fdc601599b048734409a1359863ede382d08e768`, head `e82f9a3f51f3220af72b8c100ba3dc45a287ca20`, binary-diff SHA-256 `25b1df05546c8de7f4c58165bfc0b18d3d06d7e053cb814b9195019bf769c48b`, 188,429 bytes and 32 files. The verdict was RED with one P3 and no P0–P2; no inherited GREEN credit is used.
+- The finding was documentation fidelity only: the evidence transposed the actual signal fields and said employee-response `submittedAt`/correction-request `createdAt`, then attributed client origin to the employee response. Production stores server-default response `createdAt` and correction-request `submittedAt`; the mobile request is the client-origin timestamp. The evidence now states those exact facts.
+- The reviewer separately confirmed that both prior P1s and the PostgreSQL fixture P2 are repaired. His read-only checks passed diff whitespace and five focused files / 40 tests; all 11 real-PostgreSQL cases and heavy checks remained `NOT RUN` under the same constraints. He made no edits, commits, pushes or status publications.
+- The P3 repair changes no runtime, schema, migration, test, UI, tenant state or progress. Counts remain `81/161`, gates `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: the factual evidence repair and append-only receipts are uncommitted, so the prior frozen identity is superseded and remains RED.
+- Next action: verify/checkpoint the documentation-only repair, compute a new clean identity and require a fresh author-independent zero-finding rereview before any push.

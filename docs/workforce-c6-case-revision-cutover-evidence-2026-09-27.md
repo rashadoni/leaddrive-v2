@@ -13,11 +13,11 @@ phase-gate credit.
 ## Why timestamps are not a causal boundary
 
 The prior workbench compared decision `createdAt` with employee-response
-`submittedAt` and correction-request `createdAt`. That is insufficient for a
+`createdAt` and correction-request `submittedAt`. That is insufficient for a
 terminal lifecycle:
 
-- employee response timestamps can originate from a client and are therefore
-  not trusted ordering facts;
+- a mobile correction request's `submittedAt` can originate from the client and
+  is therefore not a trusted ordering fact;
 - PostgreSQL `now()` is fixed at transaction start, so a transaction that
   starts first, waits on the case advisory lock and writes last can carry an
   earlier timestamp than the reset/reopen decision it causally followed; and
@@ -172,7 +172,11 @@ mandatory before merge. The retired `agent-review` GitHub status is not
 restored. A separate pre-freeze audit found and repaired one P2 fixture-fidelity
 issue (`TIMESTAMPTZ` versus production `TIMESTAMP(3)`); its rereview returned
 zero remaining findings, but it is not substituted for the mandatory frozen
-complete-diff review.
+complete-diff review. The first replacement frozen review then found one P3 in
+this evidence text: it had transposed response/request timestamp field names
+and attributed client time to the response rather than the mobile correction
+request. The factual wording above is repaired; no runtime or migration logic
+changed, and a new frozen identity still requires review.
 
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal
