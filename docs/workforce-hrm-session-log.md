@@ -553,3 +553,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; review changes no task or gate credit.
 - Precise stopping point: implementation, focused checks, repository static gates and early preflight are green in the uncommitted working tree; the temporary dependency symlink is the only non-task local setup artifact.
 - Next action: remove only that symlink, checkpoint explicit task-owned paths, freeze the exact identity and require a fresh author-independent review of the complete committed diff before any push.
+
+## 2026-09-27 — C6 writer integrated after main advanced
+
+- A read-only fetch showed `origin/main` had advanced from the deployed PR #454 SHA to `4e5afe8da053c187e5070fbedd157ade9382817b` through PR #455. The six upstream paths are limited to MTM compact-filter UI/tests and RU/AZ/EN messages and do not overlap the nine policy-writer/release-evidence paths.
+- The branch merged current main without conflict as `f23178d14`. The earlier base `0a71fc319...` / head `41128cdaa...` identity was immediately withdrawn from final-review credit; its reviewer was explicitly stopped from issuing a release verdict. Diagnostic full reading found no additional P0-P3 but does not transfer to the replacement identity.
+- The exact package-lock cache was linked read-only again without install or foreign edit. On the integrated tree, the focused selection passes 36 tests and six real-PostgreSQL cases remain `SKIPPED / NOT RUN`; targeted ESLint, Prisma validation, RLS scan 553/0, runner policy 37, event assets 27/86/5, main-protection configurator, diff whitespace and translation parity (23,587 English leaf keys; RU/AZ missing=0 extra=0) pass.
+- Full local typecheck/build, browser E2E, Android/Gradle, load, physical-device and human-pilot evidence remains `NOT RUN`. Exact PostgreSQL and typecheck remain mandatory in exact-head CI. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: current main is conflict-free integrated and all permitted replacement-tree checks are green; the only local setup artifact is the temporary ignored dependency symlink and no valid final frozen review exists yet.
+- Next action: remove only the dependency symlink, checkpoint this integration receipt, freeze the new base/head/hash/size and obtain a from-scratch independent complete-diff verdict before push.

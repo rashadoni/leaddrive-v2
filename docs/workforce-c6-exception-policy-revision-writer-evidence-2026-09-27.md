@@ -117,3 +117,20 @@ writer closes no acceptance item by itself and does not make a policy
 effective. A clean checkpoint, author-independent frozen complete-diff review,
 receipt-integrity review, sub-400 KB PR, all five exact-head contexts, normal
 merge/deploy and exact-SHA public smoke remain mandatory.
+
+## Integration with current main
+
+After the first clean source checkpoint, `origin/main` advanced from the
+deployed PR #454 SHA to
+`4e5afe8da053c187e5070fbedd157ade9382817b` through unrelated PR #455. Its six
+paths contain only MTM compact-filter UI/tests and translations and do not
+overlap this slice. The branch merged that exact main without conflict; the
+older frozen identity was immediately withdrawn from final-review credit.
+
+On the integrated tree, the focused selection again passes 36 tests with six
+exact-PostgreSQL tests `SKIPPED / NOT RUN`. Targeted ESLint, Prisma validation,
+RLS `553/0`, runner policy `37`, event assets `27/86/5`, main-protection tests,
+diff whitespace and translation parity (23,587 English leaf keys; RU/AZ
+missing=0 extra=0) pass. The temporary exact-lock dependency symlink is removed
+before checkpointing. A new integrated identity and complete independent
+review are required; no verdict from the superseded identity transfers.
