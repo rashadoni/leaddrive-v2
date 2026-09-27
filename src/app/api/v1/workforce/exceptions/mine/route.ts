@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
+import {
+  workforceSessionRoleAllows,
+  withWorkforceSessionAuth,
+} from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { resolveWorkforceExceptionResponseRecording } from "@/lib/workforce/exception-response-rollout"
 import {
@@ -41,6 +44,8 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
     // A missing organization or unknown flag shape remains the safe disabled
     // state. The response table must not be queried before an explicit rollout.
     const responseRecording = resolveWorkforceExceptionResponseRecording(organization?.features)
+    const canMutateResponses = responseRecording === "AVAILABLE"
+      && workforceSessionRoleAllows(auth.role, "write")
     const cases = await prisma.workforceExceptionCase.findMany({
       where: {
         organizationId: auth.orgId,
@@ -107,6 +112,14 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
                 employeeResponses,
               })
             : "UNAVAILABLE" as const
+          const availableResponseAction = canMutateResponses
+            && responseState === "NOT_ACKNOWLEDGED"
+            && decisions !== null
+            ? {
+                kind: "ACKNOWLEDGE" as const,
+                expectedCaseRevision: decisions.length,
+              }
+            : null
           if (item.workday) {
             return [{
               caseId: item.id,
@@ -117,6 +130,7 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
               workDate: item.workday.workDate,
               availableAction: "REQUEST_CORRECTION" as const,
               responseState,
+              availableResponseAction,
             }]
           }
           if (item.kind === "NO_SHOW" && item.expectedWorkDate) {
@@ -132,6 +146,7 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
               // schedule-only case exposes no acknowledgement button even
               // after the additive response ledger has rolled out.
               responseState: "UNAVAILABLE" as const,
+              availableResponseAction: null,
             }]
           }
           return []

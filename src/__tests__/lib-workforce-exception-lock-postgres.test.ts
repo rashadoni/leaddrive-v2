@@ -1515,9 +1515,9 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     expect(stored.response_created_at.getTime()).toBeLessThan(stored.reset_created_at.getTime())
   }, 15_000)
 
-  it("rejects a mobile acknowledgement when a newer case revision wins the shared lock", async () => {
-    const caseId = `mobile-stale-revision-${randomUUID()}`
-    const agentId = `mobile-stale-agent-${randomUUID()}`
+  it("rejects a revision-bound employee acknowledgement when a newer case revision wins the shared lock", async () => {
+    const caseId = `response-stale-revision-${randomUUID()}`
+    const agentId = `response-stale-agent-${randomUUID()}`
     const clientResponseId = randomUUID()
     await observer.$executeRawUnsafe(`
       INSERT INTO "${schema}"."case_decisions" ("organization_id", "case_id")
@@ -1546,7 +1546,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
           organizationId,
           caseId,
           agentId,
-          workdayId: "workday-mobile-stale",
+          workdayId: "workday-response-stale",
           segmentId: null,
           correctionRequestId: null,
           responseCode: "ACKNOWLEDGED",

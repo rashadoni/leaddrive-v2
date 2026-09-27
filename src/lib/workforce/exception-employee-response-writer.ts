@@ -236,9 +236,10 @@ async function appendAuthorizedWorkforceExceptionEmployeeResponseInternal(
 }
 
 /**
- * Persists an exact employee-owned response after authorization. Existing web
- * callers retain the canonical current-revision behavior; presentation-bound
- * mobile callers use the stricter entry point below.
+ * Persists an exact employee-owned response after authorization. This
+ * compatibility primitive is only safe for callers that do not act on an
+ * earlier presentation; every presentation-bound route uses the stricter
+ * entry point below.
  */
 export async function appendAuthorizedWorkforceExceptionEmployeeResponse(
   input: AppendAuthorizedWorkforceExceptionEmployeeResponseInput,
@@ -247,9 +248,9 @@ export async function appendAuthorizedWorkforceExceptionEmployeeResponse(
 }
 
 /**
- * Mobile acknowledgement variant bound to the exact decision revision shown
- * to the employee. The revision is checked only after the canonical case lock;
- * exact completed retries still resolve before lifecycle validation.
+ * Employee response variant bound to the exact decision revision shown to the
+ * employee. The revision is checked only after the canonical case lock; exact
+ * completed retries still resolve before lifecycle validation.
  */
 export async function appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse(
   input: AppendAuthorizedWorkforceExceptionEmployeeResponseInput & {

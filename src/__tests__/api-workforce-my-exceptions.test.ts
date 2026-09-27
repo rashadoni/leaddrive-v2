@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
-const { findMany, organizationFindUnique } = vi.hoisted(() => ({
+const { findMany, organizationFindUnique, roleAllows } = vi.hoisted(() => ({
   findMany: vi.fn(),
   organizationFindUnique: vi.fn(),
+  roleAllows: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({ prisma: {
@@ -12,6 +13,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: {
 } }))
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAuth: vi.fn((_action, handler) => handler),
+  workforceSessionRoleAllows: roleAllows,
 }))
 vi.mock("@/lib/workforce/actor", () => ({ resolveWorkforceActor: vi.fn() }))
 
@@ -38,6 +40,8 @@ beforeEach(() => {
   findMany.mockReset()
   organizationFindUnique.mockReset()
   organizationFindUnique.mockResolvedValue({ features: [] })
+  roleAllows.mockReset()
+  roleAllows.mockReturnValue(true)
   vi.mocked(resolveWorkforceActor).mockReset()
 })
 
@@ -69,6 +73,7 @@ describe("Workforce personal exception discovery API", () => {
           workdayId: "workday-1",
           availableAction: "REQUEST_CORRECTION",
           responseState: "UNAVAILABLE",
+          availableResponseAction: null,
         }],
       },
     })
@@ -127,6 +132,7 @@ describe("Workforce personal exception discovery API", () => {
           workdayId: null,
           availableAction: "VIEW_ONLY_NO_SHOW",
           responseState: "UNAVAILABLE",
+          availableResponseAction: null,
         }],
       },
     })
@@ -156,7 +162,11 @@ describe("Workforce personal exception discovery API", () => {
       success: true,
       data: {
         responseRecording: "AVAILABLE",
-        cases: [{ caseId: "case-00000001", responseState: "ACKNOWLEDGED" }],
+        cases: [{
+          caseId: "case-00000001",
+          responseState: "ACKNOWLEDGED",
+          availableResponseAction: null,
+        }],
       },
     })
     expect(JSON.stringify(body)).not.toContain("response-internal-only")
@@ -223,8 +233,16 @@ describe("Workforce personal exception discovery API", () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.data.cases).toEqual(expect.arrayContaining([
-      expect.objectContaining({ caseId: "case-stale-request", responseState: "NOT_ACKNOWLEDGED" }),
-      expect.objectContaining({ caseId: "case-stale-reopen", responseState: "NOT_ACKNOWLEDGED" }),
+      expect.objectContaining({
+        caseId: "case-stale-request",
+        responseState: "NOT_ACKNOWLEDGED",
+        availableResponseAction: { kind: "ACKNOWLEDGE", expectedCaseRevision: 2 },
+      }),
+      expect.objectContaining({
+        caseId: "case-stale-reopen",
+        responseState: "NOT_ACKNOWLEDGED",
+        availableResponseAction: { kind: "ACKNOWLEDGE", expectedCaseRevision: 3 },
+      }),
     ]))
   })
 
@@ -260,10 +278,28 @@ describe("Workforce personal exception discovery API", () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.data.cases).toEqual(expect.arrayContaining([
-      expect.objectContaining({ caseId: "case-gapped", responseState: "UNAVAILABLE" }),
-      expect.objectContaining({ caseId: "case-invalid", responseState: "UNAVAILABLE" }),
-      expect.objectContaining({ caseId: "case-resolved", responseState: "UNAVAILABLE" }),
+      expect.objectContaining({ caseId: "case-gapped", responseState: "UNAVAILABLE", availableResponseAction: null }),
+      expect.objectContaining({ caseId: "case-invalid", responseState: "UNAVAILABLE", availableResponseAction: null }),
+      expect.objectContaining({ caseId: "case-resolved", responseState: "UNAVAILABLE", availableResponseAction: null }),
     ]))
+  })
+
+  it("does not advertise a write action to a session role the POST boundary would reject", async () => {
+    vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
+    organizationFindUnique.mockResolvedValue({ features: [WORKFORCE_EXCEPTION_RESPONSE_FLAG] })
+    roleAllows.mockReturnValue(false)
+    findMany.mockResolvedValue([ownCase({
+      decisions: [{ decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 1 }],
+      employeeResponses: [],
+    })])
+
+    const response = await callGet(new NextRequest("http://localhost:3000/api/v1/workforce/exceptions/mine"), AUTH)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: { cases: [{ responseState: "NOT_ACKNOWLEDGED", availableResponseAction: null }] },
+    })
+    expect(roleAllows).toHaveBeenCalledWith("sales", "write")
   })
 
   it("denies a non-employee before querying cases", async () => {
