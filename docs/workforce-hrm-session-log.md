@@ -829,3 +829,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
 - Precise stopping point: repaired source is integrated and verified on current main; only this three-document integration receipt is uncommitted, PR #462 still points to the older failed head.
 - Next action: checkpoint this receipt, freeze the clean current-main identity, require a fresh zero-finding review from zero, then push the replacement head and rerun every required check.
+
+## 2026-09-27 — PR #462 replacement frozen review GREEN
+
+- Fresh author-independent review from zero verified clean base/current `origin/main`/merge-base `bc126735cc316cfc7f206aae839288884d5a9d5d` through head `2711f194d5615c9efbbc2701412b3b535b157416`: 10 paths / 55,819 binary-diff bytes, SHA-256 `a33d15906defd7735979da6da144cb4dfb99adda6abf3efff1daf25d2d891367`.
+- The reviewer returned GREEN with zero P0-P3 findings. Queue mint, response-only preflight/post-lock checks, exact replay/no append, token/grant/lifecycle authority, unknown-code rejection, TS2345 repair, READ COMMITTED boundary, tests/evidence truth and inherited release receipt were confirmed.
+- The current-main PR #456 integration was independently verified as 19 unrelated MTM paths with no overlap. Reviewer-side diff/identity/clean checks passed; Vitest, ESLint, typecheck and heavy gates were `NOT RUN` and author results were not relabelled.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or phase-gate credit is added.
+- Precise stopping point: the repaired integrated source/test/evidence head is independently GREEN; only this three-document receipt is uncommitted and PR #462 still points to the older failed head.
+- Next action: checkpoint the receipt-only delta, independently prove all six reviewed runtime/test blobs byte-identical, then push the replacement head and require all five exact-head checks before merge.

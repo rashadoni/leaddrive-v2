@@ -153,3 +153,27 @@ the current-main diff whitespace check passes. Full local typecheck/build and
 the other heavy gates remain `NOT RUN`; a clean documentation checkpoint,
 fresh frozen review from current main and all five replacement CI checks remain
 mandatory.
+
+## Replacement frozen complete-diff review GREEN
+
+The replacement clean identity was exact base/current `origin/main`/merge-base
+`bc126735cc316cfc7f206aae839288884d5a9d5d` through head
+`2711f194d5615c9efbbc2701412b3b535b157416`: 10 paths / 55,819 binary-diff
+bytes, SHA-256
+`a33d15906defd7735979da6da144cb4dfb99adda6abf3efff1daf25d2d891367`, below
+400 KB. A fresh author-independent reviewer verified the identity and clean
+status at both ends, reread the complete current-main diff from zero and
+returned GREEN with zero P0-P3 findings.
+
+The review confirmed filter-before-mint, response-only preflight/post-lock
+gating, token/grant/lifecycle authority, exact replay with no new append,
+unknown-code rejection beyond the widened storage type boundary, honest READ
+COMMITTED limits, the TS2345 repair, test/evidence accuracy and the inherited
+PR #461 release receipt. It also verified that current-main PR #456 changed 19
+non-overlapping MTM paths.
+
+Reviewer identity/clean/diff checks passed. Reviewer Vitest, ESLint, typecheck
+and heavy gates were `NOT RUN`, and author results were not relabelled. Only
+this evidence file, the roadmap and append-only session log may change after
+the verdict; all six reviewed runtime/test blobs must remain byte-identical in
+an independent receipt-integrity review before the replacement head is pushed.
