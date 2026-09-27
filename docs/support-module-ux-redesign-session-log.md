@@ -1419,3 +1419,29 @@ desktop exact-SHA gate, then inspect all seven outcomes and fixture cleanup.
 
 Next: checkpoint and push the focus-probe/milestone-portal correction, rerun the
 unchanged desktop gate and require 7/7 plus disposable cleanup before mobile.
+
+### Workstream 8 stable milestone-confirmation evidence
+
+- Focus-probe/milestone-portal checkpoint
+  `2f136ee428bc475dbb2e83d827ec4c3cfcf618ba` passes the section gate,
+  fixtures, production build and static evidence in exact-SHA run
+  `36314797721`. Static issue totals remain zero, load p75 is 359 ms and CLS is
+  `0.0007984547556182484`; the artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36314797721`.
+- Six of seven outcomes are green, including lifecycle error/retry with exact
+  focus restoration, edit value retention/retry and final Active restoration.
+  The milestone flow reaches its inline failure, retries deletion and closes
+  the confirmation. Its final hidden wait still uses dynamic
+  `getByRole("dialog").last()`, which re-resolves to the parent detail Sheet as
+  soon as the child dialog unmounts, producing a false timeout after success.
+- The milestone confirmation portal now has a stable, conditional test-id
+  wrapper. Evidence waits for the child dialog within that wrapper, performs
+  the same error/retry actions, waits for that wrapper to disappear, and still
+  requires the created milestone row to disappear before recording
+  `disposableFixtureRemoved: true`.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  pressure. Runner syntax, scoped ESLint, diff check and both contracts pass
+  12/12. No product behavior, mutation, cleanup or wait threshold changed.
+
+Next: checkpoint and push the stable confirmation selector, rerun the exact
+desktop gate and require 7/7 plus both cleanup/restoration flags before mobile.

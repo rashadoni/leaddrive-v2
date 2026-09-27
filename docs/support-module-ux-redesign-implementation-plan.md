@@ -2106,6 +2106,12 @@ Additional recovery evidence (2026-09-06):
   `document.body` so Radix includes it in the active modal/accessibility layer
   above the preserved Sheet. Syntax/lint/diff and both contracts pass 12/12;
   7/7 hosted outcomes and cleanup remain mandatory.
+- Exact-SHA run `36314797721` at `2f136ee42` passes 6/7 outcomes. The remaining
+  false timeout occurs after successful milestone delete retry because dynamic
+  `getByRole("dialog").last()` re-resolves from the unmounted child confirmation
+  to the still-open parent Sheet. A stable conditional test-id wrapper now
+  scopes the same alert/retry/hidden checks and the row-removal cleanup
+  assertion remains mandatory. Syntax/lint/diff and both contracts pass 12/12.
 
 ## 16. Workstream 9 — Entitlement Templates
 

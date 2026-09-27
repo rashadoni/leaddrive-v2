@@ -30,6 +30,7 @@ describe("Support Entitlements mutating evidence contract", () => {
     expect(flow).not.toContain(".isFocused()")
     expect(flow).toContain("lifecycle_failure_discarded_reason")
     expect(flow).toContain("milestone_delete_failure_removed_definition")
+    expect(flow).toContain('getByTestId("support-entitlement-delete-milestone-dialog")')
     expect(flow).toContain("entitlementRestoredActive: true")
     expect(flow).toContain('"support-entitlements-flow-evidence.json"')
     expect(flow).toContain("report.results.length !== 7")

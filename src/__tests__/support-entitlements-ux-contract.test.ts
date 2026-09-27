@@ -71,6 +71,7 @@ describe("support entitlements UX contract", () => {
     expect(page).toContain("if (!open && !interactionBlocked) onClose()")
     expect(page).toContain("if (interactionBlocked) event.preventDefault()")
     expect(page).toContain("deleteDefinitionTarget && createPortal")
+    expect(page).toContain('data-testid="support-entitlement-delete-milestone-dialog"')
     expect(dialog).toContain("pointer-events-auto fixed inset-0 z-[60]")
     expect(page).not.toContain("window.prompt")
     expect(page).not.toContain("window.confirm")
