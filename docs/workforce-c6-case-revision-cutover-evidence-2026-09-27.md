@@ -1,7 +1,7 @@
 # Workforce C6 case-revision cutover evidence — 2026-09-27
 
-Status: **implementation and replacement complete-diff review GREEN;
-receipt-integrity check and exact-head CI pending**.
+Status: **PR #452 exact-head `static-checks` RED on test-ledger baseline;
+repair prepared; replacement review and CI rerun pending**.
 
 This slice starts from deployed `main` SHA
 `fdc601599b048734409a1359863ede382d08e768` plus the append-only release
@@ -112,15 +112,19 @@ SECURITY`. This matches the production deployment privilege boundary rather
 than relying on the CI superuser.
 
 The harness invokes the real `prisma migrate deploy` command. It first deploys
-only expansion, writes old-binary request/response rows while all three legacy
-decisions are still NULL, and proves that both rows bind to revision 3 in
-strict timestamp order. It then deploys backfill, deliberately creates one
-duplicate revision, observes one failed Prisma index-migration ledger row plus
-one same-named invalid index, removes only the injected fault, executes the
-exact `prisma migrate resolve --rolled-back` recovery, and replays deployment
-to four successful migration rows with no unresolved entry. Its three
-lifecycle timestamp columns use the exact production `TIMESTAMP(3)` type and
-default semantics.
+registers one test-only no-op baseline marker with the real `prisma migrate
+resolve --applied` command. The fixture deliberately creates the production-like
+tables before Prisma runs; the marker models the already populated production
+ledger without marking any of the four target migrations applied. The harness
+then deploys only expansion, writes old-binary request/response rows while all
+three legacy decisions are still NULL, and proves that both rows bind to
+revision 3 in strict timestamp order. It next deploys backfill, deliberately
+creates one duplicate revision, observes one failed Prisma index-migration
+ledger row plus one same-named invalid index, removes only the injected fault,
+executes the exact `prisma migrate resolve --rolled-back` recovery, and replays
+deployment to four successful migration rows with no unresolved entry. Its
+three lifecycle timestamp columns use the exact production `TIMESTAMP(3)` type
+and default semantics.
 
 The eleven opt-in PostgreSQL cases cover:
 
@@ -189,6 +193,19 @@ the 11-case real-PostgreSQL file remained correctly skipped without an
 approved URL. This append-only review receipt is not part of that frozen head
 and therefore requires a separate read-only integrity confirmation before
 publication.
+
+That receipt-only delta was independently confirmed GREEN at final published
+head `9e60bce04b5303d7c742ed69c16c26f4b8331048`; it changed exactly these three
+documents and no source, workflow, migration or test file. PR #452 exact-head
+run `36286354272` then passed `pr-scope`, `runner-policy` and `scan`, while
+`static-checks` correctly failed the new real-PostgreSQL harness with Prisma
+`P3005`. The fixture had pre-created a non-empty production-like schema but no
+existing Prisma ledger, unlike production. The test-only baseline marker above
+uses Prisma's supported baselining path before the four exact target
+migrations. The 13-file local selection still passes 226 tests with the 11
+PostgreSQL cases skipped, and exact-test ESLint passes. This test-source repair
+supersedes the prior reviewed identity; fresh review and all five replacement
+exact-head contexts are required. No gate is reclassified or weakened.
 
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal

@@ -30,6 +30,7 @@ const migrationOwnerRole = `workforce_revision_owner_${roleSuffix}`
 const migrationLoginRole = `workforce_revision_migrator_${roleSuffix}`
 const migrationLoginPassword = `Revision_${randomUUID().replaceAll("-", "")}`
 const organizationId = "org-workforce-lock-proof"
+const existingSchemaBaselineMigration = "00000000000000_existing_production_schema"
 const revisionMigrationNames = [
   "20260927014000_workforce_exception_case_revisions",
   "20260927014100_workforce_exception_case_revisions_backfill",
@@ -97,6 +98,16 @@ datasource db {
 }
 `)
   writeFileSync(join(prismaDirectory, "migrations/migration_lock.toml"), 'provider = "postgresql"\n')
+  const baselineDirectory = join(
+    prismaDirectory,
+    "migrations",
+    existingSchemaBaselineMigration,
+  )
+  mkdirSync(baselineDirectory, { recursive: true })
+  writeFileSync(
+    join(baselineDirectory, "migration.sql"),
+    "-- Test-only Prisma baseline marker for the pre-existing production schema.\n",
+  )
   return migrationProject
 }
 
@@ -363,6 +374,14 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       )
     `)
     migrationProject = createMigrationProject()
+    const baseline = runPrismaMigrationCommand(migrationProject, [
+      "migrate", "resolve", "--applied", existingSchemaBaselineMigration,
+    ])
+    if (baseline.status !== 0) {
+      throw new Error(
+        `Workforce revision existing-schema baseline failed\n${baseline.stdout}\n${baseline.stderr}`,
+      )
+    }
     addExactMigrationToProject(migrationProject, revisionMigrationNames[0])
     const expandDeploy = runPrismaMigrationCommand(migrationProject, ["migrate", "deploy"])
     if (expandDeploy.status !== 0) {
