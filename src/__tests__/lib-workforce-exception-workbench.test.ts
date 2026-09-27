@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   evaluateWorkforceExceptionWorkbenchContext,
   MAX_WORKFORCE_EXCEPTION_DECISIONS,
+  projectWorkforceExceptionSelfResponseState,
 } from "@/lib/workforce/exception-workbench"
 
 function evaluate(overrides: Partial<Parameters<typeof evaluateWorkforceExceptionWorkbenchContext>[0]> = {}) {
@@ -13,6 +14,18 @@ function evaluate(overrides: Partial<Parameters<typeof evaluateWorkforceExceptio
     employeeResponses: [],
     correctionRequests: [],
     correctionContextComplete: true,
+    ...overrides,
+  })
+}
+
+function projectSelfResponse(
+  overrides: Partial<Parameters<typeof projectWorkforceExceptionSelfResponseState>[0]> = {},
+) {
+  return projectWorkforceExceptionSelfResponseState({
+    workdayId: "workday_1",
+    priorDecisions: [],
+    decisionHistoryComplete: true,
+    employeeResponses: [],
     ...overrides,
   })
 }
@@ -166,5 +179,95 @@ describe("Workforce exception workbench context", () => {
         { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 3 },
       ],
     })).toMatchObject({ stage: "DATA_INTEGRITY_REVIEW", availableDecisions: [] })
+  })
+})
+
+describe("Workforce employee self-response projection", () => {
+  it("requires a response at or after the latest employee-response request", () => {
+    const priorDecisions = [
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 2 },
+    ]
+    expect(projectSelfResponse({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: 1 }],
+    })).toBe("NOT_ACKNOWLEDGED")
+    expect(projectSelfResponse({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: 2 }],
+    })).toBe("ACKNOWLEDGED")
+  })
+
+  it("does not reuse a response from before the latest reopen", () => {
+    const priorDecisions = [
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
+      { decisionCode: "REOPEN_FOR_REVIEW", caseRevision: 3 },
+    ]
+    expect(projectSelfResponse({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: 2 }],
+    })).toBe("NOT_ACKNOWLEDGED")
+    expect(projectSelfResponse({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: 3 }],
+    })).toBe("ACKNOWLEDGED")
+  })
+
+  it("keeps non-workday and resolved cases unavailable", () => {
+    expect(projectSelfResponse({ workdayId: null })).toBe("UNAVAILABLE")
+    expect(projectSelfResponse({
+      priorDecisions: [
+        { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+        { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
+      ],
+      employeeResponses: [{ observedCaseRevision: 2 }],
+    })).toBe("UNAVAILABLE")
+  })
+
+  it("fails closed on incomplete, non-contiguous or invalid decision history", () => {
+    expect(projectSelfResponse({ decisionHistoryComplete: false })).toBe("UNAVAILABLE")
+    expect(projectSelfResponse({
+      priorDecisions: [
+        { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+        { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 3 },
+      ],
+    })).toBe("UNAVAILABLE")
+    expect(projectSelfResponse({
+      priorDecisions: [{ decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 1 }],
+    })).toBe("UNAVAILABLE")
+    expect(projectSelfResponse({
+      priorDecisions: [{ decisionCode: "FUTURE_DECISION", caseRevision: 1 }],
+    })).toBe("UNAVAILABLE")
+  })
+
+  it("fails closed on impossible response revisions and ignores legacy NULL", () => {
+    const priorDecisions = [{ decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 1 }]
+    expect(projectSelfResponse({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: 2 }],
+    })).toBe("UNAVAILABLE")
+    expect(projectSelfResponse({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: null }],
+    })).toBe("NOT_ACKNOWLEDGED")
+  })
+
+  it("keeps a current response readable at capacity but offers no fresh response", () => {
+    const priorDecisions = Array.from({ length: MAX_WORKFORCE_EXCEPTION_DECISIONS }, (_, index) => ({
+      decisionCode: "ACKNOWLEDGE",
+      caseRevision: index + 1,
+    }))
+    expect(projectSelfResponse({ priorDecisions })).toBe("UNAVAILABLE")
+    expect(projectSelfResponse({
+      priorDecisions,
+      employeeResponses: [{ observedCaseRevision: MAX_WORKFORCE_EXCEPTION_DECISIONS }],
+    })).toBe("ACKNOWLEDGED")
+    expect(projectSelfResponse({
+      priorDecisions: [...priorDecisions, {
+        decisionCode: "ACKNOWLEDGE",
+        caseRevision: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
+      }],
+    })).toBe("UNAVAILABLE")
   })
 })

@@ -50,6 +50,11 @@ export type WorkforceExceptionWorkbenchContext = {
   availableDecisions: readonly WorkforceExceptionWorkbenchDecision[]
 }
 
+export type WorkforceExceptionSelfResponseState =
+  | "UNAVAILABLE"
+  | "NOT_ACKNOWLEDGED"
+  | "ACKNOWLEDGED"
+
 function correctionState(input: {
   correctionRequests: readonly WorkforceExceptionCorrectionRequestFact[]
   correctionContextComplete: boolean
@@ -144,6 +149,42 @@ function currentCycleEmployeeVisibility(input: {
   return revisions.some((revision) => revision !== null && revision >= resetRevision)
     ? "RECORDED"
     : "NOT_RECORDED"
+}
+
+/**
+ * Projects only whether the signed-in employee may record or has already
+ * recorded a response for the current case lifecycle. This reader uses the
+ * same lock-observed revision semantics as the manager workbench and fails
+ * closed when the bounded decision stream cannot be proven complete.
+ */
+export function projectWorkforceExceptionSelfResponseState(input: {
+  workdayId: string | null
+  priorDecisions: readonly WorkforceExceptionDecisionFact[]
+  decisionHistoryComplete: boolean
+  employeeResponses: readonly WorkforceExceptionEmployeeResponseFact[]
+}): WorkforceExceptionSelfResponseState {
+  if (input.workdayId == null
+    || !input.decisionHistoryComplete
+    || input.priorDecisions.length > MAX_WORKFORCE_EXCEPTION_DECISIONS
+    || !input.priorDecisions.every((decision, index) => decision.caseRevision === index + 1)) {
+    return "UNAVAILABLE"
+  }
+  const lifecycle = evaluateWorkforceExceptionDraftLifecycle(
+    input.priorDecisions.map(({ decisionCode }) => ({ decisionCode })),
+  )
+  if (!lifecycle.valid || lifecycle.stage === "RESOLVED") return "UNAVAILABLE"
+
+  const visibility = currentCycleEmployeeVisibility({
+    priorDecisions: input.priorDecisions,
+    employeeResponses: input.employeeResponses,
+    correctionRequests: [],
+  })
+  if (visibility === "INTEGRITY_REVIEW") return "UNAVAILABLE"
+  if (visibility === "RECORDED") return "ACKNOWLEDGED"
+  // A complete 64-entry history is still readable, but cannot accept a 65th
+  // decision or response-linked lifecycle append through this surface.
+  if (input.priorDecisions.length >= MAX_WORKFORCE_EXCEPTION_DECISIONS) return "UNAVAILABLE"
+  return "NOT_ACKNOWLEDGED"
 }
 
 /**

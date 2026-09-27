@@ -849,3 +849,33 @@ corrections as new entries that explicitly supersede the earlier fact.
 - During deployment `origin/main` advanced through unrelated PRs #463 and #464 to `68cf17eddd1d5db8179fe2ec2981506403fc98ca`; their 20 MTM/Demo Center paths do not overlap the next Workforce slice. Work continues in the same dedicated part-3 worktree on successor branch `codex/workforce-exception-self-response-projection`, created from that exact current main. Canonical/old worktrees, LeadShelf and foreign branches remain untouched.
 - Precise stopping point: PR #462 is merged, deployed and independently exact-SHA smoke-verified; only this three-document release receipt is uncommitted on the clean successor branch and no next-slice source has changed.
 - Next action: checkpoint this release receipt, then implement the bounded revision-aware employee self-response projection with focused tests and fresh independent review.
+
+## 2026-09-27 — C6 revision-aware employee self-response projection pre-review
+
+- Release receipt commit `778709ef3` was isolated before source changes on successor branch `codex/workforce-exception-self-response-projection`, based on current main `68cf17eddd1d5db8179fe2ec2981506403fc98ca`.
+- The self-scoped feed no longer equates any timestamp-ordered response row with a current acknowledgement. A pure projection now requires one exact workday, a complete contiguous decision stream of at most 64 rows, a valid non-resolved lifecycle and a non-null response revision at or after the latest response/correction request or reopen.
+- Legacy `NULL`, stale, impossible/future and malformed response revisions plus truncated, gapped, unknown, invalid, resolved and schedule-only histories fail closed to `UNAVAILABLE`. A complete 64-row history keeps an already-current acknowledgement readable but offers no fresh response control without one.
+- The rollout-off query still selects neither decisions nor responses. The rollout-on query reads only 65 ascending `{decisionCode,caseRevision}` facts and one highest non-null `{observedCaseRevision}`; no response/correction id, reason, response code, proof or raw attendance evidence is selected or returned.
+- Focused helper/API coverage passes 2 files / 24 tests; the full selected regression set passes 5 files / 44 tests. Targeted ESLint for all four changed runtime/test files and diff whitespace pass. Exact-lock temporary dependency links were removed after each command.
+- Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot checks remain `NOT RUN` under host policy. Exact-head CI and fresh author-independent complete-diff review remain mandatory.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. WF-C6-006 remains `PARTIAL`; this projection adds no task or phase-gate credit and claims no notification, physical response, appeal completion or tenant activation.
+- Precise stopping point: four runtime/test paths plus the new evidence file, roadmap and append-only log are implemented and locally verified but uncommitted; independent read-only preflight has not yet started and nothing is pushed.
+- Next action: commission an author-independent read-only review of the complete working snapshot, repair any finding, then create a path-scoped checkpoint and freeze a fresh complete-diff identity.
+
+## 2026-09-27 — C6 self-response projection preflight P2 repaired
+
+- The first independent read-only pass returned RED with one P2: two Markdown hard-break spaces in the new untracked evidence file were trailing whitespace. The earlier tracked-only `git diff --check 778709ef3` could not see an untracked file, while the reviewer correctly ran a no-index check that failed on both lines.
+- Both spaces are removed. The local verification now includes the tracked base diff and an explicit no-index whitespace check for the untracked evidence file; both pass.
+- While repairing the review snapshot, the enabled-route API test was strengthened from partial object matchers to an exact full Prisma argument, so adding an internal field or unbounded relation would break the contract. The complete five-file selection again passes 44/44 and targeted four-file ESLint passes.
+- The previous RED review and fingerprint are not reusable. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no completion credit is added.
+- Precise stopping point: the P2 and test-contract repair are locally green in the uncommitted seven-path snapshot; a fresh author-independent rereview from current bytes is required and nothing is pushed.
+- Next action: obtain a zero-finding current-snapshot rereview, then checkpoint only the seven task-owned paths and commission a separate frozen clean-head complete-diff review.
+
+## 2026-09-27 — C6 self-response replacement preflight GREEN
+
+- A fresh author-independent read from zero returned GREEN with zero P0-P3 findings on exact base/HEAD/merge-base `778709ef36f9c438bce5c060fda69bffe5947f94` plus all seven current paths. The combined tracked binary and untracked no-index diff was 38,244 bytes, SHA-256 `f039c7297cbcc70e7994bc57e47b54bc28befb42d7f8b2e20a3c9a1f5fd107be`.
+- The reviewer reconfirmed the P2 repair, exact rollout-off/on query shapes and bounds, complete revision/lifecycle/reset projection, 64/65 and schedule/resolved fail-closed behavior, response privacy, evidence truth and unchanged progress. Reviewer tracked/untracked whitespace checks and append-only session-prefix verification passed.
+- Reviewer Vitest, ESLint, typecheck, build, browser, Android, load, physical-device and pilot checks were `NOT RUN`; author results were inspected but not relabelled.
+- The GREEN verdict covers the pre-receipt snapshot only and does not transfer to this new append-only receipt or the future commit identity. No task or gate credit is added.
+- Precise stopping point: the complete implementation snapshot has a zero-finding preflight; only this three-document review receipt is newly uncommitted and nothing is pushed.
+- Next action: checkpoint exactly the seven task-owned paths, verify clean status and current main, then require a fresh author-independent frozen complete-diff review from zero.
