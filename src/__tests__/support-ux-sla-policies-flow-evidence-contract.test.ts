@@ -26,6 +26,7 @@ describe("SLA Policies mutating evidence contract", () => {
     ]) expect(flow).toContain(id)
     expect(flow).toContain("invalid_sla_targets_remained_submittable")
     expect(flow).toContain("active_priority_conflict_remained_submittable")
+    expect(flow).toContain('fill("Inactive validation alternative")')
     expect(flow).toContain("sla_refresh_failure_discarded_snapshot")
     expect(flow).toContain("linked_sla_policy_delete_not_blocked")
     expect(flow).toContain("disposableFixtureRemoved: true")

@@ -163,7 +163,7 @@ export default function SlaPoliciesPage() {
           <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
           {!canWrite && <p className="mt-1 text-xs text-muted-foreground">{t("readOnlyHint")}</p>}
         </div>
-        {canWrite && <Button data-testid="sla-policies-create" className="min-h-11 px-4 sm:shrink-0" onClick={startCreate}><Plus />{t("addPolicy")}</Button>}
+        {canWrite && <Button data-testid="sla-policies-create" className="min-h-11 bg-orange-700 px-4 text-white hover:bg-orange-800 sm:shrink-0" onClick={startCreate}><Plus />{t("addPolicy")}</Button>}
       </header>
 
       <section aria-label={t("summaryLabel")} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs text-muted-foreground">
@@ -211,7 +211,7 @@ export default function SlaPoliciesPage() {
             <Clock className="h-8 w-8 text-muted-foreground" />
             <h2 className="mt-3 text-base font-semibold">{t("emptyTitle")}</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">{t("emptyDescription")}</p>
-            {canWrite && <Button data-testid="sla-policies-empty-create" className="mt-4 min-h-11" onClick={startCreate}><Plus />{t("addPolicy")}</Button>}
+            {canWrite && <Button data-testid="sla-policies-empty-create" className="mt-4 min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={startCreate}><Plus />{t("addPolicy")}</Button>}
           </div>
         ) : (
           <>

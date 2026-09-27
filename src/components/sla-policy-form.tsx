@@ -253,12 +253,14 @@ export function SlaPolicyForm({
             )}
 
             <div className="grid gap-2 sm:grid-cols-2">
-              <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3">
-                <input data-testid="sla-policy-business-hours" type="checkbox" checked={form.businessHoursOnly} onChange={(event) => update("businessHoursOnly", event.target.checked)} className="mt-1 h-4 w-4" />
+              <label className="relative flex min-h-12 cursor-pointer items-start gap-3 rounded-lg border p-3 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <input data-testid="sla-policy-business-hours" type="checkbox" checked={form.businessHoursOnly} onChange={(event) => update("businessHoursOnly", event.target.checked)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                <span aria-hidden="true" className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${form.businessHoursOnly ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background"}`}>{form.businessHoursOnly && <CheckCircle2 className="h-3.5 w-3.5" />}</span>
                 <span><span className="block text-sm font-medium">{t("businessHoursOnlyLabel")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("businessHoursOnlyHelp")}</span></span>
               </label>
-              <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3">
-                <input data-testid="sla-policy-active" type="checkbox" checked={form.isActive} onChange={(event) => update("isActive", event.target.checked)} className="mt-1 h-4 w-4" />
+              <label className="relative flex min-h-12 cursor-pointer items-start gap-3 rounded-lg border p-3 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <input data-testid="sla-policy-active" type="checkbox" checked={form.isActive} onChange={(event) => update("isActive", event.target.checked)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                <span aria-hidden="true" className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${form.isActive ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background"}`}>{form.isActive && <CheckCircle2 className="h-3.5 w-3.5" />}</span>
                 <span><span className="block text-sm font-medium">{t("activeStatus")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("activeHelp")}</span></span>
               </label>
             </div>
@@ -276,7 +278,7 @@ export function SlaPolicyForm({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving}>{tc("cancel")}</Button>
-          <Button data-testid="sla-policy-submit" type="submit" className="min-h-11" disabled={saving || Boolean(validationMessage) || !form.name.trim()}>
+          <Button data-testid="sla-policy-submit" type="submit" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" disabled={saving || Boolean(validationMessage) || !form.name.trim()}>
             {saving ? tc("saving") : isEdit ? tc("update") : tc("create")}
           </Button>
         </DialogFooter>

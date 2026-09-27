@@ -206,6 +206,7 @@ try {
     const form = page.getByTestId("sla-policy-form")
     await form.waitFor({ state: "visible" })
     await page.getByTestId("sla-policy-preview").waitFor({ state: "visible" })
+    await page.locator("#sla-policy-name").fill("Inactive validation alternative")
     await page.getByTestId("sla-resolution-hours").fill("2")
     await page.getByTestId("sla-response-hours").fill("4")
     await page.getByTestId("sla-policy-validation-error").waitFor({ state: "visible" })

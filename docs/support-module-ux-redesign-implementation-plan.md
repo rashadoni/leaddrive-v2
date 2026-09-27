@@ -1852,6 +1852,23 @@ Current verification evidence (2026-09-05):
   `unknown`, and the transaction mock validates/calls an unknown callback
   without `any`; all 36 regression assertions remain unchanged and pass.
   Scoped ESLint and `git diff --check` pass. No lint rule or test was removed.
+- Exact-SHA run `36302772804` at
+  `77ada9d4ebe566edbcb59715ae96a6f2f8812f66` passes the dedicated validation,
+  disposable fixtures and production build, then fails closed in rendered
+  evidence. Five of six mutating outcomes pass and remove the disposable policy;
+  keyboard retry is recorded. The validation flow incorrectly expected an
+  enabled submit while the required name remained empty, so it now fills a
+  distinct disposable name before testing the inactive alternative. Static axe
+  also caught the default primary CTA contrast at 3.61:1; create/empty/submit
+  actions now use AA-safe orange-700/800 with white text.
+- The two labelled SLA checkbox controls retained 16x16 native inputs inside
+  larger cards. Before mobile evidence, their real inputs now span the complete
+  labelled surface with visible focus-within feedback and an independent 20 px
+  visual mark, preserving keyboard behavior while making the actual hit target
+  touch-safe. Resource inspection shows 15 GiB available, 331 GiB free and zero
+  current pressure. Runner syntax, unchanged five-file scan, changed-source
+  ESLint, `git diff --check` and the two affected suites pass 12/12. A newer
+  exact-SHA desktop/mobile/high trio remains mandatory.
 - SLA checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery

@@ -1159,3 +1159,31 @@ run RU/dark physical-touch mobile and the complete high-density matrix.
 
 Next: checkpoint and push the typed regression mocks, then rerun the same
 desktop exact-SHA gate and continue only after its artifact is inspected green.
+
+### Workstream 7 rendered validation and accessibility correction
+
+- Exact-SHA run `36302772804` at
+  `77ada9d4ebe566edbcb59715ae96a6f2f8812f66` passes dedicated validation,
+  fixtures and production build, then fails closed in capture. Its retained
+  artifact is `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36302772804`.
+- Five of six mutating outcomes pass, including keyboard retry, permission
+  handling, empty recovery, stale-snapshot recovery, dependency protection and
+  delete rollback/cleanup with `disposableFixtureRemoved: true`. The client
+  validation outcome failed because the runner expected submit to enable after
+  choosing an inactive alternative but had never filled the independently
+  required policy name. It now fills a distinct disposable name first; product
+  validation remains unchanged.
+- Static evidence has no runtime, custom accessibility, touch, overflow,
+  environment or primary-work findings, but axe correctly rejects the default
+  primary CTA at 3.61:1. Create, empty-create and submit CTAs now use
+  orange-700/800 with white text. The two form checkbox inputs also now span
+  their complete labelled surfaces instead of exposing native 16x16 hit areas,
+  with visible focus-within state and a separate compact visual mark.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  current pressure. Runner syntax, the unchanged five-file scan, changed-source
+  ESLint, `git diff --check` and the two affected suites pass 12/12. No axe,
+  touch, validation, cleanup or viewport gate was relaxed.
+
+Next: checkpoint and push the rendered product/runner corrections, rerun exact-
+SHA desktop evidence, inspect all six flows and the static cell, then run mobile
+physical-touch and full high-density matrices on the same SHA.
