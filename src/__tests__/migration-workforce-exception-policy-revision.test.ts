@@ -22,6 +22,12 @@ function productionTypeScriptFiles(directory: string): string[] {
 
 describe("Workforce exception policy revision migration", () => {
   it("is an additive, empty and rollback-compatible foundation", () => {
+    const liveTableAlter = migration.indexOf(
+      'ALTER TABLE "workforce_exception_decisions"',
+    )
+    const applicationGrantCompleted = migration.indexOf("END $$;")
+    const commit = migration.lastIndexOf("COMMIT;")
+
     expect(migration).toContain('CREATE TABLE "workforce_exception_policy_revisions"')
     expect(migration).toMatch(
       /ALTER TABLE "workforce_exception_decisions"\s+ADD COLUMN "policyRevisionId" TEXT;/u,
@@ -36,6 +42,11 @@ describe("Workforce exception policy revision migration", () => {
     expect(migration).toContain("BEGIN;")
     expect(migration).toContain("SET LOCAL lock_timeout = '3s'")
     expect(migration).toContain("SET LOCAL statement_timeout = '2min'")
+    expect(liveTableAlter).toBeGreaterThan(applicationGrantCompleted)
+    expect(commit).toBeGreaterThan(liveTableAlter)
+    expect(migration.slice(liveTableAlter)).toMatch(
+      /ALTER TABLE "workforce_exception_decisions"[\s\S]*?NOT VALID;\s*COMMIT;\s*$/u,
+    )
     expect(migration.trimEnd().endsWith("COMMIT;")).toBe(true)
   })
 

@@ -56,20 +56,6 @@ ALTER TABLE "workforce_exception_policy_revisions"
   REFERENCES "users"("organizationId", "id")
   ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- NULL is the honest rollback-window and historical value. No old decision is
--- attributed to a policy that was not recorded when that decision happened.
-ALTER TABLE "workforce_exception_decisions"
-  ADD COLUMN "policyRevisionId" TEXT;
-
--- The nullable addition is enforced for every new non-NULL write immediately.
--- Validation of the live table is deliberately left to a later bounded phase.
-ALTER TABLE "workforce_exception_decisions"
-  ADD CONSTRAINT "workforce_exception_decisions_policy_revision_fk"
-  FOREIGN KEY ("organizationId", "policyRevisionId")
-  REFERENCES "workforce_exception_policy_revisions"("organizationId", "id")
-  ON DELETE RESTRICT ON UPDATE CASCADE
-  NOT VALID;
-
 CREATE FUNCTION workforce_exception_policy_revisions_append_only_fn()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -138,5 +124,21 @@ BEGIN
     );
   END IF;
 END $$;
+
+-- Acquire the live decision-table lock only after every new-table-only object
+-- is ready, then release it immediately at commit. NULL is the honest
+-- rollback-window and historical value: no old decision is attributed to a
+-- policy that was not recorded when that decision happened.
+ALTER TABLE "workforce_exception_decisions"
+  ADD COLUMN "policyRevisionId" TEXT;
+
+-- The nullable addition is enforced for every new non-NULL write immediately.
+-- Validation of the live table is deliberately left to a later bounded phase.
+ALTER TABLE "workforce_exception_decisions"
+  ADD CONSTRAINT "workforce_exception_decisions_policy_revision_fk"
+  FOREIGN KEY ("organizationId", "policyRevisionId")
+  REFERENCES "workforce_exception_policy_revisions"("organizationId", "id")
+  ON DELETE RESTRICT ON UPDATE CASCADE
+  NOT VALID;
 
 COMMIT;

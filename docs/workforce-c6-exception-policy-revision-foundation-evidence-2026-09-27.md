@@ -1,7 +1,7 @@
 # Workforce C6 exception-policy revision foundation evidence — 2026-09-27
 
-Status: **inactive foundation implemented locally; exact PostgreSQL CI and
-author-independent frozen review pending**.
+Status: **first frozen review P2 repaired locally; replacement independent
+review and exact PostgreSQL CI pending**.
 
 This bounded slice starts from deployed `main` SHA
 `249466e9ac25eccecefc34b62563b328a8026817` plus its append-only release
@@ -105,3 +105,21 @@ that explicit URL is absent; local skip is not execution evidence.
 Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. A clean
 checkpoint, frozen complete-diff independent review, receipt-integrity review
 and all five exact-head GitHub contexts remain mandatory before merge.
+
+## First frozen review and repair
+
+The author-independent review of exact clean base/merge-base
+`249466e9ac25eccecefc34b62563b328a8026817` through head
+`d12e51ca1e1e63152750724b535b8c639e555d0a` returned RED with one P2 and no
+other P0–P3 findings. Its full 14-file / 74,663-byte binary diff had SHA-256
+`98327071b478951cfd6c619e334606abb55b4507283dadcca4255bbb07669c92`.
+
+The decision-table nullable-column and `NOT VALID` FK alterations acquired a
+live-table lock before roughly seventy lines of unrelated new-table trigger,
+RLS, policy and grant DDL. PostgreSQL retains that lock until transaction
+commit, while the statement timeout does not bound the whole transaction. The
+repair moves both live-table alterations after all new-table-only work into the
+final pre-`COMMIT` block. A positive source assertion now requires that order
+and exact tail shape. Focused tests, ESLint and Prisma validation pass again;
+the changed identity still requires a fresh complete-diff review and no GREEN
+credit transfers from the rejected head.

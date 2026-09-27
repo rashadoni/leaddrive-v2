@@ -448,3 +448,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. This foundation adds no terminal behavior, visible UI, tenant effect, task credit or phase-gate credit.
 - Precise stopping point: source, additive migration, workflow wiring, static/unit/skip-only PostgreSQL contracts and pre-review evidence are implemented in the working tree but not checkpointed; real PostgreSQL and independent frozen review have not run.
 - Next action: rerun final small gates, remove the temporary dependency symlink without touching its target, create a path-scoped checkpoint, freeze the exact base/head/hash/size and require a fresh author-independent zero-finding complete-diff review before push.
+
+## 2026-09-27 — C6 first policy-revision frozen review RED; lock repair prepared
+
+- The first frozen checkpoint was clean base/merge-base `249466e9ac25eccecefc34b62563b328a8026817`, head `d12e51ca1e1e63152750724b535b8c639e555d0a`, 14 files / 74,663 bytes and binary-diff SHA-256 `98327071b478951cfd6c619e334606abb55b4507283dadcca4255bbb07669c92`.
+- Fresh author-independent complete-diff review returned RED with one P2 and no other P0–P3 findings. `ADD COLUMN policyRevisionId` acquired an `ACCESS EXCLUSIVE` lock on live `workforce_exception_decisions`, then retained it through roughly seventy lines of new-table trigger, RLS, policy and grant DDL until commit. The deploy quiet-window is not a traffic drain and per-statement timeout does not bound the transaction, so the unnecessary hold violated the online migration boundary. Nothing was pushed or published from that identity.
+- The repair moves both live decision-table ALTER statements after every new-table-only operation into the final pre-`COMMIT` block. A positive migration-source test requires the application grant to complete first and the nullable column plus `NOT VALID` FK to be the exact transaction tail.
+- After repair, the five-file selection passes 32 tests with four PostgreSQL tests `SKIPPED / NOT RUN`; targeted ESLint and Prisma validation pass. Exact PostgreSQL, full typecheck/build, browser, Android, load, physical-device and pilot evidence remain `NOT RUN` locally.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; the repair changes no runtime consumer, tenant state, terminal action, visible UI, task credit or phase gate.
+- Precise stopping point: the sole P2 is repaired in the working tree and narrow checks are green; the repair is uncommitted and the rejected frozen verdict cannot transfer.
+- Next action: finish the small static gates, checkpoint the repair/evidence, freeze a new exact identity and obtain a new zero-finding author-independent complete-diff review before any push.
