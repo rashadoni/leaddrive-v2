@@ -153,3 +153,40 @@ exact-head CI remain separate evidence. The reviewer made no edits, commits,
 pushes or status publications. This documentation-only receipt must now receive
 an independent integrity check proving the reviewed source/test paths did not
 change before push.
+
+## Reviewed production release
+
+The review receipt was checkpointed as final PR head
+`22ea9c0c4dd203f0d9991d5a4409146795db86b9`. Its complete nine-path diff from
+base `99b8ce27077352951769ce4a8c60cf2459e36ebf` was 49,077 binary-diff bytes
+with SHA-256
+`f07731a70fbdb817c81812ddef926e5f8d0ab65f1aaa54a12a919de3bc2c360c`.
+The receipt-only delta was three documentation paths / 9,558 bytes with
+SHA-256
+`5167ccad4c1ea940bd063f5b21db5196e2f68992ba783b14252f450bc63ef4fa`.
+A separate author-independent integrity review returned GREEN with zero P0-P3
+findings and proved all five reviewed source/test blobs byte-identical to the
+frozen source-reviewed head.
+
+PR #458 remained below the 400 KB boundary and passed all five required
+exact-head contexts: `pr-scope`, `static-checks`, `typecheck`, `runner-policy`
+and `scan`. Run `36312924796` passed the six-case real-PostgreSQL policy
+revision proof and the combined shared-lock gate; full TypeScript compilation
+completed in 14m21s. The normal PR production build was skipped as designed.
+The PR merged normally at `2026-09-27T10:50:29Z` as exact `main` SHA
+`a78fa409888fb319fab2a049f86fa299212cd3aa`.
+
+Deploy run `36313824867` completed GREEN from `2026-09-27T10:50:31Z` through
+`2026-09-27T11:13:36Z`: quality/security gates, SHA-bound standalone build,
+immutable artifact staging, atomic deployment, built-in post-deploy smoke and
+artifact-retention cleanup all passed. Independent no-cache public reads
+returned `{"ok":true}` and
+`{"sha":"a78fa409888f","artifactSha":"a78fa409888fb319fab2a049f86fa299212cd3aa","builtAt":"2026-09-27T10:57:11Z"}`.
+The full production artifact SHA exactly matches merged `main`; no Azure,
+retired owner/host, direct copy or manual server deployment was used.
+
+Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. Browser E2E,
+Android/Gradle, load, physical-device and human-pilot evidence remains
+`NOT RUN`. The released POST records only a draft acknowledgement and still
+cannot activate/select a policy, create or link a decision, enable terminal
+behavior, provision tenants, render UI or backfill history.
