@@ -396,16 +396,16 @@ export default function EntitlementTemplatesPage() {
 
   return (
     <div
-      className="space-y-4"
+      className="space-y-3 sm:space-y-4"
       data-testid="entitlement-templates-workspace"
       data-state={loading ? "loading" : templates.length === 0 ? "error" : "ready"}
       data-permission={permissions.canWrite ? "write" : "read-only"}
     >
       <header className="flex items-start gap-3">
-        <Settings2 className="mt-0.5 h-5 w-5 text-muted-foreground" />
+        <Settings2 className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2"><h1 className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1><HelpButton slug="entitlements" /></div>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("subtitleCompact")}</p>
+          <div className="flex items-center gap-2"><h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight">{t("title")}</h1><HelpButton slug="entitlements" className="h-11 w-11 shrink-0" /></div>
+          <p className="mt-1 line-clamp-1 max-w-3xl text-sm text-muted-foreground sm:line-clamp-none">{t("subtitleCompact")}</p>
         </div>
       </header>
 
@@ -417,9 +417,9 @@ export default function EntitlementTemplatesPage() {
           const selected = level === activeLevel
           const stored = draftLevels.includes(level) || (selected && isDirty)
           return (
-            <button key={level} type="button" role="tab" aria-selected={selected} className={`min-h-12 rounded-lg border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${selected ? "border-foreground bg-muted/30" : "hover:bg-muted/30"}`} onClick={() => selectTemplate(level)} disabled={loading} data-testid={`entitlement-template-tab-${level}`} data-draft={stored ? "true" : "false"}>
-              <span className="flex items-center justify-between gap-2"><span className="font-medium">{te(`supportLevels.${level}`)}</span><span className="text-xs text-muted-foreground">{template?.definitions.length ?? 0}</span></span>
-              <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">{stored ? <><Clock3 className="h-3 w-3" />{t("draft")}</> : template?.isActive ? <><CheckCircle2 className="h-3 w-3" />{t("active")}</> : t("inactive")}</span>
+            <button key={level} type="button" role="tab" aria-selected={selected} className={`min-h-11 rounded-lg border px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none sm:min-h-12 sm:px-3 sm:py-2 ${selected ? "border-foreground bg-muted/30" : "hover:bg-muted/30"}`} onClick={() => selectTemplate(level)} disabled={loading} data-testid={`entitlement-template-tab-${level}`} data-draft={stored ? "true" : "false"}>
+              <span className="flex items-center justify-between gap-1"><span className="min-w-0 truncate font-medium">{te(`supportLevels.${level}`)}</span><span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">{stored ? <Clock3 className="h-3 w-3" aria-hidden /> : template?.isActive ? <CheckCircle2 className="h-3 w-3" aria-hidden /> : null}{template?.definitions.length ?? 0}</span></span>
+              <span className="sr-only text-xs text-muted-foreground sm:not-sr-only sm:mt-0.5 sm:flex sm:items-center sm:gap-1">{stored ? t("draft") : template?.isActive ? t("active") : t("inactive")}</span>
             </button>
           )
         })}
@@ -432,19 +432,19 @@ export default function EntitlementTemplatesPage() {
       ) : (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <section className="min-w-0 space-y-4" aria-label={t("editorTitle", { level: te(`supportLevels.${activeLevel}`) })}>
-            <section aria-labelledby="template-meta-title" className="rounded-xl border bg-card p-4">
-              <div className="mb-3 flex items-center justify-between gap-3"><h2 id="template-meta-title" className="text-base font-semibold">{t("editorTitle", { level: te(`supportLevels.${activeLevel}`) })}</h2>{isDirty && <Badge variant="secondary" className="gap-1"><Clock3 className="h-3 w-3" />{t("draft")}</Badge>}</div>
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+            <section aria-labelledby="template-meta-title" className="rounded-xl border bg-card p-3 sm:p-4">
+              <div className="mb-2 flex items-center justify-between gap-3 sm:mb-3"><h2 id="template-meta-title" className="text-base font-semibold">{t("editorTitle", { level: te(`supportLevels.${activeLevel}`) })}</h2>{isDirty && <Badge variant="secondary" className="gap-1"><Clock3 className="h-3 w-3" />{t("draft")}</Badge>}</div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
                 <div className="space-y-1"><Label htmlFor="template-name">{t("name")}</Label><Input id="template-name" value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} className="min-h-11" disabled={!permissions.canWrite} /></div>
                 <Button type="button" variant="outline" role="switch" aria-checked={draft.isActive} className="min-h-11 self-end justify-start" onClick={() => updateDraft({ isActive: !draft.isActive })} disabled={!permissions.canWrite} data-testid="entitlement-template-active-switch"><span aria-hidden className={`h-4 w-4 rounded border ${draft.isActive ? "bg-foreground" : ""}`} />{t("templateActive")}</Button>
               </div>
-              <div className="mt-3 space-y-1"><Label htmlFor="template-description">{t("description")}</Label><Textarea id="template-description" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder={t("descriptionPlaceholder")} rows={2} disabled={!permissions.canWrite} /></div>
+              <div className="mt-3 space-y-1"><Label htmlFor="template-description">{t("description")}</Label><Textarea id="template-description" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder={t("descriptionPlaceholder")} rows={2} className="!min-h-[60px] sm:!min-h-[80px]" disabled={!permissions.canWrite} /></div>
             </section>
 
             <section aria-labelledby="template-rules-title" className="rounded-xl border bg-card p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
-                <div><h2 id="template-rules-title" className="text-base font-semibold">{t("rules")}</h2><p className="mt-0.5 text-xs text-muted-foreground">{t("orderHint")}</p></div>
-                {permissions.canWrite && <Button type="button" variant="outline" className="min-h-11" onClick={addDefinition} disabled={draft.definitions.length >= 30} data-testid="entitlement-template-add-rule"><Plus />{t("addRule")}</Button>}
+                <div className="min-w-0 flex-1"><h2 id="template-rules-title" className="text-base font-semibold">{t("rules")}</h2><p className="mt-0.5 text-xs text-muted-foreground">{t("orderHint")}</p></div>
+                {permissions.canWrite && <Button type="button" variant="outline" aria-label={t("addRule")} className="h-11 w-11 shrink-0 px-0 sm:w-auto sm:px-5" onClick={addDefinition} disabled={draft.definitions.length >= 30} data-testid="entitlement-template-add-rule"><Plus /><span className="sr-only sm:not-sr-only">{t("addRule")}</span></Button>}
               </div>
               <div className="mt-3 divide-y rounded-lg border">
                 {draft.definitions.map((definition, index) => {
@@ -488,9 +488,9 @@ export default function EntitlementTemplatesPage() {
       )}
 
       {!loading && templates.length > 0 && (
-        <div className="sticky bottom-3 z-20 flex flex-col gap-2 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center" data-testid="entitlement-template-save-bar" data-dirty={isDirty ? "true" : "false"}>
+        <div className="sticky bottom-3 z-20 flex flex-col gap-2 rounded-xl border bg-background/95 p-2.5 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:p-3" data-testid="entitlement-template-save-bar" data-dirty={isDirty ? "true" : "false"}>
           <div className="min-w-0 flex-1"><p className="text-sm font-medium">{isDirty ? t("unsavedTitle") : t("savedTitle")}</p><p className={`text-xs ${draftIssue && isDirty ? "text-destructive" : "text-muted-foreground"}`} data-testid="entitlement-template-status">{statusText}</p></div>
-          {permissions.canWrite && <div className="flex gap-2"><Button type="button" variant="outline" className="min-h-11 flex-1 sm:flex-none" onClick={discardDraft} disabled={!isDirty || saving} data-testid="entitlement-template-discard">{t("discard")}</Button><Button type="button" className="min-h-11 flex-1 sm:flex-none" onClick={saveTemplate} disabled={!isDirty || Boolean(draftIssue) || saving} data-testid="entitlement-template-save">{saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Save />}{t("save")}</Button></div>}
+          {permissions.canWrite && <div className="flex gap-2"><Button type="button" variant="outline" aria-label={t("discard")} className="h-11 w-11 shrink-0 px-0 sm:w-auto sm:px-5" onClick={discardDraft} disabled={!isDirty || saving} data-testid="entitlement-template-discard"><RotateCcw /><span className="sr-only sm:not-sr-only">{t("discard")}</span></Button><Button type="button" aria-label={t("save")} className="h-11 w-11 shrink-0 px-0 sm:w-auto sm:px-5" onClick={saveTemplate} disabled={!isDirty || Boolean(draftIssue) || saving} data-testid="entitlement-template-save">{saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Save />}<span className="sr-only sm:not-sr-only">{t("save")}</span></Button></div>}
         </div>
       )}
 

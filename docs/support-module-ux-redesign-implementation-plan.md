@@ -2297,6 +2297,23 @@ Additional recovery evidence (2026-09-06):
   `required-switch` test id was removed by renaming the selector to
   `mandatory-switch`. Because product source changed, desktop exact-SHA
   evidence must be repeated before mobile and high-density evidence.
+- Semantic-switch SHA `529a79ef4` passes replacement desktop run
+  `36326499627`: 6/6 flows, fixture restoration and every static issue total
+  are green; `smallTargets` is now zero, primary work starts at 576 px, load
+  p75 is 363 ms and CLS is `0.005053974945947466`. The updated switch and full
+  desktop composition were manually reviewed as healthy.
+- RU/dark mobile run `36327704413` on the same SHA proves all 6/6 functional
+  outcomes, a real hit-tested 144x44 Playwright touchscreen Retry, recovery,
+  cleanup and fixture restoration. Its static gate correctly fails three
+  responsive defects: Help compresses to 21x32, long Add/Save actions extend
+  beyond the 311 px work area, and the first rule begins at 935 px.
+  Mobile-only composition now retains every section while using a 44 px
+  non-shrinking Help control, compact one-line tab headers with accessible
+  status text, a denser metadata card, and 44 px icon-plus-ARIA Add,
+  Save and Discard controls. This removes the min-content overflow and gives
+  the rule instructions usable width without changing any evidence threshold.
+  The three-file scan reports zero findings; scoped lint/diff pass and the UX
+  contract passes 7/7. Exact-SHA mobile evidence must be repeated.
 
 ## 17. Workstream 10 — Skill Routing
 

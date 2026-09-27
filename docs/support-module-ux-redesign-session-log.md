@@ -1632,3 +1632,44 @@ AZ/RU/EN × light/dark × four-viewport high-density matrix before closure.
 Next: checkpoint and push the semantic-switch correction, then rerun the exact
 desktop mutating gate on the new SHA before RU/dark mobile and the full
 high-density matrix.
+
+### Workstream 9 replacement desktop pass and mobile layout correction
+
+- Replacement EN/light desktop run `36326499627` on semantic-switch SHA
+  `529a79ef48cfb0f8ac6e422b07c1235d4b3efbd1` is fully green. All 6/6
+  disposable outcomes pass with final fixture restoration. Static runtime,
+  axe, custom accessibility, touch, overflow, environment and fold totals are
+  zero; the previously observed metric is corrected to `smallTargets: 0`.
+  Primary work starts at 576 px, load p75 is 363 ms and CLS is
+  `0.005053974945947466`. Manual screenshot review confirms the 44 px semantic
+  switch and overall desktop composition. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36326499627`.
+- RU/dark mobile run `36327704413` on the same SHA passes all 6/6 functional
+  flows. It proves a real, hit-tested 144x44 Playwright touchscreen Retry,
+  terminal permission behavior, read-only recovery, 0/1/30 rules without flow
+  overflow, protected drafts, reorder/delete/Discard, failed-save retention,
+  retry and fixture restoration. Environment evidence confirms RU, dark,
+  reduced motion and `maxTouchPoints: 1`.
+- The independent static cell correctly fails. It identifies a 21x32 Help
+  target, Add and Save controls extending beyond the 311 px main work area,
+  and first-rule top at 935 px against the unchanged 768 px boundary. The
+  screenshot shows the long RU actions consuming metadata/rule-header width;
+  this is a responsive product defect, not a runner failure. The failed
+  artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36327704413`.
+- The page now keeps every section and control but compacts only narrow
+  layouts: Help is a non-shrinking 44 px target; tabs use a one-line label,
+  count/status icon and screen-reader status while preserving their full
+  `sm+` detail; metadata uses tighter spacing and a 60 px mobile description;
+  Add, Save and Discard use 44 px icon controls with localized ARIA labels on
+  mobile and retain visible labels from `sm` upward. Wider layouts preserve
+  the established composition. No browser, fold, touch or overflow threshold
+  changed.
+- Resource inspection shows 16 GiB available memory, 331 GiB free disk and
+  zero pressure. The scoped three-file anti-pattern scan passes with zero
+  findings; page/test ESLint and `git diff --check` pass; the updated UX
+  contract passes 7/7. Local full build/browser remain NOT RUN by host policy.
+
+Next: checkpoint and push the responsive correction, rerun the identical
+RU/dark mobile exact-SHA gate, then proceed to the 24-cell high matrix only
+after static zeroes and all six flows are green.

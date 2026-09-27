@@ -46,6 +46,7 @@ describe("entitlement templates UX contract", () => {
     expect(page).toContain('role="switch" aria-checked={draft.isActive}')
     expect(page).toContain('role="switch" aria-checked={definition.isRequired}')
     expect(page).not.toContain('type="checkbox"')
+    expect(page).toContain('HelpButton slug="entitlements" className="h-11 w-11 shrink-0"')
     expect(page).toContain("ConfirmDialog")
   })
 
@@ -76,6 +77,9 @@ describe("entitlement templates UX contract", () => {
     expect(page).toContain("grid-cols-2")
     expect(page).toContain("sm:grid-cols-4")
     expect(page).toContain("xl:grid-cols-")
+    expect(page).toContain('className="space-y-3 sm:space-y-4"')
+    expect(page).toContain('className="sr-only sm:not-sr-only"')
+    expect(page).toContain('className="h-11 w-11 shrink-0 px-0 sm:w-auto sm:px-5"')
     expect(page).toContain("min-h-11")
     expect(page).toContain("focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")
     expect(page).toContain("motion-reduce:transition-none")
