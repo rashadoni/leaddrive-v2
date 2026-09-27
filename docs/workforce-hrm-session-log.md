@@ -646,3 +646,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
 - Precise stopping point: implementation/evidence are checkpointed and current main is unchanged; only this three-document status receipt is uncommitted, so no valid final frozen complete-diff review exists yet.
 - Next action: checkpoint the receipt, freeze the replacement exact base/head/hash/size and require a fresh author-independent review of every changed line before push.
+
+## 2026-09-27 — C6 draft-receipt frozen complete-diff review GREEN
+
+- The clean replacement identity was base/merge-base/current `origin/main` `a78fa409888fb319fab2a049f86fa299212cd3aa`, head `441e1f76d4f161b6025a9cce66713a74f1920c33`, 11 changed paths / 49,672 binary-diff bytes and SHA-256 `8828a616b87df2f3ed89bfd3ce95a4d074945dd41a428eb5197cd01fd9499a67`, below 400 KB.
+- A fresh author-independent reviewer started from zero with no inherited early GREEN credit, read every changed line and relevant unchanged route/auth/resolver/writer/RLS/schema/migration/consumer context, and returned GREEN with zero P0-P3 findings.
+- Exact root receipts, session/capability/granular authorization, explicit tenant/RLS query, complete ascending MAX+1 stream, pre-resolver bound, resolver failure mapping, ignored selector authority, no GET transaction/lock/write, payload/log/header containment, policy-wrapper compatibility, one-route consumer fence and all activation/effective/decision/provisioner/UI/backfill exclusions were confirmed. PR #458 release/deploy/live artifact facts and documented hashes were independently verified.
+- Reviewer-side diff whitespace, RLS 553/0, runner policy 37, event assets 27/86/5, main-protection configurator, i18n 23,587/0/0, consumer/exclusion scans and final identity/cleanliness passed. Dependency-backed Vitest/ESLint/Prisma, exact PostgreSQL, typecheck/build, browser, Android, load and physical/pilot evidence were `NOT RUN` reviewer-side and are not inferred.
+- Branch protection still requires exactly `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`; missing `agent-review` was not treated as permission. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: the committed complete runtime/test/evidence identity is independently GREEN; only this three-document review receipt is uncommitted, and nothing has been pushed.
+- Next action: checkpoint the receipt-only delta, independently prove all reviewed runtime/test paths byte-identical, then push/open the sub-400 KB PR and require all five exact-head contexts including real PostgreSQL before merge.
