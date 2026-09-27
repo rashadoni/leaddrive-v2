@@ -637,3 +637,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Full local typecheck/build, browser E2E, Android/Gradle, load, physical-device and human-pilot evidence remains `NOT RUN` under host policy. Exact PostgreSQL and typecheck remain mandatory in exact-head CI. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; this read-only draft receipt earns no task or gate credit.
 - Precise stopping point: runtime/tests/evidence and both early-review repairs are complete in the working tree; the temporary exact-lock dependency symlink remains the only local setup artifact, and no implementation checkpoint or frozen final review exists yet.
 - Next action: remove only the temporary symlink, checkpoint explicit task-owned paths, freeze exact base/head/hash/size and obtain a fresh author-independent complete-diff review before any push.
+
+## 2026-09-27 — C6 draft-receipt implementation checkpoint clean
+
+- The temporary dependency symlink was removed without changing its target. Ten task-owned GET/runtime/test/evidence paths were checkpointed as `e76407def5a2abdc84a0b80058de3fb3d4686fc8`; together with the preceding PR #458 release receipt the branch was clean and two commits ahead of main.
+- A fresh fetch confirmed base/merge-base/current `origin/main` remains exact deployed SHA `a78fa409888fb319fab2a049f86fa299212cd3aa`; no integration is needed. The preliminary complete diff through this checkpoint is 11 paths / 46,989 binary-diff bytes, SHA-256 `6ee85938cc40c1c057e6c96a6c2b8c698786a2b3aeb9309db0f5e2a18d00a2f8`.
+- This append-only checkpoint receipt changes three documentation paths and supersedes the preliminary frozen identity. No runtime/test path changed after the final 89-test and ESLint reruns or narrow GREEN rereview.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: implementation/evidence are checkpointed and current main is unchanged; only this three-document status receipt is uncommitted, so no valid final frozen complete-diff review exists yet.
+- Next action: checkpoint the receipt, freeze the replacement exact base/head/hash/size and require a fresh author-independent review of every changed line before push.

@@ -83,3 +83,15 @@ Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. A clean
 checkpoint, exact base/head/diff identity, author-independent complete-diff
 review, receipt-integrity review and all protected exact-head contexts remain
 mandatory before merge.
+
+## Clean implementation checkpoint
+
+The release receipt and GET implementation/evidence are checkpointed through
+`e76407def5a2abdc84a0b80058de3fb3d4686fc8`. A fresh fetch confirmed exact
+base/merge-base/current `origin/main`
+`a78fa409888fb319fab2a049f86fa299212cd3aa`; the worktree was clean and no
+upstream integration was needed. Before this status receipt, the complete
+base-to-head diff was 11 paths / 46,989 binary-diff bytes with SHA-256
+`6ee85938cc40c1c057e6c96a6c2b8c698786a2b3aeb9309db0f5e2a18d00a2f8`.
+This append-only status delta supersedes that preliminary identity. A new clean
+head and fresh review of every changed line remain required before push.
