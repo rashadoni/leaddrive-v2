@@ -797,3 +797,39 @@ mobile touchscreen and the full high-density matrix on that single exact SHA.
 
 Next: checkpoint and push the portal theme/gate correction, then repeat the
 mandatory desktop, mobile and high-density matrices on the new exact SHA.
+
+### Workstream 5 seventh browser self-audit and high-matrix correction
+
+- Exact-SHA desktop run `36279059487` at
+  `f3c98116e33cc24c99b0aa766580d0499635185a` passed after retrying only its
+  transient Google-font build job on the same SHA. Its retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36279059487` and records
+  9/9 mutating outcomes, 3/3 static scenarios, restored fixtures and no browser,
+  axe, touch, overflow, environment or primary-work issue.
+- RU/dark mobile run `36280438215` passed the same gates on the same SHA. Its
+  artifact at `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36280438215`
+  proves Playwright touchscreen activation with successful hit-testing on
+  144x44 and 134x44 controls, actual applied dark theme and restored fixtures.
+  Manual portal screenshot review confirms a genuinely dark composition.
+- The required high-density run `36281427953` produced all 168 cells and failed
+  closed with 138 passed / 30 failed. The retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36281427953`. Failures
+  localize to three causes: the admin article delete label used the destructive
+  background token as foreground and missed contrast in both themes; RU mobile
+  article content began at 770 px, two pixels below the unchanged fold gate;
+  three library cells observed an empty streamed document title exactly at axe.
+- The delete action now uses explicit AA-safe red foregrounds, mobile article
+  spacing is tightened with `space-y-3` below `sm`, and list/detail pages keep a
+  localized rendered title. The audit waits on `document.title` for a full
+  second and revalidates it after injecting axe, so the title rule stays active
+  at the actual scan boundary instead of sampling a metadata-stream gap.
+- Resource inspection showed 15 GiB available memory, 331 GiB free disk and no
+  active pressure. Runner syntax, changed-source ESLint, `git diff --check`, the
+  seven-file Knowledge Base anti-pattern scan and 33/33 affected contract
+  assertions pass. An accidental default-scope scanner invocation also reported
+  untouched debt in later, not-yet-processed support workstreams; the required
+  section-scoped rerun is green and no rule or path was allowlisted.
+
+Next: checkpoint and push this high-matrix product/determinism correction, then
+repeat desktop, physical-touch mobile and all 168 high-density cells on the new
+exact SHA. Close Workstream 5 only after all three artifacts are green.

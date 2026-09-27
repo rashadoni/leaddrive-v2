@@ -97,6 +97,10 @@ export default function KbArticleDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [publicationOpen, setPublicationOpen] = useState(false)
 
+  useEffect(() => {
+    document.title = `${article?.title || t("title")} · LeadDrive CRM`
+  }, [article?.title, t])
+
   const headers = useMemo(
     () => (orgId ? { "x-organization-id": String(orgId) } : {}) as Record<string, string>,
     [orgId],
@@ -211,7 +215,7 @@ export default function KbArticleDetailPage() {
   const isPublished = article.status === "published"
 
   return (
-    <div data-testid="knowledge-article-workspace" data-state="ready" className="space-y-4">
+    <div data-testid="knowledge-article-workspace" data-state="ready" className="space-y-3 sm:space-y-4">
       <Button asChild variant="ghost" className="min-h-11 px-3">
           <Link data-testid="knowledge-article-back" href={returnTo}><ArrowLeft />{t("backToLibrary")}</Link>
       </Button>
@@ -241,7 +245,7 @@ export default function KbArticleDetailPage() {
               </Button>
             )}
             {canWrite && <Button data-testid="knowledge-article-edit" variant="outline" className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => setEditOpen(true)}><Pencil />{tc("edit")}</Button>}
-            {canDelete && <Button variant="outline" className="min-h-11 px-4 text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}><Trash2 />{tc("delete")}</Button>}
+            {canDelete && <Button variant="outline" className="min-h-11 px-4 text-red-700 hover:text-red-800 dark:text-red-300 dark:hover:text-red-200" onClick={() => setDeleteOpen(true)}><Trash2 />{tc("delete")}</Button>}
           </div>
         )}
       </header>

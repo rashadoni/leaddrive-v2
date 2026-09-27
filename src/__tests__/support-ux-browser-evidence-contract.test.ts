@@ -234,9 +234,9 @@ describe("Support UX browser evidence contract", () => {
       runner.indexOf('Page.setBypassCSP", { enabled: false }'),
     );
     expect(runner).toContain("waitForStableDocumentTitle(page)");
-    expect(runner).toContain('document.head.querySelector("title")?.textContent?.trim()');
-    expect(runner).toContain("now - previous.since >= 500");
-    expect(runner).toContain("{ timeout: 5_000 }");
+    expect(runner).toContain("document.title.trim()");
+    expect(runner).toContain("now - previous.since >= 1_000");
+    expect(runner).toContain("{ timeout: 10_000 }");
     expect(header).toContain('data-session-ready={orgName && userName ? "true" : "false"}');
     expect(runner).toContain("[data-testid='global-header'][data-session-ready='true']");
     expect(runner).toContain("document.fonts.ready");

@@ -133,6 +133,10 @@ export default function KnowledgeBasePage() {
 
   useAutoTour("knowledgeBase")
 
+  useEffect(() => {
+    document.title = `${t("title")} · LeadDrive CRM`
+  }, [t])
+
   const initialStatus = searchParams.get("status")
   const [search, setSearch] = useState(searchParams.get("q") || "")
   const [filterStatus, setFilterStatus] = useState<"all" | ArticleStatus>(

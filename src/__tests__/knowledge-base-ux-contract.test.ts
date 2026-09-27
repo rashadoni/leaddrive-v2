@@ -7,7 +7,18 @@ const source = (file: string) => readFileSync(path.join(process.cwd(), file), "u
 describe("knowledge base UX contract", () => {
   it("keeps a stable accessible document title across list filter navigation", () => {
     const layout = source("src/app/(dashboard)/knowledge-base/layout.tsx")
+    const page = source("src/app/(dashboard)/knowledge-base/page.tsx")
+    const detail = source("src/app/(dashboard)/knowledge-base/[id]/page.tsx")
     expect(layout).toContain('title: "Knowledge Base · LeadDrive CRM"')
+    expect(page).toContain('document.title = `${t("title")} · LeadDrive CRM`')
+    expect(detail).toContain('document.title = `${article?.title || t("title")} · LeadDrive CRM`')
+  })
+
+  it("keeps destructive controls contrast-safe and primary article work above the mobile fold", () => {
+    const detail = source("src/app/(dashboard)/knowledge-base/[id]/page.tsx")
+    expect(detail).toContain('className="space-y-3 sm:space-y-4"')
+    expect(detail).toContain("text-red-700")
+    expect(detail).toContain("dark:text-red-300")
   })
 
   it("uses a two-pane desktop library and an equivalent mobile category selector", () => {

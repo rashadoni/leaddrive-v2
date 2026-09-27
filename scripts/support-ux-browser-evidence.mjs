@@ -510,7 +510,7 @@ async function waitForStableApplicationShell(page, role) {
 
 async function waitForStableDocumentTitle(page) {
   await page.waitForFunction(() => {
-    const value = document.head.querySelector("title")?.textContent?.trim() || ""
+    const value = document.title.trim()
     const now = performance.now()
     const previous = window.__supportUxEvidenceTitle
     if (!value) {
@@ -521,8 +521,8 @@ async function waitForStableDocumentTitle(page) {
       window.__supportUxEvidenceTitle = { value, since: now }
       return false
     }
-    return now - previous.since >= 500
-  }, undefined, { timeout: 5_000 })
+    return now - previous.since >= 1_000
+  }, undefined, { timeout: 10_000 })
 }
 
 async function inspectAccessibility(page) {
@@ -535,6 +535,9 @@ async function inspectAccessibility(page) {
   try {
     await cdp.send("Page.setBypassCSP", { enabled: true })
     await page.addScriptTag({ content: axeSource })
+    // Script injection can overlap the final streamed metadata patch. Audit
+    // only once the browser-visible title is stable at the exact axe boundary.
+    await waitForStableDocumentTitle(page)
     return await page.evaluate(async () => {
       const result = await window.axe.run(document, {
         runOnly: {

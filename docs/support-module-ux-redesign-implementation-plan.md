@@ -1469,6 +1469,29 @@ Current verification evidence (2026-09-05):
   contracts and whitespace validation pass. These two runs are retained as
   diagnostic evidence; all mandatory matrices must use the newer theme-aware
   checkpoint.
+- Theme-aware EN/light desktop run `36279059487` at
+  `f3c98116e33cc24c99b0aa766580d0499635185a` passed after one same-SHA retry of
+  a transient Google-font loader failure. RU/dark mobile run `36280438215`
+  passed on its first attempt. Both prove 9/9 mutating flows, 3/3 static cells,
+  fixture restoration and zero browser, axe, touch, overflow, applied-theme,
+  reduced-motion or primary-work findings; mobile records physical touchscreen
+  hits on 144x44 and 134x44 controls. Manual portal review confirms that the
+  requested dark theme is now actually rendered.
+- Full 168-cell high-density run `36281427953` completed every requested
+  role/locale/theme/viewport/scenario cell and correctly rejected 30. Artifact
+  analysis found one systematic admin article delete-control contrast failure,
+  two RU/mobile article cells whose primary content started at 770 px against
+  the unchanged 768 px gate, and three list cells where streamed metadata was
+  transiently empty at the axe boundary. The destructive action now uses
+  explicit AA-safe red shades in both themes; mobile workspace rhythm is four
+  pixels tighter between major blocks; list and detail routes maintain a
+  localized browser title from the rendered client state. The evidence runner
+  now reads the browser-visible `document.title`, requires one second of
+  stability and rechecks it after axe injection, strengthening timing
+  determinism without suppressing the document-title rule. Runner syntax,
+  changed-source ESLint, the seven-file section scan, `git diff --check` and
+  33/33 affected contract assertions pass. A new exact-SHA desktop, mobile and
+  complete high matrix are mandatory before this workstream closes.
 
 ## 13. Workstream 6 — Ticket Categories
 
