@@ -993,3 +993,31 @@ and high-density matrices on that same SHA.
 Next: checkpoint and push these rendered product/runner corrections, rerun the
 desktop exact-SHA gate, inspect all seven flows and the static cell, then run
 mobile physical-touch and high-density matrices on that same green SHA.
+
+### Workstream 6 fourth self-audit and physical-touch correction
+
+- Desktop exact-SHA run `36295921892` at
+  `2f532e66efffd461eb323345cbb0ee512a82b55b` completes successfully. Its
+  retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36295921892`.
+- The inspected static cell passes with empty runtime errors, zero axe/custom
+  accessibility and touch findings, no horizontal overflow, no environment or
+  primary-work mismatch, load p75 501 ms and CLS
+  `0.0007984547556182484`. All seven recovery flows pass and the final
+  deactivate/restore flow reports `fixtureRestored: true`. Manual screenshot
+  inspection confirms the compact summary, tree hierarchy, visible actions and
+  healthy viewport composition.
+- Self-audit found that the runner set `hasTouch` outside desktop but did not
+  make an actual Playwright touchscreen input. It now activates recovery through
+  keyboard on desktop and a measured, scroll-aware, center-point
+  `page.touchscreen.tap` elsewhere. The touch path fails closed below 44x44 or
+  when `document.elementFromPoint` does not hit the intended interactive
+  control; service workers are blocked so routed recovery remains deterministic.
+- Resource inspection still shows 15 GiB available memory, 331 GiB free disk
+  and zero pressure. Runner syntax, changed-source ESLint, `git diff --check`
+  and the strengthened flow contract pass 5/5. No keyboard, touch, scenario,
+  timeout or recovery requirement was relaxed.
+
+Next: checkpoint and push the physical-touch evidence correction, then run and
+inspect a new exact-SHA desktop keyboard pass, RU/dark mobile physical-touch
+pass and full high-density matrix before closing Workstream 6.

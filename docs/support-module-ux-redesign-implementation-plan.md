@@ -1668,6 +1668,19 @@ Current verification evidence (2026-09-05):
   and zero pressure. Runner syntax, the unchanged four-file scan, changed-source
   ESLint, `git diff --check` and four focused suites (18/18) pass. A newer
   exact-SHA desktop/mobile/high trio remains mandatory.
+- Exact-SHA desktop run `36295921892` at
+  `2f532e66efffd461eb323345cbb0ee512a82b55b` passes the dedicated section
+  validation, disposable fixtures, production build, one static cell and all
+  seven mutating flows. The inspected artifact has zero browser/API, axe,
+  custom accessibility, touch-target, overflow, environment or primary-work
+  findings; the lifecycle fixture is restored and the visual hierarchy is
+  healthy. Self-audit then found that non-desktop contexts declared touch
+  capability without proving an actual physical Playwright touchscreen hit.
+  The recovery target now uses a fail-closed 44x44 measurement, center-point
+  hit test and `page.touchscreen.tap`, while desktop retains its keyboard
+  activation. Contract coverage locks both input paths. Because this changes
+  the evidence runner, a new exact-SHA desktop/mobile/high trio remains
+  mandatory rather than treating the earlier desktop artifact as final.
 - CAT checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery
