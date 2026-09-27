@@ -2034,3 +2034,23 @@ mutation sample before mobile.
 
 Next: checkpoint and push the focus-restoration fix, then repeat desktop before
 mobile/high evidence.
+
+### Workstream 11 mobile evidence correction
+
+- Exact-SHA RU/dark mobile run `36349297848` on `c0a5ba954` passed the section
+  gate, production build and all six disposable flow outcomes. Recovery,
+  terminal permission, partial-source, empty agenda, high-density/outside-
+  hours, keyboard/focus, and week/today navigation behavior are intact.
+- The independent static browser cell correctly blocked closure because the
+  title-row Help control was flex-shrunk to `19x32` px. Axe, unlabeled-control,
+  overflow, environment and primary-work checks were otherwise green;
+  primary work begins at 667 px, load p75 is 506 ms and CLS is
+  `0.009392899609308647`. Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36349297848`.
+- The calendar now gives its Help control an explicit non-shrinking `44x44`
+  target, matching the existing previous/next controls. The calendar UX
+  contract pins this requirement so the mobile hitbox cannot regress. The
+  threshold and static gate remain unchanged.
+
+Next: run focused source checks, checkpoint and push the hitbox correction,
+then repeat the exact-SHA RU/dark mobile gate before the high matrix.

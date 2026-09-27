@@ -199,7 +199,7 @@ export default function AgentCalendarPage() {
     <div className="space-y-4" data-testid="support-calendar-workspace" data-state={loading ? "loading" : error ? "error" : partial ? "partial" : "ready"}>
       <header className="flex items-start gap-3">
         <Calendar className="mt-0.5 h-5 w-5 text-muted-foreground" />
-        <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1><HelpButton slug="agent-calendar" /></div><p className="mt-1 text-sm text-muted-foreground" data-testid="support-calendar-week-label">{weekLabel}</p></div>
+        <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1><HelpButton slug="agent-calendar" className="h-11 w-11 shrink-0" /></div><p className="mt-1 text-sm text-muted-foreground" data-testid="support-calendar-week-label">{weekLabel}</p></div>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => changeWeek(-1)} aria-label={t("previousWeek")} data-testid="support-calendar-previous"><ChevronLeft /></Button>
           <Button variant="outline" className="hidden min-h-11 sm:inline-flex" onClick={goToday} data-testid="support-calendar-today">{t("today")}</Button>

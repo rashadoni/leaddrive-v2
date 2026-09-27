@@ -47,6 +47,7 @@ describe("support calendar UX contract", () => {
     const page = source("src/app/(dashboard)/support/calendar/page.tsx")
     expect(page).toContain('aria-label={t("previousWeek")}')
     expect(page).toContain('aria-label={t("nextWeek")}')
+    expect(page).toContain('HelpButton slug="agent-calendar" className="h-11 w-11 shrink-0"')
     expect(page).toContain("h-11 w-11")
     expect(page).toContain("min-h-11")
   })
