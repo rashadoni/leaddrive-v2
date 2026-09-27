@@ -83,3 +83,23 @@ worktree has no `node_modules`; it is not counted as a test result. All reported
 passes used an existing dependency tree with the exact current
 `package-lock.json` hash. The temporary link was removed after every command
 without changing its target.
+
+## Clean implementation checkpoint
+
+The eight task-owned implementation/test/translation/evidence paths were
+checkpointed as `5aec9991df5bf50ce9b2034183341069097df236`; a one-line trailing-blank
+evidence repair was preserved separately as
+`02c795f702b1ef4b22c89377a1cb9111b2f8dbd8`. The worktree was then clean.
+
+A fresh fetch kept base, merge-base and current `origin/main` at exact deployed
+SHA `86fc1d2c23fead588b45c2e700e125a6d98bbe82`. The preliminary complete
+base-to-head diff, including the preceding PR #459 release receipt, was nine
+paths / 72,880 binary-diff bytes with SHA-256
+`9a86e899d0a1ff6ba40b0198eda44e910e5b7d80e2dc36b786654214220eaacb`,
+below the 400 KB review boundary.
+
+This append-only checkpoint receipt supersedes that preliminary identity. No
+runtime/test/translation path changed after the final 6/6 interaction rerun,
+targeted ESLint, translation parity and diff check. A replacement clean head
+and fresh author-independent complete-diff review remain mandatory before any
+push.

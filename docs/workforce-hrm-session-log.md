@@ -678,3 +678,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot evidence remains `NOT RUN` under host policy. WF-C8-005 moves `PLANNED` to `PARTIAL`, but progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
 - Precise stopping point: UI, focused tests, translations, roadmap and evidence are complete in the working tree; no checkpoint or frozen complete-diff review exists yet, and nothing has been pushed.
 - Next action: rerun final targeted checks on the documented tree, remove only the temporary dependency link, checkpoint explicit task-owned paths, freeze exact base/head/hash/size and require a fresh author-independent zero-finding complete-diff review before any push.
+
+## 2026-09-27 — C6/C8 acknowledgement UI implementation checkpoint clean
+
+- The eight task-owned implementation/test/translation/evidence paths were checkpointed as `5aec9991df5bf50ce9b2034183341069097df236`; a one-line trailing-blank evidence repair was preserved separately as `02c795f702b1ef4b22c89377a1cb9111b2f8dbd8`. No test/runtime path changed in the repair and the worktree became clean.
+- Fresh fetch kept exact deployed base/merge-base/current main at `86fc1d2c23fead588b45c2e700e125a6d98bbe82`; no integration was required. Preliminary complete base-to-head identity, including the earlier PR #459 release receipt, was nine paths / 72,880 binary-diff bytes with SHA-256 `9a86e899d0a1ff6ba40b0198eda44e910e5b7d80e2dc36b786654214220eaacb`, below 400 KB.
+- This append-only three-document checkpoint receipt supersedes the preliminary identity. No runtime/test/translation path changed after the final 6/6 jsdom rerun, targeted ESLint, i18n 23,600/0/0 and whitespace checks.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: implementation/evidence are committed and main is unchanged; only this three-document checkpoint receipt is uncommitted, so no valid frozen review identity exists yet and nothing is pushed.
+- Next action: checkpoint this receipt, freeze the replacement base/head/path/byte/hash identity and require a fresh author-independent complete-diff review of every changed line before push.
