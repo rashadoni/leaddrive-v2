@@ -1844,3 +1844,21 @@ green.
 Next: checkpoint and push the contrast/hitbox remediation, then run a fresh
 exact-SHA EN/light desktop mutation sample. Only after it is green and manually
 reviewed, run RU/dark mobile physical-touch evidence and the full high matrix.
+
+### Workstream 10 second desktop evidence correction
+
+- Replacement run `36336640839` on `172719fd1` again passed the dedicated
+  section gate, production build and all 6/6 disposable outcomes. The 44x44
+  switch/checkbox remediation is proven at runtime: `smallTargets` is now zero,
+  with zero custom accessibility, overflow, environment and primary-work
+  failures.
+- Axe remained correctly fail-closed because the semantic foreground on the
+  primary orange action measured 4.38:1, still below 4.5:1. The remaining fix
+  uses a stable dark-neutral foreground on orange action/selected-skill states,
+  preserving the visual hierarchy while creating sufficient contrast in both
+  themes. Focused ESLint, the four-file 0-finding anti-pattern scan, 7/7 UX
+  assertions and `git diff --check` pass.
+
+Next: checkpoint and push the final contrast token correction, then run a new
+exact-SHA desktop sample. Do not start mobile/high until the desktop cell is
+fully green and its screenshot is manually accepted.

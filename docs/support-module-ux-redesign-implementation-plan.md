@@ -2496,6 +2496,12 @@ Current-tree restoration (2026-09-26):
   visuals inside real 44x44 interactive hitboxes. Focused lint, anti-pattern
   scan and 12/12 related contract assertions are green; replacement exact-SHA
   desktop and mobile evidence is pending.
+- Replacement run `36336640839` on `172719fd1` confirms the hitbox correction:
+  static `smallTargets` fell from five to zero and the 6/6 mutation suite stayed
+  green. Axe still measured the semantic foreground at 4.38:1, narrowly below
+  the unchanged 4.5:1 threshold. Orange actions now use a stable dark-neutral
+  foreground with stronger contrast; focused lint, the 0-finding scan, 7/7 UX
+  assertions and `git diff --check` are green before a fresh exact-SHA run.
 
 ## 18. Workstream 11 — Agent Calendar
 

@@ -35,7 +35,7 @@ function RoutingCheckbox({ checked, onChange, label, testId }: {
         data-testid={testId}
       />
       <span aria-hidden="true" className="pointer-events-none flex h-4 w-4 items-center justify-center rounded border bg-background peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2">
-        {checked && <Check className="h-3 w-3 text-foreground" />}
+        {checked && <Check className="h-3 w-3 text-zinc-950" />}
       </span>
     </label>
   )
@@ -166,7 +166,7 @@ export function AgentSkillsManager({
             <SkillPicker value={bulkSkills} onChange={setBulkSkills} options={availableSkills} emptyHint={t("noQueueSkills")} ariaLabel={t("bulkSkillsLabel")} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" className="min-h-11 text-foreground" onClick={() => void handleBulk("add")} disabled={bulkSkills.length === 0 || savingIds.length > 0} data-testid="routing-agent-bulk-add">{t("bulkAdd", { count: selectedIds.length })}</Button>
+            <Button type="button" className="min-h-11 text-zinc-950" onClick={() => void handleBulk("add")} disabled={bulkSkills.length === 0 || savingIds.length > 0} data-testid="routing-agent-bulk-add">{t("bulkAdd", { count: selectedIds.length })}</Button>
             <Button type="button" variant="outline" className="min-h-11" onClick={() => void handleBulk("remove")} disabled={bulkSkills.length === 0 || savingIds.length > 0} data-testid="routing-agent-bulk-remove">{t("bulkRemove", { count: selectedIds.length })}</Button>
             <Button type="button" variant="ghost" className="min-h-11" onClick={() => setSelectedIds([])}>{t("clearSelection")}</Button>
           </div>
