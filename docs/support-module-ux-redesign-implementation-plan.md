@@ -1897,7 +1897,7 @@ Current verification evidence (2026-09-05):
 
 ## 15. Workstream 8 — Support Entitlements
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `168aa7134`; CI/browser gates pending**
+**Status: DONE — exact-SHA desktop/mobile mutation and 48-cell high-density browser evidence green**
 **Route:** `/support/entitlements`
 **Primary file:** `src/app/(dashboard)/support/entitlements/page.tsx`
 **Related roadmap:** `docs/support-entitlements-roadmap.md`
@@ -1910,25 +1910,25 @@ every record make this the longest and most cognitively expensive page. Browser
 Target UX: a compact support-terms list with one selected detail, lifecycle
 clarity, and a milestone editor loaded only when requested.
 
-- [ ] **SUPUX-ENT-001** Reconcile this UX plan with the completed functional
+- [x] **SUPUX-ENT-001** Reconcile this UX plan with the completed functional
   entitlement roadmap; do not regress lifecycle, audit, permission, or ticket
   milestone behavior.
-- [ ] **SUPUX-ENT-002** Replace long record cards with a compact list/table and a
+- [x] **SUPUX-ENT-002** Replace long record cards with a compact list/table and a
   selected-detail drawer or dedicated route.
-- [ ] **SUPUX-ENT-003** Move create/edit into a persistent drawer or full-screen
+- [x] **SUPUX-ENT-003** Move create/edit into a persistent drawer or full-screen
   mobile flow instead of rendering beside/below every record.
-- [ ] **SUPUX-ENT-004** Load the milestone summary by default and open the full
+- [x] **SUPUX-ENT-004** Load the milestone summary by default and open the full
   constructor only for the selected entitlement.
-- [ ] **SUPUX-ENT-005** Collapse how-it-works content into contextual first-use
+- [x] **SUPUX-ENT-005** Collapse how-it-works content into contextual first-use
   help.
-- [ ] **SUPUX-ENT-006** Limit KPI indicators to active exceptions: expiring,
+- [x] **SUPUX-ENT-006** Limit KPI indicators to active exceptions: expiring,
   at-risk, and uncovered companies.
-- [ ] **SUPUX-ENT-007** Consolidate five filters into the shared toolbar pattern.
-- [ ] **SUPUX-ENT-008** Replace browser prompt/confirm with a lifecycle dialog that
+- [x] **SUPUX-ENT-007** Consolidate five filters into the shared toolbar pattern.
+- [x] **SUPUX-ENT-008** Replace browser prompt/confirm with a lifecycle dialog that
   captures reason, impact, and confirmation.
-- [ ] **SUPUX-ENT-009** Preserve the current stronger permission, notice, error,
+- [x] **SUPUX-ENT-009** Preserve the current stronger permission, notice, error,
   and lifecycle-state handling.
-- [ ] **SUPUX-ENT-010** Test 0, 1, 20, and 100 entitlements with multiple milestone
+- [x] **SUPUX-ENT-010** Test 0, 1, 20, and 100 entitlements with multiple milestone
   definitions.
 
 Acceptance:
@@ -2141,6 +2141,21 @@ Additional recovery evidence (2026-09-06):
   the 768 px fold. The three exception indicators now use a two-column mobile
   grid with the uncovered-company indicator spanning row two; `sm+` retains the
   existing flex layout and all 44 px targets.
+- Final exact-SHA RU/dark mobile run `36321298150` at `ab4477729` is green.
+  Its static cell has zero runtime, axe, custom accessibility, touch, overflow,
+  environment and primary-work findings; primary work starts at 744 px, load
+  p75 is 559 ms and CLS p75 is `0.009392899609308647`. All 7/7 disposable
+  outcomes pass with real 144x44 Playwright touchscreen activation,
+  0/1/20/100 records, 100 definitions per term, rollback, cleanup and final
+  Active restoration.
+- Final read-only high-density run `36322443016` at the same SHA passes all 48
+  manager/admin × AZ/RU/EN × light/dark × desktop/tablet/narrow-tablet/mobile
+  cells. Every issue total is zero; primary work spans 447–744 px, maximum load
+  p75 is 547 ms and maximum CLS is `0.024733367306494537`. Representative
+  screenshots across both roles, all layout families, locales and themes were
+  manually reviewed as healthy. The retained artifacts are
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36321298150` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36322443016`.
 
 ## 16. Workstream 9 — Entitlement Templates
 

@@ -1528,3 +1528,38 @@ repeat the identical mobile exact-SHA gate without changing the 768 px rule.
 - Resource inspection remains healthy at 15 GiB available memory, 331 GiB free
   disk and zero pressure. Scoped ESLint, `git diff --check` and the two affected
   contracts pass 12/12. The hosted build/capture is the only repeated gate.
+
+### Workstream 8 closure self-audit
+
+- Final exact-SHA RU/dark mobile run `36321298150` on product SHA
+  `ab44777297e60b8514522e2808b970ca37d3f030` passes the dedicated section gate,
+  production build, static browser cell and all 7/7 disposable outcomes. The
+  artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36321298150`.
+- Static totals are zero for runtime, axe, custom accessibility, touch targets,
+  overflow, environment and primary-work fold. Primary work starts at 744 px,
+  load p75 is 559 ms and CLS p75 is `0.009392899609308647`. RU, dark theme,
+  reduced motion and `maxTouchPoints: 1` match the requested environment.
+- Mutation evidence proves physical Playwright touchscreen activation on a
+  hit-tested 144x44 target; compact 0/1/20/100 rendering with 100 milestone
+  definitions per term; filter reset; exact detail focus return; lifecycle,
+  edit and milestone rollback/retry; `disposableFixtureRemoved: true`; and
+  `entitlementRestoredActive: true`.
+- Final high-density run `36322443016` on the same product SHA passes all 48
+  unique read-only cells: manager/admin, AZ/RU/EN, light/dark and
+  desktop/tablet/narrow-tablet/mobile. Counts are balanced at 24 cells per role,
+  16 per locale, 24 per theme and 12 per viewport. Every issue total is zero;
+  primary-work top spans 447–744 px, maximum load p75 is 547 ms and maximum CLS
+  is `0.024733367306494537`. Four representative screenshots covering both
+  roles and all layout families were manually reviewed as healthy. The artifact
+  is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36322443016`.
+- Acceptance and all `SUPUX-ENT-001` through `SUPUX-ENT-010` requirements are
+  satisfied without weakening any gate. Desktop run `36315786714`, final mobile
+  run `36321298150` and final high run `36322443016` collectively cover
+  keyboard/focus, real touch, density, locales/themes/viewports, permissions,
+  failures/recovery, cleanup, accessibility, performance and visual review.
+
+Next: checkpoint the Workstream 8 closure and immediately restore Workstream 9
+Entitlement Templates from product `d002818b8` and recovery `f71a46049`, keeping
+the current shared evidence supersets.
