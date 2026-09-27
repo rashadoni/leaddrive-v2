@@ -19,7 +19,7 @@ describe("the shared MTM filter row", () => {
   it("shows what a filter is set to, clears it with ×, and keeps a native select for phone and keyboard", () => {
     expect(bar).toContain("{active || showValue ? `${label}: ${current}` : label}")
     expect(bar).toContain("onClick={() => onChange(emptyValue)}")
-    expect(bar).toContain('className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0"')
+    expect(bar).toContain('className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 disabled:cursor-not-allowed"')
   })
 
   it("offers «Сбросить» only when something is set", () => {
@@ -72,6 +72,7 @@ describe("every MTM list uses the one filter row, with no stat tiles above it", 
     ["map", "src/app/(dashboard)/mtm/map/page.tsx"],
     ["routes", "src/app/(dashboard)/mtm/routes/page.tsx"],
     ["tasks", "src/app/(dashboard)/mtm/tasks/page.tsx"],
+    ["panel", "src/components/mtm/operational-week-home.tsx"],
   ])("%s", (_name, path) => {
     const page = readFileSync(path, "utf8")
     expect(page).toContain('from "@/components/mtm/filter-bar"')
