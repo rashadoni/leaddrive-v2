@@ -8,6 +8,18 @@ const migrationPath = join(
   "prisma/migrations/20260927070000_workforce_exception_policy_revision_foundation/migration.sql",
 )
 const migration = readFileSync(migrationPath, "utf8")
+const validationMigrationPath = join(
+  root,
+  "prisma/migrations/20260927093000_workforce_exception_policy_revision_validate/migration.sql",
+)
+const validationMigration = readFileSync(validationMigrationPath, "utf8")
+
+function executableSql(sql: string): string {
+  return sql
+    .replace(/^\s*--.*$/gmu, "")
+    .replace(/\s+/gu, " ")
+    .trim()
+}
 
 function productionTypeScriptFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -65,6 +77,21 @@ describe("Workforce exception policy revision migration", () => {
     )
     expect(migration).toMatch(
       /FOREIGN KEY \("organizationId", "policyRevisionId"\)\s+REFERENCES "workforce_exception_policy_revisions"\("organizationId", "id"\)/u,
+    )
+  })
+
+  it("validates the decision provenance key in one bounded metadata-only phase", () => {
+    expect(executableSql(validationMigration)).toBe(
+      `BEGIN; SET LOCAL lock_timeout = '3s'; SET LOCAL statement_timeout = '2min'; `
+      + `ALTER TABLE "workforce_exception_decisions" VALIDATE CONSTRAINT `
+      + `"workforce_exception_decisions_policy_revision_fk"; COMMIT;`,
+    )
+    expect(validationMigration.match(/VALIDATE CONSTRAINT/gu)).toHaveLength(1)
+    expect(validationMigration).not.toMatch(
+      /^\s*(?:INSERT|UPDATE|DELETE|TRUNCATE|CREATE|DROP|GRANT|REVOKE)\b/imu,
+    )
+    expect(validationMigration).not.toMatch(
+      /\b(?:ADD|ALTER|DROP)\s+COLUMN\b|\bCREATE\s+(?:UNIQUE\s+)?INDEX\b/iu,
     )
   })
 
