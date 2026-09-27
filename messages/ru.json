@@ -15263,6 +15263,9 @@
     "view": "Вид",
   "sort": "Порядок",
     "status": "Статус",
+    "period": "Период",
+    "employee": "Сотрудник",
+    "type": "Тип",
     "found": "Найдено: {count}"
   },
   "mtmTeamResults": {

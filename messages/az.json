@@ -15259,6 +15259,9 @@
     "view": "Görünüş",
     "sort": "Sıra",
     "status": "Status",
+    "period": "Dövr",
+    "employee": "Əməkdaş",
+    "type": "Növ",
     "found": "Tapıldı: {count}"
   },
   "mtmTeamResults": {

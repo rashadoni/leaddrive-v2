@@ -15263,6 +15263,9 @@
     "view": "View",
     "sort": "Order",
     "status": "Status",
+    "period": "Period",
+    "employee": "Employee",
+    "type": "Type",
     "found": "Found: {count}"
   },
   "mtmTeamResults": {
