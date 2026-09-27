@@ -107,6 +107,26 @@ physical-device and human-pilot checks are `NOT RUN` under the Contabo workload
 policy. Fresh author-independent review and all exact-head GitHub checks remain
 mandatory before merge.
 
+## Author-independent frozen review
+
+The final read-only review returned GREEN with zero P0-P3 findings on exact
+base/current/live main and merge-base
+`a043fc9f1b41b87c032714d8d4f28e5dde9def3a` through clean head
+`65dba61f568a07b6fdc44053682029bf5aa288fb`. The independently matched complete
+diff contained 11 paths / 80,713 binary bytes, SHA-256
+`60db23fdeda37741ece40322243ef7698987f4c74333b7b4a8d74a7fffb83c34`, below
+400 KB.
+
+The review reconfirmed authorization, tenant/self scope, rollout and mutate
+gates, strict request containment, post-lock revision authority, replay and
+lock ordering, lifecycle/audit atomicity, database topology enforcement,
+bounded PostgreSQL race cleanup, GET compatibility and zero Android mutation
+paths. It also proved the PR #469 map-workflow-only base update has no path or
+semantic overlap. Reviewer diff and append-only prefix checks passed;
+dependency-backed and heavy checks were `NOT RUN` reviewer-side and the
+author's results were not relabelled. A receipt-integrity review and exact-head
+CI remain mandatory.
+
 ## Remaining boundaries
 
 Different UUIDs can still append more than one acknowledgement in one cycle;
