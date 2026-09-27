@@ -2536,7 +2536,7 @@ Current-tree restoration (2026-09-26):
 
 ## 18. Workstream 11 — Agent Calendar
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `7a75e28c7`; browser/CI gates pending**
+**Status: IN PROGRESS — current-tree checkpoints `2f2ec67c4` and `0093778cc`; exact-SHA browser/CI gates pending**
 **Route:** `/support/calendar`
 **Primary file:** `src/app/(dashboard)/support/calendar/page.tsx`
 
@@ -2641,6 +2641,29 @@ Additional recovery evidence (2026-09-06):
   locale, theme, keyboard/focus, touch, reduced-motion, accessibility,
   performance and visual matrix is still **NOT RUN**, and every SUPUX-CAL
   checkbox remains open.
+
+Current-tree restoration (2026-09-27):
+
+- Product checkpoint `2f2ec67c4` restores the adaptive agenda/week-board UI,
+  localized source/error states, accessible detail sheet and independent
+  ticket/task/event/activity health aggregation on top of the completed
+  Workstream 10 tree. Recovery checkpoint `0093778cc` restores exact state/item/
+  navigation/detail markers without replacing the newer shared workflow and
+  browser-runner supersets.
+- Self-audit adds the previously missing section-scoped `agent-calendar` CI
+  gate. Desktop recovery remains keyboard-driven; non-desktop recovery now
+  measures a 44x44 minimum, verifies the center point with
+  `document.elementFromPoint` and performs a real Playwright touchscreen tap
+  for retry, event detail and week/today navigation. The first-visit product
+  tour is dismissed and confirmed hidden before activation, without weakening
+  the hit-test.
+- JavaScript syntax, workflow YAML, all 21 extracted workflow shell blocks,
+  the one-file anti-pattern scan (0 findings), AZ/RU/EN parity at 23,599 keys,
+  targeted ESLint, 93/93 assertions in 11 focused suites and
+  `git diff --check` pass. Full local TypeScript/build/browser gates are not
+  repeated on Contabo after the documented default-heap exhaustion; exact-SHA
+  GitHub Actions production build and browser evidence remain mandatory before
+  any CAL checkbox closes.
 
 ## 19. Workstream 12 — Escalation Rules
 

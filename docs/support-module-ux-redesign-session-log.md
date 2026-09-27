@@ -1956,3 +1956,35 @@ RU/dark mobile mutation sample. The full high matrix remains gated on a green
 
 Next: checkpoint and push the Workstream 10 closure documentation, then restore
 and audit Workstream 11 Agent Calendar on top of this exact tree.
+
+### Workstream 11 Agent Calendar restoration and self-audit
+
+- Restored historical product work `4e0600bf7` as current-tree checkpoint
+  `2f2ec67c4`. The result replaces the fixed hourly canvas with a selected-day
+  agenda below `xl` and a compact event-only week board on wide screens;
+  outside-hours events stay ordered and labeled, the next timed item is
+  promoted, event details use an accessible sheet, and independent source
+  failures remain visible and retryable.
+- Restored the section-owned recovery markers and flow contract as checkpoint
+  `0093778cc` while preserving the newer shared workflow, generic browser
+  runner and screenshot wrapper. Added the missing section-scoped
+  `agent-calendar` validation gate instead of relying on the much broader
+  `all` scenario.
+- Self-audit found the historical flow described touch coverage but activated
+  retry/detail/navigation controls with keyboard or synthetic click at every
+  viewport. It now keeps keyboard activation on desktop and requires measured
+  44x44 targets, center-point DOM hit-testing and real Playwright touchscreen
+  taps elsewhere. It also dismisses and waits out the first-visit tour before
+  activation, preserving the strict hit-test learned from Workstream 10.
+- Local gates are green: browser/calendar JavaScript syntax; workflow YAML;
+  all 21 workflow `run` blocks under `bash -n`; the calendar anti-pattern scan
+  at 0 findings; AZ/RU/EN parity at 23,599 keys; targeted ESLint; 93/93
+  assertions across 11 focused suites; and `git diff --check`. Memory pressure
+  was zero before the sequential checks. A full local TypeScript/build/browser
+  run is **NOT RUN** under the Contabo workload contract after the already
+  documented default-heap exhaustion; GitHub Actions remains mandatory.
+
+Next: checkpoint and push the plan/journal state, then run exact-SHA desktop
+keyboard/recovery, RU/dark mobile physical-touch and the full high-density
+locale/theme/viewport matrix. Close Workstream 11 only after all browser gates
+and manual screenshot review are green.
