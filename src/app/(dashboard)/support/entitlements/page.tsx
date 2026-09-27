@@ -834,6 +834,7 @@ export default function EntitlementsPage() {
 
       <EntitlementDetailSheet
         entitlement={selectedEntitlement}
+        interactionBlocked={Boolean(lifecycleTarget)}
         permissions={permissions}
         templates={data?.templates ?? []}
         formatDate={formatDate}
@@ -1121,8 +1122,9 @@ function SupportTermFormSheet({ open, editing, data, form, error, saving, hasNoS
   )
 }
 
-function EntitlementDetailSheet({ entitlement, permissions, templates, formatDate, t, common, error, errorRetryable, notice, milestoneEditorOpen, milestoneForm, milestoneLoadingKey, onClose, onEdit, onLifecycle, onToggleMilestones, onRetry, onMilestoneChange, onMilestoneReset, onMilestoneSubmit, onTemplateApply, onMilestoneEdit, onMilestoneDelete }: {
+function EntitlementDetailSheet({ entitlement, interactionBlocked, permissions, templates, formatDate, t, common, error, errorRetryable, notice, milestoneEditorOpen, milestoneForm, milestoneLoadingKey, onClose, onEdit, onLifecycle, onToggleMilestones, onRetry, onMilestoneChange, onMilestoneReset, onMilestoneSubmit, onTemplateApply, onMilestoneEdit, onMilestoneDelete }: {
   entitlement: Entitlement | null
+  interactionBlocked: boolean
   permissions: EntitlementPermissions
   templates: EntitlementTemplate[]
   formatDate: (value: string | null) => string
@@ -1151,7 +1153,15 @@ function EntitlementDetailSheet({ entitlement, permissions, templates, formatDat
   const actions = lifecycleActions(entitlement, permissions)
   return (
     <Sheet open onOpenChange={(open) => { if (!open) onClose() }}>
-      <SheetContent closeLabel={common("close")} className="!h-[100dvh] !w-full !max-w-none overflow-y-auto p-0 sm:!w-[42rem] sm:!max-w-[94vw]" data-testid="support-entitlement-detail-sheet" data-entitlement-id={entitlement.id}>
+      <SheetContent
+        closeLabel={common("close")}
+        inert={interactionBlocked ? true : undefined}
+        aria-hidden={interactionBlocked ? true : undefined}
+        className={`!h-[100dvh] !w-full !max-w-none overflow-y-auto p-0 sm:!w-[42rem] sm:!max-w-[94vw] ${interactionBlocked ? "pointer-events-none" : ""}`}
+        data-testid="support-entitlement-detail-sheet"
+        data-entitlement-id={entitlement.id}
+        data-interaction-blocked={interactionBlocked ? "true" : "false"}
+      >
         <SheetHeader className="border-b px-4 pb-3 pr-16 pt-4">
           <SheetTitle>{entitlement.companyName || t("unknownCompany")}</SheetTitle>
           <SheetDescription>{t("detailDescription")}</SheetDescription>

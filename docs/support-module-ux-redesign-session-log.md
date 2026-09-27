@@ -1314,3 +1314,30 @@ Workstream 8.
 Next: checkpoint and push the rendered modal/contrast correction, rerun the
 same exact-SHA desktop gate and inspect all 7/7 outcomes before mobile/high
 evidence.
+
+### Workstream 8 nested-modal interaction correction
+
+- Rendered-modal/contrast checkpoint `1062cbc9b289760180d51d06650f62a7c43759e2`
+  passes the dedicated 209-assertion section gate, isolated fixtures and the
+  production build in exact-SHA desktop run `36310208941`, then fails closed in
+  interactive capture. Its artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36310208941`.
+- Static EN/light evidence is fully green: runtime, axe, custom accessibility,
+  touch, overflow, environment and primary-work issue totals are zero. Load p75
+  is 454 ms and CLS is `0.0007984547556182484`, confirming the AA contrast
+  correction. Keyboard recovery/terminal permission, 0/1/20/100 density with
+  100 definitions per term, and combined-filter reset pass unchanged.
+- Screenshot and Playwright hit-testing show the lifecycle dialog is now
+  visually above the detail sheet, but the underlying Radix Sheet content still
+  wins pointer targeting where their boxes overlap. The detail sheet is now
+  explicitly `inert`, `aria-hidden` and `pointer-events-none` only while the
+  lifecycle dialog is open. This models the required nested-modal semantics;
+  the portalled lifecycle dialog remains the sole interactive surface, and the
+  existing lifecycle, rollback and cleanup assertions are unchanged.
+- Resource inspection shows 16 GiB available memory, 331 GiB free disk and zero
+  current pressure. Scoped ESLint, `git diff --check` and the affected UX/flow
+  contracts pass 12/12. No scenario, timeout, assertion or gate was weakened.
+
+Next: checkpoint and push the nested-modal interaction correction, rerun the
+same exact-SHA desktop mutating gate, inspect all 7/7 outcomes and cleanup, then
+continue with mobile and high-density evidence.

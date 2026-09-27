@@ -2071,6 +2071,17 @@ Additional recovery evidence (2026-09-06):
   cascading state contamination from that blocked confirmation. Resource check
   remains healthy; five-file scan, scoped ESLint, `git diff --check` and two
   affected suites pass 12/12. No lifecycle or recovery assertion was relaxed.
+- Exact-SHA replacement run `36310208941` at `1062cbc9b` proves the dedicated
+  section gate, fixtures, production build and AA contrast correction. Its
+  static cell has zero runtime/axe/custom-accessibility/touch/overflow/
+  environment/primary-work findings, load p75 454 ms and CLS
+  `0.0007984547556182484`; the first three desktop outcomes remain green.
+  Rendered evidence shows the lifecycle dialog visibly above the detail sheet,
+  while browser hit-testing still assigns their overlapping area to the Radix
+  Sheet content. That underlying content is now `inert`, `aria-hidden` and
+  pointer-blocked only for the lifetime of the nested lifecycle dialog. Scoped
+  lint/diff and both affected contracts pass 12/12; all seven exact outcomes
+  and cleanup remain mandatory in the replacement hosted run.
 
 ## 16. Workstream 9 — Entitlement Templates
 
