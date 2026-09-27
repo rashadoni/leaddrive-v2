@@ -235,7 +235,7 @@ export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[
               type="button"
               onClick={() => onOpenChange(false)}
               aria-label={t("close")}
-              className="absolute right-2 top-2 z-20 inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="absolute right-2 top-2 z-20 inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
             >
               <X className="h-5 w-5" aria-hidden="true" />
             </button>

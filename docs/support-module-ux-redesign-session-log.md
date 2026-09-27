@@ -1124,3 +1124,20 @@ high-density SLA evidence before closing Workstream 7.
 Next: checkpoint and push the physical-touch evidence addition, then run and
 inspect exact-SHA desktop keyboard, RU/dark physical-touch mobile and complete
 high-density SLA evidence.
+
+### Workstream 7 reduced-motion gate correction
+
+- Desktop run `36302053479` at
+  `f3ae03612f4850ede88d8d4620d587bf7805b32e` reached the new dedicated SLA
+  validation and failed closed before disposable fixtures, production build or
+  browser capture. This is diagnostic validation evidence, not a browser pass.
+- The expanded five-file scan found the shared Dialog close button used by the
+  SLA editor had `transition-colors` without a reduced-motion fallback. The
+  exact utility group now includes `motion-reduce:transition-none`; no scan root
+  or rule changed.
+- The identical five-file scan now reports zero findings. Scoped Dialog/test
+  ESLint, `git diff --check` and the strengthened SLA visual contract pass 7/7.
+
+Next: checkpoint and push the shared Dialog reduced-motion correction, then
+restart exact-SHA desktop evidence; only after its inspected artifact is green
+run RU/dark physical-touch mobile and the complete high-density matrix.

@@ -1834,6 +1834,15 @@ Current verification evidence (2026-09-05):
   viewports. Service workers are blocked for deterministic routed failures and
   contract coverage locks both modalities. Runner syntax, scoped ESLint,
   `git diff --check` and the strengthened flow contract pass 5/5.
+- Diagnostic exact-SHA run `36302053479` at
+  `f3ae03612f4850ede88d8d4620d587bf7805b32e` proves the dedicated SLA
+  validation executes and fails closed before fixtures, build or browser
+  capture. The expanded scan found one shared Dialog close-button color
+  transition without a reduced-motion fallback. The same transition utility
+  now includes `motion-reduce:transition-none`; the unchanged five-file scan
+  reports zero findings, scoped ESLint and `git diff --check` pass, and the
+  strengthened SLA visual contract passes 7/7. No scan root, rule or browser
+  gate was removed.
 - SLA checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery

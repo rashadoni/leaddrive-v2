@@ -69,9 +69,11 @@ describe("SLA policies UX contract", () => {
     const files = [
       source("src/app/(dashboard)/settings/sla-policies/page.tsx"),
       source("src/components/sla-policy-form.tsx"),
+      source("src/components/ui/dialog.tsx"),
     ].join("\n")
     expect(files).toContain("min-h-11")
     expect(files).toContain("motion-reduce:animate-none")
+    expect(files).toContain("motion-reduce:transition-none")
     expect(files).not.toMatch(/(?:violet|purple|cyan|fuchsia)-/)
     expect(files).not.toContain("bg-gradient")
     expect(files).not.toContain("ColorStatCard")
