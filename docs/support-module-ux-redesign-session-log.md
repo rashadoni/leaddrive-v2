@@ -864,3 +864,34 @@ exact SHA. Close Workstream 5 only after all three artifacts are green.
 
 Next: checkpoint and push the tablet touch correction, then rerun desktop,
 physical-touch mobile and the complete 168-cell matrix on one new exact SHA.
+
+### Workstream 5 ninth browser self-audit and mobile fold correction
+
+- Tablet-touch checkpoint `2b71824b6f6bb11041622779035e28adf6388b01`
+  passes EN/light desktop run `36286725261` and RU/dark mobile run
+  `36287427857`. Both complete the dedicated validation, disposable fixtures,
+  cold production build, 9/9 mutating recovery outcomes and 3/3 static cells.
+  Browser, axe, custom a11y, touch, overflow, environment and primary-work
+  totals are zero. Mobile proves Playwright touchscreen hit-testing on 144x44
+  and 134x44 retry controls and `fixtureRestored: true`; manual review of the
+  RU/dark article screenshot is healthy. Artifacts are retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36286725261` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36287427857`.
+- Full high run `36288472987` completed all 168 requested cells: 166 pass and
+  two fail. The previous RU/admin tablet and narrow-tablet Help trigger failure
+  is fully cleared. The only remaining failures are the same RU/admin article
+  mobile cell in light and dark, and only the unchanged primary-work rule:
+  article content starts at 770 px versus the 768 px maximum. Every browser,
+  axe, custom a11y, touch, environment and overflow total is zero. Its artifact
+  is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36288472987`.
+- The four non-interactive metadata facts now use a 56 px mobile row and keep
+  the prior 64 px row at `sm` and above. This removes 32 px ahead of primary
+  content while preserving every interactive 44 px target and every evidence
+  threshold. Resource inspection showed 15 GiB available memory, 331 GiB free
+  disk and zero current memory pressure. The focused contract passes 11/11;
+  changed-file ESLint, the seven-file section scan and `git diff --check` pass.
+  No role, locale, theme, viewport, scenario, timeout or gate was reduced.
+
+Next: checkpoint and push the mobile fold correction, then repeat desktop,
+physical-touch mobile and all 168 high-density cells on one new exact SHA.

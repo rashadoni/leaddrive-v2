@@ -336,7 +336,7 @@ export default function KbArticleDetailPage() {
 
 function ArticleFact({ icon: Icon, label, value }: { icon: typeof BookOpen; label: string; value: string }) {
   return (
-    <div className="flex min-h-16 items-center gap-3 px-4 py-3">
+    <div className="flex min-h-14 items-center gap-3 px-4 py-2.5 sm:min-h-16 sm:py-3">
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0">
         <p className="text-[11px] text-muted-foreground">{label}</p>

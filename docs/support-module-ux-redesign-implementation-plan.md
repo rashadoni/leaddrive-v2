@@ -1509,6 +1509,25 @@ Current verification evidence (2026-09-05):
   ESLint, the seven-file scoped scan and `git diff --check` are green. Because
   this is a rendered product change, desktop, mobile and high gates must all run
   again on its newer checkpoint before Workstream 5 closes.
+- On tablet-touch checkpoint `2b71824b6`, desktop run `36286725261` and
+  RU/dark mobile run `36287427857` pass the dedicated validation, disposable
+  fixtures, production build, all 9/9 mutating flows and all 3/3 static cells.
+  Both artifacts have zero browser, axe, custom a11y, touch, overflow,
+  environment and primary-work findings; mobile again proves physical
+  touchscreen hits at 144x44 and 134x44 with fixture restoration. Full high
+  run `36288472987` completed all 168 cells with 166 passed. The former four
+  tablet/narrow-tablet failures are cleared, and touch, browser, axe, custom
+  a11y, environment and overflow totals are zero. Its only two failures are
+  RU/admin mobile article cells in light and dark: content begins at 770 px,
+  two pixels below the unchanged 768 px primary-work gate.
+- The four non-interactive article facts now use a mobile-only 56 px compact
+  row and retain the existing 64 px row from `sm` upward. This removes 32 px
+  before article content without shrinking any interactive 44 px target or
+  altering a gate. Resource inspection showed 15 GiB available memory, 331 GiB
+  free disk and zero current pressure. The focused contract passes 11/11;
+  changed-file ESLint, the seven-file scoped anti-pattern scan and
+  `git diff --check` pass. A new exact-SHA desktop/mobile/high trio remains
+  mandatory before Workstream 5 closes.
 
 ## 13. Workstream 6 — Ticket Categories
 
