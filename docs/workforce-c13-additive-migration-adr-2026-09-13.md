@@ -79,3 +79,18 @@ structural metadata, not fabricated historical assurance. This amendment does
 not permit a general backfill class or baseline waiver. It names one migration
 and replaces the blanket lexical check with the positive fail-closed contract
 above; any second migration or broader mutation still fails CI.
+
+## Amendment — append-only statement guard, 2026-09-27
+
+The inactive C6 exception-policy revision ledger adds a statement trigger that
+rejects direct table clearing as well as row update/delete. The original source
+contract rejected the word used by that protective trigger because it could
+not distinguish a destructive command from a `TG_OP`/`BEFORE` guard.
+
+The compatibility contract now names only
+`20260927070000_workforce_exception_policy_revision_foundation`, positively
+requires its exact append-only function, exact statement trigger and rejection
+message, and still rejects any top-level destructive command in every
+Workforce migration. All other Workforce migrations remain forbidden from
+containing that token. This amendment permits no data rewrite, seed, backfill,
+table clearing or reusable exception class.

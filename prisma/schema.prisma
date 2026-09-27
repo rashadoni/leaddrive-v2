@@ -215,6 +215,7 @@ model Organization {
   workforceAttendanceReviewCases      WorkforceAttendanceReviewCase[]
   workforceExceptionCases             WorkforceExceptionCase[]
   workforceExceptionDecisions         WorkforceExceptionDecision[]
+  workforceExceptionPolicyRevisions   WorkforceExceptionPolicyRevision[]
   workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceTimeCorrections            WorkforceTimeCorrection[]
   workforceWorkdayReopens             WorkforceWorkdayReopen[]
@@ -693,6 +694,7 @@ model User {
   workforceSiteAssignmentBulkOperationsPublished WorkforceSiteAssignmentBulkOperation[] @relation("WorkforceSiteAssignmentBulkOperationPublishedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
   workforceExceptionDecisionsActed      WorkforceExceptionDecision[]   @relation("WorkforceExceptionDecisionActor")
+  workforceExceptionPolicyRevisionsRecorded WorkforceExceptionPolicyRevision[] @relation("WorkforceExceptionPolicyRevisionRecordedBy")
   workforceExceptionEmployeeResponsesActed WorkforceExceptionEmployeeResponse[] @relation("WorkforceExceptionEmployeeResponseActor")
   workforceTimeCorrectionsActed       WorkforceTimeCorrection[]      @relation("WorkforceTimeCorrectionActor")
   workforceWorkdayReopensActed        WorkforceWorkdayReopen[]       @relation("WorkforceWorkdayReopenActor")
@@ -7634,6 +7636,34 @@ model WorkforceExceptionCase {
   @@map("workforce_exception_cases")
 }
 
+/// Immutable, tenant-scoped provenance for an owner-approved exception-policy
+/// draft. Persisting a row does not activate the policy: no route, worker,
+/// tenant flag or decision writer consumes this ledger in the foundation
+/// phase. A future activation must remain a separately reviewed contract.
+model WorkforceExceptionPolicyRevision {
+  id               String   @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  revision         Int
+  operationId      String   @db.VarChar(100)
+  policyVersion    String   @db.VarChar(64)
+  definition       Json
+  definitionHash   String   @db.VarChar(64)
+  recordedByUserId String
+  recordedByUser   User     @relation("WorkforceExceptionPolicyRevisionRecordedBy", fields: [organizationId, recordedByUserId], references: [organizationId, id], onDelete: Restrict)
+  recordReasonCode String   @db.VarChar(64)
+  createdAt        DateTime @default(now())
+
+  decisions WorkforceExceptionDecision[] @relation("WorkforceExceptionDecisionPolicyRevision")
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, revision])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, recordedByUserId, createdAt])
+  @@map("workforce_exception_policy_revisions")
+}
+
 /// One append-only accountable action in an exception case. The generic code
 /// is intentionally not a hidden HR severity/SLA/payout policy; a later
 /// tenant-approved lifecycle decides which codes can close, escalate or alter
@@ -7650,6 +7680,11 @@ model WorkforceExceptionDecision {
   operationId   String                @db.VarChar(100)
   decisionCode  String                @db.VarChar(64)
   reason        String                @db.VarChar(1000)
+  // NULL is the only honest value for decisions written before a separately
+  // reviewed policy-revision writer exists. This foundation does not backfill
+  // historical policy provenance or make the relation an authorization bit.
+  policyRevisionId String?
+  policyRevision WorkforceExceptionPolicyRevision? @relation("WorkforceExceptionDecisionPolicyRevision", fields: [organizationId, policyRevisionId], references: [organizationId, id], onDelete: Restrict)
   actorUserId   String
   actorUser     User                  @relation("WorkforceExceptionDecisionActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
   createdAt     DateTime              @default(now())

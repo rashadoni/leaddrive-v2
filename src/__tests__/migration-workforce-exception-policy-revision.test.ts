@@ -1,0 +1,92 @@
+import { readFileSync, readdirSync } from "node:fs"
+import { join } from "node:path"
+import { describe, expect, it } from "vitest"
+
+const root = process.cwd()
+const migrationPath = join(
+  root,
+  "prisma/migrations/20260927070000_workforce_exception_policy_revision_foundation/migration.sql",
+)
+const migration = readFileSync(migrationPath, "utf8")
+
+function productionTypeScriptFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) {
+      if (entry.name === "__tests__") return []
+      return productionTypeScriptFiles(path)
+    }
+    return /\.(?:ts|tsx)$/u.test(entry.name) ? [path] : []
+  })
+}
+
+describe("Workforce exception policy revision migration", () => {
+  it("is an additive, empty and rollback-compatible foundation", () => {
+    expect(migration).toContain('CREATE TABLE "workforce_exception_policy_revisions"')
+    expect(migration).toMatch(
+      /ALTER TABLE "workforce_exception_decisions"\s+ADD COLUMN "policyRevisionId" TEXT;/u,
+    )
+    expect(migration).toMatch(
+      /FOREIGN KEY \("organizationId", "policyRevisionId"\)[\s\S]*?NOT VALID;/u,
+    )
+    expect(migration).not.toMatch(/^\s*(?:INSERT|UPDATE|DELETE)\s+/imu)
+    expect(migration).not.toMatch(/ADD COLUMN "policyRevisionId"[^;]*(?:NOT NULL|DEFAULT)/iu)
+    expect(migration).not.toMatch(/CREATE\s+(?:UNIQUE\s+)?INDEX[^;]*workforce_exception_decisions/iu)
+    expect(migration).not.toMatch(/ENABLE[_ ](?:TENANT|POLICY)|feature[_ ]flag/iu)
+    expect(migration).toContain("BEGIN;")
+    expect(migration).toContain("SET LOCAL lock_timeout = '3s'")
+    expect(migration).toContain("SET LOCAL statement_timeout = '2min'")
+    expect(migration.trimEnd().endsWith("COMMIT;")).toBe(true)
+  })
+
+  it("pins tenant-first identity, actor, format and revision constraints", () => {
+    expect(migration).toContain(
+      'UNIQUE INDEX "workforce_exception_policy_revisions_org_revision_key"',
+    )
+    expect(migration).toContain(
+      'UNIQUE INDEX "workforce_exception_policy_revisions_org_operation_key"',
+    )
+    expect(migration).toContain('CHECK ("revision" > 0)')
+    expect(migration).toContain("CHECK (jsonb_typeof(\"definition\") = 'object')")
+    expect(migration).toContain("CHECK (\"definitionHash\" ~ '^[a-f0-9]{64}$')")
+    expect(migration).toMatch(
+      /FOREIGN KEY \("organizationId", "recordedByUserId"\)\s+REFERENCES "users"\("organizationId", "id"\)/u,
+    )
+    expect(migration).toMatch(
+      /FOREIGN KEY \("organizationId", "policyRevisionId"\)\s+REFERENCES "workforce_exception_policy_revisions"\("organizationId", "id"\)/u,
+    )
+  })
+
+  it("forces tenant RLS and rejects every direct destructive mutation", () => {
+    expect(migration).toContain(
+      'ALTER TABLE "workforce_exception_policy_revisions" FORCE ROW LEVEL SECURITY',
+    )
+    expect(migration).toContain(
+      "workforce_exception_policy_revisions_tenant_select",
+    )
+    expect(migration).toContain(
+      "workforce_exception_policy_revisions_tenant_insert",
+    )
+    expect(migration).toContain("BEFORE UPDATE OR DELETE")
+    expect(migration).toContain("IF TG_OP = 'TRUNCATE' THEN")
+    expect(migration).toContain(
+      'BEFORE TRUNCATE ON "workforce_exception_policy_revisions"',
+    )
+    expect(migration).toContain("GRANT SELECT, INSERT ON TABLE")
+    expect(migration).not.toMatch(/GRANT[^;]*(?:UPDATE|DELETE|TRUNCATE)/iu)
+  })
+
+  it("has no production consumer or provisioning side effect", () => {
+    const productionFiles = productionTypeScriptFiles(join(root, "src"))
+      .filter((path) => !path.endsWith("/lib/workforce/exception-policy-revision.ts"))
+
+    for (const path of productionFiles) {
+      expect(readFileSync(path, "utf8"), path).not.toContain(
+        "@/lib/workforce/exception-policy-revision",
+      )
+    }
+    expect(
+      readFileSync(join(root, "src/lib/workforce/default-configuration-provisioning.ts"), "utf8"),
+    ).not.toContain("workforceExceptionPolicyRevision")
+  })
+})
