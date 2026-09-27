@@ -5,10 +5,13 @@ import {
   type WorkforceExceptionCaseDraft,
   type WorkforceExceptionDecisionDraft,
 } from "@/lib/workforce/exception-case-ledger"
+import { MAX_WORKFORCE_EXCEPTION_DECISIONS } from "@/lib/workforce/exception-workbench"
 
 type WorkforceExceptionCaseWriteData = Omit<WorkforceExceptionCaseDraft, "links"> & WorkforceExceptionCaseDraft["links"]
 type StoredCase = Omit<WorkforceExceptionCaseWriteData, "expectedWorkDate"> & { id: string; expectedWorkDate: string | Date | null }
+type WorkforceExceptionDecisionWriteData = WorkforceExceptionDecisionDraft & { caseRevision: number }
 type StoredDecision = WorkforceExceptionDecisionDraft & { id: string }
+type CreatedDecision = WorkforceExceptionDecisionWriteData & { id: string }
 
 /** Smallest transaction facade needed to append an immutable case. Keeping it
  * separate from decisions lets a detector use an actual Prisma transaction
@@ -41,16 +44,17 @@ export type WorkforceExceptionCasePersistenceDb = {
 
 export type WorkforceExceptionCaseWriterDb = WorkforceExceptionCasePersistenceDb & {
   workforceExceptionDecision: {
-    create: (args: { data: WorkforceExceptionDecisionDraft }) => Promise<StoredDecision>
+    create: (args: { data: WorkforceExceptionDecisionWriteData }) => Promise<CreatedDecision>
     findFirst: (args: {
       where: { organizationId: string; operationId: string }
       select: { id: true; organizationId: true; caseId: true; operationId: true; decisionCode: true; reason: true; actorUserId: true }
     }) => Promise<StoredDecision | null>
     findMany: (args: {
       where: { organizationId: string; caseId: string }
-      orderBy: readonly [{ createdAt: "asc" }, { id: "asc" }]
-      select: { decisionCode: true }
-    }) => Promise<readonly { decisionCode: string }[]>
+      orderBy: { caseRevision: "asc" }
+      take: number
+      select: { decisionCode: true; caseRevision: true }
+    }) => Promise<readonly { decisionCode: string; caseRevision: number }[]>
   }
   workforceExceptionCaseLookup: {
     findFirst: (args: { where: { id: string; organizationId: string }; select: { id: true } }) => Promise<{ id: string } | null>
@@ -77,7 +81,9 @@ export class WorkforceExceptionCaseWriterError extends Error {
       | "WORKFORCE_EXCEPTION_CASE_NOT_AUTHORIZED"
       | "WORKFORCE_EXCEPTION_CASE_WRITE_CONFLICT"
       | "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT"
-      | "WORKFORCE_EXCEPTION_DECISION_CASE_NOT_FOUND",
+      | "WORKFORCE_EXCEPTION_DECISION_CASE_NOT_FOUND"
+      | "WORKFORCE_EXCEPTION_DECISION_HISTORY_INVALID"
+      | "WORKFORCE_EXCEPTION_DECISION_HISTORY_LIMIT_EXCEEDED",
     message: string = code,
   ) {
     super(message)
@@ -105,6 +111,10 @@ function decisionLockKey(scope: { organizationId: string; caseId: string }): str
   return `workforce-exception-decision:${scope.organizationId}:${scope.caseId}`
 }
 
+function decisionOperationLockKey(scope: { organizationId: string; operationId: string }): string {
+  return `workforce-exception-decision-operation:${scope.organizationId}:${scope.operationId}`
+}
+
 /**
  * Shared transaction fence for one immutable C6 decision stream. Approval
  * readers use the same key before their final lifecycle read, so a concurrent
@@ -115,6 +125,14 @@ export async function lockWorkforceExceptionDecisionStream(
   scope: { organizationId: string; caseId: string },
 ): Promise<void> {
   await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionLockKey(scope)}))`
+}
+
+/** Serializes the organization-global operation id before its replay read. */
+export async function lockWorkforceExceptionDecisionOperation(
+  db: { $executeRaw: (query: TemplateStringsArray, ...values: readonly unknown[]) => PromiseLike<unknown> },
+  scope: { organizationId: string; operationId: string },
+): Promise<void> {
+  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionOperationLockKey(scope)}))`
 }
 
 function sameCase(left: WorkforceExceptionCaseDraft, right: WorkforceExceptionCaseDraft): boolean {
@@ -188,6 +206,22 @@ function canonicalDecisionDraft(draft: WorkforceExceptionDecisionDraft): Workfor
     reason: draft.reason,
     actorUserId: draft.actorUserId,
   })
+}
+
+function nextCaseRevision(prior: readonly { caseRevision: number }[]): number {
+  if (prior.length >= MAX_WORKFORCE_EXCEPTION_DECISIONS) {
+    throw new WorkforceExceptionCaseWriterError(
+      "WORKFORCE_EXCEPTION_DECISION_HISTORY_LIMIT_EXCEEDED",
+      "The Workforce exception decision history has reached the reviewed bound",
+    )
+  }
+  if (prior.some((decision, index) => decision.caseRevision !== index + 1)) {
+    throw new WorkforceExceptionCaseWriterError(
+      "WORKFORCE_EXCEPTION_DECISION_HISTORY_INVALID",
+      "The Workforce exception decision history has a non-contiguous case revision",
+    )
+  }
+  return prior.length + 1
 }
 
 /**
@@ -284,46 +318,64 @@ export async function appendAuthorizedWorkforceExceptionDecision(input: {
       "The Workforce exception case is unavailable in this tenant",
     )
   }
-  try {
-    const created = await input.db.workforceExceptionDecision.create({ data: canonical })
-    await input.db.mtmAuditLog.create({
-      data: {
-        organizationId: canonical.organizationId,
-        agentId: null,
-        action: "WORKFORCE_EXCEPTION_DECISION_RECORDED",
-        entity: "workforce_exception_decision",
-        entityId: created.id,
-        metadataKind: "workforce_exception_lifecycle",
-        newData: {
-          caseId: canonical.caseId,
-          operationId: canonical.operationId,
-          decisionCode: canonical.decisionCode,
-        },
-        ipAddress: null,
-        userAgent: null,
-      },
-    })
-    return { decisionId: created.id, idempotent: false }
-  } catch (error) {
-    if (!isUniqueViolation(error)) throw error
-    const existing = await input.db.workforceExceptionDecision.findFirst({
-      where: { organizationId: canonical.organizationId, operationId: canonical.operationId },
-      select: {
-        id: true,
-        organizationId: true,
-        caseId: true,
-        operationId: true,
-        decisionCode: true,
-        reason: true,
-        actorUserId: true,
-      },
-    })
-    if (existing && sameDecision(existing, canonical)) return { decisionId: existing.id, idempotent: true }
+  await lockWorkforceExceptionDecisionOperation(input.db, canonical)
+  const existing = await input.db.workforceExceptionDecision.findFirst({
+    where: { organizationId: canonical.organizationId, operationId: canonical.operationId },
+    select: {
+      id: true,
+      organizationId: true,
+      caseId: true,
+      operationId: true,
+      decisionCode: true,
+      reason: true,
+      actorUserId: true,
+    },
+  })
+  if (existing) {
+    if (sameDecision(existing, canonical)) return { decisionId: existing.id, idempotent: true }
     throw new WorkforceExceptionCaseWriterError(
       "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
       "The Workforce exception decision operation conflicts with a different immutable action",
     )
   }
+  const prior = await input.db.workforceExceptionDecision.findMany({
+    where: { organizationId: canonical.organizationId, caseId: canonical.caseId },
+    orderBy: { caseRevision: "asc" },
+    take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
+    select: { decisionCode: true, caseRevision: true },
+  })
+  const caseRevision = nextCaseRevision(prior)
+  let created: CreatedDecision
+  try {
+    created = await input.db.workforceExceptionDecision.create({
+      data: { ...canonical, caseRevision },
+    })
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error
+    throw new WorkforceExceptionCaseWriterError(
+      "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
+      "The Workforce exception decision operation conflicts with a different immutable action",
+    )
+  }
+  await input.db.mtmAuditLog.create({
+    data: {
+      organizationId: canonical.organizationId,
+      agentId: null,
+      action: "WORKFORCE_EXCEPTION_DECISION_RECORDED",
+      entity: "workforce_exception_decision",
+      entityId: created.id,
+      metadataKind: "workforce_exception_lifecycle",
+      newData: {
+        caseId: canonical.caseId,
+        operationId: canonical.operationId,
+        decisionCode: canonical.decisionCode,
+        caseRevision,
+      },
+      ipAddress: null,
+      userAgent: null,
+    },
+  })
+  return { decisionId: created.id, idempotent: false }
 }
 
 /**
@@ -337,6 +389,10 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
   db: WorkforceExceptionCaseWriterDb
   draft: WorkforceExceptionDecisionDraft
   authorize: WorkforceExceptionCaseAuthorization
+  validateContext: (input: {
+    draft: WorkforceExceptionDecisionDraft
+    priorDecisions: readonly { decisionCode: string; caseRevision: number }[]
+  }) => void | Promise<void>
 }): Promise<{ decisionId: string; idempotent: boolean }> {
   const basic = canonicalDecisionDraft(input.draft)
   await requireAuthorization(input.authorize, {
@@ -357,6 +413,7 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
     )
   }
 
+  await lockWorkforceExceptionDecisionOperation(input.db, basic)
   // Check a replay before deriving the next stage: a retried completed
   // resolution must be idempotent rather than being interpreted as a second
   // invalid post-resolution transition.
@@ -382,52 +439,51 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
 
   const prior = await input.db.workforceExceptionDecision.findMany({
     where: { organizationId: basic.organizationId, caseId: basic.caseId },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: { decisionCode: true },
+    orderBy: { caseRevision: "asc" },
+    take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
+    select: { decisionCode: true, caseRevision: true },
   })
+  const caseRevision = nextCaseRevision(prior)
+  const priorDecisionCodes = prior.map((decision) => decision.decisionCode)
+  // This callback deliberately runs only after the stream lock, exact replay
+  // check and ordered history read. A route can therefore validate linked
+  // response/correction state in the same transaction without a
+  // stale preflight authorizing an incompatible resolution.
+  await input.validateContext({ draft: basic, priorDecisions: prior })
   const canonical = createDraftPolicyWorkforceExceptionDecisionDraft({
     ...basic,
-    priorDecisionCodes: prior.map((decision) => decision.decisionCode),
+    priorDecisionCodes,
   })
+  let created: CreatedDecision
   try {
-    const created = await input.db.workforceExceptionDecision.create({ data: canonical })
-    await input.db.mtmAuditLog.create({
-      data: {
-        organizationId: canonical.organizationId,
-        agentId: null,
-        action: "WORKFORCE_EXCEPTION_DECISION_RECORDED",
-        entity: "workforce_exception_decision",
-        entityId: created.id,
-        metadataKind: "workforce_exception_lifecycle",
-        newData: {
-          caseId: canonical.caseId,
-          operationId: canonical.operationId,
-          decisionCode: canonical.decisionCode,
-          policyMode: "REVIEWED_V1",
-        },
-        ipAddress: null,
-        userAgent: null,
-      },
+    created = await input.db.workforceExceptionDecision.create({
+      data: { ...canonical, caseRevision },
     })
-    return { decisionId: created.id, idempotent: false }
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
-    const replay = await input.db.workforceExceptionDecision.findFirst({
-      where: { organizationId: canonical.organizationId, operationId: canonical.operationId },
-      select: {
-        id: true,
-        organizationId: true,
-        caseId: true,
-        operationId: true,
-        decisionCode: true,
-        reason: true,
-        actorUserId: true,
-      },
-    })
-    if (replay && sameDecision(replay, canonical)) return { decisionId: replay.id, idempotent: true }
     throw new WorkforceExceptionCaseWriterError(
       "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
       "The Workforce exception decision operation conflicts with a different immutable action",
     )
   }
+  await input.db.mtmAuditLog.create({
+    data: {
+      organizationId: canonical.organizationId,
+      agentId: null,
+      action: "WORKFORCE_EXCEPTION_DECISION_RECORDED",
+      entity: "workforce_exception_decision",
+      entityId: created.id,
+      metadataKind: "workforce_exception_lifecycle",
+      newData: {
+        caseId: canonical.caseId,
+        operationId: canonical.operationId,
+        decisionCode: canonical.decisionCode,
+        caseRevision,
+        policyMode: "REVIEWED_V1",
+      },
+      ipAddress: null,
+      userAgent: null,
+    },
+  })
+  return { decisionId: created.id, idempotent: false }
 }

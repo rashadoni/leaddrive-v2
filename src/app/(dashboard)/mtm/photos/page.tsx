@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -18,10 +18,9 @@ import { ColorStatCard } from "@/components/color-stat-card"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Dialog, DialogTitle } from "@/components/ui/dialog"
-import { Camera, ThumbsUp, ThumbsDown, Check, X, Trash2, Search, Clock, CheckCircle2, XCircle, Download, LayoutGrid, Columns, CheckSquare, ImageOff, ExternalLink } from "lucide-react"
+import { Camera, Check, X, Trash2, Clock, CheckCircle2, XCircle, LayoutGrid, Columns, CheckSquare, ImageOff, ExternalLink } from "lucide-react"
 
 const statusColors: Record<string, string> = { PENDING: "bg-amber-100 text-amber-700", APPROVED: "bg-green-100 text-green-700", REJECTED: "bg-red-100 text-red-600" }
 
@@ -107,8 +106,12 @@ export default function MtmPhotosPage() {
   const [loading, setLoading] = useState(true)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteItem, setDeleteItem] = useState<MtmPhotoRow | null>(null)
-  const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
+  // Audit 2026-09-26: the counters added up the newest 200 photos, not the
+  // period — «all» read 200 while 1367 were stored. The server counts now.
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
+  const [countsKey, setCountsKey] = useState("")
+  const photoRequestRef = useRef(0)
   const [sortBy, setSortBy] = useState("date_desc")
   const [viewMode, setViewMode] = useState<"gallery" | "compare" | "batch">("gallery")
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set())
@@ -117,20 +120,28 @@ export default function MtmPhotosPage() {
   const orgId = session?.user?.organizationId
   const focusedPhotoId = searchParams.get("photoId")
 
+  const queryKey = `${period}|${agentFilter}|${activeFilter}|${timezone}`
   const fetchPhotos = useCallback(async () => {
+    const requestId = ++photoRequestRef.current
+    const key = `${period}|${agentFilter}|${activeFilter}|${timezone}`
     try {
-      // The API filters by employee on the server, so choosing one reaches
-      // past the newest 200 rows instead of filtering inside them.
+      // Employee, period and status are filtered on the server, so each of
+      // them reaches past the newest 200 rows instead of filtering inside them.
       const params = new URLSearchParams({ limit: "200" })
       if (agentFilter) params.set("agentId", agentFilter)
+      if (activeFilter !== "all") params.set("status", activeFilter)
+      if (period !== "all") params.set("since", new Date(mtmPhotoPeriodStart(period, new Date(), timezone)).toISOString())
       const res = await fetch(`/api/v1/mtm/photos?${params.toString()}`, { headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string> })
       const r = await res.json()
+      if (requestId !== photoRequestRef.current) return
       if (!res.ok || !r.success) {
         toast.error(`Failed to load photos: ${r.error || "Unknown error"}`)
       } else {
         const rows: MtmPhotoRow[] = r.data.photos || []
         setPhotos(rows)
         setTotal(Number.isFinite(Number(r.data.total)) ? Number(r.data.total) : rows.length)
+        setStatusCounts(r.data.byStatus && typeof r.data.byStatus === "object" ? r.data.byStatus : {})
+        setCountsKey(key)
         // Photo authors not in the roster (left the team) stay choosable.
         setKnownAgents((current) => {
           const next = new Map(current)
@@ -140,8 +151,10 @@ export default function MtmPhotosPage() {
       }
     } catch (e) {
       toast.error(`Failed to load photos: ${e instanceof Error ? e.message : "Network error"}`)
-    } finally { setLoading(false) }
-  }, [agentFilter, orgId])
+    } finally {
+      if (requestId === photoRequestRef.current) setLoading(false)
+    }
+  }, [activeFilter, agentFilter, orgId, period, timezone])
 
   useEffect(() => { fetchPhotos() }, [fetchPhotos])
 
@@ -176,13 +189,9 @@ export default function MtmPhotosPage() {
     setMissingFiles((current) => current.has(id) ? current : new Set(current).add(id))
   }, [])
 
-  const periodPhotos = useMemo(() => {
-    const start = mtmPhotoPeriodStart(period, new Date(), timezone)
-    return photos.filter((photo) => {
-      const createdAt = Date.parse(photo.createdAt)
-      return Number.isFinite(createdAt) ? createdAt >= start : period === "all"
-    })
-  }, [period, photos, timezone])
+  // Every photo of the period and employee, whatever its status.
+  const periodTotal = Object.values(statusCounts).reduce((sum, count) => sum + count, 0)
+  const countsCurrent = countsKey === queryKey
 
   /**
    * The nearest period with photos, once, and said aloud. Measured on the
@@ -193,21 +202,18 @@ export default function MtmPhotosPage() {
     const wider = nextWiderPeriod({
       order: PHOTO_PERIOD_ORDER,
       current: period,
-      rows: periodPhotos.length,
+      rows: periodTotal,
       userChose: periodChosenByUser,
       alreadyWidened: widenedFrom !== null,
-      loading,
+      // Counts of an earlier query are not this period's: wait for its own.
+      loading: loading || !countsCurrent,
     })
     if (!wider) return
     setWidenedFrom(period)
     setPeriod(wider)
-  }, [period, periodPhotos.length, periodChosenByUser, widenedFrom, loading])
+  }, [period, periodTotal, periodChosenByUser, widenedFrom, loading, countsCurrent])
 
-  const filtered = periodPhotos.filter(p => {
-    if (activeFilter !== "all" && p.status !== activeFilter) return false
-    if (search) { const s = search.toLowerCase(); if (!p.agent?.name?.toLowerCase().includes(s)) return false }
-    return true
-  }).sort((a, b) => {
+  const filtered = [...photos].sort((a, b) => {
     switch (sortBy) {
       case "date_desc": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       case "status": return (a.status || "").localeCompare(b.status || "")
@@ -215,8 +221,6 @@ export default function MtmPhotosPage() {
     }
   })
 
-  const statusCounts: Record<string, number> = {}
-  for (const p of periodPhotos) statusCounts[p.status] = (statusCounts[p.status] || 0) + 1
   const loadedIsPartial = total > photos.length
   const focusedPhoto = focusedPhotoId ? photos.find((photo) => photo.id === focusedPhotoId) || null : null
 
@@ -244,7 +248,7 @@ export default function MtmPhotosPage() {
 
   if (loading) return (
     <div className="space-y-6">
-      <PageDescription icon={Camera} title={t("title")} description={t("subtitle")} />
+      <PageDescription icon={Camera} title={t("title")} />
       <div className="animate-pulse space-y-4"><div className="grid gap-3 grid-cols-2 sm:grid-cols-4">{[1,2,3,4].map(i => <div key={i} className="h-24 bg-muted rounded-lg" />)}</div><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="aspect-square bg-muted rounded-lg" />)}</div></div>
     </div>
   )
@@ -253,22 +257,23 @@ export default function MtmPhotosPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <PageDescription icon={Camera} title={`${t("title")} (${filtered.length})`} description={t("subtitle")} />
+          <PageDescription icon={Camera} title={t("title")} />
           <HelpButton slug="mtm-photos" variant="label" />
         </div>
         <div className="flex gap-2">
-          <div className="flex border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-            <Button variant={viewMode === "gallery" ? "default" : "ghost"} size="sm" className="rounded-none" onClick={() => setViewMode("gallery")}><LayoutGrid className="h-4 w-4" /></Button>
-            <Button variant={viewMode === "compare" ? "default" : "ghost"} size="sm" className="rounded-none" onClick={() => setViewMode("compare")}><Columns className="h-4 w-4" /></Button>
-            <Button variant={viewMode === "batch" ? "default" : "ghost"} size="sm" className="rounded-none" onClick={() => { setViewMode("batch"); setSelectedPhotos(new Set()) }}><CheckSquare className="h-4 w-4" /></Button>
+          {/* Audit 2026-09-26: three bare icons nobody could read, and an
+              «Export» button with no handler at all. */}
+          <div data-testid="mtm-photos-modes" className="flex overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700" role="group" aria-label={t("viewModes")}>
+            <Button aria-pressed={viewMode === "gallery"} variant={viewMode === "gallery" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => setViewMode("gallery")}><LayoutGrid className="mr-1.5 h-4 w-4" />{t("modeGallery")}</Button>
+            <Button aria-pressed={viewMode === "compare"} variant={viewMode === "compare" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => setViewMode("compare")}><Columns className="mr-1.5 h-4 w-4" />{t("modeCompare")}</Button>
+            <Button aria-pressed={viewMode === "batch"} variant={viewMode === "batch" ? "default" : "ghost"} size="sm" className="min-h-10 rounded-none" onClick={() => { setViewMode("batch"); setSelectedPhotos(new Set()) }}><CheckSquare className="mr-1.5 h-4 w-4" />{t("modeBatch")}</Button>
           </div>
-          <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-1" /> Export ({filtered.length})</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
         {/* The four cards describe the same set — the chosen period — so they add up. */}
-        <ColorStatCard label={t("statTotal")} value={periodPhotos.length} icon={<Camera className="h-4 w-4" />} hint={t("hintTotal")} />
+        <ColorStatCard label={t("statTotal")} value={periodTotal} icon={<Camera className="h-4 w-4" />} hint={t("hintTotal")} />
         <ColorStatCard label={t("statPending")} value={statusCounts["PENDING"] || 0} icon={<Clock className="h-4 w-4" />} hint={t("hintPending")} />
         <ColorStatCard label={t("statApproved")} value={statusCounts["APPROVED"] || 0} icon={<CheckCircle2 className="h-4 w-4" />} hint={t("hintApproved")} />
         <ColorStatCard label={t("statRejected")} value={statusCounts["REJECTED"] || 0} icon={<XCircle className="h-4 w-4" />} hint={t("hintRejected")} />
@@ -305,7 +310,7 @@ export default function MtmPhotosPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({periodPhotos.length})</Button>
+        <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({periodTotal})</Button>
         {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
           <Button key={s} variant={activeFilter === s ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(s)}>
             {t(PHOTO_FILTER_LABELS[s])} ({statusCounts[s] || 0})
@@ -313,8 +318,7 @@ export default function MtmPhotosPage() {
         ))}
       </div>
 
-      <div className="flex gap-2">
-        <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder={t("searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
+      <div className="flex justify-end">
         <Select value={sortBy} onChange={e => setSortBy(e.target.value)} className="w-[160px]">
           <option value="date_desc">{t("sortDateDesc")}</option>
           <option value="status">{t("sortStatus")}</option>
@@ -325,7 +329,7 @@ export default function MtmPhotosPage() {
       {viewMode === "batch" && selectedPhotos.size > 0 && (
         <div className="flex items-center gap-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-primary/5">
           <span className="text-xs font-medium">{t("batchSelected", { n: selectedPhotos.size })}</span>
-          <Button size="sm" variant="outline" className="h-6 text-xs text-green-600" onClick={() => { selectedPhotos.forEach(id => updatePhotoStatus(id, "APPROVED")); setSelectedPhotos(new Set()) }}>
+          <Button size="sm" variant="outline" className="h-6 text-xs text-green-600" onClick={() => { selectedPhotos.forEach(id => { if (!missingFiles.has(id)) updatePhotoStatus(id, "APPROVED") }); setSelectedPhotos(new Set()) }}>
             <Check className="h-3 w-3 mr-1" /> {t("batchApproveAll")}
           </Button>
           <Button size="sm" variant="outline" className="h-6 text-xs text-red-600" onClick={() => { selectedPhotos.forEach(id => updatePhotoStatus(id, "REJECTED")); setSelectedPhotos(new Set()) }}>
@@ -350,7 +354,7 @@ export default function MtmPhotosPage() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="h-48 flex items-center justify-center px-4 text-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{photos.length === 0 ? t("empty") : periodPhotos.length === 0 ? t("periodEmpty") : t("noResults")}</div>
+        <div className="h-48 flex items-center justify-center px-4 text-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{period !== "all" && periodTotal === 0 ? t("periodEmpty") : activeFilter !== "all" && periodTotal > 0 ? t("noResults") : t("empty")}</div>
       ) : (
         <div className={`grid gap-4 ${focusedPhoto ? "xl:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -406,22 +410,20 @@ export default function MtmPhotosPage() {
                         </Link>
                       ) : null}
                     </div>
-                    <div className="flex items-center justify-between mt-1">
+                    <div className="mt-1 flex items-center justify-between gap-1">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[photo.status] || ""}`}>{mtmStatusLabel(ts, "photo", photo.status)}</span>
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                        <span className="flex items-center gap-0.5"><ThumbsUp className="h-2.5 w-2.5" />{photo.likes ?? 0}</span>
-                        <span className="flex items-center gap-0.5"><ThumbsDown className="h-2.5 w-2.5" />{photo.dislikes ?? 0}</span>
-                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title={t("deletePhoto")} aria-label={t("deletePhoto")} onClick={(event) => { event.stopPropagation(); setDeleteItem(photo); setDeleteOpen(true) }}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
-                    {photo.status === "PENDING" && (
-                      <div className="flex gap-1 mt-2">
-                        <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-green-600 hover:bg-green-50" onClick={() => updatePhotoStatus(photo.id, "APPROVED")}><Check className="h-3 w-3 mr-1" /> {t("approve")}</Button>
-                        <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-red-600 hover:bg-red-50" onClick={() => updatePhotoStatus(photo.id, "REJECTED")}><X className="h-3 w-3 mr-1" /> {t("reject")}</Button>
+                    {photo.status === "PENDING" && (!photo.url || missingFiles.has(photo.id)) ? (
+                      // Audit 2026-09-26: «Approve» under «File not found» —
+                      // approving a photo nobody can see is not a review.
+                      <p data-testid="mtm-photo-review-unavailable" className="mt-2 text-[11px] text-muted-foreground">{t("reviewUnavailable")}</p>
+                    ) : photo.status === "PENDING" ? (
+                      <div className="mt-2 grid grid-cols-2 gap-1">
+                        <Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-green-600 hover:bg-green-50" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "APPROVED") }}><Check className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("approve")}</span></Button>
+                        <Button size="sm" variant="outline" className="h-7 min-w-0 px-1.5 text-xs text-red-600 hover:bg-red-50" onClick={(event) => { event.stopPropagation(); void updatePhotoStatus(photo.id, "REJECTED") }}><X className="mr-1 h-3 w-3 shrink-0" /><span className="truncate">{t("reject")}</span></Button>
                       </div>
-                    )}
-                    <div className="flex justify-end mt-1">
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => { setDeleteItem(photo); setDeleteOpen(true) }}><Trash2 className="h-3 w-3" /></Button>
-                    </div>
+                    ) : null}
                   </div>
                 </div>
               )

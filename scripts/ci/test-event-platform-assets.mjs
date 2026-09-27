@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { readFile, readdir } from "node:fs/promises"
+import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { validateActivationEvidence } from "../event-platform/activation-preflight.mjs"
@@ -355,6 +357,18 @@ assert.ok(
     && githubPrChecks.includes("npx next build --webpack"),
   "the production-build PR label must trigger the same isolated webpack proof",
 )
+const typecheckJob = githubPrChecks.slice(
+  githubPrChecks.indexOf("  typecheck:"),
+  githubPrChecks.indexOf("  production-build:"),
+)
+assert.ok(
+  typecheckJob.includes("runs-on: ubuntu-24.04")
+    && typecheckJob.includes("NODE_OPTIONS: --max-old-space-size=12288")
+    && typecheckJob.includes("npx tsc --noEmit 2>&1 | tee tsc-output.log")
+    && typecheckJob.includes("bash scripts/ci/check-typecheck-gate.sh tsc-output.log tsc-exit-code")
+    && typecheckJob.includes("node scripts/ci/check-typecheck-baseline.mjs tsc-output.log"),
+  "typecheck must retain the full compiler pass, both blocking gates and its bounded 12-GiB heap",
+)
 assert.ok(
   nextConfig.includes('webpackBuildWorker: process.env.LEADDRIVE_COLD_PRODUCTION_BUILD === "1" ? true : undefined')
     && nextConfig.includes('process.env.LEADDRIVE_COLD_PRODUCTION_BUILD === "1"')
@@ -388,14 +402,14 @@ for (const requiredSshGuard of [
 ]) {
   assert.ok(productionSshAction.includes(requiredSshGuard), `shared production SSH guard is missing: ${requiredSshGuard}`)
 }
-// The independent-reviewer half of this guard was removed on 2026-09-06: GitHub
-// only offers required_reviewers for private repositories on Enterprise, so the
-// check could never pass on this plan and made every path to production
-// impassable rather than protected. Layer 2 of docs/DELIVERY-ARCHITECTURE.md
-// replaces it — an agent that did not write the change reviews every pull
-// request, and `agent-review` is the required check on main. What is asserted
-// here is the half that does work: production is reachable only from main, and
-// the guard still fails closed when GitHub cannot be inspected at all.
+// The independent human-reviewer half of this guard was removed on 2026-09-06:
+// this solo-owner repository has no separately governed human identity that can
+// approve with self-review prevented, so the rule made every production path
+// impassable rather than protected. Layers 1–2 of docs/DELIVERY-ARCHITECTURE.md
+// guard main instead: the five checks GitHub itself runs are required on every
+// pull request. What is asserted here is the environment control that can be
+// satisfied:
+// production is reachable only from main, and inspection failures stay closed.
 assert.ok(
   productionEnvironmentGuard.includes('GH_TOKEN: ${{ inputs.github-token }}')
     && productionEnvironmentGuard.includes("deployment_branch_policy")
@@ -410,7 +424,7 @@ assert.ok(
 assert.ok(
   !/select\(\s*\.type\s*==\s*"required_reviewers"/u.test(productionEnvironmentGuard)
     && !/select\(\s*\.type\s*==\s*"required_reviewers"/u.test(githubDeploy),
-  "the reviewer requirement is deliberately gone; re-adding it makes production undeployable on this plan",
+  "the human environment-reviewer rule must stay absent until an independent human identity is provisioned",
 )
 // The first agent review of the architecture pull request made this point: an
 // assertion that only forbids the old gate would let someone delete the new one
@@ -420,9 +434,11 @@ assert.ok(
 // 2026-09-11: the replacement is no longer `agent-review`. The owner dropped it —
 // without an ANTHROPIC_API_KEY it reported green on every PR by design, and it
 // was the ONLY required context, so tests and typecheck were not required at
-// all. What is required now is what GitHub itself runs. The principle above
-// still holds and is asserted below: the gate must exist, must run on every
-// pull request, and must be what main actually requires.
+// all. 2026-09-26 it came back as a status «another agent» had to publish for
+// the exact SHA (#439/#440); nobody did, every PR stalled, and the owner removed
+// it again the same day, for every session. What is required is what GitHub
+// itself runs. The principle above still holds and is asserted below: the gate
+// must exist, must run on every pull request, and must be what main requires.
 const prChecksWorkflow = await readText(".github/workflows/pr-checks.yml")
 const mainProtectionScript = await readText("scripts/ci/configure-main-protection.sh")
 const requiredContexts = ["pr-scope", "static-checks", "typecheck", "runner-policy", "scan"]
@@ -453,9 +469,53 @@ assert.ok(
   "static-checks and typecheck may skip only via pr-scope",
 )
 assert.ok(
-  requiredContexts.every((context) => mainProtectionScript.includes(`"${context}"`))
+  requiredContexts.every((context) => mainProtectionScript.includes(`"context": "${context}"`))
     && !mainProtectionScript.includes('"agent-review"'),
   "main must require the checks GitHub actually runs — pr-scope, static-checks, typecheck, runner-policy, scan — and not the retired agent-review",
+)
+const protectionPayloadMatch = mainProtectionScript.match(/--input - <<'JSON'\n([\s\S]*?)\nJSON/u)
+assert.ok(protectionPayloadMatch, "main protection must send one reviewable JSON payload")
+const protectionPayload = JSON.parse(protectionPayloadMatch[1])
+assert.deepEqual(
+  protectionPayload.required_status_checks,
+  {
+    strict: false,
+    checks: [
+      { context: "pr-scope", app_id: 15368 },
+      { context: "static-checks", app_id: 15368 },
+      { context: "typecheck", app_id: 15368 },
+      { context: "runner-policy", app_id: 15368 },
+      { context: "scan", app_id: 15368 },
+    ],
+  },
+  "main must require exactly the five checks GitHub runs, each bound to the GitHub Actions app",
+)
+assert.equal(protectionPayload.enforce_admins, true, "administrators must not bypass main protection")
+assert.deepEqual(
+  protectionPayload.required_pull_request_reviews,
+  {
+    dismiss_stale_reviews: false,
+    require_code_owner_reviews: false,
+    required_approving_review_count: 0,
+    require_last_push_approval: false,
+  },
+  "main must retain a PR-only rule without inventing an unavailable human approval",
+)
+assert.equal(protectionPayload.allow_force_pushes, false, "main must reject force pushes")
+assert.equal(protectionPayload.allow_deletions, false, "main must reject branch deletion")
+assert.ok(
+  !existsSync(path.join(repoRoot, "scripts/ci/publish-agent-review-status.sh")),
+  "the agent-review status publisher is retired with the gate (owner, 2026-09-26)",
+)
+const protectionReadbackTest = spawnSync(
+  process.execPath,
+  [path.join(repoRoot, "scripts/ci/test-configure-main-protection.mjs")],
+  { cwd: repoRoot, encoding: "utf8" },
+)
+assert.equal(
+  protectionReadbackTest.status,
+  0,
+  `main-protection readback behavior failed:\n${protectionReadbackTest.stdout}\n${protectionReadbackTest.stderr}`,
 )
 assert.ok(
   (githubDeploy.match(/GitHub production environment must allow exactly the main branch/g) ?? []).length === 3

@@ -303,11 +303,7 @@ const scenarios = [
     path: (resources) => resources.agentId ? "/mtm/routes" : null,
     fallbackPath: "/mtm/routes",
     prepare: async (page, resources) => {
-      const matrixView = page.getByTestId("mtm-routes-view-matrix")
-      if (!await matrixView.isVisible()) {
-        await page.getByTestId("mtm-routes-more-views-toggle").click()
-      }
-      await matrixView.click()
+      await page.getByTestId("mtm-routes-view-matrix").click()
       await page.getByTestId("mtm-route-planning-matrix").waitFor({ state: "visible" })
       await page.getByTestId("mtm-matrix-agent-select").selectOption(resources.agentId)
       await page.locator(`[data-testid="mtm-route-planning-matrix"][data-loaded-agent-id="${resources.agentId}"]`).waitFor({ state: "visible" })
@@ -394,7 +390,12 @@ const scenarios = [
     id: "SWM-13",
     name: "Plan and GPS KPI",
     path: () => "/mtm/analytics",
-    waitFor: "[data-testid=mtm-explainable-kpi][data-state=ready]",
+    // The registry is folded under the manager's view (owner 2026-09-26).
+    waitFor: "[data-testid=mtm-team-results][data-state=ready]",
+    prepare: async (page) => {
+      await page.getByTestId("mtm-analytics-formulas").locator("summary").click()
+      await page.locator("[data-testid=mtm-explainable-kpi][data-state=ready]").waitFor({ state: "visible", timeout: 30_000 })
+    },
   },
   {
     id: "SWM-02",

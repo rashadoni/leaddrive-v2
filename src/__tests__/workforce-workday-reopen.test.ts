@@ -10,7 +10,11 @@ vi.mock("@/lib/mtm-settings", () => ({
 
 import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { applyMtmWorkdayEvent, parseMtmWorkdayEvent } from "@/lib/mtm/workday"
+import {
+  applyMtmWorkdayEvent,
+  parseMtmWorkdayEvent,
+  WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION,
+} from "@/lib/mtm/workday"
 import { WORKFORCE_GRANULAR_ACCESS_FLAG } from "@/lib/workforce/granular-access-rollout"
 import { calculateWorkforceTimesheetDay } from "@/lib/workforce/timesheet-calculation"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
@@ -184,10 +188,13 @@ describe("manager reopen of today's finished Workforce workday", () => {
         queuedAt: null,
         serverReceivedAt: NOW,
         appliedAt: NOW,
-        schemaVersion: 4,
+        schemaVersion: WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION,
         requestHash: expect.stringMatching(/^[0-9a-f]{64}$/),
         attendanceReviewState: "NOT_REQUIRED",
         attendanceReviewReasonCode: null,
+        latitude: null,
+        longitude: null,
+        accuracy: null,
         note: input.reason,
       }),
     })

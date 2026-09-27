@@ -20,6 +20,7 @@
  * a missing URL fails instead of skipping, so the gate cannot go quietly green.
  */
 import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import path from "node:path"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
@@ -54,13 +55,18 @@ vi.mock("@/lib/demo-center/sales-org", () => ({
 const ROOT = process.cwd()
 const DEMO_TABLES = ['"demo_requests"', '"demo_grants"', '"demo_access_events"', '"demo_phone_verifications"']
 
+// Resolved like any import, so it works from a git worktree without its own node_modules.
+const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
+
 function execute(url: string, args: string[], input?: string) {
-  const result = spawnSync(path.join(ROOT, "node_modules/.bin/prisma"), ["db", "execute", "--url", url, ...args], {
+  const result = spawnSync(process.execPath, [PRISMA_CLI, "db", "execute", "--url", url, ...args], {
     input,
     encoding: "utf8",
     env: process.env,
   })
-  if (result.status !== 0) throw new Error(`prisma db execute ${args.join(" ")} failed\n${result.stdout}\n${result.stderr}`)
+  if (result.status !== 0) {
+    throw new Error(`prisma db execute ${args.join(" ")} failed\n${result.error ?? ""}\n${result.stdout}\n${result.stderr}`)
+  }
 }
 
 /** Every migration that touches a demo table, in the order `migrate deploy` applies them. */
@@ -80,7 +86,10 @@ pgDescribe("demo tables on a real Postgres", () => {
   let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
 
   beforeAll(async () => {
-    execute(adminUrl!, ["--stdin"], `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE); CREATE DATABASE "${scratch!.name}";`)
+    // One statement per call: a multi-statement script runs as one implicit
+    // transaction, and DROP/CREATE DATABASE refuse to run inside one.
+    execute(adminUrl!, ["--stdin"], `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE)`)
+    execute(adminUrl!, ["--stdin"], `CREATE DATABASE "${scratch!.name}"`)
     const migrations = demoMigrations()
     // The first one creates the tables; a filter that found none would test nothing.
     expect(migrations.length).toBeGreaterThanOrEqual(7)
@@ -129,15 +138,18 @@ pgDescribe("demo tables on a real Postgres", () => {
 
   it("issues a module playlist the admin picks, and a re-issue revokes the earlier link", async () => {
     const { issueDemoGrant } = await import("@/lib/demo-center/issue-grant")
+    const { PROSPECT_TO_CLOSED_WON } = await import("@/lib/demo-center/journey")
     const request = await storedRequest("admin@example.az")
     const options = { moduleIds: ["crm", "sales"], linkValidDays: 7, sessionDurationMinutes: 120, inactivityMinutes: 30, locale: "az", liveCallEnabled: false }
 
     const first = await issueDemoGrant({ request, options, actorUserId: "user-admin" })
-    const second = await issueDemoGrant({ request, options: { ...options, moduleIds: [], scenarioId: "prospect-to-closed-won" }, actorUserId: "user-admin" })
-    expect(first.ok && second.ok).toBe(true)
+    const second = await issueDemoGrant({ request, options: { ...options, moduleIds: [], scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId }, actorUserId: "user-admin" })
+    if (!first.ok || !second.ok) throw new Error(`issue failed: ${JSON.stringify({ first, second })}`)
 
-    const grants = await bypass(() => prisma.demoGrant.findMany({ where: { requestId: request.id }, orderBy: { createdAt: "asc" } }))
-    expect(grants.map((grant) => grant.status)).toEqual(["REVOKED", "SENT"])
+    // By id, not by time: both grants can land in the same millisecond.
+    const status = async (id: string) => (await bypass(() => prisma.demoGrant.findUniqueOrThrow({ where: { id } }))).status
+    expect(await status(first.grantId)).toBe("REVOKED")
+    expect(await status(second.grantId)).toBe("SENT")
   })
 
   it("still refuses a grant that is both a scenario and a playlist, or neither", async () => {
@@ -151,7 +163,7 @@ pgDescribe("demo tables on a real Postgres", () => {
       createdBy: "user-admin",
     }
     const token = (digit: string) => digit.repeat(64)
-    await expect(bypass(() => prisma.demoGrant.create({ data: { ...base, tokenHash: token("a"), moduleIds: ["crm"], scenarioId: "prospect-to-closed-won", scenarioVersion: 1 } }))).rejects.toThrow()
+    await expect(bypass(() => prisma.demoGrant.create({ data: { ...base, tokenHash: token("a"), moduleIds: ["crm"], scenarioId: "any-scenario", scenarioVersion: 1 } }))).rejects.toThrow()
     await expect(bypass(() => prisma.demoGrant.create({ data: { ...base, tokenHash: token("b"), moduleIds: [] } }))).rejects.toThrow()
   })
 

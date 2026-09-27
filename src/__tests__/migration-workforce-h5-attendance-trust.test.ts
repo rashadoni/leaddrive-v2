@@ -8,6 +8,10 @@ const migration = readFileSync(join(
   root,
   "prisma/migrations/20260829100000_workforce_h5_attendance_trust/migration.sql",
 ), "utf8")
+const attestationMigration = readFileSync(join(
+  root,
+  "prisma/migrations/20260831234500_workforce_android_attestation_enrollment/migration.sql",
+), "utf8")
 
 describe("Workforce H5 attendance trust migration", () => {
   it("adds scoped QR, public-key enrollment, one-time challenge, and verification facts", () => {
@@ -52,5 +56,18 @@ describe("Workforce H5 attendance trust migration", () => {
     expect(migration).toContain("GRANT SELECT, INSERT ON TABLE")
     expect(migration).not.toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE")
     expect(migration).not.toMatch(/\bDELETE\s+FROM\s+"?workforce_attendance/i)
+  })
+
+  it("prepares a server-bound attestation nonce without persisting a certificate chain", () => {
+    expect(schema).toContain("model WorkforceAttendanceDeviceAttestationChallenge {")
+    expect(schema).toContain("attestationVerifiedAt")
+    expect(schema).toContain("attestationRootCertificateSha256")
+    expect(attestationMigration).toContain('CREATE TABLE "workforce_attendance_device_attestation_challenges"')
+    expect(attestationMigration).toContain('"challengeFingerprint" VARCHAR(64) NOT NULL')
+    expect(attestationMigration).toContain("workforce_attendance_device_attestation_challenges_guard")
+    expect(attestationMigration).toContain("ENABLE ROW LEVEL SECURITY")
+    expect(attestationMigration).toContain("FORCE ROW LEVEL SECURITY")
+    expect(attestationMigration).toContain("workforce_attendance_device_enrollments_attestation_receipt_guard")
+    expect(attestationMigration).not.toMatch(/certificateChain|attestationCertificate|biometric(?:Template|Data|Result)/i)
   })
 })

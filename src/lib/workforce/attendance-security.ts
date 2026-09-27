@@ -295,6 +295,23 @@ export function workforceDeviceEnrollmentChallengeFingerprint(
 }
 
 /**
+ * A separate one-time pre-enrollment challenge is given to Android before it
+ * creates a KeyStore key. Its tenant-bound HMAC is durable; the raw bytes are
+ * used only for `setAttestationChallenge` and the immediate certificate-chain
+ * submission to a configured server verifier.
+ */
+export function workforceDeviceAttestationChallengeFingerprint(
+  organizationId: string,
+  challenge: string,
+): string {
+  requireDeviceIdentifier(organizationId, "organizationId")
+  if (!/^[A-Za-z0-9_-]{24,256}$/.test(challenge)) {
+    throw new WorkforceAttendanceSecurityError("WORKFORCE_ATTENDANCE_DEVICE_KEY_INVALID", "attestation challenge is invalid")
+  }
+  return hmacToken(challenge, `workforce-attendance-device-attestation-challenge:v1:${organizationId}`)
+}
+
+/**
  * Canonical proof for one exact work-time mutation.  A signature cannot be
  * reused for another tenant, employee, event id, action, workday, or time.
  */

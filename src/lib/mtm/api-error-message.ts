@@ -23,6 +23,8 @@ export type MtmApiErrorKey =
   | "previewCustomerNotFound"
   | "validationFailed"
   | "policyPreviewFailed"
+  | "visitReopenForbidden"
+  | "visitCloseByAgentOnly"
   | "forbidden"
   | "unauthorized"
   | "generic"
@@ -42,6 +44,10 @@ const CODE_KEYS: Record<string, MtmApiErrorKey> = {
   MTM_VISIT_AGENT_NOT_FOUND: "previewAgentNotFound",
   MTM_VISIT_CUSTOMER_NOT_FOUND: "previewCustomerNotFound",
   MTM_POLICY_PREVIEW_FAILED: "policyPreviewFailed",
+  // Visit edit (visits/[id] PUT, 409): the office form cannot re-open a closed visit.
+  MTM_VISIT_REOPEN_FORBIDDEN: "visitReopenForbidden",
+  // Owner 2026-09-25: only the agent closes his own visit.
+  MTM_VISIT_CLOSE_BY_AGENT_ONLY: "visitCloseByAgentOnly",
 }
 
 export function mtmApiErrorKey(body: unknown, status?: number | null): MtmApiErrorKey {

@@ -315,7 +315,7 @@ describe("Workforce server-side timesheet approval", () => {
       workdayId: "workday-1",
       expectedWorkDate: null,
       workdayEvent: null,
-      decisions: [{ decisionCode: "ACKNOWLEDGE" }],
+      decisions: [{ decisionCode: "ACKNOWLEDGE", caseRevision: 1 }],
     }] as never)
 
     await expect(approveWorkforceTimesheet(context)).resolves.toEqual({
@@ -363,8 +363,8 @@ describe("Workforce server-side timesheet approval", () => {
       expectedWorkDate: null,
       workdayEvent: null,
       decisions: [
-        { decisionCode: "ACKNOWLEDGE" },
-        { decisionCode: "RESOLVE_NO_CHANGE" },
+        { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+        { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
       ],
     }] as never)
 
@@ -382,8 +382,8 @@ describe("Workforce server-side timesheet approval", () => {
       expectedWorkDate: null,
       workdayEvent: null,
       decisions: [
-        { decisionCode: "ACKNOWLEDGE" },
-        { decisionCode: "RESOLVE_NO_CHANGE" },
+        { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+        { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
       ],
     }
     vi.mocked(prisma.workforceExceptionCase.findMany)
@@ -393,7 +393,10 @@ describe("Workforce server-side timesheet approval", () => {
       // shared per-case lock. The mandatory post-lock read must see it.
       .mockResolvedValueOnce([{
         ...resolvedCase,
-        decisions: [...resolvedCase.decisions, { decisionCode: "REOPEN_FOR_REVIEW" }],
+        decisions: [
+          ...resolvedCase.decisions,
+          { decisionCode: "REOPEN_FOR_REVIEW", caseRevision: 3 },
+        ],
       }] as never)
 
     await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
@@ -416,7 +419,7 @@ describe("Workforce server-side timesheet approval", () => {
       workdayId: "workday-1",
       expectedWorkDate: null,
       workdayEvent: null,
-      decisions: [{ decisionCode: "RESOLVE_NO_CHANGE" }],
+      decisions: [{ decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 }],
     }] as never)
 
     await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({

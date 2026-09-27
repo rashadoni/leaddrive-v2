@@ -238,6 +238,7 @@ export interface MtmPrismaMock {
   workforceAttendanceQrStation: ModelMock
   workforceAttendanceDeviceEnrollment: ModelMock
   workforceAttendanceDeviceEnrollmentChallenge: ModelMock
+  workforceAttendanceDeviceAttestationChallenge: ModelMock
   workforceAttendanceVerification: ModelMock
   workforceMobileWriteFence: ModelMock
   workforceTimeCorrection: ModelMock
@@ -419,6 +420,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforceAttendanceQrStation: makeModel(),
     workforceAttendanceDeviceEnrollment: makeModel(),
     workforceAttendanceDeviceEnrollmentChallenge: makeModel(),
+    workforceAttendanceDeviceAttestationChallenge: makeModel(),
     workforceAttendanceVerification: makeModel(),
     workforceMobileWriteFence: makeModel(),
     workforceTimeCorrection,

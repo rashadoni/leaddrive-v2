@@ -28,6 +28,7 @@ import {
   GET as mobileEnrollmentGet,
   POST as mobileEnrollmentPost,
 } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/route"
+import { POST as mobileAttestationChallengePost } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/attestation-challenge/route"
 import { POST as mobileEnrollmentProofPost } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/[id]/proof/route"
 import { POST as mobileEnrollmentRevokePost } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/[id]/revoke/route"
 import type { AuthResult } from "@/lib/api-auth"
@@ -106,6 +107,13 @@ function mobileRequest(body: unknown) {
     method: "POST",
     headers: { authorization: "Bearer test", "content-type": "application/json" },
     body: JSON.stringify(body),
+  })
+}
+
+function mobileAttestationChallengeRequest() {
+  return new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/devices/enrollments/attestation-challenge", {
+    method: "POST",
+    headers: { authorization: "Bearer test" },
   })
 }
 
@@ -474,6 +482,21 @@ describe("Workforce attendance H5 API boundaries", () => {
     })
     expect(body.data.challenge).toMatch(/^[A-Za-z0-9_-]{24,256}$/)
     expect(JSON.stringify(body)).not.toContain(publicKeySpki)
+  })
+
+  it("issues an attestation challenge before accepting any Android enrollment key", async () => {
+    vi.mocked(prisma.workforceAttendanceDeviceAttestationChallenge.create).mockResolvedValue({ id: "attestation_1" } as never)
+
+    const response = await mobileAttestationChallengePost(mobileAttestationChallengeRequest())
+
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(body).toMatchObject({ success: true, data: { expiresAt: expect.any(String) } })
+    expect(body.data.challenge).toMatch(/^[A-Za-z0-9_-]{24,256}$/)
+    expect(prisma.workforceAttendanceDeviceEnrollment.create).not.toHaveBeenCalled()
+    expect(prisma.workforceAttendanceDeviceAttestationChallenge.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ organizationId: ORG, agentId: "agent_1" }),
+    }))
   })
 
   it("rate-limits QR issue and device enrollment/proof before security-sensitive database work", async () => {

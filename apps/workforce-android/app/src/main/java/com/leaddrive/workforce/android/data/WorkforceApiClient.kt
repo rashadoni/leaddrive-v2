@@ -1,5 +1,6 @@
 package com.leaddrive.workforce.android.data
 
+import com.leaddrive.workforce.android.security.WorkforceEphemeralQrToken
 import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.charset.StandardCharsets
@@ -80,18 +81,46 @@ class WorkforceApiClient(
     }
 
     /**
+     * Obtains the one-time server nonce before Android creates a new KeyStore
+     * key. The raw value stays in memory and is passed directly to
+     * `setAttestationChallenge`; it is never a local preference or outbox
+     * payload.
+     */
+    suspend fun beginDeviceAttestationChallenge(
+        session: WorkforceStoredSession,
+        deviceId: String,
+    ): WorkforceDeviceAttestationChallenge = withContext(Dispatchers.IO) {
+        val response = request(
+            method = "POST",
+            path = "/api/v1/mtm/mobile/attendance/devices/enrollments/attestation-challenge",
+            token = session.token,
+            deviceId = deviceId,
+        )
+        val data = response.optJSONObject("data")
+            ?: throw WorkforceApiException("The device attestation response was incomplete.", recoverable = true)
+        WorkforceDeviceAttestationChallenge(
+            challenge = data.requiredString("challenge", "The device attestation challenge was missing."),
+            expiresAt = data.requiredString("expiresAt", "The device attestation expiry was missing."),
+        )
+    }
+
+    /**
      * Starts or resumes the server's one-time proof-of-possession challenge.
      * The Android attestation chain stays on device until the server contract
-     * has a verified validator; only the P-256 public key is sent here.
+     * has a configured verifier; only the P-256 public key is sent here.
      */
     suspend fun beginDeviceEnrollment(
         session: WorkforceStoredSession,
         deviceId: String,
         deviceLabel: String,
         publicKeySpki: String,
+        replacesEnrollmentId: String? = null,
     ): WorkforceDeviceEnrollmentStart = withContext(Dispatchers.IO) {
         require(deviceLabel.trim().length in 1..120) { "Choose a device label up to 120 characters." }
         require(publicKeySpki.length in 1..8_192) { "The Workforce device key is invalid." }
+        require(replacesEnrollmentId == null || replacesEnrollmentId.matches(Regex("[A-Za-z0-9_-]{1,100}"))) {
+            "The Workforce replacement device selection is invalid."
+        }
         val response = request(
             method = "POST",
             path = "/api/v1/mtm/mobile/attendance/devices/enrollments",
@@ -100,6 +129,11 @@ class WorkforceApiClient(
             body = JSONObject()
                 .put("deviceLabel", deviceLabel.trim())
                 .put("publicKeySpki", publicKeySpki)
+                .apply {
+                    // The server verifies that this is the employee's active
+                    // enrollment and still requires independent approval.
+                    replacesEnrollmentId?.let { put("replacesEnrollmentId", it) }
+                }
                 .toString(),
         )
         val data = response.optJSONObject("data")
@@ -239,7 +273,7 @@ class WorkforceApiClient(
     fun newTodayOperation(
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
-        attendanceQrToken: String? = null,
+        attendanceQrToken: WorkforceEphemeralQrToken? = null,
         attendanceLocationProof: WorkforceLocationProof? = null,
         now: Instant = Instant.now(),
     ): WorkforceWorkdayOperation {
@@ -264,7 +298,7 @@ class WorkforceApiClient(
             claimedAt = eventTime,
             capturedAt = eventTime,
             queuedAt = eventTime,
-            attendanceQrToken = attendanceQrToken?.trim()?.takeIf { it.isNotBlank() }?.also {
+            attendanceQrToken = attendanceQrToken?.consume()?.trim()?.takeIf { it.isNotBlank() }?.also {
                 if (it.length > MAX_QR_TOKEN_LENGTH) {
                     throw WorkforceApiException("The scanned QR token was invalid. Scan a fresh code.", recoverable = false)
                 }
@@ -630,11 +664,13 @@ data class WorkforceWorkdayOperation(
     val attendanceQrToken: String? = null,
     val attendanceDeviceProof: WorkforceDeviceProof? = null,
     val attendanceLocationProof: WorkforceLocationProof? = null,
+    /** Ephemeral Standard API token; never accepted from encrypted outbox rows. */
+    val attendancePlayIntegrityToken: String? = null,
 ) : WorkforceSyncOperation {
     override val domain = WorkforceOutboxDomain.WORKDAY
     override val entity = "workdays"
     override val opType = "create"
-    override val hasEphemeralProof: Boolean get() = attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null
+    override val hasEphemeralProof: Boolean get() = attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null || attendancePlayIntegrityToken != null
 
     override fun toDataJson(): JSONObject = JSONObject()
         .put("action", action.wireValue)
@@ -651,7 +687,7 @@ data class WorkforceWorkdayOperation(
                 put("longitude", location.longitude)
                 put("accuracy", location.accuracyMeters)
             }
-            if (attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null) {
+            if (attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null || attendancePlayIntegrityToken != null) {
                 put("attendance", JSONObject().apply {
                     attendanceQrToken?.let { put("qrToken", it) }
                     attendanceDeviceProof?.let { proof ->
@@ -667,12 +703,15 @@ data class WorkforceWorkdayOperation(
                             .put("isMock", location.isMock),
                         )
                     }
+                    attendancePlayIntegrityToken?.let { token ->
+                        put("playIntegrity", JSONObject().put("token", token))
+                    }
                 })
             }
         }
 
     companion object {
-        const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 4
+        const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 5
 
         fun fromEncryptedPayload(value: String): WorkforceStoredOperation? = runCatching {
             val json = JSONObject(value)
@@ -832,12 +871,19 @@ private fun JSONObject.toWorkdayScheduleSegment(): WorkforceWorkdayScheduleSegme
         || !WORKFORCE_LOCAL_TIME.matches(endTime)
         || endTime <= startTime
     ) return null
+    // A NEXT segment's instant is server-resolved from the immutable snapshot.
+    // The client must not reconstruct it from a local date, timezone or clock.
+    val startsAt = if (state == "NEXT") {
+        optString("startsAt").takeIf { it.isNotBlank() && it != "null" }
+            ?.let { runCatching { Instant.parse(it) }.getOrNull()?.toString() }
+    } else null
     return WorkforceWorkdayScheduleSegment(
         state = state,
         mode = mode,
         startTime = startTime,
         endTime = endTime,
         siteName = optString("siteName").takeIf { it.isNotBlank() && it != "null" && it.length <= 160 },
+        startsAt = startsAt,
     )
 }
 
@@ -851,6 +897,7 @@ private fun JSONObject.toAttendanceRequirements(): WorkforceAttendanceRequiremen
             qrRequiredActions = qrActions,
             deviceTrustRequiredActions = optStringList("deviceTrustRequiredActions"),
             biometricRequiredActions = optStringList("biometricRequiredActions"),
+            playIntegrityRequiredActions = optStringList("playIntegrityRequiredActions"),
         )
     } else if (status == "NOT_CONFIGURED") {
         WorkforceAttendanceRequirements.unconfigured()
@@ -1064,6 +1111,12 @@ data class WorkforceDeviceEnrollmentStart(
     val expiresAt: String,
 )
 
+data class WorkforceDeviceAttestationChallenge(
+    /** One-time server value: retain in memory only for KeyStore creation. */
+    val challenge: String,
+    val expiresAt: String,
+)
+
 data class WorkforceDeviceEnrollmentProof(
     val enrollmentId: String,
     val status: String,
@@ -1082,13 +1135,17 @@ data class WorkforceAttendanceRequirements(
     val qrRequiredActions: List<String>,
     val deviceTrustRequiredActions: List<String>,
     val biometricRequiredActions: List<String>,
+    /** Exact actions for which the APK must obtain a fresh Standard API token. */
+    val playIntegrityRequiredActions: List<String>,
 ) {
     fun requiresLocation(action: WorkforceWorkdayAction): Boolean = action.wireValue in locationRequiredActions
     fun requiresQr(action: WorkforceWorkdayAction): Boolean = action.wireValue in qrRequiredActions
     fun requiresDeviceTrust(action: WorkforceWorkdayAction): Boolean = action.wireValue in deviceTrustRequiredActions
     fun requiresBiometric(action: WorkforceWorkdayAction): Boolean = action.wireValue in biometricRequiredActions
+    /** A biometric-only manifest entry must never downgrade to an unsigned action. */
     fun requiresDeviceProof(action: WorkforceWorkdayAction): Boolean =
         requiresDeviceTrust(action) || requiresBiometric(action)
+    fun requiresPlayIntegrity(action: WorkforceWorkdayAction): Boolean = action.wireValue in playIntegrityRequiredActions
 
     companion object {
         fun unconfigured() = WorkforceAttendanceRequirements(
@@ -1097,6 +1154,7 @@ data class WorkforceAttendanceRequirements(
             qrRequiredActions = emptyList(),
             deviceTrustRequiredActions = emptyList(),
             biometricRequiredActions = emptyList(),
+            playIntegrityRequiredActions = emptyList(),
         )
 
         fun invalid() = WorkforceAttendanceRequirements(
@@ -1105,6 +1163,7 @@ data class WorkforceAttendanceRequirements(
             qrRequiredActions = emptyList(),
             deviceTrustRequiredActions = emptyList(),
             biometricRequiredActions = emptyList(),
+            playIntegrityRequiredActions = emptyList(),
         )
     }
 }
@@ -1156,6 +1215,8 @@ data class WorkforceWorkdayScheduleSegment(
     val startTime: String,
     val endTime: String,
     val siteName: String?,
+    /** Server-resolved only for a NEXT segment and only used for generic local reminders. */
+    val startsAt: String?,
 )
 
 data class WorkforceTodaySnapshot(

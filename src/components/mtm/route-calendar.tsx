@@ -9,6 +9,7 @@ import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/wor
 import { formatDate } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { isPastMtmCalendarDay } from "@/lib/mtm/calendar-day-tone"
+import { isMtmRouteShortOfPlan, summarizeMtmCalendarDay } from "@/lib/mtm/calendar-day-summary"
 
 interface RouteCalendarProps {
   routes: MtmRouteRecord[]
@@ -103,7 +104,7 @@ export function MtmRouteCalendar({
   const statusT = useTranslations("mtmStatus")
   const [selectedDate, setSelectedDate] = useState("")
   const selectedDayPanelRef = useRef<HTMLDivElement>(null)
-  const days =useMemo(() => month ? buildMonthDays(month, routes) : [], [month, routes])
+  const days = useMemo(() => month ? buildMonthDays(month, routes) : [], [month, routes])
   const fallbackSelectedDate = useMemo(() => {
     if (!month) return ""
     const now = new Date()
@@ -122,6 +123,12 @@ export function MtmRouteCalendar({
   const selectedDay = days.find((day) => dateKey(day.date) === activeSelectedDate)
     ?? days.find((day) => day.date.getMonth() === month.getMonth())
   const todayKey = dateKey(new Date())
+  const selectedDayIsPast = selectedDay ? isPastMtmCalendarDay(selectedDay.date) : false
+  const selectedDayStarted = selectedDayIsPast || (selectedDay ? dateKey(selectedDay.date) === todayKey : false)
+  // Who fell short first: that is what the manager opened the day for.
+  const selectedDayRoutes = selectedDay
+    ? [...selectedDay.routes].sort((a, b) => Number(isMtmRouteShortOfPlan(b, selectedDayIsPast)) - Number(isMtmRouteShortOfPlan(a, selectedDayIsPast)))
+    : []
 
   function moveMonth(direction: -1 | 1) {
     onMonthChange(new Date(month!.getFullYear(), month!.getMonth() + direction, 1))
@@ -225,42 +232,6 @@ export function MtmRouteCalendar({
             )
           })}
         </div>
-
-        {selectedDay ? (
-          <div ref={selectedDayPanelRef} data-testid="mtm-route-calendar-selected-day" className="mt-4 scroll-mb-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-sm font-semibold capitalize">{formatDate(selectedDay.date, locale, { weekday: "long", day: "numeric", month: "long" })}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">{selectedDay.routes.length > 0 ? t("routesOnDate", { count: selectedDay.routes.length }) : t("noRoutesOnDate")}</p>
-              </div>
-              <Button data-testid="mtm-route-calendar-plan-selected" className="min-h-11 sm:self-start" onClick={() => onCreateRoute(dateKey(selectedDay.date))} disabled={!canCreateRoutes} title={canCreateRoutes ? t("planRouteOnDate", { date: formatDate(selectedDay.date, locale) }) : t("selfPlanningDisabled")}>
-                <Plus className="mr-2 h-4 w-4" />{t("planRouteForDate")}
-              </Button>
-            </div>
-            {selectedDay.routes.length > 0 ? (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {selectedDay.routes.map((route) => (
-                  <button
-                    type="button"
-                    key={route.id}
-                    className={`flex min-h-11 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${routeTone(route.status)}`}
-                    onClick={() => onSelectRoute(route)}
-                    aria-label={t("openRouteDetails", { employee: route.agent?.name ?? "—", date: formatDate(new Date(route.date), locale) })}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{route.agent?.name ?? route.name ?? "—"}</span>
-                      {route.points?.[0]?.customer?.name ? <span className="mt-0.5 block truncate text-xs opacity-75">{route.points[0].customer.name}</span> : null}
-                    </span>
-                    <span className="shrink-0 text-right text-xs">
-                      <span className="block font-medium">{mtmStatusLabel(statusT, "route", route.status)}</span>
-                      <span className="mt-0.5 flex items-center justify-end gap-1 opacity-75"><MapPin className="h-3.5 w-3.5" />{route.totalPoints}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
       </div>
 
       <div className="hidden grid-cols-7 xl:grid">
@@ -274,6 +245,10 @@ export function MtmRouteCalendar({
           const isCurrentMonth = day.date.getMonth() === month.getMonth()
           const isToday = key === todayKey
           const isPastDay = isCurrentMonth && isPastMtmCalendarDay(day.date)
+          const isSelected = key === activeSelectedDate
+          // Stops visited only mean something once the day has begun.
+          const started = isPastDay || isToday
+          const summary = isCurrentMonth ? summarizeMtmCalendarDay(day.routes, isPastDay) : null
           // A weekend blocks nothing while `enforceWorkCalendarForRoutes` is
           // off, so shading it would invent a rule the server does not apply
           // (C6/RUX-404). The reason is shown, never just the grey: "closed"
@@ -299,13 +274,15 @@ export function MtmRouteCalendar({
               data-current-month={isCurrentMonth ? "true" : "false"}
               data-past-day={isPastDay ? "true" : "false"}
               // C6: день, который уже прошёл, — не поверхность для планирования.
-              // Приглушить его дешевле, чем заставлять читать даты.
+              // Приглушить его дешевле, чем заставлять читать даты. Приглушается
+              // фон и число, а не итог дня: в прошедшем дне как раз и видно, кто
+              // не выполнил план (аудит 2026-09-26).
               data-closed-day={closedReason ? "true" : "false"}
               title={closedReason ?? undefined}
-              className={`group min-h-32 border-b border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700 xl:min-h-28 ${isCurrentMonth ? (closedReason ? "bg-muted/40" : isPastDay ? "bg-card opacity-60" : "bg-card") : "bg-muted/30 text-muted-foreground/50"}`}
+              className={`group min-h-32 border-b border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700 xl:min-h-28 ${isCurrentMonth ? (closedReason ? "bg-muted/40" : isPastDay ? "bg-muted/20" : "bg-card") : "bg-muted/30 text-muted-foreground/50"}`}
             >
               <div className="mb-1 flex min-h-9 items-center justify-between gap-1">
-                <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isToday ? "bg-primary text-primary-foreground" : ""}`}>{day.date.getDate()}</span>
+                <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isToday ? "bg-primary text-primary-foreground" : isPastDay ? "text-muted-foreground" : ""}`}>{day.date.getDate()}</span>
                 {/* Audit 2026-09-21: a dashed «+ Запланировать» block in every
                     empty day filled the month with ~25 identical buttons. One
                     quiet «+» in the day header serves full and empty days alike:
@@ -324,27 +301,83 @@ export function MtmRouteCalendar({
                   {closedReason}
                 </div>
               ) : null}
-              <div className="space-y-1.5">
-                {day.routes.slice(0, 3).map((route) => (
-                  <button
-                    type="button"
-                    key={route.id}
-                    className={`block min-h-11 w-full rounded-lg border px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:min-h-10 ${routeTone(route.status)}`}
-                    onClick={() => onSelectRoute(route)}
-                    aria-label={t("openRouteDetails", { employee: route.agent?.name ?? "—", date: formatDate(new Date(route.date), locale) })}
-                  >
-                    <span className="block truncate text-xs font-medium">{route.agent?.name ?? route.name ?? "—"}</span>
-                    <span className="mt-0.5 block truncate text-[11px] opacity-75">
-                      {route.points?.[0]?.customer?.name ? `${route.points[0].customer.name} · ` : ""}{route.totalPoints} {t("points")} · {mtmStatusLabel(statusT, "route", route.status)}
-                    </span>
-                  </button>
-                ))}
-                {day.routes.length > 3 ? <div className="px-1 text-[11px] text-muted-foreground">{t("calendarMore", { n: day.routes.length - 3 })}</div> : null}
-              </div>
+              {summary && summary.routes > 0 ? (
+                <button
+                  type="button"
+                  data-testid="mtm-route-calendar-day-summary"
+                  aria-pressed={isSelected}
+                  aria-label={`${formatDate(day.date, locale, { weekday: "long", day: "numeric", month: "long" })}: ${t("routesOnDate", { count: summary.routes })}`}
+                  className={`block w-full rounded-lg border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isSelected ? "border-primary bg-primary/5" : "border-zinc-200 hover:bg-muted/60 dark:border-zinc-700"}`}
+                  onClick={() => {
+                    selectDate(key)
+                    revealSelectedDayPanel()
+                  }}
+                >
+                  <span className="block text-sm font-semibold">{t("routesOnDate", { count: summary.routes })}</span>
+                  {summary.planned > 0 ? (
+                    started ? (
+                      <>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">{t("calendarDayVisited", { visited: summary.visited, planned: summary.planned })}</span>
+                        <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                          <span className={`block h-full rounded-full ${summary.missed > 0 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.round((summary.visited / summary.planned) * 100)}%` }} />
+                        </span>
+                      </>
+                    ) : (
+                      <span className="mt-0.5 block text-xs text-muted-foreground">{t("calendarDayStops", { count: summary.planned })}</span>
+                    )
+                  ) : null}
+                  {summary.missed > 0 ? (
+                    <span data-testid="mtm-route-calendar-day-missed" className="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-300">{t("calendarDayMissed", { count: summary.missed })}</span>
+                  ) : null}
+                  {summary.drafts > 0 ? (
+                    <span className="mt-0.5 block text-xs text-muted-foreground">{t("calendarDayDrafts", { count: summary.drafts })}</span>
+                  ) : null}
+                </button>
+              ) : null}
             </div>
           )
         })}
       </div>
+
+      {selectedDay ? (
+        <div ref={selectedDayPanelRef} data-testid="mtm-route-calendar-selected-day" className="scroll-mb-3 border-t border-zinc-200 p-3 dark:border-zinc-700 xl:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold capitalize">{formatDate(selectedDay.date, locale, { weekday: "long", day: "numeric", month: "long" })}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">{selectedDay.routes.length > 0 ? t("routesOnDate", { count: selectedDay.routes.length }) : t("noRoutesOnDate")}</p>
+            </div>
+            <Button data-testid="mtm-route-calendar-plan-selected" className="min-h-11 sm:self-start" onClick={() => onCreateRoute(dateKey(selectedDay.date))} disabled={!canCreateRoutes} title={canCreateRoutes ? t("planRouteOnDate", { date: formatDate(selectedDay.date, locale) }) : t("selfPlanningDisabled")}>
+              <Plus className="mr-2 h-4 w-4" />{t("planRouteForDate")}
+            </Button>
+          </div>
+          {selectedDay.routes.length > 0 ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {selectedDayRoutes.map((route) => (
+                <button
+                  type="button"
+                  key={route.id}
+                  className={`flex min-h-11 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${routeTone(route.status)}`}
+                  onClick={() => onSelectRoute(route)}
+                  aria-label={t("openRouteDetails", { employee: route.agent?.name ?? "—", date: formatDate(new Date(route.date), locale) })}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{route.agent?.name ?? route.name ?? "—"}</span>
+                    {route.points?.[0]?.customer?.name ? <span className="mt-0.5 block truncate text-xs opacity-75">{route.points[0].customer.name}</span> : null}
+                  </span>
+                  <span className="shrink-0 text-right text-xs">
+                    <span className="block font-medium">{mtmStatusLabel(statusT, "route", route.status)}</span>
+                    {isMtmRouteShortOfPlan(route, selectedDayIsPast) ? (
+                      <span data-testid="mtm-route-calendar-route-missed" className="mt-0.5 block font-medium text-amber-700 dark:text-amber-300">{t("weekStopsMissed", { count: route.totalPoints - route.visitedPoints })}</span>
+                    ) : (
+                      <span className="mt-0.5 flex items-center justify-end gap-1 opacity-75"><MapPin className="h-3.5 w-3.5" />{selectedDayStarted && route.status !== "DRAFT" ? `${route.visitedPoints}/${route.totalPoints}` : route.totalPoints}</span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       </>
       )}
     </section>

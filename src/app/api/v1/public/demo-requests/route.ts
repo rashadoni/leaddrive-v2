@@ -3,71 +3,60 @@ import { prisma } from "@/lib/prisma"
 import { COMPANY_EMAIL } from "@/lib/constants"
 import { autoIssueDemoGrant } from "@/lib/demo-center/auto-issue"
 import { getDemoModules } from "@/lib/demo-center/catalog"
+import {
+  DEMO_REQUEST_ALLOWED_HEADERS,
+  DEMO_REQUEST_ALLOWED_METHODS,
+  DEMO_REQUEST_PREFLIGHT_MAX_AGE_SECONDS,
+  withDemoRequestCors,
+} from "@/lib/demo-request-cors"
 import { sendDemoRequestNotification } from "@/lib/demo-center/email"
 import { emailDomain } from "@/lib/demo-center/security"
 import { demoRequestSchema } from "@/lib/demo-center/validation"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
-/**
- * The marketing site (leaddrivecrm.org, a separate Cloudflare worker) posts
- * here cross-origin with a JSON body, so the browser asks first with a
- * preflight. Without an answer to it the POST was never sent: from the site's
- * switch to this endpoint (2026-09-23) every demo request ended in «Göndərmək
- * alınmadı» and no row, no e-mail, no log line. Only the marketing origins are
- * answered — the form is not an API for anyone else's page.
- */
-const DEMO_REQUEST_ORIGINS = ["https://leaddrivecrm.org", "https://www.leaddrivecrm.org"] as const
-
-function corsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get("origin")
-  const headers: Record<string, string> = { Vary: "Origin" }
-  if (origin && (DEMO_REQUEST_ORIGINS as readonly string[]).includes(origin)) {
-    headers["Access-Control-Allow-Origin"] = origin
-  }
-  return headers
+function jsonResponse(request: Request, body: unknown, init?: ResponseInit) {
+  return withDemoRequestCors(request, NextResponse.json(body, init))
 }
 
 export function OPTIONS(request: Request) {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      ...corsHeaders(request),
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Access-Control-Max-Age": "600",
-    },
-  })
+  return withDemoRequestCors(
+    request,
+    new NextResponse(null, {
+      status: 204,
+      headers: {
+        Allow: DEMO_REQUEST_ALLOWED_METHODS,
+        "Access-Control-Allow-Methods": DEMO_REQUEST_ALLOWED_METHODS,
+        "Access-Control-Allow-Headers": DEMO_REQUEST_ALLOWED_HEADERS,
+        "Access-Control-Max-Age": String(DEMO_REQUEST_PREFLIGHT_MAX_AGE_SECONDS),
+      },
+    }),
+  )
 }
 
 export async function POST(request: Request) {
-  // Every answer carries the header, errors included: a 400 the site cannot
-  // read would look to the prospect like the network failing, and a stored
-  // request answered without it would be submitted twice.
-  const cors = corsHeaders(request)
-  const json = (body: unknown, status: number) => NextResponse.json(body, { status, headers: cors })
-
   let payload: unknown
   try {
     payload = await request.json()
   } catch {
-    return json({ success: false, error: "Sorğu formatı düzgün deyil" }, 400)
+    return jsonResponse(request, { success: false, error: "Sorğu formatı düzgün deyil" }, { status: 400 })
   }
 
   const parsed = demoRequestSchema.safeParse(payload)
   if (!parsed.success) {
-    return json(
+    return jsonResponse(
+      request,
       {
         success: false,
         error: parsed.error.issues[0]?.message || "Məlumatları yoxlayın",
         fieldErrors: parsed.error.flatten().fieldErrors,
       },
-      400,
+      { status: 400 },
     )
   }
 
   // Filled honeypots receive the same generic response without creating a row.
   if (parsed.data.website) {
-    return json({ success: true, message: "Demo sorğusu qəbul edildi" }, 201)
+    return jsonResponse(request, { success: true, message: "Demo sorğusu qəbul edildi" }, { status: 201 })
   }
 
   const created = await runWithRlsBypass(() =>
@@ -104,7 +93,11 @@ export async function POST(request: Request) {
   })
 
   if (!created) {
-    return json({ success: false, error: "Sorğunu hazırda saxlaya bilmədik. Bir qədər sonra yenidən cəhd edin." }, 503)
+    return jsonResponse(
+      request,
+      { success: false, error: "Sorğunu hazırda saxlaya bilmədik. Bir qədər sonra yenidən cəhd edin." },
+      { status: 503 },
+    )
   }
 
   const requestedModuleNames = getDemoModules(created.requestedModules).map((module) => module.title)
@@ -131,5 +124,9 @@ export async function POST(request: Request) {
     return "failed" as const
   })
 
-  return json({ success: true, requestId: created.id, invitation, message: "Demo sorğusu qəbul edildi" }, 201)
+  return jsonResponse(
+    request,
+    { success: true, requestId: created.id, invitation, message: "Demo sorğusu qəbul edildi" },
+    { status: 201 },
+  )
 }

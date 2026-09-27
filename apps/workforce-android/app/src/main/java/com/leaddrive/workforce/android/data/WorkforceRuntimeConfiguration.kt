@@ -18,6 +18,8 @@ data class WorkforceRuntimeConfiguration(
     val appVersionCode: Int,
     val buildSha: String,
     val deviceClass: WorkforceDeviceClass,
+    /** Null means that this APK intentionally cannot issue a Play Integrity token. */
+    val playIntegrityCloudProjectNumber: Long?,
 ) {
     fun requireHttpsBaseUrl(): URI {
         val uri = runCatching { URI(apiBaseUrl) }.getOrElse {
@@ -38,6 +40,9 @@ data class WorkforceRuntimeConfiguration(
             appVersionCode = BuildConfig.VERSION_CODE,
             buildSha = BuildConfig.WORKFORCE_BUILD_SHA,
             deviceClass = WorkforceDeviceClass.from(context.resources.configuration),
+            playIntegrityCloudProjectNumber = BuildConfig.WORKFORCE_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER
+                .toLongOrNull()
+                ?.takeIf { it > 0 },
         )
     }
 }

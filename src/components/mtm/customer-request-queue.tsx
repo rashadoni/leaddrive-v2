@@ -135,7 +135,6 @@ export function MtmCustomerRequestQueue({ active, orgId, onChanged }: CustomerRe
             </h2>
             {!loading && requests.length > 0 ? <Badge variant="warning">{t("pendingApprovalsCount", { count: requests.length })}</Badge> : null}
           </div>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("customerApprovalQueueSubtitleFriendly")}</p>
         </div>
       </header>
 

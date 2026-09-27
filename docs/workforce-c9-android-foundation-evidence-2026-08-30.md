@@ -79,12 +79,15 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 
 - The manifest declares no `CAMERA` permission. It declares foreground/action-time
   location and `USE_BIOMETRIC` only; it has no background-location permission,
-  location service or active location capture flow. `WorkforceActionTimeLocationCapture` is a user-triggered
-  foreground-only `getCurrentLocation` primitive with no stale last-known
-  fallback. It rejects fixes older than 30 seconds or outside coordinate and
-  accuracy bounds, exposes the platform mock flag for later server assessment,
-  cancels after 15 seconds, and returns explicit permission/provider/platform/
-  timeout states. It is not wired until tenant proof policy is active.
+  location service, listener or receiver. When an active server manifest
+  requires location for an exact employee action, `WorkforceActionTimeLocationCapture`
+  obtains one user-triggered foreground-only `getCurrentLocation` sample with
+  no stale last-known fallback. It rejects fixes older than 30 seconds or
+  outside coordinate and accuracy bounds, exposes the platform mock flag for
+  server assessment, cancels after 15 seconds, and returns explicit permission,
+  provider, platform and timeout states. Those states send no action and have
+  no offline bypass; the flow remains inactive until a tenant publishes the
+  separate proof policy and passes its physical/privacy gates.
 - `WorkforceDeviceKeyManager` requests a challenge-bound ECDSA Android
   Keystore key, tries StrongBox where available, falls back only when the
   device reports StrongBox unavailable, and requires per-use **strong
@@ -115,30 +118,44 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   action requirement; foreground GEO capture remains disabled until legal
   notice and tenant proof-policy activation. This does not claim a QR/GEO/
   device physical validation result.
+- Every allowed server segment mode (`SITE`, `REMOTE`, `FIELD`, `TRAVEL`,
+  `ON_CALL`, `EXCEPTION`) now maps through a local EN/RU/AZ resource instead
+  of exposing a lower-cased transport enum. An unknown future value renders a
+  neutral unavailable schedule-type label rather than an invented translation
+  or inferred mode.
+- The Today start time is formatted from its server instant in the server
+  snapshot's tenant timezone, never by device timezone or a raw ISO string.
+  Invalid instant/timezone input renders a localized unavailable value rather
+  than exposing the transport value or calculating a local replacement.
 
-## Opt-in local missed-finish reminder (`WF-C9-011`, partial)
+## Opt-in local reminders (`WF-C9-011`, partial)
 
 - The employee must explicitly turn on the local reminder. Android 13+ asks
   for `POST_NOTIFICATIONS` only after that employee action; a denied permission
   or a system-disabled notification channel produces a safe visible state and
   schedules nothing.
-- The server's own immutable `WorkforceShiftSnapshot.plannedEndAt` is the only
-  input. The client does not use the Baku default, device timezone, a local
-  clock-derived shift, current site, segment, location, QR or device proof to
-  create a reminder. If no current approved shift end is returned, or the
-  window has passed, it cancels any prior reminder instead of guessing.
-- The single WorkManager request stores `Data.EMPTY` and a fixed generic name;
-  no workday, employee, tenant, site or proof identifier is written to local
-  WorkManager metadata. Sign-out, tenant/account change, disabling the option,
-  completed workday and stale/no-plan state cancel it.
+- The server's own immutable `WorkforceShiftSnapshot.plannedEndAt` is an input.
+  When the server has selected exactly one **next** immutable segment, it may
+  additionally return its server-resolved `startsAt`; Android does not derive
+  that instant from the Baku default, a device timezone, a local date or a
+  clock. The client does not use current site, location, QR or device proof to
+  create a reminder. If no current approved schedule context is returned, or
+  all approved windows have passed, it cancels prior reminders instead of
+  guessing.
+- Each WorkManager request stores `Data.EMPTY` and one fixed generic name;
+  no workday, employee, tenant, site, segment, location, proof or action
+  identifier is written to local WorkManager metadata. Sign-out, tenant/account
+  change, disabling the option, completed workday and stale/no-plan state
+  cancel every reminder.
 - The worker displays only “LeadDrive Workforce — Open Workforce to review
   your work-time status.” It contains no time, name, site, location, QR or
   device information. A notification failure ends the one-shot job rather than
   retrying and possibly showing a duplicate alert.
-- This is intentionally only a private **missed-finish** reminder. There is no
-  push credential, segment reminder, start reminder, server no-show action or
-  delivery receipt. Those flows remain unimplemented until an approved
-  server-side notification contract and physical-device evidence exist.
+- This is intentionally only a private **missed-finish or next-segment**
+  reminder. There is no push credential, start reminder before a workday
+  exists, server no-show action or delivery receipt. Those flows remain
+  unimplemented until an approved server-side notification contract and
+  physical-device evidence exist.
 
 ## Localisation and accessibility foundation (`WF-C9-012`, partial)
 
@@ -162,12 +179,13 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   safe presentation only, not device verification evidence.
 - The root runtime statuses (sign-in, refresh, encrypted-outbox queue, request
   submit/cancel, trusted-device action/enrollment/revoke and sign-out) are now
-  resource-backed in EN/AZ/RU. API failures render one of three local generic
-  outcomes (conflict, request failure or unavailable transport); the app does
-  not reflect `WorkforceApiException.message` into employee UI. Successful
-  device operations render the known local lifecycle resource instead of an
-  internal API message. This keeps recovery useful without exposing server,
-  device or request diagnostics.
+  resource-backed in EN/AZ/RU. API failures render a local conflict, request
+  failure, unavailable transport or known managed-Play update outcome; the app
+  does not reflect `WorkforceApiException.message` into employee UI. The update
+  mapping accepts only the two fixed server release codes and does not expose a
+  server/platform diagnostic. Successful device operations render the known
+  local lifecycle resource instead of an internal API message. This keeps
+  recovery useful without exposing server, device or request diagnostics.
 - The per-use Android biometric prompts for the exact action and device
   enrollment are resource-backed too. The action prompt uses the existing
   localized action label; the enrollment prompt includes only its server
@@ -187,6 +205,12 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   `Workforce action`/`Needs review`; no operation ID, ciphertext, reason, QR,
   location or proof becomes a translation input. The local data layer no
   longer stores English display text for these recovery values.
+- Recovery's metadata-only local enqueue timestamp now follows the same
+  server-provided tenant clock as Work Time facts. It never uses the phone
+  timezone to relabel a locally saved record; a malformed local instant or
+  invalid tenant timezone renders a localized unavailable value. This is a
+  display-only correction and does not alter queued payloads, retry ordering
+  or server attendance facts.
 - The mobile history parser now converts known request type/status and calendar
   codes into typed values before Compose renders them. Known values use
   EN/AZ/RU resources; an unknown future server value displays a generic
@@ -331,9 +355,12 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 
 Today submits online first; a transport/ambiguous transient failure saves the
 same immutable operation into the encrypted outbox. Explicit server rejections
-and proof/state conflicts are never queued. It does not yet capture
-action-time location or site proof. A QR-required action scans one fresh token
-and sends it immediately. A device-required action can start/resume an
+and proof/state conflicts are never queued. A location-required action captures
+one fresh foreground sample, sends it only with that immediate v4 workday
+operation, and never places raw coordinates in the encrypted outbox; the
+server applies its quality/geofence evidence boundary before accepting the
+action. A QR-required action scans one fresh token and sends it immediately.
+A device-required action can start/resume an
 encrypted account-bound enrollment, get an OS-only per-use strong-biometric
 signature, and send its device proof immediately; server truth still requires
 manager approval before that device can sign a work-time action. Neither proof

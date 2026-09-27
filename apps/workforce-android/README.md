@@ -44,9 +44,12 @@ location/background-tracking service.
   domain order, has a seven-day/eight-attempt bound and removes the encryption
   key plus rows on logout or tenant switch. QR and device proofs are never
   queued; server conflicts/rejections are never an offline bypass;
-- foreground/action-time location and `USE_BIOMETRIC` permissions are declared,
-  but there is **no** `CAMERA`, `ACCESS_BACKGROUND_LOCATION`, background
-  location service or active location-capture flow;
+- when an active server manifest requires location for the exact action, the
+  employee-triggered foreground flow captures one fresh sample before that
+  one submission. It has no `CAMERA`, `ACCESS_BACKGROUND_LOCATION`, location
+  service, listener, receiver or last-known-location fallback; a missing
+  permission/provider or unavailable sample sends no action and has no offline
+  bypass;
 - QR is scanned by the managed-Play delegated scanner and sent immediately;
 - trusted-device enrollment stores only an encrypted account-bound key alias,
   public-key enrollment ID and lifecycle. An Android Keystore P-256 key signs
@@ -57,11 +60,12 @@ location/background-tracking service.
 - device enrollment proof remains pending until an accountable server-side
   administrator approves it. Revocation/replacement is an administrator flow;
   sign-out removes only this phone's private key and local binding.
-- local missed-finish reminders are optional and use only the immutable server
-  shift end. Their WorkManager input/name and generic notification contain no
-  employee, workday, tenant, site, location, QR or device-proof data; they are
-  cancelled on sign-out/account change. There is no push, start or segment
-  reminder and no notification delivery claim.
+- local missed-finish and next-segment reminders are optional and use only the
+  immutable server shift end or server-resolved next-segment start. Their
+  WorkManager input/name and generic notification contain no employee, workday,
+  tenant, site, location, QR or device-proof data; they are cancelled on
+  sign-out/account change. There is no push or start reminder and no
+  notification delivery claim.
 - core client actions, navigation, private-reminder and OS prompt strings have
   Android resource catalogs for English, Azerbaijani and Russian. Tabs expose
   selected state to accessibility services and explicitly use 48 dp minimum

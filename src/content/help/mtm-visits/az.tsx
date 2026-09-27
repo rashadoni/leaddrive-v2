@@ -95,9 +95,8 @@ export default function mtmvisitsHelpAz() {
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             «Ziyarət qeyd et» başlıqlı pəncərə açılır. İçində yan-yana <strong>Agent *</strong> və{" "}
-            <strong>Müştəri *</strong> açılan siyahıları, altında yan-yana <strong>Enlik</strong> və{" "}
-            <strong>Uzunluq</strong> sahələri, ən sonda isə <strong>Qeydlər</strong> mətn sahəsi var.
-            (Status seçimi yalnız mövcud ziyarəti redaktə edəndə görünür.)
+            <strong>Müştəri *</strong> açılan siyahıları və <strong>Qeydlər</strong> mətn sahəsi var. Koordinat və
+            status yoxdur: ziyarətin yerini və bağlanmasını agentin telefonu yazır.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -112,12 +111,11 @@ export default function mtmvisitsHelpAz() {
         </HelpStep>
         <HelpStep n={3}>
           <p>
-            İstəyə bağlı olaraq <strong>Enlik</strong> və <strong>Uzunluq</strong> koordinatlarını və bir
-            <strong>Qeyd</strong> daxil edin.
+            İstəyə bağlı olaraq <strong>qeyd</strong> əlavə edin.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Enlik və uzunluq sahələri yalnız rəqəm qəbul edir (onluq kəsr daxil). Bu koordinatlar girişin yeri
-            kimi saxlanılır və sonradan cədvəldəki <strong>GPS</strong> məsafə nişanını hesablamaq üçün istifadə olunur.
+            Ofisdən qeyd olunan ziyarətin GPS-i olmur: ziyarətin yerini yalnız agentin telefonu bilir, ona görə
+            cədvəldə belə ziyarət üçün <strong>GPS</strong> məsafəsi göstərilmir.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>
@@ -139,10 +137,9 @@ export default function mtmvisitsHelpAz() {
             Ziyarəti dəyişmək üçün həmin sətirdəki qələm ikonalı (<HelpKey>Redaktə et</HelpKey>) düyməni basın.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            «Ziyarəti redaktə et» başlıqlı, mövcud agent, müştəri, koordinat və qeydlərlə əvvəlcədən
-            doldurulmuş eyni forma açılır. Yalnız redaktə rejimində əlavə bir <strong>Status</strong> açılan
-            siyahısı çıxır — onunla ziyarəti <HelpKey>Nöqtədə</HelpKey> və ya <HelpKey>Tamamlanmış</HelpKey>{" "}
-            kimi qeyd edə bilərsiniz. Dəyişikliyi <HelpKey>Yenilə</HelpKey> ilə təsdiqləyin.
+            «Ziyarəti redaktə et» pəncərəsi mövcud agent, müştəri və qeydlə dolu açılır. Status və koordinat
+            yoxdur: ziyarəti agent özü tətbiqdə bağlayır — iş günü kimi. Dəyişikliyi <HelpKey>Yenilə</HelpKey>
+            düyməsi ilə təsdiqləyin.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -157,8 +154,8 @@ export default function mtmvisitsHelpAz() {
         </HelpStep>
         <HelpCallout kind="warning">
           <p>
-            Silmə geri qaytarılmır — ziyarət jurnalından həmişəlik çıxır. Yanlış status və ya koordinatları
-            sadəcə düzəltmək istəyirsinizsə, silmək yerinə <HelpKey>Redaktə et</HelpKey> ilə dəyişin.
+            Silmə geri qaytarılmır — ziyarət jurnalından həmişəlik çıxır. Agenti, müştərini və ya qeydi sadəcə
+            düzəltmək istəyirsinizsə, silmək yerinə <HelpKey>Redaktə et</HelpKey> ilə dəyişin.
           </p>
         </HelpCallout>
       </HelpSection>

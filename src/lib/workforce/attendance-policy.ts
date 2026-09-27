@@ -54,6 +54,16 @@ const LocationRequirementSchema = z.object({
 }).strict()
 
 /**
+ * Play Integrity verifies the installed app/device for one exact action. It
+ * is intentionally layered on top of a server-verified device key so the
+ * action hash can bind to a known active enrollment instead of a caller-picked
+ * device reference.
+ */
+const PlayIntegrityRequirementSchema = z.object({
+  requiredActions: RequiredActionsSchema,
+}).strict()
+
+/**
  * This is an intentionally narrow, versioned slice of WorkforcePolicy's
  * signed JSON definition.  Calculation fields remain owned by
  * policy-definition.ts; unknown policy keys remain immutable but have no
@@ -64,12 +74,22 @@ export const WorkforceAttendancePolicySchema = z.object({
   qr: QrRequirementSchema.optional(),
   deviceTrust: DeviceTrustRequirementSchema.optional(),
   location: LocationRequirementSchema.optional(),
+  playIntegrity: PlayIntegrityRequirementSchema.optional(),
 }).strict().superRefine((value, context) => {
-  if (!value.qr && !value.deviceTrust && !value.location) {
+  if (!value.qr && !value.deviceTrust && !value.location && !value.playIntegrity) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Attendance enforcement must require location, QR, device trust, or a combination",
     })
+  }
+  for (const action of value.playIntegrity?.requiredActions ?? []) {
+    if (!value.deviceTrust?.requiredActions.includes(action)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["playIntegrity", "requiredActions"],
+        message: "A Play Integrity requirement must also require device trust",
+      })
+    }
   }
   if ((value.deviceTrust?.biometricRequiredActions?.length ?? 0) > 0) {
     // A local BiometricPrompt alone is not an assertion the server can verify.
@@ -90,6 +110,7 @@ export type WorkforceAttendanceRequirements = {
   qrRequiredActions: ReadonlySet<WorkforceAttendanceAction>
   deviceTrustRequiredActions: ReadonlySet<WorkforceAttendanceAction>
   biometricRequiredActions: ReadonlySet<WorkforceAttendanceAction>
+  playIntegrityRequiredActions: ReadonlySet<WorkforceAttendanceAction>
 }
 
 /**
@@ -104,6 +125,7 @@ export type WorkforceAttendancePolicyManifest = {
   qrRequiredActions: WorkforceAttendanceAction[]
   deviceTrustRequiredActions: WorkforceAttendanceAction[]
   biometricRequiredActions: WorkforceAttendanceAction[]
+  playIntegrityRequiredActions: WorkforceAttendanceAction[]
 }
 
 export const NO_WORKFORCE_ATTENDANCE_REQUIREMENTS: WorkforceAttendanceRequirements = {
@@ -111,6 +133,7 @@ export const NO_WORKFORCE_ATTENDANCE_REQUIREMENTS: WorkforceAttendanceRequiremen
   qrRequiredActions: new Set(),
   deviceTrustRequiredActions: new Set(),
   biometricRequiredActions: new Set(),
+  playIntegrityRequiredActions: new Set(),
 }
 
 export class WorkforceAttendancePolicyError extends Error {
@@ -153,6 +176,7 @@ export function workforceAttendancePolicyManifest(
     qrRequiredActions: [...(parsed.data.qr?.requiredActions ?? [])],
     deviceTrustRequiredActions: [...(parsed.data.deviceTrust?.requiredActions ?? [])],
     biometricRequiredActions: [...(parsed.data.deviceTrust?.biometricRequiredActions ?? [])],
+    playIntegrityRequiredActions: [...(parsed.data.playIntegrity?.requiredActions ?? [])],
   }
 }
 
@@ -170,5 +194,6 @@ export function workforceAttendanceRequirements(definition: unknown): WorkforceA
     qrRequiredActions: new Set(manifest.qrRequiredActions),
     deviceTrustRequiredActions: new Set(manifest.deviceTrustRequiredActions),
     biometricRequiredActions: new Set(manifest.biometricRequiredActions),
+    playIntegrityRequiredActions: new Set(manifest.playIntegrityRequiredActions),
   }
 }

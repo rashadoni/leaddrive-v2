@@ -585,6 +585,10 @@ describe("PUT /api/v1/mtm/visits/[id]", () => {
       routeId: null,
       routePointId: null,
     })
+    // Owner 2026-09-25: only the visit's own agent closes it — here from his
+    // own browser session (a web user linked to the agent card).
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, userId: "agent-user", role: "manager", email: "a@t.com", name: "Agent" } as any)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", role: "AGENT", canPlanOwnRoutes: false, canSelfPublishRoutes: false } as any)
     const res = await PUT(
       makeJsonReq("/api/v1/mtm/visits/v1", {
         status: "CHECKED_OUT",

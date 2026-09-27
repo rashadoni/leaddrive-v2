@@ -359,9 +359,9 @@ async function rebuildApprovalRows(
         expectedWorkDate: true,
         workdayEvent: { select: { workdayId: true, workday: { select: { workDate: true } } } },
         decisions: {
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          orderBy: { caseRevision: "asc" },
           take: MAX_APPROVAL_CASE_DECISIONS + 1,
-          select: { decisionCode: true },
+          select: { decisionCode: true, caseRevision: true },
         },
       },
     })
@@ -391,8 +391,9 @@ async function rebuildApprovalRows(
   })
 
   const caseBlockers: WorkforceTimesheetApprovalBlocker[] = exceptionCases.flatMap((exceptionCase) => {
-    const decisionsTruncated = exceptionCase.decisions.length > MAX_APPROVAL_CASE_DECISIONS
-    const lifecycle = decisionsTruncated
+    const decisionsInvalid = exceptionCase.decisions.length > MAX_APPROVAL_CASE_DECISIONS
+      || exceptionCase.decisions.some((decision, index) => decision.caseRevision !== index + 1)
+    const lifecycle = decisionsInvalid
       ? null
       : evaluateWorkforceExceptionDraftLifecycle(exceptionCase.decisions)
     if (lifecycle?.valid && lifecycle.stage === "RESOLVED") return []

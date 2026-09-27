@@ -94,7 +94,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
           release: { platform: "ANDROID", status: "NOT_CONFIGURED", maySubmitNewWorkforceActions: true },
           wireSchemas: {
             bootstrapResponse: { current: 1, supported: [1] },
-            workdayRequest: { preferred: 4, supported: [1, 2, 3, 4] },
+            workdayRequest: { preferred: 5, supported: [1, 2, 3, 4, 5] },
             workdayResponse: { current: 1, supported: [1] },
             evidenceEnvelope: { preferred: 1, supported: [1] },
             siteTransitionRequest: { preferred: 1, supported: [1] },
@@ -516,6 +516,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       qrRequiredActions: ["START"],
       deviceTrustRequiredActions: ["START", "FINISH"],
       biometricRequiredActions: [],
+      playIntegrityRequiredActions: [],
     })
     expect(json.data.policies.workforce.attendance).toEqual(json.data.modules.workforce.attendance)
   })
@@ -556,6 +557,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
+      playIntegrityRequiredActions: [],
     })
   })
 
@@ -597,6 +599,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
+      playIntegrityRequiredActions: [],
     })
   })
 
@@ -638,6 +641,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
+      playIntegrityRequiredActions: [],
     })
   })
 

@@ -12,6 +12,8 @@ import {
 } from "@/lib/mtm/task-access"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
+import { MTM_OPEN_TASK_STATUSES, mtmOverdueTaskWhere, mtmTaskOverdueDays } from "@/lib/mtm/task-overdue"
+import { mtmAwaitingReviewTaskWhere } from "@/lib/mtm/task-review-queue"
 import {
   activeMtmTaskGroupCatalog,
   MtmTaskGroupError,
@@ -23,7 +25,9 @@ import {
   mtmUndatedTaskGroupApplies,
 } from "@/lib/mtm/task-undated-group"
 
-const VALID_STATUSES = new Set(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"])
+// OPEN = not completed and not cancelled; the page opens on it (tasks audit 2026-09-24).
+// AWAITING_REVIEW = completed, neither accepted nor returned (task-review-queue.ts).
+const VALID_STATUSES = new Set(["OPEN", "PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE", "AWAITING_REVIEW"])
 const VALID_PRIORITIES = new Set(["LOW", "MEDIUM", "HIGH", "URGENT"])
 const VALID_SORTS = new Set(["due_desc", "due_asc", "priority", "title"])
 
@@ -103,11 +107,20 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
 
   try {
     const scopeWhere = mtmTaskScopeWhere(actor)
+    const now = new Date()
     const where = {
       organizationId: auth.orgId,
       deletedAt: null,
-      AND: [scopeWhere, ...(agentId ? [{ agentId }] : [])],
-      ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "OVERDUE" } : {}),
+      // «Overdue» is computed from the due date, never read from the stored
+      // status (see task-overdue.ts).
+      AND: [
+        scopeWhere,
+        ...(agentId ? [{ agentId }] : []),
+        ...(status === "OVERDUE" ? [mtmOverdueTaskWhere(now)] : []),
+        ...(status === "OPEN" ? [{ status: { in: [...MTM_OPEN_TASK_STATUSES] } }] : []),
+        ...(status === "AWAITING_REVIEW" ? [mtmAwaitingReviewTaskWhere()] : []),
+      ],
+      ...(status && status !== "OVERDUE" && status !== "OPEN" && status !== "AWAITING_REVIEW" ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" } : {}),
       ...(priority ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT" } : {}),
       ...(teamId ? { agent: { teamId } } : {}),
       ...(contactId ? { visit: { contactId } } : {}),
@@ -116,9 +129,17 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
           { title: { contains: search, mode: "insensitive" as const } },
           { description: { contains: search, mode: "insensitive" as const } },
           { customer: { name: { contains: search, mode: "insensitive" as const } } },
+          // Tasks audit 2026-09-24: «Quliyev» found nothing — the agent's name
+          // was not searched, though it is a column of the same list.
+          { agent: { name: { contains: search, mode: "insensitive" as const } } },
         ],
       } : {}),
     }
+    // Tasks audit 2026-09-24: the status is chosen by chips, and each chip
+    // shows its own count over the same filters minus the status itself —
+    // exactly what pressing it will list. The list total then equals the
+    // count on the pressed chip.
+    const chipWhere = { ...where, AND: [scopeWhere, ...(agentId ? [{ agentId }] : [])], status: undefined }
     // Undated open tasks as their own group (see task-undated-group.ts). The
     // paginated list then leaves them out so no row is shown twice; the status
     // summary still counts the whole filtered set, group included.
@@ -139,7 +160,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       },
       visit: { select: { id: true, status: true, checkInAt: true, checkOutAt: true } },
     } satisfies Prisma.MtmTaskInclude
-    const [tasks, total, statusCounts, agents, teams, settings, taskGroupCatalog, undatedTasks, undatedTotal] = await Promise.all([
+    const [tasks, total, statusCounts, overdueCount, awaitingReviewCount, agents, teams, settings, taskGroupCatalog, undatedTasks, undatedTotal] = await Promise.all([
       prisma.mtmTask.findMany({
         where: listWhere,
         skip: (page - 1) * limit,
@@ -152,7 +173,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       // loaded and show them next to a server-wide "Всего: 137". Two numbers
       // from two sources side by side is how a page lies without a single
       // wrong value in it. Both come from the same filtered set now.
-      prisma.mtmTask.groupBy({ by: ["status"], where, _count: { _all: true } }),
+      prisma.mtmTask.groupBy({ by: ["status"], where: chipWhere, _count: { _all: true } }),
+      prisma.mtmTask.count({ where: { ...chipWhere, AND: [...chipWhere.AND, mtmOverdueTaskWhere(now)] } }),
+      prisma.mtmTask.count({ where: { ...chipWhere, AND: [...chipWhere.AND, mtmAwaitingReviewTaskWhere()] } }),
       prisma.mtmAgent.findMany({
         where: { organizationId: auth.orgId, status: "ACTIVE", ...agentScope },
         orderBy: { name: "asc" },
@@ -183,12 +206,40 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       undatedGroup ? prisma.mtmTask.count({ where: undatedWhere }) : Promise.resolve(0),
     ])
 
+    // Which completed rows on this page still wait for the manager — the same
+    // rule as the count above, so the badge and the number cannot disagree.
+    const completedIds = tasks.filter((task) => task.status === "COMPLETED").map((task) => task.id)
+    const awaitingIds = completedIds.length
+      ? new Set((await prisma.mtmTask.findMany({
+        where: { organizationId: auth.orgId, id: { in: completedIds }, ...mtmAwaitingReviewTaskWhere() },
+        select: { id: true },
+      })).map((row) => row.id))
+      : new Set<string>()
+
+    const byStatus: Record<string, number> = Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all]))
+    // The contact chip read «Контекст контакта: cmf8x…» — the database id
+    // (tasks audit 2026-09-24). The name, from this organization only.
+    const contactContext = contactId
+      ? await prisma.mtmContact.findFirst({ where: { id: contactId, organizationId: auth.orgId }, select: { id: true, displayName: true } })
+      : null
+
     return NextResponse.json({
       success: true,
       data: {
-        tasks,
+        tasks: tasks.map((task) => ({
+          ...task,
+          overdueDays: mtmTaskOverdueDays(task, now.getTime()),
+          awaitingReview: awaitingIds.has(task.id),
+        })),
         total,
-        summary: Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all])),
+        contact: contactContext,
+        summary: {
+          ...byStatus,
+          // «Open» chip: not completed and not cancelled (task-overdue.ts).
+          OPEN: (byStatus.PENDING ?? 0) + (byStatus.IN_PROGRESS ?? 0) + (byStatus.OVERDUE ?? 0),
+          OVERDUE: overdueCount,
+          AWAITING_REVIEW: awaitingReviewCount,
+        },
         ...(undatedGroup ? { undatedOpen: { tasks: undatedTasks ?? [], total: undatedTotal } } : {}),
         page,
         limit,

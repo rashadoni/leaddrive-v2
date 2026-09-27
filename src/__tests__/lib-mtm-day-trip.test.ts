@@ -179,6 +179,9 @@ describe("the day's route on the history page", () => {
     expect(panel.indexOf("<DayTripLedger")).toBeLessThan(panel.indexOf('t("stopDetails")'))
     expect(panel).toContain("focus={tripFocus}")
     expect(map).toContain("<ResizeAndFit coordinates={focusFrame ?? coordinates}")
+    // Prod 2026-09-24: a day without a drive read «on the road 0 min, 0 m».
+    const ledger = readFileSync("src/components/mtm/day-trip-ledger.tsx", "utf8")
+    expect(ledger).toContain('summary.movingSeconds > 0 ? t("summaryMoving"')
     for (const locale of ["az", "ru", "en"]) {
       const trip = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmMap.history.trip
       // Honest about what the line is until the owner picks a road-snapping service.

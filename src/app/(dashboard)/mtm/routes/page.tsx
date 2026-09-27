@@ -13,7 +13,6 @@ import type { WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { MtmRouteWeekPlan } from "@/components/mtm/route-week-plan"
 import { MtmRoutePlanningMatrix } from "@/components/mtm/route-planning-matrix"
 import { MtmRouteApprovalQueue } from "@/components/mtm/route-approval-queue"
-import { MtmRouteNeedsAttention } from "@/components/mtm/route-needs-attention"
 import { MtmRouteTravelPanel } from "@/components/mtm/route-travel-panel"
 import { MtmCustomerCreateRequestPanel } from "@/components/mtm/customer-create-request-panel"
 import { MtmCustomerRequestQueue } from "@/components/mtm/customer-request-queue"
@@ -27,7 +26,7 @@ import dynamic from "next/dynamic"
 import type { MtmRouteAssignment, MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import {
   Route, MapPin, User, CheckCircle2, Plus, Pencil, Trash2, Search, Send,
-  ArrowLeft, List, CalendarDays, Clock, Navigation, ChevronDown, Eye, X, Columns3, ClipboardCheck, Users, FileSpreadsheet, TableProperties,
+  ArrowLeft, List, CalendarDays, Clock, Navigation, RefreshCw, X, Columns3, ClipboardCheck, Users, UserRound, FileSpreadsheet, TableProperties,
   Camera, PenLine, StickyNote, ArrowDownUp,
 } from "lucide-react"
 import { mtmRouteReturnTarget, type MtmRouteAssignmentDirection } from "@/lib/mtm/route-links"
@@ -43,6 +42,9 @@ import {
 } from "@/lib/mtm/route-planner-context"
 import { formatDate, formatTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { MtmAgentPeriodView } from "@/components/mtm/agent-period-view"
+import { isMtmRouteShortOfPlan } from "@/lib/mtm/calendar-day-summary"
+import { mtmCalendarDayKey } from "@/lib/mtm/calendar-day-tone"
 import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
@@ -65,7 +67,7 @@ const pointStatusLabelKey: Partial<Record<MtmRoutePoint["status"], "pointStatusP
   SKIPPED: "pointStatusSkipped",
 }
 
-type RouteViewMode = "list" | "matrix" | "week" | "calendar" | "approvals"
+type RouteViewMode = "list" | "matrix" | "week" | "calendar" | "approvals" | "agent"
 
 interface RouteBuilderPreset {
   date?: string
@@ -121,7 +123,7 @@ function routeAssignmentDirection(value: string | null): MtmRouteAssignmentDirec
 }
 
 function routeViewMode(value: string | null): RouteViewMode | null {
-  return value === "calendar" || value === "week" || value === "list" || value === "matrix" || value === "approvals"
+  return value === "calendar" || value === "week" || value === "list" || value === "matrix" || value === "approvals" || value === "agent"
     ? value
     : null
 }
@@ -150,6 +152,9 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
   // The server's count for the same filter. The chip read «Hamısı (200)» —
   // the page size — while 432 routes existed (audit 2026-09-14).
   const [routesTotal, setRoutesTotal] = useState(0)
+  // Routes audit 2026-09-26: «son 200 / 482» — the rest were unreachable.
+  const [routesPage, setRoutesPage] = useState(1)
+  const [routesLoadingMore, setRoutesLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [builderOpen, setBuilderOpen] = useState(false)
   const [builderPreset, setBuilderPreset] = useState<RouteBuilderPreset | null>(null)
@@ -161,7 +166,6 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
   const [sortBy, setSortBy] = useState("date_desc")
   const [viewMode, setViewMode] = useState<RouteViewMode>(calendarSurface ? "calendar" : "list")
   const [viewPreferenceReady, setViewPreferenceReady] = useState(false)
-  const [advancedViewsOpen, setAdvancedViewsOpen] = useState(false)
   const [selectedRoute, setSelectedRoute] = useState<MtmRouteRecord | null>(null)
   const [routeDetailLoading, setRouteDetailLoading] = useState(false)
   const [focusedRouteUnavailable, setFocusedRouteUnavailable] = useState(false)
@@ -171,6 +175,10 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
   const [calendarError, setCalendarError] = useState(false)
   const [calendarRefreshVersion, setCalendarRefreshVersion] = useState(0)
   const [approvalRefreshVersion, setApprovalRefreshVersion] = useState(0)
+  // Routes audit 2026-09-26, «Согласования»: with nothing pending the tab
+  // showed three blocks each saying «nothing» — the first titled «Требует
+  // внимания» — and with something pending the tab itself did not say so.
+  const [approvalCounts, setApprovalCounts] = useState<{ routeChanges: number; customerRequests: number } | null>(null)
   const [removalPointId, setRemovalPointId] = useState<string | null>(null)
   const [removalReason, setRemovalReason] = useState("")
   const [requestingRemoval, setRequestingRemoval] = useState(false)
@@ -336,6 +344,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
         ? nextRoutes.find((route) => route.id === routeToRestore) ?? null
         : null
       setRoutes(nextRoutes)
+      setRoutesPage(1)
       setRoutesTotal(Number.isFinite(Number(r.data.total)) ? Number(r.data.total) : nextRoutes.length)
       setCapabilities(r.data.capabilities ?? EMPTY_ROUTE_CAPABILITIES)
       setFocusedRouteUnavailable(focusedUnavailable)
@@ -351,6 +360,50 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
       if (isCurrentRequest()) setLoading(false)
     }
   }, [orgId, requestedCustomerId, requestedRouteId, routeIdentityKey])
+
+  async function loadMoreRoutes() {
+    const requestId = routeRequestRef.current.id
+    const nextPage = routesPage + 1
+    setRoutesLoadingMore(true)
+    try {
+      const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
+      const response = await fetch(`/api/v1/mtm/routes?limit=200&page=${nextPage}`, { headers })
+      const result = await response.json().catch(() => null)
+      // A reload in between started the list over; this page belongs to the old one.
+      if (routeRequestRef.current.id !== requestId) return
+      if (!response.ok || !result?.success) {
+        toast.error(t("loadMoreRoutesFailed"))
+        return
+      }
+      const more = (result.data.routes ?? []) as MtmRouteRecord[]
+      setRoutes((current) => {
+        const known = new Set(current.map((route) => route.id))
+        return [...current, ...more.filter((route) => !known.has(route.id))]
+      })
+      setRoutesPage(nextPage)
+      if (Number.isFinite(Number(result.data.total))) setRoutesTotal(Number(result.data.total))
+    } catch {
+      if (routeRequestRef.current.id === requestId) toast.error(t("loadMoreRoutesFailed"))
+    } finally {
+      setRoutesLoadingMore(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!capabilities.canReview) return
+    const controller = new AbortController()
+    fetch("/api/v1/mtm/routes/needs-attention", { headers: orgId ? { "x-organization-id": String(orgId) } : {}, signal: controller.signal })
+      .then((response) => response.json().then((result) => ({ ok: response.ok, result })))
+      .then(({ ok, result }) => {
+        const categories = result?.data?.categories
+        // Unknown is not «nothing to approve»: the queues then load on their own.
+        setApprovalCounts(ok && categories ? { routeChanges: Number(categories.routeChanges?.count) || 0, customerRequests: Number(categories.customerRequests?.count) || 0 } : null)
+      })
+      .catch((error: unknown) => {
+        if ((error as { name?: string })?.name !== "AbortError") setApprovalCounts(null)
+      })
+    return () => controller.abort()
+  }, [approvalRefreshVersion, capabilities.canReview, orgId])
 
   const refreshRoutes = useCallback(async () => {
     const result = await fetchRoutes()
@@ -563,6 +616,8 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
     }
   }, [routes, selectedRouteId])
 
+  const todayKey = mtmCalendarDayKey(new Date())
+  const approvalTotal = approvalCounts ? approvalCounts.routeChanges + approvalCounts.customerRequests : 0
   const filtered = routes.filter(r => {
     if (activeFilter !== "all" && r.status !== activeFilter) return false
     if (search) {
@@ -802,16 +857,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
     ?? routes.find((route) => route.status === "IN_PROGRESS")?.agentId
     ?? routes[0]?.agentId
     ?? null
-  const advancedViewActive = viewMode === "list" || viewMode === "matrix" || viewMode === "approvals"
   const primaryCalendarLabel = t(capabilities.canReview ? "viewTeamCalendar" : "viewMyCalendar")
-  const planningToolsLabel = t(capabilities.canReview ? "controlAndReports" : "routePlanningTools")
-  const advancedViewLabel = viewMode === "list"
-    ? t(capabilities.canReview ? "viewList" : "viewMyRoutes")
-    : viewMode === "matrix"
-      ? t("viewMatrix")
-      : viewMode === "approvals"
-        ? t("viewApprovals")
-        : planningToolsLabel
 
   if (loading) return (
     <div className="space-y-3" aria-busy="true">
@@ -825,11 +871,14 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
 
   return (
     <div className="space-y-3">
-      <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700 xl:flex-row xl:items-center">
+      {/* Prod 2026-09-26 at 1568 px: with six view tabs in one row next to the
+          heading, the row wrapped and its second line lay over the heading.
+          The heading keeps its own line; the tabs and actions take the next. */}
+      <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700">
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <Route className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold leading-6 text-foreground">{t("title")}</h1>
+            <h1 className="text-lg font-semibold leading-6 text-foreground">{t(calendarSurface ? "calendarTitle" : "title")}</h1>
           </div>
           {/*
             Audit W-05 / task C5. Measured on the owner's screen at 1470x675:
@@ -843,26 +892,25 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           */}
           <HelpButton slug="mtm-routes" className="shrink-0" />
         </div>
-        <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center xl:w-auto">
+        <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center">
+          {/* Owner 2026-09-25: «if I as the architect can't make sense of it, an
+              ordinary user won't». Four views hid behind a dropdown next to two
+              visible ones; every view is now its own tab in one row, and the
+              Excel exchange is a button with words, not a menu item. */}
           <nav data-testid="mtm-route-view-switcher" className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label={t("primaryViews")}>
-            {calendarSurface ? <div className={`grid shrink-0 gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700 ${capabilities.canReview ? "grid-cols-2" : "grid-cols-1"}`} role="group" aria-label={t("primaryViews")}>
-              <Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => { setViewMode("calendar"); setAdvancedViewsOpen(false) }}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button>
-              {capabilities.canReview ? <Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => { setViewMode("week"); setAdvancedViewsOpen(false) }}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button> : null}
-            </div> : null}
-            <details data-testid="mtm-routes-more-views" className="group relative shrink-0" open={advancedViewsOpen} onToggle={(event) => setAdvancedViewsOpen(event.currentTarget.open)}>
-              <summary data-testid="mtm-routes-more-views-toggle" aria-label={advancedViewLabel} title={advancedViewLabel} className={`flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:min-h-10 [&::-webkit-details-marker]:hidden ${advancedViewActive ? "border-primary/35 bg-primary/5 text-primary" : "border-zinc-200 bg-card hover:bg-muted/60 dark:border-zinc-700"}`}>
-                {advancedViewLabel}<ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="absolute right-0 z-20 mt-2 grid min-w-56 gap-1 rounded-xl border border-zinc-200 bg-card p-2 shadow-lg dark:border-zinc-700">
-                <Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" className="min-h-11 justify-start" onClick={() => { setViewMode("list"); setAdvancedViewsOpen(false) }}><List className="mr-2 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button>
-                <Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "secondary" : "ghost"} size="sm" className="min-h-11 justify-start" onClick={() => { setViewMode("matrix"); setAdvancedViewsOpen(false) }}><TableProperties className="mr-2 h-4 w-4" />{t("viewMatrix")}</Button>
-                {capabilities.canReview ? <Button aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "secondary" : "ghost"} size="sm" className="min-h-11 justify-start" onClick={() => { setViewMode("approvals"); setAdvancedViewsOpen(false) }}><ClipboardCheck className="mr-2 h-4 w-4" />{t("viewApprovals")}</Button> : null}
-                {capabilities.canReview ? <Button data-testid="mtm-routes-excel-exchange" variant="ghost" size="sm" className="min-h-11 justify-start" onClick={() => { setExcelOpen(true); setAdvancedViewsOpen(false) }}><FileSpreadsheet className="mr-2 h-4 w-4" />{t("excelExchange")}</Button> : null}
-              </div>
-            </details>
+            <div data-testid="mtm-route-view-tabs" className="flex min-w-0 flex-wrap gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
+              {calendarSurface ? <Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("calendar")}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button> : null}
+              {calendarSurface && capabilities.canReview ? <Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button> : null}
+              <Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button>
+              <Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("matrix")}><TableProperties className="mr-1 h-4 w-4" />{t("viewMatrix")}</Button>
+              {/* Owner 2026-09-25: one agent over any period, not only a week. */}
+              <Button data-testid="mtm-routes-view-agent" aria-pressed={viewMode === "agent"} variant={viewMode === "agent" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("agent")}><UserRound className="mr-1 h-4 w-4" />{t("viewAgentPeriod")}</Button>
+              {capabilities.canReview ? <Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}{approvalTotal > 0 ? <span data-testid="mtm-routes-approvals-count" className="ml-1.5 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] font-semibold leading-5 text-white">{approvalTotal}</span> : null}</Button> : null}
+            </div>
           </nav>
           <div className="flex shrink-0 items-center justify-end gap-2">
             {returnTarget ? <Button asChild variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10"><Link href={returnTarget.href}><ArrowLeft className="mr-1 h-4 w-4" />{t(returnTarget.label)}</Link></Button> : null}
+            {capabilities.canReview ? <Button data-testid="mtm-routes-excel-exchange" variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10" onClick={() => setExcelOpen(true)}><FileSpreadsheet className="mr-1 h-4 w-4" />{t("excelExchange")}</Button> : null}
             <Button data-testid="mtm-route-builder-open" className="min-h-11 flex-1 whitespace-nowrap px-4 sm:flex-none lg:min-h-10" onClick={() => openNewRoute()} disabled={!capabilities.canCreateRoute} title={!capabilities.canCreateRoute ? t("selfPlanningDisabled") : undefined}><Plus className="mr-1 h-4 w-4" /> {t("add")}</Button>
           </div>
         </div>
@@ -1105,62 +1153,68 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           {filtered.length === 0 ? (
             <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{routes.length === 0 ? t("empty") : t("noResults")}</div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {filtered.map((route) => {
                 const badge = statusBadge[route.status] || statusBadge.PLANNED
                 const completion = route.totalPoints > 0 ? Math.round((route.visitedPoints / route.totalPoints) * 100) : 0
+                const shortOfPlan = isMtmRouteShortOfPlan(route, route.date.slice(0, 10) < todayKey)
+                // Routes audit 2026-09-26: a card took half a screen — three
+                // buttons and every stop as a chip. One row now: who, when,
+                // what came of it; the stops are one click away in the route.
+                const stopsLine = route.name || (route.points ?? []).slice(0, 3).map((point) => point.customer?.name).filter(Boolean).join(", ")
                 return (
-                  <article key={route.id} data-testid="mtm-route-list-item" data-route-id={route.id} data-route-status={route.status} className="rounded-lg border border-zinc-200 bg-card p-3 transition-colors hover:border-primary/40 dark:border-zinc-700">
-                    <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <User className="h-4 w-4 text-cyan-500" /><span className="font-medium text-sm">{route.agent?.name}</span>
-                        <span className="text-xs text-muted-foreground">{formatDate(new Date(route.date), locale)}</span>
+                  <article key={route.id} data-testid="mtm-route-list-item" data-route-id={route.id} data-route-status={route.status} className="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-card px-3 py-2 transition-colors hover:border-primary/40 dark:border-zinc-700 sm:flex-row sm:items-center sm:gap-4">
+                    <button
+                      type="button"
+                      data-testid={`mtm-route-open-${route.id}`}
+                      className="min-h-11 min-w-0 flex-1 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => openRouteDetails(route)}
+                      aria-label={t("openRouteDetails", { employee: route.agent?.name ?? "—", date: formatDate(new Date(route.date), locale) })}
+                    >
+                      <span className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="font-semibold text-foreground">{route.agent?.name ?? "—"}</span>
                         {(route.assignments?.length ?? 0) > 1 ? <span className="text-xs text-muted-foreground">+{(route.assignments?.length ?? 1) - 1}</span> : null}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>{mtmStatusLabel(statusT, "route", route.status)}</span>
-                        {route.changeRequests?.length ? <span className="text-[10px] text-amber-700 dark:text-amber-300">{t("viewApprovals")}: {route.changeRequests.length}</span> : null}
-                        <Button data-testid={`mtm-route-open-${route.id}`} variant="outline" size="sm" className="min-h-11" onClick={() => openRouteDetails(route)} aria-label={t("openRouteDetails", { employee: route.agent?.name ?? "—", date: formatDate(new Date(route.date), locale) })}>
-                          <Eye className="mr-1 h-4 w-4" />{t("viewRoute")}
-                        </Button>
-                        {canEditRoute(route) ? (
-                          <>
-                            <Button variant="outline" size="sm" className="min-h-11" onClick={() => openRouteEditor(route)}><Pencil className="mr-1 h-3.5 w-3.5" />{t("edit")}</Button>
-                            {route.status === "DRAFT" ? (
-                              <Button variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" title={t("delete")} aria-label={t("delete")} onClick={() => { setDeleteItem(route); setDeleteOpen(true) }}><Trash2 className="h-3.5 w-3.5" /></Button>
-                            ) : null}
-                          </>
-                        ) : null}
-                      </div>
+                        <span className="text-sm capitalize text-muted-foreground">{formatDate(new Date(route.date), locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</span>
+                      </span>
+                      {stopsLine ? <span className="mt-0.5 block truncate text-xs text-muted-foreground">{stopsLine}</span> : null}
+                      {/* Says the one thing the chip and the counters do not:
+                          nobody closed this route, the day simply ended. */}
+                      {route.status === "INCOMPLETE" ? (
+                        <span className="mt-0.5 block text-xs text-orange-700 dark:text-orange-300">{t("incompleteReason")}</span>
+                      ) : null}
+                    </button>
+                    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="flex items-center gap-2 text-xs" title={`${completion}%`}>
+                        <span className="h-1.5 w-16 overflow-hidden rounded-full bg-muted" aria-hidden="true"><span className={`block h-full rounded-full ${shortOfPlan ? "bg-amber-500" : "bg-green-500"}`} style={{ width: `${completion}%` }} /></span>
+                        <span className="font-medium tabular-nums">{route.visitedPoints}/{route.totalPoints}</span>
+                      </span>
+                      {shortOfPlan ? (
+                        <span className="text-xs font-medium text-amber-700 dark:text-amber-300">{t("weekStopsMissed", { count: route.totalPoints - route.visitedPoints })}</span>
+                      ) : null}
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>{mtmStatusLabel(statusT, "route", route.status)}</span>
+                      {route.changeRequests?.length ? <span className="text-xs text-amber-700 dark:text-amber-300">{t("viewApprovals")}: {route.changeRequests.length}</span> : null}
+                      {canEditRoute(route) ? (
+                        <span className="flex items-center">
+                          <Button variant="ghost" size="icon" className="min-h-11 min-w-11" title={t("edit")} aria-label={t("edit")} onClick={() => openRouteEditor(route)}><Pencil className="h-4 w-4" /></Button>
+                          {route.status === "DRAFT" ? (
+                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 text-destructive" title={t("delete")} aria-label={t("delete")} onClick={() => { setDeleteItem(route); setDeleteOpen(true) }}><Trash2 className="h-4 w-4" /></Button>
+                          ) : null}
+                        </span>
+                      ) : null}
                     </div>
-                    {route.name && <div className="text-xs text-muted-foreground mb-2">{route.name}</div>}
-                    {/* Says the one thing the chip and the counters below do not:
-                        nobody closed this route, the day simply ended. */}
-                    {route.status === "INCOMPLETE" ? (
-                      <div className="mb-2 text-xs text-orange-700 dark:text-orange-300">{t("incompleteReason")}</div>
-                    ) : null}
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {route.totalPoints} {t("points")}</span>
-                        <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-500" /> {route.visitedPoints} {t("visited")}</span>
-                      </div>
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${completion}%` }} /></div>
-                      <span className="text-xs font-medium text-muted-foreground">{completion}%</span>
-                    </div>
-                    {route.points && route.points.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {route.points.map((p: MtmRoutePoint, i: number) => (
-                          <span key={p.id} className={`text-[10px] px-1.5 py-0.5 rounded border ${p.status === "VISITED" ? "bg-green-50 border-green-200 text-green-700 dark:bg-green-950/20 dark:border-green-800" : p.status === "SKIPPED" ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-950/20 dark:border-red-800" : "bg-muted/50 border-zinc-200 dark:border-zinc-700 text-muted-foreground"}`}>
-                            {i + 1}. {p.customer?.name || "—"}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </article>
                 )
               })}
             </div>
           )}
+          {routesTotal > routes.length ? (
+            <div className="flex justify-center">
+              <Button data-testid="mtm-route-list-load-more" variant="outline" className="min-h-11" disabled={routesLoadingMore} onClick={() => void loadMoreRoutes()}>
+                {routesLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
+                {t("loadMoreRoutes", { count: Math.min(200, routesTotal - routes.length) })}
+              </Button>
+            </div>
+          ) : null}
         </>
       ) : viewMode === "matrix" ? (
         <MtmRoutePlanningMatrix
@@ -1189,12 +1243,21 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           selfAgentId={capabilities.actorAgentId}
           onCreateRoute={({ date, agentId }) => openNewRoute({ date, agentId, returnView: "week" })}
         />
+      ) : viewMode === "agent" ? (
+        <MtmAgentPeriodView timezone={timezone} initialAgentId={capabilities.canReview ? searchParams.get("agentId") : capabilities.actorAgentId} />
       ) : viewMode === "approvals" ? (
-        <div className="space-y-4">
-          <MtmRouteNeedsAttention orgId={orgId ? String(orgId) : undefined} active refreshVersion={approvalRefreshVersion} />
-          <MtmRouteApprovalQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} />
-          <MtmCustomerRequestQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} />
-        </div>
+        approvalCounts && approvalTotal === 0 ? (
+          <div data-testid="mtm-approvals-empty" role="status" className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-card px-4 py-4 text-sm dark:border-zinc-700">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            {t("needsAttentionClearDescription")}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Only the queue that has something in it; both while the count is unknown. */}
+            {!approvalCounts || approvalCounts.routeChanges > 0 ? <MtmRouteApprovalQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} /> : null}
+            {!approvalCounts || approvalCounts.customerRequests > 0 ? <MtmCustomerRequestQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} /> : null}
+          </div>
+        )
       ) : (
         <MtmRouteCalendar
           routes={calendarRoutes}

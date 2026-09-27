@@ -81,7 +81,8 @@ export function DayTripLedger({
         <h3 id="day-trip-title" className="text-sm font-semibold">{t("title")}</h3>
         <p data-testid="mtm-day-trip-summary" className="mt-0.5 text-xs text-muted-foreground">
           {[
-            t("summaryMoving", { duration: formatDuration(summary.movingSeconds), distance: kilometres(summary.movingMeters) }),
+            // «On the road 0 min, 0 m» on a day without a single drive reads as a fault.
+            summary.movingSeconds > 0 ? t("summaryMoving", { duration: formatDuration(summary.movingSeconds), distance: kilometres(summary.movingMeters) }) : null,
             t("summaryVisits", { count: summary.visitCount }),
             summary.unknownSeconds > 0 ? t("summaryUnknown", { duration: formatDuration(summary.unknownSeconds) }) : null,
             summary.pausedSeconds > 0 ? t("summaryPaused", { duration: formatDuration(summary.pausedSeconds) }) : null,

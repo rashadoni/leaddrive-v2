@@ -14,6 +14,7 @@ import {
 } from "@/lib/mtm/workday"
 import { availableWorkdayActions } from "@/lib/mtm/operational-week"
 import {
+  preflightWorkforceAttendancePlayIntegrity,
   prepareWorkforceAttendanceVerification,
   recordWorkforceAttendanceVerification,
   workforceAttendanceCapabilitiesFromTenant,
@@ -266,6 +267,14 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
   const attendanceCapabilities = await attendanceCapabilitiesForRequest(auth)
 
   try {
+    const playIntegrityPreflight = await preflightWorkforceAttendancePlayIntegrity(prisma, {
+      organizationId: auth.orgId,
+      agentId: actor.agentId,
+      event: input,
+      evidence: input.attendance,
+      capabilities: attendanceCapabilities,
+      principal: auth.principal,
+    })
     const result = await prisma.$transaction(async (tx) => {
       // Re-check inside the write transaction. The preflight above keeps
       // malformed/frozen mobile calls cheap, but only this shared tenant lock
@@ -317,6 +326,7 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
             evidence: input.attendance,
             capabilities: attendanceCapabilities,
             principal: auth.principal,
+            playIntegrityPreflight: playIntegrityPreflight ?? undefined,
           })
           if (prepared) {
             await recordWorkforceAttendanceVerification(tx, prepared, event.id)

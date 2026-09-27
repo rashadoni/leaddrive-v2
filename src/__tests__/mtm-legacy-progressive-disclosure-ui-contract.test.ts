@@ -17,12 +17,16 @@ describe("MTM legacy dashboard progressive disclosure", () => {
     expect(dashboard).toContain("operational?.timezone")
   })
 
-  it("keeps legacy analytics closed after the explainable dashboard and fetches only on demand", () => {
-    expect(analytics.indexOf("<ExplainableKpiDashboard")).toBeLessThan(analytics.indexOf("<details"))
-    expect(analytics).toContain("if (!legacyOpen) return")
-    expect(analytics).toContain("void fetchAnalytics(controller.signal)")
-    expect(analytics).toContain("onToggle={(event) => setLegacyOpen(event.currentTarget.open)}")
+  // Owner 2026-09-26: «аналитика нужна для менеджеров», «убери дублирования».
+  it("opens on the team's results; the formula registry is folded and loads only when opened; the old overview is gone", () => {
+    expect(analytics.indexOf("<MtmTeamResults")).toBeLessThan(analytics.indexOf("<details"))
+    expect(analytics.indexOf("<details")).toBeLessThan(analytics.indexOf("<ExplainableKpiDashboard"))
+    expect(analytics).toContain("{formulasOpen ? <div")
+    expect(analytics).toContain("onToggle={(event) => setFormulasOpen(event.currentTarget.open)}")
     expect(analytics).not.toMatch(/<details[^>]*\sopen(?:=|\s|>)/)
-    expect(analytics.indexOf("<details")).toBeLessThan(analytics.indexOf("kpiTotalVisits"))
+    // The second formula on the server's clock, and a client's name as a heading.
+    expect(analytics).not.toContain("/api/v1/mtm/analytics")
+    expect(analytics).not.toContain("marsKpi")
+    expect(analytics).not.toContain("kpiTotalVisits")
   })
 })
