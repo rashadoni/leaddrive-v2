@@ -110,6 +110,7 @@ export default function LocationHistoryMap({
   timezone,
   playbackIndex,
   focus = null,
+  matchedTrack = null,
 }: {
   points: Point[]
   stops: Stop[]
@@ -123,12 +124,15 @@ export default function LocationHistoryMap({
     stops: boolean
     visits: boolean
     gaps: boolean
+    roads?: boolean
   }
   locale: string
   timezone: string
   playbackIndex: number
   /** A leg picked in the day's trip: its stretch of track is drawn on top and framed. */
   focus?: Focus
+  /** The track along the streets from the self-hosted OSRM, when it answered. */
+  matchedTrack?: { segments: Array<Array<[number, number]>> } | null
 }) {
   const t = useTranslations("mtmMap.history")
   const containerRef = useRef<HTMLDivElement>(null)
@@ -147,6 +151,15 @@ export default function LocationHistoryMap({
   const actualRuns = useMemo(
     () => splitHistoryPathAtGaps(visiblePoints, gaps) as L.LatLngTuple[][],
     [gaps, visiblePoints],
+  )
+  // Owner 2026-09-27: the day along the streets. Only once the replay has
+  // shown the whole day — a road line cannot be cut at a moment of it —
+  // and with the straight fixes kept underneath, thin, for honesty.
+  const roadRuns = useMemo(
+    () => layers.actual && layers.roads !== false && matchedTrack && visiblePointCount === points.length
+      ? matchedTrack.segments as L.LatLngTuple[][]
+      : [],
+    [layers.actual, layers.roads, matchedTrack, points.length, visiblePointCount],
   )
   const activePoint = visiblePoints.at(-1) ?? null
   const playbackAt = playbackPoint ? new Date(playbackPoint.recordedAt).getTime() : Number.POSITIVE_INFINITY
@@ -251,7 +264,12 @@ export default function LocationHistoryMap({
           <ResizeAndFit coordinates={focusFrame ?? coordinates} maxZoom={focusFrame ? 16 : undefined} />
           <CartoVectorBasemap />
           {actualRuns.map((run, index) => (
-            <Polyline key={`actual-${index}`} positions={run} pathOptions={{ color: HISTORY_MAP_COLORS.track, weight: 4, opacity: 0.78 }} />
+            <Polyline key={`actual-${index}`} positions={run} pathOptions={roadRuns.length
+              ? { color: HISTORY_MAP_COLORS.raw, weight: 2, opacity: 0.7, dashArray: "2 6" }
+              : { color: HISTORY_MAP_COLORS.track, weight: 4, opacity: 0.78 }} />
+          ))}
+          {roadRuns.map((run, index) => (
+            <Polyline key={`road-${index}`} positions={run} pathOptions={{ color: HISTORY_MAP_COLORS.track, weight: 4, opacity: 0.85 }} />
           ))}
           {focusPath.length > 1 && (
             <Polyline positions={focusPath} pathOptions={{ color: HISTORY_MAP_COLORS.current, weight: 7, opacity: 0.95 }} />

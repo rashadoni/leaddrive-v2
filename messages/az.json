@@ -16151,9 +16151,12 @@
         "openVisit": "Ziyarəti aç",
         "openCustomer": "Müştərini aç",
         "straightLineNote": "Xətt GPS nöqtələrini düz birləşdirir; hansı küçələrlə getdiyi məlum deyil.",
+        "roadsNote": "Xəritədəki xətt yollar üzrə çəkilib — ehtimal olunan yoldur; məsafələr GPS nöqtələri arasında düz xətlə hesablanır.",
         "evidence": "Dayanacaqlar və hadisələr ətraflı"
       },
       "legendTrack": "GPS nöqtələri üzrə yol",
+      "legendRoads": "Yollar üzrə yol — ehtimal olunan, GPS nöqtələrinə görə",
+      "legendRaw": "GPS nöqtələri düz xətlə",
       "legendGap": "Nöqtə gəlməyib — yol məlum deyil, xətt yalnız boşluğun kənarlarını birləşdirir",
       "legendPlan": "Marşrut planı və nöqtələri",
       "legendStop": "Dayanacaq (yerində durub)",
@@ -16235,7 +16238,8 @@
         "actual": "Faktiki trek",
         "stops": "Dayanacaqlar",
         "visits": "Ziyarətlər",
-        "gaps": "Boşluqlar"
+        "gaps": "Boşluqlar",
+        "roads": "Yollar üzrə"
       },
       "exportCsv": "Günü CSV ixrac et",
       "replayTitle": "Günün təkrar oynadılması",
