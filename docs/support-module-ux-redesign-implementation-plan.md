@@ -2700,7 +2700,7 @@ Closure evidence (2026-09-27):
 
 ## 19. Workstream 12 — Escalation Rules
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `a5f99035f`; browser/CI gates pending**
+**Status: IN PROGRESS — current-tree product checkpoint `0887bcca5`; recovery/self-audit checkpoint pending; browser/CI gates pending**
 **Route:** `/settings/escalation`
 **Primary file:** `src/app/(dashboard)/settings/escalation/page.tsx`
 
@@ -2741,8 +2741,9 @@ Current verification evidence (2026-09-05):
 - The editor includes a changeable sample SLA deadline and computes the exact
   warning-before or breach-after timestamp using the runtime direction. Copy
   explicitly states the real ordering semantics: active rules are evaluated
-  L1 through L5 and every matching rule may execute; higher levels do not cancel
-  lower ones.
+  L1 through L5, no more than one matching rule runs per cron cycle, the next
+  higher matching level can run after the 30-minute cooldown, and levels the
+  ticket already reached are skipped.
 - Exact active trigger/time/level/action/target duplicates are surfaced in the
   list and editor, disable Save and are independently rejected by POST/PATCH
   with stable `ESCALATION_RULE_CONFLICT`. Existing conflicting data remains
@@ -2807,6 +2808,38 @@ Additional recovery evidence (2026-09-06):
   keyboard/focus, touch, reduced-motion, accessibility, performance and visual
   browser matrix therefore remains **NOT RUN**, and all SUPUX-ESC checkboxes
   remain open.
+
+Current-tree restoration and self-audit (2026-09-27):
+
+- Product checkpoint `0887bcca5` restores the shared create/edit/inactive-
+  duplicate editor, sentence preview, simulation, exact-conflict protection,
+  responsive rule list, RBAC and constrained action API on top of the completed
+  Workstream 11 tree. The single restore conflict kept the current transactional
+  Lead Convert test contract while retaining the Escalation Rules assertions.
+- Recovery markers and the flow contract are restored without replacing the
+  newer shared workflow, generic browser runner or screenshot wrapper. A new
+  section-scoped `escalation-rules` validation gate now covers the page, APIs,
+  SLA cron, presentation helper, disposable flow and shared evidence contracts.
+- Self-audit found that the first-response preview honored `triggerMinutes` but
+  the SLA cron fired immediately. Runtime now waits until first-response due
+  time plus the configured offset, with a focused regression test. The ordering
+  copy now truthfully describes one matching rule per cron cycle, the 30-minute
+  cooldown and already-reached level suppression.
+- Mobile activation no longer relies on synthetic click: transient retry, Edit,
+  Save/retry, Duplicate/conflict, toggle rollback/retry and delete/retry paths
+  require a measured 44x44 target, center-point DOM hit-test and Playwright
+  touchscreen tap outside desktop. Desktop remains keyboard-driven and checks
+  focus restoration with `document.activeElement`, not the nonexistent Locator
+  `isFocused()` method. The first-visit tour is dismissed and confirmed hidden
+  before activation.
+- The header now wraps safely at 375 px, the create action becomes full-width,
+  Help and tour controls expose 44 px hitboxes, and switch tracks meet the
+  strict 24 px static minimum inside 44 px labels. JS syntax, workflow YAML,
+  all 22 workflow shell blocks, the one-file anti-pattern scan (0 findings),
+  AZ/RU/EN parity at 23,599 keys, focused ESLint, 107/107 assertions across 11
+  suites and `git diff --check` are green. Full local TypeScript/build/browser
+  remain **NOT RUN** under the documented Contabo workload/default-heap limit;
+  exact-SHA GitHub Actions gates remain mandatory before any ESC checkbox closes.
 
 ## 20. Workstream 13 — Macros
 

@@ -168,11 +168,11 @@ function RuleFormDialog({ open, mode, sourceRule, rules, onOpenChange, onSaved }
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next) }}>
       <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
-      <form onSubmit={submit}>
+      <form onSubmit={submit} data-testid="escalation-rule-form" data-mode={mode}>
         <DialogContent>
           {error && <p role="alert" className="mb-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
           <div className="grid gap-4">
-            <div className="space-y-1"><Label htmlFor="escalation-name">{t("ruleName")}</Label><Input id="escalation-name" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder={t("ruleNamePlaceholder")} className="min-h-11" required data-dialog-initial-focus /></div>
+            <div className="space-y-1"><Label htmlFor="escalation-name">{t("ruleName")}</Label><Input id="escalation-name" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder={t("ruleNamePlaceholder")} className="min-h-11" required data-dialog-initial-focus data-testid="escalation-rule-name" /></div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Select label={t("triggerType")} value={draft.triggerType} onChange={(event) => setDraft((current) => ({ ...current, triggerType: event.target.value as EscalationTriggerType }))} className="min-h-11">{ESCALATION_TRIGGER_TYPES.map((trigger) => <option key={trigger} value={trigger}>{t(`triggers.${trigger}`)}</option>)}</Select>
               <Select label={t("escalationLevel")} value={String(draft.level)} onChange={(event) => setDraft((current) => ({ ...current, level: Number(event.target.value) }))} className="min-h-11">{[1, 2, 3, 4, 5].map((level) => <option key={level} value={level}>{t("levelOption", { level })}</option>)}</Select>
@@ -185,19 +185,19 @@ function RuleFormDialog({ open, mode, sourceRule, rules, onOpenChange, onSaved }
               <Select label={t("action")} value={draft.actionType} onChange={(event) => setDraft((current) => ({ ...current, actionType: event.target.value as EscalationActionType }))} className="min-h-11">{ESCALATION_ACTION_TYPES.map((action) => <option key={action} value={action}>{t(`actions.${action}`)}</option>)}</Select>
               {draft.actionType === "notify" && <Select label={t("notifyTarget")} value={draft.actionTarget} onChange={(event) => setDraft((current) => ({ ...current, actionTarget: event.target.value as EscalationTarget }))} className="min-h-11">{ESCALATION_TARGETS.map((target) => <option key={target} value={target}>{t(`targets.${target}`)}</option>)}</Select>}
             </div>
-            <label className="flex min-h-11 items-center gap-3 rounded-lg border px-3 text-sm"><Switch checked={draft.isActive} onCheckedChange={(isActive) => setDraft((current) => ({ ...current, isActive }))} aria-label={t("activeRule")} />{t("activeRule")}<span className="ml-auto text-xs text-muted-foreground">{draft.isActive ? t("active") : t("inactive")}</span></label>
+            <label className="flex min-h-11 items-center gap-3 rounded-lg border px-3 text-sm"><Switch checked={draft.isActive} onCheckedChange={(isActive) => setDraft((current) => ({ ...current, isActive }))} aria-label={t("activeRule")} className="h-6 w-11" data-testid="escalation-rule-form-active" />{t("activeRule")}<span className="ml-auto text-xs text-muted-foreground">{draft.isActive ? t("active") : t("inactive")}</span></label>
 
-            <section aria-labelledby="rule-preview-title" className="rounded-xl border bg-muted/10 p-3">
+            <section aria-labelledby="rule-preview-title" className="rounded-xl border bg-muted/10 p-3" data-testid="escalation-rule-preview">
               <h3 id="rule-preview-title" className="text-sm font-semibold">{t("previewTitle")}</h3>
               <p className="mt-2 text-sm"><RuleSentence draft={draft} /></p>
               <p className="mt-1 text-xs text-muted-foreground">{t("orderBehavior")}</p>
               <div className="mt-3 space-y-1"><Label htmlFor="sample-deadline" className="flex items-center gap-2"><FlaskConical className="h-4 w-4" />{t("sampleDeadline")}</Label><Input id="sample-deadline" type="datetime-local" value={sampleDeadline} onChange={(event) => setSampleDeadline(event.target.value)} className="min-h-11" /></div>
               {simulated && <p className="mt-2 text-sm font-medium">{t("simulationResult", { time: simulated.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) })}</p>}
             </section>
-            {conflict && <p role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 p-3 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 text-destructive" />{t("conflictWarning", { name: conflict.name })}</p>}
+            {conflict && <p role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 p-3 text-sm" data-testid="escalation-rule-conflict"><AlertTriangle className="mt-0.5 h-4 w-4 text-destructive" />{t("conflictWarning", { name: conflict.name })}</p>}
           </div>
         </DialogContent>
-        <DialogFooter><Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving}>{tc("cancel")}</Button><Button type="submit" className="min-h-11" disabled={!valid || saving}>{saving ? <><Loader2 className="animate-spin motion-reduce:animate-none" />{tc("saving")}</> : mode === "edit" ? tc("save") : t("createRule")}</Button></DialogFooter>
+        <DialogFooter><Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving}>{tc("cancel")}</Button><Button type="submit" className="min-h-11" disabled={!valid || saving} data-testid="escalation-rule-save">{saving ? <><Loader2 className="animate-spin motion-reduce:animate-none" />{tc("saving")}</> : mode === "edit" ? tc("save") : t("createRule")}</Button></DialogFooter>
       </form>
     </Dialog>
   )
@@ -209,6 +209,7 @@ export default function EscalationSettingsPage() {
   const [rules, setRules] = useState<EscalationRule[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [errorRetryable, setErrorRetryable] = useState(true)
   const [canWrite, setCanWrite] = useState(false)
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<RuleStatusFilter>("all")
@@ -222,14 +223,19 @@ export default function EscalationSettingsPage() {
   const fetchRules = useCallback(async () => {
     setLoading(true)
     setError("")
+    setErrorRetryable(true)
+    let retryable = true
     try {
       const response = await fetch("/api/v1/escalation-rules")
       const payload = await response.json().catch(() => null)
+      retryable = response.status !== 403
       if (!response.ok || !Array.isArray(payload?.data)) throw new Error(response.status === 403 ? t("permissionDenied") : t("loadFailed"))
       setRules(payload.data)
       setCanWrite(Boolean(payload.permissions?.canWrite))
+      setErrorRetryable(true)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("loadFailed"))
+      setErrorRetryable(retryable)
     } finally {
       setLoading(false)
     }
@@ -285,29 +291,29 @@ export default function EscalationSettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-start gap-3" data-tour-id="escalation-header">
+    <div className="space-y-4" data-testid="escalation-rules-workspace" data-state={loading ? "loading" : error ? "error" : "ready"} data-write={canWrite ? "allowed" : "read-only"}>
+      <header className="flex flex-wrap items-start gap-3" data-tour-id="escalation-header">
         <AlertTriangle className="mt-0.5 h-5 w-5 text-muted-foreground" />
-        <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1><TourReplayButton tourId="escalationSettings" /><HelpButton slug="escalation" /></div><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("subtitleCompact")}</p></div>
-        {canWrite && <Button className="min-h-11 shrink-0" onClick={() => openForm("create")} data-tour-id="escalation-new"><Plus />{t("newRule")}</Button>}
+        <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1><TourReplayButton tourId="escalationSettings" className="min-h-11 px-2" /><HelpButton slug="escalation" className="h-11 w-11 shrink-0" /></div><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("subtitleCompact")}</p></div>
+        {canWrite && <Button className="min-h-11 w-full shrink-0 sm:w-auto" onClick={() => openForm("create")} data-tour-id="escalation-new"><Plus />{t("newRule")}</Button>}
       </header>
 
-      {!loading && !error && <section aria-label={t("summaryTitle")} className="grid divide-y rounded-xl border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0"><div className="p-3"><p className="text-lg font-semibold tabular-nums">{rules.length}</p><p className="text-xs text-muted-foreground">{t("totalRules")}</p></div><div className="p-3"><p className="text-lg font-semibold tabular-nums">{rules.filter((rule) => rule.isActive).length}</p><p className="text-xs text-muted-foreground">{t("activeRules")}</p></div><div className="p-3"><p className="text-lg font-semibold tabular-nums">{conflictIds.size}</p><p className="text-xs text-muted-foreground">{t("conflictingRules")}</p></div></section>}
+      {!loading && !error && <section aria-label={t("summaryTitle")} className="grid divide-y rounded-xl border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0" data-testid="escalation-rules-summary"><div className="p-3"><p className="text-lg font-semibold tabular-nums">{rules.length}</p><p className="text-xs text-muted-foreground">{t("totalRules")}</p></div><div className="p-3"><p className="text-lg font-semibold tabular-nums">{rules.filter((rule) => rule.isActive).length}</p><p className="text-xs text-muted-foreground">{t("activeRules")}</p></div><div className="p-3"><p className="text-lg font-semibold tabular-nums">{conflictIds.size}</p><p className="text-xs text-muted-foreground">{t("conflictingRules")}</p></div></section>}
 
-      {status && <div role="status" aria-live="polite" className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${status.kind === "error" ? "border-destructive/30" : ""}`}>{status.kind === "error" ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4" />}{status.text}</div>}
+      {status && <div role="status" aria-live="polite" className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${status.kind === "error" ? "border-destructive/30" : ""}`} data-testid="escalation-rules-status" data-kind={status.kind}>{status.kind === "error" ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4" />}{status.text}</div>}
 
-      {!loading && !error && <div className="grid gap-2 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_12rem]"><label className="relative"><span className="sr-only">{t("searchRules")}</span><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchRules")} className="min-h-11 pl-9" /></label><Select aria-label={t("filterRules")} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as RuleStatusFilter)} className="min-h-11"><option value="all">{t("filterAll")}</option><option value="active">{t("filterActive")}</option><option value="inactive">{t("filterInactive")}</option><option value="conflict">{t("filterConflict")}</option></Select></div>}
+      {!loading && !error && <div className="grid gap-2 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_12rem]" data-testid="escalation-rules-filters"><label className="relative"><span className="sr-only">{t("searchRules")}</span><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchRules")} className="min-h-11 pl-9" data-testid="escalation-rules-search" /></label><Select aria-label={t("filterRules")} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as RuleStatusFilter)} className="min-h-11" data-testid="escalation-rules-filter"><option value="all">{t("filterAll")}</option><option value="active">{t("filterActive")}</option><option value="inactive">{t("filterInactive")}</option><option value="conflict">{t("filterConflict")}</option></Select></div>}
 
-      {loading ? <div aria-busy="true" className="space-y-2 rounded-xl border p-3">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-20 animate-pulse rounded-lg bg-muted/30 motion-reduce:animate-none" />)}</div> : error ? <div role="alert" className="flex min-h-64 flex-col items-center justify-center rounded-xl border p-6 text-center"><AlertCircle className="h-8 w-8 text-destructive" /><h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{error}</p><Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchRules()}><RotateCcw />{t("retry")}</Button></div> : rules.length === 0 ? <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border p-6 text-center"><AlertTriangle className="h-8 w-8 text-muted-foreground" /><h2 className="mt-3 text-base font-semibold">{t("noRules")}</h2><p className="mt-1 max-w-md text-sm text-muted-foreground">{t("noRulesDesc")}</p>{canWrite && <Button className="mt-4 min-h-11" onClick={() => openForm("create")}><Plus />{t("createFirstRule")}</Button>}</div> : visibleRules.length === 0 ? <div className="rounded-xl border p-8 text-center"><p className="text-sm font-medium">{t("noRuleResults")}</p><Button variant="ghost" className="mt-2 min-h-11" onClick={() => { setQuery(""); setStatusFilter("all") }}>{t("resetFilters")}</Button></div> : (
-        <section aria-label={t("rulesList")} className="divide-y rounded-xl border bg-card" data-tour-id="escalation-list">
+      {loading ? <div aria-busy="true" className="space-y-2 rounded-xl border p-3" data-testid="escalation-rules-loading">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-20 animate-pulse rounded-lg bg-muted/30 motion-reduce:animate-none" />)}</div> : error ? <div role="alert" className="flex min-h-64 flex-col items-center justify-center rounded-xl border p-6 text-center" data-testid="escalation-rules-error" data-retryable={errorRetryable ? "true" : "false"}><AlertCircle className="h-8 w-8 text-destructive" /><h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{error}</p>{errorRetryable && <Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchRules()} data-testid="escalation-rules-retry"><RotateCcw />{t("retry")}</Button>}</div> : rules.length === 0 ? <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border p-6 text-center" data-testid="escalation-rules-empty"><AlertTriangle className="h-8 w-8 text-muted-foreground" /><h2 className="mt-3 text-base font-semibold">{t("noRules")}</h2><p className="mt-1 max-w-md text-sm text-muted-foreground">{t("noRulesDesc")}</p>{canWrite && <Button className="mt-4 min-h-11" onClick={() => openForm("create")} data-testid="escalation-rule-create-first"><Plus />{t("createFirstRule")}</Button>}</div> : visibleRules.length === 0 ? <div className="rounded-xl border p-8 text-center" data-testid="escalation-rules-filter-empty"><p className="text-sm font-medium">{t("noRuleResults")}</p><Button variant="ghost" className="mt-2 min-h-11" onClick={() => { setQuery(""); setStatusFilter("all") }} data-testid="escalation-rules-reset-filters">{t("resetFilters")}</Button></div> : (
+        <section aria-label={t("rulesList")} className="divide-y rounded-xl border bg-card" data-tour-id="escalation-list" data-testid="escalation-rules-list">
           {visibleRules.map((rule) => {
             const draft = draftFromRule(rule)
             const conflict = conflictIds.has(rule.id)
-            return <article key={rule.id} className="grid gap-3 p-3 lg:grid-cols-[4rem_minmax(0,1fr)_auto] lg:items-center"><div><Badge variant="outline">L{rule.level}</Badge></div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="truncate text-sm font-semibold">{rule.name}</h2><span className="text-xs text-muted-foreground">{rule.isActive ? t("active") : t("inactive")}</span>{conflict && <span className="flex items-center gap-1 text-xs text-destructive"><AlertTriangle className="h-3.5 w-3.5" />{t("conflict")}</span>}</div><p className="mt-1 text-sm text-muted-foreground"><RuleSentence draft={draft} /></p></div><div className="flex items-center gap-1">{canWrite && <label className="flex min-h-11 items-center gap-2 px-2 text-xs"><Switch checked={rule.isActive} onCheckedChange={() => void toggleRule(rule)} disabled={savingId === rule.id} aria-label={rule.isActive ? t("disableNamed", { name: rule.name }) : t("enableNamed", { name: rule.name })} />{savingId === rule.id && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />}</label>}{canWrite && <><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("editNamed", { name: rule.name })} onClick={() => openForm("edit", rule)}><Pencil /></Button><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("duplicateNamed", { name: rule.name })} onClick={() => openForm("duplicate", rule)}><Copy /></Button><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("deleteNamed", { name: rule.name })} onClick={() => setDeleteRule(rule)}><Trash2 /></Button></>}</div></article>
+            return <article key={rule.id} className="grid gap-3 p-3 lg:grid-cols-[4rem_minmax(0,1fr)_auto] lg:items-center" data-testid="escalation-rule-row" data-rule-id={rule.id} data-conflict={conflict ? "true" : "false"}><div><Badge variant="outline">L{rule.level}</Badge></div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="truncate text-sm font-semibold">{rule.name}</h2><span className="text-xs text-muted-foreground">{rule.isActive ? t("active") : t("inactive")}</span>{conflict && <span className="flex items-center gap-1 text-xs text-destructive"><AlertTriangle className="h-3.5 w-3.5" />{t("conflict")}</span>}</div><p className="mt-1 text-sm text-muted-foreground"><RuleSentence draft={draft} /></p></div><div className="flex flex-wrap items-center gap-1">{canWrite && <label className="flex min-h-11 items-center gap-2 px-2 text-xs"><Switch checked={rule.isActive} onCheckedChange={() => void toggleRule(rule)} disabled={savingId === rule.id} aria-label={rule.isActive ? t("disableNamed", { name: rule.name }) : t("enableNamed", { name: rule.name })} className="h-6 w-11" data-testid="escalation-rule-toggle" />{savingId === rule.id && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />}</label>}{canWrite && <><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("editNamed", { name: rule.name })} onClick={() => openForm("edit", rule)} data-testid="escalation-rule-edit"><Pencil /></Button><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("duplicateNamed", { name: rule.name })} onClick={() => openForm("duplicate", rule)} data-testid="escalation-rule-duplicate"><Copy /></Button><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("deleteNamed", { name: rule.name })} onClick={() => setDeleteRule(rule)} data-testid="escalation-rule-delete"><Trash2 /></Button></>}</div></article>
           })}
         </section>
       )}
-      {!canWrite && !loading && !error && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{t("readOnlyHint")}</p>}
+      {!canWrite && !loading && !error && <p className="rounded-lg border p-3 text-sm text-muted-foreground" data-testid="escalation-rules-read-only">{t("readOnlyHint")}</p>}
 
       <RuleFormDialog open={formOpen} mode={formMode} sourceRule={sourceRule} rules={rules} onOpenChange={(open) => { setFormOpen(open); if (!open) setSourceRule(null) }} onSaved={() => { setStatus({ kind: "success", text: formMode === "edit" ? t("ruleSaved") : t("ruleCreated") }); void fetchRules() }} />
       <ConfirmDialog open={Boolean(deleteRule)} onOpenChange={(open) => { if (!open) setDeleteRule(null) }} onConfirm={confirmDelete} title={t("deleteTitle")} description={deleteRule ? t("deleteDescription", { name: deleteRule.name }) : undefined} />

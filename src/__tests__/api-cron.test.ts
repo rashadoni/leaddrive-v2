@@ -180,7 +180,7 @@ describe("Cron — POST /api/cron/purge-tenants", () => {
   it("does not export a tenant blocked by Workforce retention", async () => {
     vi.mocked(prisma.organization.findMany).mockResolvedValue([
       { id: "tenant-1", name: "Acme", slug: "acme" },
-    ] as any)
+    ] as never)
     vi.mocked(assertTenantWorkforceRetentionClear).mockRejectedValue(new WorkforceRetentionBlockedError())
     vi.mocked(purgeScheduledTenants).mockResolvedValue({ purged: [], errors: [] })
 
@@ -290,5 +290,30 @@ describe("Cron — POST /api/cron/sla-escalation", () => {
       .filter((p: unknown): p is string => typeof p === "string")
     expect(priorityWrites).toContain("high")     // medium-baseline → next tier
     expect(priorityWrites).not.toContain("low")  // the silent-downgrade bug
+  })
+
+  it("waits for the configured delay after a first-response breach", async () => {
+    const firstResponseDueAt = new Date(Date.now() - 30 * 60_000)
+    vi.mocked(prisma.escalationRule.findMany).mockResolvedValue([
+      {
+        id: "r-delay", organizationId: "org1", name: "Delayed first response", level: 1,
+        triggerType: "first_response_breach", triggerMinutes: 60,
+        actions: [{ type: "notify", target: "manager" }], isActive: true,
+      },
+    ] as never)
+    vi.mocked(prisma.ticket.findMany).mockResolvedValue([
+      {
+        id: "t-delay", organizationId: "org1", ticketNumber: "DV-2", subject: "x",
+        priority: "medium", status: "open", slaDueAt: null,
+        slaFirstResponseDueAt: firstResponseDueAt, firstResponseAt: null,
+        escalationLevel: 0, lastEscalatedAt: null, assignedTo: null,
+      },
+    ] as never)
+
+    const res = await slaEscalationPOST(cronReq("http://localhost/api/cron/sla-escalation"))
+    const json = await res.json()
+    expect(json.success).toBe(true)
+    expect(json.data.escalatedCount).toBe(0)
+    expect(prisma.ticket.updateMany).not.toHaveBeenCalled()
   })
 })

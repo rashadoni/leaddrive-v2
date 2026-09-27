@@ -2081,3 +2081,41 @@ then repeat the exact-SHA RU/dark mobile gate before the high matrix.
 
 Next: checkpoint and push Workstream 11 closure documentation, then restore and
 audit Workstream 12 Escalation Rules on top of this exact tree.
+
+### Workstream 12 Escalation Rules restoration and self-audit
+
+- Restored historical product work `8f8ca41d8` as current-tree checkpoint
+  `0887bcca5`. The result provides real PATCH-based Edit, inactive-by-default
+  Duplicate, localized sentence/timing preview, exact-conflict blocking,
+  named semantic controls, rollback feedback, responsive filtering and
+  constrained manager/admin mutation APIs. The one restore conflict preserved
+  the current Lead Convert transaction fixtures while adding the escalation
+  assertions.
+- Restored section-owned recovery markers and the disposable flow contract
+  without replacing newer shared workflow/browser/screenshot supersets. Added
+  the missing section-scoped `escalation-rules` validation gate.
+- Self-audit found and repaired a runtime/preview mismatch: first-response rules
+  exposed a configurable after-breach offset, but the SLA cron ignored it.
+  Runtime now waits for first-response deadline plus `triggerMinutes`, backed by
+  a focused cron regression. Ordering copy in AZ/RU/EN now reflects the actual
+  L1→L5 evaluation, one match per cron cycle, 30-minute cooldown and suppression
+  of already-reached levels.
+- Mobile evidence is hardened to measured 44x44 center-point hit-tests and real
+  Playwright touchscreen taps for retry, editing/saving, duplicate/conflict,
+  toggle rollback and delete recovery. Desktop uses keyboard activation and
+  verifies focus restoration against `document.activeElement`; the invalid
+  historical `Locator.isFocused()` call is removed. The flow waits until the
+  first-visit tour is hidden before any activation.
+- Header wrapping, a full-width mobile create action, 44 px Help/tour controls,
+  24 px switch tracks inside 44 px labels and wrapping row actions close the
+  touch/layout risks found in source review.
+- Local gates are green: browser/flow JavaScript syntax; workflow YAML; all 22
+  workflow `run` blocks under `bash -n`; one-file anti-pattern scan at 0
+  findings; AZ/RU/EN parity at 23,599 keys; focused ESLint; 107/107 assertions
+  across 11 suites; and staged/unstaged `git diff --check`. Full local
+  TypeScript/build/browser are **NOT RUN** under the documented Contabo workload
+  and default-heap constraints; GitHub Actions remains mandatory.
+
+Next: checkpoint and push the Workstream 12 recovery/self-audit state, then run
+exact-SHA desktop keyboard/recovery, RU/dark mobile physical-touch and the full
+high-density locale/theme/viewport matrix.
