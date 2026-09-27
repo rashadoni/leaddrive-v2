@@ -123,3 +123,34 @@ checks were `NOT RUN` by the reviewer and are not inferred from the primary
 local checks or future CI. The reviewer made no edits or publications. This
 three-document receipt must receive an independent integrity check before
 push.
+
+## Reviewed production release
+
+Independent receipt-integrity review proved all seven reviewed runtime/test
+blobs byte-identical and returned GREEN with zero P0-P3 findings at final PR
+head `fbd0eedf76a08244d79a4c28966ac03b15d21ca2`. The receipt-only delta was
+exactly three append-only documentation paths / 9,347 binary-diff bytes with
+SHA-256
+`0151e2f0806237da45ec47cc1bbbe462503458a5679f7e59f681159eca19d001`;
+the final 11-path / 54,368-byte base-to-head diff had SHA-256
+`80eb46e47032c9d28f70ce5afc3a758cd3434a655389b4184750b875bff1cedb`.
+
+PR #459 passed all five protected exact-head contexts. Run `36317881275`
+completed `static-checks` in 11m32s and `typecheck` in 17m17s; the disposable
+PostgreSQL shared-lock gate passed both files / 17 tests, including all six
+policy-revision cases. The normal PR production build was skipped as designed.
+The PR merged normally at `2026-09-27T12:24:46Z` as exact `main` SHA
+`86fc1d2c23fead588b45c2e700e125a6d98bbe82`.
+
+Deploy run `36318896243` completed GREEN at `2026-09-27T12:48:54Z` through
+quality/security, SHA-bound standalone build, immutable artifact staging,
+atomic production deploy, built-in post-deploy smoke and retention cleanup.
+Independent no-cache public reads returned `{"ok":true}` and
+`{"sha":"86fc1d2c23fe","artifactSha":"86fc1d2c23fead588b45c2e700e125a6d98bbe82","builtAt":"2026-09-27T12:28:46Z"}`.
+The full artifact SHA exactly matches merged `main`; no Azure, retired
+owner/host, direct copy or manual production deployment was used.
+
+Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. Full browser
+E2E, Android/Gradle, load, physical-device and human-pilot evidence remains
+`NOT RUN`; a production draft-status receipt still does not activate policy or
+complete a C6 task.
