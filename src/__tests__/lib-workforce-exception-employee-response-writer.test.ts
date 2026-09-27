@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   appendAuthorizedWorkforceExceptionEmployeeResponse,
+  appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse,
   WorkforceExceptionEmployeeResponseWriterError,
 } from "@/lib/workforce/exception-employee-response-writer"
 import { createWorkforceExceptionEmployeeResponseDraft } from "@/lib/workforce/exception-employee-response"
@@ -14,6 +15,18 @@ const draft = createWorkforceExceptionEmployeeResponseDraft({
   responseCode: "CORRECTION_REQUESTED",
   correctionRequestId: "request-1",
   clientResponseId: "employee-response-001",
+  actorUserId: "user-1",
+})
+
+const acknowledgementDraft = createWorkforceExceptionEmployeeResponseDraft({
+  organizationId: "org-1",
+  caseId: "case-1",
+  agentId: "agent-1",
+  workdayId: "workday-1",
+  segmentId: "segment-1",
+  responseCode: "ACKNOWLEDGED",
+  correctionRequestId: null,
+  clientResponseId: "11111111-1111-4111-8111-111111111111",
   actorUserId: "user-1",
 })
 
@@ -197,5 +210,92 @@ describe("Workforce immutable employee exception response writer", () => {
     }))
     expect(db.workforceExceptionEmployeeResponse.create).not.toHaveBeenCalled()
     expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("writes a revision-bound acknowledgement only at the locked expected revision", async () => {
+    db.workforceExceptionDecision.findMany.mockResolvedValueOnce([
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 2 },
+    ])
+    db.workforceExceptionEmployeeResponse.create.mockResolvedValueOnce({
+      id: "response-mobile-1",
+      ...acknowledgementDraft,
+      observedCaseRevision: 2,
+    })
+
+    await expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+      db,
+      draft: acknowledgementDraft,
+      expectedCaseRevision: 2,
+      authorize: allow,
+    })).resolves.toEqual({ responseId: "response-mobile-1", idempotent: false })
+
+    expect(db.workforceExceptionEmployeeResponse.create).toHaveBeenCalledWith({
+      data: { ...acknowledgementDraft, observedCaseRevision: 2 },
+    })
+  })
+
+  it("rejects a stale displayed revision after locking without a response or audit write", async () => {
+    db.workforceExceptionDecision.findMany.mockResolvedValueOnce([
+      { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 1 },
+    ])
+
+    await expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+      db,
+      draft: acknowledgementDraft,
+      expectedCaseRevision: 0,
+      authorize: allow,
+    })).rejects.toMatchObject<Partial<WorkforceExceptionEmployeeResponseWriterError>>({
+      code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    })
+
+    expect(db.workforceExceptionEmployeeResponse.create).not.toHaveBeenCalled()
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("replays only the exact stored revision even after the case is resolved", async () => {
+    db.workforceExceptionDecision.findMany.mockResolvedValue([
+      { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 1 },
+      { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
+    ])
+    db.workforceExceptionEmployeeResponse.findFirst.mockResolvedValue({
+      id: "response-mobile-1",
+      ...acknowledgementDraft,
+      observedCaseRevision: 1,
+    })
+
+    await expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+      db,
+      draft: acknowledgementDraft,
+      expectedCaseRevision: 1,
+      authorize: allow,
+    })).resolves.toEqual({ responseId: "response-mobile-1", idempotent: true })
+    expect(db.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
+    expect(db.workforceExceptionEmployeeResponse.create).not.toHaveBeenCalled()
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
+
+    await expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+      db,
+      draft: acknowledgementDraft,
+      expectedCaseRevision: 2,
+      authorize: allow,
+    })).rejects.toMatchObject<Partial<WorkforceExceptionEmployeeResponseWriterError>>({
+      code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
+    })
+    expect(db.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
+  })
+
+  it("rejects an invalid revision before authorization or locking", async () => {
+    await expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+      db,
+      draft: acknowledgementDraft,
+      expectedCaseRevision: -1,
+      authorize: allow,
+    })).rejects.toMatchObject<Partial<WorkforceExceptionEmployeeResponseWriterError>>({
+      code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    })
+
+    expect(allow).not.toHaveBeenCalled()
+    expect(db.$executeRaw).not.toHaveBeenCalled()
   })
 })

@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server"
-import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
+import {
+  hasMobilePermission,
+  requireMobilePermission,
+} from "@/lib/mtm/mobile-capabilities"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { prisma } from "@/lib/prisma"
 import {
   MAX_WORKFORCE_EXCEPTION_DECISIONS,
   projectWorkforceExceptionSelfResponseState,
 } from "@/lib/workforce/exception-workbench"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
+import {
+  applyWorkforceSensitiveResponseHeaders,
+  workforceSensitiveResponseHeaders,
+} from "@/lib/workforce/sensitive-response"
 
 const MAX_SELF_EXCEPTION_CASES = 100
 
@@ -21,7 +29,7 @@ const MAX_SELF_EXCEPTION_CASES = 100
  */
 export const GET = withMobileRls(async (_req, auth) => {
   const forbidden = requireMobilePermission(auth, "WORKTIME_SELF_READ")
-  if (forbidden) return forbidden
+  if (forbidden) return applyWorkforceSensitiveResponseHeaders(forbidden)
 
   try {
     const agent = await prisma.mtmAgent.findFirst({
@@ -29,7 +37,10 @@ export const GET = withMobileRls(async (_req, auth) => {
       select: { id: true },
     })
     if (!agent) {
-      return NextResponse.json({ error: "Workforce employee is not available" }, { status: 404 })
+      return NextResponse.json({ error: "Workforce employee is not available" }, {
+        status: 404,
+        headers: workforceSensitiveResponseHeaders,
+      })
     }
 
     const responseRecording = auth.tenantCapabilities.workforceExceptionResponse === true
@@ -69,8 +80,12 @@ export const GET = withMobileRls(async (_req, auth) => {
       return NextResponse.json({
         error: "Too many personal Workforce exceptions for one safe mobile page",
         code: "WORKFORCE_SELF_EXCEPTION_LIMIT_EXCEEDED",
-      }, { status: 413 })
+      }, { status: 413, headers: workforceSensitiveResponseHeaders })
     }
+
+    const canMutateResponses = responseRecording === "AVAILABLE"
+      && Boolean(auth.userId)
+      && hasMobilePermission(auth.role, "WORKTIME_SELF_MUTATE")
 
     return NextResponse.json({
       success: true,
@@ -95,6 +110,14 @@ export const GET = withMobileRls(async (_req, auth) => {
                 employeeResponses,
               })
             : "UNAVAILABLE" as const
+          const availableResponseAction = canMutateResponses
+            && responseState === "NOT_ACKNOWLEDGED"
+            && decisions !== null
+            ? {
+                kind: "ACKNOWLEDGE" as const,
+                expectedCaseRevision: decisions.length,
+              }
+            : null
           return [{
             caseId: item.id,
             displayReference: `WF-${item.id.slice(-8)}`,
@@ -104,12 +127,16 @@ export const GET = withMobileRls(async (_req, auth) => {
             workDate: item.workday.workDate,
             availableAction: "REQUEST_CORRECTION" as const,
             responseState,
+            availableResponseAction,
           }]
         }),
       },
     }, { headers: { "cache-control": "private, no-store", "x-content-type-options": "nosniff" } })
-  } catch (error) {
-    console.error("[MTM/mobile/hrm/exceptions GET]", error)
-    return NextResponse.json({ error: "Failed to load personal Workforce exceptions" }, { status: 500 })
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "read-exception-queue" })
+    return NextResponse.json({ error: "Failed to load personal Workforce exceptions" }, {
+      status: 500,
+      headers: workforceSensitiveResponseHeaders,
+    })
   }
 }, { requiredCapability: "workforce-hrm" })

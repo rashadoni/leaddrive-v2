@@ -9,7 +9,10 @@ import {
   type WorkforceExceptionLinkedMutationDb,
 } from "@/lib/workforce/exception-linked-mutation"
 
-type StoredResponse = WorkforceExceptionEmployeeResponseDraft & { id: string }
+type StoredResponse = WorkforceExceptionEmployeeResponseDraft & {
+  id: string
+  observedCaseRevision: number | null
+}
 type WorkforceExceptionEmployeeResponseWriteData = WorkforceExceptionEmployeeResponseDraft & {
   observedCaseRevision: number
 }
@@ -20,7 +23,7 @@ export type WorkforceExceptionEmployeeResponseWriterDb = WorkforceExceptionLinke
     create: (args: { data: WorkforceExceptionEmployeeResponseWriteData }) => Promise<CreatedResponse>
     findFirst: (args: {
       where: { organizationId: string; agentId: string; clientResponseId: string }
-      select: { id: true; organizationId: true; caseId: true; agentId: true; workdayId: true; segmentId: true; correctionRequestId: true; responseCode: true; clientResponseId: true; actorUserId: true }
+      select: { id: true; organizationId: true; caseId: true; agentId: true; workdayId: true; segmentId: true; correctionRequestId: true; responseCode: true; clientResponseId: true; actorUserId: true; observedCaseRevision: true }
     }) => Promise<StoredResponse | null>
   }
   mtmHrmRequest: {
@@ -63,7 +66,8 @@ export class WorkforceExceptionEmployeeResponseWriterError extends Error {
   constructor(readonly code:
     | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_NOT_AUTHORIZED"
     | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT"
-    | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE",
+    | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE"
+    | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
   ) {
     super(code)
   }
@@ -89,17 +93,23 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002"
 }
 
-/**
- * Persists an exact employee-owned response only after authorization. The
- * migration trigger verifies case/workday/segment/request topology at the
- * transaction boundary; this writer preserves retry safety and metadata-only
- * audit without reading raw proof or correction text.
- */
-export async function appendAuthorizedWorkforceExceptionEmployeeResponse(input: {
+type AppendAuthorizedWorkforceExceptionEmployeeResponseInput = {
   db: WorkforceExceptionEmployeeResponseWriterDb
   draft: WorkforceExceptionEmployeeResponseDraft
   authorize: WorkforceExceptionEmployeeResponseAuthorization
-}): Promise<{ responseId: string; idempotent: boolean }> {
+}
+
+async function appendAuthorizedWorkforceExceptionEmployeeResponseInternal(
+  input: AppendAuthorizedWorkforceExceptionEmployeeResponseInput & {
+    expectedCaseRevision?: number
+  },
+): Promise<{ responseId: string; idempotent: boolean }> {
+  if (input.expectedCaseRevision !== undefined
+    && (!Number.isInteger(input.expectedCaseRevision) || input.expectedCaseRevision < 0)) {
+    throw new WorkforceExceptionEmployeeResponseWriterError(
+      "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    )
+  }
   const draft = createWorkforceExceptionEmployeeResponseDraft(input.draft)
   const authorized = await input.authorize({
     operation: "EMPLOYEE_RESPONSE_APPEND",
@@ -136,10 +146,15 @@ export async function appendAuthorizedWorkforceExceptionEmployeeResponse(input: 
       responseCode: true,
       clientResponseId: true,
       actorUserId: true,
+      observedCaseRevision: true,
     },
   })
   if (existing) {
-    if (sameResponse(draft, existing)) return { responseId: existing.id, idempotent: true }
+    if (sameResponse(draft, existing)
+      && (input.expectedCaseRevision === undefined
+        || existing.observedCaseRevision === input.expectedCaseRevision)) {
+      return { responseId: existing.id, idempotent: true }
+    }
     throw new WorkforceExceptionEmployeeResponseWriterError(
       "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
     )
@@ -159,6 +174,12 @@ export async function appendAuthorizedWorkforceExceptionEmployeeResponse(input: 
       )
     }
     throw error
+  }
+  if (input.expectedCaseRevision !== undefined
+    && observedCaseRevision !== input.expectedCaseRevision) {
+    throw new WorkforceExceptionEmployeeResponseWriterError(
+      "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    )
   }
   if (draft.correctionRequestId !== null) {
     const correctionRequest = await input.db.mtmHrmRequest.findFirst({
@@ -212,4 +233,28 @@ export async function appendAuthorizedWorkforceExceptionEmployeeResponse(input: 
     },
   })
   return { responseId: created.id, idempotent: false }
+}
+
+/**
+ * Persists an exact employee-owned response after authorization. Existing web
+ * callers retain the canonical current-revision behavior; presentation-bound
+ * mobile callers use the stricter entry point below.
+ */
+export async function appendAuthorizedWorkforceExceptionEmployeeResponse(
+  input: AppendAuthorizedWorkforceExceptionEmployeeResponseInput,
+): Promise<{ responseId: string; idempotent: boolean }> {
+  return appendAuthorizedWorkforceExceptionEmployeeResponseInternal(input)
+}
+
+/**
+ * Mobile acknowledgement variant bound to the exact decision revision shown
+ * to the employee. The revision is checked only after the canonical case lock;
+ * exact completed retries still resolve before lifecycle validation.
+ */
+export async function appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse(
+  input: AppendAuthorizedWorkforceExceptionEmployeeResponseInput & {
+    expectedCaseRevision: number
+  },
+): Promise<{ responseId: string; idempotent: boolean }> {
+  return appendAuthorizedWorkforceExceptionEmployeeResponseInternal(input)
 }

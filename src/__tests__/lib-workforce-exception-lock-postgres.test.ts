@@ -13,6 +13,7 @@ import {
 import type { WorkforceExceptionEmployeeResponseDraft } from "@/lib/workforce/exception-employee-response"
 import {
   appendAuthorizedWorkforceExceptionEmployeeResponse,
+  appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse,
   type WorkforceExceptionEmployeeResponseWriterDb,
 } from "@/lib/workforce/exception-employee-response-writer"
 import {
@@ -681,7 +682,10 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       ...linkedDb,
       workforceExceptionEmployeeResponse: {
         findFirst: async (args) => {
-          const rows = await tx.$queryRawUnsafe<Array<WorkforceExceptionEmployeeResponseDraft & { id: string }>>(`
+          const rows = await tx.$queryRawUnsafe<Array<WorkforceExceptionEmployeeResponseDraft & {
+            id: string
+            observedCaseRevision: number | null
+          }>>(`
             SELECT "id",
                    "organization_id" AS "organizationId",
                    "case_id" AS "caseId",
@@ -691,7 +695,8 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
                    "correction_request_id" AS "correctionRequestId",
                    "response_code" AS "responseCode",
                    "client_response_id" AS "clientResponseId",
-                   "actor_user_id" AS "actorUserId"
+                   "actor_user_id" AS "actorUserId",
+                   "observed_case_revision" AS "observedCaseRevision"
               FROM "${schema}"."employee_responses"
              WHERE "organization_id" = $1
                AND "agent_id" = $2
@@ -1508,6 +1513,100 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     `, organizationId, caseId)
     expect(stored.observed_case_revision).toBe(1)
     expect(stored.response_created_at.getTime()).toBeLessThan(stored.reset_created_at.getTime())
+  }, 15_000)
+
+  it("rejects a mobile acknowledgement when a newer case revision wins the shared lock", async () => {
+    const caseId = `mobile-stale-revision-${randomUUID()}`
+    const agentId = `mobile-stale-agent-${randomUUID()}`
+    const clientResponseId = randomUUID()
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."case_decisions" ("organization_id", "case_id")
+      VALUES ($1, $2)
+    `, organizationId, caseId)
+
+    let createCount = 0
+    let auditCount = 0
+    const acknowledgementStarted = deferred<void>()
+    const allowAcknowledgementLock = deferred<void>()
+    const acknowledgementPid = deferred<number>()
+    const acknowledgement = linkedClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
+        "SELECT pg_backend_pid()::int AS pid",
+      )
+      acknowledgementPid.resolve(backend.pid)
+      acknowledgementStarted.resolve()
+      await allowAcknowledgementLock.promise
+      return appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+        db: employeeResponseDb(tx, {
+          onCreate: () => { createCount += 1 },
+          onAudit: () => { auditCount += 1 },
+        }),
+        draft: {
+          organizationId,
+          caseId,
+          agentId,
+          workdayId: "workday-mobile-stale",
+          segmentId: null,
+          correctionRequestId: null,
+          responseCode: "ACKNOWLEDGED",
+          clientResponseId,
+          actorUserId: "employee-user",
+        },
+        expectedCaseRevision: 0,
+        authorize: async () => true,
+      })
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    }).then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (error: unknown) => ({ status: "rejected" as const, error }),
+    )
+
+    await acknowledgementStarted.promise
+    const resetHasLock = deferred<void>()
+    const releaseReset = deferred<void>()
+    const reset = terminalClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      await lockWorkforceExceptionDecisionStream(tx, { organizationId, caseId })
+      await tx.$executeRawUnsafe(`
+        UPDATE "${schema}"."case_decisions"
+           SET "decisions" = '["REQUEST_EMPLOYEE_RESPONSE"]'::jsonb,
+               "last_decision_created_at" = now()
+         WHERE "organization_id" = $1 AND "case_id" = $2
+      `, organizationId, caseId)
+      resetHasLock.resolve()
+      await releaseReset.promise
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    })
+
+    await resetHasLock.promise
+    allowAcknowledgementLock.resolve()
+    try {
+      await waitForAdvisoryLockWait(await acknowledgementPid.promise)
+    } finally {
+      releaseReset.resolve()
+    }
+    await reset
+    await expect(acknowledgement).resolves.toMatchObject({
+      status: "rejected",
+      error: { code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT" },
+    })
+    expect(createCount).toBe(0)
+    expect(auditCount).toBe(0)
+    const [{ response_count: responseCount }] = await observer.$queryRawUnsafe<Array<{
+      response_count: bigint
+    }>>(`
+      SELECT COUNT(*)::bigint AS "response_count"
+        FROM "${schema}"."employee_responses"
+       WHERE "organization_id" = $1 AND "agent_id" = $2 AND "client_response_id" = $3
+    `, organizationId, agentId, clientResponseId)
+    expect(responseCount).toBe(0n)
   }, 15_000)
 
   it("serializes cross-domain writers in the global workday then case order", async () => {
