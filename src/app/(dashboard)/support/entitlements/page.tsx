@@ -746,14 +746,14 @@ export default function EntitlementsPage() {
         </div>
       )}
 
-      <section aria-label={t("exceptionSummaryLabel")} className="flex flex-wrap items-center gap-x-5 gap-y-1 border-y py-2 text-xs text-muted-foreground">
+      <section aria-label={t("exceptionSummaryLabel")} className="grid grid-cols-2 items-center gap-x-2 border-y py-2 text-xs text-muted-foreground sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-1">
         <button type="button" className="min-h-11 text-left hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setFilters((current) => ({ ...current, risk: "expiring" }))}>
           <strong className="mr-1 text-sm font-semibold text-foreground">{loading ? "—" : data?.expiringSoonCount ?? 0}</strong>{t("kpiExpiring30d")}
         </button>
         <button type="button" className="min-h-11 text-left hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setFilters((current) => ({ ...current, risk: "attention" }))}>
           <strong className="mr-1 text-sm font-semibold text-foreground">{loading ? "—" : attentionMilestones}</strong>{t("kpiNeedsAttention")}
         </button>
-        <span className="flex min-h-11 items-center"><strong className="mr-1 text-sm font-semibold text-foreground">{loading ? "—" : uncoveredCompanies}</strong>{t("kpiUncovered")}</span>
+        <span className="col-span-2 flex min-h-11 items-center sm:col-auto"><strong className="mr-1 text-sm font-semibold text-foreground">{loading ? "—" : uncoveredCompanies}</strong>{t("kpiUncovered")}</span>
         {refreshing && <span role="status" className="ml-auto flex items-center gap-1"><Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />{t("refreshing")}</span>}
       </section>
 

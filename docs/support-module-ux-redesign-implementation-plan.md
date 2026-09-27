@@ -2131,6 +2131,16 @@ Additional recovery evidence (2026-09-06):
   in an 812 px viewport. Mobile workspace gaps now use 12 px instead of 16 px,
   restoring visible primary work without changing the desktop rhythm or any
   evidence threshold.
+- Exact-SHA run `36319319790` at `4dec3d142` first encountered a transient
+  `next/font` Google-loader exception before application compilation; rerunning
+  the same job/SHA passed the production build. Attempt 2 again passes 7/7
+  flows, physical touch, density, rollback, cleanup and final restoration, and
+  the static cell has zero accessibility/touch/overflow/environment findings.
+  The spacing change moves primary work from 812 to 796 px and makes it
+  partially visible, but the unchanged contract requires its top at or above
+  the 768 px fold. The three exception indicators now use a two-column mobile
+  grid with the uncovered-company indicator spanning row two; `sm+` retains the
+  existing flex layout and all 44 px targets.
 
 ## 16. Workstream 9 — Entitlement Templates
 

@@ -1501,3 +1501,30 @@ boundary correction, then repeat the identical RU/dark mobile exact-SHA gate.
   zero memory pressure. Scoped ESLint, `git diff --check` and the two affected
   contracts pass 12/12. Heavy local build/browser gates remain assigned to the
   exact-SHA GitHub Actions run under the host contract.
+
+### Workstream 8 mobile 768 px fold correction
+
+- Exact-SHA run `36319319790` at `4dec3d142b3c109a89205557bd0ca9a0ba280360`
+  had a transient attempt-1 `next/font` Google-loader exception before
+  application compilation. Rerunning the identical failed job on the same SHA
+  passed the production build, so no unrelated font or workflow source was
+  changed.
+- Attempt 2 again passes all 7/7 mutating outcomes: physical 144x44 touch retry,
+  0/1/20/100 records with 100 definitions, lifecycle/edit/milestone rollback,
+  disposable cleanup and final Active restoration. Static runtime, axe, custom
+  accessibility, touch-target, overflow and environment totals are zero; load
+  p75 is 371 ms and steady-state CLS p75 is `0.009392899609308647`.
+- The mobile gap correction moves the first record from 812 to 796 px and
+  `primaryWorkVisible` is true. The generic fail-closed rule is stricter:
+  `primaryWorkTop` must not exceed `min(768, viewportHeight)`, so the cell still
+  correctly fails. Screenshot inspection identifies the three exception
+  indicators as three full-width 44 px rows. They now form a two-column mobile
+  grid with the third indicator spanning row two, saving one complete row while
+  preserving 44 px targets; `sm+` retains the established flex summary.
+
+Next: run the affected scoped checks, checkpoint/push the fold correction and
+repeat the identical mobile exact-SHA gate without changing the 768 px rule.
+
+- Resource inspection remains healthy at 15 GiB available memory, 331 GiB free
+  disk and zero pressure. Scoped ESLint, `git diff --check` and the two affected
+  contracts pass 12/12. The hosted build/capture is the only repeated gate.

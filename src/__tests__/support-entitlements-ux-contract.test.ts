@@ -44,6 +44,8 @@ describe("support entitlements UX contract", () => {
     expect(page).toContain("kpiExpiring30d")
     expect(page).toContain("kpiNeedsAttention")
     expect(page).toContain("kpiUncovered")
+    expect(page).toContain("grid grid-cols-2 items-center gap-x-2 border-y")
+    expect(page).toContain("col-span-2 flex min-h-11 items-center sm:col-auto")
     expect(page).not.toContain("function MetricTile")
   })
 
