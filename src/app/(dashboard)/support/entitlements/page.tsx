@@ -834,7 +834,7 @@ export default function EntitlementsPage() {
 
       <EntitlementDetailSheet
         entitlement={selectedEntitlement}
-        interactionBlocked={Boolean(lifecycleTarget)}
+        interactionBlocked={Boolean(lifecycleTarget || deleteDefinitionTarget)}
         permissions={permissions}
         templates={data?.templates ?? []}
         formatDate={formatDate}
@@ -1152,11 +1152,12 @@ function EntitlementDetailSheet({ entitlement, interactionBlocked, permissions, 
   const editable = canEditEntitlement(entitlement, permissions)
   const actions = lifecycleActions(entitlement, permissions)
   return (
-    <Sheet open onOpenChange={(open) => { if (!open) onClose() }}>
+    <Sheet open onOpenChange={(open) => { if (!open && !interactionBlocked) onClose() }}>
       <SheetContent
         closeLabel={common("close")}
         inert={interactionBlocked ? true : undefined}
         aria-hidden={interactionBlocked ? true : undefined}
+        onInteractOutside={(event) => { if (interactionBlocked) event.preventDefault() }}
         className={`!h-[100dvh] !w-full !max-w-none overflow-y-auto p-0 sm:!w-[42rem] sm:!max-w-[94vw] ${interactionBlocked ? "pointer-events-none" : ""}`}
         data-testid="support-entitlement-detail-sheet"
         data-entitlement-id={entitlement.id}

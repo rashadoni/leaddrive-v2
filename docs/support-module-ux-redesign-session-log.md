@@ -1364,3 +1364,31 @@ continue with mobile and high-density evidence.
 
 Next: checkpoint and push the pointer-scope correction, rerun the unchanged
 desktop gate on the new exact SHA and inspect every outcome and cleanup field.
+
+### Workstream 8 nested-dialog outside-dismiss correction
+
+- Pointer-scope checkpoint `ecc0986eaa321a64be19ee4ab629b017a67d450e`
+  passes the section gate, fixtures, production build and static capture in
+  exact-SHA run `36312681991`. Static evidence is clean at load p75 316 ms and
+  CLS `0.0007984547556182484`; its artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36312681991`.
+- Both lifecycle confirmation clicks now execute, the entitlement is actually
+  suspended, edit failure/value retention/retry passes, and the final recovery
+  actually resumes the fixture to Active. The remaining lifecycle assertions
+  fail because Radix interprets interaction with the portalled nested dialog as
+  outside interaction and closes the detail Sheet, so Resume/Suspend controls
+  are no longer mounted even though the mutations succeeded.
+- The same outside-dismiss closes the selected detail context before the nested
+  milestone-delete confirmation can retain and show its synthetic server error.
+  The detail Sheet now treats both lifecycle and milestone-delete dialogs as
+  blocking child modals: background content is inert and pointer-blocked,
+  `onInteractOutside` is prevented, and `onOpenChange(false)` is ignored until
+  the child modal closes. This preserves the selected record and makes rollback
+  feedback visible inside the confirmation dialog.
+- Resource inspection remains healthy at 16 GiB available memory, 331 GiB free
+  disk and zero pressure. Scoped ESLint, `git diff --check` and the affected
+  UX/flow contracts pass 12/12. No outcome, wait, rollback or cleanup assertion
+  was relaxed.
+
+Next: checkpoint and push the outside-dismiss correction, rerun the identical
+desktop exact-SHA gate, then inspect all seven outcomes and fixture cleanup.

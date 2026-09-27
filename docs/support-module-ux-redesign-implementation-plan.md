@@ -2089,6 +2089,15 @@ Additional recovery evidence (2026-09-06):
   explicitly opts its z-60 root back into pointer events. The nested lifecycle
   dialog remains the sole interactive surface; scoped lint/diff and the two
   affected contracts remain green at 12/12, with no assertion change.
+- Exact-SHA run `36312681991` at `ecc0986ea` proves the pointer correction:
+  lifecycle confirm now mutates successfully, edit failure/value retention/
+  retry passes, and final recovery returns the fixture to Active. It also
+  exposes Radix outside-dismiss semantics: interaction with a child portalled
+  dialog closes the parent detail Sheet, hiding the expected Resume/Suspend
+  controls and removing the selected context needed to surface milestone-delete
+  failure. The Sheet now blocks outside-dismiss while either lifecycle or
+  milestone-delete child dialog is open, with its background inert and
+  pointer-blocked. Scoped lint/diff and both contracts pass 12/12 unchanged.
 
 ## 16. Workstream 9 — Entitlement Templates
 
