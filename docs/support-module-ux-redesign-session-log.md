@@ -1897,3 +1897,31 @@ Next: checkpoint and push the mobile fold/touch correction, then rerun the
 RU/dark mobile mutation sample on the new exact SHA. Launch the full high matrix
 only after mobile static and all 6/6 mutation outcomes are green and the
 screenshot is manually accepted.
+
+### Workstream 10 mobile evidence retry: product tour obstruction
+
+- Replacement RU/dark mobile run `36340943346` on `d2ffc77b7` passed the
+  dedicated section gate and production build. Its static browser cell is now
+  fully green: primary work begins at 765 px inside the 812 px viewport,
+  horizontal overflow is absent, Axe/custom accessibility/touch/environment
+  findings are zero, `smallTargets` is zero, load p75 is 597 ms, filter p75 is
+  15 ms and CLS is `0.011362670889550827`.
+- Five of six disposable outcomes passed. The dual-source retry still failed
+  its strict DOM hit test, while the independent partial-source retry again
+  proved a 120x44 hit-tested Playwright touchscreen tap. The failure screenshot
+  supplied the missing evidence: the first-visit product-tour overlay covered
+  the retry control, so `elementFromPoint` correctly rejected the tap. This was
+  an evidence-harness sequencing defect, not a reason to weaken the touch gate.
+  Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36340943346`.
+- Remediation dismisses the product tour and waits until its overlay is hidden
+  before every keyboard/touch activation. The existing 44x44 measurement,
+  center-point DOM hit test and real touchscreen tap remain unchanged. A
+  contract assertion now prevents the dismissal ordering from regressing.
+- Post-fix `node --check`, targeted ESLint, the 5/5 disposable-flow contract
+  assertions and `git diff --check` are green. Memory pressure was zero before
+  the sequential checks; no heavy local build or browser run was attempted.
+
+Next: checkpoint and push the tour-obstruction fix, then repeat the exact-SHA
+RU/dark mobile mutation sample. The full high matrix remains gated on a green
+6/6 mobile flow and manual image review.

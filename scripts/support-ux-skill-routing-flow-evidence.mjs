@@ -68,6 +68,7 @@ async function dismissTour(page) {
   const overlay = page.getByTestId("tour-overlay")
   if (await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)) {
     await page.keyboard.press("Escape")
+    await overlay.waitFor({ state: "hidden", timeout: 5_000 })
   }
 }
 
@@ -84,6 +85,9 @@ function jsonFailure(message, status = 503) {
 }
 
 async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  // A first-visit product tour can cover otherwise valid controls. Dismiss it
+  // before proving the target's real keyboard/touch hit area.
+  await dismissTour(page)
   await locator.waitFor({ state: "visible", timeout: 30_000 })
   if (viewportName === "desktop") {
     await locator.focus()

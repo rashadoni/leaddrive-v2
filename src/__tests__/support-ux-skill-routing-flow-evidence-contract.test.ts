@@ -34,6 +34,8 @@ describe("Skill Routing mutating evidence contract", () => {
   })
 
   it("proves physical touch targets without weakening desktop keyboard recovery", () => {
+    expect(flow).toMatch(/async function activateEvidenceTarget[\s\S]*?await dismissTour\(page\)/)
+    expect(flow).toContain('overlay.waitFor({ state: "hidden", timeout: 5_000 })')
     expect(flow).toContain('inputModality: "keyboard"')
     expect(flow).toContain('inputModality: "playwright-touchscreen"')
     expect(flow).toContain("scrollIntoViewIfNeeded()")
