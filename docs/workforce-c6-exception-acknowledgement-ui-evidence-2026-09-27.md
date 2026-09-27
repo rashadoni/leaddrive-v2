@@ -83,4 +83,3 @@ worktree has no `node_modules`; it is not counted as a test result. All reported
 passes used an existing dependency tree with the exact current
 `package-lock.json` hash. The temporary link was removed after every command
 without changing its target.
-
