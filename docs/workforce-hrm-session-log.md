@@ -838,3 +838,63 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or phase-gate credit is added.
 - Precise stopping point: the repaired integrated source/test/evidence head is independently GREEN; only this three-document receipt is uncommitted and PR #462 still points to the older failed head.
 - Next action: checkpoint the receipt-only delta, independently prove all six reviewed runtime/test blobs byte-identical, then push the replacement head and require all five exact-head checks before merge.
+
+## 2026-09-27 — PR #462 reviewed response-rollout fence released to production
+
+- Receipt-integrity review proved that the three-document receipt-only commit preserved all six independently reviewed runtime/test blobs byte-identically. Final head `ac4049444b0ddd874002a8b8c580bbdc8dc067da` had a 10-path / 59,462-byte complete binary diff from exact base `bc126735cc316cfc7f206aae839288884d5a9d5d`, SHA-256 `4fed3a4afe2fcf1911f6a42f291d341effc04f632ced0324dcbcd9acdc3b5259`; both reviews were GREEN with zero P0-P3 findings.
+- All five replacement exact-head checks passed. `static-checks` completed in 8m22s and included the real PostgreSQL Workforce shared-lock gate; `typecheck` completed in 17m45s. PR #462 merged normally at `2026-09-27T17:29:31Z` as `bf1cd5786dfe1968eda4912135556ef0247437c6`.
+- Deploy run `36337133864` completed GREEN at `2026-09-27T17:50:34Z` through GitHub `main`: quality/security, SHA-bound standalone build and artifact publication, immutable staging, atomic production deploy, scheduler/tenant-isolation checks, built-in ping/revision/feature smoke and artifact retention all passed.
+- Independent no-cache production reads returned `{"ok":true}` and `{"sha":"bf1cd5786dfe","artifactSha":"bf1cd5786dfe1968eda4912135556ef0247437c6","builtAt":"2026-09-27T17:35:39Z"}`. The artifact SHA exactly matches merged main; no Azure, retired owner/host, direct server deploy or worktree copy was used.
+- Full browser E2E, Android/Gradle, load, physical-device and human-pilot evidence remains `NOT RUN`. Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-002/006 remain `PARTIAL` and no task or phase-gate credit is added.
+- During deployment `origin/main` advanced through unrelated PRs #463 and #464 to `68cf17eddd1d5db8179fe2ec2981506403fc98ca`; their 20 MTM/Demo Center paths do not overlap the next Workforce slice. Work continues in the same dedicated part-3 worktree on successor branch `codex/workforce-exception-self-response-projection`, created from that exact current main. Canonical/old worktrees, LeadShelf and foreign branches remain untouched.
+- Precise stopping point: PR #462 is merged, deployed and independently exact-SHA smoke-verified; only this three-document release receipt is uncommitted on the clean successor branch and no next-slice source has changed.
+- Next action: checkpoint this release receipt, then implement the bounded revision-aware employee self-response projection with focused tests and fresh independent review.
+
+## 2026-09-27 — C6 revision-aware employee self-response projection pre-review
+
+- Release receipt commit `778709ef3` was isolated before source changes on successor branch `codex/workforce-exception-self-response-projection`, based on current main `68cf17eddd1d5db8179fe2ec2981506403fc98ca`.
+- The self-scoped feed no longer equates any timestamp-ordered response row with a current acknowledgement. A pure projection now requires one exact workday, a complete contiguous decision stream of at most 64 rows, a valid non-resolved lifecycle and a non-null response revision at or after the latest response/correction request or reopen.
+- Legacy `NULL`, stale, impossible/future and malformed response revisions plus truncated, gapped, unknown, invalid, resolved and schedule-only histories fail closed to `UNAVAILABLE`. A complete 64-row history keeps an already-current acknowledgement readable but offers no fresh response control without one.
+- The rollout-off query still selects neither decisions nor responses. The rollout-on query reads only 65 ascending `{decisionCode,caseRevision}` facts and one highest non-null `{observedCaseRevision}`; no response/correction id, reason, response code, proof or raw attendance evidence is selected or returned.
+- Focused helper/API coverage passes 2 files / 24 tests; the full selected regression set passes 5 files / 44 tests. Targeted ESLint for all four changed runtime/test files and diff whitespace pass. Exact-lock temporary dependency links were removed after each command.
+- Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot checks remain `NOT RUN` under host policy. Exact-head CI and fresh author-independent complete-diff review remain mandatory.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. WF-C6-006 remains `PARTIAL`; this projection adds no task or phase-gate credit and claims no notification, physical response, appeal completion or tenant activation.
+- Precise stopping point: four runtime/test paths plus the new evidence file, roadmap and append-only log are implemented and locally verified but uncommitted; independent read-only preflight has not yet started and nothing is pushed.
+- Next action: commission an author-independent read-only review of the complete working snapshot, repair any finding, then create a path-scoped checkpoint and freeze a fresh complete-diff identity.
+
+## 2026-09-27 — C6 self-response projection preflight P2 repaired
+
+- The first independent read-only pass returned RED with one P2: two Markdown hard-break spaces in the new untracked evidence file were trailing whitespace. The earlier tracked-only `git diff --check 778709ef3` could not see an untracked file, while the reviewer correctly ran a no-index check that failed on both lines.
+- Both spaces are removed. The local verification now includes the tracked base diff and an explicit no-index whitespace check for the untracked evidence file; both pass.
+- While repairing the review snapshot, the enabled-route API test was strengthened from partial object matchers to an exact full Prisma argument, so adding an internal field or unbounded relation would break the contract. The complete five-file selection again passes 44/44 and targeted four-file ESLint passes.
+- The previous RED review and fingerprint are not reusable. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no completion credit is added.
+- Precise stopping point: the P2 and test-contract repair are locally green in the uncommitted seven-path snapshot; a fresh author-independent rereview from current bytes is required and nothing is pushed.
+- Next action: obtain a zero-finding current-snapshot rereview, then checkpoint only the seven task-owned paths and commission a separate frozen clean-head complete-diff review.
+
+## 2026-09-27 — C6 self-response replacement preflight GREEN
+
+- A fresh author-independent read from zero returned GREEN with zero P0-P3 findings on exact base/HEAD/merge-base `778709ef36f9c438bce5c060fda69bffe5947f94` plus all seven current paths. The combined tracked binary and untracked no-index diff was 38,244 bytes, SHA-256 `f039c7297cbcc70e7994bc57e47b54bc28befb42d7f8b2e20a3c9a1f5fd107be`.
+- The reviewer reconfirmed the P2 repair, exact rollout-off/on query shapes and bounds, complete revision/lifecycle/reset projection, 64/65 and schedule/resolved fail-closed behavior, response privacy, evidence truth and unchanged progress. Reviewer tracked/untracked whitespace checks and append-only session-prefix verification passed.
+- Reviewer Vitest, ESLint, typecheck, build, browser, Android, load, physical-device and pilot checks were `NOT RUN`; author results were inspected but not relabelled.
+- The GREEN verdict covers the pre-receipt snapshot only and does not transfer to this new append-only receipt or the future commit identity. No task or gate credit is added.
+- Precise stopping point: the complete implementation snapshot has a zero-finding preflight; only this three-document review receipt is newly uncommitted and nothing is pushed.
+- Next action: checkpoint exactly the seven task-owned paths, verify clean status and current main, then require a fresh author-independent frozen complete-diff review from zero.
+
+## 2026-09-27 — C6 self-response frozen review P2 platform scope repaired
+
+- The first frozen clean-head review independently matched base/current main/merge-base `68cf17eddd1d5db8179fe2ec2981506403fc98ca`, head `ea3dd1791215efe9f4504cdcbdd977582f208a4f`, eight paths / 47,601 binary-diff bytes and SHA-256 `2da644671f700ec80506d75b519ed606e52c59411b9b7697c96d3b89a8ae056a`, then returned RED with one P2 and no P0/P1/P3.
+- The task row incorrectly said revision-aware acknowledgement existed across web/mobile. The runtime slice changes only `/api/v1/workforce/exceptions/mine`; the dedicated mobile endpoint and Android model remain response-ledger-free and expose no acknowledgement action.
+- The roadmap now scopes the new response ledger, rollout fence and acknowledgement projection to server/web and explicitly leaves mobile acknowledgement/response-ledger projection open. No runtime/test path changed after the rejected review.
+- Every other frozen-review area was GREEN, including query bounds/minimization, revision/lifecycle/reset behavior, privacy, the earlier P2 repair, release receipt, append-only journal, diff integrity and unchanged numeric progress. Reviewer dependency-backed/heavy gates were `NOT RUN`.
+- The rejected identity and verdict are not transferable. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
+- Precise stopping point: the three-document platform-scope repair is uncommitted on top of clean runtime checkpoint `ea3dd1791`; nothing is pushed.
+- Next action: checkpoint the docs-only repair, recompute the full clean identity and require a fresh author-independent frozen complete-diff rereview from zero.
+
+## 2026-09-27 — C6 self-response replacement frozen review GREEN
+
+- Fresh author-independent review from zero verified clean base/current main/merge-base `68cf17eddd1d5db8179fe2ec2981506403fc98ca` through head `57f32f10fb5b609015a70fdaa13f18b919ea54f4`: eight paths / 51,114 binary-diff bytes, SHA-256 `c65f22fced42ea3fa25bae94b8e38c407da0b314e3eafd79b5f00be6aa6a0090`, below 400 KB. It returned GREEN with zero P0-P3 findings.
+- Both P2 repairs, rollout-off/on exact selection, 101/65/1 bounds, privacy, contiguous revision/lifecycle/reset behavior, invalid/resolved/schedule/64–65 handling, web-only acknowledgement/mobile-open wording, inherited PR #462 receipt, test-count arithmetic and unchanged progress were reconfirmed.
+- Clean start/end, diff whitespace and append-only session-prefix verification passed. Reviewer Vitest, ESLint, typecheck, build, browser, Android, load, physical-device and pilot checks were `NOT RUN`; author results were not relabelled.
+- Commit `57f32f10...` changed only the three receipt documents from the rejected head, and all four runtime/test blobs remained byte-identical.
+- Precise stopping point: frozen source/test/evidence head is independently GREEN; only this three-document review receipt is newly uncommitted and nothing is pushed.
+- Next action: checkpoint the receipt-only delta, independently prove all four reviewed runtime/test blobs byte-identical, then push/open the sub-400 KB PR and require every exact-head context before merge.

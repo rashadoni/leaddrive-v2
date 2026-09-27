@@ -68,6 +68,7 @@ describe("Workforce personal exception discovery API", () => {
           type: "LATE_START",
           workdayId: "workday-1",
           availableAction: "REQUEST_CORRECTION",
+          responseState: "UNAVAILABLE",
         }],
       },
     })
@@ -105,7 +106,11 @@ describe("Workforce personal exception discovery API", () => {
       kind: "NO_SHOW",
       workday: null,
       expectedWorkDate: new Date("2026-08-31T00:00:00.000Z"),
-      employeeResponses: [{ id: "response-must-not-change-no-show-boundary" }],
+      decisions: [{ decisionCode: "ACKNOWLEDGE", caseRevision: 1 }],
+      employeeResponses: [{
+        observedCaseRevision: 1,
+        id: "response-must-not-change-no-show-boundary",
+      }],
     })])
 
     const response = await callGet(new NextRequest("http://localhost:3000/api/v1/workforce/exceptions/mine"), AUTH)
@@ -128,11 +133,19 @@ describe("Workforce personal exception discovery API", () => {
     expect(JSON.stringify(body)).not.toContain("response-must-not-change-no-show-boundary")
   })
 
-  it("enables only a rehearsed tenant and still emits an identifier-minimized acknowledgement state", async () => {
+  it("projects a current-cycle response without exposing decision or response internals", async () => {
     vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
     organizationFindUnique.mockResolvedValue({ features: [WORKFORCE_EXCEPTION_RESPONSE_FLAG] })
     findMany.mockResolvedValue([ownCase({
-      employeeResponses: [{ id: "response-internal-only", correctionRequestId: "request-internal-only" }],
+      decisions: [
+        { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+        { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 2 },
+      ],
+      employeeResponses: [{
+        observedCaseRevision: 2,
+        id: "response-internal-only",
+        correctionRequestId: "request-internal-only",
+      }],
     })])
 
     const response = await callGet(new NextRequest("http://localhost:3000/api/v1/workforce/exceptions/mine"), AUTH)
@@ -148,15 +161,109 @@ describe("Workforce personal exception discovery API", () => {
     })
     expect(JSON.stringify(body)).not.toContain("response-internal-only")
     expect(JSON.stringify(body)).not.toContain("request-internal-only")
-    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
-      select: expect.objectContaining({
-        employeeResponses: {
-          take: 1,
-          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          select: { id: true },
+    expect(JSON.stringify(body)).not.toContain("REQUEST_EMPLOYEE_RESPONSE")
+    expect(JSON.stringify(body)).not.toContain("observedCaseRevision")
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        organizationId: "org-1",
+        agentId: "agent-1",
+        OR: [
+          { workdayId: { not: null } },
+          { kind: "NO_SHOW", workdayId: null, expectedWorkDate: { not: null } },
+        ],
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 101,
+      select: {
+        id: true,
+        kind: true,
+        createdAt: true,
+        expectedWorkDate: true,
+        workday: { select: { id: true, workDate: true } },
+        decisions: {
+          orderBy: { caseRevision: "asc" },
+          take: 65,
+          select: { decisionCode: true, caseRevision: true },
         },
+        employeeResponses: {
+          where: { observedCaseRevision: { not: null } },
+          take: 1,
+          orderBy: [{ observedCaseRevision: "desc" }, { id: "desc" }],
+          select: { observedCaseRevision: true },
+        },
+      },
+    })
+  })
+
+  it("does not reuse a response from before the latest request or reopen", async () => {
+    vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
+    organizationFindUnique.mockResolvedValue({ features: [WORKFORCE_EXCEPTION_RESPONSE_FLAG] })
+    findMany.mockResolvedValue([
+      ownCase({
+        id: "case-stale-request",
+        decisions: [
+          { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+          { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 2 },
+        ],
+        employeeResponses: [{ observedCaseRevision: 1 }],
       }),
-    }))
+      ownCase({
+        id: "case-stale-reopen",
+        decisions: [
+          { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+          { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
+          { decisionCode: "REOPEN_FOR_REVIEW", caseRevision: 3 },
+        ],
+        employeeResponses: [{ observedCaseRevision: 2 }],
+      }),
+    ])
+
+    const response = await callGet(new NextRequest("http://localhost:3000/api/v1/workforce/exceptions/mine"), AUTH)
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data.cases).toEqual(expect.arrayContaining([
+      expect.objectContaining({ caseId: "case-stale-request", responseState: "NOT_ACKNOWLEDGED" }),
+      expect.objectContaining({ caseId: "case-stale-reopen", responseState: "NOT_ACKNOWLEDGED" }),
+    ]))
+  })
+
+  it("makes gapped, invalid and resolved lifecycle projections unavailable", async () => {
+    vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
+    organizationFindUnique.mockResolvedValue({ features: [WORKFORCE_EXCEPTION_RESPONSE_FLAG] })
+    findMany.mockResolvedValue([
+      ownCase({
+        id: "case-gapped",
+        decisions: [
+          { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+          { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 3 },
+        ],
+        employeeResponses: [],
+      }),
+      ownCase({
+        id: "case-invalid",
+        decisions: [{ decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 1 }],
+        employeeResponses: [],
+      }),
+      ownCase({
+        id: "case-resolved",
+        decisions: [
+          { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+          { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
+        ],
+        employeeResponses: [{ observedCaseRevision: 2 }],
+      }),
+    ])
+
+    const response = await callGet(new NextRequest("http://localhost:3000/api/v1/workforce/exceptions/mine"), AUTH)
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data.cases).toEqual(expect.arrayContaining([
+      expect.objectContaining({ caseId: "case-gapped", responseState: "UNAVAILABLE" }),
+      expect.objectContaining({ caseId: "case-invalid", responseState: "UNAVAILABLE" }),
+      expect.objectContaining({ caseId: "case-resolved", responseState: "UNAVAILABLE" }),
+    ]))
   })
 
   it("denies a non-employee before querying cases", async () => {
