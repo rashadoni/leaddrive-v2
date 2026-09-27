@@ -458,3 +458,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; the repair changes no runtime consumer, tenant state, terminal action, visible UI, task credit or phase gate.
 - Precise stopping point: the sole P2 is repaired in the working tree and narrow checks are green; the repair is uncommitted and the rejected frozen verdict cannot transfer.
 - Next action: finish the small static gates, checkpoint the repair/evidence, freeze a new exact identity and obtain a new zero-finding author-independent complete-diff review before any push.
+
+## 2026-09-27 — C6 policy-revision replacement complete-diff review GREEN
+
+- The repaired checkpoint is clean base/merge-base `249466e9ac25eccecefc34b62563b328a8026817`, head `3561a08877d1c865a3240cc06e000d5f604ebe5c`, 14 files / 79,022 bytes and binary-diff SHA-256 `88375445e73dfb2bb0fb6cd9efb81e7f672d988ca93af25c9dc40b662f2788bb`.
+- A fresh author-independent reviewer reread every changed line with no inherited GREEN credit and returned GREEN with zero P0–P3 findings. The reviewer explicitly confirmed both live decision-table ALTER statements are now the exact final pre-`COMMIT` block after all new-table-only work, and the positive source test pins that ordering.
+- The same review reconfirmed the draft-only/no-consumer boundary, literal canonical hash, fail-closed stream resolution, Prisma/migration parity, tenant composite FKs, FORCE RLS, application grant, owner-level update/delete/table-clear rejection, old-binary nullable compatibility, narrow C13 guard and real-PostgreSQL workflow wiring.
+- Reviewer-side `git diff --check`, Prisma validate, RLS scan 553/0, runner policy 37 workflows, event assets 27/86/5, main-protection configurator and final identity/cleanliness checks pass. Dependency-backed Vitest/ESLint, exact PostgreSQL, Prisma generate, full typecheck/build, browser, Android, load and physical/pilot evidence were `NOT RUN` by the reviewer; the primary local 32-test/ESLint evidence remains separate and exact-head CI remains mandatory.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. Review changes no tenant state, runtime behavior, task credit or gate credit.
+- Precise stopping point: reviewed source/migration/workflow head is independently GREEN; only this append-only three-document review receipt is uncommitted and nothing is pushed.
+- Next action: checkpoint the receipt-only delta, prove reviewed source paths unchanged through a separate integrity review, then push/open the sub-400 KB PR and require all five exact-head checks including real PostgreSQL.

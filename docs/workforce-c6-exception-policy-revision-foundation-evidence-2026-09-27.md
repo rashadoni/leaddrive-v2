@@ -1,7 +1,7 @@
 # Workforce C6 exception-policy revision foundation evidence — 2026-09-27
 
-Status: **first frozen review P2 repaired locally; replacement independent
-review and exact PostgreSQL CI pending**.
+Status: **replacement complete-diff review GREEN; exact PostgreSQL and
+exact-head CI pending**.
 
 This bounded slice starts from deployed `main` SHA
 `249466e9ac25eccecefc34b62563b328a8026817` plus its append-only release
@@ -123,3 +123,19 @@ final pre-`COMMIT` block. A positive source assertion now requires that order
 and exact tail shape. Focused tests, ESLint and Prisma validation pass again;
 the changed identity still requires a fresh complete-diff review and no GREEN
 credit transfers from the rejected head.
+
+The repaired clean replacement identity is base/merge-base
+`249466e9ac25eccecefc34b62563b328a8026817`, head
+`3561a08877d1c865a3240cc06e000d5f604ebe5c`, 14 files / 79,022 bytes and
+binary-diff SHA-256
+`88375445e73dfb2bb0fb6cd9efb81e7f672d988ca93af25c9dc40b662f2788bb`.
+A fresh author-independent review reread the complete diff and returned GREEN
+with zero P0–P3 findings. It explicitly reconfirmed the repaired final
+pre-`COMMIT` live ALTER block, the positive ordering guard, inactive boundary,
+hash/resolver, Prisma/FK parity, RLS/append-only contract, old-binary NULL
+compatibility, C13 fence, exact-PostgreSQL harness and blocking workflow
+wiring. Reviewer-side diff, Prisma validation, RLS 553/0, runner 37, assets
+27/86/5, main-protection and identity checks pass; dependency-backed tests,
+ESLint, PostgreSQL and all heavy/physical gates remain `NOT RUN` reviewer-side.
+This receipt-only documentation delta requires an independent integrity check
+before publication.
