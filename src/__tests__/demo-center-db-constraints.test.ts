@@ -50,6 +50,8 @@ vi.mock("@/lib/demo-center/email", () => ({
 // demo table; the grant only records the id.
 vi.mock("@/lib/demo-center/sales-org", () => ({
   inDemoSalesOrganization: async () => ({ organizationId: "org-sales", value: [{ id: "user-manager", role: "manager" }] }),
+  // No sales organisation configured: the lead link must say so on the request.
+  resolveDemoSalesOrganization: async () => null,
 }))
 
 const ROOT = process.cwd()
@@ -182,5 +184,67 @@ pgDescribe("demo tables on a real Postgres", () => {
       await bypass(() => prisma.demoAccessEvent.create({ data: { grantId: grant.id, eventType } })).catch(() => refused.push(eventType))
     }
     expect(refused).toEqual([])
+  })
+
+  /** A grant row in a given state, written straight to the table (every state CHECK applies). */
+  async function grantInState(requestId: string, tokenDigit: string, state: Record<string, unknown>) {
+    const now = Date.now()
+    return bypass(() =>
+      prisma.demoGrant.create({
+        data: {
+          requestId,
+          tokenHash: tokenDigit.repeat(64),
+          tokenHint: "abcd",
+          moduleIds: [],
+          scenarioId: "prospect-to-closed-won",
+          scenarioVersion: 1,
+          locale: "az",
+          watermark: "ci",
+          linkExpiresAt: new Date(now + 7 * 86_400_000),
+          createdBy: "user-admin",
+          ...state,
+        },
+      }),
+    )
+  }
+
+  function session(lastSeenMinutesAgo: number, hashDigit: string) {
+    const now = Date.now()
+    return {
+      status: "ACTIVE",
+      sessionHash: hashDigit.repeat(64), // unique per grant
+      sessionStartedAt: new Date(now - 90 * 60_000),
+      sessionLastSeenAt: new Date(now - lastSeenMinutesAgo * 60_000),
+      sessionExpiresAt: new Date(now + 60 * 60_000),
+      inactivityMinutes: 30,
+      verifiedAt: new Date(now - 95 * 60_000),
+    }
+  }
+
+  it("counts a walked-through story as completed, and a tab closed an hour ago as no longer active", async () => {
+    const { demoCenterCounters } = await import("@/lib/demo-center/admin-counters")
+    const before = await demoCenterCounters()
+    // One live grant per request (a unique index), so one request each.
+    const requestFor = async (tag: string) => (await storedRequest(`counters-${tag}@example.az`)).id
+
+    await grantInState(await requestFor("now"), "1", session(2, "1")) // on the screen right now
+    await grantInState(await requestFor("idle"), "2", session(65, "2")) // idle past its 30 minutes, not yet swept
+    const walked = await grantInState(await requestFor("walked"), "3", session(1, "3"))
+    await bypass(() => prisma.demoAccessEvent.create({ data: { grantId: walked.id, eventType: "journey.completed" } }))
+    await grantInState(await requestFor("module"), "4", { status: "COMPLETED", completedAt: new Date() }) // the module player's ending
+
+    const after = await demoCenterCounters()
+    expect(after.activeSessions - before.activeSessions).toBe(2)
+    expect(after.completed - before.completed).toBe(2)
+  })
+
+  it("records on a fresh request that no sales organisation is configured for its lead", async () => {
+    const { ensureDemoProspectLead } = await import("@/lib/demo-center/prospect-lead")
+    const request = await storedRequest("lead-link@example.az")
+    await grantInState(request.id, "5", session(1, "5"))
+
+    expect(await ensureDemoProspectLead(request.id)).toEqual({ status: "UNCONFIGURED" })
+    const stored = await bypass(() => prisma.demoRequest.findUniqueOrThrow({ where: { id: request.id } }))
+    expect(stored.leadLinkStatus).toBe("UNCONFIGURED")
   })
 })

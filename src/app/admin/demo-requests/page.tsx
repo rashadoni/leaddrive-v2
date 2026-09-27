@@ -5,6 +5,7 @@ import { ArrowRight, Building2, Clock3, Eye, Inbox, ShieldCheck } from "lucide-r
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { demoCenterCounters } from "@/lib/demo-center/admin-counters"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { isSuperAdminSession } from "@/lib/superadmin-guard"
@@ -21,8 +22,8 @@ export default async function DemoRequestsPage() {
   const t = await getTranslations("admin.demoCenter")
   const locale = await getLocale()
 
-  const [requests, submitted, activeSessions, completed] = await runWithRlsBypass(() =>
-    Promise.all([
+  const [requests, { awaitingReview: submitted, activeSessions, completed }] = await Promise.all([
+    runWithRlsBypass(() =>
       prisma.demoRequest.findMany({
         take: 100,
         orderBy: { createdAt: "desc" },
@@ -34,11 +35,9 @@ export default async function DemoRequestsPage() {
           },
         },
       }),
-      prisma.demoRequest.count({ where: { status: "SUBMITTED" } }),
-      prisma.demoGrant.count({ where: { status: "ACTIVE" } }),
-      prisma.demoGrant.count({ where: { status: "COMPLETED" } }),
-    ]),
-  )
+    ),
+    demoCenterCounters(),
+  ])
 
   const stats = [
     { label: t("awaitingReview"), value: submitted, icon: Inbox },

@@ -172,3 +172,21 @@ describe("demo request POST outcomes", () => {
     expect(response.headers.get("Vary")).toBe("Origin")
   })
 })
+
+describe("what the marketing site's own form lets through", () => {
+  // DemoModal.tsx (leaddrive-site) requires name and company to be non-empty
+  // and appends language, page URL and consent time to the message. A refusal
+  // it did not predict reaches the prospect only as «Göndərmək alınmadı».
+  const siteSuffix = "\n\n— Dil / язык: az\n— Səhifə: https://leaddrivecrm.org/?utm_source=instagram&utm_campaign=autumn\n— Razılıq / согласие: 2026-09-27T08:00:00.000Z"
+
+  it("accepts a one-letter name and company, and a full message with the site's footer", async () => {
+    const response = await POST(request(CANONICAL_ORIGIN, {
+      ...validPayload,
+      name: "R",
+      company: "X",
+      message: "a".repeat(2_000) + siteSuffix,
+    }))
+    expect(response.status).toBe(201)
+    expectAllowedCors(response)
+  })
+})

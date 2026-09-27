@@ -21,6 +21,7 @@ import {
   checkAssistantQuestion,
 } from "@/lib/demo-center/assistant/policy"
 import {
+  demoSourceChannelOf,
   DEMO_JOURNEY_HAPPY_PATH,
   PROSPECT_TO_CLOSED_WON,
   createJourneySnapshot,
@@ -191,6 +192,13 @@ describe("Access-trail event types", () => {
 describe("Assistant route contract", () => {
   const source = readFileSync(path.join(ROOT, ROUTE), "utf8")
 
+  it("rebuilds the story from the request's own channel, as the page does", () => {
+    // A fixed «website» here made Da Vinci describe a campaign the prospect
+    // was not looking at whenever the request came from another channel.
+    expect(source).toContain("sourceChannel: demoSourceChannelOf(grant.request.source)")
+    expect(source).not.toMatch(/sourceChannel:\s*"/)
+  })
+
   it("requires an active grant bound to this browser", () => {
     expect(source).toContain("validRawDemoToken")
     expect(source).toContain("expireDemoGrantIfNeeded")
@@ -227,5 +235,14 @@ describe("Assistant route contract", () => {
 
   it("fails closed when the model call does not come back", () => {
     expect(source).toContain('refuse("unavailable", 502)')
+  })
+})
+
+describe("The request's channel, as the story draws it", () => {
+  it("keeps a channel the scenario knows and falls back to the website form", () => {
+    expect(demoSourceChannelOf("Instagram")).toBe("instagram")
+    expect(demoSourceChannelOf("whatsapp")).toBe("whatsapp")
+    expect(demoSourceChannelOf("telegram")).toBe("website")
+    expect(demoSourceChannelOf(null)).toBe("website")
   })
 })

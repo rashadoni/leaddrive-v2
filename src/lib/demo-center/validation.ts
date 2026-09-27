@@ -6,13 +6,20 @@ import { normalizeEmail } from "@/lib/demo-center/security"
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().or(z.literal(""))
 
+/**
+ * What the marketing site's own form lets through must pass here too: a
+ * refusal it did not predict reaches the prospect only as «Göndərmək
+ * alınmadı». The site requires name and company to be non-empty (a one-letter
+ * initial is a real answer) and appends ~150 characters of language, page and
+ * consent time to the message, so the message cap leaves room for both.
+ */
 export const demoRequestSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  company: z.string().trim().min(2).max(160),
+  name: z.string().trim().min(1).max(120),
+  company: z.string().trim().min(1).max(160),
   jobTitle: optionalText(120),
   email: z.string().trim().email().max(254).transform(normalizeEmail),
   phone: optionalText(40),
-  message: optionalText(2_000),
+  message: optionalText(4_000),
   requestedModules: z.array(z.string()).max(DEMO_MODULE_IDS.length).default([])
     .transform((values) => [...new Set(values.filter(isDemoModuleId))]),
   locale: z.enum(["az", "ru", "en"]).default("az"),
