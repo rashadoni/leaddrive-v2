@@ -947,3 +947,21 @@ preserving the newer shared evidence runner.
 Next: checkpoint and push the section-validation correction, then run and
 inspect exact-SHA desktop mutating, physical-touch mobile mutating and complete
 high-density Ticket Categories evidence before closing Workstream 6.
+
+### Workstream 6 second self-audit and reduced-motion correction
+
+- Desktop run `36294329989` at `28c09d6950fcb946ac4a63d475cb2f5a7b6498c4`
+  reached the new dedicated validation step and failed closed before fixtures,
+  build or browser capture. This is diagnostic evidence, not a browser pass.
+- The widened section scan found two shared dropdown defects used by category
+  row actions: the animated utility line did not itself declare the reduced-
+  motion fallback, and item color transition had no fallback. The scan scope is
+  unchanged. `motion-reduce:animate-none` and
+  `motion-reduce:transition-none` now sit on the exact affected utility groups.
+- The identical four-file Ticket Categories scan passes with zero findings;
+  changed-component ESLint and `git diff --check` pass. No scan root, rule,
+  animation check or browser gate was removed.
+
+Next: checkpoint and push the reduced-motion correction, then restart the
+desktop exact-SHA gate; only after its inspected artifact is green run mobile
+and high-density matrices on that same SHA.

@@ -1644,6 +1644,14 @@ Current verification evidence (2026-09-05):
   New workflow assertions lock the predicate, source root and flow-contract
   coverage. A new exact-SHA hosted build/browser run is mandatory before any
   CAT checkbox closes.
+- Diagnostic exact-SHA run `36294329989` proves the new validation step runs
+  and fails closed before fixtures/build. Its expanded shared-component scan
+  found two reduced-motion gaps in the row-action dropdown: animation opt-out
+  was separated from the animated utility line, and item color transition had
+  no opt-out. The dropdown now binds `motion-reduce:animate-none` and
+  `motion-reduce:transition-none` to those exact utility groups. The identical
+  four-file scoped scan now passes with zero findings, changed-component ESLint
+  and `git diff --check` pass. A newer exact-SHA browser run remains mandatory.
 - CAT checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery
