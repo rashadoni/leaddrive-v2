@@ -177,3 +177,38 @@ and heavy gates were `NOT RUN`, and author results were not relabelled. Only
 this evidence file, the roadmap and append-only session log may change after
 the verdict; all six reviewed runtime/test blobs must remain byte-identical in
 an independent receipt-integrity review before the replacement head is pushed.
+
+## Reviewed production release
+
+The receipt-integrity review proved that
+`2711f194d5615c9efbbc2701412b3b535b157416..ac4049444b0ddd874002a8b8c580bbdc8dc067da`
+changed only this evidence file, the roadmap and append-only session log, and
+kept all six reviewed runtime/test blobs byte-identical. The final complete
+diff from exact base `bc126735cc316cfc7f206aae839288884d5a9d5d` through
+head `ac4049444b0ddd874002a8b8c580bbdc8dc067da` was 10 paths / 59,462
+binary-diff bytes, SHA-256
+`4fed3a4afe2fcf1911f6a42f291d341effc04f632ced0324dcbcd9acdc3b5259`.
+Both independent reviews were GREEN with zero P0-P3 findings.
+
+PR #462 passed `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and
+`scan` on its replacement exact head; `static-checks` completed in 8m22s and
+included the real PostgreSQL Workforce shared-lock gate, while `typecheck`
+completed in 17m45s. The normal PR production build was skipped as designed.
+Fresh main had advanced through unrelated PR #423 to
+`76de0cd9969026f50b7ea0b03fa37ee8e5ed8990`; it had no path overlap, and GitHub reported the PR clean and
+mergeable. PR #462 merged normally at `2026-09-27T17:29:31Z` as
+`bf1cd5786dfe1968eda4912135556ef0247437c6`.
+
+Deploy run `36337133864` completed GREEN at `2026-09-27T17:50:34Z` through
+the documented GitHub `main` route. Quality/security gates completed in
+11m40s, the SHA-bound standalone build and artifact publication in 14m14s,
+and immutable staging, atomic production deployment, scheduler and
+tenant-isolation checks plus built-in public smokes in 6m30s. Independent
+no-cache production reads returned `{"ok":true}` and
+`{"sha":"bf1cd5786dfe","artifactSha":"bf1cd5786dfe1968eda4912135556ef0247437c6","builtAt":"2026-09-27T17:35:39Z"}`.
+The artifact SHA exactly matches the merged main SHA.
+
+No direct server deployment, worktree copy, retired host/owner or Azure path
+was used. Full browser E2E, Android/Gradle, load, physical-device and human
+pilot evidence remains `NOT RUN`. Progress stays `81/161`, `14/15`, C5 81%,
+C6 20% and C9 99%; the released fence adds no task or phase-gate credit.
