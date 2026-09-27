@@ -40,4 +40,6 @@ export const HISTORY_MAP_COLORS = {
   stop: "#f59e0b",
   visit: "#10b981",
   current: "#fb923c",
+  /** The GPS fixes joined straight, drawn thin under the road-matched track. */
+  raw: "#94a3b8",
 } as const

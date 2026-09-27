@@ -106,6 +106,8 @@ type HistoryData = {
     recordedAt: string
     workdayId: string | null
   }>
+  /** The track along the streets (self-hosted OSRM); null when it did not answer. */
+  matchedTrack?: { segments: Array<Array<[number, number]>>; matchedPoints: number; totalPoints: number } | null
   stops: Array<{
     id: string
     startedAt: string
@@ -278,6 +280,7 @@ export function LocationHistoryPanel() {
     stops: true,
     visits: true,
     gaps: true,
+    roads: true,
   })
 
   const invalidateHistory = useCallback(() => {
@@ -595,7 +598,7 @@ export function LocationHistoryPanel() {
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card p-2 dark:border-zinc-700">
             <div className="flex flex-wrap items-center gap-1.5" aria-label={t("layers")}>
               <span className="mr-1 inline-flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground"><Layers3 className="h-3.5 w-3.5" />{t("layers")}</span>
-              {(Object.keys(layers) as Array<keyof typeof layers>).map((layer) => (
+              {(Object.keys(layers) as Array<keyof typeof layers>).filter((layer) => layer !== "roads" || Boolean(data?.matchedTrack)).map((layer) => (
                 <button
                   key={layer}
                   type="button"
@@ -712,11 +715,15 @@ export function LocationHistoryPanel() {
                 timezone={timezone}
                 playbackIndex={playbackIndex}
                 focus={tripFocus}
+                matchedTrack={data.matchedTrack ?? null}
               />
             </div>
             {/* Owner 2026-09-22: «lines by colours, by pieces — no explanation». */}
             <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
-              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{t("legendTrack")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{data.matchedTrack && layers.roads ? t("legendRoads") : t("legendTrack")}</li>
+              {data.matchedTrack && layers.roads ? (
+                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-2 border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.raw }} />{t("legendRaw")}</li>
+              ) : null}
               <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.gap }} />{t("legendGap")}</li>
               <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dashed" style={{ borderColor: HISTORY_MAP_COLORS.plan }} />{t("legendPlan")}</li>
               <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.stop }} />{t("legendStop")}</li>
@@ -734,6 +741,7 @@ export function LocationHistoryPanel() {
                   onFocus={setTripFocus}
                   formatMoment={formatMoment}
                   formatDuration={formatDuration}
+                  roadsMatched={Boolean(data.matchedTrack) && layers.roads}
                 />
               )}
               {data.capabilities?.workforce !== false ? <section className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">

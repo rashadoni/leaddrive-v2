@@ -61,6 +61,7 @@ export function DayTripLedger({
   onFocus,
   formatMoment,
   formatDuration,
+  roadsMatched = false,
 }: {
   trip: DayTripData
   multiDay: boolean
@@ -68,6 +69,8 @@ export function DayTripLedger({
   onFocus: (focus: DayTripFocus | null) => void
   formatMoment: (value: string, options?: Intl.DateTimeFormatOptions) => string
   formatDuration: (seconds: number) => string
+  /** The map shows the track along the streets; distances stay between fixes. */
+  roadsMatched?: boolean
 }) {
   const t = useTranslations("mtmMap.history.trip")
   const clock = (value: string) => formatMoment(value, { hour: "2-digit", minute: "2-digit" })
@@ -180,7 +183,7 @@ export function DayTripLedger({
           )
         })}
       </ol>
-      <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">{t("straightLineNote")}</p>
+      <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">{t(roadsMatched ? "roadsNote" : "straightLineNote")}</p>
     </section>
   )
 }
