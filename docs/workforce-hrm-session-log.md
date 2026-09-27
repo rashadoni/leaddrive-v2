@@ -706,3 +706,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot evidence remains `NOT RUN`. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
 - Precise stopping point: the sole replacement-review P1 is repaired in the working tree; the rejected identity and its checks do not transfer, the repair is uncommitted and nothing is pushed.
 - Next action: run focused jsdom, the complete related selection, targeted ESLint, i18n/diff checks, checkpoint the exact repair and require a fresh zero-finding complete-diff review before push.
+
+## 2026-09-27 — C6/C8 cancel-fence repair checkpoint clean
+
+- The repaired jsdom interaction contract passes 7/7, including a same-tick submit, cancel and second-row attempt before disabled rendering. The complete related selection passes eight files / 54 tests; targeted ESLint, i18n parity at 23,600/0/0 and diff whitespace pass. Every exact-lock dependency link was removed after its command.
+- Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot checks remain `NOT RUN` under host policy. The exact-head CI typecheck and static/security gates remain mandatory.
+- The repair and RED-review receipt were checkpointed as `93be88a5b1615a2f35ff002dc1a993dacb4ed9a2`. Fresh fetch kept base/merge-base/current `origin/main` at exact deployed `86fc1d2c23fead588b45c2e700e125a6d98bbe82`; the preliminary complete diff is nine paths / 89,448 binary-diff bytes, SHA-256 `9a81ab3c750b880408974a9f9cf0835905fd346d83d62fa43c16cbe7df29f9f7`.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no review, task or gate credit transfers from either rejected identity.
+- Precise stopping point: source/test repair and its verification are committed and current main is unchanged; this three-document receipt is uncommitted, so no valid replacement frozen identity exists and nothing is pushed.
+- Next action: checkpoint this receipt, freeze exact base/head/path/byte/hash identity and require a fresh author-independent complete-diff review from zero before push.

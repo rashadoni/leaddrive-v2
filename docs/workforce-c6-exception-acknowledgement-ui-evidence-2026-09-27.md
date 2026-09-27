@@ -155,3 +155,23 @@ operation UUID must remain selected. A source fence also rejects reintroduction
 of the direct event handler. The rejected identity and prior checks do not
 transfer: focused checks, a new clean checkpoint and a fresh complete-diff
 rereview are required before push.
+
+## Cancel-fence repair verification and checkpoint
+
+The repaired interaction contract passes 7/7, including the same-tick pending
+cancel and cross-row attempt. The complete related selection passes eight
+files / 54 tests in one exact-lock invocation; targeted component/test ESLint,
+translation parity at 23,600 English leaf keys with RU/AZ missing=0/extra=0,
+and diff whitespace pass. The temporary dependency link was removed after each
+command. Full local typecheck/build, real browser E2E, Android/Gradle, load,
+physical-device and human-pilot checks remain `NOT RUN` under host policy.
+
+The exact repair and its RED-review receipt were checkpointed as
+`93be88a5b1615a2f35ff002dc1a993dacb4ed9a2`. Fresh fetch kept base,
+merge-base and current `origin/main` at deployed
+`86fc1d2c23fead588b45c2e700e125a6d98bbe82`. The preliminary complete diff is
+nine paths / 89,448 binary-diff bytes with SHA-256
+`9a81ab3c750b880408974a9f9cf0835905fd346d83d62fa43c16cbe7df29f9f7`, below
+400 KB. This documentation receipt supersedes that preliminary identity; it
+must be checkpointed before a new clean identity and author-independent
+complete-diff rereview are valid.
