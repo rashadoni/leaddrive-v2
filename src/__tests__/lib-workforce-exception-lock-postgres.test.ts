@@ -118,7 +118,9 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
   let migrationProject: string | null = null
   let migrationRecoveryEvidence: {
     failedIndexLedgerRows: number
-    invalidIndexesAfterFailure: number
+    expectedUniqueFailureLedgerRows: number
+    indexArtifactsAfterRollback: number
+    exactReadyIndexes: number
     successfulRevisionMigrations: number
   } | null = null
 
@@ -421,10 +423,10 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       )
     }
 
-    // Force the exact online-index migration to leave its documented invalid
-    // artifact. The separately tracked expansion/backfill must remain applied,
-    // while the restartable index phase is resolved and replayed after the
-    // duplicate is removed.
+    // Force the exact bounded index transaction to fail on uniqueness. The
+    // separately tracked expansion/backfill must remain applied, while the
+    // complete index phase rolls back without a catalog artifact and can be
+    // resolved/replayed after the injected duplicate is removed.
     await observer.$executeRawUnsafe(`
       ALTER TABLE "${schema}"."workforce_exception_decisions"
       DISABLE TRIGGER workforce_exception_decisions_assign_case_revision
@@ -448,9 +450,19 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     if (expectedIndexFailure.status === 0) {
       throw new Error("Workforce revision index migration unexpectedly accepted a duplicate revision")
     }
+    const expectedIndexFailureOutput = `${expectedIndexFailure.stdout}\n${expectedIndexFailure.stderr}`
+    if (!expectedIndexFailureOutput.includes("23505")
+      || !expectedIndexFailureOutput.includes(
+        "workforce_exception_decisions_org_case_revision_key",
+      )) {
+      throw new Error(
+        `Workforce revision index migration failed for an unexpected reason\n${expectedIndexFailureOutput}`,
+      )
+    }
     const [failedState] = await observer.$queryRawUnsafe<Array<{
       failedIndexLedgerRows: bigint
-      invalidIndexesAfterFailure: bigint
+      expectedUniqueFailureLedgerRows: bigint
+      indexArtifactsAfterRollback: bigint
     }>>(`
       SELECT
         (SELECT count(*)
@@ -459,20 +471,32 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
             AND finished_at IS NULL
             AND rolled_back_at IS NULL) AS "failedIndexLedgerRows",
         (SELECT count(*)
-           FROM pg_index index_state
-           JOIN pg_class index_relation ON index_relation.oid = index_state.indexrelid
+           FROM "${schema}"."_prisma_migrations"
+          WHERE migration_name = $1
+            AND finished_at IS NULL
+            AND rolled_back_at IS NULL
+            AND logs LIKE '%23505%'
+            AND logs LIKE '%workforce_exception_decisions_org_case_revision_key%')
+          AS "expectedUniqueFailureLedgerRows",
+        (SELECT count(*)
+           FROM pg_class index_relation
            JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
           WHERE namespace.nspname = $2
-            AND index_relation.relname = 'workforce_exception_decisions_org_case_revision_key'
-            AND NOT index_state.indisvalid) AS "invalidIndexesAfterFailure"
+            AND index_relation.relname = ANY(ARRAY[
+              'workforce_exception_decisions_org_case_revision_key',
+              'workforce_exception_employee_responses_org_case_revision_idx'
+            ]::TEXT[])) AS "indexArtifactsAfterRollback"
     `, revisionIndexMigration, schema)
     migrationRecoveryEvidence = {
       failedIndexLedgerRows: Number(failedState.failedIndexLedgerRows),
-      invalidIndexesAfterFailure: Number(failedState.invalidIndexesAfterFailure),
+      expectedUniqueFailureLedgerRows: Number(failedState.expectedUniqueFailureLedgerRows),
+      indexArtifactsAfterRollback: Number(failedState.indexArtifactsAfterRollback),
+      exactReadyIndexes: 0,
       successfulRevisionMigrations: 0,
     }
     if (migrationRecoveryEvidence.failedIndexLedgerRows !== 1
-      || migrationRecoveryEvidence.invalidIndexesAfterFailure !== 1) {
+      || migrationRecoveryEvidence.expectedUniqueFailureLedgerRows !== 1
+      || migrationRecoveryEvidence.indexArtifactsAfterRollback !== 0) {
       throw new Error(`Unexpected Workforce revision failure state: ${JSON.stringify(migrationRecoveryEvidence)}`)
     }
 
@@ -515,9 +539,58 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     migrationRecoveryEvidence.successfulRevisionMigrations = Number(
       finalLedger.successfulRevisionMigrations,
     )
+    const [finalIndexes] = await observer.$queryRawUnsafe<Array<{
+      exactReadyIndexes: bigint
+    }>>(`
+      WITH expected("indexName", "isUnique", "columns") AS (
+        VALUES
+          ('workforce_exception_decisions_org_case_revision_key', TRUE,
+           ARRAY['organizationId', 'caseId', 'caseRevision']::TEXT[]),
+          ('workforce_exception_employee_responses_org_case_revision_idx', FALSE,
+           ARRAY['organizationId', 'caseId', 'observedCaseRevision']::TEXT[])
+      ), actual AS (
+        SELECT index_relation.relname AS "indexName",
+               index_state.indisunique AS "isUnique",
+               index_state.indisvalid AS "isValid",
+               index_state.indisready AS "isReady",
+               bool_and(index_state.indpred IS NULL AND index_state.indexprs IS NULL)
+                 AS "isPlain",
+               array_agg(attribute.attname ORDER BY indexed_column.ordinality)::TEXT[]
+                 AS "columns"
+          FROM pg_index index_state
+          JOIN pg_class index_relation ON index_relation.oid = index_state.indexrelid
+          JOIN pg_class table_relation ON table_relation.oid = index_state.indrelid
+          JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
+          CROSS JOIN LATERAL unnest(index_state.indkey::SMALLINT[])
+            WITH ORDINALITY AS indexed_column(attnum, ordinality)
+          JOIN pg_attribute attribute
+            ON attribute.attrelid = table_relation.oid
+           AND attribute.attnum = indexed_column.attnum
+         WHERE namespace.nspname = $1
+           AND index_relation.relname = ANY(ARRAY[
+             'workforce_exception_decisions_org_case_revision_key',
+             'workforce_exception_employee_responses_org_case_revision_idx'
+           ]::TEXT[])
+         GROUP BY index_relation.relname, index_state.indisunique,
+                  index_state.indisvalid, index_state.indisready
+      )
+      SELECT count(*) AS "exactReadyIndexes"
+        FROM expected
+        JOIN actual USING ("indexName", "isUnique", "columns")
+       WHERE actual."isValid" AND actual."isReady" AND actual."isPlain"
+    `, schema)
+    migrationRecoveryEvidence.exactReadyIndexes = Number(finalIndexes.exactReadyIndexes)
+    const finalRecoveryState = {
+      successfulRevisionMigrations: migrationRecoveryEvidence.successfulRevisionMigrations,
+      unresolvedRevisionMigrations: Number(finalLedger.unresolvedRevisionMigrations),
+      exactReadyIndexes: migrationRecoveryEvidence.exactReadyIndexes,
+    }
     if (migrationRecoveryEvidence.successfulRevisionMigrations !== revisionMigrationNames.length
-      || Number(finalLedger.unresolvedRevisionMigrations) !== 0) {
-      throw new Error(`Incomplete Workforce revision recovery ledger: ${JSON.stringify(finalLedger)}`)
+      || finalRecoveryState.unresolvedRevisionMigrations !== 0
+      || migrationRecoveryEvidence.exactReadyIndexes !== 2) {
+      throw new Error(
+        `Incomplete Workforce revision recovery: ${JSON.stringify(finalRecoveryState)}`,
+      )
     }
   }, 90_000)
 
@@ -672,7 +745,9 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
   it("applies the exact revision migration to a non-empty append-only ledger", async () => {
     expect(migrationRecoveryEvidence).toEqual({
       failedIndexLedgerRows: 1,
-      invalidIndexesAfterFailure: 1,
+      expectedUniqueFailureLedgerRows: 1,
+      indexArtifactsAfterRollback: 0,
+      exactReadyIndexes: 2,
       successfulRevisionMigrations: 4,
     })
     const [migrationRole] = await observer.$queryRawUnsafe<Array<{

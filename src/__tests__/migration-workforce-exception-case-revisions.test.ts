@@ -48,7 +48,12 @@ describe("Workforce C6 case-local lifecycle revision migration", () => {
   })
 
   it("uses separately tracked bounded phases without disabling append-only storage", () => {
-    for (const transactionalMigration of [expandMigration, backfillMigration, contractMigration]) {
+    for (const transactionalMigration of [
+      expandMigration,
+      backfillMigration,
+      indexMigration,
+      contractMigration,
+    ]) {
       expect(transactionalMigration).toContain("BEGIN;")
       expect(transactionalMigration.trimEnd().endsWith("COMMIT;")).toBe(true)
     }
@@ -62,10 +67,17 @@ describe("Workforce C6 case-local lifecycle revision migration", () => {
     expect(backfillMigration).toContain('WHERE "caseRevision" IS NULL')
     expect(backfillMigration).toContain("pg_has_role(session_user, relation_owner, 'MEMBER')")
     expect(backfillMigration).toContain("(to_jsonb(NEW) - 'caseRevision') = (to_jsonb(OLD) - 'caseRevision')")
-    expect(indexMigration).toContain('DROP INDEX CONCURRENTLY IF EXISTS "workforce_exception_decisions_org_case_revision_key"')
-    expect(indexMigration).toContain('CREATE UNIQUE INDEX CONCURRENTLY "workforce_exception_decisions_org_case_revision_key"')
-    expect(indexMigration).toContain('DROP INDEX CONCURRENTLY IF EXISTS "workforce_exception_employee_responses_org_case_revision_idx"')
-    expect(indexMigration).toContain('CREATE INDEX CONCURRENTLY "workforce_exception_employee_responses_org_case_revision_idx"')
+    expect(indexMigration).toContain("SET LOCAL lock_timeout = '3s'")
+    expect(indexMigration).toContain("SET LOCAL statement_timeout = '2min'")
+    expect(indexMigration).toContain("pg_relation_size('workforce_exception_decisions'::regclass) > 67108864")
+    expect(indexMigration).toContain("pg_relation_size('workforce_exception_employee_responses'::regclass) > 67108864")
+    expect(indexMigration).toContain("USING ERRCODE = '54000'")
+    expect(indexMigration).toContain('DROP INDEX IF EXISTS "workforce_exception_decisions_org_case_revision_key"')
+    expect(indexMigration).toContain('CREATE UNIQUE INDEX "workforce_exception_decisions_org_case_revision_key"')
+    expect(indexMigration).toContain('DROP INDEX IF EXISTS "workforce_exception_employee_responses_org_case_revision_idx"')
+    expect(indexMigration).toContain('CREATE INDEX "workforce_exception_employee_responses_org_case_revision_idx"')
+    expect(indexMigration).not.toMatch(/CREATE\s+(?:UNIQUE\s+)?INDEX\s+CONCURRENTLY/i)
+    expect(indexMigration).not.toMatch(/DROP\s+INDEX\s+CONCURRENTLY/i)
     expect(expandMigration).toContain('CHECK ("caseRevision" IS NOT NULL) NOT VALID')
     expect(contractMigration).toContain('VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_not_null_check"')
     expect(contractMigration).toContain('ALTER COLUMN "caseRevision" SET NOT NULL')
@@ -74,7 +86,7 @@ describe("Workforce C6 case-local lifecycle revision migration", () => {
 
     expect(expandMigration).toContain("CREATE TRIGGER workforce_exception_decisions_assign_case_revision")
     expect(backfillMigration).toContain('UPDATE "workforce_exception_decisions" decisions')
-    expect(indexMigration).toContain("CREATE UNIQUE INDEX CONCURRENTLY")
+    expect(indexMigration).toContain("CREATE UNIQUE INDEX")
     expect(contractMigration).toContain('VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_check"')
   })
 
