@@ -1021,3 +1021,30 @@ mobile physical-touch and high-density matrices on that same green SHA.
 Next: checkpoint and push the physical-touch evidence correction, then run and
 inspect a new exact-SHA desktop keyboard pass, RU/dark mobile physical-touch
 pass and full high-density matrix before closing Workstream 6.
+
+### Workstream 6 fifth self-audit and mobile overflow correction
+
+- Physical-touch checkpoint `2810f650e98fee4b1a4f37c17384b06429c80032`
+  passes desktop run `36297163496`. The inspected artifact records keyboard
+  retry, 7/7 passed flows, restored lifecycle fixture, zero static issue totals,
+  load p75 535 ms and CLS `0.0007984547556182484`.
+- RU/dark mobile run `36298128770` passes section validation, fixtures, build and
+  all 7/7 flows. It proves actual `playwright-touchscreen` activation, a true
+  center-point hit and a 144x44 recovery target; the fixture is restored. Static
+  evidence also records dark theme, `maxTouchPoints: 1`, zero runtime, axe,
+  custom accessibility, touch-target, environment or primary-work findings.
+- The mobile run fails closed solely on horizontal overflow. The inspected
+  screenshot and metrics identify `ticket-categories-new-root` from x=271 to
+  x=443: the 171 px RU create label and report action were forced into one row
+  inside the 311 px content area. The header action group now stacks full-width
+  below `sm` and returns to an auto-width row at `sm`; the detector, locale and
+  375 px viewport are unchanged.
+- Current resource inspection shows 16 GiB available memory, 331 GiB free disk
+  and zero pressure. The unchanged four-file anti-pattern scan has zero
+  findings, affected ESLint and `git diff --check` pass, and the strengthened
+  layout contract passes 9/9. No physical-touch, overflow or responsive gate
+  was relaxed.
+
+Next: checkpoint and push the mobile action-row correction, then rerun the
+exact-SHA desktop keyboard, RU/dark physical-touch mobile and full high-density
+matrix before closing Workstream 6.

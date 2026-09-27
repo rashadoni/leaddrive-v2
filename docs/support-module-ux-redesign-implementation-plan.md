@@ -1681,6 +1681,19 @@ Current verification evidence (2026-09-05):
   activation. Contract coverage locks both input paths. Because this changes
   the evidence runner, a new exact-SHA desktop/mobile/high trio remains
   mandatory rather than treating the earlier desktop artifact as final.
+- Checkpoint `2810f650e98fee4b1a4f37c17384b06429c80032` then passes exact-SHA
+  desktop run `36297163496`: one static cell and 7/7 flows are green, keyboard
+  retry is explicitly recorded, fixture restoration succeeds, all issue totals
+  are zero, load p75 is 535 ms and CLS is `0.0007984547556182484`. RU/dark
+  mobile run `36298128770` proves the new physical touch path on a measured
+  144x44 target with a successful center-point hit test; all 7/7 flows pass and
+  the fixture is restored. Its independent static gate fails closed only for
+  horizontal overflow: the two localized header actions shared one row and the
+  171 px create CTA ended at x=443 in a 375 px viewport. The action group now
+  stacks full-width below `sm` and retains the desktop row at `sm` and above.
+  The unchanged four-file scan passes with zero findings, affected ESLint and
+  `git diff --check` pass, and the layout contract passes 9/9. A final exact-SHA
+  desktop/mobile/high trio remains mandatory after this product correction.
 - CAT checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery

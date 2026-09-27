@@ -410,11 +410,11 @@ export default function TicketCategoriesPage() {
           <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           {!canWrite && <p className="mt-1 text-xs text-muted-foreground">{t("readOnlyHint")}</p>}
         </div>
-        <div className="flex gap-2 sm:shrink-0">
-          <Button variant="outline" asChild className="min-h-11 flex-1 px-4 sm:flex-none">
+        <div className="flex flex-col gap-2 sm:shrink-0 sm:flex-row">
+          <Button variant="outline" asChild className="min-h-11 w-full px-4 sm:w-auto">
             <Link href="/tickets?view=reports#ticketing-report"><BarChart3 />{t("viewServiceDesk")}</Link>
           </Button>
-          {canWrite && <Button data-testid="ticket-categories-new-root" className="min-h-11 flex-1 bg-orange-700 px-4 text-white hover:bg-orange-800 sm:flex-none" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
+          {canWrite && <Button data-testid="ticket-categories-new-root" className="min-h-11 w-full bg-orange-700 px-4 text-white hover:bg-orange-800 sm:w-auto" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
         </div>
       </header>
 
