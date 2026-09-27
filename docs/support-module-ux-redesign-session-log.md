@@ -2169,3 +2169,41 @@ desktop evidence gate before proceeding to mobile and the high matrix.
 
 Next: checkpoint and push Workstream 12 closure documentation, then restore and
 audit Workstream 13 Macros on top of the exact green tree.
+
+### Workstream 13 Macros restoration and self-audit
+
+- Restored historical product work `f53e88a8b` as current-tree checkpoint
+  `17d7208bb`. The compact list, checked mutations, delayed confirm/Undo,
+  organization-scoped categories, scoped assignee picker, readable action
+  timeline and transactional ticket application are present. Two conflicts
+  were resolved manually: the current Ticket Detail implementation was
+  preserved while the checked macro-application response semantics were
+  retained, and the current more legible shortcut label won over the older
+  10 px variant. Focused ESLint and 76/76 product assertions passed.
+- Restored recovery markers and its six fail-closed disposable outcomes while
+  retaining the newer shared workflow/browser/screenshot supersets. Added the
+  missing section-scoped Macros validation gate across the page, Ticket Detail,
+  APIs, helpers, evidence code and relevant focused/shared contracts.
+- Self-audit removed synthetic mobile interaction and the invalid historical
+  `Locator.isFocused()` calls. Retry, reset, editor/timeline/preview/save,
+  toggle/delete/Undo and shared-category paths now use real Playwright
+  touchscreen taps after 44x44 measurement and center-point DOM hit-testing on
+  non-desktop viewports; desktop uses keyboard activation and direct
+  `document.activeElement` focus checks. Tour dismissal now waits until the
+  overlay is actually hidden.
+- The page opts into Support contrast tokens, wraps header utilities, uses a
+  full-width mobile create action, preserves 44 px tour/help/Undo controls and
+  gives the switch a 44 px activation target around its 24 px track. Category
+  Undo is exercised from the visible page notice after its modal closes, then
+  the manager is reopened and focus restoration is checked.
+- Local gates are green: browser/flow JS syntax; workflow YAML; all 23 workflow
+  shell blocks under `bash -n`; three visible TSX files with 0 anti-pattern
+  findings; AZ/RU/EN parity at 23,599 keys; section-scoped ESLint; 120/120
+  assertions across 12 suites; post-adjustment 15/15 focused assertions; and
+  `git diff --check`. Full local TypeScript/build/browser are **NOT RUN** under
+  the documented Contabo workload/default-heap rule; GitHub Actions is the
+  mandatory execution environment.
+
+Next: checkpoint and push the Workstream 13 recovery/self-audit state, then run
+exact-SHA desktop keyboard/recovery, RU/dark mobile physical-touch and the full
+high-profile locale/theme/viewport matrix.

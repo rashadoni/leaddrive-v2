@@ -2865,7 +2865,7 @@ Closure evidence (2026-09-27):
 
 ## 20. Workstream 13 — Macros
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `13eaf2bb1`; browser/CI gates pending**
+**Status: IN PROGRESS — current-tree product checkpoint `17d7208bb`; recovery/self-audit checkpoint pending; browser/CI gates pending**
 **Route:** `/settings/macros`
 **Primary file:** `src/app/(dashboard)/settings/macros/page.tsx`
 
@@ -2986,6 +2986,38 @@ Additional recovery evidence (2026-09-06):
   keyboard/focus, physical-touch, reduced-motion, accessibility, performance
   and visual evidence therefore remains **NOT RUN**, and every SUPUX-MAC
   checkbox remains open.
+
+Current-tree restoration and self-audit (2026-09-28):
+
+- Product checkpoint `17d7208bb` restores the compact library, checked
+  mutations, transactional application, shared tenant categories, scoped
+  assignee picker and timeline editor on top of the completed Escalation Rules
+  tree. Conflict resolution preserved the current Ticket Detail surface while
+  retaining checked macro-application responses and the more legible shortcut
+  label. Focused ESLint and 76/76 product assertions were green before the
+  recovery layer was added.
+- Recovery markers and the six-outcome disposable flow are restored without
+  replacing newer shared workflow, browser or screenshot wrappers. A new
+  section-scoped `macros` gate covers the settings page, Ticket Detail consumer,
+  ticket-macro APIs/helpers, evidence runners and focused/shared contracts.
+- Self-audit replaced synthetic mobile clicks with measured 44x44 center-point
+  hit-tests and Playwright touchscreen taps for recovery, filter reset, editor
+  open/reorder/preview/save, toggle/delete/Undo and shared-category operations.
+  Desktop remains keyboard-driven and verifies dialog focus return against
+  `document.activeElement`; the invalid historical `Locator.isFocused()` calls
+  are removed. The tour overlay is confirmed hidden before activation.
+- The workspace now uses the audited Support primary-action token, wraps title
+  utilities, exposes 44 px tour/help/create/Undo controls and provides a 44 px
+  switch activation target around the 24 px track. Category Undo is verified
+  after the category manager closes, followed by keyboard/touch reopening and
+  focus-return validation.
+- Browser/flow JavaScript syntax, workflow YAML, all 23 workflow shell blocks,
+  the three-file anti-pattern scan (0 findings), AZ/RU/EN parity at 23,599 keys,
+  section-scoped ESLint, 120/120 assertions across 12 suites and the
+  post-adjustment 15/15 focused assertions are green. `git diff --check` is
+  green. Full local TypeScript/build/browser remain **NOT RUN** under the
+  documented Contabo workload/default-heap rule; exact-SHA GitHub Actions
+  evidence remains mandatory before any MAC checkbox closes.
 
 ## 21. Workstream 14 — Portal Users
 

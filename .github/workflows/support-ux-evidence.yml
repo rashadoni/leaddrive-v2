@@ -763,6 +763,66 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts
 
+      - name: Validate section-scoped Macros evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'macros') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/settings/macros,
+            src/app/(dashboard)/tickets/[id],
+            src/app/api/v1/ticket-macros,
+            src/lib/ticket-macros,
+            src/lib/inbox-channels.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-macros-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-macros-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/settings/macros/page.tsx \
+            src/app/\(dashboard\)/tickets/\[id\]/page.tsx \
+            src/app/api/v1/ticket-macros/route.ts \
+            src/app/api/v1/ticket-macros/\[id\]/route.ts \
+            src/app/api/v1/ticket-macros/\[id\]/apply/route.ts \
+            src/app/api/v1/ticket-macros/categories/route.ts \
+            src/lib/inbox-channels.tsx \
+            src/lib/ticket-macros/presentation.ts \
+            src/lib/ticket-macros/schema.ts \
+            src/__tests__/api-ticket-extras.test.ts \
+            src/__tests__/lib-inbox-channels.test.ts \
+            src/__tests__/macros-ux-contract.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/ticket-macro-presentation.test.ts \
+            src/__tests__/support-ux-macros-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-ticket-extras.test.ts \
+            src/__tests__/lib-inbox-channels.test.ts \
+            src/__tests__/macros-ux-contract.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/ticket-macro-presentation.test.ts \
+            src/__tests__/support-ux-macros-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
         run: |
