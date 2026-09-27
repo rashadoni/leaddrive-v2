@@ -1187,3 +1187,35 @@ desktop exact-SHA gate and continue only after its artifact is inspected green.
 Next: checkpoint and push the rendered product/runner corrections, rerun exact-
 SHA desktop evidence, inspect all six flows and the static cell, then run mobile
 physical-touch and full high-density matrices on the same SHA.
+
+### Workstream 7 responsive evidence-selector correction
+
+- Exact-SHA desktop run `36303939652` at
+  `8f836d1728ea70d552b6a4491810390e88c4e792` passes the dedicated section
+  gate, production build, one EN/light static cell and all 6/6 mutating flows.
+  Keyboard recovery and disposable cleanup are recorded; runtime, axe, custom
+  accessibility, touch, overflow, environment and primary-work issue totals
+  are zero. Load p75 is 476 ms, primary work begins at 295 px and CLS is
+  `0.0007984547556182484`. Manual desktop screenshot review is healthy.
+- RU/dark mobile run `36305026526` on that same SHA passes section validation,
+  fixtures, production build and its static cell, then fails closed in four
+  mutating outcomes. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36305026526`.
+  Static evidence proves dark theme, reduced motion, `maxTouchPoints: 1`, no
+  horizontal overflow and zero runtime/axe/custom-accessibility/touch issues;
+  physical touchscreen recovery passes on a hit-tested 144x44 target.
+- Artifact and screenshot audit show the product's mobile card layout is
+  healthy. Each failed outcome selected the first hidden desktop `<tr>` or its
+  hidden action button because the page intentionally renders desktop table and
+  mobile card representations with the same stable policy identifiers. The
+  flow now resolves policy rows and action buttons through explicit `:visible`
+  selectors for both responsive representations. Product layout and all flow
+  assertions remain unchanged.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and
+  negligible current pressure. Runner syntax, scoped ESLint, `git diff
+  --check` and the strengthened flow contract pass 5/5. No scenario, recovery,
+  cleanup, touch, keyboard or responsive requirement was weakened.
+
+Next: checkpoint and push the responsive selector correction, rerun RU/dark
+mobile evidence on the new exact SHA, inspect all 6/6 outcomes and cleanup, then
+run and inspect the complete high-density SLA matrix before closure.

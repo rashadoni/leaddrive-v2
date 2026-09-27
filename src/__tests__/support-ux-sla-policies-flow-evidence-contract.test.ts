@@ -62,6 +62,9 @@ describe("SLA Policies mutating evidence contract", () => {
     expect(flow).toContain("page.touchscreen.tap(point.x, point.y)")
     expect(flow).toContain('serviceWorkers: "block"')
     expect(flow).toContain("physicalTouchRetry")
+    expect(flow).toContain("function visiblePolicyRow")
+    expect(flow).toContain("function visiblePolicyAction")
+    expect(flow).toContain(":visible")
   })
 
   it("runs only when the SLA Policies scenario is selected", () => {

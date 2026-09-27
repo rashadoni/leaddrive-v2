@@ -83,6 +83,14 @@ function jsonFailure(message, status = 503) {
   return { status, contentType: "application/json", body: JSON.stringify({ success: false, error: message }) }
 }
 
+function visiblePolicyRow(page, policyId) {
+  return page.locator(`[data-testid='sla-policy-row'][data-policy-id='${policyId}']:visible`)
+}
+
+function visiblePolicyAction(page, policyId) {
+  return page.locator(`[data-testid='sla-policy-actions-${policyId}']:visible`)
+}
+
 async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
   await locator.waitFor({ state: "visible", timeout: 30_000 })
   if (viewportName === "desktop") {
@@ -196,7 +204,7 @@ try {
     await page.getByTestId("sla-policies-empty-create").waitFor({ state: "visible" })
     await page.unroute(collectionPattern, empty)
     await page.reload({ waitUntil: "domcontentloaded" })
-    await page.locator(`[data-testid='sla-policy-row'][data-policy-id='${protectedPolicyId}']`).first().waitFor({ state: "visible" })
+    await visiblePolicyRow(page, protectedPolicyId).waitFor({ state: "visible" })
     return { emptyStateObserved: true, createPathPresent: true, recoverySucceeded: true }
   })
 
@@ -246,10 +254,10 @@ try {
     await page.getByTestId("sla-policy-submit").click()
     await page.getByTestId("sla-policy-form").waitFor({ state: "hidden" })
     await page.getByTestId("sla-policies-refresh-error").waitFor({ state: "visible" })
-    if (await page.locator(`[data-testid='sla-policy-row'][data-policy-id='${protectedPolicyId}']`).count() === 0) throw new Error("sla_refresh_failure_discarded_snapshot")
+    if (await visiblePolicyRow(page, protectedPolicyId).count() === 0) throw new Error("sla_refresh_failure_discarded_snapshot")
     await page.unroute(collectionPattern, denyRefresh)
     await page.getByTestId("sla-policies-refresh-retry").click()
-    const created = page.getByTestId("sla-policy-row").filter({ hasText: "Disposable evidence policy" }).first()
+    const created = page.locator("[data-testid='sla-policy-row']:visible").filter({ hasText: "Disposable evidence policy" }).first()
     await created.waitFor({ state: "visible" })
     createdPolicyId = await created.getAttribute("data-policy-id") || ""
     if (!createdPolicyId) throw new Error("created_sla_policy_id_missing")
@@ -258,7 +266,7 @@ try {
 
   await recordStep(page, "dependency-delete-is-blocked", async () => {
     await openWorkspace(page)
-    await page.getByTestId(`sla-policy-actions-${protectedPolicyId}`).first().click()
+    await visiblePolicyAction(page, protectedPolicyId).click()
     const deleteAction = page.getByTestId(`sla-policy-delete-${protectedPolicyId}`)
     await deleteAction.waitFor({ state: "visible" })
     if (await deleteAction.getAttribute("aria-disabled") !== "true") throw new Error("linked_sla_policy_delete_not_blocked")
@@ -274,16 +282,16 @@ try {
       ? route.fulfill(jsonFailure("Synthetic SLA delete failure"))
       : route.continue()
     await page.route(itemPattern, denyDelete)
-    await page.getByTestId(`sla-policy-actions-${createdPolicyId}`).first().click()
+    await visiblePolicyAction(page, createdPolicyId).click()
     await page.getByTestId(`sla-policy-delete-${createdPolicyId}`).click()
     const confirmation = page.getByRole("dialog")
     await confirmation.locator("button").last().click()
     await confirmation.getByRole("alert").waitFor({ state: "visible" })
-    if (await page.locator(`[data-testid='sla-policy-row'][data-policy-id='${createdPolicyId}']`).count() === 0) throw new Error("sla_delete_failure_removed_policy")
+    if (await visiblePolicyRow(page, createdPolicyId).count() === 0) throw new Error("sla_delete_failure_removed_policy")
     await page.unroute(itemPattern, denyDelete)
     await confirmation.locator("button").last().click()
     await confirmation.waitFor({ state: "hidden" })
-    await page.locator(`[data-testid='sla-policy-row'][data-policy-id='${createdPolicyId}']`).first().waitFor({ state: "hidden" })
+    await visiblePolicyRow(page, createdPolicyId).waitFor({ state: "hidden" })
     return { deleteRollback: true, retrySucceeded: true, disposableFixtureRemoved: true }
   })
 } finally {
