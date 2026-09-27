@@ -26,6 +26,7 @@ import {
   type HistoryVisit,
 } from "@/lib/mtm/location-history"
 import { buildDayTrip } from "@/lib/mtm/day-trip"
+import { matchTrack } from "@/lib/mtm/map-matching"
 
 const TIME = /^\d{2}:\d{2}$/
 
@@ -461,6 +462,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     })
   }
 
+  // The track along the streets, from the self-hosted OSRM (map-matching.ts).
+  // Null when it is not there or not answering: the map keeps its straight
+  // lines. The same points as the map draws, so the two describe one day.
+  const matchedTrack = await matchTrack(points, { scope: `${auth.orgId}|${agentId}` }).catch(() => null)
+
   return NextResponse.json({
     success: true,
     data: {
@@ -509,6 +515,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         visitIds: visits.map((visit) => visit.id),
       },
       points,
+      matchedTrack,
       stops,
       gaps,
       anomalies,

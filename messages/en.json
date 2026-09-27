@@ -16155,9 +16155,12 @@
         "openVisit": "Open visit",
         "openCustomer": "Open customer",
         "straightLineNote": "The line joins GPS points in straight lines; the streets driven are not known.",
+        "roadsNote": "The line on the map follows the roads — the likely route; distances are straight lines between GPS fixes.",
         "evidence": "Stops and events in detail"
       },
       "legendTrack": "Path from GPS points",
+      "legendRoads": "Route along roads — the likely one, from GPS fixes",
+      "legendRaw": "GPS fixes joined straight",
       "legendGap": "No points — path unknown, the line only joins the edges of the gap",
       "legendPlan": "Planned route and its stops",
       "legendStop": "Stop (stayed in place)",
@@ -16239,7 +16242,8 @@
         "actual": "Actual track",
         "stops": "Stops",
         "visits": "Visits",
-        "gaps": "Gaps"
+        "gaps": "Gaps",
+        "roads": "Along roads"
       },
       "exportCsv": "Export day CSV",
       "replayTitle": "Day replay",
