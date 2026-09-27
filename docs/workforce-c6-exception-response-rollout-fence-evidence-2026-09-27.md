@@ -89,3 +89,30 @@ Reviewer-side API suites were `NOT RUN`: external dependency resolution stopped
 before collection and no author result was relabelled. This was an uncommitted
 preflight only; the receipt changes the snapshot, so a clean checkpoint and a
 fresh frozen complete-diff review remain mandatory.
+
+## Frozen complete-diff review GREEN
+
+The clean frozen identity was exact base/current `origin/main`/merge-base
+`000eb2532402cf4860afcb270ea8bfac6a6796d0` through head
+`6268f618a027e33beec1ca700a8fe3454eccf0e7`: 10 paths / 44,535 binary-diff
+bytes, SHA-256
+`c215ff2555c734ddacfc57aee1c2629e686a1d6e436d13aeedc2d11628e44fce`, below
+400 KB. The author-independent reviewer recomputed the identity and clean
+status at both ends, reread the complete diff from zero and returned GREEN
+with zero P0-P3 findings.
+
+The review covered the inherited PR #461 release receipt plus every runtime,
+test and current evidence path. It confirmed filter-before-mint, rejection
+before case/grant lookup, the post-lock mutable flag reread before a new
+create, no-new-append exact replay, tenant/principal/revision token binding,
+generic 404/409 containment, unchanged ACK/correction behavior and honest
+READ COMMITTED boundaries.
+
+Reviewer-side identity/clean checks, diff whitespace, append-only prefix
+integrity, pure-helper Vitest 3/3 and live PR #461 merge/check receipt passed.
+API Vitest, targeted ESLint, full typecheck/build, the real PostgreSQL gate,
+browser, Android, load, physical-device, pilot and repeated deploy/public smoke
+were `NOT RUN` reviewer-side and are not inferred. Only this evidence file,
+the roadmap and append-only session log may change after the verdict; an
+independent receipt-integrity check must prove all six reviewed runtime/test
+blobs unchanged before push.

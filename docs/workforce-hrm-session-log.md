@@ -797,3 +797,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
 - Precise stopping point: the preflight is GREEN, its append-only receipt is now in the uncommitted three-document delta, nothing is pushed and the verdict is not transferable to the future committed identity.
 - Next action: checkpoint the nine currently changed paths, verify clean status, compute the complete ten-path PR identity from exact `origin/main` and require a fresh author-independent frozen review from zero.
+
+## 2026-09-27 — C6 response rollout frozen complete-diff review GREEN
+
+- The clean frozen identity was base/current `origin/main`/merge-base `000eb2532402cf4860afcb270ea8bfac6a6796d0`, head `6268f618a027e33beec1ca700a8fe3454eccf0e7`, 10 paths / 44,535 binary-diff bytes and SHA-256 `c215ff2555c734ddacfc57aee1c2629e686a1d6e436d13aeedc2d11628e44fce`, below 400 KB.
+- A fresh author-independent reviewer recomputed the identity and clean status at both ends, reread the full diff from zero and returned GREEN with zero P0-P3 findings. Queue mint, preflight, post-lock/no-new-append, exact replay, tenant/principal/revision binding, generic containment, ACK/correction preservation and the READ COMMITTED evidence boundary were confirmed.
+- Reviewer identity/clean/diff checks, append-only prefix integrity, pure helper 3/3 and live PR #461 merge/check receipt passed. Reviewer API Vitest, targeted ESLint, typecheck/build, PostgreSQL, browser, Android, load, device, pilot and repeated deploy/public smoke were `NOT RUN` and are not inferred.
+- Author-side exact frozen-head verification passes all eight selected files / 59 tests, targeted ESLint for all six changed runtime/test files and diff whitespace. Full local typecheck/build/browser/Android/load/device/pilot remain `NOT RUN` under host policy.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or phase-gate credit is added.
+- Precise stopping point: frozen source/test/evidence head is independently GREEN; only this three-document review receipt is uncommitted and nothing is pushed.
+- Next action: checkpoint the receipt-only delta, independently prove all six reviewed runtime/test blobs unchanged, then push/open the sub-400 KB PR and require all five exact-head checks before merge.
