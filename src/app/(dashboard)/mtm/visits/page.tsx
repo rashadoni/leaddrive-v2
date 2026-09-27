@@ -137,7 +137,7 @@ export default function MtmVisitsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const t = useTranslations("mtmVisitsPage")
-  const tf = useTranslations("mtmFilters")
+  const tFilters = useTranslations("mtmFilters")
   const tf = useTranslations("mtmForms")
   const tw = useTranslations("mtmVisitWorkspace")
   const [visits, setVisits] = useState<MtmVisitRow[]>([])
@@ -738,7 +738,7 @@ export default function MtmVisitsPage() {
               a segmented control and four stat tiles stood between it and
               the rest; the numbers are one line under the row now. */}
           <MtmFilterBar testId="mtm-visits-filters">
-            <MtmFilterSearch value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tf("clearSearch")} />
+            <MtmFilterSearch value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
             <MtmFilterSelect testId="mtm-visits-range" label={t("rangeLabel")} value={historyRange} emptyValue="today" showValue allLabel={t("rangeToday")}
               options={HISTORY_RANGES.map((range) => ({ value: range.value, label: t(range.label) }))}
               onChange={(value) => {
@@ -752,7 +752,7 @@ export default function MtmVisitsPage() {
                 ...(["CHECKED_IN", "CHECKED_OUT"] as const).map((status) => ({ value: status, label: `${t(VISIT_FILTER_LABELS[status])} (${statusCounts[status] || 0})` })),
               ]}
               onChange={setActiveFilter} />
-            <MtmFilterSelect testId="mtm-visits-sort" label={tf("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
+            <MtmFilterSelect testId="mtm-visits-sort" label={tFilters("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
               options={[
                 { value: "date_desc", label: t("sortDateDesc") },
                 { value: "date_asc", label: t("sortDateAsc") },
