@@ -160,3 +160,44 @@ typecheck/build, dependency-backed tests/lint/Prisma/RLS, browser, Android,
 load and physical/pilot checks were `NOT RUN`; the primary's local checks and
 mandatory exact-head CI remain separate evidence. This receipt-only delta must
 receive its own integrity review before push.
+
+## Exact-head CI, production release and public smoke
+
+Receipt-integrity review kept the source-reviewed writer and tests unchanged.
+The final PR head was
+`0fec9ebc9075a3078cbc0de4c77ae17f6d68957a`; its complete diff from exact
+base `4e5afe8da053c187e5070fbedd157ade9382817b` was nine paths / 65,408
+binary-diff bytes with SHA-256
+`c46490328e8e5d930a8587618c4c760316dc54dde0330f3f3663d9ee7ecc382c`.
+The receipt-only delta was three documentation paths / 8,829 bytes with
+SHA-256 `bb6c4b6de993556a29b088c888dd11a798d558956d8c850103c72b0fd540f1e0`.
+An author-independent read-only integrity review returned GREEN with zero
+P0-P3 findings and confirmed the reviewed runtime/test paths were unchanged.
+
+PR #457 exact-head run `36308882767` passed all five required contexts:
+`pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`.
+`static-checks` completed in 14m11s and the exact disposable-PostgreSQL file
+passed all six cases, including the observed advisory wait, concurrent
+contiguous appends, exact concurrent replay, FORCE RLS/application-role
+boundaries and unchanged decision links. Full TypeScript compile completed in
+17m18s. The normal PR production build was skipped and was not required.
+
+PR #457 merged normally at `2026-09-27T09:36:08Z` as `main` SHA
+`99b8ce27077352951769ce4a8c60cf2459e36ebf`. Deploy run `36309895996`
+completed GREEN at `2026-09-27T09:54:13Z` through the documented GitHub
+`main` route to `13.140.132.245:/opt/leaddrive-v2`. Quality/security gates,
+the SHA-stamped standalone build, immutable artifact publication, atomic
+production deploy, built-in post-deploy smoke and artifact-retention cleanup
+all passed.
+
+Independent no-cache public reads returned `{"ok":true}` from
+`/api/v1/ping` and
+`{"sha":"99b8ce270773","artifactSha":"99b8ce27077352951769ce4a8c60cf2459e36ebf","builtAt":"2026-09-27T09:39:13Z"}`
+from `/api/v1/public/build-info`. The artifact SHA exactly matches merged
+`main`. No Azure, retired owner/host, direct worktree copy or manual production
+deploy path was used.
+
+Full browser E2E, Android/Gradle, load, physical-device and human-pilot checks
+remain `NOT RUN`. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9
+99%; the released writer remains uninvoked and adds no activation, decision
+link, terminal behavior, UI, task credit or phase-gate credit.
