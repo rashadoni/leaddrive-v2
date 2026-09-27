@@ -818,3 +818,14 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or phase-gate credit is added.
 - Precise stopping point: the two-file type-boundary/test repair plus three receipt documents are uncommitted; independent read-only preflight is in progress, PR #462 remains open and unmergeable.
 - Next action: resolve any preflight finding, checkpoint the repaired paths, freeze a new exact identity, require a fresh zero-finding independent review and push it to trigger all five replacement checks.
+
+## 2026-09-27 — PR #462 type repair integrated with current main
+
+- Independent preflight of the five-file uncommitted repair returned GREEN with zero P0-P3 findings. It confirmed that the string signature fixes the canonical writer boundary without changing the exact response-code deny, and that unknown codes still cannot pass token/input allowlisting plus post-lock workbench lifecycle validation.
+- The repair/evidence was checkpointed as `a38aa6b66d11a8acfc192f222c9ff34fdb63db63`. Before freezing, fresh fetch found `origin/main` had advanced to `bc126735cc316cfc7f206aae839288884d5a9d5d` through PR #456's unrelated 19-path MTM compact-filter change.
+- There were zero path overlaps. Current main was merged conflict-free as `4ee1655fe1c0c547923b9e7f3c6cd06c31361bc2`; no foreign path was edited manually.
+- The integrated tree passes the full eight-file Workforce selection at 59/59, targeted ESLint for all six changed runtime/test files and current-main diff whitespace. Dependency links were removed after the command.
+- Full local typecheck/build/browser/Android/load/device/pilot remain `NOT RUN`. The old CI run and all pre-integration frozen identities do not transfer; five replacement checks and fresh complete-diff review are mandatory.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
+- Precise stopping point: repaired source is integrated and verified on current main; only this three-document integration receipt is uncommitted, PR #462 still points to the older failed head.
+- Next action: checkpoint this receipt, freeze the clean current-main identity, require a fresh zero-finding review from zero, then push the replacement head and rerun every required check.

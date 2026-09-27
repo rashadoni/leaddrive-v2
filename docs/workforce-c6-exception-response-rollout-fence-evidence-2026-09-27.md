@@ -136,3 +136,20 @@ of concerns. Core API/helper coverage passes 27/27, targeted ESLint and diff
 whitespace pass. The failed check and every previous review/check identity are
 not transferable; a new checkpoint, frozen independent review and all five
 replacement exact-head checks are mandatory.
+
+## Repair integrated with current main
+
+Before freezing the repaired head, a fresh fetch showed `origin/main` had
+advanced from the PR #461 merge to
+`bc126735cc316cfc7f206aae839288884d5a9d5d` through PR #456's unrelated MTM
+compact-filter work. Its 19 changed paths had no overlap with this slice. The
+current main was merged without conflict as
+`4ee1655fe1c0c547923b9e7f3c6cd06c31361bc2` rather than reviewing or rerunning
+CI on a stale base.
+
+On that exact integrated source tree, all eight selected Workforce files pass
+59/59 tests, targeted ESLint for the six changed runtime/test files passes and
+the current-main diff whitespace check passes. Full local typecheck/build and
+the other heavy gates remain `NOT RUN`; a clean documentation checkpoint,
+fresh frozen review from current main and all five replacement CI checks remain
+mandatory.
