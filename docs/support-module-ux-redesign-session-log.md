@@ -1341,3 +1341,26 @@ evidence.
 Next: checkpoint and push the nested-modal interaction correction, rerun the
 same exact-SHA desktop mutating gate, inspect all 7/7 outcomes and cleanup, then
 continue with mobile and high-density evidence.
+
+### Workstream 8 Radix pointer-scope correction
+
+- Nested-modal checkpoint `782211eb8c3f99d1511d8832a0e5920b08d452e1`
+  again passes the dedicated 209-assertion gate, fixtures and production build
+  in exact-SHA run `36311342955`. Static evidence remains fully clean, with load
+  p75 526 ms and CLS `0.0007984547556182484`; the first three desktop outcomes
+  still pass. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36311342955`.
+- The changed hit target proves the prior fix worked as intended: Sheet content
+  no longer intercepts the lifecycle confirmation. The remaining interceptor is
+  the Radix Sheet overlay. Radix modal scope disables pointer input on `body`,
+  and the custom Dialog root did not explicitly opt back in, so its portalled
+  z-60 layer was visible but not hit-testable above the z-50 overlay.
+- The shared custom Dialog root now explicitly uses `pointer-events-auto`.
+  Together with the lifecycle portal and inert background Sheet, this makes the
+  visible topmost modal the sole hit-testable surface without changing overlay,
+  focus, dismissal or any flow assertion. Resource inspection shows 16 GiB
+  available memory, 331 GiB free disk and zero pressure; scoped ESLint, diff
+  check and the affected UX/flow contracts pass 12/12.
+
+Next: checkpoint and push the pointer-scope correction, rerun the unchanged
+desktop gate on the new exact SHA and inspect every outcome and cleanup field.

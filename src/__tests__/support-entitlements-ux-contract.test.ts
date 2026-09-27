@@ -57,6 +57,7 @@ describe("support entitlements UX contract", () => {
 
   it("uses an explicit lifecycle dialog with impact, reason, audit and confirmation", () => {
     const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
+    const dialog = source("src/components/ui/dialog.tsx")
     const route = source("src/app/api/v1/entitlements/[id]/route.ts")
     expect(page).toContain("function LifecycleDialog")
     expect(page).toContain("lifecycleImpactTitle")
@@ -67,6 +68,7 @@ describe("support entitlements UX contract", () => {
     expect(page).toContain("interactionBlocked={Boolean(lifecycleTarget)}")
     expect(page).toContain('inert={interactionBlocked ? true : undefined}')
     expect(page).toContain('interactionBlocked ? "pointer-events-none" : ""')
+    expect(dialog).toContain("pointer-events-auto fixed inset-0 z-[60]")
     expect(page).not.toContain("window.prompt")
     expect(page).not.toContain("window.confirm")
     expect(route).toContain("reason: parsed.data.reason?.trim()")

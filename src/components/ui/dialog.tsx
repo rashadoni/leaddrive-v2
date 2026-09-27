@@ -214,7 +214,7 @@ export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[
   return (
     <DialogA11yContext.Provider value={a11yContext}>
       <div
-        className={`fixed inset-0 z-[60] m-0 flex justify-center overflow-y-auto overscroll-contain ${fullscreenRootClassName}`}
+        className={`pointer-events-auto fixed inset-0 z-[60] m-0 flex justify-center overflow-y-auto overscroll-contain ${fullscreenRootClassName}`}
         data-dialog-root=""
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) onOpenChange(false)

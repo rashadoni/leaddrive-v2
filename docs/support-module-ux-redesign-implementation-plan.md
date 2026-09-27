@@ -2082,6 +2082,13 @@ Additional recovery evidence (2026-09-06):
   pointer-blocked only for the lifetime of the nested lifecycle dialog. Scoped
   lint/diff and both affected contracts pass 12/12; all seven exact outcomes
   and cleanup remain mandatory in the replacement hosted run.
+- Exact-SHA run `36311342955` at `782211eb8` passes the same section/build/static
+  gates and moves the browser interceptor from Sheet content to the separate
+  Radix overlay, proving the inert-background correction. Radix's modal scope
+  disables body pointer input, so the visible portalled custom dialog now
+  explicitly opts its z-60 root back into pointer events. The nested lifecycle
+  dialog remains the sole interactive surface; scoped lint/diff and the two
+  affected contracts remain green at 12/12, with no assertion change.
 
 ## 16. Workstream 9 — Entitlement Templates
 
