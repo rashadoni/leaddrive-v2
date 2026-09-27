@@ -58,39 +58,53 @@ What was never deliberate is how *often* it ran. `pull_request` fires
 a dozen macOS runs. With several agents pushing in parallel — 81 `pull_request`
 events in 24 hours — the allowance was gone before noon.
 
-## Where the storage goes
+## Where the storage goes, and where it does not
 
 Minutes are a flow; storage is a stock. That difference is what made the alert
 of 2026-09-10 confusing — GitHub reported 100% of the Actions storage allowance
-consumed on an account that had not built anything for two days.
+consumed on an account that had not built anything for two days. Every
+production release uploads `leaddrive-prod-<sha>.tar.gz`, roughly 400 MB, and it
+stays for its full `retention-days` whether or not anyone touches the repository
+again. What was live on 2026-09-10:
 
-Every production release uploads `leaddrive-prod-<sha>.tar.gz`, roughly 400 MB,
-and it stays for its `retention-days` whether or not anyone touches the
-repository again. What was measured on 2026-09-10:
+| Account | Repositories | Live artifacts | Period |
+|---|---|---:|---|
+| `rashadrahimov` (pre-migration) | **private** | 16.7 GB / 449 | Aug 11 – Sep 8 |
+| `rashadoni` (current) | **public** | 13.3 GB / 33 | Sep 9 – Sep 10 |
 
-| Account | Live artifacts (all repos) | Period |
-|---|---:|---|
-| `rashadrahimov` (pre-migration) | 16.7 GB / 449 — of which `leaddrive-v2` 15.0 GB / 349 | Aug 11 – Sep 8 |
-| `rashadoni` (post-migration) | 13.3 GB / 33, all `leaddrive-v2` releases | Sep 9 – Sep 10 |
+**Visibility is the whole story, and it is easy to get backwards.** Actions
+storage for public repositories is neither billed nor counted against the
+account allowance. Read off the `rashadoni` billing page on 2026-09-10, while
+those 13.3 GB of artifacts were sitting in the repository:
 
-The included allowance is 2 GB; the overage rate is $0.25 per GB-month. The old
-account had simply stopped emptying. The new one was filling at ~7.6 GB/day —
-nineteen releases a day, because several agent sessions merge in parallel — and
-at thirty days' retention that converges on ~230 GB, or roughly $57/month to
-retain build output nobody reads.
+> Actions storage — **0 GB used / 0.5 GB included**
+> Billable usage **$0** ($25.93 consumed, $26.11 discounts)
+> "Applicable discounts cover Actions usage in public repositories and included
+> usage for Actions minutes and storage."
 
-**A rollback horizon must be counted in releases, not in days.** Days looked
-safe when a release was a daily event; it is not a bound at all when the release
-rate is set by other people's merges. The `artifact_retention` job in
-`deploy.yml` keeps the newest twenty and deletes the rest after every successful
-deploy, so the shelf holds ~8 GB no matter how busy the day was. The horizon is
-also not the only one: `scripts/server-deploy.sh` keeps `MAX_BACKUPS=5`
-unpacked releases on production itself, and a rollback to those never reaches
-GitHub.
+So the alert was real but it belonged to the *other* account: the
+pre-migration one, whose repositories are private, where storage does count
+against 2 GB and overage is billed at $0.25 per GB-month. Its 16.4 GB of
+artifacts were deleted on 2026-09-10; they served nothing, because the rollback
+path resolves `${{ github.repository }}` and can only reach the current
+repository.
 
-One billing subtlety worth knowing before deleting anything in a panic: storage
-is billed in GB-hours already accrued. Deleting frees the shelf going forward,
-but does not remove what the current cycle has already counted.
+A trimming job was briefly added to `deploy.yml` on 2026-09-10 (PR #61) that
+kept the newest twenty releases, on the arithmetic that nineteen releases a day
+at thirty days' retention converges on ~230 GB ≈ $57/month. The arithmetic was
+right and the premise was wrong: on a public repository that is $0. It was
+removed the same day, and the thirty-day rollback horizon restored — trading a
+safety margin for a saving that does not exist is a bad trade even when the
+margin is rarely used.
+
+Two facts worth keeping, since both survive the correction:
+
+- Storage is billed in GB-hours **already accrued**. On an account where it is
+  billed, deleting frees the shelf going forward but does not remove what the
+  current cycle has counted.
+- The GitHub artifact is not the only rollback path. `scripts/server-deploy.sh`
+  keeps `MAX_BACKUPS=5` unpacked releases on production itself, and a rollback
+  to those never reaches GitHub at all.
 
 ## The rules
 
@@ -113,11 +127,11 @@ but does not remove what the current cycle has already counted.
    superseded pushes kept paid runners busy until they finished on their own.
 5. **Do not remove these guards** to make a check run sooner. If a gate is in the
    way, say so and ask.
-6. **Bound artifact retention by count, not by calendar.** Anything that uploads
-   a large artifact on every merge must have a keeper that trims it to the
-   newest N; `retention-days` alone is a ceiling for an idle repository, not a
-   bound for a busy one. Raising N is a one-digit change — silently widening it
-   to "30 days" is not.
+6. **Check visibility before optimising storage.** Actions storage on a public
+   repository is free and does not count against the allowance, so shortening
+   retention there buys nothing and costs rollback horizon. Read the number off
+   the billing page — "0 GB used" next to 13 GB of live artifacts is the whole
+   answer — rather than multiplying artifact size by release rate.
 
 ## What is deliberately not done
 
