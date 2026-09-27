@@ -57,6 +57,9 @@ describe("skill routing UX contract", () => {
     expect(agents).toContain("skillsRolledBack")
     expect(queues).toContain("queueToggleRolledBack")
     expect(picker).toContain("aria-pressed={isSel}")
+    expect(agents).toContain('className="peer absolute inset-0 h-11 w-11 cursor-pointer opacity-0"')
+    expect(queues).toContain("routingSwitchClass")
+    expect(queues).toContain("relative h-11 w-11")
   })
 
   it("distinguishes partial fetch failure from empty agents, queues and filters", () => {

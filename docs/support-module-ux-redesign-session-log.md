@@ -1809,3 +1809,38 @@ exact-SHA Skill Routing desktop mutation sample, mobile physical-touch sample
 and the full manager/admin × locale × theme × viewport high matrix. Close
 Workstream 10 only after all required runs and manual screenshot review are
 green.
+
+### Workstream 10 first desktop evidence failure and remediation
+
+- Exact-SHA EN/light desktop run `36334959005` on `2279335a7` passed the new
+  section validation gate, isolated fixture seed and mandatory production-mode
+  build. The disposable flow passed all 6/6 outcomes: both retry controls used
+  keyboard activation, partial data preserved its unaffected source, the
+  50-queue/100-agent density view had no horizontal overflow, optimistic queue
+  and two-agent skill mutations rolled back, the retry succeeded, and the
+  disposable queue/agent fixture state was restored.
+- The static manager cell failed solely on Axe `color-contrast`: the default
+  primary action rendered white 14 px text on `#e9560c` at 3.61:1 instead of
+  4.5:1. The otherwise healthy cell had zero custom accessibility, touch,
+  overflow, environment or primary-work failures; load p75 was 542 ms, filter
+  p75 37 ms, interaction p75 16 ms and CLS `0.00277125157904396`. The retained
+  artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36334959005`.
+- Manual screenshot review confirms a clear queue-first master/detail layout,
+  compact coverage summary, primary work above the fold and no clipping. The
+  evidence also reported a 36x20 switch plus four 16x16 native checkboxes as
+  intrinsically small; desktop does not count those as hard failures, but the
+  upcoming touch cell would. Remediation changes the orange actions to the
+  high-contrast foreground token and preserves the compact visual controls
+  inside actual 44x44 interactive switch/checkbox hitboxes with explicit focus
+  treatment. It does not relax Axe or touch thresholds.
+- Post-fix focused anti-pattern scan is green at 0 findings, focused ESLint is
+  green, and the UX plus disposable-flow contracts pass 12/12. The first
+  contract rerun correctly rejected Tailwind `translate-x-*` because the legacy
+  palette guard reads its `slate-` substring; the redundant wrapper transform
+  was removed, leaving the Radix thumb's existing state transform, and the
+  replacement contract run passed.
+
+Next: checkpoint and push the contrast/hitbox remediation, then run a fresh
+exact-SHA EN/light desktop mutation sample. Only after it is green and manually
+reviewed, run RU/dark mobile physical-touch evidence and the full high matrix.

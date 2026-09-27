@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
-import { AlertCircle, CheckCircle2, ChevronDown, Loader2, Search, Users } from "lucide-react"
+import { AlertCircle, Check, CheckCircle2, ChevronDown, Loader2, Search, Users } from "lucide-react"
 
 import { SkillPicker } from "@/components/skill-picker"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,29 @@ import {
 } from "@/lib/skill-routing/presentation"
 
 type AgentFilter = "all" | "eligible" | "uncovered" | "unavailable"
+
+function RoutingCheckbox({ checked, onChange, label, testId }: {
+  checked: boolean
+  onChange: () => void
+  label: string
+  testId: string
+}) {
+  return (
+    <label className="relative flex h-11 w-11 shrink-0 items-center justify-center">
+      <input
+        type="checkbox"
+        className="peer absolute inset-0 h-11 w-11 cursor-pointer opacity-0"
+        checked={checked}
+        onChange={onChange}
+        aria-label={label}
+        data-testid={testId}
+      />
+      <span aria-hidden="true" className="pointer-events-none flex h-4 w-4 items-center justify-center rounded border bg-background peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2">
+        {checked && <Check className="h-3 w-3 text-foreground" />}
+      </span>
+    </label>
+  )
+}
 
 export function AgentSkillsManager({
   agents,
@@ -143,7 +166,7 @@ export function AgentSkillsManager({
             <SkillPicker value={bulkSkills} onChange={setBulkSkills} options={availableSkills} emptyHint={t("noQueueSkills")} ariaLabel={t("bulkSkillsLabel")} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" className="min-h-11" onClick={() => void handleBulk("add")} disabled={bulkSkills.length === 0 || savingIds.length > 0} data-testid="routing-agent-bulk-add">{t("bulkAdd", { count: selectedIds.length })}</Button>
+            <Button type="button" className="min-h-11 text-foreground" onClick={() => void handleBulk("add")} disabled={bulkSkills.length === 0 || savingIds.length > 0} data-testid="routing-agent-bulk-add">{t("bulkAdd", { count: selectedIds.length })}</Button>
             <Button type="button" variant="outline" className="min-h-11" onClick={() => void handleBulk("remove")} disabled={bulkSkills.length === 0 || savingIds.length > 0} data-testid="routing-agent-bulk-remove">{t("bulkRemove", { count: selectedIds.length })}</Button>
             <Button type="button" variant="ghost" className="min-h-11" onClick={() => setSelectedIds([])}>{t("clearSelection")}</Button>
           </div>
@@ -160,7 +183,7 @@ export function AgentSkillsManager({
         <div className="p-6 text-center" data-testid="routing-agents-no-results"><p className="text-sm font-medium">{t("noAgentResults")}</p><Button variant="ghost" className="mt-2 min-h-11" onClick={() => { setQuery(""); setFilter("all") }} data-testid="routing-agents-reset">{t("resetFilters")}</Button></div>
       ) : (
         <div>
-          {canWrite && <label className="flex min-h-11 items-center gap-3 border-b px-3 text-xs text-muted-foreground"><input type="checkbox" className="h-4 w-4" checked={allVisibleSelected} onChange={() => setSelectedIds(allVisibleSelected ? selectedIds.filter((id) => !visibleAgents.some((agent) => agent.id === id)) : Array.from(new Set([...selectedIds, ...visibleAgents.map((agent) => agent.id)])))} data-testid="routing-agents-select-visible" />{t("selectVisible", { count: visibleAgents.length })}</label>}
+          {canWrite && <div className="flex min-h-11 items-center gap-1 border-b px-1 pr-3 text-xs text-muted-foreground"><RoutingCheckbox checked={allVisibleSelected} onChange={() => setSelectedIds(allVisibleSelected ? selectedIds.filter((id) => !visibleAgents.some((agent) => agent.id === id)) : Array.from(new Set([...selectedIds, ...visibleAgents.map((agent) => agent.id)])))} label={t("selectVisible", { count: visibleAgents.length })} testId="routing-agents-select-visible" />{t("selectVisible", { count: visibleAgents.length })}</div>}
           <div className="divide-y">
             {visibleAgents.map((agent) => {
               const eligible = selectedQueue ? agentEligibleForQueue(agent, selectedQueue) : false
@@ -169,7 +192,7 @@ export function AgentSkillsManager({
               return (
                 <article key={agent.id} className="p-3" data-testid="routing-agent-row" data-agent-id={agent.id}>
                   <div className="flex min-h-11 items-start gap-3">
-                    {canWrite && <label className="flex h-11 w-8 shrink-0 items-center justify-center"><span className="sr-only">{t("selectAgentNamed", { name: agent.name })}</span><input type="checkbox" className="h-4 w-4" checked={selectedIds.includes(agent.id)} onChange={() => setSelectedIds((current) => current.includes(agent.id) ? current.filter((id) => id !== agent.id) : [...current, agent.id])} data-testid={`routing-agent-select-${agent.id}`} /></label>}
+                    {canWrite && <RoutingCheckbox checked={selectedIds.includes(agent.id)} onChange={() => setSelectedIds((current) => current.includes(agent.id) ? current.filter((id) => id !== agent.id) : [...current, agent.id])} label={t("selectAgentNamed", { name: agent.name })} testId={`routing-agent-select-${agent.id}`} />}
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><h3 className="truncate text-sm font-medium">{agent.name}</h3><span className="text-xs text-muted-foreground">{t.has(`roleLabels.${agent.role}`) ? t(`roleLabels.${agent.role}`) : t("roleLabels.other")}</span>{selectedQueue && <span className="text-xs">{eligible ? t("eligible") : t("notEligible")}</span>}{(!agent.isActive || !agent.isAvailable) && <span className="text-xs text-muted-foreground">{agent.isActive ? t("unavailable") : t("inactiveAgent")}</span>}{saving && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-label={t("savingSkills")} />}</div>
                       <p className="mt-1 truncate text-xs text-muted-foreground">{agent.skills.length > 0 ? normalizeRoutingSkills(agent.skills).join(", ") : t("agentNoSkills")}</p>

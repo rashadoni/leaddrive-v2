@@ -2485,6 +2485,17 @@ Current-tree restoration (2026-09-26):
   it is not retried with a larger heap under the Contabo workload contract.
   Production build and exact-SHA desktop/mobile/high browser evidence remain
   mandatory in GitHub Actions before any RTE checkbox can close.
+- First desktop exact-SHA run `36334959005` on `2279335a7` passed the dedicated
+  section gate, fixture seed, production build and all 6/6 disposable outcomes,
+  including keyboard recovery, rollback and fixture restoration. Static browser
+  evidence correctly failed on one serious Axe contrast finding: white 14 px
+  text over the primary orange action measured 3.61:1. Its metrics also exposed
+  five intrinsically small switch/checkbox elements that would fail the mobile
+  cell even though their wrapping labels were tall. The replacement uses
+  foreground text on orange actions and preserves compact switch/checkbox
+  visuals inside real 44x44 interactive hitboxes. Focused lint, anti-pattern
+  scan and 12/12 related contract assertions are green; replacement exact-SHA
+  desktop and mobile evidence is pending.
 
 ## 18. Workstream 11 — Agent Calendar
 
