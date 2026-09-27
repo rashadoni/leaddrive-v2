@@ -15252,6 +15252,13 @@
   "mtmAnalytics": {
     "title": "Analitika"
   },
+    "mtmFilters": {
+      "more": "Daha çox filtr",
+      "reset": "Sıfırla",
+      "clearSearch": "Axtarışı təmizlə",
+      "view": "Görünüş",
+      "found": "Tapıldı: {count}"
+    },
     "mtmTeamResults": {
       "period": "Dövr",
       "preset": {
