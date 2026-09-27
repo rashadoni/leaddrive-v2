@@ -2256,6 +2256,26 @@ Additional recovery evidence (2026-09-06):
   `startup_failure` with zero jobs created. Consequently the cross-viewport,
   cross-locale, theme, accessibility, touch, performance and visual evidence
   is still **NOT RUN**, and all SUPUX-TMP checkboxes remain open.
+- Current-tree restoration on 2026-09-27 is checkpointed as product commit
+  `5115a0234` and recovery commit `c499a824e`. Product changes merged cleanly
+  with the current AZ/RU/EN supersets; API behavior already present in newer
+  history was not duplicated. Recovery conflicts preserved the current shared
+  screenshot wrapper, ready selectors and later-workstream runners, while the
+  global fail-closed result now also includes
+  `entitlement_templates_flow_status`.
+- A dedicated `entitlement-templates` section gate now runs syntax, the scoped
+  three-file anti-pattern scan, i18n, source lint, API/draft/runtime/UX and
+  shared evidence/performance contracts for non-`all` dispatches. Self-audit
+  caught one missing focus-visible state on the support-level tabs; the tabs
+  now expose an explicit ring and the static contract locks it in. The scan is
+  green at zero findings, translation parity passes at 23,599 keys, scoped
+  ESLint/diff pass and 11 suites pass 162/162 assertions.
+- Mobile evidence no longer claims touch capability while activating Retry by
+  keyboard. Desktop retains keyboard activation; touch viewports require a
+  scroll-aware, measured 44x44 hit target and real Playwright touchscreen tap,
+  with service workers blocked for deterministic recovery. Hosted production
+  build and exact-SHA desktop/mobile/high browser evidence remain mandatory;
+  no browser or assertion threshold was relaxed.
 
 ## 17. Workstream 10 — Skill Routing
 

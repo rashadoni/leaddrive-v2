@@ -74,6 +74,7 @@ describe("entitlement templates UX contract", () => {
     expect(page).toContain("sm:grid-cols-4")
     expect(page).toContain("xl:grid-cols-")
     expect(page).toContain("min-h-11")
+    expect(page).toContain("focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")
     expect(page).toContain("motion-reduce:transition-none")
     expect(page).toContain("motion-reduce:animate-none")
     expect(page).not.toMatch(/text-(?:2xl|3xl|4xl)/)

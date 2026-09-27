@@ -417,7 +417,7 @@ export default function EntitlementTemplatesPage() {
           const selected = level === activeLevel
           const stored = draftLevels.includes(level) || (selected && isDirty)
           return (
-            <button key={level} type="button" role="tab" aria-selected={selected} className={`min-h-12 rounded-lg border px-3 py-2 text-left text-sm transition-colors motion-reduce:transition-none ${selected ? "border-foreground bg-muted/30" : "hover:bg-muted/30"}`} onClick={() => selectTemplate(level)} disabled={loading} data-testid={`entitlement-template-tab-${level}`} data-draft={stored ? "true" : "false"}>
+            <button key={level} type="button" role="tab" aria-selected={selected} className={`min-h-12 rounded-lg border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${selected ? "border-foreground bg-muted/30" : "hover:bg-muted/30"}`} onClick={() => selectTemplate(level)} disabled={loading} data-testid={`entitlement-template-tab-${level}`} data-draft={stored ? "true" : "false"}>
               <span className="flex items-center justify-between gap-2"><span className="font-medium">{te(`supportLevels.${level}`)}</span><span className="text-xs text-muted-foreground">{template?.definitions.length ?? 0}</span></span>
               <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">{stored ? <><Clock3 className="h-3 w-3" />{t("draft")}</> : template?.isActive ? <><CheckCircle2 className="h-3 w-3" />{t("active")}</> : t("inactive")}</span>
             </button>

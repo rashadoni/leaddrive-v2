@@ -45,8 +45,21 @@ describe("Entitlement Templates mutating evidence contract", () => {
     ]) expect(page).toContain(marker)
   })
 
+  it("proves physical touch targets without weakening desktop keyboard recovery", () => {
+    expect(flow).toContain('inputModality: "keyboard"')
+    expect(flow).toContain('inputModality: "playwright-touchscreen"')
+    expect(flow).toContain("scrollIntoViewIfNeeded()")
+    expect(flow).toContain("document.elementFromPoint")
+    expect(flow).toContain("box.width < 44 || box.height < 44")
+    expect(flow).toContain("page.touchscreen.tap(point.x, point.y)")
+    expect(flow).toContain('serviceWorkers: "block"')
+    expect(flow).toContain("physicalTouchRetry")
+  })
+
   it("runs only when the Entitlement Templates scenario is selected", () => {
     expect(workflow).toContain("scripts/support-ux-entitlement-templates-flow-evidence.mjs")
+    expect(workflow).toContain("Validate section-scoped Entitlement Templates evidence")
+    expect(workflow).toContain("contains(inputs.scenarios, 'entitlement-templates')")
     expect(workflow).toContain("*,entitlement-templates,*")
     expect(workflow).toContain("entitlement_templates_flow_status")
   })

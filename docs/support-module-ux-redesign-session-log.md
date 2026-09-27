@@ -1563,3 +1563,38 @@ repeat the identical mobile exact-SHA gate without changing the 768 px rule.
 Next: checkpoint the Workstream 8 closure and immediately restore Workstream 9
 Entitlement Templates from product `d002818b8` and recovery `f71a46049`, keeping
 the current shared evidence supersets.
+
+### Workstream 9 restoration and CI-gate self-audit
+
+- Product checkpoint `d002818b8` restored cleanly as `5115a0234`. Its page,
+  tenant-scoped draft helper and focused tests merged with the current i18n/API
+  supersets; no already-present API behavior was duplicated.
+- Recovery checkpoint `f71a46049` restored as `c499a824e`. Conflicts in the
+  workflow, generic browser runner and flow screenshot path were resolved to
+  preserve current ready/primary selectors, shared screenshot stabilization
+  and all later-workstream runners. The recovery-specific page states and flow
+  contract were applied, and the global job result now correctly includes
+  `entitlement_templates_flow_status` so a failed template flow cannot be
+  masked by a green generic capture.
+- Self-audit found that a non-`all` `entitlement-templates` dispatch skipped all
+  section validation and that mobile recovery declared touch capability while
+  pressing Retry through keyboard APIs. A dedicated section gate now covers
+  syntax, a three-file visible-source scan, translation parity, scoped lint,
+  API/draft/runtime/UX tests and shared browser/seed/visual/performance
+  contracts. Desktop keeps keyboard activation; touch viewports require a real
+  scroll-aware, hit-tested Playwright touchscreen tap on a measured 44x44
+  target. Service workers are blocked for deterministic routed recovery.
+- The first strict scan surfaced one native support-level tab without an
+  explicit focus-visible style. The tab now has an outline/ring/ring-offset
+  state and a static contract assertion. Resource inspection shows 16 GiB
+  available memory, 331 GiB free disk and zero pressure. Runner syntax and
+  `git diff --check` pass; the three-file scan reports zero findings, i18n
+  parity passes at 23,599 keys, scoped ESLint passes and 11 suites pass 162/162
+  assertions.
+- Full local build/typecheck/browser execution is **NOT RUN** under the Contabo
+  workload contract. The new exact-SHA GitHub-hosted section/build/browser
+  gates remain mandatory before any `SUPUX-TMP` checkbox closes.
+
+Next: checkpoint and push the restored Workstream 9 gate, then run EN/light
+desktop mutation evidence, RU/dark mobile physical-touch evidence and the full
+AZ/RU/EN × light/dark × four-viewport high-density matrix before closure.
