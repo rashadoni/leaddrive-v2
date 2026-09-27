@@ -131,6 +131,31 @@ server/web and explicitly keeps mobile acknowledgement/response-ledger
 projection open. No runtime path changed. The RED identity does not transfer;
 a new clean checkpoint and complete frozen rereview are mandatory.
 
+## Replacement frozen complete-diff review GREEN
+
+Fresh author-independent review from zero returned GREEN with zero P0-P3
+findings on exact base/current `origin/main`/merge-base
+`68cf17eddd1d5db8179fe2ec2981506403fc98ca` through clean head
+`57f32f10fb5b609015a70fdaa13f18b919ea54f4`. The complete eight-path binary
+diff was 51,114 bytes, SHA-256
+`c65f22fced42ea3fa25bae94b8e38c407da0b314e3eafd79b5f00be6aa6a0090`,
+below 400 KB; clean start/end and diff whitespace passed.
+
+The reviewer reconfirmed both P2 repairs, exact rollout query shapes and
+101/65/1 bounds, privacy-minimized fields/output, contiguous lifecycle and
+fail-closed invalid/resolved states, current-cycle resets, legacy/stale/future
+response handling, schedule-only and 64/65 boundaries, unchanged progress and
+the inherited PR #462 release receipt. The corrected task row now matches the
+unchanged response-ledger-free mobile endpoint and Android model. Commit
+`57f32f10...` changed only the three receipt documents from the rejected head;
+all four runtime/test blobs were byte-identical.
+
+Reviewer Vitest, ESLint, typecheck, build, browser, Android, load,
+physical-device and pilot checks were `NOT RUN`; author results were not
+relabelled. Only this evidence file, the roadmap and append-only session log
+may change to record the verdict. A receipt-integrity review must prove all
+four reviewed runtime/test blobs unchanged before push.
+
 ## Release boundary
 
 This slice does not claim that an employee was notified, saw a request,

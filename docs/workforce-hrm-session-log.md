@@ -889,3 +889,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - The rejected identity and verdict are not transferable. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
 - Precise stopping point: the three-document platform-scope repair is uncommitted on top of clean runtime checkpoint `ea3dd1791`; nothing is pushed.
 - Next action: checkpoint the docs-only repair, recompute the full clean identity and require a fresh author-independent frozen complete-diff rereview from zero.
+
+## 2026-09-27 — C6 self-response replacement frozen review GREEN
+
+- Fresh author-independent review from zero verified clean base/current main/merge-base `68cf17eddd1d5db8179fe2ec2981506403fc98ca` through head `57f32f10fb5b609015a70fdaa13f18b919ea54f4`: eight paths / 51,114 binary-diff bytes, SHA-256 `c65f22fced42ea3fa25bae94b8e38c407da0b314e3eafd79b5f00be6aa6a0090`, below 400 KB. It returned GREEN with zero P0-P3 findings.
+- Both P2 repairs, rollout-off/on exact selection, 101/65/1 bounds, privacy, contiguous revision/lifecycle/reset behavior, invalid/resolved/schedule/64–65 handling, web-only acknowledgement/mobile-open wording, inherited PR #462 receipt, test-count arithmetic and unchanged progress were reconfirmed.
+- Clean start/end, diff whitespace and append-only session-prefix verification passed. Reviewer Vitest, ESLint, typecheck, build, browser, Android, load, physical-device and pilot checks were `NOT RUN`; author results were not relabelled.
+- Commit `57f32f10...` changed only the three receipt documents from the rejected head, and all four runtime/test blobs remained byte-identical.
+- Precise stopping point: frozen source/test/evidence head is independently GREEN; only this three-document review receipt is newly uncommitted and nothing is pushed.
+- Next action: checkpoint the receipt-only delta, independently prove all four reviewed runtime/test blobs byte-identical, then push/open the sub-400 KB PR and require every exact-head context before merge.
