@@ -19,6 +19,9 @@ const source = (path: string) => readFileSync(join(root, path), "utf8")
 const additiveMetadataBackfillMigrations = [
   "20260927014100_workforce_exception_case_revisions_backfill",
 ] as const
+const appendOnlyTruncateGuardMigrations = [
+  "20260927070000_workforce_exception_policy_revision_foundation",
+] as const
 
 describe("Workforce C13 additive compatibility contract", () => {
   it("rejects destructive rewrites and strictly fences additive metadata backfills", () => {
@@ -37,7 +40,21 @@ describe("Workforce C13 additive compatibility contract", () => {
       const sql = readFileSync(join(migrationRoot, migration, "migration.sql"), "utf8")
       expect(sql, migration).not.toMatch(/\bDROP\s+(?:TABLE|COLUMN)\b/i)
       expect(sql, migration).not.toMatch(/\bRENAME\s+(?:TABLE|COLUMN)\b/i)
-      expect(sql, migration).not.toMatch(/\bTRUNCATE\b/i)
+      expect(sql, migration).not.toMatch(/^\s*TRUNCATE(?:\s+TABLE)?\s+/im)
+      if (appendOnlyTruncateGuardMigrations.includes(
+        migration as typeof appendOnlyTruncateGuardMigrations[number],
+      )) {
+        expect(sql, migration).toContain("IF TG_OP = 'TRUNCATE' THEN")
+        expect(sql, migration).toContain(
+          'BEFORE TRUNCATE ON "workforce_exception_policy_revisions"',
+        )
+        expect(sql, migration).toContain(
+          "workforce_exception_policy_revisions is append-only; TRUNCATE rejected",
+        )
+        expect(sql.match(/\bTRUNCATE\b/giu), migration).toHaveLength(3)
+      } else {
+        expect(sql, migration).not.toMatch(/\bTRUNCATE\b/i)
+      }
       expect(sql, migration).not.toMatch(/\bDELETE\s+FROM\b/i)
       if (!additiveMetadataBackfillMigrations.includes(
         migration as typeof additiveMetadataBackfillMigrations[number],

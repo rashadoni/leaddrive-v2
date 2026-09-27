@@ -349,3 +349,45 @@ Reviewer-side dependency-backed, real-PostgreSQL and heavy checks were
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal
 UI and tenant activation remain separately open.
+
+## Final receipt integrity, merge and production release
+
+The append-only review receipt was independently checked without inheriting
+the source-review verdict. Final PR head
+`5df8f602b4ad6a8fa43dcd886db2f15f92a1aaf8` preserved the reviewed full diff
+from base/merge-base `fdc601599b048734409a1359863ede382d08e768` with
+SHA-256 `2fc916760cb75413b25e3069df1e93844ceadeb70c2f9960ea463ae834caef24`,
+249,174 bytes and 35 files. The three-document receipt delta contained 33
+additions and zero deletions, was 9,133 bytes, and had SHA-256
+`6d638bf9073d0ef193c078564507e1b2ce30a95ee9e0fe97ddf38a6bdf308b9e`.
+Receipt-integrity review returned GREEN with zero P0-P3 findings and confirmed
+that no source, workflow, migration or test content changed after the fresh
+C13-repair full-diff review.
+
+All five required exact-head contexts passed on that final head:
+`pr-scope` (14s), `static-checks` (13m46s), `typecheck` (22m02s),
+`runner-policy` (13s) and `scan` (19s). The static job repeated the exact
+PostgreSQL migration/recovery gate, including the one-statement concurrent
+index phases and exact invalid-index cleanup/replay proof. Branch protection
+did not require an `agent-review` status; that configuration gap was not used
+as merge permission because the author-independent full-diff and receipt
+reviews were completed locally first.
+
+PR #452 merged normally at `2026-09-27T04:19:15Z` as
+`249466e9ac25eccecefc34b62563b328a8026817`. Push-triggered deploy run
+`36293964083` was bound to that complete SHA and completed successfully at
+`2026-09-27T04:43:23Z`: quality/security gates, standalone build, immutable
+artifact publication, atomic deployment, scheduler and tenant-isolation
+checks, public DB ping, exact revision check and login/static-asset smoke all
+passed. Independent public verification then returned `{"ok":true}` from
+`https://app.leaddrivecrm.org/api/v1/ping` and exact
+`artifactSha=249466e9ac25eccecefc34b62563b328a8026817` from
+`/api/v1/public/build-info`; that bundle reports
+`builtAt=2026-09-27T04:26:54Z`.
+
+This release adds no task or phase-gate credit by itself. Progress remains
+`81/161`, phase gates remain `14/15`, C5 remains 81%, C6 remains 20% and C9
+remains 99%. Terminal resolution/reopen, visible terminal UI and tenant
+activation remain unavailable. Full local build, browser E2E, Android, load,
+physical-device and human-pilot checks remain `NOT RUN` on Contabo; the
+applicable build and PostgreSQL work ran in GitHub CI.

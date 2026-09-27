@@ -357,6 +357,18 @@ assert.ok(
     && githubPrChecks.includes("npx next build --webpack"),
   "the production-build PR label must trigger the same isolated webpack proof",
 )
+const typecheckJob = githubPrChecks.slice(
+  githubPrChecks.indexOf("  typecheck:"),
+  githubPrChecks.indexOf("  production-build:"),
+)
+assert.ok(
+  typecheckJob.includes("runs-on: ubuntu-24.04")
+    && typecheckJob.includes("NODE_OPTIONS: --max-old-space-size=12288")
+    && typecheckJob.includes("npx tsc --noEmit 2>&1 | tee tsc-output.log")
+    && typecheckJob.includes("bash scripts/ci/check-typecheck-gate.sh tsc-output.log tsc-exit-code")
+    && typecheckJob.includes("node scripts/ci/check-typecheck-baseline.mjs tsc-output.log"),
+  "typecheck must retain the full compiler pass, both blocking gates and its bounded 12-GiB heap",
+)
 assert.ok(
   nextConfig.includes('webpackBuildWorker: process.env.LEADDRIVE_COLD_PRODUCTION_BUILD === "1" ? true : undefined')
     && nextConfig.includes('process.env.LEADDRIVE_COLD_PRODUCTION_BUILD === "1"')
