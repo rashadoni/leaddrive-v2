@@ -36,6 +36,7 @@ vi.mock("@/components/page-description", () => ({
 import { WorkforceExceptionQueue } from "@/components/workforce/workforce-exception-queue"
 
 const ACK_TOKEN = "v1:ack-token-ciphertext"
+const CORRECTION_TOKEN = "v1:correction-token-ciphertext"
 const FIXED_OPERATION_ID = "00000000-0000-4000-8000-000000000001"
 
 type DecisionAction = { decisionCode: string; actionToken: string }
@@ -129,7 +130,7 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-describe("Workforce exception acknowledgement UI", () => {
+describe("Workforce exception review-action UI", () => {
   it("keeps the fixed privacy and accessibility contract localized in all three locales", () => {
     const requiredKeys = [
       "reviewAction",
@@ -153,18 +154,21 @@ describe("Workforce exception acknowledgement UI", () => {
       }
       expect((messages.actions as Record<string, unknown>).ACKNOWLEDGE).toEqual(expect.any(String))
       expect((messages.actionHints as Record<string, unknown>).ACKNOWLEDGE).toEqual(expect.any(String))
+      expect((messages.actions as Record<string, unknown>).REQUEST_TIME_CORRECTION).toEqual(expect.any(String))
+      expect((messages.actionHints as Record<string, unknown>).REQUEST_TIME_CORRECTION).toEqual(expect.any(String))
     }
 
     const source = readFileSync("src/components/workforce/workforce-exception-queue.tsx", "utf8")
-    expect(source).toContain('const QUEUE_DECISION_CODES = ["ACKNOWLEDGE"] as const')
-    expect(source).toContain('const ACKNOWLEDGEMENT_REASON = "MANAGER_ACKNOWLEDGED_FOR_HUMAN_REVIEW"')
+    expect(source).toContain('const QUEUE_DECISION_CODES = ["ACKNOWLEDGE", "REQUEST_TIME_CORRECTION"] as const')
+    expect(source).toContain('ACKNOWLEDGE: "MANAGER_ACKNOWLEDGED_FOR_HUMAN_REVIEW"')
+    expect(source).toContain('REQUEST_TIME_CORRECTION: "MANAGER_REQUESTED_TIME_CORRECTION_FOR_REVIEW"')
     expect(source).toContain('className="min-h-11 whitespace-normal text-left"')
     expect(source).toContain("onClick={() => closeAction()}")
     expect(source).not.toContain("onClick={closeAction}")
     expect(source).not.toMatch(/localStorage|sessionStorage|console\./)
   })
 
-  it("renders only an exact server-offered acknowledgement and never exposes its token", async () => {
+  it("renders only exact server-offered acknowledgement/correction actions and never exposes their tokens", async () => {
     vi.stubGlobal("fetch", vi.fn(() => queueResponse([
       queueItem("WF-ACK", [{ decisionCode: "ACKNOWLEDGE", actionToken: ACK_TOKEN }]),
       queueItem("WF-RESPONSE", [{ decisionCode: "REQUEST_EMPLOYEE_RESPONSE", actionToken: "response-secret" }]),
@@ -175,13 +179,62 @@ describe("Workforce exception acknowledgement UI", () => {
         { decisionCode: "ACKNOWLEDGE", actionToken: "duplicate-secret-one" },
         { decisionCode: "ACKNOWLEDGE", actionToken: "duplicate-secret-two" },
       ]),
+      queueItem("WF-MULTI-ALLOWED", [
+        { decisionCode: "ACKNOWLEDGE", actionToken: "multi-ack-secret" },
+        { decisionCode: "REQUEST_TIME_CORRECTION", actionToken: "multi-correction-secret" },
+      ]),
     ])))
 
     await renderQueue()
 
     expect(container.textContent?.match(/actions\.ACKNOWLEDGE/g)).toHaveLength(1)
-    expect(container.textContent).not.toMatch(/REQUEST_EMPLOYEE_RESPONSE|REQUEST_TIME_CORRECTION|RESOLVE_NO_CHANGE/)
-    expect(container.innerHTML).not.toMatch(/ack-token-ciphertext|response-secret|correction-secret|terminal-secret|duplicate-secret/)
+    expect(container.textContent?.match(/actions\.REQUEST_TIME_CORRECTION/g)).toHaveLength(1)
+    expect(container.textContent).not.toMatch(/REQUEST_EMPLOYEE_RESPONSE|RESOLVE_NO_CHANGE/)
+    expect(container.innerHTML).not.toMatch(/ack-token-ciphertext|response-secret|correction-secret|terminal-secret|duplicate-secret|multi-ack-secret|multi-correction-secret/)
+  })
+
+  it("records a correction request with only its token, stable operation id and fixed safe reason", async () => {
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => queueResponse([
+        queueItem("WF-CORRECTION", [{ decisionCode: "REQUEST_TIME_CORRECTION", actionToken: CORRECTION_TOKEN }]),
+      ]))
+      .mockImplementationOnce(() => response(201, {
+        success: true,
+        idempotent: false,
+        data: { decisionCode: "REQUEST_TIME_CORRECTION" },
+      }))
+      .mockImplementationOnce(() => queueResponse([queueItem("WF-CORRECTION", [])]))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await renderQueue()
+    await act(async () => button("actions.REQUEST_TIME_CORRECTION").click())
+
+    expect(container.textContent).toContain("actionHints.REQUEST_TIME_CORRECTION")
+    expect(container.querySelector("textarea, input")).toBeNull()
+
+    await act(async () => button("recordAction").click())
+    await flush()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/v1/workforce/exception-decisions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-organization-id": "org-workforce",
+      },
+      body: JSON.stringify({
+        actionToken: CORRECTION_TOKEN,
+        operationId: FIXED_OPERATION_ID,
+        reason: "MANAGER_REQUESTED_TIME_CORRECTION_FOR_REVIEW",
+      }),
+    })
+    const body = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string)
+    expect(body).not.toHaveProperty("caseId")
+    expect(body).not.toHaveProperty("decisionCode")
+    expect(body).not.toHaveProperty("employeeReason")
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/v1/workforce/exceptions", expect.objectContaining({
+      headers: { "x-organization-id": "org-workforce" },
+    }))
+    expect(container.textContent).toContain("actionRecorded")
   })
 
   it("uses a two-step confirmation and posts only the token, stable operation id and fixed safe reason", async () => {

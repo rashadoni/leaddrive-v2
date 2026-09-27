@@ -10,10 +10,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { workforceExceptionQueueLabelKey } from "@/lib/workforce/exception-queue-labels"
 
-const QUEUE_DECISION_CODES = ["ACKNOWLEDGE"] as const
-const ACKNOWLEDGEMENT_REASON = "MANAGER_ACKNOWLEDGED_FOR_HUMAN_REVIEW"
+const QUEUE_DECISION_CODES = ["ACKNOWLEDGE", "REQUEST_TIME_CORRECTION"] as const
 
 type QueueDecisionCode = typeof QUEUE_DECISION_CODES[number]
+const DECISION_REASONS = {
+  ACKNOWLEDGE: "MANAGER_ACKNOWLEDGED_FOR_HUMAN_REVIEW",
+  REQUEST_TIME_CORRECTION: "MANAGER_REQUESTED_TIME_CORRECTION_FOR_REVIEW",
+} satisfies Record<QueueDecisionCode, string>
+
 type QueueAction = { decisionCode: QueueDecisionCode; actionToken: string }
 type QueueItem = {
   displayReference: string
@@ -52,14 +56,14 @@ function isQueueDecisionCode(value: unknown): value is QueueDecisionCode {
 
 function safeQueueActions(item: QueueItem): QueueAction[] {
   if (!Array.isArray(item.decisionContext?.actions)) return []
-  const acknowledgedActions = item.decisionContext.actions.filter((action) => (
+  const eligibleActions = item.decisionContext.actions.filter((action) => (
     action != null
     && isQueueDecisionCode(action.decisionCode)
     && typeof action.actionToken === "string"
     && action.actionToken.length > 0
     && action.actionToken.length <= 2_048
   ))
-  return acknowledgedActions.length === 1 ? acknowledgedActions : []
+  return eligibleActions.length === 1 ? eligibleActions : []
 }
 
 export function WorkforceExceptionQueue() {
@@ -197,7 +201,7 @@ export function WorkforceExceptionQueue() {
         body: JSON.stringify({
           actionToken: requestAction.actionToken,
           operationId: requestAction.operationId,
-          reason: ACKNOWLEDGEMENT_REASON,
+          reason: DECISION_REASONS[requestAction.decisionCode],
         }),
       })
       const body = await response.json().catch(() => ({}))

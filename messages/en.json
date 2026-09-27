@@ -24848,7 +24848,7 @@
     "subtitle": "Review uncertain attendance cases without exposing raw location, QR, device proof or employee reasons.",
     "adminOnly": "This exception queue requires an effective Workforce HR-review role.",
     "boundaryTitle": "Human review only",
-    "boundaryHint": "The optional acknowledgement appends only an immutable, non-terminal human-review step. It cannot change attendance, pay, discipline, evidence or resolution. Coordinates, maps, QR values, device identifiers, proof payloads, prior decision reasons and internal identifiers remain unavailable here.",
+    "boundaryHint": "Available review actions append only immutable, non-terminal human-review steps. They cannot notify the employee, create or approve a correction, or change attendance, pay, discipline, evidence or resolution. Coordinates, maps, QR values, device identifiers, proof payloads, prior decision reasons and internal identifiers remain unavailable here.",
     "viewAggregateReport": "View aggregate report",
     "refresh": "Refresh queue",
     "loading": "Loading attendance exception queue",
@@ -24860,20 +24860,22 @@
     "reviewAction": "Review action",
     "noActionAvailable": "No action available",
     "actions": {
-      "ACKNOWLEDGE": "Acknowledge review"
+      "ACKNOWLEDGE": "Acknowledge review",
+      "REQUEST_TIME_CORRECTION": "Request time correction review"
     },
     "actionHints": {
-      "ACKNOWLEDGE": "Confirm that you have taken this case into human review. This append-only step does not resolve the case, notify the employee or change recorded time."
+      "ACKNOWLEDGE": "Confirm that you have taken this case into human review. This append-only step does not resolve the case, notify the employee or change recorded time.",
+      "REQUEST_TIME_CORRECTION": "Record that a time correction should be requested for human review. This append-only step does not notify the employee, create or approve a correction, or change recorded time."
     },
     "actionFormTitle": "Confirm {action} for {reference}",
     "serverChecksHint": "Before recording, the server rechecks your current role, scope, case revision and mandatory MFA. No free-text reason is collected.",
     "cancelAction": "Cancel",
-    "recordAction": "Record acknowledgement",
+    "recordAction": "Record review step",
     "actionRecorded": "{action} was recorded for {reference}. Reloading the queue.",
     "mfaRequired": "Enable and verify mandatory MFA before recording this review step.",
     "actionStale": "This action is no longer available or the case changed. Reloading the queue.",
-    "actionRateLimited": "Too many review attempts. Wait briefly, then retry this same acknowledgement.",
-    "actionFailed": "The acknowledgement could not be confirmed. Retry to safely replay the same operation.",
+    "actionRateLimited": "Too many review attempts. Wait briefly, then retry this same action.",
+    "actionFailed": "The review step could not be confirmed. Retry to safely replay the same operation.",
     "type": "Type",
     "severity": "Risk",
     "age": "Age",

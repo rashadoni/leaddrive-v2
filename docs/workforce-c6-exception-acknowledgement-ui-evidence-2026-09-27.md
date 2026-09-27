@@ -199,3 +199,35 @@ typecheck/build, browser, Android, load, device and pilot checks were
 context was not treated as permission. A receipt-only checkpoint and an
 independent proof that reviewed runtime/test/translation blobs are unchanged
 remain mandatory before push.
+
+## PR #460 production release
+
+Receipt-integrity review proved that the final receipt-only commit changed
+only the three documentation paths, append-only, and kept the independently
+reviewed component, test and three translation blobs byte-identical. Final PR
+head `bdc1c73de8b5edcad032732f7b95268515d512ea` had a nine-path / 96,975-byte
+complete binary diff from exact base
+`86fc1d2c23fead588b45c2e700e125a6d98bbe82`, SHA-256
+`debeebb57133b3ce511fa99fd9f201af234c4d13a562bdd5b6054cb85905fe8c`.
+
+PR #460 passed all five exact-head contexts: `pr-scope`, `static-checks`,
+`typecheck`, `runner-policy` and `scan`. PR run `36324324280` completed
+`static-checks` in 7m49s, including the real PostgreSQL Workforce shared-lock
+gate, and `typecheck` in 13m07s. The normal PR production build was skipped as
+designed. The missing `agent-review` protection context was not treated as
+permission; both the complete-diff and receipt-integrity reviews were GREEN
+with zero P0-P3 findings before merge.
+
+The PR merged normally at `2026-09-27T14:13:56Z` as
+`4823fa18b07cb9e27128ef8d8e14c07eae9f0e7a`. Deploy run `36325162459`
+completed GREEN at `2026-09-27T14:36:18Z` through GitHub `main` to the
+registered production host. Quality/security, SHA-bound standalone build,
+immutable staging, atomic deploy, scheduler/tenant-isolation checks, built-in
+public smokes and artifact-retention cleanup passed.
+
+Independent no-cache reads returned `{"ok":true}` and
+`{"sha":"4823fa18b07c","artifactSha":"4823fa18b07cb9e27128ef8d8e14c07eae9f0e7a","builtAt":"2026-09-27T14:20:05Z"}`.
+The artifact SHA exactly matches merged `main`; no direct server deployment,
+retired host/owner or worktree copy was used. Full real-browser, Android,
+load, physical-device and human-pilot evidence remains `NOT RUN`; progress
+stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
