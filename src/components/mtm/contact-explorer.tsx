@@ -638,10 +638,32 @@ export function MtmContactExplorer() {
     <div data-testid="mtm-contact-explorer" aria-busy={loading} className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <PageDescription icon={UsersRound} title={t("title")} description={t("subtitle")} />
+          <PageDescription icon={UsersRound} title={t("title")} />
           <HelpButton slug="mtm-contacts" variant="label" />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1">
+            <MtmFilterSelect testId="mtm-contact-saved-view" label={tf("view")} value={activeSavedViewId} allLabel={t("savedViewsPlaceholder")} clearable={false}
+              onChange={(value) => {
+                const view = savedViews.find((item) => item.id === value)
+                if (view) applySavedView(view)
+                else setActiveSavedViewId("")
+              }}
+              options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${t("sharedView")}` : ""}` }))} />
+            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={t("saveCurrentView")} aria-label={t("saveCurrentView")} disabled={savedViewsBusy}
+              onClick={() => {
+                setSavedViewName("")
+                setSavedViewDefault(false)
+                setSaveViewOpen(true)
+              }}>
+              <Bookmark className="h-4 w-4" />
+            </Button>
+            {activeSavedView?.canDelete ? (
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={t("deleteSavedView")} aria-label={t("deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </span>
           <Button type="button" size="sm" className="min-h-11" onClick={() => setCreateOpen(true)}>
             <UserRoundPlus className="mr-1.5 h-4 w-4" />
             {t("createClient")}
@@ -696,28 +718,6 @@ export function MtmContactExplorer() {
             options={[{ value: "ASSIGNED", label: t("assigned") }, { value: "UNASSIGNED", label: t("unassigned") }]} />
           <MtmFilterMore testId="mtm-contact-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={advancedFilterCount} label={tf("more")} />
           <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />
-          <span className="ml-auto flex items-center gap-1">
-            <MtmFilterSelect testId="mtm-contact-saved-view" label={tf("view")} value={activeSavedViewId} allLabel={t("savedViewsPlaceholder")} clearable={false}
-              onChange={(value) => {
-                const view = savedViews.find((item) => item.id === value)
-                if (view) applySavedView(view)
-                else setActiveSavedViewId("")
-              }}
-              options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${t("sharedView")}` : ""}` }))} />
-            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={t("saveCurrentView")} aria-label={t("saveCurrentView")} disabled={savedViewsBusy}
-              onClick={() => {
-                setSavedViewName("")
-                setSavedViewDefault(false)
-                setSaveViewOpen(true)
-              }}>
-              <Bookmark className="h-4 w-4" />
-            </Button>
-            {activeSavedView?.canDelete ? (
-              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={t("deleteSavedView")} aria-label={t("deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            ) : null}
-          </span>
         </MtmFilterBar>
         {advancedOpen ? (
           <MtmFilterBar testId="mtm-contact-advanced-filters">

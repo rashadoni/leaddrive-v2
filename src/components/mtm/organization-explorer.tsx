@@ -999,11 +999,32 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
           <PageDescription
             icon={Building2}
             title={tx("explorer.title")}
-            description={tx("explorer.subtitle")}
           />
           <HelpButton slug="mtm-customers" variant="label" />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1">
+            <MtmFilterSelect testId="organization-saved-view" label={tf("view")} value={activeSavedViewId} allLabel={tx("explorer.savedViewsPlaceholder")} clearable={false}
+              onChange={(value) => {
+                const view = savedViews.find((item) => item.id === value)
+                if (view) applySavedView(view)
+                else setActiveSavedViewId("")
+              }}
+              options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${tx("explorer.sharedView")}` : ""}` }))} />
+            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={tx("explorer.saveCurrentView")} aria-label={tx("explorer.saveCurrentView")} disabled={savedViewsBusy}
+              onClick={() => {
+                setSavedViewName("")
+                setSavedViewDefault(false)
+                setSaveViewOpen(true)
+              }}>
+              <Bookmark className="h-4 w-4" />
+            </Button>
+            {activeSavedView?.canDelete ? (
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={tx("explorer.deleteSavedView")} aria-label={tx("explorer.deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </span>
           <details className="group relative">
             <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground marker:hidden md:min-h-9">
               <Download className="mr-2 h-4 w-4" />
@@ -1098,28 +1119,6 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
             onChange={(value) => setFilter("objectType", value)} />
           <MtmFilterMore testId="organization-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={activeAdvancedCount} label={tf("more")} />
           <MtmFilterReset testId="organization-clear-filters" show={activeFilterLabels.length > 0} onReset={clearFilters} label={tf("reset")} />
-          <span className="ml-auto flex items-center gap-1">
-            <MtmFilterSelect testId="organization-saved-view" label={tf("view")} value={activeSavedViewId} allLabel={tx("explorer.savedViewsPlaceholder")} clearable={false}
-              onChange={(value) => {
-                const view = savedViews.find((item) => item.id === value)
-                if (view) applySavedView(view)
-                else setActiveSavedViewId("")
-              }}
-              options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${tx("explorer.sharedView")}` : ""}` }))} />
-            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={tx("explorer.saveCurrentView")} aria-label={tx("explorer.saveCurrentView")} disabled={savedViewsBusy}
-              onClick={() => {
-                setSavedViewName("")
-                setSavedViewDefault(false)
-                setSaveViewOpen(true)
-              }}>
-              <Bookmark className="h-4 w-4" />
-            </Button>
-            {activeSavedView?.canDelete ? (
-              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={tx("explorer.deleteSavedView")} aria-label={tx("explorer.deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            ) : null}
-          </span>
         </MtmFilterBar>
         {advancedOpen ? (
           <MtmFilterBar testId="organization-advanced-filters">
