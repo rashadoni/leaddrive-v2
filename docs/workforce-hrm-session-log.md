@@ -604,3 +604,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
 - Precise stopping point: implementation and evidence are checkpointed, `origin/main` is unchanged, and only this documentation status receipt is uncommitted; no valid final frozen complete-diff review exists yet.
 - Next action: checkpoint the receipt, freeze the replacement base/head/hash/size and require a fresh author-independent review of every changed line before any push.
+
+## 2026-09-27 — C6 session API frozen complete-diff review GREEN
+
+- The final pre-review clean identity was base/merge-base/current `origin/main` `99b8ce27077352951769ce4a8c60cf2459e36ebf`, head `9b6721af465d9655ed314fc018d4d7c6c636d14f`, nine paths / 44,748 binary-diff bytes, SHA-256 `a54dcb6ac31378ddacb129740a0dd41a663bf0283c29a3601d78ffd02983eca6` and therefore below 400 KB.
+- A fresh author-independent read-only reviewer started from zero, read every changed line and returned GREEN with zero P0-P3 findings. Session/capability/granular authorization, tenant/actor derivation, tenant-RLS transaction, composite actor FK, exact writer authorization, strict request, create/replay statuses, response/log containment, error mapping, exact one-route consumer fence and all activation/decision/provisioner/UI/backfill exclusions were confirmed.
+- Reviewer-side diff whitespace, consumer scan, source/test/evidence consistency, PR #457 receipt hashes and GitHub release/deploy/public-smoke facts passed. Dependency-backed tests/lint/Prisma/RLS, current-head PostgreSQL, typecheck/build, browser, Android, load and physical/pilot checks were `NOT RUN` reviewer-side and are not inferred.
+- GitHub protection still requires exactly `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`; missing `agent-review` was not treated as permission. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: the committed complete source/test/evidence identity is independently GREEN; only this three-document review receipt is uncommitted, and nothing has been pushed.
+- Next action: checkpoint the receipt-only delta, independently prove all reviewed source/test paths unchanged, then push/open the sub-400 KB PR and require all five exact-head contexts including real PostgreSQL before merge.

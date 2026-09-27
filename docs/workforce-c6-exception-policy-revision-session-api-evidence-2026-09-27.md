@@ -1,7 +1,7 @@
 # Workforce C6 session-only exception-policy revision API evidence — 2026-09-27
 
-Status: **CLEAN IMPLEMENTATION CHECKPOINT / EARLY REVIEW GREEN / FROZEN REVIEW
-PENDING / EXACT-HEAD CI PENDING / NO PROGRESS CREDIT**
+Status: **FROZEN COMPLETE-DIFF REVIEW GREEN / EXACT-HEAD CI PENDING / NO
+PROGRESS CREDIT**
 
 This bounded slice starts from exact deployed `main` SHA
 `99b8ce27077352951769ce4a8c60cf2459e36ebf` plus release-receipt checkpoint
@@ -124,3 +124,32 @@ The branch remained clean and `origin/main` had not advanced. This status-only
 documentation delta supersedes that preliminary identity; a new clean head and
 fresh author-independent review of every base-to-head changed line are required
 before push.
+
+## Independent frozen complete-diff review
+
+The replacement clean identity was base/merge-base/current `origin/main`
+`99b8ce27077352951769ce4a8c60cf2459e36ebf`, head
+`9b6721af465d9655ed314fc018d4d7c6c636d14f`, nine changed paths and 44,748
+binary-diff bytes with SHA-256
+`a54dcb6ac31378ddacb129740a0dd41a663bf0283c29a3601d78ffd02983eca6`.
+The size is below the 400 KB review boundary.
+
+A fresh author-independent read-only reviewer started from zero, verified the
+identity and clean worktree, read every changed line and returned GREEN with
+zero P0-P3 findings. The review confirmed the PR #457 release receipt,
+session/capability/granular-policy authorization, session-owned tenant and
+actor, same-connection tenant-RLS transaction, composite actor FK, exact
+writer-authorization matcher, strict operation-ID-only request, `201` create /
+`200` replay, minimized response and fixed-label logging, controlled error
+mapping, exact one-route consumer fence and the absence of provisioning,
+activation/effective windows, decision linkage, UI and backfill.
+
+Reviewer-side diff whitespace, production-consumer scan, source/test/document
+consistency, PR #457 receipt hashes/checks/deploy facts, public ping and exact
+artifact SHA passed. Dependency-backed tests/lint/Prisma/RLS, current-head
+exact PostgreSQL, typecheck/build, browser, Android, load and physical/pilot
+checks were `NOT RUN` by the reviewer; the primary local gates and future
+exact-head CI remain separate evidence. The reviewer made no edits, commits,
+pushes or status publications. This documentation-only receipt must now receive
+an independent integrity check proving the reviewed source/test paths did not
+change before push.
