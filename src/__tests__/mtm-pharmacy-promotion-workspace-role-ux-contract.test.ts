@@ -53,7 +53,8 @@ describe("SWM-09 role-aware promotion workspace UX contract", () => {
 
   it("provides in-context guidance and complete locale copy", () => {
     expect(workspace).toContain('<HelpButton slug="mtm-promotions" variant="label" className="h-11" />')
-    expect(workspace).toContain("mtm-pharmacy-role-guide-${persona}")
+    // Owner 2026-09-27: the role guide banner retold the screen above the filters.
+    expect(workspace).not.toContain("mtm-pharmacy-role-guide-")
     for (const locale of locales) {
       const section = locale.mtmPharmacyPromotions
       expect(section).toBeTruthy()

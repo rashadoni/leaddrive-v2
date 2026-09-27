@@ -73,10 +73,23 @@ describe("every MTM list uses the one filter row, with no stat tiles above it", 
     ["routes", "src/app/(dashboard)/mtm/routes/page.tsx"],
     ["tasks", "src/app/(dashboard)/mtm/tasks/page.tsx"],
     ["panel", "src/components/mtm/operational-week-home.tsx"],
+    ["trip history", "src/components/mtm/location-history-panel.tsx"],
+    ["pharmacy promotions", "src/components/mtm/pharmacy-promotion-workspace.tsx"],
   ])("%s", (_name, path) => {
     const page = readFileSync(path, "utf8")
     expect(page).toContain('from "@/components/mtm/filter-bar"')
     expect(page).toContain("<MtmFilterBar")
     expect(page).not.toContain("<ColorStatCard")
+  })
+})
+
+describe("«Аптечные промоакции» filters", () => {
+  const workspace = readFileSync("src/components/mtm/pharmacy-promotion-workspace.tsx", "utf8")
+
+  it("applies search, department and employee at once, keeps the rarer filters' draft with its own «Показать»", () => {
+    expect(workspace).toContain("onChange={(value) => applyNow({ departmentId: value, employeeId: \"\" })}")
+    expect(workspace).toContain('<Button onClick={applyFilters} className="min-h-11 lg:min-h-9"><Filter className="mr-2 h-4 w-4" />{t("showResults")}</Button>')
+    expect(workspace).not.toContain("<SummaryCard")
+    expect(workspace).not.toContain('<details aria-label={t("savedViewsLabel")}')
   })
 })

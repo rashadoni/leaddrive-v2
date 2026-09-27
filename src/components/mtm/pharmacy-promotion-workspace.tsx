@@ -9,8 +9,6 @@ import {
   AlertTriangle,
   BadgeCheck,
   Bookmark,
-  Building2,
-  Calculator,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -18,7 +16,6 @@ import {
   Columns3,
   Download,
   FileBadge,
-  FilePlus2,
   Filter,
   Loader2,
   PanelRight,
@@ -26,11 +23,11 @@ import {
   Search,
   Save,
   ShieldAlert,
-  SlidersHorizontal,
   Trash2,
   XCircle,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { MtmFilterBar, MtmFilterMore, MtmFilterReset, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -236,7 +233,6 @@ function useMediaQuery(query: string) {
 }
 
 type PromotionWorkspaceView = "registry" | "review" | "campaigns"
-type PromotionWorkspacePersona = "agent" | "reviewer" | "admin" | "reader"
 
 export function pharmacyPromotionWorkspaceViews(
   capabilities: Pick<RegistryData["capabilities"], "canReview" | "canConfigure">,
@@ -246,15 +242,6 @@ export function pharmacyPromotionWorkspaceViews(
     : ["registry", "campaigns"]
   if (capabilities.canReview) return ["review", "registry"]
   return ["registry"]
-}
-
-function pharmacyPromotionWorkspacePersona(
-  capabilities: Pick<RegistryData["capabilities"], "canCreateExecution" | "canReview" | "canConfigure">,
-): PromotionWorkspacePersona {
-  if (capabilities.canConfigure) return "admin"
-  if (capabilities.canReview) return "reviewer"
-  if (capabilities.canCreateExecution) return "agent"
-  return "reader"
 }
 
 function savedViewSearchParams(filters: PromotionSavedView["filters"]) {
@@ -368,33 +355,6 @@ function PromotionStatusBadge({ status, label }: { status: string; label: string
           : ShieldAlert
 
   return <Badge variant={badgeVariant}><Icon className="mr-1 h-3 w-3" aria-hidden="true" />{label}</Badge>
-}
-
-function SummaryCard({ icon: Icon, label, value, hint, tone }: {
-  icon: typeof BadgeCheck
-  label: string
-  value: string | number
-  hint?: string
-  tone: "blue" | "emerald" | "amber" | "violet"
-}) {
-  const toneClass = {
-    blue: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
-    emerald: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-    amber: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
-    violet: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
-  }[tone]
-  return (
-    <div className="min-w-0 border border-zinc-200/70 bg-card p-3 dark:border-zinc-800 sm:p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
-          <p className="mt-1 truncate text-2xl font-semibold tabular-nums">{value}</p>
-          {hint ? <p className="mt-1 break-words text-xs text-muted-foreground">{hint}</p> : null}
-        </div>
-        <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", toneClass)}><Icon className="h-4 w-4" /></span>
-      </div>
-    </div>
-  )
 }
 
 function LabeledInput({ label, ...props }: { label: string } & ComponentProps<typeof Input>) {
@@ -628,6 +588,7 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
 
 export function PharmacyPromotionWorkspace() {
   const t = useTranslations("mtmPharmacyPromotions")
+  const tFilters = useTranslations("mtmFilters")
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -673,8 +634,6 @@ export function PharmacyPromotionWorkspace() {
   const availableViews = data
     ? pharmacyPromotionWorkspaceViews(data.capabilities)
     : (["registry"] satisfies PromotionWorkspaceView[])
-  const persona = data ? pharmacyPromotionWorkspacePersona(data.capabilities) : "reader"
-  const selectedSavedView = savedViews.find((candidate) => candidate.id === selectedSavedViewId)
 
   const localizedError = useCallback((payload: unknown, fallback: string) => {
     const code = apiErrorCode(payload)
@@ -817,6 +776,15 @@ export function PharmacyPromotionWorkspace() {
       else next.set(key, String(value))
     }
     replaceSearchParams(next)
+  }
+
+  /** Search, department and employee: straight to the URL, draft kept in step. */
+  function applyNow(changes: Record<string, string>) {
+    setDraft((current) => ({ ...current, ...changes }))
+    setSelectedSavedViewId("")
+    const next: Record<string, string | null> = { page: null }
+    for (const [key, value] of Object.entries(changes)) next[key] = value || null
+    replaceParams(next)
   }
 
   function applyFilters() {
@@ -1025,6 +993,7 @@ export function PharmacyPromotionWorkspace() {
       return [{ key, label: labels[key] ?? key, value: valueLabel(key, value) }]
     })
   }, [data?.filters, promotionOptions, searchKey, t, typeOptions])
+  const advancedFilterCount = activeFilterChips.filter((chip) => chip.key !== "q" && chip.key !== "departmentId" && chip.key !== "employeeId").length
 
   const stateLabel = (status: string) => t.has(`status.${status}`)
     ? t(`status.${status}`)
@@ -1115,18 +1084,8 @@ export function PharmacyPromotionWorkspace() {
         ))}
       </nav>
 
-      {data ? (
-        <section data-testid={`mtm-pharmacy-role-guide-${persona}`} className="flex items-start gap-3 border border-primary/20 bg-primary/[0.04] p-3 sm:p-4">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-            {persona === "agent" ? <FilePlus2 className="h-5 w-5" /> : persona === "reader" ? <Building2 className="h-5 w-5" /> : <ClipboardCheck className="h-5 w-5" />}
-          </span>
-          <div className="min-w-0">
-            <h2 className="font-semibold">{t(`roleGuide.${persona}.title`)}</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">{t(`roleGuide.${persona}.hint`)}</p>
-          </div>
-        </section>
-      ) : null}
-
+      {/* Owner 2026-09-27: the role guide banner retold the screen above the
+          filters; the view tabs and the row say what to do. */}
 
       {data && !data.capabilities.postingEnabled && view !== "campaigns" ? (
         <div className="flex gap-3 border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
@@ -1144,51 +1103,45 @@ export function PharmacyPromotionWorkspace() {
       {view !== "campaigns" ? (
         <>
           {view === "registry" && data?.capabilities.canCreateExecution ? <PharmacyPromotionAgentCapture scopeKey={data.syncScopeKey} /> : null}
-          <details aria-label={t("savedViewsLabel")} className="group border border-zinc-200/70 bg-card dark:border-zinc-800">
-            <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm font-medium marker:hidden">
-              <Bookmark className="h-4 w-4 text-muted-foreground" />
-              {t("savedViewsLabel")}
-              {selectedSavedView ? <span className="max-w-[14rem] truncate rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary" title={selectedSavedView.name}>{selectedSavedView.name}</span> : null}
-            </summary>
-            <div className="border-t border-zinc-200/70 p-3 dark:border-zinc-800">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                <div className="min-w-0 flex-1">
-                  <Select label={t("savedViewsLabel")} value={selectedSavedViewId} disabled={savedViewsLoading} className="min-h-11 lg:min-h-10" onChange={(event) => applySavedView(event.target.value)}>
-                    <option value="">{savedViewsLoading ? t("savedViewsLoading") : t("savedViewsNoneSelected")}</option>
-                    {savedViews.map((savedView) => <option key={savedView.id} value={savedView.id}>{savedView.name}{savedView.isDefault ? ` · ${t("defaultView")}` : ""}</option>)}
-                  </Select>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button className="min-h-11 lg:min-h-9" variant="outline" onClick={() => setShowSaveView((value) => !value)} aria-expanded={showSaveView}><Bookmark className="mr-2 h-4 w-4" />{t("saveView")}</Button>
-                  <Button className="min-h-11 lg:min-h-9" variant="ghost" disabled={!selectedSavedViewId || deletingView} onClick={deleteSelectedView}><Trash2 className="mr-2 h-4 w-4" />{t("deleteSavedView")}</Button>
-                </div>
+          {/* Owner 2026-09-27: filters in one row. A saved-views panel, four
+              summary cards and a card of fields with its own «Применить» stood
+              above the list. Search, department and employee apply at once;
+              the rarer filters keep their draft and «Показать». */}
+          <section aria-label={t("filtersLabel")} className="space-y-2">
+            <MtmFilterBar testId="mtm-pharmacy-filter-row">
+              <MtmFilterSearch value={draft.q ?? ""} onChange={(value) => applyNow({ q: value })} placeholder={t("searchPlaceholder")} label={t("search")} clearLabel={tFilters("clearSearch")} />
+              <MtmFilterSelect testId="mtm-pharmacy-department" label={t("department")} value={draft.departmentId ?? ""} allLabel={t("allDepartments")}
+                options={(data?.filters.teams ?? []).map((team) => ({ value: team.id, label: team.name }))}
+                onChange={(value) => applyNow({ departmentId: value, employeeId: "" })} />
+              <MtmFilterSelect testId="mtm-pharmacy-employee" label={t("employee")} value={draft.employeeId ?? ""} allLabel={t("allEmployees")}
+                options={(data?.filters.agents ?? []).map((agent) => ({ value: agent.id, label: agent.name }))}
+                onChange={(value) => applyNow({ employeeId: value })} />
+              <MtmFilterMore testId="mtm-pharmacy-advanced-filters" open={advanced} onToggle={() => setAdvanced((value) => !value)} count={advancedFilterCount} label={tFilters("more")} />
+              <MtmFilterReset show={activeFilterChips.length > 0} onReset={resetFilters} label={tFilters("reset")} />
+              <span className="ml-auto flex items-center gap-1">
+                <MtmFilterSelect testId="mtm-pharmacy-saved-view" label={tFilters("view")} value={selectedSavedViewId} allLabel={savedViewsLoading ? t("savedViewsLoading") : t("savedViewsNoneSelected")} clearable={false} disabled={savedViewsLoading}
+                  options={savedViews.map((savedView) => ({ value: savedView.id, label: `${savedView.name}${savedView.isDefault ? ` · ${t("defaultView")}` : ""}` }))}
+                  onChange={(value) => applySavedView(value)} />
+                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={t("saveView")} aria-label={t("saveView")} aria-expanded={showSaveView} onClick={() => setShowSaveView((value) => !value)}><Bookmark className="h-4 w-4" /></Button>
+                {selectedSavedViewId ? <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={t("deleteSavedView")} aria-label={t("deleteSavedView")} disabled={deletingView} onClick={deleteSelectedView}><Trash2 className="h-4 w-4" /></Button> : null}
+              </span>
+            </MtmFilterBar>
+            {showSaveView ? (
+              <div className="grid gap-3 rounded-lg border border-zinc-200/70 bg-card p-3 dark:border-zinc-800 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                <LabeledInput label={t("savedViewName")} value={savedViewName} maxLength={80} placeholder={t("savedViewNamePlaceholder")} className="min-h-11 lg:min-h-10" onChange={(event) => setSavedViewName(event.target.value)} />
+                <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"><input className="h-5 w-5" type="checkbox" checked={savedViewDefault} onChange={(event) => setSavedViewDefault(event.target.checked)} />{t("makeDefaultView")}</label>
+                <div className="flex flex-wrap gap-2"><Button className="min-h-11 lg:min-h-9" variant="ghost" onClick={() => { setShowSaveView(false); setSavedViewName(""); setSavedViewDefault(false) }} disabled={savingView}>{t("cancel")}</Button><Button className="min-h-11 lg:min-h-9" onClick={saveCurrentView} disabled={savingView || !data || !savedViewName.trim()}>{savingView ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Save className="mr-2 h-4 w-4" />}{t("save")}</Button></div>
               </div>
-              {showSaveView ? (
-                <div className="mt-3 grid gap-3 border-t pt-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-                  <LabeledInput label={t("savedViewName")} value={savedViewName} maxLength={80} placeholder={t("savedViewNamePlaceholder")} className="min-h-11 lg:min-h-10" onChange={(event) => setSavedViewName(event.target.value)} />
-                  <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"><input className="h-5 w-5" type="checkbox" checked={savedViewDefault} onChange={(event) => setSavedViewDefault(event.target.checked)} />{t("makeDefaultView")}</label>
-                  <div className="flex flex-wrap gap-2"><Button className="min-h-11 lg:min-h-9" variant="ghost" onClick={() => { setShowSaveView(false); setSavedViewName(""); setSavedViewDefault(false) }} disabled={savingView}>{t("cancel")}</Button><Button className="min-h-11 lg:min-h-9" onClick={saveCurrentView} disabled={savingView || !data || !savedViewName.trim()}>{savingView ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Save className="mr-2 h-4 w-4" />}{t("save")}</Button></div>
-                </div>
-              ) : null}
-            </div>
-          </details>
-
-          <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <SummaryCard icon={Building2} label={t("summary.executions")} value={data?.summary.executions ?? "—"} hint={data ? t("asOf", { date: formatDate(data.asOf, locale, true) }) : undefined} tone="blue" />
-            <SummaryCard icon={ClipboardCheck} label="L1" value={data?.summary.readyL1 ?? "—"} hint={t("summary.readyReview")} tone="amber" />
-            <SummaryCard icon={BadgeCheck} label="L2" value={data?.summary.readyL2 ?? "—"} hint={t("summary.readyReview")} tone="violet" />
-            <SummaryCard icon={Calculator} label={t("summary.difference")} value={formatPoints(data?.summary.difference ?? null, locale)} hint={`${t("summary.fact")}: ${formatPoints(data?.summary.factPoints ?? null, locale)} · ${t("summary.reward")}: ${formatPoints(data?.summary.rewardPoints ?? null, locale)}`} tone="emerald" />
-          </section>
-
-          <section aria-label={t("filtersLabel")} className="border border-zinc-200/70 bg-card dark:border-zinc-800">
-            <div className="grid gap-2 p-3 [&_input]:min-h-11 [&_select]:min-h-11 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:[&_input]:min-h-10 lg:[&_select]:min-h-10">
-              <div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input aria-label={t("search")} value={draft.q ?? ""} onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))} onKeyDown={(event) => { if (event.key === "Enter") applyFilters() }} placeholder={t("searchPlaceholder")} className="pl-9" /></div>
-              <Select aria-label={t("department")} value={draft.departmentId ?? ""} onChange={(event) => setDraft((current) => ({ ...current, departmentId: event.target.value, employeeId: "" }))}><option value="">{t("allDepartments")}</option>{data?.filters.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</Select>
-              <Select aria-label={t("employee")} value={draft.employeeId ?? ""} onChange={(event) => setDraft((current) => ({ ...current, employeeId: event.target.value }))}><option value="">{t("allEmployees")}</option>{data?.filters.agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</Select>
-              <div className="flex gap-2"><Button onClick={applyFilters} className="min-h-11 flex-1 lg:min-h-9 md:flex-none"><Filter className="mr-2 h-4 w-4" />{t("applyFilters")}</Button><Button data-testid="mtm-pharmacy-advanced-filters" className="min-h-11 min-w-11 lg:min-h-9 lg:min-w-9" variant="outline" size="icon" aria-label={t("advancedFilters")} aria-expanded={advanced} onClick={() => setAdvanced((value) => !value)}><SlidersHorizontal className="h-4 w-4" /></Button></div>
-            </div>
+            ) : null}
+            {data ? (
+              <MtmResultLine aside={t("asOf", { date: formatDate(data.asOf, locale, true) })}>
+                <span className="font-medium text-foreground">{t("summary.executions")}: {data.summary.executions}</span>
+                {" · "}L1: {data.summary.readyL1} · L2: {data.summary.readyL2}
+                {" · "}{t("summary.difference")}: {formatPoints(data.summary.difference ?? null, locale)} ({t("summary.fact")}: {formatPoints(data.summary.factPoints ?? null, locale)} · {t("summary.reward")}: {formatPoints(data.summary.rewardPoints ?? null, locale)})
+              </MtmResultLine>
+            ) : null}
             {activeFilterChips.length > 0 ? (
-              <div data-testid="mtm-pharmacy-active-filters" className="flex flex-wrap items-center gap-2 border-t px-3 py-2.5">
+              <div data-testid="mtm-pharmacy-active-filters" className="flex flex-wrap items-center gap-2">
                 <span className="mr-1 text-xs font-semibold text-muted-foreground">{t("activeFilters", { count: activeFilterChips.length })}</span>
                 {activeFilterChips.map((filter) => (
                   <button key={filter.key} type="button" onClick={() => replaceParams({ [filter.key]: null, page: null })} aria-label={t("clearFilter", { filter: `${filter.label}: ${filter.value}` })} className="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border bg-background px-3 text-xs transition-colors hover:border-primary hover:text-primary">
@@ -1199,9 +1152,9 @@ export function PharmacyPromotionWorkspace() {
               </div>
             ) : null}
             {advanced && !compactFilterLayout ? (
-              <div className="space-y-3 border-t bg-muted/20 p-3 [&_input]:min-h-11 [&_select]:min-h-11 lg:[&_input]:min-h-10 lg:[&_select]:min-h-10">
+              <div className="space-y-3 rounded-lg border border-zinc-200/70 bg-muted/20 p-3 dark:border-zinc-800 [&_input]:min-h-11 [&_select]:min-h-11 lg:[&_input]:min-h-10 lg:[&_select]:min-h-10">
                 {advancedFilterFields}
-                <div className="flex justify-end"><Button variant="ghost" onClick={resetFilters} className="min-h-11 lg:min-h-9"><XCircle className="mr-2 h-4 w-4" />{t("resetFilters")}</Button></div>
+                <div className="flex justify-end gap-2"><Button variant="ghost" onClick={resetFilters} className="min-h-11 lg:min-h-9"><XCircle className="mr-2 h-4 w-4" />{t("resetFilters")}</Button><Button onClick={applyFilters} className="min-h-11 lg:min-h-9"><Filter className="mr-2 h-4 w-4" />{t("showResults")}</Button></div>
               </div>
             ) : null}
           </section>
