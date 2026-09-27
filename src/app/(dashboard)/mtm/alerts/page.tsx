@@ -8,16 +8,11 @@ import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
-import { ColorStatCard } from "@/components/color-stat-card"
 import { ConfirmDialog, DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { MtmFilterBar, MtmFilterDate, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import {
-  AlertTriangle, CheckCircle2, Trash2, MoreHorizontal, Bell, Lightbulb, Satellite, AlarmClock, CalendarX2, Coffee,
-  ShieldAlert, Navigation, BatteryLow, Timer, ChevronDown, MapPin, ExternalLink, Archive, Lock, type LucideIcon,
-} from "lucide-react"
+import { AlertTriangle, CheckCircle2, Trash2, MoreHorizontal, Lightbulb, Satellite, AlarmClock, CalendarX2, Coffee, ShieldAlert, Navigation, BatteryLow, Timer, ChevronDown, MapPin, ExternalLink, Lock, type LucideIcon } from "lucide-react"
 import { formatDate, formatTime } from "@/lib/format-date"
 import { readMtmAlertMessage } from "@/lib/mtm/alert-messages"
 import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-error"
@@ -235,38 +230,33 @@ export default function MtmAlertsPage() {
   const openTotal = groups.reduce((sum, group) => sum + group.openCount, 0)
   const criticalGroups = groups.filter((group) => group.category === "CRITICAL").length
 
+  // Owner 2026-09-27: filters in one row. They were a card of labelled
+  // selects under four stat cards; the counts are one line now.
   const filters = (
-    <div className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3">
-      <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
-        {t("filterAgent")}
-        <Select value={agentId} onChange={(e) => setFilter("agentId", e.target.value)} className="w-48 max-w-full">
-          <option value="">{t("allAgents")}</option>
-          {agentId && !agents.some((agent) => agent.id === agentId) && <option value={agentId}>{agentId}</option>}
-          {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
-        </Select>
-      </label>
-      <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
-        {t("filterType")}
-        <Select value={type} onChange={(e) => setFilter("type", e.target.value)} className="w-44 max-w-full">
-          <option value="">{t("allTypes")}</option>
-          {ALERT_TYPES.map((value) => <option key={value} value={value}>{tt(`typeLabel_${value}`)}</option>)}
-        </Select>
-      </label>
-      <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
-        {t("filterStatus")}
-        <Select value={status} onChange={(e) => setFilter("status", e.target.value === "open" ? "" : e.target.value)} className="w-36 max-w-full">
-          <option value="open">{t("statusOpen")}</option>
-          <option value="resolved">{t("statusResolved")}</option>
-          <option value="all">{t("statusAll")}</option>
-        </Select>
-      </label>
-      <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
-        {t("filterDate")}
-        <Input type="date" value={dateParam || data?.today || ""} max={data?.today} onChange={(e) => setFilter("date", e.target.value === data?.today ? "" : e.target.value)} className="w-40 max-w-full" />
-      </label>
-      {dateParam && dateParam !== data?.today && (
-        <Button variant="outline" size="sm" onClick={() => setFilter("date", "")}>{t("today")}</Button>
-      )}
+    <div className="space-y-2">
+      <MtmFilterBar testId="mtm-alerts-filters">
+        <MtmFilterSelect testId="mtm-alerts-agent" label={t("filterAgent")} value={agentId} allLabel={t("allAgents")}
+          options={[
+            ...(agentId && !agents.some((agent) => agent.id === agentId) ? [{ value: agentId, label: agentId }] : []),
+            ...agents.map((agent) => ({ value: agent.id, label: agent.name })),
+          ]}
+          onChange={(value) => setFilter("agentId", value)} />
+        <MtmFilterSelect testId="mtm-alerts-type" label={t("filterType")} value={type} allLabel={t("allTypes")}
+          options={ALERT_TYPES.map((value) => ({ value, label: tt(`typeLabel_${value}`) }))}
+          onChange={(value) => setFilter("type", value)} />
+        <MtmFilterSelect testId="mtm-alerts-status" label={t("filterStatus")} value={status} emptyValue="open" showValue allLabel={t("statusOpen")}
+          options={[{ value: "open", label: t("statusOpen") }, { value: "resolved", label: t("statusResolved") }, { value: "all", label: t("statusAll") }]}
+          onChange={(value) => setFilter("status", value === "open" ? "" : value)} />
+        <MtmFilterDate testId="mtm-alerts-date" label={t("filterDate")} max={data?.today} value={dateParam || data?.today || ""} onChange={(value) => setFilter("date", value === data?.today ? "" : value)} />
+        {dateParam && dateParam !== data?.today && (
+          <Button variant="outline" size="sm" className="h-10 rounded-full" onClick={() => setFilter("date", "")}>{t("today")}</Button>
+        )}
+      </MtmFilterBar>
+      {data ? (
+        <MtmResultLine>
+          {t("statGroups")}: {groups.length} · {t("statOpen")}: {openTotal} · <span className={criticalGroups > 0 ? "font-medium text-red-700 dark:text-red-400" : ""}>{t("statCritical")}: {criticalGroups}</span> · {t("statStale")}: {data.stale.total ?? 0}
+        </MtmResultLine>
+      ) : null}
     </div>
   )
 
@@ -413,13 +403,6 @@ export default function MtmAlertsPage() {
   return (
     <div className="space-y-4">
       {header}
-
-      <div className="grid grid-cols-2 gap-3 stagger-children sm:grid-cols-4">
-        <ColorStatCard label={t("statGroups")} value={groups.length} icon={<Bell className="h-4 w-4" />} hint={t("hintGroups")} />
-        <ColorStatCard label={t("statOpen")} value={openTotal} icon={<AlertTriangle className="h-4 w-4" />} hint={t("hintOpen")} />
-        <ColorStatCard label={t("statCritical")} value={criticalGroups} icon={<ShieldAlert className="h-4 w-4" />} hint={t("hintCritical")} />
-        <ColorStatCard label={t("statStale")} value={data?.stale.total ?? 0} icon={<Archive className="h-4 w-4" />} hint={t("hintStale", { days: data?.staleDays ?? 7 })} />
-      </div>
 
       {filters}
 

@@ -149,18 +149,20 @@ export function MtmFilterDate({
   value,
   onChange,
   type = "date",
+  max,
   testId,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   type?: "date" | "month"
+  max?: string
   testId?: string
 }) {
   return (
     <label className="inline-flex h-10 items-center gap-2 rounded-full border border-zinc-200 bg-card px-3 text-sm text-muted-foreground focus-within:ring-2 focus-within:ring-primary/30 dark:border-zinc-700">
       <span>{label}</span>
-      <input data-testid={testId} type={type} value={value} onChange={(event) => onChange(event.target.value)} className="bg-transparent text-foreground outline-none" />
+      <input data-testid={testId} type={type} max={max} value={value} onChange={(event) => onChange(event.target.value)} className="bg-transparent text-foreground outline-none" />
     </label>
   )
 }
