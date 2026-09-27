@@ -183,3 +183,43 @@ head and remain mandatory.
 Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. This repair
 earns no task or gate credit. A receipt-only integrity review and all five
 replacement exact-head GitHub contexts are required before merge.
+
+## Reviewed production release
+
+Receipt-integrity review confirmed final PR head
+`732a4fe053d5e4e8e2af870766640953e7b5a613` with zero P0–P3 findings. The
+complete diff from base/merge-base
+`249466e9ac25eccecefc34b62563b328a8026817` remained 15 files / 91,603 bytes
+with SHA-256
+`3929b76f5bcd400400d6e519fba1342c49d0d56ac121c291f7ccf5a38eb9df8e`.
+No source, migration, schema, workflow or test path changed after the complete
+source review.
+
+Exact-head run `36300723671` passed all five required contexts: `pr-scope`,
+`static-checks`, `typecheck`, `runner-policy` and `scan`. `static-checks`
+repeated the exact PostgreSQL migration/RLS/old-binary proof. The repaired full
+typecheck completed in 16m21s and passed both blocking analyzers; the heap
+repair therefore has positive execution evidence rather than only source
+inspection.
+
+PR #453 merged normally at `2026-09-27T06:57:03Z` as
+`330da758f9a5af22da5e6a33795530547e7e4f85`. Push deploy run `36301608281`
+completed GREEN at `2026-09-27T07:21:28Z`: quality/security, standalone build,
+SHA-bound artifact publication, atomic production deployment, workflow smoke
+and retained-artifact cap all passed through the documented route.
+
+Independent no-cache public reads returned `{"ok":true}` from
+`/api/v1/ping` and
+`{"sha":"330da758f9a5","artifactSha":"330da758f9a5af22da5e6a33795530547e7e4f85","builtAt":"2026-09-27T07:02:50Z"}`
+from `/api/v1/public/build-info`. The artifact SHA exactly matches merged
+`main`.
+
+Full local build, browser E2E, Android/Gradle, load, physical-device and human
+pilot checks remain `NOT RUN` on Contabo and are not inferred from this
+release. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%: the
+released inactive foundation has no writer, activation, terminal action or UI.
+
+The next bounded slice is a separate validation of the deliberately `NOT
+VALID` decision-policy FK, subject first to read-only production-catalog and
+table-size preflight. It earns no task/gate credit and must not add a writer or
+consumer.
