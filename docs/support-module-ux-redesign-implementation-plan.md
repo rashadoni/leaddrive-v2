@@ -1492,6 +1492,23 @@ Current verification evidence (2026-09-05):
   changed-source ESLint, the seven-file section scan, `git diff --check` and
   33/33 affected contract assertions pass. A new exact-SHA desktop, mobile and
   complete high matrix are mandatory before this workstream closes.
+- On corrected checkpoint `be429d668`, desktop run `36283148753` and RU/dark
+  physical-touch mobile run `36284063452` pass all section validation, fixtures,
+  production build, 9/9 mutating recovery and 3/3 static outcomes. The mobile
+  artifact records real touchscreen hits on 144x44 and 134x44 controls,
+  `maxTouchPoints: 1`, active dark theme, article primary work at 706 px and
+  restored publication fixture; both artifacts have zero browser, axe, custom
+  a11y, touch, overflow, environment or primary-work failures.
+- Full high run `36285102320` on the same SHA completed all 168 cells with 164
+  passed. Every prior contrast, document-title and primary-work failure is
+  cleared; errors, axe, environment, overflow and primary-work totals are zero.
+  Its only four failures identify the same RU/admin tablet control: the article
+  help trigger shrinks to 19-23 px when the translated action row competes for
+  width. The detail page now gives that contextual-help action an explicit
+  44x44 minimum and `shrink-0`. Focused contract tests pass 11/11, changed-file
+  ESLint, the seven-file scoped scan and `git diff --check` are green. Because
+  this is a rendered product change, desktop, mobile and high gates must all run
+  again on its newer checkpoint before Workstream 5 closes.
 
 ## 13. Workstream 6 — Ticket Categories
 

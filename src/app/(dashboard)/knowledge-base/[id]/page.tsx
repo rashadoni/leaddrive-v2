@@ -224,7 +224,7 @@ export default function KbArticleDetailPage() {
         <div className="min-w-0">
           <div className="flex items-start gap-2">
             <h1 className="min-w-0 text-xl font-semibold leading-7 tracking-tight">{article.title}</h1>
-            <HelpButton slug="kb-article-detail" />
+            <HelpButton slug="kb-article-detail" className="min-h-11 min-w-11 shrink-0" />
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Badge data-testid="knowledge-article-status" data-status={article.status} variant={isPublished ? "outline" : "secondary"} className="gap-1">

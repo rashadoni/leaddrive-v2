@@ -833,3 +833,34 @@ mandatory desktop, mobile and high-density matrices on the new exact SHA.
 Next: checkpoint and push this high-matrix product/determinism correction, then
 repeat desktop, physical-touch mobile and all 168 high-density cells on the new
 exact SHA. Close Workstream 5 only after all three artifacts are green.
+
+### Workstream 5 eighth browser self-audit and tablet touch correction
+
+- Checkpoint `be429d668dfc193a7d81c441efd6babf9c33b156` passes EN/light desktop
+  run `36283148753`: dedicated validation, disposable fixtures, cold production
+  build, 9/9 mutating flows and 3/3 static cells. Publication fixture restoration
+  is true and every browser, axe, custom a11y, touch, overflow, environment and
+  primary-work total is zero. The retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36283148753`.
+- RU/dark mobile run `36284063452` passes the same gates on the same SHA. Its
+  retained artifact at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36284063452` records real
+  Playwright touchscreen retry hits at 144x44 and 134x44, `maxTouchPoints: 1`,
+  applied dark theme, restored fixtures and article primary work at 706 px
+  instead of the former 770 px. Manual screenshot review is healthy.
+- Full high run `36285102320` completed 168/168 cells: 164 pass and four fail.
+  All former contrast, streamed-title and fold failures are cleared; browser,
+  axe, overflow, environment and primary-work failure totals are zero. The four
+  remaining failures are one physical defect repeated across light/dark and
+  tablet/narrow-tablet for RU admin: the contextual Help button compresses to
+  19-23x32 beside the wrapped title and action row, below the unchanged 24 px
+  audit floor.
+- The article Help trigger now has `min-h-11 min-w-11 shrink-0`, preserving a
+  real 44x44 hit area under translated tablet pressure. Resource inspection
+  shows 15 GiB available memory, 331 GiB free disk and zero active pressure.
+  Focused contract tests pass 11/11; changed-file ESLint, the seven-file section
+  scan and `git diff --check` pass. No touch threshold, role, locale, theme,
+  viewport or scenario was reduced.
+
+Next: checkpoint and push the tablet touch correction, then rerun desktop,
+physical-touch mobile and the complete 168-cell matrix on one new exact SHA.
