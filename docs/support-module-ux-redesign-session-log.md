@@ -1705,3 +1705,40 @@ after static zeroes and all six flows are green.
 
 Next: checkpoint and push the mobile-label refinement, repeat RU/dark mobile,
 manually inspect the new screenshot, then launch the 24-cell high matrix.
+
+### Workstream 9 closure self-audit
+
+- Final product SHA `e326f3773cbaa034a63857d9fd48a9df37c8beb6`
+  passes RU/dark mobile run `36330991043`: the dedicated section gate,
+  production build, static browser cell and all 6/6 disposable outcomes are
+  green. Physical recovery uses a hit-tested 144x44 Playwright touchscreen
+  target; draft/permission/density/reorder/delete/save recovery all pass and
+  final fixture restoration is true.
+- Mobile static totals are zero for runtime, axe, custom accessibility, touch,
+  overflow, environment and fold findings. `smallTargets` is zero, main client
+  and scroll widths are both 311 px, primary work starts at 683 px, load p75
+  is 562 ms and CLS is `0.04029089519279769`. Manual screenshot review confirms
+  that the localized short switch label restores a usable name field while
+  preserving the full accessible name, 44 px control, compact tabs, readable
+  rules and unobstructed sticky actions. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36330991043`.
+- Final high-density run `36332223526` on the same SHA passes all 24 unique
+  admin × AZ/RU/EN × light/dark × desktop/tablet/narrow-tablet/mobile cells.
+  The matrix is balanced at 8 cells per locale, 12 per theme and 6 per
+  viewport. All issue totals are zero; primary-work top spans 588–683 px,
+  maximum load p75 is 588 ms and maximum CLS is
+  `0.040403880220340214`. AZ/light desktop, EN/dark tablet, AZ/dark
+  narrow-tablet and RU/dark mobile screenshots were manually reviewed as
+  healthy. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36332223526`.
+- Compatible EN/light desktop mutation run `36326499627`, final mobile run
+  `36330991043` and final high run `36332223526` collectively cover keyboard,
+  focus/recovery, physical touch, permissions, mutation rollback, 0/1/30
+  density, locales/themes/viewports, accessibility, performance and visual
+  quality. Workstream 9 acceptance and all `SUPUX-TMP-001` through
+  `SUPUX-TMP-007` requirements are satisfied with no relaxed gate.
+
+Next: checkpoint the Workstream 9 closure, add a bounded retry only for the
+exact confirmed `next/font` Google-loader transient, then restore Workstream 10
+Skill Routing product `b0fbbac1f` and recovery `768146ca3` while preserving the
+current shared evidence supersets.

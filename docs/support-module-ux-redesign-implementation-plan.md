@@ -2159,7 +2159,7 @@ Additional recovery evidence (2026-09-06):
 
 ## 16. Workstream 9 — Entitlement Templates
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `f71a46049`; browser/CI gates pending**
+**Status: DONE — final product checkpoint `e326f3773`; desktop/mobile/high evidence green**
 **Route:** `/settings/entitlement-templates`
 **Primary file:** `src/app/(dashboard)/settings/entitlement-templates/page.tsx`
 
@@ -2170,17 +2170,17 @@ default names remain English.
 Target UX: a safe template editor with compact rule summaries, explicit draft
 state, and a preview of resulting support behavior.
 
-- [ ] **SUPUX-TMP-001** Add autosave or a dirty-state guard before level, route,
+- [x] **SUPUX-TMP-001** Add autosave or a dirty-state guard before level, route,
   or context changes.
-- [ ] **SUPUX-TMP-002** Preserve and restore drafts after mutation errors.
-- [ ] **SUPUX-TMP-003** Replace six-field permanent cards with compact rule rows
+- [x] **SUPUX-TMP-002** Preserve and restore drafts after mutation errors.
+- [x] **SUPUX-TMP-003** Replace six-field permanent cards with compact rule rows
   and an expandable editor.
-- [ ] **SUPUX-TMP-004** Use one sticky Save/Discard bar and explain why Save is
+- [x] **SUPUX-TMP-004** Use one sticky Save/Discard bar and explain why Save is
   disabled.
-- [ ] **SUPUX-TMP-005** Add plain-language timeline/summary preview.
-- [ ] **SUPUX-TMP-006** Localize default rule names, support levels, units, and
+- [x] **SUPUX-TMP-005** Add plain-language timeline/summary preview.
+- [x] **SUPUX-TMP-006** Localize default rule names, support levels, units, and
   validation feedback.
-- [ ] **SUPUX-TMP-007** Add accessible reorder behavior if rule order changes
+- [x] **SUPUX-TMP-007** Add accessible reorder behavior if rule order changes
   runtime meaning.
 
 Acceptance:
@@ -2328,6 +2328,25 @@ Additional recovery evidence (2026-09-06):
   keeps the full localized accessible name at every width. The same scan,
   lint/diff and 7/7 contract checks are green; final mobile evidence remains
   required on the resulting SHA before the high matrix.
+- Final RU/dark mobile run `36330991043` on product SHA `e326f3773` passes the
+  section gate, production build, all 6/6 disposable flows and the static
+  browser cell. Real touch remains a hit-tested 144x44 Playwright touchscreen
+  action, fixture restoration is true, every issue total is zero,
+  `smallTargets` is zero, main width and scroll width are both 311 px, primary
+  work starts at 683 px, load p75 is 562 ms and CLS is
+  `0.04029089519279769`. Manual review confirms the corrected field width,
+  readable compact switch and unobstructed rules/save controls.
+- Final high-density run `36332223526` on the same SHA passes all 24 unique
+  admin × AZ/RU/EN × light/dark × desktop/tablet/narrow-tablet/mobile cells.
+  Counts are balanced at 8 per locale, 12 per theme and 6 per viewport. Every
+  runtime, axe, custom accessibility, touch, overflow, environment and fold
+  total is zero; primary work spans 588–683 px, maximum load p75 is 588 ms and
+  maximum CLS is `0.040403880220340214`. Four screenshots covering all layout
+  families, all locales and both themes were manually reviewed as healthy.
+  Acceptance and `SUPUX-TMP-001` through `SUPUX-TMP-007` are satisfied without
+  weakening a gate. Retained artifacts are
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36330991043` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36332223526`.
 
 ## 17. Workstream 10 — Skill Routing
 
