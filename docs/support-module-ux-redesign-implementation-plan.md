@@ -2536,7 +2536,7 @@ Current-tree restoration (2026-09-26):
 
 ## 18. Workstream 11 — Agent Calendar
 
-**Status: IN PROGRESS — current-tree checkpoints `2f2ec67c4` and `0093778cc`; exact-SHA browser/CI gates pending**
+**Status: DONE — exact-SHA desktop, mobile and 72-cell high-density GitHub Actions evidence green**
 **Route:** `/support/calendar`
 **Primary file:** `src/app/(dashboard)/support/calendar/page.tsx`
 
@@ -2548,19 +2548,19 @@ color treatments and decorative side stripes.
 Target UX: an adaptive schedule that defaults to agenda on mobile and emphasizes
 current/next events rather than rendering every empty hour.
 
-- [ ] **SUPUX-CAL-001** Add a mobile agenda as the default narrow-width view.
-- [ ] **SUPUX-CAL-002** Compress empty business hours and provide navigation to
+- [x] **SUPUX-CAL-001** Add a mobile agenda as the default narrow-width view.
+- [x] **SUPUX-CAL-002** Compress empty business hours and provide navigation to
   events outside 07:00–19:00.
-- [ ] **SUPUX-CAL-003** Remove duplicated Today schedule or make it a selected-day
+- [x] **SUPUX-CAL-003** Remove duplicated Today schedule or make it a selected-day
   detail, not a second permanent calendar.
-- [ ] **SUPUX-CAL-004** Replace event `div` interactions with accessible buttons
+- [x] **SUPUX-CAL-004** Replace event `div` interactions with accessible buttons
   and a detail drawer.
-- [ ] **SUPUX-CAL-005** Make all hover details available on focus/touch.
-- [ ] **SUPUX-CAL-006** Add accessible labels to previous/next/today controls and
+- [x] **SUPUX-CAL-005** Make all hover details available on focus/touch.
+- [x] **SUPUX-CAL-006** Add accessible labels to previous/next/today controls and
   increase touch targets.
-- [ ] **SUPUX-CAL-007** Replace color-only and side-stripe event styling; verify
+- [x] **SUPUX-CAL-007** Replace color-only and side-stripe event styling; verify
   light/dark contrast and non-color cues.
-- [ ] **SUPUX-CAL-008** Show fetch error/retry and partial-source states.
+- [x] **SUPUX-CAL-008** Show fetch error/retry and partial-source states.
 
 Acceptance:
 
@@ -2664,6 +2664,39 @@ Current-tree restoration (2026-09-27):
   repeated on Contabo after the documented default-heap exhaustion; exact-SHA
   GitHub Actions production build and browser evidence remain mandatory before
   any CAL checkbox closes.
+
+Closure evidence (2026-09-27):
+
+- EN/light desktop mutation run `36348155708` on `c0a5ba954` passed the
+  section gate, production build, static browser cell and all six flow groups.
+  It proves keyboard recovery, terminal permission suppression, partial-source
+  recovery, empty-day recovery, 30-item/outside-hours/show-more behavior,
+  keyboard detail opening with Escape focus restoration, and keyboard week/
+  Today navigation. Static issues and runtime errors are zero; load p75 is
+  511 ms and CLS is `0.0008396649563426996`.
+- A mobile self-audit run correctly exposed a flex-shrunk Help control. The
+  final product checkpoint `74da501b5` pins that control to a non-shrinking
+  44x44 target. Exact-SHA RU/dark mobile run `36350697895` then passed the
+  section gate, production build, all six flow groups and static capture.
+  Retry, partial retry, detail, next-week and Today actions are center-point
+  hit-tested Playwright touchscreen taps on targets of at least 44 px. Axe,
+  custom accessibility, touch, small-target, overflow, environment, primary-
+  work and runtime-error findings are zero; load p75 is 483 ms and CLS is
+  `0.009392899609308647`.
+- High-density run `36351967252` on the same final SHA is green with exactly
+  72/72 unique agent/manager/admin × AZ/RU/EN × light/dark × desktop/tablet/
+  narrow-tablet/mobile cells. Aggregate Axe, custom accessibility, touch,
+  small-target, overflow, environment, primary-work and runtime-error totals
+  are zero. Worst load p75 is 596 ms and maximum CLS is
+  `0.009392899609308647`.
+- Manual review accepted representative AZ/light desktop, EN/dark tablet,
+  AZ/dark narrow-tablet and RU/dark mobile screenshots. The compact week board,
+  adaptive selected-day agenda, high-density scrolling, translated navigation,
+  Help hitbox and theme contrast remain coherent without clipping. Artifacts
+  are retained under
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36348155708`,
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36350697895` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36351967252`.
 
 ## 19. Workstream 12 — Escalation Rules
 

@@ -2054,3 +2054,30 @@ mobile/high evidence.
 
 Next: run focused source checks, checkpoint and push the hitbox correction,
 then repeat the exact-SHA RU/dark mobile gate before the high matrix.
+
+### Workstream 11 closure
+
+- The Help hitbox correction passed focused ESLint, 7/7 calendar UX contract
+  assertions and `git diff --check`, then was checkpointed and pushed as
+  `74da501b5`.
+- Exact-SHA RU/dark mobile run `36350697895` is fully green: section validation,
+  production build, six of six recovery/interaction outcomes and static browser
+  evidence all pass. Both retries, item detail, next-week and Today controls
+  were activated with hit-tested Playwright touchscreen taps on targets at
+  least 44 px. Static Axe, custom accessibility, touch, small-target, overflow,
+  environment, primary-work and runtime-error findings are zero; load p75 is
+  483 ms and CLS is `0.009392899609308647`. Manual review confirms the 44x44
+  Help control, translated agenda, navigation and dense content are unclipped.
+- High-density run `36351967252` on the same SHA is green with exactly 72/72
+  unique agent/manager/admin × AZ/RU/EN × light/dark × desktop/tablet/narrow-
+  tablet/mobile cells. All aggregate issue/error totals are zero, worst load
+  p75 is 596 ms and maximum CLS is `0.009392899609308647`.
+- Manual self-audit accepted AZ/light desktop, EN/dark tablet, AZ/dark narrow-
+  tablet and RU/dark mobile screenshots. The wide compact week board and narrow
+  selected-day agenda preserve hierarchy, readable high-density scrolling,
+  non-color cues, theme contrast and touch-safe navigation.
+- All eight SUPUX-CAL requirements are closed in the implementation plan.
+  Workstream 11 is complete; no required gate was waived or left unrun.
+
+Next: checkpoint and push Workstream 11 closure documentation, then restore and
+audit Workstream 12 Escalation Rules on top of this exact tree.
