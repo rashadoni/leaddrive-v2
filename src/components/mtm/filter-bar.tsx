@@ -115,7 +115,7 @@ export function MtmFilterSelect({
   testId?: string
 }) {
   const active = value !== emptyValue
-  const current = options.find((option) => option.value === value)?.label ?? value
+  const current = options.find((option) => option.value === value)?.label ?? (value || allLabel)
   return (
     <span className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border pl-3 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary/30 ${disabled ? "opacity-50" : ""} ${active ? "border-primary/40 bg-primary/10 pr-1.5 text-primary" : "border-zinc-200 bg-card pr-3 text-muted-foreground hover:border-zinc-300 hover:text-foreground dark:border-zinc-700"}`}>
       <span className="truncate">{active || showValue ? `${label}: ${current}` : label}</span>
@@ -152,6 +152,7 @@ export function MtmFilterDate({
   value,
   onChange,
   type = "date",
+  min,
   max,
   disabled = false,
   testId,
@@ -159,7 +160,8 @@ export function MtmFilterDate({
   label: string
   value: string
   onChange: (value: string) => void
-  type?: "date" | "month"
+  type?: "date" | "month" | "time"
+  min?: string
   max?: string
   disabled?: boolean
   testId?: string
@@ -167,7 +169,7 @@ export function MtmFilterDate({
   return (
     <label className="inline-flex h-10 items-center gap-2 rounded-full border border-zinc-200 bg-card px-3 text-sm text-muted-foreground focus-within:ring-2 focus-within:ring-primary/30 dark:border-zinc-700">
       <span>{label}</span>
-      <input data-testid={testId} type={type} max={max} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} className="bg-transparent text-foreground outline-none" />
+      <input data-testid={testId} type={type} min={min} max={max} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} className="bg-transparent text-foreground outline-none" />
     </label>
   )
 }
