@@ -45,6 +45,9 @@ type CorpusRow = {
   subjectType: string
   requiredContext: string[]
   exclusions: string[]
+  /** Where the brand actually operates, and in which languages. */
+  geographies: string[]
+  languages: string[]
   aliases: string[]
   negativeAliases: string[]
   platform: string
@@ -140,6 +143,11 @@ function buildRequest(row: CorpusRow): Record<string, unknown> {
       brand: row.subjectName,
       brand_kind: row.subjectType,
       known_spellings: row.aliases.slice(0, 40),
+      // Without these a shop of the same name in Bonn, Calgary or Lagos is
+      // indistinguishable from the monitored chain — and the model said
+      // "about_subject" with 0.99 confidence on exactly those records.
+      brand_operates_in: row.geographies ?? [],
+      brand_languages: row.languages ?? [],
       confirming_context_words: row.requiredContext,
       different_subject_words: [...row.negativeAliases, ...row.exclusions],
       platform: row.platform,

@@ -5,9 +5,10 @@
 "Is this record about our brand" is the weakest decision in social monitoring.
 The string matcher's largest rejection class is `no_monitoring_subject_match`:
 the platform found the record by a word, the brand is not in the text, and the
-record is already paid for. The Haiku judge written for it (#646) **has never
-run in production** — on 2026-09-27 there was not a single stored verdict in
-`social_mention_subject_matches.contextSignals`.
+record is already paid for. The Haiku judge written for it (#646) has run on **91
+records** — the stamp is `contextSignals.aiJudgeVerdict`, not the
+`aiRelevanceJudge` key the ingest path writes, which is why a first pass over
+the table appeared to find nothing.
 
 Jev (TypeSafe AI, early access since 2026-09-15) answers exactly this shape of
 question: a fixed set of labels in, one label plus a calibrated confidence out,
@@ -38,6 +39,7 @@ copy (
        where a."subjectId" = s.id and a."organizationId" = s."organizationId" and a."isNegative" = false), '[]'::jsonb),
     'negativeAliases', coalesce((select jsonb_agg(a.value order by a.value) from monitoring_subject_aliases a
        where a."subjectId" = s.id and a."organizationId" = s."organizationId" and a."isNegative" = true), '[]'::jsonb),
+    'geographies', s.geographies, 'languages', s.languages,
     'platform', sm.platform, 'contentKind', sm."contentKind", 'matchedTerm', sm."matchedTerm",
     'authorName', sm."authorName", 'authorHandle', sm."authorHandle",
     'text', left(coalesce(sm.text,''), 1500),
@@ -107,3 +109,75 @@ direction the Haiku judge pass already established, because the cost of a wrong
 restore is noise in a client's feed and the cost of a wrong rejection is a lost
 complaint. Adding TypeSafe as a subprocessor is a separate decision, and the
 missing DPA is part of it.
+
+## Results — 2026-09-27
+
+Two full passes over 2204 records, $0.066 and $0.069 (plus a $0.006 trial). 9 of
+2204 calls failed on the first pass (3 × HTTP 529 "system_overloaded", 6
+timeouts) and none on the second — a retry is worth having before this is ever
+put in a cron.
+
+### The confidence number is the useful part
+
+Agreement with the literal reference, by confidence bucket (second pass):
+
+| confidence | records | agrees |
+| --- | --- | --- |
+| 0.90–1.00 | 770 | 99% |
+| 0.70–0.90 | 111 | 72% |
+| 0.50–0.70 | 77 | 70% |
+| 0.00–0.50 | 97 | 53% |
+
+Below 0.7 the answer is a coin flip; at 0.9 and above it is as good as the hard
+evidence. None of our current classifiers expose anything like this, and it is
+what makes a "restore only when sure" rule possible at all.
+
+### Against the Haiku judge
+
+On the 91 records the Haiku judge has decided, Jev agrees with it on **81%**,
+and on **94%** of the subset where Jev's own confidence is ≥ 0.9. Small sample,
+and the Haiku verdicts are not truth either — but the two models mostly see the
+same thing, and they diverge where Jev is unsure.
+
+### What it would recover
+
+349 rejected records come back as a confident `about_subject`. **175 of them are
+the brand's own posts**, which the pipeline rejects by policy, not by mistake —
+so the honest figure is **174 records**, and they read like the thing the judge
+was built for:
+
+> halal olsun Araz markete · mən həmişə Arazdan alver edirəm · Araz şebekesi çox
+> iş iscilerin…
+
+### A defect of ours, not of the model
+
+Monitored subjects carry `geographies` and `languages` (`Azərbaycan`, `az,ru`),
+and **neither the Haiku judge nor the first version of this harness told the
+model about them**. Without that, a Bravo Supermarket in Florida, a Bravo
+Süpermarket in Adana and an Oba Market in Bonn or Lagos are indistinguishable
+from the monitored chains — and the model said `about_subject` at 0.99 on
+exactly those records.
+
+Adding the two fields changed **114 verdicts**, and the samples read correct in
+both directions: the Florida/Adana/Bonn/Lagos records flipped to
+`not_about_subject`, and genuine Azerbaijani comments flipped the other way.
+One of the Turkish records is `MATCHED` today, i.e. that noise is in a client's
+feed right now. **This is worth fixing in `ai-relevance-judge.ts` regardless of
+whether Jev is ever adopted.**
+
+Note the side effect on the metric above: the "brand is literally in the text"
+reference is wrong for these same-name records, so the literal agreement fell
+from 94% to 90% while the answers got better. A reference that cannot tell two
+shops with one name apart is the limit of what can be measured without hand
+labels.
+
+### What this does not settle
+
+The 149 records where Jev says `not_about_subject` about something the matcher
+MATCHED are **not** grounds for deleting anything: the confident ones include a
+customer complaining about a phone they bought, which is exactly the record a
+client must not lose. The plus-only direction the judge pass already uses stays
+right.
+
+Adding TypeSafe as a subprocessor is still a separate decision, and the missing
+DPA is part of it.
