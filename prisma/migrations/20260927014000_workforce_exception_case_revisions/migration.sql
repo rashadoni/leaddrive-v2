@@ -4,11 +4,10 @@
 -- cutover. Existing linked signals remain NULL rather than guessing whether
 -- they happened before or after a request/reopen cycle.
 --
--- This is an expand/backfill/index/validate/contract migration. Long scans and
--- index builds never run while an ACCESS EXCLUSIVE table lock is held. Every
--- phase has a bounded timeout, and the old application binary remains writable
--- between phases because the insert compatibility trigger accepts an omitted
--- revision.
+-- This separately tracked expansion is atomic and metadata-only. Later
+-- migrations backfill, build online indexes and contract the column. The old
+-- application binary remains writable because compatibility triggers allocate
+-- omitted revisions and preserve its timestamp-based lifecycle order.
 --
 -- Rollback: once a decision or linked signal carries a revision, a code revert
 -- must retain these columns, triggers and indexes. Dropping them would make a
@@ -39,6 +38,43 @@ ALTER TABLE "mtm_hrm_requests"
   ADD CONSTRAINT "mtm_hrm_requests_exception_case_revision_shape_check"
     CHECK ("exceptionCaseRevision" IS NULL OR "exceptionCaseId" IS NOT NULL) NOT VALID;
 
+-- The deployed pre-cutover reader still compares these three timestamp
+-- columns. During the non-overlap handoff it remains live while migrations run,
+-- and a rollback may restart it afterward. Give every post-expansion lifecycle
+-- event a strictly increasing millisecond floor while the canonical case lock
+-- is held, so old timestamp readers and new revision readers observe the same
+-- causal order. Client time is retained only when it is later than that floor;
+-- the next event advances past it.
+CREATE OR REPLACE FUNCTION workforce_next_exception_compatibility_timestamp(
+  input_organization_id TEXT,
+  input_case_id TEXT
+)
+RETURNS TIMESTAMP(3)
+LANGUAGE sql
+VOLATILE
+AS $$
+  SELECT GREATEST(
+    clock_timestamp()::TIMESTAMP(3),
+    COALESCE(
+      MAX(lifecycle_event."eventAt") + INTERVAL '1 millisecond',
+      clock_timestamp()::TIMESTAMP(3)
+    )
+  )
+  FROM (
+    SELECT "createdAt" AS "eventAt"
+      FROM "workforce_exception_decisions"
+     WHERE "organizationId" = input_organization_id AND "caseId" = input_case_id
+    UNION ALL
+    SELECT "createdAt" AS "eventAt"
+      FROM "workforce_exception_employee_responses"
+     WHERE "organizationId" = input_organization_id AND "caseId" = input_case_id
+    UNION ALL
+    SELECT "submittedAt" AS "eventAt"
+      FROM "mtm_hrm_requests"
+     WHERE "organizationId" = input_organization_id AND "exceptionCaseId" = input_case_id
+  ) lifecycle_event;
+$$;
+
 -- A draining pre-cutover binary does not send caseRevision. COUNT includes the
 -- still-NULL legacy rows, so it allocates after them before and during the
 -- backfill. New code sends that exact expected value. The advisory lock makes
@@ -66,6 +102,10 @@ BEGIN
     RAISE EXCEPTION 'Workforce exception decision case revision is stale'
       USING ERRCODE = '23514';
   END IF;
+  NEW."createdAt" := GREATEST(
+    NEW."createdAt",
+    workforce_next_exception_compatibility_timestamp(NEW."organizationId", NEW."caseId")
+  );
   RETURN NEW;
 END;
 $$;
@@ -119,27 +159,33 @@ BEGIN
     END IF;
   END IF;
 
-  IF NEW."observedCaseRevision" IS NOT NULL THEN
-    PERFORM pg_advisory_xact_lock(hashtext(
-      'workforce-exception-decision:' || NEW."organizationId" || ':' || NEW."caseId"
-    ));
-    SELECT COALESCE(MAX("caseRevision"), 0)
-      INTO current_case_revision
-      FROM "workforce_exception_decisions"
-     WHERE "organizationId" = NEW."organizationId"
-       AND "caseId" = NEW."caseId";
-    IF NEW."observedCaseRevision" <> current_case_revision THEN
-      RAISE EXCEPTION 'Workforce employee response observed a stale case revision' USING ERRCODE = '23514';
-    END IF;
+  PERFORM pg_advisory_xact_lock(hashtext(
+    'workforce-exception-decision:' || NEW."organizationId" || ':' || NEW."caseId"
+  ));
+  -- COUNT is the logical current revision both before and after backfill. During
+  -- the expand/backfill overlap, legacy decisions are still NULL while an old
+  -- binary can emit a new signal; MAX would incorrectly bind that signal to 0.
+  SELECT COUNT(*)::INTEGER
+    INTO current_case_revision
+    FROM "workforce_exception_decisions"
+   WHERE "organizationId" = NEW."organizationId"
+     AND "caseId" = NEW."caseId";
+  IF NEW."observedCaseRevision" IS NULL THEN
+    NEW."observedCaseRevision" := current_case_revision;
+  ELSIF NEW."observedCaseRevision" <> current_case_revision THEN
+    RAISE EXCEPTION 'Workforce employee response observed a stale case revision' USING ERRCODE = '23514';
   END IF;
+  NEW."createdAt" := GREATEST(
+    NEW."createdAt",
+    workforce_next_exception_compatibility_timestamp(NEW."organizationId", NEW."caseId")
+  );
   RETURN NEW;
 END;
 $$;
 
--- Preserve the immutable correction source link and bind only new, explicitly
--- revisioned rows to the case stream. NULL remains valid for old application
--- writes during the deploy and for legacy rows; terminal logic must treat it
--- as unknown rather than inferring order from submittedAt/createdAt.
+-- Preserve the immutable correction source link. A draining old binary omits
+-- the new revision, so the trigger fills it for every newly inserted linked
+-- request. NULL remains only for unlinked or pre-expansion legacy rows.
 CREATE OR REPLACE FUNCTION workforce_validate_hrm_request_exception_link()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -177,119 +223,32 @@ BEGIN
     RAISE EXCEPTION 'Workforce exception link must match the employee and exact correction workday' USING ERRCODE = '23514';
   END IF;
 
-  IF TG_OP = 'INSERT' AND NEW."exceptionCaseRevision" IS NOT NULL THEN
+  IF TG_OP = 'INSERT' THEN
     PERFORM pg_advisory_xact_lock(hashtext(
       'workforce-exception-decision:' || NEW."organizationId" || ':' || NEW."exceptionCaseId"
     ));
-    SELECT COALESCE(MAX("caseRevision"), 0)
+    -- COUNT also covers the short rolling window before legacy decisions have
+    -- received their positive revisions in the separately tracked backfill.
+    SELECT COUNT(*)::INTEGER
       INTO current_case_revision
       FROM "workforce_exception_decisions"
      WHERE "organizationId" = NEW."organizationId"
        AND "caseId" = NEW."exceptionCaseId";
-    IF NEW."exceptionCaseRevision" <> current_case_revision THEN
+    IF NEW."exceptionCaseRevision" IS NULL THEN
+      NEW."exceptionCaseRevision" := current_case_revision;
+    ELSIF NEW."exceptionCaseRevision" <> current_case_revision THEN
       RAISE EXCEPTION 'Workforce correction request observed a stale case revision' USING ERRCODE = '23514';
     END IF;
+    NEW."submittedAt" := GREATEST(
+      NEW."submittedAt",
+      workforce_next_exception_compatibility_timestamp(
+        NEW."organizationId",
+        NEW."exceptionCaseId"
+      )
+    );
   END IF;
   RETURN NEW;
 END;
 $$;
 
-COMMIT;
-
--- Phase 2: update only the new column while ordinary reads/inserts continue.
--- The append-only trigger is never disabled. Its temporary implementation
--- admits exactly NULL -> positive revision, only for an owning-role member
--- that opted into this transaction-local backfill; every other UPDATE/DELETE
--- remains rejected. A failure rolls this function replacement back as well.
-BEGIN;
-SET LOCAL lock_timeout = '3s';
-SET LOCAL statement_timeout = '2min';
-SELECT set_config('app.rls_bypass', 'on', true);
-SELECT set_config('app.workforce_exception_revision_backfill', 'on', true);
-
-CREATE OR REPLACE FUNCTION workforce_reject_exception_decision_mutation()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  relation_owner OID;
-BEGIN
-  SELECT relowner INTO relation_owner FROM pg_class WHERE oid = TG_RELID;
-  IF TG_OP = 'UPDATE'
-     AND current_setting('app.workforce_exception_revision_backfill', true) = 'on'
-     AND pg_has_role(session_user, relation_owner, 'MEMBER')
-     AND OLD."caseRevision" IS NULL
-     AND NEW."caseRevision" > 0
-     AND (to_jsonb(NEW) - 'caseRevision') = (to_jsonb(OLD) - 'caseRevision') THEN
-    RETURN NEW;
-  END IF;
-  RAISE EXCEPTION 'Workforce exception decisions are append-only' USING ERRCODE = '55000';
-END;
-$$;
-
-WITH ranked AS (
-  SELECT "id",
-         row_number() OVER (
-           PARTITION BY "organizationId", "caseId"
-           ORDER BY "createdAt" ASC, "id" ASC
-         )::INTEGER AS revision
-    FROM "workforce_exception_decisions"
-   WHERE "caseRevision" IS NULL
-)
-UPDATE "workforce_exception_decisions" decisions
-   SET "caseRevision" = ranked.revision
-  FROM ranked
- WHERE decisions."id" = ranked."id"
-   AND decisions."caseRevision" IS NULL;
-
-CREATE OR REPLACE FUNCTION workforce_reject_exception_decision_mutation()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RAISE EXCEPTION 'Workforce exception decisions are append-only' USING ERRCODE = '55000';
-END;
-$$;
-
-COMMIT;
-
--- Phase 3: online indexes. Prisma's PostgreSQL migration runner does not wrap
--- a migration in an implicit transaction, so these statements are deliberately
--- outside every explicit transaction.
-SET lock_timeout = '3s';
-SET statement_timeout = '2min';
-
-CREATE UNIQUE INDEX CONCURRENTLY "workforce_exception_decisions_org_case_revision_key"
-  ON "workforce_exception_decisions"("organizationId", "caseId", "caseRevision");
-
-CREATE INDEX CONCURRENTLY "workforce_exception_employee_responses_org_case_revision_idx"
-  ON "workforce_exception_employee_responses"("organizationId", "caseId", "observedCaseRevision");
-
-RESET statement_timeout;
-RESET lock_timeout;
-
--- Phase 4: scans use VALIDATE CONSTRAINT without blocking ordinary writes.
--- The validated helper lets SET NOT NULL become a short metadata operation;
--- only that final bounded transaction needs ACCESS EXCLUSIVE briefly.
-BEGIN;
-SET LOCAL lock_timeout = '3s';
-SET LOCAL statement_timeout = '2min';
-
-ALTER TABLE "workforce_exception_decisions"
-  VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_check";
-ALTER TABLE "workforce_exception_decisions"
-  VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_not_null_check";
-ALTER TABLE "workforce_exception_employee_responses"
-  VALIDATE CONSTRAINT "workforce_exception_employee_responses_observed_revision_check";
-ALTER TABLE "mtm_hrm_requests"
-  VALIDATE CONSTRAINT "mtm_hrm_requests_exception_case_revision_check";
-ALTER TABLE "mtm_hrm_requests"
-  VALIDATE CONSTRAINT "mtm_hrm_requests_exception_case_revision_shape_check";
-
-ALTER TABLE "workforce_exception_decisions"
-  ALTER COLUMN "caseRevision" SET NOT NULL,
-  DROP CONSTRAINT "workforce_exception_decisions_case_revision_not_null_check";
-
--- No tenant flag is enabled and no terminal action is exposed by this
--- migration. Existing RLS, grants and append-only triggers remain unchanged.
 COMMIT;

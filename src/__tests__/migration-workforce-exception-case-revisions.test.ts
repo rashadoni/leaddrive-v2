@@ -4,10 +4,24 @@ import { describe, expect, it } from "vitest"
 
 const root = process.cwd()
 const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8")
-const migration = readFileSync(join(
-  root,
-  "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+const migrationRoot = join(root, "prisma/migrations")
+const expandMigration = readFileSync(join(
+  migrationRoot,
+  "20260927014000_workforce_exception_case_revisions/migration.sql",
 ), "utf8")
+const backfillMigration = readFileSync(join(
+  migrationRoot,
+  "20260927014100_workforce_exception_case_revisions_backfill/migration.sql",
+), "utf8")
+const indexMigration = readFileSync(join(
+  migrationRoot,
+  "20260927014200_workforce_exception_case_revisions_indexes/migration.sql",
+), "utf8")
+const contractMigration = readFileSync(join(
+  migrationRoot,
+  "20260927014300_workforce_exception_case_revisions_contract/migration.sql",
+), "utf8")
+const migration = [expandMigration, backfillMigration, indexMigration, contractMigration].join("\n")
 
 function model(name: string): string {
   const start = schema.indexOf(`model ${name} {`)
@@ -33,35 +47,35 @@ describe("Workforce C6 case-local lifecycle revision migration", () => {
     expect(migration).not.toMatch(/\b(?:DROP|TRUNCATE)\s+(?:TABLE|TYPE)\b/i)
   })
 
-  it("uses bounded expand/backfill/index/contract phases without disabling append-only storage", () => {
-    expect(migration).toContain("BEGIN;")
-    expect(migration).toContain("SET LOCAL lock_timeout = '3s'")
-    expect(migration).toContain("SET LOCAL statement_timeout = '2min'")
-    expect(migration).toContain("SELECT set_config('app.rls_bypass', 'on', true)")
-    expect(migration).toContain("SELECT set_config('app.workforce_exception_revision_backfill', 'on', true)")
-    expect(migration).toContain("row_number() OVER")
-    expect(migration).toContain('PARTITION BY "organizationId", "caseId"')
-    expect(migration).toContain('ORDER BY "createdAt" ASC, "id" ASC')
-    expect(migration).toContain('WHERE "caseRevision" IS NULL')
-    expect(migration).toContain("pg_has_role(session_user, relation_owner, 'MEMBER')")
-    expect(migration).toContain("(to_jsonb(NEW) - 'caseRevision') = (to_jsonb(OLD) - 'caseRevision')")
-    expect(migration).toContain('CREATE UNIQUE INDEX CONCURRENTLY "workforce_exception_decisions_org_case_revision_key"')
-    expect(migration).toContain('CREATE INDEX CONCURRENTLY "workforce_exception_employee_responses_org_case_revision_idx"')
-    expect(migration).toContain('CHECK ("caseRevision" IS NOT NULL) NOT VALID')
-    expect(migration).toContain('VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_not_null_check"')
-    expect(migration).toContain('ALTER COLUMN "caseRevision" SET NOT NULL')
+  it("uses separately tracked bounded phases without disabling append-only storage", () => {
+    for (const transactionalMigration of [expandMigration, backfillMigration, contractMigration]) {
+      expect(transactionalMigration).toContain("BEGIN;")
+      expect(transactionalMigration.trimEnd().endsWith("COMMIT;")).toBe(true)
+    }
+    expect(backfillMigration).toContain("SET LOCAL lock_timeout = '3s'")
+    expect(backfillMigration).toContain("SET LOCAL statement_timeout = '2min'")
+    expect(backfillMigration).toContain("SELECT set_config('app.rls_bypass', 'on', true)")
+    expect(backfillMigration).toContain("SELECT set_config('app.workforce_exception_revision_backfill', 'on', true)")
+    expect(backfillMigration).toContain("row_number() OVER")
+    expect(backfillMigration).toContain('PARTITION BY "organizationId", "caseId"')
+    expect(backfillMigration).toContain('ORDER BY "createdAt" ASC, "id" ASC')
+    expect(backfillMigration).toContain('WHERE "caseRevision" IS NULL')
+    expect(backfillMigration).toContain("pg_has_role(session_user, relation_owner, 'MEMBER')")
+    expect(backfillMigration).toContain("(to_jsonb(NEW) - 'caseRevision') = (to_jsonb(OLD) - 'caseRevision')")
+    expect(indexMigration).toContain('DROP INDEX CONCURRENTLY IF EXISTS "workforce_exception_decisions_org_case_revision_key"')
+    expect(indexMigration).toContain('CREATE UNIQUE INDEX CONCURRENTLY "workforce_exception_decisions_org_case_revision_key"')
+    expect(indexMigration).toContain('DROP INDEX CONCURRENTLY IF EXISTS "workforce_exception_employee_responses_org_case_revision_idx"')
+    expect(indexMigration).toContain('CREATE INDEX CONCURRENTLY "workforce_exception_employee_responses_org_case_revision_idx"')
+    expect(expandMigration).toContain('CHECK ("caseRevision" IS NOT NULL) NOT VALID')
+    expect(contractMigration).toContain('VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_not_null_check"')
+    expect(contractMigration).toContain('ALTER COLUMN "caseRevision" SET NOT NULL')
     expect(migration).not.toMatch(/LOCK TABLE[\s\S]*ACCESS EXCLUSIVE/i)
     expect(migration).not.toMatch(/DISABLE TRIGGER|ENABLE TRIGGER/i)
-    expect(migration.trimEnd().endsWith("COMMIT;")).toBe(true)
 
-    const compatibilityTrigger = migration.indexOf("CREATE TRIGGER workforce_exception_decisions_assign_case_revision")
-    const backfill = migration.indexOf('UPDATE "workforce_exception_decisions" decisions')
-    const concurrentIndex = migration.indexOf("CREATE UNIQUE INDEX CONCURRENTLY")
-    const validation = migration.indexOf('VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_check"')
-    expect(compatibilityTrigger).toBeGreaterThan(0)
-    expect(backfill).toBeGreaterThan(compatibilityTrigger)
-    expect(concurrentIndex).toBeGreaterThan(backfill)
-    expect(validation).toBeGreaterThan(concurrentIndex)
+    expect(expandMigration).toContain("CREATE TRIGGER workforce_exception_decisions_assign_case_revision")
+    expect(backfillMigration).toContain('UPDATE "workforce_exception_decisions" decisions')
+    expect(indexMigration).toContain("CREATE UNIQUE INDEX CONCURRENTLY")
+    expect(contractMigration).toContain('VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_check"')
   })
 
   it("keeps old binaries compatible while rejecting a stale new-binary revision", () => {
@@ -75,6 +89,19 @@ describe("Workforce C6 case-local lifecycle revision migration", () => {
     expect(migration).toContain("USING ERRCODE = '23514'")
   })
 
+  it("bridges old timestamp readers and old writers to the logical revision stream", () => {
+    expect(expandMigration).toContain("CREATE OR REPLACE FUNCTION workforce_next_exception_compatibility_timestamp(")
+    expect(expandMigration).toContain("MAX(lifecycle_event.\"eventAt\") + INTERVAL '1 millisecond'")
+    expect(expandMigration).toContain('NEW."createdAt" := GREATEST(')
+    expect(expandMigration).toContain('IF NEW."observedCaseRevision" IS NULL THEN')
+    expect(expandMigration).toContain('NEW."observedCaseRevision" := current_case_revision')
+    expect(expandMigration).toContain('IF NEW."exceptionCaseRevision" IS NULL THEN')
+    expect(expandMigration).toContain('NEW."exceptionCaseRevision" := current_case_revision')
+    expect(expandMigration.match(/SELECT COUNT\(\*\)::INTEGER/g)).toHaveLength(2)
+    expect(expandMigration).toContain('NEW."submittedAt" := GREATEST(')
+    expect(expandMigration).toContain('WHERE "organizationId" = input_organization_id AND "exceptionCaseId" = input_case_id')
+  })
+
   it("binds every non-legacy employee signal to the exact locked revision", () => {
     expect(migration).toContain("CREATE OR REPLACE FUNCTION workforce_validate_exception_employee_response_insert()")
     expect(migration).toContain('request_exception_case_id IS DISTINCT FROM NEW."caseId"')
@@ -83,7 +110,7 @@ describe("Workforce C6 case-local lifecycle revision migration", () => {
     expect(migration).toContain('NEW."exceptionCaseRevision" <> current_case_revision')
     expect(migration).toContain('OLD."exceptionCaseRevision" IS DISTINCT FROM NEW."exceptionCaseRevision"')
     expect(migration).toContain('"exceptionCaseRevision" IS NULL OR "exceptionCaseId" IS NOT NULL')
-    expect(migration).toContain("IF TG_OP = 'INSERT' AND NEW.\"exceptionCaseRevision\" IS NOT NULL THEN")
+    expect(migration).toContain("IF TG_OP = 'INSERT' THEN")
     expect(migration).not.toMatch(/RESOLVE_NO_CHANGE|RESOLVE_WITH_CORRECTION|REOPEN_FOR_REVIEW/)
   })
 })

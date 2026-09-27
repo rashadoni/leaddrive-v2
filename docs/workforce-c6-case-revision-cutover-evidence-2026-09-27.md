@@ -1,6 +1,7 @@
 # Workforce C6 case-revision cutover evidence — 2026-09-27
 
-Status: **implementation prepared; independent complete-diff review and exact-head CI pending**.
+Status: **first frozen review RED; both findings repaired; replacement
+complete-diff review and exact-head CI pending**.
 
 This slice starts from deployed `main` SHA
 `fdc601599b048734409a1359863ede382d08e768` plus the append-only release
@@ -48,25 +49,35 @@ lock.
 
 ## Online migration contract
 
-`20260927014000_workforce_exception_case_revisions` is split into bounded
-expand/backfill/index/validate/contract phases:
+The cutover uses four separately tracked Prisma migrations so a later timeout
+never leaves an earlier successful phase hidden inside one failed ledger row:
 
-1. A short metadata transaction adds nullable columns and `NOT VALID`
-   constraints, then installs the decision compatibility allocator and signal
-   validators. A draining old binary can omit `caseRevision`; the trigger
-   counts all case rows under the canonical lock and allocates after both NULL
-   legacy rows and already revisioned rows.
-2. A two-minute-bounded backfill ranks only NULL legacy decisions by the former
-   deterministic `(createdAt, id)` order. The append-only trigger is never
-   disabled. Its transaction-local replacement admits only a NULL-to-positive
-   `caseRevision` change, only when every other column is byte-equivalent and
-   `session_user` is a member of the relation-owner role. Every other update or
-   delete remains rejected, and any failure rolls the replacement back.
-3. The unique decision index and response lookup index are built with
-   `CREATE INDEX CONCURRENTLY` outside explicit transactions, each with bounded
-   lock and statement timeouts.
-4. Constraints are scanned with `VALIDATE CONSTRAINT`. A validated helper
-   proves non-nullness before the final short metadata-only `SET NOT NULL`.
+1. `20260927014000_workforce_exception_case_revisions` is a short atomic
+   metadata expansion. It adds nullable columns and `NOT VALID` constraints,
+   then installs the decision allocator and signal validators. A draining old
+   binary can omit every new revision field. Decision inserts allocate after
+   both NULL legacy rows and revisioned rows; response and linked-request
+   inserts use the full decision count, including the expand-before-backfill
+   window. Under the same case lock, the bridge also advances decision
+   `createdAt`, response `createdAt` and linked-request `submittedAt` past every
+   prior lifecycle event, so the deployed timestamp reader and revision reader
+   agree during drain or rollback.
+2. `20260927014100_workforce_exception_case_revisions_backfill` is an atomic,
+   two-minute-bounded backfill that ranks only NULL legacy decisions by the
+   former deterministic `(createdAt, id)` order. The append-only trigger is
+   never disabled. Its transaction-local replacement admits only a
+   NULL-to-positive `caseRevision` change when every other column is unchanged
+   and `session_user` is a member of the relation-owner role. Every other update
+   or delete remains rejected, and failure atomically rolls the data and
+   temporary function definition back.
+3. `20260927014200_workforce_exception_case_revisions_indexes` builds the
+   unique decision index and response lookup index with `CREATE INDEX
+   CONCURRENTLY` outside an explicit transaction. Before each build it uses
+   `DROP INDEX CONCURRENTLY IF EXISTS`, so a verified failed Prisma ledger row
+   and PostgreSQL's same-named invalid index can be resolved and replayed.
+4. `20260927014300_workforce_exception_case_revisions_contract` atomically
+   scans constraints with `VALIDATE CONSTRAINT`. A validated helper proves
+   non-nullness before the final short metadata-only `SET NOT NULL`.
 
 No long scan or index build runs while an explicit `ACCESS EXCLUSIVE` lock is
 held. A timeout fails deployment without exposing terminal actions; the
@@ -100,12 +111,25 @@ separate owner role, and backfills a ledger with `ENABLE/FORCE ROW LEVEL
 SECURITY`. This matches the production deployment privilege boundary rather
 than relying on the CI superuser.
 
+The harness invokes the real `prisma migrate deploy` command. It first deploys
+only expansion, writes old-binary request/response rows while all three legacy
+decisions are still NULL, and proves that both rows bind to revision 3 in
+strict timestamp order. It then deploys backfill, deliberately creates one
+duplicate revision, observes one failed Prisma index-migration ledger row plus
+one same-named invalid index, removes only the injected fault, executes the
+exact `prisma migrate resolve --rolled-back` recovery, and replays deployment
+to four successful migration rows with no unresolved entry. Its three
+lifecycle timestamp columns use the exact production `TIMESTAMP(3)` type and
+default semantics.
+
 The eleven opt-in PostgreSQL cases cover:
 
-- deterministic append-only backfill, restored mutation rejection, old-client
-  omission, correct and stale explicit revisions, exact/legacy/stale signal
-  semantics, same-case correction success, wrong/unlinked-case rejection and
-  unrelated request-status updates preserving the revision;
+- expand-before-backfill old-writer compatibility, deterministic append-only
+  backfill, restored mutation rejection, Prisma-ledger/invalid-index recovery,
+  old-client omission, correct and stale explicit revisions,
+  exact/legacy/stale signal semantics, same-case correction success,
+  wrong/unlinked-case rejection and unrelated request-status updates
+  preserving the revision;
 - a decision allocator that waits on the advisory lock and reads the committed
   winner from a fresh snapshot;
 - response and request trigger validation after an observed advisory-lock wait;
@@ -122,21 +146,33 @@ the dedicated disposable PostgreSQL URL is present.
 ## Local evidence
 
 - PASS — Prisma schema validation with an explicit validation URL.
-- PASS — focused Vitest: 13 files and 231 tests.
-- SKIPPED / NOT RUN locally — 11 opt-in PostgreSQL cases because no approved
-  scratch URL is present; exact SQL, production-like role/RLS and races remain
-  mandatory in CI.
+- PASS — focused Vitest selection: 12 files / 226 tests passed.
+- SKIPPED / NOT RUN locally — the thirteenth selected file contains 11 opt-in
+  PostgreSQL cases and no approved scratch URL is present; exact Prisma-ledger
+  recovery, production-like role/RLS and races remain mandatory in CI.
 - PASS — targeted ESLint for every changed TypeScript/test file.
+- PASS — recursive RLS context scan: 552 organization-scoped models, zero
+  gaps.
+- PASS — runner policy for 37 workflows, event/delivery assets for 27 domains,
+  86 topics and five concrete schemas, and main-protection configurator tests.
 - PASS — `git diff --check` before the documentation checkpoint.
 - NOT RUN — Prisma generate against the shared dependency cache, because it
   would mutate a foreign cache; CI must generate the client.
 - NOT RUN under the Contabo workload policy — full typecheck/build, browser
   E2E, Android/Gradle, load, physical-device and human-pilot checks.
 
-Independent author-separated review of the final frozen diff and all five
-exact-head GitHub contexts (`pr-scope`, `static-checks`, `typecheck`,
-`runner-policy`, `scan`) remain mandatory before merge. The retired
-`agent-review` GitHub status is not restored.
+The first author-separated frozen review returned RED with two P1 findings: a
+draining old timestamp reader could disagree with the revision reader, and the
+single multi-phase migration could not be safely replayed from a later failed
+Prisma ledger row. The compatibility timestamp/revision bridge and four
+separately tracked restartable phases above are the repairs. A fresh review of
+the replacement frozen diff and all five exact-head GitHub contexts
+(`pr-scope`, `static-checks`, `typecheck`, `runner-policy`, `scan`) remain
+mandatory before merge. The retired `agent-review` GitHub status is not
+restored. A separate pre-freeze audit found and repaired one P2 fixture-fidelity
+issue (`TIMESTAMPTZ` versus production `TIMESTAMP(3)`); its rereview returned
+zero remaining findings, but it is not substituted for the mandatory frozen
+complete-diff review.
 
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal

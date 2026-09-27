@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
-import { readFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { spawnSync } from "node:child_process"
 import { Prisma, PrismaClient } from "@prisma/client"
@@ -29,10 +30,13 @@ const migrationOwnerRole = `workforce_revision_owner_${roleSuffix}`
 const migrationLoginRole = `workforce_revision_migrator_${roleSuffix}`
 const migrationLoginPassword = `Revision_${randomUUID().replaceAll("-", "")}`
 const organizationId = "org-workforce-lock-proof"
-const migrationPath = join(
-  process.cwd(),
-  "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
-)
+const revisionMigrationNames = [
+  "20260927014000_workforce_exception_case_revisions",
+  "20260927014100_workforce_exception_case_revisions_backfill",
+  "20260927014200_workforce_exception_case_revisions_indexes",
+  "20260927014300_workforce_exception_case_revisions_contract",
+] as const
+const revisionIndexMigration = revisionMigrationNames[2]
 
 type Deferred<T> = {
   promise: Promise<T>
@@ -52,29 +56,60 @@ function databaseUrlForRole(role: string, password: string): string {
   return url.toString()
 }
 
-function applyExactRevisionMigration(): void {
-  const result = spawnSync(
+function migrationDatabaseUrl(): string {
+  const url = new URL(databaseUrlForRole(migrationLoginRole, migrationLoginPassword))
+  url.searchParams.set("schema", schema)
+  return url.toString()
+}
+
+function runPrismaMigrationCommand(
+  migrationProject: string,
+  args: readonly string[],
+): ReturnType<typeof spawnSync> {
+  return spawnSync(
     join(process.cwd(), "node_modules/.bin/prisma"),
-    ["db", "execute", "--url", databaseUrlForRole(
-      migrationLoginRole,
-      migrationLoginPassword,
-    ), "--stdin"],
+    [...args, "--schema", join(migrationProject, "prisma/schema.prisma")],
     {
       cwd: process.cwd(),
-      env: process.env,
+      env: { ...process.env, DATABASE_URL: migrationDatabaseUrl() },
       encoding: "utf8",
-      input: `SET search_path TO "${schema}";\n${readFileSync(migrationPath, "utf8")}`,
     },
   )
-  if (result.status !== 0) {
-    throw new Error(`Workforce revision migration failed\n${result.stdout}\n${result.stderr}`)
-  }
+}
+
+function addExactMigrationToProject(migrationProject: string, migrationName: string): void {
+  const target = join(migrationProject, "prisma/migrations", migrationName)
+  mkdirSync(target, { recursive: true })
+  writeFileSync(
+    join(target, "migration.sql"),
+    readFileSync(join(process.cwd(), "prisma/migrations", migrationName, "migration.sql")),
+  )
+}
+
+function createMigrationProject(): string {
+  const migrationProject = mkdtempSync(join(tmpdir(), "workforce-revision-migrations-"))
+  const prismaDirectory = join(migrationProject, "prisma")
+  mkdirSync(join(prismaDirectory, "migrations"), { recursive: true })
+  writeFileSync(join(prismaDirectory, "schema.prisma"), `
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+`)
+  writeFileSync(join(prismaDirectory, "migrations/migration_lock.toml"), 'provider = "postgresql"\n')
+  return migrationProject
 }
 
 postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
   let observer!: PrismaClient
   let terminalClient!: PrismaClient
   let linkedClient!: PrismaClient
+  let migrationProject: string | null = null
+  let migrationRecoveryEvidence: {
+    failedIndexLedgerRows: number
+    invalidIndexesAfterFailure: number
+    successfulRevisionMigrations: number
+  } | null = null
 
   beforeAll(async () => {
     observer = new PrismaClient({ datasourceUrl: integrationDatabaseUrl })
@@ -181,7 +216,8 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
         "type" TEXT NOT NULL,
         "status" TEXT NOT NULL DEFAULT 'PENDING',
         "correctionWorkdayId" TEXT,
-        "exceptionCaseId" TEXT
+        "exceptionCaseId" TEXT,
+        "submittedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `)
     await observer.$executeRawUnsafe(`
@@ -193,7 +229,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
         "decisionCode" TEXT NOT NULL,
         "reason" TEXT NOT NULL,
         "actorUserId" TEXT NOT NULL,
-        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `)
     await observer.$executeRawUnsafe(`
@@ -207,7 +243,8 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
         "correctionRequestId" TEXT,
         "responseCode" TEXT NOT NULL,
         "clientResponseId" TEXT NOT NULL,
-        "actorUserId" TEXT NOT NULL
+        "actorUserId" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `)
     await observer.$executeRawUnsafe(`
@@ -261,6 +298,24 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
         ('migration-decision-a', $1, 'migration-case', 'migration-op-a', 'ACKNOWLEDGE', 'a', 'manager', '2026-09-01T09:00:00Z'),
         ('migration-decision-c', $1, 'migration-case', 'migration-op-c', 'REQUEST_EMPLOYEE_RESPONSE', 'c', 'manager', '2026-09-01T10:00:00Z')
     `, organizationId)
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."mtm_hrm_requests" (
+        "id", "organizationId", "agentId", "type", "correctionWorkdayId",
+        "exceptionCaseId", "submittedAt"
+      ) VALUES ('migration-request-pre-expansion', $1, 'migration-agent',
+                'TIME_CORRECTION', 'migration-workday', 'migration-case',
+                '2026-09-01T10:30:00Z')
+    `, organizationId)
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+        "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+        "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+        "createdAt"
+      ) VALUES ('migration-response-pre-expansion', $1, 'migration-case',
+                'migration-agent', 'migration-workday', 'migration-segment', NULL,
+                'ACKNOWLEDGED', 'migration-response-pre-expansion', 'migration-user',
+                '2026-09-01T10:45:00Z')
+    `, organizationId)
 
     // Match production's ownership contract: the login that applies the
     // migration is not superuser, has BYPASSRLS, and only inherits DDL rights
@@ -307,8 +362,145 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
         OR current_setting('app.rls_bypass', true) = 'on'
       )
     `)
-    applyExactRevisionMigration()
-  })
+    migrationProject = createMigrationProject()
+    addExactMigrationToProject(migrationProject, revisionMigrationNames[0])
+    const expandDeploy = runPrismaMigrationCommand(migrationProject, ["migrate", "deploy"])
+    if (expandDeploy.status !== 0) {
+      throw new Error(
+        `Workforce revision expansion migration failed\n${expandDeploy.stdout}\n${expandDeploy.stderr}`,
+      )
+    }
+
+    // Exercise the real rolling window: the old binary can still write after
+    // expansion commits but before the separately tracked backfill starts. Its
+    // omitted revision must bind to all three still-NULL legacy decisions, and
+    // its timestamp must remain causally ordered for the draining old reader.
+    await observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."mtm_hrm_requests" (
+          "id", "organizationId", "agentId", "type", "correctionWorkdayId",
+          "exceptionCaseId"
+        ) VALUES ('migration-request-expand-window', $1, 'migration-agent',
+                  'TIME_CORRECTION', 'migration-workday', 'migration-case')
+      `, organizationId)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+          "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+          "correctionRequestId", "responseCode", "clientResponseId", "actorUserId"
+        ) VALUES ('migration-response-expand-window', $1, 'migration-case',
+                  'migration-agent', 'migration-workday', 'migration-segment', NULL,
+                  'ACKNOWLEDGED', 'migration-response-expand-window', 'migration-user')
+      `, organizationId)
+    })
+
+    addExactMigrationToProject(migrationProject, revisionMigrationNames[1])
+    const backfillDeploy = runPrismaMigrationCommand(migrationProject, ["migrate", "deploy"])
+    if (backfillDeploy.status !== 0) {
+      throw new Error(
+        `Workforce revision backfill migration failed\n${backfillDeploy.stdout}\n${backfillDeploy.stderr}`,
+      )
+    }
+
+    // Force the exact online-index migration to leave its documented invalid
+    // artifact. The separately tracked expansion/backfill must remain applied,
+    // while the restartable index phase is resolved and replayed after the
+    // duplicate is removed.
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_decisions"
+      DISABLE TRIGGER workforce_exception_decisions_assign_case_revision
+    `)
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."workforce_exception_decisions" (
+        "id", "organizationId", "caseId", "operationId", "decisionCode",
+        "reason", "actorUserId", "createdAt", "caseRevision"
+      ) VALUES ('migration-recovery-duplicate', $1, 'migration-case',
+                'migration-recovery-duplicate', 'ACKNOWLEDGE', 'duplicate',
+                'manager', CURRENT_TIMESTAMP, 1)
+    `, organizationId)
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_decisions"
+      ENABLE TRIGGER workforce_exception_decisions_assign_case_revision
+    `)
+    for (const migrationName of revisionMigrationNames.slice(2)) {
+      addExactMigrationToProject(migrationProject, migrationName)
+    }
+    const expectedIndexFailure = runPrismaMigrationCommand(migrationProject, ["migrate", "deploy"])
+    if (expectedIndexFailure.status === 0) {
+      throw new Error("Workforce revision index migration unexpectedly accepted a duplicate revision")
+    }
+    const [failedState] = await observer.$queryRawUnsafe<Array<{
+      failedIndexLedgerRows: bigint
+      invalidIndexesAfterFailure: bigint
+    }>>(`
+      SELECT
+        (SELECT count(*)
+           FROM "${schema}"."_prisma_migrations"
+          WHERE migration_name = $1
+            AND finished_at IS NULL
+            AND rolled_back_at IS NULL) AS "failedIndexLedgerRows",
+        (SELECT count(*)
+           FROM pg_index index_state
+           JOIN pg_class index_relation ON index_relation.oid = index_state.indexrelid
+           JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
+          WHERE namespace.nspname = $2
+            AND index_relation.relname = 'workforce_exception_decisions_org_case_revision_key'
+            AND NOT index_state.indisvalid) AS "invalidIndexesAfterFailure"
+    `, revisionIndexMigration, schema)
+    migrationRecoveryEvidence = {
+      failedIndexLedgerRows: Number(failedState.failedIndexLedgerRows),
+      invalidIndexesAfterFailure: Number(failedState.invalidIndexesAfterFailure),
+      successfulRevisionMigrations: 0,
+    }
+    if (migrationRecoveryEvidence.failedIndexLedgerRows !== 1
+      || migrationRecoveryEvidence.invalidIndexesAfterFailure !== 1) {
+      throw new Error(`Unexpected Workforce revision failure state: ${JSON.stringify(migrationRecoveryEvidence)}`)
+    }
+
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_decisions"
+      DISABLE TRIGGER workforce_exception_decisions_append_only
+    `)
+    await observer.$executeRawUnsafe(`
+      DELETE FROM "${schema}"."workforce_exception_decisions"
+       WHERE "id" = 'migration-recovery-duplicate'
+    `)
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_decisions"
+      ENABLE TRIGGER workforce_exception_decisions_append_only
+    `)
+    const resolve = runPrismaMigrationCommand(migrationProject, [
+      "migrate", "resolve", "--rolled-back", revisionIndexMigration,
+    ])
+    if (resolve.status !== 0) {
+      throw new Error(`Workforce revision index resolve failed\n${resolve.stdout}\n${resolve.stderr}`)
+    }
+    const recoveryDeploy = runPrismaMigrationCommand(migrationProject, ["migrate", "deploy"])
+    if (recoveryDeploy.status !== 0) {
+      throw new Error(
+        `Workforce revision migration recovery failed\n${recoveryDeploy.stdout}\n${recoveryDeploy.stderr}`,
+      )
+    }
+    const [finalLedger] = await observer.$queryRawUnsafe<Array<{
+      successfulRevisionMigrations: bigint
+      unresolvedRevisionMigrations: bigint
+    }>>(`
+      SELECT
+        count(*) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL)
+          AS "successfulRevisionMigrations",
+        count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NULL)
+          AS "unresolvedRevisionMigrations"
+        FROM "${schema}"."_prisma_migrations"
+       WHERE migration_name = ANY($1::TEXT[])
+    `, [...revisionMigrationNames])
+    migrationRecoveryEvidence.successfulRevisionMigrations = Number(
+      finalLedger.successfulRevisionMigrations,
+    )
+    if (migrationRecoveryEvidence.successfulRevisionMigrations !== revisionMigrationNames.length
+      || Number(finalLedger.unresolvedRevisionMigrations) !== 0) {
+      throw new Error(`Incomplete Workforce revision recovery ledger: ${JSON.stringify(finalLedger)}`)
+    }
+  }, 90_000)
 
   afterAll(async () => {
     await observer?.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`).catch(() => {})
@@ -321,6 +513,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       terminalClient?.$disconnect(),
       linkedClient?.$disconnect(),
     ])
+    if (migrationProject) rmSync(migrationProject, { recursive: true, force: true })
   })
 
   function linkedMutationDb(tx: Prisma.TransactionClient): WorkforceExceptionLinkedMutationDb {
@@ -458,6 +651,11 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
   }
 
   it("applies the exact revision migration to a non-empty append-only ledger", async () => {
+    expect(migrationRecoveryEvidence).toEqual({
+      failedIndexLedgerRows: 1,
+      invalidIndexesAfterFailure: 1,
+      successfulRevisionMigrations: 4,
+    })
     const [migrationRole] = await observer.$queryRawUnsafe<Array<{
       rolsuper: boolean
       rolbypassrls: boolean
@@ -499,6 +697,49 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       { id: "migration-decision-b", caseRevision: 2 },
       { id: "migration-decision-c", caseRevision: 3 },
     ])
+    const [legacySignals] = await observer.$queryRawUnsafe<Array<{
+      observedCaseRevision: number | null
+      exceptionCaseRevision: number | null
+    }>>(`
+      SELECT response."observedCaseRevision",
+             request."exceptionCaseRevision"
+        FROM "${schema}"."workforce_exception_employee_responses" response
+        JOIN "${schema}"."mtm_hrm_requests" request
+          ON request."id" = 'migration-request-pre-expansion'
+       WHERE response."id" = 'migration-response-pre-expansion'
+    `)
+    expect(legacySignals).toEqual({
+      observedCaseRevision: null,
+      exceptionCaseRevision: null,
+    })
+    const [expandWindowSignals] = await observer.$queryRawUnsafe<Array<{
+      observedCaseRevision: number
+      responseCreatedAt: Date
+      exceptionCaseRevision: number
+      requestSubmittedAt: Date
+      previousDecisionCreatedAt: Date
+    }>>(`
+      SELECT response."observedCaseRevision",
+             response."createdAt" AS "responseCreatedAt",
+             request."exceptionCaseRevision",
+             request."submittedAt" AS "requestSubmittedAt",
+             (
+               SELECT MAX(decision."createdAt")
+                 FROM "${schema}"."workforce_exception_decisions" decision
+                WHERE decision."organizationId" = $1
+                  AND decision."caseId" = 'migration-case'
+             ) AS "previousDecisionCreatedAt"
+        FROM "${schema}"."workforce_exception_employee_responses" response
+        JOIN "${schema}"."mtm_hrm_requests" request
+          ON request."id" = 'migration-request-expand-window'
+       WHERE response."id" = 'migration-response-expand-window'
+    `, organizationId)
+    expect(expandWindowSignals.observedCaseRevision).toBe(3)
+    expect(expandWindowSignals.exceptionCaseRevision).toBe(3)
+    expect(expandWindowSignals.requestSubmittedAt.getTime())
+      .toBeGreaterThan(expandWindowSignals.previousDecisionCreatedAt.getTime())
+    expect(expandWindowSignals.responseCreatedAt.getTime())
+      .toBeGreaterThan(expandWindowSignals.requestSubmittedAt.getTime())
 
     // The named append-only guard is active again after the controlled
     // backfill window.
@@ -603,9 +844,9 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
                   'migration-response-stale', 'migration-user', 4)
       `, organizationId)
     })).rejects.toBeDefined()
-    await expect(observer.$transaction(async (tx) => {
+    const oldResponseInsert = await observer.$transaction(async (tx) => {
       await useMigrationSchema(tx)
-      await tx.$executeRawUnsafe(`
+      return tx.$queryRawUnsafe<Array<{ observedCaseRevision: number }>>(`
         INSERT INTO "${schema}"."workforce_exception_employee_responses" (
           "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
           "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
@@ -613,8 +854,10 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
         ) VALUES ('migration-response-legacy', $1, 'migration-case', 'migration-agent',
                   'migration-workday', 'migration-segment', NULL, 'ACKNOWLEDGED',
                   'migration-response-legacy', 'migration-user', NULL)
+        RETURNING "observedCaseRevision"
       `, organizationId)
-    })).resolves.toBeUndefined()
+    })
+    expect(oldResponseInsert).toEqual([{ observedCaseRevision: 5 }])
 
     await expect(observer.$transaction(async (tx) => {
       await useMigrationSchema(tx)
@@ -659,16 +902,60 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
                   'migration-workday', 'migration-case', 4)
       `, organizationId)
     })).rejects.toBeDefined()
-    await expect(observer.$transaction(async (tx) => {
+    const oldRequestInsert = await observer.$transaction(async (tx) => {
       await useMigrationSchema(tx)
-      await tx.$executeRawUnsafe(`
+      return tx.$queryRawUnsafe<Array<{ exceptionCaseRevision: number }>>(`
         INSERT INTO "${schema}"."mtm_hrm_requests" (
           "id", "organizationId", "agentId", "type", "correctionWorkdayId",
           "exceptionCaseId", "exceptionCaseRevision"
         ) VALUES ('migration-request-legacy', $1, 'migration-agent', 'TIME_CORRECTION',
                   'migration-workday', 'migration-case', NULL)
+        RETURNING "exceptionCaseRevision"
       `, organizationId)
-    })).resolves.toBeUndefined()
+    })
+    expect(oldRequestInsert).toEqual([{ exceptionCaseRevision: 5 }])
+    const [unlinkedRequest] = await observer.$queryRawUnsafe<Array<{
+      exceptionCaseRevision: number | null
+    }>>(`
+      SELECT "exceptionCaseRevision"
+        FROM "${schema}"."mtm_hrm_requests"
+       WHERE "id" = 'migration-request-unlinked'
+    `)
+    expect(unlinkedRequest).toEqual({ exceptionCaseRevision: null })
+
+    // A stale signal can carry a client timestamp later than wall-clock now.
+    // The next reset advances its compatibility timestamp past that signal,
+    // so a draining old timestamp reader and the revision reader both classify
+    // the signal as belonging to the earlier cycle.
+    const [preResetRequest] = await observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      return tx.$queryRawUnsafe<Array<{
+        exceptionCaseRevision: number
+        submittedAt: Date
+      }>>(`
+        INSERT INTO "${schema}"."mtm_hrm_requests" (
+          "id", "organizationId", "agentId", "type", "correctionWorkdayId",
+          "exceptionCaseId", "exceptionCaseRevision", "submittedAt"
+        ) VALUES ('migration-request-before-reset', $1, 'migration-agent',
+                  'TIME_CORRECTION', 'migration-workday', 'migration-case', 5,
+                  clock_timestamp() + INTERVAL '4 minutes')
+        RETURNING "exceptionCaseRevision", "submittedAt"
+      `, organizationId)
+    })
+    const [resetDecision] = await observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      return tx.$queryRawUnsafe<Array<{ caseRevision: number; createdAt: Date }>>(`
+        INSERT INTO "${schema}"."workforce_exception_decisions" (
+          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason",
+          "actorUserId", "caseRevision"
+        ) VALUES ('migration-decision-reset', $1, 'migration-case', 'migration-op-reset',
+                  'REQUEST_EMPLOYEE_RESPONSE', 'reset', 'manager', 6)
+        RETURNING "caseRevision", "createdAt"
+      `, organizationId)
+    })
+    expect(preResetRequest.exceptionCaseRevision).toBe(5)
+    expect(resetDecision.caseRevision).toBe(6)
+    expect(resetDecision.createdAt.getTime()).toBeGreaterThan(preResetRequest.submittedAt.getTime())
     await expect(observer.$transaction(async (tx) => {
       await useMigrationSchema(tx)
       await tx.$executeRawUnsafe(`
@@ -681,45 +968,65 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
 
   it("allocates the next revision from a fresh post-lock snapshot", async () => {
     const caseId = `migration-concurrent-${randomUUID()}`
+    const waiterStarted = deferred<void>()
+    const allowWaiterInsert = deferred<void>()
+    const waiterPid = deferred<number>()
+    const waiter = linkedClient.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      const [start] = await tx.$queryRawUnsafe<Array<{
+        pid: number
+        transactionStartedAt: Date
+      }>>(`
+        SELECT pg_backend_pid()::int AS pid,
+               transaction_timestamp() AS "transactionStartedAt"
+      `)
+      waiterPid.resolve(start.pid)
+      waiterStarted.resolve()
+      await allowWaiterInsert.promise
+      const [inserted] = await tx.$queryRawUnsafe<Array<{
+        caseRevision: number
+        createdAt: Date
+      }>>(`
+        INSERT INTO "${schema}"."workforce_exception_decisions" (
+          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason", "actorUserId"
+        ) VALUES ($1, $2, $3, $4, 'ACKNOWLEDGE', 'waiter', 'manager')
+        RETURNING "caseRevision", "createdAt"
+      `, `waiter-${randomUUID()}`, organizationId, caseId, `waiter-op-${randomUUID()}`)
+      return { ...inserted, transactionStartedAt: start.transactionStartedAt }
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 10_000 })
+
+    await waiterStarted.promise
     const winnerInserted = deferred<void>()
     const releaseWinner = deferred<void>()
     const winner = terminalClient.$transaction(async (tx) => {
       await useMigrationSchema(tx)
-      const rows = await tx.$queryRawUnsafe<Array<{ caseRevision: number }>>(`
+      const [inserted] = await tx.$queryRawUnsafe<Array<{
+        caseRevision: number
+        createdAt: Date
+      }>>(`
         INSERT INTO "${schema}"."workforce_exception_decisions" (
           "id", "organizationId", "caseId", "operationId", "decisionCode", "reason", "actorUserId"
         ) VALUES ($1, $2, $3, $4, 'ACKNOWLEDGE', 'winner', 'manager')
-        RETURNING "caseRevision"
+        RETURNING "caseRevision", "createdAt"
       `, `winner-${randomUUID()}`, organizationId, caseId, `winner-op-${randomUUID()}`)
       winnerInserted.resolve()
       await releaseWinner.promise
-      return rows[0]?.caseRevision
+      return inserted
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 10_000 })
 
     await winnerInserted.promise
-    const waiterPid = deferred<number>()
-    const waiter = linkedClient.$transaction(async (tx) => {
-      await useMigrationSchema(tx)
-      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
-        "SELECT pg_backend_pid()::int AS pid",
-      )
-      waiterPid.resolve(backend.pid)
-      const rows = await tx.$queryRawUnsafe<Array<{ caseRevision: number }>>(`
-        INSERT INTO "${schema}"."workforce_exception_decisions" (
-          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason", "actorUserId"
-        ) VALUES ($1, $2, $3, $4, 'ACKNOWLEDGE', 'waiter', 'manager')
-        RETURNING "caseRevision"
-      `, `waiter-${randomUUID()}`, organizationId, caseId, `waiter-op-${randomUUID()}`)
-      return rows[0]?.caseRevision
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 10_000 })
-
+    allowWaiterInsert.resolve()
     try {
       await waitForAdvisoryLockWait(await waiterPid.promise)
     } finally {
       releaseWinner.resolve()
     }
-    await expect(winner).resolves.toBe(1)
-    await expect(waiter).resolves.toBe(2)
+    const winnerResult = await winner
+    const waiterResult = await waiter
+    expect(winnerResult.caseRevision).toBe(1)
+    expect(waiterResult.caseRevision).toBe(2)
+    expect(waiterResult.transactionStartedAt.getTime()).toBeLessThan(winnerResult.createdAt.getTime())
+    expect(waiterResult.createdAt.getTime()).toBeGreaterThan(winnerResult.createdAt.getTime())
   }, 15_000)
 
   it("validates response and request signals from a fresh post-lock snapshot", async () => {
