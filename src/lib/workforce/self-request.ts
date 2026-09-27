@@ -198,6 +198,7 @@ export async function submitWorkforceSelfRequest(
   }
 
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    let exceptionCaseRevision: number | null = null
     // clientRequestId is unique across every case for this employee. Take its
     // global fence before the first replay read, then take any case fence only
     // for a genuinely new linked mutation.
@@ -311,11 +312,12 @@ export async function submitWorkforceSelfRequest(
             }
             return { kind: "success" as const, data: replay as RequestData, idempotent: true }
           }
-          await requireWorkforceExceptionLinkedMutationAfterLock({
+          const snapshot = await requireWorkforceExceptionLinkedMutationAfterLock({
             db: linkedDb,
             organizationId: context.organizationId,
             caseId: exceptionCaseId,
           })
+          exceptionCaseRevision = snapshot.caseRevision
         } catch (error) {
           if (!(error instanceof WorkforceExceptionLinkedMutationError)) throw error
           return conflict(
@@ -354,6 +356,7 @@ export async function submitWorkforceSelfRequest(
         agentId,
         clientRequestId: context.input.clientRequestId,
         ...requestValues,
+        exceptionCaseRevision,
         submittedAt,
       },
       select: {
@@ -384,6 +387,7 @@ export async function submitWorkforceSelfRequest(
           endDate: context.input.endDate,
           correctionRequested: created.type === "TIME_CORRECTION",
           exceptionCaseLinked: exceptionCaseId !== null,
+          exceptionCaseRevision,
         },
         ipAddress: context.audit?.ipAddress ?? null,
         userAgent: context.audit?.userAgent ?? null,

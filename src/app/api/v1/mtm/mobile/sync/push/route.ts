@@ -2462,6 +2462,7 @@ export const POST = withMobileRls(async (req, auth) => {
               : null
             let linkedCaseUnavailable = false
             let linkedReplay: MobileHrmRequestReplay | null = null
+            let exceptionCaseRevision: number | null = null
             if (hrmRequestCreateInput.exceptionCaseId && correctionWorkday && exceptionCase) {
               try {
                 const linkedDb = tx as unknown as WorkforceExceptionLinkedMutationDb
@@ -2477,11 +2478,12 @@ export const POST = withMobileRls(async (req, auth) => {
                   select: mobileHrmRequestReplaySelect,
                 })
                 if (!linkedReplay) {
-                  await requireWorkforceExceptionLinkedMutationAfterLock({
+                  const snapshot = await requireWorkforceExceptionLinkedMutationAfterLock({
                     db: linkedDb,
                     organizationId: orgId,
                     caseId: hrmRequestCreateInput.exceptionCaseId,
                   })
+                  exceptionCaseRevision = snapshot.caseRevision
                 }
               } catch (error) {
                 if (!(error instanceof WorkforceExceptionLinkedMutationError)) throw error
@@ -2550,6 +2552,7 @@ export const POST = withMobileRls(async (req, auth) => {
                   endDate: hrmRequestCreateInput.endDate,
                   correctionWorkdayId: hrmRequestCreateInput.correctionWorkdayId,
                   exceptionCaseId: hrmRequestCreateInput.exceptionCaseId,
+                  exceptionCaseRevision,
                   requestedStartAt: hrmRequestCreateInput.requestedStartAt,
                   requestedEndAt: hrmRequestCreateInput.requestedEndAt,
                   reason: hrmRequestCreateInput.reason,
@@ -2583,6 +2586,7 @@ export const POST = withMobileRls(async (req, auth) => {
                     endDate: hrmRequestCreateInput.endDateKey,
                     correctionRequested: request.type === "TIME_CORRECTION",
                     exceptionCaseLinked: hrmRequestCreateInput.exceptionCaseId !== null,
+                    exceptionCaseRevision,
                   },
                   ipAddress: null,
                   userAgent: null,

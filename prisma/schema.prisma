@@ -7645,6 +7645,8 @@ model WorkforceExceptionDecision {
   organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   caseId        String
   exceptionCase WorkforceExceptionCase @relation(fields: [organizationId, caseId], references: [organizationId, id], onDelete: Restrict)
+  // Monotonic 1-based position allocated under the canonical case lock.
+  caseRevision  Int
   operationId   String                @db.VarChar(100)
   decisionCode  String                @db.VarChar(64)
   reason        String                @db.VarChar(1000)
@@ -7654,6 +7656,7 @@ model WorkforceExceptionDecision {
 
   @@unique([organizationId, id])
   @@unique([organizationId, operationId])
+  @@unique([organizationId, caseId, caseRevision], map: "workforce_exception_decisions_org_case_revision_key")
   @@index([organizationId, caseId, createdAt])
   @@index([organizationId, actorUserId, createdAt])
   @@map("workforce_exception_decisions")
@@ -7681,11 +7684,16 @@ model WorkforceExceptionEmployeeResponse {
   clientResponseId    String                   @db.VarChar(100)
   actorUserId         String
   actorUser           User                     @relation("WorkforceExceptionEmployeeResponseActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  // Exact decision-stream revision observed under the case lock before this
+  // append. NULL identifies a pre-cutover legacy response and fails closed
+  // for any later lifecycle-cycle comparison.
+  observedCaseRevision Int?
   createdAt           DateTime                 @default(now())
 
   @@unique([organizationId, id])
   @@unique([organizationId, agentId, clientResponseId])
   @@index([organizationId, caseId, createdAt])
+  @@index([organizationId, caseId, observedCaseRevision], map: "workforce_exception_employee_responses_org_case_revision_idx")
   @@index([organizationId, agentId, workdayId, createdAt])
   @@index([organizationId, correctionRequestId])
   @@map("workforce_exception_employee_responses")
@@ -7983,6 +7991,9 @@ model MtmHrmRequest {
   // their own exception. It remains absent for ordinary correction requests.
   exceptionCaseId     String?
   exceptionCase       WorkforceExceptionCase? @relation("WorkforceExceptionCorrectionRequest", fields: [organizationId, exceptionCaseId], references: [organizationId, id], onDelete: Restrict)
+  // Exact case revision observed after taking the linked exception lock.
+  // NULL is reserved for unlinked and pre-cutover legacy rows.
+  exceptionCaseRevision Int?
   requestedStartAt    DateTime?
   requestedEndAt      DateTime?
   reason              String

@@ -143,9 +143,10 @@ export async function recordScopedWorkforceExceptionDecision(
             workday: { select: { startedAt: true } },
             segment: { select: { siteId: true } },
             employeeResponses: {
-              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+              where: { observedCaseRevision: { not: null } },
+              orderBy: [{ observedCaseRevision: "desc" }, { id: "desc" }],
               take: 1,
-              select: { createdAt: true },
+              select: { observedCaseRevision: true },
             },
             correctionRequests: {
               orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
@@ -157,7 +158,7 @@ export async function recordScopedWorkforceExceptionDecision(
                 exceptionCaseId: true,
                 type: true,
                 status: true,
-                submittedAt: true,
+                exceptionCaseRevision: true,
                 workforceTimeCorrections: { take: 2, select: { requestId: true } },
               },
             },
@@ -196,13 +197,13 @@ export async function recordScopedWorkforceExceptionDecision(
           workdayId: contextCase.workdayId,
           priorDecisions,
           decisionHistoryComplete: true,
-          employeeResponseInstants: contextCase.employeeResponses.map((response) => response.createdAt),
+          employeeResponses: contextCase.employeeResponses,
           correctionRequests: contextCase.correctionRequests
             .slice(0, MAX_WORKFORCE_EXCEPTION_CORRECTION_REQUESTS)
             .map((request) => ({
               type: request.type,
               status: request.status,
-              submittedAt: request.submittedAt,
+              exceptionCaseRevision: request.exceptionCaseRevision,
               appliedCorrectionCount: request.workforceTimeCorrections.length,
             })),
           correctionContextComplete: contextCase.correctionRequests.length

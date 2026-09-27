@@ -87,6 +87,9 @@ describe("Workforce employee self-service requests", () => {
   it("binds a correction request to the employee's exact workday and organization-local time", async () => {
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
     vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue({ id: "case-1" } as never)
+    vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+    ] as never)
     vi.mocked(prisma.mtmHrmRequest.create).mockResolvedValue(requestRecord({
       type: "TIME_CORRECTION",
       correctionWorkdayId: "workday-1",
@@ -124,6 +127,7 @@ describe("Workforce employee self-service requests", () => {
     expect(prisma.mtmHrmRequest.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         exceptionCaseId: "case-1",
+        exceptionCaseRevision: 1,
         requestedStartAt: new Date("2026-08-28T05:00:00.000Z"),
         requestedEndAt: null,
       }),
@@ -137,6 +141,11 @@ describe("Workforce employee self-service requests", () => {
       },
       select: { id: true },
     })
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        newData: expect.objectContaining({ exceptionCaseLinked: true, exceptionCaseRevision: 1 }),
+      }),
+    }))
     expect(JSON.stringify(vi.mocked(prisma.mtmAuditLog.create).mock.calls)).not.toContain("case-1")
   })
 
@@ -144,8 +153,8 @@ describe("Workforce employee self-service requests", () => {
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
     vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue({ id: "case-1" } as never)
     vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([
-      { decisionCode: "ACKNOWLEDGE" },
-      { decisionCode: "RESOLVE_NO_CHANGE" },
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
     ] as never)
 
     await expect(submitWorkforceSelfRequest({
@@ -377,8 +386,8 @@ describe("Workforce employee self-service requests", () => {
       exceptionCaseId: "case-1",
     }) as never)
     vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([
-      { decisionCode: "ACKNOWLEDGE" },
-      { decisionCode: "RESOLVE_NO_CHANGE" },
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
     ] as never)
 
     await expect(cancelWorkforceSelfRequest({

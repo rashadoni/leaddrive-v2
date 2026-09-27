@@ -129,12 +129,14 @@ describe("Workforce immutable exception-case writer", () => {
     expect(allow).toHaveBeenCalledWith({
       operation: "DECISION_APPEND", organizationId: "org-1", caseId: "case-1", actorUserId: "user-1",
     })
-    expect(db.workforceExceptionDecision.create).toHaveBeenCalledWith({ data: decisionDraft })
+    expect(db.workforceExceptionDecision.create).toHaveBeenCalledWith({
+      data: { ...decisionDraft, caseRevision: 1 },
+    })
     expect(db.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         action: "WORKFORCE_EXCEPTION_DECISION_RECORDED",
         entityId: "decision-1",
-        newData: expect.objectContaining({ decisionCode: "ACKNOWLEDGED" }),
+        newData: expect.objectContaining({ decisionCode: "ACKNOWLEDGED", caseRevision: 1 }),
       }),
     }))
 
@@ -176,7 +178,7 @@ describe("Workforce immutable exception-case writer", () => {
     db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce({ id: "case-1" })
     db.workforceExceptionDecision.findFirst.mockResolvedValueOnce(null)
     db.workforceExceptionDecision.findMany.mockResolvedValueOnce([
-      { decisionCode: "ACKNOWLEDGE", createdAt: new Date("2026-08-30T09:00:00.000Z") },
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
     ])
     db.workforceExceptionDecision.create.mockResolvedValueOnce({ id: "decision-resolved" })
     await expect(appendAuthorizedPolicyWorkforceExceptionDecision({
@@ -187,12 +189,17 @@ describe("Workforce immutable exception-case writer", () => {
     })).resolves.toEqual({ decisionId: "decision-resolved", idempotent: false })
     expect(db.workforceExceptionDecision.findMany).toHaveBeenCalledWith({
       where: { organizationId: "org-1", caseId: "case-1" },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      orderBy: { caseRevision: "asc" },
       take: 65,
-      select: { decisionCode: true, createdAt: true },
+      select: { decisionCode: true, caseRevision: true },
+    })
+    expect(db.workforceExceptionDecision.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ caseRevision: 2 }),
     })
     expect(db.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ newData: expect.objectContaining({ policyMode: "REVIEWED_V1" }) }),
+      data: expect.objectContaining({
+        newData: expect.objectContaining({ policyMode: "REVIEWED_V1", caseRevision: 2 }),
+      }),
     }))
 
     const replay = { id: "decision-resolved", ...decisionDraft, operationId: "decision-resolve-1", decisionCode: "RESOLVE_NO_CHANGE" }
@@ -216,7 +223,7 @@ describe("Workforce immutable exception-case writer", () => {
     db.workforceExceptionDecision.findMany.mockResolvedValueOnce(
       Array.from({ length: MAX_WORKFORCE_EXCEPTION_DECISIONS }, (_, index) => ({
         decisionCode: "ACKNOWLEDGE",
-        createdAt: new Date(1_700_000_000_000 + index),
+        caseRevision: index + 1,
       })),
     )
 
@@ -237,7 +244,7 @@ describe("Workforce immutable exception-case writer", () => {
     db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce({ id: "case-1" })
     db.workforceExceptionDecision.findFirst.mockResolvedValueOnce(null)
     db.workforceExceptionDecision.findMany.mockResolvedValueOnce([
-      { decisionCode: "RESOLVE_NO_CHANGE", createdAt: new Date("2026-08-30T09:00:00.000Z") },
+      { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 1 },
     ])
     await expect(appendAuthorizedPolicyWorkforceExceptionDecision({
       db,
@@ -245,6 +252,25 @@ describe("Workforce immutable exception-case writer", () => {
       authorize: allow,
       validateContext,
     })).rejects.toMatchObject({ code: "WORKFORCE_EXCEPTION_DECISION_LIFECYCLE_INVALID" })
+    expect(db.workforceExceptionDecision.create).not.toHaveBeenCalled()
+  })
+
+  it("fails closed on a non-contiguous case revision before validation or append", async () => {
+    db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce({ id: "case-1" })
+    db.workforceExceptionDecision.findFirst.mockResolvedValueOnce(null)
+    db.workforceExceptionDecision.findMany.mockResolvedValueOnce([
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 2 },
+    ])
+
+    await expect(appendAuthorizedPolicyWorkforceExceptionDecision({
+      db,
+      draft: { ...decisionDraft, operationId: "decision-gap-1" },
+      authorize: allow,
+      validateContext,
+    })).rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
+      code: "WORKFORCE_EXCEPTION_DECISION_HISTORY_INVALID",
+    })
+    expect(validateContext).not.toHaveBeenCalled()
     expect(db.workforceExceptionDecision.create).not.toHaveBeenCalled()
   })
 })

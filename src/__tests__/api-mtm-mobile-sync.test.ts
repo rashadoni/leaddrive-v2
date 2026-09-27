@@ -1585,6 +1585,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
           endDate: "2026-07-21",
           correctionRequested: false,
           exceptionCaseLinked: false,
+          exceptionCaseRevision: null,
         },
       }),
     }))
@@ -1647,8 +1648,8 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
     vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue({ id: "case-1" } as never)
     vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([
-      { decisionCode: "ACKNOWLEDGE" },
-      { decisionCode: "RESOLVE_NO_CHANGE" },
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
     ] as never)
 
     const response = await PushPOST(makePushReq({ operations: [{
@@ -1724,18 +1725,18 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       select: { id: true },
     })
     expect(prisma.mtmHrmRequest.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ exceptionCaseId: "case-1" }),
+      data: expect.objectContaining({ exceptionCaseId: "case-1", exceptionCaseRevision: 0 }),
     }))
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        newData: expect.objectContaining({ exceptionCaseLinked: true }),
+        newData: expect.objectContaining({ exceptionCaseLinked: true, exceptionCaseRevision: 0 }),
       }),
     }))
     expect(prisma.workforceExceptionDecision.findMany).toHaveBeenCalledWith({
       where: { organizationId: ORG, caseId: "case-1" },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      orderBy: { caseRevision: "asc" },
       take: 65,
-      select: { decisionCode: true },
+      select: { decisionCode: true, caseRevision: true },
     })
     expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
       .toEqual(expect.arrayContaining([
@@ -1917,8 +1918,8 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       exceptionCaseId: "case-1",
     } as never)
     vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([
-      { decisionCode: "ACKNOWLEDGE" },
-      { decisionCode: "RESOLVE_NO_CHANGE" },
+      { decisionCode: "ACKNOWLEDGE", caseRevision: 1 },
+      { decisionCode: "RESOLVE_NO_CHANGE", caseRevision: 2 },
     ] as never)
 
     const response = await PushPOST(makePushReq({ operations: [{

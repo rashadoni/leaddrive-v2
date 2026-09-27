@@ -9,7 +9,9 @@ import { MAX_WORKFORCE_EXCEPTION_DECISIONS } from "@/lib/workforce/exception-wor
 
 type WorkforceExceptionCaseWriteData = Omit<WorkforceExceptionCaseDraft, "links"> & WorkforceExceptionCaseDraft["links"]
 type StoredCase = Omit<WorkforceExceptionCaseWriteData, "expectedWorkDate"> & { id: string; expectedWorkDate: string | Date | null }
+type WorkforceExceptionDecisionWriteData = WorkforceExceptionDecisionDraft & { caseRevision: number }
 type StoredDecision = WorkforceExceptionDecisionDraft & { id: string }
+type CreatedDecision = WorkforceExceptionDecisionWriteData & { id: string }
 
 /** Smallest transaction facade needed to append an immutable case. Keeping it
  * separate from decisions lets a detector use an actual Prisma transaction
@@ -42,17 +44,17 @@ export type WorkforceExceptionCasePersistenceDb = {
 
 export type WorkforceExceptionCaseWriterDb = WorkforceExceptionCasePersistenceDb & {
   workforceExceptionDecision: {
-    create: (args: { data: WorkforceExceptionDecisionDraft }) => Promise<StoredDecision>
+    create: (args: { data: WorkforceExceptionDecisionWriteData }) => Promise<CreatedDecision>
     findFirst: (args: {
       where: { organizationId: string; operationId: string }
       select: { id: true; organizationId: true; caseId: true; operationId: true; decisionCode: true; reason: true; actorUserId: true }
     }) => Promise<StoredDecision | null>
     findMany: (args: {
       where: { organizationId: string; caseId: string }
-      orderBy: readonly [{ createdAt: "asc" }, { id: "asc" }]
+      orderBy: { caseRevision: "asc" }
       take: number
-      select: { decisionCode: true; createdAt: true }
-    }) => Promise<readonly { decisionCode: string; createdAt: Date }[]>
+      select: { decisionCode: true; caseRevision: true }
+    }) => Promise<readonly { decisionCode: string; caseRevision: number }[]>
   }
   workforceExceptionCaseLookup: {
     findFirst: (args: { where: { id: string; organizationId: string }; select: { id: true } }) => Promise<{ id: string } | null>
@@ -80,6 +82,7 @@ export class WorkforceExceptionCaseWriterError extends Error {
       | "WORKFORCE_EXCEPTION_CASE_WRITE_CONFLICT"
       | "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT"
       | "WORKFORCE_EXCEPTION_DECISION_CASE_NOT_FOUND"
+      | "WORKFORCE_EXCEPTION_DECISION_HISTORY_INVALID"
       | "WORKFORCE_EXCEPTION_DECISION_HISTORY_LIMIT_EXCEEDED",
     message: string = code,
   ) {
@@ -205,6 +208,22 @@ function canonicalDecisionDraft(draft: WorkforceExceptionDecisionDraft): Workfor
   })
 }
 
+function nextCaseRevision(prior: readonly { caseRevision: number }[]): number {
+  if (prior.length >= MAX_WORKFORCE_EXCEPTION_DECISIONS) {
+    throw new WorkforceExceptionCaseWriterError(
+      "WORKFORCE_EXCEPTION_DECISION_HISTORY_LIMIT_EXCEEDED",
+      "The Workforce exception decision history has reached the reviewed bound",
+    )
+  }
+  if (prior.some((decision, index) => decision.caseRevision !== index + 1)) {
+    throw new WorkforceExceptionCaseWriterError(
+      "WORKFORCE_EXCEPTION_DECISION_HISTORY_INVALID",
+      "The Workforce exception decision history has a non-contiguous case revision",
+    )
+  }
+  return prior.length + 1
+}
+
 /**
  * A transaction-scoped persistence primitive. It deliberately has no Prisma
  * import, detector, endpoint or lifecycle transition: its caller supplies a
@@ -319,9 +338,18 @@ export async function appendAuthorizedWorkforceExceptionDecision(input: {
       "The Workforce exception decision operation conflicts with a different immutable action",
     )
   }
-  let created: StoredDecision
+  const prior = await input.db.workforceExceptionDecision.findMany({
+    where: { organizationId: canonical.organizationId, caseId: canonical.caseId },
+    orderBy: { caseRevision: "asc" },
+    take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
+    select: { decisionCode: true, caseRevision: true },
+  })
+  const caseRevision = nextCaseRevision(prior)
+  let created: CreatedDecision
   try {
-    created = await input.db.workforceExceptionDecision.create({ data: canonical })
+    created = await input.db.workforceExceptionDecision.create({
+      data: { ...canonical, caseRevision },
+    })
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
     throw new WorkforceExceptionCaseWriterError(
@@ -341,6 +369,7 @@ export async function appendAuthorizedWorkforceExceptionDecision(input: {
         caseId: canonical.caseId,
         operationId: canonical.operationId,
         decisionCode: canonical.decisionCode,
+        caseRevision,
       },
       ipAddress: null,
       userAgent: null,
@@ -362,7 +391,7 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
   authorize: WorkforceExceptionCaseAuthorization
   validateContext: (input: {
     draft: WorkforceExceptionDecisionDraft
-    priorDecisions: readonly { decisionCode: string; createdAt: Date }[]
+    priorDecisions: readonly { decisionCode: string; caseRevision: number }[]
   }) => void | Promise<void>
 }): Promise<{ decisionId: string; idempotent: boolean }> {
   const basic = canonicalDecisionDraft(input.draft)
@@ -410,16 +439,11 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
 
   const prior = await input.db.workforceExceptionDecision.findMany({
     where: { organizationId: basic.organizationId, caseId: basic.caseId },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    orderBy: { caseRevision: "asc" },
     take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
-    select: { decisionCode: true, createdAt: true },
+    select: { decisionCode: true, caseRevision: true },
   })
-  if (prior.length >= MAX_WORKFORCE_EXCEPTION_DECISIONS) {
-    throw new WorkforceExceptionCaseWriterError(
-      "WORKFORCE_EXCEPTION_DECISION_HISTORY_LIMIT_EXCEEDED",
-      "The Workforce exception decision history has reached the reviewed bound",
-    )
-  }
+  const caseRevision = nextCaseRevision(prior)
   const priorDecisionCodes = prior.map((decision) => decision.decisionCode)
   // This callback deliberately runs only after the stream lock, exact replay
   // check and ordered history read. A route can therefore validate linked
@@ -430,9 +454,11 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
     ...basic,
     priorDecisionCodes,
   })
-  let created: StoredDecision
+  let created: CreatedDecision
   try {
-    created = await input.db.workforceExceptionDecision.create({ data: canonical })
+    created = await input.db.workforceExceptionDecision.create({
+      data: { ...canonical, caseRevision },
+    })
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
     throw new WorkforceExceptionCaseWriterError(
@@ -452,6 +478,7 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
         caseId: canonical.caseId,
         operationId: canonical.operationId,
         decisionCode: canonical.decisionCode,
+        caseRevision,
         policyMode: "REVIEWED_V1",
       },
       ipAddress: null,

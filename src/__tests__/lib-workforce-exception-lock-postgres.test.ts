@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import { spawnSync } from "node:child_process"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
@@ -21,7 +24,15 @@ const databaseUrl = process.env.WORKFORCE_EXCEPTION_LOCK_TEST_DATABASE_URL
 const integrationDatabaseUrl = databaseUrl ?? "postgresql://disabled:disabled@127.0.0.1:1/disabled"
 const postgresDescribe = databaseUrl ? describe : describe.skip
 const schema = `workforce_exception_lock_${randomUUID().replaceAll("-", "")}`
+const roleSuffix = randomUUID().replaceAll("-", "").slice(0, 20)
+const migrationOwnerRole = `workforce_revision_owner_${roleSuffix}`
+const migrationLoginRole = `workforce_revision_migrator_${roleSuffix}`
+const migrationLoginPassword = `Revision_${randomUUID().replaceAll("-", "")}`
 const organizationId = "org-workforce-lock-proof"
+const migrationPath = join(
+  process.cwd(),
+  "prisma/migrations/20260927014000_workforce_exception_case_revisions/migration.sql",
+)
 
 type Deferred<T> = {
   promise: Promise<T>
@@ -34,6 +45,32 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve }
 }
 
+function databaseUrlForRole(role: string, password: string): string {
+  const url = new URL(integrationDatabaseUrl)
+  url.username = role
+  url.password = password
+  return url.toString()
+}
+
+function applyExactRevisionMigration(): void {
+  const result = spawnSync(
+    join(process.cwd(), "node_modules/.bin/prisma"),
+    ["db", "execute", "--url", databaseUrlForRole(
+      migrationLoginRole,
+      migrationLoginPassword,
+    ), "--stdin"],
+    {
+      cwd: process.cwd(),
+      env: process.env,
+      encoding: "utf8",
+      input: `SET search_path TO "${schema}";\n${readFileSync(migrationPath, "utf8")}`,
+    },
+  )
+  if (result.status !== 0) {
+    throw new Error(`Workforce revision migration failed\n${result.stdout}\n${result.stderr}`)
+  }
+}
+
 postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
   let observer!: PrismaClient
   let terminalClient!: PrismaClient
@@ -43,12 +80,34 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     observer = new PrismaClient({ datasourceUrl: integrationDatabaseUrl })
     terminalClient = new PrismaClient({ datasourceUrl: integrationDatabaseUrl })
     linkedClient = new PrismaClient({ datasourceUrl: integrationDatabaseUrl })
+    await observer.$executeRawUnsafe(`
+      CREATE ROLE "${migrationOwnerRole}" NOLOGIN NOSUPERUSER NOBYPASSRLS
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE ROLE "${migrationLoginRole}"
+      LOGIN NOSUPERUSER BYPASSRLS PASSWORD '${migrationLoginPassword}'
+    `)
+    await observer.$executeRawUnsafe(`
+      GRANT "${migrationOwnerRole}" TO "${migrationLoginRole}"
+    `)
+    await observer.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        EXECUTE format(
+          'GRANT CONNECT ON DATABASE %I TO %I',
+          current_database(),
+          '${migrationLoginRole}'
+        );
+      END;
+      $$
+    `)
     await observer.$executeRawUnsafe(`CREATE SCHEMA "${schema}"`)
     await observer.$executeRawUnsafe(`
       CREATE TABLE "${schema}"."case_decisions" (
         "organization_id" TEXT NOT NULL,
         "case_id" TEXT NOT NULL,
         "decisions" JSONB NOT NULL DEFAULT '[]'::jsonb,
+        "last_decision_created_at" TIMESTAMPTZ,
         PRIMARY KEY ("organization_id", "case_id")
       )
     `)
@@ -82,6 +141,8 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
         "response_code" TEXT NOT NULL,
         "client_response_id" TEXT NOT NULL,
         "actor_user_id" TEXT NOT NULL,
+        "observed_case_revision" INTEGER,
+        "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
         UNIQUE ("organization_id", "agent_id", "client_response_id")
       )
     `)
@@ -93,10 +154,168 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
         PRIMARY KEY ("organization_id", "operation_id")
       )
     `)
+    await observer.$executeRawUnsafe(`
+      CREATE TABLE "${schema}"."workforce_exception_cases" (
+        "id" TEXT NOT NULL,
+        "organizationId" TEXT NOT NULL,
+        "agentId" TEXT NOT NULL,
+        "workdayId" TEXT,
+        "segmentId" TEXT,
+        PRIMARY KEY ("id"),
+        UNIQUE ("organizationId", "id")
+      )
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE TABLE "${schema}"."mtm_agents" (
+        "id" TEXT NOT NULL,
+        "organizationId" TEXT NOT NULL,
+        "userId" TEXT,
+        PRIMARY KEY ("id")
+      )
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE TABLE "${schema}"."mtm_hrm_requests" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "organizationId" TEXT NOT NULL,
+        "agentId" TEXT NOT NULL,
+        "type" TEXT NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'PENDING',
+        "correctionWorkdayId" TEXT,
+        "exceptionCaseId" TEXT
+      )
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE TABLE "${schema}"."workforce_exception_decisions" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "organizationId" TEXT NOT NULL,
+        "caseId" TEXT NOT NULL,
+        "operationId" TEXT NOT NULL,
+        "decisionCode" TEXT NOT NULL,
+        "reason" TEXT NOT NULL,
+        "actorUserId" TEXT NOT NULL,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE TABLE "${schema}"."workforce_exception_employee_responses" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "organizationId" TEXT NOT NULL,
+        "caseId" TEXT NOT NULL,
+        "agentId" TEXT NOT NULL,
+        "workdayId" TEXT NOT NULL,
+        "segmentId" TEXT,
+        "correctionRequestId" TEXT,
+        "responseCode" TEXT NOT NULL,
+        "clientResponseId" TEXT NOT NULL,
+        "actorUserId" TEXT NOT NULL
+      )
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE FUNCTION "${schema}".workforce_reject_exception_decision_mutation()
+      RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        RAISE EXCEPTION 'Workforce exception decisions are append-only' USING ERRCODE = '55000';
+      END;
+      $$
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE TRIGGER workforce_exception_decisions_append_only
+      BEFORE UPDATE OR DELETE ON "${schema}"."workforce_exception_decisions"
+      FOR EACH ROW EXECUTE FUNCTION "${schema}".workforce_reject_exception_decision_mutation()
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE FUNCTION "${schema}".workforce_validate_exception_employee_response_insert()
+      RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE TRIGGER workforce_exception_employee_responses_validate_insert
+      BEFORE INSERT ON "${schema}"."workforce_exception_employee_responses"
+      FOR EACH ROW EXECUTE FUNCTION "${schema}".workforce_validate_exception_employee_response_insert()
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE FUNCTION "${schema}".workforce_validate_hrm_request_exception_link()
+      RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE TRIGGER workforce_hrm_requests_validate_exception_link
+      BEFORE INSERT OR UPDATE ON "${schema}"."mtm_hrm_requests"
+      FOR EACH ROW EXECUTE FUNCTION "${schema}".workforce_validate_hrm_request_exception_link()
+    `)
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."workforce_exception_cases" (
+        "id", "organizationId", "agentId", "workdayId", "segmentId"
+      ) VALUES
+        ('migration-case', $1, 'migration-agent', 'migration-workday', 'migration-segment'),
+        ('migration-other-case', $1, 'migration-agent', 'migration-workday', 'migration-segment')
+    `, organizationId)
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."mtm_agents" ("id", "organizationId", "userId")
+      VALUES ('migration-agent', $1, 'migration-user')
+    `, organizationId)
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."workforce_exception_decisions" (
+        "id", "organizationId", "caseId", "operationId", "decisionCode",
+        "reason", "actorUserId", "createdAt"
+      ) VALUES
+        ('migration-decision-b', $1, 'migration-case', 'migration-op-b', 'ACKNOWLEDGE', 'b', 'manager', '2026-09-01T09:00:00Z'),
+        ('migration-decision-a', $1, 'migration-case', 'migration-op-a', 'ACKNOWLEDGE', 'a', 'manager', '2026-09-01T09:00:00Z'),
+        ('migration-decision-c', $1, 'migration-case', 'migration-op-c', 'REQUEST_EMPLOYEE_RESPONSE', 'c', 'manager', '2026-09-01T10:00:00Z')
+    `, organizationId)
+
+    // Match production's ownership contract: the login that applies the
+    // migration is not superuser, has BYPASSRLS, and only inherits DDL rights
+    // through membership in the relation-owner role.
+    for (const relation of [
+      "workforce_exception_cases",
+      "mtm_agents",
+      "mtm_hrm_requests",
+      "workforce_exception_decisions",
+      "workforce_exception_employee_responses",
+    ]) {
+      await observer.$executeRawUnsafe(`
+        ALTER TABLE "${schema}"."${relation}" OWNER TO "${migrationOwnerRole}"
+      `)
+    }
+    for (const routine of [
+      "workforce_reject_exception_decision_mutation",
+      "workforce_validate_exception_employee_response_insert",
+      "workforce_validate_hrm_request_exception_link",
+    ]) {
+      await observer.$executeRawUnsafe(`
+        ALTER FUNCTION "${schema}"."${routine}"() OWNER TO "${migrationOwnerRole}"
+      `)
+    }
+    await observer.$executeRawUnsafe(`ALTER SCHEMA "${schema}" OWNER TO "${migrationOwnerRole}"`)
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_decisions"
+      ENABLE ROW LEVEL SECURITY
+    `)
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_decisions"
+      FORCE ROW LEVEL SECURITY
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE POLICY workforce_exception_decisions_migration_fidelity
+      ON "${schema}"."workforce_exception_decisions"
+      FOR ALL
+      USING (
+        "organizationId" = current_setting('app.org_id', true)
+        OR current_setting('app.rls_bypass', true) = 'on'
+      )
+      WITH CHECK (
+        "organizationId" = current_setting('app.org_id', true)
+        OR current_setting('app.rls_bypass', true) = 'on'
+      )
+    `)
+    applyExactRevisionMigration()
   })
 
   afterAll(async () => {
     await observer?.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`).catch(() => {})
+    await observer?.$executeRawUnsafe(`DROP OWNED BY "${migrationLoginRole}"`).catch(() => {})
+    await observer?.$executeRawUnsafe(`DROP ROLE IF EXISTS "${migrationLoginRole}"`).catch(() => {})
+    await observer?.$executeRawUnsafe(`DROP OWNED BY "${migrationOwnerRole}"`).catch(() => {})
+    await observer?.$executeRawUnsafe(`DROP ROLE IF EXISTS "${migrationOwnerRole}"`).catch(() => {})
     await Promise.all([
       observer?.$disconnect(),
       terminalClient?.$disconnect(),
@@ -116,7 +335,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
           `, args.where.organizationId, args.where.caseId)
           return (rows[0]?.decisions ?? [])
             .slice(0, args.take)
-            .map((decisionCode) => ({ decisionCode }))
+            .map((decisionCode, index) => ({ decisionCode, caseRevision: index + 1 }))
         },
       },
     }
@@ -159,8 +378,8 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
             INSERT INTO "${schema}"."employee_responses" (
               "id", "organization_id", "case_id", "agent_id", "workday_id",
               "segment_id", "correction_request_id", "response_code",
-              "client_response_id", "actor_user_id"
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+              "client_response_id", "actor_user_id", "observed_case_revision"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           `,
           id,
           data.organizationId,
@@ -171,9 +390,16 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
           data.correctionRequestId,
           data.responseCode,
           data.clientResponseId,
-          data.actorUserId)
+          data.actorUserId,
+          data.observedCaseRevision)
           return { id, ...data }
         },
+      },
+      mtmHrmRequest: {
+        // Current real-race drafts acknowledge directly and therefore never
+        // carry a correction request. Exact request/case topology is covered
+        // below against the migrated PostgreSQL trigger itself.
+        findFirst: async () => null,
       },
       mtmAuditLog: {
         create: async () => {
@@ -206,6 +432,11 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     throw new Error(`backend ${pid} did not wait on the shared advisory lock`)
   }
 
+  async function useMigrationSchema(tx: Prisma.TransactionClient): Promise<void> {
+    await tx.$executeRawUnsafe(`SET LOCAL search_path TO "${schema}"`)
+    await configureBoundedTransaction(tx)
+  }
+
   async function readState(caseId: string): Promise<{
     decisions: string[]
     linked_mutation_count: number
@@ -225,6 +456,368 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     if (!rows[0]) throw new Error("missing Workforce lock proof state")
     return rows[0]
   }
+
+  it("applies the exact revision migration to a non-empty append-only ledger", async () => {
+    const [migrationRole] = await observer.$queryRawUnsafe<Array<{
+      rolsuper: boolean
+      rolbypassrls: boolean
+      rolcanlogin: boolean
+      ownsByMembership: boolean
+    }>>(`
+      SELECT login.rolsuper,
+             login.rolbypassrls,
+             login.rolcanlogin,
+             pg_has_role(login.oid, owner.oid, 'MEMBER') AS "ownsByMembership"
+        FROM pg_roles login
+        JOIN pg_roles owner ON owner.rolname = $2
+       WHERE login.rolname = $1
+    `, migrationLoginRole, migrationOwnerRole)
+    expect(migrationRole).toEqual({
+      rolsuper: false,
+      rolbypassrls: true,
+      rolcanlogin: true,
+      ownsByMembership: true,
+    })
+    const [rlsState] = await observer.$queryRawUnsafe<Array<{
+      relrowsecurity: boolean
+      relforcerowsecurity: boolean
+    }>>(`
+      SELECT relrowsecurity, relforcerowsecurity
+        FROM pg_class
+       WHERE oid = '"${schema}"."workforce_exception_decisions"'::regclass
+    `)
+    expect(rlsState).toEqual({ relrowsecurity: true, relforcerowsecurity: true })
+
+    const backfilled = await observer.$queryRawUnsafe<Array<{ id: string; caseRevision: number }>>(`
+      SELECT "id", "caseRevision"
+        FROM "${schema}"."workforce_exception_decisions"
+       WHERE "organizationId" = $1 AND "caseId" = 'migration-case'
+       ORDER BY "caseRevision" ASC
+    `, organizationId)
+    expect(backfilled).toEqual([
+      { id: "migration-decision-a", caseRevision: 1 },
+      { id: "migration-decision-b", caseRevision: 2 },
+      { id: "migration-decision-c", caseRevision: 3 },
+    ])
+
+    // The named append-only guard is active again after the controlled
+    // backfill window.
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        UPDATE "${schema}"."workforce_exception_decisions"
+           SET "reason" = 'mutated'
+         WHERE "id" = 'migration-decision-a'
+      `)
+    })).rejects.toBeDefined()
+
+    // A draining pre-cutover binary omits the new column. The compatibility
+    // trigger assigns the exact next revision under the same case lock.
+    const oldClientInsert = await observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      return tx.$queryRawUnsafe<Array<{ caseRevision: number }>>(`
+        INSERT INTO "${schema}"."workforce_exception_decisions" (
+          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason", "actorUserId"
+        ) VALUES ('migration-decision-old-client', $1, 'migration-case', 'migration-op-old',
+                  'ACKNOWLEDGE', 'old client', 'manager')
+        RETURNING "caseRevision"
+      `, organizationId)
+    })
+    expect(oldClientInsert).toEqual([{ caseRevision: 4 }])
+
+    // The cutover binary supplies the same next revision explicitly.
+    const newClientInsert = await observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      return tx.$queryRawUnsafe<Array<{ caseRevision: number }>>(`
+        INSERT INTO "${schema}"."workforce_exception_decisions" (
+          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason",
+          "actorUserId", "caseRevision"
+        ) VALUES ('migration-decision-new-client', $1, 'migration-case', 'migration-op-new',
+                  'ACKNOWLEDGE', 'new client', 'manager', 5)
+        RETURNING "caseRevision"
+      `, organizationId)
+    })
+    expect(newClientInsert).toEqual([{ caseRevision: 5 }])
+
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_decisions" (
+          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason",
+          "actorUserId", "caseRevision"
+        ) VALUES ('migration-decision-stale', $1, 'migration-case', 'migration-op-stale',
+                  'ACKNOWLEDGE', 'stale', 'manager', 3)
+      `, organizationId)
+    })).rejects.toBeDefined()
+
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+          "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+          "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+          "observedCaseRevision"
+        ) VALUES ('migration-response-exact', $1, 'migration-case', 'migration-agent',
+                  'migration-workday', 'migration-segment', NULL, 'ACKNOWLEDGED',
+                  'migration-response-exact', 'migration-user', 5)
+      `, organizationId)
+    })).resolves.toBeUndefined()
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."mtm_hrm_requests" (
+          "id", "organizationId", "agentId", "type", "correctionWorkdayId",
+          "exceptionCaseId", "exceptionCaseRevision"
+        ) VALUES
+          ('migration-request-other-case', $1, 'migration-agent', 'TIME_CORRECTION',
+           'migration-workday', 'migration-other-case', 0),
+          ('migration-request-unlinked', $1, 'migration-agent', 'TIME_CORRECTION',
+           'migration-workday', NULL, NULL)
+      `, organizationId)
+    })).resolves.toBeUndefined()
+    for (const [responseId, requestId] of [
+      ["migration-response-other-case", "migration-request-other-case"],
+      ["migration-response-unlinked", "migration-request-unlinked"],
+    ] as const) {
+      await expect(observer.$transaction(async (tx) => {
+        await useMigrationSchema(tx)
+        await tx.$executeRawUnsafe(`
+          INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+            "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+            "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+            "observedCaseRevision"
+          ) VALUES ($1, $2, 'migration-case', 'migration-agent', 'migration-workday',
+                    'migration-segment', $3, 'CORRECTION_REQUESTED', $1, 'migration-user', 5)
+        `, responseId, organizationId, requestId)
+      })).rejects.toBeDefined()
+    }
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+          "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+          "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+          "observedCaseRevision"
+        ) VALUES ('migration-response-stale', $1, 'migration-case', 'migration-agent',
+                  'migration-workday', 'migration-segment', NULL, 'ACKNOWLEDGED',
+                  'migration-response-stale', 'migration-user', 4)
+      `, organizationId)
+    })).rejects.toBeDefined()
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+          "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+          "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+          "observedCaseRevision"
+        ) VALUES ('migration-response-legacy', $1, 'migration-case', 'migration-agent',
+                  'migration-workday', 'migration-segment', NULL, 'ACKNOWLEDGED',
+                  'migration-response-legacy', 'migration-user', NULL)
+      `, organizationId)
+    })).resolves.toBeUndefined()
+
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."mtm_hrm_requests" (
+          "id", "organizationId", "agentId", "type", "correctionWorkdayId",
+          "exceptionCaseId", "exceptionCaseRevision"
+        ) VALUES ('migration-request-exact', $1, 'migration-agent', 'TIME_CORRECTION',
+                  'migration-workday', 'migration-case', 5)
+      `, organizationId)
+    })).resolves.toBeUndefined()
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+          "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+          "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+          "observedCaseRevision"
+        ) VALUES ('migration-response-correction-exact', $1, 'migration-case',
+                  'migration-agent', 'migration-workday', 'migration-segment',
+                  'migration-request-exact', 'CORRECTION_REQUESTED',
+                  'migration-response-correction-exact', 'migration-user', 5)
+      `, organizationId)
+    })).resolves.toBeUndefined()
+    const updatedRequest = await observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      return tx.$queryRawUnsafe<Array<{ exceptionCaseRevision: number }>>(`
+        UPDATE "${schema}"."mtm_hrm_requests"
+           SET "status" = 'APPROVED'
+         WHERE "id" = 'migration-request-exact'
+        RETURNING "exceptionCaseRevision"
+      `)
+    })
+    expect(updatedRequest).toEqual([{ exceptionCaseRevision: 5 }])
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."mtm_hrm_requests" (
+          "id", "organizationId", "agentId", "type", "correctionWorkdayId",
+          "exceptionCaseId", "exceptionCaseRevision"
+        ) VALUES ('migration-request-stale', $1, 'migration-agent', 'TIME_CORRECTION',
+                  'migration-workday', 'migration-case', 4)
+      `, organizationId)
+    })).rejects.toBeDefined()
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."mtm_hrm_requests" (
+          "id", "organizationId", "agentId", "type", "correctionWorkdayId",
+          "exceptionCaseId", "exceptionCaseRevision"
+        ) VALUES ('migration-request-legacy', $1, 'migration-agent', 'TIME_CORRECTION',
+                  'migration-workday', 'migration-case', NULL)
+      `, organizationId)
+    })).resolves.toBeUndefined()
+    await expect(observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        UPDATE "${schema}"."mtm_hrm_requests"
+           SET "exceptionCaseRevision" = 4
+         WHERE "id" = 'migration-request-exact'
+      `)
+    })).rejects.toBeDefined()
+  }, 20_000)
+
+  it("allocates the next revision from a fresh post-lock snapshot", async () => {
+    const caseId = `migration-concurrent-${randomUUID()}`
+    const winnerInserted = deferred<void>()
+    const releaseWinner = deferred<void>()
+    const winner = terminalClient.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      const rows = await tx.$queryRawUnsafe<Array<{ caseRevision: number }>>(`
+        INSERT INTO "${schema}"."workforce_exception_decisions" (
+          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason", "actorUserId"
+        ) VALUES ($1, $2, $3, $4, 'ACKNOWLEDGE', 'winner', 'manager')
+        RETURNING "caseRevision"
+      `, `winner-${randomUUID()}`, organizationId, caseId, `winner-op-${randomUUID()}`)
+      winnerInserted.resolve()
+      await releaseWinner.promise
+      return rows[0]?.caseRevision
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 10_000 })
+
+    await winnerInserted.promise
+    const waiterPid = deferred<number>()
+    const waiter = linkedClient.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
+        "SELECT pg_backend_pid()::int AS pid",
+      )
+      waiterPid.resolve(backend.pid)
+      const rows = await tx.$queryRawUnsafe<Array<{ caseRevision: number }>>(`
+        INSERT INTO "${schema}"."workforce_exception_decisions" (
+          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason", "actorUserId"
+        ) VALUES ($1, $2, $3, $4, 'ACKNOWLEDGE', 'waiter', 'manager')
+        RETURNING "caseRevision"
+      `, `waiter-${randomUUID()}`, organizationId, caseId, `waiter-op-${randomUUID()}`)
+      return rows[0]?.caseRevision
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 10_000 })
+
+    try {
+      await waitForAdvisoryLockWait(await waiterPid.promise)
+    } finally {
+      releaseWinner.resolve()
+    }
+    await expect(winner).resolves.toBe(1)
+    await expect(waiter).resolves.toBe(2)
+  }, 15_000)
+
+  it("validates response and request signals from a fresh post-lock snapshot", async () => {
+    const caseId = `migration-signal-race-${randomUUID()}`
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."workforce_exception_cases" (
+        "id", "organizationId", "agentId", "workdayId", "segmentId"
+      ) VALUES ($1, $2, 'migration-agent', 'migration-workday', 'migration-segment')
+    `, caseId, organizationId)
+    await observer.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_decisions" (
+          "id", "organizationId", "caseId", "operationId", "decisionCode", "reason", "actorUserId"
+        ) VALUES ($1, $2, $3, $4, 'REQUEST_EMPLOYEE_RESPONSE', 'initial', 'manager')
+      `, `initial-${randomUUID()}`, organizationId, caseId, `initial-op-${randomUUID()}`)
+    })
+
+    async function holdNextDecision(revision: number): Promise<{
+      inserted: Deferred<void>
+      release: Deferred<void>
+      transaction: Promise<void>
+    }> {
+      const inserted = deferred<void>()
+      const release = deferred<void>()
+      const transaction = terminalClient.$transaction(async (tx) => {
+        await useMigrationSchema(tx)
+        await tx.$executeRawUnsafe(`
+          INSERT INTO "${schema}"."workforce_exception_decisions" (
+            "id", "organizationId", "caseId", "operationId", "decisionCode", "reason",
+            "actorUserId", "caseRevision"
+          ) VALUES ($1, $2, $3, $4, 'REQUEST_EMPLOYEE_RESPONSE', 'race', 'manager', $5)
+        `, `race-${randomUUID()}`, organizationId, caseId, `race-op-${randomUUID()}`, revision)
+        inserted.resolve()
+        await release.promise
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        timeout: 10_000,
+      })
+      return { inserted, release, transaction }
+    }
+
+    const responseDecision = await holdNextDecision(2)
+    await responseDecision.inserted.promise
+    const responsePid = deferred<number>()
+    const response = linkedClient.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
+        "SELECT pg_backend_pid()::int AS pid",
+      )
+      responsePid.resolve(backend.pid)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+          "id", "organizationId", "caseId", "agentId", "workdayId", "segmentId",
+          "correctionRequestId", "responseCode", "clientResponseId", "actorUserId",
+          "observedCaseRevision"
+        ) VALUES ($1, $2, $3, 'migration-agent', 'migration-workday',
+                  'migration-segment', NULL, 'ACKNOWLEDGED', $1, 'migration-user', 2)
+      `, `race-response-${randomUUID()}`, organizationId, caseId)
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      timeout: 10_000,
+    })
+    try {
+      await waitForAdvisoryLockWait(await responsePid.promise)
+    } finally {
+      responseDecision.release.resolve()
+    }
+    await responseDecision.transaction
+    await expect(response).resolves.toBeUndefined()
+
+    const requestDecision = await holdNextDecision(3)
+    await requestDecision.inserted.promise
+    const requestPid = deferred<number>()
+    const request = linkedClient.$transaction(async (tx) => {
+      await useMigrationSchema(tx)
+      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
+        "SELECT pg_backend_pid()::int AS pid",
+      )
+      requestPid.resolve(backend.pid)
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."mtm_hrm_requests" (
+          "id", "organizationId", "agentId", "type", "correctionWorkdayId",
+          "exceptionCaseId", "exceptionCaseRevision"
+        ) VALUES ($1, $2, 'migration-agent', 'TIME_CORRECTION', 'migration-workday', $3, 3)
+      `, `race-request-${randomUUID()}`, organizationId, caseId)
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      timeout: 10_000,
+    })
+    try {
+      await waitForAdvisoryLockWait(await requestPid.promise)
+    } finally {
+      requestDecision.release.resolve()
+    }
+    await requestDecision.transaction
+    await expect(request).resolves.toBeUndefined()
+  }, 25_000)
 
   it("makes a linked writer wait for terminal resolution and reject from the post-lock lifecycle", async () => {
     const caseId = `terminal-first-${randomUUID()}`
@@ -377,6 +970,99 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       decisions: ["ACKNOWLEDGE", "RESOLVE_NO_CHANGE"],
       linked_mutation_count: 1,
     })
+  }, 15_000)
+
+  it("records causal revision order even when transaction timestamps are inverted", async () => {
+    const caseId = `revision-clock-inversion-${randomUUID()}`
+    const agentId = `revision-agent-${randomUUID()}`
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."case_decisions" ("organization_id", "case_id")
+      VALUES ($1, $2)
+    `, organizationId, caseId)
+
+    // Start the employee transaction first so PostgreSQL now() is older, but
+    // deliberately let the later reset transaction acquire the case lock
+    // first. The employee write is causally after the reset despite its older
+    // transaction timestamp.
+    const linkedStarted = deferred<void>()
+    const allowLinkedLock = deferred<void>()
+    const linkedPid = deferred<number>()
+    const linked = linkedClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      await tx.$queryRawUnsafe("SELECT now()")
+      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
+        "SELECT pg_backend_pid()::int AS pid",
+      )
+      linkedPid.resolve(backend.pid)
+      linkedStarted.resolve()
+      await allowLinkedLock.promise
+      return appendAuthorizedWorkforceExceptionEmployeeResponse({
+        db: employeeResponseDb(tx),
+        draft: {
+          organizationId,
+          caseId,
+          agentId,
+          workdayId: "workday-revision",
+          segmentId: null,
+          correctionRequestId: null,
+          responseCode: "ACKNOWLEDGED",
+          clientResponseId: `response-${randomUUID()}`,
+          actorUserId: "employee-user",
+        },
+        authorize: async () => true,
+      })
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    })
+
+    await linkedStarted.promise
+    const resetHasLock = deferred<void>()
+    const releaseReset = deferred<void>()
+    const reset = terminalClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      await lockWorkforceExceptionDecisionStream(tx, { organizationId, caseId })
+      await tx.$executeRawUnsafe(`
+        UPDATE "${schema}"."case_decisions"
+           SET "decisions" = '["REQUEST_EMPLOYEE_RESPONSE"]'::jsonb,
+               "last_decision_created_at" = now()
+         WHERE "organization_id" = $1 AND "case_id" = $2
+      `, organizationId, caseId)
+      resetHasLock.resolve()
+      await releaseReset.promise
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    })
+
+    await resetHasLock.promise
+    allowLinkedLock.resolve()
+    try {
+      await waitForAdvisoryLockWait(await linkedPid.promise)
+    } finally {
+      releaseReset.resolve()
+    }
+    await reset
+    await expect(linked).resolves.toMatchObject({ idempotent: false })
+
+    const [stored] = await observer.$queryRawUnsafe<Array<{
+      observed_case_revision: number
+      response_created_at: Date
+      reset_created_at: Date
+    }>>(`
+      SELECT response."observed_case_revision",
+             response."created_at" AS "response_created_at",
+             decisions."last_decision_created_at" AS "reset_created_at"
+        FROM "${schema}"."employee_responses" response
+        JOIN "${schema}"."case_decisions" decisions
+          ON decisions."organization_id" = response."organization_id"
+         AND decisions."case_id" = response."case_id"
+       WHERE response."organization_id" = $1 AND response."case_id" = $2
+    `, organizationId, caseId)
+    expect(stored.observed_case_revision).toBe(1)
+    expect(stored.response_created_at.getTime()).toBeLessThan(stored.reset_created_at.getTime())
   }, 15_000)
 
   it("serializes cross-domain writers in the global workday then case order", async () => {

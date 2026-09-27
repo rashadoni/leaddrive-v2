@@ -29,12 +29,18 @@ export type WorkforceExceptionCorrectionRequestFact = {
   type: string
   status: string
   appliedCorrectionCount: number
-  submittedAt: Date
+  /** Decision revision observed while the linked request held the case lock. */
+  exceptionCaseRevision: number | null
 }
 
 export type WorkforceExceptionDecisionFact = {
   decisionCode: string
-  createdAt: Date
+  caseRevision: number
+}
+
+export type WorkforceExceptionEmployeeResponseFact = {
+  /** Decision revision observed while the response held the case lock. */
+  observedCaseRevision: number | null
 }
 
 export type WorkforceExceptionWorkbenchContext = {
@@ -42,10 +48,6 @@ export type WorkforceExceptionWorkbenchContext = {
   correctionState: WorkforceExceptionCorrectionState
   employeeVisibility: "NOT_RECORDED" | "RECORDED"
   availableDecisions: readonly WorkforceExceptionWorkbenchDecision[]
-}
-
-function validInstant(value: unknown): value is Date {
-  return value instanceof Date && Number.isFinite(value.getTime())
 }
 
 function correctionState(input: {
@@ -61,8 +63,7 @@ function correctionState(input: {
   let applied = 0
   for (const request of input.correctionRequests) {
     if (request.type !== "TIME_CORRECTION" || !Number.isInteger(request.appliedCorrectionCount)
-      || request.appliedCorrectionCount < 0 || request.appliedCorrectionCount > 1
-      || !validInstant(request.submittedAt)) {
+      || request.appliedCorrectionCount < 0 || request.appliedCorrectionCount > 1) {
       return "INTEGRITY_REVIEW"
     }
     switch (request.status) {
@@ -109,8 +110,8 @@ function resolvedHistoryMatchesCorrection(input: {
 function scheduleOnlyNoShowDecisions(stage: WorkforceExceptionDraftStage): readonly WorkforceExceptionWorkbenchDecision[] {
   switch (stage) {
     case "OPEN": return ["ACKNOWLEDGE"]
-    // Terminal resolution/reopen stays unavailable until every linked
-    // request/response writer adopts the same case lock in a later slice.
+    // Terminal resolution/reopen stays unavailable until a separately
+    // reviewed, versioned and default-off terminal policy is activated.
     case "HR_REVIEW":
     case "RESOLVED": return []
     case "AWAITING_EMPLOYEE_RESPONSE": return []
@@ -119,21 +120,30 @@ function scheduleOnlyNoShowDecisions(stage: WorkforceExceptionDraftStage): reado
 
 function currentCycleEmployeeVisibility(input: {
   priorDecisions: readonly WorkforceExceptionDecisionFact[]
-  employeeResponseInstants: readonly Date[]
+  employeeResponses: readonly WorkforceExceptionEmployeeResponseFact[]
   correctionRequests: readonly WorkforceExceptionCorrectionRequestFact[]
 }): "NOT_RECORDED" | "RECORDED" | "INTEGRITY_REVIEW" {
-  if (input.employeeResponseInstants.some((instant) => !validInstant(instant))) return "INTEGRITY_REVIEW"
-  const resetAt = input.priorDecisions.reduce<Date | null>((latest, decision) => (
-    ["REQUEST_EMPLOYEE_RESPONSE", "REQUEST_TIME_CORRECTION", "REOPEN_FOR_REVIEW"].includes(decision.decisionCode)
-      && (latest == null || decision.createdAt > latest)
-      ? decision.createdAt
-      : latest
-  ), null)
-  const signals = [
-    ...input.employeeResponseInstants,
-    ...input.correctionRequests.map((request) => request.submittedAt),
+  const currentRevision = input.priorDecisions.length
+  const revisions = [
+    ...input.employeeResponses.map((response) => response.observedCaseRevision),
+    ...input.correctionRequests.map((request) => request.exceptionCaseRevision),
   ]
-  return signals.some((instant) => resetAt == null || instant >= resetAt) ? "RECORDED" : "NOT_RECORDED"
+  if (revisions.some((revision) => revision !== null
+    && (!Number.isInteger(revision) || revision < 0 || revision > currentRevision))) {
+    return "INTEGRITY_REVIEW"
+  }
+  const resetRevision = input.priorDecisions.reduce<number>((latest, decision) => (
+    ["REQUEST_EMPLOYEE_RESPONSE", "REQUEST_TIME_CORRECTION", "REOPEN_FOR_REVIEW"].includes(decision.decisionCode)
+      && decision.caseRevision > latest
+      ? decision.caseRevision
+      : latest
+  ), 0)
+  // A signal written after revision N records N. Legacy NULL signals are
+  // deliberately ignored: timestamp inference would reintroduce transaction-
+  // start/client-clock ordering into a lifecycle decision.
+  return revisions.some((revision) => revision !== null && revision >= resetRevision)
+    ? "RECORDED"
+    : "NOT_RECORDED"
 }
 
 /**
@@ -146,12 +156,14 @@ export function evaluateWorkforceExceptionWorkbenchContext(input: {
   workdayId: string | null
   priorDecisions: readonly WorkforceExceptionDecisionFact[]
   decisionHistoryComplete: boolean
-  employeeResponseInstants: readonly Date[]
+  employeeResponses: readonly WorkforceExceptionEmployeeResponseFact[]
   correctionRequests: readonly WorkforceExceptionCorrectionRequestFact[]
   correctionContextComplete: boolean
 }): WorkforceExceptionWorkbenchContext {
   const correction = correctionState(input)
-  const decisionFactsValid = input.priorDecisions.every((decision) => validInstant(decision.createdAt))
+  const decisionFactsValid = input.priorDecisions.every((decision, index) => (
+    decision.caseRevision === index + 1
+  ))
   const employeeVisibility = currentCycleEmployeeVisibility(input)
   const lifecycle = input.decisionHistoryComplete
     && input.priorDecisions.length <= MAX_WORKFORCE_EXCEPTION_DECISIONS
@@ -179,7 +191,7 @@ export function evaluateWorkforceExceptionWorkbenchContext(input: {
     const invalidHistory = input.priorDecisions.some(({ decisionCode }) => ![
       "ACKNOWLEDGE", "ESCALATE_TO_HR", "RESOLVE_NO_CHANGE", "REOPEN_FOR_REVIEW",
     ].includes(decisionCode))
-    if (input.employeeResponseInstants.length > 0 || input.correctionRequests.length > 0
+    if (input.employeeResponses.length > 0 || input.correctionRequests.length > 0
       || invalidHistory || lifecycle.stage === "AWAITING_EMPLOYEE_RESPONSE") {
       return {
         stage: "DATA_INTEGRITY_REVIEW",
