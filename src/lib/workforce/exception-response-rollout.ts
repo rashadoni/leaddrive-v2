@@ -1,5 +1,4 @@
 import { featureFlagsToArray } from "@/lib/modules"
-import type { WorkforceExceptionWorkbenchDecision } from "@/lib/workforce/exception-workbench"
 
 /**
  * Additive C6 employee-response records must be migrated and rehearsed before
@@ -24,7 +23,7 @@ export function resolveWorkforceExceptionResponseRecording(
  * request that depends on that tenant's migrated response channel.
  */
 export function isWorkforceExceptionDecisionEnabledForResponseRollout(
-  decisionCode: WorkforceExceptionWorkbenchDecision,
+  decisionCode: string,
   features: unknown,
 ): boolean {
   return decisionCode !== "REQUEST_EMPLOYEE_RESPONSE"

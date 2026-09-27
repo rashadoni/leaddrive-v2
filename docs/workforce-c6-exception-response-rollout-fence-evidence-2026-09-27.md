@@ -116,3 +116,23 @@ were `NOT RUN` reviewer-side and are not inferred. Only this evidence file,
 the roadmap and append-only session log may change after the verdict; an
 independent receipt-integrity check must prove all six reviewed runtime/test
 blobs unchanged before push.
+
+## PR #462 exact-head type-boundary repair
+
+PR run `36333811862` passed `pr-scope`, `runner-policy`, `scan` and
+`static-checks`; the latter completed in 13m30s and included the real
+PostgreSQL Workforce shared-lock gate. Exact-head `typecheck` correctly blocked
+merge after 16m52s with one new defect-shaped diagnostic:
+`exception-decision-service.ts` TS2345. The policy-writer callback intentionally
+exposes its canonical decision code as `string`, while the response-only
+rollout predicate had unnecessarily required the narrower workbench union.
+
+The bounded repair makes that pure predicate accept the storage boundary's
+string. It still denies only the exact `REQUEST_EMPLOYEE_RESPONSE` code when
+the flag is unavailable; every other string proceeds to the existing
+workbench lifecycle validator and gains no authority from this helper. The
+test now includes a future/unknown decision string to preserve that separation
+of concerns. Core API/helper coverage passes 27/27, targeted ESLint and diff
+whitespace pass. The failed check and every previous review/check identity are
+not transferable; a new checkpoint, frozen independent review and all five
+replacement exact-head checks are mandatory.

@@ -24,6 +24,7 @@ describe("Workforce employee exception response rollout", () => {
       )).toBe(false)
       expect(isWorkforceExceptionDecisionEnabledForResponseRollout("ACKNOWLEDGE", features)).toBe(true)
       expect(isWorkforceExceptionDecisionEnabledForResponseRollout("REQUEST_TIME_CORRECTION", features)).toBe(true)
+      expect(isWorkforceExceptionDecisionEnabledForResponseRollout("FUTURE_DECISION", features)).toBe(true)
     }
 
     expect(isWorkforceExceptionDecisionEnabledForResponseRollout(

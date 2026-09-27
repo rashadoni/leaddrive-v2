@@ -807,3 +807,14 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or phase-gate credit is added.
 - Precise stopping point: frozen source/test/evidence head is independently GREEN; only this three-document review receipt is uncommitted and nothing is pushed.
 - Next action: checkpoint the receipt-only delta, independently prove all six reviewed runtime/test blobs unchanged, then push/open the sub-400 KB PR and require all five exact-head checks before merge.
+
+## 2026-09-27 — PR #462 exact-head typecheck repair
+
+- Final reviewed head `803b56880668e8bbbb56b492f135369ff0e89ff5` was pushed and opened as PR #462. `pr-scope`, `runner-policy`, `scan` and `static-checks` passed; static checks took 13m30s and included the real PostgreSQL Workforce shared-lock gate.
+- `typecheck` correctly blocked merge after 16m52s with one new defect-shaped TS2345 at the post-lock rollout check. `validateContext` receives the canonical persisted decision code as `string`, while the new pure helper had been typed to the narrower workbench union. No baseline or gate is weakened.
+- The bounded source repair changes only that helper boundary to `string`. Its runtime rule is unchanged: exact `REQUEST_EMPLOYEE_RESPONSE` requires the rollout flag; all other strings remain subject to the existing workbench lifecycle validator. A future/unknown-code assertion makes that delegation explicit.
+- The repaired core selection passes three files / 27 tests; targeted ESLint for the helper/service/test and diff whitespace pass. Full local typecheck/build remains `NOT RUN` under host policy; replacement exact-head CI is required.
+- Previous frozen and receipt-integrity reviews remain historical evidence only and do not transfer to the repaired head. The failed exact-head CI results also do not transfer.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or phase-gate credit is added.
+- Precise stopping point: the two-file type-boundary/test repair plus three receipt documents are uncommitted; independent read-only preflight is in progress, PR #462 remains open and unmergeable.
+- Next action: resolve any preflight finding, checkpoint the repaired paths, freeze a new exact identity, require a fresh zero-finding independent review and push it to trigger all five replacement checks.
