@@ -19,7 +19,8 @@ const migrationLoginRole = `workforce_policy_migrator_${roleSuffix}`
 const applicationRole = `workforce_policy_app_${roleSuffix}`
 const migrationPassword = `PolicyMigration_${roleSuffix}`
 const applicationPassword = `PolicyApplication_${roleSuffix}`
-const migrationName = "20260927070000_workforce_exception_policy_revision_foundation"
+const foundationMigrationName = "20260927070000_workforce_exception_policy_revision_foundation"
+const validationMigrationName = "20260927093000_workforce_exception_policy_revision_validate"
 const baselineMigration = "00000000000000_existing_production_schema"
 const organizationA = "org-policy-a"
 const organizationB = "org-policy-b"
@@ -43,7 +44,7 @@ function createMigrationProject(): string {
   const migrationDirectory = join(
     prismaDirectory,
     "migrations",
-    migrationName,
+    foundationMigrationName,
   )
   mkdirSync(baselineDirectory, { recursive: true })
   mkdirSync(migrationDirectory, { recursive: true })
@@ -64,10 +65,35 @@ datasource db {
   writeFileSync(
     join(migrationDirectory, "migration.sql"),
     readFileSync(
-      join(process.cwd(), "prisma/migrations", migrationName, "migration.sql"),
+      join(
+        process.cwd(),
+        "prisma/migrations",
+        foundationMigrationName,
+        "migration.sql",
+      ),
     ),
   )
   return project
+}
+
+function addValidationMigration(project: string): void {
+  const migrationDirectory = join(
+    project,
+    "prisma/migrations",
+    validationMigrationName,
+  )
+  mkdirSync(migrationDirectory, { recursive: true })
+  writeFileSync(
+    join(migrationDirectory, "migration.sql"),
+    readFileSync(
+      join(
+        process.cwd(),
+        "prisma/migrations",
+        validationMigrationName,
+        "migration.sql",
+      ),
+    ),
+  )
 }
 
 function runMigrationCommand(
@@ -138,6 +164,18 @@ postgresDescribe("Workforce exception policy revision migration (real PostgreSQL
     revisionRows: number
     legacyPolicyRevisionId: string | null
     decisionConstraintValidated: boolean
+  } | null = null
+  let validationEvidence: {
+    beforeDecisionRows: number
+    afterDecisionRows: number
+    beforeRevisionRows: number
+    afterRevisionRows: number
+    decisionRowsUnchanged: boolean
+    revisionRowsUnchanged: boolean
+    linkedPolicyRevisionId: string | null
+    decisionConstraintValidated: boolean
+    appliedTargetMigrations: number
+    unresolvedTargetMigrations: number
   } | null = null
 
   beforeAll(async () => {
@@ -316,7 +354,114 @@ postgresDescribe("Workforce exception policy revision migration (real PostgreSQL
         organizationId: organizationB,
         recordedByUserId: "user-policy-b",
       }))
-  }, 60_000)
+
+    await withOrganization(applicationClient, organizationA, (tx) =>
+      tx.$executeRawUnsafe(`
+        INSERT INTO "workforce_exception_decisions" (
+          "id", "organizationId", "caseId", "caseRevision", "operationId",
+          "decisionCode", "reason", "policyRevisionId", "actorUserId"
+        ) VALUES (
+          'pre-validation-policy-decision', '${organizationA}',
+          'case-policy-a', 2, 'pre-validation-policy-operation',
+          'ACKNOWLEDGE', 'valid before constraint validation',
+          'policy-revision-a', 'user-policy-a'
+        )
+      `))
+
+    const [beforeValidation] = await observer.$queryRawUnsafe<Array<{
+      decisionRows: bigint
+      revisionRows: bigint
+      decisionSnapshot: string
+      revisionSnapshot: string
+    }>>(`
+      SELECT
+        (SELECT count(*) FROM "${schema}"."workforce_exception_decisions")
+          AS "decisionRows",
+        (SELECT count(*) FROM "${schema}"."workforce_exception_policy_revisions")
+          AS "revisionRows",
+        (SELECT jsonb_agg(to_jsonb(decision) ORDER BY decision."id")::text
+           FROM "${schema}"."workforce_exception_decisions" decision)
+          AS "decisionSnapshot",
+        (SELECT jsonb_agg(to_jsonb(revision) ORDER BY revision."id")::text
+           FROM "${schema}"."workforce_exception_policy_revisions" revision)
+          AS "revisionSnapshot"
+    `)
+
+    addValidationMigration(migrationProject)
+    const validationDeploy = runMigrationCommand(migrationProject, [
+      "migrate", "deploy",
+    ])
+    if (validationDeploy.status !== 0) {
+      throw new Error(
+        `Policy revision validation failed\n${validationDeploy.stdout}\n${validationDeploy.stderr}`,
+      )
+    }
+
+    const [afterValidation] = await observer.$queryRawUnsafe<Array<{
+      decisionRows: bigint
+      revisionRows: bigint
+      decisionSnapshot: string
+      revisionSnapshot: string
+      linkedPolicyRevisionId: string | null
+      decisionConstraintValidated: boolean
+      appliedTargetMigrations: bigint
+      unresolvedTargetMigrations: bigint
+    }>>(`
+      SELECT
+        (SELECT count(*) FROM "${schema}"."workforce_exception_decisions")
+          AS "decisionRows",
+        (SELECT count(*) FROM "${schema}"."workforce_exception_policy_revisions")
+          AS "revisionRows",
+        (SELECT jsonb_agg(to_jsonb(decision) ORDER BY decision."id")::text
+           FROM "${schema}"."workforce_exception_decisions" decision)
+          AS "decisionSnapshot",
+        (SELECT jsonb_agg(to_jsonb(revision) ORDER BY revision."id")::text
+           FROM "${schema}"."workforce_exception_policy_revisions" revision)
+          AS "revisionSnapshot",
+        (SELECT "policyRevisionId"
+           FROM "${schema}"."workforce_exception_decisions"
+          WHERE "id" = 'pre-validation-policy-decision')
+          AS "linkedPolicyRevisionId",
+        (SELECT convalidated
+           FROM pg_constraint
+          WHERE conrelid = '"${schema}"."workforce_exception_decisions"'::regclass
+            AND conname = 'workforce_exception_decisions_policy_revision_fk')
+          AS "decisionConstraintValidated",
+        (SELECT count(*)
+           FROM "${schema}"."_prisma_migrations"
+          WHERE "migration_name" IN (
+            '${foundationMigrationName}',
+            '${validationMigrationName}'
+          )
+            AND "finished_at" IS NOT NULL
+            AND "rolled_back_at" IS NULL
+            AND "applied_steps_count" = 1)
+          AS "appliedTargetMigrations",
+        (SELECT count(*)
+           FROM "${schema}"."_prisma_migrations"
+          WHERE "migration_name" IN (
+            '${foundationMigrationName}',
+            '${validationMigrationName}'
+          )
+            AND "finished_at" IS NULL
+            AND "rolled_back_at" IS NULL)
+          AS "unresolvedTargetMigrations"
+    `)
+    validationEvidence = {
+      beforeDecisionRows: Number(beforeValidation.decisionRows),
+      afterDecisionRows: Number(afterValidation.decisionRows),
+      beforeRevisionRows: Number(beforeValidation.revisionRows),
+      afterRevisionRows: Number(afterValidation.revisionRows),
+      decisionRowsUnchanged:
+        beforeValidation.decisionSnapshot === afterValidation.decisionSnapshot,
+      revisionRowsUnchanged:
+        beforeValidation.revisionSnapshot === afterValidation.revisionSnapshot,
+      linkedPolicyRevisionId: afterValidation.linkedPolicyRevisionId,
+      decisionConstraintValidated: afterValidation.decisionConstraintValidated,
+      appliedTargetMigrations: Number(afterValidation.appliedTargetMigrations),
+      unresolvedTargetMigrations: Number(afterValidation.unresolvedTargetMigrations),
+    }
+  }, 90_000)
 
   afterAll(async () => {
     await Promise.all([
@@ -373,6 +518,21 @@ postgresDescribe("Workforce exception policy revision migration (real PostgreSQL
     })
   })
 
+  it("validates the existing tenant-bound link without rewriting rows", () => {
+    expect(validationEvidence).toEqual({
+      beforeDecisionRows: 2,
+      afterDecisionRows: 2,
+      beforeRevisionRows: 2,
+      afterRevisionRows: 2,
+      decisionRowsUnchanged: true,
+      revisionRowsUnchanged: true,
+      linkedPolicyRevisionId: "policy-revision-a",
+      decisionConstraintValidated: true,
+      appliedTargetMigrations: 2,
+      unresolvedTargetMigrations: 0,
+    })
+  })
+
   it("enforces tenant RLS and composite actor ownership", async () => {
     const visibleA = await withOrganization(applicationClient, organizationA, (tx) =>
       tx.$queryRawUnsafe<Array<{ id: string }>>(`
@@ -404,7 +564,7 @@ postgresDescribe("Workforce exception policy revision migration (real PostgreSQL
           "id", "organizationId", "caseId", "caseRevision", "operationId",
           "decisionCode", "reason", "actorUserId"
         ) VALUES (
-          'old-binary-decision', '${organizationA}', 'case-policy-a', 2,
+          'old-binary-decision', '${organizationA}', 'case-policy-a', 3,
           'old-binary-operation', 'ACKNOWLEDGE', 'old binary', 'user-policy-a'
         ) RETURNING "policyRevisionId"
       `))
@@ -416,7 +576,7 @@ postgresDescribe("Workforce exception policy revision migration (real PostgreSQL
           "id", "organizationId", "caseId", "caseRevision", "operationId",
           "decisionCode", "reason", "policyRevisionId", "actorUserId"
         ) VALUES (
-          'policy-linked-decision', '${organizationA}', 'case-policy-a', 3,
+          'policy-linked-decision', '${organizationA}', 'case-policy-a', 4,
           'policy-linked-operation', 'ACKNOWLEDGE', 'linked',
           'policy-revision-a', 'user-policy-a'
         ) RETURNING "policyRevisionId"
@@ -429,7 +589,7 @@ postgresDescribe("Workforce exception policy revision migration (real PostgreSQL
           "id", "organizationId", "caseId", "caseRevision", "operationId",
           "decisionCode", "reason", "policyRevisionId", "actorUserId"
         ) VALUES (
-          'cross-tenant-policy-decision', '${organizationA}', 'case-policy-a', 4,
+          'cross-tenant-policy-decision', '${organizationA}', 'case-policy-a', 5,
           'cross-tenant-policy-operation', 'ACKNOWLEDGE', 'cross tenant',
           'policy-revision-b', 'user-policy-a'
         )
