@@ -1076,3 +1076,31 @@ matrix before closing Workstream 6.
 Next: create and push the Workstream 6 closure checkpoint, then restore
 Workstream 7 SLA Policies from product commit `61d4087eb` and recovery commit
 `bad92f916`, preserving current shared evidence supersets.
+
+### Workstream 7 restoration and CI-gate self-audit
+
+- Workstream 6 closure is checkpointed and pushed as `f6f18273a`. SLA Policies
+  product commit `61d4087eb` is restored as `4173ab72e`; recovery commit
+  `bad92f916` is restored as `3eb1f5c47`.
+- The product cherry-pick conflicted only between the obsolete generic
+  PageHeader/table page and the saved compact SLA matrix; the complete new SLA
+  header/matrix was retained. Recovery conflicts affected shared workflow,
+  seed, static runner, SLA flow and seed contract files. Every conflict was
+  resolved to the current branch side and verified byte-for-byte against the
+  pre-cherry-pick stage, preserving the newer full evidence system while
+  retaining the SLA-specific page/form/contracts.
+- Resource inspection showed 15 GiB available memory, 331 GiB free disk and
+  zero pressure. Runner syntax, the unchanged four-file scoped scan, changed-
+  source ESLint and `git diff --check` pass; four product/recovery suites pass
+  21/21. AZ/RU/EN translation parity passes at 23,599 leaf keys and the updated
+  browser workflow contract passes 17/17.
+- Self-audit found the same fail-open dispatch gap previously fixed for Ticket
+  Categories: `sla-policies` ran the browser flow but skipped all section-scoped
+  validation because it is neither `all` nor a previously covered scenario. A
+  dedicated SLA Policies validation step now covers scoped scan, i18n, syntax,
+  lint, product/API/recovery contracts and shared visual/performance gates.
+  Contract assertions lock its predicate, source roots and flow contract.
+
+Next: checkpoint and push the SLA section-validation correction, then run and
+inspect exact-SHA desktop mutating, physical-touch mobile mutating and complete
+high-density SLA evidence before closing Workstream 7.

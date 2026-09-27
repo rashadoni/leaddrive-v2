@@ -427,6 +427,63 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts
 
+      - name: Validate section-scoped SLA Policies evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'sla-policies') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/settings/sla-policies,
+            src/components/sla-policy-form.tsx,
+            src/components/delete-confirm-dialog.tsx,
+            src/components/ui/dialog.tsx,
+            src/components/ui/dropdown-menu.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-sla-policies-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-sla-policies-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/settings/sla-policies/page.tsx \
+            src/app/api/v1/sla-policies/route.ts \
+            src/app/api/v1/sla-policies/\[id\]/route.ts \
+            src/components/sla-policy-form.tsx \
+            src/components/delete-confirm-dialog.tsx \
+            src/components/ui/dialog.tsx \
+            src/components/ui/dropdown-menu.tsx \
+            src/lib/ticketing/sla-policy.ts \
+            src/__tests__/api-misc-system.test.ts \
+            src/__tests__/api-sla-policy-validation.test.ts \
+            src/__tests__/lib-sla-policy.test.ts \
+            src/__tests__/sla-policies-ux-contract.test.ts \
+            src/__tests__/support-ux-sla-policies-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-misc-system.test.ts \
+            src/__tests__/api-sla-policy-validation.test.ts \
+            src/__tests__/lib-sla-policy.test.ts \
+            src/__tests__/sla-policies-ux-contract.test.ts \
+            src/__tests__/support-ux-sla-policies-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
         run: |

@@ -1811,6 +1811,22 @@ Current verification evidence (2026-09-05):
   85/85 assertions, changed-source ESLint, `git diff --check`, AZ/RU/EN parity
   (21,895 leaf keys) and the Support UX anti-pattern scan (27 visible TSX files;
   zero findings).
+- Current-tree restoration on 2026-09-27 is checkpointed as product commit
+  `4173ab72e` and recovery commit `3eb1f5c47`. The product conflict replaced the
+  obsolete generic PageHeader/table branch with the saved compact SLA
+  header/matrix. Recovery conflicts in workflow, seed, static runner, SLA flow
+  and seed contract were resolved byte-for-byte to the current branch's newer
+  shared supersets; SLA-specific page, form and contracts remain applied.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  pressure. The unchanged four-file SLA scan reports zero findings, scoped
+  runner syntax and changed-source ESLint pass, four product/recovery suites
+  pass 21/21, translation parity passes at 23,599 leaf keys, and the strengthened
+  browser workflow contract passes 17/17. Self-audit found that a non-`all`
+  `sla-policies` dispatch still skipped every section validation. A dedicated
+  SLA Policies step now runs scoped scan, i18n, syntax, lint, product/API/
+  recovery contracts and shared visual/performance evidence tests; workflow
+  assertions lock the predicate, scan roots and flow contract. A new exact-SHA
+  hosted build/browser run is mandatory before any SLA checkbox closes.
 - SLA checkboxes remain open until authenticated browser evidence covers
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery

@@ -339,6 +339,11 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("contains(inputs.scenarios, 'ticket-categories')");
     expect(workflow).toContain("src/app/(dashboard)/settings/ticket-categories,");
     expect(workflow).toContain("support-ux-ticket-categories-flow-evidence-contract.test.ts");
+    expect(workflow).toContain("Validate section-scoped SLA Policies evidence");
+    expect(workflow).toContain("contains(inputs.scenarios, 'sla-policies')");
+    expect(workflow).toContain("src/app/(dashboard)/settings/sla-policies,");
+    expect(workflow).toContain("src/components/sla-policy-form.tsx,");
+    expect(workflow).toContain("support-ux-sla-policies-flow-evidence-contract.test.ts");
     expect(complaintFlow).toContain('SUPPORT_EVIDENCE_TARGET_MODE !== "ephemeral"');
     expect(workflow).toContain("actions/download-artifact@v4");
     expect(workflow).toContain("SUPPORT_EVIDENCE_REQUIRE_BASELINE");
