@@ -1048,3 +1048,31 @@ pass and full high-density matrix before closing Workstream 6.
 Next: checkpoint and push the mobile action-row correction, then rerun the
 exact-SHA desktop keyboard, RU/dark physical-touch mobile and full high-density
 matrix before closing Workstream 6.
+
+### Workstream 6 closure self-audit
+
+- Final product checkpoint `a6c1820e2ba60c831ffb31f81b8f3b18c596569a`
+  passes exact-SHA EN/light desktop run `36298798190`, RU/dark physical-touch
+  mobile run `36299515281` and high-density run `36300475153`. Retained
+  artifacts are `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36298798190`,
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36299515281` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36300475153`.
+- Desktop passes one static cell plus 7/7 keyboard/recovery flows, records
+  fixture restoration, primary work at 280 px, load p75 504 ms and zero issue
+  totals. Mobile passes one static cell and 7/7 flows with restored fixture,
+  actual Playwright touchscreen activation on a 144x44 hit-tested target,
+  applied dark theme, `maxTouchPoints: 1`, empty overflow samples and primary
+  work at 601 px.
+- High-density evidence passes 24/24 AZ/RU/EN × light/dark × four viewport
+  cells. Runtime/API, axe, custom accessibility, touch, overflow, environment
+  and primary-work totals are all zero; maximum primary position is 601 px,
+  maximum load is 584 ms and maximum CLS is `0.009404729549370284`. Manual AZ
+  desktop/mobile, RU tablet and EN narrow-tablet review confirms healthy
+  localized hierarchy, responsive header actions and visible management work.
+- SUPUX-CAT-001 through SUPUX-CAT-007 are closed. No gate, timeout, scenario,
+  role, locale, theme, viewport, touch requirement or recovery assertion was
+  removed or weakened.
+
+Next: create and push the Workstream 6 closure checkpoint, then restore
+Workstream 7 SLA Policies from product commit `61d4087eb` and recovery commit
+`bad92f916`, preserving current shared evidence supersets.

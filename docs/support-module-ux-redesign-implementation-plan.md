@@ -1544,7 +1544,7 @@ Current verification evidence (2026-09-05):
 
 ## 13. Workstream 6 — Ticket Categories
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `ac88d8df3`; CI/browser gates pending**
+**Status: DONE — exact-SHA implementation, recovery, responsive, accessibility, performance, keyboard and touchscreen gates green**
 **Route:** `/settings/ticket-categories`
 **Primary file:** `src/app/(dashboard)/settings/ticket-categories/page.tsx`
 
@@ -1556,17 +1556,17 @@ shown by default.
 Target UX: an editable category tree with focused add/edit flow and progressive
 advanced settings.
 
-- [ ] **SUPUX-CAT-001** Replace five KPI tiles with one compact status summary or
+- [x] **SUPUX-CAT-001** Replace five KPI tiles with one compact status summary or
   remove them after product approval.
-- [ ] **SUPUX-CAT-002** Add tree expand/collapse and preserve hierarchy context.
-- [ ] **SUPUX-CAT-003** Open create/edit in a drawer on desktop and full-screen
+- [x] **SUPUX-CAT-002** Add tree expand/collapse and preserve hierarchy context.
+- [x] **SUPUX-CAT-003** Open create/edit in a drawer on desktop and full-screen
   sheet/route on mobile.
-- [ ] **SUPUX-CAT-004** Move slug, sort order, and other technical fields into
+- [x] **SUPUX-CAT-004** Move slug, sort order, and other technical fields into
   Advanced options.
-- [ ] **SUPUX-CAT-005** Localize priorities and explain scope/visibility in
+- [x] **SUPUX-CAT-005** Localize priorities and explain scope/visibility in
   business language.
-- [ ] **SUPUX-CAT-006** Replace tiny icon clusters with accessible row actions.
-- [ ] **SUPUX-CAT-007** Explain impact before deactivation/deletion when a category
+- [x] **SUPUX-CAT-006** Replace tiny icon clusters with accessible row actions.
+- [x] **SUPUX-CAT-007** Explain impact before deactivation/deletion when a category
   is in use.
 
 Acceptance:
@@ -1694,7 +1694,23 @@ Current verification evidence (2026-09-05):
   The unchanged four-file scan passes with zero findings, affected ESLint and
   `git diff --check` pass, and the layout contract passes 9/9. A final exact-SHA
   desktop/mobile/high trio remains mandatory after this product correction.
-- CAT checkboxes remain open until authenticated browser evidence covers
+- Final product checkpoint `a6c1820e2ba60c831ffb31f81b8f3b18c596569a`
+  passes EN/light desktop run `36298798190`, RU/dark physical-touch mobile run
+  `36299515281` and full high-density run `36300475153`. Desktop passes its
+  static cell plus 7/7 keyboard/recovery flows with fixture restoration and all
+  issue totals zero. Mobile passes the same 7/7 flows, records a real
+  Playwright touchscreen hit on a 144x44 target, applied dark theme,
+  `maxTouchPoints: 1`, no overflow and primary work at 601 px.
+- The high artifact passes all 24 requested AZ/RU/EN × light/dark ×
+  desktop/tablet/narrow-tablet/mobile cells. Runtime/API, axe, custom
+  accessibility, touch-target, overflow, environment and primary-work totals
+  are all zero; maximum primary-work position is 601 px, maximum load is 584 ms
+  and maximum CLS is `0.009404729549370284`. Manual inspection of AZ desktop
+  and mobile, RU tablet and EN narrow-tablet confirms the compact hierarchy,
+  legible localized actions and correct responsive stacking. Workstream 6 is
+  complete with no weakened scenario, timeout, role, locale, theme, viewport,
+  touch or recovery gate.
+- CAT checkboxes were held open until authenticated browser evidence covered
   375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus trap and return,
   physical touch, reduced motion, forced loading/empty/error/permission/recovery
   states, accessibility, performance and visual regression. No browser binary
@@ -1704,7 +1720,7 @@ Current verification evidence (2026-09-05):
   forbids a heavier local retry; GitHub CI remains mandatory. Exact-SHA run
   `34001658728` for `ac88d8df3` ended in GitHub Actions `startup_failure`
   before any job was created, so rendered execution is **NOT RUN** and no CAT
-  checkbox is closed.
+  checkbox was closed from that historical run.
 
 ## 14. Workstream 7 — SLA Policies
 
