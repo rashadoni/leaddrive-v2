@@ -2358,7 +2358,7 @@ Additional recovery evidence (2026-09-06):
 
 ## 17. Workstream 10 — Skill Routing
 
-**Status: IN PROGRESS — current-tree restoration checkpoints `5bf3b6547` and `5919822ad`; exact-SHA browser/CI gates pending**
+**Status: DONE — exact-SHA desktop/mobile mutation and 48-cell high-density browser evidence green**
 **Route:** `/support/skill-routing`
 **Primary files:** `src/app/(dashboard)/support/skill-routing/page.tsx`,
 `src/components/support/agent-skills-manager.tsx`,
@@ -2372,18 +2372,18 @@ statuses/actions lack semantic controls and visible feedback.
 Target UX: a queue-to-agent routing workspace that exposes coverage gaps and
 makes the configuration order obvious.
 
-- [ ] **SUPUX-RTE-001** Confirm the primary mental model: queue-first, agent-first,
+- [x] **SUPUX-RTE-001** Confirm the primary mental model: queue-first, agent-first,
   or role-dependent; default to queue-first for initial configuration.
-- [ ] **SUPUX-RTE-002** Build a master-detail view: selected queue and eligible/
+- [x] **SUPUX-RTE-002** Build a master-detail view: selected queue and eligible/
   assigned agents, or an equivalent routing map.
-- [ ] **SUPUX-RTE-003** Add agent/queue search, filters, and safe bulk skill edits.
-- [ ] **SUPUX-RTE-004** Add uncovered-queue and agent-without-skill summaries.
-- [ ] **SUPUX-RTE-005** Use tabs or a focused step flow on small screens instead
+- [x] **SUPUX-RTE-003** Add agent/queue search, filters, and safe bulk skill edits.
+- [x] **SUPUX-RTE-004** Add uncovered-queue and agent-without-skill summaries.
+- [x] **SUPUX-RTE-005** Use tabs or a focused step flow on small screens instead
   of stacking both managers.
-- [ ] **SUPUX-RTE-006** Replace clickable badges with semantic switches/buttons
+- [x] **SUPUX-RTE-006** Replace clickable badges with semantic switches/buttons
   and announce save/error state through accessible feedback.
-- [ ] **SUPUX-RTE-007** Localize fallbacks, role labels, and Add actions.
-- [ ] **SUPUX-RTE-008** Distinguish fetch failure from no skills/no queues.
+- [x] **SUPUX-RTE-007** Localize fallbacks, role labels, and Add actions.
+- [x] **SUPUX-RTE-008** Distinguish fetch failure from no skills/no queues.
 
 Acceptance:
 
@@ -2515,6 +2515,24 @@ Current-tree restoration (2026-09-26):
   targets are explicitly centered within their scroll container before the
   unchanged DOM hit-test and touchscreen tap. Focused lint, syntax, the
   0-finding scan, 12/12 contracts and `git diff --check` pass.
+- Final RU/dark mobile run `36342354797` on `48aab85e1` passes the dedicated
+  section gate, production build, static browser cell and all 6/6 disposable
+  outcomes. Both dual-source retries and the partial-source retry are real,
+  hit-tested 120x44 Playwright touchscreen taps; the product tour is dismissed
+  before activation so it cannot obscure the target. Static Axe, custom a11y,
+  touch, small-target, overflow, environment and primary-work findings are all
+  zero; primary work starts at 765 px, load p75 is 325 ms, filter p75 is 13 ms
+  and CLS is `0.011320760862311631`.
+- Final high-density run `36343446259` on the same SHA contains 48/48 unique,
+  passing manager/admin × AZ/RU/EN × light/dark × desktop/tablet/narrow-tablet/
+  mobile cells. Aggregate Axe, custom a11y, touch, small-target, overflow,
+  environment, primary-work and runtime error totals are zero. Worst observed
+  load p75 is 464 ms, filter p75 15 ms and CLS
+  `0.03712765587700737`. Representative AZ/light desktop, EN/dark tablet,
+  AZ/dark narrow-tablet and RU/dark mobile screenshots were manually accepted.
+  Evidence is retained under
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36342354797` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36343446259`.
 
 ## 18. Workstream 11 — Agent Calendar
 

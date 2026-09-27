@@ -1925,3 +1925,34 @@ screenshot is manually accepted.
 Next: checkpoint and push the tour-obstruction fix, then repeat the exact-SHA
 RU/dark mobile mutation sample. The full high matrix remains gated on a green
 6/6 mobile flow and manual image review.
+
+### Workstream 10 closure self-audit
+
+- Final RU/dark mobile run `36342354797` on `48aab85e1` is fully green. The
+  section gate and production build pass; static Axe, custom accessibility,
+  touch, small-target, overflow, environment and primary-work findings are all
+  zero. Primary work begins at 765 px, load p75 is 325 ms, filter p75 is 13 ms
+  and CLS is `0.011320760862311631`.
+- The disposable suite passes all 6/6 outcomes. Both queue and agent recovery
+  controls in the dual-source case, plus the independent partial-source retry,
+  were activated by hit-tested Playwright touchscreen taps on measured 120x44
+  targets. Permission suppression, density, rollback, retry and fixture
+  restoration evidence remain green. Manual review confirms the tour overlay
+  is absent and the RU/dark mobile queue-first hierarchy is unclipped.
+- High-density run `36343446259` on the same SHA is green with exactly 48/48
+  unique manager/admin × AZ/RU/EN × light/dark × desktop/tablet/narrow-tablet/
+  mobile cells. Aggregate Axe, custom accessibility, touch, small-target,
+  horizontal-overflow, environment, primary-work and runtime-error totals are
+  zero. Worst load p75 is 464 ms, worst filter p75 is 15 ms and maximum CLS is
+  `0.03712765587700737`.
+- Manual self-audit accepted representative AZ/light desktop, EN/dark tablet,
+  AZ/dark narrow-tablet and RU/dark mobile screenshots: navigation, coverage,
+  queue-first master/detail, focused small-screen tabs, contrast and hitboxes
+  remain coherent across the matrix. Artifacts are retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36342354797` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36343446259`.
+- All eight SUPUX-RTE requirements are closed in the implementation plan.
+  Workstream 10 is complete; no required gate was waived or left unrun.
+
+Next: checkpoint and push the Workstream 10 closure documentation, then restore
+and audit Workstream 11 Agent Calendar on top of this exact tree.
