@@ -38,6 +38,8 @@ describe("support calendar UX contract", () => {
     expect(page).toContain("function ItemDetailSheet")
     expect(page).toContain("<SheetContent")
     expect(page).toContain("!h-[100dvh]")
+    expect(page).toContain("detailTriggerRef")
+    expect(page).toContain("requestAnimationFrame(() => detailTriggerRef.current?.focus())")
     expect(page).not.toContain("hoveredItem")
   })
 

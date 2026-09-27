@@ -2013,3 +2013,24 @@ and manual screenshot review are green.
 
 Next: checkpoint and push the harness fix, then repeat the exact-SHA desktop
 mutation sample before mobile.
+
+### Workstream 11 second desktop evidence correction
+
+- Replacement run `36346683151` on `6c951c040` again passed the section gate,
+  production build, static browser cell and five of six flow outcomes. The
+  corrected focus assertion then exposed a real product issue:
+  `calendar_detail_focus_not_restored`. The detail sheet was opened from a
+  plain button rather than a Radix trigger, and immediate unmount on Escape
+  left no primitive-owned trigger for automatic focus restoration. Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36346683151`.
+- The page now records the exact button that opened the detail sheet and
+  explicitly restores focus to it after close/unmount. The same path covers
+  the promoted next-item control, narrow agenda items and wide week-board
+  items. A static UX contract requires the trigger ref and scheduled focus
+  restoration so the accessibility fix cannot silently disappear.
+- Focused ESLint, the one-file anti-pattern scan at 0 findings, 15/15 page/flow/
+  effect-regression assertions and `git diff --check` are green. Host memory
+  pressure remained low during the sequential checks.
+
+Next: checkpoint and push the focus-restoration fix, then repeat desktop before
+mobile/high evidence.
