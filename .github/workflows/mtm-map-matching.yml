@@ -70,6 +70,8 @@ jobs:
       - name: Package
         run: |
           set -euo pipefail
+          # osrm-extract writes some files as root, mode 600 (.fileIndex).
+          sudo chown -R "$(id -u):$(id -g)" osrm
           tar -C osrm -czf osrm-az.tgz .
           sha256sum osrm-az.tgz > osrm-az.tgz.sha256
           ls -lh osrm-az.tgz
