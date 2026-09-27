@@ -37,6 +37,7 @@ describe("Escalation Rules flow evidence contract", () => {
   })
 
   it("uses stable selectors for normal and exceptional states", () => {
+    expect(page).toContain('className="support-page-shell space-y-4"')
     for (const marker of [
       'data-testid="escalation-rules-workspace"',
       'data-testid="escalation-rules-error"',

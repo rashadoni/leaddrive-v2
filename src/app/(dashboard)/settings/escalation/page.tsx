@@ -291,7 +291,7 @@ export default function EscalationSettingsPage() {
   }
 
   return (
-    <div className="space-y-4" data-testid="escalation-rules-workspace" data-state={loading ? "loading" : error ? "error" : "ready"} data-write={canWrite ? "allowed" : "read-only"}>
+    <div className="support-page-shell space-y-4" data-testid="escalation-rules-workspace" data-state={loading ? "loading" : error ? "error" : "ready"} data-write={canWrite ? "allowed" : "read-only"}>
       <header className="flex flex-wrap items-start gap-3" data-tour-id="escalation-header">
         <AlertTriangle className="mt-0.5 h-5 w-5 text-muted-foreground" />
         <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1><TourReplayButton tourId="escalationSettings" className="min-h-11 px-2" /><HelpButton slug="escalation" className="h-11 w-11 shrink-0" /></div><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("subtitleCompact")}</p></div>

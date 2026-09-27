@@ -2119,3 +2119,24 @@ audit Workstream 12 Escalation Rules on top of this exact tree.
 Next: checkpoint and push the Workstream 12 recovery/self-audit state, then run
 exact-SHA desktop keyboard/recovery, RU/dark mobile physical-touch and the full
 high-density locale/theme/viewport matrix.
+
+### Workstream 12 desktop evidence correction
+
+- Exact-SHA desktop run `36354864869` on `b9b122444` passed the section gate,
+  production build, and all 6/6 disposable mutation/recovery scenarios. The
+  independent static browser gate then correctly blocked closure on one Axe
+  `color-contrast` finding: the primary New rule action rendered white 14 px
+  text on the default `#e9560c` background at `3.61:1`, below the required
+  `4.5:1`. All custom accessibility, touch, overflow, environment,
+  primary-work and runtime-error counts were otherwise zero.
+- The Escalation Rules workspace now opts into the existing Support shell
+  surface contract, whose primary action token is the already-audited darker
+  orange (`hsl(20 92% 38%)`). This fixes the computed contrast without
+  weakening Axe or changing any gate threshold. The focused contract pins the
+  shell class.
+- The correction passes focused ESLint, 4/4 Escalation Rules evidence-contract
+  assertions and `git diff --check`. Full local build/browser remain **NOT
+  RUN** per the Contabo workload rule; the exact-SHA GitHub rerun is mandatory.
+
+Next: checkpoint and push the contrast correction, then repeat the exact-SHA
+desktop evidence gate before proceeding to mobile and the high matrix.
