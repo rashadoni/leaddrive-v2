@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest } from "next/server"
 
@@ -348,6 +349,15 @@ describe("Escalation Rules", () => {
     const json = await res.json()
     expect(json.success).toBe(true)
     expect(json.data).toHaveLength(1)
+    expect(json.permissions).toEqual({ canWrite: true })
+  })
+
+  it("GET gives support users a truthful read-only capability", async () => {
+    vi.mocked(getSession).mockResolvedValue({ ...AUTH, role: "support" } as any)
+    vi.mocked(prisma.escalationRule.findMany).mockResolvedValue([] as any)
+    const res = await escalationGET(req("/api/v1/escalation-rules"))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ permissions: { canWrite: false } })
   })
 
   it("POST creates rule", async () => {
@@ -359,11 +369,32 @@ describe("Escalation Rules", () => {
         body: JSON.stringify({
           name: "New Rule",
           triggerType: "first_response_breach",
-          actions: [{ type: "notify" }],
+          actions: [{ type: "notify", target: "manager" }],
         }),
       })
     )
     expect(res.status).toBe(201)
+  })
+
+  it("POST rejects an unrecognized notification target", async () => {
+    const res = await escalationPOST(req("/api/v1/escalation-rules", { method: "POST", body: JSON.stringify({ name: "Bad target", triggerType: "resolution_warning", actions: [{ type: "notify", target: "raw-team-id" }] }) }))
+    expect(res.status).toBe(400)
+    expect(prisma.escalationRule.create).not.toHaveBeenCalled()
+  })
+
+  it("POST blocks an identical active escalation rule", async () => {
+    vi.mocked(prisma.escalationRule.findFirst).mockResolvedValue({ id: "existing" } as any)
+    const res = await escalationPOST(req("/api/v1/escalation-rules", { method: "POST", body: JSON.stringify({ name: "Duplicate", triggerType: "resolution_warning", triggerMinutes: 30, level: 1, actions: [{ type: "notify", target: "manager" }], isActive: true }) }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ code: "ESCALATION_RULE_CONFLICT" })
+    expect(prisma.escalationRule.create).not.toHaveBeenCalled()
+  })
+
+  it("keeps support users read-only", async () => {
+    vi.mocked(getSession).mockResolvedValue({ ...AUTH, role: "support" } as any)
+    const res = await escalationPOST(req("/api/v1/escalation-rules", { method: "POST", body: JSON.stringify({ name: "No", triggerType: "resolution_breach", actions: [{ type: "reassign" }] }) }))
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: "ESCALATION_WRITE_FORBIDDEN" })
   })
 
   it("PATCH updates rule", async () => {
