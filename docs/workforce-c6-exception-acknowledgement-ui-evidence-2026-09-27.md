@@ -175,3 +175,27 @@ nine paths / 89,448 binary-diff bytes with SHA-256
 400 KB. This documentation receipt supersedes that preliminary identity; it
 must be checkpointed before a new clean identity and author-independent
 complete-diff rereview are valid.
+
+## Replacement complete-diff review GREEN
+
+The clean frozen identity was base/merge-base/current `origin/main`
+`86fc1d2c23fead588b45c2e700e125a6d98bbe82`, head
+`6c8980995ad86f882d5a1d1b7688aceeb2787bf6`, nine paths / 92,969 binary-diff
+bytes and SHA-256
+`439314c91ea7212894dc4d8b5cfec1e7d99285ea103ee773577c46a991be0eb9`.
+A fresh author-independent reviewer started from zero, recomputed the same
+clean identity at both ends and returned GREEN with zero P0-P3 findings.
+
+The reviewer confirmed the stable per-token replay UUID, exact
+request/token/organization response binding and zero-argument cancel wrapper.
+The synchronous refs block same-tick cancel, refresh, resubmit and cross-row
+selection before React renders disabled controls. Strict allowlisting,
+privacy/token containment, minimized POST, success/stale/MFA/rate-limit paths,
+backend authorization context, accessibility, translation parity, evidence
+truth and the preceding release receipt were also confirmed. Reviewer-side
+diff/JSON/parity/read-only checks passed; dependency-backed Vitest/ESLint,
+typecheck/build, browser, Android, load, device and pilot checks were
+`NOT RUN` and are not inferred. The missing `agent-review` branch-protection
+context was not treated as permission. A receipt-only checkpoint and an
+independent proof that reviewed runtime/test/translation blobs are unchanged
+remain mandatory before push.
