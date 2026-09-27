@@ -1,6 +1,6 @@
 # Workforce C6 case-revision cutover evidence — 2026-09-27
 
-Status: **PR #452 second exact-head static-checks failure repaired locally;
+Status: **PR #452 blocking-index review finding repaired locally;
 fresh complete-diff review and replacement exact-head CI pending**.
 
 This slice starts from deployed `main` SHA
@@ -47,9 +47,9 @@ lock.
 - Exact idempotent replays remain before lifecycle validation. A completed
   retry is therefore stable while changed or genuinely new writes fail closed.
 
-## Bounded migration contract
+## Online and bounded migration contract
 
-The cutover uses four separately tracked Prisma migrations so a later timeout
+The cutover uses five separately tracked Prisma migrations so a later failure
 never leaves an earlier successful phase hidden inside one failed ledger row:
 
 1. `20260927014000_workforce_exception_case_revisions` is a short atomic
@@ -70,28 +70,28 @@ never leaves an earlier successful phase hidden inside one failed ledger row:
    and `session_user` is a member of the relation-owner role. Every other update
    or delete remains rejected, and failure atomically rolls the data and
    temporary function definition back.
-3. `20260927014200_workforce_exception_case_revisions_indexes` builds the
-   unique decision index and response lookup index in one explicit transaction.
-   The production runner submits a multi-statement Prisma migration as one
-   PostgreSQL simple-query message, so `CREATE/DROP INDEX CONCURRENTLY` is not
-   legal in this path. The deploy controller first requires a migration quiet
-   window; the migration additionally refuses either table heap above 64 MiB,
-   bounds lock acquisition to three seconds and bounds execution to two
-   minutes. Ordinary `DROP INDEX IF EXISTS` makes an ambiguous
-   DDL-commit/ledger-finalization retry safe, while any later failure rolls the
-   drops and both creates back atomically.
-4. `20260927014300_workforce_exception_case_revisions_contract` atomically
+3. `20260927014200_workforce_exception_case_revisions_decision_index` contains
+   exactly one SQL statement: the concurrent unique decision-index build.
+4. `20260927014250_workforce_exception_case_revisions_response_index` likewise
+   contains exactly one concurrent response-index build. Prisma submits a
+   multi-statement file in an implicit transaction block, where PostgreSQL
+   prohibits `CONCURRENTLY`; separating the two one-statement files keeps both
+   builds outside that block and lets ordinary writes continue. A failed build
+   can leave one invalid same-named index. Recovery first proves its exact
+   table, uniqueness and ordered columns, drops only that index with a separate
+   `DROP INDEX CONCURRENTLY`, marks only that migration rolled back and replays
+   it. There is deliberately no false SQL-level whole-phase timeout claim;
+   cancellation/failure stops deployment and follows the same verified invalid
+   artifact path.
+5. `20260927014300_workforce_exception_case_revisions_contract` atomically
    scans constraints with `VALIDATE CONSTRAINT`. A validated helper proves
    non-nullness before the final short metadata-only `SET NOT NULL`.
 
-No long scan or index build runs while an `ACCESS EXCLUSIVE` lock is held. The
-ordinary index build does hold a write-conflicting lock, so the quiet-window,
-64 MiB heap, three-second acquisition and two-minute execution fences are all
-release preconditions rather than performance claims. A limit or timeout
-failure atomically aborts this phase without exposing terminal actions; the
-already-expanded schema remains compatible with the old application binary.
-Once revisioned facts exist, rollback must retain the added columns, triggers
-and indexes.
+No long scan or index build runs while an `ACCESS EXCLUSIVE` or ordinary
+write-blocking index-build lock is held. Failure never exposes terminal actions;
+the already-expanded schema remains compatible with the old application binary
+while a reviewed retry resolves the exact failed index phase. Once revisioned
+facts exist, rollback must retain the added columns, triggers and indexes.
 
 ## Revision-based readers
 
@@ -123,25 +123,27 @@ The harness invokes the real `prisma migrate deploy` command. It first
 registers one test-only no-op baseline marker with the real `prisma migrate
 resolve --applied` command. The fixture deliberately creates the production-like
 tables before Prisma runs; the marker models the already populated production
-ledger without marking any of the four target migrations applied. The harness
+ledger without marking any of the five target migrations applied. The harness
 then deploys only expansion, writes old-binary request/response rows while all
 three legacy decisions are still NULL, and proves that both rows bind to
 revision 3 in strict timestamp order. It next deploys backfill, deliberately
 creates one duplicate revision, observes exactly one failed Prisma
 index-migration ledger row whose log identifies SQLSTATE `23505` and the exact
-unique index, and proves the transaction left neither named index in the
-catalog. It removes only the injected fault, executes the exact `prisma migrate
-resolve --rolled-back` recovery, and replays deployment to four successful
-migration rows with no unresolved entry. The replay additionally proves both
-indexes are valid, ready, have the expected uniqueness and exact ordered
-columns. Its three lifecycle timestamp columns use the exact production
+unique index. It proves PostgreSQL left exactly one invalid index with the
+expected table, uniqueness and ordered columns, removes only the injected data
+fault, and has the production-like non-superuser migration role drop that exact
+artifact through a standalone `DROP INDEX CONCURRENTLY`. It then executes the
+exact `prisma migrate resolve --rolled-back` recovery and replays deployment to
+five successful migration rows with no unresolved entry. The replay additionally
+proves both indexes are valid, ready, have the expected uniqueness and exact
+ordered columns. Its three lifecycle timestamp columns use the exact production
 `TIMESTAMP(3)` type and default semantics.
 
 The eleven opt-in PostgreSQL cases cover:
 
 - expand-before-backfill old-writer compatibility, deterministic append-only
   backfill, restored mutation rejection, exact uniqueness-failure ledger and
-  atomic index rollback/replay,
+  exact invalid-index cleanup/replay,
   old-client omission, correct and stale explicit revisions,
   exact/legacy/stale signal semantics, same-case correction success,
   wrong/unlinked-case rejection and unrelated request-status updates
@@ -246,17 +248,25 @@ created no invalid index. The failure happened before the injected duplicate
 could exercise uniqueness, so merely accepting zero invalid indexes would have
 weakened the gate.
 
-The current repair replaces that false execution model with the bounded atomic
-phase and exact `23505`/rollback/final-index checks described above. The full
-13-file local selection passes 226 tests with the 11 real-PostgreSQL cases
-`SKIPPED / NOT RUN`; both changed test files pass ESLint, Prisma validation and
-diff whitespace pass. A read-only aggregate production size probe was `NOT RUN`
-because the registered `leaddrive-prod` SSH alias rejected its configured key;
-no production table-size claim is made. The migration's own 64 MiB heap fence
-therefore remains mandatory and will fail deployment before the new application
-starts if the reviewed bound is exceeded. This source/migration change
-supersedes every earlier GREEN identity: fresh author-independent review,
-receipt integrity and all five replacement exact-head contexts are required.
+The first repair replaced that false execution model with an atomic ordinary
+index transaction. Frozen review of head
+`77257d11656506c201ac445bcb6e2b39f4c48fe3` correctly returned RED with one P2:
+the old application remains live during `migrate deploy`, so two ordinary
+builds could block writes despite the momentary quiet-window sample, contrary
+to `MIGRATION_RUNBOOK.md`; its two-minute timeout was also per statement rather
+than for the whole phase. That identity was never pushed.
+
+The current repair is the two one-statement concurrent phases and exact
+invalid-index recovery described above. It removes the blocking build, the
+64 MiB surrogate and the false timeout claim rather than weakening the test.
+The full 13-file local selection passes 226 tests with the 11 real-PostgreSQL
+cases `SKIPPED / NOT RUN`; both changed test files pass ESLint, Prisma
+validation, RLS 552/0, runner policy 37, event assets 27/86/5, protection tests
+and diff whitespace pass. The rejected production SSH size probe provides no
+evidence and is no longer used as a safety premise. This source/migration
+change supersedes every earlier GREEN identity: fresh author-independent
+review, receipt integrity and all five replacement exact-head contexts are
+required.
 
 Progress remains `81/161`, phase gates remain `14/15`, C5 remains 81%, C6
 remains 20% and C9 remains 99%. Terminal resolution/reopen, visible terminal

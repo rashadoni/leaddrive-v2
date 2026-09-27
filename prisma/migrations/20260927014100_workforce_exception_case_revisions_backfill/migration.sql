@@ -1,4 +1,4 @@
--- C6 case-revision phase 2/4: atomically backfill only the new decision
+-- C6 case-revision phase 2/5: atomically backfill only the new decision
 -- column. This phase is separately tracked by Prisma; a timeout rolls back the
 -- data and both function definitions, so `migrate resolve --rolled-back` can
 -- safely retry it after catalog verification.

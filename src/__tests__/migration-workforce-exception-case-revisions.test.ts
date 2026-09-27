@@ -13,15 +13,29 @@ const backfillMigration = readFileSync(join(
   migrationRoot,
   "20260927014100_workforce_exception_case_revisions_backfill/migration.sql",
 ), "utf8")
-const indexMigration = readFileSync(join(
+const decisionIndexMigration = readFileSync(join(
   migrationRoot,
-  "20260927014200_workforce_exception_case_revisions_indexes/migration.sql",
+  "20260927014200_workforce_exception_case_revisions_decision_index/migration.sql",
+), "utf8")
+const responseIndexMigration = readFileSync(join(
+  migrationRoot,
+  "20260927014250_workforce_exception_case_revisions_response_index/migration.sql",
 ), "utf8")
 const contractMigration = readFileSync(join(
   migrationRoot,
   "20260927014300_workforce_exception_case_revisions_contract/migration.sql",
 ), "utf8")
-const migration = [expandMigration, backfillMigration, indexMigration, contractMigration].join("\n")
+const migration = [
+  expandMigration,
+  backfillMigration,
+  decisionIndexMigration,
+  responseIndexMigration,
+  contractMigration,
+].join("\n")
+
+function executableSql(source: string): string {
+  return source.replace(/^--.*$/gmu, "").trim()
+}
 
 function model(name: string): string {
   const start = schema.indexOf(`model ${name} {`)
@@ -47,11 +61,10 @@ describe("Workforce C6 case-local lifecycle revision migration", () => {
     expect(migration).not.toMatch(/\b(?:DROP|TRUNCATE)\s+(?:TABLE|TYPE)\b/i)
   })
 
-  it("uses separately tracked bounded phases without disabling append-only storage", () => {
+  it("uses separately tracked online phases without disabling append-only storage", () => {
     for (const transactionalMigration of [
       expandMigration,
       backfillMigration,
-      indexMigration,
       contractMigration,
     ]) {
       expect(transactionalMigration).toContain("BEGIN;")
@@ -67,17 +80,21 @@ describe("Workforce C6 case-local lifecycle revision migration", () => {
     expect(backfillMigration).toContain('WHERE "caseRevision" IS NULL')
     expect(backfillMigration).toContain("pg_has_role(session_user, relation_owner, 'MEMBER')")
     expect(backfillMigration).toContain("(to_jsonb(NEW) - 'caseRevision') = (to_jsonb(OLD) - 'caseRevision')")
-    expect(indexMigration).toContain("SET LOCAL lock_timeout = '3s'")
-    expect(indexMigration).toContain("SET LOCAL statement_timeout = '2min'")
-    expect(indexMigration).toContain("pg_relation_size('workforce_exception_decisions'::regclass) > 67108864")
-    expect(indexMigration).toContain("pg_relation_size('workforce_exception_employee_responses'::regclass) > 67108864")
-    expect(indexMigration).toContain("USING ERRCODE = '54000'")
-    expect(indexMigration).toContain('DROP INDEX IF EXISTS "workforce_exception_decisions_org_case_revision_key"')
-    expect(indexMigration).toContain('CREATE UNIQUE INDEX "workforce_exception_decisions_org_case_revision_key"')
-    expect(indexMigration).toContain('DROP INDEX IF EXISTS "workforce_exception_employee_responses_org_case_revision_idx"')
-    expect(indexMigration).toContain('CREATE INDEX "workforce_exception_employee_responses_org_case_revision_idx"')
-    expect(indexMigration).not.toMatch(/CREATE\s+(?:UNIQUE\s+)?INDEX\s+CONCURRENTLY/i)
-    expect(indexMigration).not.toMatch(/DROP\s+INDEX\s+CONCURRENTLY/i)
+    expect(executableSql(decisionIndexMigration)).toMatch(
+      /^CREATE UNIQUE INDEX CONCURRENTLY "workforce_exception_decisions_org_case_revision_key"\s+ON "workforce_exception_decisions"\("organizationId", "caseId", "caseRevision"\);$/u,
+    )
+    expect(executableSql(responseIndexMigration)).toMatch(
+      /^CREATE INDEX CONCURRENTLY "workforce_exception_employee_responses_org_case_revision_idx"\s+ON "workforce_exception_employee_responses"\("organizationId", "caseId", "observedCaseRevision"\);$/u,
+    )
+    for (const concurrentIndexMigration of [
+      decisionIndexMigration,
+      responseIndexMigration,
+    ]) {
+      expect(executableSql(concurrentIndexMigration)).not.toMatch(
+        /\b(?:BEGIN|COMMIT|SET|RESET|DROP)\b/iu,
+      )
+      expect(executableSql(concurrentIndexMigration).match(/;/gu)).toHaveLength(1)
+    }
     expect(expandMigration).toContain('CHECK ("caseRevision" IS NOT NULL) NOT VALID')
     expect(contractMigration).toContain('VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_not_null_check"')
     expect(contractMigration).toContain('ALTER COLUMN "caseRevision" SET NOT NULL')
@@ -86,7 +103,8 @@ describe("Workforce C6 case-local lifecycle revision migration", () => {
 
     expect(expandMigration).toContain("CREATE TRIGGER workforce_exception_decisions_assign_case_revision")
     expect(backfillMigration).toContain('UPDATE "workforce_exception_decisions" decisions')
-    expect(indexMigration).toContain("CREATE UNIQUE INDEX")
+    expect(decisionIndexMigration).toContain("CREATE UNIQUE INDEX CONCURRENTLY")
+    expect(responseIndexMigration).toContain("CREATE INDEX CONCURRENTLY")
     expect(contractMigration).toContain('VALIDATE CONSTRAINT "workforce_exception_decisions_case_revision_check"')
   })
 

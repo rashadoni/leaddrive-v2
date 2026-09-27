@@ -34,7 +34,8 @@ const existingSchemaBaselineMigration = "00000000000000_existing_production_sche
 const revisionMigrationNames = [
   "20260927014000_workforce_exception_case_revisions",
   "20260927014100_workforce_exception_case_revisions_backfill",
-  "20260927014200_workforce_exception_case_revisions_indexes",
+  "20260927014200_workforce_exception_case_revisions_decision_index",
+  "20260927014250_workforce_exception_case_revisions_response_index",
   "20260927014300_workforce_exception_case_revisions_contract",
 ] as const
 const revisionIndexMigration = revisionMigrationNames[2]
@@ -115,11 +116,13 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
   let observer!: PrismaClient
   let terminalClient!: PrismaClient
   let linkedClient!: PrismaClient
+  let migrationClient!: PrismaClient
   let migrationProject: string | null = null
   let migrationRecoveryEvidence: {
     failedIndexLedgerRows: number
     expectedUniqueFailureLedgerRows: number
-    indexArtifactsAfterRollback: number
+    invalidDecisionIndexesAfterFailure: number
+    indexArtifactsAfterCleanup: number
     exactReadyIndexes: number
     successfulRevisionMigrations: number
   } | null = null
@@ -354,6 +357,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       `)
     }
     await observer.$executeRawUnsafe(`ALTER SCHEMA "${schema}" OWNER TO "${migrationOwnerRole}"`)
+    migrationClient = new PrismaClient({ datasourceUrl: migrationDatabaseUrl() })
     await observer.$executeRawUnsafe(`
       ALTER TABLE "${schema}"."workforce_exception_decisions"
       ENABLE ROW LEVEL SECURITY
@@ -423,10 +427,10 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       )
     }
 
-    // Force the exact bounded index transaction to fail on uniqueness. The
-    // separately tracked expansion/backfill must remain applied, while the
-    // complete index phase rolls back without a catalog artifact and can be
-    // resolved/replayed after the injected duplicate is removed.
+    // Force the exact one-statement concurrent unique-index migration to fail.
+    // Expansion/backfill must remain applied, PostgreSQL must leave the exact
+    // invalid artifact, and the production-like migration role must be able to
+    // drop it outside a transaction before ledger resolution and replay.
     await observer.$executeRawUnsafe(`
       ALTER TABLE "${schema}"."workforce_exception_decisions"
       DISABLE TRIGGER workforce_exception_decisions_assign_case_revision
@@ -462,7 +466,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     const [failedState] = await observer.$queryRawUnsafe<Array<{
       failedIndexLedgerRows: bigint
       expectedUniqueFailureLedgerRows: bigint
-      indexArtifactsAfterRollback: bigint
+      invalidDecisionIndexesAfterFailure: bigint
     }>>(`
       SELECT
         (SELECT count(*)
@@ -479,24 +483,39 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
             AND logs LIKE '%workforce_exception_decisions_org_case_revision_key%')
           AS "expectedUniqueFailureLedgerRows",
         (SELECT count(*)
-           FROM pg_class index_relation
+           FROM pg_index index_state
+           JOIN pg_class index_relation ON index_relation.oid = index_state.indexrelid
+           JOIN pg_class table_relation ON table_relation.oid = index_state.indrelid
            JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
           WHERE namespace.nspname = $2
-            AND index_relation.relname = ANY(ARRAY[
-              'workforce_exception_decisions_org_case_revision_key',
-              'workforce_exception_employee_responses_org_case_revision_idx'
-            ]::TEXT[])) AS "indexArtifactsAfterRollback"
+            AND table_relation.relname = 'workforce_exception_decisions'
+            AND index_relation.relname = 'workforce_exception_decisions_org_case_revision_key'
+            AND index_state.indisunique
+            AND NOT index_state.indisvalid
+            AND index_state.indpred IS NULL
+            AND index_state.indexprs IS NULL
+            AND (SELECT array_agg(attribute.attname ORDER BY indexed_column.ordinality)::TEXT[]
+                   FROM unnest(index_state.indkey::SMALLINT[])
+                     WITH ORDINALITY AS indexed_column(attnum, ordinality)
+                   JOIN pg_attribute attribute
+                     ON attribute.attrelid = table_relation.oid
+                    AND attribute.attnum = indexed_column.attnum)
+                = ARRAY['organizationId', 'caseId', 'caseRevision']::TEXT[])
+          AS "invalidDecisionIndexesAfterFailure"
     `, revisionIndexMigration, schema)
     migrationRecoveryEvidence = {
       failedIndexLedgerRows: Number(failedState.failedIndexLedgerRows),
       expectedUniqueFailureLedgerRows: Number(failedState.expectedUniqueFailureLedgerRows),
-      indexArtifactsAfterRollback: Number(failedState.indexArtifactsAfterRollback),
+      invalidDecisionIndexesAfterFailure: Number(
+        failedState.invalidDecisionIndexesAfterFailure,
+      ),
+      indexArtifactsAfterCleanup: 0,
       exactReadyIndexes: 0,
       successfulRevisionMigrations: 0,
     }
     if (migrationRecoveryEvidence.failedIndexLedgerRows !== 1
       || migrationRecoveryEvidence.expectedUniqueFailureLedgerRows !== 1
-      || migrationRecoveryEvidence.indexArtifactsAfterRollback !== 0) {
+      || migrationRecoveryEvidence.invalidDecisionIndexesAfterFailure !== 1) {
       throw new Error(`Unexpected Workforce revision failure state: ${JSON.stringify(migrationRecoveryEvidence)}`)
     }
 
@@ -512,6 +531,29 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       ALTER TABLE "${schema}"."workforce_exception_decisions"
       ENABLE TRIGGER workforce_exception_decisions_append_only
     `)
+    await migrationClient.$executeRawUnsafe(`
+      DROP INDEX CONCURRENTLY "${schema}"."workforce_exception_decisions_org_case_revision_key"
+    `)
+    const [cleanupState] = await observer.$queryRawUnsafe<Array<{
+      indexArtifactsAfterCleanup: bigint
+    }>>(`
+      SELECT count(*) AS "indexArtifactsAfterCleanup"
+        FROM pg_class index_relation
+        JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
+       WHERE namespace.nspname = $1
+         AND index_relation.relname = ANY(ARRAY[
+           'workforce_exception_decisions_org_case_revision_key',
+           'workforce_exception_employee_responses_org_case_revision_idx'
+         ]::TEXT[])
+    `, schema)
+    migrationRecoveryEvidence.indexArtifactsAfterCleanup = Number(
+      cleanupState.indexArtifactsAfterCleanup,
+    )
+    if (migrationRecoveryEvidence.indexArtifactsAfterCleanup !== 0) {
+      throw new Error(
+        `Workforce revision invalid-index cleanup was incomplete: ${JSON.stringify(migrationRecoveryEvidence)}`,
+      )
+    }
     const resolve = runPrismaMigrationCommand(migrationProject, [
       "migrate", "resolve", "--rolled-back", revisionIndexMigration,
     ])
@@ -595,6 +637,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
   }, 90_000)
 
   afterAll(async () => {
+    await migrationClient?.$disconnect().catch(() => {})
     await observer?.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`).catch(() => {})
     await observer?.$executeRawUnsafe(`DROP OWNED BY "${migrationLoginRole}"`).catch(() => {})
     await observer?.$executeRawUnsafe(`DROP ROLE IF EXISTS "${migrationLoginRole}"`).catch(() => {})
@@ -746,9 +789,10 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     expect(migrationRecoveryEvidence).toEqual({
       failedIndexLedgerRows: 1,
       expectedUniqueFailureLedgerRows: 1,
-      indexArtifactsAfterRollback: 0,
+      invalidDecisionIndexesAfterFailure: 1,
+      indexArtifactsAfterCleanup: 0,
       exactReadyIndexes: 2,
-      successfulRevisionMigrations: 4,
+      successfulRevisionMigrations: 5,
     })
     const [migrationRole] = await observer.$queryRawUnsafe<Array<{
       rolsuper: boolean

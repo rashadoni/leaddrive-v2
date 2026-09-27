@@ -1,4 +1,4 @@
--- C6 case-revision phase 4/4: validate without blocking ordinary writes, then
+-- C6 case-revision phase 5/5: validate without blocking ordinary writes, then
 -- use the validated helper for one short metadata-only NOT NULL contract. This
 -- separately tracked transaction is atomic and safe to mark rolled back after
 -- a verified timeout.

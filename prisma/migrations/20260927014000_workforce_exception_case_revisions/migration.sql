@@ -1,4 +1,4 @@
--- C6: replace cross-table timestamp ordering with one case-local logical
+-- C6 case-revision phase 1/5: replace cross-table timestamp ordering with one case-local logical
 -- revision allocated under the canonical exception advisory lock. Decision
 -- revisions are backfilled in the exact deterministic order used before this
 -- cutover. Existing linked signals remain NULL rather than guessing whether
