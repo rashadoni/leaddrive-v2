@@ -114,11 +114,16 @@ describe("Workforce exception policy revision migration", () => {
     expect(migration).not.toMatch(/GRANT[^;]*(?:UPDATE|DELETE|TRUNCATE)/iu)
   })
 
-  it("has no production consumer or provisioning side effect", () => {
+  it("allows only the session acknowledgement route to consume the writer", () => {
+    const acknowledgementRoute = join(
+      root,
+      "src/app/api/v1/workforce/configuration/exception-policy/revisions/route.ts",
+    )
     const productionFiles = productionTypeScriptFiles(join(root, "src"))
       .filter((path) => ![
         "/lib/workforce/exception-policy-revision.ts",
         "/lib/workforce/exception-policy-revision-writer.ts",
+        "/app/api/v1/workforce/configuration/exception-policy/revisions/route.ts",
       ].some((suffix) => path.endsWith(suffix)))
 
     for (const path of productionFiles) {
@@ -128,6 +133,13 @@ describe("Workforce exception policy revision migration", () => {
       )
       expect(source, path).not.toContain("exception-policy-revision-writer")
     }
+    const route = readFileSync(acknowledgementRoute, "utf8")
+    expect(route).toContain("withWorkforceSessionPolicyConfigurationAuth")
+    expect(route).toContain("appendAuthorizedWorkforceExceptionPolicyRevision")
+    expect(route).toContain('decision.operation === "POLICY_REVISION_APPEND"')
+    expect(route).not.toContain("workforceExceptionDecision")
+    expect(route).not.toContain("policyRevisionId")
+    expect(route).not.toContain("effectiveFrom")
     expect(
       readFileSync(join(root, "src/lib/workforce/default-configuration-provisioning.ts"), "utf8"),
     ).not.toContain("workforceExceptionPolicyRevision")
