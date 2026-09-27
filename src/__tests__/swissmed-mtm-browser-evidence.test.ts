@@ -307,6 +307,6 @@ describe("SwissMed MTM browser evidence runner", () => {
     expect(runner).toContain("todayDate")
     expect(source("src/components/mtm/pharmacy-promotion-workspace.tsx")).toContain('data-testid={`mtm-pharmacy-promotion-${row.id}`}')
     expect(source("src/components/mtm/live-map.tsx")).toContain('data-rendered-agent-ids={renderedAgentIds.join(",")}')
-    expect(source("src/app/(dashboard)/mtm/map/page.tsx")).toContain('data-testid="mtm-map-employee-filter"')
+    expect(source("src/app/(dashboard)/mtm/map/page.tsx")).toContain('testId="mtm-map-employee-filter"')
   })
 })

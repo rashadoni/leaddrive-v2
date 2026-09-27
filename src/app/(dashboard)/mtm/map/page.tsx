@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
 import { PageDescription } from "@/components/page-description"
+import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { HelpButton } from "@/components/help/help-button"
 import { Button } from "@/components/ui/button"
 import dynamic from "next/dynamic"
@@ -23,7 +24,7 @@ import { LocationHistoryPanel } from "@/components/mtm/location-history-panel"
 import {
   MapPin, RefreshCw, Clock, WifiOff, Navigation,
   Radio, AlertTriangle, Circle, Flame, History,
-  Search, Battery, ShieldAlert, ArrowLeft, SlidersHorizontal, PauseCircle, Flag,
+  Battery, ShieldAlert, ArrowLeft, SlidersHorizontal, PauseCircle, Flag,
 } from "lucide-react"
 
 const MtmLiveMap = dynamic(() => import("@/components/mtm/live-map"), { ssr: false })
@@ -134,6 +135,7 @@ export default function MtmMapPage() {
   const locale = useLocale()
   const t = useTranslations("nav")
   const tMap = useTranslations("mtmMap")
+  const tf = useTranslations("mtmFilters")
   const tc = useTranslations("common")
   const tAlerts = useTranslations("mtmAlertsPage")
   const tUnits = useTranslations("mtmMap.distanceUnits")
@@ -707,23 +709,16 @@ export default function MtmMapPage() {
 
       {mapMode === "history" ? <LocationHistoryPanel key={historyPanelKey} /> : (
       <>
-      <div className="grid gap-2 rounded-lg border bg-card p-3 sm:grid-cols-2 lg:grid-cols-[220px_minmax(240px,1fr)_auto]">
-        <label className="grid gap-1 text-xs font-medium">
-          {tMap("teamFilter")}
-          <select className="h-11 rounded-md border bg-background px-3 text-sm" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
-            <option value="">{tMap("allTeams")}</option>
-            {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-          </select>
-        </label>
-        <label className="grid gap-1 text-xs font-medium">
-          {tMap("employeeFilter")}
-          <span className="relative">
-            <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-            <input data-testid="mtm-map-employee-filter" className="h-11 w-full rounded-md border bg-background pl-9 pr-3 text-sm" value={employeeFilter} onChange={(event) => setEmployeeFilter(event.target.value)} placeholder={tMap("employeePlaceholder")} />
-          </span>
-        </label>
-        <div className="flex items-end text-xs text-muted-foreground">{tMap("lastPositionContract")}</div>
-      </div>
+      {/* Owner 2026-09-27: filters in one row, not a card of labelled fields. */}
+      <MtmFilterBar testId="mtm-map-filters">
+        <MtmFilterSearch testId="mtm-map-employee-filter" value={employeeFilter} onChange={setEmployeeFilter} delayMs={0} placeholder={tMap("employeePlaceholder")} label={tMap("employeeFilter")} clearLabel={tf("clearSearch")} />
+        {teams.length > 0 ? (
+          <MtmFilterSelect testId="mtm-map-team-filter" label={tMap("teamFilter")} value={teamFilter} allLabel={tMap("allTeams")}
+            options={teams.map((team) => ({ value: team.id, label: team.name }))}
+            onChange={setTeamFilter} />
+        ) : null}
+        <span className="text-xs text-muted-foreground">{tMap("lastPositionContract")}</span>
+      </MtmFilterBar>
       {contract?.rosterTruncated ? (
         <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
           {tMap("rosterTruncated", { shown: contract.returnedAgents })}
