@@ -27,7 +27,10 @@ const auth = { orgId: "org_1", userId: "user_1", role: "admin" }
 type Handler = (req: NextRequest, auth: typeof auth) => Promise<Response>
 const callPost = POST as unknown as Handler
 
-function actionToken(decisionCount = 0, decisionCode: "ACKNOWLEDGE" | "RESOLVE_NO_CHANGE" = "ACKNOWLEDGE") {
+function actionToken(
+  decisionCount = 0,
+  decisionCode: "ACKNOWLEDGE" | "REQUEST_EMPLOYEE_RESPONSE" | "REQUEST_TIME_CORRECTION" | "RESOLVE_NO_CHANGE" = "ACKNOWLEDGE",
+) {
   return issueWorkforceExceptionActionToken({
     organizationId: auth.orgId,
     principalUserId: auth.userId,
@@ -162,6 +165,95 @@ describe("Workforce action-token exception-decision API", () => {
     expect(response.status).toBe(404)
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_EXCEPTION_DECISION_UNAVAILABLE" })
     expect(prisma.workforceExceptionCase.findFirst).not.toHaveBeenCalled()
+    expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects a response-request token before case lookup when its rollout is absent", async () => {
+    const response = await callPost(request({
+      actionToken: actionToken(1, "REQUEST_EMPLOYEE_RESPONSE"),
+      operationId: "decision-op-response-disabled",
+      reason: "Request the employee response.",
+    }), auth)
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "WORKFORCE_EXCEPTION_DECISION_UNAVAILABLE",
+    })
+    expect(prisma.workforceExceptionCase.findFirst).not.toHaveBeenCalled()
+    expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
+  })
+
+  it("records a response request only when its rollout remains active", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise",
+      addons: [],
+      features: [
+        "workforce-hrm",
+        "workforce-granular-access-v1",
+        "workforce-exception-response-v1",
+      ],
+      modules: { "workforce-hrm": true },
+    } as never)
+    vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValueOnce([{
+      decisionCode: "ACKNOWLEDGE",
+      createdAt: new Date("2026-08-30T09:00:00.000Z"),
+      caseRevision: 1,
+    }] as never)
+
+    const response = await callPost(request({
+      actionToken: actionToken(1, "REQUEST_EMPLOYEE_RESPONSE"),
+      operationId: "decision-op-response-enabled",
+      reason: "Request the employee response.",
+    }), auth)
+
+    expect(response.status).toBe(201)
+    expect(prisma.organization.findUnique).toHaveBeenCalledTimes(2)
+    expect(prisma.workforceExceptionDecision.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        decisionCode: "REQUEST_EMPLOYEE_RESPONSE",
+        caseRevision: 2,
+      }),
+    }))
+  })
+
+  it("fails closed when the response rollout is removed while the case lock is pending", async () => {
+    vi.mocked(prisma.organization.findUnique)
+      .mockResolvedValueOnce({
+        plan: "enterprise",
+        addons: [],
+        features: [
+          "workforce-hrm",
+          "workforce-granular-access-v1",
+          "workforce-exception-response-v1",
+        ],
+        modules: { "workforce-hrm": true },
+      } as never)
+      .mockResolvedValueOnce({
+        plan: "enterprise",
+        addons: [],
+        features: ["workforce-hrm", "workforce-granular-access-v1"],
+        modules: { "workforce-hrm": true },
+      } as never)
+    vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValueOnce([{
+      decisionCode: "ACKNOWLEDGE",
+      createdAt: new Date("2026-08-30T09:00:00.000Z"),
+      caseRevision: 1,
+    }] as never)
+
+    const response = await callPost(request({
+      actionToken: actionToken(1, "REQUEST_EMPLOYEE_RESPONSE"),
+      operationId: "decision-op-response-post-lock-rollback",
+      reason: "Request the employee response.",
+    }), auth)
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "WORKFORCE_EXCEPTION_DECISION_CONTEXT_INVALID",
+    })
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
+      "workforce-exception-decision:org_1:case_1",
+      "workforce-exception-decision-operation:org_1:decision-op-response-post-lock-rollback",
+    ])
     expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
   })
 

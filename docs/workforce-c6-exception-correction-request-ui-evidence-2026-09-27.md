@@ -128,3 +128,35 @@ retained as explicit evidence rather than treating the omission as permission.
 Only the three receipt documents may change after this verdict; their integrity
 and the five reviewed runtime/test/translation blobs must be independently
 verified before push.
+
+## PR #461 production release
+
+The final receipt-integrity review proved that
+`d5e952dca3bedce73fafca94efaf2cc639bf5f00..6cc6938d6109c73c029c59edbf5f3e3af167869d`
+changed only the three append-only receipt documents and preserved the five
+reviewed runtime/test/translation blobs byte-identically. Final head
+`6cc6938d6109c73c029c59edbf5f3e3af167869d` had a nine-path / 57,090-byte
+complete binary diff from base
+`4823fa18b07cb9e27128ef8d8e14c07eae9f0e7a`, SHA-256
+`47d39e2cbc3556d7ec3be5c8b621d885d6b6514abde65fd24a7e285cf67a6164`.
+Both independent reviews were GREEN with zero P0-P3 findings.
+
+PR #461 passed all five exact-head contexts: `pr-scope`, `static-checks`,
+`typecheck`, `runner-policy` and `scan`. PR run `36329339242` completed
+`static-checks` in 13m05s, including the real PostgreSQL Workforce shared-lock
+gate, and `typecheck` in 19m24s. The normal pull-request production build was
+skipped as designed.
+
+The PR merged normally at `2026-09-27T15:43:31Z` as
+`000eb2532402cf4860afcb270ea8bfac6a6796d0`. Deploy run `36330613672`
+completed GREEN at `2026-09-27T16:00:41Z` through GitHub `main`. Quality and
+security, SHA-bound standalone build, immutable artifact verification/staging,
+atomic deploy, scheduler and tenant-isolation checks, built-in public
+ping/revision/feature smokes and artifact-retention cleanup passed.
+
+Independent no-cache reads returned `{"ok":true}` and
+`{"sha":"000eb2532402","artifactSha":"000eb2532402cf4860afcb270ea8bfac6a6796d0","builtAt":"2026-09-27T15:47:16Z"}`.
+The public artifact SHA exactly matches merged `main`; no direct server deploy,
+retired target/owner or worktree copy was used. Full real-browser, Android,
+load, physical-device and human-pilot evidence remains `NOT RUN`; progress
+stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.

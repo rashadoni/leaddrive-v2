@@ -22,6 +22,7 @@ import {
   MAX_WORKFORCE_EXCEPTION_DECISIONS,
 } from "@/lib/workforce/exception-workbench"
 import { issueWorkforceExceptionActionToken } from "@/lib/workforce/exception-workbench-token"
+import { isWorkforceExceptionDecisionEnabledForResponseRollout } from "@/lib/workforce/exception-response-rollout"
 import { resolveWorkforceHistoricalTeamMemberships } from "@/lib/workforce/team-membership"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
@@ -267,7 +268,12 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
         ? { ...projection, stage: "DATA_INTEGRITY_REVIEW" as const, nextAction: "ESCALATE_DATA_INTEGRITY_REVIEW" as const }
         : projection
       const actions = authorization.get(item.id)?.decidable
-        ? decisionContext.availableDecisions.map((decisionCode) => ({
+        ? decisionContext.availableDecisions
+          .filter((decisionCode) => isWorkforceExceptionDecisionEnabledForResponseRollout(
+            decisionCode,
+            organization.features,
+          ))
+          .map((decisionCode) => ({
             decisionCode,
             actionToken: issueWorkforceExceptionActionToken({
               organizationId: auth.orgId,

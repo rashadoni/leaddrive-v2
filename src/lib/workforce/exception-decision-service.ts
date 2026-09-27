@@ -18,6 +18,7 @@ import {
   type WorkforceExceptionWorkbenchDecision,
 } from "@/lib/workforce/exception-workbench"
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
+import { isWorkforceExceptionDecisionEnabledForResponseRollout } from "@/lib/workforce/exception-response-rollout"
 
 export type RecordWorkforceExceptionDecisionInput = {
   organizationId: string
@@ -48,7 +49,11 @@ export async function recordScopedWorkforceExceptionDecision(
       select: { plan: true, addons: true, features: true, modules: true },
     })
     if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)
-      || !workforceGranularAccessEnabled(organization.features)) return null
+      || !workforceGranularAccessEnabled(organization.features)
+      || !isWorkforceExceptionDecisionEnabledForResponseRollout(
+        input.decisionCode,
+        organization.features,
+      )) return null
 
     const exceptionCase = await tx.workforceExceptionCase.findFirst({
       where: { id: input.caseId, organizationId: input.organizationId },
@@ -126,7 +131,11 @@ export async function recordScopedWorkforceExceptionDecision(
         })
         if (!currentOrganization
           || !isTenantCapabilityEnabled("workforce-hrm", currentOrganization)
-          || !workforceGranularAccessEnabled(currentOrganization.features)) {
+          || !workforceGranularAccessEnabled(currentOrganization.features)
+          || !isWorkforceExceptionDecisionEnabledForResponseRollout(
+            draft.decisionCode,
+            currentOrganization.features,
+          )) {
           throw new WorkforceExceptionWorkbenchContextError()
         }
         if (priorDecisions.length !== input.expectedDecisionCount) {

@@ -765,3 +765,76 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Live branch protection still requires exactly `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`; `agent-review` is absent and was not treated as merge permission. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
 - Precise stopping point: the complete committed runtime/test/evidence identity is independently GREEN; only this three-document review receipt is uncommitted and nothing is pushed.
 - Next action: checkpoint the receipt-only delta, independently prove all five reviewed runtime/test/translation blobs byte-identical, then push/open the sub-400 KB PR and require all five exact-head contexts before merge.
+
+## 2026-09-27 — PR #461 reviewed correction-request UI released to production
+
+- Receipt-integrity review proved that `d5e952dca3bedce73fafca94efaf2cc639bf5f00..6cc6938d6109c73c029c59edbf5f3e3af167869d` changed only three append-only receipt documents and preserved all five reviewed runtime/test/translation blobs byte-identically. Final head `6cc6938d6109c73c029c59edbf5f3e3af167869d` had a nine-path / 57,090-byte complete binary diff from exact base `4823fa18b07cb9e27128ef8d8e14c07eae9f0e7a`, SHA-256 `47d39e2cbc3556d7ec3be5c8b621d885d6b6514abde65fd24a7e285cf67a6164`; both independent reviews were GREEN with zero P0-P3 findings.
+- PR #461 passed `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan` on exact head. PR run `36329339242` completed static checks in 13m05s, including the real PostgreSQL Workforce shared-lock gate, and typecheck in 19m24s; the normal PR production build was skipped as designed.
+- PR #461 merged normally at `2026-09-27T15:43:31Z` as `000eb2532402cf4860afcb270ea8bfac6a6796d0`. Deploy run `36330613672` completed GREEN at `2026-09-27T16:00:41Z` through GitHub `main`; quality/security, SHA-bound standalone build, immutable artifact verification/staging, atomic deploy, scheduler/tenant-isolation checks, built-in public smokes and retention cleanup passed.
+- Independent no-cache public reads returned `{"ok":true}` and `{"sha":"000eb2532402","artifactSha":"000eb2532402cf4860afcb270ea8bfac6a6796d0","builtAt":"2026-09-27T15:47:16Z"}`. Artifact SHA exactly matches merged `main`; no direct server deployment, retired host/owner or worktree copy was used.
+- Full browser E2E, Android/Gradle, load, physical-device and human-pilot evidence remains `NOT RUN`. Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; the non-terminal action still does not notify an employee, create/approve a correction or change time.
+- Work continues in the same dedicated part-3 worktree on clean successor branch `codex/workforce-exception-response-rollout-fence`, created from exact deployed main `000eb2532402cf4860afcb270ea8bfac6a6796d0`. Canonical/old worktrees, LeadShelf and foreign branches remain untouched.
+- Precise stopping point: PR #461 is merged, deployed and exact-SHA smoke-verified; only this three-document release receipt is uncommitted on the clean successor branch and no next-slice source has changed.
+- Next action: checkpoint this release receipt, finish the independent one-slice comparison and only then implement its bounded fail-closed contract with focused evidence and fresh review.
+
+## 2026-09-27 — C6 employee-response rollout fence pre-review
+
+- The PR #461 production receipt was first isolated in commit `316caedc933407589aa5f7a5acffb86aed267b15`. Independent comparison then selected exactly one server-only follow-up: prevent a manager from requesting an employee response while that tenant's employee-response channel is rollout-disabled.
+- One pure predicate now treats only `REQUEST_EMPLOYEE_RESPONSE` as dependent on `workforce-exception-response-v1`. The scoped queue applies it before token issuance; ACK and correction-review tokens remain unchanged. The decision service applies it again during tenant preflight before case/grant lookup and after the case/operation locks before any new append.
+- A token minted before rollout removal now fails through the generic unavailable/conflict surfaces and cannot create a decision. Employee self GET/POST scope, rate limit, case/workday binding and database ownership trigger remain unchanged. The released UI still hides employee-response, terminal and unknown actions, and no notification is claimed.
+- The core three-file selection passes 27/27 tests; the adjacent five-file employee-response/workbench selection passes 32/32. Targeted ESLint for all six changed runtime/test files and diff whitespace pass. The exact-lock dependency link was removed after each command.
+- Full local typecheck/build, real browser E2E, Android/Gradle, load, physical-device and human-pilot checks remain `NOT RUN` under host policy. Exact-head CI, real PostgreSQL shared-lock coverage and fresh frozen independent review remain mandatory.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. WF-C6-002 and WF-C6-006 remain `PARTIAL`; no task or phase-gate credit is added.
+- Precise stopping point: six runtime/test paths and the three evidence/roadmap/log paths are implemented and locally verified in the working tree; independent read-only preflight is in progress, changes are uncommitted and nothing is pushed.
+- Next action: resolve any preflight finding, checkpoint only the nine task-owned paths, freeze the exact base/head/path/byte/hash identity and require a fresh zero-finding complete-diff review before push.
+
+## 2026-09-27 — C6 response rollout fence preflight GREEN
+
+- Author-independent review covered base `316caedc933407589aa5f7a5acffb86aed267b15` plus every tracked change and the untracked evidence file: nine paths / 34,671 bytes, SHA-256 `77ca058977501c0abe839a401116db46564e571bb9f697d2cfb9f43da4d2672e`. It returned GREEN with zero P0-P3 findings.
+- The reviewer confirmed queue token suppression, response-only preflight rejection, post-lock flag reread/no-new-append, unchanged ACK/correction behavior, tenant/principal binding, exact replay semantics and generic 404/409 containment. The residual post-read READ COMMITTED window is the existing authorization model and is explicitly not claimed as an emergency kill switch.
+- Reviewer diff/whitespace checks and pure helper 3/3 passed. Reviewer API suites were `NOT RUN` because external module resolution stopped before collection; the author's 27/27 plus 32/32 results were not relabelled.
+- The review cache created by that stopped external test attempt was removed from this worktree. No application or tracked file was removed.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
+- Precise stopping point: the preflight is GREEN, its append-only receipt is now in the uncommitted three-document delta, nothing is pushed and the verdict is not transferable to the future committed identity.
+- Next action: checkpoint the nine currently changed paths, verify clean status, compute the complete ten-path PR identity from exact `origin/main` and require a fresh author-independent frozen review from zero.
+
+## 2026-09-27 — C6 response rollout frozen complete-diff review GREEN
+
+- The clean frozen identity was base/current `origin/main`/merge-base `000eb2532402cf4860afcb270ea8bfac6a6796d0`, head `6268f618a027e33beec1ca700a8fe3454eccf0e7`, 10 paths / 44,535 binary-diff bytes and SHA-256 `c215ff2555c734ddacfc57aee1c2629e686a1d6e436d13aeedc2d11628e44fce`, below 400 KB.
+- A fresh author-independent reviewer recomputed the identity and clean status at both ends, reread the full diff from zero and returned GREEN with zero P0-P3 findings. Queue mint, preflight, post-lock/no-new-append, exact replay, tenant/principal/revision binding, generic containment, ACK/correction preservation and the READ COMMITTED evidence boundary were confirmed.
+- Reviewer identity/clean/diff checks, append-only prefix integrity, pure helper 3/3 and live PR #461 merge/check receipt passed. Reviewer API Vitest, targeted ESLint, typecheck/build, PostgreSQL, browser, Android, load, device, pilot and repeated deploy/public smoke were `NOT RUN` and are not inferred.
+- Author-side exact frozen-head verification passes all eight selected files / 59 tests, targeted ESLint for all six changed runtime/test files and diff whitespace. Full local typecheck/build/browser/Android/load/device/pilot remain `NOT RUN` under host policy.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or phase-gate credit is added.
+- Precise stopping point: frozen source/test/evidence head is independently GREEN; only this three-document review receipt is uncommitted and nothing is pushed.
+- Next action: checkpoint the receipt-only delta, independently prove all six reviewed runtime/test blobs unchanged, then push/open the sub-400 KB PR and require all five exact-head checks before merge.
+
+## 2026-09-27 — PR #462 exact-head typecheck repair
+
+- Final reviewed head `803b56880668e8bbbb56b492f135369ff0e89ff5` was pushed and opened as PR #462. `pr-scope`, `runner-policy`, `scan` and `static-checks` passed; static checks took 13m30s and included the real PostgreSQL Workforce shared-lock gate.
+- `typecheck` correctly blocked merge after 16m52s with one new defect-shaped TS2345 at the post-lock rollout check. `validateContext` receives the canonical persisted decision code as `string`, while the new pure helper had been typed to the narrower workbench union. No baseline or gate is weakened.
+- The bounded source repair changes only that helper boundary to `string`. Its runtime rule is unchanged: exact `REQUEST_EMPLOYEE_RESPONSE` requires the rollout flag; all other strings remain subject to the existing workbench lifecycle validator. A future/unknown-code assertion makes that delegation explicit.
+- The repaired core selection passes three files / 27 tests; targeted ESLint for the helper/service/test and diff whitespace pass. Full local typecheck/build remains `NOT RUN` under host policy; replacement exact-head CI is required.
+- Previous frozen and receipt-integrity reviews remain historical evidence only and do not transfer to the repaired head. The failed exact-head CI results also do not transfer.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or phase-gate credit is added.
+- Precise stopping point: the two-file type-boundary/test repair plus three receipt documents are uncommitted; independent read-only preflight is in progress, PR #462 remains open and unmergeable.
+- Next action: resolve any preflight finding, checkpoint the repaired paths, freeze a new exact identity, require a fresh zero-finding independent review and push it to trigger all five replacement checks.
+
+## 2026-09-27 — PR #462 type repair integrated with current main
+
+- Independent preflight of the five-file uncommitted repair returned GREEN with zero P0-P3 findings. It confirmed that the string signature fixes the canonical writer boundary without changing the exact response-code deny, and that unknown codes still cannot pass token/input allowlisting plus post-lock workbench lifecycle validation.
+- The repair/evidence was checkpointed as `a38aa6b66d11a8acfc192f222c9ff34fdb63db63`. Before freezing, fresh fetch found `origin/main` had advanced to `bc126735cc316cfc7f206aae839288884d5a9d5d` through PR #456's unrelated 19-path MTM compact-filter change.
+- There were zero path overlaps. Current main was merged conflict-free as `4ee1655fe1c0c547923b9e7f3c6cd06c31361bc2`; no foreign path was edited manually.
+- The integrated tree passes the full eight-file Workforce selection at 59/59, targeted ESLint for all six changed runtime/test files and current-main diff whitespace. Dependency links were removed after the command.
+- Full local typecheck/build/browser/Android/load/device/pilot remain `NOT RUN`. The old CI run and all pre-integration frozen identities do not transfer; five replacement checks and fresh complete-diff review are mandatory.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
+- Precise stopping point: repaired source is integrated and verified on current main; only this three-document integration receipt is uncommitted, PR #462 still points to the older failed head.
+- Next action: checkpoint this receipt, freeze the clean current-main identity, require a fresh zero-finding review from zero, then push the replacement head and rerun every required check.
+
+## 2026-09-27 — PR #462 replacement frozen review GREEN
+
+- Fresh author-independent review from zero verified clean base/current `origin/main`/merge-base `bc126735cc316cfc7f206aae839288884d5a9d5d` through head `2711f194d5615c9efbbc2701412b3b535b157416`: 10 paths / 55,819 binary-diff bytes, SHA-256 `a33d15906defd7735979da6da144cb4dfb99adda6abf3efff1daf25d2d891367`.
+- The reviewer returned GREEN with zero P0-P3 findings. Queue mint, response-only preflight/post-lock checks, exact replay/no append, token/grant/lifecycle authority, unknown-code rejection, TS2345 repair, READ COMMITTED boundary, tests/evidence truth and inherited release receipt were confirmed.
+- The current-main PR #456 integration was independently verified as 19 unrelated MTM paths with no overlap. Reviewer-side diff/identity/clean checks passed; Vitest, ESLint, typecheck and heavy gates were `NOT RUN` and author results were not relabelled.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or phase-gate credit is added.
+- Precise stopping point: the repaired integrated source/test/evidence head is independently GREEN; only this three-document receipt is uncommitted and PR #462 still points to the older failed head.
+- Next action: checkpoint the receipt-only delta, independently prove all six reviewed runtime/test blobs byte-identical, then push the replacement head and require all five exact-head checks before merge.
