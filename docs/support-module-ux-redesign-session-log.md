@@ -1768,3 +1768,44 @@ Next: checkpoint and push the bounded retry, then restore Workstream 10 Skill
 Routing product `b0fbbac1f` and recovery `768146ca3`, preserving the current
 shared workflow/browser supersets and adding its section-scoped gate before
 desktop/mobile/high evidence.
+
+### Workstream 10 current-tree restoration and local self-audit
+
+- Restored historical Skill Routing product `b0fbbac1f` as current-tree
+  checkpoint `5bf3b6547`. Its add/add API conflict was resolved as two explicit
+  views: the existing default response remains the minimal active ticket-
+  assignee projection, while `/support/skill-routing` opts into the rich
+  routing-agent projection with `x-skill-routing-view: routing`. Both paths use
+  the current tenant-scoped RLS wrapper and permission check.
+- Restored recovery `768146ca3` as current-tree checkpoint `5919822ad` without
+  replacing the newer shared workflow or browser scenario supersets. The
+  disposable evidence still covers six outcome groups: dual failure and
+  terminal permission, partial-source recovery, empty/filter/50-queue/100-agent
+  density, queue selection/toggle/create/delete rollback, atomic bulk skill
+  rollback/retry/fixture restoration, and read-only mutation suppression.
+- Self-audit found that targeted `skill-routing` dispatches had no dedicated
+  validation step. Added a fail-closed section gate covering syntax, focused
+  anti-pattern scanning, i18n parity, scoped lint and 13 focused suites. The
+  same audit found mobile recovery used keyboard activation; non-desktop cells
+  now require a measured 44x44 target, DOM hit test and actual Playwright
+  touchscreen tap. Desktop continues to prove keyboard activation.
+- Local verification: JavaScript syntax green; workflow YAML green; all 20
+  workflow `run` blocks pass `bash -n`; focused anti-pattern scan green at 0
+  findings across four visible TSX files; AZ/RU/EN parity green at 23,599 keys;
+  targeted ESLint green; focused Vitest green at 13 files and 91/91 assertions;
+  `git diff --check` green. The first anti-pattern pass correctly rejected three
+  missing focus/minimum-target declarations, which were fixed before the green
+  rerun. The first lint invocation exposed a stale gate path and the gate was
+  corrected from `src/lib/ticketing/auto-assign.ts` to
+  `src/lib/auto-assign.ts` before the green rerun.
+- `npx tsc --noEmit` was attempted once and aborted at the default V8 heap limit
+  near 2 GiB. It is **BLOCKED locally by the Contabo workload contract** and was
+  not retried with a larger heap. Full build and browser E2E are **NOT RUN
+  locally** by host policy; the production build and exact-SHA evidence remain
+  mandatory GitHub Actions gates.
+
+Next: checkpoint and push the self-audit fixes and documentation, then run the
+exact-SHA Skill Routing desktop mutation sample, mobile physical-touch sample
+and the full manager/admin × locale × theme × viewport high matrix. Close
+Workstream 10 only after all required runs and manual screenshot review are
+green.

@@ -2358,7 +2358,7 @@ Additional recovery evidence (2026-09-06):
 
 ## 17. Workstream 10 — Skill Routing
 
-**Status: IN PROGRESS — rollback-evidence checkpoint `768146ca3`; browser/CI gates pending**
+**Status: IN PROGRESS — current-tree restoration checkpoints `5bf3b6547` and `5919822ad`; exact-SHA browser/CI gates pending**
 **Route:** `/support/skill-routing`
 **Primary files:** `src/app/(dashboard)/support/skill-routing/page.tsx`,
 `src/components/support/agent-skills-manager.tsx`,
@@ -2464,6 +2464,27 @@ Additional recovery evidence (2026-09-06):
   `startup_failure` with zero jobs created. The rendered responsive/localized/
   theme/accessibility/touch/performance/visual matrix therefore remains
   **NOT RUN**, and all SUPUX-RTE checkboxes remain open.
+
+Current-tree restoration (2026-09-26):
+
+- Product checkpoint `5bf3b6547` restores the queue-first routing workspace on
+  top of the completed Workstream 9 tree. The shared agents endpoint now keeps
+  its minimal active ticket-assignee response by default and exposes the richer
+  routing projection only for the explicit `x-skill-routing-view: routing`
+  request, preserving current ticket consumers and their error codes.
+- Recovery checkpoint `5919822ad` preserves the newer shared browser/workflow
+  supersets and restores the six disposable Skill Routing outcomes. Self-audit
+  added the missing section-scoped `skill-routing` validation gate and requires
+  hit-tested Playwright touchscreen activation with a 44x44 minimum target on
+  non-desktop recovery cells while retaining keyboard activation on desktop.
+- The focused four-file anti-pattern scan passes with zero findings after
+  adding explicit focus states and the missing minimum row target. Translation
+  parity, workflow YAML, all 20 extracted workflow shell blocks, targeted
+  ESLint, `git diff --check`, and 91 assertions in 13 focused suites pass.
+  A full local TypeScript graph exhausted the default V8 heap at about 2 GiB;
+  it is not retried with a larger heap under the Contabo workload contract.
+  Production build and exact-SHA desktop/mobile/high browser evidence remain
+  mandatory in GitHub Actions before any RTE checkbox can close.
 
 ## 18. Workstream 11 — Agent Calendar
 

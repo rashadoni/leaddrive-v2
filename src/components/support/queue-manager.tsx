@@ -189,7 +189,7 @@ export function QueueManager({
             const selected = queue.id === selectedQueueId
             return (
               <article key={queue.id} className={selected ? "bg-muted/20" : undefined} data-testid="routing-queue-row" data-queue-id={queue.id}>
-                <button type="button" className="w-full p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" aria-pressed={selected} onClick={() => onSelect(queue.id)} data-testid={`routing-queue-select-${queue.id}`}>
+                <button type="button" className="min-h-11 w-full p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" aria-pressed={selected} onClick={() => onSelect(queue.id)} data-testid={`routing-queue-select-${queue.id}`}>
                   <span className="flex items-start justify-between gap-2"><span className="min-w-0"><span className="block truncate text-sm font-medium">{queue.name}</span><span className="mt-0.5 block text-xs text-muted-foreground">{queue.skills.length > 0 ? queue.skills.join(", ") : t("catchAll")}</span></span><span className="shrink-0 text-xs">{coverage > 0 ? t("coverageCount", { count: coverage }) : t("uncovered")}</span></span>
                   <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground"><span>{queue.assignMethod === "round_robin" ? t("roundRobin") : t("leastLoaded")}</span><span>{t("priorityValue", { value: queue.priority })}</span><span>{queue.autoAssign ? t("autoAssignOn") : t("autoAssignOff")}</span></span>
                 </button>

@@ -632,7 +632,7 @@ jobs:
             src/components/support/queue-manager.tsx \
             src/components/skill-picker.tsx \
             src/lib/skill-routing/presentation.ts \
-            src/lib/ticketing/auto-assign.ts \
+            src/lib/auto-assign.ts \
             src/__tests__/api-skill-routing.test.ts \
             src/__tests__/api-ticket-assignees.test.ts \
             src/__tests__/api-ticket-extras.test.ts \

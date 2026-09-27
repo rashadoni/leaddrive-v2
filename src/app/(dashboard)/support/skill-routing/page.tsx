@@ -123,7 +123,7 @@ export default function SkillRoutingPage() {
       </header>
 
       <details className="rounded-lg border px-3 py-2 text-sm">
-        <summary className="min-h-11 cursor-pointer py-2 font-medium">{t("howItWorksTitle")}</summary>
+        <summary className="min-h-11 cursor-pointer rounded-sm py-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("howItWorksTitle")}</summary>
         <p className="pb-2 text-muted-foreground">{t("howItWorksBody")}</p>
       </details>
 

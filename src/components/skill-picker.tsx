@@ -65,7 +65,7 @@ export function SkillPicker({ value, onChange, options, allowAdd = false, addPla
               data-testid="skill-picker-option"
               data-skill={skill}
               className={cn(
-                "inline-flex min-h-11 items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60",
+                "inline-flex min-h-11 items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60",
                 isSel
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-zinc-200 dark:border-zinc-700 bg-background hover:bg-muted"
