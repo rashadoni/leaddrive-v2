@@ -15262,6 +15262,7 @@
     "clearSearch": "Очистить поиск",
     "view": "Вид",
   "sort": "Порядок",
+    "status": "Статус",
     "found": "Найдено: {count}"
   },
   "mtmTeamResults": {
