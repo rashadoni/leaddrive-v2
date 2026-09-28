@@ -211,7 +211,22 @@ Haiku judge otherwise; `SOCIAL_JUDGE_PROVIDER=anthropic|jev` overrides it, so
 switching providers on a bad day is an environment variable rather than a
 deploy.
 
-**Still not scheduled.** `judgeAmbiguousAliasRejections` has no caller: adding
-the cron means editing `scripts/install-resilience-crons.sh` and running it on
-production, which is the owner's action. Until then nothing is restored and
-nothing is spent.
+**Scheduling.** `/api/cron/social-relevance-judge` is the pass's caller —
+authenticated, bounded to a minute per tick — and the installer carries its
+schedule at every fifteen minutes. Every minute would ask a paid provider about
+twenty-five records a minute; the queue is finite and each answered record is
+stamped, so a slower schedule only delays how soon a wrongly rejected mention
+comes back.
+
+Two production actions remain, and both are the owner's:
+
+```bash
+# 1. the key, through the operator workflow that owns production env
+gh workflow run set-social-app-secrets.yml   # TYPESAFE_API_KEY
+# 2. install the schedule
+ssh prod 'bash /usr/local/lib/leaddrive-v2/ops/current/scripts/install-resilience-crons.sh'
+```
+
+Until both are done nothing is restored and nothing is spent: without the key
+the provider selection falls back to the Haiku judge, and without the schedule
+the pass is never called.
