@@ -1487,3 +1487,12 @@ from this worktree.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: two repaired code/test paths and this append-only failure receipt are uncommitted; PR #482 remains open and unmergeable until replacement review and all new-head checks pass.
 - Next action: checkpoint the five explicit repair/evidence paths, obtain fresh independent complete-diff GREEN, push the new head and require a clean Android plus standard CI rerun.
+
+## 2026-09-28 — PR #482 Android repair replacement review GREEN
+
+- Fresh complete-diff review returned GREEN with P0=P1=P2=P3=0 on exact base/current main `f6b4c06dad08c72534174a8c004c325c417238cf` through clean head `4b7103f4d7c06f56ee14d62c7fa4ef7b462a970f`.
+- Independent identity matched 13 paths / 102,504 plain-binary bytes / SHA-256 `0c85f0a49c461f735429dae89ce8cb66537b29deb0a342a1351804ed9b928da7`. All 15 explicit nullable-any arrays preserve the rejected head's inputs; outbox runtime changes only by the safe redundant-branch deletion.
+- Reviewer repeated 22/22 source and 43/43 server tests, ESLint, 265/265/265 XML/parity and whitespace. Android Gradle/device heavy gates remain `NOT RUN` locally and must pass on the new PR head.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: replacement reviewed repair/evidence head is clean; only this three-document review receipt is uncommitted and PR #482 still points to the old failed head.
+- Next action: checkpoint the receipt, obtain final blob/fingerprint integrity GREEN, push the repaired head and wait for every exact-head gate.

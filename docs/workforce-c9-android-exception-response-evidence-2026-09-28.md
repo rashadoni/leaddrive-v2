@@ -180,3 +180,25 @@ Android Gradle was not rerun on Contabo. A new exact-head path-triggered CI run
 is mandatory. The prior frozen and integrity reviews remain historical
 evidence for their exact heads and do not authorize the repaired head; fresh
 complete-diff review is required before push.
+
+## Replacement complete-diff review GREEN
+
+Fresh author-independent review returned GREEN with P0=P1=P2=P3=0 on exact
+base/live main/merge-base
+`f6b4c06dad08c72534174a8c004c325c417238cf` through clean repair head
+`4b7103f4d7c06f56ee14d62c7fa4ef7b462a970f`. It independently reproduced 13
+paths / 102,504 plain-binary bytes / SHA-256
+`0c85f0a49c461f735429dae89ce8cb66537b29deb0a342a1351804ed9b928da7`.
+
+All 15 malformed-offer rows use explicit `arrayOf<Any?>`; normalized values
+remain byte-equivalent to the rejected CI head. The outbox runtime delta is
+exactly deletion of the compiler-reported redundant `else`; its pending-state
+`require` and both mappings are unchanged. The reviewer reconfirmed every
+wire, auth/account, replay, encryption, downgrade, recovery, UI, localization,
+accessibility and evidence contract.
+
+Reviewer lightweight checks passed 22/22 Android source contracts, 43/43 exact
+server response tests, scoped ESLint, 265/265/265 parity/XML and whitespace.
+Android Gradle and all other heavy/device gates remain `NOT RUN` locally. Only
+this three-document receipt is uncommitted; receipt integrity and a new exact-
+head CI run remain mandatory.

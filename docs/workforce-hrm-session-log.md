@@ -1275,3 +1275,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Prior frozen/integrity verdicts are retained for audit but do not transfer to the repaired bytes. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: bounded repair and failure receipt are present but uncommitted; PR #482 still points to the rejected CI head.
 - Next action: checkpoint exactly the two repair paths plus three append-only docs, freeze the new full diff, obtain independent GREEN and push so every exact-head context reruns.
+
+## 2026-09-28 — PR #482 replacement repair review GREEN
+
+- Repair/evidence checkpoint `4b7103f4d7c06f56ee14d62c7fa4ef7b462a970f` received fresh author-independent GREEN with zero P0-P3 findings against exact live main/merge-base `f6b4c06dad08c72534174a8c004c325c417238cf`.
+- The reviewer reproduced 13 paths / 102,504 plain-binary bytes / SHA-256 `0c85f0a49c461f735429dae89ce8cb66537b29deb0a342a1351804ed9b928da7`, clean start/end and no main drift.
+- All 15 malformed-offer arrays are explicitly `Any?`; normalized input comparison proved no value change. The production outbox delta is one deleted redundant `else`, with the exact `require` and aliases unchanged. Every prior functional/privacy/recovery/UI/i18n contract was rereviewed from zero.
+- Reviewer checks passed 22/22 source, 43/43 exact server, scoped ESLint, 265/265/265 parity/XML and whitespace. Android Gradle/lint/unit/Room/device and other heavy gates remain `NOT RUN` locally pending the new PR head.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: the repaired implementation/test/evidence head is independently GREEN; only this three-document receipt is uncommitted.
+- Next action: checkpoint the receipt, independently verify repair blob identity and final fingerprint, then push PR #482 and require all new-head checks.
