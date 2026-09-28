@@ -73,8 +73,10 @@ and periodic audit review still require their own checkpoints and evidence.
 - Purpose and reason are explicit selections rather than silent defaults.
   Dates are also explicit tenant-calendar inputs, and the client rejects a
   response whose employee, period, purpose, reason or optional opaque case
-  reference differs from the request. Raw coordinates, reversible accuracy or
-  distance, evidence IDs and assessment IDs never enter the rendering model.
+  reference differs from the request. The wire projection contains no raw
+  coordinates or reversible accuracy/distance; its internal evidence, subject
+  and assessment IDs are validated and then dropped from the parsed timeline
+  result model before rendering.
 - Switching organization or signed-in human principal remounts the sensitive
   scope, aborts both reads and clears employee/query/result state. Late
   responses are ignored even when a transport mock does not honor abort.
@@ -83,8 +85,9 @@ and periodic audit review still require their own checkpoints and evidence.
   are de-duplicated in source order so one assessment cannot repeat the same
   translated explanation.
 - EN/RU/AZ copy, explicit empty/error/loading states, concise live status,
-  keyboard focus transfer after employee selection/change, 48 px controls,
-  responsive grids and unbroken-label wrapping are present in source. The
+  keyboard focus transfer after employee selection/change, 48 px primary
+  fields/actions, 44 px secondary actions, responsive grids and unbroken-label
+  wrapping are present in source. The
   restrained light/dark treatment follows the recorded Workforce UX brief;
   it does not claim browser or assistive-technology acceptance evidence.
 - The first independent review of
