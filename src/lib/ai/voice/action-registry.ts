@@ -18,6 +18,7 @@ export const AI_VOICE_ACTION_TYPES = [
   "convert_lead_to_deal",
   "update_task",
   "update_deal",
+  "move_deal_stage",
 ] as const
 
 export type AiVoiceActionType = (typeof AI_VOICE_ACTION_TYPES)[number]
@@ -30,6 +31,7 @@ export type AiVoiceActionCommand =
   | "convertLeadToDealCommand"
   | "updateTaskCommand"
   | "updateDealCommand"
+  | "moveDealStageCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -209,6 +211,14 @@ const UPDATE_DEAL_FIELDS = [
   "expectedClose",
   "assignedTo",
   "notes",
+  "expectedUpdatedAt",
+] as const
+
+// Its own action, not a field of update_deal: entering the won stage pays
+// cashback, surveys the customer and awards loyalty. The receipt says so.
+const MOVE_DEAL_STAGE_FIELDS = [
+  "stage",
+  "lostReason",
   "expectedUpdatedAt",
 ] as const
 
@@ -458,6 +468,28 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
       operation: "update",
       entityType: "deal",
       previewFields: UPDATE_DEAL_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
+    }),
+  },
+  move_deal_stage: {
+    actionType: "move_deal_stage",
+    command: "updateDealCommand",
+    commandSchema: updateDealCommandSchema.strict(),
+    allowedFields: MOVE_DEAL_STAGE_FIELDS,
+    permissions: WRITE_DEALS,
+    fieldPermissionEntity: "deal",
+    fieldPermissionNames: (payload) => ownPayloadFields(payload, ["expectedUpdatedAt"]),
+    risk: "sensitive",
+    ttlMs: SENSITIVE_TTL_MS,
+    dedupePolicy: "target_revision",
+    target: DEAL_TARGET,
+    operation: "update",
+    resultEntityType: "deal",
+    previewFields: MOVE_DEAL_STAGE_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
+    renderPreview: createPreviewRenderer({
+      actionType: "move_deal_stage",
+      operation: "update",
+      entityType: "deal",
+      previewFields: MOVE_DEAL_STAGE_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
     }),
   },
 })
