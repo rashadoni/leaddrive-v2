@@ -181,3 +181,37 @@ right.
 
 Adding TypeSafe as a subprocessor is still a separate decision, and the missing
 DPA is part of it.
+
+## Wired, 2026-09-28
+
+Owner decision: "Jev wherever it copes", with two limits named out loud — it
+may not answer, and it cannot read photographs. Both are properties of the
+code now, not hopes:
+
+- `src/lib/social/jev-relevance-judge.ts` never throws. Overload (`529`) and
+  timeouts are retried exactly once and then reported as no answer; a rejected
+  request is not repeated. The judge only ever adds a second signal, so a
+  silent provider leaves the record exactly as it was and it is looked at again
+  on the next pass.
+- A record whose **own** text carries fewer than 12 letters and digits is
+  refused with `NO_TEXT` before any call is made. The parent publication is
+  deliberately not counted towards that: the brand is usually named there, and
+  judging a comment by its parent is how "Yau he he" became a confident
+  `about_subject` in the benchmark. Picture posts are exactly this class.
+- A record is restored only on `about_subject` with confidence ≥ 0.9
+  (`JEV_RESTORE_CONFIDENCE`), which is where the benchmark measured 99%
+  agreement. Below it the answer is stamped `unsure` with the raw verdict and
+  confidence kept, so it is not paid for twice and the decision stays auditable.
+- The subject's `geographies` and `languages` go into every question, so a
+  Bravo in Florida, a Bravo Süpermarket in Adana and an Oba Market in Bonn
+  read as different subjects.
+
+`relevanceJudgeProvider()` picks Jev when `TYPESAFE_API_KEY` is set and the
+Haiku judge otherwise; `SOCIAL_JUDGE_PROVIDER=anthropic|jev` overrides it, so
+switching providers on a bad day is an environment variable rather than a
+deploy.
+
+**Still not scheduled.** `judgeAmbiguousAliasRejections` has no caller: adding
+the cron means editing `scripts/install-resilience-crons.sh` and running it on
+production, which is the owner's action. Until then nothing is restored and
+nothing is spent.
