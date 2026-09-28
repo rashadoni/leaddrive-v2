@@ -1285,3 +1285,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: the repaired implementation/test/evidence head is independently GREEN; only this three-document receipt is uncommitted.
 - Next action: checkpoint the receipt, independently verify repair blob identity and final fingerprint, then push PR #482 and require all new-head checks.
+
+## 2026-09-28 — PR #482 merged and exact-SHA production release
+
+- Final independent receipt-integrity verdict was GREEN with P0=P1=P2=P3=0 on exact PR head `2d1090e9f0050f8097abe0c4b6331cf8a06254df`. Complete identity was 13 paths / 106,240 plain-binary bytes / SHA-256 `46cfbd5b33b624796c385e34b43224e4ff2fd9b656bf23fc0b8e845b35d96905`; all nine reviewed runtime/test/resource blobs and inherited unique-index evidence were unchanged after repair review.
+- New-head CI passed `pr-scope`, `runner-policy`, `scan`, Android debug lint/unit, `static-checks` and `typecheck`. The earlier Android compile failure remains recorded and was closed by the explicit `Any?` test repair; the PR production-build job was skipped by policy.
+- PR #482 merged at `2026-09-28T17:12:42Z` as exact main `a6f6a7cf1a22a541a9de56d773ea811d8bb9ab44`. GitHub deploy run `36456523638` finished SUCCESS at `2026-09-28T17:36:38Z`, including quality/security, immutable SHA-bound build and artifact, atomic production switch, scheduler/tenant-isolation gates and built-in post-deploy smoke.
+- Independent TLS requests pinned the public hostname to registered production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200 `{"ok":true}`, while `/api/v1/public/build-info` returned HTTP 200 with `artifactSha=a6f6a7cf1a22a541a9de56d773ea811d8bb9ab44` and `builtAt=2026-09-28T17:19:38Z`. No Azure, retired host, direct worktree copy or direct server deploy was used.
+- Room instrumentation, signed APK, physical-device offline/retry/account-switch, TalkBack, 200% font, browser E2E, load and human pilot remain `NOT RUN`. Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006/WF-C9-006/WF-C9-010/WF-C9-012 remain `PARTIAL` with no synthetic credit.
+- Precise stopping point: the Android exception acknowledgement is independently reviewed, merged, deployed and exact-SHA verified in production; only these three append-only receipts are uncommitted on successor branch `codex/workforce-android-foundation-v2-part4`.
+- Next action: verify append-only prefixes and whitespace, checkpoint the explicit receipt files, then independently scope the next reviewable sub-400 KB C0-C14/M0-M6 slice.

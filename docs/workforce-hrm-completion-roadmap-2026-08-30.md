@@ -1496,3 +1496,13 @@ from this worktree.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: replacement reviewed repair/evidence head is clean; only this three-document review receipt is uncommitted and PR #482 still points to the old failed head.
 - Next action: checkpoint the receipt, obtain final blob/fingerprint integrity GREEN, push the repaired head and wait for every exact-head gate.
+
+## 2026-09-28 — PR #482 Android acknowledgement production release
+
+- Final receipt-integrity review returned GREEN with zero P0-P3 at exact head `2d1090e9f0050f8097abe0c4b6331cf8a06254df`: 13 paths / 106,240 plain-binary bytes / SHA-256 `46cfbd5b33b624796c385e34b43224e4ff2fd9b656bf23fc0b8e845b35d96905`. Only three append-only documents changed after repair review; all nine runtime/test/resource blobs and the inherited unique-index evidence remained byte-identical.
+- Exact-head PR checks passed: 14s `pr-scope`, 17s `runner-policy`, 21s `scan`, 2m20s Android debug lint/unit, 11m05s `static-checks` and 19m40s `typecheck`. The PR production-build job was skipped by policy and is not reported as passed.
+- PR #482 merged normally at `2026-09-28T17:12:42Z` as main `a6f6a7cf1a22a541a9de56d773ea811d8bb9ab44`. Deploy run `36456523638` completed SUCCESS at `2026-09-28T17:36:38Z`; quality/security, SHA-bound build/publication, immutable staging, atomic deploy, scheduler/tenant-isolation verification, built-in production smoke and retention cleanup passed.
+- Independent no-cache requests forced `app.leaddrivecrm.org` to `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and build-info returned HTTP 200 with exact `artifactSha=a6f6a7cf1a22a541a9de56d773ea811d8bb9ab44` and `builtAt=2026-09-28T17:19:38Z`. Release used only GitHub `main` through `.github/workflows/deploy.yml`.
+- Room instrumentation, signed APK, physical-device offline/retry/account/locale/accessibility, browser E2E, load and pilot remain `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; affected tasks stay `PARTIAL` and no acceptance credit is added.
+- Precise stopping point: PR #482 is independently reviewed, merged, deployed and exact-SHA production-verified; this three-document release receipt is uncommitted on clean successor branch `codex/workforce-android-foundation-v2-part4`.
+- Next action: checkpoint the receipt, then use the roadmap and current main to select an independently reviewed sub-400 KB technically feasible C0-C14/M0-M6 slice.
