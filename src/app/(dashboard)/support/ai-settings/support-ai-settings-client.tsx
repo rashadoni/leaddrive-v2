@@ -73,6 +73,8 @@ export function SupportAiSettingsClient() {
   const [notice, setNotice] = useState<SaveNotice | null>(null)
   const [confirmDisable, setConfirmDisable] = useState(false)
   const requestRef = useRef<AbortController | null>(null)
+  const switchRef = useRef<HTMLButtonElement | null>(null)
+  const restoreSwitchFocusRef = useRef(false)
 
   const load = useCallback(async () => {
     requestRef.current?.abort()
@@ -109,9 +111,19 @@ export function SupportAiSettingsClient() {
     return () => requestRef.current?.abort()
   }, [load])
 
+  useEffect(() => {
+    if (saving || !restoreSwitchFocusRef.current) return
+    restoreSwitchFocusRef.current = false
+    const animationFrame = window.requestAnimationFrame(() => {
+      switchRef.current?.focus({ preventScroll: true })
+    })
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [saving])
+
   const save = async (nextEnabled: boolean) => {
     if (saving || !settings) return
     const previous = settings
+    restoreSwitchFocusRef.current = true
     setSaving(true)
     setNotice(null)
     setSettings({ ...previous, enabled: nextEnabled })
@@ -235,6 +247,7 @@ export function SupportAiSettingsClient() {
             <span className="text-sm font-medium">{saving ? t("saving") : enabled ? t("switchOn") : t("switchOff")}</span>
             {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />}
             <Switch
+              ref={switchRef}
               data-testid="support-ai-master-switch"
               className="relative h-11 w-11 border-0 bg-transparent shadow-none transition-none before:absolute before:left-1 before:top-3 before:h-5 before:w-9 before:rounded-full before:border-2 before:border-transparent before:bg-input before:shadow-sm before:transition-colors before:content-[''] data-[state=checked]:bg-transparent data-[state=checked]:before:bg-primary data-[state=unchecked]:bg-transparent motion-reduce:before:transition-none [&>span]:absolute [&>span]:left-1.5 [&>span]:top-3.5 [&>span]:motion-reduce:transition-none"
               checked={enabled}

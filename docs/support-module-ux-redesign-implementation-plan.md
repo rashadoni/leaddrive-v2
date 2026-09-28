@@ -3476,6 +3476,20 @@ Current-tree recovery and self-audit (2026-09-28):
   findings outside this section remain assigned to the pending customer-portal/
   ticket-closure release gate rather than waived.
 
+Desktop focus correction (2026-09-28):
+
+- Exact-SHA run `36481557007` on `f5983821d` passed the dedicated section gate,
+  fixtures and production build. Static capture and 4/5 recovery groups passed;
+  the remaining group failed closed because focus did not return to the switch
+  after a rejected disable mutation. The failed artifact was inspected and is
+  diagnostic only.
+- Dialog cleanup was focusing an opener that became natively disabled in the
+  same render as the mutation began, so the browser discarded focus. The client
+  now restores the real switch only after `saving` returns to false and the
+  control is enabled, on the next animation frame. Evidence still observes the
+  result without calling `.focus()` itself; the exact-SHA desktop gate must be
+  repeated before mobile or matrix evidence is accepted.
+
 ## 21B. Cross-surface Track — Customer Support Portal
 
 **Status: IN PROGRESS — implementation and fail-closed evidence runner verified;

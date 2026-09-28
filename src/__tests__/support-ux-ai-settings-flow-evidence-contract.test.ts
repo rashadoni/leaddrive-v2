@@ -56,6 +56,8 @@ describe("Support AI Settings flow evidence contract", () => {
     ]) expect(client).toContain(marker)
     expect(client).toContain('className="min-h-11"')
     expect(client).toContain('className="relative h-11 w-11')
+    expect(client).toContain("restoreSwitchFocusRef")
+    expect(client).toContain("switchRef.current?.focus({ preventScroll: true })")
     expect(client).not.toMatch(/<DialogContent[^>]*data-testid=/)
   })
 

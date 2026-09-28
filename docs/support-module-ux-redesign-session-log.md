@@ -2512,3 +2512,21 @@ Workstream 15 Support AI Settings from product `b280e6c83` and recovery
 Next: checkpoint and push the WS15 self-audit corrections, then run exact-SHA
 desktop, RU/dark physical-touch mobile and complete 24-cell high-profile Support
 AI Settings evidence before checking SUPUX-AI-001..008.
+
+### Workstream 15 desktop focus correction
+
+- Exact-SHA desktop run `36481557007` on `f5983821d` passed the dedicated
+  Support AI Settings source gate, isolated fixtures and production build.
+  Static capture and 4/5 recovery groups passed; the fail-closed flow rejected
+  `disable-confirm-failure-rollback-and-retry` because switch focus was not
+  restored after the failed mutation. The artifact and failed screenshot were
+  inspected; no threshold or expected outcome was changed.
+- Root cause is deterministic: dialog cleanup attempts to focus the opener in
+  the same render that starts the mutation and disables the switch, so the
+  browser discards focus. The client now remembers a save-triggered focus return
+  and restores it on the next animation frame only after `saving` becomes false
+  and the real switch is enabled again. The browser flow continues to observe
+  focus for up to 2.5 seconds and never calls `.focus()` itself.
+
+Next: run affected source checks, checkpoint and push the focus correction,
+then repeat the exact-SHA desktop Support AI Settings gate.
