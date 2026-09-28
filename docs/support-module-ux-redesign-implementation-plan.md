@@ -3092,7 +3092,7 @@ Closure evidence (2026-09-28):
 
 ## 21. Workstream 14 — Portal Users
 
-**Status: IN PROGRESS — current-tree product `584c5d9d4`, recovery `10af0aef9`; self-audit complete, exact-SHA browser/CI gates pending**
+**Status: DONE — final code checkpoint `2ce33c04c`; exact-SHA desktop, physical-touch mobile and 24-cell high-profile evidence green**
 **Route:** `/settings/portal-users`
 **Primary file:** `src/app/(dashboard)/settings/portal-users/page.tsx`
 
@@ -3104,21 +3104,21 @@ mobile alternative.
 Target UX: a safe access-management list with debounced search, explicit status,
 labelled actions, and a persistent batch workflow.
 
-- [ ] **SUPUX-POR-001** Debounce search, cancel stale requests, and keep result
+- [x] **SUPUX-POR-001** Debounce search, cancel stale requests, and keep result
   state stable while loading.
-- [ ] **SUPUX-POR-002** Check every mutation response; add progress, duplicate-click
+- [x] **SUPUX-POR-002** Check every mutation response; add progress, duplicate-click
   protection, success, and error feedback.
-- [ ] **SUPUX-POR-003** Replace four row icons with an accessible labelled action
+- [x] **SUPUX-POR-003** Replace four row icons with an accessible labelled action
   menu while keeping frequent safe actions discoverable.
-- [ ] **SUPUX-POR-004** Programmatically label select-all and row checkboxes.
-- [ ] **SUPUX-POR-005** Define selection behavior when filters/pages change and
+- [x] **SUPUX-POR-004** Programmatically label select-all and row checkboxes.
+- [x] **SUPUX-POR-005** Define selection behavior when filters/pages change and
   show scope in a sticky bulk toolbar.
-- [ ] **SUPUX-POR-006** Add confirmation/impact copy for bulk disable and other
+- [x] **SUPUX-POR-006** Add confirmation/impact copy for bulk disable and other
   risky access changes.
-- [ ] **SUPUX-POR-007** Add a responsive portal-user card/list representation.
-- [ ] **SUPUX-POR-008** Remove duplicated description/help copy and preserve the
+- [x] **SUPUX-POR-007** Add a responsive portal-user card/list representation.
+- [x] **SUPUX-POR-008** Remove duplicated description/help copy and preserve the
   useful contact-creation empty-state CTA.
-- [ ] **SUPUX-POR-009** Re-baseline the page after the September portal-user and
+- [x] **SUPUX-POR-009** Re-baseline the page after the September portal-user and
   recovery-password changes; verify recovery initiation, temporary state,
   expiry, copy, permission, and audit feedback rather than assuming the August
   findings are still complete.
@@ -3274,6 +3274,40 @@ Current-tree recovery and self-audit (2026-09-26):
   indicator. This preserves compact visuals while giving automation and users
   the same physical hit area; the obsolete pre-fix rerun was cancelled rather
   than accepted.
+
+Closure evidence (2026-09-28):
+
+- Final code checkpoint `2ce33c04c` passes exact-SHA EN/light desktop run
+  `36376361993`. The dedicated Portal Users source gate, fixtures, production
+  build and browser capture are green. The artifact proves 7/7 recovery and
+  mutation outcomes, 31/31 keyboard activations, recovery/edit/password focus
+  return, and zero runtime, Axe, accessibility, touch, overflow, environment or
+  primary-work failures. Raw small-target count is zero; load p75 is 510 ms,
+  filter p75 18 ms and CLS `0.0007984547556182484`. The desktop capture was
+  manually accepted.
+- Exact-SHA RU/dark mobile run `36377863993` passes 7/7 outcomes and 31/31 real
+  Playwright touchscreen activations. Every measured target is at least 44x44
+  and every center hit-test resolves to the intended control. Static runtime,
+  Axe, accessibility, touch, overflow, environment and primary-work totals are
+  zero; raw small-target count is zero, primary work starts at 661 px, load p75
+  is 592 ms, filter p75 20 ms and CLS `0.009392899609308647`. The mobile capture
+  was manually accepted.
+- High-profile run `36377887709` contains exactly 24/24 unique admin cells for
+  AZ/RU/EN x light/dark x desktop/tablet/narrow-tablet/mobile. All cells pass and
+  all eight aggregate issue/error totals, including raw small targets, are zero.
+  Worst load p75 is 571 ms, worst filter p75 34 ms, max CLS
+  `0.009583181667435107`, and max primary-work top 661 px. Representative
+  AZ/light desktop, EN/dark tablet, AZ/dark narrow-tablet and RU/dark mobile
+  captures were manually accepted.
+- Closure self-audit maps POR-001..009 to the checked debounce/abort contract,
+  truthful mutation and audit recovery, one labelled action menu, labelled 44
+  px selection controls, explicit visible-result selection scope, consequence
+  confirmations, contained card/table breakpoints, shared Support shell and the
+  re-baselined recovery-password state machine. No section gate or threshold was
+  waived. The 55 findings outside this workstream remain a mandatory final
+  release gate for the pending customer-portal/ticket-closure track.
+
+Workstream 14 is **DONE**.
 
 ## 21A. Workstream 15 — Support AI Settings
 

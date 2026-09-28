@@ -2439,3 +2439,41 @@ run on the corrected workflow before mobile and full matrix evidence.
 
 Next: checkpoint and push the physical-control correction, then run the full
 three-stage exact-SHA Portal Users evidence sequence.
+
+### Workstream 14 closure self-audit
+
+- Final Portal Users code checkpoint `2ce33c04c` passes exact-SHA EN/light
+  desktop run `36376361993`, RU/dark physical-touch mobile run `36377863993`
+  and high-profile 24-cell run `36377887709`. All three include the dedicated
+  section source gate, isolated fixtures, production build and browser capture.
+- Desktop and mobile flows each pass all 7/7 recovery/mutation groups with
+  31/31 activations. Desktop uses keyboard input; mobile uses real Playwright
+  touchscreen taps after 44x44 measurement and DOM center hit-testing. All
+  recovery/edit/password dialog focus-return checks are true.
+- Desktop static evidence has zero runtime, Axe, accessibility, touch,
+  overflow, environment, primary-work and raw-small-target failures; load p75
+  is 510 ms, filter p75 18 ms and CLS `0.0007984547556182484`. Mobile has the
+  same zero totals, primary work at 661 px, load p75 592 ms, filter p75 20 ms
+  and CLS `0.009392899609308647`.
+- The high-profile artifact contains exactly 24/24 unique admin combinations
+  across AZ/RU/EN, light/dark and desktop/tablet/narrow-tablet/mobile. Every
+  cell passes; all eight aggregate issue/error totals and raw small targets are
+  zero. Worst load p75 is 571 ms, filter p75 34 ms, max CLS
+  `0.009583181667435107`, and max primary-work top 661 px.
+- EN/light desktop, RU/dark mobile, EN/dark tablet and AZ/dark narrow-tablet,
+  plus AZ/light desktop, were manually inspected and accepted. The layout keeps
+  the compact card surface through tablet widths and introduces no horizontal
+  overflow or clipped primary work.
+- POR-001..009 are checked against the implemented debounce/abort behavior,
+  fail-safe mutations and audit feedback, labelled action menu and selection,
+  explicit batch scope, confirmations, responsive representation, shared shell
+  and complete recovery-password re-baseline. Technical self-audit remains
+  20/20; no gate or threshold was waived.
+- The full inventory scanner's 55 findings remain confined to the pending
+  customer-portal/ticket-closure track and stay mandatory before final merge.
+
+Workstream 14 is **DONE**.
+
+Next: checkpoint and push the WS14 closure record, then restore and self-audit
+Workstream 15 Support AI Settings from product `b280e6c83` and recovery
+`99fec139c` without replacing the current workflow/browser evidence superset.
