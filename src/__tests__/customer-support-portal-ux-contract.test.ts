@@ -12,6 +12,7 @@ const listApi = read("src/app/api/v1/public/portal-tickets/route.ts")
 const detailApi = read("src/app/api/v1/public/portal-tickets/[id]/route.ts")
 const fileApi = read("src/app/api/v1/public/portal-tickets/[id]/files/[fileId]/route.ts")
 const kbApi = read("src/app/api/v1/public/portal-kb/route.ts")
+const globalStyles = read("src/app/globals.css")
 const surfaces = [list, detail, chat, layout, closure, knowledge]
 
 describe("Customer Support Portal UX contract", () => {
@@ -37,6 +38,18 @@ describe("Customer Support Portal UX contract", () => {
     expect(chat).toContain("event.nativeEvent.isComposing")
     expect(detail).toContain('aria-label={t("addAttachment")}')
     expect(detail).toContain("new Intl.NumberFormat(locale")
+  })
+
+  it("uses valid date-time formatting and an AA-safe primary action surface", () => {
+    expect(detail).toContain("formatDateTime(ticket.createdAt, locale")
+    expect(detail).toContain("formatDateTime(comment.createdAt, locale")
+    expect(closure).toContain("formatDateTime(request.dueAt, locale")
+    expect(detail).not.toMatch(/formatDate\([^\n]*timeStyle/)
+    expect(closure).not.toMatch(/formatDate\([^\n]*timeStyle/)
+    expect(layout).toContain("customer-support-surface")
+    expect(closure).toContain("customer-support-surface")
+    expect(globalStyles).toContain('.customer-support-surface :where(button, a, [role="button"]).bg-primary')
+    expect(globalStyles).toContain("background-color: hsl(20 92% 38%) !important")
   })
 
   it("implements recoverable loading, empty, error, offline and mutation states", () => {

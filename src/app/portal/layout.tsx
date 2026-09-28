@@ -85,11 +85,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     }
   }
 
-  if (isPublicPage) return <ThemeProvider>{children}</ThemeProvider>
+  if (isPublicPage) return <ThemeProvider><div className="customer-support-surface min-h-screen">{children}</div></ThemeProvider>
   if (!user) {
     return (
       <ThemeProvider>
-        <div className="grid min-h-screen place-items-center bg-background" aria-busy="true" aria-label={t("clientPortalLoading")}>
+        <div className="customer-support-surface grid min-h-screen place-items-center bg-background" aria-busy="true" aria-label={t("clientPortalLoading")}>
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />
         </div>
       </ThemeProvider>
@@ -105,7 +105,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-background">
+      <div className="customer-support-surface min-h-screen bg-background">
         <header className="border-b bg-background">
           <div className="mx-auto max-w-5xl px-3 sm:px-4">
             <div className="flex min-h-14 items-center justify-between gap-3">

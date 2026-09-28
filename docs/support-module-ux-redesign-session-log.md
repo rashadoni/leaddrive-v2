@@ -2649,3 +2649,35 @@ exact-SHA desktop Customer Portal run before mobile and the 120-cell matrix.
 Next: checkpoint and push this correction, then repeat exact-SHA EN/light
 desktop Customer Portal evidence. Only a green desktop result unlocks RU/dark
 physical-touch mobile and the complete 120-cell matrix.
+
+### Customer Support Portal desktop browser-capture correction
+
+- Exact-SHA desktop run `36494925193` on `e36c284e9` passed the Knowledge Base
+  and Customer Portal source gates, including both strict TypeScript graphs,
+  then passed isolated fixtures and production build. It failed closed only in
+  browser capture, so it is not accepted as section evidence.
+- Artifact `11003740772` was downloaded and inspected. Four of six recovery
+  groups passed and ten of fourteen keyboard activations were recorded. Ticket
+  detail and closure timed out because rendering threw `TypeError: Invalid
+  option : timeStyle`; both pages passed a date-plus-time request to
+  `formatDate`/`toLocaleDateString` instead of the dedicated `formatDateTime`
+  helper. Their failed screenshots showed the error boundary/blank render.
+- Static capture additionally failed the portal ticket list on one serious Axe
+  color-contrast violation: white 14 px New Ticket text against default orange
+  was 3.61:1. Portal Knowledge and Chat passed, but the overall run correctly
+  remained red; no partial artifact is being promoted to acceptance evidence.
+- Ticket detail and closure now use `formatDateTime` for all `timeStyle` values.
+  A customer-facing scoped action rule retains the orange hue at a darker,
+  AA-safe shade for `bg-primary` controls across authenticated/public portal
+  and closure surfaces, without changing shared application tokens. Its
+  calculated white-text contrast is 5.18:1. The portal UX contract pins the
+  correct formatter and scoped contrast boundary.
+- Correction self-audit is green: the 1.5 GB UI TypeScript graph passes,
+  changed-source ESLint has 0 errors, 36/36 affected assertions pass in five
+  suites, the seven-file anti-pattern scan has 0 findings, and `git diff
+  --check` is clean. No evidence expectation, Axe rule, threshold or scenario
+  was removed or relaxed.
+
+Next: checkpoint and push this correction, then repeat exact-SHA EN/light
+desktop Customer Portal evidence from all source gates through browser capture.
+Mobile and the 120-cell matrix remain gated on that result.

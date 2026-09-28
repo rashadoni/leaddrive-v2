@@ -19,7 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { formatDate } from "@/lib/format-date"
+import { formatDateTime } from "@/lib/format-date"
 import {
   parsePortalReplyDraft,
   portalReplyDraftKey,
@@ -382,9 +382,9 @@ export default function PortalTicketDetailPage() {
         </div>
         <h1 className="mt-2 text-xl font-semibold leading-7 tracking-tight">{ticket.subject}</h1>
         <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-          <div><dt className="text-muted-foreground">{t("createdLabel")}</dt><dd className="mt-0.5">{formatDate(ticket.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</dd></div>
+          <div><dt className="text-muted-foreground">{t("createdLabel")}</dt><dd className="mt-0.5">{formatDateTime(ticket.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</dd></div>
           <div><dt className="text-muted-foreground">{t("categoryLabel")}</dt><dd className="mt-0.5">{categoryLabel(ticket)}</dd></div>
-          {sla.kind !== "none" && <div className="sm:col-span-2"><dt className="text-muted-foreground">{t("serviceTarget")}</dt><dd className="mt-0.5">{sla.kind === "complete" ? t("slaComplete") : t(sla.kind === "firstResponse" ? "firstResponseTarget" : "resolutionTarget", { date: formatDate(sla.dueAt, locale, { dateStyle: "medium", timeStyle: "short" }) })}</dd></div>}
+          {sla.kind !== "none" && <div className="sm:col-span-2"><dt className="text-muted-foreground">{t("serviceTarget")}</dt><dd className="mt-0.5">{sla.kind === "complete" ? t("slaComplete") : t(sla.kind === "firstResponse" ? "firstResponseTarget" : "resolutionTarget", { date: formatDateTime(sla.dueAt, locale, { dateStyle: "medium", timeStyle: "short" }) })}</dd></div>}
         </dl>
         {ticket.description && <p className="mt-4 whitespace-pre-wrap border-t pt-4 text-sm leading-6">{ticket.description}</p>}
       </header>
@@ -413,7 +413,7 @@ export default function PortalTicketDetailPage() {
                     </div>
                   )}
                 </div>
-                <p className={`mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground ${comment.isAgent ? "justify-start" : "justify-end"}`}><span>{comment.authorName}</span><time dateTime={comment.createdAt}>{formatDate(comment.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></p>
+                <p className={`mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground ${comment.isAgent ? "justify-start" : "justify-end"}`}><span>{comment.authorName}</span><time dateTime={comment.createdAt}>{formatDateTime(comment.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></p>
               </div>
             </article>
           ))}

@@ -110,6 +110,17 @@
     background-color: hsl(20 92% 32%) !important;
   }
 
+  /* The shared brand orange is an accent, but white 14 px button text on its
+     default shade is only 3.6:1. Customer-facing primary actions use the same
+     hue at an AA-safe lightness without changing primary text/focus accents. */
+  .customer-support-surface :where(button, a, [role="button"]).bg-primary {
+    background-color: hsl(20 92% 38%) !important;
+  }
+
+  .customer-support-surface :where(button, a, [role="button"]).bg-primary:hover {
+    background-color: hsl(20 92% 32%) !important;
+  }
+
   .support-case-workspace {
     --support-space-cluster: 0.5rem;
     --support-space-section: 0.5rem;

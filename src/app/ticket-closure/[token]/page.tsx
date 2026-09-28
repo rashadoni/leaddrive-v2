@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
 import { CheckCircle2, CircleAlert, Loader2, RefreshCw, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { formatDate } from "@/lib/format-date"
+import { formatDateTime } from "@/lib/format-date"
 
 type ClosureStatus = "pending" | "confirmed" | "rejected" | "expired" | "canceled"
 
@@ -86,7 +86,7 @@ export default function TicketClosurePage() {
   const statusLabel = request ? t(`closureStatus.${request.status}`) : ""
 
   return (
-    <main data-testid="ticket-closure-workspace" data-state={loading ? "loading" : error && !request ? "error" : "ready"} data-status={request?.status || "unknown"} className="grid min-h-screen place-items-center bg-background px-4 py-8 text-foreground sm:py-12">
+    <main data-testid="ticket-closure-workspace" data-state={loading ? "loading" : error && !request ? "error" : "ready"} data-status={request?.status || "unknown"} className="customer-support-surface grid min-h-screen place-items-center bg-background px-4 py-8 text-foreground sm:py-12">
       <section className="w-full max-w-xl rounded-lg border bg-background p-4 sm:p-6" aria-labelledby="closure-title">
         {loading ? (
           <div data-testid="ticket-closure-loading" className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground" aria-busy="true" aria-label={t("closureLoading")}>
@@ -117,7 +117,7 @@ export default function TicketClosurePage() {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
                 <dt className="text-muted-foreground">{t("closureAutoClose")}</dt>
-                <dd className="font-medium"><time dateTime={request.dueAt}>{formatDate(request.dueAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></dd>
+                <dd className="font-medium"><time dateTime={request.dueAt}>{formatDateTime(request.dueAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></dd>
               </div>
             </dl>
 

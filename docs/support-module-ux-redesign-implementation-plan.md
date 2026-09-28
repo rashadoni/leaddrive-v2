@@ -3717,6 +3717,34 @@ Next: checkpoint and push the type-gate correction, then repeat the exact-SHA
 desktop Customer Portal run. Mobile and the 120-cell matrix remain gated on a
 green desktop result.
 
+Desktop browser-capture correction (2026-09-29):
+
+- Exact-SHA run `36494925193` on `e36c284e9` passed the overlapping Knowledge
+  Base gate, the dedicated Customer Portal UI and API TypeScript graphs,
+  fixtures and production build. It then failed closed in browser capture and
+  remains diagnostic only. Artifact `11003740772` shows 4/6 recovery groups
+  and 10/14 keyboard activations completed before the two failures.
+- Portal ticket detail and closure both raised `TypeError: Invalid option :
+  timeStyle` because their date-plus-time values were passed through
+  `formatDate`, whose non-AZ path correctly delegates to
+  `toLocaleDateString`. That render failure prevented the terminal-ticket and
+  pending-closure ready markers. Static evidence also rejected the ticket-list
+  primary action: white 14 px text on the default orange measured only 3.61:1.
+- All three date-plus-time call sites now use the repository's dedicated
+  `formatDateTime` helper. Customer portal and closure primary action surfaces
+  use the same orange hue at an AA-safe 38% lightness while leaving primary
+  text/focus accents unchanged; computed white-text contrast is 5.18:1. A
+  source contract pins both fixes.
+- Corrected self-audit remains 20/20. The bounded UI TypeScript graph, focused
+  ESLint, 36/36 assertions across five suites, the seven-file anti-pattern scan
+  with 0 findings and `git diff --check` are green. The already-green API graph
+  from this exact workflow is retained as diagnostic evidence only; a new full
+  exact-SHA desktop run remains mandatory for acceptance.
+
+Next: checkpoint and push the browser-capture correction, then repeat desktop
+from source gates through production build and capture. Mobile and the full
+120-cell matrix remain locked until that desktop run is green.
+
 ## 21C. Evidence, Performance, and Rollout Track
 
 **Status: IN PROGRESS — source/evidence contracts green; GitHub browser jobs
