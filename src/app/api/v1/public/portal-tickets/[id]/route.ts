@@ -29,6 +29,11 @@ type PortalCommentRow = {
   }>
 }
 
+type PortalAgentIdentity = {
+  id: string
+  name: string | null
+}
+
 // GET /api/v1/public/portal-tickets/[id] — ticket detail with public comments
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getPortalUser()
@@ -62,7 +67,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // Resolve user names for comments
   const commentRows = ticket.comments as PortalCommentRow[]
   const userIds = [...new Set(commentRows.map((comment) => comment.userId).filter((id): id is string => Boolean(id)))]
-  const users = userIds.length > 0
+  const users: PortalAgentIdentity[] = userIds.length > 0
     ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } })
     : []
   const userMap = Object.fromEntries(users.map((user) => [user.id, user.name || "Support"]))
@@ -117,7 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
   if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
 
-  const createComment = async () => prisma.$transaction(async (tx) => {
+  const createComment = async () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     if (parsed.data.clientRequestId) {
       const existing = await tx.ticketComment.findUnique({
         where: { ticketId_clientRequestId: { ticketId: id, clientRequestId: parsed.data.clientRequestId } },

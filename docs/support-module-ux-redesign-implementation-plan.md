@@ -3691,6 +3691,32 @@ Desktop section-gate correction (2026-09-29):
   Its focused 5/5 assertions, ESLint and `git diff --check` are green. The same
   exact-SHA desktop gate must be repeated after checkpointing this correction.
 
+Desktop API type-gate correction (2026-09-29):
+
+- Repeated exact-SHA desktop run `36493463075` on `b12845214e` passed the
+  overlapping Knowledge Base gate, then failed closed in the dedicated Customer
+  Portal API TypeScript graph before fixtures, build or capture. Its nine
+  diagnostics exposed a missing NextAuth ambient declaration in the narrow
+  graph plus strict callback/body/default-parameter boundaries in the portal
+  ticket route, webhook dispatch, external-service fetch adapter and auth-secret
+  helper. The diagnostic run has no accepted browser evidence.
+- The narrow API project now explicitly includes `src/types/next-auth.d.ts`.
+  Prisma callback/result boundaries carry concrete selected-row and transaction
+  types, the injected-fetch adapter copies byte bodies into an `ArrayBuffer`,
+  and the auth-secret default is an explicit two-field environment projection.
+  No source gate, compiler strictness, scenario, threshold or expected outcome
+  was removed or relaxed.
+- Self-audit is green: the resolved compiler configuration retains `strict` and
+  includes both the ambient declaration and portal detail route; changed-source
+  ESLint has 0 errors; 83/83 affected portal, auth-secret, webhook and external-
+  service assertions pass; `git diff --check` is clean. The API graph remains
+  **NOT RUN locally** because its previous 1.5 GB attempt exhausted the allowed
+  heap; GitHub Actions must prove it before browser evidence can be accepted.
+
+Next: checkpoint and push the type-gate correction, then repeat the exact-SHA
+desktop Customer Portal run. Mobile and the 120-cell matrix remain gated on a
+green desktop result.
+
 ## 21C. Evidence, Performance, and Rollout Track
 
 **Status: IN PROGRESS — source/evidence contracts green; GitHub browser jobs

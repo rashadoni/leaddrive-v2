@@ -2619,3 +2619,33 @@ five-route high-profile evidence before checking SUPUX-CXP-001..006.
 
 Next: checkpoint and push the overlapping-gate correction, then repeat the
 exact-SHA desktop Customer Portal run before mobile and the 120-cell matrix.
+
+### Customer Support Portal API type-gate correction
+
+- Repeated exact-SHA desktop run `36493463075` on `b12845214e` passed the
+  overlapping Knowledge Base source gate and then failed closed in the
+  dedicated Customer Portal API TypeScript graph before secrets, fixtures,
+  production build or capture. It reported nine strict-type diagnostics across
+  the portal detail route and imported auth/webhook/external-service helpers;
+  the run is diagnostic only and supplies no accepted browser evidence.
+- Root causes were a narrow TypeScript project that omitted the repository's
+  NextAuth ambient augmentation, implicit callback boundaries where the narrow
+  dependency graph did not preserve inference, a generic `Uint8Array` rejected
+  by the DOM `BodyInit` contract, and `process.env` not satisfying a required-
+  key `Pick` as a default parameter.
+- The API project now includes `src/types/next-auth.d.ts`; portal agent rows,
+  Prisma transactions and active webhook targets have explicit safe types; the
+  injected-fetch adapter copies byte bodies to an `ArrayBuffer`; and the auth-
+  secret helper defaults to an explicit two-key environment projection. The
+  dedicated API typecheck remains present and strict; no selector, threshold or
+  expected outcome was weakened.
+- Section self-audit is green: `tsc --showConfig` confirms `strict` plus the
+  ambient declaration and portal detail route, changed-source ESLint has 0
+  errors, 83/83 affected assertions pass in four suites, and `git diff --check`
+  is clean. A full local API graph repeat is **NOT RUN** because the recorded
+  1.5 GB attempt already exhausted this host's allowed heap; the required proof
+  remains the next GitHub exact-SHA gate.
+
+Next: checkpoint and push this correction, then repeat exact-SHA EN/light
+desktop Customer Portal evidence. Only a green desktop result unlocks RU/dark
+physical-touch mobile and the complete 120-cell matrix.
