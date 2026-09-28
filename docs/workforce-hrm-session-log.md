@@ -1496,3 +1496,30 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: re-run bounded checks, measure and checkpoint explicit task
   paths, then request a fresh independent review of the exact commit before
   any push or PR.
+
+## 2026-09-29 — WF-C11-001 frozen integration review GREEN
+
+- Checkpoint `5f72c200e4d88966a2ff48485839f5b685a5b612` first received a clean
+  independent frozen review. Main then advanced through PR #487 only in four
+  disjoint Social Monitoring cron paths. A normal conflict-free merge produced
+  exact integration head `b3bbf10eb6057c6357f3fec26453480a66caf7bb`
+  on current origin/main and merge-base
+  `20bc83fb1d16b268ecbde9288f8043809651d660`.
+- Fresh full-range author-independent review is GREEN with
+  `P0=P1=P2=P3=0`: 14 exact candidate paths / 83,413 plain-binary bytes /
+  SHA-256
+  `e31e7ff1c627cb7ca938716be80d469522ace438719358ded2d20c7c5109ab49`.
+  All ten WF-C11 runtime/test blobs are byte-identical across the merge; no
+  manual conflict resolution or overlapping dependency change exists.
+- Reviewer verification passes 9 targeted files / 81 tests, scoped ESLint and
+  exact-range whitespace. Full local typecheck/suite/build, browser E2E,
+  Android/Gradle, load, signed APK, physical-device and pilot checks remain
+  `NOT RUN`; exact-head CI remains mandatory.
+- Progress remains `DONE 82/161`, `GATES 14/15`, C11 80%; WF-C11-001 remains
+  `PARTIAL` and no provisional completion is claimed.
+- Precise stopping point: the clean integrated implementation has exact-SHA
+  independent GREEN; this review receipt is uncommitted in the three durable
+  evidence documents.
+- Next action: checkpoint only these three receipt paths, request final
+  integrity review of the new exact HEAD, then push/open the bounded PR and
+  wait for all exact-head gates.

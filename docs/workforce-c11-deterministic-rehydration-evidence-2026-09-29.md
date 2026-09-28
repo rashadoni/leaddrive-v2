@@ -70,3 +70,27 @@ author-independent exact-SHA review, the sub-400 KB PR passes every required
 exact-head gate, merges normally, and the resulting main artifact is deployed
 and production-verified. No ledger or gate credit is added before that
 evidence.
+
+## Frozen integration review
+
+The implementation/evidence checkpoint is
+`5f72c200e4d88966a2ff48485839f5b685a5b612`. While its first frozen review
+ran, `origin/main` advanced through PR #487 only in four unrelated Social
+Monitoring cron paths. A normal conflict-free merge produced integration head
+`b3bbf10eb6057c6357f3fec26453480a66caf7bb` on exact current main and
+merge-base `20bc83fb1d16b268ecbde9288f8043809651d660`.
+
+A fresh author-independent review of that exact integration range is GREEN
+with `P0=P1=P2=P3=0`. The full candidate is exactly 14 paths / 83,413
+plain-binary bytes / SHA-256
+`e31e7ff1c627cb7ca938716be80d469522ace438719358ded2d20c7c5109ab49`.
+All ten WF-C11 runtime/test blobs are byte-identical to the reviewed
+pre-integration checkpoint, and the merge added no conflict resolution or
+dependency overlap.
+
+Reviewer verification passes 9 targeted files / 81 tests, scoped ESLint for
+all ten changed runtime/test paths and exact-range whitespace. Full
+TypeScript, full suite/build, browser, Android/Gradle, load, signed APK,
+physical-device and pilot checks remain `NOT RUN`; exact-head PR CI is still
+mandatory. `WF-C11-001` therefore remains **PARTIAL** and ledger progress
+remains `DONE 82/161`, `GATES 14/15` until release evidence exists.

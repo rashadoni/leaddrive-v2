@@ -1686,3 +1686,30 @@ from this worktree.
 - Next action: repeat the bounded verification, measure/stage only explicit
   paths, checkpoint the candidate, then obtain fresh author-independent
   exact-SHA review before push or PR.
+
+## 2026-09-29 — WF-C11-001 frozen integration review GREEN
+
+- Implementation/evidence checkpoint
+  `5f72c200e4d88966a2ff48485839f5b685a5b612` was independently GREEN from
+  deployed main. During review, main advanced through PR #487 only in four
+  unrelated Social Monitoring cron paths; a normal conflict-free merge
+  produced integration head `b3bbf10eb6057c6357f3fec26453480a66caf7bb`
+  on exact fresh main/merge-base
+  `20bc83fb1d16b268ecbde9288f8043809651d660`.
+- Fresh author-independent integration review returned
+  `P0=P1=P2=P3=0`. The complete candidate is 14 paths / 83,413 plain-binary
+  bytes / SHA-256
+  `e31e7ff1c627cb7ca938716be80d469522ace438719358ded2d20c7c5109ab49`;
+  all ten WF-C11 runtime/test blobs are byte-identical to the pre-integration
+  checkpoint and the merge added no manual conflict resolution.
+- Reviewer checks pass 9 files / 81 tests, scoped ESLint and exact-range
+  whitespace. Full TypeScript/suite/build, browser, Android/Gradle, load,
+  signed APK, physical-device and pilot checks remain `NOT RUN`; exact-head CI
+  is mandatory.
+- Progress stays `DONE 82/161`, `GATES 14/15`, C11 80%; WF-C11-001 remains
+  `PARTIAL` with no credit before exact-head CI, merge and production receipt.
+- Precise stopping point: integrated source/test/evidence head is clean and
+  independently GREEN; only this three-document review receipt is uncommitted.
+- Next action: checkpoint the receipt, independently verify final
+  implementation-blob identity and candidate fingerprint, then push/open the
+  sub-400 KB PR and require every exact-head context.
