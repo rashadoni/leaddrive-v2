@@ -1316,3 +1316,109 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Full typecheck/static/build, browser E2E, real keyboard/AT/contrast/200% zoom, Android/Gradle, load, signed APK, physical-device and human-pilot checks remain `NOT RUN` on the repaired head pending replacement CI. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; affected tasks stay `PARTIAL` with no credit.
 - Precise stopping point: code/test repair is independently GREEN and committed; only this append-only CI receipt and roadmap evidence entry are uncommitted while PR #483 still targets the failed old head.
 - Next action: commit exactly the three docs, verify implementation blob identity with a final independent review, then push the replacement head and wait for all new-head contexts.
+
+## 2026-09-28 — PR #483 restricted evidence timeline production release
+
+- Final independent receipt-integrity review returned GREEN with
+  `P0=P1=P2=P3=0` on exact PR head
+  `99ed0a3641e3f3c102e57459230d66a615794d6f`: 22 paths / 140,368
+  plain-binary bytes / SHA-256
+  `bc8370a821dc7b01fe0076c5c7a10455a35d5bbdecd77e812992dfcc926e1d39`.
+  All reviewed runtime/test/message blobs were unchanged after repair review;
+  only the three append-only receipts followed.
+- Replacement exact-head checks passed: `pr-scope`, `static-checks` including
+  the unit baseline, `typecheck`, `runner-policy` and `scan`. The PR
+  production-build job was skipped by policy and is not counted. PR #483
+  merged normally at `2026-09-28T20:25:23Z` as main
+  `90ad3df47b5e6703b80097afcd5dd74378d4e995`.
+- Deploy run `36479079543` completed SUCCESS at
+  `2026-09-28T20:51:41Z`. Quality/security, SHA-bound production build and
+  immutable artifact, atomic release, scheduler/tenant-isolation checks and
+  built-in ping/revision/login/assets smoke all passed.
+- Independent no-cache TLS checks forced `app.leaddrivecrm.org` to the only
+  registered production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`; `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=90ad3df47b5e6703b80097afcd5dd74378d4e995` and
+  `builtAt=2026-09-28T20:31:13Z`. No Azure, retired host, direct worktree copy
+  or direct production deploy was used.
+- Browser E2E, real keyboard/AT/contrast/200% zoom, Android/Gradle, load,
+  signed APK, physical-device and human-pilot checks remain `NOT RUN`.
+  Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%;
+  WF-C8-009/WF-C8-010/WF-C10-006 stay `PARTIAL` and receive no synthetic
+  credit.
+- In parallel, a read-only roadmap audit selected WF-C2-009 action-time
+  inter-site ordering as the next bounded slice. Its five-file working diff
+  received initial RED only for one P2 malformed-mode parser gap; the repair
+  now has replacement independent GREEN with zero P0-P3, 26,207 bytes and
+  focused 25/25 tests plus scoped ESLint and whitespace passing.
+- Precise stopping point: PR #483 is merged, deployed and exact-SHA verified;
+  this release receipt and the separately reviewed WF-C2-009 working diff are
+  uncommitted on `codex/workforce-site-transition-order-part5`.
+- Next action: checkpoint only the three release-receipt documents, then add
+  WF-C2-009 evidence, freeze its runtime/test diff and require a clean
+  author-independent exact-commit review before push or PR.
+
+## 2026-09-28 — WF-C2-009 action-time ordering working checkpoint
+
+- PR #483's production receipt was checkpointed separately as
+  `f8ed2ddb4` on the clean successor branch based on exact merged/deployed main
+  `90ad3df47b5e6703b80097afcd5dd74378d4e995`.
+- The next bounded backend slice wires immutable schedule order to site
+  transition intake. A later SITE arrival requires the earlier departure of
+  the exact previous SITE segment under tenant, employee and workday scope;
+  missing data returns a dedicated retryable conflict without transition or
+  audit writes. Exact replay remains before all schedule/geometry work.
+- Complete snapshotted circles produce only a conservative edge-to-edge
+  distance for the existing deterministic review-only evaluator. Extreme
+  speed records `IMPOSSIBLE_SITE_TRANSITION`; a simultaneous delayed claim
+  keeps `DELAYED_CLAIM` primary and exposes only the safe secondary code in
+  audit. Missing/invalid geometry produces no signal, and raw geometry,
+  distance or speed is absent from row/return/audit.
+- Initial independent review was RED with one P2: unknown modes and a non-SITE
+  site reference could pass the supposedly strict parser. The repair
+  allowlists all six modes, requires a site only for SITE and rejects duplicate
+  or contradictory snapshot history. Fresh replacement review returned GREEN
+  with `P0=P1=P2=P3=0` on five runtime/test files / 26,207 bytes / SHA-256
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Author and reviewer checks pass the focused 4 files / 25 tests, scoped
+  ESLint and whitespace. Full typecheck/suite/build, real PostgreSQL
+  concurrency, browser, Android/Gradle, load, physical-device and pilot checks
+  are `NOT RUN`; exact-head CI remains mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C2 73%, C5 81%, C6 20% and
+  C9 99%. WF-C2-009 stays `PARTIAL` pending frozen exact-head CI; no task or
+  gate credit is added.
+- Precise stopping point: all five runtime/test changes and initial evidence
+  are uncommitted but working-tree review is GREEN; there is no frozen
+  exact-commit verdict yet.
+- Next action: repeat focused verification, checkpoint only the eight task
+  paths, obtain a fresh complete-diff exact-commit GREEN review, then append
+  its receipt before push/PR.
+
+## 2026-09-28 — WF-C2-009 frozen integration review GREEN
+
+- Explicit implementation/evidence checkpoint
+  `6974b5ced4ad41097c5d08ae1de6b203c90e36e8` was clean and independently
+  GREEN from deployed main. Main then advanced through PR #485 only in three
+  unrelated MTM map/period paths; a normal conflict-free merge produced clean
+  integration head `4c3121ac4f042acca92bd6ebbb484209f10c4046` on exact fresh
+  main/merge-base `8de4e7e7c952740644ee8eb0755f680b949ddcbf`.
+- Fresh full integration review returned `P0=P1=P2=P3=0`. The exact PR diff
+  remains 9 paths / 42,937 plain-binary bytes / SHA-256
+  `4a65114f08790df5fc9128abe2a5b256f0329725558204136f31e40849eac0a5`.
+  Its five runtime/test paths are byte-identical to the repaired working-tree
+  GREEN: 26,207 bytes / SHA-256
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- All four documentation paths are append-only. Relative to current main the
+  merge contains only the nine reviewed task paths; its combined diff is empty
+  and it introduced no manual resolution. Reviewer repeated 4 files / 25
+  tests, scoped ESLint and exact-range whitespace.
+- Full TypeScript, full suite/build, real PostgreSQL concurrency/integration,
+  browser, Android/Gradle, load, physical-device and pilot checks remain
+  `NOT RUN`; exact-head CI is mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C2 73%, C5 81%, C6 20% and
+  C9 99%. WF-C2-009 remains `PARTIAL`; no credit is added before CI.
+- Precise stopping point: integrated runtime/test/evidence head is committed,
+  clean and independently GREEN; only this review receipt is uncommitted.
+- Next action: checkpoint the three receipt paths, require final
+  implementation-blob/fingerprint integrity GREEN, then push/open the
+  sub-400 KB PR and wait for every exact-head gate.

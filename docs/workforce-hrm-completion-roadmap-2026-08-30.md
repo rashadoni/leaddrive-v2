@@ -1528,3 +1528,94 @@ from this worktree.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%. WF-C8-009/WF-C8-010/WF-C10-006 remain `PARTIAL`; no credit changes.
 - Precise stopping point: repaired code/test head is independently GREEN; this three-document CI/review receipt is the only working-tree delta and PR #483 still points to the rejected old head.
 - Next action: checkpoint the receipt, obtain final implementation-blob/fingerprint integrity GREEN, push the replacement head and require every exact-head context to rerun.
+
+## 2026-09-28 — PR #483 restricted evidence timeline production release
+
+- Final independent receipt-integrity review was GREEN with zero P0-P3 at
+  exact head `99ed0a3641e3f3c102e57459230d66a615794d6f`: 22 paths / 140,368
+  plain-binary bytes / SHA-256
+  `bc8370a821dc7b01fe0076c5c7a10455a35d5bbdecd77e812992dfcc926e1d39`.
+- Exact-head `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and
+  `scan` passed. The PR production-build job was skipped by policy. PR #483
+  merged normally at `2026-09-28T20:25:23Z` as main
+  `90ad3df47b5e6703b80097afcd5dd74378d4e995`.
+- Deploy run `36479079543` completed SUCCESS at
+  `2026-09-28T20:51:41Z`, including quality/security, immutable SHA-bound
+  build/artifact, atomic production deployment, scheduler and tenant-isolation
+  verification, and built-in post-deploy smoke.
+- Independent no-cache HTTPS checks pinned the public hostname to registered
+  production `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and
+  build-info returned HTTP 200 with exact
+  `artifactSha=90ad3df47b5e6703b80097afcd5dd74378d4e995` and
+  `builtAt=2026-09-28T20:31:13Z`. Only GitHub `main` through `deploy.yml` was
+  used.
+- Browser E2E, real keyboard/AT/contrast/200% zoom, Android/Gradle, load,
+  signed APK, physical-device and pilot evidence remain `NOT RUN`. Progress
+  remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%;
+  WF-C8-009/WF-C8-010/WF-C10-006 stay `PARTIAL` with no synthetic credit.
+- Precise stopping point: PR #483 is independently reviewed, merged, deployed
+  and exact-SHA production-verified; its append-only release receipt is
+  uncommitted on successor branch `codex/workforce-site-transition-order-part5`.
+- Next action: checkpoint the release receipt, then finish and freeze the
+  independently preflighted sub-400 KB WF-C2-009 action-time ordering and
+  review-only impossible-transition slice.
+
+## 2026-09-28 — WF-C2-009 action-time ordering working checkpoint
+
+- PR #483's exact-SHA release receipt was checkpointed as
+  `f8ed2ddb4` on successor branch
+  `codex/workforce-site-transition-order-part5` from merged/deployed main
+  `90ad3df47b5e6703b80097afcd5dd74378d4e995`.
+- The bounded backend slice now requires an earlier tenant/employee/workday
+  scoped departure from the exact previous immutable SITE segment before a
+  later SITE arrival. Replay remains first; a missing predecessor is a
+  write-free retryable conflict.
+- Complete immutable circle snapshots feed the existing review-only evaluator
+  with conservative edge-to-edge distance. Impossible speed is a review hint,
+  not rejection or guilt; delayed claims keep `DELAYED_CLAIM` primary and only
+  the safe secondary risk code reaches audit. Missing geometry invents no
+  signal and raw geometry/measurements never enter the row, response or audit.
+- Initial independent preflight returned RED for one P2 malformed-mode gap.
+  Strict six-mode, SITE-only-site, duplicate and malformed fail-closed parsing
+  repaired it. Replacement independent review is GREEN with zero P0-P3 on
+  five runtime/test files / 26,207 bytes / SHA-256
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Focused author checks pass 4 files / 25 tests, scoped ESLint and whitespace.
+  Full typecheck/suite/build, real PostgreSQL concurrency, browser, Android,
+  load, physical-device and pilot checks remain `NOT RUN`; exact-head CI is
+  mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C2 73%, C5 81%, C6 20% and
+  C9 99%. WF-C2-009 stays `PARTIAL` until frozen exact-head CI passes; no
+  provisional task or gate credit is added.
+- Precise stopping point: the repaired runtime/test diff is independently
+  GREEN and the initial evidence is present, but the explicit task paths are
+  uncommitted and no frozen exact-commit review exists.
+- Next action: checkpoint the explicit WF-C2-009 paths, prove the frozen diff
+  and append-only receipts independently, then push/open a sub-400 KB PR and
+  require every exact-head gate.
+
+## 2026-09-28 — WF-C2-009 frozen integration review GREEN
+
+- Checkpoint `6974b5ced4ad41097c5d08ae1de6b203c90e36e8` received frozen
+  author-independent GREEN. During review, main advanced through unrelated PR
+  #485 MTM map/period paths; a normal conflict-free merge produced clean head
+  `4c3121ac4f042acca92bd6ebbb484209f10c4046` on exact current main/merge-base
+  `8de4e7e7c952740644ee8eb0755f680b949ddcbf`.
+- Fresh integration review returned `P0=P1=P2=P3=0`. The PR diff remains
+  exactly 9 task paths / 42,937 plain-binary bytes / SHA-256
+  `4a65114f08790df5fc9128abe2a5b256f0329725558204136f31e40849eac0a5`;
+  the five runtime/test blobs still match the prior GREEN 26,207-byte
+  fingerprint `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Reviewer repeated 4 files / 25 tests, scoped ESLint and exact-range
+  whitespace. All four documents remain append-only; the merge commit adds no
+  manual conflict resolution or unrelated PR-diff path.
+- Full TypeScript, full suite/build, PostgreSQL integration, browser, Android,
+  load, physical-device and pilot checks remain `NOT RUN`; exact-head CI is
+  mandatory. Progress stays `DONE 81/161`, `GATES 14/15`, C2 73%, C5 81%,
+  C6 20% and C9 99%; WF-C2-009 remains `PARTIAL` with no provisional credit.
+- Precise stopping point: the integrated source/test/evidence head is clean
+  and independently GREEN; only this three-document review receipt is
+  uncommitted.
+- Next action: checkpoint the receipt, independently prove source/test blob
+  identity and final fingerprint, then push/open the PR and require all
+  exact-head contexts.
