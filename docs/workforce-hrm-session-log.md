@@ -1232,3 +1232,14 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: the independently GREEN source/test/evidence checkpoint is committed; only this receipt-only delta is uncommitted.
 - Next action: checkpoint the three documentation paths, independently verify implementation blob identity and final fingerprint, then push/open the exact-head PR.
+
+## 2026-09-28 — PR #481 released; response-cycle uniqueness is live
+
+- Final independent receipt-integrity review returned GREEN with P0=P1=P2=P3=0 on exact head `d768dc167a65123c1a590c0889c841ec8b6205bf`. It reproduced nine paths / 48,325 plain-binary bytes / SHA-256 `5c1c5c960195ff70bb3b2f75cda5e7b1214a5708fa74f746e6d13d5ad9730aa6` and proved all six reviewed implementation/test/runbook blobs unchanged.
+- All exact-head PR contexts passed: `pr-scope`, `static-checks` including real PostgreSQL and unit baseline, `typecheck`, `runner-policy`, `scan` and tenant-cascade PostgreSQL integration. PR #481 merged at `2026-09-28T15:01:32Z` as main `f6b4c06dad08c72534174a8c004c325c417238cf`.
+- Deploy run `36440433296` succeeded end to end. Production safely exposed the previously unknown defaults as `0|0`, the reviewed helper reconciled only them and proved `10s|14min` through a fresh session. Both response-cycle global fences passed, backup `backup-20260928-172602` completed, migration `20260928123000_workforce_exception_response_cycle_unique_index` applied and the exact postcondition passed. Quality/security, SHA-bound build, atomic deploy, schedulers, tenant isolation, built-in ping/revision/login/assets smoke and retention cleanup all passed.
+- Independent no-cache HTTPS requests pinned to `13.140.132.245` returned ping HTTP 200 `{"ok":true}` and build-info HTTP 200 with exact `artifactSha=f6b4c06dad08c72534174a8c004c325c417238cf`, `builtAt=2026-09-28T15:09:20Z`. No Azure, retired host, direct copy or direct production deploy was used.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot checks remain `NOT RUN`. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` with no added credit.
+- Read-only next-slice design audit selected Android revision-bound acknowledgement with encrypted delivery. A compatibility finding requires dedicated persisted pending-state aliases so an older APK ignores the new domain instead of retrying an unknown-domain row indefinitely; no Room schema bump is needed.
+- Precise stopping point: production serves exact merged main and this release receipt is uncommitted on clean successor branch `codex/workforce-android-exception-response`.
+- Next action: checkpoint the three append-only receipts, then implement and independently review the bounded Android source/test/i18n slice before push or PR.

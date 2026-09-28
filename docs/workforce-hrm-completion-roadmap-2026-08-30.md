@@ -1448,3 +1448,13 @@ from this worktree.
 - Progress stays `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: implementation/evidence checkpoint is independently GREEN; only this three-document review receipt is uncommitted.
 - Next action: checkpoint the receipt, obtain final blob-integrity/fingerprint proof, then push/open the PR and wait for all exact-head contexts.
+
+## 2026-09-28 — PR #481 remediation and exact-SHA production release
+
+- Final receipt-integrity review was GREEN with zero P0-P3 at head `d768dc167a65123c1a590c0889c841ec8b6205bf`: nine paths / 48,325 plain-binary bytes / SHA-256 `5c1c5c960195ff70bb3b2f75cda5e7b1214a5708fa74f746e6d13d5ad9730aa6`; all six reviewed non-receipt blobs were unchanged.
+- PR #481 passed scope, 10m37s static/unit and real PostgreSQL Workforce gates, 14m16s typecheck, runner policy, scan and tenant-cascade integration. It merged normally at `2026-09-28T15:01:32Z` as main `f6b4c06dad08c72534174a8c004c325c417238cf`.
+- Deploy run `36440433296` completed SUCCESS at `2026-09-28T15:28:29Z`. The helper observed accepted legacy `0|0`, reconciled and fresh-session proved `10s|14min`; both global Workforce fences passed; backup `backup-20260928-172602` was created; migration `20260928123000_workforce_exception_response_cycle_unique_index` applied; and its exact unique-ledger/data/index postcondition passed before the process swap completed.
+- Built-in smoke passed. Independent no-cache requests forced `app.leaddrivecrm.org` to `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and build-info returned HTTP 200 with exact `artifactSha=f6b4c06dad08c72534174a8c004c325c417238cf` and `builtAt=2026-09-28T15:09:20Z`. Only GitHub `main` through `deploy.yml` was used.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and pilot evidence remain `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 stays `PARTIAL` and this release adds no synthetic acceptance credit.
+- Precise stopping point: PR #481 is independently reviewed, merged, deployed and exact-SHA production-verified; this append-only release receipt is uncommitted on successor branch `codex/workforce-android-exception-response`.
+- Next action: checkpoint the release receipt, then implement the bounded Android revision-bound acknowledgement/encrypted-outbox slice for WF-C9-006, WF-C6-006, WF-C9-010 and WF-C9-012 as a separate sub-400 KB reviewable PR.
