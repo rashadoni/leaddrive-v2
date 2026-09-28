@@ -8,9 +8,10 @@ import {
 } from "@/lib/ai/voice/action-registry"
 
 describe("AI voice action registry", () => {
-  // Seven since 2026-09-21: the owner asked for tasks and deals to be edited
-  // by voice like leads. Growing this list is a decision, so it stays pinned.
-  it("is a closed seven-action allowlist with no executable callback", () => {
+  // Eight since 2026-09-28: tasks and deals are edited by voice (2026-09-21),
+  // and a deal can be moved between the stages of its own pipeline. Growing
+  // this list is a decision, so it stays pinned.
+  it("is a closed eight-action allowlist with no executable callback", () => {
     expect(AI_VOICE_ACTION_TYPES).toEqual([
       "create_task",
       "create_lead",
@@ -19,6 +20,7 @@ describe("AI voice action registry", () => {
       "convert_lead_to_deal",
       "update_task",
       "update_deal",
+      "move_deal_stage",
     ])
     expect(Object.keys(AI_VOICE_ACTION_REGISTRY)).toEqual(AI_VOICE_ACTION_TYPES)
     expect(isAiVoiceActionType("create_lead")).toBe(true)
@@ -47,12 +49,28 @@ describe("AI voice action registry", () => {
     }
   })
 
-  // A stage move can mark a deal won: cashback, surveys, loyalty. Not by voice.
+  // A stage move can mark a deal won: cashback, surveys, loyalty. It is its own
+  // receipt, and an ordinary deal edit still cannot reach it.
   it("keeps stage, pipeline and probability out of a voice deal update", () => {
     const fields = getAiVoiceActionDefinition("update_deal").allowedFields
     for (const field of ["stage", "pipelineId", "probability", "lostReason", "meddpicc"]) {
       expect(fields, field).not.toContain(field)
     }
+  })
+
+  it("lets a stage move change the stage and nothing else", () => {
+    const definition = getAiVoiceActionDefinition("move_deal_stage")
+    expect(definition).toMatchObject({
+      command: "updateDealCommand",
+      risk: "sensitive",
+      dedupePolicy: "target_revision",
+      resultEntityType: "deal",
+      target: { entityType: "deal", bindExpectedUpdatedAt: true },
+    })
+    expect([...definition.allowedFields].sort()).toEqual(["expectedUpdatedAt", "lostReason", "stage"])
+    // The probability rides along with the stage inside the command; a voice
+    // caller may not set it directly.
+    expect(definition.allowedFields).not.toContain("probability")
   })
 
   it("maps every action to its canonical CRM command and risk policy", () => {

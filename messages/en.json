@@ -24301,6 +24301,7 @@
       "contactId": "Contact",
       "campaignId": "Campaign",
       "stage": "Stage",
+      "lostReason": "Reason for losing",
       "valueAmount": "Amount",
       "currency": "Currency",
       "probability": "Probability",
@@ -24379,6 +24380,7 @@
         "update_lead": "Update lead",
         "update_task": "Update task",
         "update_deal": "Update deal",
+        "move_deal_stage": "Move deal",
         "create_deal": "Create deal",
         "convert_lead_to_deal": "Convert lead into deal"
       },
@@ -24388,11 +24390,14 @@
         "update_lead": "Save changes",
         "update_task": "Save task",
         "update_deal": "Save deal",
+        "move_deal_stage": "Move the deal",
         "create_deal": "Create deal",
         "convert_lead_to_deal": "Convert into deal"
       },
       "warning": {
-        "POSSIBLE_DUPLICATE": "A similar record already exists:"
+        "POSSIBLE_DUPLICATE": "A similar record already exists:",
+        "DEAL_STAGE_WON": "This marks the deal won: cashback becomes payable, the customer gets a satisfaction survey and loyalty points are awarded.",
+        "DEAL_STAGE_LOST": "This marks the deal lost and takes its contact out of running cadences."
       },
       "result": {
         "done": "Done. The record has been saved.",

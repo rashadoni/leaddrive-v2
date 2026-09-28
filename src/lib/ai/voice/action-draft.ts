@@ -513,6 +513,7 @@ async function resolveDealTarget(auth: AuthResult, targetEntityId: string): Prom
     status: deal.stage,
     updatedAt: deal.updatedAt,
     before: {
+      stage: deal.stage,
       name: deal.name,
       companyId: deal.companyId,
       contactId: deal.contactId,
@@ -807,11 +808,32 @@ function phoneVariants(...values: Array<unknown>): string[] {
   return [...variants]
 }
 
+/**
+ * What the user is about to set off, when a stage move is terminal.
+ *
+ * Winning a deal is not an edit: it pays cashback to the contacts who have a
+ * role on it, sends the customer a satisfaction survey, awards loyalty points
+ * and takes the contact out of its cadences. None of that is visible in
+ * "stage: NEGOTIATION → WON", so the receipt says it in words.
+ */
+async function stageMoveWarnings(auth: AuthResult, payload: JsonObject): Promise<unknown[]> {
+  const stageName = typeof payload.stage === "string" ? payload.stage : ""
+  if (!stageName) return []
+  const stage = await prisma.pipelineStage.findFirst({
+    where: { organizationId: auth.orgId, name: stageName, isActive: true },
+    select: { isWon: true, isLost: true },
+  })
+  if (stage?.isWon) return [{ code: "DEAL_STAGE_WON" }]
+  if (stage?.isLost) return [{ code: "DEAL_STAGE_LOST" }]
+  return []
+}
+
 async function duplicateWarnings(
   auth: AuthResult,
   actionType: AiVoiceActionType,
   payload: JsonObject,
 ): Promise<unknown[]> {
+  if (actionType === "move_deal_stage") return stageMoveWarnings(auth, payload)
   if (actionType === "create_lead") {
     const email = typeof payload.email === "string" ? payload.email.trim() : ""
     const phones = phoneVariants(payload.phone, payload.phoneWhatsApp)

@@ -18,6 +18,12 @@ export interface CrmCommandActorContext {
   source: CrmCommandSource
   requestId?: string
   voiceSessionId?: string
+  /**
+   * Which voice action the receipt described. Commands shared by more than one
+   * of them (a deal edit and a stage move) use it to pick the closed field
+   * list, so each receipt can only perform what it showed.
+   */
+  voiceAction?: string
   actionIntentId?: string
   providerToolCallId?: string
 }

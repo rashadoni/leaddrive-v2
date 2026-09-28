@@ -14,6 +14,7 @@ const deps = vi.hoisted(() => ({
   dealFindFirst: vi.fn(),
   userFindMany: vi.fn(async () => [] as Array<{ id: string; name: string | null; email: string }>),
   companyFindMany: vi.fn(async () => [] as Array<{ id: string; name: string }>),
+  pipelineStageFindFirst: vi.fn<() => Promise<{ isWon: boolean; isLost: boolean } | null>>(async () => null),
   contactFindMany: vi.fn(async () => [] as Array<{ id: string; fullName: string }>),
   fieldPermissionFindMany: vi.fn<
     () => Promise<Array<{ fieldName: string; access: string }>>
@@ -48,6 +49,7 @@ vi.mock("@/lib/prisma", () => {
       task: { findFirst: deps.taskFindFirst },
       user: { findMany: deps.userFindMany },
       company: { findMany: deps.companyFindMany },
+      pipelineStage: { findFirst: deps.pipelineStageFindFirst },
       contact: { findMany: deps.contactFindMany },
       fieldPermission: { findMany: deps.fieldPermissionFindMany },
     },
@@ -368,6 +370,61 @@ describe("AI voice action draft service", () => {
       },
       { key: "valueAmount", labelKey: "ai.voice.actions.fields.valueAmount", before: 1000, after: 2000 },
     ])
+  })
+
+  // Winning a deal pays cashback, surveys the customer and awards loyalty.
+  // "stage: Negotiation → WON" says none of that, so the receipt carries a
+  // warning the assistant reads out before the user answers.
+  it("warns on the receipt when a stage move wins or loses the deal", async () => {
+    const dealRow = {
+      id: "deal-1", name: "Azmart", companyId: null, contactId: null, valueAmount: 1000,
+      currency: "AZN", expectedClose: null, assignedTo: null, notes: null, stage: "Negotiation",
+      updatedAt: new Date("2026-09-28T09:00:00.000Z"),
+    }
+    deps.dealFindFirst.mockResolvedValue(dealRow)
+    deps.pipelineStageFindFirst.mockResolvedValueOnce({ isWon: true, isLost: false })
+
+    await createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "move_deal_stage",
+      targetEntityId: "deal-1",
+      payload: { stage: "WON" },
+      idempotencyKey: "draft:stage:0001",
+    })
+    const won = deps.intentCreate.mock.calls[0]?.[0]?.data
+    expect(won.warnings).toEqual([{ code: "DEAL_STAGE_WON" }])
+    // And it shows what the stage is moving from, not just where to.
+    expect(won.preview.fields).toEqual([
+      { key: "stage", labelKey: "ai.voice.actions.fields.stage", before: "Negotiation", after: "WON" },
+    ])
+
+    deps.intentCreate.mockClear()
+    deps.pipelineStageFindFirst.mockResolvedValueOnce({ isWon: false, isLost: true })
+    await createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "move_deal_stage",
+      targetEntityId: "deal-1",
+      payload: { stage: "LOST", lostReason: "too expensive" },
+      idempotencyKey: "draft:stage:0002",
+    })
+    expect(deps.intentCreate.mock.calls[0]?.[0]?.data.warnings).toEqual([{ code: "DEAL_STAGE_LOST" }])
+  })
+
+  it("says nothing extra for an ordinary stage move", async () => {
+    deps.dealFindFirst.mockResolvedValue({
+      id: "deal-1", name: "Azmart", companyId: null, contactId: null, valueAmount: 1000,
+      currency: "AZN", expectedClose: null, assignedTo: null, notes: null, stage: "LEAD",
+      updatedAt: new Date("2026-09-28T09:00:00.000Z"),
+    })
+    deps.pipelineStageFindFirst.mockResolvedValueOnce({ isWon: false, isLost: false })
+    await createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "move_deal_stage",
+      targetEntityId: "deal-1",
+      payload: { stage: "NEGOTIATION" },
+      idempotencyKey: "draft:stage:0003",
+    })
+    expect(deps.intentCreate.mock.calls[0]?.[0]?.data.warnings).toEqual([])
   })
 
   it("fails closed when the role, tenant module, field, or session cannot authorize the draft", async () => {
