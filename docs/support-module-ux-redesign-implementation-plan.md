@@ -3311,7 +3311,7 @@ Workstream 14 is **DONE**.
 
 ## 21A. Workstream 15 — Support AI Settings
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `99fec139c`; browser/CI gates pending**
+**Status: IN PROGRESS — current-tree recovery `d22c2a545`; self-audit complete, exact-SHA browser/CI gates pending**
 **Route:** `/support/ai-settings`
 **Primary file:** `src/app/(dashboard)/support/ai-settings/page.tsx`
 
@@ -3437,6 +3437,44 @@ Additional recovery evidence (2026-09-06):
   keyboard/focus, physical-touch, reduced-motion, accessibility, performance
   and visual evidence therefore remains **NOT RUN**, and every SUPUX-AI
   checkbox remains open.
+
+Current-tree recovery and self-audit (2026-09-28):
+
+- The product patch already existed in the current branch as a stronger
+  `SupportPageShell`-based superset, so its historical cherry-pick was empty and
+  deliberately skipped. Recovery checkpoint `d22c2a545` adds the missing flow
+  contract while preserving the current 24-cell workflow, shared screenshot
+  utility, performance gates, customer-portal flow and navigation flow.
+- The initial technical audit scored 17/20 (Accessibility 2, Performance 4,
+  Responsive 3, Theming 4, Anti-patterns 4). P1 findings were the switch's
+  36x20 physical box despite a pseudo-element hit-area claim, synthetic
+  Playwright `.click()` mutation evidence, and a dialog marker placed on a
+  component that does not forward arbitrary DOM attributes. P2 findings were a
+  40 px persistent Retry target and an immediate focus-return assertion prone
+  to dialog cleanup timing.
+- The actual switch root is now a 44x44 keyboard/focus/touch surface containing
+  the compact semantic-token track and thumb. Persistent Retry is 44 px high;
+  the disable-consequence marker lives on a real nested DOM element. The flow
+  uses keyboard activation on desktop and real `page.touchscreen.tap()` center
+  points elsewhere after 44x44 measurement and `elementFromPoint` hit-testing.
+  It records every activation and observes focus return for up to 2.5 seconds
+  without focusing the control itself. First-run tours are dismissed at both
+  workspace and transient-error recovery boundaries.
+- A dedicated fail-closed `Validate section-scoped Support AI Settings
+  evidence` step now runs before fixtures/build/capture for a one-scenario
+  dispatch. It covers flow/browser/screenshot syntax, section and shared-shell
+  anti-pattern scan, i18n parity, scoped ESLint, role/entitlement/API/execution-
+  boundary/UX tests and shared evidence contracts. The flow contract pins the
+  step, root, real input modalities, size/hit checks and absence of `.click()`
+  and `.check()`.
+- Corrected audit score is 20/20. Local gates are green: flow syntax; section
+  anti-pattern scan across three visible TSX files with 0 findings; AZ/RU/EN
+  parity at 23,599 keys; focused ESLint; 195/195 assertions in 15 suites;
+  workflow YAML parsing with all 25 embedded shell blocks passing `bash -n`;
+  and `git diff --check`. Full local build/browser remain **NOT RUN** under the
+  Contabo workload rule and are mandatory in GitHub Actions. The known 55
+  findings outside this section remain assigned to the pending customer-portal/
+  ticket-closure release gate rather than waived.
 
 ## 21B. Cross-surface Track — Customer Support Portal
 

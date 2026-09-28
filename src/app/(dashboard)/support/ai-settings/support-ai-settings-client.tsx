@@ -214,7 +214,7 @@ export function SupportAiSettingsClient() {
       {notice && (
         <div role="status" aria-live="polite" className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${notice.kind === "error" ? "border-destructive/40 text-destructive" : ""}`} data-testid="support-ai-settings-notice" data-kind={notice.kind}>
           <span className="flex-1">{notice.text}</span>
-          {notice.retryEnabled !== null && <Button type="button" variant="outline" className="min-h-10" onClick={retrySave} disabled={saving} data-testid="support-ai-settings-save-retry"><RefreshCw aria-hidden="true" />{t("retry")}</Button>}
+          {notice.retryEnabled !== null && <Button type="button" variant="outline" className="min-h-11" onClick={retrySave} disabled={saving} data-testid="support-ai-settings-save-retry"><RefreshCw aria-hidden="true" />{t("retry")}</Button>}
         </div>
       )}
 
@@ -236,7 +236,7 @@ export function SupportAiSettingsClient() {
             {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />}
             <Switch
               data-testid="support-ai-master-switch"
-              className="relative before:absolute before:-inset-x-1.5 before:-inset-y-3 before:content-[''] motion-reduce:transition-none [&>span]:motion-reduce:transition-none"
+              className="relative h-11 w-11 border-0 bg-transparent shadow-none transition-none before:absolute before:left-1 before:top-3 before:h-5 before:w-9 before:rounded-full before:border-2 before:border-transparent before:bg-input before:shadow-sm before:transition-colors before:content-[''] data-[state=checked]:bg-transparent data-[state=checked]:before:bg-primary data-[state=unchecked]:bg-transparent motion-reduce:before:transition-none [&>span]:absolute [&>span]:left-1.5 [&>span]:top-3.5 [&>span]:motion-reduce:transition-none"
               checked={enabled}
               onCheckedChange={requestToggle}
               disabled={saving}
@@ -317,8 +317,8 @@ export function SupportAiSettingsClient() {
           <DialogTitle>{t("confirmTitle")}</DialogTitle>
           <DialogDescription>{t("confirmDescription")}</DialogDescription>
         </DialogHeader>
-        <DialogContent className="space-y-3 py-3" data-testid="support-ai-disable-dialog">
-          <div className="rounded-lg border p-3 text-sm">
+        <DialogContent className="space-y-3 py-3">
+          <div data-testid="support-ai-disable-dialog" className="rounded-lg border p-3 text-sm">
             <p><span className="font-medium">{t("immediateLabel")}:</span> {t("confirmImmediate")}</p>
             <p className="mt-2"><span className="font-medium">{t("nextJobLabel")}:</span> {t("confirmNextJob")}</p>
           </div>

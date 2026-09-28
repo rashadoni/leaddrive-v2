@@ -2477,3 +2477,38 @@ Workstream 14 is **DONE**.
 Next: checkpoint and push the WS14 closure record, then restore and self-audit
 Workstream 15 Support AI Settings from product `b280e6c83` and recovery
 `99fec139c` without replacing the current workflow/browser evidence superset.
+
+### Workstream 15 current-tree recovery and self-audit
+
+- Historical product `b280e6c83` was already present in the current tree as a
+  stronger superset, including `SupportPageShell`, persistent failure feedback
+  and terminal-permission handling. Its cherry-pick became empty after current-
+  tree conflict resolution and was skipped rather than reverting those later
+  guarantees. Recovery contract checkpoint `d22c2a545` was restored while the
+  current workflow/browser/screenshot/performance/customer-portal/navigation
+  superset was retained.
+- Initial audit score was 17/20 (Accessibility 2, Performance 4, Responsive 3,
+  Theming 4, Anti-patterns 4). It found a 36x20 real switch box hidden behind a
+  pseudo-element touch claim, 40 px persistent Retry, synthetic `.click()` flow
+  activation, a non-forwarded dialog marker and an immediate focus-return check.
+- The switch root and Retry are now true 44 px controls. The compact switch
+  track/thumb remain visually unchanged inside the larger semantic control; the
+  consequence marker moved to a real DOM node. Desktop evidence uses keyboard
+  activation, non-desktop evidence uses Playwright touchscreen center taps only
+  after 44x44 measurement and DOM hit-testing, and every activation is recorded.
+  Focus restoration is observed for up to 2.5 seconds without being forced.
+- A section-scoped Support AI Settings workflow gate now runs syntax, the
+  section/shared-shell anti-pattern scope, AZ/RU/EN parity, scoped ESLint,
+  authorization/API/execution-boundary/UX tests and shared evidence contracts
+  before fixtures, production build or capture. Its contract requires the gate,
+  physical input proof and zero `.click()`/`.check()` calls.
+- Corrected audit score is 20/20. Flow syntax, the three-file anti-pattern scan
+  (0 findings), i18n parity at 23,599 keys, focused ESLint, 195/195 assertions
+  in 15 suites, workflow YAML plus all 25 shell blocks, and `git diff --check`
+  are green. Full build/browser remain **NOT RUN** locally under the Contabo
+  workload contract; GitHub Actions is mandatory. The unrelated 55 pending
+  customer-portal/ticket-closure scan findings remain a final release gate.
+
+Next: checkpoint and push the WS15 self-audit corrections, then run exact-SHA
+desktop, RU/dark physical-touch mobile and complete 24-cell high-profile Support
+AI Settings evidence before checking SUPUX-AI-001..008.

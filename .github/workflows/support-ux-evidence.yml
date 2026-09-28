@@ -877,6 +877,66 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts
 
+      - name: Validate section-scoped Support AI Settings evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'support-ai-settings') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/support/ai-settings,
+            src/components/support/support-page-shell.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-ai-settings-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-ai-settings-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/support/ai-settings/page.tsx \
+            src/app/\(dashboard\)/support/ai-settings/support-ai-settings-client.tsx \
+            src/app/api/v1/settings/ai-features/route.ts \
+            src/app/api/v1/support/ai-settings/route.ts \
+            src/components/support/support-page-shell.tsx \
+            src/lib/ai/support-settings-access.ts \
+            src/__tests__/api-settings-ai-features.test.ts \
+            src/__tests__/api-support-ai-settings.test.ts \
+            src/__tests__/api-tickets-sub.test.ts \
+            src/__tests__/lib-support-settings-access.test.ts \
+            src/__tests__/nav-items.test.ts \
+            src/__tests__/support-ai-execution-boundary.test.ts \
+            src/__tests__/support-ai-page-access.test.ts \
+            src/__tests__/support-ai-settings-ux-contract.test.ts \
+            src/__tests__/support-ux-ai-settings-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-settings-ai-features.test.ts \
+            src/__tests__/api-support-ai-settings.test.ts \
+            src/__tests__/api-tickets-sub.test.ts \
+            src/__tests__/lib-support-settings-access.test.ts \
+            src/__tests__/nav-items.test.ts \
+            src/__tests__/support-ai-execution-boundary.test.ts \
+            src/__tests__/support-ai-page-access.test.ts \
+            src/__tests__/support-ai-settings-ux-contract.test.ts \
+            src/__tests__/support-ux-ai-settings-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
         run: |
