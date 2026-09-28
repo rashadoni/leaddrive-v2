@@ -131,3 +131,31 @@ lock-order, replay, revision, delegate, PostgreSQL harness, API containment or
 scope defect. That rejected verdict grants no merge authority. This correction
 requires a new checkpoint and replacement frozen review from the complete
 base/head diff.
+
+## Replacement frozen complete-diff review GREEN
+
+The fresh replacement author-independent review returned GREEN with zero
+P0-P3 findings on exact base/live main/local `origin/main`/merge-base
+`147369b5027b9dae7b5a6cb25d9f82711fbdb43b` through clean head
+`af345a337885ca07fe83e1a0a6dad0572cb05330`. It independently reproduced the
+complete plain-binary identity: seven paths / 52,498 bytes / SHA-256
+`6cce6d11115b7994488b961c564cbb953720504935ce3106bd8c28335059c5bc`,
+below 400 KB.
+
+All runtime, test and document paths were inspected. The reviewer reconfirmed
+writer order, exact replay, same-revision different-operation conflict,
+later-revision eligibility, delegate/index scope, PostgreSQL winner/waiter
+harness, existing web/mobile private-409 containment, narrow scope, PR #473
+release evidence and disjoint PR #476/#467 integration. It also independently
+reproduced both corrected historical fingerprints and the rejected
+`--full-index` value, confirming that every P3 reference is explicitly
+superseded.
+
+Reviewer-side Git identity/live-main checks, complete diff review, byte/hash
+measurement, whitespace, blob integrity, schema/index/API static inspection,
+package-lock identity and read-only GitHub receipt checks passed. Dependency
+tests, ESLint, real PostgreSQL, typecheck/build, browser, Android, load,
+physical-device and pilot checks were `NOT RUN` reviewer-side; author results
+were not relabelled. Closing state was clean with no main drift. This receipt
+changes documentation only and requires one final receipt-integrity proof
+before push.

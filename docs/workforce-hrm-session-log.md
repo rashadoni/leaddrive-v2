@@ -1106,3 +1106,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - The RED verdict is retained and grants no merge authority. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: all four bad-fingerprint references are append-only superseded in the working tree, but the correction is not checkpointed and no valid frozen review exists.
 - Next action: checkpoint only the three corrected evidence paths, calculate the clean final identity with plain `git diff --binary`, and obtain a full replacement independent GREEN before any push or PR.
+
+## 2026-09-28 — C6 cycle-dedup replacement frozen review GREEN
+
+- Fresh author-independent review from the complete corrected diff returned GREEN with zero P0-P3 findings on exact base/live main/local `origin/main`/merge-base `147369b5027b9dae7b5a6cb25d9f82711fbdb43b` through clean head `af345a337885ca07fe83e1a0a6dad0572cb05330`.
+- Independent identity matched seven paths / 52,498 plain `git diff --binary` bytes / SHA-256 `6cce6d11115b7994488b961c564cbb953720504935ce3106bd8c28335059c5bc`, below 400 KB. It also reproduced the correct pre-receipt and rejected-head fingerprints plus the superseded `--full-index` value.
+- All runtime/test/docs paths passed static review: authorization/lock/replay/lifecycle/topology/cycle/create/audit order, same-cycle different-UUID conflict, later-revision eligibility, existing index, PostgreSQL race harness, private API containment, no schema/route/UI/rollout expansion, PR #473 receipt and disjoint PR #476/#467 integration.
+- Reviewer-side Git/live-main, full diff, identity, whitespace, blob integrity, schema/index/API source, package-lock and GitHub receipt checks passed. Dependency tests, ESLint, real PostgreSQL, typecheck/build, browser, Android, load/device/pilot were `NOT RUN` reviewer-side; author evidence remains separately labelled.
+- Closing state remained clean and drift-free. Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
+- Precise stopping point: the exact current-main corrected source/test/evidence checkpoint has valid independent GREEN; only this three-document review receipt is uncommitted and the branch is not pushed.
+- Next action: checkpoint this receipt, obtain independent receipt-integrity proof that all three reviewed runtime/test blobs are byte-identical, then push/open the sub-400 KB PR and wait for every exact-head check including real PostgreSQL.
