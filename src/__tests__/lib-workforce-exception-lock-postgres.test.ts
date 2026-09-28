@@ -704,6 +704,18 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
           `, args.where.organizationId, args.where.agentId, args.where.clientResponseId)
           return rows[0] ?? null
         },
+        findMany: async (args) => tx.$queryRawUnsafe<Array<{ id: string }>>(`
+          SELECT "id"
+            FROM "${schema}"."employee_responses"
+           WHERE "organization_id" = $1
+             AND "case_id" = $2
+             AND "observed_case_revision" = $3
+           LIMIT $4
+        `,
+        args.where.organizationId,
+        args.where.caseId,
+        args.where.observedCaseRevision,
+        args.take),
         create: async ({ data }) => {
           await hooks.onCreate?.()
           const id = `response-${randomUUID()}`
@@ -1607,6 +1619,115 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
        WHERE "organization_id" = $1 AND "agent_id" = $2 AND "client_response_id" = $3
     `, organizationId, agentId, clientResponseId)
     expect(responseCount).toBe(0n)
+  }, 15_000)
+
+  it("allows only one different-id employee response in the same locked case revision", async () => {
+    const caseId = `response-cycle-${randomUUID()}`
+    const agentId = `response-cycle-agent-${randomUUID()}`
+    const winnerClientResponseId = randomUUID()
+    const waiterClientResponseId = randomUUID()
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."case_decisions" (
+        "organization_id", "case_id", "decisions"
+      ) VALUES ($1, $2, '["REQUEST_EMPLOYEE_RESPONSE"]'::jsonb)
+    `, organizationId, caseId)
+
+    let createCount = 0
+    let auditCount = 0
+    const winnerInserted = deferred<void>()
+    const releaseWinner = deferred<void>()
+    const winner = terminalClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      return appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+        db: employeeResponseDb(tx, {
+          onCreate: () => { createCount += 1 },
+          onAudit: async () => {
+            auditCount += 1
+            winnerInserted.resolve()
+            await releaseWinner.promise
+          },
+        }),
+        draft: {
+          organizationId,
+          caseId,
+          agentId,
+          workdayId: "workday-response-cycle",
+          segmentId: null,
+          correctionRequestId: null,
+          responseCode: "ACKNOWLEDGED",
+          clientResponseId: winnerClientResponseId,
+          actorUserId: "employee-user",
+        },
+        expectedCaseRevision: 1,
+        authorize: async () => true,
+      })
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    })
+
+    await winnerInserted.promise
+    const waiterPid = deferred<number>()
+    const waiter = linkedClient.$transaction(async (tx) => {
+      await configureBoundedTransaction(tx)
+      const [backend] = await tx.$queryRawUnsafe<Array<{ pid: number }>>(
+        "SELECT pg_backend_pid()::int AS pid",
+      )
+      waiterPid.resolve(backend.pid)
+      return appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+        db: employeeResponseDb(tx, {
+          onCreate: () => { createCount += 1 },
+          onAudit: () => { auditCount += 1 },
+        }),
+        draft: {
+          organizationId,
+          caseId,
+          agentId,
+          workdayId: "workday-response-cycle",
+          segmentId: null,
+          correctionRequestId: null,
+          responseCode: "ACKNOWLEDGED",
+          clientResponseId: waiterClientResponseId,
+          actorUserId: "employee-user",
+        },
+        expectedCaseRevision: 1,
+        authorize: async () => true,
+      })
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 5_000,
+      timeout: 10_000,
+    }).then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (error: unknown) => ({ status: "rejected" as const, error }),
+    )
+
+    try {
+      await waitForAdvisoryLockWait(await waiterPid.promise)
+    } finally {
+      releaseWinner.resolve()
+    }
+    await expect(winner).resolves.toMatchObject({ idempotent: false })
+    await expect(waiter).resolves.toMatchObject({
+      status: "rejected",
+      error: { code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT" },
+    })
+    expect(createCount).toBe(1)
+    expect(auditCount).toBe(1)
+
+    const stored = await observer.$queryRawUnsafe<Array<{
+      client_response_id: string
+      observed_case_revision: number
+    }>>(`
+      SELECT "client_response_id", "observed_case_revision"
+        FROM "${schema}"."employee_responses"
+       WHERE "organization_id" = $1 AND "case_id" = $2
+    `, organizationId, caseId)
+    expect(stored).toEqual([{
+      client_response_id: winnerClientResponseId,
+      observed_case_revision: 1,
+    }])
   }, 15_000)
 
   it("serializes cross-domain writers in the global workday then case order", async () => {

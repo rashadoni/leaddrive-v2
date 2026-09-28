@@ -33,7 +33,11 @@ const acknowledgementDraft = createWorkforceExceptionEmployeeResponseDraft({
 const db = {
   $executeRaw: vi.fn().mockResolvedValue(undefined),
   workforceExceptionDecision: { findMany: vi.fn().mockResolvedValue([]) },
-  workforceExceptionEmployeeResponse: { create: vi.fn(), findFirst: vi.fn() },
+  workforceExceptionEmployeeResponse: {
+    create: vi.fn(),
+    findFirst: vi.fn(),
+    findMany: vi.fn().mockResolvedValue([]),
+  },
   mtmHrmRequest: { findFirst: vi.fn().mockResolvedValue({ id: "request-1" }) },
   mtmAuditLog: { create: vi.fn().mockResolvedValue({ id: "audit-1" }) },
 }
@@ -44,6 +48,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   db.workforceExceptionDecision.findMany.mockResolvedValue([])
   db.workforceExceptionEmployeeResponse.findFirst.mockResolvedValue(null)
+  db.workforceExceptionEmployeeResponse.findMany.mockResolvedValue([])
 })
 
 describe("Workforce immutable employee exception response writer", () => {
@@ -271,6 +276,7 @@ describe("Workforce immutable employee exception response writer", () => {
       authorize: allow,
     })).resolves.toEqual({ responseId: "response-mobile-1", idempotent: true })
     expect(db.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
+    expect(db.workforceExceptionEmployeeResponse.findMany).not.toHaveBeenCalled()
     expect(db.workforceExceptionEmployeeResponse.create).not.toHaveBeenCalled()
     expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
 
@@ -283,6 +289,68 @@ describe("Workforce immutable employee exception response writer", () => {
       code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
     })
     expect(db.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
+  })
+
+  it("rejects a different operation for the same locked response cycle", async () => {
+    db.workforceExceptionDecision.findMany.mockResolvedValueOnce([
+      { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 1 },
+    ])
+    db.workforceExceptionEmployeeResponse.findMany.mockResolvedValueOnce([
+      { id: "response-from-other-operation" },
+    ])
+
+    await expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+      db,
+      draft: acknowledgementDraft,
+      expectedCaseRevision: 1,
+      authorize: allow,
+    })).rejects.toMatchObject<Partial<WorkforceExceptionEmployeeResponseWriterError>>({
+      code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    })
+
+    expect(db.workforceExceptionEmployeeResponse.findMany).toHaveBeenCalledWith({
+      where: {
+        organizationId: "org-1",
+        caseId: "case-1",
+        observedCaseRevision: 1,
+      },
+      select: { id: true },
+      take: 1,
+    })
+    expect(db.workforceExceptionEmployeeResponse.create).not.toHaveBeenCalled()
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("allows a new operation after the case advances to a new response cycle", async () => {
+    db.workforceExceptionDecision.findMany.mockResolvedValueOnce([
+      { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 1 },
+      { decisionCode: "REQUEST_EMPLOYEE_RESPONSE", caseRevision: 2 },
+    ])
+    db.workforceExceptionEmployeeResponse.create.mockResolvedValueOnce({
+      id: "response-new-cycle",
+      ...acknowledgementDraft,
+      observedCaseRevision: 2,
+    })
+
+    await expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
+      db,
+      draft: acknowledgementDraft,
+      expectedCaseRevision: 2,
+      authorize: allow,
+    })).resolves.toEqual({ responseId: "response-new-cycle", idempotent: false })
+
+    expect(db.workforceExceptionEmployeeResponse.findMany).toHaveBeenCalledWith({
+      where: {
+        organizationId: "org-1",
+        caseId: "case-1",
+        observedCaseRevision: 2,
+      },
+      select: { id: true },
+      take: 1,
+    })
+    expect(db.workforceExceptionEmployeeResponse.create).toHaveBeenCalledWith({
+      data: { ...acknowledgementDraft, observedCaseRevision: 2 },
+    })
   })
 
   it("rejects an invalid revision before authorization or locking", async () => {
