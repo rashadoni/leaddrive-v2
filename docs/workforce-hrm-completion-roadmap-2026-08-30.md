@@ -841,7 +841,7 @@ between office, field, remote and travel segments.
 | WF-C2-006 | P0 | DONE | Backend/HR | Add ordered shift segments with mode, site, planned window, grace and proof policy reference | [`workforce-c2-shift-segment-evidence-2026-08-30.md`](./workforce-c2-shift-segment-evidence-2026-08-30.md): tenant/RLS/immutable draft timeline; C3 workday snapshot remains separate |
 | WF-C2-007 | P0 | DONE | Backend | Add arrival/departure/site-transition facts linked to segment and evidence assessment | [`workforce-c2-site-transition-evidence-2026-08-30.md`](./workforce-c2-site-transition-evidence-2026-08-30.md): snapshotted SITE binding plus tenant-FK-linked encrypted evidence and raw-free assessment; client transport remains intentionally C5/C9-gated |
 | WF-C2-008 | P1 | OWNER DECISION | HR/Legal | Define inter-site travel, paid/expected treatment, delay grace and who may alter it | OD-09 resolved; calculation rule versioned |
-| WF-C2-009 | P1 | PARTIAL | Backend | Validate segment overlap, ordering, site eligibility, timezone and impossible travel at publish and action time | [`workforce-c2-schedule-safety-evidence-2026-08-30.md`](./workforce-c2-schedule-safety-evidence-2026-08-30.md): publish/START/action site boundary; OD-09 travel semantics remain open |
+| WF-C2-009 | P1 | DONE | Backend | Validate segment overlap, ordering, site eligibility, timezone and impossible travel at publish and action time | [`workforce-c2-schedule-safety-evidence-2026-08-30.md`](./workforce-c2-schedule-safety-evidence-2026-08-30.md): publish/START/action checks, exact preceding-departure ordering and conservative review-only impossible-transition signal; PR #486 exact-head CI and production receipt below |
 | WF-C2-010 | P1 | DONE | Backend | Add organization/team/site scoped APIs and permissions independent of Route customers/geofences | [`workforce-c2-module-scope-evidence-2026-08-30.md`](./workforce-c2-module-scope-evidence-2026-08-30.md): session-admin organization/team/site APIs, actor-scoped read surface and HRM-only isolation tests |
 | WF-C2-011 | P2 | DONE | Product/Backend | Reserve versioned extension for polygon/multi-entrance/large-campus zones without forcing it into v1 | [`workforce-c2-site-domain-adr-2026-08-30.md`](./workforce-c2-site-domain-adr-2026-08-30.md) documents the circle-v1 compatibility boundary |
 
@@ -1040,7 +1040,7 @@ payroll engine or leaking sensitive evidence.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C11-001 | P1 | PARTIAL | Backend | Complete deterministic calculation for segments, approved breaks/travel, calendar, exceptions and corrections | Rehydration/property tests from immutable snapshots |
+| WF-C11-001 | P1 | PARTIAL | Backend | Complete deterministic calculation for segments, approved breaks/travel, calendar, exceptions and corrections | [`deterministic immutable rehydration evidence`](./workforce-c11-deterministic-rehydration-evidence-2026-09-29.md): full policy/shift/schedule hashes, calendar/segments, actual-pause-only breaks, non-payroll travel and correction replay are bound in v2; exact-head CI/release remains pending |
 | WF-C11-002 | P1 | DONE | Backend/Web | Block approval on incomplete facts, unresolved blocking cases or snapshot/history errors | [`C11 approval blocker evidence`](./workforce-c11-approval-blockers-evidence-2026-09-13.md): exact minimized rows/reasons cover finality, snapshots, replay, current deviations and C6 lifecycle; resolved bounded periods remain deterministic/idempotent |
 | WF-C11-003 | P1 | DONE | Backend | Add approved-export endpoint from immutable approval/revision, never live mutable rows | [`workforce-c11-approved-export-evidence-2026-08-30.md`](./workforce-c11-approved-export-evidence-2026-08-30.md): persisted calculation/row/fact hashes are reproduced before a narrow attachment is returned |
 | WF-C11-004 | P1 | PARTIAL | Security/Web | Require purpose, recipient, authorized scope and encrypted delivery channel; set artifact expiry | [`workforce-c11-direct-export-purpose-evidence-2026-08-30.md`](./workforce-c11-direct-export-purpose-evidence-2026-08-30.md): fixed direct-review purpose, MFA, shared rate guard and historic export-custodian scope exist; external encrypted artifact delivery/expiry remain open |
@@ -1619,3 +1619,142 @@ from this worktree.
 - Next action: checkpoint the receipt, independently prove source/test blob
   identity and final fingerprint, then push/open the PR and require all
   exact-head contexts.
+
+## 2026-09-28 — WF-C2-009 exact-head release GREEN
+
+- PR #486 froze exact head `f82c52499dd1c23cceb6986e6dd4ef44c6c05092`.
+  Independent final integrity review was GREEN with `P0=P1=P2=P3=0` on exactly
+  9 paths / 47,731 plain-binary bytes / SHA-256
+  `4c9dfd42e3d1fd9d15a48a3910edf5e6ea64c3b80e28483ab045904ad74fa11d`;
+  the reviewed five-path runtime/test fingerprint remained
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Exact-head PR run `36484581751` passed `pr-scope`, `static-checks` and
+  `typecheck`; the separate exact-head `runner-policy` and `scan` contexts also
+  passed. The scope-conditioned PR production-build job was `SKIPPED`, not
+  represented as a pass.
+- PR #486 merged normally without bypass at `2026-09-28T21:28:27Z` as main SHA
+  `7347e87eca493b9d663dc8e66096bc7afb603abb`. Deploy workflow
+  `36486330464` completed `SUCCESS` at `2026-09-28T21:51:06Z`, including the
+  full quality/security job, SHA-stamped production build, atomic rollout and
+  workflow post-deploy smoke.
+- Independent no-cache checks pinned to the sole approved production IP
+  `13.140.132.245` returned HTTP 200 from `/api/v1/ping` with `{"ok":true}`
+  and HTTP 200 from `/api/v1/public/build-info`; `artifactSha` exactly matched
+  `7347e87eca493b9d663dc8e66096bc7afb603abb` and `builtAt` was
+  `2026-09-28T21:33:21Z`.
+- `WF-C2-009` is therefore `DONE`. Progress is now `DONE 82/161`,
+  `GATES 14/15`, C2 82%, C5 81%, C6 20% and C9 99%. The remaining register is
+  79 non-DONE rows plus one gate; the historical `HRM 99%` label described a
+  narrower release-readiness slice and must not be read as 99% of this ledger.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot
+  evidence remains `NOT RUN`; this backend row does not convert those external
+  gates into passes.
+- Precise stopping point: PR #486 is independently reviewed, exact-head green,
+  merged, deployed and exact-SHA production-verified; this release receipt is
+  present on successor branch `codex/workforce-timesheet-rehydration-part6`.
+- Next action: checkpoint this receipt, then implement bounded `WF-C11-001`
+  immutable timesheet rehydration/property evidence. `WF-C10-011` remains
+  planned because its required real dashboard/privacy/cardinality review
+  cannot be replaced by code-only evidence.
+
+## 2026-09-29 — WF-C11-001 immutable rehydration working checkpoint
+
+- The complete policy, shift and v2 schedule snapshots are now identity- and
+  hash-verified before a timesheet can be calculated. Persisted denormalized
+  policy values and resolved shift UTC instants must reproduce their immutable
+  definitions; calendar, segment order, site references and planned breaks
+  must reproduce the complete schedule hash.
+- Calculation envelope v2 keeps the v1 arithmetic projection while binding it
+  to minimized immutable hashes and explicit semantics: only actual
+  Pause/Resume deducts time, travel is non-payroll and does not alter time,
+  expected work is calendar/policy pinned, exceptions block approval and
+  corrections replay from the immutable ledger. Raw site details and geometry
+  remain outside the calculation/export projection.
+- Legacy stored v1 approvals remain hash-verifiable/exportable. Complete v2
+  periods are approval-ready; mixed v1/v2 periods fail closed, and old
+  policy/shift-only workdays remain explicitly snapshot-missing rather than
+  being silently upgraded.
+- Author checks pass 7 focused files / 75 tests, scoped ESLint and whitespace.
+  A separate preliminary read-only consumer audit is GREEN with
+  `P0=P1=P2=P3=0` and independently passes 4 files / 17 tests.
+- Full TypeScript/suite/build, browser, Android/Gradle, load, signed APK,
+  physical-device and pilot checks remain `NOT RUN`; exact-head CI is
+  mandatory. Progress stays `DONE 82/161`, `GATES 14/15`, C11 80%;
+  WF-C11-001 remains `PARTIAL` with no provisional credit.
+- Precise stopping point: the runtime/test implementation and initial evidence
+  are present but uncommitted; there is no frozen exact-commit review yet.
+- Next action: repeat the bounded verification, measure/stage only explicit
+  paths, checkpoint the candidate, then obtain fresh author-independent
+  exact-SHA review before push or PR.
+
+## 2026-09-29 — WF-C11-001 frozen integration review GREEN
+
+- Implementation/evidence checkpoint
+  `5f72c200e4d88966a2ff48485839f5b685a5b612` was independently GREEN from
+  deployed main. During review, main advanced through PR #487 only in four
+  unrelated Social Monitoring cron paths; a normal conflict-free merge
+  produced integration head `b3bbf10eb6057c6357f3fec26453480a66caf7bb`
+  on exact fresh main/merge-base
+  `20bc83fb1d16b268ecbde9288f8043809651d660`.
+- Fresh author-independent integration review returned
+  `P0=P1=P2=P3=0`. The complete candidate is 14 paths / 83,413 plain-binary
+  bytes / SHA-256
+  `e31e7ff1c627cb7ca938716be80d469522ace438719358ded2d20c7c5109ab49`;
+  all ten WF-C11 runtime/test blobs are byte-identical to the pre-integration
+  checkpoint and the merge added no manual conflict resolution.
+- Reviewer checks pass 9 files / 81 tests, scoped ESLint and exact-range
+  whitespace. Full TypeScript/suite/build, browser, Android/Gradle, load,
+  signed APK, physical-device and pilot checks remain `NOT RUN`; exact-head CI
+  is mandatory.
+- Progress stays `DONE 82/161`, `GATES 14/15`, C11 80%; WF-C11-001 remains
+  `PARTIAL` with no credit before exact-head CI, merge and production receipt.
+- Precise stopping point: integrated source/test/evidence head is clean and
+  independently GREEN; only this three-document review receipt is uncommitted.
+- Next action: checkpoint the receipt, independently verify final
+  implementation-blob identity and candidate fingerprint, then push/open the
+  sub-400 KB PR and require every exact-head context.
+
+## 2026-09-29 — WF-C11-001 exact-head type fixture repair
+
+- PR #488 opened at independently reviewed head
+  `02b374048534e7d34ebc089d4736028bae423ff8`. Exact-head `pr-scope`,
+  `static-checks`, `runner-policy` and `scan` passed; the scope-conditioned
+  production build was `SKIPPED` and is not counted.
+- Typecheck run `36493981438` correctly failed its defect-shaped baseline gate
+  on five legacy v1 test fixtures. The new discriminated v1/v2 calculation
+  type caused their inferred `calculationVersion: 1` fields to widen to
+  `number`; this was a real compatibility typing gap, not an accepted baseline
+  change.
+- The bounded repair adds `as const` only to those row/calculation
+  discriminators in report, approved export/preview and legacy export tests.
+  Runtime code, the strict union and the type baseline are unchanged.
+- Post-repair author checks pass 11 targeted files / 98 tests, scoped ESLint
+  and whitespace. Full local typecheck remains `NOT RUN`; replacement exact-head
+  CI must prove the repair. Progress remains `DONE 82/161`, `GATES 14/15`,
+  C11 80%; WF-C11-001 remains `PARTIAL`.
+- Precise stopping point: the five-file repair and three append-only evidence
+  updates are uncommitted; the PR still points to the prior red head.
+- Next action: checkpoint the explicit repair/evidence paths, obtain fresh
+  author-independent exact-SHA review, then push the replacement head and
+  require every gate again.
+
+## 2026-09-29 — WF-C11-001 type repair review GREEN
+
+- Repair checkpoint `a3178eb8c3a14765316a3afac4e906c0c1a1aafb` received fresh
+  author-independent GREEN with `P0=P1=P2=P3=0`. The exact prior-head repair
+  delta is 8 paths / 11,667 bytes / SHA-256
+  `92c4b846d3ec8470c1c2033467b359502f9f2d6f69e467f813d9b11b021f4bf4`;
+  the complete candidate is 19 paths / 97,943 bytes / SHA-256
+  `ed0feb2c546c7920b2f32741a70a93c5f04775f70519ccc3faa0c99784710be3`.
+- The reviewer independently matched the five reported TS2322 diagnostics to
+  exactly ten v1 discriminator literal narrowings across five tests. No
+  runtime, union, workflow, package or type-baseline change exists; the three
+  evidence updates are byte-prefix append-only.
+- Reviewer checks pass 11 files / 98 tests, scoped ESLint and repair/full-range
+  whitespace. Full typecheck/build/suite/browser/Android/load remain
+  `NOT RUN`; replacement exact-head CI remains mandatory.
+- Progress remains `DONE 82/161`, `GATES 14/15`, C11 80%; WF-C11-001 remains
+  `PARTIAL`. Precise stopping point: the reviewed repair is committed and
+  clean; only this three-document receipt is uncommitted.
+- Next action: checkpoint the receipt, obtain final exact-head integrity GREEN,
+  then push the replacement head and require all contexts again.

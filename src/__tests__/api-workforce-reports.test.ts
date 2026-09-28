@@ -24,9 +24,9 @@ const invoke = getReport as unknown as (request: NextRequest, auth: typeof AUTH)
 
 function approval() {
   const rows = [{
-    workdayId: "day-1", agentId: "agent-1", workDate: "2026-08-28", calculationVersion: 1,
+    workdayId: "day-1", agentId: "agent-1", workDate: "2026-08-28", calculationVersion: 1 as const,
     calculation: {
-      calculationVersion: 1, policySnapshotId: "policy-1", shiftSnapshotId: "shift-1", status: "COMPLETED" as const, isFinal: true,
+      calculationVersion: 1 as const, policySnapshotId: "policy-1", shiftSnapshotId: "shift-1", status: "COMPLETED" as const, isFinal: true,
       plan: { plannedStartAt: "2026-08-28T05:00:00.000Z", plannedEndAt: "2026-08-28T14:00:00.000Z", expectedWorkSeconds: 28_800, workDate: "2026-08-28", timezone: "Asia/Baku" },
       fact: { workdayId: "day-1", startedAt: "2026-08-28T05:00:00.000Z", completedAt: "2026-08-28T14:00:00.000Z", workedSeconds: 28_800, pausedSeconds: 3_600, longestPauseSeconds: 3_600 },
       deviations: { lateStartSeconds: 0, undertimeSeconds: 0, overtimeSeconds: 0, longPauseSeconds: 0 }, exceptions: [],

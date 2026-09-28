@@ -55,6 +55,9 @@ import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendanc
 import { requireWorkforceDirectTimeCorrectionRateLimit } from "@/lib/workforce/direct-time-correction-rate-limit"
 import { loadWorkforceEmployeeToday } from "@/lib/workforce/employee-today"
 import { WORKFORCE_GRANULAR_ACCESS_FLAG } from "@/lib/workforce/granular-access-rollout"
+import { workforcePolicyDefinitionHash } from "@/lib/workforce/policy-definition"
+import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
+import { workforceWorkdayScheduleSnapshotHash } from "@/lib/workforce/snapshot-writer"
 
 const AUTH = {
   orgId: "org-workforce",
@@ -62,6 +65,53 @@ const AUTH = {
   role: "admin",
   email: "admin@example.test",
   name: "Workforce Admin",
+}
+
+function timesheetPolicySnapshot(longPauseThresholdSeconds: number | null = 60 * 60) {
+  const definition = {
+    expectedWorkSeconds: 8 * 60 * 60,
+    lateGraceSeconds: 5 * 60,
+    undertimeToleranceSeconds: 5 * 60,
+    overtimeThresholdSeconds: 15 * 60,
+    longPauseThresholdSeconds,
+  }
+  return {
+    id: "policy-snapshot-1", workdayId: "workday-1", agentId: "agent-1",
+    workDate: new Date("2026-08-28T00:00:00.000Z"),
+    definition, definitionHash: workforcePolicyDefinitionHash(definition), ...definition,
+  }
+}
+
+function timesheetShiftSnapshot() {
+  const definition = {
+    startTime: "09:00", endTime: "18:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
+  }
+  return {
+    id: "shift-snapshot-1", workdayId: "workday-1", agentId: "agent-1",
+    workDate: new Date("2026-08-28T00:00:00.000Z"),
+    definition, definitionHash: workforceShiftDefinitionHash(definition), timezone: "UTC",
+    plannedStartAt: new Date("2026-08-28T09:00:00.000Z"),
+    plannedEndAt: new Date("2026-08-28T18:00:00.000Z"),
+  }
+}
+
+function timesheetScheduleSnapshot() {
+  const calendarSnapshot = {
+    date: "2026-08-28", state: "SCHEDULED", calendarKind: "WORKING_DAY",
+    attendanceExpected: true, noShowEligible: true, excused: false,
+    source: null, overrideId: null, teamMembership: { id: null, teamId: null },
+  }
+  const payload = {
+    schemaVersion: 2, calendar: calendarSnapshot, segments: [], sites: [],
+    policySnapshotId: "policy-snapshot-1", shiftSnapshotId: "shift-snapshot-1",
+  }
+  return {
+    id: "schedule-snapshot-1", workdayId: "workday-1", agentId: "agent-1",
+    workDate: new Date("2026-08-28T00:00:00.000Z"),
+    policySnapshotId: payload.policySnapshotId, shiftSnapshotId: payload.shiftSnapshotId,
+    schemaVersion: 2, calendarState: "SCHEDULED", calendarSnapshot,
+    segments: [], sites: [], snapshotHash: workforceWorkdayScheduleSnapshotHash(payload),
+  }
 }
 
 type WorkdayFindManyCall = { where: Record<string, unknown> }
@@ -88,6 +138,7 @@ beforeEach(() => {
   vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([])
   vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([])
   vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([])
+  vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])
   // Legacy tenants have an organization row with granular access disabled.
   // Individual authorization tests override this with the explicit flag.
@@ -287,18 +338,9 @@ describe("independent Workforce read models", () => {
       status: "COMPLETED", startedAt: new Date("2026-08-28T09:00:00.000Z"), pausedAt: null,
       completedAt: new Date("2026-08-28T18:00:00.000Z"), totalPausedSeconds: 60 * 60,
     }] as never)
-    vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([{
-      id: "policy-snapshot-1", workdayId: "workday-1", agentId: "agent-1",
-      workDate: new Date("2026-08-28T00:00:00.000Z"), expectedWorkSeconds: 8 * 60 * 60,
-      lateGraceSeconds: 5 * 60, undertimeToleranceSeconds: 5 * 60,
-      overtimeThresholdSeconds: 15 * 60, longPauseThresholdSeconds: 60 * 60,
-    }] as never)
-    vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([{
-      id: "shift-snapshot-1", workdayId: "workday-1", agentId: "agent-1",
-      workDate: new Date("2026-08-28T00:00:00.000Z"), timezone: "Asia/Baku",
-      plannedStartAt: new Date("2026-08-28T09:00:00.000Z"),
-      plannedEndAt: new Date("2026-08-28T18:00:00.000Z"),
-    }] as never)
+    vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([timesheetPolicySnapshot()] as never)
+    vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([timesheetShiftSnapshot()] as never)
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findMany).mockResolvedValue([timesheetScheduleSnapshot()] as never)
     vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
       { id: "event-start", workdayId: "workday-1", type: "START", occurredAt: new Date("2026-08-28T09:00:00.000Z") },
       { id: "event-pause", workdayId: "workday-1", type: "PAUSE", occurredAt: new Date("2026-08-28T12:00:00.000Z") },
@@ -315,8 +357,10 @@ describe("independent Workforce read models", () => {
       workedSeconds: 8 * 60 * 60,
       calculationStatus: "WORKFORCE_TIMESHEET_CALCULATED",
       calculation: expect.objectContaining({
+        calculationVersion: 2,
         policySnapshotId: "policy-snapshot-1",
         shiftSnapshotId: "shift-snapshot-1",
+        immutableSchedule: expect.objectContaining({ scheduleSnapshotId: "schedule-snapshot-1" }),
         isFinal: true,
       }),
     })])
@@ -325,6 +369,9 @@ describe("independent Workforce read models", () => {
       where: { organizationId: "org-workforce", workdayId: { in: ["workday-1"] } },
     }))
     expect(prisma.workforceShiftSnapshot.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: "org-workforce", workdayId: { in: ["workday-1"] } },
+    }))
+    expect(prisma.workforceWorkdayScheduleSnapshot.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { organizationId: "org-workforce", workdayId: { in: ["workday-1"] } },
     }))
     expect(prisma.workforcePolicy.findMany).not.toHaveBeenCalled()
@@ -340,18 +387,9 @@ describe("independent Workforce read models", () => {
       status: "COMPLETED", startedAt: new Date("2026-08-28T09:00:00.000Z"), pausedAt: null,
       completedAt: new Date("2026-08-28T18:00:00.000Z"), totalPausedSeconds: 0,
     }] as never)
-    vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([{
-      id: "policy-snapshot-1", workdayId: "workday-1", agentId: "agent-1",
-      workDate: new Date("2026-08-28T00:00:00.000Z"), expectedWorkSeconds: 8 * 60 * 60,
-      lateGraceSeconds: 5 * 60, undertimeToleranceSeconds: 5 * 60,
-      overtimeThresholdSeconds: 15 * 60, longPauseThresholdSeconds: null,
-    }] as never)
-    vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([{
-      id: "shift-snapshot-1", workdayId: "workday-1", agentId: "agent-1",
-      workDate: new Date("2026-08-28T00:00:00.000Z"), timezone: "Asia/Baku",
-      plannedStartAt: new Date("2026-08-28T09:00:00.000Z"),
-      plannedEndAt: new Date("2026-08-28T18:00:00.000Z"),
-    }] as never)
+    vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([timesheetPolicySnapshot(null)] as never)
+    vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([timesheetShiftSnapshot()] as never)
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findMany).mockResolvedValue([timesheetScheduleSnapshot()] as never)
     vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
       { id: "event-start", workdayId: "workday-1", type: "START", occurredAt: new Date("2026-08-28T09:00:00.000Z") },
     ] as never)

@@ -1422,3 +1422,148 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint the three receipt paths, require final
   implementation-blob/fingerprint integrity GREEN, then push/open the
   sub-400 KB PR and wait for every exact-head gate.
+
+## 2026-09-28 — PR #486 merged, deployed and exact-SHA verified
+
+- Frozen PR head `f82c52499dd1c23cceb6986e6dd4ef44c6c05092` retained the independent
+  final GREEN verdict `P0=P1=P2=P3=0`: exactly 9 paths / 47,731 plain-binary
+  bytes / SHA-256
+  `4c9dfd42e3d1fd9d15a48a3910edf5e6ea64c3b80e28483ab045904ad74fa11d`;
+  the five runtime/test paths remained byte-identical to independently
+  reviewed fingerprint
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Exact-head `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and
+  `scan` all passed. PR run `36484581751` left its scope-conditioned production
+  build `SKIPPED`; no pass is claimed for that job.
+- PR #486 merged normally without bypass at `2026-09-28T21:28:27Z` as
+  `7347e87eca493b9d663dc8e66096bc7afb603abb`. The exact-SHA deploy workflow
+  `36486330464` completed `SUCCESS` at `2026-09-28T21:51:06Z`, with full
+  quality/security checks, SHA-stamped artifact, atomic production rollout and
+  post-deploy smoke all green.
+- Fresh no-cache checks were pinned to the only approved production target
+  `13.140.132.245`: `/api/v1/ping` returned HTTP 200 `{"ok":true}` and
+  `/api/v1/public/build-info` returned HTTP 200 with
+  `artifactSha=7347e87eca493b9d663dc8e66096bc7afb603abb` and
+  `builtAt=2026-09-28T21:33:21Z`. No Azure, retired host, direct worktree copy
+  or manual production deploy was used.
+- `WF-C2-009` is accepted as `DONE`; progress is now `DONE 82/161`,
+  `GATES 14/15`, C2 82%, C5 81%, C6 20% and C9 99%. This leaves 79 non-DONE
+  rows and one gate. The older `HRM 99%` label tracked narrower release
+  readiness, not completion of the 161-row ledger.
+- Full local build/typecheck/suite, browser E2E, Android/Gradle, load, signed
+  APK, physical-device and human-pilot evidence remains `NOT RUN`. Exact-head
+  PR CI and deploy CI supply the checks explicitly reported above; no external
+  gate is inferred.
+- A read-only roadmap/code audit rejected `WF-C10-011` as the next DONE claim:
+  its acceptance requires a real dashboard/privacy/cardinality review absent
+  from the repository. It selected `WF-C11-001` instead because immutable
+  snapshot rehydration and property tests can be fully evidenced in a bounded
+  code/CI slice without browser, device, legal or live-infrastructure claims.
+- Precise stopping point: PR #486 is reviewed, merged, deployed and
+  production-verified; this three-document release receipt is uncommitted on
+  clean successor branch `codex/workforce-timesheet-rehydration-part6` from
+  exact deployed main.
+- Next action: verify the receipt diff, checkpoint only these three documents,
+  then implement and independently review the bounded `WF-C11-001` slice.
+
+## 2026-09-29 — WF-C11-001 immutable rehydration working checkpoint
+
+- The next bounded backend slice now verifies the complete immutable policy,
+  shift and schedule snapshot chain before timesheet read or approval. Policy
+  denormalized values, resolved shift UTC instants, scheduled calendar,
+  ordered segments, exact site references and the full schedule hash all fail
+  closed on mismatch.
+- Rehydrated calculation v2 preserves the v1 plan/fact/deviation shape and
+  records minimized immutable hashes plus the approved semantics: only actual
+  Pause/Resume deducts time; planned breaks are metadata; travel is non-payroll
+  and never adjusts time; expected work is pinned; unresolved exceptions block
+  approval; corrections replay from the immutable ledger.
+- Historical v1 approvals remain verifiable/exportable and mixed v1/v2 rows
+  cannot share an approval. Legacy policy/shift-only days remain visible as
+  snapshot-missing, not falsely calculated. Raw sites, addresses, geometry and
+  proof remain outside the calculation and ordinary export.
+- Targeted author verification passes 7 files / 75 tests, scoped ESLint and
+  whitespace. An author-independent preliminary compatibility audit is GREEN
+  with `P0=P1=P2=P3=0`; its separate approval/export/report/reconciliation
+  matrix passes 4 files / 17 tests.
+- Full local typecheck/suite/build, browser E2E, Android/Gradle, load, signed
+  APK, physical-device and pilot checks are `NOT RUN` under host policy.
+  Exact-head CI remains mandatory. Progress is unchanged at `DONE 82/161`,
+  `GATES 14/15`, C11 80%; WF-C11-001 remains `PARTIAL`.
+- Precise stopping point: implementation, tests and initial evidence are
+  uncommitted on `codex/workforce-timesheet-rehydration-part6`; no frozen
+  exact-SHA independent verdict exists yet.
+- Next action: re-run bounded checks, measure and checkpoint explicit task
+  paths, then request a fresh independent review of the exact commit before
+  any push or PR.
+
+## 2026-09-29 — WF-C11-001 frozen integration review GREEN
+
+- Checkpoint `5f72c200e4d88966a2ff48485839f5b685a5b612` first received a clean
+  independent frozen review. Main then advanced through PR #487 only in four
+  disjoint Social Monitoring cron paths. A normal conflict-free merge produced
+  exact integration head `b3bbf10eb6057c6357f3fec26453480a66caf7bb`
+  on current origin/main and merge-base
+  `20bc83fb1d16b268ecbde9288f8043809651d660`.
+- Fresh full-range author-independent review is GREEN with
+  `P0=P1=P2=P3=0`: 14 exact candidate paths / 83,413 plain-binary bytes /
+  SHA-256
+  `e31e7ff1c627cb7ca938716be80d469522ace438719358ded2d20c7c5109ab49`.
+  All ten WF-C11 runtime/test blobs are byte-identical across the merge; no
+  manual conflict resolution or overlapping dependency change exists.
+- Reviewer verification passes 9 targeted files / 81 tests, scoped ESLint and
+  exact-range whitespace. Full local typecheck/suite/build, browser E2E,
+  Android/Gradle, load, signed APK, physical-device and pilot checks remain
+  `NOT RUN`; exact-head CI remains mandatory.
+- Progress remains `DONE 82/161`, `GATES 14/15`, C11 80%; WF-C11-001 remains
+  `PARTIAL` and no provisional completion is claimed.
+- Precise stopping point: the clean integrated implementation has exact-SHA
+  independent GREEN; this review receipt is uncommitted in the three durable
+  evidence documents.
+- Next action: checkpoint only these three receipt paths, request final
+  integrity review of the new exact HEAD, then push/open the bounded PR and
+  wait for all exact-head gates.
+
+## 2026-09-29 — PR #488 exact-head type fixture repair
+
+- PR #488 froze reviewed head
+  `02b374048534e7d34ebc089d4736028bae423ff8`. `pr-scope`,
+  `static-checks`, `runner-policy` and `scan` passed; production build was
+  scope-skipped and not counted. Run `36493981438` then correctly failed the
+  blocking type baseline with five new `TS2322` fixture incompatibilities.
+- The v1/v2 discriminated calculation union revealed that five older report,
+  preview and export fixtures inferred their literal version fields as generic
+  `number`. The repair narrows only both row and calculation discriminator
+  values to `1 as const`; it does not loosen runtime types or edit the
+  accepted baseline.
+- The expanded author matrix now passes 11 files / 98 tests, scoped ESLint
+  and whitespace. Full local typecheck remains `NOT RUN` by host policy and
+  must pass on the replacement exact head.
+- Progress remains `DONE 82/161`, `GATES 14/15`, C11 80%; WF-C11-001 stays
+  `PARTIAL`, and the prior GREEN review cannot authorize the changed head.
+- Precise stopping point: five repaired test fixtures plus three append-only
+  evidence updates are uncommitted; PR #488 still references the red head.
+- Next action: checkpoint only the eight explicit paths, obtain fresh
+  independent exact-SHA review and final integrity proof, then push and rerun
+  every required PR context without weakening any gate.
+
+## 2026-09-29 — WF-C11-001 type repair review GREEN
+
+- Exact repair head `a3178eb8c3a14765316a3afac4e906c0c1a1aafb` is independently
+  GREEN with `P0=P1=P2=P3=0`. Its delta from the red PR head is 8 paths /
+  11,667 bytes / SHA-256
+  `92c4b846d3ec8470c1c2033467b359502f9f2d6f69e467f813d9b11b021f4bf4`;
+  the full candidate is 19 paths / 97,943 bytes / SHA-256
+  `ed0feb2c546c7920b2f32741a70a93c5f04775f70519ccc3faa0c99784710be3`.
+- The independent audit matched all five CI diagnostics and proved the code
+  delta is exactly ten `1 as const` literal narrowings in five legacy v1
+  fixtures. Runtime, discriminated union, workflows, dependencies and the
+  accepted type baseline are unchanged; evidence updates are append-only.
+- Reviewer verification passes 11 files / 98 tests, scoped ESLint and both
+  repair/full-range whitespace checks. Replacement full typecheck and all
+  exact-head contexts remain mandatory.
+- Progress remains `DONE 82/161`, `GATES 14/15`, C11 80%; no completion credit
+  is claimed. Precise stopping point: the clean reviewed repair is committed,
+  and this receipt is uncommitted in three durable documents.
+- Next action: checkpoint the receipt, run final independent integrity review,
+  push the replacement PR head and wait for every required context.

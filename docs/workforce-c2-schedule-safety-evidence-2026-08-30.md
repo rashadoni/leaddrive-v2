@@ -115,3 +115,38 @@ Reviewer verification repeats 4 files / 25 tests, scoped ESLint and exact-range
 whitespace. Full TypeScript, full suite/build and real PostgreSQL integration
 remain `NOT RUN` until exact-head CI. WF-C2-009 remains **PARTIAL** and no
 acceptance credit is added before those mandatory checks pass.
+
+## 2026-09-28 — exact-head CI, merge and production acceptance
+
+The frozen candidate became PR #486 at exact head
+`f82c52499dd1c23cceb6986e6dd4ef44c6c05092`. Independent final integrity
+review was GREEN with `P0=P1=P2=P3=0` for exactly 9 paths / 47,731
+plain-binary bytes / SHA-256
+`4c9dfd42e3d1fd9d15a48a3910edf5e6ea64c3b80e28483ab045904ad74fa11d`.
+Its five runtime/test files retained the prior independently reviewed SHA-256
+`4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+
+Exact-head PR evidence is complete:
+
+- PASS — `pr-scope`, `static-checks` and `typecheck` in PR run
+  `36484581751`;
+- PASS — separate exact-head `runner-policy` and `scan` contexts;
+- SKIPPED — the scope-conditioned PR production-build job; it is not counted
+  as a pass;
+- PASS — normal non-bypass merge at `2026-09-28T21:28:27Z`, producing main
+  SHA `7347e87eca493b9d663dc8e66096bc7afb603abb`;
+- PASS — deploy workflow `36486330464`, completed `SUCCESS` at
+  `2026-09-28T21:51:06Z`, including full quality/security gates, production
+  build, immutable artifact verification, atomic rollout and workflow smoke;
+- PASS — independent no-cache `/api/v1/ping` check pinned to
+  `13.140.132.245`, HTTP 200 with `{"ok":true}`;
+- PASS — independent pinned `/api/v1/public/build-info`, HTTP 200 with exact
+  `artifactSha=7347e87eca493b9d663dc8e66096bc7afb603abb` and
+  `builtAt=2026-09-28T21:33:21Z`.
+
+No schema, migration, UI, Android or rollout-policy change was part of this
+slice. Browser E2E, Android/Gradle, load, signed APK, physical-device and
+human-pilot evidence remains `NOT RUN` and is not implied by this acceptance.
+The backend acceptance described by this document is now complete, so
+`WF-C2-009` moves from **PARTIAL** to **DONE**. Ledger progress becomes
+`DONE 82/161`, `GATES 14/15`, C2 82%, C5 81%, C6 20% and C9 99%.

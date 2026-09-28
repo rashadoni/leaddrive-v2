@@ -20,6 +20,27 @@ const calculation: WorkforceTimesheetCalculation = {
   deviations: { lateStartSeconds: 0, undertimeSeconds: 0, overtimeSeconds: 0, longPauseSeconds: 0 }, exceptions: [],
 }
 
+const v2Calculation: WorkforceTimesheetCalculation = {
+  ...calculation,
+  calculationVersion: 2,
+  coreCalculationVersion: 1,
+  immutableSchedule: {
+    scheduleSnapshotId: "schedule-1",
+    scheduleSnapshotHash: "a".repeat(64),
+    policyDefinitionHash: "b".repeat(64),
+    shiftDefinitionHash: "c".repeat(64),
+    calendarState: "SCHEDULED",
+    segmentCount: 1,
+    segmentModes: ["TRAVEL"],
+    plannedBreakCount: 1,
+    breakTreatment: "ACTUAL_PAUSE_EVENTS_ONLY",
+    travelTreatment: "NON_PAYROLL_NO_AUTOMATIC_ADJUSTMENT",
+    calendarTreatment: "PINNED_EXPECTED_WORKDAY",
+    exceptionTreatment: "RESOLUTION_REQUIRED_BEFORE_APPROVAL",
+    correctionTreatment: "IMMUTABLE_LEDGER_REPLAY",
+  },
+}
+
 describe("buildWorkforceTimesheetApproval", () => {
   it("sorts rows and produces stable hashes", () => {
     const row = (workdayId: string, workDate: string) => ({ workdayId, agentId: "a", workDate, calculationVersion: 1, calculation: { ...calculation, plan: { ...calculation.plan, workDate }, fact: { ...calculation.fact, workdayId } } })
@@ -66,6 +87,48 @@ describe("buildWorkforceTimesheetApproval", () => {
         },
       }],
     })).toThrow("approval calculation plan date must match the row work date")
+  })
+
+  it("hash-binds the v2 immutable schedule and rejects mixed calculation versions", () => {
+    const row = {
+      workdayId: "w",
+      agentId: "a",
+      workDate: "2026-08-28",
+      calculationVersion: 2,
+      calculation: v2Calculation,
+    }
+    const first = buildWorkforceTimesheetApproval({
+      periodStart: "2026-08-28", periodEnd: "2026-08-28", agentId: "a", rows: [row],
+    })
+    const changed = buildWorkforceTimesheetApproval({
+      periodStart: "2026-08-28", periodEnd: "2026-08-28", agentId: "a",
+      rows: [{
+        ...row,
+        calculation: {
+          ...v2Calculation,
+          immutableSchedule: {
+            ...v2Calculation.immutableSchedule,
+            scheduleSnapshotHash: "d".repeat(64),
+          },
+        },
+      }],
+    })
+
+    expect(changed.factsHash).not.toBe(first.factsHash)
+    expect(() => buildWorkforceTimesheetApproval({
+      periodStart: "2026-08-28", periodEnd: "2026-08-29", agentId: "a",
+      rows: [
+        row,
+        {
+          workdayId: "w2", agentId: "a", workDate: "2026-08-29", calculationVersion: 1,
+          calculation: {
+            ...calculation,
+            plan: { ...calculation.plan, workDate: "2026-08-29" },
+            fact: { ...calculation.fact, workdayId: "w2" },
+          },
+        },
+      ],
+    })).toThrow("calculation versions must match")
   })
 })
 
