@@ -7,9 +7,9 @@ import { buildWorkforceTimesheetApproval } from "@/lib/workforce/timesheet-appro
 
 function approvalRows() {
   return [{
-    workdayId: "day-1", agentId: "agent-1", workDate: "2026-08-28", calculationVersion: 1,
+    workdayId: "day-1", agentId: "agent-1", workDate: "2026-08-28", calculationVersion: 1 as const,
     calculation: {
-      calculationVersion: 1, policySnapshotId: "policy", shiftSnapshotId: "shift", status: "COMPLETED" as const, isFinal: true,
+      calculationVersion: 1 as const, policySnapshotId: "policy", shiftSnapshotId: "shift", status: "COMPLETED" as const, isFinal: true,
       plan: { plannedStartAt: "2026-08-28T09:00:00.000Z", plannedEndAt: "2026-08-28T18:00:00.000Z", expectedWorkSeconds: 28800, workDate: "2026-08-28", timezone: "UTC" },
       fact: { workdayId: "day-1", startedAt: "2026-08-28T09:00:00.000Z", completedAt: "2026-08-28T18:00:00.000Z", workedSeconds: 28800, pausedSeconds: 600, longestPauseSeconds: 600 },
       deviations: { lateStartSeconds: 0, undertimeSeconds: 0, overtimeSeconds: 0, longPauseSeconds: 0 }, exceptions: [],

@@ -1713,3 +1713,27 @@ from this worktree.
 - Next action: checkpoint the receipt, independently verify final
   implementation-blob identity and candidate fingerprint, then push/open the
   sub-400 KB PR and require every exact-head context.
+
+## 2026-09-29 — WF-C11-001 exact-head type fixture repair
+
+- PR #488 opened at independently reviewed head
+  `02b374048534e7d34ebc089d4736028bae423ff8`. Exact-head `pr-scope`,
+  `static-checks`, `runner-policy` and `scan` passed; the scope-conditioned
+  production build was `SKIPPED` and is not counted.
+- Typecheck run `36493981438` correctly failed its defect-shaped baseline gate
+  on five legacy v1 test fixtures. The new discriminated v1/v2 calculation
+  type caused their inferred `calculationVersion: 1` fields to widen to
+  `number`; this was a real compatibility typing gap, not an accepted baseline
+  change.
+- The bounded repair adds `as const` only to those row/calculation
+  discriminators in report, approved export/preview and legacy export tests.
+  Runtime code, the strict union and the type baseline are unchanged.
+- Post-repair author checks pass 11 targeted files / 98 tests, scoped ESLint
+  and whitespace. Full local typecheck remains `NOT RUN`; replacement exact-head
+  CI must prove the repair. Progress remains `DONE 82/161`, `GATES 14/15`,
+  C11 80%; WF-C11-001 remains `PARTIAL`.
+- Precise stopping point: the five-file repair and three append-only evidence
+  updates are uncommitted; the PR still points to the prior red head.
+- Next action: checkpoint the explicit repair/evidence paths, obtain fresh
+  author-independent exact-SHA review, then push the replacement head and
+  require every gate again.

@@ -94,3 +94,19 @@ TypeScript, full suite/build, browser, Android/Gradle, load, signed APK,
 physical-device and pilot checks remain `NOT RUN`; exact-head PR CI is still
 mandatory. `WF-C11-001` therefore remains **PARTIAL** and ledger progress
 remains `DONE 82/161`, `GATES 14/15` until release evidence exists.
+
+## Exact-head CI finding and repair
+
+PR #488 initially ran at reviewed head
+`02b374048534e7d34ebc089d4736028bae423ff8`. `pr-scope`, `static-checks`,
+`runner-policy` and `scan` passed, while run `36493981438` correctly blocked
+on `typecheck`: the new v1/v2 discriminated calculation union exposed five
+legacy test fixtures whose uncontextualized numeric literals widened from
+`1` to `number`.
+
+The repair narrows only those fixture discriminator fields with `1 as const`
+in the report, approved export/preview and legacy export tests. It does not
+change runtime code, weaken the calculation union or update the accepted type
+baseline. Post-repair verification passes 11 targeted files / 98 tests,
+scoped ESLint and whitespace. Exact-head CI and a new author-independent
+review remain mandatory before merge; no completion credit is added.

@@ -1523,3 +1523,26 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint only these three receipt paths, request final
   integrity review of the new exact HEAD, then push/open the bounded PR and
   wait for all exact-head gates.
+
+## 2026-09-29 — PR #488 exact-head type fixture repair
+
+- PR #488 froze reviewed head
+  `02b374048534e7d34ebc089d4736028bae423ff8`. `pr-scope`,
+  `static-checks`, `runner-policy` and `scan` passed; production build was
+  scope-skipped and not counted. Run `36493981438` then correctly failed the
+  blocking type baseline with five new `TS2322` fixture incompatibilities.
+- The v1/v2 discriminated calculation union revealed that five older report,
+  preview and export fixtures inferred their literal version fields as generic
+  `number`. The repair narrows only both row and calculation discriminator
+  values to `1 as const`; it does not loosen runtime types or edit the
+  accepted baseline.
+- The expanded author matrix now passes 11 files / 98 tests, scoped ESLint
+  and whitespace. Full local typecheck remains `NOT RUN` by host policy and
+  must pass on the replacement exact head.
+- Progress remains `DONE 82/161`, `GATES 14/15`, C11 80%; WF-C11-001 stays
+  `PARTIAL`, and the prior GREEN review cannot authorize the changed head.
+- Precise stopping point: five repaired test fixtures plus three append-only
+  evidence updates are uncommitted; PR #488 still references the red head.
+- Next action: checkpoint only the eight explicit paths, obtain fresh
+  independent exact-SHA review and final integrity proof, then push and rerun
+  every required PR context without weakening any gate.
