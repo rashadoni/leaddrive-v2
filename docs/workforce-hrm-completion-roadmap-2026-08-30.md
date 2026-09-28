@@ -1438,3 +1438,13 @@ from this worktree.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: the complete working diff is independently GREEN; only this append-only review receipt remains uncommitted.
 - Next action: checkpoint all explicit remediation paths, freeze exact base/head identity, obtain receipt-integrity review, then push/open the sub-400 KB PR.
+
+## 2026-09-28 — migration-role defaults frozen review GREEN
+
+- Clean checkpoint `eee4ea1699614d50397384d7b0564a3069469882` received author-independent GREEN with P0=P1=P2=P3=0 against exact live main/merge-base `4f9d0d715b201ca7b4226fb301d1d3bddbbd2c8d`.
+- Independent identity matched nine paths / 44,802 plain-binary bytes / SHA-256 `ad9af6c73192bae088103eb4f5b9d6c39039c5de97476dd1acaab95a813f24e1`, below 400 KB. Start/end were clean and drift-free.
+- Helper hash/binding, strict refusal, atomic self-role change, read-only preflight, fresh-session postcondition, early ordering, database-only scope, idempotence, later gate and all append-only evidence passed.
+- Reviewer `bash -n`, whitespace, targeted Vitest and ESLint passed. Real PostgreSQL, ShellCheck and heavy gates remained `NOT RUN`; exact-head CI remains mandatory.
+- Progress stays `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: implementation/evidence checkpoint is independently GREEN; only this three-document review receipt is uncommitted.
+- Next action: checkpoint the receipt, obtain final blob-integrity/fingerprint proof, then push/open the PR and wait for all exact-head contexts.

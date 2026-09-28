@@ -1222,3 +1222,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
 - Precise stopping point: the complete uncommitted remediation diff has valid working-tree GREEN; the review receipt itself has not been checkpointed or integrity-reviewed.
 - Next action: commit only the nine explicit paths, record the exact diff fingerprint and require final independent receipt-integrity GREEN before push/PR.
+
+## 2026-09-28 — migration-role defaults frozen review GREEN
+
+- Clean checkpoint `eee4ea1699614d50397384d7b0564a3069469882` received fresh author-independent GREEN with zero P0-P3 against exact live main/merge-base `4f9d0d715b201ca7b4226fb301d1d3bddbbd2c8d`.
+- Reviewer reproduced nine paths / 44,802 plain-binary bytes / SHA-256 `ad9af6c73192bae088103eb4f5b9d6c39039c5de97476dd1acaab95a813f24e1`; branch was exactly one clean commit ahead and had no main drift.
+- All role authority, atomicity, allowlist, artifact/hash, read-only check, fresh-session, ordering, scope, idempotence, safe-log and unchanged pre-Prisma contracts passed. The three post-preflight documentation additions were append-only.
+- Reviewer shell syntax, diff whitespace, targeted Vitest and ESLint passed; real PostgreSQL, ShellCheck and heavy gates remained `NOT RUN` and must not be inferred.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: the independently GREEN source/test/evidence checkpoint is committed; only this receipt-only delta is uncommitted.
+- Next action: checkpoint the three documentation paths, independently verify implementation blob identity and final fingerprint, then push/open the exact-head PR.

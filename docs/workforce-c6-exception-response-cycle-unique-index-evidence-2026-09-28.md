@@ -267,3 +267,20 @@ three-file `bash -n`, diff whitespace and the event-platform asset guard (27
 domains / 86 topics / 5 schemas). Full local typecheck/build, real PostgreSQL,
 browser, Android/Gradle, load, signed APK, physical-device and pilot remain
 `NOT RUN`. Exact-head PR and deploy CI are mandatory.
+
+## Frozen remediation review GREEN
+
+Clean checkpoint `eee4ea1699614d50397384d7b0564a3069469882` received a fresh
+author-independent GREEN with P0=P1=P2=P3=0 against exact base/live main and
+merge-base `4f9d0d715b201ca7b4226fb301d1d3bddbbd2c8d`. Independent identity
+matched nine paths / 44,802 plain-binary bytes / SHA-256
+`ad9af6c73192bae088103eb4f5b9d6c39039c5de97476dd1acaab95a813f24e1`;
+the tree was clean, one commit ahead and drift-free before and after review.
+
+The reviewer reconfirmed the helper checksum, strict unsafe-nonzero refusal,
+atomic self-role reconciliation, read-only check mode, fresh-session proof,
+exact artifact binding, before-backup ordering, two-default/database-only scope,
+idempotence, unchanged later gate and absence of scope or credential leakage.
+All three review receipts were append-only. Reviewer shell syntax, whitespace,
+targeted Vitest (6 passed / 15 PostgreSQL skipped) and ESLint passed. Real
+PostgreSQL, ShellCheck and every heavy gate remained explicitly `NOT RUN`.
