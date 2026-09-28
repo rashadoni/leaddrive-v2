@@ -1116,3 +1116,37 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Closing state remained clean and drift-free. Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
 - Precise stopping point: the exact current-main corrected source/test/evidence checkpoint has valid independent GREEN; only this three-document review receipt is uncommitted and the branch is not pushed.
 - Next action: checkpoint this receipt, obtain independent receipt-integrity proof that all three reviewed runtime/test blobs are byte-identical, then push/open the sub-400 KB PR and wait for every exact-head check including real PostgreSQL.
+
+## 2026-09-28 — PR #477 employee-response cycle deduplication production release
+
+- Final receipt-integrity review returned GREEN with zero P0-P3 findings on head `a8c03595966d82ddb0e84b4fc717e7eb6d726d52`. The complete seven-path diff from base `147369b5027b9dae7b5a6cb25d9f82711fbdb43b` was 58,087 plain-binary bytes / SHA-256 `aeed0983324147fc6c6fddf76736c12448a8e2eeb1fc5cef50eecee5b7ab2fc0`; only three append-only docs changed after frozen review and all three runtime/test blobs were byte-identical.
+- Exact-head PR run `36405513119` passed `pr-scope`, `static-checks` in 12m06s including the real PostgreSQL Workforce race gate and unit baseline, and `typecheck` in 18m45s. Companion `runner-policy` run `36405513089` and `scan` run `36405513116` passed; the PR production build was skipped as designed.
+- PR #477 merged normally at `2026-09-28T10:06:01Z` as main SHA `6b858b4514e58b1d01c1b027d7ce503a7b39b185`. Deploy run `36407634637` completed GREEN at `2026-09-28T10:28:47Z`: quality/security 10m31s, SHA-bound build/publication 16m15s, atomic deploy/post-smokes 6m11s and retention cleanup 6s.
+- Independent no-cache public requests to `https://app.leaddrivecrm.org` returned HTTP 200 with `{"ok":true}` from `/api/v1/ping` and HTTP 200 with `{"sha":"6b858b4514e5","artifactSha":"6b858b4514e58b1d01c1b027d7ce503a7b39b185","builtAt":"2026-09-28T10:11:46Z"}` from `/api/v1/public/build-info`. Artifact SHA exactly matched merged main.
+- Release used only GitHub `main` through `.github/workflows/deploy.yml` to registered Contabo production `13.140.132.245:/opt/leaddrive-v2`. No direct deployment, worktree copy, Azure or retired host was used.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot evidence remains `NOT RUN`. Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` with no new credit.
+- Work now continues from exact deployed main on clean successor branch `codex/workforce-exception-response-cycle-audit`. Independent read-only design audit selected a bounded tenant-scoped aggregate dry-run detector as the next safe prerequisite to any future online unique constraint; no detector code has changed yet.
+- Precise stopping point: PR #477 is fully reviewed, merged, deployed and exact-SHA smoke-verified; only this three-document release receipt is uncommitted on the successor branch.
+- Next action: checkpoint the release receipt, then implement the bounded duplicate-cycle audit source/API/rate/audit/test evidence slice without schema migration, remediation, record IDs or UI.
+
+## 2026-09-28 — C6 response-cycle aggregate audit working checkpoint
+
+- The owner requested a concrete remaining-work status; implementation continued without pausing. PR #477 was already merged/deployed/verified, and this is the next bounded C6 prerequisite rather than a claim that all remaining C5/C6 physical and migration work is one small change.
+- Independent read-only design audit found no blocker for a diagnostic-only complete aggregate and pinned organization-wide exception-read authority, mandatory MFA, fail-closed tenant/principal Redis budgets, transaction-local RLS/timeouts, NULL separation, bigint validation, counts-only audit and a restricted-role PostgreSQL proof.
+- Added the complete dry-run runner, dedicated low-frequency limiter and private configuration endpoint. The response contains only snapshot status/four counts plus `automaticAction=NONE` and `uniquenessMigrationAuthorized=false`; it performs no repair, delete, backfill, schema change or migration authorization.
+- Added unit, limiter and API tests plus a real PostgreSQL scenario inside the exact harness already mandatory in PR/deploy CI. The database proof uses a NOBYPASSRLS role, FORCE RLS, two organizations and exact index-catalog/count assertions.
+- Focused results: 3 files / 12 executable tests passed; targeted ESLint passed all eight runtime/test paths; the PostgreSQL file compiled/discovered 14 scenarios but all were `SKIPPED / NOT RUN` locally without the approved CI database. Package lock remains `54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`; the temporary dependency link was removed.
+- Full local typecheck/build, real PostgreSQL, browser E2E, Android/Gradle, load, signed APK, physical device and pilot are `NOT RUN`. No production request or mutation occurred.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` with no added credit.
+- Precise stopping point: implementation, focused verification and initial evidence are complete in the working tree; no implementation checkpoint or frozen code review exists yet.
+- Next action: checkpoint only the explicit task paths, freeze the complete diff against exact deployed main, and obtain author-independent GREEN before push/opening the next sub-400 KB PR.
+
+## 2026-09-28 — C6 response-cycle audit frozen complete-diff review GREEN
+
+- Clean implementation checkpoint is `a864b5bcc756f260679ffa83cbdfd5b56793b3cb` on exact base/live main/merge-base `6b858b4514e58b1d01c1b027d7ce503a7b39b185`.
+- Fresh author-independent read-only review inspected all 12/12 paths and returned GREEN with P0=0, P1=0, P2=0 and P3=0. It independently reproduced 68,483 plain-binary bytes and SHA-256 `cd66534e4a30a7fb1705aa4c4b398182c9f3088dde782ed77f1dc23721d83d30`, below 400 KB.
+- Session/capability/legacy/granular-org access, MFA, final private headers, atomic tenant/principal limiter, full tagged aggregate, NULL/bigint/invariant failure, transaction-local RLS and bounds, counts-only awaited audit, no mutation/authorization and restricted-role PG isolation/count/index/cleanup passed review.
+- Reviewer-side tests and heavy gates were `NOT RUN`; author results were not adopted. On the unchanged head, author-side related RLS/auth/MFA/transaction tests passed 46/46 in addition to the 12/12 new tests. Real PostgreSQL, full typecheck/build, browser, Android/load/device/pilot remain `NOT RUN` locally.
+- Closing reviewer fetch found no main drift and the worktree remained clean. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: the exact source/test/evidence checkpoint is independently GREEN; this review receipt is the only uncommitted delta.
+- Next action: checkpoint this documentation-only receipt, obtain independent runtime/test blob-integrity proof and final fingerprint, then push/open the PR and wait for exact-head CI.
