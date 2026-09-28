@@ -3257,6 +3257,14 @@ Current-tree recovery and self-audit (2026-09-26):
   waived, and must be green before final merge. Full local TypeScript/build and
   browser execution remain **NOT RUN** under the Contabo workload rule; GitHub
   Actions is the mandatory executor.
+- Diagnostic exact-SHA run `36374828281` exposed that a single `portal-users`
+  dispatch skipped the all-scenarios source gate and had no dedicated section
+  gate. A fail-closed `Validate section-scoped Portal Users evidence` step now
+  runs syntax, Portal Users plus shared-shell anti-pattern scan, i18n parity,
+  scoped ESLint and the product/evidence test bundle before fixtures, build or
+  capture. Its workflow contract pins both the step and scoped root. Local YAML
+  parsing and all 24 shell blocks pass `bash -n`; the diagnostic run is not
+  accepted as closure evidence and the corrected exact SHA must be rerun.
 
 ## 21A. Workstream 15 — Support AI Settings
 

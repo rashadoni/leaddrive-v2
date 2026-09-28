@@ -2400,3 +2400,21 @@ Workstream 14 Portal Users from its saved product/recovery checkpoints.
 Next: checkpoint and push the WS14 self-audit, then run exact-SHA desktop,
 RU/dark physical-touch and complete high-profile Portal Users evidence before
 checking POR-001..009 and closing the section.
+
+### Workstream 14 section-gate correction
+
+- Exact-SHA desktop run `36374828281` on `9521783a3` showed the browser flow was
+  selected but the workflow had no dedicated Portal Users source-validation
+  step; the all-scenarios validation was correctly skipped for a one-scenario
+  dispatch. The run remains useful only as a diagnostic and cannot close WS14.
+- Added a fail-closed `Validate section-scoped Portal Users evidence` step ahead
+  of fixtures/build/capture. It runs browser/flow/screenshot syntax checks, the
+  Portal Users and shared shell/dialog anti-pattern scope, i18n parity, scoped
+  ESLint, API/password-link/presentation/UX tests and shared evidence contracts.
+  The Portal Users flow contract now requires this step and its route root.
+- Local validation is green: the updated flow contract is 6/6, focused ESLint
+  passes, the workflow YAML parses and all 24 embedded shell blocks pass
+  `bash -n`; `git diff --check` is clean. No existing gate or threshold changed.
+
+Next: checkpoint and push the section gate, then repeat the exact-SHA desktop
+run on the corrected workflow before mobile and full matrix evidence.

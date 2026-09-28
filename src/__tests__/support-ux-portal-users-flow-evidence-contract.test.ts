@@ -65,6 +65,8 @@ describe("Portal Users flow evidence contract", () => {
   })
 
   it("runs only when the Portal Users scenario is selected", () => {
+    expect(workflow).toContain("Validate section-scoped Portal Users evidence")
+    expect(workflow).toContain("src/app/(dashboard)/settings/portal-users")
     expect(workflow).toContain("scripts/support-ux-portal-users-flow-evidence.mjs")
     expect(workflow).toContain("*,portal-users,*")
     expect(workflow).toContain("portal_users_flow_status")
