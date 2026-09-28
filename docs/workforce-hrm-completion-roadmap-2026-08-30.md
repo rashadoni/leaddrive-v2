@@ -1368,3 +1368,13 @@ from this worktree.
 - Progress stays `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
 - Precise stopping point: the frozen implementation/evidence checkpoint is independently GREEN; only this three-document review receipt is uncommitted.
 - Next action: checkpoint the receipt, independently prove all eight reviewed runtime/test blobs unchanged and verify final diff identity, then push/open the sub-400 KB PR and require every exact-head check including real PostgreSQL.
+
+## 2026-09-28 — PR #479 response-cycle aggregate audit production release
+
+- Final receipt-integrity review returned GREEN with zero P0-P3 at head `aed3cced83df0ef5779a77c1d543d9f448d78021`: 12 paths / 73,245 plain-binary bytes / SHA-256 `9b8d64e5ef810746b85da57bb856291b8eb2ac54416e15bb8a4938d1c41af9e5`. Only three append-only docs changed after frozen review; all eight reviewed runtime/test blobs remained byte-identical.
+- Exact-head PR run `36414664981` passed 16s `pr-scope`, 12m12s `static-checks` including the real restricted-role Workforce PostgreSQL proof and full unit baseline, and 18m39s `typecheck`. `runner-policy` run `36414665145` and `scan` run `36414665001` also passed; the PR production build was skipped by design.
+- PR #479 merged normally at `2026-09-28T11:36:30Z` as main SHA `29fb2234866c28dd101ad0abaedf8da0548c678e`. Deploy run `36416663752` completed SUCCESS at `2026-09-28T11:57:44Z`: quality/security 9m30s, SHA-bound build/publication 15m14s, atomic deploy/post-smokes 5m39s and retention cleanup 5s.
+- Independent no-cache requests forced `app.leaddrivecrm.org` to registered production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200 `{"ok":true}` and build-info returned HTTP 200 with exact `artifactSha=29fb2234866c28dd101ad0abaedf8da0548c678e` and `builtAt=2026-09-28T11:40:36Z`. Only GitHub main through `deploy.yml` was used.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and pilot remain `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 stays `PARTIAL` and no credit is added.
+- Precise stopping point: PR #479 is independently reviewed, merged, deployed and exact-SHA smoke-verified; only this three-document release receipt is uncommitted on clean successor branch `codex/workforce-exception-response-cycle-unique-index`.
+- Next action: checkpoint the release receipt, then independently design-audit the bounded online uniqueness-migration prerequisite and recovery contract before any schema change.
