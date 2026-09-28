@@ -59,6 +59,11 @@ describe("macros UX contract", () => {
     expect(page).not.toContain("catch {}")
   })
 
+  it("lets the dialog capture and restore its trigger before applying initial focus", () => {
+    expect(page).toContain("data-dialog-initial-focus")
+    expect(page).not.toContain('<Input autoFocus value={draft.name}')
+  })
+
   it("delays destructive requests so macro and category deletion can be undone", () => {
     expect(page).toContain("DELETE_DELAY_MS")
     expect(page).toContain("undoDelete")

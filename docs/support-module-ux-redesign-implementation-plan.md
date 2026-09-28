@@ -2865,7 +2865,7 @@ Closure evidence (2026-09-27):
 
 ## 20. Workstream 13 — Macros
 
-**Status: IN PROGRESS — current-tree product checkpoint `17d7208bb`; recovery/self-audit checkpoint pending; browser/CI gates pending**
+**Status: IN PROGRESS — product `17d7208bb`; recovery/self-audit `bc1fd2f43`; desktop focus correction pending checkpoint; browser/CI gates pending**
 **Route:** `/settings/macros`
 **Primary file:** `src/app/(dashboard)/settings/macros/page.tsx`
 
@@ -3032,6 +3032,16 @@ Current-tree restoration and self-audit (2026-09-28):
   outcomes; its only failure read focus in the same event-loop tick as dialog
   cleanup. Focus return is now observed for a bounded 2.5 seconds without the
   evidence code setting focus itself. Desktop closure remains pending rerun.
+- Exact-SHA run `36364020961` on `7330edeef` again passed the section gate,
+  fixtures, production build, static capture and five of six flow outcomes. The
+  bounded observer proved the remaining failure was not a capture race: the
+  editor's native React `autoFocus` moved focus during mount before the shared
+  dialog effect recorded its return target, so the dialog remembered the name
+  input rather than the triggering row button. The editor now uses the dialog's
+  `data-dialog-initial-focus` contract; the dialog records the trigger first and
+  applies initial focus on its managed animation frame. The strict focus-return
+  assertion remains unchanged. Focused ESLint, 17/17 affected assertions and
+  diff-check pass; desktop closure remains pending the corrected exact-SHA run.
 
 ## 21. Workstream 14 — Portal Users
 

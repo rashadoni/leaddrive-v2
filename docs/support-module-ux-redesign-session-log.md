@@ -2256,3 +2256,25 @@ desktop evidence gate before mobile/high evidence.
 
 Next: run affected source checks, checkpoint and push the focus observer, then
 repeat the exact-SHA desktop gate.
+
+### Workstream 13 dialog return-target correction
+
+- Exact-SHA run `36364020961` on `7330edeef` passed Macros section validation,
+  fixtures, the isolated production build, static capture and five of six
+  mutation/recovery outcomes. Its sole failure remained
+  `macro_editor_focus_not_restored`, after the new bounded observer waited the
+  full 2.5 seconds. This falsified the prior event-loop-race diagnosis without
+  weakening the focus requirement.
+- Root-cause review of the shared dialog contract found that the editor name
+  input used React's native `autoFocus`. It receives focus during mount before
+  the dialog's effect records `document.activeElement`, causing the dialog to
+  remember the input instead of the row button that opened it. The Macros
+  editor now uses `data-dialog-initial-focus`, which lets the dialog record the
+  trigger and then focus the name field on its managed animation frame.
+- The evidence assertion still observes focus without setting it. Focused
+  ESLint, 17/17 Macros UX/evidence-contract assertions and `git diff --check`
+  are green. Full local build/browser remain **NOT RUN** under the Contabo
+  workload rule; the next exact-SHA GitHub run remains mandatory.
+
+Next: checkpoint and push the dialog return-target correction, then rerun the
+desktop Macros gate before RU/dark mobile and the 24-cell matrix.
