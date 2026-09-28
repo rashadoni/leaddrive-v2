@@ -257,6 +257,7 @@ try {
     await page.goto("/settings/macros", { waitUntil: "domcontentloaded" })
     await dismissTour(page, true)
     await page.getByTestId("macros-error").waitFor({ state: "visible" })
+    await dismissTour(page, true)
     await page.unroute(pattern, fail)
     await installMacroApi(page, [macro(0)])
     const retryActivation = await activateEvidenceTarget(page, page.getByTestId("macros-retry"))

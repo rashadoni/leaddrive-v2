@@ -9,20 +9,22 @@ const didYouKnow = readFileSync("src/components/did-you-know.tsx", "utf8")
 describe("macros UX contract", () => {
   it("keeps each recovered shell integration import unique", () => {
     for (const moduleName of [
-      "did-you-know",
       "help/help-button",
-      "page-description",
+      "support/support-page-shell",
       "tour/tour-replay-button",
       "tour/tour-provider",
     ]) {
       expect(page.match(new RegExp(`from "@/components/${moduleName}"`, "g"))).toHaveLength(1)
     }
+    expect(page).not.toContain('from "@/components/did-you-know"')
+    expect(page).not.toContain('from "@/components/page-description"')
   })
 
   it("uses a compact searchable list rather than the old card gallery", () => {
     expect(page).toContain("searchPlaceholder")
-    expect(page).toContain("md:grid-cols-[minmax(12rem,1.4fr)")
-    expect(page).not.toContain("sm:grid-cols-2")
+    expect(page).toContain("xl:grid-cols-[minmax(12rem,1.4fr)")
+    expect(page).toContain("grid-cols-[minmax(0,1fr)]")
+    expect(page).not.toMatch(/<article[^>]+sm:grid-cols-2/)
     expect(page).not.toContain("hover:shadow-md")
   })
 
@@ -65,7 +67,7 @@ describe("macros UX contract", () => {
     expect(page).not.toContain('<Input autoFocus value={draft.name}')
   })
 
-  it("gives the visible tip controls localized names and 44px targets", () => {
+  it("gives shared tip controls localized names and 44px targets", () => {
     expect(didYouKnow).toContain('aria-label={tc("close")}')
     expect(didYouKnow).toContain('aria-label={tc("previousPage")}')
     expect(didYouKnow).toContain('aria-label={tc("nextPage")}')

@@ -2865,7 +2865,7 @@ Closure evidence (2026-09-27):
 
 ## 20. Workstream 13 — Macros
 
-**Status: IN PROGRESS — product `17d7208bb`; recovery/self-audit `bc1fd2f43`; desktop focus correction pending checkpoint; browser/CI gates pending**
+**Status: IN PROGRESS — product `17d7208bb`; recovery/self-audit `bc1fd2f43`; mobile/layout correction pending checkpoint; browser/CI gates pending**
 **Route:** `/settings/macros`
 **Primary file:** `src/app/(dashboard)/settings/macros/page.tsx`
 
@@ -3053,6 +3053,23 @@ Current-tree restoration and self-audit (2026-09-28):
   dependency and its focused contract pins the labels/targets. Translation
   parity, focused ESLint, 18/18 affected assertions, workflow YAML plus all 23
   shell blocks, and diff-check pass. Desktop closure remains pending rerun.
+- Exact-SHA desktop run `36366968426` on `33a13b6e8` is green: 6/6
+  disposable outcomes, both focus-return assertions true, all static
+  error/Axe/touch/overflow/environment/primary-work totals zero, load p75
+  600 ms and CLS `0.0019435164840133103`. Manual review accepted the EN/light
+  desktop capture.
+- Exact-SHA RU/dark mobile run `36368291371` then failed closed with 5/6 flows:
+  the late first-run tour covered the transient-load Retry before its physical
+  tap. Static capture independently reported a 481 px intrinsic row width and
+  primary work at 1121 px, while Axe/touch/runtime/environment totals remained
+  zero. The page now restores the already-approved shared `SupportPageShell`,
+  single description and no permanently expanded Did You Know panel; the row
+  uses a zero-minimum mobile grid, and table/filter breakpoints avoid intrinsic
+  columns before they fit. The initial error path makes a second bounded tour
+  dismissal after its state appears. The three-file anti-pattern scan is green
+  at zero, focused ESLint and 18/18 affected assertions pass, and diff-check is
+  clean. Because visible desktop layout changed, both exact-SHA desktop and
+  mobile evidence must be rerun before the matrix.
 
 ## 21. Workstream 14 — Portal Users
 

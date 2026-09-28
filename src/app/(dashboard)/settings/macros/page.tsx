@@ -21,9 +21,8 @@ import {
   Zap,
 } from "lucide-react"
 
-import { DidYouKnow } from "@/components/did-you-know"
 import { HelpButton } from "@/components/help/help-button"
-import { PageDescription } from "@/components/page-description"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { Button } from "@/components/ui/button"
@@ -421,21 +420,16 @@ export default function MacrosSettingsPage() {
   }
 
   return (
-    <div className="support-page-shell space-y-4 pb-8" data-testid="macros-workspace" data-state={loading ? "loading" : loadError ? "error" : "ready"} data-write={canWrite ? "allowed" : "read-only"}>
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 data-tour-id="macros-header" className="text-xl font-semibold tracking-tight">{t("title")}</h1>
-            <TourReplayButton tourId="macros" className="min-h-11 px-2" />
-            <HelpButton slug="macros" variant="label" className="min-h-11 shrink-0" />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-          <PageDescription text={t("description")} />
-        </div>
-        {canWrite && <Button data-tour-id="macros-new" data-testid="macro-create" onClick={openCreate} className="min-h-11 w-full shrink-0 self-start sm:w-auto"><Plus className="mr-2 h-4 w-4" />{t("newMacro")}</Button>}
-      </header>
-
-      <DidYouKnow page="macros" className="mb-0" />
+    <SupportPageShell
+      data-testid="macros-workspace"
+      data-state={loading ? "loading" : loadError ? "error" : "ready"}
+      data-write={canWrite ? "allowed" : "read-only"}
+      width="fluid"
+      title={<span data-tour-id="macros-header">{t("title")}</span>}
+      description={t("subtitle")}
+      utilities={<><TourReplayButton tourId="macros" className="min-h-11 px-2" /><HelpButton slug="macros" variant="label" className="min-h-11 shrink-0" /></>}
+      actions={canWrite ? <Button data-tour-id="macros-new" data-testid="macro-create" onClick={openCreate} className="min-h-11 w-full shrink-0 self-start sm:w-auto"><Plus className="mr-2 h-4 w-4" />{t("newMacro")}</Button> : undefined}
+    >
 
       {notice && (
         <div role="status" aria-live="polite" className={cn("flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm", notice.kind === "error" && "border-destructive/40 text-destructive")} data-testid="macros-notice" data-kind={notice.kind}>
@@ -450,7 +444,7 @@ export default function MacrosSettingsPage() {
       )}
 
       <section data-tour-id="macros-filters" data-testid="macros-filters" aria-label={t("libraryControls")} className="space-y-3 rounded-lg border p-3">
-        <div className="grid gap-2 md:grid-cols-[minmax(15rem,1fr)_12rem_12rem_auto]">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(15rem,1fr)_12rem_12rem_auto]">
           <Label className="relative">
             <span className="sr-only">{t("searchLabel")}</span>
             <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
@@ -482,21 +476,21 @@ export default function MacrosSettingsPage() {
       ) : filteredMacros.length === 0 ? (
         <div className="rounded-lg border p-7 text-center" data-testid="macros-filter-empty"><p className="text-sm text-muted-foreground">{t("noResults")}</p><Button variant="ghost" className="mt-2 min-h-11" onClick={() => { setQuery(""); setCategoryFilter("all"); setStatusFilter("all") }} data-testid="macros-reset-filters">{t("resetFilters")}</Button></div>
       ) : (
-        <div data-tour-id="macros-list" data-testid="macros-list" className="overflow-hidden rounded-lg border">
-          <div className="hidden grid-cols-[minmax(12rem,1.4fr)_minmax(12rem,1fr)_7rem_7rem_6rem] gap-3 border-b bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground md:grid"><span>{t("macroColumn")}</span><span>{t("actionsColumn")}</span><span>{t("shortcutKey")}</span><span>{t("usageColumn")}</span><span className="text-right">{t("controlsColumn")}</span></div>
+        <div data-tour-id="macros-list" data-testid="macros-list" className="min-w-0 overflow-hidden rounded-lg border">
+          <div className="hidden grid-cols-[minmax(12rem,1.4fr)_minmax(12rem,1fr)_7rem_7rem_6rem] gap-3 border-b bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground xl:grid"><span>{t("macroColumn")}</span><span>{t("actionsColumn")}</span><span>{t("shortcutKey")}</span><span>{t("usageColumn")}</span><span className="text-right">{t("controlsColumn")}</span></div>
           {filteredMacros.map((macro) => {
             const deleting = pendingDelete?.type === "macro" && pendingDelete.macro.id === macro.id
             return (
-              <article key={macro.id} className={cn("grid gap-2 border-b p-3 last:border-b-0 md:grid-cols-[minmax(12rem,1.4fr)_minmax(12rem,1fr)_7rem_7rem_6rem] md:items-center", deleting && "opacity-50")} data-testid="macro-row" data-macro-id={macro.id}>
+              <article key={macro.id} className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-b p-3 last:border-b-0 xl:grid-cols-[minmax(12rem,1.4fr)_minmax(12rem,1fr)_7rem_7rem_6rem] xl:items-center", deleting && "opacity-50")} data-testid="macro-row" data-macro-id={macro.id}>
                 <button type="button" onClick={() => openEdit(macro)} className="min-h-11 min-w-0 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={deleting} data-testid="macro-row-open">
-                  <span className="flex items-center gap-2"><span className="truncate text-sm font-medium">{macro.name}</span><span className="rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">{categoryLabel(macro.category)}</span></span>
+                  <span className="flex min-w-0 items-center gap-2"><span className="min-w-0 truncate text-sm font-medium">{macro.name}</span><span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">{categoryLabel(macro.category)}</span></span>
                   <span className="mt-0.5 block truncate text-xs text-muted-foreground">{macro.description || t("noDescription")}</span>
                 </button>
-                <button type="button" onClick={() => openEdit(macro)} className="min-h-11 rounded-md text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={deleting}>
+                <button type="button" onClick={() => openEdit(macro)} className="min-h-11 min-w-0 rounded-md text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={deleting}>
                   <span className="block truncate"><strong>1.</strong> {t(ACTION_META[macro.actions[0]?.type]?.label ?? "unknownAction")} · {macro.actions[0] ? actionValueLabel(macro.actions[0]) : t("noActions")}</span>
                   {macro.actions.length > 1 && <span className="mt-1 block text-muted-foreground">{t("moreActions", { count: macro.actions.length - 1 })}</span>}
                 </button>
-                <span className="text-xs"><span className="md:hidden text-muted-foreground">{t("shortcutKey")}: </span>{macro.shortcutKey ? <kbd className="rounded border bg-muted px-1.5 py-1 font-mono">{macro.shortcutKey}</kbd> : t("none")}</span>
+                <span className="text-xs"><span className="text-muted-foreground xl:hidden">{t("shortcutKey")}: </span>{macro.shortcutKey ? <kbd className="rounded border bg-muted px-1.5 py-1 font-mono">{macro.shortcutKey}</kbd> : t("none")}</span>
                 <span className="text-xs text-muted-foreground">{t("usedTimes", { count: macro.usageCount })}</span>
                 <div className="flex min-h-11 items-center justify-end gap-1">
                   <label className="flex h-11 w-11 items-center justify-center" data-testid="macro-toggle-target"><Switch checked={macro.isActive} onCheckedChange={(checked) => void toggleActive(macro, checked)} disabled={!canWrite || deleting || togglingIds.has(macro.id)} aria-label={t(macro.isActive ? "deactivateNamed" : "activateNamed", { name: macro.name })} className="h-6 w-11" data-testid="macro-toggle" /></label>
@@ -574,6 +568,6 @@ export default function MacrosSettingsPage() {
         <DialogHeader><DialogTitle>{confirmTarget?.type === "macro" ? t("deleteMacroTitle") : t("deleteCategoryTitle")}</DialogTitle><DialogDescription>{confirmTarget?.type === "macro" ? t("deleteMacroImpact", { name: confirmTarget.macro.name }) : confirmTarget ? t("deleteCategoryImpact", { name: confirmTarget.category, count: confirmTarget.count }) : ""}</DialogDescription></DialogHeader>
         <DialogFooter><Button variant="outline" className="min-h-11" onClick={() => setConfirmTarget(null)}>{tc("cancel")}</Button><Button variant="destructive" className="min-h-11" onClick={queueDelete} data-testid="macro-delete-confirm">{t("confirmDelete")}</Button></DialogFooter>
       </Dialog>
-    </div>
+    </SupportPageShell>
   )
 }

@@ -2302,3 +2302,34 @@ desktop Macros gate before RU/dark mobile and the 24-cell matrix.
 
 Next: checkpoint and push the shared tip correction, then rerun the exact-SHA
 desktop Macros gate before RU/dark mobile and the 24-cell matrix.
+
+### Workstream 13 desktop closure and mobile correction
+
+- Exact-SHA desktop run `36366968426` on `33a13b6e8` passed the Macros section
+  gate, fixtures, production build and capture. Artifact review confirms 6/6
+  flow outcomes, both focus returns true and zero runtime, Axe, accessibility,
+  touch, overflow, environment and primary-work failures. Load p75 is 600 ms,
+  CLS is `0.0019435164840133103`, and the EN/light desktop screenshot was
+  manually accepted.
+- Exact-SHA RU/dark mobile run `36368291371` on the same SHA failed closed.
+  Five of six flows passed, but the late first-run tour covered the transient
+  error Retry before its real touch hit-test. The static result had zero Axe,
+  touch, runtime and environment errors, but correctly rejected a 481 px
+  intrinsic macro-row width and primary work at 1121 px. The screenshots were
+  inspected and match all three findings.
+- The Macros page now reinstates the approved shared `SupportPageShell` from
+  the completed foundation work: one short description, no permanently
+  expanded Did You Know block beside Help, and compact shell rhythm. A
+  zero-minimum one-column grid contains rows below the desktop breakpoint;
+  table headers/columns wait until `xl`, while filters use a safe two-column
+  intermediate layout. The transient error flow performs a second bounded tour
+  dismissal after the error state is visible, before measuring and tapping
+  Retry. Existing physical-touch size/hit checks and primary-work thresholds
+  are unchanged.
+- Local checks are green after correction: flow syntax; the three-file scoped
+  anti-pattern scan with zero findings; focused ESLint; 18/18 Macros UX/evidence
+  assertions; and `git diff --check`. Full local build/browser remain **NOT
+  RUN** under the Contabo workload rule.
+
+Next: checkpoint and push the mobile/layout correction, then rerun exact-SHA
+RU/dark mobile and desktop evidence before the 24-cell matrix.
