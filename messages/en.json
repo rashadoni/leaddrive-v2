@@ -13822,6 +13822,8 @@
     "notFinished": "Not completed yet",
     "resultCount": "Showing: {count}",
     "resultPartial": "Showing the latest {shown} of {total} visits in this period.",
+    "loadMore": "Show {count} more",
+    "loadMoreFailed": "Could not load more visits. Try again.",
     "resultBounded": "For safety, showing the latest {shown} visits checked within a {limit}-record window.",
     "advisorRisk": "AI visit notes",
     "teamActiveTitle": "Visits in progress: {count}",

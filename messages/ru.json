@@ -13822,6 +13822,8 @@
     "notFinished": "Ещё не завершён",
     "resultCount": "Показано: {count}",
     "resultPartial": "Показаны последние {shown} из {total} визитов за этот период.",
+    "loadMore": "Показать ещё {count}",
+    "loadMoreFailed": "Не удалось загрузить следующие визиты. Попробуйте ещё раз.",
     "resultBounded": "Для безопасности показаны последние {shown} визитов, проверенные в пределах {limit} записей.",
     "advisorRisk": "AI-заметки по визиту",
     "teamActiveTitle": "Визиты в процессе: {count}",
