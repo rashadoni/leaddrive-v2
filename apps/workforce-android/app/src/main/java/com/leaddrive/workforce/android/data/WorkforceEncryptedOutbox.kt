@@ -76,7 +76,9 @@ class WorkforceEncryptedOutbox(context: Context) {
                     expiresAtEpochMs = operation.queuedAt.toEpochMillisOr(now) + OFFLINE_HORIZON_MS,
                     nextAttemptAtEpochMs = now,
                     attemptCount = 0,
-                    state = WorkforceOutboxState.QUEUED.name,
+                    // Dedicated aliases make this new domain invisible to an
+                    // older APK's exact QUEUED/RETRY SQL after a downgrade.
+                    state = operation.domain.storedPendingState(WorkforceOutboxState.QUEUED),
                     ciphertext = encrypted.ciphertext,
                     initializationVector = encrypted.initializationVector,
                     detailCode = null,
@@ -128,6 +130,25 @@ class WorkforceEncryptedOutbox(context: Context) {
                     state = WorkforceOutboxState.fromStored(it.state),
                     createdAtEpochMs = it.createdAtEpochMs,
                     recoveryHint = recoveryHint(it.state, it.detailCode),
+                )
+            }
+        }
+    }
+
+    /**
+     * Exact counts for action gating. Unlike the bounded recovery-center list,
+     * this aggregate cannot hide an older pending row behind 100 newer items
+     * and still exposes neither operation identifiers nor ciphertext.
+     */
+    suspend fun recoveryStateCountsForDomain(
+        session: WorkforceStoredSession,
+        domain: WorkforceOutboxDomain,
+    ): List<WorkforceOutboxRecoveryStateCount> = withContext(Dispatchers.IO) {
+        ACCOUNT_BOUNDARY_MUTEX.withLock {
+            database.operations().countRecoveryStates(session.accountScope, domain.name).map {
+                WorkforceOutboxRecoveryStateCount(
+                    state = WorkforceOutboxState.fromStored(it.state),
+                    count = it.count,
                 )
             }
         }
@@ -210,6 +231,7 @@ class WorkforceEncryptedOutbox(context: Context) {
                                 operationId = row.operationId,
                                 attemptCount = row.attemptCount + 1,
                                 nextAttemptAtEpochMs = retryAt(row.attemptCount + 1, now),
+                                state = domain.storedPendingState(WorkforceOutboxState.RETRY),
                                 detailCode = error.recoveryCode ?: "TRANSIENT_SERVER_FAILURE",
                             )
                             retryNeeded = true
@@ -229,6 +251,7 @@ class WorkforceEncryptedOutbox(context: Context) {
                                 operationId = row.operationId,
                                 attemptCount = row.attemptCount + 1,
                                 nextAttemptAtEpochMs = retryAt(row.attemptCount + 1, now),
+                                state = domain.storedPendingState(WorkforceOutboxState.RETRY),
                                 detailCode = "NETWORK_UNAVAILABLE",
                             )
                             retryNeeded = true
@@ -274,7 +297,10 @@ class WorkforceEncryptedOutbox(context: Context) {
     }
 
     private fun recoveryHint(state: String, code: String?): WorkforceOutboxRecoveryHint = when (state) {
-        WorkforceOutboxState.QUEUED.name, WorkforceOutboxState.RETRY.name ->
+        WorkforceOutboxState.QUEUED.name,
+        WorkforceOutboxState.RETRY.name,
+        EXCEPTION_RESPONSE_QUEUED,
+        EXCEPTION_RESPONSE_RETRY ->
             WorkforceOutboxRecoveryHint.PENDING_ACKNOWLEDGEMENT
         WorkforceOutboxState.CONFLICT.name ->
             WorkforceOutboxRecoveryHint.CONFLICT_REFRESH
@@ -309,6 +335,11 @@ data class WorkforceOutboxRecoveryItem(
     val recoveryHint: WorkforceOutboxRecoveryHint,
 )
 
+data class WorkforceOutboxRecoveryStateCount(
+    val state: WorkforceOutboxState?,
+    val count: Long,
+)
+
 /** Non-sensitive local recovery categories. Employee language belongs to UI resources. */
 enum class WorkforceOutboxRecoveryHint {
     PENDING_ACKNOWLEDGEMENT,
@@ -322,7 +353,8 @@ enum class WorkforceOutboxRecoveryHint {
 
 enum class WorkforceOutboxDomain {
     WORKDAY,
-    HRM_REQUEST;
+    HRM_REQUEST,
+    EXCEPTION_RESPONSE;
 
     companion object {
         fun fromStored(value: String): WorkforceOutboxDomain? = entries.firstOrNull { it.name == value }
@@ -338,9 +370,26 @@ enum class WorkforceOutboxState {
     REQUIRES_REVIEW;
 
     companion object {
-        fun fromStored(value: String): WorkforceOutboxState? = entries.firstOrNull { it.name == value }
+        fun fromStored(value: String): WorkforceOutboxState? = when (value) {
+            EXCEPTION_RESPONSE_QUEUED -> QUEUED
+            EXCEPTION_RESPONSE_RETRY -> RETRY
+            else -> entries.firstOrNull { it.name == value }
+        }
     }
 
+}
+
+private const val EXCEPTION_RESPONSE_QUEUED = "EXCEPTION_RESPONSE_QUEUED"
+private const val EXCEPTION_RESPONSE_RETRY = "EXCEPTION_RESPONSE_RETRY"
+
+private fun WorkforceOutboxDomain.storedPendingState(state: WorkforceOutboxState): String {
+    require(state == WorkforceOutboxState.QUEUED || state == WorkforceOutboxState.RETRY)
+    if (this != WorkforceOutboxDomain.EXCEPTION_RESPONSE) return state.name
+    return when (state) {
+        WorkforceOutboxState.QUEUED -> EXCEPTION_RESPONSE_QUEUED
+        WorkforceOutboxState.RETRY -> EXCEPTION_RESPONSE_RETRY
+        else -> error("Only pending states have downgrade-safe aliases.")
+    }
 }
 
 @Entity(tableName = "workforce_outbox_operations")
@@ -364,23 +413,26 @@ interface WorkforceOutboxDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIgnore(entity: WorkforceOutboxEntity): Long
 
-    @Query("SELECT DISTINCT domain FROM workforce_outbox_operations WHERE accountScope = :accountScope AND state IN ('QUEUED', 'RETRY') ORDER BY domain ASC")
+    @Query("SELECT DISTINCT domain FROM workforce_outbox_operations WHERE accountScope = :accountScope AND state IN ('QUEUED', 'RETRY', 'EXCEPTION_RESPONSE_QUEUED', 'EXCEPTION_RESPONSE_RETRY') ORDER BY domain ASC")
     suspend fun pendingDomains(accountScope: String): List<String>
 
     @Query("SELECT domain, state, createdAtEpochMs, detailCode FROM workforce_outbox_operations WHERE accountScope = :accountScope ORDER BY createdAtEpochMs DESC LIMIT 100")
     suspend fun recoveryRows(accountScope: String): List<WorkforceOutboxRecoveryRow>
 
-    @Query("SELECT * FROM workforce_outbox_operations WHERE accountScope = :accountScope AND domain = :domain AND state IN ('QUEUED', 'RETRY') ORDER BY createdAtEpochMs ASC LIMIT 1")
+    @Query("SELECT state, COUNT(*) AS count FROM workforce_outbox_operations WHERE accountScope = :accountScope AND domain = :domain GROUP BY state")
+    suspend fun countRecoveryStates(accountScope: String, domain: String): List<WorkforceOutboxRecoveryStateCountRow>
+
+    @Query("SELECT * FROM workforce_outbox_operations WHERE accountScope = :accountScope AND domain = :domain AND state IN ('QUEUED', 'RETRY', 'EXCEPTION_RESPONSE_QUEUED', 'EXCEPTION_RESPONSE_RETRY') ORDER BY createdAtEpochMs ASC LIMIT 1")
     suspend fun oldestPending(accountScope: String, domain: String): WorkforceOutboxEntity?
 
     /** Metadata-only earliest retry deadline; it never reads ciphertext. */
-    @Query("SELECT MIN(nextAttemptAtEpochMs) FROM workforce_outbox_operations WHERE accountScope = :accountScope AND state IN ('QUEUED', 'RETRY')")
+    @Query("SELECT MIN(nextAttemptAtEpochMs) FROM workforce_outbox_operations WHERE accountScope = :accountScope AND state IN ('QUEUED', 'RETRY', 'EXCEPTION_RESPONSE_QUEUED', 'EXCEPTION_RESPONSE_RETRY')")
     suspend fun nextPendingAttemptAtEpochMs(accountScope: String): Long?
 
-    @Query("UPDATE workforce_outbox_operations SET attemptCount = :attemptCount, nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = 'RETRY', detailCode = :detailCode WHERE operationId = :operationId")
-    suspend fun retry(operationId: String, attemptCount: Int, nextAttemptAtEpochMs: Long, detailCode: String)
+    @Query("UPDATE workforce_outbox_operations SET attemptCount = :attemptCount, nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = :state, detailCode = :detailCode WHERE operationId = :operationId")
+    suspend fun retry(operationId: String, attemptCount: Int, nextAttemptAtEpochMs: Long, state: String, detailCode: String)
 
-    @Query("UPDATE workforce_outbox_operations SET nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = 'RETRY', detailCode = 'WORKFORCE_MOBILE_UPDATE_REQUIRED' WHERE accountScope = :accountScope AND state IN ('QUEUED', 'RETRY')")
+    @Query("UPDATE workforce_outbox_operations SET nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = CASE WHEN domain = 'EXCEPTION_RESPONSE' THEN 'EXCEPTION_RESPONSE_RETRY' ELSE 'RETRY' END, detailCode = 'WORKFORCE_MOBILE_UPDATE_REQUIRED' WHERE accountScope = :accountScope AND state IN ('QUEUED', 'RETRY', 'EXCEPTION_RESPONSE_QUEUED', 'EXCEPTION_RESPONSE_RETRY')")
     suspend fun deferPendingForMandatoryUpdate(accountScope: String, nextAttemptAtEpochMs: Long)
 
     @Query("UPDATE workforce_outbox_operations SET state = :state, detailCode = :detailCode WHERE operationId = :operationId")
@@ -401,6 +453,11 @@ data class WorkforceOutboxRecoveryRow(
     val state: String,
     val createdAtEpochMs: Long,
     val detailCode: String?,
+)
+
+data class WorkforceOutboxRecoveryStateCountRow(
+    val state: String,
+    val count: Long,
 )
 
 @Database(entities = [WorkforceOutboxEntity::class], version = 2, exportSchema = true)

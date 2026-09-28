@@ -106,6 +106,9 @@
     <string name="status_signing_in">Signing in…</string>
     <string name="status_loading_history">Loading accepted work-time history…</string>
     <string name="status_loading_exceptions">Loading your exception cards…</string>
+    <string name="status_exception_response_submitting">Recording that you saw the current review…</string>
+    <string name="status_exception_response_accepted">The server recorded that you saw the current review.</string>
+    <string name="status_exception_response_queued">Acknowledgement is encrypted and queued. It remains pending until the server confirms it.</string>
     <string name="status_loading_recovery">Loading private recovery state…</string>
     <string name="status_submitting_request">Submitting request…</string>
     <string name="status_request_accepted">Request accepted by the server. Refresh its status.</string>
@@ -126,6 +129,14 @@
     <string name="exception_response_acknowledged">Your response is recorded for the current review.</string>
     <string name="exception_response_not_acknowledged">No response is recorded for the current review.</string>
     <string name="exception_response_unavailable">Response status is unavailable for this review.</string>
+    <string name="exception_response_action_explainer">Acknowledging means only that you saw the current review. It does not approve or resolve the finding, and it does not waive a correction.</string>
+    <string name="exception_response_acknowledge">Acknowledge current review</string>
+    <string name="exception_response_confirm_title">Acknowledge this review?</string>
+    <string name="exception_response_confirm_body">This records only that you saw the current version. It does not approve the finding or close the case.</string>
+    <string name="exception_response_local_sync_explainer">Acknowledgement delivery is separate from server status. Refresh after pending delivery or a conflict.</string>
+    <string name="exception_response_local_sync_pending">Pending encrypted acknowledgements: %1$d</string>
+    <string name="exception_response_local_sync_conflict">Acknowledgements needing a fresh review: %1$d</string>
+    <string name="exception_response_local_sync_review">Acknowledgements needing recovery review: %1$d</string>
     <string name="exception_type_late_start">Late start</string>
     <string name="exception_type_delayed_claim">Delayed attendance claim</string>
     <string name="exception_type_missing_finish">Missing finish</string>
@@ -217,6 +228,7 @@
     <string name="reminder_state_scheduled">A private local reminder is scheduled. It contains no work-time, site or proof details.</string>
     <string name="recovery_domain_workday">Work Time</string>
     <string name="recovery_domain_request">Request</string>
+    <string name="recovery_domain_exception_response">Exception acknowledgement</string>
     <string name="recovery_domain_unknown">Workforce action</string>
     <string name="recovery_state_pending">Pending</string>
     <string name="recovery_state_conflict">Conflict</string>
