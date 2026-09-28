@@ -25349,7 +25349,9 @@
     "reviewContextTitle": "Yoxlama kontekstini təyin edin",
     "reviewContextHint": "Sorğudan əvvəl məqsəd, səbəb, əməkdaş və dövr tələb olunur. Hər uğurlu axtarış və zaman xətti oxunuşu auditə yazılır.",
     "purpose": "Yoxlama məqsədi",
+    "selectPurpose": "Məqsəd seçin",
     "reason": "Səbəb kodu",
+    "selectReason": "Səbəb seçin",
     "caseReference": "İş istinadı (məcburi deyil)",
     "caseReferencePlaceholder": "Məsələn, ATT-2026-104",
     "caseReferenceHint": "Əməkdaşın adı və ya iş təsviri deyil, təsdiqlənmiş şəxsiyyətsiz istinad istifadə edin.",
@@ -25365,6 +25367,7 @@
     "end": "Dövrün sonu",
     "loadTimeline": "Zaman xəttini yoxla",
     "rangeHint": "Daxil edilən dövr ən çox 31 gün ola bilər.",
+    "contextRequired": "Dəlil axtarmadan və ya yükləmədən əvvəl yoxlama məqsədi və səbəbini seçin.",
     "rangeInvalid": "Ən çox 31 günlük düzgün daxil edilən dövr seçin.",
     "caseInvalid": "İş istinadında 1–100 hərf, rəqəm və . _ : / - işarəsi istifadə edin.",
     "employeeRequired": "Dəlili yoxlamazdan əvvəl adlı əməkdaş seçin.",
@@ -25376,6 +25379,7 @@
     "requestFailed": "Dəlil sorğusunu tamamlamaq mümkün olmadı.",
     "retry": "Yenidən cəhd et",
     "loading": "Audit olunan törəmə dəlillər yüklənir",
+    "loadedAnnouncement": "{employee} üçün {count} törəmə dəlil qeydi yükləndi.",
     "derivedOnly": "Yalnız törəmə yoxlama",
     "resultMeta": "{start}–{end} · təşkilat saat qurşağı: {timezone}",
     "recordCount": "{count} qeyd",
@@ -25401,7 +25405,18 @@
     "reviewStates": { "LEGACY_UNKNOWN": "Köhnə yoxlama vəziyyəti", "NOT_REQUIRED": "Yoxlama tələb olunmur", "PENDING_REVIEW": "Yoxlama gözləyir" },
     "retention": { "WITHIN_RETENTION": "Xam mənbə saxlama müddətindədir", "PURGED": "Xam mənbə silinib" },
     "assessmentKinds": { "GEOFENCE": "Geozona qiymətləndirməsi", "LOCATION_QUALITY": "Məkan keyfiyyəti qiymətləndirməsi", "PROOF_POLICY": "Sübut siyasəti qiymətləndirməsi" },
-    "verdicts": { "INSIDE": "Daxildə", "OUTSIDE": "Kənarda", "UNKNOWN": "Naməlum", "ELIGIBLE": "Uyğundur", "REVIEW_REQUIRED": "Yoxlama tələb olunur", "UNAVAILABLE": "Əlçatan deyil", "SATISFIED": "Ödənilib" }
+    "verdicts": { "INSIDE": "Daxildə", "OUTSIDE": "Kənarda", "UNKNOWN": "Naməlum", "ELIGIBLE": "Uyğundur", "REVIEW_REQUIRED": "Yoxlama tələb olunur", "UNAVAILABLE": "Əlçatan deyil", "SATISFIED": "Ödənilib" },
+    "reasonLabels": {
+      "LOCATION_REQUIRED": "Məkan dəlili tələb olunur",
+      "LOCATION_UNAVAILABLE": "Məkan dəlili əlçatan deyil",
+      "LOCATION_TIMING_REVIEW": "Məkan vaxtı yoxlanmalıdır",
+      "LOCATION_QUALITY_REVIEW": "Məkan keyfiyyəti yoxlanmalıdır",
+      "LOCATION_READY": "Məkan geozona yoxlamasına hazırdır",
+      "GEOFENCE_UNAVAILABLE": "Təsdiqlənmiş geozona görüntüsü əlçatan deyil",
+      "INSIDE_CONFIRMED": "Törəmə nəticə təsdiqlənmiş sərhədin daxilindədir",
+      "OUTSIDE_RECORDED": "Törəmə nəticə təsdiqlənmiş sərhədin xaricindədir",
+      "REVIEW_REQUIRED": "Əlavə insan yoxlaması tələb olunur"
+    }
   },
   "mtmCommon": {
     "hintDismiss": "Bir daha göstərmə"

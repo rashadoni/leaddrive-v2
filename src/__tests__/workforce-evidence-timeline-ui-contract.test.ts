@@ -38,6 +38,13 @@ describe("Workforce derived-evidence timeline UI contract", () => {
     expect(component).toContain('"x-workforce-case-reference": caseReference.trim()')
     expect(component).toContain("searchController.current?.abort()")
     expect(component).toContain("timelineController.current?.abort()")
+    expect(component).toContain('useState<WorkforceEvidenceAccessPurpose | "">("")')
+    expect(component).toContain('useState<WorkforceEvidenceAccessReason | "">("")')
+    expect(component).toContain('useState("")')
+    expect(component).toContain('t("selectPurpose")')
+    expect(component).toContain('t("selectReason")')
+    expect(component).toContain('setSearchError("contextRequired")')
+    expect(component).toContain('setError("contextRequired")')
   })
 
   it("renders only the strict ID-free derived view model and preserves the warning", () => {
@@ -45,6 +52,10 @@ describe("Workforce derived-evidence timeline UI contract", () => {
     expect(component).toContain('t("boundary")')
     expect(component).not.toMatch(/latitude|longitude|distanceMeters|accuracyMeters|rawEnvelopeCiphertext|redactedReceipt|payloadHash|nonceFingerprint|deviceEnrollmentId/)
     expect(component).not.toContain("selectedTarget.id}</")
+    expect(component).toContain("workforceEvidenceReasonLabelKey(reason)")
+    expect(component).not.toContain("reasonLabel(")
+    expect(component).toContain("parsed.start !== start")
+    expect(component).toContain("parsed.end !== end")
   })
 
   it("keeps every evidence-screen message in AZ, RU and EN", () => {
@@ -54,6 +65,12 @@ describe("Workforce derived-evidence timeline UI contract", () => {
     for (const locale of ["az", "ru"]) {
       expect(keyPaths(messages(locale)), locale).toEqual(expected)
     }
+    for (const locale of ["en", "az", "ru"]) {
+      const reasonLabels = messages(locale).reasonLabels as Record<string, unknown>
+      expect(reasonLabels.REVIEW_REQUIRED, locale).toEqual(expect.any(String))
+      expect(reasonLabels.LOCATION_UNAVAILABLE, locale).toEqual(expect.any(String))
+      expect(String(reasonLabels.REVIEW_REQUIRED).trim(), locale).not.toBe("")
+    }
   })
 
   it("keeps responsive controls, visible focus and 48px touch targets in source", () => {
@@ -62,5 +79,10 @@ describe("Workforce derived-evidence timeline UI contract", () => {
     expect(component).toContain("sm:grid-cols-2")
     expect(component).toContain("lg:grid-cols-3")
     expect(component).toContain("motion-reduce:animate-none")
+    expect(component).toContain("[overflow-wrap:anywhere]")
+    expect(component).toContain('pendingEmployeeFocus.current = "selected"')
+    expect(component).toContain('pendingEmployeeFocus.current = "search"')
+    expect(component).toContain('t("loadedAnnouncement"')
+    expect(component).not.toMatch(/function TimelineResult[\s\S]*?<section[^>]+aria-live=/)
   })
 })

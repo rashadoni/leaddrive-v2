@@ -9,7 +9,10 @@ import { parseWorkforceEvidenceAccessContext } from "@/lib/workforce/evidence-ti
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
-const Query = z.string().trim().min(2).max(80)
+// Prisma/PostgreSQL `contains` treats these LIKE metacharacters as patterns.
+// Reject them so the two-character minimum remains an actual narrowing fence
+// instead of allowing `%_` to enumerate the first directory page.
+const Query = z.string().trim().min(2).max(80).refine((value) => !/[\\%_]/.test(value))
 const TARGET_LIMIT = 25
 
 function sensitiveJson(body: Record<string, unknown>, status = 200) {

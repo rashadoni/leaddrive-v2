@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   parseWorkforceEvidenceTargets,
   parseWorkforceEvidenceTimeline,
+  workforceEvidenceReasonLabelKey,
 } from "@/lib/workforce/evidence-timeline-client"
 
 function timeline() {
@@ -109,5 +110,12 @@ describe("Workforce evidence timeline client boundary", () => {
       items: [{ id: "agent-1", label: "" }],
       hasMore: false,
     })).toBeNull()
+  })
+
+  it("maps known machine reasons to safe presentation keys and hides unknown codes", () => {
+    expect(workforceEvidenceReasonLabelKey("LOCATION_PERMISSION_DENIED")).toBe("LOCATION_UNAVAILABLE")
+    expect(workforceEvidenceReasonLabelKey("LOCATION_STALE")).toBe("LOCATION_TIMING_REVIEW")
+    expect(workforceEvidenceReasonLabelKey("INSIDE_WITH_ACCURACY")).toBe("INSIDE_CONFIRMED")
+    expect(workforceEvidenceReasonLabelKey("INTERNAL_SECURITY_RULE_47")).toBe("REVIEW_REQUIRED")
   })
 })

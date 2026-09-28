@@ -116,11 +116,13 @@ describe("GET /api/v1/workforce/evidence/targets", () => {
 
   it("rejects invalid search/context before rate, access, directory and audit reads", async () => {
     const short = await invoke(request("a"), AUTH)
+    const wildcard = await invoke(request("%25_"), AUTH)
     const missingContext = await invoke(new NextRequest(
       "http://localhost/api/v1/workforce/evidence/targets?q=ay",
     ), AUTH)
 
     expect(short.status).toBe(400)
+    expect(wildcard.status).toBe(400)
     expect(missingContext.status).toBe(400)
     expect(requireWorkforceEvidenceTimelineRateLimit).not.toHaveBeenCalled()
     expect(resolveWorkforceEvidenceDirectoryAccess).not.toHaveBeenCalled()
