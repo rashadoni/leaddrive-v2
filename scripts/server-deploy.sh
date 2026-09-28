@@ -4128,6 +4128,15 @@ TENANT_CASCADE_STATE_SQL_CHECKSUM="a94bc671d8e15ae69b670a20006cfe39fd7008ea98f6a
 TENANT_CASCADE_EXPECTED_CONSTRAINTS=73
 TENANT_CASCADE_PREFLIGHT_STATE=""
 TENANT_CASCADE_SCHEMA_STATE=""
+WORKFORCE_RESPONSE_CYCLE_UNIQUE_MIGRATION="20260928123000_workforce_exception_response_cycle_unique_index"
+WORKFORCE_RESPONSE_CYCLE_UNIQUE_MIGRATION_CHECKSUM="bc9c3346fd44151634990b9f7df93ccd4cd313384873029b3901d71608fe91f8"
+WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL="prisma/verification/workforce-exception-response-cycle-unique-state.sql"
+WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL_CHECKSUM="bd59a9add36d0212968d35930a43b3e8b3ff0fc8bcc60c61e41078b31818535d"
+WORKFORCE_RESPONSE_CYCLE_UNIQUE_EXPECTED_TIMEOUT_STATE="10s|14min"
+WORKFORCE_RESPONSE_CYCLE_UNIQUE_PREFLIGHT_STATE=""
+WORKFORCE_RESPONSE_CYCLE_UNIQUE_PRE_MIGRATE_STATE=""
+WORKFORCE_RESPONSE_CYCLE_UNIQUE_POST_MIGRATE_STATE=""
+WORKFORCE_RESPONSE_CYCLE_UNIQUE_PENDING=false
 
 tenant_cascade_ledger_state() {
   psql "$MIGRATION_DATABASE_URL" -X -v ON_ERROR_STOP=1 -AtF '|' -c \
@@ -4197,6 +4206,173 @@ preflight_successful_tenant_cascade() {
 
   TENANT_CASCADE_PREFLIGHT_STATE="$ledger_state|$catalog_state"
   log "Successful tenant-cascade ledger and aggregate catalog state verified before extraction"
+}
+
+validate_workforce_response_cycle_unique_state() {
+  local state="$1"
+  local expected="$2"
+  local duplicate_groups duplicate_rows excess_rows legacy_null_rows
+  local exact_successful any_successful unresolved exact_unresolved_23505
+  local artifacts exact_ready exact_invalid incompatible extra value
+
+  IFS='|' read -r duplicate_groups duplicate_rows excess_rows legacy_null_rows \
+    exact_successful any_successful unresolved exact_unresolved_23505 \
+    artifacts exact_ready exact_invalid incompatible extra <<<"$state"
+  [ -z "${extra:-}" ] || return 1
+  for value in \
+    "$duplicate_groups" "$duplicate_rows" "$excess_rows" "$legacy_null_rows" \
+    "$exact_successful" "$any_successful" "$unresolved" "$exact_unresolved_23505" \
+    "$artifacts" "$exact_ready" "$exact_invalid" "$incompatible"; do
+    [[ "$value" =~ ^[0-9]+$ ]] || return 1
+  done
+
+  case "$expected" in
+    pending)
+      [ "$duplicate_groups" = 0 ] \
+        && [ "$duplicate_rows" = 0 ] \
+        && [ "$excess_rows" = 0 ] \
+        && [ "$exact_successful" = 0 ] \
+        && [ "$any_successful" = 0 ] \
+        && [ "$unresolved" = 0 ] \
+        && [ "$exact_unresolved_23505" = 0 ] \
+        && [ "$artifacts" = 0 ] \
+        && [ "$exact_ready" = 0 ] \
+        && [ "$exact_invalid" = 0 ] \
+        && [ "$incompatible" = 0 ]
+      ;;
+    applied)
+      [ "$duplicate_groups" = 0 ] \
+        && [ "$duplicate_rows" = 0 ] \
+        && [ "$excess_rows" = 0 ] \
+        && [ "$exact_successful" = 1 ] \
+        && [ "$any_successful" = 1 ] \
+        && [ "$unresolved" = 0 ] \
+        && [ "$exact_unresolved_23505" = 0 ] \
+        && [ "$artifacts" = 1 ] \
+        && [ "$exact_ready" = 1 ] \
+        && [ "$exact_invalid" = 0 ] \
+        && [ "$incompatible" = 0 ]
+      ;;
+    known-23505-failure)
+      [ "$exact_successful" = 0 ] \
+        && [ "$any_successful" = 0 ] \
+        && [ "$unresolved" = 1 ] \
+        && [ "$exact_unresolved_23505" = 1 ] \
+        && [ "$artifacts" = 1 ] \
+        && [ "$exact_ready" = 0 ] \
+        && [ "$exact_invalid" = 1 ] \
+        && [ "$incompatible" = 0 ]
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+run_workforce_response_cycle_unique_state_from_tar() {
+  tar -xOzf "$DEPLOY_TAR" "./$WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL" 2>/dev/null \
+    | psql "$MIGRATION_DATABASE_URL" -X -qAtF '|' -v ON_ERROR_STOP=1 \
+        -c "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;" \
+        -c "SET LOCAL row_security = off; SET LOCAL lock_timeout = '1s'; SET LOCAL statement_timeout = '2min'; SET LOCAL work_mem = '4MB';" \
+        -f - -c "COMMIT;" 2>/dev/null
+}
+
+run_workforce_response_cycle_unique_state_from_file() {
+  local state_sql="$1"
+  psql "$MIGRATION_DATABASE_URL" -X -qAtF '|' -v ON_ERROR_STOP=1 \
+    -c "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;" \
+    -c "SET LOCAL row_security = off; SET LOCAL lock_timeout = '1s'; SET LOCAL statement_timeout = '2min'; SET LOCAL work_mem = '4MB';" \
+    -f "$state_sql" -c "COMMIT;" 2>/dev/null
+}
+
+verify_workforce_response_cycle_unique_artifacts_from_tar() {
+  local migration_checksum state_sql_checksum
+  migration_checksum=$(
+    tar -xOzf "$DEPLOY_TAR" "./prisma/migrations/$WORKFORCE_RESPONSE_CYCLE_UNIQUE_MIGRATION/migration.sql" 2>/dev/null \
+      | sha256sum | awk '{print $1}'
+  ) || fatal "cannot hash the Workforce response-cycle unique migration from the staged artifact"
+  [ "$migration_checksum" = "$WORKFORCE_RESPONSE_CYCLE_UNIQUE_MIGRATION_CHECKSUM" ] || \
+    fatal "staged Workforce response-cycle unique migration differs from the reviewed artifact"
+  state_sql_checksum=$(
+    tar -xOzf "$DEPLOY_TAR" "./$WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL" 2>/dev/null \
+      | sha256sum | awk '{print $1}'
+  ) || fatal "cannot hash the Workforce response-cycle state query from the staged artifact"
+  [ "$state_sql_checksum" = "$WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL_CHECKSUM" ] || \
+    fatal "staged Workforce response-cycle state query differs from the reviewed artifact"
+}
+
+verify_workforce_response_cycle_unique_artifacts_from_file() {
+  local migration_file state_sql migration_checksum state_sql_checksum
+  migration_file="$APP_DIR/.next/standalone/prisma/migrations/$WORKFORCE_RESPONSE_CYCLE_UNIQUE_MIGRATION/migration.sql"
+  state_sql="$APP_DIR/.next/standalone/$WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL"
+  [ -f "$migration_file" ] && [ ! -L "$migration_file" ] || \
+    fatal_after_standalone_replacement "immutable candidate has no Workforce response-cycle unique migration"
+  [ -f "$state_sql" ] && [ ! -L "$state_sql" ] || \
+    fatal_after_standalone_replacement "immutable candidate has no Workforce response-cycle state query"
+  migration_checksum=$(sha256sum "$migration_file" | awk '{print $1}') || \
+    fatal_after_standalone_replacement "cannot hash extracted Workforce response-cycle unique migration"
+  [ "$migration_checksum" = "$WORKFORCE_RESPONSE_CYCLE_UNIQUE_MIGRATION_CHECKSUM" ] || \
+    fatal_after_standalone_replacement "extracted Workforce response-cycle unique migration differs from the reviewed artifact"
+  state_sql_checksum=$(sha256sum "$state_sql" | awk '{print $1}') || \
+    fatal_after_standalone_replacement "cannot hash extracted Workforce response-cycle state query"
+  [ "$state_sql_checksum" = "$WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL_CHECKSUM" ] || \
+    fatal_after_standalone_replacement "extracted Workforce response-cycle state query differs from the reviewed artifact"
+}
+
+preflight_workforce_response_cycle_unique() {
+  local state
+  verify_workforce_response_cycle_unique_artifacts_from_tar
+  state=$(run_workforce_response_cycle_unique_state_from_tar) || \
+    fatal "cannot run the global Workforce response-cycle predeploy fence"
+  if validate_workforce_response_cycle_unique_state "$state" pending; then
+    WORKFORCE_RESPONSE_CYCLE_UNIQUE_PENDING=true
+  elif validate_workforce_response_cycle_unique_state "$state" applied; then
+    WORKFORCE_RESPONSE_CYCLE_UNIQUE_PENDING=false
+  elif validate_workforce_response_cycle_unique_state "$state" known-23505-failure; then
+    fatal "Workforce response-cycle unique migration has an exact 23505 invalid-index failure; automatic remediation/resolve is forbidden"
+  else
+    fatal "Workforce response-cycle global data, ledger, or index state is unsafe"
+  fi
+  WORKFORCE_RESPONSE_CYCLE_UNIQUE_PREFLIGHT_STATE="$state"
+  log "Global Workforce response-cycle data/ledger/index fence passed before backup and extraction"
+}
+
+verify_workforce_response_cycle_unique_before_migrate() {
+  local state state_sql timeout_state
+  verify_workforce_response_cycle_unique_artifacts_from_file
+  state_sql="$APP_DIR/.next/standalone/$WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL"
+  state=$(run_workforce_response_cycle_unique_state_from_file "$state_sql") || \
+    fatal_after_standalone_replacement "cannot repeat the global Workforce response-cycle predeploy fence"
+  if validate_workforce_response_cycle_unique_state "$state" pending; then
+    WORKFORCE_RESPONSE_CYCLE_UNIQUE_PENDING=true
+    # Prisma's standalone schema engine does not inherit libpq's PGOPTIONS.
+    # Require the migration role's provisioned server-side defaults through a
+    # fresh raw session without PGOPTIONS; do not repair configuration during
+    # a release or assume that a separate client session controls Prisma.
+    timeout_state=$(env -u PGOPTIONS \
+      psql "$MIGRATION_DATABASE_URL" -X -qAtF '|' -v ON_ERROR_STOP=1 \
+        -c "SELECT current_setting('lock_timeout'), current_setting('statement_timeout');" 2>/dev/null) || \
+      fatal_after_standalone_replacement "cannot validate bounded Workforce concurrent-index settings"
+    [ "$timeout_state" = "$WORKFORCE_RESPONSE_CYCLE_UNIQUE_EXPECTED_TIMEOUT_STATE" ] || \
+      fatal_after_standalone_replacement "Workforce concurrent-index settings are not the reviewed 10s/14min bounds"
+  elif validate_workforce_response_cycle_unique_state "$state" applied; then
+    WORKFORCE_RESPONSE_CYCLE_UNIQUE_PENDING=false
+  elif validate_workforce_response_cycle_unique_state "$state" known-23505-failure; then
+    fatal_after_standalone_replacement "Workforce response-cycle unique migration has an exact 23505 invalid-index failure; automatic remediation/resolve is forbidden"
+  else
+    fatal_after_standalone_replacement "Workforce response-cycle global data, ledger, or index state changed to unsafe before migration"
+  fi
+  WORKFORCE_RESPONSE_CYCLE_UNIQUE_PRE_MIGRATE_STATE="$state"
+  log "Global Workforce response-cycle fence repeated immediately before Prisma migration"
+}
+
+verify_workforce_response_cycle_unique_after_migrate() {
+  local state state_sql
+  state_sql="$APP_DIR/.next/standalone/$WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL"
+  state=$(run_workforce_response_cycle_unique_state_from_file "$state_sql") || \
+    fatal_after_standalone_replacement "cannot verify Workforce response-cycle unique postcondition"
+  validate_workforce_response_cycle_unique_state "$state" applied || \
+    fatal_after_standalone_replacement "Workforce response-cycle unique ledger/catalog postcondition is incomplete"
+  WORKFORCE_RESPONSE_CYCLE_UNIQUE_POST_MIGRATE_STATE="$state"
+  log "Workforce response-cycle unique ledger, global data and exact index postcondition passed"
 }
 
 # Read-only proof before backup/extraction. The later post-extract block repeats
@@ -4403,6 +4579,7 @@ else
   log "Skipping migration quiet window — new build has no pending migrations"
 fi
 preflight_successful_tenant_cascade
+preflight_workforce_response_cycle_unique
 preflight_known_voice_safety_recovery
 unset MIGRATION_DATABASE_URL MIGRATION_EXPECTED_DB_ROLE MIGRATION_WINDOW_ATTEMPTS
 
@@ -8382,6 +8559,7 @@ if [ "$EVENT_PLATFORM_REQUIRES_VERIFICATION" = "true" ]; then
   EVENT_PLATFORM_AUTO_RECOVERY_BLOCKED=true
 fi
 
+verify_workforce_response_cycle_unique_before_migrate
 if ! DATABASE_URL="$MIGRATION_DATABASE_URL" npx prisma migrate deploy --schema="$SCHEMA_TO_USE" 2>&1; then
   log "FATAL: prisma migrate deploy failed — aborting before PM2 restart."
   if [ "$EVENT_PLATFORM_REQUIRES_VERIFICATION" = "true" ]; then
@@ -8574,6 +8752,8 @@ VOICE_SAFETY_SCHEMA_STATE=$(
 if ! DATABASE_URL="$MIGRATION_DATABASE_URL" npx prisma migrate status --schema="$SCHEMA_TO_USE" 2>&1; then
   fatal_after_standalone_replacement "Prisma migration status is not clean after voice safety recovery"
 fi
+
+verify_workforce_response_cycle_unique_after_migrate
 
 # Do not let the BYPASSRLS credential reach backfill scripts or PM2. The
 # application process must inherit only DATABASE_URL from the app-owned .env.

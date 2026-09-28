@@ -1368,3 +1368,42 @@ from this worktree.
 - Progress stays `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
 - Precise stopping point: the frozen implementation/evidence checkpoint is independently GREEN; only this three-document review receipt is uncommitted.
 - Next action: checkpoint the receipt, independently prove all eight reviewed runtime/test blobs unchanged and verify final diff identity, then push/open the sub-400 KB PR and require every exact-head check including real PostgreSQL.
+
+## 2026-09-28 — PR #479 response-cycle aggregate audit production release
+
+- Final receipt-integrity review returned GREEN with zero P0-P3 at head `aed3cced83df0ef5779a77c1d543d9f448d78021`: 12 paths / 73,245 plain-binary bytes / SHA-256 `9b8d64e5ef810746b85da57bb856291b8eb2ac54416e15bb8a4938d1c41af9e5`. Only three append-only docs changed after frozen review; all eight reviewed runtime/test blobs remained byte-identical.
+- Exact-head PR run `36414664981` passed 16s `pr-scope`, 12m12s `static-checks` including the real restricted-role Workforce PostgreSQL proof and full unit baseline, and 18m39s `typecheck`. `runner-policy` run `36414665145` and `scan` run `36414665001` also passed; the PR production build was skipped by design.
+- PR #479 merged normally at `2026-09-28T11:36:30Z` as main SHA `29fb2234866c28dd101ad0abaedf8da0548c678e`. Deploy run `36416663752` completed SUCCESS at `2026-09-28T11:57:44Z`: quality/security 9m30s, SHA-bound build/publication 15m14s, atomic deploy/post-smokes 5m39s and retention cleanup 5s.
+- Independent no-cache requests forced `app.leaddrivecrm.org` to registered production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200 `{"ok":true}` and build-info returned HTTP 200 with exact `artifactSha=29fb2234866c28dd101ad0abaedf8da0548c678e` and `builtAt=2026-09-28T11:40:36Z`. Only GitHub main through `deploy.yml` was used.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and pilot remain `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 stays `PARTIAL` and no credit is added.
+- Precise stopping point: PR #479 is independently reviewed, merged, deployed and exact-SHA smoke-verified; only this three-document release receipt is uncommitted on clean successor branch `codex/workforce-exception-response-cycle-unique-index`.
+- Next action: checkpoint the release receipt, then independently design-audit the bounded online uniqueness-migration prerequisite and recovery contract before any schema change.
+
+## 2026-09-28 — WF-C6-006 concurrent response-cycle unique-index working checkpoint
+
+- [`Unique-index evidence`](./workforce-c6-exception-response-cycle-unique-index-evidence-2026-09-28.md) records one standalone `CREATE UNIQUE INDEX CONCURRENTLY` over organization/case/observed revision. Default NULL-distinct semantics preserve legacy unknown-revision rows; the existing non-unique index remains and Prisma does not claim a nullable `@@unique` contract.
+- Deploy pins both migration and aggregate state-query hashes, runs one global BYPASSRLS `REPEATABLE READ READ ONLY` counts/ledger/catalog fence before backup and again immediately before migration, and requires the exact applied postcondition before PM2. Non-zero duplicates, incompatible artifacts, ledger drift and exact unresolved 23505 state all fail closed without automatic repair, drop or resolve.
+- The first independent implementation preflight returned RED with one P1 because libpq-only `PGOPTIONS` did not prove bounds inside Prisma's standalone schema engine. That approach was removed. Deploy now validates the canonically provisioned migration-role server defaults through a fresh no-`PGOPTIONS` session (`10s|14min`) and runs ordinary Prisma; the repaired implementation received a fresh independent GREEN with P0-P3 all zero.
+- Related migration/deploy/recovery coverage passes 17 files / 80 tests; shell syntax, targeted ESLint, Prisma validation, event-platform asset guard and whitespace pass. The PostgreSQL file discovers 15 scenarios but remains locally `SKIPPED / NOT RUN`; full typecheck/build, browser, Android, load, device and pilot also remain `NOT RUN` under host policy.
+- A targeted read-only production probe did not authenticate over the registered SSH alias, so no database command ran and no alternate route was attempted. The workflow's pre-backup fence remains the authoritative production gate.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 stays `PARTIAL` with no credit added.
+- Precise stopping point: the repaired five-path implementation, focused verification, evidence and independent working-tree preflight are complete; the task paths are not checkpointed and no clean frozen review exists.
+- Next action: remove the temporary dependency link, checkpoint only the explicit task paths, compute the plain-binary base/head identity and require a fresh author-independent complete-diff GREEN before push or PR.
+
+## 2026-09-28 — response-cycle unique-index frozen-review P3 corrections
+
+- The first frozen complete-diff review of checkpoint `f4e622dc18ed332362b7876cd0d9e933c4d621e6` returned RED with P0=0, P1=0, P2=0 and two evidence-only P3 findings; the migration, state query, deploy, provisioning-default and recovery implementation had no finding.
+- The PR #479 receipt phrase “only workflow annotation” is superseded by “only warning annotation”; five informational notice annotations also existed and did not change the successful result.
+- The unique-index evidence now separates the pre-backup data/ledger/index fence from the post-extraction fresh role-default check immediately before Prisma migration. Unsafe role defaults fail before migration/PM2, not before extraction.
+- The rejected review independently reproduced nine paths / 58,227 plain-binary bytes / SHA-256 `54685b941bda03420b71e761d7b9b0678f11682f7a1b166452b961e89a5ecb98`; it grants no merge authority. Progress and all `NOT RUN` labels remain unchanged.
+- Precise stopping point: both factual corrections are appended in the working tree; they are not checkpointed and no valid frozen review exists.
+- Next action: checkpoint the append-only correction, recompute the complete diff identity and require a replacement author-independent frozen GREEN before push or PR.
+
+## 2026-09-28 — response-cycle unique-index replacement frozen review GREEN
+
+- Fresh author-independent complete-diff review returned GREEN with zero P0-P3 findings on exact base/live main/merge-base `29fb2234866c28dd101ad0abaedf8da0548c678e` through clean corrected head `f674f2c46624ec8cf5d08fc15d8001475c69ddc5`.
+- The reviewer independently matched nine paths / 62,005 plain-binary bytes / SHA-256 `9dd6624545a5397b3fd646a22f744b3ca1cc4354d7cbe93ffd3ffebc1420d8ad`, below 400 KB. Five implementation blobs stayed byte-identical to the rejected checkpoint and four document prefixes were preserved exactly.
+- Both evidence corrections, migration/state hashes, role-default provisioning/validation boundary, double global fence, ordinary Prisma execution, exact applied postcondition, 23505 containment and no-remediation contract passed. Closing fetch found no drift and the tree remained clean.
+- Reviewer dependency-backed and heavy checks remained `NOT RUN`; author checks remain separately labelled. Progress stays `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: the corrected source/migration/test/evidence head has valid independent GREEN; only this three-document review receipt is uncommitted.
+- Next action: checkpoint the receipt, independently prove all five reviewed implementation blobs unchanged and verify the final diff identity, then push/open the sub-400 KB PR and require every exact-head context including real PostgreSQL.

@@ -135,3 +135,53 @@ were not relabelled. Separately, the author ran an additional four-file
 auth/RLS/MFA/transaction regression after freezing the unchanged head: 46/46
 tests passed, alongside the earlier 12/12 new unit/API tests. This receipt is
 documentation-only and still requires final blob-integrity review before push.
+
+## PR #479 production release
+
+The final receipt-integrity review returned GREEN with zero P0-P3 findings at
+head `aed3cced83df0ef5779a77c1d543d9f448d78021`. The complete diff from exact
+base `6b858b4514e58b1d01c1b027d7ce503a7b39b185` was 12 paths / 73,245 plain
+`git diff --binary` bytes / SHA-256
+`9b8d64e5ef810746b85da57bb856291b8eb2ac54416e15bb8a4938d1c41af9e5`,
+below 400 KB. Only the three append-only receipt documents changed after the
+frozen review; all eight reviewed runtime/test blobs stayed byte-identical.
+
+Exact-head PR run `36414664981` passed `pr-scope` in 16 seconds,
+`static-checks` in 12m12s and `typecheck` in 18m39s. The static job included
+the real restricted-role PostgreSQL Workforce proof and full unit baseline.
+Companion `runner-policy` run `36414665145` passed in 13 seconds and `scan`
+run `36414665001` passed in 14 seconds. The PR production build was skipped by
+design. PR #479 was `MERGEABLE/CLEAN` and merged normally at
+`2026-09-28T11:36:30Z` as main SHA
+`29fb2234866c28dd101ad0abaedf8da0548c678e`.
+
+Deploy run `36416663752` completed SUCCESS at `2026-09-28T11:57:44Z` for that
+exact SHA. Quality/security passed in 9m30s; the SHA-bound standalone artifact
+was built, verified and published in 15m14s; atomic production deploy and
+post-deploy smoke passed in 5m39s; artifact retention cleanup passed in five
+seconds. The only workflow annotation was a non-failing Node runtime
+deprecation warning from `actions/download-artifact@v4`.
+
+Independent no-cache requests forced TLS host `app.leaddrivecrm.org` directly
+to the registered production IP `13.140.132.245`. `/api/v1/ping` returned HTTP
+200 with `{"ok":true}`. `/api/v1/public/build-info` returned HTTP 200 with
+`{"sha":"29fb2234866c","artifactSha":"29fb2234866c28dd101ad0abaedf8da0548c678e","builtAt":"2026-09-28T11:40:36Z"}`.
+The artifact SHA exactly matched merged main. Release used only GitHub `main`
+through `.github/workflows/deploy.yml` to `13.140.132.245:/opt/leaddrive-v2`;
+there was no direct deploy, worktree copy, Azure or retired host.
+
+Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot
+evidence remains `NOT RUN`. Progress stays `DONE 81/161`, `GATES 14/15`, C5
+81%, C6 20% and C9 99%; `WF-C6-006` remains `PARTIAL` and no task or gate
+credit is added. Work continues from exact deployed main on clean successor
+branch `codex/workforce-exception-response-cycle-unique-index`; any schema
+enforcement remains a separately reviewed slice.
+
+## Frozen-review annotation wording correction
+
+The earlier sentence saying that the Node runtime deprecation warning was the
+only workflow annotation is superseded. It was the only **warning** annotation.
+GitHub also reported five informational notice annotations: three build notices
+covering tarball size, staged service worker and manifest count, plus two
+retention notices covering the deleted and remaining artifact counts. This
+correction changes no run result: every required PR and deploy job passed.

@@ -48,6 +48,12 @@ const revisionMigrationNames = [
   "20260927014300_workforce_exception_case_revisions_contract",
 ] as const
 const revisionIndexMigration = revisionMigrationNames[2]
+const responseCycleUniqueMigration =
+  "20260928123000_workforce_exception_response_cycle_unique_index"
+const responseCycleUniqueStateSql = readFileSync(join(
+  process.cwd(),
+  "prisma/verification/workforce-exception-response-cycle-unique-state.sql",
+), "utf8")
 
 type Deferred<T> = {
   promise: Promise<T>
@@ -88,7 +94,10 @@ function runPrismaMigrationCommand(
     [...args, "--schema", join(migrationProject, "prisma/schema.prisma")],
     {
       cwd: process.cwd(),
-      env: { ...process.env, DATABASE_URL: migrationDatabaseUrl() },
+      env: {
+        ...process.env,
+        DATABASE_URL: migrationDatabaseUrl(),
+      },
       encoding: "utf8",
     },
   )
@@ -153,6 +162,12 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     await observer.$executeRawUnsafe(`
       CREATE ROLE "${migrationLoginRole}"
       LOGIN NOSUPERUSER BYPASSRLS PASSWORD '${migrationLoginPassword}'
+    `)
+    await observer.$executeRawUnsafe(`
+      ALTER ROLE "${migrationLoginRole}" SET lock_timeout = '10s'
+    `)
+    await observer.$executeRawUnsafe(`
+      ALTER ROLE "${migrationLoginRole}" SET statement_timeout = '14min'
     `)
     await observer.$executeRawUnsafe(`
       CREATE ROLE "${applicationRole}"
@@ -908,6 +923,51 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     return { $transaction: transaction }
   }
 
+  async function readResponseCycleUniqueState(): Promise<string> {
+    const state = await migrationClient.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
+      await tx.$executeRawUnsafe(`SET LOCAL search_path TO "${schema}"`)
+      await tx.$executeRawUnsafe("SET LOCAL row_security = off")
+      await tx.$executeRawUnsafe("SET LOCAL lock_timeout = '1s'")
+      await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '2min'")
+      await tx.$executeRawUnsafe("SET LOCAL work_mem = '4MB'")
+      const [row] = await tx.$queryRawUnsafe<Array<{
+        duplicate_groups: string
+        duplicate_rows: string
+        excess_rows: string
+        legacy_null_rows: string
+        exact_successful: string
+        any_successful: string
+        unresolved: string
+        exact_unresolved_23505: string
+        artifacts: string
+        exact_ready: string
+        exact_invalid: string
+        incompatible: string
+      }>>(responseCycleUniqueStateSql)
+      if (!row) throw new Error("missing Workforce response-cycle unique state")
+      return row
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      maxWait: 5_000,
+      timeout: 15_000,
+    })
+    return [
+      state.duplicate_groups,
+      state.duplicate_rows,
+      state.excess_rows,
+      state.legacy_null_rows,
+      state.exact_successful,
+      state.any_successful,
+      state.unresolved,
+      state.exact_unresolved_23505,
+      state.artifacts,
+      state.exact_ready,
+      state.exact_invalid,
+      state.incompatible,
+    ].join("|")
+  }
+
   it("applies the exact revision migration to a non-empty append-only ledger", async () => {
     expect(migrationRecoveryEvidence).toEqual({
       failedIndexLedgerRows: 1,
@@ -1225,6 +1285,19 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
          WHERE "id" = 'migration-request-exact'
       `)
     })).rejects.toBeDefined()
+
+    // The compatibility assertions above deliberately exercised multiple
+    // pre-index writes at one revision and one legacy NULL. Remove only those
+    // synthetic rows so the following global migration proof starts with the
+    // exact three dirty groups and three NULL rows seeded for that proof.
+    await observer.$executeRawUnsafe(`
+      DELETE FROM "${schema}"."workforce_exception_employee_responses"
+       WHERE "id" = ANY(ARRAY[
+         'migration-response-pre-expansion',
+         'migration-response-legacy',
+         'migration-response-correction-exact'
+       ]::TEXT[])
+    `)
   }, 20_000)
 
   it("audits duplicate response cycles through the exact index and restricted tenant RLS", async () => {
@@ -1335,6 +1408,127 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       legacyNullRevisionRows: 1,
     })
   }, 15_000)
+
+  it("fails closed, recovers exactly, and enforces one non-NULL response per cycle", async () => {
+    if (!migrationProject) throw new Error("migration project is unavailable")
+
+    const [migrationTimeouts] = await migrationClient.$queryRawUnsafe<Array<{
+      lock_timeout: string
+      statement_timeout: string
+    }>>(`
+      SELECT current_setting('lock_timeout') AS lock_timeout,
+             current_setting('statement_timeout') AS statement_timeout
+    `)
+    expect(migrationTimeouts).toEqual({
+      lock_timeout: "10s",
+      statement_timeout: "14min",
+    })
+
+    // The tenant-scoped NOBYPASSRLS proof above intentionally cannot authorize
+    // a global migration. The migration role repeats one aggregate-only scan
+    // with row_security=off and sees both tenants without emitting identifiers.
+    await expect(readResponseCycleUniqueState()).resolves.toBe(
+      "3|9|6|3|0|0|0|0|0|0|0|0",
+    )
+
+    addExactMigrationToProject(migrationProject, responseCycleUniqueMigration)
+    const expectedFailure = runPrismaMigrationCommand(migrationProject, [
+      "migrate", "deploy",
+    ])
+    expect(expectedFailure.status).not.toBe(0)
+    const expectedFailureOutput = `${expectedFailure.stdout}\n${expectedFailure.stderr}`
+    expect(expectedFailureOutput).toContain("23505")
+    expect(expectedFailureOutput).toContain(
+      "workforce_exception_employee_responses_org_case_revision_key",
+    )
+    await expect(readResponseCycleUniqueState()).resolves.toBe(
+      "3|9|6|3|0|0|1|1|1|0|1|0",
+    )
+
+    // Test-only remediation deletes exactly the six injected loser rows. The
+    // production deploy contract never chooses winners or mutates tenant data;
+    // a real non-zero fence requires separate reviewed remediation.
+    await observer.$executeRawUnsafe(`
+      DELETE FROM "${schema}"."workforce_exception_employee_responses"
+       WHERE "id" = ANY(ARRAY[
+         'cycle-a-r1-2',
+         'cycle-a-r2-2',
+         'cycle-a-r2-3',
+         'cycle-b-r9-2',
+         'cycle-b-r9-3',
+         'cycle-b-r9-4'
+       ]::TEXT[])
+    `)
+    await expect(readResponseCycleUniqueState()).resolves.toBe(
+      "0|0|0|3|0|0|1|1|1|0|1|0",
+    )
+
+    // CREATE INDEX CONCURRENTLY failure leaves a named invalid artifact. Drop
+    // only that proven artifact outside a transaction, prove it is gone, mark
+    // only the exact ledger row rolled back, then replay from the clean fence.
+    await migrationClient.$executeRawUnsafe(`
+      DROP INDEX CONCURRENTLY "${schema}"."workforce_exception_employee_responses_org_case_revision_key"
+    `)
+    await expect(readResponseCycleUniqueState()).resolves.toBe(
+      "0|0|0|3|0|0|1|1|0|0|0|0",
+    )
+    const resolve = runPrismaMigrationCommand(migrationProject, [
+      "migrate", "resolve", "--rolled-back", responseCycleUniqueMigration,
+    ])
+    if (resolve.status !== 0) {
+      throw new Error(
+        `Workforce response-cycle unique resolve failed\n${resolve.stdout}\n${resolve.stderr}`,
+      )
+    }
+    const replay = runPrismaMigrationCommand(migrationProject, [
+      "migrate", "deploy",
+    ])
+    if (replay.status !== 0) {
+      throw new Error(
+        `Workforce response-cycle unique replay failed\n${replay.stdout}\n${replay.stderr}`,
+      )
+    }
+    await expect(readResponseCycleUniqueState()).resolves.toBe(
+      "0|0|0|3|1|1|0|0|1|1|0|0",
+    )
+
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_employee_responses"
+      DISABLE TRIGGER workforce_exception_employee_responses_validate_insert
+    `)
+    try {
+      await expect(observer.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+          "id", "organizationId", "caseId", "agentId", "workdayId",
+          "segmentId", "correctionRequestId", "responseCode",
+          "clientResponseId", "actorUserId", "observedCaseRevision"
+        ) VALUES (
+          'cycle-a-r1-after-index', $1, 'cycle-a-case-1', 'cycle-a-agent',
+          'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED',
+          'cycle-a-client-r1-after-index', 'cycle-a-user', 1
+        )
+      `, cycleAuditOrganizationA)).rejects.toBeDefined()
+      await expect(observer.$executeRawUnsafe(`
+        INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+          "id", "organizationId", "caseId", "agentId", "workdayId",
+          "segmentId", "correctionRequestId", "responseCode",
+          "clientResponseId", "actorUserId", "observedCaseRevision"
+        ) VALUES (
+          'cycle-a-null-after-index', $1, 'cycle-a-case-2', 'cycle-a-agent',
+          'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED',
+          'cycle-a-client-null-after-index', 'cycle-a-user', NULL
+        )
+      `, cycleAuditOrganizationA)).resolves.toBe(1)
+    } finally {
+      await observer.$executeRawUnsafe(`
+        ALTER TABLE "${schema}"."workforce_exception_employee_responses"
+        ENABLE TRIGGER workforce_exception_employee_responses_validate_insert
+      `)
+    }
+    await expect(readResponseCycleUniqueState()).resolves.toBe(
+      "0|0|0|4|1|1|0|0|1|1|0|0",
+    )
+  }, 45_000)
 
   it("allocates the next revision from a fresh post-lock snapshot", async () => {
     const caseId = `migration-concurrent-${randomUUID()}`
