@@ -1393,3 +1393,32 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: repeat focused verification, checkpoint only the eight task
   paths, obtain a fresh complete-diff exact-commit GREEN review, then append
   its receipt before push/PR.
+
+## 2026-09-28 — WF-C2-009 frozen integration review GREEN
+
+- Explicit implementation/evidence checkpoint
+  `6974b5ced4ad41097c5d08ae1de6b203c90e36e8` was clean and independently
+  GREEN from deployed main. Main then advanced through PR #485 only in three
+  unrelated MTM map/period paths; a normal conflict-free merge produced clean
+  integration head `4c3121ac4f042acca92bd6ebbb484209f10c4046` on exact fresh
+  main/merge-base `8de4e7e7c952740644ee8eb0755f680b949ddcbf`.
+- Fresh full integration review returned `P0=P1=P2=P3=0`. The exact PR diff
+  remains 9 paths / 42,937 plain-binary bytes / SHA-256
+  `4a65114f08790df5fc9128abe2a5b256f0329725558204136f31e40849eac0a5`.
+  Its five runtime/test paths are byte-identical to the repaired working-tree
+  GREEN: 26,207 bytes / SHA-256
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- All four documentation paths are append-only. Relative to current main the
+  merge contains only the nine reviewed task paths; its combined diff is empty
+  and it introduced no manual resolution. Reviewer repeated 4 files / 25
+  tests, scoped ESLint and exact-range whitespace.
+- Full TypeScript, full suite/build, real PostgreSQL concurrency/integration,
+  browser, Android/Gradle, load, physical-device and pilot checks remain
+  `NOT RUN`; exact-head CI is mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C2 73%, C5 81%, C6 20% and
+  C9 99%. WF-C2-009 remains `PARTIAL`; no credit is added before CI.
+- Precise stopping point: integrated runtime/test/evidence head is committed,
+  clean and independently GREEN; only this review receipt is uncommitted.
+- Next action: checkpoint the three receipt paths, require final
+  implementation-blob/fingerprint integrity GREEN, then push/open the
+  sub-400 KB PR and wait for every exact-head gate.

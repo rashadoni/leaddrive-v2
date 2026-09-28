@@ -1593,3 +1593,29 @@ from this worktree.
 - Next action: checkpoint the explicit WF-C2-009 paths, prove the frozen diff
   and append-only receipts independently, then push/open a sub-400 KB PR and
   require every exact-head gate.
+
+## 2026-09-28 — WF-C2-009 frozen integration review GREEN
+
+- Checkpoint `6974b5ced4ad41097c5d08ae1de6b203c90e36e8` received frozen
+  author-independent GREEN. During review, main advanced through unrelated PR
+  #485 MTM map/period paths; a normal conflict-free merge produced clean head
+  `4c3121ac4f042acca92bd6ebbb484209f10c4046` on exact current main/merge-base
+  `8de4e7e7c952740644ee8eb0755f680b949ddcbf`.
+- Fresh integration review returned `P0=P1=P2=P3=0`. The PR diff remains
+  exactly 9 task paths / 42,937 plain-binary bytes / SHA-256
+  `4a65114f08790df5fc9128abe2a5b256f0329725558204136f31e40849eac0a5`;
+  the five runtime/test blobs still match the prior GREEN 26,207-byte
+  fingerprint `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Reviewer repeated 4 files / 25 tests, scoped ESLint and exact-range
+  whitespace. All four documents remain append-only; the merge commit adds no
+  manual conflict resolution or unrelated PR-diff path.
+- Full TypeScript, full suite/build, PostgreSQL integration, browser, Android,
+  load, physical-device and pilot checks remain `NOT RUN`; exact-head CI is
+  mandatory. Progress stays `DONE 81/161`, `GATES 14/15`, C2 73%, C5 81%,
+  C6 20% and C9 99%; WF-C2-009 remains `PARTIAL` with no provisional credit.
+- Precise stopping point: the integrated source/test/evidence head is clean
+  and independently GREEN; only this three-document review receipt is
+  uncommitted.
+- Next action: checkpoint the receipt, independently prove source/test blob
+  identity and final fingerprint, then push/open the PR and require all
+  exact-head contexts.
