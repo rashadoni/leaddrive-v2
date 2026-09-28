@@ -30,12 +30,18 @@ import { updateDealCommandSchema, type UpdateDealCommandInput } from "../schemas
  * activity rows, surveys, notifications and webhooks behave identically for
  * a click and for a voice receipt.
  *
- * Voice is narrower on purpose. It cannot move a deal between stages or
- * pipelines, change its probability or touch the qualification: a stage move
- * can mark a deal won, and "won" pays out cashback and surveys the customer.
- * That needs the organisation's own stage vocabulary and its own receipt, not
- * a free-text field. It also carries a mandatory `expectedUpdatedAt`, so a
- * deal edited after the user read the receipt is refused, not overwritten.
+ * Voice is narrower on purpose, and narrow in two different ways depending on
+ * which receipt the user confirmed:
+ *
+ * - `update_deal` edits the deal's own fields and cannot touch the stage, the
+ *   pipeline, the probability or the qualification;
+ * - `move_deal_stage` moves the deal and can do nothing else. It is a separate
+ *   receipt because entering the won stage pays cashback, surveys the customer
+ *   and awards loyalty; the destination is resolved server-side against the
+ *   stages that deal's pipeline actually has.
+ *
+ * Either way the payload carries a mandatory `expectedUpdatedAt`, so a deal
+ * edited after the user read the receipt is refused, not overwritten.
  */
 
 const VOICE_UPDATE_FIELDS = new Set([
@@ -48,6 +54,13 @@ const VOICE_UPDATE_FIELDS = new Set([
   "assignedTo",
   "notes",
 ])
+
+const VOICE_STAGE_FIELDS = new Set(["stage", "lostReason"])
+
+/** What this receipt was allowed to show, and therefore allowed to do. */
+function voiceFieldsFor(actor: CrmCommandActorContext): ReadonlySet<string> {
+  return actor.voiceAction === "move_deal_stage" ? VOICE_STAGE_FIELDS : VOICE_UPDATE_FIELDS
+}
 
 export const dealInclude = {
   company: { select: { id: true, name: true } },
@@ -73,12 +86,12 @@ function firstValidationMessage(error: { issues: Array<{ message: string }> }): 
   return error.issues[0]?.message ?? "Invalid deal update"
 }
 
-function enforceVoiceContract(input: UpdateDealCommandInput): void {
+function enforceVoiceContract(input: UpdateDealCommandInput, allowed: ReadonlySet<string>): void {
   if (!input.expectedUpdatedAt) {
     throw validationError("expectedUpdatedAt is required for voice updates")
   }
   const forbiddenFields = Object.keys(input).filter((field) =>
-    field !== "expectedUpdatedAt" && !VOICE_UPDATE_FIELDS.has(field),
+    field !== "expectedUpdatedAt" && !allowed.has(field),
   )
   if (forbiddenFields.length > 0) {
     throw new CrmCommandError(
@@ -99,7 +112,7 @@ export async function updateDealCommand(
   const parsedInput = updateDealCommandSchema.safeParse(rawInput)
   if (!parsedInput.success) throw validationError(firstValidationMessage(parsedInput.error))
   const isVoice = actor.source === "voice"
-  if (isVoice) enforceVoiceContract(parsedInput.data)
+  if (isVoice) enforceVoiceContract(parsedInput.data, voiceFieldsFor(actor))
 
   const { organizationId: orgId, role } = actor
   const id = dealId

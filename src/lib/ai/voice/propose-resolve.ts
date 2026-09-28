@@ -7,6 +7,7 @@ import {
   type VoiceProposeToolName,
 } from "./propose-tools"
 import type { AiVoiceActionType } from "./action-registry"
+import { matchDealStage, type PipelineStageOption } from "./deal-stage-match"
 
 /**
  * Turn what the model said into what the CRM can be asked to do
@@ -58,7 +59,9 @@ export type VoiceProposeResolution =
       | "DEAL_NOT_FOUND"
       | "DEAL_AMBIGUOUS"
       | "DEAL_TARGET_REQUIRED"
-    field: "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status"
+      | "DEAL_STAGE_NOT_FOUND"
+      | "DEAL_STAGE_AMBIGUOUS"
+    field: "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status" | "stage"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -347,6 +350,41 @@ async function taskStatusFor(
   return (task.divisionId ? board : list)[spoken] ?? null
 }
 
+/**
+ * The stages this deal can actually be moved to.
+ *
+ * Its own pipeline when it has one, the organisation's default pipeline
+ * otherwise — the same source the board uses. Never a hardcoded list:
+ * `Deal.stage` is a free string and every organisation configures its own.
+ */
+async function pipelineStagesForDeal(
+  auth: AuthResult,
+  dealId: string,
+): Promise<readonly PipelineStageOption[]> {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "deal", {
+    id: dealId,
+    organizationId: auth.orgId,
+  })
+  const deals = await prisma.deal.findMany({ where, select: { id: true, pipelineId: true }, take: 1 })
+  const deal = deals[0] as Readonly<{ id: string; pipelineId: string | null }> | undefined
+  if (!deal) return []
+  let pipelineId = deal.pipelineId
+  if (!pipelineId) {
+    const pipeline = await prisma.pipeline.findFirst({
+      where: { organizationId: auth.orgId, isDefault: true, isActive: true },
+      select: { id: true },
+    })
+    pipelineId = pipeline?.id ?? null
+  }
+  if (!pipelineId) return []
+  const stages = await prisma.pipelineStage.findMany({
+    where: { organizationId: auth.orgId, pipelineId, isActive: true },
+    select: { name: true, displayName: true, isWon: true, isLost: true },
+    orderBy: { sortOrder: "asc" },
+  })
+  return stages as PipelineStageOption[]
+}
+
 /** Record types a voice task may be attached to from the current screen. */
 const RELATABLE_SCREEN_TYPES = new Set(["lead", "deal", "contact", "company", "ticket"])
 
@@ -473,7 +511,7 @@ export async function resolveVoiceProposal(
     }
   }
 
-  if (tool === "propose_update_deal") {
+  if (tool === "propose_update_deal" || tool === "propose_move_deal_stage") {
     if (typeof args.dealName === "string") {
       const deal = await resolveDealByName(auth, args.dealName)
       if (!deal.ok) {
@@ -490,6 +528,26 @@ export async function resolveVoiceProposal(
     } else {
       return { kind: "clarify", code: "DEAL_TARGET_REQUIRED", field: "dealName", candidates: [] }
     }
+  }
+
+  if (tool === "propose_move_deal_stage" && targetEntityId) {
+    const stages = await pipelineStagesForDeal(auth, targetEntityId)
+    const match = matchDealStage(String(args.stage ?? ""), stages)
+    if (!match.ok) {
+      return {
+        kind: "clarify",
+        code: match.ambiguous ? "DEAL_STAGE_AMBIGUOUS" : "DEAL_STAGE_NOT_FOUND",
+        field: "stage",
+        // Names only, as everywhere else: the model never receives an id, and
+        // the user hears the stages their own pipeline has.
+        candidates: match.options.slice(0, MAX_CANDIDATES).map((option) => ({
+          id: option.name,
+          label: option.displayName || option.name,
+        })),
+      }
+    }
+    // The stored spelling of the stage, not the spoken one.
+    payload.stage = match.stage.name
   }
 
   if ((tool === "propose_update_task" || tool === "propose_update_deal") && Object.keys(payload).length === 0) {

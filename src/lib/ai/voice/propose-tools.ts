@@ -33,6 +33,7 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_create_deal",
   "propose_update_task",
   "propose_update_deal",
+  "propose_move_deal_stage",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -46,6 +47,7 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_create_deal: "create_deal",
     propose_update_task: "update_task",
     propose_update_deal: "update_deal",
+    propose_move_deal_stage: "move_deal_stage",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -203,6 +205,23 @@ export const VOICE_PROPOSE_SCHEMAS = {
     assigneeName: personName.optional(),
     notes: longText.optional(),
   }),
+  /**
+   * Move ONE deal to another stage of its own pipeline.
+   *
+   * Separate from propose_update_deal because this is not an edit: entering the
+   * won stage pays cashback, surveys the customer and awards loyalty, and
+   * entering a closed stage takes the contact out of its cadences. The stage is
+   * spoken in words and resolved server-side against the stages that deal's
+   * pipeline actually has, so the model cannot invent a destination.
+   */
+  propose_move_deal_stage: z.strictObject({
+    /** Omit to move the deal currently open on screen. */
+    dealName: shortText.optional(),
+    /** The stage as the user said it: "переговоры", "danışıqlar", "won". */
+    stage: shortText,
+    /** Only when the user gave a reason for losing the deal. */
+    lostReason: z.string().trim().max(500).optional(),
+  }),
 } as const satisfies Record<VoiceProposeToolName, z.ZodTypeAny>
 
 export type VoiceProposeArgs<T extends VoiceProposeToolName> =
@@ -221,6 +240,8 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare a change to ONE existing task for the user to confirm. This does NOT save anything. Omit taskTitle to change the task currently open on the user's screen; otherwise give the title the user said. Send only the fields being changed. status is the meaning: open, in_progress, done (\"закрой задачу\", \"выполнено\") or cancelled. Resolve relative dates to an absolute YYYY-MM-DD before calling.",
   propose_update_deal:
     "Prepare a change to ONE existing deal for the user to confirm. This does NOT save anything. Omit dealName to change the deal currently open on the user's screen; otherwise give the name the user said. Send only the fields being changed. This tool cannot move the deal to another stage, pipeline or probability, and cannot mark it won or lost: say that this has to be done on screen.",
+  propose_move_deal_stage:
+    "Prepare moving ONE deal to another stage of its pipeline, for the user to confirm. This does NOT move anything yet. Omit dealName for the deal currently open on screen. Pass the stage in the user's own words; the CRM resolves it against that deal's pipeline and will ask the user to choose if it is not clear. Winning or losing a deal goes through this tool too — say plainly what the receipt shows before the user answers.",
   propose_create_deal:
     "Prepare a NEW deal that does not come from a lead, for the user to confirm on screen. This does NOT create the deal: it shows a receipt the user confirms by saying yes or pressing the button. Name the company and contact as the user says them; never invent an id. Do not pass a stage, pipeline or probability — the CRM chooses them. If the user is converting an existing lead, use propose_convert_lead_to_deal instead.",
 }

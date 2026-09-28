@@ -134,6 +134,7 @@ async function runCanonicalCommand(
     role: auth.role,
     source: "voice" as const,
     voiceSessionId: intent.voiceSessionId,
+    voiceAction: intent.actionType,
     actionIntentId: intent.id,
     ...(intent.providerToolCallId ? { providerToolCallId: intent.providerToolCallId } : {}),
   }
@@ -156,10 +157,12 @@ async function runCanonicalCommand(
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
     }
     entityId = (await updateTaskCommand(actor, intent.targetEntityId, payload, execution)).entity.id
-  } else if (intent.actionType === "update_deal") {
+  } else if (intent.actionType === "update_deal" || intent.actionType === "move_deal_stage") {
     if (!intent.targetEntityId) {
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
     }
+    // Same command, different receipt: the actor carries which one, and the
+    // command's field list follows it.
     entityId = (await updateDealCommand(actor, intent.targetEntityId, payload, execution)).entity.id
   } else {
     if (!intent.targetEntityId) {

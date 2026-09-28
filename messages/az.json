@@ -24295,6 +24295,7 @@
       "contactId": "Kontakt",
       "campaignId": "Kampaniya",
       "stage": "Mərhələ",
+      "lostReason": "İtirilmə səbəbi",
       "valueAmount": "Məbləğ",
       "currency": "Valyuta",
       "probability": "Ehtimal",
@@ -24373,6 +24374,7 @@
         "update_lead": "Lidi dəyiş",
         "update_task": "Tapşırığı dəyiş",
         "update_deal": "Sövdələşməni dəyiş",
+        "move_deal_stage": "Mərhələni dəyiş",
         "create_deal": "Sövdələşmə yarat",
         "convert_lead_to_deal": "Lidi sövdələşməyə çevir"
       },
@@ -24382,11 +24384,14 @@
         "update_lead": "Dəyişiklikləri saxla",
         "update_task": "Tapşırığı saxla",
         "update_deal": "Sövdələşməni saxla",
+        "move_deal_stage": "Sövdələşməni keçir",
         "create_deal": "Sövdələşmə yarat",
         "convert_lead_to_deal": "Sövdələşməyə çevir"
       },
       "warning": {
-        "POSSIBLE_DUPLICATE": "Oxşar qeyd artq mövcuddur:"
+        "POSSIBLE_DUPLICATE": "Oxşar qeyd artq mövcuddur:",
+        "DEAL_STAGE_WON": "Bu, sövdələşməni qazanılmış kimi işarələyir: keşbek ödənişə düşür, müştəriyə sorğu gedir, loyallıq balları hesablanır.",
+        "DEAL_STAGE_LOST": "Bu, sövdələşməni itirilmiş kimi işarələyir və onun kontaktını işləyən kadanslardan çıxarır."
       },
       "result": {
         "done": "Hazırdır. Qeyd saxlanıldı.",
