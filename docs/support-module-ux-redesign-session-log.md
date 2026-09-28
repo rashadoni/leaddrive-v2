@@ -2221,3 +2221,23 @@ high-profile locale/theme/viewport matrix.
 
 Next: run the focused source checks, checkpoint and push the build correction,
 then repeat the exact-SHA desktop gate before mobile/high evidence.
+
+### Workstream 13 desktop flow correction
+
+- Exact-SHA rerun `36361287276` on `1cdcd44bc` passed the section gate,
+  fixtures and production build. Capture then exposed three evidence-contract
+  defects: `DialogContent` does not forward arbitrary DOM attributes, so the
+  visible editor/category surfaces lacked their test IDs; and the flow's
+  repeated one-second tour probe consumed the deliberately shortened Undo
+  window. The screenshots confirmed all three UI states were rendered, making
+  the failed selectors and timer interaction directly observable.
+- Editor and category-manager markers now live on real nested DOM elements.
+  Tour appearance is awaited only at workspace navigation; subsequent action
+  activation uses an immediate visibility check, so it cannot consume the Undo
+  interval. The static contract pins the real marker placement and tour mode.
+- Browser/flow syntax, focused ESLint, 16/16 affected assertions and
+  `git diff --check` pass. No timeout, expected outcome or gate threshold was
+  weakened.
+
+Next: checkpoint and push the flow correction, then repeat the exact-SHA
+desktop evidence gate before mobile/high evidence.

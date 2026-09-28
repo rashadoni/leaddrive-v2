@@ -34,6 +34,7 @@ describe("Macros flow evidence contract", () => {
     expect(flow).toContain("box.width < 44 || box.height < 44")
     expect(flow).toContain("element === document.activeElement")
     expect(flow).not.toContain(".isFocused()")
+    expect(flow).toContain("dismissTour(page, true)")
     expect(flow).toContain('"macros-flow-evidence.json"')
     expect(flow).toContain("report.results.length !== 6")
   })
@@ -41,6 +42,8 @@ describe("Macros flow evidence contract", () => {
   it("uses stable selectors for normal and exceptional states", () => {
     expect(page).toContain('className="support-page-shell space-y-4 pb-8"')
     expect(page).toContain('data-testid="macro-toggle-target"')
+    expect(page).toContain('<div className="space-y-4" data-testid="macro-editor"')
+    expect(page).toContain('<div className="space-y-3" data-testid="macro-category-manager"')
     for (const marker of [
       'data-testid="macros-workspace"',
       'data-testid="macros-error"',

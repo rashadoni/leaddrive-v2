@@ -516,7 +516,8 @@ export default function MacrosSettingsPage() {
 
       <Dialog open={editorOpen} onOpenChange={(open) => { if (!saving) setEditorOpen(open) }} widthClassName="max-w-[52rem]" maxHeightClassName="max-h-[92vh]" mobileFullscreen mobileFullscreenBreakpoint="md">
         <DialogHeader><DialogTitle>{editingId ? t("editMacro") : t("newMacro")}</DialogTitle><DialogDescription>{t("editorDescription")}</DialogDescription></DialogHeader>
-        <DialogContent className="space-y-4 p-4 md:p-6" data-testid="macro-editor" data-mode={editingId ? "edit" : "create"}>
+        <DialogContent className="p-4 md:p-6">
+          <div className="space-y-4" data-testid="macro-editor" data-mode={editingId ? "edit" : "create"}>
           {notice?.kind === "error" && <div role="alert" className="flex gap-2 rounded-lg border border-destructive/40 p-3 text-sm text-destructive"><AlertCircle className="h-4 w-4 shrink-0" />{notice.text}</div>}
           <div className="grid gap-3 md:grid-cols-2">
             <Label>{t("name")} *<Input autoFocus value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder={t("placeholderName")} className="mt-1 h-11" maxLength={255} data-testid="macro-name" /></Label>
@@ -546,13 +547,15 @@ export default function MacrosSettingsPage() {
 
           {showPreview && <section aria-label={t("previewTitle")} className="rounded-lg border bg-muted/20 p-3" data-testid="macro-preview"><h3 className="text-sm font-semibold">{t("previewTitle")}</h3><p className="mt-1 text-xs text-muted-foreground">{t("previewHint")}</p>{draft.actions.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">{t("noActions")}</p> : <ol className="mt-3 space-y-2">{draft.actions.map((action, index) => <li key={action.clientId} className="flex gap-2 text-sm"><span className="font-semibold">{index + 1}.</span><span><strong>{t(ACTION_META[action.type].label)}</strong>{action.value ? ` — ${actionValueLabel(action)}` : ` — ${t("valueMissing")}`}</span></li>)}</ol>}</section>}
           {draft.shortcutKey && assignedShortcuts.has(draft.shortcutKey) && <p role="alert" className="text-sm text-destructive">{t("shortcutConflict")}</p>}
+          </div>
         </DialogContent>
         <DialogFooter className="flex-col-reverse sm:flex-row"><Button variant="outline" className="min-h-11" onClick={() => setEditorOpen(false)} disabled={saving}>{tc("cancel")}</Button><Button className="min-h-11" onClick={() => void saveMacro()} disabled={!draftValid || saving} data-testid="macro-save">{saving ? t("saving") : editingId ? t("saveChanges") : t("createMacro")}</Button></DialogFooter>
       </Dialog>
 
       <Dialog open={categoryManagerOpen} onOpenChange={setCategoryManagerOpen} widthClassName="max-w-[34rem]">
         <DialogHeader><DialogTitle>{t("manageCategories")}</DialogTitle><DialogDescription>{t("sharedCategoriesHint")}</DialogDescription></DialogHeader>
-        <DialogContent className="space-y-3" data-testid="macro-category-manager">
+        <DialogContent>
+          <div className="space-y-3" data-testid="macro-category-manager">
           {notice && <div role="status" aria-live="polite" className={cn("flex gap-2 rounded-lg border p-3 text-sm", notice.kind === "error" && "border-destructive/40 text-destructive")}>{notice.kind === "error" ? <AlertCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}<span>{notice.text}</span></div>}
           {categories.map((item) => {
             const count = macros.filter((macro) => macro.category === item).length
@@ -563,6 +566,7 @@ export default function MacrosSettingsPage() {
             </div>
           })}
           <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row"><Label className="flex-1"><span className="sr-only">{t("newCategoryPlaceholder")}</span><Input value={newCategory} onChange={(event) => setNewCategory(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void addCategory() }} placeholder={t("newCategoryPlaceholder")} className="h-11" maxLength={80} data-testid="macro-category-new" /></Label><Button variant="outline" className="min-h-11" onClick={() => void addCategory()} disabled={!newCategory.trim() || categoryBusy} data-testid="macro-category-add"><Plus className="mr-2 h-4 w-4" />{tc("add")}</Button></div>
+          </div>
         </DialogContent>
       </Dialog>
 

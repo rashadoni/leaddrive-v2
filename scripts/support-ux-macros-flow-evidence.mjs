@@ -88,9 +88,12 @@ async function authenticate(context) {
   if (!response.ok()) throw new Error("macros_authentication_failed")
 }
 
-async function dismissTour(page) {
+async function dismissTour(page, waitForAppearance = false) {
   const overlay = page.getByTestId("tour-overlay")
-  if (await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)) {
+  const visible = waitForAppearance
+    ? await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)
+    : await overlay.isVisible().catch(() => false)
+  if (visible) {
     await page.keyboard.press("Escape")
     await overlay.waitFor({ state: "hidden", timeout: 5_000 })
   }
@@ -100,7 +103,7 @@ async function openWorkspace(page) {
   const response = await page.goto("/settings/macros", { waitUntil: "domcontentloaded", timeout: 60_000 })
   if (!response || response.status() >= 400) throw new Error(`page_http_${response?.status() || 0}`)
   await page.locator("[data-testid='macros-workspace'][data-state='ready']").waitFor({ state: "visible", timeout: 30_000 })
-  await dismissTour(page)
+  await dismissTour(page, true)
   assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "Macros")
 }
 
@@ -242,6 +245,7 @@ try {
     const fail = async (route) => route.fulfill(json({ success: false, error: "Synthetic macro load failure" }, 503))
     await page.route(pattern, fail)
     await page.goto("/settings/macros", { waitUntil: "domcontentloaded" })
+    await dismissTour(page, true)
     await page.getByTestId("macros-error").waitFor({ state: "visible" })
     await page.unroute(pattern, fail)
     await installMacroApi(page, [macro(0)])

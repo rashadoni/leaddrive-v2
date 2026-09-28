@@ -3022,6 +3022,12 @@ Current-tree restoration and self-audit (2026-09-28):
   then the production build caught duplicate recovered shell imports before
   capture. The duplicate block is removed and a focused uniqueness regression
   is added; the desktop browser gate remains pending until its exact-SHA rerun.
+- Exact-SHA rerun `36361287276` passed the corrected production build, then the
+  disposable capture exposed non-forwarded `DialogContent` markers and a
+  one-second tour probe racing the shortened Undo timer. Markers now sit on
+  actual nested DOM nodes and post-navigation activation probes tour visibility
+  without waiting. Focused syntax/lint, 16/16 assertions and diff-check pass;
+  the desktop browser gate remains pending its next exact-SHA rerun.
 
 ## 21. Workstream 14 — Portal Users
 
