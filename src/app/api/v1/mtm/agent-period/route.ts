@@ -5,7 +5,9 @@ import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { isDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone, localDateTimeToUtc } from "@/lib/timezone"
-import { AGENT_PERIOD_MAX_DAYS, buildAgentPeriod, periodDays } from "@/lib/mtm/agent-period"
+import { AGENT_PERIOD_MAX_DAYS, agentPeriodDayTracks, buildAgentPeriod, periodDays } from "@/lib/mtm/agent-period"
+import { matchRoads } from "@/lib/mtm/map-matching"
+import { distanceBasis } from "@/lib/mtm/road-distance"
 
 /**
  * GET /api/v1/mtm/agent-period?agentId=&from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -15,6 +17,8 @@ import { AGENT_PERIOD_MAX_DAYS, buildAgentPeriod, periodDays } from "@/lib/mtm/a
  * sees the agents of their territory, an agent sees themself.
  */
 const MAX_POINTS = 60_000
+/** A month of fixes the road service has not seen yet may take this long; the rest stays straight. */
+const ROAD_DEADLINE_MS = 8_000
 
 function refuse(code: string, status: number) {
   return NextResponse.json({ error: status === 403 ? "Forbidden" : "Invalid request", code }, { status })
@@ -96,6 +100,22 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     }),
   ])
 
+  const periodPoints = points.map((point) => ({ ...point, workdayId: null }))
+  // Kilometres along the roads: every day's track in one request to OSRM, so
+  // the days share its time budget; the steps come back cut per day.
+  const tracks = agentPeriodDayTracks({ points: periodPoints, timezone, maxAccuracyMeters: settings.historyMaxAccuracyMeters })
+  const joined = [...tracks.values()].flat()
+  const road = await matchRoads(joined, { deadlineMs: ROAD_DEADLINE_MS }).catch(() => null)
+  const roadStepsByDay = new Map<string, Array<number | null>>()
+  if (road) {
+    let offset = 0
+    for (const [day, track] of tracks) {
+      // A day's first fix arrives from the evening before: that step is not the day's.
+      roadStepsByDay.set(day, [null, ...road.stepMeters.slice(offset + 1, offset + track.length)])
+      offset += track.length
+    }
+  }
+
   const period = buildAgentPeriod({
     from,
     to,
@@ -105,7 +125,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     workdays,
     visits,
     routes,
-    points: points.map((point) => ({ ...point, workdayId: null })),
+    points: periodPoints,
+    roadStepsByDay,
   })
 
   return NextResponse.json({
@@ -118,6 +139,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       maxDays: AGENT_PERIOD_MAX_DAYS,
       // Distances are withheld when the read hit its cap, as on the history page.
       distanceComplete: points.length < MAX_POINTS,
+      distanceBasis: distanceBasis(road),
       ...period,
     },
   })

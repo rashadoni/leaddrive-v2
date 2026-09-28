@@ -3,7 +3,9 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { withMobileRls } from "@/lib/with-mobile-rls"
-import { calculateDistance, distanceToPolyline } from "@/lib/geo-utils"
+import { distanceToPolyline } from "@/lib/geo-utils"
+import { matchRoads } from "@/lib/mtm/map-matching"
+import { drivingDistanceMeters } from "@/lib/mtm/road-distance"
 import { checkRateLimit, hashForRateLimit } from "@/lib/rate-limit"
 import { notifyAgent } from "@/lib/mtm-notify"
 import { getMtmSettings } from "@/lib/mtm-settings"
@@ -67,18 +69,8 @@ function parseRecordedAt(value: unknown, now: Date): Date | null {
   return parsed
 }
 
-function travelledDistance(locations: Array<{ latitude: number; longitude: number }>): number {
-  let total = 0
-  for (let index = 1; index < locations.length; index += 1) {
-    total += calculateDistance(
-      locations[index - 1].latitude,
-      locations[index - 1].longitude,
-      locations[index].latitude,
-      locations[index].longitude,
-    )
-  }
-  return Math.round(total)
-}
+/** The agent's own day reads the same kilometres the manager does: along the roads (road-distance.ts). */
+const ROAD_DEADLINE_MS = 3_000
 
 function locationForEnabledProducts<T extends { workdayId?: unknown }>(
   location: T,
@@ -494,6 +486,7 @@ export const GET = withMobileRls(async (req, auth) => {
       }),
     ])
     const workforceEnabled = auth.tenantCapabilities?.workforceHrm === true
+    const road = await matchRoads(locations, { deadlineMs: ROAD_DEADLINE_MS }).catch(() => null)
 
     return NextResponse.json({
       success: true,
@@ -501,7 +494,7 @@ export const GET = withMobileRls(async (req, auth) => {
         date: requestedDate,
         timezone,
         gpsIntervalSeconds: settings.gpsInterval,
-        distanceMeters: travelledDistance(locations),
+        distanceMeters: drivingDistanceMeters(locations, road?.stepMeters),
         pauses: serializeMtmWorkdayPauses(mtmWorkdayPauses(pauseEvents)),
         locations: locations.map((location) => locationForEnabledProducts(location, workforceEnabled)),
       },

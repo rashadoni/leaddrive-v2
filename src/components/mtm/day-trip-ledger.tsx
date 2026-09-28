@@ -21,7 +21,7 @@ export type DayTripData = {
         visit: { id: string; customerId: string; customerName: string } | null
       }
     | { kind: "MOVE"; id: string; startedAt: string; endedAt: string; durationSeconds: number; distanceMeters: number; pointCount: number }
-    | { kind: "GAP"; id: string; startedAt: string; endedAt: string; durationSeconds: number; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"; displacementMeters: number }
+    | { kind: "GAP"; id: string; startedAt: string; endedAt: string; durationSeconds: number; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"; displacementMeters: number; roadMeters?: number | null }
   >
   summary: {
     movingSeconds: number
@@ -69,7 +69,7 @@ export function DayTripLedger({
   onFocus: (focus: DayTripFocus | null) => void
   formatMoment: (value: string, options?: Intl.DateTimeFormatOptions) => string
   formatDuration: (seconds: number) => string
-  /** The map shows the track along the streets; distances stay between fixes. */
+  /** Distances were counted along the roads (road-distance.ts), not straight between fixes. */
   roadsMatched?: boolean
 }) {
   const t = useTranslations("mtmMap.history.trip")
@@ -138,9 +138,11 @@ export function DayTripLedger({
               break
             case "GAP":
               title = entry.reason === "WORKDAY_PAUSED" ? t("pause") : t("noSignal")
-              detail = entry.reason === "TELEMETRY_GAP" && entry.displacementMeters >= MEANINGFUL_DISPLACEMENT_METERS
-                ? t("noSignalMoved", { duration: formatDuration(entry.durationSeconds), distance: kilometres(entry.displacementMeters) })
-                : formatDuration(entry.durationSeconds)
+              detail = entry.reason === "TELEMETRY_GAP" && entry.roadMeters != null && entry.roadMeters >= MEANINGFUL_DISPLACEMENT_METERS
+                ? t("noSignalRoad", { duration: formatDuration(entry.durationSeconds), distance: kilometres(entry.roadMeters) })
+                : entry.reason === "TELEMETRY_GAP" && entry.displacementMeters >= MEANINGFUL_DISPLACEMENT_METERS
+                  ? t("noSignalMoved", { duration: formatDuration(entry.durationSeconds), distance: kilometres(entry.displacementMeters) })
+                  : formatDuration(entry.durationSeconds)
               break
           }
           const time = "at" in entry

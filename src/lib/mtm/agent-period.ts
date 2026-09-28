@@ -1,5 +1,5 @@
-import { calculateDistance } from "@/lib/geo-utils"
 import { prepareHistoryPoints, type HistoryLocationPoint } from "@/lib/mtm/location-history"
+import { DRIVING_MAX_SPEED_KMH, DRIVING_MAX_STEP_SECONDS, drivingDistanceMeters } from "@/lib/mtm/road-distance"
 import { dateInputValueInTimezone, localDateTimeToUtc } from "@/lib/timezone"
 
 /**
@@ -94,25 +94,32 @@ function dayEnd(day: string, timezone: string): number {
 }
 
 /**
- * Driving distance: only steps a vehicle can make. A step across a silence
- * longer than ten minutes is unknown travel, and one faster than 180 km/h is a
- * flight or a GPS jump — neither is road the agent drove.
+ * Driving distance: only steps a vehicle can make, along the roads where
+ * OSRM answered — the rule lives in road-distance.ts, shared with the map.
  */
-export const DRIVING_MAX_STEP_SECONDS = 10 * 60
-export const DRIVING_MAX_SPEED_KMH = 180
+export { DRIVING_MAX_SPEED_KMH, DRIVING_MAX_STEP_SECONDS, drivingDistanceMeters }
 
-export function drivingDistanceMeters(points: readonly HistoryLocationPoint[]): number {
-  let meters = 0
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1]
-    const current = points[index]
-    const seconds = (current.recordedAt.getTime() - previous.recordedAt.getTime()) / 1_000
-    if (seconds <= 0 || seconds > DRIVING_MAX_STEP_SECONDS) continue
-    const step = calculateDistance(previous.latitude, previous.longitude, current.latitude, current.longitude)
-    if ((step / seconds) * 3.6 > DRIVING_MAX_SPEED_KMH) continue
-    meters += step
+/**
+ * Each day's accepted fixes, in the local calendar of the tenant. The route
+ * asks OSRM for exactly these arrays, so the road steps it passes back line
+ * up with them.
+ */
+export function agentPeriodDayTracks(input: {
+  points: readonly HistoryLocationPoint[]
+  timezone: string
+  maxAccuracyMeters: number
+}): Map<string, HistoryLocationPoint[]> {
+  const byDay = new Map<string, HistoryLocationPoint[]>()
+  for (const point of input.points) {
+    const key = dateInputValueInTimezone(point.recordedAt, input.timezone)
+    if (!byDay.has(key)) byDay.set(key, [])
+    byDay.get(key)!.push(point)
   }
-  return Math.round(meters)
+  const tracks = new Map<string, HistoryLocationPoint[]>()
+  for (const [day, dayPoints] of byDay) {
+    if (dayPoints.length > 1) tracks.set(day, prepareHistoryPoints([...dayPoints], input.maxAccuracyMeters).points)
+  }
+  return tracks
 }
 
 export function buildAgentPeriod(input: {
@@ -125,8 +132,11 @@ export function buildAgentPeriod(input: {
   visits: readonly Visit[]
   routes: readonly Route[]
   points: readonly HistoryLocationPoint[]
+  /** Road metres per step of each day's track (agentPeriodDayTracks), where OSRM answered. */
+  roadStepsByDay?: ReadonlyMap<string, ReadonlyArray<number | null>>
 }): AgentPeriod {
   const { timezone } = input
+  const tracks = agentPeriodDayTracks({ points: input.points, timezone, maxAccuracyMeters: input.maxAccuracyMeters })
   const today = dateInputValueInTimezone(input.now, timezone)
   const keyOf = (value: Date) => dateInputValueInTimezone(value, timezone)
   const pointsByDay = new Map<string, HistoryLocationPoint[]>()
@@ -164,9 +174,8 @@ export function buildAgentPeriod(input: {
       durationSeconds: visit.checkOutAt ? Math.max(0, Math.round((visit.checkOutAt.getTime() - visit.checkInAt.getTime()) / 1_000)) : null,
       status: visit.status,
     }))
-    const distanceMeters = dayPoints.length > 1
-      ? drivingDistanceMeters(prepareHistoryPoints([...dayPoints], input.maxAccuracyMeters).points)
-      : 0
+    const track = tracks.get(date)
+    const distanceMeters = track ? drivingDistanceMeters(track, input.roadStepsByDay?.get(date)) : 0
 
     // Time in the field: the workday on its own date. One left open (the
     // owner's own test shift ran for days) ends at its last fix that day —

@@ -1,5 +1,6 @@
 import { calculateDistance } from "@/lib/geo-utils"
 import type { HistoryGap, HistoryLocationPoint, HistoryStop, HistoryVisit } from "@/lib/mtm/location-history"
+import { drivingStepMeters } from "@/lib/mtm/road-distance"
 
 /**
  * Owner 2026-09-22: «if I sell this as a TMS, how will managers see which way
@@ -11,8 +12,8 @@ import type { HistoryGap, HistoryLocationPoint, HistoryStop, HistoryVisit } from
  * disagree. Every leg carries its own time window, and the map highlights the
  * track inside it.
  *
- * What this does NOT claim: the road taken. The line between two fixes is a
- * straight chord; snapping it to streets needs a map-matching service.
+ * Distances follow road-distance.ts: along the roads where the self-hosted
+ * OSRM answered (2026-09-28), straight between fixes where it did not.
  */
 
 /** A silence shorter than this that is left over after a stop is not worth a line. */
@@ -60,6 +61,11 @@ export type DayTripGap = {
   reason: HistoryGap["reason"]
   /** Straight line between the last fix before and the first fix after. */
   displacementMeters: number
+  /**
+   * The shortest road between those two fixes, when OSRM answered: at least
+   * this much was driven while the phone was silent. Null without an answer.
+   */
+  roadMeters: number | null
   fromLatitude: number
   fromLongitude: number
   toLatitude: number
@@ -108,16 +114,10 @@ function subtract(interval: Interval, holes: readonly Interval[]): Interval[] {
   return pieces
 }
 
-function pathMeters(points: readonly HistoryLocationPoint[]): number {
+/** Metres of a contiguous run of the day's fixes: the counted steps inside it. */
+function pathMeters(points: readonly HistoryLocationPoint[], counted: ReadonlyMap<HistoryLocationPoint, number>): number {
   let meters = 0
-  for (let index = 1; index < points.length; index += 1) {
-    meters += calculateDistance(
-      points[index - 1].latitude,
-      points[index - 1].longitude,
-      points[index].latitude,
-      points[index].longitude,
-    )
-  }
+  for (let index = 1; index < points.length; index += 1) meters += counted.get(points[index]) ?? 0
   return Math.round(meters)
 }
 
@@ -158,6 +158,7 @@ function mergeNeighbours(entries: readonly DayTripEntry[]): DayTripEntry[] {
         displacementMeters: Math.round(calculateDistance(
           previous.fromLatitude, previous.fromLongitude, entry.toLatitude, entry.toLongitude,
         )),
+        roadMeters: previous.roadMeters != null && entry.roadMeters != null ? previous.roadMeters + entry.roadMeters : null,
       }
       continue
     }
@@ -173,8 +174,17 @@ export function buildDayTrip(input: {
   visits: readonly HistoryVisit[]
   gaps: readonly HistoryGap[]
   workday: { startedAt: Date; completedAt: Date | null } | null
+  /** Road metres per step of `points` (map-matching.ts), where OSRM answered. */
+  roadSteps?: ReadonlyArray<number | null> | null
 }): DayTrip {
   const { points } = input
+  const steps = drivingStepMeters(points, input.roadSteps)
+  const counted = new Map(points.map((point, index) => [point, steps[index]] as const))
+  // A silence ends on a fix; the road step arriving at it spans the silence.
+  const roadAcross = new Map<number, number>()
+  points.forEach((point, index) => {
+    if (input.roadSteps?.[index] != null) roadAcross.set(point.recordedAt.getTime(), Math.round(steps[index]))
+  })
 
   // 1. Where the agent stood: every GPS stop, plus every visit no stop covers
   //    (a visit made with the phone silent still happened).
@@ -228,6 +238,8 @@ export function buildDayTrip(input: {
         displacementMeters: Math.round(calculateDistance(
           gap.startLatitude, gap.startLongitude, gap.endLatitude, gap.endLongitude,
         )),
+        // The road of the whole silence belongs to one piece of it, not to each.
+        roadMeters: index === 0 ? roadAcross.get(gap.endedAt.getTime()) ?? null : null,
         fromLatitude: gap.startLatitude,
         fromLongitude: gap.startLongitude,
         toLatitude: gap.endLatitude,
@@ -286,7 +298,7 @@ export function buildDayTrip(input: {
       startedAt: new Date(from),
       endedAt: new Date(to),
       durationSeconds: seconds(from, to),
-      distanceMeters: pathMeters(inside),
+      distanceMeters: pathMeters(inside, counted),
       pointCount: inside.length,
     })
   }
