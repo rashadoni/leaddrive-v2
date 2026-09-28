@@ -3678,6 +3678,19 @@ Current-tree recovery and self-audit (2026-09-29):
   remains mandatory in GitHub Actions. Full local build/browser are **NOT RUN**
   on this host and remain mandatory before checking CXP-001..006.
 
+Desktop section-gate correction (2026-09-29):
+
+- Exact-SHA run `36492703201` on `e853913ef` failed closed before secrets,
+  fixtures, build or capture. The `portal-knowledge` scenario correctly invoked
+  both Customer Portal and Knowledge Base section gates; the latter exposed a
+  stale source assertion requiring the superseded `text-orange-700` portal
+  brand treatment. No artifact from this diagnostic run is accepted.
+- The Knowledge Base evidence contract now pins the product checkpoint's
+  semantic portal navigation label, `aria-current` active state, truthful
+  company projection and absence of the obsolete hard-coded orange class.
+  Its focused 5/5 assertions, ESLint and `git diff --check` are green. The same
+  exact-SHA desktop gate must be repeated after checkpointing this correction.
+
 ## 21C. Evidence, Performance, and Rollout Track
 
 **Status: IN PROGRESS — source/evidence contracts green; GitHub browser jobs

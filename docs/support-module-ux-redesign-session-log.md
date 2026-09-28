@@ -2602,3 +2602,20 @@ and `737dc6427`, preserving the current workflow/browser evidence superset.
 Next: checkpoint and push the corrected Customer Portal evidence contract,
 then run exact-SHA desktop, RU/dark physical-touch mobile and complete 120-cell
 five-route high-profile evidence before checking SUPUX-CXP-001..006.
+
+### Customer Support Portal overlapping gate correction
+
+- Exact-SHA desktop run `36492703201` on `e853913ef` proved that
+  `portal-knowledge` invokes both the Customer Portal and existing Knowledge
+  Base section gates. It failed closed in the latter before secrets, fixtures,
+  build or capture because a stale source assertion still required the old
+  `text-orange-700` portal brand class. Its upload also failed as expected
+  because no evidence directory existed; this diagnostic run is not accepted.
+- The overlapping Knowledge Base contract now requires the current semantic
+  portal navigation label, `aria-current` active state, company projection and
+  absence of the obsolete hard-coded orange class. Focused assertions pass 5/5,
+  targeted ESLint and `git diff --check` are green; no workflow selector or
+  product behavior was weakened.
+
+Next: checkpoint and push the overlapping-gate correction, then repeat the
+exact-SHA desktop Customer Portal run before mobile and the 120-cell matrix.
