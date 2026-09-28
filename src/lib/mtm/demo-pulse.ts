@@ -12,11 +12,13 @@ import {
 } from "@/lib/mtm/workday"
 import { advanceMtmAgentLatestLocation } from "@/lib/mtm/mobile-location-latest"
 import {
+  demoPulseLegs,
   demoPulsePosition,
   MTM_DEMO_PULSE_FEATURE,
   planDemoPulseDay,
   type DemoPulseDay,
 } from "@/lib/mtm/demo-pulse-plan"
+import { roadPath } from "@/lib/mtm/map-matching"
 
 /**
  * The demo pulse: an ordinary working day for demo agents, every day.
@@ -339,10 +341,21 @@ export async function pulseDemoAgent(input: {
   if (workday.status !== "COMPLETED") {
     const positions = new Map(customers.map((customer) => [customer.id, customer]))
     const lastMinute = Math.floor(now.getTime() / 60_000)
+    // Drives along the streets (self-hosted OSRM), only for the drives this
+    // tick covers; without an answer a drive stays a straight line.
+    const tickFrom = (lastMinute - TICK_MINUTES + 1) * 60_000
+    const roads = new Map<string, Array<[number, number]>>()
+    for (const leg of demoPulseLegs(day)) {
+      if (leg.arriveAt.getTime() < tickFrom || leg.leftAt.getTime() > now.getTime()) continue
+      const from = positions.get(leg.fromCustomerId)
+      const to = positions.get(leg.toCustomerId)
+      const line = from && to ? await roadPath(from, to).catch(() => null) : null
+      if (line) roads.set(leg.key, line)
+    }
     const samples = Array.from({ length: TICK_MINUTES }, (_, index) => lastMinute - TICK_MINUTES + 1 + index)
       .flatMap((minute) => {
         const at = new Date(minute * 60_000)
-        const position = demoPulsePosition(day, positions, at)
+        const position = demoPulsePosition(day, positions, at, roads)
         if (!position) return []
         const place = near(position, `${agent.id}:${minute}`, position.isMoving ? 15 : 12)
         return [{ at, isMoving: position.isMoving, ...place, clientLocationId: `${DEMO_KEY}:${agent.id}:m${minute}` }]

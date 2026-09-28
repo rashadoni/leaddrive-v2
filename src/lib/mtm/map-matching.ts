@@ -185,12 +185,14 @@ export function parseOsrmMatchSteps(body: OsrmMatchResponse, length: number): Ch
 let unavailableUntil = 0
 const chunkCache = new Map<string, { at: number; value: ChunkAnswer }>()
 const routeCache = new Map<string, { at: number; value: number | null }>()
+const pathCache = new Map<string, { at: number; value: Array<[number, number]> | null }>()
 
 /** Test hook: forget the caches and the cooldown. */
 export function resetMapMatchingState() {
   unavailableUntil = 0
   chunkCache.clear()
   routeCache.clear()
+  pathCache.clear()
 }
 
 function remember<T>(cache: Map<string, { at: number; value: T }>, key: string, value: T, at: number) {
@@ -322,6 +324,50 @@ export async function matchRoads(
     source: "osrm",
     stepMeters,
     complete: answeredAll,
+  }
+}
+
+/**
+ * The road between two places as a line of [latitude, longitude], for the
+ * demo pulse to drive along (demo-pulse.ts). Null when there is no OSRM, no
+ * road near either end, or no answer — the caller keeps its straight line.
+ */
+export async function roadPath(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+  options: { baseUrl?: string | null; fetchImpl?: typeof fetch; now?: () => number } = {},
+): Promise<Array<[number, number]> | null> {
+  const baseUrl = options.baseUrl === undefined ? mapMatchingBaseUrl() : options.baseUrl
+  if (!baseUrl) return null
+  const now = options.now ?? Date.now
+  if (now() < unavailableUntil) return null
+  const coordinates = [from, to].map((point) => `${point.longitude.toFixed(6)},${point.latitude.toFixed(6)}`).join(";")
+  const url = `${baseUrl}/route/v1/driving/${coordinates}?${new URLSearchParams({
+    overview: "full",
+    geometries: "geojson",
+    steps: "false",
+  }).toString()}`
+  const cached = recall(pathCache, url, now())
+  if (cached) return cached.value
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  try {
+    const response = await (options.fetchImpl ?? fetch)(url, { signal: controller.signal, cache: "no-store" })
+    const body = await response.json().catch(() => null) as { code?: string; routes?: Array<{ geometry?: { coordinates?: Array<[number, number]> } }> } | null
+    if (!body || typeof body.code !== "string") return null
+    const line = body.code === "Ok"
+      ? (body.routes?.[0]?.geometry?.coordinates ?? [])
+        .filter((pair) => Array.isArray(pair) && Number.isFinite(pair[0]) && Number.isFinite(pair[1]))
+        .map(([longitude, latitude]) => [latitude, longitude] as [number, number])
+      : []
+    const value = line.length > 1 ? line : null
+    remember(pathCache, url, value, now())
+    return value
+  } catch {
+    unavailableUntil = now() + FAILURE_COOLDOWN_MS
+    return null
+  } finally {
+    clearTimeout(timer)
   }
 }
 
