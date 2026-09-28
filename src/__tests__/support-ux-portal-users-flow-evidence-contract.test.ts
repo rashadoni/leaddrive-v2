@@ -60,8 +60,9 @@ describe("Portal Users flow evidence contract", () => {
   it("keeps compact surfaces through tablet widths and exposes 44px touch areas", () => {
     expect(page).toContain("xl:block")
     expect(page).toContain("xl:hidden")
-    expect(page).toContain('className="flex h-11 w-11 shrink-0 cursor-pointer')
-    expect(page).toContain('className="flex min-h-11 items-start')
+    expect(page).toContain('className="peer absolute inset-0 h-11 w-11 cursor-pointer opacity-0"')
+    expect(page).toContain("peer-focus-visible:ring-2")
+    expect(page).toContain("peer-indeterminate:bg-primary")
   })
 
   it("runs only when the Portal Users scenario is selected", () => {

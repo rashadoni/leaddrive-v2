@@ -1,15 +1,17 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type Ref } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import {
   AlertCircle,
+  Check,
   CheckCircle2,
   Clock,
   Key,
   KeyRound,
   MessageSquareX,
+  Minus,
   MoreHorizontal,
   Pencil,
   Search,
@@ -62,6 +64,35 @@ interface PortalProfileForm {
 
 type FilterType = "all" | "enabled" | "registered" | "pending" | "disabled"
 type Notice = { kind: "success" | "error"; text: string }
+
+interface SelectionCheckboxProps {
+  checked: boolean
+  onChange: () => void
+  ariaLabel: string
+  testId: string
+  id?: string
+  inputRef?: Ref<HTMLInputElement>
+}
+
+function SelectionCheckbox({ checked, onChange, ariaLabel, testId, id, inputRef }: SelectionCheckboxProps) {
+  return (
+    <label className="relative flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md">
+      <input
+        ref={inputRef}
+        id={id}
+        type="checkbox"
+        className="peer absolute inset-0 h-11 w-11 cursor-pointer opacity-0"
+        checked={checked}
+        onChange={onChange}
+        aria-label={ariaLabel}
+        data-testid={testId}
+      />
+      <span aria-hidden="true" className="pointer-events-none h-5 w-5 rounded border border-input bg-background peer-checked:border-primary peer-checked:bg-primary peer-indeterminate:border-primary peer-indeterminate:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2" />
+      <Check aria-hidden="true" className="pointer-events-none absolute h-4 w-4 text-primary-foreground opacity-0 peer-checked:opacity-100 peer-indeterminate:opacity-0" />
+      <Minus aria-hidden="true" className="pointer-events-none absolute h-4 w-4 text-primary-foreground opacity-0 peer-indeterminate:opacity-100" />
+    </label>
+  )
+}
 
 class PortalRequestError extends Error {
   constructor(readonly code?: string, readonly status?: number) {
@@ -355,7 +386,7 @@ export default function PortalUsersPage() {
   const allSelected = contacts.length > 0 && selected.size === contacts.length
   const selectedContacts = useMemo(() => contacts.filter((contact) => selected.has(contact.id)), [contacts, selected])
 
-  const selectCheckbox = (contact: PortalContactRecord) => <label className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md"><input type="checkbox" className="h-5 w-5 rounded border-border accent-foreground" checked={selected.has(contact.id)} onChange={() => setSelected((current) => togglePortalSelection(current, contact.id))} aria-label={t("portalSelectUser", { name: contact.fullName })} data-testid="portal-user-select" /></label>
+  const selectCheckbox = (contact: PortalContactRecord) => <SelectionCheckbox checked={selected.has(contact.id)} onChange={() => setSelected((current) => togglePortalSelection(current, contact.id))} ariaLabel={t("portalSelectUser", { name: contact.fullName })} testId="portal-user-select" />
 
   const accessButton = (contact: PortalContactRecord) => <Button variant="outline" size="sm" className="min-h-11" disabled={Boolean(busyAction) || !contact.isActive} onClick={() => contact.portalAccessEnabled ? setDisableDialog(contact) : void runAccessChange(contact, true).catch(() => {})} data-testid="portal-user-access">{contact.portalAccessEnabled ? <ShieldOff className="mr-2 h-4 w-4" /> : <Shield className="mr-2 h-4 w-4" />}{!contact.isActive ? t("portalCrmInactive") : t(contact.portalAccessEnabled ? "portalBtnDisable" : "portalBtnEnable")}</Button>
 
@@ -403,13 +434,13 @@ export default function PortalUsersPage() {
         : contacts.length === 0 ? <div className="rounded-lg border p-8 text-center" data-testid="portal-users-empty" data-kind={debouncedSearch || filter !== "all" ? "filtered" : "contacts"}><Users className="mx-auto h-7 w-7 text-muted-foreground" /><h2 className="mt-3 text-base font-semibold">{debouncedSearch || filter !== "all" ? tc("noResults") : t("portalNoContacts")}</h2>{!debouncedSearch && filter === "all" && <><p className="mx-auto mt-1 max-w-xl text-sm text-muted-foreground">{t("portalNoContactsHint")}</p><Button asChild variant="outline" className="mt-4 min-h-11"><Link href="/contacts/list">{t("portalNoContactsAction")}</Link></Button></>}</div>
         : <>
           <div className="hidden min-w-0 overflow-hidden rounded-lg border xl:block" aria-busy={refreshing} data-testid="portal-users-desktop-table">
-            <table className="w-full text-sm"><thead><tr className="border-b bg-muted/30"><th className="w-14 p-1"><label className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md"><input ref={desktopSelectAllRef} type="checkbox" className="h-5 w-5 accent-foreground" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : selectAllVisible(contacts))} aria-label={t("portalSelectAllVisible", { count: contacts.length })} data-testid="portal-users-select-all-desktop" /></label></th><th className="p-3 text-left font-medium">{tc("fullName")}</th><th className="p-3 text-left font-medium">{tc("company")}</th><th className="p-3 text-left font-medium">{t("portalStatus")}</th><th className="p-3 text-left font-medium">{t("portalLastLogin")}</th><th className="p-3 text-right font-medium">{tc("actions")}</th></tr></thead>
+            <table className="w-full text-sm"><thead><tr className="border-b bg-muted/30"><th className="w-14 p-1"><SelectionCheckbox inputRef={desktopSelectAllRef} checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : selectAllVisible(contacts))} ariaLabel={t("portalSelectAllVisible", { count: contacts.length })} testId="portal-users-select-all-desktop" /></th><th className="p-3 text-left font-medium">{tc("fullName")}</th><th className="p-3 text-left font-medium">{tc("company")}</th><th className="p-3 text-left font-medium">{t("portalStatus")}</th><th className="p-3 text-left font-medium">{t("portalLastLogin")}</th><th className="p-3 text-right font-medium">{tc("actions")}</th></tr></thead>
               <tbody>{contacts.map((contact) => <tr key={contact.id} className="border-b last:border-b-0" data-testid="portal-user-row" data-contact-id={contact.id} data-access-state={portalAccessState(contact)}><td className="p-3">{selectCheckbox(contact)}</td><td className="p-3"><strong className="block font-medium">{contact.fullName}</strong><span className="text-xs text-muted-foreground">{contact.email || t("portalNoEmail")}</span></td><td className="p-3 text-muted-foreground">{contact.companyName || "—"}</td><td className="p-3"><span className="text-xs font-medium">{stateLabel(contact)}</span>{recoveryHint(contact) && <span className="mt-1 block max-w-56 text-xs text-muted-foreground">{recoveryHint(contact)}</span>}</td><td className="p-3 text-xs text-muted-foreground">{formatDate(contact.portalLastLoginAt)}</td><td className="p-3"><div className="flex items-center justify-end gap-1">{accessButton(contact)}{actionMenu(contact)}</div></td></tr>)}</tbody>
             </table>
           </div>
 
           <div className="min-w-0 space-y-2 xl:hidden" aria-busy={refreshing} data-testid="portal-users-mobile-list">
-            <label className="flex min-h-11 items-center gap-3 rounded-lg border px-3 text-sm font-medium"><input ref={mobileSelectAllRef} type="checkbox" className="h-5 w-5 accent-foreground" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : selectAllVisible(contacts))} aria-label={t("portalSelectAllVisible", { count: contacts.length })} data-testid="portal-users-select-all-mobile" />{t("portalSelectAllVisible", { count: contacts.length })}</label>
+            <div className="flex min-h-11 items-center gap-1 rounded-lg border px-1 text-sm font-medium"><SelectionCheckbox inputRef={mobileSelectAllRef} checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : selectAllVisible(contacts))} ariaLabel={t("portalSelectAllVisible", { count: contacts.length })} testId="portal-users-select-all-mobile" /><span>{t("portalSelectAllVisible", { count: contacts.length })}</span></div>
             {contacts.map((contact) => <article key={contact.id} className="rounded-lg border p-3" data-testid="portal-user-card" data-contact-id={contact.id} data-access-state={portalAccessState(contact)}><div className="flex items-start gap-3">{selectCheckbox(contact)}<div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{contact.fullName}</h2><p className="truncate text-xs text-muted-foreground">{contact.email || t("portalNoEmail")}</p></div>{actionMenu(contact)}</div><dl className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><div><dt className="text-muted-foreground">{tc("company")}</dt><dd className="mt-1 truncate">{contact.companyName || "—"}</dd></div><div><dt className="text-muted-foreground">{t("portalStatus")}</dt><dd className="mt-1 font-medium">{stateLabel(contact)}</dd></div><div className="col-span-2"><dt className="text-muted-foreground">{t("portalLastLogin")}</dt><dd className="mt-1">{formatDate(contact.portalLastLoginAt)}</dd></div>{recoveryHint(contact) && <div className="col-span-2 rounded border p-2"><dt className="sr-only">{t("portalRecoveryState")}</dt><dd>{recoveryHint(contact)}</dd></div>}</dl><div className="mt-3 flex justify-end">{accessButton(contact)}</div></article>)}
           </div>
         </>}
@@ -427,7 +458,7 @@ export default function PortalUsersPage() {
       </Dialog>
 
       <Dialog open={Boolean(manualPasswordDialog)} onOpenChange={(open) => { if (!open && !savingManualPassword) { setManualPasswordDialog(null); restoreActionMenuFocus() } }}>
-        <form onSubmit={handleSetManualPassword} data-testid="portal-user-password-form"><DialogHeader><DialogTitle>{t("portalManualPasswordTitle")}</DialogTitle><DialogDescription>{t("portalManualPasswordDesc")}</DialogDescription></DialogHeader><DialogContent className="space-y-4">{manualPasswordError && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{manualPasswordError}</p>}<Label htmlFor="portal-manual-password">{t("portalManualPasswordNew")}<Input id="portal-manual-password" data-dialog-initial-focus type="password" autoComplete="new-password" value={manualPassword} onChange={(event) => setManualPassword(event.target.value)} required minLength={12} maxLength={72} className="mt-1 h-11" data-testid="portal-user-password" /><span className="mt-1 block text-xs text-muted-foreground">{t("portalManualPasswordHint")}</span></Label><Label htmlFor="portal-manual-password-confirm">{t("portalManualPasswordConfirm")}<Input id="portal-manual-password-confirm" type="password" autoComplete="new-password" value={manualPasswordConfirmation} onChange={(event) => setManualPasswordConfirmation(event.target.value)} required minLength={12} maxLength={72} className="mt-1 h-11" data-testid="portal-user-password-confirm" /></Label><label className="flex min-h-11 items-start gap-3 rounded-lg border p-3 text-sm leading-5"><input className="mt-0.5 h-5 w-5 accent-foreground" type="checkbox" checked={manualPasswordAcknowledged} onChange={(event) => setManualPasswordAcknowledged(event.target.checked)} data-testid="portal-user-password-ack" />{t("portalManualPasswordAcknowledgement")}</label></DialogContent><DialogFooter><Button type="button" variant="outline" className="min-h-11" onClick={() => { setManualPasswordDialog(null); restoreActionMenuFocus() }} disabled={savingManualPassword}>{tc("cancel")}</Button><Button type="submit" className="min-h-11" disabled={savingManualPassword} data-testid="portal-user-password-save">{savingManualPassword ? t("portalManualPasswordSaving") : t("portalManualPasswordSave")}</Button></DialogFooter></form>
+        <form onSubmit={handleSetManualPassword} data-testid="portal-user-password-form"><DialogHeader><DialogTitle>{t("portalManualPasswordTitle")}</DialogTitle><DialogDescription>{t("portalManualPasswordDesc")}</DialogDescription></DialogHeader><DialogContent className="space-y-4">{manualPasswordError && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{manualPasswordError}</p>}<Label htmlFor="portal-manual-password">{t("portalManualPasswordNew")}<Input id="portal-manual-password" data-dialog-initial-focus type="password" autoComplete="new-password" value={manualPassword} onChange={(event) => setManualPassword(event.target.value)} required minLength={12} maxLength={72} className="mt-1 h-11" data-testid="portal-user-password" /><span className="mt-1 block text-xs text-muted-foreground">{t("portalManualPasswordHint")}</span></Label><Label htmlFor="portal-manual-password-confirm">{t("portalManualPasswordConfirm")}<Input id="portal-manual-password-confirm" type="password" autoComplete="new-password" value={manualPasswordConfirmation} onChange={(event) => setManualPasswordConfirmation(event.target.value)} required minLength={12} maxLength={72} className="mt-1 h-11" data-testid="portal-user-password-confirm" /></Label><div className="flex min-h-11 items-center gap-1 rounded-lg border px-1 text-sm leading-5"><SelectionCheckbox id="portal-user-password-ack" checked={manualPasswordAcknowledged} onChange={() => setManualPasswordAcknowledged((current) => !current)} ariaLabel={t("portalManualPasswordAcknowledgement")} testId="portal-user-password-ack" /><Label htmlFor="portal-user-password-ack" className="py-3 pr-3">{t("portalManualPasswordAcknowledgement")}</Label></div></DialogContent><DialogFooter><Button type="button" variant="outline" className="min-h-11" onClick={() => { setManualPasswordDialog(null); restoreActionMenuFocus() }} disabled={savingManualPassword}>{tc("cancel")}</Button><Button type="submit" className="min-h-11" disabled={savingManualPassword} data-testid="portal-user-password-save">{savingManualPassword ? t("portalManualPasswordSaving") : t("portalManualPasswordSave")}</Button></DialogFooter></form>
       </Dialog>
     </SupportPageShell>
   )

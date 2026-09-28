@@ -2418,3 +2418,24 @@ checking POR-001..009 and closing the section.
 
 Next: checkpoint and push the section gate, then repeat the exact-SHA desktop
 run on the corrected workflow before mobile and full matrix evidence.
+
+### Workstream 14 physical checkbox correction
+
+- The non-authoritative diagnostic run `36374828281` on `9521783a3` completed
+  successfully after its production build. Artifact review shows 7/7 flow
+  groups, 31/31 keyboard activations, recovery/edit/password focus returns all
+  true, and zero runtime, Axe, counted accessibility, overflow, environment or
+  primary-work failures. Load p75 was 509 ms, filter p75 31 ms, interaction p75
+  16 ms and CLS `0.0007984547556182484`.
+- The same static report exposed two raw 20 px checkbox controls. Desktop does
+  not count them as touch failures, but the mobile gate would. The new shared
+  Portal Users selection control makes the actual input an invisible 44x44
+  focusable/tappable surface and renders a separate 20 px semantic-token check/
+  indeterminate indicator with focus-visible ring. Row, select-all and manual-
+  password acknowledgement paths use it.
+- Focused ESLint, 18/18 affected assertions and `git diff --check` pass. Run
+  `36375334261` on the now-obsolete pre-checkbox SHA was explicitly cancelled
+  so it cannot be mistaken for release evidence or hold the serialized runner.
+
+Next: checkpoint and push the physical-control correction, then run the full
+three-stage exact-SHA Portal Users evidence sequence.

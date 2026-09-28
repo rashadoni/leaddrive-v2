@@ -3265,6 +3265,15 @@ Current-tree recovery and self-audit (2026-09-26):
   capture. Its workflow contract pins both the step and scoped root. Local YAML
   parsing and all 24 shell blocks pass `bash -n`; the diagnostic run is not
   accepted as closure evidence and the corrected exact SHA must be rerun.
+- The diagnostic artifact nevertheless proved 7/7 outcome groups, 31/31
+  keyboard activations and all three menu-dialog focus returns. Its static
+  desktop audit had zero counted failures but reported two raw 20 px checkbox
+  elements, which would fail the mobile touch gate despite their 44 px labels.
+  A shared checkbox primitive now makes the input itself an invisible 44x44
+  focusable/tappable control over a separate 20 px checked/indeterminate visual
+  indicator. This preserves compact visuals while giving automation and users
+  the same physical hit area; the obsolete pre-fix rerun was cancelled rather
+  than accepted.
 
 ## 21A. Workstream 15 — Support AI Settings
 
