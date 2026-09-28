@@ -1469,3 +1469,12 @@ from this worktree.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%. WF-C6-006/WF-C9-006/WF-C9-010/WF-C9-012 stay `PARTIAL`; no credit is added.
 - Precise stopping point: source, tests, translations and initial evidence are complete and working-tree preflight is GREEN, but the explicit task paths are not checkpointed and no clean frozen review exists.
 - Next action: repeat focused checks, checkpoint only the explicit task paths, freeze exact base/head identity and require fresh author-independent complete-diff GREEN before push or PR.
+
+## 2026-09-28 — C6/C9 Android acknowledgement frozen review GREEN
+
+- Fresh author-independent complete-diff review returned GREEN with P0=P1=P2=P3=0 on exact base/live main/merge-base `f6b4c06dad08c72534174a8c004c325c417238cf` through clean head `3204bd3b09bbf13eee886c1e1a24a85fb8a64758`.
+- Independent identity matched 13 paths / 93,776 plain-binary bytes / SHA-256 `45928568b9e9935fa0a1b5c6250a040d2c95ba8e9458ee3b75b0282d821ad569`, below 400 KB. Clean start/end, no main drift and all three existing append-only prefixes passed.
+- Wire, auth/account, UUID/replay, retry/conflict, encryption, downgrade, Room-v2, exact recovery, terminal recovery, UI-race/cancellation, no-optimistic-ACK, i18n/a11y and evidence contracts passed. Reviewer repeated 22/22 Android source tests, 43/43 server tests, ESLint, parity/XML and whitespace checks.
+- Android Gradle/Room instrumentation, signed APK, physical accessibility/device, browser, load and pilot remain `NOT RUN`; exact-head PR CI is mandatory. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%, with no credit added.
+- Precise stopping point: the clean implementation/evidence checkpoint is independently GREEN; only this three-document receipt is uncommitted.
+- Next action: checkpoint the receipt, prove all nine reviewed runtime/test/resource blobs unchanged, verify final identity, then push/open the PR and wait for all exact-head contexts including Android.

@@ -1255,3 +1255,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Production was not contacted or changed. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; all affected tasks stay `PARTIAL` and no credit is added.
 - Precise stopping point: all source/test/i18n/evidence changes are uncommitted in the dedicated successor branch; working-tree preflight is GREEN, but no frozen exact-head review exists.
 - Next action: run the final focused verification set, checkpoint explicit paths only, compute the clean plain-binary base/head identity and commission a fresh author-independent complete-diff review before any push.
+
+## 2026-09-28 — Android exception acknowledgement frozen review GREEN
+
+- Implementation/evidence checkpoint `3204bd3b09bbf13eee886c1e1a24a85fb8a64758` is exactly two commits ahead of current/deployed main `f6b4c06dad08c72534174a8c004c325c417238cf`; merge-base and remote main match, and the worktree was clean.
+- Fresh author-independent review reproduced the complete 13-path diff at 93,776 plain-binary bytes / SHA-256 `45928568b9e9935fa0a1b5c6250a040d2c95ba8e9458ee3b75b0282d821ad569` and returned GREEN with zero P0-P3 findings. Existing unique-index evidence, roadmap and session bytes remained exact append-only prefixes.
+- Full static inspection passed the exact action/body/response boundary, stable UUID and ambiguous replay, coded conflict/rate containment, encrypted account-bound outbox, old-APK aliases, Room-v2 schema stability, complete counts, terminal recovery, stale-card/same-tick/cancellation guards, no optimistic acknowledgement and localized accessible copy.
+- Reviewer repeated 22/22 Android source-contract and 43/43 server tests, scoped ESLint, 265/265/265 parity, all XML parses and diff whitespace. It independently confirmed the inherited PR #481 merge/deploy/artifact receipt. Android Gradle/Room/device/TalkBack and all other heavy gates remain `NOT RUN` locally.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit changes.
+- Precise stopping point: exact clean source/test/resource/evidence head is independently GREEN; only this three-document frozen-review receipt is uncommitted.
+- Next action: checkpoint the receipt-only delta, independently prove runtime/test/resource blob identity and final fingerprint, then push/open the sub-400 KB PR and require every exact-head standard plus Android context.
