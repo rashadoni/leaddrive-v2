@@ -15,6 +15,13 @@ import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-res
 const Query = z.string().trim().min(2).max(80).refine((value) => !/[\\%_]/.test(value))
 const TARGET_LIMIT = 25
 
+type EvidenceTargetRow = {
+  id: string
+  name: string
+  email: string | null
+  externalCode: string | null
+}
+
 function sensitiveJson(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status, headers: workforceSensitiveResponseHeaders })
 }
@@ -64,7 +71,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       select: { id: true, name: true, email: true, externalCode: true },
     })
     const hasMore = agents.length > TARGET_LIMIT
-    const items = agents.slice(0, TARGET_LIMIT).map((agent) => ({
+    const items = agents.slice(0, TARGET_LIMIT).map((agent: EvidenceTargetRow) => ({
       id: agent.id,
       label: [agent.name, agent.externalCode ?? agent.email].filter(Boolean).join(" · "),
     }))

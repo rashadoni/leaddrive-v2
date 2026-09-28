@@ -11,6 +11,7 @@ vi.mock("@/lib/workforce/sensitive-operation-log", () => ({
 }))
 
 import { prisma } from "@/lib/prisma"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import {
   requireWorkforceEvidenceTimelineAccess,
   resolveWorkforceEvidenceDirectoryAccess,
@@ -150,5 +151,20 @@ describe("Workforce evidence timeline access", () => {
     })
     expect(denied).toBeInstanceOf(Response)
     expect((denied as Response).status).toBe(403)
+  })
+
+  it("fails closed with a fixed privacy-safe label when directory authorization is unavailable", async () => {
+    vi.mocked(prisma.organization.findUnique).mockRejectedValue(new Error("database unavailable"))
+
+    const unavailable = await resolveWorkforceEvidenceDirectoryAccess({
+      organizationId: "org-1",
+      auth: base.auth,
+    })
+
+    expect(unavailable).toBeInstanceOf(Response)
+    expect((unavailable as Response).status).toBe(503)
+    expect(logWorkforceSensitiveOperationFailure).toHaveBeenCalledWith({
+      operation: "authorize-evidence-directory",
+    })
   })
 })
