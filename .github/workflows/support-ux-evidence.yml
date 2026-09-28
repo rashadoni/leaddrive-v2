@@ -937,6 +937,86 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts
 
+      - name: Validate section-scoped Customer Portal evidence
+        if: ${{ inputs.scenarios != 'all' && (contains(inputs.scenarios, 'portal-tickets') || contains(inputs.scenarios, 'portal-ticket-detail') || contains(inputs.scenarios, 'portal-knowledge') || contains(inputs.scenarios, 'portal-chat') || contains(inputs.scenarios, 'ticket-closure')) }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/portal/tickets,
+            src/app/portal/knowledge-base,
+            src/app/portal/chat,
+            src/app/portal/layout.tsx,
+            src/app/ticket-closure,
+            src/components/portal-chat-widget.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-customer-portal-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx tsc --noEmit -p tsconfig.support-customer-portal-ui.json
+          npx tsc --noEmit -p tsconfig.support-customer-portal-api.json
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-customer-portal-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/portal/layout.tsx \
+            src/app/portal/tickets/page.tsx \
+            src/app/portal/tickets/\[id\]/page.tsx \
+            src/app/portal/knowledge-base/page.tsx \
+            src/app/portal/chat/page.tsx \
+            src/app/ticket-closure/\[token\]/page.tsx \
+            src/app/api/v1/public/portal-chat/route.ts \
+            src/app/api/v1/public/portal-kb/route.ts \
+            src/app/api/v1/public/portal-tickets/route.ts \
+            src/app/api/v1/public/portal-tickets/\[id\]/route.ts \
+            src/app/api/v1/public/portal-tickets/\[id\]/files/route.ts \
+            src/app/api/v1/public/portal-tickets/\[id\]/files/\[fileId\]/route.ts \
+            src/app/api/v1/public/ticket-closure/\[token\]/route.ts \
+            src/app/api/v1/tickets/\[id\]/files/route.ts \
+            src/components/portal-chat-widget.tsx \
+            src/lib/ticketing/portal-ticket-draft.ts \
+            src/lib/ticketing/portal-ticket-presentation.ts \
+            src/lib/ticketing/ticket-attachment-storage.ts \
+            src/__tests__/lib-portal-auth.test.ts \
+            src/__tests__/customer-support-portal-ux-contract.test.ts \
+            src/__tests__/knowledge-base-ux-contract.test.ts \
+            src/__tests__/portal-attachment-api.test.ts \
+            src/__tests__/portal-closure-api.test.ts \
+            src/__tests__/portal-ticket-detail-api.test.ts \
+            src/__tests__/portal-ticket-draft.test.ts \
+            src/__tests__/portal-ticket-presentation.test.ts \
+            src/__tests__/support-ux-customer-portal-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-ai-extras.test.ts \
+            src/__tests__/api-portal.test.ts \
+            src/__tests__/lib-portal-auth.test.ts \
+            src/__tests__/customer-support-portal-ux-contract.test.ts \
+            src/__tests__/knowledge-base-ux-contract.test.ts \
+            src/__tests__/portal-attachment-api.test.ts \
+            src/__tests__/portal-closure-api.test.ts \
+            src/__tests__/portal-ticket-detail-api.test.ts \
+            src/__tests__/portal-ticket-draft.test.ts \
+            src/__tests__/portal-ticket-presentation.test.ts \
+            src/__tests__/support-ux-customer-portal-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
         run: |
@@ -1313,7 +1393,7 @@ jobs:
                   ;;
               esac
               case "$selected" in
-                *,all,*|*,portal-tickets,*|*,portal-ticket-detail,*|*,portal-chat,*|*,ticket-closure,*)
+                *,all,*|*,portal-tickets,*|*,portal-ticket-detail,*|*,portal-knowledge,*|*,portal-chat,*|*,ticket-closure,*)
                   node scripts/support-ux-customer-portal-flow-evidence.mjs || customer_portal_flow_status=$?
                   ;;
               esac

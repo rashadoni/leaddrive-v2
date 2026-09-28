@@ -35,6 +35,8 @@ describe("Customer Support Portal UX contract", () => {
     expect(detail).toContain("event.ctrlKey || event.metaKey")
     expect(chat).toContain("event.key === \"Enter\" && !event.shiftKey")
     expect(chat).toContain("event.nativeEvent.isComposing")
+    expect(detail).toContain('aria-label={t("addAttachment")}')
+    expect(detail).toContain("new Intl.NumberFormat(locale")
   })
 
   it("implements recoverable loading, empty, error, offline and mutation states", () => {

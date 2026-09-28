@@ -68,10 +68,15 @@ function newRequestId(): string {
   return globalThis.crypto.randomUUID()
 }
 
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+function formatFileSize(bytes: number, locale: string) {
+  const value = bytes < 1024 ? bytes : bytes < 1024 * 1024 ? bytes / 1024 : bytes / (1024 * 1024)
+  const unit = bytes < 1024 ? "byte" : bytes < 1024 * 1024 ? "kilobyte" : "megabyte"
+  return new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit,
+    unitDisplay: "short",
+    maximumFractionDigits: unit === "megabyte" ? 1 : 0,
+  }).format(value)
 }
 
 function uploadPortalAttachment(
@@ -402,7 +407,7 @@ export default function PortalTicketDetailPage() {
                         <a key={file.id} href={`/api/v1/public/portal-tickets/${encodeURIComponent(ticketId)}/files/${encodeURIComponent(file.id)}`} className="flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-xs hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" download>
                           <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                           <span className="min-w-0 flex-1 truncate">{file.originalName}</span>
-                          <span className="text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+                          <span className="text-muted-foreground">{formatFileSize(file.fileSize, locale)}</span>
                         </a>
                       ))}
                     </div>
@@ -440,7 +445,7 @@ export default function PortalTicketDetailPage() {
                   <li key={file.id} className="flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-xs">
                     <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <span className="min-w-0 flex-1 truncate">{file.originalName}</span>
-                    <span className="text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+                    <span className="text-muted-foreground">{formatFileSize(file.fileSize, locale)}</span>
                     <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => void removeAttachment(file)} disabled={Boolean(removingAttachment)} aria-label={t("removeAttachment", { name: file.originalName })}>
                       {removingAttachment === file.id ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
                     </button>
@@ -456,7 +461,7 @@ export default function PortalTicketDetailPage() {
             )}
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <input ref={fileInputRef} id="portal-ticket-file" data-testid="portal-ticket-file" type="file" multiple className="sr-only" onChange={(event) => void handleUpload(event.target.files)} disabled={uploading || draftAttachmentIds.length >= 10 || !online} accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv" />
+                <input ref={fileInputRef} id="portal-ticket-file" data-testid="portal-ticket-file" type="file" multiple className="sr-only" aria-label={t("addAttachment")} onChange={(event) => void handleUpload(event.target.files)} disabled={uploading || draftAttachmentIds.length >= 10 || !online} accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv" />
                 <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => fileInputRef.current?.click()} disabled={uploading || draftAttachmentIds.length >= 10 || !online}>
                   {uploading ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Upload aria-hidden="true" />}
                   {uploading ? t("uploadingShort") : t("addAttachment")}

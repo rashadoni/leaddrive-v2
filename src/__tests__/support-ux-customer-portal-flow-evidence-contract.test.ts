@@ -33,6 +33,20 @@ describe("Customer Support Portal flow evidence contract", () => {
     expect(flow).toContain("portal_invalid_direct_route_exposed_ticket_content")
     expect(flow).toContain('"customer-portal-flow-evidence.json"')
     expect(flow).toContain("report.results.length !== 6")
+    expect(flow).toContain("activationEvidence.length !== 14")
+  })
+
+  it("uses real keyboard or physical touch activation with measured hit targets", () => {
+    expect(flow).toContain("activateEvidenceTarget")
+    expect(flow).toContain('inputModality: "keyboard"')
+    expect(flow).toContain('inputModality: "playwright-touchscreen"')
+    expect(flow).toContain("page.touchscreen.tap")
+    expect(flow).toContain("document.elementFromPoint")
+    expect(flow).toContain("target.width < 44 || target.height < 44")
+    expect(flow).toContain("activations: activationEvidence")
+    expect(flow).not.toContain(".click()")
+    expect(flow).not.toContain(".focus()")
+    expect(flow).not.toContain(".check()")
   })
 
   it("uses stable selectors for all customer-facing states", () => {
@@ -64,8 +78,11 @@ describe("Customer Support Portal flow evidence contract", () => {
   })
 
   it("runs only when a customer portal scenario is selected", () => {
+    expect(workflow).toContain("Validate section-scoped Customer Portal evidence")
+    expect(workflow).toContain("src/app/portal/tickets")
+    expect(workflow).toContain("src/app/ticket-closure")
     expect(workflow).toContain("scripts/support-ux-customer-portal-flow-evidence.mjs")
-    expect(workflow).toContain("*,portal-tickets,*|*,portal-ticket-detail,*|*,portal-chat,*|*,ticket-closure,*")
+    expect(workflow).toContain("*,portal-tickets,*|*,portal-ticket-detail,*|*,portal-knowledge,*|*,portal-chat,*|*,ticket-closure,*")
     expect(workflow).toContain("customer_portal_flow_status")
   })
 })

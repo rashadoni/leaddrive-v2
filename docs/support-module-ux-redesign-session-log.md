@@ -2566,3 +2566,39 @@ Workstream 15 is **DONE**.
 Next: checkpoint and push the Workstream 15 closure record, then restore the
 Customer Support Portal product/recovery slices path-scoped from `6f80377ac`
 and `737dc6427`, preserving the current workflow/browser evidence superset.
+
+### Customer Support Portal current-tree recovery and self-audit
+
+- Restored historical product `6f80377ac` as `719dccacf` and recovery
+  `737dc6427` as `534c2f64f`. Product conflicts preserve the current
+  `ThemeProvider` while accepting safer stored-user/auth/config/navigation
+  behavior; the attachment helper differed only in whitespace. Recovery
+  conflicts preserve the current workflow, screenshot, performance and
+  navigation evidence superset.
+- Initial audit score was 16/20 (Accessibility 3, Performance 3, Responsive 4,
+  Theming 4, Anti-patterns 2). It found thirteen direct `.click()`/`.focus()`
+  evidence actions, no dedicated section source gate, hard-coded file-size
+  units, an unnamed hidden file input and a missing `portal-knowledge` selector
+  in the historical flow/gate dispatch contract.
+- The corrected runner records exactly fourteen activations. Desktop uses
+  keyboard input; non-desktop profiles use real Playwright touchscreen taps
+  only after enabled-state polling, 44x44 measurement and center hit-testing.
+  It contains no `.click()`, `.focus()` or `.check()`. File sizes are
+  locale-aware and the file input has a localized accessible name.
+- The new fail-closed Customer Portal workflow gate covers all five scenario
+  IDs and runs both scoped TypeScript graphs, the seven-file anti-pattern scope,
+  i18n, changed-source lint, portal/auth/API/isolation tests and shared evidence
+  contracts before fixtures, production build or capture. The recovery-flow
+  selector now also includes `portal-knowledge`.
+- Corrected audit score is 20/20. Syntax and diff checks pass; scoped seven-file
+  and default 47-file scans have 0 findings; i18n parity is 23,599 keys; ESLint
+  has 0 errors; 203/203 focused assertions plus 13/13 final affected contracts
+  are green; workflow YAML and all 26 shell blocks validate. The 1.5 GB UI
+  TypeScript graph is green. The API graph reached the same 1.5 GB heap ceiling
+  and was not retried with a forbidden heavier local budget; it remains a
+  mandatory GitHub-hosted gate. Full local build/browser are **NOT RUN** under
+  the Contabo workload contract.
+
+Next: checkpoint and push the corrected Customer Portal evidence contract,
+then run exact-SHA desktop, RU/dark physical-touch mobile and complete 120-cell
+five-route high-profile evidence before checking SUPUX-CXP-001..006.

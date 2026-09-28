@@ -3523,8 +3523,7 @@ Workstream 15 is **DONE**.
 
 ## 21B. Cross-surface Track — Customer Support Portal
 
-**Status: IN PROGRESS — implementation and fail-closed evidence runner verified;
-browser/CI gates blocked before job creation**
+**Status: IN PROGRESS — current-tree product/recovery restored and self-audit corrected; exact-SHA browser/CI gates pending**
 **Routes:** `/portal/tickets`, `/portal/tickets/[id]`,
 `/portal/knowledge-base`, `/portal/chat`, `/ticket-closure/[token]`
 
@@ -3642,6 +3641,42 @@ Additional recovery evidence (2026-09-06):
   customer-visible fallback is localized in AZ/RU/EN. Its portal continuity
   slice passes 19 assertions across four suites and the 44-file scan remains
   at zero findings; rendered matrices remain pending.
+
+Current-tree recovery and self-audit (2026-09-29):
+
+- Historical product `6f80377ac` was restored as checkpoint `719dccacf` and
+  recovery `737dc6427` as `534c2f64f`. The two product conflicts preserve the
+  current portal `ThemeProvider` while accepting the safer stored-user parsing,
+  auth/config failure handling and compact navigation; the attachment helper
+  conflict differed only in whitespace. Recovery conflicts retain the current
+  workflow, shared screenshot utility, performance and navigation superset.
+- Initial technical audit scored 16/20 (Accessibility 3, Performance 3,
+  Responsive 4, Theming 4, Anti-patterns 2). P1 findings were thirteen direct
+  `.click()`/`.focus()` evidence actions and no one-scenario Customer Portal
+  source gate. P2 findings were three hard-coded file-size units and an unnamed
+  hidden file input. A further fail-closed review found that the historical
+  gate selector omitted the `portal-knowledge` scenario.
+- The flow now records exactly fourteen operational activations. Desktop uses
+  keyboard input; tablet/narrow-tablet/mobile use real Playwright touchscreen
+  center taps only after enabled-state polling, 44x44 measurement and DOM
+  hit-testing. It contains no `.click()`, `.focus()` or `.check()` calls. File
+  sizes use locale-aware `Intl.NumberFormat` units and the file input has an
+  explicit localized accessible name.
+- A dedicated Customer Portal source gate now covers every one of the five
+  route scenarios before fixtures/build/capture. It runs syntax, the exact
+  portal/ticket-closure/widget anti-pattern scope, i18n, both UI and API
+  TypeScript graphs, changed-source ESLint, portal/auth/API/isolation tests and
+  shared evidence contracts. Both the gate and recovery-flow selector include
+  `portal-knowledge`.
+- Corrected technical audit score is 20/20. Flow syntax and `git diff --check`
+  pass; the scoped seven-file and default 47-file inventories have 0 findings;
+  AZ/RU/EN parity is 23,599 keys; scoped ESLint exits with 0 errors; 203/203
+  assertions in 17 suites and the final 13/13 affected contract assertions are
+  green; workflow YAML parses and all 26 shell blocks pass `bash -n`. The
+  bounded 1.5 GB UI TypeScript graph is green. The API graph reached the 1.5 GB
+  heap ceiling and was not retried more heavily under the Contabo contract; it
+  remains mandatory in GitHub Actions. Full local build/browser are **NOT RUN**
+  on this host and remain mandatory before checking CXP-001..006.
 
 ## 21C. Evidence, Performance, and Rollout Track
 
