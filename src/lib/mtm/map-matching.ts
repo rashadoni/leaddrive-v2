@@ -148,17 +148,21 @@ export function parseOsrmMatch(body: OsrmMatchResponse): { segments: Array<Array
   return { segments, matchedPoints }
 }
 
-type ChunkAnswer = { segments: Array<Array<[number, number]>>; matched: boolean[]; steps: Array<number | null> }
+/** `outside`: no fix of the stretch is near a road of the graph (abroad) — answered, but not by roads. */
+type ChunkAnswer = { segments: Array<Array<[number, number]>>; matched: boolean[]; steps: Array<number | null>; outside?: boolean }
 
 /**
  * One stretch's answer, step by step. A leg of a matching joins two matched
  * fixes; its length is the step arriving at the later one, and the fixes
  * OSRM folded in between (tidy, or unmatched inside the leg) add nothing.
- * «NoMatch» (a walk through a park) is an answer with no roads, not an outage.
+ * «NoMatch» (a walk through a park) is an answer with no roads, not an outage;
+ * so is «NoSegment» — the fixes are off the graph, abroad. Prod 2026-09-28:
+ * the owner's week in Spain was asked again on every view, 5–6 s each.
  */
 export function parseOsrmMatchSteps(body: OsrmMatchResponse, length: number): ChunkAnswer | null {
   const empty = (): ChunkAnswer => ({ segments: [], matched: Array(length).fill(false), steps: Array(length).fill(null) })
   if (body.code === "NoMatch") return empty()
+  if (body.code === "NoSegment") return { ...empty(), outside: true }
   const drawn = parseOsrmMatch(body)
   if (!drawn) return null
   const answer = empty()
@@ -315,7 +319,8 @@ export async function matchRoads(
     if (answer?.value != null) stepMeters[silence.to] = answer.value
   })
 
-  const answeredAll = chunkAnswers.every(Boolean) && silenceAnswers.every(Boolean)
+  // Kilometres abroad are straight lines: the day is not «by roads» then.
+  const answeredAll = chunkAnswers.every((answer) => answer && !answer.outside) && silenceAnswers.every(Boolean)
   if (!chunkAnswers.some(Boolean) && !silenceAnswers.some(Boolean)) return null
   return {
     segments,
