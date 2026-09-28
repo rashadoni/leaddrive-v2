@@ -2530,3 +2530,39 @@ AI Settings evidence before checking SUPUX-AI-001..008.
 
 Next: run affected source checks, checkpoint and push the focus correction,
 then repeat the exact-SHA desktop Support AI Settings gate.
+
+### Workstream 15 closure self-audit
+
+- Final Support AI Settings code checkpoint `fa0ceae7b` passes exact-SHA
+  EN/light desktop run `36484199436`, RU/dark physical-touch mobile run
+  `36485944133`, and high-profile 24-cell run `36485947644`. Each run includes
+  the dedicated section source gate, isolated fixtures, production build and
+  browser capture.
+- Desktop and mobile flows each pass all 5/5 recovery/mutation groups with 7/7
+  activations. Desktop uses keyboard input; mobile uses real Playwright
+  touchscreen taps after 44x44 measurement and DOM center hit-testing. The
+  failed-save dialog path restores focus to the real enabled switch.
+- Desktop static evidence has zero runtime, Axe, accessibility, touch,
+  overflow, environment, primary-work and raw-small-target failures; primary
+  work starts at 191 px, load p75 is 482 ms and CLS
+  `0.0007984547556182484`. Mobile has the same zero totals, primary work at
+  406 px, load p75 650 ms and CLS `0.009392899609308647`. Both screenshots were
+  manually accepted.
+- The high-profile artifact contains exactly 24/24 unique admin combinations
+  across AZ/RU/EN, light/dark and desktop/tablet/narrow-tablet/mobile. Every
+  cell passes; all eight aggregate issue/error totals and raw small targets are
+  zero. Worst load p75 is 672 ms, max CLS `0.009392899609308647`, and max
+  primary-work top 406 px. AZ/light desktop, EN/dark tablet, AZ/dark
+  narrow-tablet and RU/dark mobile captures were manually accepted.
+- SUPUX-AI-001..008 are checked against role/add-on/navigation/page/API and
+  execution gates, the compact consequence map, explicit unaffected/manual
+  paths, immediate/next-job disclosure, mutation rollback/retry and server
+  truth, durable audit attribution, localized accessibility/responsiveness and
+  cross-module isolation. Technical self-audit remains 20/20; no gate or
+  threshold was waived.
+
+Workstream 15 is **DONE**.
+
+Next: checkpoint and push the Workstream 15 closure record, then restore the
+Customer Support Portal product/recovery slices path-scoped from `6f80377ac`
+and `737dc6427`, preserving the current workflow/browser evidence superset.

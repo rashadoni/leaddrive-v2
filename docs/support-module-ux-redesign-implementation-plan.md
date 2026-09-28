@@ -3311,7 +3311,7 @@ Workstream 14 is **DONE**.
 
 ## 21A. Workstream 15 — Support AI Settings
 
-**Status: IN PROGRESS — current-tree recovery `d22c2a545`; self-audit complete, exact-SHA browser/CI gates pending**
+**Status: DONE — final code checkpoint `fa0ceae7b`; exact-SHA desktop, physical-touch mobile and 24-cell high-profile evidence green**
 **Route:** `/support/ai-settings`
 **Primary file:** `src/app/(dashboard)/support/ai-settings/page.tsx`
 
@@ -3324,23 +3324,23 @@ Target UX: a trustworthy Support control that tells an administrator exactly
 what will stop or resume, what remains unaffected, who can change it, and
 whether the saved organization state is currently active.
 
-- [ ] **SUPUX-AI-001** Verify AI add-on and admin/superadmin gating in navigation,
+- [x] **SUPUX-AI-001** Verify AI add-on and admin/superadmin gating in navigation,
   direct route, settings API, and every affected Support endpoint/background job.
-- [ ] **SUPUX-AI-002** Replace the generic coverage-card grid with a compact
+- [x] **SUPUX-AI-002** Replace the generic coverage-card grid with a compact
   consequence map grouped by Tickets, Complaints, Portal Chat, WhatsApp Support,
   and background Support actions.
-- [ ] **SUPUX-AI-003** State explicitly which non-Support AI capabilities remain
+- [x] **SUPUX-AI-003** State explicitly which non-Support AI capabilities remain
   unaffected, especially Omnichannel and shared knowledge configuration.
-- [ ] **SUPUX-AI-004** Explain immediate versus next-job effects before disable;
+- [x] **SUPUX-AI-004** Explain immediate versus next-job effects before disable;
   require confirmation only when the consequence is material and not obvious.
-- [ ] **SUPUX-AI-005** Preserve server truth during save, prevent duplicate
+- [x] **SUPUX-AI-005** Preserve server truth during save, prevent duplicate
   toggles, roll back failed optimistic state, and expose retry for load failure.
-- [ ] **SUPUX-AI-006** Record and display an auditable change event with actor,
+- [x] **SUPUX-AI-006** Record and display an auditable change event with actor,
   organization, previous state, new state, and timestamp if the platform audit
   contract supports it.
-- [ ] **SUPUX-AI-007** Verify localized AZ/RU/EN copy, switch semantics, focus,
+- [x] **SUPUX-AI-007** Verify localized AZ/RU/EN copy, switch semantics, focus,
   screen-reader announcements, dark theme, and 375 px behavior.
-- [ ] **SUPUX-AI-008** Add cross-module regression tests proving the switch stops
+- [x] **SUPUX-AI-008** Add cross-module regression tests proving the switch stops
   only Support AI execution and never disables manual support work.
 
 Acceptance:
@@ -3487,8 +3487,39 @@ Desktop focus correction (2026-09-28):
   same render as the mutation began, so the browser discarded focus. The client
   now restores the real switch only after `saving` returns to false and the
   control is enabled, on the next animation frame. Evidence still observes the
-  result without calling `.focus()` itself; the exact-SHA desktop gate must be
-  repeated before mobile or matrix evidence is accepted.
+  result without calling `.focus()` itself.
+
+Closure evidence (2026-09-28):
+
+- Final code checkpoint `fa0ceae7b` passes exact-SHA EN/light desktop run
+  `36484199436`. The dedicated section source gate, fixtures, production build
+  and capture are green. Static evidence has zero runtime, Axe, accessibility,
+  touch, overflow, environment, primary-work and raw-small-target failures;
+  primary work starts at 191 px, load p75 is 482 ms and CLS is
+  `0.0007984547556182484`. The flow passes 5/5 outcomes with 7/7 keyboard
+  activations and confirmed focus restoration. The screenshot was manually
+  accepted.
+- The same SHA passes RU/dark physical-touch mobile run `36485944133`: 5/5
+  outcomes and 7/7 real Playwright touchscreen activations after target-size
+  measurement and center hit-testing. Every measured target is at least 44x44,
+  focus restoration is true, and all static issue/error totals plus raw small
+  targets are zero. Primary work starts at 406 px, load p75 is 650 ms and CLS is
+  `0.009392899609308647`. The screenshot was manually accepted.
+- High-profile run `36485947644` contains exactly 24/24 unique admin cells for
+  AZ/RU/EN x light/dark x desktop/tablet/narrow-tablet/mobile. Every cell passes;
+  all eight aggregate issue/error totals and raw small targets are zero. Worst
+  load p75 is 672 ms, max CLS is `0.009392899609308647`, and max primary-work
+  top is 406 px. AZ/light desktop, EN/dark tablet, AZ/dark narrow-tablet and
+  RU/dark mobile captures were manually accepted.
+- Closure self-audit maps AI-001..008 to role/add-on/API/execution gates, the
+  five-row consequence map, explicit unaffected capabilities, immediate versus
+  next-job disclosure, truthful mutation rollback/retry, durable audit evidence,
+  localized accessible responsive behavior, and cross-module isolation tests.
+  The corrected technical score remains 20/20; no gate or threshold was waived.
+  The 55 inventory findings outside this workstream remain assigned to the
+  pending customer-portal/ticket-closure track and stay mandatory for release.
+
+Workstream 15 is **DONE**.
 
 ## 21B. Cross-surface Track — Customer Support Portal
 
