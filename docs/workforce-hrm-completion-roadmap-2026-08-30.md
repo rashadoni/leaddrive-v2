@@ -1348,3 +1348,13 @@ from this worktree.
 - Browser E2E, Android/Gradle, load, signed APK, physical-device and pilot remain `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
 - Precise stopping point: PR #477 is independently reviewed, merged, deployed and exact-SHA smoke-verified; only this three-document release receipt is uncommitted on clean successor branch `codex/workforce-exception-response-cycle-audit`.
 - Next action: checkpoint the release receipt, then implement the independently preflighted bounded aggregate duplicate-cycle dry-run detector without schema mutation, remediation, IDs or UI.
+
+## 2026-09-28 — WF-C6-006 response-cycle aggregate audit working checkpoint
+
+- [`Response-cycle audit evidence`](./workforce-c6-exception-response-cycle-audit-evidence-2026-09-28.md) records the new session/MFA/organization-grant protected dry run. One complete tenant aggregate reports duplicate non-NULL cycle groups, their rows, excess rows and legacy NULL-revision rows without returning record IDs or authorizing mutation.
+- The scan runs inside one repeatable-read RLS transaction with fixed 1s lock, 5s statement, 4MB work-memory and 8s transaction bounds. Bigint/malformed/timeout results fail closed. A separate atomic Redis budget charges principal and tenant buckets, and the counts-only append-only audit must finish before the response is released.
+- Unit/API coverage passes 3 files / 12 tests and targeted ESLint passes all eight runtime/test paths. The mandatory PostgreSQL file compiles and discovers 14 scenarios, including NOBYPASSRLS two-tenant isolation and exact index/count proof, but all 14 remain locally `SKIPPED / NOT RUN`; both PR and deploy CI execute that file with the approved database.
+- No migration, repair, delete/backfill, writer, UI, Android, rollout or production change is included. Full local typecheck/build, real PostgreSQL, browser, Android/Gradle, load, signed device and pilot remain `NOT RUN` under host policy.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 stays `PARTIAL` and no credit is added.
+- Precise stopping point: bounded source/API/rate/audit/tests/evidence are implemented and focused checks are green, but task paths are not checkpointed and no frozen complete-diff review exists.
+- Next action: checkpoint only the explicit task paths, compute the plain-binary base/head identity, and require a fresh author-independent complete-diff GREEN before push or PR.

@@ -20,6 +20,10 @@ import {
   lockWorkforceExceptionLinkedMutation,
   type WorkforceExceptionLinkedMutationDb,
 } from "@/lib/workforce/exception-linked-mutation"
+import {
+  runWorkforceExceptionResponseCycleAudit,
+  type WorkforceExceptionResponseCycleAuditDb,
+} from "@/lib/workforce/exception-response-cycle-audit"
 import { lockWorkforceHrmRequestClientKey } from "@/lib/workforce/hrm-request-idempotency"
 
 const databaseUrl = process.env.WORKFORCE_EXCEPTION_LOCK_TEST_DATABASE_URL
@@ -29,8 +33,12 @@ const schema = `workforce_exception_lock_${randomUUID().replaceAll("-", "")}`
 const roleSuffix = randomUUID().replaceAll("-", "").slice(0, 20)
 const migrationOwnerRole = `workforce_revision_owner_${roleSuffix}`
 const migrationLoginRole = `workforce_revision_migrator_${roleSuffix}`
+const applicationRole = `workforce_revision_app_${roleSuffix}`
 const migrationLoginPassword = `Revision_${randomUUID().replaceAll("-", "")}`
+const applicationPassword = `RevisionApp_${randomUUID().replaceAll("-", "")}`
 const organizationId = "org-workforce-lock-proof"
+const cycleAuditOrganizationA = "org-workforce-cycle-audit-a"
+const cycleAuditOrganizationB = "org-workforce-cycle-audit-b"
 const existingSchemaBaselineMigration = "00000000000000_existing_production_schema"
 const revisionMigrationNames = [
   "20260927014000_workforce_exception_case_revisions",
@@ -61,6 +69,12 @@ function databaseUrlForRole(role: string, password: string): string {
 
 function migrationDatabaseUrl(): string {
   const url = new URL(databaseUrlForRole(migrationLoginRole, migrationLoginPassword))
+  url.searchParams.set("schema", schema)
+  return url.toString()
+}
+
+function applicationDatabaseUrl(): string {
+  const url = new URL(databaseUrlForRole(applicationRole, applicationPassword))
   url.searchParams.set("schema", schema)
   return url.toString()
 }
@@ -118,6 +132,7 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
   let terminalClient!: PrismaClient
   let linkedClient!: PrismaClient
   let migrationClient!: PrismaClient
+  let applicationClient: PrismaClient | undefined
   let migrationProject: string | null = null
   let migrationRecoveryEvidence: {
     failedIndexLedgerRows: number
@@ -140,6 +155,10 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       LOGIN NOSUPERUSER BYPASSRLS PASSWORD '${migrationLoginPassword}'
     `)
     await observer.$executeRawUnsafe(`
+      CREATE ROLE "${applicationRole}"
+      LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD '${applicationPassword}'
+    `)
+    await observer.$executeRawUnsafe(`
       GRANT "${migrationOwnerRole}" TO "${migrationLoginRole}"
     `)
     await observer.$executeRawUnsafe(`
@@ -149,6 +168,17 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
           'GRANT CONNECT ON DATABASE %I TO %I',
           current_database(),
           '${migrationLoginRole}'
+        );
+      END;
+      $$
+    `)
+    await observer.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        EXECUTE format(
+          'GRANT CONNECT ON DATABASE %I TO %I',
+          current_database(),
+          '${applicationRole}'
         );
       END;
       $$
@@ -635,11 +665,70 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
         `Incomplete Workforce revision recovery: ${JSON.stringify(finalRecoveryState)}`,
       )
     }
+
+    // Seed a deliberately dirty historical ledger before applying the
+    // restricted application-role read proof. The current writer prevents
+    // these duplicates; the diagnostic exists to prove old rows are clean
+    // before a separate online unique-index migration is authorized.
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_employee_responses"
+      DISABLE TRIGGER USER
+    `)
+    await observer.$executeRawUnsafe(`
+      INSERT INTO "${schema}"."workforce_exception_employee_responses" (
+        "id", "organizationId", "caseId", "agentId", "workdayId",
+        "segmentId", "correctionRequestId", "responseCode",
+        "clientResponseId", "actorUserId", "observedCaseRevision"
+      ) VALUES
+        ('cycle-a-r1-1', $1, 'cycle-a-case-1', 'cycle-a-agent', 'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-a-client-r1-1', 'cycle-a-user', 1),
+        ('cycle-a-r1-2', $1, 'cycle-a-case-1', 'cycle-a-agent', 'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-a-client-r1-2', 'cycle-a-user', 1),
+        ('cycle-a-r2-1', $1, 'cycle-a-case-1', 'cycle-a-agent', 'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-a-client-r2-1', 'cycle-a-user', 2),
+        ('cycle-a-r2-2', $1, 'cycle-a-case-1', 'cycle-a-agent', 'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-a-client-r2-2', 'cycle-a-user', 2),
+        ('cycle-a-r2-3', $1, 'cycle-a-case-1', 'cycle-a-agent', 'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-a-client-r2-3', 'cycle-a-user', 2),
+        ('cycle-a-single', $1, 'cycle-a-case-2', 'cycle-a-agent', 'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-a-client-single', 'cycle-a-user', 1),
+        ('cycle-a-null-1', $1, 'cycle-a-case-2', 'cycle-a-agent', 'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-a-client-null-1', 'cycle-a-user', NULL),
+        ('cycle-a-null-2', $1, 'cycle-a-case-2', 'cycle-a-agent', 'cycle-a-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-a-client-null-2', 'cycle-a-user', NULL),
+        ('cycle-b-r9-1', $2, 'cycle-b-case', 'cycle-b-agent', 'cycle-b-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-b-client-r9-1', 'cycle-b-user', 9),
+        ('cycle-b-r9-2', $2, 'cycle-b-case', 'cycle-b-agent', 'cycle-b-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-b-client-r9-2', 'cycle-b-user', 9),
+        ('cycle-b-r9-3', $2, 'cycle-b-case', 'cycle-b-agent', 'cycle-b-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-b-client-r9-3', 'cycle-b-user', 9),
+        ('cycle-b-r9-4', $2, 'cycle-b-case', 'cycle-b-agent', 'cycle-b-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-b-client-r9-4', 'cycle-b-user', 9),
+        ('cycle-b-null', $2, 'cycle-b-case', 'cycle-b-agent', 'cycle-b-day', NULL, NULL, 'ACKNOWLEDGED', 'cycle-b-client-null', 'cycle-b-user', NULL)
+    `, cycleAuditOrganizationA, cycleAuditOrganizationB)
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_employee_responses"
+      ENABLE TRIGGER USER
+    `)
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_employee_responses"
+      ENABLE ROW LEVEL SECURITY
+    `)
+    await observer.$executeRawUnsafe(`
+      ALTER TABLE "${schema}"."workforce_exception_employee_responses"
+      FORCE ROW LEVEL SECURITY
+    `)
+    await observer.$executeRawUnsafe(`
+      CREATE POLICY workforce_exception_response_cycle_audit_tenant_select
+      ON "${schema}"."workforce_exception_employee_responses"
+      FOR SELECT
+      USING (
+        "organizationId" = current_setting('app.org_id', true)
+        OR current_setting('app.rls_bypass', true) = 'on'
+      )
+    `)
+    await observer.$executeRawUnsafe(`GRANT USAGE ON SCHEMA "${schema}" TO "${applicationRole}"`)
+    await observer.$executeRawUnsafe(`
+      GRANT SELECT ON "${schema}"."workforce_exception_employee_responses"
+      TO "${applicationRole}"
+    `)
+    applicationClient = new PrismaClient({ datasourceUrl: applicationDatabaseUrl() })
   }, 90_000)
 
   afterAll(async () => {
+    await applicationClient?.$disconnect().catch(() => {})
     await migrationClient?.$disconnect().catch(() => {})
     await observer?.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`).catch(() => {})
+    await observer?.$executeRawUnsafe(`DROP OWNED BY "${applicationRole}"`).catch(() => {})
+    await observer?.$executeRawUnsafe(`DROP ROLE IF EXISTS "${applicationRole}"`).catch(() => {})
     await observer?.$executeRawUnsafe(`DROP OWNED BY "${migrationLoginRole}"`).catch(() => {})
     await observer?.$executeRawUnsafe(`DROP ROLE IF EXISTS "${migrationLoginRole}"`).catch(() => {})
     await observer?.$executeRawUnsafe(`DROP OWNED BY "${migrationOwnerRole}"`).catch(() => {})
@@ -800,6 +889,23 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
     `, organizationId, caseId)
     if (!rows[0]) throw new Error("missing Workforce lock proof state")
     return rows[0]
+  }
+
+  function responseCycleAuditDb(
+    organizationIdForContext: string,
+  ): WorkforceExceptionResponseCycleAuditDb {
+    if (!applicationClient) throw new Error("restricted application client is unavailable")
+    const transaction: WorkforceExceptionResponseCycleAuditDb["$transaction"] = (
+      action,
+      options,
+    ) => applicationClient!.$transaction(async (tx) => {
+      await tx.$queryRawUnsafe(
+        "SELECT set_config('app.org_id', $1, true)",
+        organizationIdForContext,
+      )
+      return action(tx as unknown as Parameters<typeof action>[0])
+    }, options)
+    return { $transaction: transaction }
   }
 
   it("applies the exact revision migration to a non-empty append-only ledger", async () => {
@@ -1120,6 +1226,115 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       `)
     })).rejects.toBeDefined()
   }, 20_000)
+
+  it("audits duplicate response cycles through the exact index and restricted tenant RLS", async () => {
+    if (!applicationClient) throw new Error("restricted application client is unavailable")
+
+    const [applicationRoleState] = await observer.$queryRawUnsafe<Array<{
+      rolsuper: boolean
+      rolbypassrls: boolean
+      rolcanlogin: boolean
+    }>>(`
+      SELECT rolsuper, rolbypassrls, rolcanlogin
+        FROM pg_roles
+       WHERE rolname = $1
+    `, applicationRole)
+    expect(applicationRoleState).toEqual({
+      rolsuper: false,
+      rolbypassrls: false,
+      rolcanlogin: true,
+    })
+
+    const [tableState] = await observer.$queryRawUnsafe<Array<{
+      relrowsecurity: boolean
+      relforcerowsecurity: boolean
+    }>>(`
+      SELECT relrowsecurity, relforcerowsecurity
+        FROM pg_class
+       WHERE oid = '"${schema}"."workforce_exception_employee_responses"'::regclass
+    `)
+    expect(tableState).toEqual({ relrowsecurity: true, relforcerowsecurity: true })
+
+    const [indexState] = await observer.$queryRawUnsafe<Array<{
+      indisunique: boolean
+      indisvalid: boolean
+      indisready: boolean
+      isPlain: boolean
+      columns: string[]
+    }>>(`
+      SELECT index_state.indisunique,
+             index_state.indisvalid,
+             index_state.indisready,
+             bool_and(index_state.indpred IS NULL AND index_state.indexprs IS NULL) AS "isPlain",
+             array_agg(attribute.attname ORDER BY indexed_column.ordinality)::TEXT[] AS columns
+        FROM pg_index index_state
+        JOIN pg_class index_relation ON index_relation.oid = index_state.indexrelid
+        JOIN pg_class table_relation ON table_relation.oid = index_state.indrelid
+        JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
+        CROSS JOIN LATERAL unnest(index_state.indkey::SMALLINT[])
+          WITH ORDINALITY AS indexed_column(attnum, ordinality)
+        JOIN pg_attribute attribute
+          ON attribute.attrelid = table_relation.oid
+         AND attribute.attnum = indexed_column.attnum
+       WHERE namespace.nspname = $1
+         AND index_relation.relname = 'workforce_exception_employee_responses_org_case_revision_idx'
+       GROUP BY index_state.indisunique, index_state.indisvalid,
+                index_state.indisready
+    `, schema)
+    expect(indexState).toEqual({
+      indisunique: false,
+      indisvalid: true,
+      indisready: true,
+      isPlain: true,
+      columns: ["organizationId", "caseId", "observedCaseRevision"],
+    })
+
+    const [unscoped] = await applicationClient.$queryRawUnsafe<Array<{
+      responseCount: bigint
+    }>>(`
+      SELECT COUNT(*)::bigint AS "responseCount"
+        FROM "workforce_exception_employee_responses"
+    `)
+    expect(unscoped.responseCount).toBe(0n)
+
+    const visibleOrganizations = await applicationClient.$transaction(async (tx) => {
+      await tx.$queryRawUnsafe(
+        "SELECT set_config('app.org_id', $1, true)",
+        cycleAuditOrganizationA,
+      )
+      return tx.$queryRawUnsafe<Array<{ organizationId: string }>>(`
+        SELECT DISTINCT "organizationId"
+          FROM "workforce_exception_employee_responses"
+         ORDER BY "organizationId"
+      `)
+    })
+    expect(visibleOrganizations).toEqual([{ organizationId: cycleAuditOrganizationA }])
+
+    await expect(runWorkforceExceptionResponseCycleAudit(
+      responseCycleAuditDb(cycleAuditOrganizationA),
+      { organizationId: cycleAuditOrganizationA },
+    )).resolves.toMatchObject({
+      mode: "DRY_RUN",
+      status: "DUPLICATE_CYCLES_DETECTED",
+      duplicateCycleGroups: 2,
+      duplicateResponseRows: 5,
+      excessResponseRows: 3,
+      legacyNullRevisionRows: 2,
+      automaticAction: "NONE",
+      uniquenessMigrationAuthorized: false,
+    })
+
+    await expect(runWorkforceExceptionResponseCycleAudit(
+      responseCycleAuditDb(cycleAuditOrganizationB),
+      { organizationId: cycleAuditOrganizationB },
+    )).resolves.toMatchObject({
+      status: "DUPLICATE_CYCLES_DETECTED",
+      duplicateCycleGroups: 1,
+      duplicateResponseRows: 4,
+      excessResponseRows: 3,
+      legacyNullRevisionRows: 1,
+    })
+  }, 15_000)
 
   it("allocates the next revision from a fresh post-lock snapshot", async () => {
     const caseId = `migration-concurrent-${randomUUID()}`

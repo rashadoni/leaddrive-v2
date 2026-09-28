@@ -1128,3 +1128,15 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Work now continues from exact deployed main on clean successor branch `codex/workforce-exception-response-cycle-audit`. Independent read-only design audit selected a bounded tenant-scoped aggregate dry-run detector as the next safe prerequisite to any future online unique constraint; no detector code has changed yet.
 - Precise stopping point: PR #477 is fully reviewed, merged, deployed and exact-SHA smoke-verified; only this three-document release receipt is uncommitted on the successor branch.
 - Next action: checkpoint the release receipt, then implement the bounded duplicate-cycle audit source/API/rate/audit/test evidence slice without schema migration, remediation, record IDs or UI.
+
+## 2026-09-28 — C6 response-cycle aggregate audit working checkpoint
+
+- The owner requested a concrete remaining-work status; implementation continued without pausing. PR #477 was already merged/deployed/verified, and this is the next bounded C6 prerequisite rather than a claim that all remaining C5/C6 physical and migration work is one small change.
+- Independent read-only design audit found no blocker for a diagnostic-only complete aggregate and pinned organization-wide exception-read authority, mandatory MFA, fail-closed tenant/principal Redis budgets, transaction-local RLS/timeouts, NULL separation, bigint validation, counts-only audit and a restricted-role PostgreSQL proof.
+- Added the complete dry-run runner, dedicated low-frequency limiter and private configuration endpoint. The response contains only snapshot status/four counts plus `automaticAction=NONE` and `uniquenessMigrationAuthorized=false`; it performs no repair, delete, backfill, schema change or migration authorization.
+- Added unit, limiter and API tests plus a real PostgreSQL scenario inside the exact harness already mandatory in PR/deploy CI. The database proof uses a NOBYPASSRLS role, FORCE RLS, two organizations and exact index-catalog/count assertions.
+- Focused results: 3 files / 12 executable tests passed; targeted ESLint passed all eight runtime/test paths; the PostgreSQL file compiled/discovered 14 scenarios but all were `SKIPPED / NOT RUN` locally without the approved CI database. Package lock remains `54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`; the temporary dependency link was removed.
+- Full local typecheck/build, real PostgreSQL, browser E2E, Android/Gradle, load, signed APK, physical device and pilot are `NOT RUN`. No production request or mutation occurred.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` with no added credit.
+- Precise stopping point: implementation, focused verification and initial evidence are complete in the working tree; no implementation checkpoint or frozen code review exists yet.
+- Next action: checkpoint only the explicit task paths, freeze the complete diff against exact deployed main, and obtain author-independent GREEN before push/opening the next sub-400 KB PR.
