@@ -1398,3 +1398,12 @@ from this worktree.
 - The rejected review independently reproduced nine paths / 58,227 plain-binary bytes / SHA-256 `54685b941bda03420b71e761d7b9b0678f11682f7a1b166452b961e89a5ecb98`; it grants no merge authority. Progress and all `NOT RUN` labels remain unchanged.
 - Precise stopping point: both factual corrections are appended in the working tree; they are not checkpointed and no valid frozen review exists.
 - Next action: checkpoint the append-only correction, recompute the complete diff identity and require a replacement author-independent frozen GREEN before push or PR.
+
+## 2026-09-28 — response-cycle unique-index replacement frozen review GREEN
+
+- Fresh author-independent complete-diff review returned GREEN with zero P0-P3 findings on exact base/live main/merge-base `29fb2234866c28dd101ad0abaedf8da0548c678e` through clean corrected head `f674f2c46624ec8cf5d08fc15d8001475c69ddc5`.
+- The reviewer independently matched nine paths / 62,005 plain-binary bytes / SHA-256 `9dd6624545a5397b3fd646a22f744b3ca1cc4354d7cbe93ffd3ffebc1420d8ad`, below 400 KB. Five implementation blobs stayed byte-identical to the rejected checkpoint and four document prefixes were preserved exactly.
+- Both evidence corrections, migration/state hashes, role-default provisioning/validation boundary, double global fence, ordinary Prisma execution, exact applied postcondition, 23505 containment and no-remediation contract passed. Closing fetch found no drift and the tree remained clean.
+- Reviewer dependency-backed and heavy checks remained `NOT RUN`; author checks remain separately labelled. Progress stays `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: the corrected source/migration/test/evidence head has valid independent GREEN; only this three-document review receipt is uncommitted.
+- Next action: checkpoint the receipt, independently prove all five reviewed implementation blobs unchanged and verify the final diff identity, then push/open the sub-400 KB PR and require every exact-head context including real PostgreSQL.

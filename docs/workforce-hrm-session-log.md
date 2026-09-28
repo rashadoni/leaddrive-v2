@@ -1180,3 +1180,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Both facts are superseded through append-only corrections in their evidence files. Roadmap/session history is preserved. The rejected verdict supplies no merge authority and progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
 - Precise stopping point: the two evidence repairs are present but uncommitted; source, migration, deploy and test blobs remain unchanged from the rejected checkpoint.
 - Next action: checkpoint only the four append-only document changes, verify implementation blob identity and final diff fingerprint, then obtain a replacement frozen independent GREEN before any push.
+
+## 2026-09-28 — C6 unique-index replacement frozen review GREEN
+
+- Corrected checkpoint `f674f2c46624ec8cf5d08fc15d8001475c69ddc5` received a fresh author-independent GREEN with P0=P1=P2=P3=0 against exact base/live main/merge-base `29fb2234866c28dd101ad0abaedf8da0548c678e`.
+- Reviewer identity exactly matched nine paths / 62,005 plain-binary bytes / SHA-256 `9dd6624545a5397b3fd646a22f744b3ca1cc4354d7cbe93ffd3ffebc1420d8ad`. All five implementation blobs were byte-identical to rejected head `f4e622dc18ed332362b7876cd0d9e933c4d621e6`, while each of the four corrected docs retained that head as an exact byte prefix.
+- Full static inspection reconfirmed the one-statement concurrent index, NULL-distinct compatibility, aggregate-only global state, pre-backup and pre-migrate fences, immutable hashes, provisioned server-default proof without `PGOPTIONS`, ordinary Prisma migrate, exact postcondition and contained manual-only 23505 recovery. Both P3 corrections passed.
+- Reviewer `bash -n`, whitespace, identity/drift and no-cache production ping/build-info checks passed. Dependency-backed tests/ESLint/Prisma, real PostgreSQL, typecheck/build, browser, Android/load/device/pilot were `NOT RUN` reviewer-side; author results remain distinct.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
+- Precise stopping point: the complete corrected implementation/evidence checkpoint is independently GREEN; this review receipt is the only working-tree delta.
+- Next action: checkpoint the receipt-only delta, obtain independent final blob-integrity/fingerprint proof, then push/open the PR and wait for exact-head CI.

@@ -145,3 +145,27 @@ checked before backup/extraction and again immediately before migration. The
 fresh no-`PGOPTIONS` `10s|14min` role-default check runs after extraction,
 immediately before the ordinary Prisma migration. Unsafe defaults therefore
 fail before migration and PM2, but are not claimed to fail before extraction.
+
+## Replacement frozen complete-diff review GREEN
+
+Fresh author-independent review returned GREEN with P0=0, P1=0, P2=0 and
+P3=0 on exact base/live `origin/main`/merge-base
+`29fb2234866c28dd101ad0abaedf8da0548c678e` through clean head
+`f674f2c46624ec8cf5d08fc15d8001475c69ddc5`. The reviewer independently
+reproduced nine paths / 62,005 plain-binary bytes / SHA-256
+`9dd6624545a5397b3fd646a22f744b3ca1cc4354d7cbe93ffd3ffebc1420d8ad`,
+well below 400 KB.
+
+All five implementation blobs remained byte-identical to rejected checkpoint
+`f4e622dc18ed332362b7876cd0d9e933c4d621e6`; all four corrected document files
+preserved that checkpoint as an exact byte prefix. Both factual P3 repairs,
+the migration/state hashes, role provisioning and no-`PGOPTIONS` proof,
+double fence, exact postcondition, 23505 containment and no-remediation scope
+passed. Reviewer `bash -n`, whitespace, Git identity/drift and current
+production ping/build-info checks passed.
+
+Reviewer-side dependency-backed tests, ESLint, Prisma validation, real
+PostgreSQL, full typecheck/build, browser, Android, load, signed device and
+pilot checks were `NOT RUN`; author results were not relabelled. Closing state
+was clean and drift-free. This review receipt is documentation-only and still
+requires final receipt-integrity review before push.
