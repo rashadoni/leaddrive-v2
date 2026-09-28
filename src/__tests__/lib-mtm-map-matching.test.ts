@@ -97,6 +97,8 @@ describe("the metres along the road, step by step", () => {
   it("reads «NoMatch» as an answer without roads, and a broken body as no answer", () => {
     expect(parseOsrmMatchSteps({ code: "NoMatch" }, 3)).toEqual({ segments: [], matched: [false, false, false], steps: [null, null, null] })
     expect(parseOsrmMatchSteps({ code: "InvalidQuery" }, 3)).toBeNull()
+    // Abroad: answered and remembered, but those kilometres are not by roads.
+    expect(parseOsrmMatchSteps({ code: "NoSegment" }, 2)).toEqual({ segments: [], matched: [false, false], steps: [null, null], outside: true })
   })
 })
 
@@ -139,6 +141,16 @@ describe("matching a day", () => {
     // Twenty silent minutes: the shortest road between the two fixes.
     expect(match?.stepMeters[150]).toBe(5_000)
     expect(match?.stepMeters[151]).toBe(100)
+  })
+
+  it("remembers a stretch abroad instead of asking on every view, and does not call that day «by roads»", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ code: "NoSegment", message: "Could not find a matching segment for any coordinate." }), { status: 400 }))
+    const options = { baseUrl: "http://osrm", fetchImpl: fetchImpl as unknown as typeof fetch }
+    const seville = [fix(0, 37.388, -5.996), fix(30, 37.389, -5.997)]
+    const first = await matchRoads(seville, options)
+    expect(first).toMatchObject({ complete: false, stepMeters: [null, null] })
+    await matchRoads(seville, options)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
   it("asks again only for the stretch that grew", async () => {
