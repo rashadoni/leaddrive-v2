@@ -3,6 +3,7 @@ import {
   parseWorkforceEvidenceTargets,
   parseWorkforceEvidenceTimeline,
   workforceEvidenceReasonLabelKey,
+  workforceEvidenceReasonLabelKeys,
 } from "@/lib/workforce/evidence-timeline-client"
 
 function timeline() {
@@ -117,5 +118,17 @@ describe("Workforce evidence timeline client boundary", () => {
     expect(workforceEvidenceReasonLabelKey("LOCATION_STALE")).toBe("LOCATION_TIMING_REVIEW")
     expect(workforceEvidenceReasonLabelKey("INSIDE_WITH_ACCURACY")).toBe("INSIDE_CONFIRMED")
     expect(workforceEvidenceReasonLabelKey("INTERNAL_SECURITY_RULE_47")).toBe("REVIEW_REQUIRED")
+  })
+
+  it("deduplicates mapped presentation reasons in stable source order", () => {
+    expect(workforceEvidenceReasonLabelKeys([
+      "LOCATION_STALE",
+      "LOCATION_ACCURACY_EXCEEDED",
+      "LOCATION_MOCK_SUSPECTED",
+      "LOCATION_PROVIDER_REVIEW_REQUIRED",
+    ])).toEqual([
+      "LOCATION_TIMING_REVIEW",
+      "LOCATION_QUALITY_REVIEW",
+    ])
   })
 })

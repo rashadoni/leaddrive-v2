@@ -52,7 +52,7 @@ describe("Workforce derived-evidence timeline UI contract", () => {
     expect(component).toContain('t("boundary")')
     expect(component).not.toMatch(/latitude|longitude|distanceMeters|accuracyMeters|rawEnvelopeCiphertext|redactedReceipt|payloadHash|nonceFingerprint|deviceEnrollmentId/)
     expect(component).not.toContain("selectedTarget.id}</")
-    expect(component).toContain("workforceEvidenceReasonLabelKey(reason)")
+    expect(component).toContain("workforceEvidenceReasonLabelKeys(assessment.reasonCodes)")
     expect(component).not.toContain("reasonLabel(")
     expect(component).toContain("parsed.start !== start")
     expect(component).toContain("parsed.end !== end")

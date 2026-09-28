@@ -59,6 +59,13 @@ export function workforceEvidenceReasonLabelKey(reasonCode: string): WorkforceEv
   return REASON_LABELS[reasonCode] ?? "REVIEW_REQUIRED"
 }
 
+/** Collapses multiple machine reasons into stable, non-repeating human copy. */
+export function workforceEvidenceReasonLabelKeys(
+  reasonCodes: readonly string[],
+): WorkforceEvidenceReasonLabelKey[] {
+  return [...new Set(reasonCodes.map(workforceEvidenceReasonLabelKey))]
+}
+
 export type WorkforceEvidenceTimelineView = {
   timezone: string
   start: string

@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import {
   parseWorkforceEvidenceTargets,
   parseWorkforceEvidenceTimeline,
-  workforceEvidenceReasonLabelKey,
+  workforceEvidenceReasonLabelKeys,
   type WorkforceEvidenceTarget,
   type WorkforceEvidenceTimelineView,
   type WorkforceEvidenceVerdict,
@@ -378,7 +378,7 @@ function TimelineResult({ timeline, dateTime, t }: {
           {item.assessments.length === 0 ? <p className="text-sm leading-6 text-muted-foreground">{t("noAssessments")}</p> : <ul className="space-y-2">
             {item.assessments.map((assessment, assessmentIndex) => <li key={`${assessment.assessedAt}-${assessmentIndex}`} className="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-900/60">
               <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-medium">{t(`assessmentKinds.${assessment.kind}`)}</span><Badge variant={verdictVariant(assessment.verdict)}>{t(`verdicts.${assessment.verdict}`)}</Badge></div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{assessment.reasonCodes.map((reason) => t(`reasonLabels.${workforceEvidenceReasonLabelKey(reason)}`)).join(" · ")}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{workforceEvidenceReasonLabelKeys(assessment.reasonCodes).map((reason) => t(`reasonLabels.${reason}`)).join(" · ")}</p>
             </li>)}
           </ul>}
         </div>
