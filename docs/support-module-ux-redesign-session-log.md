@@ -2278,3 +2278,27 @@ repeat the exact-SHA desktop gate.
 
 Next: checkpoint and push the dialog return-target correction, then rerun the
 desktop Macros gate before RU/dark mobile and the 24-cell matrix.
+
+### Workstream 13 shared tip accessibility correction
+
+- Exact-SHA run `36365556905` on `3deb238af` passed section validation,
+  fixtures and production build. All 6/6 Macros mutation/recovery outcomes now
+  pass, including `focusRestored: true` for the editor and category manager, so
+  the dialog return-target defect is closed.
+- The independent static capture correctly remained red: Axe found three
+  critical `button-name` violations on the visible Did You Know dismiss,
+  previous and next controls. The evidence had no runtime, overflow, touch,
+  environment or other Axe errors; load p75 was 449 ms and CLS was
+  `0.0019435164840133103`. The desktop screenshot was inspected and confirms
+  the failures belonged to the shared tip surface, not hidden content.
+- The shared tip now provides localized common labels for dismiss/previous/
+  next, explicit `type="button"`, decorative icon semantics and 44 px targets;
+  its CTA also has a 44 px minimum height. The Macros section gate lints this
+  shared dependency and the focused contract pins the repaired semantics.
+- Local checks are green: AZ/RU/EN parity at 23,599 keys; focused ESLint; 18/18
+  affected assertions; workflow YAML with all 23 `run` blocks passing
+  `bash -n`; and `git diff --check`. Full local build/browser remain **NOT RUN**
+  under the Contabo workload rule; GitHub remains the mandatory executor.
+
+Next: checkpoint and push the shared tip correction, then rerun the exact-SHA
+desktop Macros gate before RU/dark mobile and the 24-cell matrix.

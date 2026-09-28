@@ -3042,6 +3042,17 @@ Current-tree restoration and self-audit (2026-09-28):
   applies initial focus on its managed animation frame. The strict focus-return
   assertion remains unchanged. Focused ESLint, 17/17 affected assertions and
   diff-check pass; desktop closure remains pending the corrected exact-SHA run.
+- Exact-SHA run `36365556905` on `3deb238af` proves the dialog correction:
+  all six disposable outcomes pass and both editor and category-manager focus
+  return are `true`. The static capture then failed closed on three critical
+  `button-name` violations in the visible shared Did You Know surface (dismiss,
+  previous and next); all other captured error totals were zero, load p75 was
+  449 ms and CLS was `0.0019435164840133103`. Those controls now use localized
+  common labels, explicit button semantics and 44 px targets; the tip CTA also
+  has a 44 px minimum height. The Macros section gate now lints this shared
+  dependency and its focused contract pins the labels/targets. Translation
+  parity, focused ESLint, 18/18 affected assertions, workflow YAML plus all 23
+  shell blocks, and diff-check pass. Desktop closure remains pending rerun.
 
 ## 21. Workstream 14 — Portal Users
 

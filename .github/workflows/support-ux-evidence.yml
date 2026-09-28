@@ -794,6 +794,7 @@ jobs:
             src/app/api/v1/ticket-macros/\[id\]/route.ts \
             src/app/api/v1/ticket-macros/\[id\]/apply/route.ts \
             src/app/api/v1/ticket-macros/categories/route.ts \
+            src/components/did-you-know.tsx \
             src/lib/inbox-channels.tsx \
             src/lib/ticket-macros/presentation.ts \
             src/lib/ticket-macros/schema.ts \

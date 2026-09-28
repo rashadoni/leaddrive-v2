@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 const page = readFileSync("src/app/(dashboard)/settings/macros/page.tsx", "utf8")
 const applyPage = readFileSync("src/app/(dashboard)/tickets/[id]/page.tsx", "utf8")
 const categoryRoute = readFileSync("src/app/api/v1/ticket-macros/categories/route.ts", "utf8")
+const didYouKnow = readFileSync("src/components/did-you-know.tsx", "utf8")
 
 describe("macros UX contract", () => {
   it("keeps each recovered shell integration import unique", () => {
@@ -62,6 +63,14 @@ describe("macros UX contract", () => {
   it("lets the dialog capture and restore its trigger before applying initial focus", () => {
     expect(page).toContain("data-dialog-initial-focus")
     expect(page).not.toContain('<Input autoFocus value={draft.name}')
+  })
+
+  it("gives the visible tip controls localized names and 44px targets", () => {
+    expect(didYouKnow).toContain('aria-label={tc("close")}')
+    expect(didYouKnow).toContain('aria-label={tc("previousPage")}')
+    expect(didYouKnow).toContain('aria-label={tc("nextPage")}')
+    expect(didYouKnow).toContain("h-11 w-11")
+    expect(didYouKnow).toContain("min-h-11 text-xs")
   })
 
   it("delays destructive requests so macro and category deletion can be undone", () => {
