@@ -26,9 +26,9 @@ describe("portal users UX contract", () => {
     expect(page).toContain("scope.truncated")
   })
 
-  it("uses a responsive card list at 375px and a compact desktop table", () => {
-    expect(page).toContain("md:hidden")
-    expect(page).toContain("hidden overflow-hidden rounded-lg border md:block")
+  it("uses a responsive card list through tablet widths and a compact wide-desktop table", () => {
+    expect(page).toContain("xl:hidden")
+    expect(page).toContain("hidden min-w-0 overflow-hidden rounded-lg border xl:block")
     expect(page).not.toContain("overflow-x-auto")
   })
 

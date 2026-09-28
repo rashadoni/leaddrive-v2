@@ -3092,7 +3092,7 @@ Closure evidence (2026-09-28):
 
 ## 21. Workstream 14 — Portal Users
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `fa6143c00`; browser/CI gates pending**
+**Status: IN PROGRESS — current-tree product `584c5d9d4`, recovery `10af0aef9`; self-audit complete, exact-SHA browser/CI gates pending**
 **Route:** `/settings/portal-users`
 **Primary file:** `src/app/(dashboard)/settings/portal-users/page.tsx`
 
@@ -3225,6 +3225,38 @@ Additional recovery evidence (2026-09-06):
   keyboard/focus, physical-touch, reduced-motion, accessibility, performance
   and visual evidence therefore remains **NOT RUN**, and every SUPUX-POR
   checkbox remains open.
+
+Current-tree recovery and self-audit (2026-09-26):
+
+- Product and recovery checkpoints were restored onto the current branch as
+  `584c5d9d4` and `10af0aef9`. Existing WS13 workflow, screenshot, performance
+  and downstream flow coverage was preserved as the superset when resolving
+  the historical evidence conflicts; no threshold or job was removed.
+- Technical audit scored the corrected source 20/20: Accessibility 4,
+  Performance 4, Responsive 4, Theming 4, Anti-patterns 4. Before correction it
+  found four release blockers: a table breakpoint at 768 px, 20 px checkbox hit
+  areas, native React `autoFocus` racing the shared dialog's return-focus
+  capture, and synthetic Playwright `.click()`/`.check()` mutation evidence.
+- Portal Users now uses `SupportPageShell`, keeps the zero-overflow card surface
+  through tablet widths and switches to the compact table at `xl`. Row and
+  select-all checkbox labels expose 44 px activation surfaces; header utilities,
+  bulk actions, menus and form controls preserve the same minimum target.
+- Managed `data-dialog-initial-focus` replaces native `autoFocus`. Menu-driven
+  recovery, edit, manual-password, chat-clear and removal dialogs restore focus
+  to the originating action-menu trigger, with bounded evidence observation
+  that never focuses the control itself.
+- The seven outcome groups now activate controls with desktop keyboard input or
+  real `page.touchscreen.tap()` center points after a 44x44 size check and DOM
+  hit-test. Late first-run tours are dismissed only at navigation/recovery
+  boundaries, and tablet/narrow-tablet assertions select the compact card
+  surface rather than the wide table.
+- Local checks are green: flow syntax, section-scoped ESLint, 38/38 focused
+  assertions and the Portal Users anti-pattern scan (1 visible TSX file, 0
+  findings). The full inventory scan is currently red on 55 findings confined
+  to still-pending customer-portal/ticket-closure work; this is recorded, not
+  waived, and must be green before final merge. Full local TypeScript/build and
+  browser execution remain **NOT RUN** under the Contabo workload rule; GitHub
+  Actions is the mandatory executor.
 
 ## 21A. Workstream 15 — Support AI Settings
 

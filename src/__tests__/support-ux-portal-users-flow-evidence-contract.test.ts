@@ -47,6 +47,23 @@ describe("Portal Users flow evidence contract", () => {
     ]) expect(page).toContain(marker)
   })
 
+  it("uses real keyboard or touchscreen activation and proves dialog focus recovery", () => {
+    expect(flow).toContain("page.touchscreen.tap")
+    expect(flow).toContain('inputModality: "playwright-touchscreen"')
+    expect(flow).toContain("portal_users_touch_target_too_small")
+    expect(flow).toContain("waitForFocusRestoration")
+    expect(flow).not.toMatch(/\.(click|check)\(/)
+    expect(page).toContain("data-dialog-initial-focus")
+    expect(page).not.toContain("autoFocus")
+  })
+
+  it("keeps compact surfaces through tablet widths and exposes 44px touch areas", () => {
+    expect(page).toContain("xl:block")
+    expect(page).toContain("xl:hidden")
+    expect(page).toContain('className="flex h-11 w-11 shrink-0 cursor-pointer')
+    expect(page).toContain('className="flex min-h-11 items-start')
+  })
+
   it("runs only when the Portal Users scenario is selected", () => {
     expect(workflow).toContain("scripts/support-ux-portal-users-flow-evidence.mjs")
     expect(workflow).toContain("*,portal-users,*")

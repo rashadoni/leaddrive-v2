@@ -2364,3 +2364,39 @@ Workstream 13 is **DONE**.
 
 Next: checkpoint and push the Workstream 13 closure record, then begin
 Workstream 14 Portal Users from its saved product/recovery checkpoints.
+
+### Workstream 14 current-tree recovery and self-audit
+
+- Restored the Portal Users product checkpoint as `584c5d9d4` and its recovery
+  evidence as `10af0aef9`. The historical evidence conflicts were resolved in
+  favor of the current WS13-complete workflow/browser/screenshot superset; only
+  the Portal Users page markers and its flow contract were new in the recovery
+  commit, so no established gate was removed or weakened.
+- The product slice passes changed-source ESLint, AZ/RU/EN parity at 23,599
+  keys, and 32/32 API/password-link/presentation/UX assertions.
+- The mandatory technical self-audit initially scored 14/20 (Accessibility 2,
+  Performance 4, Responsive 2, Theming 3, Anti-patterns 3). P1 findings were
+  20 px physical checkbox targets, a wide table at the 768 px content boundary,
+  native `autoFocus` defeating dialog return-focus capture, and mutation flow
+  evidence based on synthetic `.click()`/`.check()`. A P2 consistency finding
+  was the page's manual header outside the shared Support shell.
+- Corrections move the page to `SupportPageShell`, retain cards through tablet
+  widths (`xl` table), wrap checkboxes in 44 px labels, preserve semantic theme
+  tokens and reduced motion, replace native autofocus with the dialog-managed
+  initial-focus marker, and restore focus to the action-menu trigger after every
+  menu-launched dialog.
+- The flow now measures and center-hit-tests every non-desktop target before a
+  real Playwright touchscreen tap; desktop paths use keyboard activation. It
+  contains no `.click()` or `.check()` calls, observes focus without setting it,
+  waits out first-run tours at navigation boundaries and uses the compact card
+  surface at tablet/narrow-tablet sizes. The corrected audit score is 20/20.
+- Local post-fix gates are green: flow syntax, changed-source ESLint, 38/38
+  focused assertions, Portal Users section anti-pattern scan with 0 findings,
+  and `git diff --check`. The full inventory scanner remains red on 55 findings
+  only in still-pending customer-portal/ticket-closure files; this is an explicit
+  pending release gate, not a waiver. Full build/browser are **NOT RUN** locally
+  under the Contabo workload contract and remain mandatory in GitHub Actions.
+
+Next: checkpoint and push the WS14 self-audit, then run exact-SHA desktop,
+RU/dark physical-touch and complete high-profile Portal Users evidence before
+checking POR-001..009 and closing the section.
