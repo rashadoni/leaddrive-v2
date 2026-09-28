@@ -15,7 +15,6 @@ import {
   LOCATION_HISTORY_MAX_RAW_POINTS_RANGE,
   buildHistoryCsv,
   buildHistoryTimeline,
-  calculateHistoryDistance,
   detectHistoryAnomalies,
   detectHistoryGaps,
   type HistoryPauseInterval,
@@ -26,7 +25,8 @@ import {
   type HistoryVisit,
 } from "@/lib/mtm/location-history"
 import { buildDayTrip } from "@/lib/mtm/day-trip"
-import { matchTrack } from "@/lib/mtm/map-matching"
+import { matchRoads } from "@/lib/mtm/map-matching"
+import { distanceBasis, drivingDistanceMeters } from "@/lib/mtm/road-distance"
 
 const TIME = /^\d{2}:\d{2}$/
 
@@ -348,7 +348,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     maxAccuracyMeters,
   )
   const rawTruncated = rawLocations.length === rawLimit
-  const distanceMeters = rawTruncated ? null : calculateHistoryDistance(prepared.points)
+  // Kilometres and the drawn track along the roads, from the self-hosted OSRM
+  // (map-matching.ts), on the full accepted track; the rule for what counts
+  // is road-distance.ts. Without an answer: straight lines, as before.
+  const road = rawTruncated ? null : await matchRoads(prepared.points).catch(() => null)
+  const distanceMeters = rawTruncated ? null : drivingDistanceMeters(prepared.points, road?.stepMeters)
   const gapThresholdSeconds = Math.max(settings.offlineThresholdSeconds, settings.gpsInterval * 3)
   /**
    * The workday's own PAUSE/RESUME events, so a break is not reported as a
@@ -422,6 +426,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     visits: visits as HistoryVisit[],
     gaps,
     workday: workday ? { startedAt: workday.startedAt, completedAt: workday.completedAt } : null,
+    roadSteps: road?.stepMeters,
   })
   const points = downsampleHistoryPoints(prepared.points, outputLimit)
   const exportCsv = searchParams.get("format") === "csv"
@@ -462,10 +467,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     })
   }
 
-  // The track along the streets, from the self-hosted OSRM (map-matching.ts).
-  // Null when it is not there or not answering: the map keeps its straight
-  // lines. The same points as the map draws, so the two describe one day.
-  const matchedTrack = await matchTrack(points, { scope: `${auth.orgId}|${agentId}` }).catch(() => null)
+  // The track along the streets is drawn only whole: a day with roads here
+  // and bare fixes there reads as a day the phone lost.
+  const matchedTrack = road?.complete && road.segments.length
+    ? { segments: road.segments, matchedPoints: road.matchedPoints, totalPoints: road.totalPoints, source: road.source }
+    : null
 
   return NextResponse.json({
     success: true,
@@ -477,7 +483,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         stopRadiusMeters: policyStopRadiusMeters,
         stopMinimumMinutes: policyStopMinimumMinutes,
         gapThresholdSeconds,
-        distanceFormula: LOCATION_HISTORY_DISTANCE_FORMULA,
+        distanceFormula: road ? `osrm-roads-${road.complete ? "complete" : "partial"}-driving-v1` : LOCATION_HISTORY_DISTANCE_FORMULA,
         impossibleSpeedKmh: 180,
         autoTrackingSupported: false,
         geofenceRadiusMeters: settings.geofenceRadius,
@@ -495,6 +501,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       },
       summary: {
         distanceMeters,
+        distanceBasis: distanceBasis(road),
         firstPointAt: prepared.points[0]?.recordedAt ?? null,
         lastPointAt: prepared.points.at(-1)?.recordedAt ?? null,
         stopCount: stops.length,

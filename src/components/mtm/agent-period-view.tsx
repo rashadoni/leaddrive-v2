@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import type { AgentPeriod, AgentPeriodDayStatus } from "@/lib/mtm/agent-period"
+import type { DistanceBasis } from "@/lib/mtm/road-distance"
 
 /**
  * Owner 2026-09-25: «a manager wants to see what one field agent did over a
@@ -58,7 +59,7 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
   const [agentId, setAgentId] = useState(initialAgentId ?? "")
   const [preset, setPreset] = useState<Preset | null>("thisWeek")
   const [range, setRange] = useState(() => agentPeriodPreset("thisWeek", today))
-  const [period, setPeriod] = useState<AgentPeriod | null>(null)
+  const [period, setPeriod] = useState<(AgentPeriod & { distanceBasis?: DistanceBasis }) | null>(null)
   const [loadedKey, setLoadedKey] = useState("")
   const [error, setError] = useState("")
   const requestKey = `${agentId}|${range.from}|${range.to}`
@@ -85,7 +86,7 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
       .then((response) => response.json())
       .then((body) => {
         if (!body?.success) throw new Error("load")
-        setPeriod(body.data as AgentPeriod)
+        setPeriod(body.data as AgentPeriod & { distanceBasis?: DistanceBasis })
         setError("")
         setLoadedKey(key)
       })
@@ -139,7 +140,7 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
               { label: t("cards.workDays"), value: `${summary.workedDays}`, extra: `/ ${summary.plannedDays || pastDays}` },
               { label: t("cards.inField"), value: duration(summary.fieldSeconds), extra: "" },
               { label: t("cards.visitsPlan"), value: `${summary.visits}`, extra: summary.planned ? `/ ${summary.planned} · ${Math.round((summary.visitedPoints / summary.planned) * 100)}%` : "" },
-              { label: t("cards.distance"), value: km(summary.distanceMeters), extra: "" },
+              { label: t("cards.distance"), value: km(summary.distanceMeters), extra: period.distanceBasis === "ROADS" ? t("byRoads") : "" },
             ].map((card) => (
               <div key={card.label} className="rounded-lg bg-muted/40 p-3">
                 <div className="text-xs text-muted-foreground">{card.label}</div>

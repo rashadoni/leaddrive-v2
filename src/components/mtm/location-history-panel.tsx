@@ -55,6 +55,8 @@ type HistoryData = {
   }
   summary: {
     distanceMeters: number | null
+    /** What the kilometres were counted along (road-distance.ts). */
+    distanceBasis?: "ROADS" | "PARTIAL" | "STRAIGHT"
     firstPointAt: string | null
     lastPointAt: string | null
     stopCount: number
@@ -741,7 +743,7 @@ export function LocationHistoryPanel() {
                   onFocus={setTripFocus}
                   formatMoment={formatMoment}
                   formatDuration={formatDuration}
-                  roadsMatched={Boolean(data.matchedTrack) && layers.roads}
+                  roadsMatched={data.summary.distanceBasis === "ROADS"}
                 />
               )}
               {data.capabilities?.workforce !== false ? <section className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">

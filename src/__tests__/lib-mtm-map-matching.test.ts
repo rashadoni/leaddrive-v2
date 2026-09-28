@@ -4,9 +4,11 @@ import {
   MATCH_CHUNK_SIZE,
   buildMatchChunks,
   mapMatchingBaseUrl,
+  matchRoads,
   matchTrack,
   osrmMatchUrl,
   parseOsrmMatch,
+  parseOsrmMatchSteps,
   resetMapMatchingState,
 } from "@/lib/mtm/map-matching"
 
@@ -68,21 +70,84 @@ describe("the OSRM request and answer", () => {
   })
 })
 
+describe("the metres along the road, step by step", () => {
+  it("gives each leg to the fix it arrives at, and nothing to the fixes OSRM folded into it", () => {
+    const answer = parseOsrmMatchSteps({
+      code: "Ok",
+      matchings: [
+        { geometry: { coordinates: [[49.85, 40.4], [49.86, 40.41]] }, legs: [{ distance: 120 }, { distance: 300 }] },
+        { geometry: { coordinates: [[49.9, 40.5], [49.91, 40.51]] }, legs: [{ distance: 80 }] },
+      ],
+      tracepoints: [
+        { matchings_index: 0, waypoint_index: 0 },
+        { matchings_index: 0, waypoint_index: 1 },
+        null,
+        { matchings_index: 0, waypoint_index: 2 },
+        { matchings_index: 1, waypoint_index: 0 },
+        { matchings_index: 1, waypoint_index: 1 },
+      ],
+    }, 6)
+    // The fourth fix is reached by a 300 m leg that swallowed the third; the
+    // fifth starts a new matching — no road is known into it.
+    expect(answer?.steps).toEqual([null, 120, 0, 300, null, 80])
+    expect(answer?.matched).toEqual([true, true, false, true, true, true])
+  })
+
+  it("reads «NoMatch» as an answer without roads, and a broken body as no answer", () => {
+    expect(parseOsrmMatchSteps({ code: "NoMatch" }, 3)).toEqual({ segments: [], matched: [false, false, false], steps: [null, null, null] })
+    expect(parseOsrmMatchSteps({ code: "InvalidQuery" }, 3)).toBeNull()
+  })
+})
+
 describe("matching a day", () => {
-  const okResponse = () => new Response(JSON.stringify({
-    code: "Ok",
-    matchings: [{ geometry: { coordinates: [[49.85, 40.4], [49.851, 40.401], [49.86, 40.41]] } }],
-    tracepoints: [{}, {}],
-  }))
+  /** An OSRM that matches every fix into one matching, each leg 100 m, and routes any silence as 5 km. */
+  const osrm = () => vi.fn(async (url: string) => {
+    if (url.includes("/route/v1/")) return new Response(JSON.stringify({ code: "Ok", routes: [{ distance: 5_000 }] }))
+    const count = url.split("/match/v1/driving/")[1].split("?")[0].split(";").length
+    return new Response(JSON.stringify({
+      code: "Ok",
+      matchings: [{
+        geometry: { coordinates: [[49.85, 40.4], [49.851, 40.401], [49.86, 40.41]] },
+        legs: Array.from({ length: count - 1 }, () => ({ distance: 100 })),
+      }],
+      tracepoints: Array.from({ length: count }, (_, index) => ({ matchings_index: 0, waypoint_index: index })),
+    }))
+  })
 
   it("draws along the roads when OSRM answers, and asks once for the same day", async () => {
-    const fetchImpl = vi.fn(async () => okResponse())
+    const fetchImpl = osrm()
     const day = [fix(0), fix(30, 40.41, 49.86)]
     const first = await matchTrack(day, { baseUrl: "http://osrm", fetchImpl: fetchImpl as unknown as typeof fetch })
     expect(first).toMatchObject({ matchedPoints: 2, totalPoints: 2, source: "osrm" })
     expect(first?.segments[0]).toHaveLength(3)
     await matchTrack(day, { baseUrl: "http://osrm", fetchImpl: fetchImpl as unknown as typeof fetch })
     expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("lines the road metres up with the day's fixes, across stretches and across a silence", async () => {
+    const day = [
+      ...Array.from({ length: 150 }, (_, index) => fix(index * 30, 40.4 + index * 0.001)),
+      fix(150 * 30 + 20 * 60, 40.6),
+      fix(150 * 30 + 20 * 60 + 30, 40.601),
+    ]
+    const match = await matchRoads(day, { baseUrl: "http://osrm", fetchImpl: osrm() as unknown as typeof fetch })
+    expect(match?.complete).toBe(true)
+    expect(match?.stepMeters[0]).toBeNull()
+    // Fix 99 closes the first stretch and opens the second: its step is counted once.
+    expect(match?.stepMeters.slice(1, 150).every((meters) => meters === 100)).toBe(true)
+    // Twenty silent minutes: the shortest road between the two fixes.
+    expect(match?.stepMeters[150]).toBe(5_000)
+    expect(match?.stepMeters[151]).toBe(100)
+  })
+
+  it("asks again only for the stretch that grew", async () => {
+    const fetchImpl = osrm()
+    const options = { baseUrl: "http://osrm", fetchImpl: fetchImpl as unknown as typeof fetch }
+    const morning = Array.from({ length: 150 }, (_, index) => fix(index * 30, 40.4 + index * 0.001))
+    await matchRoads(morning, options)
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    await matchRoads([...morning, fix(150 * 30, 40.55)], options)
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
   })
 
   it("keeps straight lines when OSRM is down, and stops asking for a minute", async () => {
@@ -109,8 +174,11 @@ describe("the history map", () => {
   const panel = readFileSync("src/components/mtm/location-history-panel.tsx", "utf8")
   const route = readFileSync("src/app/api/v1/mtm/location-history/route.ts", "utf8")
 
-  it("gets the road track from the same points it draws", () => {
-    expect(route).toContain("const matchedTrack = await matchTrack(points, { scope: `${auth.orgId}|${agentId}` }).catch(() => null)")
+  it("counts and draws the roads on the full accepted track, and draws them only whole", () => {
+    expect(route).toContain("const road = rawTruncated ? null : await matchRoads(prepared.points).catch(() => null)")
+    expect(route).toContain("const distanceMeters = rawTruncated ? null : drivingDistanceMeters(prepared.points, road?.stepMeters)")
+    expect(route).toContain("roadSteps: road?.stepMeters,")
+    expect(route).toContain("const matchedTrack = road?.complete && road.segments.length")
   })
 
   it("draws the roads only once the replay has shown the whole day, with the straight fixes kept thin underneath", () => {

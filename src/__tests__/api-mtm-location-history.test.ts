@@ -165,7 +165,7 @@ describe("GET /api/v1/mtm/location-history", () => {
       label: "Clinic 14",
     })
     expect(body.data.timeline.map((event: { kind: string }) => event.kind)).toContain("PLANNED_STOP")
-    expect(body.data.policy.distanceFormula).toBe("haversine-r6371000-filtered-v1")
+    expect(body.data.policy.distanceFormula).toBe("haversine-driving-v2")
     expect(writeMtmAudit).toHaveBeenCalledWith(expect.objectContaining({
       action: "GPS_HISTORY_VIEW",
       entityId: "agent-1",
