@@ -7,7 +7,7 @@ vi.mock("@/lib/prisma", async () => {
 })
 
 import { prisma } from "@/lib/prisma"
-import { dayKeyWeekday, demoPulsePosition, planDemoPulseDay } from "@/lib/mtm/demo-pulse-plan"
+import { dayKeyWeekday, demoPulseLegKey, demoPulseLegs, demoPulsePosition, planDemoPulseDay, pointAlong } from "@/lib/mtm/demo-pulse-plan"
 import { demoPulseAgents, demoPulseRouteExternalId, pulseDemoAgent } from "@/lib/mtm/demo-pulse"
 import { localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { buildDayTrip } from "@/lib/mtm/day-trip"
@@ -73,6 +73,28 @@ describe("the demo field day", () => {
     expect(between.latitude).toBeCloseTo((from.latitude + to.latitude) / 2, 6)
     expect(demoPulsePosition(day, positions, new Date(day.shiftStartAt.getTime() - 1))).toBeNull()
     expect(demoPulsePosition(day, positions, day.shiftEndAt)).toBeNull()
+  })
+
+  it("drives along the road between customers when the road is known", () => {
+    // Owner 2026-09-28: a straight line across houses read on the road map as
+    // loops, and its kilometres came out 2.4 times the chord.
+    const day = plan()!
+    const positions = new Map(CUSTOMERS.map((id, index) => [id, { latitude: 40 + index / 100, longitude: 49 + index / 100 }]))
+    const [first, second] = day.stops
+    const [leg] = demoPulseLegs(day)
+    expect(leg).toMatchObject({ key: demoPulseLegKey(first.customerId, second.customerId), leftAt: first.checkOutAt, arriveAt: second.checkInAt })
+    const from = positions.get(first.customerId)!
+    const to = positions.get(second.customerId)!
+    // An L-shaped road: north first, then east.
+    const road: Array<[number, number]> = [[from.latitude, from.longitude], [to.latitude, from.longitude], [to.latitude, to.longitude]]
+    const quarter = demoPulsePosition(day, positions, new Date(first.checkOutAt.getTime() + (second.checkInAt.getTime() - first.checkOutAt.getTime()) / 4), new Map([[leg.key, road]]))!
+    expect(quarter.isMoving).toBe(true)
+    expect(quarter.longitude).toBeCloseTo(from.longitude, 6)
+    expect(quarter.latitude).toBeGreaterThan(from.latitude)
+    expect(pointAlong(road, 1)).toEqual({ latitude: to.latitude, longitude: to.longitude })
+    expect(pointAlong(road, 0)).toEqual({ latitude: from.latitude, longitude: from.longitude })
+    const pulse = readFileSync("src/lib/mtm/demo-pulse.ts", "utf8")
+    expect(pulse).toContain("const position = demoPulsePosition(day, positions, at, roads)")
   })
 
   it("reads in the day's route as drives between customers, not as a phone that keeps losing signal", () => {

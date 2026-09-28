@@ -10,6 +10,7 @@ import {
   parseOsrmMatch,
   parseOsrmMatchSteps,
   resetMapMatchingState,
+  roadPath,
 } from "@/lib/mtm/map-matching"
 
 /**
@@ -166,6 +167,22 @@ describe("matching a day", () => {
     const fetchImpl = vi.fn()
     expect(await matchTrack([fix(0), fix(30)], { baseUrl: null, fetchImpl: fetchImpl as unknown as typeof fetch })).toBeNull()
     expect(fetchImpl).not.toHaveBeenCalled()
+  })
+})
+
+describe("the road between two places", () => {
+  it("is OSRM's line in [latitude, longitude], asked once, and null without a road", async () => {
+    const fetchImpl = vi.fn(async (url: string) => new Response(JSON.stringify(url.includes("49.900000")
+      ? { code: "NoSegment" }
+      : { code: "Ok", routes: [{ geometry: { coordinates: [[49.85, 40.4], [49.86, 40.41]] } }] })))
+    const options = { baseUrl: "http://osrm", fetchImpl: fetchImpl as unknown as typeof fetch }
+    const a = { latitude: 40.4, longitude: 49.85 }
+    const b = { latitude: 40.41, longitude: 49.86 }
+    expect(await roadPath(a, b, options)).toEqual([[40.4, 49.85], [40.41, 49.86]])
+    await roadPath(a, b, options)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(await roadPath(a, { latitude: 40.5, longitude: 49.9 }, options)).toBeNull()
+    expect(await roadPath(a, b, { baseUrl: null })).toBeNull()
   })
 })
 
