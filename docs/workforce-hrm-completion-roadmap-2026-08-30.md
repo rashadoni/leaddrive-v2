@@ -1278,3 +1278,11 @@ from this worktree.
 - The second integrated tree again passes 15 files / 120 targeted tests, ten-path ESLint and diff whitespace. The PostgreSQL suite discovers 12 scenarios but remains `SKIPPED / NOT RUN` locally. Full typecheck/build, browser, Android, load, signed APK, physical-device and pilot checks remain `NOT RUN` under host policy.
 - Before this receipt, the complete 14-path diff remains 86,905 bytes with SHA-256 `e01a49280883e443fe8fef60853917e379db689be3fefbafe528f4626c149cc8`. A new author-independent frozen review is mandatory for the receipt checkpoint and current base; no earlier verdict transfers.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%. WF-C6-006 stays `PARTIAL`; no task or gate credit is added.
+
+## 2026-09-28 — WF-C6-006 web response frozen review GREEN
+
+- Fresh author-independent review returned GREEN with zero P0-P3 findings for exact base/live main/merge-base `494e14f515f0228b00b78fbefc1fd76a1a010c32` through clean head `8370b15bdd55d10ac7e505e5ac27af5b6623f2a4`.
+- The reviewer independently matched 14 paths / 93,073 binary-diff bytes / SHA-256 `894add348e49b92c252aaf4fedb13d94d856e94e87c772f2c6cd7cb65289d600`, below 400 KB. Clean start/end, diff whitespace, append-only prefixes and a closing no-drift fetch passed.
+- Both repaired browser races and the GET/UI/POST/writer revision, role/auth, tenant/self, privacy, replay, lock and stale-write contracts were reconfirmed. PR #471/#472 disjoint integrations, unchanged runtime/test blobs, i18n parity and the PR #470 production receipt were also verified.
+- Reviewer-side dependency-backed checks, real PostgreSQL, full typecheck/build, browser, Android, load, signed APK, physical-device and pilot were `NOT RUN`. Exact-head PR CI remains mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` and the review adds no credit.

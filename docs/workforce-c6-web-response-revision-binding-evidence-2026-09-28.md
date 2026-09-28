@@ -157,3 +157,28 @@ physical-device and pilot evidence remains `NOT RUN`. Progress stays `81/161`,
 The prior review is historical only. This receipt must be checkpointed and a
 fresh author-independent review of the resulting exact base/head pair must
 return GREEN before any push or PR.
+
+## Current-main frozen complete-diff review
+
+The fresh author-independent review returned GREEN with zero P0-P3 findings on
+exact base/live `origin/main`/merge-base
+`494e14f515f0228b00b78fbefc1fd76a1a010c32` through clean head
+`8370b15bdd55d10ac7e505e5ac27af5b6623f2a4`. It independently matched 14
+paths / 93,073 binary-diff bytes / SHA-256
+`894add348e49b92c252aaf4fedb13d94d856e94e87c772f2c6cd7cb65289d600`,
+below 400 KB, and its closing fetch confirmed that live main had not moved.
+
+The reviewer reconfirmed both repaired UI races, the complete
+GET/UI/POST/writer revision chain, role and tenant/self authorization, privacy,
+exact replay before lifecycle validation, canonical locking, stale-write
+rejection and the changed tests. PR #471 and PR #472 parentage and disjoint
+path sets, unchanged implementation blobs after both integrations, append-only
+history, i18n parity, package-lock identity and the inherited PR #470 deploy
+receipt/public artifact SHA were also verified. Progress and every `NOT RUN`
+claim remain truthful.
+
+Reviewer-side Vitest, ESLint, real PostgreSQL, full typecheck/build, browser
+E2E, Android/Gradle, load, signed APK, physical-device and pilot checks were
+`NOT RUN`; author checks were not relabelled. Exact-head PR CI is still
+mandatory. This receipt changes documentation only and requires a final
+receipt-integrity proof before push.

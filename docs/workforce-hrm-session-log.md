@@ -1053,3 +1053,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Before this receipt, the complete branch diff against current base/merge-base `494e14f515f0228b00b78fbefc1fd76a1a010c32` is 14 paths / 86,905 bytes / SHA-256 `e01a49280883e443fe8fef60853917e379db689be3fefbafe528f4626c149cc8`. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL`.
 - Precise stopping point: PR #472 current main is integrated and repeated local targeted verification is green; only this three-document append-only receipt is uncommitted and no current-base independent final review exists yet.
 - Next action: checkpoint the three receipt documents, freeze the exact new base/head identity and require a fresh author-independent complete-diff GREEN before push or PR.
+
+## 2026-09-28 — C6 web response binding current-main frozen review GREEN
+
+- Fresh author-independent review returned GREEN with zero P0-P3 findings on exact base/live `origin/main`/merge-base `494e14f515f0228b00b78fbefc1fd76a1a010c32` through clean head `8370b15bdd55d10ac7e505e5ac27af5b6623f2a4`.
+- The reviewer independently matched 14 paths / 93,073 binary-diff bytes / SHA-256 `894add348e49b92c252aaf4fedb13d94d856e94e87c772f2c6cd7cb65289d600`, below 400 KB. Clean start/end, diff whitespace, append-only prefixes and the closing remote no-drift check passed.
+- Both repaired P2 browser races and the complete GET/UI/POST/writer revision, auth, privacy, exact-replay, canonical-lock and stale-write semantics were reconfirmed. PR #471/#472 parentage and disjoint changes, unchanged implementation blobs, i18n parity, package-lock identity and inherited PR #470 production evidence also passed.
+- Reviewer-side Vitest, ESLint, real PostgreSQL, full typecheck/build, browser E2E, Android/Gradle, load, signed APK, physical-device and pilot checks were `NOT RUN`; author results were not relabelled. Exact-head PR CI remains mandatory.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` and no credit is added.
+- Precise stopping point: the exact current-base source/test/evidence checkpoint is independently GREEN; only this three-document review receipt is newly uncommitted and nothing is pushed.
+- Next action: checkpoint this receipt-only delta, independently prove all ten reviewed runtime/test blobs unchanged, then push/open the sub-400 KB PR and require every exact-head context including real PostgreSQL.
