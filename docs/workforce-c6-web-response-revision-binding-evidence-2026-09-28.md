@@ -182,3 +182,43 @@ E2E, Android/Gradle, load, signed APK, physical-device and pilot checks were
 `NOT RUN`; author checks were not relabelled. Exact-head PR CI is still
 mandatory. This receipt changes documentation only and requires a final
 receipt-integrity proof before push.
+
+## PR #473 production release
+
+The receipt-integrity review returned GREEN with zero P0-P3 findings at final
+head `f6e551a9918433d7b1f51f1690ab882d34d9f724`. The complete diff from exact
+base `494e14f515f0228b00b78fbefc1fd76a1a010c32` was 14 paths / 97,304
+binary-diff bytes / SHA-256
+`8307a4e723ae4e206a6a3ddecd24070b7fa83c7510a390220ee23db17e96b6ee`.
+Only the three append-only receipt documents differed from frozen-review head
+`8370b15bdd55d10ac7e505e5ac27af5b6623f2a4`; all ten reviewed runtime/test
+blobs remained byte-identical.
+
+Exact-head PR run `36394863256` passed `pr-scope`, `static-checks` and
+`typecheck`; the companion `runner-policy` and `scan` contexts also passed.
+`static-checks` completed in 14m22s and passed the real PostgreSQL Workforce
+shared-lock race gate plus the full unit baseline. `typecheck` completed in
+19m28s. The normal PR production-build job was skipped as designed.
+
+PR #473 merged normally at `2026-09-28T08:21:41Z` as main SHA
+`57853b89252972308c626409a504e147e1b5dbbf`. Deploy run `36396900111`
+completed GREEN at `2026-09-28T08:46:09Z`: quality/security passed in 11m38s,
+the SHA-bound standalone artifact was built and published in 18m44s, atomic
+production deploy plus scheduler/tenant-isolation/built-in public smokes passed
+in 5m06s, and artifact retention passed in 4s.
+
+Independent no-cache public reads returned HTTP 200 with `{"ok":true}` from
+`/api/v1/ping` and HTTP 200 with
+`{"sha":"57853b892529","artifactSha":"57853b89252972308c626409a504e147e1b5dbbf","builtAt":"2026-09-28T08:29:27Z"}`
+from `/api/v1/public/build-info`. Artifact SHA exactly matched merged main. The
+release used only GitHub `main` through `.github/workflows/deploy.yml`; no
+direct server deploy, worktree copy, Azure or retired target was used.
+
+Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot
+evidence remains `NOT RUN`. Progress stays `81/161`, `14/15`, C5 81%, C6 20%
+and C9 99%; WF-C6-006 remains `PARTIAL` and no task or gate credit is added.
+
+After the exact release smoke, main advanced through PR #475 and PR #474 to
+`09502d1c96b43e30ba6648c6a322cc8f3f01ac44`; the released merge is its
+ancestor. Work continues on clean successor branch
+`codex/workforce-exception-response-cycle-dedup` from that current main.

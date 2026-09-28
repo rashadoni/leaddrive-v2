@@ -25,6 +25,11 @@ export type WorkforceExceptionEmployeeResponseWriterDb = WorkforceExceptionLinke
       where: { organizationId: string; agentId: string; clientResponseId: string }
       select: { id: true; organizationId: true; caseId: true; agentId: true; workdayId: true; segmentId: true; correctionRequestId: true; responseCode: true; clientResponseId: true; actorUserId: true; observedCaseRevision: true }
     }) => Promise<StoredResponse | null>
+    findMany: (args: {
+      where: { organizationId: string; caseId: string; observedCaseRevision: number }
+      select: { id: true }
+      take: 1
+    }) => Promise<readonly { id: string }[]>
   }
   mtmHrmRequest: {
     findFirst: (args: {
@@ -198,6 +203,26 @@ async function appendAuthorizedWorkforceExceptionEmployeeResponseInternal(
         "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE",
       )
     }
+  }
+
+  // The case lock serializes every cooperating response writer for this
+  // lifecycle stream. Re-read the response cycle while holding it so a
+  // different operation id cannot append a second immutable response for the
+  // same presented revision. Do not alias this to idempotent success: that
+  // would leave the new operation id unbound and unsafe to reuse elsewhere.
+  const existingCycleResponse = await input.db.workforceExceptionEmployeeResponse.findMany({
+    where: {
+      organizationId: draft.organizationId,
+      caseId: draft.caseId,
+      observedCaseRevision,
+    },
+    select: { id: true },
+    take: 1,
+  })
+  if (existingCycleResponse.length > 0) {
+    throw new WorkforceExceptionEmployeeResponseWriterError(
+      "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    )
   }
 
   let created: CreatedResponse
