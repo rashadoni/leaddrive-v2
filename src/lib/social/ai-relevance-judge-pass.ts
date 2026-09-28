@@ -259,7 +259,9 @@ export async function judgeAmbiguousAliasRejections(options: {
       negativeTerms: candidate.subject.exclusions ?? [],
     }
     let confidence: number | null = null
-    let verdict: { verdict: AiRelevanceVerdict | null }
+    // `version` travels with the verdict into the live relevance evaluation,
+    // so the stored decision names which judge produced it.
+    let verdict: { verdict: AiRelevanceVerdict | null; version: string }
     if (result.provider === "jev") {
       const answer = await judgeSubjectRelevanceWithJev({
         ...common,
@@ -279,7 +281,7 @@ export async function judgeAmbiguousAliasRejections(options: {
       // measured that region as a coin flip — but it IS stamped, because the
       // answer will not change on a re-run and paying for it twice is waste.
       if (jevVerdictIsTrustworthy(answer) || answer.verdict !== "about_subject") {
-        verdict = answer
+        verdict = { verdict: answer.verdict, version: JEV_RELEVANCE_JUDGE_VERSION }
       } else {
         result.judged += 1
         result.belowThreshold += 1

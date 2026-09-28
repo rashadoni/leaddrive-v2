@@ -146,7 +146,8 @@ describe("what the brand is told about itself", () => {
     vi.stubGlobal("fetch", fetchMock)
 
     await judgeSubjectRelevanceWithJev({ ...INPUT, parentText: "Araz endirimləri" })
-    const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    const body = JSON.parse(String(init.body))
     expect(body.state.brand_operates_in).toEqual(["Azərbaycan"])
     expect(body.state.brand_languages).toEqual(["az", "ru"])
     expect(body.state.parent_publication).toBe("Araz endirimləri")
