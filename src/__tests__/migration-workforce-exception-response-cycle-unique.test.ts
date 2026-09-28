@@ -16,8 +16,19 @@ const stateSql = readFileSync(
 )
 const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8")
 const deploy = readFileSync(join(root, "scripts/server-deploy.sh"), "utf8")
+const roleDefaultsReconciler = readFileSync(
+  join(root, "scripts/reconcile-migration-role-defaults.sh"),
+  "utf8",
+)
+const roleProvisioner = readFileSync(
+  join(root, "ops/migration/provision-self-hosted.sh"),
+  "utf8",
+)
 const migrationChecksum = createHash("sha256").update(migration).digest("hex")
 const stateSqlChecksum = createHash("sha256").update(stateSql).digest("hex")
+const roleDefaultsReconcilerChecksum = createHash("sha256")
+  .update(roleDefaultsReconciler)
+  .digest("hex")
 
 function executableSql(source: string): string {
   return source.replace(/^--.*$/gmu, "").trim()
@@ -74,6 +85,9 @@ describe("Workforce exception response-cycle unique migration", () => {
     expect(deploy).toContain(
       'WORKFORCE_RESPONSE_CYCLE_UNIQUE_EXPECTED_TIMEOUT_STATE="10s|14min"',
     )
+    expect(deploy).toContain(
+      `MIGRATION_ROLE_DEFAULTS_RECONCILER_CHECKSUM="${roleDefaultsReconcilerChecksum}"`,
+    )
   })
 
   it("fences globally twice and verifies the exact postcondition before PM2", () => {
@@ -90,6 +104,7 @@ describe("Workforce exception response-cycle unique migration", () => {
 
     const preflightAt = deploy.indexOf("\npreflight_workforce_response_cycle_unique\n")
     const backupAt = deploy.indexOf('log "Creating backup..."')
+    const reconcileAt = deploy.indexOf("\nrun_migration_role_defaults_reconciler\n")
     const beforeMigrateAt = deploy.indexOf(
       "\nverify_workforce_response_cycle_unique_before_migrate\n",
     )
@@ -118,6 +133,9 @@ describe("Workforce exception response-cycle unique migration", () => {
     const pm2At = deploy.indexOf('log "Starting PM2..."')
 
     expect(preflightAt).toBeGreaterThan(-1)
+    expect(reconcileAt).toBeGreaterThan(-1)
+    expect(reconcileAt).toBeLessThan(preflightAt)
+    expect(reconcileAt).toBeLessThan(backupAt)
     expect(preflightAt).toBeLessThan(backupAt)
     expect(beforeMigrateAt).toBeGreaterThan(backupAt)
     expect(beforeMigrateFunctionAt).toBeGreaterThan(-1)
@@ -134,6 +152,49 @@ describe("Workforce exception response-cycle unique migration", () => {
       'PGOPTIONS="$WORKFORCE_RESPONSE_CYCLE_UNIQUE_MIGRATE_PGOPTIONS" DATABASE_URL="$MIGRATION_DATABASE_URL" npx prisma migrate deploy',
     )
     expect(deploy).not.toContain("ALTER ROLE CURRENT_USER")
+  })
+
+  it("reconciles only accepted legacy role defaults and preserves a read-only preflight", () => {
+    expect(roleDefaultsReconciler).toContain("--check|--reconcile")
+    expect(roleDefaultsReconciler).toContain("env -u PGOPTIONS")
+    expect(roleDefaultsReconciler).toContain("0|10s")
+    expect(roleDefaultsReconciler).toContain("0|14min")
+    expect(roleDefaultsReconciler).toContain(
+      "refusing to replace unexpected lock_timeout",
+    )
+    expect(roleDefaultsReconciler).toContain(
+      "refusing to replace unexpected statement_timeout",
+    )
+    expect(roleDefaultsReconciler).toContain(
+      "ALTER ROLE %I IN DATABASE %I SET lock_timeout = %L",
+    )
+    expect(roleDefaultsReconciler).toContain(
+      "ALTER ROLE %I IN DATABASE %I SET statement_timeout = %L",
+    )
+    expect(roleDefaultsReconciler).toContain(
+      "current_user <> session_user",
+    )
+    expect(roleDefaultsReconciler).not.toMatch(/PASSWORD|DELETE|DROP|TRUNCATE/iu)
+
+    expect(deploy).toContain('mode="--check"')
+    expect(deploy).toContain('mode="--reconcile"')
+    expect(deploy).toContain(
+      'tar -xOzf "$DEPLOY_TAR" "./$MIGRATION_ROLE_DEFAULTS_RECONCILER"',
+    )
+    expect(deploy).toContain("migration-role server defaults failed $mode")
+  })
+
+  it("verifies every timeout installed by the canonical role provisioner", () => {
+    expect(roleProvisioner).toContain(
+      "setting = '10000' AND unit = 'ms'",
+    )
+    expect(roleProvisioner).toContain(
+      "setting = '840000' AND unit = 'ms'",
+    )
+    expect(roleProvisioner).toContain(
+      "setting = '60000' AND unit = 'ms'",
+    )
+    expect(roleProvisioner).toContain("ROLE_LOCK_OK ROLE_STATEMENT_OK ROLE_IDLE_OK")
   })
 
   it("keeps the exact 23505 artifact recoverable without automatic data repair", () => {

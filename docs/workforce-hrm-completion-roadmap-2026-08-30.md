@@ -1407,3 +1407,34 @@ from this worktree.
 - Reviewer dependency-backed and heavy checks remained `NOT RUN`; author checks remain separately labelled. Progress stays `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: the corrected source/migration/test/evidence head has valid independent GREEN; only this three-document review receipt is uncommitted.
 - Next action: checkpoint the receipt, independently prove all five reviewed implementation blobs unchanged and verify the final diff identity, then push/open the sub-400 KB PR and require every exact-head context including real PostgreSQL.
+
+## 2026-09-28 — PR #480 merged; deploy failed closed on migration-role defaults
+
+- Final independent receipt-integrity review was GREEN with zero P0-P3 on head `33ea0c353c0be61f837e48a389cc0d7125a05826`; nine paths / 66,513 plain-binary bytes / SHA-256 `4ee528b7b8f08fee4ce990bff8047fc19b02202f6754ce141f3aa3275eec6c14`.
+- Exact-head PR CI passed scope, static/unit and real PostgreSQL Workforce recovery gates, typecheck, runner policy, scan and tenant-cascade integration. PR #480 merged at `2026-09-28T13:36:58Z` as main `4f9d0d715b201ca7b4226fb301d1d3bddbbd2c8d`.
+- Deploy run `36429869791` passed quality/security and the SHA-bound production build. Its atomic step proved zero response-cycle duplicates and clean ledger/index state, then stopped before Prisma because a fresh migration-role session was not exact `10s|14min`. The previous standalone was restored and PM2 remained unchanged.
+- Independent exact-IP public reads returned HTTP 200 ping and prior live `artifactSha=29fb2234866c28dd101ad0abaedf8da0548c678e`; the failed release never served production traffic. Workflow smokes for the new SHA were skipped and are not claimed.
+- Failure audit found P0=0, P1=1, P2=2 and P3=1: no supported existing-role reconciliation path, incomplete provisioner postcondition, late detection and weak safe diagnostics. The exact observed timeout pair remains unknown because the log did not emit it and direct SSH was unavailable.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL`. A merged-but-not-deployed migration adds no roadmap credit.
+- Precise stopping point: production safely remains on `29fb223...`; a clean remediation branch now starts from merged main `4f9d0d...`.
+- Next action: review, CI and release the exact bounded migration-role defaults reconciliation, then rerun the unchanged uniqueness migration and exact-SHA public smoke.
+
+## 2026-09-28 — migration-role defaults reconciliation working checkpoint
+
+- Added one SHA-256-pinned artifact helper. A normal exact-main deploy runs it before backup/extraction; preflight-only runs its read-only check mode. It accepts only legacy `0` or the reviewed `10s`/`14min` values, refuses every other nonzero setting, alters only the connected role in the connected database, verifies a fresh no-`PGOPTIONS` session, and never prints the URL.
+- The immediate pre-Prisma role-default check remains unchanged as an independent TOCTOU postcondition. Data repair, index drop, migration resolve and tenant-row mutation remain forbidden.
+- The canonical provisioner now verifies lock, statement and idle-in-transaction defaults rather than only lock timeout. The PostgreSQL harness now covers an unexpected 5s refusal, legacy transition, idempotence, database-specific scope, application-role non-mutation and ordinary Prisma execution.
+- Shell syntax and whitespace pass. Dependency-backed unit/ESLint, real PostgreSQL, full typecheck/build, browser, Android, load, signed APK, physical-device and pilot are `NOT RUN` at this working checkpoint; exact-head CI is mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: remediation source/tests/runbook/evidence are present in the working tree on `codex/workforce-migration-role-timeout-reconcile`; no checkpoint or frozen independent implementation review exists yet.
+- Next action: finish targeted verification, checkpoint explicit paths, obtain a fresh author-independent complete-diff GREEN, then open the sub-400 KB PR.
+
+## 2026-09-28 — migration-role defaults replacement preflight GREEN
+
+- The first remediation preflight was RED only for two P3 evidence gaps: missing explicit supersession of old no-repair wording and no executable real-PostgreSQL `--check` proof. Both are corrected without changing the helper, deploy or provisioner blobs.
+- Fresh author-independent replacement review is GREEN with P0=P1=P2=P3=0. It confirmed ordinary-role self-default authority, atomic `DO`, strict nonzero refusal, artifact/hash binding, check/reconcile ordering, preflight non-mutation, safe logging, database/application-role scope and unchanged pre-Prisma gate.
+- The database harness now executes legacy and partial `--check` failure without catalog mutation, separate unexpected lock and statement refusal, accepted partial reconciliation, exact `--check` success without catalog mutation, idempotence and Prisma inheritance.
+- Local focused results are 20 static files / 100 tests PASS, 15 real-PG scenarios discovered but `SKIPPED / NOT RUN`, targeted ESLint PASS, `bash -n` PASS, whitespace PASS and event-platform assets PASS. Full local typecheck/build and all browser/Android/load/device/pilot evidence remain `NOT RUN`; exact-head CI is mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: the complete working diff is independently GREEN; only this append-only review receipt remains uncommitted.
+- Next action: checkpoint all explicit remediation paths, freeze exact base/head identity, obtain receipt-integrity review, then push/open the sub-400 KB PR.

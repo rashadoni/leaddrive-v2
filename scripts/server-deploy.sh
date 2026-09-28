@@ -4133,6 +4133,8 @@ WORKFORCE_RESPONSE_CYCLE_UNIQUE_MIGRATION_CHECKSUM="bc9c3346fd44151634990b9f7df9
 WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL="prisma/verification/workforce-exception-response-cycle-unique-state.sql"
 WORKFORCE_RESPONSE_CYCLE_UNIQUE_STATE_SQL_CHECKSUM="bd59a9add36d0212968d35930a43b3e8b3ff0fc8bcc60c61e41078b31818535d"
 WORKFORCE_RESPONSE_CYCLE_UNIQUE_EXPECTED_TIMEOUT_STATE="10s|14min"
+MIGRATION_ROLE_DEFAULTS_RECONCILER="scripts/reconcile-migration-role-defaults.sh"
+MIGRATION_ROLE_DEFAULTS_RECONCILER_CHECKSUM="c3661ee726985aaf8da8a29cda90366d0bd2e03107e62d9cc9567ca67433536f"
 WORKFORCE_RESPONSE_CYCLE_UNIQUE_PREFLIGHT_STATE=""
 WORKFORCE_RESPONSE_CYCLE_UNIQUE_PRE_MIGRATE_STATE=""
 WORKFORCE_RESPONSE_CYCLE_UNIQUE_POST_MIGRATE_STATE=""
@@ -4281,6 +4283,39 @@ run_workforce_response_cycle_unique_state_from_file() {
     -c "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;" \
     -c "SET LOCAL row_security = off; SET LOCAL lock_timeout = '1s'; SET LOCAL statement_timeout = '2min'; SET LOCAL work_mem = '4MB';" \
     -f "$state_sql" -c "COMMIT;" 2>/dev/null
+}
+
+run_migration_role_defaults_reconciler() {
+  local mode helper checksum
+  helper="$(mktemp /tmp/leaddrive-migration-role-defaults.XXXXXX)" || \
+    fatal "cannot allocate migration-role defaults helper"
+  if ! tar -xOzf "$DEPLOY_TAR" "./$MIGRATION_ROLE_DEFAULTS_RECONCILER" \
+      >"$helper" 2>/dev/null; then
+    rm -f -- "$helper"
+    fatal "staged artifact has no migration-role defaults reconciler"
+  fi
+  checksum="$(sha256sum "$helper" | awk '{print $1}')" || {
+    rm -f -- "$helper"
+    fatal "cannot hash staged migration-role defaults reconciler"
+  }
+  if [ "$checksum" != "$MIGRATION_ROLE_DEFAULTS_RECONCILER_CHECKSUM" ]; then
+    rm -f -- "$helper"
+    fatal "staged migration-role defaults reconciler differs from the reviewed artifact"
+  fi
+
+  if [ "${DEPLOY_PREFLIGHT_ONLY:-0}" = "1" ]; then
+    mode="--check"
+  else
+    mode="--reconcile"
+  fi
+  if ! env -u PGOPTIONS \
+      MIGRATION_DATABASE_URL="$MIGRATION_DATABASE_URL" \
+      MIGRATION_EXPECTED_DB_ROLE="$MIGRATION_EXPECTED_DB_ROLE" \
+      bash "$helper" "$mode"; then
+    rm -f -- "$helper"
+    fatal "migration-role server defaults failed $mode"
+  fi
+  rm -f -- "$helper"
 }
 
 verify_workforce_response_cycle_unique_artifacts_from_tar() {
@@ -4549,6 +4584,7 @@ load_dotenv_file "$MIGRATION_ENV_FILE" migration
 require_env MIGRATION_DATABASE_URL
 require_env MIGRATION_EXPECTED_DB_ROLE
 validate_database_roles
+run_migration_role_defaults_reconciler
 
 # A browser-to-provider socket outlives a PM2 restart. Refuse activation while
 # any recently heartbeating browser session is active, so an old provider

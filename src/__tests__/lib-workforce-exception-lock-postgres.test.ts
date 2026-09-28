@@ -85,6 +85,30 @@ function applicationDatabaseUrl(): string {
   return url.toString()
 }
 
+function migrationRolePsqlUrl(): string {
+  const url = new URL(databaseUrlForRole(migrationLoginRole, migrationLoginPassword))
+  url.searchParams.delete("schema")
+  return url.toString()
+}
+
+function runMigrationRoleDefaultsReconciler(
+  mode: "--check" | "--reconcile",
+): ReturnType<typeof spawnSync> {
+  return spawnSync(
+    "bash",
+    [join(process.cwd(), "scripts/reconcile-migration-role-defaults.sh"), mode],
+    {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        MIGRATION_DATABASE_URL: migrationRolePsqlUrl(),
+        MIGRATION_EXPECTED_DB_ROLE: migrationLoginRole,
+      },
+      encoding: "utf8",
+    },
+  )
+}
+
 function runPrismaMigrationCommand(
   migrationProject: string,
   args: readonly string[],
@@ -164,15 +188,175 @@ postgresDescribe("Workforce exception shared lock (real PostgreSQL)", () => {
       LOGIN NOSUPERUSER BYPASSRLS PASSWORD '${migrationLoginPassword}'
     `)
     await observer.$executeRawUnsafe(`
-      ALTER ROLE "${migrationLoginRole}" SET lock_timeout = '10s'
-    `)
-    await observer.$executeRawUnsafe(`
-      ALTER ROLE "${migrationLoginRole}" SET statement_timeout = '14min'
-    `)
-    await observer.$executeRawUnsafe(`
       CREATE ROLE "${applicationRole}"
       LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD '${applicationPassword}'
     `)
+
+    // Prove the exact production reconciliation program fails closed on an
+    // unreviewed nonzero value, upgrades only the legacy defaults, and is
+    // idempotent. Prisma clients are opened only after the fresh-session proof.
+    const legacyDefaultsCheck = runMigrationRoleDefaultsReconciler("--check")
+    expect(legacyDefaultsCheck.status).not.toBe(0)
+    expect(`${legacyDefaultsCheck.stdout}\n${legacyDefaultsCheck.stderr}`).toContain(
+      "observed lock_timeout=0 statement_timeout=0",
+    )
+    const [legacyDefaultScope] = await observer.$queryRawUnsafe<Array<{
+      migrationSettings: bigint
+      applicationSettings: bigint
+    }>>(`
+      SELECT
+        count(*) FILTER (WHERE settings.setrole = migration_role.oid)::bigint
+          AS "migrationSettings",
+        count(*) FILTER (WHERE settings.setrole = application_role.oid)::bigint
+          AS "applicationSettings"
+      FROM pg_db_role_setting settings
+      CROSS JOIN pg_roles migration_role
+      CROSS JOIN pg_roles application_role
+      WHERE migration_role.rolname = $1
+        AND application_role.rolname = $2
+    `, migrationLoginRole, applicationRole)
+    expect(legacyDefaultScope).toEqual({
+      migrationSettings: 0n,
+      applicationSettings: 0n,
+    })
+
+    await observer.$executeRawUnsafe(`
+      ALTER ROLE "${migrationLoginRole}" SET lock_timeout = '5s'
+    `)
+    const refusedDefaults = runMigrationRoleDefaultsReconciler("--reconcile")
+    expect(refusedDefaults.status).not.toBe(0)
+    expect(`${refusedDefaults.stdout}\n${refusedDefaults.stderr}`).toContain(
+      "refusing to replace unexpected lock_timeout=5s",
+    )
+    expect(`${refusedDefaults.stdout}\n${refusedDefaults.stderr}`).not.toContain(
+      migrationLoginPassword,
+    )
+    await observer.$executeRawUnsafe(`
+      ALTER ROLE "${migrationLoginRole}" RESET lock_timeout
+    `)
+
+    await observer.$executeRawUnsafe(`
+      ALTER ROLE "${migrationLoginRole}" SET statement_timeout = '5s'
+    `)
+    const refusedStatementDefaults = runMigrationRoleDefaultsReconciler("--reconcile")
+    expect(refusedStatementDefaults.status).not.toBe(0)
+    expect(`${refusedStatementDefaults.stdout}\n${refusedStatementDefaults.stderr}`).toContain(
+      "refusing to replace unexpected statement_timeout=5s",
+    )
+    await observer.$executeRawUnsafe(`
+      ALTER ROLE "${migrationLoginRole}" RESET statement_timeout
+    `)
+
+    await observer.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        EXECUTE format(
+          'ALTER ROLE %I IN DATABASE %I SET lock_timeout = %L',
+          '${migrationLoginRole}',
+          current_database(),
+          '10s'
+        );
+      END;
+      $$
+    `)
+    const partialDefaultsCheck = runMigrationRoleDefaultsReconciler("--check")
+    expect(partialDefaultsCheck.status).not.toBe(0)
+    expect(`${partialDefaultsCheck.stdout}\n${partialDefaultsCheck.stderr}`).toContain(
+      "observed lock_timeout=10s statement_timeout=0",
+    )
+    const [partialDefaultState] = await observer.$queryRawUnsafe<Array<{
+      setconfig: string[]
+    }>>(`
+      SELECT settings.setconfig
+      FROM pg_db_role_setting settings
+      JOIN pg_roles role ON role.oid = settings.setrole
+      JOIN pg_database database ON database.oid = settings.setdatabase
+      WHERE role.rolname = $1
+        AND database.datname = current_database()
+    `, migrationLoginRole)
+    expect(partialDefaultState.setconfig).toEqual(["lock_timeout=10s"])
+
+    const reconciledDefaults = runMigrationRoleDefaultsReconciler("--reconcile")
+    if (reconciledDefaults.status !== 0) {
+      throw new Error(
+        `Migration-role defaults reconciliation failed\n${reconciledDefaults.stdout}\n${reconciledDefaults.stderr}`,
+      )
+    }
+    expect(reconciledDefaults.stdout).toContain(
+      "fresh-session reconciliation postcondition passed: lock_timeout=10s statement_timeout=14min",
+    )
+    const [exactDefaultsBeforeCheck] = await observer.$queryRawUnsafe<Array<{
+      setconfig: string[]
+    }>>(`
+      SELECT settings.setconfig
+      FROM pg_db_role_setting settings
+      JOIN pg_roles role ON role.oid = settings.setrole
+      JOIN pg_database database ON database.oid = settings.setdatabase
+      WHERE role.rolname = $1
+        AND database.datname = current_database()
+    `, migrationLoginRole)
+    const exactDefaultsCheck = runMigrationRoleDefaultsReconciler("--check")
+    if (exactDefaultsCheck.status !== 0) {
+      throw new Error(
+        `Exact migration-role defaults check failed\n${exactDefaultsCheck.stdout}\n${exactDefaultsCheck.stderr}`,
+      )
+    }
+    expect(exactDefaultsCheck.stdout).toContain(
+      "fresh-session defaults verified: lock_timeout=10s statement_timeout=14min",
+    )
+    const [exactDefaultsAfterCheck] = await observer.$queryRawUnsafe<Array<{
+      setconfig: string[]
+    }>>(`
+      SELECT settings.setconfig
+      FROM pg_db_role_setting settings
+      JOIN pg_roles role ON role.oid = settings.setrole
+      JOIN pg_database database ON database.oid = settings.setdatabase
+      WHERE role.rolname = $1
+        AND database.datname = current_database()
+    `, migrationLoginRole)
+    expect(exactDefaultsAfterCheck).toEqual(exactDefaultsBeforeCheck)
+
+    const idempotentDefaults = runMigrationRoleDefaultsReconciler("--reconcile")
+    if (idempotentDefaults.status !== 0) {
+      throw new Error(
+        `Idempotent migration-role defaults reconciliation failed\n${idempotentDefaults.stdout}\n${idempotentDefaults.stderr}`,
+      )
+    }
+    expect(idempotentDefaults.stdout).toContain(
+      "fresh-session defaults already exact; no configuration changed",
+    )
+
+    const [roleDefaultScope] = await observer.$queryRawUnsafe<Array<{
+      migrationDatabaseSettings: bigint
+      migrationGlobalSettings: bigint
+      applicationSettings: bigint
+    }>>(`
+      SELECT
+        count(*) FILTER (
+          WHERE settings.setrole = migration_role.oid
+            AND settings.setdatabase = (
+              SELECT oid FROM pg_database WHERE datname = current_database()
+            )
+        )::bigint AS "migrationDatabaseSettings",
+        count(*) FILTER (
+          WHERE settings.setrole = migration_role.oid
+            AND settings.setdatabase = 0
+        )::bigint AS "migrationGlobalSettings",
+        count(*) FILTER (
+          WHERE settings.setrole = application_role.oid
+        )::bigint AS "applicationSettings"
+      FROM pg_db_role_setting settings
+      CROSS JOIN pg_roles migration_role
+      CROSS JOIN pg_roles application_role
+      WHERE migration_role.rolname = $1
+        AND application_role.rolname = $2
+    `, migrationLoginRole, applicationRole)
+    expect(roleDefaultScope).toEqual({
+      migrationDatabaseSettings: 1n,
+      migrationGlobalSettings: 0n,
+      applicationSettings: 0n,
+    })
+
     await observer.$executeRawUnsafe(`
       GRANT "${migrationOwnerRole}" TO "${migrationLoginRole}"
     `)
