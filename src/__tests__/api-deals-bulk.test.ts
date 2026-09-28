@@ -20,6 +20,7 @@ vi.mock("@/lib/prisma", () => ({
 // handed to the recorder; the recorder itself is unit-tested separately.
 vi.mock("@/lib/revenue-intelligence/transition-recorder", () => ({
   recordStageTransitionsForDeals: vi.fn().mockResolvedValue(0),
+  recordStageTransition: vi.fn().mockResolvedValue(0),
 }))
 
 // Delete branch fires clearTaskRelationsMany (fire-and-forget task back-ref cleanup,
@@ -38,10 +39,22 @@ vi.mock("@/lib/webhooks", () => ({
   fireWebhooks: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Roadmap C1.13: the two write actions run the shared command once per deal,
+// so the route's contract is what it asks the command to do. The command's own
+// behaviour — stage transitions, cashback, surveys, loyalty, notifications —
+// is covered where the command is tested.
+const commandMock = vi.hoisted(() => ({ updateDeal: vi.fn(async () => ({ entity: { id: "d1" } })) }))
+vi.mock("@/lib/crm-commands/deal/update-deal", async (importOriginal) => {
+  // The real error classes stay real: the route branches on them.
+  const actual = await importOriginal<typeof import("@/lib/crm-commands/deal/update-deal")>()
+  return { ...actual, updateDealCommand: commandMock.updateDeal }
+})
+
 import { POST } from "@/app/api/v1/deals/bulk/route"
-import { prisma } from "@/lib/prisma"
+import { prisma, logAudit } from "@/lib/prisma"
+import { CrmCommandError } from "@/lib/crm-commands/errors"
+import { DealStageValidationError } from "@/lib/crm-commands/deal/update-deal"
 import { requireAuth, isAuthError } from "@/lib/api-auth"
-import { recordStageTransitionsForDeals } from "@/lib/revenue-intelligence/transition-recorder"
 
 function makeRequest(body: any) {
   return new Request("http://localhost/api/v1/deals/bulk", {
@@ -51,6 +64,8 @@ function makeRequest(body: any) {
 }
 
 beforeEach(() => {
+  commandMock.updateDeal.mockReset()
+  commandMock.updateDeal.mockResolvedValue({ entity: { id: "d1" } })
   vi.clearAllMocks()
   vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "u-1", role: "admin" } as any)
   vi.mocked(isAuthError).mockReturnValue(false)
@@ -90,34 +105,43 @@ describe("POST /api/v1/deals/bulk → action: update_stage", () => {
     expect(prisma.deal.updateMany).not.toHaveBeenCalled()
   })
 
-  it("writes new stage + bumps stageChangedAt, scoped to deals not already there", async () => {
+  // Moving twenty deals into the won stage used to pay no cashback, send no
+  // survey, award no loyalty and notify nobody — none of which is true of one
+  // deal moved by hand. The command is what makes the two the same feature.
+  it("runs the shared command once per deal, never a bare updateMany", async () => {
     const res = await POST(makeRequest({ ids: ["d1", "d2", "d3"], action: "update_stage", value: "NEGOTIATION" }))
     expect(res.status).toBe(200)
-    const call = vi.mocked(prisma.deal.updateMany).mock.calls[0][0] as any
-    expect(call.data.stage).toBe("NEGOTIATION")
-    expect(call.data.stageChangedAt).toBeInstanceOf(Date)
-    expect(call.where.organizationId).toBe("org-1")
-    // No-op moves are excluded so stageChangedAt isn't bumped pointlessly.
-    expect(call.where.stage).toEqual({ not: "NEGOTIATION" })
+    expect(commandMock.updateDeal).toHaveBeenCalledTimes(3)
+    expect(commandMock.updateDeal).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: "org-1", source: "rest" }),
+      "d1",
+      { stage: "NEGOTIATION" },
+    )
+    expect(prisma.deal.updateMany).not.toHaveBeenCalled()
+    expect(await res.json()).toMatchObject({ affected: 3, failed: [] })
   })
 
-  it("records a stage transition per moved deal (waterfall parity)", async () => {
-    vi.mocked(prisma.deal.findMany).mockResolvedValueOnce([
-      { id: "d1", stage: "PROPOSAL", valueAmount: 1000, currency: "AZN", pipelineId: "p1", stageChangedAt: new Date("2026-01-01") },
-      { id: "d2", stage: "LEAD", valueAmount: 500, currency: "USD", pipelineId: null, stageChangedAt: null },
-    ] as any)
+  it("reports what actually moved, and what did not", async () => {
+    commandMock.updateDeal
+      .mockResolvedValueOnce({ entity: { id: "d1" } })
+      .mockRejectedValueOnce(new CrmCommandError("NOT_FOUND", "Deal not found", 404))
 
-    const res = await POST(makeRequest({ ids: ["d1", "d2"], action: "update_stage", value: "NEGOTIATION" }))
+    const res = await POST(makeRequest({ ids: ["d1", "d2"], action: "update_stage", value: "WON" }))
+    expect(await res.json()).toMatchObject({ affected: 1, failed: [{ id: "d2", code: "NOT_FOUND" }] })
+    expect(logAudit).toHaveBeenCalledWith(
+      "org-1", "bulk_update", "deal", "d1,d2",
+      expect.stringContaining("Moved 1 deals"),
+      expect.objectContaining({ userId: "u-1" }),
+    )
+  })
+
+  // A stage transition blocked by that stage's validation rules is a refusal,
+  // not a silent skip: it comes back named.
+  it("surfaces a stage the pipeline rules refuse", async () => {
+    commandMock.updateDeal.mockRejectedValue(new DealStageValidationError([{ field: "valueAmount", message: "required" }]))
+    const res = await POST(makeRequest({ ids: ["d1"], action: "update_stage", value: "WON" }))
     expect(res.status).toBe(200)
-    expect(recordStageTransitionsForDeals).toHaveBeenCalledOnce()
-    const arg = vi.mocked(recordStageTransitionsForDeals).mock.calls[0][1] as any
-    expect(arg.organizationId).toBe("org-1")
-    expect(arg.toStage).toBe("NEGOTIATION")
-    expect(arg.actorUserId).toBe("u-1")
-    expect(arg.deals).toEqual([
-      { id: "d1", fromStage: "PROPOSAL", amount: 1000, currency: "AZN", pipelineId: "p1", priorStageChangedAt: new Date("2026-01-01") },
-      { id: "d2", fromStage: "LEAD", amount: 500, currency: "USD", pipelineId: null, priorStageChangedAt: null },
-    ])
+    expect(await res.json()).toMatchObject({ affected: 0, failed: [{ id: "d1", code: "INTERNAL" }] })
   })
 })
 
@@ -125,16 +149,14 @@ describe("POST /api/v1/deals/bulk → action: reassign", () => {
   it("assigns to specified user", async () => {
     const res = await POST(makeRequest({ ids: ["d1"], action: "reassign", value: "u-42" }))
     expect(res.status).toBe(200)
-    const call = vi.mocked(prisma.deal.updateMany).mock.calls[0][0] as any
-    expect(call.data.assignedTo).toBe("u-42")
+    expect(commandMock.updateDeal).toHaveBeenCalledWith(expect.anything(), "d1", { assignedTo: "u-42" })
   })
 
   it("unassigns when value is empty string (clear ownership)", async () => {
     const res = await POST(makeRequest({ ids: ["d1"], action: "reassign", value: "" }))
     expect(res.status).toBe(200)
-    const call = vi.mocked(prisma.deal.updateMany).mock.calls[0][0] as any
     // `value: ""` → null on the DB (architect-cleared FK semantics)
-    expect(call.data.assignedTo).toBe(null)
+    expect(commandMock.updateDeal).toHaveBeenCalledWith(expect.anything(), "d1", { assignedTo: null })
   })
 })
 

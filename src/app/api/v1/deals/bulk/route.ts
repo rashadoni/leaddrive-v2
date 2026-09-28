@@ -5,10 +5,9 @@ import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
 import { fireWebhooks } from "@/lib/webhooks"
-import { decimalToNumber } from "@/lib/prisma-decimal"
-import { recordStageTransitionsForDeals } from "@/lib/revenue-intelligence/transition-recorder"
-import { wonStageNames, lostStageNames } from "@/lib/marketing-attribution/won-stages"
-import { autoExitSequenceEnrollments } from "@/lib/sequence-auto-exit"
+import { updateDealCommand } from "@/lib/crm-commands/deal/update-deal"
+import { createRestActorContext } from "@/lib/crm-commands/actor-context"
+import { CrmCommandError } from "@/lib/crm-commands/errors"
 
 /**
  * Bulk-actions endpoint for the deals list page.
@@ -26,6 +25,29 @@ import { autoExitSequenceEnrollments } from "@/lib/sequence-auto-exit"
  * so a forged id from another tenant is silently dropped (no error leak).
  */
 
+type BulkFailure = { id: string; code: string }
+
+/** Run one command per deal, and report honestly what happened to each. */
+async function applyToEach(
+  ids: readonly string[],
+  actor: ReturnType<typeof createRestActorContext>,
+  data: Record<string, unknown>,
+): Promise<{ updated: number; failures: BulkFailure[] }> {
+  let updated = 0
+  const failures: BulkFailure[] = []
+  for (const id of ids) {
+    try {
+      await updateDealCommand(actor, id, data)
+      updated += 1
+    } catch (error) {
+      const code = error instanceof CrmCommandError ? error.code : "INTERNAL"
+      if (!(error instanceof CrmCommandError)) console.error("[Deals Bulk]", id, error)
+      failures.push({ id, code })
+    }
+  }
+  return { updated, failures }
+}
+
 const bulkSchema = z.object({
   ids: z.array(z.string()).min(1).max(100),
   action: z.enum(["delete", "update_stage", "reassign"]),
@@ -42,6 +64,12 @@ export const POST = withRlsAuth("deals", "write", async (req: NextRequest, authR
   }
 
   const { ids, action, value } = parsed.data
+  const actor = createRestActorContext({
+    organizationId: orgId,
+    userId: authResult.userId,
+    role: authResult.role,
+    requestId: req.headers.get("x-request-id"),
+  })
 
   try {
     const where = { id: { in: ids }, organizationId: orgId }
@@ -71,93 +99,32 @@ export const POST = withRlsAuth("deals", "write", async (req: NextRequest, authR
         if (!value) {
           return NextResponse.json({ error: "value (stage) is required for update_stage" }, { status: 400 })
         }
-        // Stage values are pipeline-defined, free-form text — no enum to
-        // check here. The Deal model uses `stage: String`.
+        // Roadmap C1.13, 2026-09-28: one `updateDealCommand` per deal, the
+        // same command the single-deal PUT and a voice receipt run.
         //
-        // Only touch deals NOT already in the target stage so (a) we don't
-        // bump stageChangedAt on no-op moves and (b) result.count reflects
-        // the deals that genuinely moved.
-        const moveWhere = { ...where, stage: { not: value } }
-        // Snapshot prior state BEFORE the write so A12 can emit one
-        // pipeline_stage_transitions row per real move (single-deal PUT
-        // path does the same — keep bulk + single in parity so the
-        // waterfall / velocity dashboards see every movement).
-        const moving = await prisma.deal.findMany({
-          where: moveWhere,
-          select: {
-            id: true,
-            stage: true,
-            valueAmount: true,
-            currency: true,
-            pipelineId: true,
-            stageChangedAt: true,
-            contactId: true,
-          },
+        // The bespoke version recorded stage transitions and exited cadences,
+        // and stopped there. Moving twenty deals into the won stage therefore
+        // paid no cashback, sent no satisfaction survey, awarded no loyalty
+        // points, notified nobody, marked no attribution model for recompute
+        // and wrote no activity row — all of which one deal moved by hand
+        // does. A bulk action that is a different feature from the button
+        // beside it is the defect; the command is the fix.
+        const { updated, failures } = await applyToEach(ids, actor, { stage: value })
+        logAudit(orgId, "bulk_update", "deal", ids.join(","), `Moved ${updated} deals to stage "${value}"`, {
+          userId: authResult.userId ?? undefined,
         })
-        const result = await prisma.deal.updateMany({
-          where: moveWhere,
-          data: { stage: value, stageChangedAt: new Date() },
-        })
-        logAudit(orgId, "bulk_update", "deal", ids.join(","), `Moved ${result.count} deals to stage "${value}"`)
-        // A12 Revenue Intelligence — record transitions (fire-and-forget).
-        // Errors are logged inside the helper; never block the response.
-        recordStageTransitionsForDeals(prisma, {
-          organizationId: orgId,
-          toStage: value,
-          actorUserId: authResult.userId,
-          deals: moving.map(
-            (d: {
-              id: string
-              stage: string
-              valueAmount: unknown
-              currency: string | null
-              pipelineId: string | null
-              stageChangedAt: Date | null
-            }) => ({
-              id: d.id,
-              fromStage: d.stage,
-              amount: decimalToNumber(d.valueAmount),
-              currency: d.currency ?? "AZN",
-              pipelineId: d.pipelineId,
-              priorStageChangedAt: d.stageChangedAt,
-            }),
-          ),
-        }).catch(() => {
-          /* fire-and-forget — recordStageTransitionsForDeals logs internally */
-        })
-        // Cadence auto-exit: bulk move into a closed (won/lost) stage — stop
-        // sequence enrollments of the moved deals' contacts. Same semantics as
-        // the single-deal PUT hook; fire-and-forget, never blocks the response.
-        try {
-          const [wonSet, lostSet] = await Promise.all([wonStageNames(orgId), lostStageNames(orgId)])
-          const closed = new Set([...wonSet, ...lostSet])
-          if (closed.has(value)) {
-            const contactIds: string[] = [...new Set<string>(
-              moving
-                .filter((d: { stage: string; contactId: string | null }) => !closed.has(d.stage) && d.contactId)
-                .map((d: { contactId: string | null }) => d.contactId as string),
-            )]
-            for (const contactId of contactIds) {
-              autoExitSequenceEnrollments({ organizationId: orgId, trigger: "deal_closed", contactId })
-                .catch((e) => console.error("[deals/bulk] cadence auto-exit failed:", e))
-            }
-          }
-        } catch (e) {
-          console.warn("[deals/bulk] cadence auto-exit hook failed:", e)
-        }
-        break
+        return NextResponse.json({ success: true, affected: updated, failed: failures })
       }
 
       case "reassign": {
         // `value === ""` → unassign (clear assignedTo). The Deal model has
         // `assignedTo: String?`, so null is the correct unset.
         const newOwner = value && value.length > 0 ? value : null
-        const result = await prisma.deal.updateMany({
-          where,
-          data: { assignedTo: newOwner },
+        const { updated, failures } = await applyToEach(ids, actor, { assignedTo: newOwner })
+        logAudit(orgId, "bulk_update", "deal", ids.join(","), `Reassigned ${updated} deals to ${newOwner ?? "unassigned"}`, {
+          userId: authResult.userId ?? undefined,
         })
-        logAudit(orgId, "bulk_update", "deal", ids.join(","), `Reassigned ${result.count} deals to ${newOwner ?? "unassigned"}`)
-        break
+        return NextResponse.json({ success: true, affected: updated, failed: failures })
       }
     }
 
