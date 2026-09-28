@@ -1040,7 +1040,7 @@ payroll engine or leaking sensitive evidence.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C11-001 | P1 | PARTIAL | Backend | Complete deterministic calculation for segments, approved breaks/travel, calendar, exceptions and corrections | Rehydration/property tests from immutable snapshots |
+| WF-C11-001 | P1 | PARTIAL | Backend | Complete deterministic calculation for segments, approved breaks/travel, calendar, exceptions and corrections | [`deterministic immutable rehydration evidence`](./workforce-c11-deterministic-rehydration-evidence-2026-09-29.md): full policy/shift/schedule hashes, calendar/segments, actual-pause-only breaks, non-payroll travel and correction replay are bound in v2; exact-head CI/release remains pending |
 | WF-C11-002 | P1 | DONE | Backend/Web | Block approval on incomplete facts, unresolved blocking cases or snapshot/history errors | [`C11 approval blocker evidence`](./workforce-c11-approval-blockers-evidence-2026-09-13.md): exact minimized rows/reasons cover finality, snapshots, replay, current deviations and C6 lifecycle; resolved bounded periods remain deterministic/idempotent |
 | WF-C11-003 | P1 | DONE | Backend | Add approved-export endpoint from immutable approval/revision, never live mutable rows | [`workforce-c11-approved-export-evidence-2026-08-30.md`](./workforce-c11-approved-export-evidence-2026-08-30.md): persisted calculation/row/fact hashes are reproduced before a narrow attachment is returned |
 | WF-C11-004 | P1 | PARTIAL | Security/Web | Require purpose, recipient, authorized scope and encrypted delivery channel; set artifact expiry | [`workforce-c11-direct-export-purpose-evidence-2026-08-30.md`](./workforce-c11-direct-export-purpose-evidence-2026-08-30.md): fixed direct-review purpose, MFA, shared rate guard and historic export-custodian scope exist; external encrypted artifact delivery/expiry remain open |
@@ -1656,3 +1656,33 @@ from this worktree.
   immutable timesheet rehydration/property evidence. `WF-C10-011` remains
   planned because its required real dashboard/privacy/cardinality review
   cannot be replaced by code-only evidence.
+
+## 2026-09-29 — WF-C11-001 immutable rehydration working checkpoint
+
+- The complete policy, shift and v2 schedule snapshots are now identity- and
+  hash-verified before a timesheet can be calculated. Persisted denormalized
+  policy values and resolved shift UTC instants must reproduce their immutable
+  definitions; calendar, segment order, site references and planned breaks
+  must reproduce the complete schedule hash.
+- Calculation envelope v2 keeps the v1 arithmetic projection while binding it
+  to minimized immutable hashes and explicit semantics: only actual
+  Pause/Resume deducts time, travel is non-payroll and does not alter time,
+  expected work is calendar/policy pinned, exceptions block approval and
+  corrections replay from the immutable ledger. Raw site details and geometry
+  remain outside the calculation/export projection.
+- Legacy stored v1 approvals remain hash-verifiable/exportable. Complete v2
+  periods are approval-ready; mixed v1/v2 periods fail closed, and old
+  policy/shift-only workdays remain explicitly snapshot-missing rather than
+  being silently upgraded.
+- Author checks pass 7 focused files / 75 tests, scoped ESLint and whitespace.
+  A separate preliminary read-only consumer audit is GREEN with
+  `P0=P1=P2=P3=0` and independently passes 4 files / 17 tests.
+- Full TypeScript/suite/build, browser, Android/Gradle, load, signed APK,
+  physical-device and pilot checks remain `NOT RUN`; exact-head CI is
+  mandatory. Progress stays `DONE 82/161`, `GATES 14/15`, C11 80%;
+  WF-C11-001 remains `PARTIAL` with no provisional credit.
+- Precise stopping point: the runtime/test implementation and initial evidence
+  are present but uncommitted; there is no frozen exact-commit review yet.
+- Next action: repeat the bounded verification, measure/stage only explicit
+  paths, checkpoint the candidate, then obtain fresh author-independent
+  exact-SHA review before push or PR.

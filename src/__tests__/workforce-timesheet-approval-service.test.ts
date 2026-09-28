@@ -10,6 +10,9 @@ import {
   approveWorkforceTimesheet,
   WorkforceTimesheetApprovalRequestSchema,
 } from "@/lib/workforce/timesheet-approval-service"
+import { workforcePolicyDefinitionHash } from "@/lib/workforce/policy-definition"
+import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
+import { workforceWorkdayScheduleSnapshotHash } from "@/lib/workforce/snapshot-writer"
 
 const context = {
   organizationId: "org-1",
@@ -17,6 +20,21 @@ const context = {
   actor: { agentId: "manager-agent", role: "MANAGER" as const, scopedAgentIds: ["employee-1"] },
   input: { agentId: "employee-1", periodStart: "2026-08-28", periodEnd: "2026-08-28" },
   audit: { ipAddress: "203.0.113.10", userAgent: "vitest" },
+}
+
+const POLICY_DEFINITION = {
+  expectedWorkSeconds: 8 * 60 * 60,
+  lateGraceSeconds: 5 * 60,
+  undertimeToleranceSeconds: 5 * 60,
+  overtimeThresholdSeconds: 15 * 60,
+  longPauseThresholdSeconds: null,
+}
+
+const SHIFT_DEFINITION = {
+  startTime: "09:00",
+  endTime: "18:00",
+  timezone: "UTC",
+  daysOfWeek: [1, 2, 3, 4, 5],
 }
 
 function completeWorkday(overrides: Record<string, unknown> = {}) {
@@ -39,11 +57,9 @@ function policySnapshot() {
     workdayId: "workday-1",
     agentId: "employee-1",
     workDate: new Date("2026-08-28T00:00:00.000Z"),
-    expectedWorkSeconds: 8 * 60 * 60,
-    lateGraceSeconds: 5 * 60,
-    undertimeToleranceSeconds: 5 * 60,
-    overtimeThresholdSeconds: 15 * 60,
-    longPauseThresholdSeconds: null,
+    definition: POLICY_DEFINITION,
+    definitionHash: workforcePolicyDefinitionHash(POLICY_DEFINITION),
+    ...POLICY_DEFINITION,
   }
 }
 
@@ -53,9 +69,47 @@ function shiftSnapshot() {
     workdayId: "workday-1",
     agentId: "employee-1",
     workDate: new Date("2026-08-28T00:00:00.000Z"),
-    timezone: "Asia/Baku",
+    definition: SHIFT_DEFINITION,
+    definitionHash: workforceShiftDefinitionHash(SHIFT_DEFINITION),
+    timezone: "UTC",
     plannedStartAt: new Date("2026-08-28T09:00:00.000Z"),
     plannedEndAt: new Date("2026-08-28T18:00:00.000Z"),
+  }
+}
+
+function scheduleSnapshot() {
+  const calendarSnapshot = {
+    date: "2026-08-28",
+    state: "SCHEDULED",
+    calendarKind: "WORKING_DAY",
+    attendanceExpected: true,
+    noShowEligible: true,
+    excused: false,
+    source: null,
+    overrideId: null,
+    teamMembership: { id: null, teamId: null },
+  }
+  const payload = {
+    schemaVersion: 2,
+    calendar: calendarSnapshot,
+    segments: [],
+    sites: [],
+    policySnapshotId: "policy-snapshot-1",
+    shiftSnapshotId: "shift-snapshot-1",
+  }
+  return {
+    id: "schedule-snapshot-1",
+    workdayId: "workday-1",
+    agentId: "employee-1",
+    workDate: new Date("2026-08-28T00:00:00.000Z"),
+    policySnapshotId: payload.policySnapshotId,
+    shiftSnapshotId: payload.shiftSnapshotId,
+    schemaVersion: payload.schemaVersion,
+    calendarState: "SCHEDULED",
+    calendarSnapshot,
+    segments: payload.segments,
+    sites: payload.sites,
+    snapshotHash: workforceWorkdayScheduleSnapshotHash(payload),
   }
 }
 
@@ -73,6 +127,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([completeWorkday()] as never)
   vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([policySnapshot()] as never)
   vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([shiftSnapshot()] as never)
+  vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findMany).mockResolvedValue([scheduleSnapshot()] as never)
   vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(finalEvents() as never)
   vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([])
   vi.mocked(prisma.workforceAttendanceException.findMany).mockResolvedValue([])
@@ -267,6 +322,24 @@ describe("Workforce server-side timesheet approval", () => {
         workDate: "2026-08-28",
         reason: "SNAPSHOT_MISSING",
       }],
+    })
+    expect(prisma.workforceTimesheetApproval.create).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when the complete schedule snapshot is missing or corrupt", async () => {
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findMany).mockResolvedValue([])
+    await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
+      kind: "conflict",
+      code: "WORKFORCE_TIMESHEET_APPROVAL_SNAPSHOT_MISSING",
+    })
+
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findMany).mockResolvedValue([{
+      ...scheduleSnapshot(),
+      snapshotHash: "0".repeat(64),
+    }] as never)
+    await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
+      kind: "conflict",
+      code: "WORKFORCE_TIMESHEET_APPROVAL_HISTORY_INVALID",
     })
     expect(prisma.workforceTimesheetApproval.create).not.toHaveBeenCalled()
   })

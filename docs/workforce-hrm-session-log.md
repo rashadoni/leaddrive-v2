@@ -1465,3 +1465,34 @@ corrections as new entries that explicitly supersede the earlier fact.
   exact deployed main.
 - Next action: verify the receipt diff, checkpoint only these three documents,
   then implement and independently review the bounded `WF-C11-001` slice.
+
+## 2026-09-29 — WF-C11-001 immutable rehydration working checkpoint
+
+- The next bounded backend slice now verifies the complete immutable policy,
+  shift and schedule snapshot chain before timesheet read or approval. Policy
+  denormalized values, resolved shift UTC instants, scheduled calendar,
+  ordered segments, exact site references and the full schedule hash all fail
+  closed on mismatch.
+- Rehydrated calculation v2 preserves the v1 plan/fact/deviation shape and
+  records minimized immutable hashes plus the approved semantics: only actual
+  Pause/Resume deducts time; planned breaks are metadata; travel is non-payroll
+  and never adjusts time; expected work is pinned; unresolved exceptions block
+  approval; corrections replay from the immutable ledger.
+- Historical v1 approvals remain verifiable/exportable and mixed v1/v2 rows
+  cannot share an approval. Legacy policy/shift-only days remain visible as
+  snapshot-missing, not falsely calculated. Raw sites, addresses, geometry and
+  proof remain outside the calculation and ordinary export.
+- Targeted author verification passes 7 files / 75 tests, scoped ESLint and
+  whitespace. An author-independent preliminary compatibility audit is GREEN
+  with `P0=P1=P2=P3=0`; its separate approval/export/report/reconciliation
+  matrix passes 4 files / 17 tests.
+- Full local typecheck/suite/build, browser E2E, Android/Gradle, load, signed
+  APK, physical-device and pilot checks are `NOT RUN` under host policy.
+  Exact-head CI remains mandatory. Progress is unchanged at `DONE 82/161`,
+  `GATES 14/15`, C11 80%; WF-C11-001 remains `PARTIAL`.
+- Precise stopping point: implementation, tests and initial evidence are
+  uncommitted on `codex/workforce-timesheet-rehydration-part6`; no frozen
+  exact-SHA independent verdict exists yet.
+- Next action: re-run bounded checks, measure and checkpoint explicit task
+  paths, then request a fresh independent review of the exact commit before
+  any push or PR.
