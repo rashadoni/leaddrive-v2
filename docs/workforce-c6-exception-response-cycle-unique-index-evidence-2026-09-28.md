@@ -284,3 +284,45 @@ idempotence, unchanged later gate and absence of scope or credential leakage.
 All three review receipts were append-only. Reviewer shell syntax, whitespace,
 targeted Vitest (6 passed / 15 PostgreSQL skipped) and ESLint passed. Real
 PostgreSQL, ShellCheck and every heavy gate remained explicitly `NOT RUN`.
+
+## PR #481 remediation and production release
+
+Final receipt-integrity review returned GREEN with P0=P1=P2=P3=0 on exact
+head `d768dc167a65123c1a590c0889c841ec8b6205bf`. The complete nine-path diff
+from base `4f9d0d715b201ca7b4226fb301d1d3bddbbd2c8d` was 48,325 plain-binary
+bytes / SHA-256
+`5c1c5c960195ff70bb3b2f75cda5e7b1214a5708fa74f746e6d13d5ad9730aa6`;
+all six reviewed implementation/test/runbook blobs remained byte-identical
+after the documentation-only receipt.
+
+PR #481 passed `pr-scope`, `static-checks` in 10m37s including the real
+PostgreSQL migration-role scenarios and unit baseline, `typecheck` in 14m16s,
+`runner-policy`, `scan` and the companion tenant-cascade PostgreSQL job. It
+merged normally at `2026-09-28T15:01:32Z` as main SHA
+`f6b4c06dad08c72534174a8c004c325c417238cf`.
+
+Deploy run `36440433296` completed SUCCESS at `2026-09-28T15:28:29Z`.
+Quality/security passed in 9m17s, the SHA-bound production build and artifact
+publication passed in 19m24s, atomic deploy/post-smoke passed, and artifact
+retention cleanup passed. On the registered production host, the helper safely
+observed legacy `lock_timeout=0` and `statement_timeout=0`, reconciled only
+those accepted values and proved a fresh-session `10s|14min` postcondition.
+The global duplicate/ledger/index fence passed before backup and immediately
+before Prisma. Backup `backup-20260928-172602` was created, migration
+`20260928123000_workforce_exception_response_cycle_unique_index` was applied,
+and the exact Workforce unique-ledger/data/index postcondition passed before
+PM2 completion.
+
+Built-in ping, revision, login and hashed-asset smoke passed. Independent
+no-cache requests forced TLS host `app.leaddrivecrm.org` to registered IP
+`13.140.132.245`: `/api/v1/ping` returned HTTP 200 `{"ok":true}` and
+build-info returned HTTP 200 with exact
+`artifactSha=f6b4c06dad08c72534174a8c004c325c417238cf` and
+`builtAt=2026-09-28T15:09:20Z`. Release used only GitHub `main` through
+`.github/workflows/deploy.yml`; no direct production mutation or alternate
+host was used.
+
+Browser E2E, Android/Gradle, load, signed APK, physical-device and pilot
+evidence remain `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`,
+C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` and no acceptance
+credit is added merely for deployment.

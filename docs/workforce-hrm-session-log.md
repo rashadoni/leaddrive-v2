@@ -1232,3 +1232,56 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: the independently GREEN source/test/evidence checkpoint is committed; only this receipt-only delta is uncommitted.
 - Next action: checkpoint the three documentation paths, independently verify implementation blob identity and final fingerprint, then push/open the exact-head PR.
+
+## 2026-09-28 — PR #481 released; response-cycle uniqueness is live
+
+- Final independent receipt-integrity review returned GREEN with P0=P1=P2=P3=0 on exact head `d768dc167a65123c1a590c0889c841ec8b6205bf`. It reproduced nine paths / 48,325 plain-binary bytes / SHA-256 `5c1c5c960195ff70bb3b2f75cda5e7b1214a5708fa74f746e6d13d5ad9730aa6` and proved all six reviewed implementation/test/runbook blobs unchanged.
+- All exact-head PR contexts passed: `pr-scope`, `static-checks` including real PostgreSQL and unit baseline, `typecheck`, `runner-policy`, `scan` and tenant-cascade PostgreSQL integration. PR #481 merged at `2026-09-28T15:01:32Z` as main `f6b4c06dad08c72534174a8c004c325c417238cf`.
+- Deploy run `36440433296` succeeded end to end. Production safely exposed the previously unknown defaults as `0|0`, the reviewed helper reconciled only them and proved `10s|14min` through a fresh session. Both response-cycle global fences passed, backup `backup-20260928-172602` completed, migration `20260928123000_workforce_exception_response_cycle_unique_index` applied and the exact postcondition passed. Quality/security, SHA-bound build, atomic deploy, schedulers, tenant isolation, built-in ping/revision/login/assets smoke and retention cleanup all passed.
+- Independent no-cache HTTPS requests pinned to `13.140.132.245` returned ping HTTP 200 `{"ok":true}` and build-info HTTP 200 with exact `artifactSha=f6b4c06dad08c72534174a8c004c325c417238cf`, `builtAt=2026-09-28T15:09:20Z`. No Azure, retired host, direct copy or direct production deploy was used.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot checks remain `NOT RUN`. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` with no added credit.
+- Read-only next-slice design audit selected Android revision-bound acknowledgement with encrypted delivery. A compatibility finding requires dedicated persisted pending-state aliases so an older APK ignores the new domain instead of retrying an unknown-domain row indefinitely; no Room schema bump is needed.
+- Precise stopping point: production serves exact merged main and this release receipt is uncommitted on clean successor branch `codex/workforce-android-exception-response`.
+- Next action: checkpoint the three append-only receipts, then implement and independently review the bounded Android source/test/i18n slice before push or PR.
+
+## 2026-09-28 — Android exception acknowledgement working checkpoint
+
+- The PR #481 production receipt was checkpointed as `894d3d3f96774373ec7e4982fa9054a5e7269629` on successor branch `codex/workforce-android-exception-response` from exact deployed/current main `f6b4c06dad08c72534174a8c004c325c417238cf`. A fresh fetch confirmed origin, local merge-base and deployed base still match.
+- Android now accepts an acknowledgement only from exact `AVAILABLE` / `NOT_ACKNOWLEDGED` / `ACKNOWLEDGE` server metadata with a bounded integral revision. The dedicated POST sends only stable UUID plus expected revision, validates the fixed response, and queues the same UUID only after code-less recoverable ambiguity or network failure.
+- The encrypted outbox adds `EXCEPTION_RESPONSE` without a Room version change. Dedicated `EXCEPTION_RESPONSE_QUEUED/RETRY` aliases preserve ciphertext across downgrade while preventing an older APK from replaying an unknown domain. Re-upgrade maps and drains them under the existing account, seven-day, eight-attempt and domain-order fences.
+- Recovery gating uses a complete SQL aggregate scoped by opaque account and exact domain, while UI recovery remains counts-only. No case, revision or UUID enters metadata. The first independent preflight correctly blocked a terminal-state deadlock; the repair gates only active delivery, hides old cards until fresh GET truth and adds same-tick/current-card/cancellation containment.
+- Replacement independent preflight returned GREEN with zero P0-P3 findings on the stable nine-path source/test/resource stream: 72,672 bytes / SHA-256 `0e8068b59fc3a35bc8aa67ea3d0fa50f0479f449419382e9d9b00e606442b5f6`. The reviewer changed no files.
+- Focused author/reviewer results are 22/22 Android source-contract tests, 43/43 existing server response tests, targeted ESLint, 265/265/265 resource-key parity, XML parsing and diff whitespace. Android Gradle/lint/JVM/Room, signed APK, physical offline/account/locale/TalkBack/200%-font, browser, load and pilot are `NOT RUN` locally by policy.
+- Production was not contacted or changed. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; all affected tasks stay `PARTIAL` and no credit is added.
+- Precise stopping point: all source/test/i18n/evidence changes are uncommitted in the dedicated successor branch; working-tree preflight is GREEN, but no frozen exact-head review exists.
+- Next action: run the final focused verification set, checkpoint explicit paths only, compute the clean plain-binary base/head identity and commission a fresh author-independent complete-diff review before any push.
+
+## 2026-09-28 — Android exception acknowledgement frozen review GREEN
+
+- Implementation/evidence checkpoint `3204bd3b09bbf13eee886c1e1a24a85fb8a64758` is exactly two commits ahead of current/deployed main `f6b4c06dad08c72534174a8c004c325c417238cf`; merge-base and remote main match, and the worktree was clean.
+- Fresh author-independent review reproduced the complete 13-path diff at 93,776 plain-binary bytes / SHA-256 `45928568b9e9935fa0a1b5c6250a040d2c95ba8e9458ee3b75b0282d821ad569` and returned GREEN with zero P0-P3 findings. Existing unique-index evidence, roadmap and session bytes remained exact append-only prefixes.
+- Full static inspection passed the exact action/body/response boundary, stable UUID and ambiguous replay, coded conflict/rate containment, encrypted account-bound outbox, old-APK aliases, Room-v2 schema stability, complete counts, terminal recovery, stale-card/same-tick/cancellation guards, no optimistic acknowledgement and localized accessible copy.
+- Reviewer repeated 22/22 Android source-contract and 43/43 server tests, scoped ESLint, 265/265/265 parity, all XML parses and diff whitespace. It independently confirmed the inherited PR #481 merge/deploy/artifact receipt. Android Gradle/Room/device/TalkBack and all other heavy gates remain `NOT RUN` locally.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit changes.
+- Precise stopping point: exact clean source/test/resource/evidence head is independently GREEN; only this three-document frozen-review receipt is uncommitted.
+- Next action: checkpoint the receipt-only delta, independently prove runtime/test/resource blob identity and final fingerprint, then push/open the sub-400 KB PR and require every exact-head standard plus Android context.
+
+## 2026-09-28 — PR #482 Android compile-gate repair
+
+- Final receipt-integrity review was GREEN with zero P0-P3 and exact head `c9a3fb1b386f05879a51edd083f5209f256c2fca`; its 13-path identity was 98,508 bytes / SHA-256 `713ca8958f9b6d24d1b44204bc990f3cfb5ab8baaf933fbf771afc495016ebb9`. The branch was pushed and PR #482 opened.
+- Fast exact-head checks passed, but Android run `36452049554` failed at `:app:compileDebugUnitTestKotlin`. The application Kotlin task had compiled. Kotlin 2 reported `TYPE_INTERSECTION_AS_REIFIED_ERROR` for lines 89-103 of the new test because heterogeneous `arrayOf` calls lacked an explicit nullable-any element type.
+- Every affected test row now uses `arrayOf<Any?>`. A new warning in the pending alias helper was also removed by deleting the redundant `else` from the compiler-proven exhaustive two-state `when`; the prior `require` and mapping are unchanged.
+- After repair, source-contract Vitest passes 22/22, targeted ESLint and diff whitespace pass. Android Gradle is intentionally `NOT RUN` locally; only new-head CI can close the failed gate.
+- Prior frozen/integrity verdicts are retained for audit but do not transfer to the repaired bytes. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: bounded repair and failure receipt are present but uncommitted; PR #482 still points to the rejected CI head.
+- Next action: checkpoint exactly the two repair paths plus three append-only docs, freeze the new full diff, obtain independent GREEN and push so every exact-head context reruns.
+
+## 2026-09-28 — PR #482 replacement repair review GREEN
+
+- Repair/evidence checkpoint `4b7103f4d7c06f56ee14d62c7fa4ef7b462a970f` received fresh author-independent GREEN with zero P0-P3 findings against exact live main/merge-base `f6b4c06dad08c72534174a8c004c325c417238cf`.
+- The reviewer reproduced 13 paths / 102,504 plain-binary bytes / SHA-256 `0c85f0a49c461f735429dae89ce8cb66537b29deb0a342a1351804ed9b928da7`, clean start/end and no main drift.
+- All 15 malformed-offer arrays are explicitly `Any?`; normalized input comparison proved no value change. The production outbox delta is one deleted redundant `else`, with the exact `require` and aliases unchanged. Every prior functional/privacy/recovery/UI/i18n contract was rereviewed from zero.
+- Reviewer checks passed 22/22 source, 43/43 exact server, scoped ESLint, 265/265/265 parity/XML and whitespace. Android Gradle/lint/unit/Room/device and other heavy gates remain `NOT RUN` locally pending the new PR head.
+- Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: the repaired implementation/test/evidence head is independently GREEN; only this three-document receipt is uncommitted.
+- Next action: checkpoint the receipt, independently verify repair blob identity and final fingerprint, then push PR #482 and require all new-head checks.

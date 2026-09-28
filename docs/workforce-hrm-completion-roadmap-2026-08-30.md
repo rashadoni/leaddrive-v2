@@ -1448,3 +1448,51 @@ from this worktree.
 - Progress stays `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
 - Precise stopping point: implementation/evidence checkpoint is independently GREEN; only this three-document review receipt is uncommitted.
 - Next action: checkpoint the receipt, obtain final blob-integrity/fingerprint proof, then push/open the PR and wait for all exact-head contexts.
+
+## 2026-09-28 — PR #481 remediation and exact-SHA production release
+
+- Final receipt-integrity review was GREEN with zero P0-P3 at head `d768dc167a65123c1a590c0889c841ec8b6205bf`: nine paths / 48,325 plain-binary bytes / SHA-256 `5c1c5c960195ff70bb3b2f75cda5e7b1214a5708fa74f746e6d13d5ad9730aa6`; all six reviewed non-receipt blobs were unchanged.
+- PR #481 passed scope, 10m37s static/unit and real PostgreSQL Workforce gates, 14m16s typecheck, runner policy, scan and tenant-cascade integration. It merged normally at `2026-09-28T15:01:32Z` as main `f6b4c06dad08c72534174a8c004c325c417238cf`.
+- Deploy run `36440433296` completed SUCCESS at `2026-09-28T15:28:29Z`. The helper observed accepted legacy `0|0`, reconciled and fresh-session proved `10s|14min`; both global Workforce fences passed; backup `backup-20260928-172602` was created; migration `20260928123000_workforce_exception_response_cycle_unique_index` applied; and its exact unique-ledger/data/index postcondition passed before the process swap completed.
+- Built-in smoke passed. Independent no-cache requests forced `app.leaddrivecrm.org` to `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and build-info returned HTTP 200 with exact `artifactSha=f6b4c06dad08c72534174a8c004c325c417238cf` and `builtAt=2026-09-28T15:09:20Z`. Only GitHub `main` through `deploy.yml` was used.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and pilot evidence remain `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 stays `PARTIAL` and this release adds no synthetic acceptance credit.
+- Precise stopping point: PR #481 is independently reviewed, merged, deployed and exact-SHA production-verified; this append-only release receipt is uncommitted on successor branch `codex/workforce-android-exception-response`.
+- Next action: checkpoint the release receipt, then implement the bounded Android revision-bound acknowledgement/encrypted-outbox slice for WF-C9-006, WF-C6-006, WF-C9-010 and WF-C9-012 as a separate sub-400 KB reviewable PR.
+
+## 2026-09-28 — C6/C9 Android revision-bound acknowledgement working checkpoint
+
+- [`Android exception-response evidence`](./workforce-c9-android-exception-response-evidence-2026-09-28.md) records a fail-closed consumer of the exact server-offered current-revision acknowledgement. The direct attempt and encrypted replay share one UUID; the request body contains only operation ID and expected revision, and no local success is projected before fresh server truth.
+- The new encrypted outbox domain retains the existing account fence, seven-day/eight-attempt bounds and oldest-first ordering. Dedicated pending-state aliases make its rows invisible to an older APK's exact pending SQL without changing the Room schema; this version resumes them after re-upgrade.
+- Exact account/domain aggregate counts prevent the recovery center's latest-100 display bound from hiding an older pending response. Active delivery blocks a new action; terminal conflict/review remains visible but cannot deadlock a newly offered fresh revision. Old cards are removed before refresh, and same-tick/current-card/cancellation fences are explicit.
+- Initial independent preflight found the terminal-row deadlock and blocked the snapshot. After repair, replacement read-only preflight returned GREEN with P0=P1=P2=P3=0 on nine source/test/resource paths / 72,672 plain-binary bytes / SHA-256 `0e8068b59fc3a35bc8aa67ea3d0fa50f0479f449419382e9d9b00e606442b5f6`.
+- Focused checks pass: Android source contract 22/22, existing mobile exception GET/POST/writer/operation 43/43, scoped ESLint, 265-key EN/RU/AZ parity, three-catalog XML parse and whitespace. Android Gradle/Room instrumentation, signed APK, physical device/accessibility, browser, load and pilot remain `NOT RUN` under host policy.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%. WF-C6-006/WF-C9-006/WF-C9-010/WF-C9-012 stay `PARTIAL`; no credit is added.
+- Precise stopping point: source, tests, translations and initial evidence are complete and working-tree preflight is GREEN, but the explicit task paths are not checkpointed and no clean frozen review exists.
+- Next action: repeat focused checks, checkpoint only the explicit task paths, freeze exact base/head identity and require fresh author-independent complete-diff GREEN before push or PR.
+
+## 2026-09-28 — C6/C9 Android acknowledgement frozen review GREEN
+
+- Fresh author-independent complete-diff review returned GREEN with P0=P1=P2=P3=0 on exact base/live main/merge-base `f6b4c06dad08c72534174a8c004c325c417238cf` through clean head `3204bd3b09bbf13eee886c1e1a24a85fb8a64758`.
+- Independent identity matched 13 paths / 93,776 plain-binary bytes / SHA-256 `45928568b9e9935fa0a1b5c6250a040d2c95ba8e9458ee3b75b0282d821ad569`, below 400 KB. Clean start/end, no main drift and all three existing append-only prefixes passed.
+- Wire, auth/account, UUID/replay, retry/conflict, encryption, downgrade, Room-v2, exact recovery, terminal recovery, UI-race/cancellation, no-optimistic-ACK, i18n/a11y and evidence contracts passed. Reviewer repeated 22/22 Android source tests, 43/43 server tests, ESLint, parity/XML and whitespace checks.
+- Android Gradle/Room instrumentation, signed APK, physical accessibility/device, browser, load and pilot remain `NOT RUN`; exact-head PR CI is mandatory. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%, with no credit added.
+- Precise stopping point: the clean implementation/evidence checkpoint is independently GREEN; only this three-document receipt is uncommitted.
+- Next action: checkpoint the receipt, prove all nine reviewed runtime/test/resource blobs unchanged, verify final identity, then push/open the PR and wait for all exact-head contexts including Android.
+
+## 2026-09-28 — PR #482 first Android CI compile repair
+
+- PR #482 opened on independently reviewed head `c9a3fb1b386f05879a51edd083f5209f256c2fca`. Scope, runner policy and scan passed; path-triggered Android run `36452049554` failed only at new unit-test Kotlin compilation after production Kotlin had compiled.
+- Kotlin 2 rejected inferred heterogeneous `arrayOf` rows with `TYPE_INTERSECTION_AS_REIFIED_ERROR`. The bounded repair declares each malformed-offer row as `arrayOf<Any?>`; the new outbox helper also drops one compiler-reported redundant exhaustive `else` without changing behavior.
+- Targeted source contract stays 22/22, scoped ESLint and whitespace pass. Android Gradle remains `NOT RUN` locally and must rerun in exact-head CI. Prior reviews do not transfer to changed bytes.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: two repaired code/test paths and this append-only failure receipt are uncommitted; PR #482 remains open and unmergeable until replacement review and all new-head checks pass.
+- Next action: checkpoint the five explicit repair/evidence paths, obtain fresh independent complete-diff GREEN, push the new head and require a clean Android plus standard CI rerun.
+
+## 2026-09-28 — PR #482 Android repair replacement review GREEN
+
+- Fresh complete-diff review returned GREEN with P0=P1=P2=P3=0 on exact base/current main `f6b4c06dad08c72534174a8c004c325c417238cf` through clean head `4b7103f4d7c06f56ee14d62c7fa4ef7b462a970f`.
+- Independent identity matched 13 paths / 102,504 plain-binary bytes / SHA-256 `0c85f0a49c461f735429dae89ce8cb66537b29deb0a342a1351804ed9b928da7`. All 15 explicit nullable-any arrays preserve the rejected head's inputs; outbox runtime changes only by the safe redundant-branch deletion.
+- Reviewer repeated 22/22 source and 43/43 server tests, ESLint, 265/265/265 XML/parity and whitespace. Android Gradle/device heavy gates remain `NOT RUN` locally and must pass on the new PR head.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: replacement reviewed repair/evidence head is clean; only this three-document review receipt is uncommitted and PR #482 still points to the old failed head.
+- Next action: checkpoint the receipt, obtain final blob/fingerprint integrity GREEN, push the repaired head and wait for every exact-head gate.

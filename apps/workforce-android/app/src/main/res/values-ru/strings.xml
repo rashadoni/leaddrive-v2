@@ -106,6 +106,9 @@
     <string name="status_signing_in">Выполняем вход…</string>
     <string name="status_loading_history">Загружаем принятое сервером рабочее время…</string>
     <string name="status_loading_exceptions">Загружаем карточки исключений…</string>
+    <string name="status_exception_response_submitting">Записываем, что вы ознакомились с текущей проверкой…</string>
+    <string name="status_exception_response_accepted">Сервер записал ознакомление с текущей проверкой.</string>
+    <string name="status_exception_response_queued">Ознакомление сохранено в зашифрованной очереди. До подтверждения сервера оно остаётся ожидающим.</string>
     <string name="status_loading_recovery">Загружаем приватное состояние восстановления…</string>
     <string name="status_submitting_request">Отправляем заявку…</string>
     <string name="status_request_accepted">Заявка принята сервером. Обновите её статус.</string>
@@ -126,6 +129,14 @@
     <string name="exception_response_acknowledged">Ваш ответ записан для текущей проверки.</string>
     <string name="exception_response_not_acknowledged">Для текущей проверки ответ не записан.</string>
     <string name="exception_response_unavailable">Статус ответа для этой проверки недоступен.</string>
+    <string name="exception_response_action_explainer">Подтверждение означает только, что вы увидели текущую проверку. Оно не является согласием, решением или отказом от исправления.</string>
+    <string name="exception_response_acknowledge">Подтвердить ознакомление</string>
+    <string name="exception_response_confirm_title">Подтвердить ознакомление?</string>
+    <string name="exception_response_confirm_body">Будет записано только то, что вы увидели текущую версию проверки. Это не означает согласие с выводом и не закрывает случай.</string>
+    <string name="exception_response_local_sync_explainer">Доставка ознакомления отделена от статуса сервера. После ожидания или конфликта обновите данные.</string>
+    <string name="exception_response_local_sync_pending">Ожидающие зашифрованные ознакомления: %1$d</string>
+    <string name="exception_response_local_sync_conflict">Ознакомления, требующие свежей проверки: %1$d</string>
+    <string name="exception_response_local_sync_review">Ознакомления, требующие разбора восстановления: %1$d</string>
     <string name="exception_type_late_start">Позднее начало</string>
     <string name="exception_type_delayed_claim">Задержанное заявление о присутствии</string>
     <string name="exception_type_missing_finish">Нет завершения</string>
@@ -217,6 +228,7 @@
     <string name="reminder_state_scheduled">Запланировано личное локальное напоминание. В нём нет сведений о рабочем времени, площадке или подтверждении.</string>
     <string name="recovery_domain_workday">Рабочее время</string>
     <string name="recovery_domain_request">Заявка</string>
+    <string name="recovery_domain_exception_response">Ознакомление с исключением</string>
     <string name="recovery_domain_unknown">Действие Workforce</string>
     <string name="recovery_state_pending">Ожидает</string>
     <string name="recovery_state_conflict">Конфликт</string>
