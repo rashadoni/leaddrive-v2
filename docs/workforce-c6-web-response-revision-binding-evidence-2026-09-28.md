@@ -94,3 +94,28 @@ Full local typecheck/build, browser E2E, Android/Gradle, load, signed APK,
 physical-device and human-pilot checks are `NOT RUN` under host policy. The
 real PostgreSQL gate, full typecheck and normal PR checks remain mandatory in
 exact-head CI. No rollout flag or production state changed in this slice.
+
+## First frozen review and current-main refresh
+
+The first clean frozen-head review returned GREEN with zero P0-P3 findings on
+base/merge-base `94dce0d423240921d1c3c68c14cb4a135c99e45d` through head
+`d46a1ea0fd9385d39f91de25f013359fe2efe4ee`. The reviewer independently
+matched 14 paths / 81,937 binary-diff bytes / SHA-256
+`c8259ffdf46b152baec011ebe599e5f1138731ae389b9ab4d123eedf6ab40fb3`,
+including the inherited PR #470 production receipt, and reconfirmed both race
+repairs, revision/auth/privacy bounds, append-only history and evidence truth.
+
+Before release, live `main` advanced through PR #471 to
+`f26d5767e92f14300838e4d59ede05c1101cfcc4`. Its six translation and MTM visit
+pagination paths do not overlap any of the 14 reviewed Workforce paths. The
+current main was integrated normally as merge commit
+`e716df985ed2b101536ff2aff7af6e280fdd6b66` without conflict. On the integrated
+tree, the expanded 15-file / 120-test regression, ten-path targeted ESLint and
+whitespace checks pass again; the 12 PostgreSQL scenarios remain compiled but
+`SKIPPED / NOT RUN` locally.
+
+Against the new base/merge-base, the complete Workforce diff remains exactly
+14 paths / 81,937 bytes with the same SHA-256 because PR #471 is disjoint. The
+old frozen verdict is retained only as historical evidence and is not treated
+as current merge authority. This integration receipt must be checkpointed and
+a fresh author-independent complete-diff review must return GREEN before push.
