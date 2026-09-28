@@ -46,7 +46,7 @@ function request(query = "?agentId=agent-1&start=2026-09-13&end=2026-09-13", hea
 function evidenceRow() {
   return {
     id: "evidence-1",
-    source: "ACTION_LOCATION",
+    source: "LOCATION",
     capturedAt: new Date("2026-09-13T05:01:00.000Z"),
     rawPurgedAt: null,
     workdayEvent: {

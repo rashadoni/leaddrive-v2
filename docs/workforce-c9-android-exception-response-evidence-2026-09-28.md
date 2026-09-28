@@ -202,3 +202,51 @@ server response tests, scoped ESLint, 265/265/265 parity/XML and whitespace.
 Android Gradle and all other heavy/device gates remain `NOT RUN` locally. Only
 this three-document receipt is uncommitted; receipt integrity and a new exact-
 head CI run remain mandatory.
+
+## PR #482 exact-head release receipt
+
+Final author-independent receipt-integrity review returned GREEN with
+P0=P1=P2=P3=0 at head
+`2d1090e9f0050f8097abe0c4b6331cf8a06254df`. It reproduced 13 paths /
+106,240 plain-binary bytes / SHA-256
+`46cfbd5b33b624796c385e34b43224e4ff2fd9b656bf23fc0b8e845b35d96905`.
+Only the three append-only receipt documents changed after repair review; all
+nine reviewed runtime, test and resource blobs and the inherited unique-index
+evidence stayed byte-identical.
+
+Exact-head PR checks passed: `pr-scope` in 14s, `runner-policy` in 17s,
+`scan` in 21s, Android debug lint and unit tests in 2m20s, `static-checks` in
+11m05s and `typecheck` in 19m40s. The PR production-build job was `SKIPPED`
+by policy and is not claimed as a pass. This successful Android run supersedes
+the recorded first-head compile failure without erasing it.
+
+PR #482 merged normally at `2026-09-28T17:12:42Z` as main SHA
+`a6f6a7cf1a22a541a9de56d773ea811d8bb9ab44`. Deploy run
+[`36456523638`](https://github.com/rashadoni/leaddrive-v2/actions/runs/36456523638)
+completed `SUCCESS` at `2026-09-28T17:36:38Z`: quality/security, SHA-bound
+production build and publication, immutable staging, atomic deploy, scheduler
+and tenant-isolation checks, built-in ping/revision/login-asset smoke and
+artifact-retention cleanup all passed.
+
+Independent no-cache reads forced `app.leaddrivecrm.org` to registered
+production IP `13.140.132.245`. `/api/v1/ping` returned HTTP 200
+`{"ok":true}`. `/api/v1/public/build-info` returned HTTP 200 with exact
+`artifactSha=a6f6a7cf1a22a541a9de56d773ea811d8bb9ab44` and
+`builtAt=2026-09-28T17:19:38Z`. Only GitHub `main` through
+`.github/workflows/deploy.yml` was used; no direct production copy or deploy
+occurred.
+
+Room instrumentation, signed APK, physical-device offline/retry/account-switch
+exercise, TalkBack, 200% font, browser E2E, load and human pilot remain
+`NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20%
+and C9 99%; WF-C6-006/WF-C9-006/WF-C9-010/WF-C9-012 remain `PARTIAL` and
+the release adds no unsupported acceptance credit.
+
+Precise stopping point: PR #482 is independently reviewed, merged, deployed
+and exact-SHA production-verified; only this three-document append-only release
+receipt is uncommitted on successor branch
+`codex/workforce-android-foundation-v2-part4`.
+
+Next action: checkpoint the release receipt, then select and independently
+design-review the next bounded technically feasible C0-C14/M0-M6 slice before
+changing implementation.
