@@ -1528,3 +1528,34 @@ from this worktree.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%. WF-C8-009/WF-C8-010/WF-C10-006 remain `PARTIAL`; no credit changes.
 - Precise stopping point: repaired code/test head is independently GREEN; this three-document CI/review receipt is the only working-tree delta and PR #483 still points to the rejected old head.
 - Next action: checkpoint the receipt, obtain final implementation-blob/fingerprint integrity GREEN, push the replacement head and require every exact-head context to rerun.
+
+## 2026-09-28 — PR #483 restricted evidence timeline production release
+
+- Final independent receipt-integrity review was GREEN with zero P0-P3 at
+  exact head `99ed0a3641e3f3c102e57459230d66a615794d6f`: 22 paths / 140,368
+  plain-binary bytes / SHA-256
+  `bc8370a821dc7b01fe0076c5c7a10455a35d5bbdecd77e812992dfcc926e1d39`.
+- Exact-head `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and
+  `scan` passed. The PR production-build job was skipped by policy. PR #483
+  merged normally at `2026-09-28T20:25:23Z` as main
+  `90ad3df47b5e6703b80097afcd5dd74378d4e995`.
+- Deploy run `36479079543` completed SUCCESS at
+  `2026-09-28T20:51:41Z`, including quality/security, immutable SHA-bound
+  build/artifact, atomic production deployment, scheduler and tenant-isolation
+  verification, and built-in post-deploy smoke.
+- Independent no-cache HTTPS checks pinned the public hostname to registered
+  production `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and
+  build-info returned HTTP 200 with exact
+  `artifactSha=90ad3df47b5e6703b80097afcd5dd74378d4e995` and
+  `builtAt=2026-09-28T20:31:13Z`. Only GitHub `main` through `deploy.yml` was
+  used.
+- Browser E2E, real keyboard/AT/contrast/200% zoom, Android/Gradle, load,
+  signed APK, physical-device and pilot evidence remain `NOT RUN`. Progress
+  remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%;
+  WF-C8-009/WF-C8-010/WF-C10-006 stay `PARTIAL` with no synthetic credit.
+- Precise stopping point: PR #483 is independently reviewed, merged, deployed
+  and exact-SHA production-verified; its append-only release receipt is
+  uncommitted on successor branch `codex/workforce-site-transition-order-part5`.
+- Next action: checkpoint the release receipt, then finish and freeze the
+  independently preflighted sub-400 KB WF-C2-009 action-time ordering and
+  review-only impossible-transition slice.

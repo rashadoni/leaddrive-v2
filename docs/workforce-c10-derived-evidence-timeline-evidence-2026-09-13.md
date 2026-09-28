@@ -150,3 +150,36 @@ for real browser/accessibility acceptance. Progress remains `DONE 81/161`,
 Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%.
 WF-C8-009/WF-C8-010/WF-C10-006 remain `PARTIAL`; the failed old PR head and
 its repaired-but-not-yet-pushed successor add no task or gate credit.
+
+## 2026-09-28 — PR #483 production release
+
+- Final receipt-integrity review returned GREEN with `P0=P1=P2=P3=0` on
+  exact PR head `99ed0a3641e3f3c102e57459230d66a615794d6f`: 22 paths /
+  140,368 plain-binary bytes / SHA-256
+  `bc8370a821dc7b01fe0076c5c7a10455a35d5bbdecd77e812992dfcc926e1d39`.
+  All reviewed runtime/test/message blobs remained byte-identical after the
+  repair review; the three evidence files were append-only.
+- Replacement PR run `36477139610` passed exact-head `pr-scope`,
+  `static-checks` and `typecheck`; separate exact-head `runner-policy` and
+  `scan` runs also passed. The PR production-build job was skipped by policy
+  and is not reported as passed. PR #483 merged normally at
+  `2026-09-28T20:25:23Z` as main
+  `90ad3df47b5e6703b80097afcd5dd74378d4e995`.
+- GitHub deploy run `36479079543` completed SUCCESS at
+  `2026-09-28T20:51:41Z`. Quality/security, SHA-bound production build and
+  artifact, atomic deployment, scheduler and tenant-isolation checks, and the
+  workflow's ping/revision/login/asset smoke all passed.
+- Independent no-cache TLS requests pinned `app.leaddrivecrm.org` to the only
+  registered production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}` and `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=90ad3df47b5e6703b80097afcd5dd74378d4e995` and
+  `builtAt=2026-09-28T20:31:13Z`. Release used only GitHub `main` through
+  `.github/workflows/deploy.yml`; no direct server deploy or worktree copy was
+  used.
+
+Browser E2E, real keyboard/AT/contrast/200% zoom, Android/Gradle, load, signed
+APK, physical-device and human-pilot evidence remain `NOT RUN`. Progress stays
+`DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%.
+WF-C8-009/WF-C8-010/WF-C10-006 remain **PARTIAL** because this release does
+not supply the missing browser/accessibility, raw-investigation or periodic
+access-review evidence.

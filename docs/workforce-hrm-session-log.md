@@ -1316,3 +1316,44 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Full typecheck/static/build, browser E2E, real keyboard/AT/contrast/200% zoom, Android/Gradle, load, signed APK, physical-device and human-pilot checks remain `NOT RUN` on the repaired head pending replacement CI. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; affected tasks stay `PARTIAL` with no credit.
 - Precise stopping point: code/test repair is independently GREEN and committed; only this append-only CI receipt and roadmap evidence entry are uncommitted while PR #483 still targets the failed old head.
 - Next action: commit exactly the three docs, verify implementation blob identity with a final independent review, then push the replacement head and wait for all new-head contexts.
+
+## 2026-09-28 — PR #483 restricted evidence timeline production release
+
+- Final independent receipt-integrity review returned GREEN with
+  `P0=P1=P2=P3=0` on exact PR head
+  `99ed0a3641e3f3c102e57459230d66a615794d6f`: 22 paths / 140,368
+  plain-binary bytes / SHA-256
+  `bc8370a821dc7b01fe0076c5c7a10455a35d5bbdecd77e812992dfcc926e1d39`.
+  All reviewed runtime/test/message blobs were unchanged after repair review;
+  only the three append-only receipts followed.
+- Replacement exact-head checks passed: `pr-scope`, `static-checks` including
+  the unit baseline, `typecheck`, `runner-policy` and `scan`. The PR
+  production-build job was skipped by policy and is not counted. PR #483
+  merged normally at `2026-09-28T20:25:23Z` as main
+  `90ad3df47b5e6703b80097afcd5dd74378d4e995`.
+- Deploy run `36479079543` completed SUCCESS at
+  `2026-09-28T20:51:41Z`. Quality/security, SHA-bound production build and
+  immutable artifact, atomic release, scheduler/tenant-isolation checks and
+  built-in ping/revision/login/assets smoke all passed.
+- Independent no-cache TLS checks forced `app.leaddrivecrm.org` to the only
+  registered production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`; `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=90ad3df47b5e6703b80097afcd5dd74378d4e995` and
+  `builtAt=2026-09-28T20:31:13Z`. No Azure, retired host, direct worktree copy
+  or direct production deploy was used.
+- Browser E2E, real keyboard/AT/contrast/200% zoom, Android/Gradle, load,
+  signed APK, physical-device and human-pilot checks remain `NOT RUN`.
+  Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%;
+  WF-C8-009/WF-C8-010/WF-C10-006 stay `PARTIAL` and receive no synthetic
+  credit.
+- In parallel, a read-only roadmap audit selected WF-C2-009 action-time
+  inter-site ordering as the next bounded slice. Its five-file working diff
+  received initial RED only for one P2 malformed-mode parser gap; the repair
+  now has replacement independent GREEN with zero P0-P3, 26,207 bytes and
+  focused 25/25 tests plus scoped ESLint and whitespace passing.
+- Precise stopping point: PR #483 is merged, deployed and exact-SHA verified;
+  this release receipt and the separately reviewed WF-C2-009 working diff are
+  uncommitted on `codex/workforce-site-transition-order-part5`.
+- Next action: checkpoint only the three release-receipt documents, then add
+  WF-C2-009 evidence, freeze its runtime/test diff and require a clean
+  author-independent exact-commit review before push or PR.
