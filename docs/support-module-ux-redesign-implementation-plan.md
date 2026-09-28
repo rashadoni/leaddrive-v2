@@ -2865,7 +2865,7 @@ Closure evidence (2026-09-27):
 
 ## 20. Workstream 13 — Macros
 
-**Status: IN PROGRESS — product `17d7208bb`; recovery/self-audit `bc1fd2f43`; mobile/layout correction pending checkpoint; browser/CI gates pending**
+**Status: DONE — product `17d7208bb`; recovery/self-audit `bc1fd2f43`; final evidence code `47c8767e2`; exact-SHA browser gates green**
 **Route:** `/settings/macros`
 **Primary file:** `src/app/(dashboard)/settings/macros/page.tsx`
 
@@ -2877,21 +2877,21 @@ categories are stored locally rather than shared.
 Target UX: a compact, trustworthy macro library with a readable action timeline,
 safe execution/editing, and shared categories.
 
-- [ ] **SUPUX-MAC-001** Check every fetch/mutation response and show saving,
+- [x] **SUPUX-MAC-001** Check every fetch/mutation response and show saving,
   success, failure, and retry states.
-- [ ] **SUPUX-MAC-002** Add confirm/undo for macro/category deletion and preserve
+- [x] **SUPUX-MAC-002** Add confirm/undo for macro/category deletion and preserve
   user input after errors.
-- [ ] **SUPUX-MAC-003** Replace the default two-column card gallery with a compact
+- [x] **SUPUX-MAC-003** Replace the default two-column card gallery with a compact
   searchable list; open detail/editor on selection.
-- [ ] **SUPUX-MAC-004** Move category/action overflow into accessible menus and
+- [x] **SUPUX-MAC-004** Move category/action overflow into accessible menus and
   reduce simultaneous peer choices.
-- [ ] **SUPUX-MAC-005** Replace free-text assignee ID with a scoped agent/team
+- [x] **SUPUX-MAC-005** Replace free-text assignee ID with a scoped agent/team
   picker.
-- [ ] **SUPUX-MAC-006** Move categories to an organization-scoped server contract
+- [x] **SUPUX-MAC-006** Move categories to an organization-scoped server contract
   or explicitly document local-only behavior if product chooses to retain it.
-- [ ] **SUPUX-MAC-007** Present actions as a readable timeline with accessible
+- [x] **SUPUX-MAC-007** Present actions as a readable timeline with accessible
   add, move, delete, and preview controls.
-- [ ] **SUPUX-MAC-008** Preserve and document keyboard shortcuts without making
+- [x] **SUPUX-MAC-008** Preserve and document keyboard shortcuts without making
   them required for discovery.
 
 Acceptance:
@@ -3070,6 +3070,25 @@ Current-tree restoration and self-audit (2026-09-28):
   at zero, focused ESLint and 18/18 affected assertions pass, and diff-check is
   clean. Because visible desktop layout changed, both exact-SHA desktop and
   mobile evidence must be rerun before the matrix.
+
+Closure evidence (2026-09-28):
+
+- Final code checkpoint `47c8767e2` passes exact-SHA RU/dark mobile run
+  `36370108039`: 6/6 disposable outcomes, 28 real Playwright touchscreen
+  activations, no bad hit, and minimum measured target 44x44. All static
+  error/Axe/touch/overflow/environment/primary-work totals are zero; primary
+  work is at 650 px, load p75 is 463 ms and CLS is
+  `0.009392899609308647`. Manual review accepted the localized dark capture.
+- Exact-SHA EN/light desktop run `36371158032` passes 6/6 outcomes with both
+  editor and category-manager focus return true. All static totals are zero,
+  primary work is at 362 px, load p75 is 299 ms and CLS is
+  `0.0007984547556182484`. Manual review accepted the compact desktop capture.
+- Exact-SHA high-profile run `36372253714` passes exactly 24/24 unique admin
+  cells across AZ/RU/EN, light/dark and desktop/tablet/narrow-tablet/mobile.
+  All eight aggregate issue/error totals are zero; max load p75 is 569 ms, max
+  CLS is `0.07633567374870776`, and max primary-work top is 650 px. Manual
+  review accepted representative AZ/light desktop, EN/dark tablet, AZ/dark
+  narrow-tablet and RU/dark mobile captures. No required gate was waived.
 
 ## 21. Workstream 14 — Portal Users
 

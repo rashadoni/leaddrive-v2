@@ -2333,3 +2333,34 @@ desktop Macros gate before RU/dark mobile and the 24-cell matrix.
 
 Next: checkpoint and push the mobile/layout correction, then rerun exact-SHA
 RU/dark mobile and desktop evidence before the 24-cell matrix.
+
+### Workstream 13 closure self-audit
+
+- Final code checkpoint `47c8767e2` passes exact-SHA RU/dark mobile run
+  `36370108039`: 6/6 outcomes and 28/28 physical Playwright touchscreen
+  activations with successful center hit-tests and measured targets of at least
+  44x44. Static runtime, Axe, accessibility, touch, overflow, environment and
+  primary-work totals are all zero; primary work is at 650 px, load p75 is
+  463 ms and CLS is `0.009392899609308647`. The screenshot was manually
+  accepted.
+- The same SHA passes EN/light desktop run `36371158032`: 6/6 outcomes, both
+  dialog focus returns true, every static total zero, primary work at 362 px,
+  load p75 299 ms and CLS `0.0007984547556182484`. The compact desktop
+  screenshot was manually accepted.
+- High-profile run `36372253714` on the same SHA contains exactly 24/24 unique
+  admin cells for AZ/RU/EN x light/dark x desktop/tablet/narrow-tablet/mobile.
+  All eight aggregate issue/error totals are zero. Worst load p75 is 569 ms,
+  max CLS is `0.07633567374870776`, and max primary-work top is 650 px.
+  Representative AZ/light desktop, EN/dark tablet, AZ/dark narrow-tablet and
+  RU/dark mobile screenshots were manually accepted.
+- Self-audit maps all eight MAC requirements to checked response handling,
+  confirm/delayed delete/Undo and retained drafts, the compact contained list,
+  accessible menus, scoped assignees, organization categories, keyboard-safe
+  timeline/preview controls and optional visible shortcuts. Product, recovery,
+  keyboard, physical touch, localization, theme, viewport, accessibility,
+  performance and visual gates are complete without waivers.
+
+Workstream 13 is **DONE**.
+
+Next: checkpoint and push the Workstream 13 closure record, then begin
+Workstream 14 Portal Users from its saved product/recovery checkpoints.
