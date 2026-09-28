@@ -1,13 +1,18 @@
 import { createHash } from "node:crypto"
 import type { Prisma, PrismaClient } from "@prisma/client"
 import { z } from "zod"
+import { calculateDistance } from "@/lib/geo-utils"
 import {
   WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS,
   WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS,
   workforceAttendanceClaimReview,
 } from "@/lib/mtm/workday"
+import { evaluateWorkforceAttendanceRiskSignals } from "@/lib/workforce/attendance-risk-signals"
 import { WORKFORCE_SITE_TRANSITION_CLAIM_SCHEMA_VERSION } from "@/lib/workforce/mobile-schema-support"
-import { workforceScheduledSnapshotSegment } from "@/lib/workforce/snapshot-writer"
+import {
+  workforceScheduledSnapshotSiteTransitionContext,
+  workforceSnapshottedSiteGeofence,
+} from "@/lib/workforce/snapshot-writer"
 
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
 const ID = z.string().trim().min(1).max(100)
@@ -140,6 +145,7 @@ function assertSupportedClaimWindow(claim: WorkforceSiteTransitionClaim, now: Da
 function transitionAuditData(
   claim: WorkforceSiteTransitionClaim,
   result: { id: string; requestHash: string; attendanceReviewState: string; attendanceReviewReasonCode: string | null },
+  riskSignalCodes: readonly string[],
 ): Prisma.InputJsonObject {
   return {
     clientTransitionId: claim.clientTransitionId,
@@ -153,7 +159,21 @@ function transitionAuditData(
     requestHash: result.requestHash,
     attendanceReviewState: result.attendanceReviewState,
     attendanceReviewReasonCode: result.attendanceReviewReasonCode,
+    riskSignalCodes: [...riskSignalCodes],
   }
+}
+
+function conservativeSiteDistanceMeters(input: {
+  previous: { centerLatitude: number; centerLongitude: number; radiusMeters: number }
+  current: { centerLatitude: number; centerLongitude: number; radiusMeters: number }
+}): number {
+  const centerDistance = calculateDistance(
+    input.previous.centerLatitude,
+    input.previous.centerLongitude,
+    input.current.centerLatitude,
+    input.current.centerLongitude,
+  )
+  return Math.max(0, centerDistance - input.previous.radiusMeters - input.current.radiusMeters)
 }
 
 /**
@@ -221,7 +241,7 @@ export async function recordWorkforceSiteTransition(input: {
             workdayId: input.claim.workdayId,
             agentId: input.agentId,
           },
-          select: { id: true, segments: true },
+          select: { id: true, segments: true, sites: true },
         }),
       ])
       if (!workday) {
@@ -236,17 +256,80 @@ export async function recordWorkforceSiteTransition(input: {
           "The Workforce shift segment is unavailable in this tenant",
         )
       }
-      const scheduledSegment = scheduleSnapshot == null
+      const transitionContext = scheduleSnapshot == null
         ? null
-        : workforceScheduledSnapshotSegment(scheduleSnapshot.segments, input.claim.segmentId)
-      if (!scheduledSegment || scheduledSegment.mode !== "SITE" || scheduledSegment.siteId == null) {
+        : workforceScheduledSnapshotSiteTransitionContext(scheduleSnapshot.segments, input.claim.segmentId)
+      if (!transitionContext) {
         throw new WorkforceSiteTransitionError(
           "WORKFORCE_SITE_TRANSITION_SEGMENT_NOT_SCHEDULED",
           "The Workforce site transition segment is not scheduled for this employee workday",
         )
       }
 
-      const review = workforceAttendanceClaimReview(input.claim.claimedAt, now)
+      let previousDeparture: { id: string; claimedAt: Date } | null = null
+      if (input.claim.kind === "ARRIVAL" && transitionContext.previousSiteSegmentId !== null) {
+        previousDeparture = await tx.workforceSiteTransition.findFirst({
+          where: {
+            organizationId: input.organizationId,
+            agentId: input.agentId,
+            workdayId: input.claim.workdayId,
+            segmentId: transitionContext.previousSiteSegmentId,
+            kind: "DEPARTURE",
+            claimedAt: { lt: input.claim.claimedAt },
+          },
+          select: { id: true, claimedAt: true },
+        })
+        if (!previousDeparture) {
+          return {
+            status: "conflict",
+            code: "WORKFORCE_SITE_TRANSITION_PREDECESSOR_DEPARTURE_REQUIRED",
+            message: "The previous scheduled site departure must be recorded before this arrival can be retried",
+          }
+        }
+      }
+
+      const riskSignalCodes: string[] = []
+      if (
+        previousDeparture
+        && transitionContext.previousSiteId !== null
+        && scheduleSnapshot
+      ) {
+        const previousSite = workforceSnapshottedSiteGeofence(
+          scheduleSnapshot.sites,
+          transitionContext.previousSiteId,
+        )
+        const currentSite = workforceSnapshottedSiteGeofence(
+          scheduleSnapshot.sites,
+          transitionContext.siteId,
+        )
+        if (previousSite && currentSite) {
+          const signals = evaluateWorkforceAttendanceRiskSignals({
+            previous: {
+              departedAt: previousDeparture.claimedAt,
+              distanceToCurrentSiteMeters: conservativeSiteDistanceMeters({
+                previous: previousSite,
+                current: currentSite,
+              }),
+            },
+            current: {
+              claimedAt: input.claim.claimedAt,
+              capturedAt: input.claim.capturedAt,
+              serverReceivedAt: now,
+            },
+          })
+          if (signals.some((signal) => signal.code === "IMPOSSIBLE_SITE_TRANSITION")) {
+            riskSignalCodes.push("IMPOSSIBLE_SITE_TRANSITION")
+          }
+        }
+      }
+
+      const delayReview = workforceAttendanceClaimReview(input.claim.claimedAt, now)
+      const impossibleTransition = riskSignalCodes.includes("IMPOSSIBLE_SITE_TRANSITION")
+      const attendanceReviewState = delayReview.state === "PENDING_REVIEW" || impossibleTransition
+        ? "PENDING_REVIEW"
+        : "NOT_REQUIRED"
+      const attendanceReviewReasonCode = delayReview.reasonCode
+        ?? (impossibleTransition ? "IMPOSSIBLE_SITE_TRANSITION" : null)
       const transition = await tx.workforceSiteTransition.create({
         data: {
           organizationId: input.organizationId,
@@ -262,8 +345,8 @@ export async function recordWorkforceSiteTransition(input: {
           appliedAt: now,
           schemaVersion: input.claim.schemaVersion,
           requestHash: hash,
-          attendanceReviewState: review.state,
-          attendanceReviewReasonCode: review.reasonCode,
+          attendanceReviewState,
+          attendanceReviewReasonCode,
         },
         select: transitionSelect,
       })
@@ -275,7 +358,7 @@ export async function recordWorkforceSiteTransition(input: {
           entity: "workforce_site_transition",
           entityId: transition.id,
           metadataKind: "workforce_site_transition",
-          newData: transitionAuditData(input.claim, transition),
+          newData: transitionAuditData(input.claim, transition, riskSignalCodes),
           ipAddress: input.audit?.ipAddress ?? null,
           userAgent: input.audit?.userAgent ?? null,
         },

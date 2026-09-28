@@ -1559,3 +1559,37 @@ from this worktree.
 - Next action: checkpoint the release receipt, then finish and freeze the
   independently preflighted sub-400 KB WF-C2-009 action-time ordering and
   review-only impossible-transition slice.
+
+## 2026-09-28 — WF-C2-009 action-time ordering working checkpoint
+
+- PR #483's exact-SHA release receipt was checkpointed as
+  `f8ed2ddb4` on successor branch
+  `codex/workforce-site-transition-order-part5` from merged/deployed main
+  `90ad3df47b5e6703b80097afcd5dd74378d4e995`.
+- The bounded backend slice now requires an earlier tenant/employee/workday
+  scoped departure from the exact previous immutable SITE segment before a
+  later SITE arrival. Replay remains first; a missing predecessor is a
+  write-free retryable conflict.
+- Complete immutable circle snapshots feed the existing review-only evaluator
+  with conservative edge-to-edge distance. Impossible speed is a review hint,
+  not rejection or guilt; delayed claims keep `DELAYED_CLAIM` primary and only
+  the safe secondary risk code reaches audit. Missing geometry invents no
+  signal and raw geometry/measurements never enter the row, response or audit.
+- Initial independent preflight returned RED for one P2 malformed-mode gap.
+  Strict six-mode, SITE-only-site, duplicate and malformed fail-closed parsing
+  repaired it. Replacement independent review is GREEN with zero P0-P3 on
+  five runtime/test files / 26,207 bytes / SHA-256
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Focused author checks pass 4 files / 25 tests, scoped ESLint and whitespace.
+  Full typecheck/suite/build, real PostgreSQL concurrency, browser, Android,
+  load, physical-device and pilot checks remain `NOT RUN`; exact-head CI is
+  mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C2 73%, C5 81%, C6 20% and
+  C9 99%. WF-C2-009 stays `PARTIAL` until frozen exact-head CI passes; no
+  provisional task or gate credit is added.
+- Precise stopping point: the repaired runtime/test diff is independently
+  GREEN and the initial evidence is present, but the explicit task paths are
+  uncommitted and no frozen exact-commit review exists.
+- Next action: checkpoint the explicit WF-C2-009 paths, prove the frozen diff
+  and append-only receipts independently, then push/open a sub-400 KB PR and
+  require every exact-head gate.

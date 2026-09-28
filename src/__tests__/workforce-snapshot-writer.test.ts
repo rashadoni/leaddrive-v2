@@ -11,6 +11,7 @@ import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
 import {
   assertWorkforceSnapshottedSegmentInTransaction,
   workforceScheduledSnapshotSegment,
+  workforceScheduledSnapshotSiteTransitionContext,
   writeWorkforceSnapshots,
   writeWorkforceSnapshotsIfReadyInTransaction,
   writeWorkforceSnapshotsInTransaction,
@@ -33,6 +34,47 @@ beforeEach(() => {
 })
 
 describe("Workforce snapshot writer", () => {
+  it("resolves a strict immutable predecessor pair and rejects malformed or duplicate segment history", () => {
+    const segments = [
+      { id: "segment-a", mode: "SITE", siteId: "site-a" },
+      { id: "travel", mode: "TRAVEL", siteId: null },
+      { id: "segment-b", mode: "SITE", siteId: "site-b" },
+    ]
+    expect(workforceScheduledSnapshotSiteTransitionContext(segments, "segment-b")).toEqual({
+      id: "segment-b",
+      mode: "SITE",
+      siteId: "site-b",
+      previousSiteSegmentId: "segment-a",
+      previousSiteId: "site-a",
+    })
+    expect(workforceScheduledSnapshotSiteTransitionContext(segments, "segment-a")).toEqual({
+      id: "segment-a",
+      mode: "SITE",
+      siteId: "site-a",
+      previousSiteSegmentId: null,
+      previousSiteId: null,
+    })
+    expect(workforceScheduledSnapshotSiteTransitionContext([
+      ...segments,
+      { id: "segment-a", mode: "SITE", siteId: "site-c" },
+    ], "segment-b")).toBeNull()
+    expect(workforceScheduledSnapshotSiteTransitionContext([
+      segments[0],
+      { id: "broken", mode: "SITE" },
+      segments[2],
+    ], "segment-b")).toBeNull()
+    expect(workforceScheduledSnapshotSiteTransitionContext([
+      segments[0],
+      { id: "unknown", mode: "SIT", siteId: "site-x" },
+      segments[2],
+    ], "segment-b")).toBeNull()
+    expect(workforceScheduledSnapshotSiteTransitionContext([
+      segments[0],
+      { id: "bad-travel", mode: "TRAVEL", siteId: "site-x" },
+      segments[2],
+    ], "segment-b")).toBeNull()
+  })
+
   it("recognizes only a segment pinned on the employee's schedule snapshot", async () => {
     const segments = [
       { id: "segment-remote", mode: "REMOTE", siteId: null },

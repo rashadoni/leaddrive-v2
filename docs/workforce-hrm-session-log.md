@@ -1357,3 +1357,39 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint only the three release-receipt documents, then add
   WF-C2-009 evidence, freeze its runtime/test diff and require a clean
   author-independent exact-commit review before push or PR.
+
+## 2026-09-28 — WF-C2-009 action-time ordering working checkpoint
+
+- PR #483's production receipt was checkpointed separately as
+  `f8ed2ddb4` on the clean successor branch based on exact merged/deployed main
+  `90ad3df47b5e6703b80097afcd5dd74378d4e995`.
+- The next bounded backend slice wires immutable schedule order to site
+  transition intake. A later SITE arrival requires the earlier departure of
+  the exact previous SITE segment under tenant, employee and workday scope;
+  missing data returns a dedicated retryable conflict without transition or
+  audit writes. Exact replay remains before all schedule/geometry work.
+- Complete snapshotted circles produce only a conservative edge-to-edge
+  distance for the existing deterministic review-only evaluator. Extreme
+  speed records `IMPOSSIBLE_SITE_TRANSITION`; a simultaneous delayed claim
+  keeps `DELAYED_CLAIM` primary and exposes only the safe secondary code in
+  audit. Missing/invalid geometry produces no signal, and raw geometry,
+  distance or speed is absent from row/return/audit.
+- Initial independent review was RED with one P2: unknown modes and a non-SITE
+  site reference could pass the supposedly strict parser. The repair
+  allowlists all six modes, requires a site only for SITE and rejects duplicate
+  or contradictory snapshot history. Fresh replacement review returned GREEN
+  with `P0=P1=P2=P3=0` on five runtime/test files / 26,207 bytes / SHA-256
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Author and reviewer checks pass the focused 4 files / 25 tests, scoped
+  ESLint and whitespace. Full typecheck/suite/build, real PostgreSQL
+  concurrency, browser, Android/Gradle, load, physical-device and pilot checks
+  are `NOT RUN`; exact-head CI remains mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C2 73%, C5 81%, C6 20% and
+  C9 99%. WF-C2-009 stays `PARTIAL` pending frozen exact-head CI; no task or
+  gate credit is added.
+- Precise stopping point: all five runtime/test changes and initial evidence
+  are uncommitted but working-tree review is GREEN; there is no frozen
+  exact-commit verdict yet.
+- Next action: repeat focused verification, checkpoint only the eight task
+  paths, obtain a fresh complete-diff exact-commit GREEN review, then append
+  its receipt before push/PR.
