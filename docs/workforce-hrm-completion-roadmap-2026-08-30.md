@@ -1737,3 +1737,24 @@ from this worktree.
 - Next action: checkpoint the explicit repair/evidence paths, obtain fresh
   author-independent exact-SHA review, then push the replacement head and
   require every gate again.
+
+## 2026-09-29 — WF-C11-001 type repair review GREEN
+
+- Repair checkpoint `a3178eb8c3a14765316a3afac4e906c0c1a1aafb` received fresh
+  author-independent GREEN with `P0=P1=P2=P3=0`. The exact prior-head repair
+  delta is 8 paths / 11,667 bytes / SHA-256
+  `92c4b846d3ec8470c1c2033467b359502f9f2d6f69e467f813d9b11b021f4bf4`;
+  the complete candidate is 19 paths / 97,943 bytes / SHA-256
+  `ed0feb2c546c7920b2f32741a70a93c5f04775f70519ccc3faa0c99784710be3`.
+- The reviewer independently matched the five reported TS2322 diagnostics to
+  exactly ten v1 discriminator literal narrowings across five tests. No
+  runtime, union, workflow, package or type-baseline change exists; the three
+  evidence updates are byte-prefix append-only.
+- Reviewer checks pass 11 files / 98 tests, scoped ESLint and repair/full-range
+  whitespace. Full typecheck/build/suite/browser/Android/load remain
+  `NOT RUN`; replacement exact-head CI remains mandatory.
+- Progress remains `DONE 82/161`, `GATES 14/15`, C11 80%; WF-C11-001 remains
+  `PARTIAL`. Precise stopping point: the reviewed repair is committed and
+  clean; only this three-document receipt is uncommitted.
+- Next action: checkpoint the receipt, obtain final exact-head integrity GREEN,
+  then push the replacement head and require all contexts again.

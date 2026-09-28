@@ -110,3 +110,18 @@ change runtime code, weaken the calculation union or update the accepted type
 baseline. Post-repair verification passes 11 targeted files / 98 tests,
 scoped ESLint and whitespace. Exact-head CI and a new author-independent
 review remain mandatory before merge; no completion credit is added.
+
+The repair checkpoint is
+`a3178eb8c3a14765316a3afac4e906c0c1a1aafb`. Fresh independent review is
+GREEN with `P0=P1=P2=P3=0`. The exact repair delta from the prior PR head is
+8 paths / 11,667 plain-binary bytes / SHA-256
+`92c4b846d3ec8470c1c2033467b359502f9f2d6f69e467f813d9b11b021f4bf4`;
+the resulting full candidate is 19 paths / 97,943 bytes / SHA-256
+`ed0feb2c546c7920b2f32741a70a93c5f04775f70519ccc3faa0c99784710be3`.
+
+The reviewer independently corroborated the five CI diagnostics and confirmed
+the repair is exactly ten literal-only replacements across the five fixtures,
+with no runtime, union, CI script, package or baseline change. Its 11-file /
+98-test matrix, scoped ESLint and both repair/full-range whitespace checks
+pass. Replacement exact-head CI is still required; `WF-C11-001` remains
+**PARTIAL**.

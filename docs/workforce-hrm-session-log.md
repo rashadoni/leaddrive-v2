@@ -1546,3 +1546,24 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint only the eight explicit paths, obtain fresh
   independent exact-SHA review and final integrity proof, then push and rerun
   every required PR context without weakening any gate.
+
+## 2026-09-29 — WF-C11-001 type repair review GREEN
+
+- Exact repair head `a3178eb8c3a14765316a3afac4e906c0c1a1aafb` is independently
+  GREEN with `P0=P1=P2=P3=0`. Its delta from the red PR head is 8 paths /
+  11,667 bytes / SHA-256
+  `92c4b846d3ec8470c1c2033467b359502f9f2d6f69e467f813d9b11b021f4bf4`;
+  the full candidate is 19 paths / 97,943 bytes / SHA-256
+  `ed0feb2c546c7920b2f32741a70a93c5f04775f70519ccc3faa0c99784710be3`.
+- The independent audit matched all five CI diagnostics and proved the code
+  delta is exactly ten `1 as const` literal narrowings in five legacy v1
+  fixtures. Runtime, discriminated union, workflows, dependencies and the
+  accepted type baseline are unchanged; evidence updates are append-only.
+- Reviewer verification passes 11 files / 98 tests, scoped ESLint and both
+  repair/full-range whitespace checks. Replacement full typecheck and all
+  exact-head contexts remain mandatory.
+- Progress remains `DONE 82/161`, `GATES 14/15`, C11 80%; no completion credit
+  is claimed. Precise stopping point: the clean reviewed repair is committed,
+  and this receipt is uncommitted in three durable documents.
+- Next action: checkpoint the receipt, run final independent integrity review,
+  push the replacement PR head and wait for every required context.
