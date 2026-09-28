@@ -5,17 +5,19 @@ import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { resolveWorkforceExceptionResponseRecording } from "@/lib/workforce/exception-response-rollout"
 import {
-  appendAuthorizedWorkforceExceptionEmployeeResponse,
+  appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse,
   WorkforceExceptionEmployeeResponseWriterError,
   type WorkforceExceptionEmployeeResponseWriterDb,
 } from "@/lib/workforce/exception-employee-response-writer"
 import { requireWorkforceExceptionEmployeeResponseRateLimit } from "@/lib/workforce/exception-employee-response-rate-limit"
+import { MAX_WORKFORCE_EXCEPTION_DECISIONS } from "@/lib/workforce/exception-workbench"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 const EmployeeExceptionResponseSchema = z.object({
   responseCode: z.enum(["ACKNOWLEDGED", "CORRECTION_REQUESTED"]),
   clientResponseId: z.string().trim().min(8).max(100),
+  expectedCaseRevision: z.number().int().min(0).max(MAX_WORKFORCE_EXCEPTION_DECISIONS - 1),
   correctionRequestId: z.string().trim().min(1).max(191).optional(),
 }).strict().superRefine((value, context) => {
   if ((value.responseCode === "ACKNOWLEDGED" && value.correctionRequestId)
@@ -43,9 +45,10 @@ function responseConstraint(error: unknown): boolean {
  * POST /api/v1/workforce/exceptions/:id/response
  *
  * A session-bound employee can acknowledge only an exact own case or link it
- * to a pre-existing own correction request. This route never accepts an
- * explanation, coordinates, QR/device proof, direct time correction or an HR
- * decision. The migration's transaction trigger re-checks ownership/topology.
+ * to a pre-existing own correction request at the exact case revision shown
+ * by the self projection. This route never accepts an explanation,
+ * coordinates, QR/device proof, direct time correction or an HR decision. The
+ * migration's transaction trigger re-checks ownership/topology.
  */
 export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteContext>("write", async (req, auth, context) => {
   const { id: caseId } = await context.params
@@ -97,7 +100,7 @@ export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteConte
     if (!exceptionCase?.workdayId) {
       return NextResponse.json({ error: "This exception is unavailable for an employee response", code: "WORKFORCE_EXCEPTION_RESPONSE_UNAVAILABLE" }, { status: 404 })
     }
-    const result = await prisma.$transaction((tx) => appendAuthorizedWorkforceExceptionEmployeeResponse({
+    const result = await prisma.$transaction((tx) => appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse({
       db: tx as unknown as WorkforceExceptionEmployeeResponseWriterDb,
       draft: {
         organizationId: auth.orgId,
@@ -110,7 +113,11 @@ export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteConte
         clientResponseId: parsed.data.clientResponseId,
         actorUserId: auth.userId,
       },
-      authorize: async (request) => request.agentId === actor.agentId && request.actorUserId === auth.userId,
+      expectedCaseRevision: parsed.data.expectedCaseRevision,
+      authorize: async (request) => request.organizationId === auth.orgId
+        && request.caseId === caseId
+        && request.agentId === actor.agentId
+        && request.actorUserId === auth.userId,
     }))
     return NextResponse.json({ success: true, idempotent: result.idempotent, data: { responseId: result.responseId } }, {
       status: result.idempotent ? 200 : 201,
@@ -119,6 +126,12 @@ export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteConte
   } catch (error) {
     if (error instanceof WorkforceExceptionEmployeeResponseWriterError) {
       if (error.code === "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_NOT_AUTHORIZED") return workforceScopeDenied()
+      if (error.code === "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT") {
+        return NextResponse.json({
+          error: "This exception changed; refresh it before responding",
+          code: error.code,
+        }, { status: 409, headers: workforceSensitiveResponseHeaders })
+      }
       if (error.code === "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE") {
         return NextResponse.json({
           error: "This exception is unavailable for an employee response",
