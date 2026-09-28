@@ -108,3 +108,26 @@ The prior working-tree review remains useful preflight evidence but is not
 frozen merge authority. This receipt must be checkpointed and a fresh
 author-independent review must verify the resulting clean complete diff before
 push or PR.
+
+## Fingerprint correction after rejected frozen review
+
+The first frozen review returned RED with one P3 evidence finding and no
+P0-P2 finding. The preceding `41,889`-byte / `a6ad90f...` value was calculated
+with `git diff --binary --full-index`; it is not the project's reproducible
+plain `git diff --binary <base> <head>` fingerprint and is superseded, not
+deleted.
+
+For exact base `147369b5027b9dae7b5a6cb25d9f82711fbdb43b` and pre-receipt
+checkpoint/merge `0395f7a718f09b14eae8240d05927647d399e4ed`, the corrected complete
+identity is seven paths / 41,455 bytes / SHA-256
+`0e666ed0c59a87e378eabffef9312e20e79c0d5c432c1904c02d5a7cb378f5c1`.
+For the rejected frozen-review head
+`08f48c948c6c7e760e1ee3be78e0e22c0589244b`, it is seven paths / 46,954
+bytes / SHA-256
+`b24950e8ea97ae20fe5559ee459c4ca743dd247814741707de0ccef4b547b73b`.
+
+The reviewer otherwise found the complete runtime/test diff GREEN: no
+lock-order, replay, revision, delegate, PostgreSQL harness, API containment or
+scope defect. That rejected verdict grants no merge authority. This correction
+requires a new checkpoint and replacement frozen review from the complete
+base/head diff.

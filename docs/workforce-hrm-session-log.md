@@ -1096,3 +1096,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - The working-tree independent GREEN remains preflight evidence only and does not transfer as frozen merge authority after current-main integration and receipt changes. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
 - Precise stopping point: live main is integrated and focused verification is repeated green; only the three-document integration receipt is uncommitted and no independent frozen review exists for the resulting clean head.
 - Next action: checkpoint the receipt, freeze the final current-main base/head identity and commission a fresh author-independent complete-diff review before any push or PR.
+
+## 2026-09-28 — C6 cycle-dedup frozen-review P3 fingerprint correction
+
+- The first current-main frozen review returned RED with one P3 evidence finding and no P0-P2. Four append-only references contained a 41,889-byte / `a6ad90f...` fingerprint generated with `git diff --binary --full-index`; that is not the reproducible plain `git diff --binary` stream used by the independent review.
+- The incorrect values remain as historical rejected evidence and are superseded here. Exact base `147369b5027b9dae7b5a6cb25d9f82711fbdb43b` through pre-receipt merge `0395f7a718f09b14eae8240d05927647d399e4ed` is seven paths / 41,455 bytes / SHA-256 `0e666ed0c59a87e378eabffef9312e20e79c0d5c432c1904c02d5a7cb378f5c1`.
+- The reviewer independently measured rejected head `08f48c948c6c7e760e1ee3be78e0e22c0589244b` as seven paths / 46,954 bytes / SHA-256 `b24950e8ea97ae20fe5559ee459c4ca743dd247814741707de0ccef4b547b73b`, with live/local main and merge-base all still `147369b5027b9dae7b5a6cb25d9f82711fbdb43b`, no drift and clean start/end.
+- Runtime/test inspection was otherwise GREEN: writer order, exact replay, same-cycle conflict, later-revision eligibility, index-scoped delegate, PostgreSQL winner/waiter harness, API containment, bounded scope and disjoint PR #476/#467 integration had no P0-P3 defect. Reviewer-side dependency tests, ESLint, PostgreSQL, typecheck/build, browser, Android, load/device/pilot were `NOT RUN`; author results were not relabelled.
+- The RED verdict is retained and grants no merge authority. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: all four bad-fingerprint references are append-only superseded in the working tree, but the correction is not checkpointed and no valid frozen review exists.
+- Next action: checkpoint only the three corrected evidence paths, calculate the clean final identity with plain `git diff --binary`, and obtain a full replacement independent GREEN before any push or PR.
