@@ -57,11 +57,6 @@ import {
   macroMatchesQuery,
 } from "@/lib/ticket-macros/presentation"
 import { cn } from "@/lib/utils"
-import { PageDescription } from "@/components/page-description"
-import { useAutoTour } from "@/components/tour/tour-provider"
-import { TourReplayButton } from "@/components/tour/tour-replay-button"
-import { HelpButton } from "@/components/help/help-button"
-import { DidYouKnow } from "@/components/did-you-know"
 
 const ACTION_META: Record<MacroActionType, { label: string; group: "ticket" | "message" | "tag" }> = {
   set_status: { label: "setStatus", group: "ticket" },

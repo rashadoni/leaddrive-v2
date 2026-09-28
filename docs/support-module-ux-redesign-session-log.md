@@ -2207,3 +2207,17 @@ audit Workstream 13 Macros on top of the exact green tree.
 Next: checkpoint and push the Workstream 13 recovery/self-audit state, then run
 exact-SHA desktop keyboard/recovery, RU/dark mobile physical-touch and the full
 high-profile locale/theme/viewport matrix.
+
+### Workstream 13 desktop build correction
+
+- Exact-SHA run `36360061337` on `bc1fd2f43` passed the new section-scoped
+  Macros gate and isolated fixture creation, then correctly stopped at the
+  mandatory production build. Webpack found duplicate recovered imports for
+  five existing shell integrations in the Macros page; capture did not run and
+  no browser claim is made from this attempt.
+- The duplicate import block is removed and the Macros UX contract now asserts
+  that every affected integration import occurs exactly once. No build rule,
+  threshold or workflow condition was changed.
+
+Next: run the focused source checks, checkpoint and push the build correction,
+then repeat the exact-SHA desktop gate before mobile/high evidence.

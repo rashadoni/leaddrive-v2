@@ -6,6 +6,18 @@ const applyPage = readFileSync("src/app/(dashboard)/tickets/[id]/page.tsx", "utf
 const categoryRoute = readFileSync("src/app/api/v1/ticket-macros/categories/route.ts", "utf8")
 
 describe("macros UX contract", () => {
+  it("keeps each recovered shell integration import unique", () => {
+    for (const moduleName of [
+      "did-you-know",
+      "help/help-button",
+      "page-description",
+      "tour/tour-replay-button",
+      "tour/tour-provider",
+    ]) {
+      expect(page.match(new RegExp(`from "@/components/${moduleName}"`, "g"))).toHaveLength(1)
+    }
+  })
+
   it("uses a compact searchable list rather than the old card gallery", () => {
     expect(page).toContain("searchPlaceholder")
     expect(page).toContain("md:grid-cols-[minmax(12rem,1.4fr)")

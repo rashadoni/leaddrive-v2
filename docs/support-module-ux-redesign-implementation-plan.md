@@ -3018,6 +3018,10 @@ Current-tree restoration and self-audit (2026-09-28):
   green. Full local TypeScript/build/browser remain **NOT RUN** under the
   documented Contabo workload/default-heap rule; exact-SHA GitHub Actions
   evidence remains mandatory before any MAC checkbox closes.
+- Exact-SHA desktop attempt `36360061337` passed this section gate and fixtures,
+  then the production build caught duplicate recovered shell imports before
+  capture. The duplicate block is removed and a focused uniqueness regression
+  is added; the desktop browser gate remains pending until its exact-SHA rerun.
 
 ## 21. Workstream 14 — Portal Users
 
