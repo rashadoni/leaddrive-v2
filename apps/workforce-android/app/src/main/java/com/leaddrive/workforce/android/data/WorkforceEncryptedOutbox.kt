@@ -388,7 +388,6 @@ private fun WorkforceOutboxDomain.storedPendingState(state: WorkforceOutboxState
     return when (state) {
         WorkforceOutboxState.QUEUED -> EXCEPTION_RESPONSE_QUEUED
         WorkforceOutboxState.RETRY -> EXCEPTION_RESPONSE_RETRY
-        else -> error("Only pending states have downgrade-safe aliases.")
     }
 }
 

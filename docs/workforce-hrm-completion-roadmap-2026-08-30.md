@@ -1478,3 +1478,12 @@ from this worktree.
 - Android Gradle/Room instrumentation, signed APK, physical accessibility/device, browser, load and pilot remain `NOT RUN`; exact-head PR CI is mandatory. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%, with no credit added.
 - Precise stopping point: the clean implementation/evidence checkpoint is independently GREEN; only this three-document receipt is uncommitted.
 - Next action: checkpoint the receipt, prove all nine reviewed runtime/test/resource blobs unchanged, verify final identity, then push/open the PR and wait for all exact-head contexts including Android.
+
+## 2026-09-28 — PR #482 first Android CI compile repair
+
+- PR #482 opened on independently reviewed head `c9a3fb1b386f05879a51edd083f5209f256c2fca`. Scope, runner policy and scan passed; path-triggered Android run `36452049554` failed only at new unit-test Kotlin compilation after production Kotlin had compiled.
+- Kotlin 2 rejected inferred heterogeneous `arrayOf` rows with `TYPE_INTERSECTION_AS_REIFIED_ERROR`. The bounded repair declares each malformed-offer row as `arrayOf<Any?>`; the new outbox helper also drops one compiler-reported redundant exhaustive `else` without changing behavior.
+- Targeted source contract stays 22/22, scoped ESLint and whitespace pass. Android Gradle remains `NOT RUN` locally and must rerun in exact-head CI. Prior reviews do not transfer to changed bytes.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: two repaired code/test paths and this append-only failure receipt are uncommitted; PR #482 remains open and unmergeable until replacement review and all new-head checks pass.
+- Next action: checkpoint the five explicit repair/evidence paths, obtain fresh independent complete-diff GREEN, push the new head and require a clean Android plus standard CI rerun.

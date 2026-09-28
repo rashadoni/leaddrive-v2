@@ -1265,3 +1265,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit changes.
 - Precise stopping point: exact clean source/test/resource/evidence head is independently GREEN; only this three-document frozen-review receipt is uncommitted.
 - Next action: checkpoint the receipt-only delta, independently prove runtime/test/resource blob identity and final fingerprint, then push/open the sub-400 KB PR and require every exact-head standard plus Android context.
+
+## 2026-09-28 — PR #482 Android compile-gate repair
+
+- Final receipt-integrity review was GREEN with zero P0-P3 and exact head `c9a3fb1b386f05879a51edd083f5209f256c2fca`; its 13-path identity was 98,508 bytes / SHA-256 `713ca8958f9b6d24d1b44204bc990f3cfb5ab8baaf933fbf771afc495016ebb9`. The branch was pushed and PR #482 opened.
+- Fast exact-head checks passed, but Android run `36452049554` failed at `:app:compileDebugUnitTestKotlin`. The application Kotlin task had compiled. Kotlin 2 reported `TYPE_INTERSECTION_AS_REIFIED_ERROR` for lines 89-103 of the new test because heterogeneous `arrayOf` calls lacked an explicit nullable-any element type.
+- Every affected test row now uses `arrayOf<Any?>`. A new warning in the pending alias helper was also removed by deleting the redundant `else` from the compiler-proven exhaustive two-state `when`; the prior `require` and mapping are unchanged.
+- After repair, source-contract Vitest passes 22/22, targeted ESLint and diff whitespace pass. Android Gradle is intentionally `NOT RUN` locally; only new-head CI can close the failed gate.
+- Prior frozen/integrity verdicts are retained for audit but do not transfer to the repaired bytes. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit changes.
+- Precise stopping point: bounded repair and failure receipt are present but uncommitted; PR #482 still points to the rejected CI head.
+- Next action: checkpoint exactly the two repair paths plus three append-only docs, freeze the new full diff, obtain independent GREEN and push so every exact-head context reruns.

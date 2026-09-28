@@ -160,3 +160,23 @@ Android Gradle, Room instrumentation, signed APK, physical device, TalkBack,
 browser, load and pilot remained `NOT RUN` by policy. This receipt changes
 documentation only; final receipt-integrity review must prove all nine
 reviewed runtime/test/resource blobs unchanged before push.
+
+## First exact-head Android CI failure and repair
+
+PR #482 opened at exact reviewed head
+`c9a3fb1b386f05879a51edd083f5209f256c2fca`. `pr-scope`, `runner-policy` and
+`scan` passed, while Android run `36452049554` failed in
+`:app:compileDebugUnitTestKotlin`. Production Kotlin compilation completed;
+the failure was confined to the new malformed-offer test table, where Kotlin
+2 inferred a reified intersection type for heterogeneous `arrayOf` rows and
+raised `TYPE_INTERSECTION_AS_REIFIED_ERROR`.
+
+The test rows now state `arrayOf<Any?>` explicitly. The only production-source
+repair removes the compiler-reported redundant `else` from the already
+flow-exhaustive pending-state alias `when`; behavior is unchanged. Targeted
+Android source-contract tests remain 22/22, scoped ESLint and whitespace pass.
+
+Android Gradle was not rerun on Contabo. A new exact-head path-triggered CI run
+is mandatory. The prior frozen and integrity reviews remain historical
+evidence for their exact heads and do not authorize the repaired head; fresh
+complete-diff review is required before push.

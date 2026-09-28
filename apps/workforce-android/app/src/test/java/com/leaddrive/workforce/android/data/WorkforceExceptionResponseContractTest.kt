@@ -86,21 +86,21 @@ class WorkforceExceptionResponseContractTest {
     @Test
     fun `acknowledgement offer fails closed for malformed rollout state or kind`() {
         val malformedOffers = listOf(
-            arrayOf(null, "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
-            arrayOf("MIGRATION_REQUIRED", "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
-            arrayOf("available", "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
-            arrayOf(" AVAILABLE ", "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
-            arrayOf(true, "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
-            arrayOf("AVAILABLE", null, "ACKNOWLEDGE", 1),
-            arrayOf("AVAILABLE", "ACKNOWLEDGED", "ACKNOWLEDGE", 1),
-            arrayOf("AVAILABLE", "not_acknowledged", "ACKNOWLEDGE", 1),
-            arrayOf("AVAILABLE", " NOT_ACKNOWLEDGED ", "ACKNOWLEDGE", 1),
-            arrayOf("AVAILABLE", true, "ACKNOWLEDGE", 1),
-            arrayOf("AVAILABLE", "NOT_ACKNOWLEDGED", null, 1),
-            arrayOf("AVAILABLE", "NOT_ACKNOWLEDGED", "acknowledge", 1),
-            arrayOf("AVAILABLE", "NOT_ACKNOWLEDGED", " ACKNOWLEDGE ", 1),
-            arrayOf("AVAILABLE", "NOT_ACKNOWLEDGED", "FUTURE_ACTION", 1),
-            arrayOf("AVAILABLE", "NOT_ACKNOWLEDGED", false, 1),
+            arrayOf<Any?>(null, "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
+            arrayOf<Any?>("MIGRATION_REQUIRED", "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
+            arrayOf<Any?>("available", "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
+            arrayOf<Any?>(" AVAILABLE ", "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
+            arrayOf<Any?>(true, "NOT_ACKNOWLEDGED", "ACKNOWLEDGE", 1),
+            arrayOf<Any?>("AVAILABLE", null, "ACKNOWLEDGE", 1),
+            arrayOf<Any?>("AVAILABLE", "ACKNOWLEDGED", "ACKNOWLEDGE", 1),
+            arrayOf<Any?>("AVAILABLE", "not_acknowledged", "ACKNOWLEDGE", 1),
+            arrayOf<Any?>("AVAILABLE", " NOT_ACKNOWLEDGED ", "ACKNOWLEDGE", 1),
+            arrayOf<Any?>("AVAILABLE", true, "ACKNOWLEDGE", 1),
+            arrayOf<Any?>("AVAILABLE", "NOT_ACKNOWLEDGED", null, 1),
+            arrayOf<Any?>("AVAILABLE", "NOT_ACKNOWLEDGED", "acknowledge", 1),
+            arrayOf<Any?>("AVAILABLE", "NOT_ACKNOWLEDGED", " ACKNOWLEDGE ", 1),
+            arrayOf<Any?>("AVAILABLE", "NOT_ACKNOWLEDGED", "FUTURE_ACTION", 1),
+            arrayOf<Any?>("AVAILABLE", "NOT_ACKNOWLEDGED", false, 1),
         )
 
         for ((rollout, state, kind, revision) in malformedOffers) {
