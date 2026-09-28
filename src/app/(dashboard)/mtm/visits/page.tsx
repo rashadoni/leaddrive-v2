@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { medianVisitDurationMinutes } from "@/lib/mtm/visit-duration-median"
 import { nextWiderPeriod } from "@/lib/mtm/empty-period-fallback"
+import { VISIT_PAGE_SIZE, mergeFirstPageRefresh, visitsRemainingInPeriod } from "@/lib/mtm/visit-history-pages"
 import {
   AlertTriangle,
   ArrowLeft,
@@ -20,6 +21,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   Timer,
   Trash2,
   UserRound,
@@ -163,6 +165,10 @@ export default function MtmVisitsPage() {
   const [activeFilter, setActiveFilter] = useState("all")
   const [sortBy, setSortBy] = useState("date_desc")
   const [historyRange, setHistoryRange] = useState<HistoryRange>("today")
+  // Audit 2026-09-24: «вся история» stopped at the latest 200 visits.
+  const [visitsPage, setVisitsPage] = useState(1)
+  const [lastPageFull, setLastPageFull] = useState(false)
+  const [visitsLoadingMore, setVisitsLoadingMore] = useState(false)
   // Audit 2026-09-21: the page opened on «Сегодня» and showed a full set of
   // controls around nothing while a week of visits sat one click away.
   const [rangeChosenByUser, setRangeChosenByUser] = useState(false)
@@ -254,7 +260,7 @@ export default function MtmVisitsPage() {
 
     try {
       const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
-      const res = await fetch(`/api/v1/mtm/visits?limit=200&range=${historyRange}`, { headers, signal: controller.signal })
+      const res = await fetch(`/api/v1/mtm/visits?limit=${VISIT_PAGE_SIZE}&range=${historyRange}`, { headers, signal: controller.signal })
       const result = await res.json().catch(() => null)
       if (!isCurrentRequest()) return
       if (!res.ok || !result?.success) {
@@ -264,14 +270,21 @@ export default function MtmVisitsPage() {
       }
 
       const listed: MtmVisitRow[] = result.data.visits || []
+      const firstPageFull = listed.length >= VISIT_PAGE_SIZE
       setVisits((current) => {
+        // A background refresh keeps what «Показать ещё» brought below the first page.
+        const rows = silent ? mergeFirstPageRefresh(current, listed) : listed
         // A focused visit outside this period stays pinned on top instead of vanishing.
         const focusedId = focusedVisitIdRef.current
-        const pinned = focusedId && !listed.some((visit) => visit.id === focusedId)
+        const pinned = focusedId && !rows.some((visit) => visit.id === focusedId)
           ? current.find((visit) => visit.id === focusedId)
           : undefined
-        return pinned ? [pinned, ...listed] : listed
+        return pinned ? [pinned, ...rows] : rows
       })
+      if (!silent) {
+        setVisitsPage(1)
+        setLastPageFull(firstPageFull)
+      }
       setMeta({
         total: typeof result.data.total === "number" ? result.data.total : null,
         totalExact: result.data.totalExact === true,
@@ -288,6 +301,35 @@ export default function MtmVisitsPage() {
       if (isCurrentRequest() && !silent) setLoading(false)
     }
   }, [historyRange, listIdentityKey, orgId, t])
+
+  async function loadMoreVisits() {
+    const requestId = visitRequestRef.current.id
+    const nextPage = visitsPage + 1
+    setVisitsLoadingMore(true)
+    try {
+      const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
+      const res = await fetch(`/api/v1/mtm/visits?limit=${VISIT_PAGE_SIZE}&range=${historyRange}&page=${nextPage}`, { headers })
+      const result = await res.json().catch(() => null)
+      // A reload in between started the list over; this page belongs to the old one.
+      if (visitRequestRef.current.id !== requestId) return
+      if (!res.ok || !result?.success) {
+        toast.error(t("loadMoreFailed"))
+        return
+      }
+      const more: MtmVisitRow[] = result.data.visits || []
+      setVisits((current) => {
+        const known = new Set(current.map((visit) => visit.id))
+        return [...current, ...more.filter((visit) => !known.has(visit.id))]
+      })
+      setVisitsPage(nextPage)
+      setLastPageFull(more.length >= VISIT_PAGE_SIZE)
+      if (typeof result.data.total === "number") setMeta((current) => ({ ...current, total: result.data.total }))
+    } catch {
+      if (visitRequestRef.current.id === requestId) toast.error(t("loadMoreFailed"))
+    } finally {
+      setVisitsLoadingMore(false)
+    }
+  }
 
   /**
    * The focused row, once per opened visit. Skipped when the list already
@@ -480,6 +522,16 @@ export default function MtmVisitsPage() {
   const medianDuration = medianVisitDurationMinutes(visits)
   const confirmedGps = visits.filter((visit) => visitPlaceSummary(visit, meta.geofenceRadius).verdict === "at_point").length
   const displayedTotal = meta.totalExact && meta.total != null ? meta.total : visits.length
+  const visitsRemaining = visitsRemainingInPeriod({
+    total: meta.total,
+    totalExact: meta.totalExact,
+    candidateLimit: meta.candidateLimit,
+    pagesRead: visitsPage,
+    lastPageFull,
+  })
+  // The counts beside it are over the visits shown; the period's total goes
+  // only where they are the whole period.
+  const listIsPartial = visitsRemaining > 0 || meta.sourceTruncated
   const ownActiveVisits = activeVisits.filter((visit) => isOwnVisitExecution(viewer, { agentId: visit.agentId, status: "CHECKED_IN" }))
   const teamActiveVisits = activeVisits.filter((visit) => !ownActiveVisits.includes(visit))
   const focusedOwnExecution = Boolean(focusedVisitId && ownActiveVisits.some((visit) => visit.id === focusedVisitId))
@@ -767,7 +819,7 @@ export default function MtmVisitsPage() {
           ) : null}
           <MtmResultLine
             aside={<span data-testid="mtm-visits-summary">
-              {t("statTotal")}: {displayedTotal} · {t("statCheckedOut")}: {statusCounts.CHECKED_OUT || 0} · {t("statMedianDuration")}:{" "}
+              {listIsPartial ? null : <>{t("statTotal")}: {displayedTotal} · </>}{t("statCheckedOut")}: {statusCounts.CHECKED_OUT || 0} · {t("statMedianDuration")}:{" "}
               <span data-testid="mtm-visits-median-duration">{medianDuration == null ? "—" : `${medianDuration} ${t("min")}`}</span> · {t("statGpsConfirmed")}: {confirmedGps}
             </span>}
           >
@@ -885,6 +937,14 @@ export default function MtmVisitsPage() {
             </div>
           </div>
         )}
+        {!loading && visitsRemaining > 0 ? (
+          <div className="flex justify-center border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+            <Button data-testid="mtm-visits-load-more" variant="outline" className="min-h-11" disabled={visitsLoadingMore} onClick={() => void loadMoreVisits()}>
+              {visitsLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+              {t("loadMore", { count: Math.min(VISIT_PAGE_SIZE, visitsRemaining) })}
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       <MtmVisitForm

@@ -13818,6 +13818,8 @@
     "notFinished": "Hələ tamamlanmayıb",
     "resultCount": "Göstərilir: {count}",
     "resultPartial": "Son {shown} ziyarət göstərilir. Bu dövrdə cəmi: {total}.",
+    "loadMore": "Daha {count} göstər",
+    "loadMoreFailed": "Növbəti ziyarətləri yükləmək alınmadı. Yenidən cəhd edin.",
     "resultBounded": "Təhlükəsiz həddə görə {limit} qeyddən yoxlanılan son {shown} ziyarət göstərilir.",
     "advisorRisk": "Ziyarət üzrə AI qeydləri",
     "teamActiveTitle": "Hazırda gedən ziyarətlər: {count}",
