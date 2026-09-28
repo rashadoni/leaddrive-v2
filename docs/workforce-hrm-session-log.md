@@ -1086,3 +1086,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` and no credit is added.
 - Precise stopping point: the bounded implementation, focused verification, new evidence and working-tree independent preflight are complete, but the seven task paths are not yet checkpointed and no clean frozen-head review exists.
 - Next action: remove the temporary dependency link, checkpoint only the explicit task paths, calculate the clean base/head diff identity and require a fresh author-independent complete-diff GREEN before push/opening the PR.
+
+## 2026-09-28 — C6 response-cycle dedup current-main integration
+
+- The implementation/evidence checkpoint is `37815d80b8bf5d39fdea05d4cd9ba4a06a297fe1`. A subsequent fetch found live main had advanced through PR #476/#467 from `09502d1c96b43e30ba6648c6a322cc8f3f01ac44` to `147369b5027b9dae7b5a6cb25d9f82711fbdb43b`.
+- The five upstream commits change seven paths confined to MTM demo/map matching and the offline Social relevance replay. No path overlaps or semantically changes the Workforce response writer, focused tests or evidence. Current main was merged normally without conflict as `0395f7a718f09b14eae8240d05927647d399e4ed`.
+- After integration, the seven related response files again pass 54/54 tests, targeted ESLint for the three runtime/test paths passes and diff whitespace passes. The real-PostgreSQL file compiles and discovers 13 scenarios, all locally `SKIPPED / NOT RUN`. Full typecheck/build, browser E2E, Android/Gradle, load, signed APK, physical-device and pilot remain `NOT RUN`.
+- The package-lock SHA stays `54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`; the exact-lock temporary dependency link was removed. Before this receipt, the complete seven-path diff against current main was 41,889 binary bytes / SHA-256 `a6ad90f92f60c5ab2d01e0a55ea87245f9cfba7f70c807bae80dbdf8f38ea100`.
+- The working-tree independent GREEN remains preflight evidence only and does not transfer as frozen merge authority after current-main integration and receipt changes. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; no credit is added.
+- Precise stopping point: live main is integrated and focused verification is repeated green; only the three-document integration receipt is uncommitted and no independent frozen review exists for the resulting clean head.
+- Next action: checkpoint the receipt, freeze the final current-main base/head identity and commission a fresh author-independent complete-diff review before any push or PR.

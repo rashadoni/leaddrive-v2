@@ -84,3 +84,27 @@ No Prisma schema, migration, endpoint, UI, rollout flag, tenant activation,
 notification, appeal, terminal decision or production state changed. Progress
 remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; `WF-C6-006` remains
 `PARTIAL` and no task or phase-gate credit is added.
+
+## Current-main integration
+
+Before the frozen review, live `main` advanced from
+`09502d1c96b43e30ba6648c6a322cc8f3f01ac44` to
+`147369b5027b9dae7b5a6cb25d9f82711fbdb43b` through PR #476 and PR #467.
+Their seven paths are confined to MTM demo/map matching and the offline Social
+relevance replay; none overlaps or semantically changes the Workforce writer,
+tests or evidence paths. Current main was integrated normally and without
+conflict as merge commit `0395f7a718f09b14eae8240d05927647d399e4ed`.
+
+On the integrated tree, the related seven-file selection again passes 54/54,
+the three-path targeted ESLint check passes, diff whitespace passes and the
+PostgreSQL file again compiles/discovers 13 scenarios while remaining locally
+`SKIPPED / NOT RUN`. The package-lock identity is unchanged and the temporary
+dependency link was removed.
+
+Before this receipt, the complete diff against base/merge-base/current main
+was seven paths / 41,889 binary-diff bytes / SHA-256
+`a6ad90f92f60c5ab2d01e0a55ea87245f9cfba7f70c807bae80dbdf8f38ea100`.
+The prior working-tree review remains useful preflight evidence but is not
+frozen merge authority. This receipt must be checkpointed and a fresh
+author-independent review must verify the resulting clean complete diff before
+push or PR.
