@@ -119,3 +119,41 @@ Against the new base/merge-base, the complete Workforce diff remains exactly
 old frozen verdict is retained only as historical evidence and is not treated
 as current merge authority. This integration receipt must be checkpointed and
 a fresh author-independent complete-diff review must return GREEN before push.
+
+## Second current-main refresh
+
+The replacement complete-diff inspection on base
+`f26d5767e92f14300838e4d59ede05c1101cfcc4` through clean head
+`6a2e807b279182d468ff2dd6124f7f80dcdea7b0` found zero P0-P3 defects and
+independently matched 14 paths / 86,905 binary-diff bytes / SHA-256
+`e01a49280883e443fe8fef60853917e379db689be3fefbafe528f4626c149cc8`.
+That code and evidence result is retained, but its final merge authority was
+invalidated when the reviewer's closing remote check found another live-main
+advance.
+
+PR #472 advanced `main` to
+`494e14f515f0228b00b78fbefc1fd76a1a010c32`. Its 20 CRM Voice, translation
+and CRM command paths have no overlap with the 14 Workforce paths. The current
+main was integrated normally and without conflict as merge commit
+`ff19084bfc3097e584eaecc921e8fc9e8d187039`, whose parents are
+`6a2e807b279182d468ff2dd6124f7f80dcdea7b0` and
+`494e14f515f0228b00b78fbefc1fd76a1a010c32`.
+
+On this second integrated tree, the expanded related selection again passes 15
+files / 120 tests, targeted ESLint for all ten runtime/test paths passes, and
+diff whitespace passes. The PostgreSQL file compiles and discovers all 12
+scenarios, but all 12 remain `SKIPPED / NOT RUN` locally without an approved
+database. The package-lock SHA remains
+`54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`,
+and the temporary exact-lock dependency link was removed.
+
+Before this receipt, the complete diff against new base/merge-base/current
+main remains exactly 14 paths / 86,905 bytes with SHA-256
+`e01a49280883e443fe8fef60853917e379db689be3fefbafe528f4626c149cc8`.
+Full local typecheck/build, browser E2E, Android/Gradle, load, signed APK,
+physical-device and pilot evidence remains `NOT RUN`. Progress stays `81/161`,
+`14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL`.
+
+The prior review is historical only. This receipt must be checkpointed and a
+fresh author-independent review of the resulting exact base/head pair must
+return GREEN before any push or PR.

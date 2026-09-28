@@ -1270,3 +1270,11 @@ from this worktree.
   counsel opinion. Physical devices, load and the human pilot remain `NOT RUN`.
 - No deploy, production mutation, capability toggle or retention deletion is
   authorized by this document.
+
+## 2026-09-28 — WF-C6-006 web response second current-main refresh
+
+- The complete-diff review on base `f26d5767e92f14300838e4d59ede05c1101cfcc4` through head `6a2e807b279182d468ff2dd6124f7f80dcdea7b0` found zero P0-P3 defects and matched 14 paths / 86,905 bytes / SHA-256 `e01a49280883e443fe8fef60853917e379db689be3fefbafe528f4626c149cc8`, but its closing remote check found live-main drift. It is retained as code/evidence inspection only and is not valid merge authority.
+- PR #472 advanced main to `494e14f515f0228b00b78fbefc1fd76a1a010c32` through 20 non-overlapping CRM Voice, translation and CRM command paths. It was integrated normally without conflict as `ff19084bfc3097e584eaecc921e8fc9e8d187039`; its parents are the prior receipt head `6a2e807b279182d468ff2dd6124f7f80dcdea7b0` and exact current main `494e14f515f0228b00b78fbefc1fd76a1a010c32`.
+- The second integrated tree again passes 15 files / 120 targeted tests, ten-path ESLint and diff whitespace. The PostgreSQL suite discovers 12 scenarios but remains `SKIPPED / NOT RUN` locally. Full typecheck/build, browser, Android, load, signed APK, physical-device and pilot checks remain `NOT RUN` under host policy.
+- Before this receipt, the complete 14-path diff remains 86,905 bytes with SHA-256 `e01a49280883e443fe8fef60853917e379db689be3fefbafe528f4626c149cc8`. A new author-independent frozen review is mandatory for the receipt checkpoint and current base; no earlier verdict transfers.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%. WF-C6-006 stays `PARTIAL`; no task or gate credit is added.
