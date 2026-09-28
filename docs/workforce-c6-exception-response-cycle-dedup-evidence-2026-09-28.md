@@ -159,3 +159,41 @@ physical-device and pilot checks were `NOT RUN` reviewer-side; author results
 were not relabelled. Closing state was clean with no main drift. This receipt
 changes documentation only and requires one final receipt-integrity proof
 before push.
+
+## PR #477 production release
+
+The final receipt-integrity review returned GREEN with zero P0-P3 findings at
+head `a8c03595966d82ddb0e84b4fc717e7eb6d726d52`. The complete diff from exact
+base `147369b5027b9dae7b5a6cb25d9f82711fbdb43b` was seven paths / 58,087
+plain-binary bytes / SHA-256
+`aeed0983324147fc6c6fddf76736c12448a8e2eeb1fc5cef50eecee5b7ab2fc0`.
+Only the three append-only review-receipt documents differed from frozen
+review head `af345a337885ca07fe83e1a0a6dad0572cb05330`; all three reviewed
+runtime/test blobs remained byte-identical.
+
+Exact-head PR run `36405513119` passed `pr-scope`, `static-checks` and
+`typecheck`; companion runs `36405513089` (`runner-policy`) and `36405513116`
+(`scan`) also passed. `static-checks` completed in 12m06s and included the real
+PostgreSQL Workforce shared-lock race plus the full unit baseline. `typecheck`
+completed in 18m45s. The normal PR production-build job was skipped as
+designed.
+
+PR #477 merged normally at `2026-09-28T10:06:01Z` as main SHA
+`6b858b4514e58b1d01c1b027d7ce503a7b39b185`. Deploy run `36407634637`
+completed GREEN at `2026-09-28T10:28:47Z`: quality/security passed in 10m31s,
+the SHA-bound standalone artifact was built and published in 16m15s, atomic
+production deploy plus post-deploy smoke passed in 6m11s, and retention cleanup
+passed in 6s.
+
+Independent no-cache public reads returned HTTP 200 with `{"ok":true}` from
+`/api/v1/ping` and HTTP 200 with
+`{"sha":"6b858b4514e5","artifactSha":"6b858b4514e58b1d01c1b027d7ce503a7b39b185","builtAt":"2026-09-28T10:11:46Z"}`
+from `/api/v1/public/build-info`. The artifact SHA exactly matched merged
+main. Only GitHub `main` through `.github/workflows/deploy.yml` was used; no
+direct production deploy, worktree copy, Azure or retired target was used.
+
+Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot
+evidence remains `NOT RUN`. Progress stays `81/161`, `14/15`, C5 81%, C6 20%
+and C9 99%; `WF-C6-006` remains `PARTIAL` and no task or gate credit is added.
+Work continues on clean successor branch
+`codex/workforce-exception-response-cycle-audit` from exact deployed main.
