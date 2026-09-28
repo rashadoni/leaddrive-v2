@@ -1422,3 +1422,46 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint the three receipt paths, require final
   implementation-blob/fingerprint integrity GREEN, then push/open the
   sub-400 KB PR and wait for every exact-head gate.
+
+## 2026-09-28 — PR #486 merged, deployed and exact-SHA verified
+
+- Frozen PR head `f82c52499dd1c23cceb6986e6dd4ef44c6c05092` retained the independent
+  final GREEN verdict `P0=P1=P2=P3=0`: exactly 9 paths / 47,731 plain-binary
+  bytes / SHA-256
+  `4c9dfd42e3d1fd9d15a48a3910edf5e6ea64c3b80e28483ab045904ad74fa11d`;
+  the five runtime/test paths remained byte-identical to independently
+  reviewed fingerprint
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Exact-head `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and
+  `scan` all passed. PR run `36484581751` left its scope-conditioned production
+  build `SKIPPED`; no pass is claimed for that job.
+- PR #486 merged normally without bypass at `2026-09-28T21:28:27Z` as
+  `7347e87eca493b9d663dc8e66096bc7afb603abb`. The exact-SHA deploy workflow
+  `36486330464` completed `SUCCESS` at `2026-09-28T21:51:06Z`, with full
+  quality/security checks, SHA-stamped artifact, atomic production rollout and
+  post-deploy smoke all green.
+- Fresh no-cache checks were pinned to the only approved production target
+  `13.140.132.245`: `/api/v1/ping` returned HTTP 200 `{"ok":true}` and
+  `/api/v1/public/build-info` returned HTTP 200 with
+  `artifactSha=7347e87eca493b9d663dc8e66096bc7afb603abb` and
+  `builtAt=2026-09-28T21:33:21Z`. No Azure, retired host, direct worktree copy
+  or manual production deploy was used.
+- `WF-C2-009` is accepted as `DONE`; progress is now `DONE 82/161`,
+  `GATES 14/15`, C2 82%, C5 81%, C6 20% and C9 99%. This leaves 79 non-DONE
+  rows and one gate. The older `HRM 99%` label tracked narrower release
+  readiness, not completion of the 161-row ledger.
+- Full local build/typecheck/suite, browser E2E, Android/Gradle, load, signed
+  APK, physical-device and human-pilot evidence remains `NOT RUN`. Exact-head
+  PR CI and deploy CI supply the checks explicitly reported above; no external
+  gate is inferred.
+- A read-only roadmap/code audit rejected `WF-C10-011` as the next DONE claim:
+  its acceptance requires a real dashboard/privacy/cardinality review absent
+  from the repository. It selected `WF-C11-001` instead because immutable
+  snapshot rehydration and property tests can be fully evidenced in a bounded
+  code/CI slice without browser, device, legal or live-infrastructure claims.
+- Precise stopping point: PR #486 is reviewed, merged, deployed and
+  production-verified; this three-document release receipt is uncommitted on
+  clean successor branch `codex/workforce-timesheet-rehydration-part6` from
+  exact deployed main.
+- Next action: verify the receipt diff, checkpoint only these three documents,
+  then implement and independently review the bounded `WF-C11-001` slice.

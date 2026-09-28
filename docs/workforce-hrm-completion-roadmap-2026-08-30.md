@@ -841,7 +841,7 @@ between office, field, remote and travel segments.
 | WF-C2-006 | P0 | DONE | Backend/HR | Add ordered shift segments with mode, site, planned window, grace and proof policy reference | [`workforce-c2-shift-segment-evidence-2026-08-30.md`](./workforce-c2-shift-segment-evidence-2026-08-30.md): tenant/RLS/immutable draft timeline; C3 workday snapshot remains separate |
 | WF-C2-007 | P0 | DONE | Backend | Add arrival/departure/site-transition facts linked to segment and evidence assessment | [`workforce-c2-site-transition-evidence-2026-08-30.md`](./workforce-c2-site-transition-evidence-2026-08-30.md): snapshotted SITE binding plus tenant-FK-linked encrypted evidence and raw-free assessment; client transport remains intentionally C5/C9-gated |
 | WF-C2-008 | P1 | OWNER DECISION | HR/Legal | Define inter-site travel, paid/expected treatment, delay grace and who may alter it | OD-09 resolved; calculation rule versioned |
-| WF-C2-009 | P1 | PARTIAL | Backend | Validate segment overlap, ordering, site eligibility, timezone and impossible travel at publish and action time | [`workforce-c2-schedule-safety-evidence-2026-08-30.md`](./workforce-c2-schedule-safety-evidence-2026-08-30.md): publish/START/action site boundary; OD-09 travel semantics remain open |
+| WF-C2-009 | P1 | DONE | Backend | Validate segment overlap, ordering, site eligibility, timezone and impossible travel at publish and action time | [`workforce-c2-schedule-safety-evidence-2026-08-30.md`](./workforce-c2-schedule-safety-evidence-2026-08-30.md): publish/START/action checks, exact preceding-departure ordering and conservative review-only impossible-transition signal; PR #486 exact-head CI and production receipt below |
 | WF-C2-010 | P1 | DONE | Backend | Add organization/team/site scoped APIs and permissions independent of Route customers/geofences | [`workforce-c2-module-scope-evidence-2026-08-30.md`](./workforce-c2-module-scope-evidence-2026-08-30.md): session-admin organization/team/site APIs, actor-scoped read surface and HRM-only isolation tests |
 | WF-C2-011 | P2 | DONE | Product/Backend | Reserve versioned extension for polygon/multi-entrance/large-campus zones without forcing it into v1 | [`workforce-c2-site-domain-adr-2026-08-30.md`](./workforce-c2-site-domain-adr-2026-08-30.md) documents the circle-v1 compatibility boundary |
 
@@ -1619,3 +1619,40 @@ from this worktree.
 - Next action: checkpoint the receipt, independently prove source/test blob
   identity and final fingerprint, then push/open the PR and require all
   exact-head contexts.
+
+## 2026-09-28 — WF-C2-009 exact-head release GREEN
+
+- PR #486 froze exact head `f82c52499dd1c23cceb6986e6dd4ef44c6c05092`.
+  Independent final integrity review was GREEN with `P0=P1=P2=P3=0` on exactly
+  9 paths / 47,731 plain-binary bytes / SHA-256
+  `4c9dfd42e3d1fd9d15a48a3910edf5e6ea64c3b80e28483ab045904ad74fa11d`;
+  the reviewed five-path runtime/test fingerprint remained
+  `4357fb9a5b90e83a849e73fdd77ecfe47d68b104c62858c3ce5cc1cc8a835edd`.
+- Exact-head PR run `36484581751` passed `pr-scope`, `static-checks` and
+  `typecheck`; the separate exact-head `runner-policy` and `scan` contexts also
+  passed. The scope-conditioned PR production-build job was `SKIPPED`, not
+  represented as a pass.
+- PR #486 merged normally without bypass at `2026-09-28T21:28:27Z` as main SHA
+  `7347e87eca493b9d663dc8e66096bc7afb603abb`. Deploy workflow
+  `36486330464` completed `SUCCESS` at `2026-09-28T21:51:06Z`, including the
+  full quality/security job, SHA-stamped production build, atomic rollout and
+  workflow post-deploy smoke.
+- Independent no-cache checks pinned to the sole approved production IP
+  `13.140.132.245` returned HTTP 200 from `/api/v1/ping` with `{"ok":true}`
+  and HTTP 200 from `/api/v1/public/build-info`; `artifactSha` exactly matched
+  `7347e87eca493b9d663dc8e66096bc7afb603abb` and `builtAt` was
+  `2026-09-28T21:33:21Z`.
+- `WF-C2-009` is therefore `DONE`. Progress is now `DONE 82/161`,
+  `GATES 14/15`, C2 82%, C5 81%, C6 20% and C9 99%. The remaining register is
+  79 non-DONE rows plus one gate; the historical `HRM 99%` label described a
+  narrower release-readiness slice and must not be read as 99% of this ledger.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot
+  evidence remains `NOT RUN`; this backend row does not convert those external
+  gates into passes.
+- Precise stopping point: PR #486 is independently reviewed, exact-head green,
+  merged, deployed and exact-SHA production-verified; this release receipt is
+  present on successor branch `codex/workforce-timesheet-rehydration-part6`.
+- Next action: checkpoint this receipt, then implement bounded `WF-C11-001`
+  immutable timesheet rehydration/property evidence. `WF-C10-011` remains
+  planned because its required real dashboard/privacy/cardinality review
+  cannot be replaced by code-only evidence.
