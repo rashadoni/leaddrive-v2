@@ -1389,3 +1389,12 @@ from this worktree.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 stays `PARTIAL` with no credit added.
 - Precise stopping point: the repaired five-path implementation, focused verification, evidence and independent working-tree preflight are complete; the task paths are not checkpointed and no clean frozen review exists.
 - Next action: remove the temporary dependency link, checkpoint only the explicit task paths, compute the plain-binary base/head identity and require a fresh author-independent complete-diff GREEN before push or PR.
+
+## 2026-09-28 — response-cycle unique-index frozen-review P3 corrections
+
+- The first frozen complete-diff review of checkpoint `f4e622dc18ed332362b7876cd0d9e933c4d621e6` returned RED with P0=0, P1=0, P2=0 and two evidence-only P3 findings; the migration, state query, deploy, provisioning-default and recovery implementation had no finding.
+- The PR #479 receipt phrase “only workflow annotation” is superseded by “only warning annotation”; five informational notice annotations also existed and did not change the successful result.
+- The unique-index evidence now separates the pre-backup data/ledger/index fence from the post-extraction fresh role-default check immediately before Prisma migration. Unsafe role defaults fail before migration/PM2, not before extraction.
+- The rejected review independently reproduced nine paths / 58,227 plain-binary bytes / SHA-256 `54685b941bda03420b71e761d7b9b0678f11682f7a1b166452b961e89a5ecb98`; it grants no merge authority. Progress and all `NOT RUN` labels remain unchanged.
+- Precise stopping point: both factual corrections are appended in the working tree; they are not checkpointed and no valid frozen review exists.
+- Next action: checkpoint the append-only correction, recompute the complete diff identity and require a replacement author-independent frozen GREEN before push or PR.

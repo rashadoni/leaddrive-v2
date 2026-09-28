@@ -176,3 +176,12 @@ evidence remains `NOT RUN`. Progress stays `DONE 81/161`, `GATES 14/15`, C5
 credit is added. Work continues from exact deployed main on clean successor
 branch `codex/workforce-exception-response-cycle-unique-index`; any schema
 enforcement remains a separately reviewed slice.
+
+## Frozen-review annotation wording correction
+
+The earlier sentence saying that the Node runtime deprecation warning was the
+only workflow annotation is superseded. It was the only **warning** annotation.
+GitHub also reported five informational notice annotations: three build notices
+covering tarball size, staged service worker and manifest count, plus two
+retention notices covering the deleted and remaining artifact counts. This
+correction changes no run result: every required PR and deploy job passed.

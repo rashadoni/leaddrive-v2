@@ -1172,3 +1172,11 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` and no credit is added.
 - Precise stopping point: implementation, focused checks, evidence and corrected working-tree independent GREEN are complete, but the explicit task paths are uncommitted and there is no frozen complete-diff review.
 - Next action: unlink the temporary dependency tree, checkpoint only the task paths, freeze the complete diff against exact main and require a fresh author-independent GREEN before push/opening the sub-400 KB PR.
+
+## 2026-09-28 — C6 unique-index rejected frozen-review evidence corrections
+
+- Clean implementation/evidence checkpoint `f4e622dc18ed332362b7876cd0d9e933c4d621e6` was reviewed against exact base/live main/merge-base `29fb2234866c28dd101ad0abaedf8da0548c678e`. The reviewer matched nine paths / 58,227 plain-binary bytes / SHA-256 `54685b941bda03420b71e761d7b9b0678f11682f7a1b166452b961e89a5ecb98` and found no code, migration, recovery or provisioning defect.
+- Verdict was nevertheless RED with two P3 evidence mismatches. First, the previous PR #479 receipt had one warning plus five informational notices, not only one annotation. Second, role defaults are checked after extraction immediately before migrate; only data/ledger/index state is fenced before backup/extraction.
+- Both facts are superseded through append-only corrections in their evidence files. Roadmap/session history is preserved. The rejected verdict supplies no merge authority and progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+- Precise stopping point: the two evidence repairs are present but uncommitted; source, migration, deploy and test blobs remain unchanged from the rejected checkpoint.
+- Next action: checkpoint only the four append-only document changes, verify implementation blob identity and final diff fingerprint, then obtain a replacement frozen independent GREEN before any push.

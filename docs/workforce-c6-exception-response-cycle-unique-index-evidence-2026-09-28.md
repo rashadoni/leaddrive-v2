@@ -136,3 +136,12 @@ nothing was pushed. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6
 added. A task-only checkpoint, exact base/head fingerprint, frozen independent
 review, sub-400 KB PR, exact-head CI, merge, workflow deploy and exact-SHA
 public smoke are still required.
+
+## Frozen-review fence-order correction
+
+The earlier production-probe paragraph is superseded only where it grouped
+role defaults into the pre-backup fence. Data, ledger and index state are
+checked before backup/extraction and again immediately before migration. The
+fresh no-`PGOPTIONS` `10s|14min` role-default check runs after extraction,
+immediately before the ordinary Prisma migration. Unsafe defaults therefore
+fail before migration and PM2, but are not claimed to fail before extraction.
