@@ -419,12 +419,13 @@ export default function PortalTicketDetailPage() {
           ))}
 
           <div className="border-t pt-4">
-            <h3 className="text-sm font-medium">{terminal ? t("reopenWithReply") : t("writeReply")}</h3>
+            <h3 id="portal-ticket-reply-title" className="text-sm font-medium">{terminal ? t("reopenWithReply") : t("writeReply")}</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">{terminal ? t("reopenHelp") : t("replyDraftHelp")}</p>
             {(sendError || uploadError) && <p data-testid="portal-ticket-mutation-error" className="mt-3 rounded-md border px-3 py-2 text-sm text-destructive" role="alert">{sendError || uploadError}</p>}
             {sendSuccess && <p data-testid="portal-ticket-send-success" className="mt-3 rounded-md border px-3 py-2 text-sm" role="status">{sendSuccess}</p>}
             <Textarea
               data-testid="portal-ticket-reply"
+              aria-labelledby="portal-ticket-reply-title"
               value={newComment}
               onChange={(event) => setNewComment(event.target.value)}
               onKeyDown={(event) => {
@@ -496,7 +497,7 @@ export default function PortalTicketDetailPage() {
             ))}
             {csatRating > 0 && <span className="self-center px-2 text-sm text-muted-foreground">{ratingLabels[csatRating - 1]}</span>}
           </fieldset>
-          <Textarea value={csatComment} onChange={(event) => setCsatComment(event.target.value)} placeholder={t("ratingCommentPlaceholder")} rows={2} className="mt-3 min-h-20 resize-y" maxLength={2000} />
+          <Textarea aria-label={t("ratingCommentPlaceholder")} value={csatComment} onChange={(event) => setCsatComment(event.target.value)} placeholder={t("ratingCommentPlaceholder")} rows={2} className="mt-3 min-h-20 resize-y" maxLength={2000} />
           <Button className="mt-3 min-h-11" onClick={() => void handleSubmitCsat()} disabled={csatRating === 0 || csatSending}>{csatSending ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Star aria-hidden="true" />}{csatSending ? t("chatSubmitting") : t("chatSubmitRating")}</Button>
         </section>
       )}

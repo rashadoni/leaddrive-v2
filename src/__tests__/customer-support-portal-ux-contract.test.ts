@@ -37,6 +37,8 @@ describe("Customer Support Portal UX contract", () => {
     expect(chat).toContain("event.key === \"Enter\" && !event.shiftKey")
     expect(chat).toContain("event.nativeEvent.isComposing")
     expect(detail).toContain('aria-label={t("addAttachment")}')
+    expect(detail).toContain('aria-labelledby="portal-ticket-reply-title"')
+    expect(detail).toContain('aria-label={t("ratingCommentPlaceholder")}')
     expect(detail).toContain("new Intl.NumberFormat(locale")
   })
 

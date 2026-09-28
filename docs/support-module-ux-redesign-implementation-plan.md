@@ -3745,6 +3745,27 @@ Next: checkpoint and push the browser-capture correction, then repeat desktop
 from source gates through production build and capture. Mobile and the full
 120-cell matrix remain locked until that desktop run is green.
 
+Desktop accessible-name correction (2026-09-29):
+
+- Exact-SHA run `36497269613` on `cd6e744cb` passed source gates, both strict
+  TypeScript graphs, fixtures and production build. Artifact `11004796655`
+  proves all 6/6 recovery groups and 14/14 keyboard activations pass; all five
+  pages render without console/runtime errors and the former ticket-list Axe
+  contrast violation is gone. The run still failed closed because static ticket
+  detail reported one unlabeled interactive control, so it is diagnostic only.
+- The remaining control was the visible reply textarea. It now derives its
+  accessible name from the adjacent localized `Write a reply`/`Reopen with a
+  reply` heading. The optional terminal-state CSAT comment also has a localized
+  explicit name so the matrix cannot expose the same omission in that state.
+- Self-audit is green: the bounded UI TypeScript graph, targeted ESLint, 18/18
+  assertions in three suites, seven-file anti-pattern scan with 0 findings and
+  `git diff --check` all pass. No accessibility rule or acceptance threshold
+  was altered.
+
+Next: checkpoint and push the accessible-name correction, then repeat the full
+exact-SHA desktop gate. Mobile and the 120-cell matrix remain locked until the
+desktop workflow itself concludes green.
+
 ## 21C. Evidence, Performance, and Rollout Track
 
 **Status: IN PROGRESS — source/evidence contracts green; GitHub browser jobs

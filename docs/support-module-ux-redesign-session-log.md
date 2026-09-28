@@ -2681,3 +2681,29 @@ physical-touch mobile and the complete 120-cell matrix.
 Next: checkpoint and push this correction, then repeat exact-SHA EN/light
 desktop Customer Portal evidence from all source gates through browser capture.
 Mobile and the 120-cell matrix remain gated on that result.
+
+### Customer Support Portal desktop accessible-name correction
+
+- Exact-SHA desktop run `36497269613` on `cd6e744cb` again passed all source
+  gates, both TypeScript projects, fixtures and production build. Artifact
+  `11004796655` confirms the previous runtime and contrast failures are fixed:
+  all 6/6 recovery groups pass, all 14/14 operational activations are recorded
+  as keyboard input with valid hit targets, and all five static routes render
+  without console errors or Axe violations.
+- The workflow still failed closed because portal ticket detail had
+  `unlabeledInteractive: 1`; the other four static routes passed. Inspection of
+  the current screenshot and source identified the reply textarea, which had a
+  localized placeholder and visible heading but no programmatic relationship
+  between them. This run remains diagnostic and does not unlock mobile.
+- The reply textarea now uses `aria-labelledby` tied to its localized visible
+  heading. The terminal CSAT comment receives an explicit localized
+  `aria-label` as preventive coverage for the state exercised later in the
+  matrix. The portal UX source contract pins both names.
+- Correction self-audit is green: the bounded UI TypeScript graph passes,
+  targeted ESLint has 0 errors, 18/18 affected assertions pass in three suites,
+  the seven-file anti-pattern scan has 0 findings, and `git diff --check` is
+  clean. No evidence rule, scenario or threshold was changed.
+
+Next: checkpoint and push this accessible-name correction, then repeat the full
+exact-SHA EN/light desktop workflow. RU/dark physical-touch mobile and the
+120-cell matrix remain locked until that workflow concludes green.
