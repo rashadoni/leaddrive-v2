@@ -115,3 +115,38 @@ derived-only surface closes technical UI debt but does not approve a raw
 investigation flow, perform periodic access review or substitute source tests
 for real browser/accessibility acceptance. Progress remains `DONE 81/161`,
 `GATES 14/15`, C5 81%, C6 20% and C9 99%; no task or gate credit is added.
+
+## 2026-09-28 — PR #483 first CI repair checkpoint
+
+- PR #483 opened on independently GREEN receipt head
+  `a2ad15dee13d464d039cb31ab318c312b89dcbcb`. `pr-scope`,
+  `runner-policy` and `scan` passed; the PR production build was correctly
+  skipped and is not counted as passed.
+- PR run `36473500283` exposed two real integration omissions. `static-checks`
+  found the new menu-derived `workforce_evidence` destination missing from the
+  mandatory voice guide and classification registries. `typecheck` found two
+  new TS2322 errors because the closed privacy-log label union omitted the new
+  directory-authorization and target-search operations. No baseline was
+  updated and neither check was weakened.
+- The voice repair adds a bounded, source-grounded Russian guide and classifies
+  the purpose-bound screen as `surface`, deliberately without a generic data
+  descriptor or aggregate that could bypass its explicit review context. Both
+  failed coverage tests pass 10/10; the wider author voice set passes 7 files /
+  62 tests.
+- The type repair adds only the two fixed, input-free privacy labels, gives the
+  selected directory row its exact Prisma nullability and adds a regression
+  that forces directory authorization failure, expects 503 and verifies the
+  safe label. The author evidence set passes 11 files / 98 tests and complete
+  task-scoped ESLint and whitespace pass.
+- Fresh independent complete-diff review returned GREEN with
+  `P0=P1=P2=P3=0` on exact head
+  `87d8f4e7115f8abb190f5c811512e8715f7eda06`: 22 paths / 134,054
+  plain-binary bytes / SHA-256
+  `858ae69e409a97772ab6bf018136f064687d39aeb08afe82480a61350a70d0cf`.
+  Reviewer checks pass focused 2 files / 12 tests, expanded evidence 11 files /
+  101 tests, scoped ESLint and diff-check. Full replacement exact-head CI is
+  still mandatory before merge.
+
+Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%.
+WF-C8-009/WF-C8-010/WF-C10-006 remain `PARTIAL`; the failed old PR head and
+its repaired-but-not-yet-pushed successor add no task or gate credit.

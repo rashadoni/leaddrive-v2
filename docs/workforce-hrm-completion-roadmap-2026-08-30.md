@@ -1517,3 +1517,14 @@ from this worktree.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%. WF-C8-009/WF-C8-010/WF-C10-006 remain `PARTIAL`; no task or gate credit is added.
 - Precise stopping point: reviewed runtime/test/i18n head is GREEN; this three-document evidence receipt is the only working-tree delta.
 - Next action: checkpoint the receipt, independently prove reviewed blob identity and final fingerprint, then push/open the sub-400 KB PR and require all exact-head contexts.
+
+## 2026-09-28 — PR #483 first CI findings repaired
+
+- PR #483 opened on exact independently GREEN head `a2ad15dee13d464d039cb31ab318c312b89dcbcb`. Run `36473500283` passed scope, runner policy and scan, but correctly blocked on two menu-derived voice coverage omissions and two new closed-union privacy-log TS2322 errors. The skipped PR production build is not a pass.
+- No baseline or gate changed. `workforce_evidence` now has a truthful voice guide plus a `surface` classification with no generic aggregate. Privacy logging now admits only the two new fixed labels, never an error or user input; the directory row has explicit exact nullability and failure coverage proves 503 plus the safe label.
+- Author checks pass the two formerly failing coverage files 10/10, wider voice 7 files / 62 tests, evidence 11 files / 98 tests, complete task-scoped ESLint and whitespace. Fresh independent review passes its focused 2 files / 12 tests and expanded 11 files / 101 tests.
+- Replacement complete-diff review is GREEN with `P0=P1=P2=P3=0` on exact clean head `87d8f4e7115f8abb190f5c811512e8715f7eda06`: 22 paths / 134,054 plain-binary bytes / SHA-256 `858ae69e409a97772ab6bf018136f064687d39aeb08afe82480a61350a70d0cf`.
+- Full replacement typecheck/static/build, browser E2E, real keyboard/AT/contrast/200% zoom, Android/Gradle, load, signed APK, physical-device and pilot evidence remain `NOT RUN` on the repaired head; exact-head PR CI is mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%. WF-C8-009/WF-C8-010/WF-C10-006 remain `PARTIAL`; no credit changes.
+- Precise stopping point: repaired code/test head is independently GREEN; this three-document CI/review receipt is the only working-tree delta and PR #483 still points to the rejected old head.
+- Next action: checkpoint the receipt, obtain final implementation-blob/fingerprint integrity GREEN, push the replacement head and require every exact-head context to rerun.
