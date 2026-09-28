@@ -2241,3 +2241,18 @@ then repeat the exact-SHA desktop gate before mobile/high evidence.
 
 Next: checkpoint and push the flow correction, then repeat the exact-SHA
 desktop evidence gate before mobile/high evidence.
+
+### Workstream 13 focus-restoration correction
+
+- Exact-SHA run `36362865556` on `032ea4855` passed section validation,
+  fixtures, production build, static capture and five of six mutation/recovery
+  outcomes. Both delayed delete/Undo paths and the shared-category path now
+  pass. The sole failure was `macro_editor_focus_not_restored`: the flow read
+  `document.activeElement` in the same event-loop tick as dialog cleanup.
+- Focus return now uses bounded observation for up to 2.5 seconds and never
+  calls `.focus()` itself. This preserves the requirement that the dialog must
+  restore focus while removing the React cleanup race; both editor and category
+  manager use the same check.
+
+Next: run affected source checks, checkpoint and push the focus observer, then
+repeat the exact-SHA desktop gate.

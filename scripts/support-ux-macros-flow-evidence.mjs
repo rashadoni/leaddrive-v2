@@ -140,6 +140,16 @@ async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
   }
 }
 
+async function waitForFocusRestoration(locator) {
+  return locator.evaluate(async (element) => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (element === document.activeElement) return true
+      await new Promise((resolve) => window.setTimeout(resolve, 50))
+    }
+    return element === document.activeElement
+  })
+}
+
 function installMacroApi(page, initialMacros, options = {}) {
   let macros = structuredClone(initialMacros)
   let categories = ["general", "billing", "technical", "onboarding", "sales", "Evidence shared"]
@@ -314,7 +324,7 @@ try {
     const reopenActivation = await activateEvidenceTarget(page, reopened)
     await page.keyboard.press("Escape")
     const focusRestored = viewportName === "desktop"
-      ? await reopened.evaluate((element) => element === document.activeElement)
+      ? await waitForFocusRestoration(reopened)
       : "not_applicable"
     if (viewportName === "desktop" && !focusRestored) throw new Error("macro_editor_focus_not_restored")
     return { keyboardOpen: viewportName === "desktop", physicalTouchOpen: viewportName !== "desktop", openActivation, reorderActivation, previewActivation, failedSaveActivation, retrySaveActivation, reopenActivation, orderedTimeline: true, scopedAssignee: true, preview: true, draftRetained: true, retrySucceeded: true, focusRestored }
@@ -371,7 +381,7 @@ try {
     await category.waitFor({ state: "visible" })
     await page.keyboard.press("Escape")
     const focusRestored = viewportName === "desktop"
-      ? await manage.evaluate((element) => element === document.activeElement)
+      ? await waitForFocusRestoration(manage)
       : "not_applicable"
     if (viewportName === "desktop" && !focusRestored) throw new Error("macro_category_focus_not_restored")
     return { organizationCategorySurface: true, inputRetained: true, retrySucceeded: true, categoryDeleteUndo: true, focusRestored, manageActivation, failedAddActivation, retryAddActivation, categoryMenuActivation, categoryDeleteActivation, categoryConfirmActivation, categoryUndoActivation, reopenManagerActivation }

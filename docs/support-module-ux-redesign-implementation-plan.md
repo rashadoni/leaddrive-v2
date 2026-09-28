@@ -3028,6 +3028,10 @@ Current-tree restoration and self-audit (2026-09-28):
   actual nested DOM nodes and post-navigation activation probes tour visibility
   without waiting. Focused syntax/lint, 16/16 assertions and diff-check pass;
   the desktop browser gate remains pending its next exact-SHA rerun.
+- Exact-SHA run `36362865556` passed build, static capture and five of six flow
+  outcomes; its only failure read focus in the same event-loop tick as dialog
+  cleanup. Focus return is now observed for a bounded 2.5 seconds without the
+  evidence code setting focus itself. Desktop closure remains pending rerun.
 
 ## 21. Workstream 14 — Portal Users
 
