@@ -169,3 +169,118 @@ PostgreSQL, full typecheck/build, browser, Android, load, signed device and
 pilot checks were `NOT RUN`; author results were not relabelled. Closing state
 was clean and drift-free. This review receipt is documentation-only and still
 requires final receipt-integrity review before push.
+
+## PR #480 merge and failed-closed production attempt
+
+Final receipt-integrity review returned GREEN with P0=P1=P2=P3=0 on exact head
+`33ea0c353c0be61f837e48a389cc0d7125a05826`. The complete nine-path diff from
+base `29fb2234866c28dd101ad0abaedf8da0548c678e` was 66,513 plain-binary bytes /
+SHA-256 `4ee528b7b8f08fee4ce990bff8047fc19b02202f6754ce141f3aa3275eec6c14`;
+all implementation and prior audit-receipt blobs remained byte-identical.
+
+PR #480 passed `pr-scope`, `static-checks` including the real PostgreSQL
+Workforce recovery proof and full unit baseline, `typecheck`, `runner-policy`,
+`scan` and the companion tenant-cascade PostgreSQL integration job. It merged
+normally at `2026-09-28T13:36:58Z` as main SHA
+`4f9d0d715b201ca7b4226fb301d1d3bddbbd2c8d`.
+
+Deploy run `36429869791` passed the 9m20s quality/security job and 17m13s
+SHA-bound production build. The atomic step proved the registered production
+host, migration-role identity, quiet window, successful tenant-cascade state,
+and zero Workforce duplicate/ledger/index artifacts, then created backup
+`backup-20260928-155816` and verified the extracted artifact SHA. Immediately
+before Prisma it failed closed because a fresh migration-role session did not
+match the required `10s|14min` defaults. Prisma did not run, PM2 was unchanged,
+and the previous standalone tree was restored. No duplicate rows, index,
+migration ledger entry or application data was changed.
+
+The workflow log intentionally did not expose the observed pair, and direct
+read-only SSH remained unavailable, so the exact pre-repair values are unknown.
+Independent public no-cache reads forced to `13.140.132.245` returned HTTP 200
+for ping and exact prior `artifactSha=29fb2234866c28dd101ad0abaedf8da0548c678e`,
+confirming that the failed release never became live.
+
+## Migration-role defaults reconciliation working checkpoint
+
+An author-independent failure audit returned P0=0, P1=1, P2=2 and P3=1. It
+confirmed one release blocker (no supported update path for an existing role),
+an incomplete provisioner postcondition, late detection after backup/extraction,
+and insufficient safe diagnostics. It made no file or production change.
+
+The remediation branch starts from exact merged main
+`4f9d0d715b201ca7b4226fb301d1d3bddbbd2c8d`. A new artifact-bound helper is
+hash-pinned as
+`c3661ee726985aaf8da8a29cda90366d0bd2e03107e62d9cc9567ca67433536f`.
+Normal deploy extracts it from the staged exact-SHA tar before backup. It
+proves the already validated session role/current role/database, accepts only
+legacy `0` or already reviewed `10s`/`14min` values, applies only those two
+database-scoped defaults as the migration role, and verifies them through a
+new session with `PGOPTIONS` absent. Any other nonzero value fails closed and
+is reported without credentials. Preflight-only uses read-only `--check`; the
+existing immediate pre-Prisma exact gate remains unchanged.
+
+The canonical new-role provisioner now verifies all three defaults it installs,
+including `idle_in_transaction_session_timeout=60s`. The real-PostgreSQL
+harness exercises refusal of an unexpected 5s lock timeout, the accepted legacy
+transition, fresh-session postcondition, idempotent replay, database-only scope,
+and non-mutation of the application role before Prisma is opened.
+
+The earlier statements that production “only verifies” provisioner state and
+that deploy “does not mutate or repair role configuration” are superseded only
+for this exact timeout-default reconciliation. Normal deploy may now change
+these two database-scoped role defaults through the hash-pinned allowlisted
+helper before backup. All data, response rows, migration ledger state, indexes,
+permissions, credentials and other role settings remain outside automatic
+remediation; the later exact pre-Prisma gate still decides whether migration
+may proceed.
+
+Shell syntax and whitespace checks pass. Dependency-backed unit/ESLint, real
+PostgreSQL, full typecheck/build, browser, Android/Gradle, load, signed APK,
+physical-device and pilot checks are currently `NOT RUN`; exact-head CI remains
+mandatory. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and
+C9 99%; WF-C6-006 remains `PARTIAL` and no credit is added.
+
+## Replacement reconciliation preflight GREEN
+
+The first remediation preflight returned RED only for two P3 evidence gaps:
+the earlier no-repair wording lacked an explicit supersession, and the real
+PostgreSQL harness had not executed read-only `--check`. Both are retained as
+rejected review history and grant no merge authority.
+
+After correction, fresh author-independent review returned GREEN with
+P0=P1=P2=P3=0. It confirmed ordinary `NOSUPERUSER/NOCREATEROLE` self-default
+authority, transactional/atomic `ALTER ROLE` statements inside the single
+`DO`, exact artifact/hash binding, ordering before backup, non-mutating
+preflight mode, strict legacy allowlist, safe diagnostics, unchanged immediate
+pre-Prisma gate and absence of credential leakage.
+
+The expanded CI-only database scenario now executes both helper modes: legacy
+`0|0` check failure with zero catalog rows, independent 5s lock and statement
+refusals, partial database-scoped `10s|0` check failure with byte-equivalent
+catalog state, accepted reconciliation, exact check success with unchanged
+catalog state, idempotent replay and Prisma inheritance. Locally the file
+compiled and discovered all 15 scenarios but they remain `SKIPPED / NOT RUN`
+without the approved database.
+
+Local focused verification passed 20 static files / 100 tests, targeted ESLint,
+three-file `bash -n`, diff whitespace and the event-platform asset guard (27
+domains / 86 topics / 5 schemas). Full local typecheck/build, real PostgreSQL,
+browser, Android/Gradle, load, signed APK, physical-device and pilot remain
+`NOT RUN`. Exact-head PR and deploy CI are mandatory.
+
+## Frozen remediation review GREEN
+
+Clean checkpoint `eee4ea1699614d50397384d7b0564a3069469882` received a fresh
+author-independent GREEN with P0=P1=P2=P3=0 against exact base/live main and
+merge-base `4f9d0d715b201ca7b4226fb301d1d3bddbbd2c8d`. Independent identity
+matched nine paths / 44,802 plain-binary bytes / SHA-256
+`ad9af6c73192bae088103eb4f5b9d6c39039c5de97476dd1acaab95a813f24e1`;
+the tree was clean, one commit ahead and drift-free before and after review.
+
+The reviewer reconfirmed the helper checksum, strict unsafe-nonzero refusal,
+atomic self-role reconciliation, read-only check mode, fresh-session proof,
+exact artifact binding, before-backup ordering, two-default/database-only scope,
+idempotence, unchanged later gate and absence of scope or credential leakage.
+All three review receipts were append-only. Reviewer shell syntax, whitespace,
+targeted Vitest (6 passed / 15 PostgreSQL skipped) and ESLint passed. Real
+PostgreSQL, ShellCheck and every heavy gate remained explicitly `NOT RUN`.

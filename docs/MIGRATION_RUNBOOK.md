@@ -21,8 +21,9 @@ ops/migration/provision-self-hosted.sh
 ```
 
 It generates the password without printing it, installs the root-only env
-file, verifies a real password connection and RLS bypass, and rolls back a DDL
-ownership probe. It refuses to overwrite an existing role or secret file.
+file, verifies a real password connection, RLS bypass and all three timeout
+defaults, and rolls back a DDL ownership probe. It refuses to overwrite an
+existing role or secret file.
 
 Generate a URL-safe password outside SQL and do not print or commit it. As a
 PostgreSQL administrator, create the role and grant membership in the current
@@ -67,8 +68,23 @@ Before replacing the live standalone tree, `scripts/server-deploy.sh` verifies:
 4. the migration role is `NOSUPERUSER BYPASSRLS` and matches the expected role;
 5. the migration role is a member of every owner role for relations in the
    `public` schema;
-6. active transactions and live system, collector, and outbound leases reach
+6. a fresh migration-role session has the exact `lock_timeout=10s` and
+   `statement_timeout=14min` defaults required by Prisma's schema engine; and
+7. active transactions and live system, collector, and outbound leases reach
    zero during a 60-second quiet-window check.
+
+An approved normal deployment may reconcile an existing role only from the
+legacy unbounded values `0` (or a partially applied copy of the exact
+`10s`/`14min` contract). The SHA-256-pinned helper is extracted from the
+immutable deployment artifact before backup or standalone replacement, proves
+the already validated session role and database identity, applies only the two
+database-scoped defaults as that same role, and verifies them through a fresh
+connection with `PGOPTIONS` absent. Any other nonzero value is treated as an
+operator-selected setting and blocks the deploy instead of being overwritten.
+The later pre-Prisma `10s|14min` check remains an independent postcondition.
+
+`DEPLOY_PREFLIGHT_ONLY=1` runs the same helper in `--check` mode. It reports the
+safe observed timeout values but never changes role configuration.
 
 PostgreSQL `lock_timeout` is the final race-condition guard: if a new request
 acquires an incompatible lock after the quiet-window check, the migration
