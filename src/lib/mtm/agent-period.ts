@@ -1,6 +1,6 @@
 import { prepareHistoryPoints, type HistoryLocationPoint } from "@/lib/mtm/location-history"
 import { DRIVING_MAX_SPEED_KMH, DRIVING_MAX_STEP_SECONDS, drivingDistanceMeters } from "@/lib/mtm/road-distance"
-import { dateInputValueInTimezone, localDateTimeToUtc } from "@/lib/timezone"
+import { dateInputValueInTimezone, isValidTimezone, localDateTimeToUtc } from "@/lib/timezone"
 
 /**
  * What one field agent did over a period, day by day.
@@ -100,6 +100,20 @@ function dayEnd(day: string, timezone: string): number {
 export { DRIVING_MAX_SPEED_KMH, DRIVING_MAX_STEP_SECONDS, drivingDistanceMeters }
 
 /**
+ * The local date of an instant, with one formatter for the whole period.
+ * Prod 2026-09-28: a new Intl formatter per fix cost 0.7 s for a week of the
+ * owner's phone (4 743 fixes), paid twice once the road steps came in.
+ */
+function localDayKeyer(timezone: string): (value: Date) => string {
+  const format = new Intl.DateTimeFormat("en-CA", { timeZone: isValidTimezone(timezone) ? timezone : "UTC", year: "numeric", month: "2-digit", day: "2-digit" })
+  return (value) => {
+    const parts = format.formatToParts(value)
+    const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ""
+    return `${part("year")}-${part("month")}-${part("day")}`
+  }
+}
+
+/**
  * Each day's accepted fixes, in the local calendar of the tenant. The route
  * asks OSRM for exactly these arrays, so the road steps it passes back line
  * up with them.
@@ -110,8 +124,9 @@ export function agentPeriodDayTracks(input: {
   maxAccuracyMeters: number
 }): Map<string, HistoryLocationPoint[]> {
   const byDay = new Map<string, HistoryLocationPoint[]>()
+  const dayOf = localDayKeyer(input.timezone)
   for (const point of input.points) {
-    const key = dateInputValueInTimezone(point.recordedAt, input.timezone)
+    const key = dayOf(point.recordedAt)
     if (!byDay.has(key)) byDay.set(key, [])
     byDay.get(key)!.push(point)
   }
@@ -138,7 +153,7 @@ export function buildAgentPeriod(input: {
   const { timezone } = input
   const tracks = agentPeriodDayTracks({ points: input.points, timezone, maxAccuracyMeters: input.maxAccuracyMeters })
   const today = dateInputValueInTimezone(input.now, timezone)
-  const keyOf = (value: Date) => dateInputValueInTimezone(value, timezone)
+  const keyOf = localDayKeyer(timezone)
   const pointsByDay = new Map<string, HistoryLocationPoint[]>()
   for (const point of input.points) {
     const key = keyOf(point.recordedAt)
