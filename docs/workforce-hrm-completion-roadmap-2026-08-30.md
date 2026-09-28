@@ -1286,3 +1286,12 @@ from this worktree.
 - Both repaired browser races and the GET/UI/POST/writer revision, role/auth, tenant/self, privacy, replay, lock and stale-write contracts were reconfirmed. PR #471/#472 disjoint integrations, unchanged runtime/test blobs, i18n parity and the PR #470 production receipt were also verified.
 - Reviewer-side dependency-backed checks, real PostgreSQL, full typecheck/build, browser, Android, load, signed APK, physical-device and pilot were `NOT RUN`. Exact-head PR CI remains mandatory.
 - Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` and the review adds no credit.
+
+## 2026-09-28 — PR #473 web response revision binding released
+
+- Receipt-integrity review returned GREEN with zero P0-P3 findings on final head `f6e551a9918433d7b1f51f1690ab882d34d9f724`: 14 paths / 97,304 bytes / SHA-256 `8307a4e723ae4e206a6a3ddecd24070b7fa83c7510a390220ee23db17e96b6ee`. The receipt changed only three append-only docs and preserved all ten runtime/test blobs byte-identically.
+- Exact-head PR run `36394863256` passed `pr-scope`, `static-checks` including the real PostgreSQL Workforce shared-lock race gate and full unit baseline, and `typecheck`; companion `runner-policy` and `scan` contexts passed. The PR production-build job was skipped by design.
+- PR #473 merged at `2026-09-28T08:21:41Z` as `57853b89252972308c626409a504e147e1b5dbbf`. Deploy run `36396900111` passed quality/security, SHA-bound standalone build/publication, atomic production deploy, scheduler and tenant-isolation verification, built-in public smokes and retention cleanup.
+- Independent no-cache public reads returned HTTP 200/`{"ok":true}` from `/api/v1/ping` and exact `artifactSha=57853b89252972308c626409a504e147e1b5dbbf` from `/api/v1/public/build-info`. Only GitHub main through `deploy.yml` was used.
+- Browser E2E, Android/Gradle, load, signed APK, physical-device and human-pilot evidence remains `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C5 81%, C6 20% and C9 99%; WF-C6-006 remains `PARTIAL` with no new credit.
+- Main later advanced through PR #475/#474 to `09502d1c96b43e30ba6648c6a322cc8f3f01ac44`, which contains the released merge. The clean successor branch starts from that current main.
