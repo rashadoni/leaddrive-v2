@@ -2427,3 +2427,28 @@ corrections as new entries that explicitly supersede the earlier fact.
   frozen; only this append-only GREEN receipt is uncommitted.
 - Next action: checkpoint the three receipt documents, verify implementation
   blob integrity, then push/open the bounded PR and require all CI contexts.
+
+## 2026-09-29 — PR #500 first CI failure repaired locally
+
+- PR #500 at exact head `b30a897c64fd480612b2084f72b160ae1115a553`
+  passed scope, full typecheck, runner policy and secret scan. Static checks
+  failed on four new voice coverage/evaluation regressions, so merge was not
+  attempted and no baseline or required check was weakened.
+- An author-independent read-only scout reproduced 4 failing / 17 passing
+  tests and localized the complete cause: the new `workforce_calendar` menu
+  identity had no short `nav` label, guide or `NO_DATA_SECTIONS` entry.
+- The repair adds EN/RU/AZ labels, a truthful forward-only calendar guide and
+  the `config` classification. It adds no voice mutation, data descriptor,
+  permission bypass, provider call, TTS or media asset.
+- PASS: the four affected test files now pass 21/21, i18n parity is
+  23,835/0/0, ESLint passes the two changed TypeScript files, and worktree plus
+  index whitespace checks pass. JSON is intentionally ignored by ESLint and
+  parsed successfully by the i18n check.
+- Full local typecheck/build/suite, browser/AT/device, Android/Gradle,
+  load/chaos, real-Postgres race, signed-device and pilot remain `NOT RUN`.
+- No completion/gate credit is added: `WF-C8-007` remains `PARTIAL`, progress
+  remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: five metadata files and these three append-only
+  receipts are verified but uncommitted; fresh complete review is mandatory.
+- Next action: checkpoint explicit paths, compute the new complete identity,
+  obtain independent GREEN and only then push replacement exact-head CI.

@@ -196,3 +196,34 @@ A fresh author-independent review returned GREEN with
 Full typecheck/build/suite, browser/AT/device, Android/Gradle, load/chaos,
 real-Postgres race, signed-device and pilot remain `NOT RUN`. Exact-head CI is
 required before merge; this GREEN review adds no completion or gate credit.
+
+### PR #500 first CI finding and voice-metadata repair
+
+PR #500 was opened from reviewed receipt head
+`b30a897c64fd480612b2084f72b160ae1115a553`. Runner policy, secret scan,
+scope and full typecheck passed, while static checks correctly failed instead
+of accepting four new unit-baseline regressions. The new navigation destination
+automatically created voice section identity `workforce_calendar`, but the
+section lacked its short localized navigation label, truthful guide and
+explicit non-aggregate classification.
+
+The repair adds only derived voice metadata: `nav.workforceCalendar` in EN,
+RU and AZ, a guide bounded to the released forward-only organization calendar,
+and `workforce_calendar: "config"`. The generic voice reader therefore cannot
+bypass `SCHEDULE_READ`/`SCHEDULE_WRITE` or create a voice mutation. Aliases,
+summaries and the static evaluation matrix remain derived; no baseline, script,
+test, provider, TTS or media path changed.
+
+Author verification after the repair:
+
+- the four previously failing voice files pass 21/21 tests;
+- i18n parity passes at 23,835 EN leaf keys, RU/AZ missing 0 and extra 0;
+- ESLint passes both changed TypeScript files; JSON is intentionally outside
+  the ESLint configuration and was parsed by the i18n check;
+- worktree and index whitespace checks pass.
+
+Full typecheck/build/suite, browser/AT/device, Android/Gradle, load/chaos,
+real-Postgres race, signed-device and pilot remain `NOT RUN` locally. The
+repaired complete diff requires a new checkpoint, fresh author-independent
+review and replacement exact-head CI. `WF-C8-007` remains `PARTIAL`; progress
+stays `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.

@@ -2524,3 +2524,27 @@ from this worktree.
   this three-document GREEN receipt is uncommitted.
 - Next action: checkpoint the receipt, confirm implementation blob identity is
   unchanged, then push and open the bounded PR for required CI.
+
+## 2026-09-29 — PR #500 voice identity CI repair
+
+- PR #500 was opened at exact head
+  `b30a897c64fd480612b2084f72b160ae1115a553`. Scope, typecheck, runner policy
+  and secret scan passed; static checks rejected four newly failing voice
+  coverage/evaluation files. No failed baseline was changed or waived.
+- Root cause was the derived `workforce_calendar` voice identity introduced by
+  the new menu destination without its three locale labels, code-traceable
+  guide and explicit safe classification. The five-file repair supplies those
+  metadata and classifies the capability-gated tenant calendar as `config`, so
+  the generic voice reader cannot expose aggregates or mutate it.
+- The exact four voice test files now pass 21/21; i18n passes 23,835/0/0;
+  TypeScript-scoped ESLint and both whitespace checks pass. JSON files are not
+  covered by this ESLint configuration and are parsed by the i18n gate.
+- Full typecheck/build/suite, browser/AT/device, Android/Gradle, load/chaos,
+  real-Postgres race, signed-device and pilot remain `NOT RUN` locally.
+- `WF-C8-007` remains `PARTIAL`; no DONE/gate credit is added. Progress stays
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the five-file metadata repair and three append-only
+  receipts are verified but uncommitted; the previous GREEN review does not
+  transfer to these changed bytes.
+- Next action: checkpoint explicit paths, freeze the new identity and obtain a
+  fresh complete author-independent review before pushing replacement CI.

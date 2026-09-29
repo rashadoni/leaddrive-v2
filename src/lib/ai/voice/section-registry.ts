@@ -345,6 +345,9 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   // A generic voice aggregate must not bypass its explicit access context or
   // turn assessment rows into ordinary Workforce statistics.
   workforce_evidence: "surface",
+  // This forward-only tenant calendar is capability-gated configuration. The
+  // generic voice reader must neither bypass SCHEDULE_* checks nor mutate it.
+  workforce_calendar: "config",
   // This is an administrator-only definition surface, not an aggregate over a
   // business record. Keep it explicitly classified until a separately scoped
   // configuration reader is useful to the voice assistant.
