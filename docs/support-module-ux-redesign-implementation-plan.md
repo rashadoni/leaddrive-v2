@@ -4062,11 +4062,10 @@ Customer Support Portal is **DONE**.
 
 ## 21C. Evidence, Performance, and Rollout Track
 
-**Status: IN PROGRESS — source/evidence contracts and targeted browser flows
-are green; the complete 1296-cell high-profile matrix is running on exact SHA
-`7a0a45e5b`; a tenant-scoped Macros state-migration canary is source-complete
-but flag-on/flag-off browser proof, final comparison and release admission remain
-pending; rollout stays prohibited**
+**Status: IN PROGRESS — complete 1296-cell high-profile evidence and exact-SHA
+Macros canary-on/canary-off mutation proof are green; 0/5/50/500 profiles,
+seven-sample visual comparison and protected release admission remain pending;
+rollout stays prohibited**
 
 ### Evidence tasks
 
@@ -4099,18 +4098,38 @@ pending; rollout stays prohibited**
 
 ### Rollout tasks
 
-- [ ] **SUPUX-ROL-001** Keep each page redesign independently releasable and
+- [x] **SUPUX-ROL-001** Keep each page redesign independently releasable and
   rollbackable; never ship the full module as one indivisible change.
-- [ ] **SUPUX-ROL-002** Use a tenant-scoped canary/feature flag for high-risk
+- [x] **SUPUX-ROL-002** Use a tenant-scoped canary/feature flag for high-risk
   navigation, shared-shell, data-contract, entitlement, macro, and access changes.
-- [ ] **SUPUX-ROL-003** Define old/new state compatibility and rollback behavior
+- [x] **SUPUX-ROL-003** Define old/new state compatibility and rollback behavior
   before any API or persisted preference change.
-- [ ] **SUPUX-ROL-004** Run permission, tenant-isolation, feature/add-on, and
+- [x] **SUPUX-ROL-004** Run permission, tenant-isolation, feature/add-on, and
   direct-route regression before enabling each canary.
 - [ ] **SUPUX-ROL-005** Record production revision, smoke evidence, observed
   metrics, owner, and rollback decision for every released slice.
 - [ ] **SUPUX-ROL-006** Remove a flag only after representative tenants pass the
   agreed observation window with no unresolved P0/P1 regression.
+
+Final canary evidence (2026-09-29):
+
+- Flag-off run `36551225927` on source SHA `0498d3a857e2230be2db20e85525a728587d5032`
+  is green with artifact `11025885144`. Its production-mode static cell is 1/1
+  passed and all six Macros operational flows pass. The category state journey
+  records `categoryStorageMode=browser`, `browserRollbackSurface=true`, no
+  organization category surface, and successful add/retry, rename, delayed
+  delete undo and completed delete using measured mobile touch targets.
+- Flag-on run `36552953697` on the same source SHA is green with artifact
+  `11027281153`. Its production-mode static cell is 1/1 passed and all six
+  flows pass. The category journey records `categoryStorageMode=tenant`,
+  `organizationCategorySurface=true`, no browser rollback surface, retained
+  input across the forced failure, successful retry/rename/undo/completed
+  delete and keyboard focus restoration.
+- Both artifacts report the requested canary state, typical profile and zero
+  runtime, Axe, custom-accessibility, touch, horizontal-overflow, environment
+  or primary-work failures. Their rollback screenshots were manually accepted.
+  The two modes use the exact same application source; the later
+  `96b5eba1e` checkpoint changes only the plan/journal acceptance receipt.
 
 Current verification evidence (2026-09-05):
 

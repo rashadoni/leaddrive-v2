@@ -3226,3 +3226,35 @@ Result: the complete Foundation matrix is accepted without a waived or relaxed
 gate. Next: checkpoint and push this plan/journal receipt, finish exact-SHA
 Macros flag-off and flag-on mutation proof, then execute the 0/5/50/500
 performance profiles and final seven-sample visual comparison.
+
+## 2026-09-29 — Tenant canary and rollback boundary accepted
+
+- Flag-off GitHub Actions run `36551225927` on source SHA
+  `0498d3a857e2230be2db20e85525a728587d5032` completed successfully with
+  artifact `11025885144`. Its production static Macros cell is 1/1 green and
+  all six mutation/recovery flows pass.
+- The category journey proves the legacy contract rather than merely rendering
+  a disabled flag: `categoryStorageMode=browser`,
+  `browserRollbackSurface=true`, `organizationCategorySurface=false`, with
+  successful retry, rename, delayed-delete undo and completed delete. Every
+  physical mobile action records a hit-tested target of at least 44 px.
+- Flag-on run `36552953697` on the same source SHA completed successfully with
+  artifact `11027281153`. Its production static cell is 1/1 green and all six
+  flows pass. The same journey proves `categoryStorageMode=tenant`,
+  `organizationCategorySurface=true`, `browserRollbackSurface=false`, retained
+  input after forced failure, retry, rename, undo, completed delete and keyboard
+  focus restoration.
+- Both exact-source artifacts record the requested canary state and have zero
+  runtime, Axe, custom accessibility, touch, horizontal-overflow, environment
+  or primary-work failures. The final rollback screenshots were manually
+  inspected and accepted. The later Foundation receipt checkpoint
+  `96b5eba1e` is documentation-only, so it does not alter the proven source.
+- ROL-001 through ROL-004 are now evidence-backed and closed in the plan.
+  ROL-005 remains blocked on protected merge/deploy/smoke. ROL-006 remains
+  intentionally open for the documented seven-day production observation and
+  is not treated as an immediate release gate or silently waived.
+
+Result: the tenant canary, old/new compatibility and rollback contract are
+accepted. Next: checkpoint and push this section receipt, finish the already
+started profile-0 evidence, then run profiles 5/50/500 and the compatible
+seven-sample capture/compare before release admission.

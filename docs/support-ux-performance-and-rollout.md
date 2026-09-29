@@ -135,6 +135,24 @@ Current-main reconciliation established:
 The isolated fixture and artifact both record `enabled` or `disabled`.
 Visual/performance comparison rejects a baseline from the other state.
 
+### Admitted source proof
+
+Both modes are proven on the same source SHA
+`0498d3a857e2230be2db20e85525a728587d5032`:
+
+- flag off: run `36551225927`, artifact `11025885144`, one production static
+  cell and 6/6 Macros flows green; the category journey records browser mode,
+  browser rollback surface, rename, undo and completed delete;
+- flag on: run `36552953697`, artifact `11027281153`, one production static
+  cell and 6/6 Macros flows green; the same journey records tenant mode,
+  organization category surface, retained input/retry, rename, undo, completed
+  delete and restored keyboard focus.
+
+Both modes have zero runtime, Axe, custom accessibility, touch, overflow,
+environment and primary-work failures. The rollback captures were manually
+reviewed. This admits the source boundary for release; it does not enable a
+production tenant or start the observation window.
+
 ## Canary admission order
 
 1. Scoped lint, tests, runner syntax, translation parity and anti-pattern scan.
@@ -169,8 +187,8 @@ intentionally deferred until all conditions hold:
 | Slice / PR / merge SHA | Pending final PR and protected merge |
 | Production artifact SHA | Pending GitHub Actions deploy |
 | Canary tenant and flag | No production tenant enabled; `support_ux_v2_canary` defaults off |
-| Evidence artifacts | Full run `36542434997` is in progress on pre-canary SHA; final exact-SHA runs pending |
-| Roles / profiles | Agent, manager, admin, customer; high matrix in progress; 0/5/50/500 pending |
+| Evidence artifacts | Full 1296/1296 run `36542434997`, artifact `11024298303`; canary off `36551225927`/`11025885144`; canary on `36552953697`/`11027281153` |
+| Roles / profiles | Agent, manager, admin, customer; high accepted; 0/5/50/500 pending |
 | Baseline / compare | Final seven-sample pair pending |
 | Production smoke | Pending deploy |
 | Observation | Not started; removal gate deferred by policy above |
