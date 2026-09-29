@@ -2597,3 +2597,48 @@ from this worktree.
 - Next action: implement bounded `WF-C8-007c` future TEAM-scope create/list on
   the released calendar surface; employee/moved-day/update/delete/break-policy
   and real browser/AT evidence stay outside that slice.
+
+## 2026-09-29 — WF-C8-007c future team calendar implementation checkpoint
+
+- Extended the released calendar boundary with exact organization/team scope,
+  tenant-bound named active-team search, selected-team read continuity and
+  future team-only create/list. Missing, inactive and cross-tenant write
+  targets are indistinguishable and fail before any calendar write.
+- Team writes revalidate the active tenant team inside the transaction and use
+  the same organization/date advisory lock as organization writes. Exact
+  replay remains no-op; different state and unique collision fail closed; the
+  calendar row and actor/team audit remain atomic.
+- Route safety is explicit: organization replay uses an independent default
+  baseline, while a team override inherits only the existing organization
+  decision for that date. Caller input still cannot set source, actor, moved
+  date or Route fields.
+- UI adds a bounded named team picker, inactive-team read-only state, latest
+  GET request fencing and mutation-time control freezing. EN/RU/AZ and voice
+  identity copy describe only released behavior.
+- Independent pre-review found and drove remediation of three P2 races/
+  baseline defects; final uncommitted-diff pre-review is GREEN with no P0–P3
+  findings. Frozen exact-head review remains mandatory.
+- Evidence: `docs/workforce-c8-team-calendar-configuration-evidence-2026-09-29.md`.
+- No progress credit is claimed. `WF-C8-007` remains `PARTIAL`; progress stays
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation, remediations and pre-review are
+  complete; final author verification/evidence are being frozen for commit.
+- Next action: rerun the bounded current-tree gates, checkpoint explicit paths,
+  compute exact identities and require a fresh author-independent frozen-head
+  review before push.
+
+## 2026-09-29 — WF-C8-007c author verification complete
+
+- Current tree PASS: calendar/domain/API/UI/resolver/navigation 6 files / 97
+  tests; Workforce auth wrapper 30; RLS route coverage 3; affected voice
+  coverage/evaluation 21; scoped ESLint on all eight changed TS/TSX paths;
+  i18n 23,857/0/0; whitespace.
+- Full typecheck/build/suite, real-Postgres race, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  host policy. Exact-head CI remains required.
+- No completion or gate credit changes: `WF-C8-007` is still `PARTIAL`,
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation, evidence and bounded author checks
+  are complete and uncommitted.
+- Next action: checkpoint only explicit slice paths, fingerprint the exact diff
+  and obtain a fresh full-range author-independent frozen-head review.

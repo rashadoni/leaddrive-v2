@@ -2508,3 +2508,56 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint this release receipt, then implement the bounded
   `WF-C8-007c` TEAM-scope future calendar slice with shared org/date locking,
   tenant-safe active-team selection and no employee/moved/update/delete scope.
+
+## 2026-09-29 — WF-C8-007c team calendar implementation and pre-review
+
+- Continued only in the recorded worktree on
+  `codex/workforce-completion-part11`, based on released main
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`. Routing remains
+  `rashadoni/leaddrive-v2`; production remains only
+  `13.140.132.245:/opt/leaddrive-v2` through `main -> deploy.yml`.
+- Implemented strict named TEAM scope on the released future calendar surface:
+  bounded active-team search, tenant-safe selected context, exact team list,
+  active-team create, shared organization/date locking, exact replay,
+  fail-closed conflicts and atomic actor/team audit.
+- The slice adds no schema, employee scope, moved-day workflow, update/delete,
+  break-policy editor, Route UI/API or broad admin exposure. Inactive selected
+  teams remain visible only for read continuity and cannot receive new writes.
+- Independent pre-review found two P2 issues in the first draft: organization
+  replay used its own Route flag as baseline, and old GET responses could win
+  scope/team/search races. Both were fixed with regressions. Rereview found a
+  third P2 where mutable controls during POST allowed old reconciliation to
+  replace a new selection and erase new input; all six controls are now frozen
+  through reconciliation and pinned by a source-contract test.
+- Final uncommitted-diff pre-review is GREEN (`P0=P1=P2=P3=0`). This does not
+  replace fresh author-independent review of the exact checkpoint head.
+- Focused current-tree PASS: 3 files / 32 tests, Workforce auth wrapper 30,
+  RLS coverage 3, scoped ESLint, i18n 23,857/0/0 and whitespace. Broader
+  calendar/voice sets are rerun after the evidence append. Full typecheck,
+  build/suite, browser/AT/device, real-Postgres race, Android/Gradle,
+  load/chaos, signed-device and pilot are `NOT RUN` under host policy.
+- Evidence: `docs/workforce-c8-team-calendar-configuration-evidence-2026-09-29.md`.
+- `WF-C8-007` remains `PARTIAL`; progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation and all known pre-review findings are
+  remediated; current-tree verification and evidence freeze are in progress.
+- Next action: finish bounded checks, commit only explicit slice paths, compute
+  exact diff identities and obtain fresh frozen-head independent GREEN before
+  any push or PR.
+
+## 2026-09-29 — WF-C8-007c bounded author verification complete
+
+- PASS on the final pre-checkpoint tree: six calendar/domain/API/UI/resolver/
+  navigation files / 97 tests; Workforce authorization wrapper 30 tests; RLS
+  route-context coverage 3; affected voice guide/navigation evaluation 21;
+  scoped ESLint on all eight changed TS/TSX paths; i18n 23,857 EN keys with
+  RU/AZ missing 0 and extra 0; `git diff --check`.
+- Full typecheck/build/suite, browser/AT/device, real-Postgres concurrency,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  the Contabo workload contract. GitHub exact-head CI remains mandatory.
+- Progress remains unchanged: `WF-C8-007` is `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: all implementation, evidence and author verification
+  paths are ready for an explicit checkpoint commit.
+- Next action: commit only those paths, compute full and implementation diff
+  identities and start a fresh author-independent frozen-head review.
