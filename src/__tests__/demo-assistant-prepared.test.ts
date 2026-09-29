@@ -37,6 +37,7 @@ vi.mock("@/lib/ai/anthropic-client", () => ({ getAnthropicClient: () => ({ messa
 
 import { POST } from "@/app/api/v1/public/demo-access/[token]/assistant/route"
 import { DEMO_PREPARED_INTENTS } from "@/lib/demo-center/assistant/prepared-answers"
+import { demoVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { DEMO_ASSISTANT_MAX_PREPARED, DEMO_ASSISTANT_MAX_QUESTIONS, DEMO_ASSISTANT_REFUSAL_TEXT } from "@/lib/demo-center/assistant/policy"
 import { PROSPECT_TO_CLOSED_WON } from "@/lib/demo-center/journey"
 
@@ -95,7 +96,8 @@ describe("a question Jev is sure about", () => {
     jevAnswers({ choice: "price", confidence: 0.99 })
     const response = await ask("Qiyməti nə qədərdir?")
     expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({ success: true, answer: PRICE_ANSWER, source: "prepared", remaining: DEMO_ASSISTANT_MAX_QUESTIONS })
+    // …with its recording, so the talking guide can say it.
+    expect(await response.json()).toMatchObject({ success: true, answer: PRICE_ANSWER, source: "prepared", remaining: DEMO_ASSISTANT_MAX_QUESTIONS, audio: demoVoiceUrl(PRICE_ANSWER) })
     expect(mocks.claude).not.toHaveBeenCalled()
     expect(recorded()).toEqual(["ASSISTANT_PREPARED"])
     expect(mocks.createEvent.mock.calls[0][0].data.metadata).toMatchObject({ intent: "price", confidence: 0.99, inputTokens: 700 })
@@ -127,7 +129,10 @@ describe("everything else goes to Da Vinci, exactly as before", () => {
   ] as const)("%s", async (_label, answers) => {
     jevAnswers(...answers)
     const response = await ask("Bu ehtimal niyə 45%-dir?")
-    expect(await response.json()).toMatchObject({ success: true, answer: "Da Vinci cavabı" })
+    const body = await response.json()
+    expect(body).toMatchObject({ success: true, answer: "Da Vinci cavabı" })
+    // Da Vinci's own words have no recording; the guide shows them as text.
+    expect(body.audio).toBeUndefined()
     expect(mocks.claude).toHaveBeenCalledTimes(1)
     expect(recorded()).toEqual(["ASSISTANT_ASKED"])
   })

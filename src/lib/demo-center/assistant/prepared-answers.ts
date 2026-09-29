@@ -30,6 +30,15 @@ interface PreparedIntent {
   readonly answer: ((context: PreparedAnswerContext) => string | null) | null
 }
 
+/**
+ * What the guide says for a step — read aloud when the step opens, and the
+ * answer to «where do I click» on it. One text, so one recording serves both.
+ */
+export function stepNarration(step: Pick<DemoJourneyStep, "title" | "instruction" | "targetLabel">): string {
+  const target = step.targetLabel ? ` Ekranda: «${step.targetLabel}».` : ""
+  return `${step.title}. ${step.instruction}${target}`
+}
+
 const COMMERCIAL_REFUSAL =
   "Bunu demo çərçivəsində dəqiq deyə bilmirəm — şərtlər komandanızın ölçüsündən və tapşırıqlarından asılıdır. Satış komandamız sizə dəqiq cavab verəcək."
 
@@ -71,11 +80,7 @@ export const DEMO_PREPARED_INTENTS = {
   },
   screen_help: {
     criteria: "Asks what to do now, where to click, how to continue the demo, or what the current step wants from them.",
-    answer: ({ step }) => {
-      if (!step) return null
-      const target = step.targetLabel ? ` Ekranda: «${step.targetLabel}».` : ""
-      return `${step.title}. ${step.instruction}${target}`
-    },
+    answer: ({ step }) => (step ? stepNarration(step) : null),
   },
   commercial_other: {
     criteria: "Asks about commercial or contractual terms other than price: integrations with 1C, Uyumsoft, accounting, ERP or banks; security, data storage, certificates, GDPR; SLA; trial period, onboarding time, contracts.",
