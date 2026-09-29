@@ -40,7 +40,10 @@ vi.mock("@/lib/social/subject-relevance", () => ({
   persistSubjectMatches: deps.persist,
 }))
 
-import { judgeAmbiguousAliasRejections } from "@/lib/social/ai-relevance-judge-pass"
+import {
+  judgeAmbiguousAliasRejections,
+  JUDGEABLE_REJECTION_REASONS,
+} from "@/lib/social/ai-relevance-judge-pass"
 
 function candidate(overrides: Record<string, unknown> = {}) {
   return {
@@ -174,7 +177,7 @@ describe("проход судьи по отказам «родовой алиа�
     expect(deps.judge).not.toHaveBeenCalled()
   })
 
-  it("выбирает только отказы по родовому алиасу", async () => {
+  it("выбирает отказы, которые стоит пересмотреть, и только их", async () => {
     deps.judge.mockResolvedValue({ verdict: "unsure", errorClass: null, version: "ai_relevance_judge_v2" })
     await judgeAmbiguousAliasRejections({ organizationId: "org-1", limit: 7 })
 
@@ -184,10 +187,18 @@ describe("проход судьи по отказам «родовой алиа�
       where: expect.objectContaining({
         organizationId: "org-1",
         status: "REJECTED",
-        reason: "ambiguous_alias_requires_second_signal",
+        reason: { in: JUDGEABLE_REJECTION_REASONS },
         mention: { purgedAt: null, deletedAtSource: null },
       }),
     }))
+  })
+
+  // Собственные посты бренда отклонены по политике, а не по спорному решению:
+  // судья подтвердил бы их «про нас» каждый раз, и это вернуло бы в ленту
+  // мониторинга собственный маркетинг компании.
+  it("никогда не пересматривает собственные посты бренда", () => {
+    expect(JUDGEABLE_REJECTION_REASONS).not.toContain("official_author")
+    expect(JUDGEABLE_REJECTION_REASONS).not.toContain("official_author_excluded_backfill")
   })
 
   /**
