@@ -2235,3 +2235,29 @@ corrections as new entries that explicitly supersede the earlier fact.
   but the three-document receipt is uncommitted.
 - Next action: checkpoint explicit documentation paths, fingerprint the new
   exact candidate and request a completely fresh independent review.
+
+## 2026-09-29 — WF-C8-007a independent rereview GREEN
+
+- A completely fresh author-independent rereview returned GREEN with
+  `P0=P1=P2=P3=0` on exact clean head
+  `a6e29375e93e32142155db9ab3e33fd29678c1c3`. Live `origin/main` and the
+  merge-base were independently rechecked at
+  `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`.
+- Exact full identity: 11 paths / 75,583 bytes / SHA-256
+  `1b442cd0af85df258ed396341c8dc35fc2ef33abdadd858b28b6a816c53f1334`.
+  Exact implementation identity: 10 paths / 70,283 bytes / SHA-256
+  `d8a67d254121eea5f78a17b1ed7d16231fe2d3b33bc3341f624ad5abf13b3be1`.
+- The reviewer closed the prior whitespace P3 and found no remaining issue in
+  code, API, UI, domain rules, accessibility source, localization or evidence.
+  Independent PASS: all relevant diff-checks, six files / 67 tests, scoped
+  ESLint 4/4, i18n 23,803/0/0 and EN/RU/AZ JSON. The reviewer made no changes
+  and left the worktree clean.
+- Full local typecheck/build/suite, browser/AT/contrast/zoom/device,
+  Android/Gradle, load, signed device and pilot remain `NOT RUN`; exact-head CI
+  is required before merge.
+- No progress credit is added: `WF-C8-007` remains `PARTIAL`; progress is
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: reviewed runtime/test/i18n blobs are frozen, with
+  only this three-document GREEN receipt uncommitted.
+- Next action: checkpoint the receipt, verify exact-head blob integrity, then
+  push the branch, open the bounded PR and require all five CI contexts.
