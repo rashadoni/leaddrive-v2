@@ -2946,3 +2946,27 @@ corrections as new entries that explicitly supersede the earlier fact.
   only this three-document GREEN receipt is uncommitted.
 - Next action: commit the receipt, verify non-doc fingerprint integrity,
   obtain author-independent receipt-only GREEN, then push/open the bounded PR.
+
+## 2026-09-29 — WF-C8-007e PR #506 CI finding fixed locally
+
+- PR #506 exact head `618d4c7ba6520d06ab69ac628f6c5acb37369761`
+  passed `pr-scope`, `runner-policy`, `scan` and `static-checks`; the latter ran
+  both mandatory real-PostgreSQL proofs successfully. The PR production-build
+  job skipped by policy.
+- `typecheck` failed with exactly one new defect-shaped pair (67 current versus
+  66 baseline): `TS2322` in the calendar configuration POST route. The inline
+  property check did not narrow the Zod union for the subsequent ordinary
+  override writer.
+- Replaced the inline check with an explicit type predicate using the two
+  schema-inferred draft types. Scoped ESLint passes; the calendar route/domain
+  tests pass 44/44. Full typecheck/build/suite remain `NOT RUN` locally under
+  the host contract; the new exact-head CI is mandatory.
+- No baseline or gate was weakened. This non-doc repair invalidates prior
+  frozen review authority, so the branch cannot be updated until a fresh
+  author-independent complete-diff GREEN is recorded.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: repair plus bounded verification are complete in the
+  working tree and await checkpoint/reconciliation/review.
+- Next action: commit explicit paths, reconcile live main, compute exact diff
+  identities and run a fresh full-range independent review before repush.

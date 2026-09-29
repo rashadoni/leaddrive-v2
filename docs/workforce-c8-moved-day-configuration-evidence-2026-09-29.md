@@ -215,3 +215,31 @@ Fresh author-independent full-range review returned GREEN with
 This GREEN freezes the reviewed implementation. Only this receipt changes
 after that head; a receipt-integrity review must confirm the non-doc identity
 before publication.
+
+## PR #506 initial CI finding and remediation
+
+PR #506 published exact head
+`618d4c7ba6520d06ab69ac628f6c5acb37369761`. Its `pr-scope`,
+`runner-policy`, `scan` and complete `static-checks` jobs passed. The static
+job included the mandatory PostgreSQL 16 gate: both real advisory-lock and
+concurrent-Prisma-writer proofs passed. The PR-only production build skipped
+as designed.
+
+The `typecheck` job correctly blocked that head. It found 67 defect-shaped
+file/code pairs against a baseline of 66 and isolated one new error:
+`TS2322` at `configuration/calendar/route.ts:167`. TypeScript did not exclude
+the moved-day member of the parsed Zod union after the inline `in` check, so
+the remaining union was not assignable to the ordinary override writer even
+though runtime routing was correct.
+
+The route now uses an explicit `isMovedDayDraft` type predicate over the two
+schema-inferred draft types. This preserves the runtime discriminator while
+proving the ordinary branch is an override draft. After the repair, scoped
+ESLint passes and the two calendar domain/API files pass 44/44 tests.
+
+Full local typecheck remains `NOT RUN` under the Contabo workload-placement
+contract; the updated exact-head CI must prove the defect pair returned to
+baseline. Because a non-doc byte changed, all earlier frozen-head review
+authority is invalidated and a fresh author-independent complete-diff review
+is mandatory before republishing. Progress remains `DONE 81/161`,
+`GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.

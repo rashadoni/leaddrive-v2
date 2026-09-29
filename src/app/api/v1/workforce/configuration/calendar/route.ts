@@ -16,6 +16,8 @@ import {
   WORKFORCE_CALENDAR_TEAM_SEARCH_LIMIT,
   WorkforceCalendarConfigurationCreateSchema,
   WorkforceCalendarScopeSelectionSchema,
+  type WorkforceCalendarMovedDayDraft,
+  type WorkforceCalendarOverrideDraft,
 } from "@/lib/workforce/calendar-configuration-contract"
 import { workforceConfigurationRequestAuditContext } from "@/lib/workforce/configuration-route"
 
@@ -34,6 +36,12 @@ function configurationError(error: WorkforceCalendarConfigurationError): Respons
       ? 404
       : 400
   return NextResponse.json({ error: error.message, code: error.code }, { status })
+}
+
+function isMovedDayDraft(
+  draft: WorkforceCalendarMovedDayDraft | WorkforceCalendarOverrideDraft,
+): draft is WorkforceCalendarMovedDayDraft {
+  return "operation" in draft && draft.operation === "MOVE_WORKDAY"
 }
 
 export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ", async (req: NextRequest, auth) => {
@@ -140,7 +148,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRIT
   try {
     const settings = await getMtmSettings(auth.orgId)
     const clock = organizationCalendarClock(settings.timezone)
-    if ("operation" in parsed.data && parsed.data.operation === "MOVE_WORKDAY") {
+    if (isMovedDayDraft(parsed.data)) {
       const result = await createWorkforceCalendarMovedDay({
         organizationId: auth.orgId,
         createdByUserId: auth.userId,

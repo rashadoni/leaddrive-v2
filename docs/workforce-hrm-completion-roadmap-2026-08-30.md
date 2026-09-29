@@ -2947,3 +2947,26 @@ from this worktree.
   frozen; only this GREEN receipt is uncommitted.
 - Next action: commit the three docs, prove non-doc fingerprint integrity,
   obtain receipt-only GREEN, then push/open the ≤400 KB PR.
+
+## 2026-09-29 — WF-C8-007e PR #506 typecheck remediation
+
+- PR #506 exact head `618d4c7ba6520d06ab69ac628f6c5acb37369761`
+  passed `pr-scope`, `runner-policy`, `scan` and full `static-checks`, including
+  the mandatory real-PostgreSQL lock-order and concurrent-writer gate. Its
+  PR-only production build skipped as intended.
+- `typecheck` blocked merge with one new defect-shaped pair over baseline:
+  `TS2322` at `configuration/calendar/route.ts:167`. The parsed Zod union was
+  not narrowed out of its moved-day member before the ordinary override call.
+- The route now uses a schema-typed `isMovedDayDraft` predicate. Scoped ESLint
+  passes and the calendar API/domain selection passes 44/44 tests. Full local
+  typecheck remains `NOT RUN` by host policy and must pass in updated exact-
+  head CI.
+- The code change invalidates the earlier frozen-head GREEN; a fresh complete-
+  diff author-independent review is mandatory before the branch is pushed
+  again. No check is weakened and no baseline is changed.
+- `WF-C8-007` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: the isolated type-narrowing repair and bounded local
+  verification are complete but uncommitted.
+- Next action: checkpoint the repair/evidence, reconcile live main, fingerprint
+  the replacement head and obtain a fresh full-range independent GREEN.
