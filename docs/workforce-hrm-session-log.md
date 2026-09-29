@@ -2261,3 +2261,220 @@ corrections as new entries that explicitly supersede the earlier fact.
   only this three-document GREEN receipt uncommitted.
 - Next action: checkpoint the receipt, verify exact-head blob integrity, then
   push the branch, open the bounded PR and require all five CI contexts.
+
+## 2026-09-29 — PR #497 merged, deployed and exact-SHA verified
+
+- Exact reviewed head `ebca5dce8938c5a1ff07c641d67887fd7ac186a1`
+  passed all five required contexts. PR run `36556087209` closed `pr-scope`,
+  `static-checks` and `typecheck`; runner-policy `36556087203` and secret scan
+  `36556087058` passed. The PR production-build job was correctly skipped by
+  scope.
+- PR #497 merged normally, with no admin bypass, as main SHA
+  `6bc764977470d5b6ee65fe9986ced7c45204fcd8`.
+- Deploy workflow `36558084579` completed SUCCESS: quality/security 10m06s,
+  SHA-bound artifact build/publish 15m48s, and atomic production deployment
+  plus scheduler, tenant-isolation and public smoke 7m33s. No direct worktree
+  copy or server-side ad hoc release was used.
+- Separate public no-cache TLS checks pinned to the approved production IP
+  `13.140.132.245` returned `/api/v1/ping` `{"ok":true}` and build-info
+  `artifactSha=6bc764977470d5b6ee65fe9986ced7c45204fcd8`, built at
+  `2026-09-29T10:55:40Z`.
+- Unrelated PR #490 subsequently advanced current `main` to direct descendant
+  `6157c4d94b5e42c8fc9019d9b338873dac65d39b`. The worktree is now on
+  successor branch `codex/workforce-completion-part10` from that main; this
+  task does not modify the foreign commit.
+- `WF-C8-007` remains `PARTIAL`; real browser/AT/contrast/zoom/device evidence
+  and broader calendar authoring remain `NOT RUN`/open. Android, load, signed
+  device and pilot are also `NOT RUN`. Progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: ordered segment authoring is verified live; the
+  release receipt is appended but uncommitted on the successor branch.
+- Next action: checkpoint these three receipt files, then begin bounded
+  `WF-C8-007b` future organization calendar override authoring with strict
+  future-only, organization-only and create-only boundaries.
+
+## 2026-09-29 — WF-C8-007b future organization calendar implementation checkpoint
+
+- Continued only in the recorded worktree on
+  `codex/workforce-completion-part10` from receipt head `2151590e5`. Routing
+  remains `rashadoni/leaddrive-v2`; production remains only
+  `13.140.132.245:/opt/leaddrive-v2` through `main -> deploy.yml`.
+- Implemented a strict Workforce-only calendar GET/POST boundary and separate
+  configuration-page client. Granular Scheduler access is not hidden by the
+  legacy CRM-admin UI gate.
+- GET exposes a server-clocked 1–367 day future organization inventory with
+  only date/kind/name. POST accepts only a future real date, required name and
+  public holiday/company closure/exception workday kind. No browser-provided
+  ID, scope, source, moved date or Route flag is accepted.
+- The create-only transaction uses a tenant/date advisory lock, explicit
+  tenant and null team/agent predicates, exact-state replay, 409 conflict,
+  existing unique-index backstop and an in-transaction actor audit.
+- Repository inspection corrected the initial source assumption:
+  `MtmWorkCalendarDay.source` is a free string with established `ADMIN`, not a
+  governed `WORKFORCE_CONFIG` enum. The writer keeps `ADMIN`; Workforce
+  provenance is recorded by audit action/metadata. The explicit
+  `routePlanningAllowed` value preserves the date's no-override
+  weekday/weekend baseline so this HR write does not silently toggle Route
+  planning eligibility.
+- PASS: the focused calendar/domain set is 5 files / 28 tests; RLS route
+  coverage is 1 file / 3 tests; scoped ESLint covers eight changed TS/TSX
+  files; i18n parity is 23,831 EN keys with RU/AZ 0 missing and 0 extra;
+  whitespace passes. The initial focused run had two test-assertion failures
+  only (cleared import-time mock calls and `HOLIDAY` matching `/id/i`); both
+  test assertions were corrected and the full focused set passed.
+- Full local typecheck/build/suite, browser/AT/contrast/zoom/device,
+  Android/Gradle, load/chaos, signed-device and pilot are `NOT RUN` under the
+  Contabo placement rule. Exact-head CI remains required.
+- `WF-C8-007` remains `PARTIAL`; no completion credit is added. Progress is
+  unchanged at `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows.
+- Precise stopping point: implementation, focused checks and evidence are
+  complete but uncommitted.
+- Next action: commit only explicit task paths, fingerprint the exact candidate
+  and request fresh author-independent read-only review before push or PR.
+
+## 2026-09-29 — WF-C8-007b frozen review RED and remediation
+
+- Author-independent review matched exact head
+  `6ca356a952871ed1d0c0594f91cb9f2651a7ee4b`, base
+  `93ee5a8ce2892778874457c83b37d9c7d05dfe8e` and full identity 15 paths /
+  75,007 bytes /
+  `d6c21a1c016ba2fb4fae8726216dbf0105190a79633865cabecc60e21a14af00`.
+  Verdict was RED: `P0=0`, `P1=0`, `P2=2`, `P3=0`.
+- P2 #1: the component lacked its own admin check, but it existed only on the
+  admin-only navigation path, so a legitimate non-admin granular Scheduler
+  could not discover it. Remediation moved it to dedicated
+  `/workforce/calendar` and added a normal HRM menu item while preserving the
+  broad configuration page's admin-only entry. API grant checks remain the
+  authorization authority.
+- P2 #2: generic POST transport/parse failure falsely said no calendar day
+  changed. Remediation separates confirmed validation/conflict/access
+  rejection from outcome-unknown failure and tells the operator to refresh or
+  safely replay the same desired state. Read/refresh failure is neutral.
+- Added navigation and UI-contract regression coverage plus EN/RU/AZ copy.
+  PASS after remediation: seven files / 88 tests, scoped ESLint on 11 paths,
+  i18n 23,834/0/0 and whitespace.
+- Full typecheck/build/suite, browser/AT/contrast/zoom/device, Android/Gradle,
+  load/chaos, real-Postgres concurrent race, signed-device and pilot remain
+  `NOT RUN`. Exact-head CI and fresh independent rereview remain mandatory.
+- `WF-C8-007` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: both P2 findings are fixed in the working tree and
+  targeted checks pass, but the remediation is not committed.
+- Next action: checkpoint explicit remediation paths, compute a new frozen
+  identity and obtain a completely fresh author-independent rereview.
+
+## 2026-09-29 — WF-C8-007b second rereview RED remediation
+
+- Full-range independent rereview matched head
+  `7b065c3665640a2888a93ce4f389a0c4e3185fd9`, 17 paths / 88,446 bytes /
+  `8faef26fa99cfadbd9bee2aecc9faf1f701b74438c9a19d880e019351dceef3a`
+  and returned `P0=0`, `P1=0`, `P2=1`, `P3=0`.
+- The first remediation's outcome-unknown POST behavior is independently
+  closed. The remaining P2 was partial discoverability: legacy
+  `permissionScope: workforce` hid the calendar from support/ticketing CRM
+  roles even when an independent organization Scheduler grant could exist.
+- Removed only that legacy coarse-role filter from the narrow calendar nav
+  item. Tenant capability still gates the menu; the dedicated page exposes no
+  broad admin surfaces; GET/POST still enforce exact durable grants; broad
+  configuration remains admin/superadmin-only.
+- Added regression coverage for a support-role grant candidate with no legacy
+  Workforce permission. No server authorization was weakened.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: the final known P2 is remediated in the working tree;
+  bounded checks, checkpoint and fresh exact-head review remain.
+- Next action: repeat targeted verification, commit explicit paths, freeze a
+  new identity and request another complete independent rereview.
+
+## 2026-09-29 — WF-C8-007b final known-finding verification
+
+- The capability-only navigation correction passes seven targeted files / 88
+  tests, including the support-role/no-legacy-permission regression and RLS
+  route coverage. Scoped ESLint on 11 TS/TSX paths, i18n 23,834/0/0 and
+  whitespace also pass.
+- Full typecheck/build/suite, browser/AT/device, Android/Gradle, load/chaos,
+  real-Postgres race, signed-device and pilot remain `NOT RUN` under host
+  policy. A fresh independent exact-head review is still mandatory.
+- Progress is unchanged: `WF-C8-007` remains `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: all known review findings are fixed and author checks
+  pass, but the final remediation is not committed.
+- Next action: checkpoint the explicit six remediation/evidence paths, compute
+  the new full identity and start a fresh complete rereview.
+
+## 2026-09-29 — WF-C8-007b third full-range review GREEN
+
+- Fresh author-independent review returned GREEN with
+  `P0=P1=P2=P3=0` on exact clean head
+  `6149e9713e9c6787268e0b664776cf7b5964e34e`; base, live main and merge-base
+  were `8de56f819b839a7c84951978ef3c619654f855e2`.
+- Reviewer matched full identity 17 paths / 94,946 bytes /
+  `ac2dc7621d60087cef1f044f16827aea981a6641e09882cf8f83e6fb222ef27d`
+  and implementation identity 13 paths / 62,756 bytes /
+  `e58f11d8226388ece1d1187784aca263a155fb6b47fa8ad3f02764eb948989e0`.
+- Independent checks pass: seven focused files / 88 tests, Workforce wrapper
+  30 tests, scoped ESLint 11 paths, i18n 23,834/0/0, both diff-checks and
+  direct navigation evaluation for support, ticketing, manager and admin.
+- Both prior discoverability findings and the unknown-POST finding are closed.
+  The reviewer found no new tenant, auth, calendar, transaction, audit, Route,
+  response-minimization, accessibility-source, localization or evidence issue.
+- Full typecheck/build/suite, browser/AT/device, Android/Gradle, load/chaos,
+  real-Postgres race, signed-device and pilot remain `NOT RUN`; CI is required.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: runtime/test/i18n is independently reviewed and
+  frozen; only this append-only GREEN receipt is uncommitted.
+- Next action: checkpoint the three receipt documents, verify implementation
+  blob integrity, then push/open the bounded PR and require all CI contexts.
+
+## 2026-09-29 — PR #500 first CI failure repaired locally
+
+- PR #500 at exact head `b30a897c64fd480612b2084f72b160ae1115a553`
+  passed scope, full typecheck, runner policy and secret scan. Static checks
+  failed on four new voice coverage/evaluation regressions, so merge was not
+  attempted and no baseline or required check was weakened.
+- An author-independent read-only scout reproduced 4 failing / 17 passing
+  tests and localized the complete cause: the new `workforce_calendar` menu
+  identity had no short `nav` label, guide or `NO_DATA_SECTIONS` entry.
+- The repair adds EN/RU/AZ labels, a truthful forward-only calendar guide and
+  the `config` classification. It adds no voice mutation, data descriptor,
+  permission bypass, provider call, TTS or media asset.
+- PASS: the four affected test files now pass 21/21, i18n parity is
+  23,835/0/0, ESLint passes the two changed TypeScript files, and worktree plus
+  index whitespace checks pass. JSON is intentionally ignored by ESLint and
+  parsed successfully by the i18n check.
+- Full local typecheck/build/suite, browser/AT/device, Android/Gradle,
+  load/chaos, real-Postgres race, signed-device and pilot remain `NOT RUN`.
+- No completion/gate credit is added: `WF-C8-007` remains `PARTIAL`, progress
+  remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: five metadata files and these three append-only
+  receipts are verified but uncommitted; fresh complete review is mandatory.
+- Next action: checkpoint explicit paths, compute the new complete identity,
+  obtain independent GREEN and only then push replacement exact-head CI.
+
+## 2026-09-29 — PR #500 repaired independent review GREEN
+
+- Independent full-range review returned GREEN (`P0=P1=P2=P3=0`) on clean
+  head `cfea07c3e685652e37b13fafc4c4fabb5ded57be` against live main/merge-base
+  `8de56f819b839a7c84951978ef3c619654f855e2`.
+- The reviewer re-matched the full 19-path / 109,505-byte identity
+  `6f2414b1e8a3a5f83b4a2668cd154bb2fd0cc585279ece7927a2802251365116`
+  and the 15-path / 68,059-byte implementation identity
+  `8d482f468fe553f4faa0f3158b83c3ba3eac7fe1bff9b5934f2858f8fff3b223`.
+- Independent PASS: 88 calendar/navigation/RLS tests, 21 voice tests, 30
+  Workforce auth-wrapper tests, 14-path ESLint, i18n 23,835/0/0, 144-section
+  and 576-case static voice audit with zero mismatches/live requests/CRM tool
+  calls, both diff checks and append-only-prefix checks.
+- Manual review confirmed tenant/date/transaction/audit/Route behavior and
+  UI/error/i18n evidence remain sound. The voice metadata cannot expose the
+  calendar through the generic reader or mutate it; no provider/TTS/media path
+  exists.
+- Full local typecheck/build/suite, browser/AT/device, Android/Gradle,
+  load/chaos, real-Postgres race, signed-device and pilot remain `NOT RUN`.
+- No completion/gate credit changes: `WF-C8-007` is `PARTIAL`, progress is
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation/test/i18n blobs are independently
+  GREEN and frozen; only this append-only receipt is uncommitted.
+- Next action: commit the receipt, verify frozen blob identity, push the new
+  head and wait for every required replacement CI context.
