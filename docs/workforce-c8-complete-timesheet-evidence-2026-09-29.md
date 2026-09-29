@@ -220,3 +220,47 @@ Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
 physical-device and pilot checks remain `NOT RUN` under host policy. A clean
 checkpoint and fourth fresh full-range independent review remain mandatory;
 no completion credit is added.
+
+## Fourth review RED and submission-to-refresh interlock
+
+The third replacement checkpoint was
+`c1422649d8044658409295b9aeb840960f56da0a`. A fourth fresh full-range
+author-independent review verified base/current main/merge-base
+`eab1c60de3e56e4ea26001c9ddfd01fc603524a5` and the complete 15-path /
+150,087-byte diff with SHA-256
+`f9a9605ce9b337fdc424125009b3e678f7554bb2290e4feaf350b760ec53b8d2`.
+It returned **RED** with `P0=0`, `P1=1`, `P2=0`, `P3=0` and no other new
+finding.
+
+The P1 was a remaining race before the tagged GET existed: while the approval
+POST was pending, header refresh and timesheet filters were disabled only by
+read loading. A competing ordinary reload could unmount the panel; the POST
+would then resolve into the old component instance and its returned approval
+ID would again be unavailable to the remounted privacy-minimized view.
+
+The lifecycle now owns one synchronous busy interval from the first approval
+submit instruction through settlement of its exact tagged refresh. Generic
+reload and filter handlers fail closed while busy; repeated approval submits
+are rejected before transport; navigation, refresh, filters, correction input,
+approval and preview controls expose/observe the same interval. The tag keeps
+that interval active after POST completion and before the read effect has set
+its loading state, then releases it only on live refresh settlement. A new
+behavioral race regression proves that a second submission and competing work
+remain blocked across the POST-to-GET handoff.
+
+The focused lifecycle/UI check passes 2 files / 13 tests and scoped ESLint.
+The complete bounded matrix, new checkpoint and fifth fresh full-range review
+remain mandatory. `WF-C8-004` is still **PARTIAL** at `DONE 80/161`,
+`GATES 14/15`, C8 27%, overall 58%.
+
+## Submission-interlock verification
+
+The first complete rerun correctly exposed one stale source-contract
+expectation for the preview guard; the contract was updated to require the new
+busy check. The replacement complete matrix passes 19 files / 139 tests.
+Scoped ESLint passes for all nine changed runtime/test TypeScript paths; JSON,
+EN/RU/AZ parity at 23,737/0/0 and whitespace pass. Full local
+typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
+physical-device and pilot remain `NOT RUN` under host policy. No completion
+credit is added before a clean checkpoint, fifth fresh GREEN and exact-head
+release evidence.

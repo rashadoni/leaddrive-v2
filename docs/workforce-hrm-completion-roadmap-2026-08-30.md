@@ -1960,3 +1960,46 @@ from this worktree.
 - Next action: checkpoint only the seven explicit repair/receipt paths,
   measure the complete candidate and obtain a fourth independent full-range
   verdict from zero.
+
+## 2026-09-29 — WF-C8-004 fourth review RED and approval interlock repair
+
+- Fourth fresh complete-diff review froze
+  `c1422649d8044658409295b9aeb840960f56da0a` against unchanged main
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`: 15 paths / 150,087 bytes /
+  SHA-256
+  `f9a9605ce9b337fdc424125009b3e678f7554bb2290e4feaf350b760ec53b8d2`.
+  Verdict was RED with `P0=0`, `P1=1`, `P2=0`, `P3=0`; all other audited
+  areas remained clear.
+- The remaining race preceded the tagged history GET. During the approval POST
+  an enabled manual refresh or filter apply could unmount the panel, so its
+  eventual success wrote the approval ID only into an obsolete component and
+  preview remained unrecoverable from the minimized history.
+- One synchronous lifecycle busy interval now spans approval submission and
+  the exact tagged refresh. Handler guards block generic reload/filter and
+  duplicate approval transport immediately; navigation and every affected
+  panel control stay unavailable through the POST-to-GET handoff and refresh
+  settlement.
+- The added race case and updated UI integration contract pass 2 files / 13
+  tests; scoped ESLint passes. Full bounded rerun and fifth review are still
+  mandatory.
+- Status remains `WF-C8-004 PARTIAL`, `DONE 80/161`, `GATES 14/15`, C8 27%,
+  overall 58%.
+- Precise stopping point: fourth-review repair/tests/receipts are uncommitted
+  on top of rejected head `c1422649d`.
+- Next action: rerun the complete targeted slice, checkpoint explicit paths
+  and require a fifth independent full-range review from zero.
+
+## 2026-09-29 — WF-C8-004 submission-interlock checks complete
+
+- The first full rerun caught the preview source contract's old guard string;
+  the assertion now requires the added busy guard. The replacement complete
+  matrix passes 19 files / 139 tests.
+- Scoped ESLint for all nine changed runtime/test TypeScript paths, JSON,
+  i18n 23,737/0/0 and whitespace pass. Full local typecheck/build/suite,
+  browser/AT, Android/Gradle, load, signed-device and pilot remain `NOT RUN`.
+- Status remains `WF-C8-004 PARTIAL`, `DONE 80/161`, `GATES 14/15`, C8 27%,
+  overall 58%.
+- Precise stopping point: the fourth-review repair and final bounded checks
+  are complete but uncommitted.
+- Next action: checkpoint the eight explicit paths, fingerprint the full
+  candidate and obtain a fifth fresh complete-diff independent verdict.

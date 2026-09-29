@@ -17,6 +17,23 @@ function identity(retry: number, overrides: Partial<typeof query> = {}): string 
 }
 
 describe("timesheet approval refresh lifecycle", () => {
+  it("blocks competing work synchronously from submission through the tagged refresh", () => {
+    const lifecycle = new TimesheetApprovalRefreshLifecycle()
+    const approvalRefreshIdentity = identity(1)
+
+    expect(lifecycle.beginSubmission()).toBe(true)
+    expect(lifecycle.isBusy()).toBe(true)
+    expect(lifecycle.beginSubmission()).toBe(false)
+
+    lifecycle.tag(approvalRefreshIdentity)
+    lifecycle.finishSubmission()
+    expect(lifecycle.isBusy()).toBe(true)
+
+    expect(lifecycle.begin(approvalRefreshIdentity)).toBe(true)
+    lifecycle.settle(approvalRefreshIdentity, false)
+    expect(lifecycle.isBusy()).toBe(false)
+  })
+
   it("keeps the current approval panel only for the exact tagged request", () => {
     const lifecycle = new TimesheetApprovalRefreshLifecycle()
     const loadedIdentity = identity(0)

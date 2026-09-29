@@ -1775,3 +1775,50 @@ corrections as new entries that explicitly supersede the earlier fact.
   are verified but uncommitted on top of `cb5f31419`.
 - Next action: commit the seven explicit repair/receipt paths, fingerprint the
   full candidate and request a fourth fresh independent complete-diff review.
+
+## 2026-09-29 — WF-C8-004 fourth frozen review RED and busy interlock repair
+
+- The fourth independent full-range audit froze clean head
+  `c1422649d8044658409295b9aeb840960f56da0a`: unchanged live main and
+  merge-base `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`, 15 paths / 150,087
+  bytes / SHA-256
+  `f9a9605ce9b337fdc424125009b3e678f7554bb2290e4feaf350b760ec53b8d2`.
+  It returned RED, `P0=0`, `P1=1`, `P2=0`, `P3=0`; no other area produced a
+  finding.
+- While approval POST was pending, refresh/filter controls were not covered by
+  read loading. A competing reload could unmount the child before success
+  installed its server approval ID, recreating the preview-loss defect before
+  the tagged refresh began.
+- The lifecycle now enters busy synchronously before transport and remains
+  busy through the exact tagged refresh. Generic request/filter handlers,
+  duplicate submission, navigation, refresh and affected panel controls all
+  fail closed across that interval; the tag bridges the state before the GET
+  effect sets loading.
+- Focused lifecycle/UI tests pass 2 files / 13 tests and scoped ESLint passes.
+  The complete matrix remains pending. Full local typecheck/build/suite,
+  browser/AT, Android/Gradle, load, signed APK, physical-device and pilot stay
+  `NOT RUN`.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: fourth-review repair and receipts are uncommitted on
+  `codex/workforce-completion-part7`.
+- Next action: run the full bounded checks, checkpoint explicit paths and seek
+  a fifth fresh author-independent complete-diff verdict.
+
+## 2026-09-29 — WF-C8-004 submission-interlock verification complete
+
+- The initial complete rerun failed only because the existing approved-export
+  UI contract still expected the pre-interlock preview guard. That assertion
+  was updated to require the new loading guard; the full replacement rerun now
+  passes 19 files / 139 tests.
+- Scoped ESLint for all nine changed runtime/test TypeScript paths, three JSON
+  catalogs, translation parity 23,737/0/0 and `git diff --check` pass.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical-device and pilot checks remain `NOT RUN`; exact-head CI remains
+  mandatory.
+- `WF-C8-004` remains `PARTIAL`; progress is unchanged at `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: verified submission-to-refresh repair and receipts
+  are uncommitted on top of rejected head `c1422649d`.
+- Next action: commit only the eight explicit paths and request a fifth fresh
+  full-range independent review.

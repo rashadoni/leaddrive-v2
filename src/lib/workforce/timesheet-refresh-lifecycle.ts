@@ -22,6 +22,17 @@ export function createWorkforceReadIdentity(input: WorkforceReadIdentityInput): 
 
 export class TimesheetApprovalRefreshLifecycle {
   private taggedIdentity: string | null = null
+  private submissionActive = false
+
+  beginSubmission(): boolean {
+    if (this.isBusy()) return false
+    this.submissionActive = true
+    return true
+  }
+
+  finishSubmission(): void {
+    this.submissionActive = false
+  }
 
   tag(identity: string): void {
     this.taggedIdentity = identity
@@ -33,6 +44,10 @@ export class TimesheetApprovalRefreshLifecycle {
 
   isActive(identity: string): boolean {
     return this.taggedIdentity === identity
+  }
+
+  isBusy(): boolean {
+    return this.submissionActive || this.taggedIdentity != null
   }
 
   begin(identity: string): boolean {

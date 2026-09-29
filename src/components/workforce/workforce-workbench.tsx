@@ -511,6 +511,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   })
 
   function requestReload(options: { preserveTimesheet?: boolean } = {}) {
+    if (!options.preserveTimesheet && approvalRefreshLifecycle.isBusy()) return
     const nextRetry = retryRef.current + 1
     retryRef.current = nextRetry
     if (options.preserveTimesheet) {
@@ -579,6 +580,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
 
   const taggedApprovalRefresh = view === "timesheet"
     && approvalRefreshLifecycle.isActive(activeLoadIdentity)
+  const timesheetInteractionBusy = loading || approvalRefreshLifecycle.isBusy()
   const displayCurrentData = shouldRenderWorkforceData({
     loadedIdentity: dataLoadIdentity,
     activeIdentity: activeLoadIdentity,
@@ -750,6 +752,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   }
 
   function applyTimesheetFilters() {
+    if (loading || approvalRefreshLifecycle.isBusy()) return
     if (!timesheetFilters.start || !timesheetFilters.end || timesheetFilters.end < timesheetFilters.start) {
       toast.error(t("timesheetRangeInvalid"))
       return
@@ -763,6 +766,9 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
     periodEnd: string
     correctionReason?: string
   }): Promise<TimesheetApprovalOutcome> {
+    if (!approvalRefreshLifecycle.beginSubmission()) {
+      return { success: false, error: t("timesheetApprovalFailed"), code: null, blockers: [] }
+    }
     setApprovingTimesheet(true)
     try {
       const response = await fetch("/api/v1/workforce/timesheet/approvals", {
@@ -795,6 +801,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
         blockers: [],
       }
     } finally {
+      approvalRefreshLifecycle.finishSubmission()
       setApprovingTimesheet(false)
     }
   }
@@ -834,9 +841,19 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
           {(["today", "timesheet", "requests"] as WorkforceView[]).map((item) => {
             const href = item === "today" ? "/workforce" : `/workforce/${item}`
             const label = item === "today" ? tNav("workforceToday") : item === "timesheet" ? tNav("workforceTimesheet") : tNav("workforceRequests")
-            return <Button key={item} asChild size="sm" variant={item === view ? "default" : "outline"} className="min-h-12"><Link href={href}>{label}</Link></Button>
+            return <Button key={item} asChild size="sm" variant={item === view ? "default" : "outline"} className="min-h-12">
+              <Link
+                href={href}
+                aria-disabled={approvalRefreshLifecycle.isBusy()}
+                onClick={(event) => {
+                  if (approvalRefreshLifecycle.isBusy()) event.preventDefault()
+                }}
+              >
+                {label}
+              </Link>
+            </Button>
           })}
-          <Button type="button" size="sm" variant="ghost" className="min-h-12" onClick={() => requestReload()} disabled={loading}>
+          <Button type="button" size="sm" variant="ghost" className="min-h-12" onClick={() => requestReload()} disabled={timesheetInteractionBusy}>
             <RefreshCw className={loading ? "animate-spin motion-reduce:animate-none" : ""} />{t("refresh")}
           </Button>
         </nav>
@@ -859,7 +876,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
           locale={locale}
           appliedFilters={timesheetQuery}
           filters={timesheetFilters}
-          loading={loading}
+          loading={timesheetInteractionBusy}
           approving={approvingTimesheet}
           canApproveTimesheet={canApproveTimesheet}
           onPreviewApprovedExport={previewApprovedTimesheetExport}
@@ -1219,7 +1236,7 @@ function TimesheetApprovalPanel({
   }
 
   async function previewExport() {
-    if (!record || previewingExport) return
+    if (!record || previewingExport || loading) return
     setPreviewingExport(true)
     const outcome = await onPreviewApprovedExport(record.id)
     setPreviewingExport(false)
@@ -1317,6 +1334,7 @@ function TimesheetApprovalPanel({
                 value={correctionReason}
                 onChange={(event) => setCorrectionReason(event.target.value)}
                 maxLength={1000}
+                disabled={loading}
                 className="min-h-24"
                 aria-describedby="workforce-timesheet-correction-hint"
               />
@@ -1352,7 +1370,7 @@ function TimesheetApprovalPanel({
                   type="button"
                   variant="outline"
                   className="min-h-11"
-                  disabled={previewingExport}
+                  disabled={loading || previewingExport}
                   onClick={() => void previewExport()}
                 >
                   {previewingExport ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <ClipboardList />}

@@ -68,6 +68,17 @@ describe("Workforce complete timesheet UI contract", () => {
     expect(workbench).toContain("disabled={loading || !approvalReady || approving")
   })
 
+  it("blocks competing navigation, reload and filter work from approval submit through refresh settlement", () => {
+    expect(approveTimesheet).toContain("approvalRefreshLifecycle.beginSubmission()")
+    expect(approveTimesheet).toContain("approvalRefreshLifecycle.finishSubmission()")
+    expect(workbench).toContain("if (!options.preserveTimesheet && approvalRefreshLifecycle.isBusy()) return")
+    expect(workbench).toContain("if (loading || approvalRefreshLifecycle.isBusy()) return")
+    expect(workbench).toContain("const timesheetInteractionBusy = loading || approvalRefreshLifecycle.isBusy()")
+    expect(workbench).toContain("disabled={timesheetInteractionBusy}")
+    expect(workbench).toContain("loading={timesheetInteractionBusy}")
+    expect(workbench).toContain("if (approvalRefreshLifecycle.isBusy()) event.preventDefault()")
+  })
+
   it("has equivalent finite review and revision labels in every supported locale", () => {
     for (const { workforcePage } of messages) {
       expect(workforcePage.timesheetEvidenceReviewState).toMatchObject({
