@@ -2744,3 +2744,19 @@ from this worktree.
 - Next action: commit only explicit slice/evidence paths, compute exact diff
   identities and obtain a fresh author-independent full-range frozen-head
   review before any push or PR.
+
+## 2026-09-29 — WF-C8-007d live-main reconciliation
+
+- Live `origin/main` had advanced to
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`; it was merged normally before
+  frozen review. Only EN/RU/AZ catalogs overlapped and merged without conflict,
+  retaining both the independent Support UX keys and this calendar slice.
+- Post-integration PASS: all 94 bounded tests, scoped ESLint, whitespace and
+  i18n 23,883/0/0. No calendar implementation/test conflict resolution was
+  required. Full heavy checks remain `NOT RUN` locally and required in CI.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: current main is integrated and bounded checks are
+  green; only the post-reconciliation receipt is uncommitted.
+- Next action: checkpoint this receipt, compute new exact identities against
+  live main and start author-independent frozen-head review.

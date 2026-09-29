@@ -2685,3 +2685,23 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: rerun final bounded checks, checkpoint explicit paths, compute
   the exact full/non-doc identities and require fresh author-independent
   full-range GREEN before push/opening the next reviewable PR.
+
+## 2026-09-29 — WF-C8-007d reconciled with live main
+
+- Frozen-review preparation found `origin/main` 162 commits ahead at
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`, containing an independently
+  released Support UX stream. The branch was merged with that live main rather
+  than reviewing against the stale merge base.
+- The only overlapping task paths were `messages/en.json`, `messages/ru.json`
+  and `messages/az.json`; Git merged them cleanly and retained both key sets.
+  No calendar source, route, component or test required conflict resolution.
+- Post-merge PASS: 9 files / 94 bounded tests, scoped ESLint, `git diff
+  --check`, and i18n EN 23,883 with RU/AZ missing 0 and extra 0. Heavy local
+  gates remain `NOT RUN` by host policy.
+- No progress credit changes: `WF-C8-007` is `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: live main is integrated and verified; the
+  reconciliation receipt is uncommitted and no frozen reviewer has yet
+  approved the post-merge head.
+- Next action: checkpoint only the three evidence/continuity documents,
+  fingerprint the live-main diff, then require fresh author-independent GREEN.

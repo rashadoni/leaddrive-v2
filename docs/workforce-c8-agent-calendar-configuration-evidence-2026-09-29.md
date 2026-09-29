@@ -140,3 +140,15 @@ future create/list are implemented, while moved-day workflow, update/delete
 governance, break-policy authoring and real browser/AT evidence remain open.
 Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
 non-DONE rows. No completion or gate credit is claimed by this checkpoint.
+
+## Live-main reconciliation
+
+Before frozen review, the branch was merged with live `origin/main`
+`bd83c5d41182fca0003282e2241e5ad9ae35c04b`. Main had advanced through an
+independent Support UX release; the only overlapping slice paths were the
+three locale catalogs, which merged without conflict and retained both key
+sets. The complete bounded verification was rerun on the integrated head:
+94/94 tests, scoped ESLint, whitespace and translation parity passed. The
+integrated EN catalog has 23,883 leaf keys with RU/AZ missing 0 and extra 0.
+No calendar implementation/test path required conflict resolution. A fresh
+review must use this post-reconciliation exact head and live-main diff.
