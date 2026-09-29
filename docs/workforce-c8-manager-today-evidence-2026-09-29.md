@@ -6,8 +6,8 @@
 
 **Branch:** `codex/workforce-completion-part8`
 
-**Status:** PARTIAL (independent review GREEN; exact-head CI, release and real
-browser/AT evidence remain mandatory)
+**Status:** PARTIAL (typecheck repair; replacement independent review,
+exact-head CI, release and real browser/AT evidence remain mandatory)
 
 ## Delivered contract
 
@@ -221,3 +221,29 @@ acceptance evidence exist.
 - `WF-C8-002` remains **PARTIAL** at `DONE 81/161`, `GATES 14/15`, C8 36%,
   overall 59%, with 80 non-DONE rows. GREEN permits exact-head CI publication;
   it does not substitute for release or real browser/AT acceptance evidence.
+
+## 2026-09-29 PR #491 typecheck failure and payload-type repair
+
+- PR #491 published exact integrity-reviewed head
+  `8413cb8a33fabd27ba8c3b0e1685c4e9063fea18`. `pr-scope`,
+  `static-checks`, `runner-policy` and `scan` passed; `static-checks` completed
+  its PostgreSQL/unit/baseline gates in 14m26s and the scoped production build
+  was correctly skipped. Required run `36539911706` failed only `typecheck`
+  after 16m12s.
+- The blocking baseline reported 39 new `TS2339` and one new `TS2322` in the
+  Today route. Conditional empty/query expressions had erased the selected
+  Prisma payload shapes, cascading properties to `{}` and the SELF workday to
+  `{}` instead of `EmployeeTodayWorkday`.
+- The repair defines exact `satisfies Prisma.*Select` constants and generated
+  `GetPayload` result types for named agents, today/previous workdays,
+  calendar overrides and exception candidate/detail rows. The three parallel
+  query results now enter explicitly typed variables. Query filters, limits,
+  ordering, parallelism, selected columns, response shape and runtime policy
+  are unchanged; no cast or baseline weakening was added.
+- PASS after repair: complete 9-file / 86-test matrix, scoped ESLint on all 16
+  candidate TS/TSX paths, i18n 23,766/0/0, JSON and whitespace. Full local
+  typecheck/build/suite remains `NOT RUN`; replacement exact-head CI must prove
+  the compiler repair.
+- The previous GREEN does not authorize changed source. `WF-C8-002` remains
+  **PARTIAL** at `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; fresh repair/full-range review is mandatory before push.

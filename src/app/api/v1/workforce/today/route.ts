@@ -80,6 +80,34 @@ const todayWorkdaySelect = {
   },
 } satisfies Prisma.MtmAgentWorkdaySelect
 
+const namedAgentSelect = {
+  id: true,
+  name: true,
+  role: true,
+  teamId: true,
+} satisfies Prisma.MtmAgentSelect
+
+const previousOpenWorkdaySelect = {
+  id: true,
+  agentId: true,
+  workDate: true,
+  status: true,
+  startedAt: true,
+  pausedAt: true,
+} satisfies Prisma.MtmAgentWorkdaySelect
+
+const calendarOverrideSelect = {
+  id: true,
+  date: true,
+  kind: true,
+  name: true,
+  teamId: true,
+  agentId: true,
+  movedToDate: true,
+  routePlanningAllowed: true,
+  source: true,
+} satisfies Prisma.MtmWorkCalendarDaySelect
+
 const exceptionCandidateSelect = {
   id: true,
   agentId: true,
@@ -99,6 +127,25 @@ const exceptionDetailSelect = {
     select: { decisionCode: true, caseRevision: true },
   },
 } satisfies Prisma.WorkforceExceptionCaseSelect
+
+type TodayWorkday = Prisma.MtmAgentWorkdayGetPayload<{ select: typeof todayWorkdaySelect }>
+type NamedAgent = Prisma.MtmAgentGetPayload<{ select: typeof namedAgentSelect }>
+type PreviousOpenWorkday = Prisma.MtmAgentWorkdayGetPayload<{
+  select: typeof previousOpenWorkdaySelect
+}>
+type CalendarOverride = Prisma.MtmWorkCalendarDayGetPayload<{
+  select: typeof calendarOverrideSelect
+}>
+type ExceptionCandidate = Prisma.WorkforceExceptionCaseGetPayload<{
+  select: typeof exceptionCandidateSelect
+}>
+type ExceptionDetail = Prisma.WorkforceExceptionCaseGetPayload<{
+  select: typeof exceptionDetailSelect
+}>
+type PreviousWorkdayGroup = {
+  agentId: string
+  _max: { workDate: Date | null }
+}
 
 function denied(code = "WORKFORCE_SCOPE_DENIED", error = "Forbidden", status = 403) {
   return NextResponse.json({ error, code }, { status, headers: workforceSensitiveResponseHeaders })
@@ -259,13 +306,13 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
       ? pageCandidates.at(-1)?.id ?? null
       : null
 
-    const namedAgents = authorizedAgentIds.length === 0 ? [] : await prisma.mtmAgent.findMany({
+    const namedAgents: NamedAgent[] = authorizedAgentIds.length === 0 ? [] : await prisma.mtmAgent.findMany({
       where: {
         organizationId: auth.orgId,
         status: "ACTIVE",
         id: { in: [...authorizedAgentIds] },
       },
-      select: { id: true, name: true, role: true, teamId: true },
+      select: namedAgentSelect,
     })
     if (namedAgents.length !== authorizedAgentIds.length) return unavailable()
     const namedById = new Map(namedAgents.map((agent) => [agent.id, agent]))
@@ -276,43 +323,46 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
     const agentIds = agents.map((agent) => agent.id)
     const legacyExceptionReader = !granularAccess && (auth.role === "admin" || auth.role === "superadmin")
 
-    const [todayWorkdays, previousGroups, exceptionCandidates] = agentIds.length === 0
-      ? [[], [], []] as const
-      : await Promise.all([
-          prisma.mtmAgentWorkday.findMany({
-            where: { organizationId: auth.orgId, agentId: { in: agentIds }, workDate },
-            take: WORKFORCE_MANAGER_TODAY_LIMITS.page + 1,
-            select: todayWorkdaySelect,
-          }),
-          prisma.mtmAgentWorkday.groupBy({
-            by: ["agentId"],
-            where: {
-              organizationId: auth.orgId,
-              agentId: { in: agentIds },
-              workDate: { lt: workDate },
-              status: { in: ["STARTED", "PAUSED"] },
-            },
-            _max: { workDate: true },
-            orderBy: { agentId: "asc" },
-            take: WORKFORCE_MANAGER_TODAY_LIMITS.page + 1,
-          }),
-          granularAccess || legacyExceptionReader
-            ? prisma.workforceExceptionCase.findMany({
-                where: {
-                  organizationId: auth.orgId,
-                  agentId: { in: agentIds },
-                  OR: [
-                    { expectedWorkDate: workDate },
-                    { workday: { is: { workDate } } },
-                    { workdayEvent: { is: { workday: { is: { workDate } } } } },
-                  ],
-                },
-                orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-                take: WORKFORCE_MANAGER_TODAY_LIMITS.exceptionCases + 1,
-                select: exceptionCandidateSelect,
-              })
-            : Promise.resolve([]),
-        ])
+    let todayWorkdays: TodayWorkday[] = []
+    let previousGroups: PreviousWorkdayGroup[] = []
+    let exceptionCandidates: ExceptionCandidate[] = []
+    if (agentIds.length > 0) {
+      [todayWorkdays, previousGroups, exceptionCandidates] = await Promise.all([
+        prisma.mtmAgentWorkday.findMany({
+          where: { organizationId: auth.orgId, agentId: { in: agentIds }, workDate },
+          take: WORKFORCE_MANAGER_TODAY_LIMITS.page + 1,
+          select: todayWorkdaySelect,
+        }),
+        prisma.mtmAgentWorkday.groupBy({
+          by: ["agentId"],
+          where: {
+            organizationId: auth.orgId,
+            agentId: { in: agentIds },
+            workDate: { lt: workDate },
+            status: { in: ["STARTED", "PAUSED"] },
+          },
+          _max: { workDate: true },
+          orderBy: { agentId: "asc" },
+          take: WORKFORCE_MANAGER_TODAY_LIMITS.page + 1,
+        }),
+        granularAccess || legacyExceptionReader
+          ? prisma.workforceExceptionCase.findMany({
+              where: {
+                organizationId: auth.orgId,
+                agentId: { in: agentIds },
+                OR: [
+                  { expectedWorkDate: workDate },
+                  { workday: { is: { workDate } } },
+                  { workdayEvent: { is: { workday: { is: { workDate } } } } },
+                ],
+              },
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+              take: WORKFORCE_MANAGER_TODAY_LIMITS.exceptionCases + 1,
+              select: exceptionCandidateSelect,
+            })
+          : Promise.resolve<ExceptionCandidate[]>([]),
+      ])
+    }
     if (
       todayWorkdays.length > WORKFORCE_MANAGER_TODAY_LIMITS.page
       || previousGroups.length > WORKFORCE_MANAGER_TODAY_LIMITS.page
@@ -331,23 +381,18 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
     const previousPairs = previousGroups.flatMap((group) => group._max.workDate
       ? [{ agentId: group.agentId, workDate: group._max.workDate }]
       : [])
-    const previousOpenWorkdays = previousPairs.length === 0 ? [] : await prisma.mtmAgentWorkday.findMany({
-      where: {
-        organizationId: auth.orgId,
-        status: { in: ["STARTED", "PAUSED"] },
-        OR: previousPairs,
-      },
-      orderBy: [{ agentId: "asc" }, { workDate: "desc" }, { id: "asc" }],
-      take: WORKFORCE_MANAGER_TODAY_LIMITS.previousOpenRows + 1,
-      select: {
-        id: true,
-        agentId: true,
-        workDate: true,
-        status: true,
-        startedAt: true,
-        pausedAt: true,
-      },
-    })
+    const previousOpenWorkdays: PreviousOpenWorkday[] = previousPairs.length === 0
+      ? []
+      : await prisma.mtmAgentWorkday.findMany({
+          where: {
+            organizationId: auth.orgId,
+            status: { in: ["STARTED", "PAUSED"] },
+            OR: previousPairs,
+          },
+          orderBy: [{ agentId: "asc" }, { workDate: "desc" }, { id: "asc" }],
+          take: WORKFORCE_MANAGER_TODAY_LIMITS.previousOpenRows + 1,
+          select: previousOpenWorkdaySelect,
+        })
     if (previousOpenWorkdays.length > WORKFORCE_MANAGER_TODAY_LIMITS.previousOpenRows) {
       throw new WorkforceManagerTodayBoundsError()
     }
@@ -386,11 +431,13 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
         return [candidate.id]
       })
     }
-    const exceptionDetails = readableExceptionIds.length === 0 ? [] : await prisma.workforceExceptionCase.findMany({
-      where: { organizationId: auth.orgId, id: { in: readableExceptionIds } },
-      orderBy: [{ agentId: "asc" }, { createdAt: "asc" }, { id: "asc" }],
-      select: exceptionDetailSelect,
-    })
+    const exceptionDetails: ExceptionDetail[] = readableExceptionIds.length === 0
+      ? []
+      : await prisma.workforceExceptionCase.findMany({
+          where: { organizationId: auth.orgId, id: { in: readableExceptionIds } },
+          orderBy: [{ agentId: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+          select: exceptionDetailSelect,
+        })
     if (exceptionDetails.length !== readableExceptionIds.length) return unavailable()
     const exceptionDetailsByAgent = new Map<string, typeof exceptionDetails>()
     for (const detail of exceptionDetails) {
@@ -450,33 +497,25 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
       return teamId ? [teamId] : []
     }))]
     const calendarMaximum = Math.max(1, (calendarAgentIds.length + calendarTeamIds.length + 1) * 2)
-    const calendarOverrides = calendarAgentIds.length === 0 ? [] : await prisma.mtmWorkCalendarDay.findMany({
-      where: {
-        organizationId: auth.orgId,
-        date: workDate,
-        deletedAt: null,
-        OR: [
-          { agentId: { in: calendarAgentIds }, teamId: null },
-          ...(calendarTeamIds.length > 0
-            ? [{ agentId: null, teamId: { in: calendarTeamIds } }]
-            : []),
-          { agentId: null, teamId: null },
-        ],
-      },
-      orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
-      take: calendarMaximum + 1,
-      select: {
-        id: true,
-        date: true,
-        kind: true,
-        name: true,
-        teamId: true,
-        agentId: true,
-        movedToDate: true,
-        routePlanningAllowed: true,
-        source: true,
-      },
-    })
+    const calendarOverrides: CalendarOverride[] = calendarAgentIds.length === 0
+      ? []
+      : await prisma.mtmWorkCalendarDay.findMany({
+          where: {
+            organizationId: auth.orgId,
+            date: workDate,
+            deletedAt: null,
+            OR: [
+              { agentId: { in: calendarAgentIds }, teamId: null },
+              ...(calendarTeamIds.length > 0
+                ? [{ agentId: null, teamId: { in: calendarTeamIds } }]
+                : []),
+              { agentId: null, teamId: null },
+            ],
+          },
+          orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
+          take: calendarMaximum + 1,
+          select: calendarOverrideSelect,
+        })
     if (calendarOverrides.length > calendarMaximum) throw new WorkforceManagerTodayBoundsError()
 
     const previousByAgent = new Map(previousOpenWorkdays.map((workday) => [workday.agentId, workday]))

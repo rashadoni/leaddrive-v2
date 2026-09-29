@@ -2244,3 +2244,29 @@ from this worktree.
   only this three-document GREEN receipt is uncommitted.
 - Next action: checkpoint the receipt, obtain exact-head blob-integrity GREEN,
   push/open the sub-400 KB PR and require every mandatory context.
+
+## 2026-09-29 — PR #491 typecheck RED and explicit payload repair
+
+- PR #491 exact head `8413cb8a33fabd27ba8c3b0e1685c4e9063fea18` passed
+  `pr-scope`, `static-checks`, `runner-policy` and `scan`; static checks
+  completed in 14m26s, and the scoped production build was correctly skipped.
+  Run `36539911706` failed required `typecheck` after 16m12s.
+- The blocking delta was confined to `today/route.ts`: 39 `TS2339` plus one
+  `TS2322`. Conditional empty/query results lost the selected Prisma shapes,
+  cascading rows to `{}` and the SELF workday away from its accepted input
+  type.
+- Exact Prisma select constants and generated payload types now bind named
+  agents, current/previous workdays, calendar overrides and exception rows;
+  the three parallel query outputs enter typed variables. Filters, ordering,
+  bounds, selected columns, parallelism and response behavior are unchanged;
+  no cast or typecheck-baseline update was introduced.
+- PASS: 9 files / 86 tests, scoped ESLint 16/16 paths, i18n 23,766/0/0, JSON
+  and whitespace. Full local typecheck/build/suite remains `NOT RUN`; only
+  replacement exact-head CI can close the failed compiler gate.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. The previous
+  GREEN is invalidated for changed source.
+- Precise stopping point: compiler repair and bounded checks pass in the
+  working tree but are uncommitted on the open PR branch.
+- Next action: checkpoint explicit paths, obtain fresh independent repair and
+  full-range review, push replacement head and rerun every mandatory context.

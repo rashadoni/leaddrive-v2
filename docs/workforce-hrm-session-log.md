@@ -2097,3 +2097,33 @@ corrections as new entries that explicitly supersede the earlier fact.
   receipt is the only uncommitted change set.
 - Next action: commit only the three receipt documents, verify reviewed
   runtime/test blobs byte-identically, then publish for exact-head CI.
+
+## 2026-09-29 — PR #491 required typecheck failure and repair
+
+- Published PR #491 at exact integrity-reviewed head
+  `8413cb8a33fabd27ba8c3b0e1685c4e9063fea18`. Required `pr-scope`,
+  `static-checks`, `runner-policy` and `scan` passed; static checks completed
+  PostgreSQL/unit/baseline gates in 14m26s. The scope-conditioned production
+  build was correctly `SKIPPED`.
+- Required run `36539911706` failed only `typecheck` after 16m12s. Its blocking
+  baseline identified 39 new `TS2339` and one new `TS2322` in
+  `src/app/api/v1/workforce/today/route.ts`; merge was not attempted.
+- Root cause was erased query-result inference at conditional empty/query
+  boundaries. Exact Prisma select constants plus generated payload types now
+  describe named agents, today/previous workdays, calendar overrides and
+  exception candidate/detail rows, while the parallel result tuple enters
+  explicit typed variables. There is no cast, baseline change, filter/order/
+  bound/select change, new query or response change.
+- Replacement author checks pass 9 files / 86 tests, all 16 candidate TS/TSX
+  paths under scoped ESLint, i18n 23,766/0/0, JSON and whitespace. Full local
+  typecheck/build/suite, browser/AT, Android/Gradle, load, physical device and
+  pilot remain `NOT RUN`; exact-head CI remains authoritative.
+- The prior full-range and integrity GREEN verdicts are historical and do not
+  transfer to changed source. `WF-C8-002` stays `PARTIAL`; progress remains
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: type-only repair, complete bounded regression and
+  receipts are uncommitted on `codex/workforce-completion-part8`; PR #491 still
+  points to the failed head.
+- Next action: checkpoint only the four explicit paths, fingerprint repair and
+  full candidate, obtain fresh independent review, then push replacement head
+  and rerun all required checks.
