@@ -603,9 +603,8 @@ current aggregate gate and execute the remaining foundation evidence matrix.
 
 ## 7. Slice 0 — Global UX Foundation
 
-**Status: ACCEPTED — complete 1296/1296 high-profile matrix is green and its
-representative captures are manually accepted; FND-016 remains release-blocking
-under the dedicated 0/5/50/500 performance-profile gate**
+**Status: DONE — complete 1296/1296 high-profile matrix and measured 0/5/50/500
+profiles are green; representative captures are manually accepted**
 
 This slice is a dependency for all page-specific work. It should land as small,
 reviewable commits rather than one broad visual rewrite.
@@ -639,7 +638,7 @@ reviewable commits rather than one broad visual rewrite.
   mobile card/list representation for wide records.
 - [x] **SUPUX-FND-015** Remove duplicate result counts and standardize pagination,
   page-size, selection, and bulk-action behavior.
-- [ ] **SUPUX-FND-016** Decide whether large datasets require virtualization and
+- [x] **SUPUX-FND-016** Decide whether large datasets require virtualization and
   test realistic 0, 5, 50, and 500-record states.
 
 ### 7.3 Forms, controls, and feedback
@@ -4062,10 +4061,10 @@ Customer Support Portal is **DONE**.
 
 ## 21C. Evidence, Performance, and Rollout Track
 
-**Status: IN PROGRESS — complete 1296-cell high-profile evidence and exact-SHA
-Macros canary-on/canary-off mutation proof are green; 0/5/50/500 profiles,
-seven-sample visual comparison and protected release admission remain pending;
-rollout stays prohibited**
+**Status: IN PROGRESS — complete 1296-cell high-profile evidence, exact-SHA
+Macros canary-on/canary-off mutation proof and measured 0/5/50/500 profiles are
+green; seven-sample visual comparison and protected release admission remain
+pending; rollout stays prohibited**
 
 ### Evidence tasks
 
@@ -4084,16 +4083,16 @@ rollout stays prohibited**
 
 ### Performance tasks
 
-- [ ] **SUPUX-PERF-001** Measure current p50/p75 list load, filter feedback,
+- [x] **SUPUX-PERF-001** Measure current p50/p75 list load, filter feedback,
   interaction latency, layout shift, and rendered row/card count before setting
   absolute budgets.
 - [ ] **SUPUX-PERF-002** Require no material regression from the measured baseline
   and define an explicit exception process for data-contract improvements.
-- [ ] **SUPUX-PERF-003** Debounce remote search, cancel stale requests, and verify
+- [x] **SUPUX-PERF-003** Debounce remote search, cancel stale requests, and verify
   that typing does not produce one request per raw keystroke.
-- [ ] **SUPUX-PERF-004** Test 0, 5, 50, 500, and section-specific high-volume
+- [x] **SUPUX-PERF-004** Test 0, 5, 50, 500, and section-specific high-volume
   states; introduce pagination or virtualization only where measurement supports it.
-- [ ] **SUPUX-PERF-005** Prevent heavy charts, recordings, editors, and secondary
+- [x] **SUPUX-PERF-005** Prevent heavy charts, recordings, editors, and secondary
   detail from loading before they are visible or requested.
 
 ### Rollout tasks
@@ -4130,6 +4129,35 @@ Final canary evidence (2026-09-29):
   or primary-work failures. Their rollback screenshots were manually accepted.
   The two modes use the exact same application source; the later
   `96b5eba1e` checkpoint changes only the plan/journal acceptance receipt.
+
+Final data-profile evidence (2026-09-29):
+
+- Runs `36554107100` / artifact `11027089469` (profile 0), `36555323681` /
+  `11029402390` (5), `36557478393` / `11030325874` (50), and `36559389503` /
+  `11030487883` (500) each pass 12/12 production-mode cells: Service Desk and
+  VoIP for agent, manager and administrator at desktop and mobile, with seven
+  samples per cell and canary enabled. Profile 0 uses receipt SHA `96b5eba1e`;
+  profiles 5/50/500 use `9dd18518f`; the intervening checkpoint is docs-only.
+- Worst selected load p75 by profile is respectively 401/462, 314/375,
+  480/547 and 332/341 ms for Service Desk/VoIP. Worst filter p75 is 42 ms for
+  Service Desk and 400 ms for the deliberately debounced VoIP search; worst
+  interaction p75 is 40 ms. Maximum CLS is `0.011741124511635809`, Service
+  Desk primary work remains at or above the accepted fold with a worst top of
+  615 px, and VoIP's worst top is 704 px.
+- Rendered density is bounded across 0/5/50/500: Service Desk renders 1 empty
+  row, 4–5 cards/rows, then 20 paginated rows for both 50 and the 500-record
+  fixture; VoIP renders 0, 5, 25 and 25 rows. All six 500-profile VoIP cells
+  match the explicit `500 total / 20 pages / 25 rendered` contract. The
+  measurement therefore supports existing pagination rather than adding
+  virtualization.
+- Every profile has zero failed result, runtime, Axe, custom accessibility,
+  touch, overflow, environment or primary-work gate. Empty, small, medium and
+  large representative desktop/mobile captures were manually inspected. The
+  existing Portal Users flow proves debounced search plus stale-request abort;
+  VoIP flow timing reflects its debounce, and deferred editors/secondary
+  content remain covered by their accepted operational flows and high matrix.
+  PERF-002 alone remains open until a compatible baseline/compare proves no
+  material regression.
 
 Current verification evidence (2026-09-05):
 

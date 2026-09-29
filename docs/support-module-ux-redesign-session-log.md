@@ -3258,3 +3258,37 @@ Result: the tenant canary, old/new compatibility and rollback contract are
 accepted. Next: checkpoint and push this section receipt, finish the already
 started profile-0 evidence, then run profiles 5/50/500 and the compatible
 seven-sample capture/compare before release admission.
+
+## 2026-09-29 — Measured 0/5/50/500 performance profiles accepted
+
+- Four production-mode, canary-enabled, seven-sample runs each pass 12/12
+  Service Desk/VoIP cells for agent, manager and administrator at desktop and
+  mobile: profile 0 run `36554107100`, artifact `11027089469`; profile 5 run
+  `36555323681`, artifact `11029402390`; profile 50 run `36557478393`, artifact
+  `11030325874`; and profile 500 run `36559389503`, artifact `11030487883`.
+  Profile 0 is bound to receipt SHA `96b5eba1e`; 5/50/500 are bound to
+  `9dd18518f`. The only intervening source is the docs-only canary receipt.
+- Worst Service Desk/VoIP load p75 by profile is 401/462, 314/375, 480/547 and
+  332/341 ms. Worst Service Desk filter p75 is 42 ms; VoIP's intentionally
+  debounced filter is at most 400 ms. Worst interaction p75 is 40 ms. Maximum
+  CLS is `0.011741124511635809`; maximum primary-work top is 615 px for Service
+  Desk and 704 px for VoIP.
+- Rendered density remains bounded: Service Desk 1 empty row, 4–5 records, then
+  20 paginated rows at both 50 and the 500-record fixture; VoIP 0, 5, 25 and 25.
+  All six 500-profile VoIP cells match `500 total / 20 pages / 25 rendered`.
+  Existing pagination is therefore the measured decision; virtualization would
+  add complexity without reducing the bounded DOM in this contract.
+- Every profile has zero failed result, runtime, Axe, custom accessibility,
+  touch, horizontal-overflow, environment or primary-work gate. Empty, small,
+  medium and large representative desktop/mobile screenshots were manually
+  inspected and accepted. Portal Users operational evidence already proves
+  debounce plus stale-request abort; VoIP flow/timing proves its debounce, and
+  accepted flows/high evidence cover deferred secondary content.
+- FND-016 and PERF-001/003/004/005 are now closed. PERF-002 remains open until
+  a compatible seven-sample baseline and comparison prove no material visual,
+  timing, CLS, density or primary-work regression.
+
+Result: the required data-size and bounded-rendering decision is accepted
+without adding unmeasured virtualization. Next: checkpoint/push this profile
+receipt, capture a representative all-section seven-sample high baseline, and
+compare the exact same matrix and source before any PR/release action.

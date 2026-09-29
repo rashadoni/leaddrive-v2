@@ -3,8 +3,9 @@
 Status: **IN PROGRESS / RELEASE NOT ADMITTED**. This non-secret ledger restores
 the original evidence index and supersedes its 2026-09-06 GitHub-startup blocker.
 GitHub-hosted production builds and authenticated browser jobs now execute. The
-complete pre-canary high-profile matrix is running; final-SHA canary,
-data-profile and visual-comparison gates remain open.
+complete high-profile matrix, final-source canary states and measured
+0/5/50/500 profiles are accepted; the compatible seven-sample visual comparison
+and protected release gates remain open.
 
 Private artifacts contain authenticated screenshots and detailed reports and
 remain in GitHub Actions with bounded retention. This index stores only run,
@@ -59,9 +60,15 @@ baseline fail the workflow. Capture is baseline material, not a visual compare.
 | `36533684517` | `7a70f8ddf` | private artifact | 66/66 affected mobile static cells green; mutating runners rejected multi-locale invocation | Static subset accepted; workflow conclusion not accepted |
 | `36536483415` | `d56fd456f` | private artifact | 11/11 static; Service Desk 20/20, Templates 6/6, Routing 6/6; Entitlements 6/7 | Diagnosed stale disclosure interaction; not accepted as flow gate |
 | `36539937236` | `379f6e787` | `11020852792` | 11/11 static and 39/39 selected operational results green; all failure counters zero | Accepted integrated mobile correction |
-| `36542434997` | `7a0a45e5b` | pending | Full 1296 high/AZ-RU-EN/light-dark/four-viewport/read-only capture; source, fixture and production build steps green | Browser capture in progress; no pass claimed |
+| `36542434997` | `7a0a45e5b` | `11024298303` | Full 1296/1296 high/AZ-RU-EN/light-dark/four-viewport cells green; all failure counters zero | Accepted Foundation/high baseline |
 | `36548661987` | `38890a3b7` | none | Flag-on Macros request was replaced while a same-branch run occupied the concurrency group | Infrastructure scheduling cancellation, not product evidence; must rerun |
-| `36548665133` | `38890a3b7` | pending | Flag-off, EN/dark/mobile, admin, Macros mutating evidence | Queued behind full matrix |
+| `36548665133`, `36550742997` | pre-final source | none | Superseded same-branch canary requests | Scheduling cancellation only; replaced by final-source runs below |
+| `36551225927` | `0498d3a85` | `11025885144` | Flag off: 1/1 static, 6/6 Macros flows; browser rollback mode | Accepted |
+| `36552953697` | `0498d3a85` | `11027281153` | Flag on: 1/1 static, 6/6 Macros flows; tenant mode | Accepted |
+| `36554107100` | `96b5eba1e` | `11027089469` | Profile 0, seven samples: 12/12 Service Desk/VoIP role/viewport cells | Accepted |
+| `36555323681` | `9dd18518f` | `11029402390` | Profile 5, seven samples: 12/12 | Accepted |
+| `36557478393` | `9dd18518f` | `11030325874` | Profile 50, seven samples: 12/12 | Accepted |
+| `36559389503` | `9dd18518f` | `11030487883` | Profile 500, seven samples: 12/12; all six VoIP density contracts matched | Accepted |
 
 The workflow has a three-hour bound without reducing the matrix. The earlier
 90-minute artifact is retained only to prove which product defects were found;
@@ -85,6 +92,26 @@ as application failures or passes.
   mobile captures were manually inspected with no clipped or hidden primary
   work.
 
+### Full matrix, canary and profiles
+
+- Run `36542434997` contains 1296 unique cells and 1296 passed. Role, locale,
+  theme and viewport counts exactly match the canonical matrix; every runtime,
+  Axe, custom accessibility, touch, overflow, environment, fold, missing-alt,
+  duplicate-ID, zero-keyboard-stop and visual failure total is zero. Nine
+  representative captures spanning all viewport families/locales/themes were
+  manually accepted.
+- Canary-off `36551225927` records browser category storage and rollback;
+  canary-on `36552953697` records tenant category storage. Both pass all six
+  Macros flows, including retry, rename, delayed-delete undo and completed
+  delete, on the same application source SHA. Their static/error/accessibility
+  totals are zero and their final rollback screenshots were inspected.
+- Profiles 0/5/50/500 each pass 12/12 seven-sample Service Desk/VoIP cells.
+  Maximum load p75 is 480 ms for Service Desk and 547 ms for VoIP; maximum CLS
+  is `0.011741124511635809`; maximum primary-work top is 704 px. The 500 profile
+  preserves 20/25 rendered rows and all six VoIP results match `500 total / 20
+  pages / 25 rendered`, supporting existing pagination instead of
+  virtualization. Representative captures for every profile were inspected.
+
 ### Source evidence at canary checkpoint `38890a3b7`
 
 - AZ/RU/EN parity: 23,741 keys each.
@@ -98,16 +125,11 @@ as application failures or passes.
 
 ## Visual and performance acceptance still required
 
-1. Download and audit the complete `36542434997` artifact; require all 1296
-   unique cells and zero failure counters.
-2. Run Macros mutation evidence on `38890a3b7` or its final descendant with the
-   canary both enabled and disabled; inspect the recorded persistence mode and
-   add/rename/delete/undo results.
-3. Run section-scoped profile evidence for 0, 5, 50, 500 and high.
-4. Capture a final seven-sample representative baseline and compare the exact
+1. Capture a final seven-sample representative baseline and compare the exact
    same matrix/canary state on the final source SHA. Any material screenshot,
    timing, density, primary-work or CLS regression is blocking.
-5. Replace pending rows with immutable artifact IDs, counts and manual-review
+2. Replace the comparison pending row with immutable artifact IDs, counts and
+   manual-review
    disposition before checking `SUPUX-EVD-*` or `SUPUX-PERF-*` complete.
 
 ## Release boundary

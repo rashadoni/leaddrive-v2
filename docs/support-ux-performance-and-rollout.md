@@ -72,6 +72,26 @@ smaller profile runs may be section-scoped but must retain exact role, viewport,
 locale, theme and commit metadata. Pagination or virtualization is introduced
 only when measured DOM/rendering behavior requires it.
 
+The final measured profile set uses Service Desk and VoIP for agent, manager
+and administrator at desktop/mobile, EN/light, canary enabled and seven samples
+per cell. Every run passes 12/12 production cells.
+
+| Profile | Run / artifact | Service Desk load p75 max | VoIP load p75 max | Rendered Service Desk | Rendered VoIP | Disposition |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| 0 | `36554107100` / `11027089469` | 401 ms | 462 ms | 1 empty row | 0 | Accepted |
+| 5 | `36555323681` / `11029402390` | 314 ms | 375 ms | 4–5 | 5 | Accepted |
+| 50 | `36557478393` / `11030325874` | 480 ms | 547 ms | 20 | 25 | Accepted |
+| 500 | `36559389503` / `11030487883` | 332 ms | 341 ms | 20 | 25 | Accepted; VoIP `500 total / 20 pages / 25 rendered` matched in all six cells |
+
+Worst filter p75 is 42 ms for Service Desk and 400 ms for the intentionally
+debounced VoIP filter. Worst interaction p75 is 40 ms; maximum CLS is
+`0.011741124511635809`; maximum primary-work top is 615 px for Service Desk and
+704 px for VoIP. All profile runs have zero failed result, runtime, Axe, custom
+accessibility, touch, overflow, environment or primary-work gate. The
+500-record fixture stays bounded by existing server/client pagination, so the
+measurement does not support adding virtualization. Empty, small, medium and
+large desktop/mobile captures were manually accepted.
+
 ## Independent rollback boundaries
 
 The implementation history is intentionally checkpointed by slice. Recovery is
@@ -187,8 +207,8 @@ intentionally deferred until all conditions hold:
 | Slice / PR / merge SHA | Pending final PR and protected merge |
 | Production artifact SHA | Pending GitHub Actions deploy |
 | Canary tenant and flag | No production tenant enabled; `support_ux_v2_canary` defaults off |
-| Evidence artifacts | Full 1296/1296 run `36542434997`, artifact `11024298303`; canary off `36551225927`/`11025885144`; canary on `36552953697`/`11027281153` |
-| Roles / profiles | Agent, manager, admin, customer; high accepted; 0/5/50/500 pending |
+| Evidence artifacts | Full 1296/1296 run `36542434997`, artifact `11024298303`; canary off `36551225927`/`11025885144`; canary on `36552953697`/`11027281153`; profiles 0/5/50/500 runs `36554107100`, `36555323681`, `36557478393`, `36559389503` |
+| Roles / profiles | Agent, manager, admin, customer; high and measured 0/5/50/500 accepted |
 | Baseline / compare | Final seven-sample pair pending |
 | Production smoke | Pending deploy |
 | Observation | Not started; removal gate deferred by policy above |
