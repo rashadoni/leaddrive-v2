@@ -2642,3 +2642,22 @@ from this worktree.
   are complete and uncommitted.
 - Next action: checkpoint only explicit slice paths, fingerprint the exact diff
   and obtain a fresh full-range author-independent frozen-head review.
+
+## 2026-09-29 — WF-C8-007c first frozen review P3 remediation
+
+- Exact clean head `0ba46fa7b72443c8bc63304f8ae5c88fabf7a3c7` was reviewed over the
+  complete 15-path PR range. Verdict: RED with `P0=0`, `P1=0`, `P2=0`,
+  `P3=1`; no runtime finding was reported.
+- The evidence overstated response minimization and inactive-team rejection.
+  Correct contract: directory/team context includes the stable team ID plus
+  name/code; same-tenant inactive selected teams remain GET-readable; GET 404
+  covers missing/cross-tenant, while POST 404 covers missing/inactive/
+  cross-tenant; calendar-row IDs and provenance fields remain omitted.
+- Evidence is corrected without changing implementation, tests or i18n. The
+  rejected identity is ineligible for merge and a new exact-head review is
+  mandatory.
+- Progress is unchanged: `WF-C8-007` remains `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the sole P3 is remediated in docs but uncommitted.
+- Next action: checkpoint the three evidence/continuity documents, prove the
+  runtime fingerprint unchanged and request a fresh full-range frozen review.

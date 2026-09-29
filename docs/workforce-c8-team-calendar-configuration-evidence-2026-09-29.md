@@ -34,10 +34,11 @@ Excluded:
 
 The team directory always predicates `MtmTeam` by the authenticated
 `organizationId`. Search results include active teams only, return names and
-optional codes instead of opaque IDs, use `take: limit + 1`, and report
-`hasMore` rather than silently truncating. A separately selected team is
-looked up inside the same tenant so an existing inactive selection can remain
-visible; cross-tenant and missing selections are indistinguishable.
+optional codes alongside the stable team ID required for subsequent scoped
+requests, use `take: limit + 1`, and report `hasMore` rather than silently
+truncating. A separately selected team is looked up inside the same tenant so
+an existing inactive selection can remain visible; cross-tenant and missing
+selections are indistinguishable.
 
 TEAM creation revalidates `{ organizationId, id, isActive: true }` inside the
 write transaction after taking the same organization/date advisory lock as an
@@ -58,11 +59,13 @@ atomic audit metadata.
 
 - `GET /api/v1/workforce/configuration/calendar` strictly parses scope and
   optional team ID, keeps the future range at 1–367 days, and lists only the
-  selected scope. Missing, inactive or cross-tenant team targets produce the
-  same not-found contract before calendar rows are listed.
+  selected scope. A same-tenant inactive selected team remains readable for
+  continuity; missing and cross-tenant selections produce the same not-found
+  contract before calendar rows are listed.
 - `POST` accepts a team ID only with `scope: "TEAM"`; organization input cannot
-  smuggle a team. It returns the safe named team summary and date/kind/name
-  day summary without source, actors, storage IDs or Route fields.
+  smuggle a team. It returns the safe team ID/name/code summary and
+  date/kind/name day summary without the calendar-row ID, source, actors or
+  Route fields.
 - A missing, inactive or cross-tenant team write target uses the same 404
   domain response. Exact replay creates no second row or audit; a different
   state and unique collision fail closed.
@@ -93,6 +96,23 @@ with a source-contract regression covering all six controls.
 The final uncommitted-diff pre-review is GREEN with `P0=P1=P2=P3=0`. This is
 not the required frozen-head approval; a fresh full-range review of the exact
 checkpoint commit remains mandatory before push or PR.
+
+### First frozen-head review P3 and remediation
+
+Full-range review of exact clean head
+`0ba46fa7b72443c8bc63304f8ae5c88fabf7a3c7` returned
+`P0=0, P1=0, P2=0, P3=1`. Runtime, tenant/auth boundaries, locking, baseline,
+idempotency, audit, request races and append-only prefixes were green. The P3
+was evidence-only: the text incorrectly implied team summaries omitted their
+transport ID and that GET rejected a same-tenant inactive selected team.
+
+The contract above now states the implementation precisely: active directory
+items expose team ID/name/optional code; a same-tenant inactive selected team
+remains GET-readable for continuity; GET uses the same 404 for missing and
+cross-tenant selections; POST uses the same 404 for missing, inactive and
+cross-tenant targets; calendar-row IDs and storage provenance stay omitted.
+The rejected head is not eligible for approval. Runtime/test/i18n bytes are
+unchanged and a new exact-head review is required.
 
 ## Author verification
 

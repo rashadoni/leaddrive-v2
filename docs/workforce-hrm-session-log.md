@@ -2561,3 +2561,28 @@ corrections as new entries that explicitly supersede the earlier fact.
   paths are ready for an explicit checkpoint commit.
 - Next action: commit only those paths, compute full and implementation diff
   identities and start a fresh author-independent frozen-head review.
+
+## 2026-09-29 — WF-C8-007c frozen review evidence correction
+
+- Author-independent full-range review matched clean head
+  `0ba46fa7b72443c8bc63304f8ae5c88fabf7a3c7`, live main/merge-base
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`, full identity 15 paths /
+  113,826 bytes / `0e81891ea9f17e17db068505b1edca9168f2025bb9cb78761f2a1c29a22afb0c`
+  and non-doc identity 11 paths / 94,369 bytes /
+  `88fb46ce11f08978765c4406df6278f8a954f0f14a42daddd1679839f5b212dd`.
+- Verdict was RED only for one P3 evidence-accuracy finding. Runtime review and
+  97 calendar, 33 auth/RLS, 21 voice tests, ESLint, i18n 23,857/0/0, diff and
+  append-only-prefix checks were green.
+- Corrected the evidence to say that team summaries intentionally expose the
+  stable team ID with name/code, same-tenant inactive selections are
+  GET-readable only, GET 404 unifies missing/cross-tenant, POST 404 unifies
+  missing/inactive/cross-tenant, and calendar-row/provenance IDs stay hidden.
+- Runtime/test/i18n bytes are unchanged. Full typecheck/build/suite,
+  real-Postgres race, browser/AT/device, Android/Gradle, load/chaos,
+  signed-device and pilot remain `NOT RUN` under host policy.
+- No progress credit changes: `WF-C8-007` remains `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the sole P3 is corrected in the working tree; the
+  rejected head remains ineligible.
+- Next action: commit only the three docs, verify the implementation identity
+  is byte-identical and obtain a new exact-head independent review.
