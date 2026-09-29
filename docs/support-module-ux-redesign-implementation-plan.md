@@ -603,77 +603,75 @@ current aggregate gate and execute the remaining foundation evidence matrix.
 
 ## 7. Slice 0 — Global UX Foundation
 
-**Status: IN PROGRESS — aggregate source/build/flow gate and 77/77 affected
-mobile static cells are green through `d56fd456f`; the single-locale flow rerun
-exposed one stale collapsed-filter interaction now corrected; current main is
-integrated and exact-SHA affected evidence is green at `379f6e787`; the complete
-1296-cell matrix and comparison remain pending**
+**Status: ACCEPTED — complete 1296/1296 high-profile matrix is green and its
+representative captures are manually accepted; FND-016 remains release-blocking
+under the dedicated 0/5/50/500 performance-profile gate**
 
 This slice is a dependency for all page-specific work. It should land as small,
 reviewable commits rather than one broad visual rewrite.
 
 ### 7.1 Page shell and density
 
-- [ ] **SUPUX-FND-001** Introduce a shared compact Support page shell with title,
+- [x] **SUPUX-FND-001** Introduce a shared compact Support page shell with title,
   optional one-line context, primary CTA, and toolbar slots.
-- [ ] **SUPUX-FND-002** Define a fixed application type scale and normalize
+- [x] **SUPUX-FND-002** Define a fixed application type scale and normalize
   Support headings, labels, metadata, and table typography.
-- [ ] **SUPUX-FND-003** Define a 4 px spacing scale and compact/comfortable density
+- [x] **SUPUX-FND-003** Define a 4 px spacing scale and compact/comfortable density
   tokens without shrinking critical touch targets.
-- [ ] **SUPUX-FND-004** Remove duplicate page descriptions and define when
+- [x] **SUPUX-FND-004** Remove duplicate page descriptions and define when
   `PageDescription` is allowed.
-- [ ] **SUPUX-FND-005** Replace permanently expanded `DidYouKnow` banners with
+- [x] **SUPUX-FND-005** Replace permanently expanded `DidYouKnow` banners with
   contextual help, first-use disclosure, or a Help popover.
-- [ ] **SUPUX-FND-006** Limit default KPI presentation to three actionable
+- [x] **SUPUX-FND-006** Limit default KPI presentation to three actionable
   indicators and define an overflow/insights pattern.
 
 ### 7.2 Shared data surfaces
 
-- [ ] **SUPUX-FND-010** Remove the unexplained `pb-20` for Support through an
+- [x] **SUPUX-FND-010** Remove the unexplained `pb-20` for Support through an
   opt-in compact variant first; change the shared `DataTable` default only after
   auditing every non-Support consumer.
-- [ ] **SUPUX-FND-011** Make sortable headers semantic buttons with focus state and
+- [x] **SUPUX-FND-011** Make sortable headers semantic buttons with focus state and
   `aria-sort`.
-- [ ] **SUPUX-FND-012** Make clickable rows keyboard-operable without nesting
+- [x] **SUPUX-FND-012** Make clickable rows keyboard-operable without nesting
   conflicting interactive controls.
-- [ ] **SUPUX-FND-013** Add accessible row-action menus with text labels.
-- [ ] **SUPUX-FND-014** Define a responsive data contract: desktop table plus
+- [x] **SUPUX-FND-013** Add accessible row-action menus with text labels.
+- [x] **SUPUX-FND-014** Define a responsive data contract: desktop table plus
   mobile card/list representation for wide records.
-- [ ] **SUPUX-FND-015** Remove duplicate result counts and standardize pagination,
+- [x] **SUPUX-FND-015** Remove duplicate result counts and standardize pagination,
   page-size, selection, and bulk-action behavior.
 - [ ] **SUPUX-FND-016** Decide whether large datasets require virtualization and
   test realistic 0, 5, 50, and 500-record states.
 
 ### 7.3 Forms, controls, and feedback
 
-- [ ] **SUPUX-FND-020** Programmatically bind every label, description, and error
+- [x] **SUPUX-FND-020** Programmatically bind every label, description, and error
   to its control, including shared `Select`.
-- [ ] **SUPUX-FND-021** Give primary touch controls a minimum 44 x 44 px target;
+- [x] **SUPUX-FND-021** Give primary touch controls a minimum 44 x 44 px target;
   document justified exceptions for dense desktop-only controls.
-- [ ] **SUPUX-FND-022** Replace clickable `div` and `Badge` elements with semantic
+- [x] **SUPUX-FND-022** Replace clickable `div` and `Badge` elements with semantic
   button, link, checkbox, or switch controls.
-- [ ] **SUPUX-FND-023** Standardize initial loading, refresh, empty, no-results,
+- [x] **SUPUX-FND-023** Standardize initial loading, refresh, empty, no-results,
   error/retry, saving, success, and failure states.
-- [ ] **SUPUX-FND-024** Prevent duplicate mutations and preserve unsaved input after
+- [x] **SUPUX-FND-024** Prevent duplicate mutations and preserve unsaved input after
   server errors.
-- [ ] **SUPUX-FND-025** Standardize safe confirm/undo patterns and remove browser
+- [x] **SUPUX-FND-025** Standardize safe confirm/undo patterns and remove browser
   `prompt`/`confirm` from Support workflows.
-- [ ] **SUPUX-FND-026** Add debounced search behavior and cancel stale requests.
-- [ ] **SUPUX-FND-027** Expose status with text/icon as well as color.
+- [x] **SUPUX-FND-026** Add debounced search behavior and cancel stale requests.
+- [x] **SUPUX-FND-027** Expose status with text/icon as well as color.
 
 ### 7.4 Visual system, localization, and motion
 
-- [ ] **SUPUX-FND-030** Replace rainbow KPI styling with one restrained brand
+- [x] **SUPUX-FND-030** Replace rainbow KPI styling with one restrained brand
   accent and semantic colors used only for state.
-- [ ] **SUPUX-FND-031** Remove nested generic cards and decorative side-stripe
+- [x] **SUPUX-FND-031** Remove nested generic cards and decorative side-stripe
   borders from Support surfaces.
-- [ ] **SUPUX-FND-032** Verify light/dark tokens and contrast for every Support
+- [x] **SUPUX-FND-032** Verify light/dark tokens and contrast for every Support
   state, including calendar event types.
-- [ ] **SUPUX-FND-033** Create shared localized dictionaries for ticket status,
+- [x] **SUPUX-FND-033** Create shared localized dictionaries for ticket status,
   priority, support level, lifecycle, duration units, and action labels.
-- [ ] **SUPUX-FND-034** Replace English fallback text, raw enum values, and
+- [x] **SUPUX-FND-034** Replace English fallback text, raw enum values, and
   technical IDs across all 15 destinations and required nested flows.
-- [ ] **SUPUX-FND-035** Use purposeful state transitions only; honor
+- [x] **SUPUX-FND-035** Use purposeful state transitions only; honor
   `prefers-reduced-motion` and avoid decorative animation.
 
 Foundation acceptance criteria:
@@ -871,6 +869,25 @@ Affected mobile validation follow-up (2026-09-29):
   overflow, environment and zero-keyboard-stop counters are zero. The repaired
   Entitlements step records a real touchscreen activation on its 269 × 44 px
   disclosure, visible no-results state and keyboard reset.
+
+Final Foundation matrix acceptance (2026-09-29):
+
+- Exact-SHA run `36542434997` on `7a0a45e5b2bbcc7f6b91f4db42c0d8d517524609`
+  completed successfully with immutable artifact `11024298303`,
+  `support-ux-evidence-7a0a45e5b2bbcc7f6b91f4db42c0d8d517524609-high-capture`.
+  The independent manifest audit finds 1296 unique cells and 1296 passed:
+  552 administrator, 384 manager, 240 agent and 120 customer; 432 per locale;
+  648 per theme; and 324 per viewport. Runtime, Axe, custom accessibility,
+  touch-target, overflow, environment, primary-work, missing-alt, duplicate-ID,
+  zero-keyboard-stop, visual and profile/role mismatch failure totals are all
+  zero.
+- Representative Service Desk, Ticket Detail, Agent Desktop, VoIP, Knowledge
+  Base, Support Entitlements, Macros, Customer Portal and Support navigation
+  screenshots were manually inspected across all four viewport families, all
+  locales and both themes. No release-blocking visual defect, page-level mobile
+  overflow or inaccessible primary work was found. The 500-record decision is
+  intentionally not inferred from this high fixture: FND-016 remains open and
+  is owned by the measured 0/5/50/500 performance-profile gate.
 
 ## 8. Workstream 1 — Service Desk
 

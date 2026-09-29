@@ -3196,3 +3196,33 @@ Actions gates.
 Result: old/new state compatibility now matches the prior persisted browser
 contract exactly. Next: checkpoint/push this correction and replace the pending
 flag-off run so browser evidence binds to the corrected SHA.
+
+## 2026-09-29 — Complete Foundation matrix accepted
+
+- Exact-SHA GitHub Actions run `36542434997` on
+  `7a0a45e5b2bbcc7f6b91f4db42c0d8d517524609` completed successfully. Immutable
+  artifact `11024298303`,
+  `support-ux-evidence-7a0a45e5b2bbcc7f6b91f4db42c0d8d517524609-high-capture`,
+  contains 1296 unique high-profile cells and all 1296 pass.
+- Independent manifest totals are balanced: administrator 552, manager 384,
+  agent 240 and customer 120; AZ/RU/EN 432 each; light/dark 648 each; desktop,
+  tablet, narrow-tablet and mobile 324 each. Every runtime, Axe, custom
+  accessibility, touch, overflow, environment, primary-work, missing-alt,
+  duplicate-ID, zero-keyboard-stop, visual, role and profile mismatch failure
+  counter is zero.
+- Manual visual self-audit covered Service Desk, Ticket Detail, Agent Desktop,
+  VoIP, Knowledge Base, Support Entitlements, Macros, Customer Portal and
+  Support navigation across the four viewport families, all locales and both
+  themes. The long 375 px Customer Portal capture was inspected at top, middle
+  and list continuation rather than accepted from a scaled thumbnail. No
+  release-blocking visual defect or page-level horizontal overflow was found.
+- Foundation items backed by the shared-source contracts and this rendered
+  matrix are closed in the plan. FND-016 remains deliberately open: the high
+  fixture is not substituted for the required measured 0/5/50/500 profiles.
+  Issue `#492` owns the accepted final matrix receipt; performance issue `#494`
+  owns the remaining dataset-size decision.
+
+Result: the complete Foundation matrix is accepted without a waived or relaxed
+gate. Next: checkpoint and push this plan/journal receipt, finish exact-SHA
+Macros flag-off and flag-on mutation proof, then execute the 0/5/50/500
+performance profiles and final seven-sample visual comparison.
