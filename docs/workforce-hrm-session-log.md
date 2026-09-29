@@ -2154,3 +2154,30 @@ corrections as new entries that explicitly supersede the earlier fact.
   and this three-document GREEN receipt is the only uncommitted change.
 - Next action: commit the receipt, confirm exact-head runtime/test integrity,
   push the replacement PR head and require all five contexts again.
+
+## 2026-09-29 — PR #491 merged, deployed and exact-SHA verified
+
+- Replacement exact head `9f7e5f2d622b6b6f4faf4d5651c8625764a6ec8e` passed all five
+  required contexts. PR checks run `36543790838` closed `pr-scope`,
+  `static-checks` and `typecheck`; runner-policy `36543790711` and scan
+  `36543790785` passed independently. Production build was correctly skipped
+  for PR scope.
+- PR #491 was merged normally, without an admin bypass, as main SHA
+  `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`.
+- Deploy workflow `36545693169` completed SUCCESS: quality/security 11m06s,
+  SHA-bound artifact build/publish 17m15s, atomic production deploy and smoke
+  6m24s. No direct worktree copy or server-side release was used.
+- Separate public no-cache TLS checks pinned to the approved production IP
+  `13.140.132.245` returned `/api/v1/ping` `{"ok":true}` and build-info
+  `artifactSha=13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`, built at
+  `2026-09-29T09:00:10Z`.
+- The worktree is now on successor branch
+  `codex/workforce-completion-part9`, based exactly on deployed `origin/main`.
+  `WF-C8-002` remains `PARTIAL`: real browser/AT/contrast/zoom/device evidence
+  is `NOT RUN`; Android, load, signed-device and pilot gates are also
+  `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall
+  59%, with 80 non-DONE rows.
+- Precise stopping point: release evidence is appended but not checkpointed.
+- Next action: commit these three receipt files, then begin bounded
+  `WF-C8-007a` (ordered shift-segment draft editor, named sites, safe
+  validation and EN/RU/AZ) with no calendar/proof-policy/schema expansion.

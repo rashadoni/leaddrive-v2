@@ -2294,3 +2294,28 @@ from this worktree.
   three-document GREEN receipt is uncommitted.
 - Next action: checkpoint receipt, obtain exact-head blob-integrity GREEN,
   push PR #491 replacement head and rerun every required context.
+
+## 2026-09-29 — WF-C8-002 PR #491 production release receipt
+
+- Exact reviewed PR head `9f7e5f2d622b6b6f4faf4d5651c8625764a6ec8e` passed required
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`.
+  Replacement PR run `36543790838`, runner-policy run `36543790711` and
+  secret-scan run `36543790785` are green; the scope-conditioned production
+  build was correctly skipped.
+- PR #491 merged normally as main SHA
+  `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`. Exact-SHA deploy workflow
+  `36545693169` completed SUCCESS through quality/security, immutable artifact
+  build, atomic production deployment and workflow post-deploy smoke.
+- Separate no-cache TLS probes pinned to approved production
+  `13.140.132.245` returned `{"ok":true}` from `/api/v1/ping` and exact
+  `artifactSha=13dc3a179c8f5c0148c5f96d9e64c29815cd9d76` from
+  `/api/v1/public/build-info`.
+- Browser/AT/contrast/zoom/device acceptance remains `NOT RUN`, so
+  `WF-C8-002` remains `PARTIAL`. No completion or gate credit is added:
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the bounded Manager Today source is live on the
+  exact verified production artifact; only this append-only release receipt
+  is uncommitted on successor branch `codex/workforce-completion-part9`.
+- Next action: checkpoint the release receipt, then implement the bounded
+  `WF-C8-007a` ordered multi-site shift-segment draft editor without expanding
+  into calendar, proof-policy or schema work.
