@@ -2049,3 +2049,29 @@ from this worktree.
   uncommitted on the open PR branch.
 - Next action: checkpoint explicit paths, obtain a fresh independent repair and
   full-range verdict, then push and rerun every mandatory context.
+
+## 2026-09-29 — WF-C8-004 post-typecheck-repair review GREEN
+
+- Exact clean head `c494d4ec63d5c46a03b41ef2d0c903ca8872788f` received a
+  fresh author-independent GREEN with `P0=P1=P2=P3=0`. Main and merge-base
+  remain `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`.
+- Repair identity is 4 paths / 8,784 binary bytes / SHA-256
+  `143d23fee0b3ac6b0a0fd262c6ec67deec668106021c4665100847c0379b5b06`;
+  full identity is 16 paths / 173,780 binary bytes / SHA-256
+  `a458f97af4c525ec4d7afeb623af49e787d50fb6e35a2ecc23abfc4d49be9251`.
+- The reviewer traced every one of the seven failed CI diagnostics to the
+  repaired inference, validated all six selected payloads against generated
+  Prisma DMMF and proved the emitted route JavaScript byte-identical before
+  and after the repair. No query, runtime, response, workflow or baseline
+  behavior changed.
+- Reviewer checks pass 19 files / 139 tests, nine-path scoped ESLint, JSON,
+  i18n 23,737/0/0, whitespace and append-only prefixes. Full local typecheck
+  and all heavy/browser/Android/physical gates remain `NOT RUN`; a bounded
+  compiler probe that exhausted the standard 2 GB heap is not evidence.
+- `WF-C8-004` remains `PARTIAL`; progress stays `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%. GREEN authorizes replacement exact-head
+  CI only.
+- Precise stopping point: reviewed repair head is clean; this three-document
+  GREEN receipt is uncommitted and PR #489 still points to the rejected head.
+- Next action: checkpoint the receipt, obtain exact-head receipt-integrity
+  confirmation, push and require all replacement mandatory contexts.

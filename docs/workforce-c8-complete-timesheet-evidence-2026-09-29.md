@@ -315,3 +315,32 @@ local typecheck remains `NOT RUN` under host policy; replacement exact-head CI
 must prove the repair. The prior GREEN cannot authorize this changed head, so
 `WF-C8-004` remains **PARTIAL** at `DONE 80/161`, `GATES 14/15`, C8 27%,
 overall 58% pending a fresh independent review and all replacement gates.
+
+## Post-typecheck-repair independent review GREEN
+
+Exact clean repair head `c494d4ec63d5c46a03b41ef2d0c903ca8872788f`
+received a fresh author-independent **GREEN** with
+`P0=P1=P2=P3=0`. The reviewer confirmed unchanged live main and merge-base
+`eab1c60de3e56e4ea26001c9ddfd01fc603524a5`. Repair identity is 4 paths /
+8,784 binary bytes / SHA-256
+`143d23fee0b3ac6b0a0fd262c6ec67deec668106021c4665100847c0379b5b06`;
+the full candidate is 16 paths / 173,780 binary bytes / SHA-256
+`a458f97af4c525ec4d7afeb623af49e787d50fb6e35a2ecc23abfc4d49be9251`.
+
+The review mapped all seven failed CI diagnostics to the repaired tuple and
+version-list inference, validated every selected field and nullability against
+the generated Prisma DMMF, and confirmed that removal or incompatibility of a
+required selected field would still fail assignment. No cast was added. A
+TypeScript transpilation comparison proved the old and repaired route emit
+identical 23,057-byte JavaScript with SHA-256
+`32164e44125032fea3f350b1114c030440e67e203118af8c504b439aa665e3b9`.
+
+Reviewer verification passes the exact 19-file / 139-test matrix, scoped
+ESLint for nine changed TypeScript paths, JSON parsing, i18n at
+23,737/0/0, repair/full whitespace checks and append-only prefix checks. A
+bounded compiler-API probe exited at the standard 2 GB Node heap and is not
+evidence; full local typecheck/build/suite and all other heavy, browser,
+Android and physical gates remain `NOT RUN`. This GREEN authorizes only
+publication and replacement exact-head CI. `WF-C8-004` remains **PARTIAL** at
+`DONE 80/161`, `GATES 14/15`, C8 27%, overall 58% until merge and release
+evidence are complete.

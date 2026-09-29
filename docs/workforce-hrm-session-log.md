@@ -1871,3 +1871,30 @@ corrections as new entries that explicitly supersede the earlier fact.
   the red head.
 - Next action: checkpoint only the four explicit paths, obtain fresh
   independent review, push the replacement head and rerun all required gates.
+
+## 2026-09-29 — WF-C8-004 repair review GREEN
+
+- Fresh independent review of exact clean head
+  `c494d4ec63d5c46a03b41ef2d0c903ca8872788f` is GREEN with
+  `P0=P1=P2=P3=0`; unchanged main/merge-base is
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`.
+- Repair identity: 4 paths / 8,784 binary bytes / SHA-256
+  `143d23fee0b3ac6b0a0fd262c6ec67deec668106021c4665100847c0379b5b06`.
+  Full candidate: 16 paths / 173,780 binary bytes / SHA-256
+  `a458f97af4c525ec4d7afeb623af49e787d50fb6e35a2ecc23abfc4d49be9251`.
+- The reviewer independently matched all seven CI diagnostics, validated the
+  six typed payloads against generated Prisma metadata, confirmed no cast or
+  runtime/query/workflow/baseline change, and proved old/new emitted route JS
+  byte-identical at 23,057 bytes.
+- PASS: exact 19 files / 139 tests, scoped ESLint on nine TypeScript paths,
+  JSON, i18n 23,737/0/0, whitespace and append-only-prefix checks. Full local
+  typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
+  physical-device and pilot remain `NOT RUN`. The bounded compiler probe OOM
+  is not evidence and was not retried.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows. Review GREEN
+  permits only replacement CI.
+- Precise stopping point: code repair is independently GREEN and clean; this
+  receipt is uncommitted while PR #489 remains on `f9f484d8`.
+- Next action: commit only the three receipt files, obtain final integrity
+  GREEN, push the replacement head and wait for every required gate.
