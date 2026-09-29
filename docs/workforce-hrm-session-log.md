@@ -1624,3 +1624,32 @@ corrections as new entries that explicitly supersede the earlier fact.
   explicit checkpoint commit on `codex/workforce-completion-part7`.
 - Next action: commit only the three receipt documents, then implement and
   independently review `WF-C8-004` before exact-head CI and release.
+
+## 2026-09-29 — WF-C8-004 complete timesheet working checkpoint
+
+- The next P1 web slice adds a bounded, tenant-scoped review projection to the
+  deterministic timesheet. It reports finite event/transition review state,
+  allowlisted calculation exceptions, and C6 lifecycle derived only from a
+  complete contiguous decision history; corrupt or truncated history becomes
+  an explicit data-integrity review state.
+- Exact selected-employee approval/correction revisions are recomputed from
+  immutable stored rows, hash-verified and chain-verified across legacy v1 and
+  current v2 calculations. Branches, gaps, scope mixing, version downgrade and
+  tampering fail closed. The public projection contains only revision number,
+  kind and calculation version, never IDs, hashes, rows, reasons, actors,
+  proof or location.
+- The EN/RU/AZ timesheet UI now shows plan, fact, evidence review, exception
+  lifecycle and verified revisions. Existing server authority is unchanged:
+  approval remains unavailable unless every recorded day is completed and
+  reproducible from immutable snapshots.
+- Targeted author checks pass 16 files / 121 tests, scoped ESLint, JSON,
+  i18n 23,734/0/0 and whitespace. Full local typecheck/build/suite, browser/AT,
+  Android/Gradle, load, signed APK, physical-device and pilot checks are
+  `NOT RUN`; no schema/migration exists in this slice.
+- `WF-C8-004` remains `PARTIAL`; current progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: code, tests, translations and evidence are
+  uncommitted on `codex/workforce-completion-part7`; no frozen independent
+  review exists.
+- Next action: verify size/fingerprint, checkpoint explicit paths, and send the
+  exact clean diff to a fresh read-only reviewer before any push or PR.

@@ -971,7 +971,7 @@ from Route & Field.
 | WF-C8-001 | P1 | DONE | Web | Add employee Workforce Today web fallback with one valid action, assignment, evidence requirement and sync/server outcome | [`Employee Workforce Today evidence`](./workforce-c8-employee-today-evidence-2026-09-13.md): self-only assignment/segments, exactly one canonical action, fail-closed proof requirements and explicit server/pending-review outcome on `/workforce`; no Route dependency or second state machine |
 | WF-C8-002 | P1 | PARTIAL | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | Scheduled absent employee is visible and explained |
 | WF-C8-003 | P1 | DONE | Web | Add multi-site day timeline and transition status | [`workforce-c8-multisite-timeline-evidence-2026-09-13.md`](./workforce-c8-multisite-timeline-evidence-2026-09-13.md): the self-only timeline shows Site/Travel/Site plans and append-only arrival/departure/review states without raw proof or physical-presence claims |
-| WF-C8-004 | P1 | PARTIAL | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | Missing snapshots cannot look approvable |
+| WF-C8-004 | P1 | PARTIAL | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): bounded tenant-scoped evidence/exception states and hash-verified v1/v2 approval/correction history now join the existing deterministic plan/fact UI; missing snapshots remain non-approvable. Frozen review, exact-head CI and production release remain mandatory before DONE. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
 | WF-C8-006 | P1 | DONE | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | [`workforce-c8-sites-geofences-evidence-2026-08-30.md`](./workforce-c8-sites-geofences-evidence-2026-08-30.md): administrator-only named sites, future calibrated circles, assignment-only impact preview and immutable revision history; no browser location collection or physical-presence claim |
 | WF-C8-007 | P1 | PLANNED | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | No raw IDs; published history is immutable |
@@ -1811,3 +1811,30 @@ from this worktree.
 - Next action: checkpoint the corrected receipt, then implement independently
   selected `WF-C8-004` as the next bounded sub-400 KB slice without claiming
   browser, physical-device, load or pilot evidence.
+
+## 2026-09-29 — WF-C8-004 complete timesheet working checkpoint
+
+- [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md)
+  records the bounded session-only read model now wired into the existing
+  deterministic timesheet: finite event/transition assurance, calculated and
+  C6 exception lifecycle, and an exact employee/period immutable revision
+  chain verified from stored rows and hashes.
+- The ordinary response excludes IDs from the revision projection, hashes,
+  rows, reasons, actors, proof and location. The all-employee view does not
+  query approval history. Unknown, truncated, non-contiguous or tampered data
+  fails closed instead of producing an approval or physical-presence claim.
+- EN/RU/AZ UI now presents plan, fact, evidence review, exceptions and the
+  minimized approval/correction sequence. Approval readiness is still exactly
+  `COMPLETED` plus reproducible calculated history; a missing snapshot cannot
+  look approvable.
+- Author verification passes 16 targeted files / 121 tests, scoped ESLint for
+  all six changed TypeScript paths, JSON parsing, i18n 23,734/0/0 and
+  whitespace. Full local typecheck/build/suite, browser/AT, Android/Gradle,
+  load, signed-device and pilot evidence remain `NOT RUN` under host policy.
+- `WF-C8-004` remains `PARTIAL`; progress stays `DONE 80/161`,
+  `GATES 14/15`, C8 27% and overall 58%. No provisional credit is added.
+- Precise stopping point: implementation, tests, translations and working
+  evidence are present but uncommitted; no frozen exact-SHA independent
+  verdict exists yet.
+- Next action: measure and checkpoint only the explicit task paths, then obtain
+  a fresh author-independent complete-diff review before push or PR.

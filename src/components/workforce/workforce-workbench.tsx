@@ -105,6 +105,22 @@ type WorkforceTimesheetCalculationView = {
   }
 }
 
+type TimesheetEvidenceReviewState = "NOT_RECORDED" | "NOT_REQUIRED" | "PENDING_REVIEW" | "LEGACY_UNKNOWN"
+type TimesheetExceptionStatus = "OPEN" | "ACKNOWLEDGED" | "AWAITING_EMPLOYEE_RESPONSE" | "HR_REVIEW" | "RESOLVED" | "DATA_INTEGRITY_REVIEW"
+
+type TimesheetApprovalHistory = {
+  state: "NOT_APPROVED" | "APPROVED" | "CORRECTED"
+  verification: "NO_APPROVAL" | "HASH_AND_CHAIN_VERIFIED"
+  revisionCount: number
+  currentRevision: number | null
+  currentCalculationVersion: 1 | 2 | null
+  revisions: Array<{
+    revision: number
+    recordKind: "APPROVAL" | "CORRECTION"
+    calculationVersion: 1 | 2
+  }>
+}
+
 type TimesheetData = {
   timezone: string
   start: string
@@ -121,7 +137,20 @@ type TimesheetData = {
     workedSeconds: number | null
     calculationStatus: "WORKFORCE_TIMESHEET_SNAPSHOT_MISSING" | "WORKFORCE_TIMESHEET_CALCULATED" | "WORKFORCE_WORKDAY_HISTORY_INVALID" | "WORKFORCE_TIMESHEET_SNAPSHOT_READ_DISABLED"
     calculation: WorkforceTimesheetCalculationView | null
+    review: {
+      source: "BOUNDED_VERIFIED_TIMESHEET_FACTS"
+      evidenceReview: {
+        state: TimesheetEvidenceReviewState
+        events: TimesheetEvidenceReviewState
+        transitions: TimesheetEvidenceReviewState
+      }
+      exceptions: Array<{
+        type: "LATE_START" | "UNDERTIME" | "OVERTIME" | "LONG_PAUSE" | "NO_SHOW" | "MISSED_FINISH" | "DELAYED_CLAIM" | "SITE_TRANSITION_REVIEW" | "DEVICE_SECURITY_REVIEW" | "ATTENDANCE_PROOF_REVIEW"
+        status: TimesheetExceptionStatus
+      }>
+    }
   }>
+  approvalHistory: TimesheetApprovalHistory | null
   summary: { totalWorkedSeconds: number; workdayCount: number }
 }
 
@@ -985,7 +1014,7 @@ function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, lo
       <p className="text-sm text-muted-foreground">{t("totalRecorded", { duration: duration(data.summary.totalWorkedSeconds), count: data.summary.workdayCount })}</p>
     </section>
     <div className="overflow-x-auto border-y border-zinc-200 dark:border-zinc-700">
-      <table className="min-w-[900px] text-left text-sm"><thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-muted-foreground dark:border-zinc-700"><tr><th className="px-1 py-3 font-medium">{t("employee")}</th><th className="px-3 py-3 font-medium">{t("date")}</th><th className="px-3 py-3 font-medium">{t("statusLabel")}</th><th className="px-3 py-3 font-medium">{t("planned")}</th><th className="px-3 py-3 text-right font-medium">{t("actual")}</th><th className="px-3 py-3 font-medium">{t("deviations")}</th></tr></thead><tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+      <table className="min-w-[1180px] text-left text-sm"><thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-muted-foreground dark:border-zinc-700"><tr><th className="px-1 py-3 font-medium">{t("employee")}</th><th className="px-3 py-3 font-medium">{t("date")}</th><th className="px-3 py-3 font-medium">{t("statusLabel")}</th><th className="px-3 py-3 font-medium">{t("planned")}</th><th className="px-3 py-3 text-right font-medium">{t("actual")}</th><th className="px-3 py-3 font-medium">{t("evidenceReview")}</th><th className="px-3 py-3 font-medium">{t("timesheetExceptions")}</th><th className="px-3 py-3 font-medium">{t("deviations")}</th></tr></thead><tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
         {data.rows.map((row) => {
           const calculation = row.calculationStatus === "WORKFORCE_TIMESHEET_CALCULATED" ? row.calculation : null
           const deviations = calculation == null ? [] : [
@@ -1010,11 +1039,31 @@ function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, lo
               {calculation ? <div><p>{duration(calculation.fact.workedSeconds)}</p><p className="mt-1 text-xs font-normal text-muted-foreground">{t("pausedDuration", { duration: duration(calculation.fact.pausedSeconds) })}</p></div> : <Badge variant="destructive">{t("needsReview")}</Badge>}
             </td>
             <td className="px-3 py-4">
+              <Badge variant={row.review.evidenceReview.state === "PENDING_REVIEW" ? "warning" : row.review.evidenceReview.state === "NOT_REQUIRED" ? "success" : "secondary"}>
+                {t(`timesheetEvidenceReviewState.${row.review.evidenceReview.state}`)}
+              </Badge>
+              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                <p>{t("timesheetEventReview", { state: t(`timesheetEvidenceReviewState.${row.review.evidenceReview.events}`) })}</p>
+                <p>{t("timesheetTransitionReview", { state: t(`timesheetEvidenceReviewState.${row.review.evidenceReview.transitions}`) })}</p>
+              </div>
+            </td>
+            <td className="px-3 py-4">
+              {row.review.exceptions.length === 0 ? <span className="text-xs text-muted-foreground">{t("timesheetNoExceptions")}</span> : (
+                <ul className="space-y-1 text-xs text-muted-foreground">
+                  {row.review.exceptions.map((exception) => (
+                    <li key={`${exception.type}:${exception.status}`}>
+                      {t(`timesheetApprovalException.${exception.type}`)} · {t(`timesheetExceptionStatus.${exception.status}`)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </td>
+            <td className="px-3 py-4">
               {calculation ? <div className="flex max-w-sm flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">{deviations.length > 0 ? deviations.map((deviation) => <span key={deviation}>{deviation}</span>) : <span>{t("onPlan")}</span>}</div> : <p className="max-w-xs text-xs leading-5 text-muted-foreground">{unavailableReason}</p>}
             </td>
           </tr>
         })}
-        {data.rows.length === 0 ? <tr><td colSpan={6} className="px-1 py-12 text-center text-muted-foreground">{t("noWorkdays")}</td></tr> : null}
+        {data.rows.length === 0 ? <tr><td colSpan={8} className="px-1 py-12 text-center text-muted-foreground">{t("noWorkdays")}</td></tr> : null}
       </tbody></table>
     </div>
   </>
@@ -1151,6 +1200,29 @@ function TimesheetApprovalPanel({
           </div>
           {!approvalReady ? <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">{selectedRows.length === 0 ? t("approvalNoWorkdays") : t("approvalIncompleteWorkdays")}</p> : null}
           {!canApproveTimesheet ? <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">{t("approvalManagerRequired")}</p> : null}
+          <div className="mt-5 border-y border-zinc-200 py-4 dark:border-zinc-700" aria-labelledby="workforce-timesheet-revisions">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h4 id="workforce-timesheet-revisions" className="font-medium">{t("timesheetRevisionHistoryTitle")}</h4>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("timesheetRevisionHistoryHint")}</p>
+              </div>
+              {data.approvalHistory?.verification === "HASH_AND_CHAIN_VERIFIED" ? <Badge variant="success">{t("timesheetRevisionHistoryVerified")}</Badge> : null}
+            </div>
+            {data.approvalHistory == null || data.approvalHistory.state === "NOT_APPROVED" ? (
+              <p className="mt-3 text-sm text-muted-foreground">{t("timesheetNoApprovalRevisions")}</p>
+            ) : (
+              <ol className="mt-3 space-y-2">
+                {data.approvalHistory.revisions.map((revision) => (
+                  <li key={revision.revision} className="flex flex-wrap items-center gap-2 text-sm">
+                    <Badge variant={revision.recordKind === "CORRECTION" ? "secondary" : "outline"}>
+                      {t(revision.recordKind === "CORRECTION" ? "timesheetCorrectionRevision" : "timesheetApprovalRevision", { revision: revision.revision })}
+                    </Badge>
+                    <span className="text-muted-foreground">{t("timesheetCalculationVersion", { version: revision.calculationVersion })}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
           {correctionReasonRequired ? (
             <div className="mt-4 max-w-3xl space-y-2">
               <label htmlFor="workforce-timesheet-correction-reason" className="text-sm font-medium">{t("timesheetCorrectionReason")}</label>
