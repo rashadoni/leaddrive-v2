@@ -66,3 +66,31 @@ dedicated worktree. Next: create the checkpoint commit, push the feature
 branch, open a PR, and wait for every required GitHub Actions gate. No merge or
 production deployment is authorized as an incidental step for this new guide
 workstream.
+
+## 2026-09-29 — Checkpoint, PR, and required CI gates
+
+- Created implementation checkpoint commit
+  `a3bac4bb5c30afd57466b9e0b6aa1a351ab338fd` and pushed
+  `codex/help-ai-guides` to the current origin
+  `https://github.com/rashadoni/leaddrive-v2.git`.
+- Opened pull request #505:
+  `https://github.com/rashadoni/leaddrive-v2/pull/505`.
+- Required GitHub Actions completed green for the implementation head:
+  - PR checks run `36617893601`: `pr-scope`, `static-checks` (13m34s), and
+    `typecheck` (16m10s) passed. The GitHub-hosted production build job was
+    skipped by the workflow's PR routing, not treated as a passed build.
+  - Runner policy run `36617893583`: passed.
+  - Secret scan run `36617893655`: passed.
+- The longer duration was observed, not bypassed: another PR workflow was
+  concurrently using the self-hosted CI resources, while this run continued
+  making progress through Prisma, database invariants, race/concurrency,
+  blocking unit-test baseline, and TypeScript gates.
+- Existing production remains healthy on main SHA
+  `5e1a8ffcbbe8fb0fcce592e9755ecabff5072706`, which contains the earlier
+  Support UX release. The new guide PR is not merged or deployed; the new
+  workstream did not include task-specific merge/deploy authorization.
+
+Current state: PR #505 is open with the implementation head fully green. This
+journal update is the final docs checkpoint for the section and must itself be
+pushed and observed through the PR checks. Next after that green head: await an
+explicit decision to merge and deploy, or leave the reviewed PR ready.
