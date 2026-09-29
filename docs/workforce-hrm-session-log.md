@@ -3020,3 +3020,21 @@ corrections as new entries that explicitly supersede the earlier fact.
   reconciliation/green-CI receipt is uncommitted.
 - Next action: commit explicit docs, rerun bounded checks, obtain independent
   exact-head integrity review, push and repeat required PR contexts.
+
+## 2026-09-29 — WF-C8-007e reconciliation review P3 repair
+
+- Independent review of clean head `4f2933dee7099a89f58bfb4e2ddd5efc4c76952f`
+  returned `P0=0`, `P1=0`, `P2=0`, `P3=1`. The only issue was evidence run-ID
+  attribution, not code or a failed gate.
+- PR-checks run `36630565484` contains `pr-scope`, `static-checks`, typecheck
+  and skipped PR build. Runner policy passed separately in `36630565514`; scan
+  passed in `36630565512`. The preceding grouping is superseded by this entry.
+- Reviewer otherwise confirmed the exact full/non-doc identities, disjoint
+  clean main merge, 118 pass / 2 local PostgreSQL skips, ESLint, i18n and
+  append-only integrity, with no runtime/security/concurrency/UI finding.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: append-only attribution repair is in the working tree
+  and the rejected review head is not publishable.
+- Next action: commit only the three docs and require a fresh exact-head
+  independent integrity review before repush.

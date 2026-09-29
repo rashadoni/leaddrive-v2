@@ -3017,3 +3017,22 @@ from this worktree.
   task bytes are unchanged; this reconciliation receipt is uncommitted.
 - Next action: checkpoint the receipt, repeat bounded verification and obtain
   exact-head independent integrity GREEN before repush/repeated CI.
+
+## 2026-09-29 — WF-C8-007e CI attribution P3 corrected
+
+- Independent review of exact head `4f2933dee7099a89f58bfb4e2ddd5efc4c76952f`
+  returned RED only for one evidence P3: the preceding receipt grouped
+  `runner-policy` and `scan` under PR-checks run `36630565484`.
+- Correct attribution is PR-checks `36630565484` for `pr-scope`,
+  `static-checks`, `typecheck` and skipped PR build; runner-policy
+  `36630565514`; scan `36630565512`. All required contexts did pass.
+- The reviewer confirmed no runtime/security/concurrency/UI/workflow finding,
+  exact identities 23/175,723/`164cb3f4...2f19` and unchanged non-doc
+  19/121,643/`aaa72844...2c22`, disjoint clean main integration, 118/2 tests,
+  scoped ESLint, i18n 23,905/0/0 and append-only integrity.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` stays `PARTIAL`.
+- Precise stopping point: the evidence attribution is corrected append-only but
+  uncommitted; the rejected head is ineligible.
+- Next action: checkpoint the three corrections and obtain a fresh exact-head
+  author-independent integrity GREEN before push.

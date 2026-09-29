@@ -297,3 +297,18 @@ non-doc remains 19 paths / 121,643 bytes / SHA-256
 `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
 This reconciliation receipt still requires exact-head independent integrity
 review and replacement CI before merge. Progress remains unchanged.
+
+## CI run attribution correction
+
+The preceding replacement-CI receipt correctly states that all five required
+contexts passed, but incorrectly groups them under one run ID. This append-only
+correction supersedes that attribution:
+
+- PR-checks run `36630565484` contains `pr-scope`, `static-checks`,
+  `typecheck` and the intentionally skipped PR production build;
+- `runner-policy` passed in run `36630565514`;
+- `scan` passed in run `36630565512`.
+
+No check result, implementation byte or progress accounting changes. The
+rejected reconciliation-review head cannot authorize publication; a fresh
+exact-head independent integrity review is required after this correction.
