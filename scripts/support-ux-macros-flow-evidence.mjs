@@ -395,14 +395,16 @@ try {
     } else {
       retryAddActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-add"))
     }
-    let category = page.locator("[data-testid='macro-category-row'][data-category='Recovered shared category']")
+    const addedCategory = categoryStorageMode === "browser" ? "recovered shared category" : "Recovered shared category"
+    let category = page.locator(`[data-testid='macro-category-row'][data-category='${addedCategory}']`)
     await category.waitFor({ state: "visible" })
     const categoryMenuActivation = await activateEvidenceTarget(page, category.getByTestId("macro-category-menu"))
     const categoryRenameActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-rename"))
     const renameInput = page.getByTestId("macro-category-rename-input")
     await renameInput.fill("Renamed shared category")
     const categoryRenameSaveActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-rename-save"))
-    category = page.locator("[data-testid='macro-category-row'][data-category='Renamed shared category']")
+    const renamedCategory = categoryStorageMode === "browser" ? "renamed shared category" : "Renamed shared category"
+    category = page.locator(`[data-testid='macro-category-row'][data-category='${renamedCategory}']`)
     await category.waitFor({ state: "visible" })
     const renamedCategoryMenuActivation = await activateEvidenceTarget(page, category.getByTestId("macro-category-menu"))
     const categoryDeleteActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-delete"))

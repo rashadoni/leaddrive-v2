@@ -369,8 +369,9 @@ export default function MacrosSettingsPage() {
         return
       }
       if (categoryStorageMode === "browser") {
-        writeLegacyCategories(orgId!, [...readLegacyCategories(orgId!), normalized])
-        setCategories((current) => uniqueMacroCategories([...current, normalized]))
+        const legacyCategory = normalized.toLocaleLowerCase()
+        writeLegacyCategories(orgId!, [...readLegacyCategories(orgId!), legacyCategory])
+        setCategories((current) => uniqueMacroCategories([...current, legacyCategory]))
         setNewCategory("")
         setNotice({ kind: "success", text: t("categoryAdded") })
         return
@@ -403,17 +404,18 @@ export default function MacrosSettingsPage() {
         return
       }
       if (categoryStorageMode === "browser") {
+        const legacyCategory = normalized.toLocaleLowerCase()
         const matching = macros.filter((macro) => macro.category.toLocaleLowerCase() === editingCategory.toLocaleLowerCase())
         for (const macro of matching) {
           await checkedJson(await fetch(`/api/v1/ticket-macros/${macro.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json", ...headers },
-            body: JSON.stringify({ category: normalized }),
+            body: JSON.stringify({ category: legacyCategory }),
           }))
         }
         const stored = readLegacyCategories(orgId!)
-        writeLegacyCategories(orgId!, [...stored.filter((category) => category.toLocaleLowerCase() !== editingCategory.toLocaleLowerCase()), normalized])
-        if (categoryFilter === editingCategory) setCategoryFilter(normalized)
+        writeLegacyCategories(orgId!, [...stored.filter((category) => category.toLocaleLowerCase() !== editingCategory.toLocaleLowerCase()), legacyCategory])
+        if (categoryFilter === editingCategory) setCategoryFilter(legacyCategory)
         setEditingCategory(null)
         setEditingCategoryName("")
         setNotice({ kind: "success", text: t("categoryRenamed") })

@@ -92,6 +92,7 @@ describe("macros UX contract", () => {
     expect(page).toContain('type CategoryStorageMode = "browser" | "tenant"')
     expect(page).toContain("readLegacyCategories")
     expect(page).toContain("uniqueMacroCategories")
+    expect(page).toContain("normalized.toLocaleLowerCase()")
     expect(page).toContain('fetch("/api/v1/support/ux-rollout"')
     expect(page).toContain('data-category-storage={categoryStorageMode}')
   })

@@ -3178,3 +3178,21 @@ Result: current main is integrated with no Support conflict and targeted source
 contracts remain green. Next: checkpoint/push the integration receipt, replace
 the pending canary run with the integrated SHA, and continue the immutable
 Actions gates.
+
+## 2026-09-29 — Flag-off category normalization aligned with legacy contract
+
+- Pre-CI code self-audit compared the new browser fallback with the exact
+  `origin/main` Macros behavior and found one compatibility difference: legacy
+  add/rename normalized custom category names with `trim().toLowerCase()`, while
+  the first canary checkpoint retained display case in both modes.
+- Flag-off add/rename now preserves the legacy lowercase contract; flag-on tenant
+  persistence continues to retain normalized human-readable case. The dual-mode
+  browser flow selects and verifies the correct resulting category name in each
+  state before rename, undo and completed delete.
+- Targeted runner syntax, scoped ESLint, `git diff --check` and the two affected
+  contracts are green (18/18 assertions). No threshold, role, tenant or
+  evidence expectation changed.
+
+Result: old/new state compatibility now matches the prior persisted browser
+contract exactly. Next: checkpoint/push this correction and replace the pending
+flag-off run so browser evidence binds to the corrected SHA.
