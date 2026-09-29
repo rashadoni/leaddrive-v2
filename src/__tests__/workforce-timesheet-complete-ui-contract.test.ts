@@ -52,7 +52,17 @@ describe("Workforce complete timesheet UI contract", () => {
 
   it("refreshes the verified revision history after a successful approval write", () => {
     expect(approveTimesheet).toContain("toast.success")
-    expect(approveTimesheet).toContain("setRetry((value) => value + 1)")
+    expect(approveTimesheet).toContain("preserveTimesheetLoadRef.current = next")
+    expect(approveTimesheet).toContain("return next")
+  })
+
+  it("keeps the approval panel and its preview record mounted during that background refresh", () => {
+    expect(workbench).toContain("{loading && !timesheet ?")
+    expect(workbench).toContain("{!error && timesheet ? (")
+    expect(workbench).not.toContain("{!loading && !error && timesheet ? (")
+    expect(workbench).toContain('const preserveTimesheet = view === "timesheet" && preserveTimesheetLoadRef.current === retry')
+    expect(workbench).toContain('if (preserveTimesheet) toast.error(t("loadFailed"))')
+    expect(workbench).toContain('key={[appliedFilters.agentId, data.start, data.end].join(":")}')
   })
 
   it("has equivalent finite review and revision labels in every supported locale", () => {

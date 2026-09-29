@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
@@ -473,6 +473,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   const [data, setData] = useState<TodayData | TimesheetData | RequestsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [retry, setRetry] = useState(0)
+  const preserveTimesheetLoadRef = useRef<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [conflicts, setConflicts] = useState<Record<string, RouteConflict[]>>({})
@@ -499,6 +500,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   useEffect(() => {
     let cancelled = false
     const controller = new AbortController()
+    const preserveTimesheet = view === "timesheet" && preserveTimesheetLoadRef.current === retry
     setLoading(true)
     setError(null)
     fetch(endpointForView(view, timesheetQuery), {
@@ -523,8 +525,11 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       .catch((cause: unknown) => {
         const aborted = cause instanceof Error && cause.name === "AbortError"
         if (!cancelled && !aborted) {
-          setError(cause instanceof Error ? cause.message : t("loadFailed"))
-          setData(null)
+          if (preserveTimesheet) toast.error(t("loadFailed"))
+          else {
+            setError(cause instanceof Error ? cause.message : t("loadFailed"))
+            setData(null)
+          }
         }
       })
       .finally(() => {
@@ -735,7 +740,11 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       }
       const data = result.data as TimesheetApprovalData
       toast.success(result.idempotent ? t("timesheetApprovalAlreadyRecorded") : t(data.recordKind === "CORRECTION" ? "timesheetCorrectionRecorded" : "timesheetApprovalRecorded"))
-      setRetry((value) => value + 1)
+      setRetry((value) => {
+        const next = value + 1
+        preserveTimesheetLoadRef.current = next
+        return next
+      })
       return { success: true, idempotent: Boolean(result.idempotent), data }
     } catch (cause) {
       return {
@@ -792,7 +801,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
         </nav>
       </header>
 
-      {loading ? <div className="h-48 animate-pulse border-y border-zinc-200 bg-muted/40 motion-reduce:animate-none dark:border-zinc-700" aria-label={t("loading")} role="status" /> : null}
+      {loading && !timesheet ? <div className="h-48 animate-pulse border-y border-zinc-200 bg-muted/40 motion-reduce:animate-none dark:border-zinc-700" aria-label={t("loading")} role="status" /> : null}
       {!loading && error ? (
         <section className="flex flex-col gap-3 border-y border-zinc-200 bg-card py-5 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
           <div><p className="font-medium">{t("loadFailed")}</p><p className="mt-1 text-sm text-muted-foreground">{error}</p></div>
@@ -801,7 +810,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       ) : null}
 
       {!loading && !error && today ? <TodayView data={today} t={t} formatter={formatter} locale={locale} submittingWorkday={submittingWorkday} workdayOutcome={workdayOutcome} onWorkdayAction={submitWorkdayAction} /> : null}
-      {!loading && !error && timesheet ? (
+      {!error && timesheet ? (
         <TimesheetView
           data={timesheet}
           t={t}

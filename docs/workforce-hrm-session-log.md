@@ -1685,3 +1685,48 @@ corrections as new entries that explicitly supersede the earlier fact.
   `codex/workforce-completion-part7`.
 - Next action: verify and checkpoint only explicit paths, then start a fresh
   full-range read-only review; no push, PR, merge or deploy before GREEN.
+
+## 2026-09-29 — WF-C8-004 replacement RED and preview preservation
+
+- Fresh review of clean replacement head
+  `ab289618132908ce00c0d5bfcda759332e9b9f67` was independently RED with
+  `P0=0`, `P1=1`, `P2=0`, `P3=0`. It verified base/current main/merge-base
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`, 13 paths / 116,103 binary
+  bytes / SHA-256
+  `f3b8e3a176c758835dd2029bcef20e4dfa7cb17825da12d56fb536831af61c90`.
+  It confirmed the prior data/bounds/readiness findings repaired and found one
+  new lifecycle regression.
+- After a successful approval, the history retry set global loading and
+  unmounted the panel, deleting its local approval record. Since the privacy-
+  minimized history has no approval ID, the only approved-export preview
+  control could not return after refetch.
+- The repair tags the exact approval retry number, preserves the loaded
+  TimesheetView and its stable-key panel throughout the background request,
+  and therefore retains the local ID/preview while fresh history replaces the
+  data. Background failure keeps verified data mounted and emits only the
+  localized generic load toast; ordinary load failure still clears stale data.
+- A lifecycle source regression covers retry tagging, mounted rendering,
+  stable key and the preservation failure branch. Three focused UI files / 11
+  tests, scoped ESLint and whitespace pass; the complete targeted matrix is
+  pending rerun.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: lifecycle code/test plus append-only RED/repair
+  receipts are uncommitted on `codex/workforce-completion-part7`.
+- Next action: rerun all bounded checks, checkpoint explicit paths and start a
+  fresh complete-diff independent review; do not push a RED head.
+
+## 2026-09-29 — WF-C8-004 lifecycle repair checks complete
+
+- The complete post-repair author matrix passes 18 targeted files / 133 tests,
+  scoped ESLint for all six changed TypeScript paths, JSON parsing, EN/RU/AZ
+  parity at 23,737/0/0 and whitespace.
+- Heavy/full typecheck, build, full suite, browser/AT, Android/Gradle, load,
+  signed APK, physical-device and pilot gates remain `NOT RUN` locally and are
+  not inferred.
+- `WF-C8-004` remains `PARTIAL`; progress is still `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%.
+- Precise stopping point: verified lifecycle repair plus append-only evidence
+  remain uncommitted on top of rejected head `ab289618`.
+- Next action: commit only explicit task paths, measure the full candidate and
+  obtain a fresh independent frozen review before publication.

@@ -1872,3 +1872,47 @@ from this worktree.
 - Next action: checkpoint only explicit task paths, then require a fresh
   author-independent review of the complete replacement diff from deployed
   main before any push or PR.
+
+## 2026-09-29 — WF-C8-004 replacement review RED and lifecycle repair
+
+- A fresh full review of replacement head
+  `ab289618132908ce00c0d5bfcda759332e9b9f67` independently verified the
+  four data/readiness repairs from the first RED, but returned a new RED
+  verdict `P0=0`, `P1=1`, `P2=0`, `P3=0`. Base/current main/merge-base stayed
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`; complete identity was 13 paths /
+  116,103 bytes / SHA-256
+  `f3b8e3a176c758835dd2029bcef20e4dfa7cb17825da12d56fb536831af61c90`.
+- The new P1 was a UI lifecycle regression: the post-success history refetch
+  set global loading, unmounted the approval panel and erased the only
+  server-returned approval ID, so approved-export preview disappeared. The
+  minimized revision history correctly contains no ID and could not restore
+  it.
+- The repair marks exactly the approval-triggered retry, keeps the loaded
+  timesheet/panel mounted during its background request, preserves the local
+  record and preview control, and still replaces history on success. A failed
+  background refresh keeps the last verified data mounted and shows only the
+  localized generic load toast; initial/manual load failure remains unchanged.
+- The regression contract now asserts the retry marker, background mount
+  condition, stable panel key and preservation branch. Scoped UI tests, ESLint
+  and whitespace pass; the complete targeted matrix and fresh frozen review
+  remain mandatory.
+- `WF-C8-004` remains `PARTIAL`; progress stays `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%. Neither RED review transfers authority.
+- Precise stopping point: the lifecycle repair and this append-only
+  clarification are uncommitted on top of rejected head `ab289618`.
+- Next action: run the complete bounded matrix, checkpoint explicit repair
+  paths, then require another author-independent full-range review from zero.
+
+## 2026-09-29 — WF-C8-004 lifecycle repair verification complete
+
+- The pending complete author rerun now passes 18 targeted files / 133 tests,
+  full task-scoped ESLint, JSON parsing, i18n 23,737/0/0 and whitespace.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load,
+  signed-device and pilot evidence remain `NOT RUN` under host policy; exact-
+  head CI remains mandatory.
+- Status and progress are unchanged: `WF-C8-004` is `PARTIAL`,
+  `DONE 80/161`, `GATES 14/15`, C8 27%, overall 58%.
+- Precise stopping point: the second replacement repair and all receipts are
+  verified but uncommitted.
+- Next action: checkpoint explicit paths and require a fresh full-range
+  author-independent review; no prior RED transfers authority.

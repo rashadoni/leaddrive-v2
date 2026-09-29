@@ -127,3 +127,46 @@ Android/Gradle, load, signed-device and pilot checks remain `NOT RUN` under
 host policy. A new clean checkpoint and a fresh complete-diff independent
 review remain mandatory; `WF-C8-004` is still **PARTIAL** and progress remains
 `DONE 80/161`, `GATES 14/15`, C8 27%, overall 58%.
+
+## Replacement review RED and preview-lifecycle repair
+
+The first replacement checkpoint was
+`ab289618132908ce00c0d5bfcda759332e9b9f67`: base/current main/merge-base
+remained `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`; the complete 13-path /
+116,103-byte diff had SHA-256
+`f3b8e3a176c758835dd2029bcef20e4dfa7cb17825da12d56fb536831af61c90`.
+A new full author-independent review did not inherit the earlier verdict. It
+confirmed the original P1 and four P2 repairs, but returned **RED** with one
+new lifecycle finding: `P0=0`, `P1=1`, `P2=0`, `P3=0`.
+
+The successful approval path started the required history refetch, but the
+global loading branch temporarily unmounted `TimesheetApprovalPanel`. That
+destroyed its local, server-returned approval ID; because the minimized history
+projection intentionally contains no IDs, approved-export preview could no
+longer be opened after the refetch.
+
+The repair gives an approval-triggered retry an exact retry-number marker,
+keeps the existing timesheet and panel mounted while that background request
+runs, and retains the local approval record/preview control. A successful
+request still replaces the period data and verified history. If only the
+background refresh fails, the last verified data and approval record stay
+mounted and a generic localized load toast is shown; ordinary initial/manual
+load failure behavior is unchanged. A source lifecycle regression asserts the
+background render condition, stable panel key, retry marker and preservation
+failure branch.
+
+The statements above that all five initial findings were repaired remain true
+for those findings, but did not authorize release and are superseded as a
+completeness claim by this newly found P1 and its repair. A clean replacement
+checkpoint and another fresh complete-diff independent review remain
+mandatory. `WF-C8-004` stays **PARTIAL** with progress `DONE 80/161`,
+`GATES 14/15`, C8 27%, overall 58%.
+
+## Lifecycle repair verification
+
+The complete bounded author matrix after the preview-lifecycle repair passes
+18 files / 133 tests. Scoped ESLint for all six changed TypeScript files, all
+three JSON catalogs, EN/RU/AZ parity at 23,737/0/0 and whitespace also pass.
+Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
+physical-device and pilot checks remain `NOT RUN` under host policy. No
+completion credit is added before a fresh frozen GREEN and release evidence.
