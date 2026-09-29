@@ -2806,3 +2806,39 @@ Result: current main is integrated and overlap checks are green. Next: restore
 and harden the missing navigation evidence contract, add a section-scoped
 navigation source gate, run its local self-audit, then execute exact-SHA
 mutating and full responsive browser evidence.
+
+## 2026-09-29 — Support navigation evidence restored and hardened
+
+- Restored the missing `support-ux-navigation-flow-evidence` contract and
+  `docs/support-navigation-permission-matrix.md`. Both were already referenced
+  by the plan/workflow history but absent from the continuing branch. The
+  restored matrix preserves all 15 destinations in their 5/3/7 grouping and
+  keeps navigation/page UX gates separate from API authorization.
+- Audit found two P1 evidence defects: operational flow actions used synthetic
+  `.click()`/`.focus()`, and selecting only `support-navigation` bypassed every
+  section-scoped source/type gate. The flow now records four real keyboard
+  activations plus one Playwright touchscreen activation from a separate 375 px
+  touch context, including enabled-state polling, 44x44 measurement and DOM
+  center hit-testing. It fails unless all five outcome groups and all five
+  activations are present.
+- Added a dedicated Support navigation source gate and bounded strict UI
+  TypeScript project. The gate runs syntax, four-surface anti-pattern scan,
+  i18n, TypeScript, scoped ESLint and ten navigation/permission/evidence suites
+  before fixtures, build or capture. The aggregate `all` gate was not reduced.
+- The exact scan exposed 20 existing sidebar/layout findings. Shared navigation
+  transitions and skeletons now honor reduced motion; native collapse, clear,
+  group and Support-section controls have visible focus plus 44 px targets; the
+  dashboard hydration spinner respects reduced motion. Rescan: 4 files, 0
+  findings.
+- Self-audit is green: bounded strict UI TypeScript, scoped ESLint with 0
+  errors, 111/111 assertions in ten suites, flow syntax, workflow YAML, all 27
+  shell blocks and `git diff --check`. The initial graph draft pulled the full
+  dashboard provider tree and hit the 1.5 GB host ceiling; the graph was
+  narrowed to actual navigation components without raising memory. Layout is
+  still enforced by scan, lint, source contracts and the mandatory CI build.
+  Full local build/browser are NOT RUN on Contabo.
+
+Next: checkpoint and push this correction, run the exact-SHA EN/light mutating
+navigation flow, inspect all five outcomes and input evidence, then run the
+complete 72-cell agent/manager/admin × AZ/RU/EN × light/dark × four-viewport
+read-only matrix before checking NAV-001..009.

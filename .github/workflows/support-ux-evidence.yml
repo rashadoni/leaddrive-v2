@@ -1017,6 +1017,55 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts
 
+      - name: Validate section-scoped Support navigation evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'support-navigation') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/components/sidebar.tsx,
+            src/components/support-mobile-navigation.tsx,
+            src/components/support/support-page-shell.tsx,
+            src/app/(dashboard)/layout.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-navigation-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx tsc --noEmit -p tsconfig.support-navigation-ui.json
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-navigation-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/lib/nav-items.ts \
+            src/components/sidebar.tsx \
+            src/components/support-mobile-navigation.tsx \
+            src/components/support/support-page-shell.tsx \
+            src/app/\(dashboard\)/layout.tsx \
+            src/__tests__/nav-group-labels.test.ts \
+            src/__tests__/nav-items.test.ts \
+            src/__tests__/support-navigation-ux-contract.test.ts \
+            src/__tests__/support-ux-navigation-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/nav-group-labels.test.ts \
+            src/__tests__/nav-items.test.ts \
+            src/__tests__/permissions-resolve-me.test.ts \
+            src/__tests__/support-ai-page-access.test.ts \
+            src/__tests__/support-navigation-ux-contract.test.ts \
+            src/__tests__/support-ux-navigation-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
+            src/__tests__/tenant-capability-access.test.ts
+
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
         run: |

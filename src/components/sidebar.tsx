@@ -447,13 +447,13 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
     <aside
       data-testid="sidebar"
       className={cn(
-        "flex flex-col overflow-hidden bg-sidebar-bg backdrop-blur-xl transition-[width,padding] duration-200",
+        "flex flex-col overflow-hidden bg-sidebar-bg backdrop-blur-xl transition-[width,padding] duration-200 motion-reduce:transition-none",
         effectiveCollapsed ? "w-16" : "w-16 lg:w-64"
       )}
     >
       {/* Logo header */}
       <div className="flex h-14 items-center justify-between border-b border-white/10 px-4">
-        <Link href="/dashboard" aria-label={`LeadDrive · ${t("dashboard")}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <Link href="/dashboard" aria-label={`LeadDrive · ${t("dashboard")}`} className="flex items-center gap-2 transition-opacity hover:opacity-80 motion-reduce:transition-none">
           <Logo collapsed={effectiveCollapsed} size="sm" sidebar />
         </Link>
         {!isNarrowViewport && (
@@ -462,9 +462,9 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? t("expand") : t("collapse")}
             title={collapsed ? t("expand") : t("collapse")}
-            className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transition-none"
           >
-            <ChevronLeft className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
+            <ChevronLeft className={cn("h-4 w-4 transition-transform motion-reduce:transition-none", collapsed && "rotate-180")} />
           </button>
         )}
       </div>
@@ -488,7 +488,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
               }}
               placeholder={t("searchPlaceholder", { shortcut: shortcutLabel })}
               aria-label={t("searchPlaceholder", { shortcut: shortcutLabel })}
-              className="w-full h-8 pl-8 pr-7 rounded-md bg-white/[0.06] border border-white/[0.08] text-xs text-white/90 placeholder:text-white/35 focus:outline-none focus:border-white/20 focus:bg-white/[0.09] transition-colors"
+              className="h-11 w-full rounded-md border border-white/[0.08] bg-white/[0.06] pl-8 pr-12 text-xs text-white/90 transition-colors placeholder:text-white/35 focus:border-white/20 focus:bg-white/[0.09] focus:outline-none motion-reduce:transition-none"
             />
             {searchQuery && (
               <button
@@ -498,7 +498,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                   searchInputRef.current?.focus()
                 }}
                 aria-label={t("searchClear")}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-white/40 hover:text-white/80 hover:bg-white/10 transition-colors"
+                className="absolute right-0 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/10 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transition-none"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -513,7 +513,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
         {!sessionLoaded ? (
           <div className="space-y-2 px-1 pt-1" aria-busy="true">
             {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="h-8 rounded-lg bg-white/[0.06] animate-pulse" />
+              <div key={i} className="h-8 animate-pulse rounded-lg bg-white/[0.06] motion-reduce:animate-none" />
             ))}
           </div>
         ) : searchResults !== null ? (
@@ -541,7 +541,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                       navigateRawHref(event, item.href)
                     }}
                     className={cn(
-                      "relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-all duration-150",
+                      "relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-all duration-150 motion-reduce:transition-none",
                       isActive
                         ? cn(
                             "font-medium text-white bg-white/[0.12] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:rounded-r",
@@ -551,7 +551,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                     )}
                   >
                     <div className={cn(
-                      "relative flex h-6 w-6 items-center justify-center rounded-md shrink-0 transition-all",
+                      "relative flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-all motion-reduce:transition-none",
                       isActive ? iconColor : "text-white/40",
                     )}>
                       <Icon className="h-3.5 w-3.5" />
@@ -604,16 +604,16 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                   aria-expanded={openGroups.has(group)}
                   onClick={() => toggleGroup(group)}
                   className={cn(
-                    "w-full flex items-center justify-between mb-1.5 px-3 py-1 rounded-md",
+                    "mb-1.5 flex min-h-11 w-full items-center justify-between rounded-md px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60",
                     "text-[11px] font-semibold uppercase tracking-wider select-none",
-                    "hover:bg-white/[0.05] transition-colors",
+                    "transition-colors hover:bg-white/[0.05] motion-reduce:transition-none",
                     NAV_GROUP_LABEL
                   )}
                 >
                   <span>{t(`groups.${group}`)}</span>
                   <ChevronRight
                     className={cn(
-                      "h-3 w-3 shrink-0 opacity-60 transition-transform duration-200",
+                      "h-3 w-3 shrink-0 opacity-60 transition-transform duration-200 motion-reduce:transition-none",
                       openGroups.has(group) && "rotate-90"
                     )}
                   />
@@ -625,7 +625,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
               {/* Items — smooth CSS grid height animation */}
               <div
                 className={cn(
-                  "grid transition-[grid-template-rows] duration-200 ease-in-out",
+                  "grid transition-[grid-template-rows] duration-200 ease-in-out motion-reduce:transition-none",
                   isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
                 )}
               >
@@ -644,7 +644,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                               data-section={section}
                               aria-expanded={sectionOpen}
                               onClick={() => toggleSupportSection(section)}
-                              className="flex min-h-9 w-full items-center justify-between rounded-md px-3 py-1 text-[11px] font-medium text-white/55 outline-none transition-colors hover:bg-white/[0.05] hover:text-white/80 focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transition-none"
+                              className="flex min-h-11 w-full items-center justify-between rounded-md px-3 py-1 text-[11px] font-medium text-white/55 outline-none transition-colors hover:bg-white/[0.05] hover:text-white/80 focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transition-none"
                             >
                               <span>{t(`supportSections.${section}`)}</span>
                               <ChevronRight className={cn("h-3 w-3 transition-transform motion-reduce:transition-none", sectionOpen && "rotate-90")} aria-hidden="true" />

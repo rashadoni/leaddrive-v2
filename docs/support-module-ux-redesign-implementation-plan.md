@@ -440,8 +440,7 @@ Visibility contract from the current navigation baseline:
 
 ### 6.2 Navigation tasks
 
-**Status: IN PROGRESS — three-group implementation and local contracts green;
-authenticated browser job blocked before startup**
+**Status: IN PROGRESS — current-main source/evidence contracts corrected and local self-audit green; exact-SHA browser gates pending**
 
 - [ ] **SUPUX-NAV-001** Confirm the three-group information architecture with
   agents, managers, and administrators.
@@ -505,6 +504,44 @@ Current verification evidence (2026-09-06):
   remains **NOT RUN**. NAV checkboxes remain open; NAV-001 and NAV-007 also need
   real role/stakeholder or observed-usage evidence before completion can be
   claimed.
+
+Current-tree recovery and self-audit (2026-09-29):
+
+- Current `origin/main` at `eab1c60de` is integrated before the shared gates.
+  The historical navigation flow contract and permission matrix, which were
+  referenced by the plan/workflow but absent from the continuing branch, are
+  restored without changing any destination, route, role, feature or add-on.
+- Evidence audit found that the navigation flow still used synthetic
+  `.click()`/`.focus()` actions and that a `support-navigation` selection
+  skipped every section-scoped source/type gate. The flow now records exactly
+  five operational activations: four desktop keyboard actions and one real
+  Playwright touchscreen action in a separate 375 px touch context. The touch
+  control is enabled-state polled, measured at 44x44 or larger and DOM
+  center-hit-tested before the physical tap. The flow contains no `.click()` or
+  `.focus()` calls.
+- A dedicated Support navigation gate now runs script syntax, the exact
+  four-surface anti-pattern scope, i18n parity, a strict navigation UI
+  TypeScript graph, scoped ESLint and ten navigation/permission/evidence suites
+  before fixtures, production build or capture. The existing aggregate `all`
+  gate remains intact.
+- The audit exposed 20 pre-existing motion/focus/touch findings in the shared
+  sidebar/dashboard boundary. Sidebar resize/search/group/section transitions
+  and skeletons now honor reduced motion; native collapse, clear, group and
+  Support-section controls have visible focus and 44 px targets. The dashboard
+  hydration spinner also stops under reduced motion. The rescoped four-file
+  scan passes with 0 findings.
+- Local self-audit is green: strict navigation UI TypeScript passes at the
+  bounded 1.5 GB heap, scoped ESLint has 0 errors, 111/111 assertions pass in
+  ten suites, workflow YAML parses, all 27 shell blocks pass `bash -n`, flow
+  syntax and `git diff --check` pass. The first graph draft included the entire
+  dashboard provider tree and reached the 1.5 GB host ceiling; it was narrowed
+  to the actual navigation components instead of raising local memory. The
+  layout remains covered by scan, lint, contract tests and the mandatory CI
+  production build.
+
+Next: checkpoint and push the navigation evidence correction, then run an
+exact-SHA mutating EN/light navigation flow followed by the complete
+agent/manager/admin, AZ/RU/EN, light/dark and four-viewport read-only matrix.
 
 ## 7. Slice 0 — Global UX Foundation
 

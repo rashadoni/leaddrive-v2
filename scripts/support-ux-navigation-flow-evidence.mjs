@@ -38,6 +38,57 @@ const credentials = {
   manager: { email: requiredEnv("SUPPORT_EVIDENCE_MANAGER_EMAIL"), password: requiredEnv("SUPPORT_EVIDENCE_MANAGER_PASSWORD") },
   admin: { email: requiredEnv("SUPPORT_EVIDENCE_ADMIN_EMAIL"), password: requiredEnv("SUPPORT_EVIDENCE_ADMIN_PASSWORD") },
 }
+const activationEvidence = []
+
+async function waitUntilEnabled(locator) {
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  await locator.evaluate(async (element) => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (!element.matches(":disabled, [aria-disabled='true']")) return
+      await new Promise((resolve) => window.setTimeout(resolve, 50))
+    }
+    throw new Error("support_navigation_target_remained_disabled")
+  })
+}
+
+async function activateWithKeyboard(locator, keyboardKey = "Enter") {
+  await waitUntilEnabled(locator)
+  await locator.press(keyboardKey)
+  const detail = { inputModality: "keyboard", hitTarget: true, keyboardKey }
+  activationEvidence.push(detail)
+  return detail
+}
+
+async function activateWithTouch(page, locator) {
+  await waitUntilEnabled(locator)
+  await locator.scrollIntoViewIfNeeded()
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }))
+  await page.waitForTimeout(50)
+  const target = await locator.evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+    const hit = document.elementFromPoint(point.x, point.y)
+    return {
+      x: point.x,
+      y: point.y,
+      width: box.width,
+      height: box.height,
+      hitTarget: Boolean(hit && (element === hit || element.contains(hit))),
+    }
+  })
+  if (target.width < 44 || target.height < 44) {
+    throw new Error(`support_navigation_touch_target_too_small_${Math.round(target.width)}x${Math.round(target.height)}`)
+  }
+  if (!target.hitTarget) throw new Error("support_navigation_touch_hit_test_failed")
+  await page.touchscreen.tap(target.x, target.y)
+  const detail = {
+    inputModality: "playwright-touchscreen",
+    hitTarget: true,
+    targetSize: { width: Math.round(target.width), height: Math.round(target.height) },
+  }
+  activationEvidence.push(detail)
+  return detail
+}
 
 async function authenticate(context, role) {
   const csrfResponse = await context.request.get("/api/auth/csrf")
@@ -70,21 +121,23 @@ async function makeContext(role, viewport = { width: 1440, height: 900 }) {
 }
 
 await mkdir(outputDirectory, { recursive: true })
-const report = { generatedAt: new Date().toISOString(), commit, targetHost: hostname, demoOrganization, locale, theme, coverageViewports: ["desktop", "mobile"], results: [] }
+const report = { generatedAt: new Date().toISOString(), commit, targetHost: hostname, demoOrganization, locale, theme, coverageViewports: ["desktop", "mobile"], activations: activationEvidence, results: [] }
 const browser = await chromium.launch({ headless: true })
 const context = await makeContext("admin")
 const page = await context.newPage()
+const mobileContext = await makeContext("admin", { width: 375, height: 812 })
+const mobilePage = await mobileContext.newPage()
 
-async function recordStep(id, action) {
+async function recordStep(id, action, evidencePage = page) {
   console.log(`[support-navigation-flow] ${id}`)
   try {
     const detail = await action()
     const screenshot = `support-navigation-flow-${id}-${locale}-${theme}.png`
-    await captureSupportEvidenceScreenshot(page, { path: path.join(outputDirectory, screenshot), fullPage: true, animations: "disabled" })
+    await captureSupportEvidenceScreenshot(evidencePage, { path: path.join(outputDirectory, screenshot), fullPage: true, animations: "disabled" })
     report.results.push({ id, status: "passed", screenshot, ...detail })
   } catch (error) {
     const screenshot = `support-navigation-flow-${id}-failed-${locale}-${theme}.png`
-    await captureSupportEvidenceScreenshot(page, { path: path.join(outputDirectory, screenshot), fullPage: true, animations: "disabled" }).catch(() => undefined)
+    await captureSupportEvidenceScreenshot(evidencePage, { path: path.join(outputDirectory, screenshot), fullPage: true, animations: "disabled" }).catch(() => undefined)
     report.results.push({ id, status: "failed", screenshot, reason: error instanceof Error ? error.message : String(error) })
   }
 }
@@ -102,7 +155,7 @@ try {
     if (await work.getAttribute("aria-expanded") !== "true") throw new Error("support_navigation_work_not_open_by_default")
     const active = page.locator("[data-testid='sidebar-nav-item'][data-nav-href='/tickets'][data-nav-active='true']")
     await active.waitFor({ state: "visible" })
-    await work.click()
+    await activateWithKeyboard(work)
     if (await work.getAttribute("aria-expanded") !== "true") throw new Error("support_navigation_active_section_was_hidden")
     return { viewport: "desktop", sections: 3, workDefaultOpen: true, activeDestinationVisible: true }
   })
@@ -110,7 +163,7 @@ try {
   await recordStep("persistent-section-state-and-active-route-recovery", async () => {
     for (const section of ["team", "rules"]) {
       const toggle = page.locator(`[data-testid='support-navigation-section-toggle'][data-section='${section}']`)
-      if (await toggle.getAttribute("aria-expanded") !== "true") await toggle.click()
+      if (await toggle.getAttribute("aria-expanded") !== "true") await activateWithKeyboard(toggle)
     }
     await page.reload({ waitUntil: "domcontentloaded" })
     await page.getByTestId("support-navigation-sections").waitFor({ state: "visible" })
@@ -128,12 +181,15 @@ try {
 
   await recordStep("collapsed-section-search-and-keyboard", async () => {
     await openSupport(page)
+    await page.evaluate(() => localStorage.setItem("support-nav-open-sections", JSON.stringify(["work", "rules"])))
+    await page.reload({ waitUntil: "domcontentloaded" })
+    await page.getByTestId("support-navigation-sections").waitFor({ state: "visible" })
     const rules = page.locator("[data-testid='support-navigation-section-toggle'][data-section='rules']")
-    if (await rules.getAttribute("aria-expanded") === "true") await rules.click()
+    if (await rules.getAttribute("aria-expanded") !== "true") throw new Error("support_navigation_rules_precondition_not_open")
+    await activateWithKeyboard(rules)
     const query = (await rules.innerText()).trim()
     const search = page.getByTestId("sidebar-search")
-    await search.focus()
-    await search.fill(query)
+    await search.pressSequentially(query)
     const results = page.getByTestId("sidebar-search-result")
     if (await results.count() !== 7) throw new Error("support_navigation_collapsed_rules_not_searchable")
     await search.press("Escape")
@@ -142,21 +198,21 @@ try {
   })
 
   await recordStep("labeled-mobile-navigation", async () => {
-    await page.setViewportSize({ width: 375, height: 812 })
-    await openSupport(page)
-    const navigation = page.getByTestId("support-mobile-navigation")
+    await openSupport(mobilePage)
+    const navigation = mobilePage.getByTestId("support-mobile-navigation")
     await navigation.waitFor({ state: "visible" })
-    const select = page.getByTestId("support-mobile-destination")
+    const select = mobilePage.getByTestId("support-mobile-destination")
     if (!await select.isVisible()) throw new Error("support_mobile_navigation_not_visible")
     if ((await select.locator("optgroup").count()) !== 3) throw new Error("support_mobile_navigation_group_count_mismatch")
     if ((await select.locator("option").count()) !== 15) throw new Error("support_mobile_navigation_destination_count_mismatch")
+    const activation = await activateWithTouch(mobilePage, select)
     await select.selectOption("/support/calendar")
-    await page.waitForURL(/\/support\/calendar$/)
+    await mobilePage.waitForURL(/\/support\/calendar$/)
     if (await select.inputValue() !== "/support/calendar") throw new Error("support_mobile_navigation_active_destination_not_updated")
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
+    const overflow = await mobilePage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
     if (overflow) throw new Error("support_mobile_navigation_horizontal_overflow")
-    return { viewport: "mobile", labeledControl: true, sections: 3, destinations: 15, touchNavigation: true, horizontalOverflow: false }
-  })
+    return { viewport: "mobile", labeledControl: true, sections: 3, destinations: 15, touchNavigation: true, horizontalOverflow: false, activation }
+  }, mobilePage)
 
   await recordStep("role-feature-and-addon-visibility", async () => {
     await page.setViewportSize({ width: 1440, height: 900 })
@@ -180,13 +236,14 @@ try {
     return { viewport: "desktop", roles: outcomes, featureAndAddonDestinationsVisible: true, adminOnlyAiPreserved: true }
   })
 } finally {
+  await mobileContext.close()
   await context.close()
   await browser.close()
 }
 
 await writeFile(path.join(outputDirectory, "support-navigation-flow-evidence.json"), JSON.stringify(report, null, 2) + "\n")
 const failures = report.results.filter((result) => result.status !== "passed")
-if (report.results.length !== 5 || failures.length > 0) {
-  console.error(JSON.stringify({ expected: 5, actual: report.results.length, failures }, null, 2))
+if (report.results.length !== 5 || activationEvidence.length !== 5 || failures.length > 0) {
+  console.error(JSON.stringify({ expected: 5, actual: report.results.length, expectedActivations: 5, actualActivations: activationEvidence.length, failures }, null, 2))
   process.exitCode = 1
 }
