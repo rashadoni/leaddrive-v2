@@ -974,7 +974,7 @@ from Route & Field.
 | WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
 | WF-C8-006 | P1 | DONE | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | [`workforce-c8-sites-geofences-evidence-2026-08-30.md`](./workforce-c8-sites-geofences-evidence-2026-08-30.md): administrator-only named sites, future calibrated circles, assignment-only impact preview and immutable revision history; no browser location collection or physical-presence claim |
-| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md): named ACTIVE sites, released modes, safe break-aware defaults, full-array draft writes, hidden proof-reference preservation and immutable ACTIVE summaries; calendar authoring and real browser/AT evidence remain open |
+| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md) and [`future organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments and strict future organization holiday/closure/exception authoring are source-complete; team/employee and moved-day workflows, update/delete governance, break-policy authoring and real browser/AT evidence remain open |
 | WF-C8-008 | P1 | PARTIAL | Web | Add proof-policy, QR station and trusted-device administration separated by permission | [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): named-site/effective-circle QR station creation plus device/QR lifecycle UI are administrator-only; proof-policy UI and granular separation-of-duties await C7/C5 gates |
 | WF-C8-009 | P1 | PARTIAL | Web | Add restricted evidence timeline and access audit; normal view shows verdict instead of exact coordinates | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md): a visible named-employee web timeline now returns only bounded localized verdict/reason records after exact grant, explicit context and successful access audit; raw-investigation policy/UI and real-browser acceptance remain open |
 | WF-C8-010 | P1 | PARTIAL | Web/I18n | Complete AZ/RU/EN, keyboard, focus, contrast, 200% zoom, responsive tablet/phone and error/empty states | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md) and [`bulk preview evidence`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): AZ/RU/EN, concise announcements, focus transfer, bounded named search, responsive source and error/empty states exist; real browser/AT/contrast/200%-zoom/mobile evidence remains open |
@@ -2415,3 +2415,32 @@ from this worktree.
 - Next action: checkpoint the receipt, then implement bounded `WF-C8-007b`
   future organization-calendar override authoring without schema, Route UI,
   update/delete or employee/team override expansion.
+
+## 2026-09-29 — WF-C8-007b future organization calendar checkpoint
+
+- Added a separate Scheduler-visible Workforce configuration surface and
+  Workforce-only GET/POST API for bounded future organization calendar
+  overrides. The strict request accepts only date, one of three released kinds
+  and a required name; response rows expose only date/kind/name.
+- Reads are tenant-filtered, active organization scope only and limited to a
+  half-open 1–367 day future range. Writes require a date strictly after the
+  organization-local server date, serialize on tenant/date and use the
+  existing partial unique index as a concurrent backstop.
+- Exact desired state is a safe replay. Different existing state is a 409.
+  Creation and actor-attributed audit share one transaction, so audit failure
+  rolls back the write.
+- The shared Route ledger keeps its established `ADMIN` source. Workforce
+  provenance lives in the audit action/metadata, and the explicit planning
+  flag preserves the no-override weekday/weekend Route baseline instead of
+  deriving it from the HR calendar kind.
+- PASS: five focused domain/API/UI files / 28 tests, RLS coverage 3 tests,
+  scoped ESLint on eight TS/TSX paths, i18n 23,831/0/0 and whitespace. Full
+  typecheck/build/suite, browser/AT/device, Android/Gradle, load, signed-device
+  and pilot are `NOT RUN` under host policy.
+- `WF-C8-007` remains `PARTIAL`; no DONE or gate credit is claimed. Progress
+  stays `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE
+  rows.
+- Precise stopping point: implementation and author checks are complete but
+  uncommitted on `codex/workforce-completion-part10`.
+- Next action: checkpoint explicit slice paths, freeze the exact diff identity
+  and obtain a fresh author-independent read-only review before any PR.

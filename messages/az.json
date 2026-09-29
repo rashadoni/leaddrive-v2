@@ -25526,6 +25526,38 @@
   "mtmCommon": {
     "hintDismiss": "Bir daha göstərmə"
   },
+  "workforceCalendarConfiguration": {
+    "title": "Təşkilatın iş təqvimi",
+    "subtitle": "Bütün Workforce tenantı üçün adlandırılmış gələcək bayramları, bağlanmaları və istisna iş günlərini əlavə edin. Bu buraxılışda mövcud tarixlər dəyişməz qalır.",
+    "refresh": "Təqvimi yenilə",
+    "loading": "Gələcək təqvim yüklənir…",
+    "date": "Təqvim tarixi",
+    "kind": "Gün növü",
+    "name": "Ad və ya səbəb",
+    "namePlaceholder": "Məsələn, şirkətin illik toplantısı",
+    "createHint": "Yalnız təşkilatın {timezone} saat qurşağında bugünkü tarixdən sonrakı tarixlər qəbul edilir. Komanda və əməkdaş istisnaları burada dəyişmir.",
+    "create": "Təqvim gününü qeydə al",
+    "created": "Təşkilatın gələcək təqvim günü qeydə alındı.",
+    "alreadyRecorded": "Bu dəqiq təqvim vəziyyəti artıq qeydə alınıb; dublikat yaradılmadı.",
+    "upcomingTitle": "Təşkilatın gələcək istisnaları",
+    "upcomingHint": "Təşkilatın {timezone} təqvimi üzrə məhdud gələcək görünüş.",
+    "empty": "Bu gələcək pəncərədə təşkilat səviyyəli təqvim istisnası qeydə alınmayıb.",
+    "unnamed": "Günün adı əlçatan deyil",
+    "dateNotFuture": "Təşkilatın bugünkü tarixindən sonrakı tarixi seçin.",
+    "dateRangeInvalid": "Məhdud təqvim pəncərəsində düzgün gələcək tarix seçin.",
+    "overrideExists": "Bu tarix üçün fərqli təşkilat təqvimi istisnası artıq mövcuddur. Heç bir dəyişiklik edilmədi.",
+    "accessRequired": "Bu təqvim üçün aktiv Workforce planlaşdırma qrantı tələb olunur.",
+    "requestFailed": "Workforce təqvimi yoxlanıla bilmədi. Heç bir təqvim günü dəyişdirilmədi.",
+    "kinds": {
+      "WORKING_DAY": "İş günü",
+      "WEEKEND": "Həftəsonu",
+      "PUBLIC_HOLIDAY": "Dövlət bayramı",
+      "COMPANY_HOLIDAY": "Şirkətin bağlanması",
+      "EXCEPTION_WORKDAY": "İstisna iş günü",
+      "MOVED_WORKDAY": "Köçürülmüş iş günü",
+      "MOVED_DAY_OFF": "Köçürülmüş istirahət günü"
+    }
+  },
   "workforceAccessManagement": {
     "title": "Workforce rolları və giriş",
     "subtitle": "Məsuliyyətləri ən dar əhatə ilə təyin edin və aktiv girişi yoxlayın. Tenant sahibinin idarəsi bu ekrandan kənarda qalır.",

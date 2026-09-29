@@ -25530,6 +25530,38 @@
   "mtmCommon": {
     "hintDismiss": "Do not show this again"
   },
+  "workforceCalendarConfiguration": {
+    "title": "Organization work calendar",
+    "subtitle": "Add named future holidays, closures and exception workdays for the whole Workforce tenant. Existing dates stay immutable in this release.",
+    "refresh": "Refresh calendar",
+    "loading": "Loading future calendar…",
+    "date": "Calendar date",
+    "kind": "Day type",
+    "name": "Name or reason",
+    "namePlaceholder": "For example, annual company meeting",
+    "createHint": "Only dates after today's {timezone} organization date are accepted. This does not edit team or employee exceptions.",
+    "create": "Record calendar day",
+    "created": "The future organization calendar day was recorded.",
+    "alreadyRecorded": "This exact calendar state was already recorded; no duplicate was created.",
+    "upcomingTitle": "Upcoming organization overrides",
+    "upcomingHint": "A bounded future view using the organization's {timezone} calendar.",
+    "empty": "No organization-wide calendar overrides are recorded in this future window.",
+    "unnamed": "Named day unavailable",
+    "dateNotFuture": "Choose a date after today's organization date.",
+    "dateRangeInvalid": "Choose a valid future date inside the bounded calendar window.",
+    "overrideExists": "A different organization calendar override already exists for this date. No change was made.",
+    "accessRequired": "An active Workforce scheduling grant is required for this calendar.",
+    "requestFailed": "The Workforce calendar could not be verified. No calendar day was changed.",
+    "kinds": {
+      "WORKING_DAY": "Working day",
+      "WEEKEND": "Weekend",
+      "PUBLIC_HOLIDAY": "Public holiday",
+      "COMPANY_HOLIDAY": "Company closure",
+      "EXCEPTION_WORKDAY": "Exception workday",
+      "MOVED_WORKDAY": "Moved workday",
+      "MOVED_DAY_OFF": "Moved day off"
+    }
+  },
   "workforceAccessManagement": {
     "title": "Workforce roles and access",
     "subtitle": "Assign narrowly scoped responsibilities and review active access. Tenant-admin custody stays outside this screen.",

@@ -2292,3 +2292,43 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint these three receipt files, then begin bounded
   `WF-C8-007b` future organization calendar override authoring with strict
   future-only, organization-only and create-only boundaries.
+
+## 2026-09-29 — WF-C8-007b future organization calendar implementation checkpoint
+
+- Continued only in the recorded worktree on
+  `codex/workforce-completion-part10` from receipt head `2151590e5`. Routing
+  remains `rashadoni/leaddrive-v2`; production remains only
+  `13.140.132.245:/opt/leaddrive-v2` through `main -> deploy.yml`.
+- Implemented a strict Workforce-only calendar GET/POST boundary and separate
+  configuration-page client. Granular Scheduler access is not hidden by the
+  legacy CRM-admin UI gate.
+- GET exposes a server-clocked 1–367 day future organization inventory with
+  only date/kind/name. POST accepts only a future real date, required name and
+  public holiday/company closure/exception workday kind. No browser-provided
+  ID, scope, source, moved date or Route flag is accepted.
+- The create-only transaction uses a tenant/date advisory lock, explicit
+  tenant and null team/agent predicates, exact-state replay, 409 conflict,
+  existing unique-index backstop and an in-transaction actor audit.
+- Repository inspection corrected the initial source assumption:
+  `MtmWorkCalendarDay.source` is a free string with established `ADMIN`, not a
+  governed `WORKFORCE_CONFIG` enum. The writer keeps `ADMIN`; Workforce
+  provenance is recorded by audit action/metadata. The explicit
+  `routePlanningAllowed` value preserves the date's no-override
+  weekday/weekend baseline so this HR write does not silently toggle Route
+  planning eligibility.
+- PASS: the focused calendar/domain set is 5 files / 28 tests; RLS route
+  coverage is 1 file / 3 tests; scoped ESLint covers eight changed TS/TSX
+  files; i18n parity is 23,831 EN keys with RU/AZ 0 missing and 0 extra;
+  whitespace passes. The initial focused run had two test-assertion failures
+  only (cleared import-time mock calls and `HOLIDAY` matching `/id/i`); both
+  test assertions were corrected and the full focused set passed.
+- Full local typecheck/build/suite, browser/AT/contrast/zoom/device,
+  Android/Gradle, load/chaos, signed-device and pilot are `NOT RUN` under the
+  Contabo placement rule. Exact-head CI remains required.
+- `WF-C8-007` remains `PARTIAL`; no completion credit is added. Progress is
+  unchanged at `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows.
+- Precise stopping point: implementation, focused checks and evidence are
+  complete but uncommitted.
+- Next action: commit only explicit task paths, fingerprint the exact candidate
+  and request fresh author-independent read-only review before push or PR.
