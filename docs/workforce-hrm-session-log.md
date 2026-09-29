@@ -1933,3 +1933,45 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: verify and checkpoint the release records, then implement the
   bounded `WF-C8-002` manager-Today slice with independently authorized
   exception projection and no GET-side no-show inference or mutation.
+
+## 2026-09-29 — WF-C8-002 bounded manager Today implementation checkpoint
+
+- Resumed from deployed main
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` on the designated worktree and
+  successor branch `codex/workforce-completion-part8`; origin and the sole
+  GitHub-main deployment route remain unchanged.
+- Replaced the unbounded active roster with a grant-derived technical filter,
+  25-row stable cursor page and post-authorization name read. Page summary is
+  explicitly `LOADED_PAGE`, not a fabricated tenant total.
+- Added immutable-snapshot plan validation for existing workdays and a
+  bounded batch schedule resolver for employees without a workday. Historical
+  team correction is fixed-point bounded and overlap/overflow/instability
+  fails closed.
+- Added distinct calendar/attendance/previous-open projections. GET never
+  creates, infers, closes or finishes an attendance fact. `NO_SHOW` requires
+  an unresolved persisted case.
+- Added a common two-phase exception-case scope resolver to Today and the C6
+  queue. Schedule-only cases use canonical expected date plus a case-bound,
+  verified first segment; mutable current team and creation time are not
+  authorization facts.
+- Enforced separate exception permission: attendance-only scope sees `null`,
+  authorized empty exception scope sees `[]`; response omits case IDs,
+  reasons, actors, proof, coordinates and site/location detail and is
+  `private, no-store`.
+- Added localized manager UI and exact-identity load-more merge. The surface
+  shows plan, calendar, prior open workday and minimized exception type/status
+  with a generic `/workforce/exceptions` link and explicit non-presence text.
+- Independent helper-only audit was RED with two P2 findings. Sequential
+  precedence and per-agent fixed-point invalidation repaired both before API
+  integration; full-diff frozen review remains mandatory.
+- PASS: targeted 6 files / 59 tests; scoped ESLint on 13 TS/TSX paths; i18n
+  parity 23,765/0/0; JSON parse; whitespace. Full local typecheck/build/suite,
+  real browser/AT, Android/Gradle, load, signed APK, physical device and pilot
+  remain `NOT RUN` under host policy.
+- `WF-C8-002` remains `PARTIAL`; no completion or gate credit is claimed.
+  Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%.
+- Precise stopping point: bounded implementation and evidence are verified
+  but uncommitted in the designated worktree.
+- Next action: create an explicit-path checkpoint, fingerprint the complete
+  sub-400 KB candidate and request a fresh author-independent full-range
+  review from deployed main.

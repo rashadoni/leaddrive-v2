@@ -969,7 +969,7 @@ from Route & Field.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C8-001 | P1 | DONE | Web | Add employee Workforce Today web fallback with one valid action, assignment, evidence requirement and sync/server outcome | [`Employee Workforce Today evidence`](./workforce-c8-employee-today-evidence-2026-09-13.md): self-only assignment/segments, exactly one canonical action, fail-closed proof requirements and explicit server/pending-review outcome on `/workforce`; no Route dependency or second state machine |
-| WF-C8-002 | P1 | PARTIAL | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | Scheduled absent employee is visible and explained |
+| WF-C8-002 | P1 | PARTIAL | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | [`bounded manager Today evidence`](./workforce-c8-manager-today-evidence-2026-09-29.md): scheduled roster, immutable/live plan boundary, distinct calendar, previous-open fact and independently authorized persisted exception projection are implemented with stable pagination and safe response minimization; real browser/AT proof that the absent employee is visible and explained remains open |
 | WF-C8-003 | P1 | DONE | Web | Add multi-site day timeline and transition status | [`workforce-c8-multisite-timeline-evidence-2026-09-13.md`](./workforce-c8-multisite-timeline-evidence-2026-09-13.md): the self-only timeline shows Site/Travel/Site plans and append-only arrival/departure/review states without raw proof or physical-presence claims |
 | WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
@@ -2107,3 +2107,33 @@ from this worktree.
 - Next action: checkpoint the three release records, then implement the
   bounded manager-Today portion of `WF-C8-002` without inferring no-show or
   widening exception access.
+
+## 2026-09-29 — WF-C8-002 bounded manager Today working checkpoint
+
+- Manager Today now starts from a grant-preauthorized, stable 25-row roster
+  page and loads names/facts only for the exact authorized IDs. Existing
+  workdays use a verified immutable shift snapshot; scheduled employees with
+  no workday use one bounded batch resolver with no N+1 reads.
+- Calendar state, previous-open state and attendance state remain separate.
+  A no-show is never inferred or written by GET: only an unresolved persisted
+  C6 case can project `NO_SHOW`.
+- Exception visibility requires independent `TEAM_EXCEPTION_READ`; ordinary
+  attendance authority returns `exceptions: null`. The queue and Today share
+  a two-phase historical-team/site resolver that now authorizes valid
+  schedule-only cases from their case-bound first segment.
+- The manager UI renders localized EN/RU/AZ plan/calendar/attendance and safe
+  type/status exception badges, uses only a generic exception-queue link and
+  states the non-presence boundary. Pagination merges only an exact live read
+  identity.
+- PASS: 6 targeted files / 59 tests, scoped ESLint on 13 changed TS/TSX paths,
+  JSON, i18n 23,765/0/0 and whitespace. Full local typecheck/build/suite,
+  real browser/AT, Android/Gradle, load, signed-device and pilot are `NOT RUN`.
+- An initial independent helper-only audit found two P2 resolver defects
+  (lower-priority ambiguity and page-wide invalidation); both are repaired.
+  A new clean full-diff review is still mandatory.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: implementation, focused verification and evidence
+  are complete but uncommitted on `codex/workforce-completion-part8`.
+- Next action: checkpoint only the explicit slice paths, freeze/fingerprint
+  the full diff and obtain fresh author-independent full-range review.

@@ -23,7 +23,7 @@ import {
 } from "@/lib/workforce/exception-workbench"
 import { issueWorkforceExceptionActionToken } from "@/lib/workforce/exception-workbench-token"
 import { isWorkforceExceptionDecisionEnabledForResponseRollout } from "@/lib/workforce/exception-response-rollout"
-import { resolveWorkforceHistoricalTeamMemberships } from "@/lib/workforce/team-membership"
+import { resolveWorkforceExceptionCaseReadScopes } from "@/lib/workforce/exception-case-read-scope"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
@@ -33,9 +33,10 @@ const MAX_EXCEPTION_CASES = 250
 type WorkforceExceptionCandidate = {
   id: string
   agentId: string
+  segmentId: string | null
+  expectedWorkDate: Date | null
   workdayEvent: { occurredAt: Date } | null
   workday: { startedAt: Date } | null
-  segment: { siteId: string | null } | null
 }
 
 const workforceExceptionDetailSelect = {
@@ -154,9 +155,10 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
     const candidateSelect = {
       id: true,
       agentId: true,
+      segmentId: true,
+      expectedWorkDate: true,
       workdayEvent: { select: { occurredAt: true } },
       workday: { select: { startedAt: true } },
-      segment: { select: { siteId: true } },
     } satisfies Prisma.WorkforceExceptionCaseSelect
     const candidates = await prisma.workforceExceptionCase.findMany({
       where: { organizationId: auth.orgId },
@@ -176,26 +178,16 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
     if (!granularAccess) {
       authorization = new Map(candidates.map((candidate) => [candidate.id, { readable: true, decidable: false }]))
     } else {
-      const historicalTeamByCaseId = await resolveWorkforceHistoricalTeamMemberships(prisma, {
+      const scopes = await resolveWorkforceExceptionCaseReadScopes(prisma, {
         organizationId: auth.orgId,
-        candidates: candidates.flatMap((candidate) => {
-          const scopeInstant = candidate.workdayEvent?.occurredAt ?? candidate.workday?.startedAt ?? null
-          return scopeInstant == null ? [] : [{
-            requestId: candidate.id,
-            agentId: candidate.agentId,
-            workdayStartedAt: scopeInstant,
-          }]
-        }),
+        candidates,
+        resolutionAt: now,
       })
       authorization = authorizeWorkforceExceptionReadCandidates({
         organizationId: auth.orgId,
         principalUserId: auth.userId,
-        candidates: candidates.map((candidate) => ({
-          id: candidate.id,
-          agentId: candidate.agentId,
-          siteId: candidate.segment?.siteId ?? null,
-        })),
-        historicalTeamByCaseId,
+        candidates: scopes.candidates,
+        historicalTeamByCaseId: scopes.historicalTeamByCaseId,
         grants: grants!,
         now,
       })
