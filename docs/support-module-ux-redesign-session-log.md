@@ -2842,3 +2842,25 @@ Next: checkpoint and push this correction, run the exact-SHA EN/light mutating
 navigation flow, inspect all five outcomes and input evidence, then run the
 complete 72-cell agent/manager/admin × AZ/RU/EN × light/dark × four-viewport
 read-only matrix before checking NAV-001..009.
+
+## 2026-09-29 — Navigation mobile tour race diagnosed
+
+- Exact-SHA run `36511123084` on `f62ed59e0` passed the dedicated navigation
+  source/type gate, fixtures and production build. All three agent/manager/admin
+  static desktop results passed with zero runtime, Axe, accessibility, touch,
+  overflow, environment or primary-work failures.
+- Artifact `11010395142` proves four of five flow groups and all four desktop
+  keyboard activations. The mobile outcome failed closed before its physical
+  tap with `support_navigation_touch_hit_test_failed`; the failed screenshot
+  shows the delayed first-visit tour overlay covering the labeled destination
+  select. The product control itself was visible and the other flow assertions
+  remained green. This run is diagnostic only.
+- The setup helper now waits up to three seconds for that delayed overlay,
+  dismisses it with Escape and waits for the overlay to be hidden before target
+  measurement. The 44x44 size requirement and center `elementFromPoint` check
+  remain unchanged. Syntax, targeted ESLint, 4/4 affected assertions and
+  `git diff --check` pass.
+
+Next: checkpoint and push the correction, repeat exact-SHA mutating navigation
+evidence, inspect 5/5 outcomes and 5/5 keyboard/touch activations, then unlock
+the 72-cell read-only matrix.

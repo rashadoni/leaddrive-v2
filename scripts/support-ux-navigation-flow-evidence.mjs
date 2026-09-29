@@ -101,7 +101,10 @@ async function authenticate(context, role) {
 
 async function dismissTour(page) {
   const overlay = page.getByTestId("tour-overlay")
-  if (await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)) await page.keyboard.press("Escape")
+  if (await overlay.waitFor({ state: "visible", timeout: 3_000 }).then(() => true).catch(() => false)) {
+    await page.keyboard.press("Escape")
+    await overlay.waitFor({ state: "hidden", timeout: 3_000 })
+  }
 }
 
 async function openSupport(page, route = "/tickets") {

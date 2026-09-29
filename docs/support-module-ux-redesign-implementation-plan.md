@@ -543,6 +543,28 @@ Next: checkpoint and push the navigation evidence correction, then run an
 exact-SHA mutating EN/light navigation flow followed by the complete
 agent/manager/admin, AZ/RU/EN, light/dark and four-viewport read-only matrix.
 
+First current-tree browser diagnostic (2026-09-29):
+
+- Exact-SHA run `36511123084` on `f62ed59e0` passed the new navigation source
+  gate, strict TypeScript, isolated fixtures and production build. Static
+  capture passed for agent, manager and administrator with zero runtime, Axe,
+  accessibility, touch, overflow, environment or primary-work failures.
+- Artifact `11010395142` records four passing flow groups and all four expected
+  desktop keyboard activations. The mobile group failed before its tap because
+  the first-visit guided tour appeared just after the previous one-second
+  dismissal race; the failed screenshot shows its overlay intercepting the
+  select's center hit-test. This is diagnostic evidence only and does not close
+  any NAV task.
+- Tour setup now waits up to three seconds for the delayed overlay, dismisses it
+  with a real Escape key and waits for the overlay to become hidden before the
+  physical-touch measurement. The flow still fails closed on a covered center,
+  a target below 44x44, a missing activation or any failed outcome. Correction
+  syntax, scoped ESLint, its 4/4 contract assertions and `git diff --check` are
+  green; no hit-test or touch threshold was relaxed.
+
+Next: checkpoint and push the tour-race correction, then repeat the full
+exact-SHA mutating navigation workflow before launching the 72-cell matrix.
+
 ## 7. Slice 0 — Global UX Foundation
 
 **Status: IN PROGRESS — shared compact shell and control contracts implemented through `a959654ef`;

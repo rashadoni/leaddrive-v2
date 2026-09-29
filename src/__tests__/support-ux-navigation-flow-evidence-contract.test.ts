@@ -40,6 +40,7 @@ describe("Support navigation flow evidence contract", () => {
     expect(flow).toContain("target.width < 44 || target.height < 44")
     expect(flow).toContain("activationEvidence.length !== 5")
     expect(flow).toContain("activations: activationEvidence")
+    expect(flow).toContain('overlay.waitFor({ state: "hidden", timeout: 3_000 })')
     expect(flow).not.toContain(".click()")
     expect(flow).not.toContain(".focus()")
   })
