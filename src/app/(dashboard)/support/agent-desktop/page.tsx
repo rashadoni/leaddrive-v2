@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { formatDateTime } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
 
@@ -284,18 +285,13 @@ export default function AgentDesktopPage() {
   ]
 
   return (
-    <div data-testid="agent-desktop-workspace" className="mx-auto max-w-[1120px] space-y-4 pb-8">
-      <header className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Headphones className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            <h1 className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1>
-            <HelpButton slug="agent-desktop" variant="label" />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle", { name: displayName })}</p>
-        </div>
-
-        <div className="rounded-lg border bg-card px-3 py-2 sm:max-w-[360px]">
+    <SupportPageShell
+      data-testid="agent-desktop-workspace"
+      title={t("title")}
+      description={t("subtitle", { name: displayName })}
+      leading={<Headphones className="h-5 w-5" aria-hidden="true" />}
+      utilities={<HelpButton slug="agent-desktop" variant="label" />}
+      actions={<div className="w-full rounded-lg border bg-card px-3 py-2 sm:max-w-[360px]">
           <div className="flex min-h-11 items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">
@@ -344,8 +340,8 @@ export default function AgentDesktopPage() {
               </span>
             )}
           </div>
-        </div>
-      </header>
+        </div>}
+    >
 
       {loadError && (
         <div data-testid="agent-desktop-refresh-error" role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
@@ -558,7 +554,7 @@ export default function AgentDesktopPage() {
           </Button>
         </aside>
       )}
-    </div>
+    </SupportPageShell>
   )
 }
 

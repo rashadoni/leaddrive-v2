@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
         organizationId: user.organizationId,
         status: "published",
       },
+      include: { category: { select: { id: true, name: true } } },
     })
     if (!article) return NextResponse.json({ error: "Article not found" }, { status: 404 })
 
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
         title: article.title,
         content: article.content,
         tags: article.tags,
+        category: article.category,
         viewCount: article.viewCount + 1,
         createdAt: article.createdAt,
         updatedAt: article.updatedAt,
@@ -59,16 +61,20 @@ export async function GET(req: NextRequest) {
       tags: true,
       viewCount: true,
       createdAt: true,
+      updatedAt: true,
+      category: { select: { id: true, name: true } },
     },
   })
 
-  const data = articles.map((a: any) => ({
-    id: a.id,
-    title: a.title,
-    content: a.content ? a.content.slice(0, 200) : "",
-    tags: a.tags,
-    viewCount: a.viewCount,
-    createdAt: a.createdAt,
+  const data = articles.map((article) => ({
+    id: article.id,
+    title: article.title,
+    content: article.content ? article.content.slice(0, 200) : "",
+    tags: article.tags,
+    category: article.category,
+    viewCount: article.viewCount,
+    createdAt: article.createdAt,
+    updatedAt: article.updatedAt,
   }))
 
   return NextResponse.json({ success: true, data })

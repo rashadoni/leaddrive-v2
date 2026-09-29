@@ -1,9 +1,13 @@
-import { mkdir, writeFile } from "node:fs/promises"
+import { createRequire } from "node:module"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { chromium } from "playwright"
 import { requireScreenshotTarget } from "./screenshot-auth-config.mjs"
 import { assertDemoTenant, requireDemoTenant } from "./screenshot-safety.mjs"
 import { captureSupportEvidenceScreenshot } from "./support-ux-screenshot.mjs"
+
+const require = createRequire(import.meta.url)
+const axeSource = await readFile(require.resolve("axe-core/axe.min.js"), "utf8")
 
 if (process.env.SUPPORT_EVIDENCE_TARGET_MODE !== "ephemeral") throw new Error("VoIP flow evidence is restricted to the ephemeral target")
 const { baseUrl, hostname } = requireScreenshotTarget()
@@ -27,13 +31,16 @@ function singleSelection(name, fallback, allowed) {
 const locale = singleSelection("SUPPORT_EVIDENCE_LOCALES", "az", new Set(["az", "ru", "en"]))
 const theme = singleSelection("SUPPORT_EVIDENCE_THEMES", "light", new Set(["light", "dark"]))
 const viewportName = singleSelection("SUPPORT_EVIDENCE_VIEWPORTS", "desktop", new Set(["desktop", "tablet", "narrow-tablet", "mobile"]))
+const usesTouchInput = viewportName !== "desktop"
 const viewports = { desktop: { width: 1440, height: 900 }, tablet: { width: 1024, height: 900 }, "narrow-tablet": { width: 768, height: 900 }, mobile: { width: 375, height: 812 } }
 const outputDirectory = process.env.SUPPORT_EVIDENCE_OUTPUT_DIR || path.join("artifacts", "support-ux", new Date().toISOString().slice(0, 10))
 const agent = { email: requiredEnv("SUPPORT_EVIDENCE_AGENT_EMAIL"), password: requiredEnv("SUPPORT_EVIDENCE_AGENT_PASSWORD") }
 
 function silentWav() {
   const sampleRate = 8000
-  const samples = 4000
+  // Keep the synthetic recording playing long enough for Chromium to expose
+  // the native keyboard-triggered `playing` state before the clip ends.
+  const samples = sampleRate * 5
   const dataSize = samples * 2
   const buffer = Buffer.alloc(44 + dataSize)
   buffer.write("RIFF", 0)
@@ -67,9 +74,29 @@ async function openWorkspace(page) {
 }
 
 await mkdir(outputDirectory, { recursive: true })
-const report = { generatedAt: new Date().toISOString(), commit, targetHost: hostname, demoOrganization, role: "agent", locale, theme, viewport: viewportName, results: [] }
+const report = {
+  generatedAt: new Date().toISOString(),
+  commit,
+  targetHost: hostname,
+  demoOrganization,
+  role: "agent",
+  locale,
+  theme,
+  viewport: viewportName,
+  inputMode: usesTouchInput ? "playwright-touchscreen" : "keyboard",
+  stateAudits: [],
+  results: [],
+}
 const browser = await chromium.launch({ headless: true })
-const context = await browser.newContext({ baseURL: baseUrl, viewport: viewports[viewportName], locale, colorScheme: theme, reducedMotion: "reduce", hasTouch: viewportName !== "desktop" })
+const context = await browser.newContext({
+  baseURL: baseUrl,
+  viewport: viewports[viewportName],
+  locale,
+  colorScheme: theme,
+  reducedMotion: "reduce",
+  hasTouch: viewportName !== "desktop",
+  serviceWorkers: "block",
+})
 await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
 await context.addInitScript((activeTheme) => localStorage.setItem("theme", activeTheme), theme)
 
@@ -77,9 +104,10 @@ async function recordStep(page, id, action) {
   console.log(`[voip-flow] ${id}`)
   try {
     const detail = await action()
+    const settledAudit = await auditCurrentState(page, `${id}-settled`)
     const screenshot = `voip-flow-${id}-${locale}-${theme}-${viewportName}.png`
     await captureSupportEvidenceScreenshot(page, { path: path.join(outputDirectory, screenshot), fullPage: true, animations: "disabled" })
-    report.results.push({ id, status: "passed", screenshot, ...detail })
+    report.results.push({ id, status: "passed", screenshot, settledAudit, ...detail })
   } catch (error) {
     const screenshot = `voip-flow-${id}-failed-${locale}-${theme}-${viewportName}.png`
     await captureSupportEvidenceScreenshot(page, { path: path.join(outputDirectory, screenshot), fullPage: true, animations: "disabled" }).catch(() => undefined)
@@ -89,9 +117,134 @@ async function recordStep(page, id, action) {
   }
 }
 
+async function auditCurrentState(page, id) {
+  await page.waitForTimeout(250)
+  const cdp = await page.context().newCDPSession(page)
+  let axeViolations
+  try {
+    await cdp.send("Page.setBypassCSP", { enabled: true })
+    if (!await page.evaluate(() => Boolean(window.axe))) await page.addScriptTag({ content: axeSource })
+    axeViolations = await page.evaluate(async () => {
+      const result = await window.axe.run(document, {
+        runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
+      })
+      return result.violations.map((violation) => ({
+        id: violation.id,
+        impact: violation.impact,
+        nodes: violation.nodes.map((node) => node.target),
+      }))
+    })
+  } finally {
+    await cdp.send("Page.setBypassCSP", { enabled: false }).catch(() => undefined)
+    await cdp.detach().catch(() => undefined)
+  }
+
+  const layout = await page.evaluate(() => {
+    const visible = (element) => {
+      const style = getComputedStyle(element)
+      const rect = element.getBoundingClientRect()
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0
+    }
+    const main = document.querySelector("main") || document.body
+    const smallTargets = [...main.querySelectorAll("button,a[href],input,select,textarea,audio[controls],[role=button]")]
+      .filter(visible)
+      .filter((element) => {
+        const rect = element.getBoundingClientRect()
+        return rect.width < 24 || rect.height < 24
+      })
+      .map((element) => {
+        const rect = element.getBoundingClientRect()
+        return {
+          tag: element.tagName.toLowerCase(),
+          testId: element.dataset.testid || null,
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        }
+      })
+    const activeAnimations = document.getAnimations()
+      .filter((animation) => animation.playState === "running")
+      .map((animation) => animation.effect?.target?.getAttribute?.("data-testid") || animation.effect?.target?.tagName?.toLowerCase?.() || "unknown")
+    return {
+      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      activeAnimations,
+      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2
+        || main.scrollWidth > main.clientWidth + 2,
+      smallTargets,
+    }
+  })
+  const audit = { id, axeViolations, ...layout }
+  report.stateAudits.push(audit)
+  if (axeViolations.length || !layout.reducedMotion || layout.activeAnimations.length || layout.horizontalOverflow || layout.smallTargets.length) {
+    throw new Error(`state_audit_failed:${id}:${JSON.stringify(audit)}`)
+  }
+  return audit
+}
+
+async function captureObservedState(page, id) {
+  const screenshot = `voip-state-${id}-${locale}-${theme}-${viewportName}.png`
+  await captureSupportEvidenceScreenshot(page, {
+    path: path.join(outputDirectory, screenshot),
+    fullPage: true,
+    animations: "disabled",
+  })
+  await auditCurrentState(page, id)
+  return screenshot
+}
+
+async function physicalTap(page, locator, position = "center") {
+  await locator.scrollIntoViewIfNeeded()
+  const box = await locator.boundingBox()
+  if (!box) throw new Error("touch_target_not_visible")
+  if (box.width < 44 || box.height < 44) {
+    throw new Error(`touch_target_too_small:${Math.round(box.width)}x${Math.round(box.height)}`)
+  }
+  const x = position === "native-audio-play" ? box.x + 22 : box.x + box.width / 2
+  const y = position === "native-audio-play" ? box.y + 22 : box.y + box.height / 2
+  const expectedTestId = await locator.getAttribute("data-testid")
+  if (!expectedTestId) throw new Error("touch_target_test_id_missing")
+  const hitTarget = await page.evaluate(({ x, y, expectedTestId }) => {
+    let candidate = document.elementFromPoint(x, y)
+    while (candidate) {
+      if (candidate.getAttribute("data-testid") === expectedTestId) return expectedTestId
+      candidate = candidate.parentElement
+    }
+    return null
+  }, { x, y, expectedTestId })
+  if (hitTarget !== expectedTestId) throw new Error(`touch_target_hit_test_failed:${expectedTestId}`)
+  await page.touchscreen.tap(x, y)
+  return { width: Math.round(box.width), height: Math.round(box.height), hitTarget }
+}
+
 const page = await context.newPage()
 try {
   await authenticate(context)
+
+  await recordStep(page, "history-loading-and-recovery", async () => {
+    const pattern = "**/api/v1/calls**"
+    let releaseRequest = () => {}
+    const requestGate = new Promise((resolve) => {
+      releaseRequest = resolve
+    })
+    const holdHistory = async (route) => {
+      const url = new URL(route.request().url())
+      if (route.request().method() === "GET" && url.pathname === "/api/v1/calls") {
+        await requestGate
+      }
+      await route.continue()
+    }
+    await page.route(pattern, holdHistory)
+    await page.goto("about:blank")
+    await page.goto("/support/voip?evidence=loading", { waitUntil: "domcontentloaded" })
+    let loadingScreenshot
+    try {
+      await page.getByTestId("voip-loading").waitFor({ state: "visible", timeout: 10_000 })
+      loadingScreenshot = await captureObservedState(page, "history-loading")
+    } finally {
+      releaseRequest()
+    }
+    await page.getByTestId("voip-workspace").waitFor({ state: "visible", timeout: 30_000 })
+    return { loadingObserved: true, loadingScreenshot, recoverySucceeded: true }
+  })
 
   await recordStep(page, "history-load-failure-and-recovery", async () => {
     const pattern = "**/api/v1/calls**"
@@ -103,11 +256,13 @@ try {
     await page.route(pattern, deny)
     await page.goto("/support/voip", { waitUntil: "domcontentloaded" })
     await page.getByTestId("voip-load-error").waitFor({ state: "visible" })
+    assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "VoIP load error")
+    const errorScreenshot = await captureObservedState(page, "history-load-error")
     await page.unroute(pattern, deny)
     await page.getByTestId("voip-retry-load").focus()
     await page.getByTestId("voip-retry-load").press("Enter")
     await page.getByTestId("voip-workspace").waitFor({ state: "visible" })
-    return { errorObserved: true, keyboardRetry: true, recoverySucceeded: true }
+    return { errorObserved: true, errorScreenshot, keyboardRetry: true, recoverySucceeded: true }
   })
 
   await recordStep(page, "stale-refresh-and-recovery", async () => {
@@ -123,10 +278,11 @@ try {
     await page.getByTestId("voip-refresh-calls").click()
     await page.getByTestId("voip-refresh-error").waitFor({ state: "visible" })
     if (await page.getByTestId("voip-summary").innerText() !== summary) throw new Error("refresh_failure_discarded_summary")
+    const errorScreenshot = await captureObservedState(page, "stale-refresh-error")
     await page.unroute(pattern, deny)
     await page.getByTestId("voip-retry-refresh").click()
     await page.getByTestId("voip-refresh-error").waitFor({ state: "hidden" })
-    return { staleSnapshotPreserved: true, retrySucceeded: true }
+    return { staleSnapshotPreserved: true, errorScreenshot, retrySucceeded: true }
   })
 
   await recordStep(page, "connection-failure-and-recovery", async () => {
@@ -134,11 +290,16 @@ try {
     const deny = async (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Synthetic provider failure" }) })
     await page.route(pattern, deny)
     await openWorkspace(page)
+    if (await page.getByTestId("voip-connection-state").locator("a[href='/settings/voip']").count() !== 0) throw new Error("agent_received_admin_voip_settings")
+    if (await page.getByTestId("voip-connection-state").getAttribute("data-management-mode") !== "read-only") {
+      throw new Error("agent_received_admin_connection_mode")
+    }
     await page.waitForFunction(() => document.querySelector("[data-testid='voip-connection-state']")?.getAttribute("data-state") === "error")
+    const errorScreenshot = await captureObservedState(page, "connection-error")
     await page.unroute(pattern, deny)
     await page.getByTestId("voip-retry-connection").click()
     await page.waitForFunction(() => ["configured", "not_configured"].includes(document.querySelector("[data-testid='voip-connection-state']")?.getAttribute("data-state") || ""))
-    return { errorObserved: true, retrySucceeded: true }
+    return { errorObserved: true, errorScreenshot, retrySucceeded: true, agentAdminControlsAbsent: true }
   })
 
   await recordStep(page, "debounced-no-results-and-reset", async () => {
@@ -155,9 +316,53 @@ try {
     await page.getByTestId("voip-no-results").waitFor({ state: "visible", timeout: 10_000 })
     await page.waitForTimeout(450)
     if (requestCount !== 1) throw new Error(`raw_keystrokes_requested_${requestCount}_times`)
+    const noResultsScreenshot = await captureObservedState(page, "filtered-no-results")
     await page.getByTestId("voip-clear-filters").click()
     await page.getByTestId("voip-no-results").waitFor({ state: "hidden" })
-    return { typedCharacters: 5, historyRequests: requestCount, resetSucceeded: true }
+    return { typedCharacters: 5, historyRequests: requestCount, noResultsScreenshot, resetSucceeded: true }
+  })
+
+  await recordStep(page, "stale-search-response-is-aborted", async () => {
+    await openWorkspace(page)
+    const pattern = "**/api/v1/calls**"
+    let releaseDelayed = () => {}
+    let markDelayedSeen = () => {}
+    const delayedGate = new Promise((resolve) => {
+      releaseDelayed = resolve
+    })
+    const delayedSeen = new Promise((resolve) => {
+      markDelayedSeen = resolve
+    })
+    let delayedResponseAttempted = false
+    const race = async (route) => {
+      const url = new URL(route.request().url())
+      if (route.request().method() !== "GET" || url.pathname !== "/api/v1/calls") return route.continue()
+      if (url.searchParams.get("search") !== "2025550143") return route.continue()
+      const original = await route.fetch()
+      markDelayedSeen()
+      await delayedGate
+      delayedResponseAttempted = true
+      await route.fulfill({ response: original }).catch(() => undefined)
+    }
+    await page.route(pattern, race)
+    try {
+      await page.getByTestId("voip-search").fill("2025550143")
+      await Promise.race([
+        delayedSeen,
+        page.waitForTimeout(10_000).then(() => { throw new Error("delayed_search_request_missing") }),
+      ])
+      await page.getByTestId("voip-search").fill("zzzzz")
+      await page.getByTestId("voip-no-results").waitFor({ state: "visible", timeout: 10_000 })
+      const settledSummary = await page.getByTestId("voip-summary").innerText()
+      releaseDelayed()
+      await page.waitForTimeout(500)
+      if (!delayedResponseAttempted) throw new Error("delayed_search_response_not_released")
+      if (!await page.getByTestId("voip-no-results").isVisible()) throw new Error("stale_search_overwrote_latest_results")
+      if (await page.getByTestId("voip-summary").innerText() !== settledSummary) throw new Error("stale_search_overwrote_latest_summary")
+      return { delayedQuery: "2025550143", latestQuery: "zzzzz", staleOverwritePrevented: true }
+    } finally {
+      releaseDelayed()
+    }
   })
 
   await recordStep(page, "empty-history-and-recovery", async () => {
@@ -172,13 +377,14 @@ try {
     await page.route(pattern, empty)
     await openWorkspace(page)
     await page.getByTestId("voip-empty-state").waitFor({ state: "visible" })
+    const emptyScreenshot = await captureObservedState(page, "empty-history")
     await page.unroute(pattern, empty)
     await page.getByTestId("voip-refresh-calls").click()
     await page.getByTestId("voip-empty-state").waitFor({ state: "hidden" })
-    return { emptyStateObserved: true, recoverySucceeded: true }
+    return { emptyStateObserved: true, emptyScreenshot, recoverySucceeded: true }
   })
 
-  await recordStep(page, "recording-error-keyboard-and-recovery", async () => {
+  await recordStep(page, "recording-error-input-and-recovery", async () => {
     const callsPattern = "**/api/v1/calls**"
     const mediaPath = "/api/v1/calls/evidence/recording"
     const injectRecording = async (route) => {
@@ -195,19 +401,58 @@ try {
     await page.route(callsPattern, injectRecording)
     await page.route(mediaPattern, denyMedia)
     await openWorkspace(page)
-    const player = page.getByTestId("call-recording-player").first()
-    const audio = page.getByTestId("call-recording-audio").first()
-    await audio.focus()
-    await page.keyboard.press("Space")
-    await page.waitForFunction(() => document.querySelector("[data-testid='call-recording-player']")?.getAttribute("data-state") === "error", null, { timeout: 10_000 })
+    const player = page.locator("[data-testid='call-recording-player']:visible").first()
+    const visibleAudio = player.getByTestId("call-recording-audio")
+    let audioTouchTarget = null
+    let retryTouchTarget = null
+    if (usesTouchInput) {
+      audioTouchTarget = await physicalTap(page, visibleAudio, "native-audio-play")
+    } else {
+      await visibleAudio.focus()
+      if (!await visibleAudio.evaluate((element) => element === document.activeElement)) throw new Error("recording_keyboard_focus_missing")
+      await page.keyboard.press("Space")
+    }
+    await page.locator("[data-testid='call-recording-player'][data-state='error']:visible").waitFor({ state: "visible", timeout: 10_000 })
+    const errorScreenshot = await captureObservedState(page, "recording-error")
     await page.unroute(mediaPattern, denyMedia)
     await page.route(mediaPattern, async (route) => route.fulfill({ status: 200, contentType: "audio/wav", body: silentWav() }))
-    await player.getByTestId("call-recording-retry").click()
-    await page.waitForFunction(() => document.querySelector("[data-testid='call-recording-player']")?.getAttribute("data-state") === "ready", null, { timeout: 10_000 })
-    await audio.focus()
-    await page.keyboard.press("Space")
-    await page.waitForFunction(() => ["playing", "ended"].includes(document.querySelector("[data-testid='call-recording-player']")?.getAttribute("data-state") || ""), null, { timeout: 10_000 })
-    return { keyboardControlFocused: true, errorObserved: true, retrySucceeded: true, nativePlaybackStarted: true }
+    const retry = player.getByTestId("call-recording-retry")
+    if (usesTouchInput) retryTouchTarget = await physicalTap(page, retry)
+    else {
+      await retry.focus()
+      if (!await retry.evaluate((element) => element === document.activeElement)) throw new Error("recording_retry_keyboard_focus_missing")
+      await retry.press("Enter")
+    }
+    await page.locator("[data-testid='call-recording-player'][data-state='ready']:visible").waitFor({ state: "visible", timeout: 10_000 })
+    if (!usesTouchInput) {
+      await page.waitForFunction(() => document.querySelector("[data-testid='call-recording-audio']:focus") !== null, undefined, { timeout: 5_000 })
+    }
+    await visibleAudio.evaluate((element) => {
+      element.dataset.evidencePlayObserved = "false"
+      element.addEventListener("play", () => {
+        element.dataset.evidencePlayObserved = "true"
+      }, { once: true })
+    })
+    if (usesTouchInput) {
+      audioTouchTarget = await physicalTap(page, visibleAudio, "native-audio-play")
+    } else {
+      await visibleAudio.focus()
+      if (!await visibleAudio.evaluate((element) => element === document.activeElement)) throw new Error("recording_recovery_keyboard_focus_missing")
+      await page.keyboard.press("Space")
+    }
+    await page.locator("[data-testid='call-recording-audio'][data-evidence-play-observed='true']:visible").waitFor({ state: "visible", timeout: 10_000 })
+    return {
+      inputModality: usesTouchInput ? "playwright-touchscreen" : "keyboard",
+      touchInputEmulated: usesTouchInput,
+      touchPlaybackStarted: usesTouchInput,
+      audioTouchTarget,
+      retryTouchTarget,
+      keyboardControlFocused: !usesTouchInput,
+      errorObserved: true,
+      errorScreenshot,
+      retrySucceeded: true,
+      nativePlaybackStarted: true,
+    }
   })
 
   await recordStep(page, "history-permission-state", async () => {
@@ -231,7 +476,7 @@ try {
 
 await writeFile(path.join(outputDirectory, "voip-flow-evidence.json"), JSON.stringify(report, null, 2) + "\n")
 const failures = report.results.filter((result) => result.status !== "passed")
-if (report.results.length !== 7 || failures.length > 0) {
-  console.error(JSON.stringify({ expected: 7, actual: report.results.length, failures }, null, 2))
+if (report.results.length !== 9 || failures.length > 0) {
+  console.error(JSON.stringify({ expected: 9, actual: report.results.length, failures }, null, 2))
   process.exitCode = 1
 }

@@ -1,68 +1,84 @@
 "use client"
 
-/**
- * Customer support terms.
- *
- * A support term binds one company to an SLA policy, support level, validity
- * window, milestone definitions, and milestone health. Draft/suspended terms
- * can be configured here before activation.
- */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
-import { useTranslations, useLocale } from "next-intl"
-import { formatDate as formatDateLocale } from "@/lib/format-date"
+import { useLocale, useTranslations } from "next-intl"
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  ChevronDown,
+  CircleAlert,
+  Clock,
+  Copy,
+  FileText,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Save,
+  Settings2,
+  Shield,
+  Trash2,
+} from "lucide-react"
+
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select } from "@/components/ui/select"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { Textarea } from "@/components/ui/textarea"
 import {
   MILESTONE_SEVERITY_SCOPES,
   secondsToDueWindow,
   type DueWindowUnit,
   type MilestoneSeverityScope,
 } from "@/lib/entitlement-process/milestone-definitions"
+import { filterEntitlements, type EntitlementFilters } from "@/lib/entitlement-process/presentation"
 import {
   MILESTONE_TYPES,
   SUPPORT_LEVELS,
   type MilestoneType,
   type SupportLevel,
 } from "@/lib/entitlement-process/types"
-import { MotionPage, MotionCard } from "@/components/ui/motion"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { HelpButton } from "@/components/help/help-button"
-import {
-  AlertCircle,
-  AlertTriangle,
-  Building2,
-  CheckCircle2,
-  Clock,
-  Copy,
-  Filter,
-  Loader2,
-  PauseCircle,
-  Pencil,
-  PlayCircle,
-  Plus,
-  RotateCcw,
-  Save,
-  Settings2,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  TimerOff,
-  Trash2,
-  X,
-  XCircle,
-} from "lucide-react"
+import { formatDate as formatDateLocale } from "@/lib/format-date"
 
-interface Milestones {
+interface MilestoneHealth {
   overdue: number
   atRisk: number
   missed30d: number
   met7d: number
 }
 
-interface Entitlement {
+export interface Entitlement {
   id: string
   companyId: string
   companyName: string
@@ -79,7 +95,7 @@ interface Entitlement {
   definitions: MilestoneDefinition[]
   daysUntilExpiry: number | null
   isExpiringSoon: boolean
-  milestones: Milestones
+  milestones: MilestoneHealth
 }
 
 interface MilestoneDefinition {
@@ -129,6 +145,14 @@ interface EntitlementTemplate {
   definitions: EntitlementTemplateDefinition[]
 }
 
+interface EntitlementPermissions {
+  canRead: boolean
+  canWrite: boolean
+  canActivate: boolean
+  canCancel: boolean
+  canWaiveMilestone: boolean
+}
+
 interface EntitlementsResponse {
   createdEntitlementId?: string
   entitlements: Entitlement[]
@@ -144,29 +168,13 @@ interface EntitlementsResponse {
   permissions?: EntitlementPermissions
 }
 
-interface EntitlementPermissions {
-  canRead: boolean
-  canWrite: boolean
-  canActivate: boolean
-  canCancel: boolean
-  canWaiveMilestone: boolean
-}
-
 interface FormState {
   companyId: string
   slaPolicyId: string
-  supportLevel: "basic" | "standard" | "premium" | "enterprise"
+  supportLevel: SupportLevel
   validFrom: string
   validTo: string
   notes: string
-}
-
-interface FiltersState {
-  companyId: string
-  status: string
-  supportLevel: string
-  slaPolicyId: string
-  risk: string
 }
 
 interface MilestoneFormState {
@@ -180,28 +188,22 @@ interface MilestoneFormState {
   template: SupportLevel
 }
 
-const SUPPORT_LEVEL_COLORS: Record<string, string> = {
-  enterprise: "bg-purple-600 text-white",
-  premium: "bg-blue-600 text-white",
-  standard: "bg-slate-600 text-white",
-  basic: "bg-slate-500 text-white",
+type LifecycleAction = "activate" | "suspend" | "resume" | "expire" | "cancel"
+
+interface LifecycleTarget {
+  entitlement: Entitlement
+  action: LifecycleAction
 }
 
-const STATUS_BADGES: Record<string, string> = {
-  active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  draft: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  suspended: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  expired: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400",
-  cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-}
-
-const DEFAULT_ENTITLEMENT_PERMISSIONS: EntitlementPermissions = {
+const DEFAULT_PERMISSIONS: EntitlementPermissions = {
   canRead: false,
   canWrite: false,
   canActivate: false,
   canCancel: false,
   canWaiveMilestone: false,
 }
+
+const ENTITLEMENT_STATUSES = ["draft", "active", "suspended", "expired", "cancelled"] as const
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10)
@@ -222,22 +224,15 @@ function emptyForm(defaultSlaPolicyId = ""): FormState {
   }
 }
 
-function emptyFilters(): FiltersState {
-  return {
-    companyId: "",
-    status: "",
-    supportLevel: "",
-    slaPolicyId: "",
-    risk: "",
-  }
+function emptyFilters(): EntitlementFilters {
+  return { companyId: "", status: "", supportLevel: "", slaPolicyId: "", risk: "" }
 }
 
 function asSupportLevel(value: string): SupportLevel {
   return SUPPORT_LEVELS.includes(value as SupportLevel) ? value as SupportLevel : "standard"
 }
 
-function emptyMilestoneForm(supportLevel: string): MilestoneFormState {
-  const level = asSupportLevel(supportLevel)
+function emptyMilestoneForm(level: string): MilestoneFormState {
   return {
     editingDefinitionId: null,
     type: "first_response",
@@ -246,1040 +241,23 @@ function emptyMilestoneForm(supportLevel: string): MilestoneFormState {
     dueValue: "4",
     dueUnit: "hours",
     isRequired: true,
-    template: level,
+    template: asSupportLevel(level),
   }
 }
 
-export default function EntitlementsPage() {
-  const t = useTranslations("slice2.entitlements")
-  const tc = useTranslations("slice2.common")
-  const locale = useLocale()
-  const formatDate = (iso: string | null): string =>
-    iso ? formatDateLocale(iso, locale) : "—"
-  const [data, setData] = useState<EntitlementsResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
-  const [milestoneLoadingKey, setMilestoneLoadingKey] = useState<string | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(() => emptyForm())
-  const [filters, setFilters] = useState<FiltersState>(() => emptyFilters())
-  const [milestoneForms, setMilestoneForms] = useState<Record<string, MilestoneFormState>>({})
-  const [highlightedEntitlementId, setHighlightedEntitlementId] = useState<string | null>(null)
-
-  const fetchEntitlements = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch("/api/v1/entitlements")
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || tc("errorFetchFailed"))
-      setData(json)
-      setError(null)
-      const defaultPolicy = json.slaPolicies?.find((policy: SlaPolicyOption) => policy.isDefault)
-        || json.slaPolicies?.[0]
-      if (defaultPolicy) {
-        setForm((current) => current.slaPolicyId ? current : emptyForm(defaultPolicy.id))
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : tc("errorFetchFailed"))
-    } finally {
-      setLoading(false)
-    }
-  }, [tc])
-
-  useEffect(() => {
-    fetchEntitlements()
-  }, [fetchEntitlements])
-
-  useEffect(() => {
-    if (!highlightedEntitlementId) return
-    const timeout = window.setTimeout(() => setHighlightedEntitlementId(null), 12_000)
-    return () => window.clearTimeout(timeout)
-  }, [highlightedEntitlementId])
-
-  const selectedCompany = useMemo(
-    () => data?.companies.find((company) => company.id === form.companyId) || null,
-    [data?.companies, form.companyId],
-  )
-  const selectedSla = useMemo(
-    () => data?.slaPolicies.find((policy) => policy.id === form.slaPolicyId) || null,
-    [data?.slaPolicies, form.slaPolicyId],
-  )
-  const editingEntitlement = useMemo(
-    () => data?.entitlements.find((entitlement) => entitlement.id === editingId) || null,
-    [data?.entitlements, editingId],
-  )
-  const filteredEntitlements = useMemo(() => {
-    const entitlements = data?.entitlements ?? []
-    return entitlements.filter((entitlement) => {
-      if (filters.companyId && entitlement.companyId !== filters.companyId) return false
-      if (filters.status && entitlement.status !== filters.status) return false
-      if (filters.supportLevel && entitlement.supportLevel !== filters.supportLevel) return false
-      if (filters.slaPolicyId && entitlement.slaPolicyId !== filters.slaPolicyId) return false
-      if (filters.risk === "expiring" && !entitlement.isExpiringSoon) return false
-      if (filters.risk === "overdue" && entitlement.milestones.overdue === 0) return false
-      if (filters.risk === "atRisk" && entitlement.milestones.atRisk === 0) return false
-      return true
-    })
-  }, [data?.entitlements, filters])
-  const permissions = data?.permissions ?? DEFAULT_ENTITLEMENT_PERMISSIONS
-  const canSubmit = Boolean(
-    permissions.canWrite && form.companyId && form.slaPolicyId && form.validFrom && !saving,
-  )
-  const hasNoSetupOptions =
-    !loading && data !== null && (data.companies.length === 0 || data.slaPolicies.length === 0)
-  const selectedSupportLevelName = t(`supportLevels.${form.supportLevel}`)
-  const selectedSupportTemplate = data?.templates.find(
-    (template) => template.supportLevel === form.supportLevel,
-  ) ?? null
-  const selectedSupportDefinitions = selectedSupportTemplate?.definitions ?? []
-  const selectedSupportPreview = selectedSupportDefinitions.slice(0, 3)
-  const selectedSupportHiddenRules =
-    selectedSupportDefinitions.length - selectedSupportPreview.length
-
-  const resetForm = useCallback((nextData = data) => {
-    const defaultPolicy = nextData?.slaPolicies.find((policy) => policy.isDefault)
-      || nextData?.slaPolicies[0]
-    setEditingId(null)
-    setForm(emptyForm(defaultPolicy?.id || ""))
-  }, [data])
-
-  const startCreate = useCallback(() => {
-    if (!permissions.canWrite) {
-      setError(t("permissionReadOnlyDesc"))
-      return
-    }
-    resetForm()
-    document.getElementById("support-term-form")?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }, [permissions.canWrite, resetForm, t])
-
-  const startEdit = useCallback((entitlement: Entitlement) => {
-    if (!permissions.canWrite) {
-      setError(t("permissionReadOnlyDesc"))
-      return
-    }
-    setEditingId(entitlement.id)
-    setError(null)
-    setNotice(null)
-    setForm({
-      companyId: entitlement.companyId,
-      slaPolicyId: entitlement.slaPolicyId,
-      supportLevel: entitlement.supportLevel as FormState["supportLevel"],
-      validFrom: dateInputValue(entitlement.validFrom),
-      validTo: dateInputValue(entitlement.validTo),
-      notes: entitlement.notes || "",
-    })
-    document.getElementById("support-term-form")?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }, [permissions.canWrite, t])
-
-  const getMilestoneForm = useCallback((entitlement: Entitlement) => (
-    milestoneForms[entitlement.id] ?? emptyMilestoneForm(entitlement.supportLevel)
-  ), [milestoneForms])
-
-  const updateMilestoneForm = useCallback((
-    entitlement: Entitlement,
-    patch: Partial<MilestoneFormState>,
-  ) => {
-    setMilestoneForms((current) => ({
-      ...current,
-      [entitlement.id]: {
-        ...(current[entitlement.id] ?? emptyMilestoneForm(entitlement.supportLevel)),
-        ...patch,
-      },
-    }))
-  }, [])
-
-  const resetMilestoneForm = useCallback((entitlement: Entitlement) => {
-    setMilestoneForms((current) => ({
-      ...current,
-      [entitlement.id]: emptyMilestoneForm(entitlement.supportLevel),
-    }))
-  }, [])
-
-  const submitMilestoneDefinition = async (entitlement: Entitlement) => {
-    if (!permissions.canWrite) {
-      setError(t("permissionReadOnlyDesc"))
-      return
-    }
-    const current = getMilestoneForm(entitlement)
-    const dueValue = Number(current.dueValue)
-    if (!Number.isFinite(dueValue) || dueValue <= 0) {
-      setError(t("milestoneDueInvalid"))
-      return
-    }
-
-    const loadingKey = `${entitlement.id}:definition`
-    setMilestoneLoadingKey(loadingKey)
-    setError(null)
-    setNotice(null)
-    try {
-      const editingDefinitionId = current.editingDefinitionId
-      const res = await fetch(
-        editingDefinitionId
-          ? `/api/v1/entitlements/${entitlement.id}/milestones/${editingDefinitionId}`
-          : `/api/v1/entitlements/${entitlement.id}/milestones`,
-        {
-          method: editingDefinitionId ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            editingDefinitionId
-              ? {
-                  name: current.name.trim() || t(`milestoneTypes.${current.type}`),
-                  dueValue,
-                  dueUnit: current.dueUnit,
-                  isRequired: current.isRequired,
-                }
-              : {
-                  mode: "definition",
-                  type: current.type,
-                  name: current.name.trim() || t(`milestoneTypes.${current.type}`),
-                  severityTier: current.severityTier,
-                  dueValue,
-                  dueUnit: current.dueUnit,
-                  isRequired: current.isRequired,
-                },
-          ),
-        },
-      )
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || t("milestoneSaveFailed"))
-      await fetchEntitlements()
-      setNotice(editingDefinitionId ? t("milestoneUpdatedNotice") : t("milestoneCreatedNotice"))
-      resetMilestoneForm(entitlement)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("milestoneSaveFailed"))
-    } finally {
-      setMilestoneLoadingKey(null)
-    }
-  }
-
-  const applyMilestoneTemplate = async (entitlement: Entitlement) => {
-    if (!permissions.canWrite) {
-      setError(t("permissionReadOnlyDesc"))
-      return
-    }
-    const current = getMilestoneForm(entitlement)
-    const loadingKey = `${entitlement.id}:template`
-    setMilestoneLoadingKey(loadingKey)
-    setError(null)
-    setNotice(null)
-    try {
-      const res = await fetch(`/api/v1/entitlements/${entitlement.id}/milestones`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "template", template: current.template }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || t("templateApplyFailed"))
-      await fetchEntitlements()
-      setNotice(t("templateAppliedNotice"))
-      resetMilestoneForm(entitlement)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("templateApplyFailed"))
-    } finally {
-      setMilestoneLoadingKey(null)
-    }
-  }
-
-  const editMilestoneDefinition = (entitlement: Entitlement, definition: MilestoneDefinition) => {
-    const due = secondsToDueWindow(definition.dueWithinSeconds)
-    updateMilestoneForm(entitlement, {
-      editingDefinitionId: definition.id,
-      type: definition.type as MilestoneType,
-      name: definition.name,
-      severityTier: (definition.severityTier ?? "all") as MilestoneSeverityScope,
-      dueValue: String(due.value),
-      dueUnit: due.unit,
-      isRequired: definition.isRequired,
-    })
-  }
-
-  const deleteMilestoneDefinition = async (entitlement: Entitlement, definition: MilestoneDefinition) => {
-    if (!permissions.canWrite) {
-      setError(t("permissionReadOnlyDesc"))
-      return
-    }
-    if (!window.confirm(t("confirmDeleteMilestone"))) return
-    const loadingKey = `${entitlement.id}:delete:${definition.id}`
-    setMilestoneLoadingKey(loadingKey)
-    setError(null)
-    setNotice(null)
-    try {
-      const res = await fetch(`/api/v1/entitlements/${entitlement.id}/milestones/${definition.id}`, {
-        method: "DELETE",
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || t("milestoneDeleteFailed"))
-      await fetchEntitlements()
-      setNotice(t("milestoneDeletedNotice"))
-      if (getMilestoneForm(entitlement).editingDefinitionId === definition.id) {
-        resetMilestoneForm(entitlement)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("milestoneDeleteFailed"))
-    } finally {
-      setMilestoneLoadingKey(null)
-    }
-  }
-
-  const submitEntitlement = async () => {
-    if (!canSubmit) return
-    setSaving(true)
-    setError(null)
-    setNotice(null)
-    try {
-      const res = await fetch(
-        editingId ? `/api/v1/entitlements/${editingId}` : "/api/v1/entitlements",
-        {
-          method: editingId ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...(editingId
-              ? {}
-              : {
-                  companyId: form.companyId,
-                  slaPolicyId: form.slaPolicyId,
-                }),
-            supportLevel: form.supportLevel,
-            validFrom: form.validFrom,
-            validTo: form.validTo || null,
-            notes: form.notes.trim() || null,
-          }),
-        },
-      )
-      const json = await res.json()
-      if (!res.ok) {
-        throw new Error(json.error || (editingId ? t("updateFailed") : t("createFailed")))
-      }
-      if (editingId) {
-        await fetchEntitlements()
-        setNotice(t("updatedNotice"))
-        resetForm()
-      } else {
-        const createdEntitlementId =
-          typeof json.createdEntitlementId === "string" ? json.createdEntitlementId : null
-        setData(json)
-        setFilters(emptyFilters())
-        setNotice(t("createdNotice"))
-        resetForm(json)
-        if (createdEntitlementId) {
-          setHighlightedEntitlementId(createdEntitlementId)
-          window.setTimeout(() => {
-            document
-              .getElementById(`support-term-${createdEntitlementId}`)
-              ?.scrollIntoView({ behavior: "smooth", block: "center" })
-          }, 80)
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : editingId ? t("updateFailed") : t("createFailed"))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const runLifecycleAction = async (
-    entitlement: Entitlement,
-    action: "activate" | "suspend" | "resume" | "expire" | "cancel",
-  ) => {
-    const allowed = action === "cancel" ? permissions.canCancel : permissions.canActivate
-    if (!allowed) {
-      setError(t("permissionLifecycleDesc"))
-      return
-    }
-
-    let cancellationReason: string | null = null
-    if (action === "cancel") {
-      cancellationReason = window.prompt(t("cancelReasonPrompt"), "")
-      if (cancellationReason === null) return
-      if (!cancellationReason.trim()) {
-        setError(t("cancelReasonRequired"))
-        return
-      }
-    }
-    if (action === "expire" && !window.confirm(t("confirmExpire"))) return
-
-    setActionLoadingId(entitlement.id)
-    setError(null)
-    setNotice(null)
-    try {
-      const res = await fetch(`/api/v1/entitlements/${entitlement.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          ...(cancellationReason ? { cancellationReason: cancellationReason.trim() } : {}),
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || t("lifecycleFailed"))
-      await fetchEntitlements()
-      setNotice(t(`actionNotices.${action}`))
-      if (editingId === entitlement.id) resetForm()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("lifecycleFailed"))
-    } finally {
-      setActionLoadingId(null)
-    }
-  }
-
-  return (
-    <MotionPage className="p-6">
-      <div className="mx-auto max-w-[96rem] space-y-6">
-        <header className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-              <Shield className="h-7 w-7 text-primary" />
-              {t("title")}
-              <HelpButton slug="entitlements" variant="label" />
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              {t("subtitle")}
-            </p>
-          </div>
-          {permissions.canWrite && (
-            <Button
-              className="w-full gap-2 sm:w-auto"
-              onClick={startCreate}
-            >
-              <Plus className="h-4 w-4" />
-              {t("createButton")}
-            </Button>
-          )}
-        </header>
-
-        {error && (
-          <MotionCard className="flex items-start gap-2 rounded-lg border border-destructive bg-destructive/10 p-4">
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-            <p className="text-sm">{error}</p>
-          </MotionCard>
-        )}
-        {notice && (
-          <MotionCard className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-            <p className="text-sm">{notice}</p>
-          </MotionCard>
-        )}
-
-        <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_400px]">
-          <div className="space-y-4">
-            <MotionCard className="rounded-lg border bg-card p-4">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <MetricTile label={t("kpiActive")} value={data?.activeCount ?? 0} loading={loading} />
-                <MetricTile
-                  label={t("kpiExpiring30d")}
-                  value={data?.expiringSoonCount ?? 0}
-                  loading={loading}
-                  icon={<Clock className="h-3.5 w-3.5" />}
-                  hot={(data?.expiringSoonCount ?? 0) > 0}
-                />
-                <MetricTile
-                  label={t("kpiOverdue")}
-                  value={data?.overdueMilestones ?? 0}
-                  loading={loading}
-                  icon={<TimerOff className="h-3.5 w-3.5" />}
-                  danger={(data?.overdueMilestones ?? 0) > 0}
-                />
-                <MetricTile
-                  label={t("kpiAtRisk24h")}
-                  value={data?.atRiskMilestones ?? 0}
-                  loading={loading}
-                  icon={<AlertTriangle className="h-3.5 w-3.5" />}
-                  hot={(data?.atRiskMilestones ?? 0) > 0}
-                />
-                <MetricTile
-                  label={t("kpiMissed30d")}
-                  value={data?.missed30d ?? 0}
-                  loading={loading}
-                  icon={<XCircle className="h-3.5 w-3.5" />}
-                  danger={(data?.missed30d ?? 0) > 0}
-                />
-              </div>
-            </MotionCard>
-
-            <MotionCard className="rounded-lg border bg-card p-5">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold">{t("howItWorksTitle")}</h2>
-                  <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {t("howItWorksDesc")}
-                  </p>
-                </div>
-                <div className="shrink-0 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                  {t("draftFirstHint")}
-                </div>
-              </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {[
-                  t("stepCompany"),
-                  t("stepSla"),
-                  t("stepLevel"),
-                  t("stepValidity"),
-                  t("stepMilestones"),
-                  t("stepActivate"),
-                ].map((step, index) => (
-                  <div key={step} className="flex min-h-12 items-center gap-3 rounded-md border bg-background px-3 py-2 text-sm">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                      {index + 1}
-                    </span>
-                    <span>{step}</span>
-                  </div>
-                ))}
-              </div>
-            </MotionCard>
-
-            {data && data.entitlements.length > 0 && (
-              <MotionCard className="rounded-lg border bg-card p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-muted-foreground" />
-                    <h2 className="text-sm font-semibold">{t("filtersTitle")}</h2>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setFilters(emptyFilters())}>
-                    <RotateCcw className="h-4 w-4" />
-                    {t("resetFilters")}
-                  </Button>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                  <Select
-                    label={t("company")}
-                    value={filters.companyId}
-                    onChange={(e) => setFilters((current) => ({ ...current, companyId: e.target.value }))}
-                  >
-                    <option value="">{t("allCompanies")}</option>
-                    {data.companies.map((company) => (
-                      <option key={company.id} value={company.id}>{company.name}</option>
-                    ))}
-                  </Select>
-                  <Select
-                    label={t("status")}
-                    value={filters.status}
-                    onChange={(e) => setFilters((current) => ({ ...current, status: e.target.value }))}
-                  >
-                    <option value="">{t("allStatuses")}</option>
-                    {["draft", "active", "suspended", "expired", "cancelled"].map((status) => (
-                      <option key={status} value={status}>{t(`statuses.${status}`)}</option>
-                    ))}
-                  </Select>
-                  <Select
-                    label={t("supportLevel")}
-                    value={filters.supportLevel}
-                    onChange={(e) => setFilters((current) => ({ ...current, supportLevel: e.target.value }))}
-                  >
-                    <option value="">{t("allSupportLevels")}</option>
-                    {["basic", "standard", "premium", "enterprise"].map((level) => (
-                      <option key={level} value={level}>{t(`supportLevels.${level}`)}</option>
-                    ))}
-                  </Select>
-                  <Select
-                    label={t("slaPolicy")}
-                    value={filters.slaPolicyId}
-                    onChange={(e) => setFilters((current) => ({ ...current, slaPolicyId: e.target.value }))}
-                  >
-                    <option value="">{t("allSlaPolicies")}</option>
-                    {data.slaPolicies.map((policy) => (
-                      <option key={policy.id} value={policy.id}>{policy.name}</option>
-                    ))}
-                  </Select>
-                  <Select
-                    label={t("risk")}
-                    value={filters.risk}
-                    onChange={(e) => setFilters((current) => ({ ...current, risk: e.target.value }))}
-                  >
-                    <option value="">{t("allRiskStates")}</option>
-                    <option value="expiring">{t("riskExpiring")}</option>
-                    <option value="overdue">{t("riskOverdue")}</option>
-                    <option value="atRisk">{t("riskAtRisk")}</option>
-                  </Select>
-                </div>
-              </MotionCard>
-            )}
-
-            {loading ? (
-              <MotionCard className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
-                <Loader2 className="mr-2 inline h-5 w-5 animate-spin" />
-                {tc("loading")}
-              </MotionCard>
-            ) : data && data.entitlements.length === 0 ? (
-              <MotionCard className="rounded-lg border bg-card p-8">
-                <div className="mx-auto max-w-xl text-center">
-                  <Building2 className="mx-auto mb-3 h-12 w-12 text-muted-foreground/60" />
-                  <p className="font-medium">{t("emptyTitle")}</p>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {t("emptyDesc")}
-                  </p>
-                  {permissions.canWrite ? (
-                    <Button className="mt-4 gap-2" onClick={startCreate}>
-                      <Plus className="h-4 w-4" />
-                      {t("createButton")}
-                    </Button>
-                  ) : (
-                    <p className="mt-4 rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-                      {t("permissionReadOnlyDesc")}
-                    </p>
-                  )}
-                </div>
-              </MotionCard>
-            ) : data ? (
-              filteredEntitlements.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4">
-                  {filteredEntitlements.map((e) => (
-                    <EntitlementCard
-                      key={e.id}
-                      entitlement={e}
-                      formatDate={formatDate}
-                      t={t}
-                      onEdit={startEdit}
-                      onLifecycleAction={runLifecycleAction}
-                      milestoneForm={getMilestoneForm(e)}
-                      milestoneLoadingKey={milestoneLoadingKey}
-                      onMilestoneFormChange={(patch) => updateMilestoneForm(e, patch)}
-                      onMilestoneFormReset={() => resetMilestoneForm(e)}
-                      onMilestoneSubmit={() => submitMilestoneDefinition(e)}
-                      onMilestoneTemplateApply={() => applyMilestoneTemplate(e)}
-                      onMilestoneEdit={(definition) => editMilestoneDefinition(e, definition)}
-                      onMilestoneDelete={(definition) => deleteMilestoneDefinition(e, definition)}
-                      actionLoading={actionLoadingId === e.id}
-                      permissions={permissions}
-                      highlighted={highlightedEntitlementId === e.id}
-                      templates={data.templates}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <MotionCard className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-                  {t("noFilterResults")}
-                </MotionCard>
-              )
-            ) : null}
-          </div>
-
-          <MotionCard id="support-term-form" className="h-fit rounded-lg border bg-card p-5">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold">
-                  {permissions.canWrite
-                    ? editingId ? t("editFormTitle") : t("formTitle")
-                    : t("permissionReadOnlyTitle")}
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {permissions.canWrite
-                    ? editingId ? t("editFormDesc") : t("formDesc")
-                    : t("permissionReadOnlyDesc")}
-                </p>
-              </div>
-              {editingId && (
-                <Button variant="ghost" size="icon" onClick={() => resetForm()} title={t("cancelEdit")}>
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-
-            {hasNoSetupOptions && permissions.canWrite && (
-              <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-                {data?.companies.length === 0 ? t("missingCompanies") : t("missingSlaPolicies")}
-              </div>
-            )}
-
-            {permissions.canWrite ? (
-              <div className="space-y-4">
-                <div className="grid gap-1 rounded-md border bg-muted/20 p-1 text-xs sm:grid-cols-3 2xl:grid-cols-1">
-                  <span className="rounded bg-background px-2 py-1.5 text-center font-medium text-foreground">
-                    1. {t("workflowBase")}
-                  </span>
-                  <span className="px-2 py-1.5 text-center text-muted-foreground">
-                    2. {t("workflowRules")}
-                  </span>
-                  <span className="px-2 py-1.5 text-center text-muted-foreground">
-                    3. {t("workflowActivate")}
-                  </span>
-                </div>
-
-                <Select
-                  label={t("company")}
-                  value={form.companyId}
-                  onChange={(e) => setForm((current) => ({ ...current, companyId: e.target.value }))}
-                  disabled={loading || !data?.companies.length || Boolean(editingId)}
-                >
-                  <option value="">{t("selectCompany")}</option>
-                  {data?.companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.name}{company.hasActiveEntitlement ? ` · ${t("hasActiveTerm")}` : ""}
-                    </option>
-                  ))}
-                </Select>
-
-                <Select
-                  label={t("slaPolicy")}
-                  value={form.slaPolicyId}
-                  onChange={(e) => setForm((current) => ({ ...current, slaPolicyId: e.target.value }))}
-                  disabled={loading || !data?.slaPolicies.length || Boolean(editingId)}
-                >
-                  <option value="">{t("selectSlaPolicy")}</option>
-                  {data?.slaPolicies.map((policy) => (
-                    <option key={policy.id} value={policy.id}>
-                      {policy.name}{policy.isDefault ? ` · ${t("defaultPolicy")}` : ""}
-                    </option>
-                  ))}
-                </Select>
-
-                <Select
-                  label={t("supportLevel")}
-                  value={form.supportLevel}
-                  onChange={(e) => setForm((current) => ({ ...current, supportLevel: e.target.value as FormState["supportLevel"] }))}
-                >
-                  <option value="basic">{t("supportLevels.basic")}</option>
-                  <option value="standard">{t("supportLevels.standard")}</option>
-                  <option value="premium">{t("supportLevels.premium")}</option>
-                  <option value="enterprise">{t("supportLevels.enterprise")}</option>
-                </Select>
-
-                <div className="rounded-md border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium text-foreground">{t("supportLevelGuideTitle")}</p>
-                    <span className="rounded-full bg-background px-2 py-0.5 font-medium text-foreground">
-                      {t("supportLevelTemplateBadge", {
-                        count: selectedSupportDefinitions.length,
-                      })}
-                    </span>
-                  </div>
-                  <p className="mt-1">
-                    {t("supportLevelGuideDesc", { level: selectedSupportLevelName })}
-                  </p>
-                  <div className="mt-2 space-y-1">
-                    {selectedSupportPreview.map((definition) => (
-                      <div
-                        key={`${definition.type}:${definition.severityTier ?? "all"}`}
-                        className="flex items-center justify-between gap-2 rounded bg-background px-2 py-1"
-                      >
-                        <span className="truncate">
-                          {t(`milestoneTypes.${definition.type}`)}
-                          {definition.severityTier
-                            ? ` · ${t(`severityScopes.${definition.severityTier}`)}`
-                            : ""}
-                        </span>
-                        <span className="shrink-0 font-mono text-[11px] text-foreground">
-                          {formatDueWindow(definition.dueWithinSeconds, t)}
-                        </span>
-                      </div>
-                    ))}
-                    {selectedSupportHiddenRules > 0 && (
-                      <p className="px-2 pt-1">
-                        {t("supportLevelMoreRules", { count: selectedSupportHiddenRules })}
-                      </p>
-                    )}
-                  </div>
-                  <p className="mt-2 font-medium text-foreground">
-                    {t("supportLevelAfterDraft")}
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-1">
-                  <div className="space-y-1">
-                    <Label>{t("validFrom")}</Label>
-                    <Input
-                      type="date"
-                      value={form.validFrom}
-                      onChange={(e) => setForm((current) => ({ ...current, validFrom: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>{t("validTo")}</Label>
-                    <Input
-                      type="date"
-                      value={form.validTo}
-                      onChange={(e) => setForm((current) => ({ ...current, validTo: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label>{t("notes")}</Label>
-                  <Textarea
-                    value={form.notes}
-                    onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
-                    placeholder={t("notesPlaceholder")}
-                  />
-                </div>
-
-                <div className="rounded-md border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
-                  {editingEntitlement ? (
-                    <p>{t("editingHint", { company: editingEntitlement.companyName || t("unknownCompany") })}</p>
-                  ) : selectedCompany ? (
-                    <p>{t("selectedCompanyHint", { company: selectedCompany.name })}</p>
-                  ) : (
-                    <p>{t("companyHint")}</p>
-                  )}
-                  {selectedSla && (
-                    <p className="mt-1">
-                      {t("selectedSlaHint", {
-                        first: selectedSla.firstResponseHours,
-                        resolution: selectedSla.resolutionHours,
-                      })}
-                    </p>
-                  )}
-                </div>
-
-                <Button className="w-full gap-2" onClick={submitEntitlement} disabled={!canSubmit || hasNoSetupOptions}>
-                  {saving ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : editingId ? (
-                    <Save className="h-4 w-4" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  {saving ? t("saving") : editingId ? t("saveChanges") : t("createDraft")}
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-md border bg-muted/30 p-3 text-sm leading-6 text-muted-foreground">
-                {t("permissionReadOnlyHint")}
-              </div>
-            )}
-          </MotionCard>
-        </div>
-
-        <div className="space-y-1 text-xs text-muted-foreground">
-          <p>{t("footerOverdue")}</p>
-          <p>{t("footerEachEnt")}</p>
-        </div>
-      </div>
-    </MotionPage>
-  )
+function canEditEntitlement(entitlement: Entitlement, permissions: EntitlementPermissions) {
+  return permissions.canWrite && ["draft", "suspended"].includes(entitlement.status)
 }
 
-function MetricTile({
-  label,
-  value,
-  loading,
-  icon,
-  hot,
-  danger,
-}: {
-  label: string
-  value: number
-  loading: boolean
-  icon?: ReactNode
-  hot?: boolean
-  danger?: boolean
-}) {
-  return (
-    <div className="rounded-md border bg-background p-3">
-      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-        {icon}
-        {label}
-      </p>
-      {loading ? (
-        <div className="mt-2 h-7 w-12 animate-pulse rounded bg-muted" />
-      ) : (
-        <p className={`mt-1 text-xl font-bold ${danger ? "text-red-600" : hot ? "text-amber-600" : ""}`}>
-          {value}
-        </p>
-      )}
-    </div>
-  )
-}
-
-function EntitlementCard({
-  entitlement,
-  formatDate,
-  t,
-  onEdit,
-  onLifecycleAction,
-  milestoneForm,
-  milestoneLoadingKey,
-  onMilestoneFormChange,
-  onMilestoneFormReset,
-  onMilestoneSubmit,
-  onMilestoneTemplateApply,
-  onMilestoneEdit,
-  onMilestoneDelete,
-  actionLoading,
-  permissions,
-  highlighted,
-  templates,
-}: {
-  entitlement: Entitlement
-  formatDate: (iso: string | null) => string
-  t: ReturnType<typeof useTranslations>
-  onEdit: (entitlement: Entitlement) => void
-  onLifecycleAction: (
-    entitlement: Entitlement,
-    action: "activate" | "suspend" | "resume" | "expire" | "cancel",
-  ) => void
-  milestoneForm: MilestoneFormState
-  milestoneLoadingKey: string | null
-  onMilestoneFormChange: (patch: Partial<MilestoneFormState>) => void
-  onMilestoneFormReset: () => void
-  onMilestoneSubmit: () => void
-  onMilestoneTemplateApply: () => void
-  onMilestoneEdit: (definition: MilestoneDefinition) => void
-  onMilestoneDelete: (definition: MilestoneDefinition) => void
-  actionLoading: boolean
-  permissions: EntitlementPermissions
-  highlighted: boolean
-  templates: EntitlementTemplate[]
-}) {
-  const hasOverdue = entitlement.milestones.overdue > 0
-  const canEdit = permissions.canWrite && (entitlement.status === "draft" || entitlement.status === "suspended")
-  const activationBlocked = entitlement.definitionCount === 0
-  const actions =
-    (entitlement.status === "draft"
-      ? (["activate", "cancel"] as const)
-      : entitlement.status === "active"
-        ? (["suspend", "expire", "cancel"] as const)
-        : entitlement.status === "suspended"
-          ? (["resume", "expire", "cancel"] as const)
-          : []
-    ).filter((action) => action === "cancel" ? permissions.canCancel : permissions.canActivate)
-  const stateClass = highlighted
-    ? "border-primary/60 bg-primary/5 ring-2 ring-primary/20"
-    : hasOverdue
-      ? "border-red-500 bg-red-500/5"
-      : entitlement.isExpiringSoon
-        ? "border-amber-500 bg-amber-500/5"
-        : ""
-  return (
-    <MotionCard
-      id={`support-term-${entitlement.id}`}
-      className={`scroll-mt-24 rounded-lg border bg-card p-5 transition-[border-color,background-color,box-shadow] duration-200 ${stateClass}`}
-    >
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="flex items-center gap-2 truncate text-lg font-semibold">
-            <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-            {entitlement.companyName || t("unknownCompany")}
-          </h3>
-          <div className="mt-1 flex flex-wrap items-center gap-1">
-            <span className={`rounded px-2 py-0.5 text-xs font-medium ${SUPPORT_LEVEL_COLORS[entitlement.supportLevel] ?? SUPPORT_LEVEL_COLORS.standard}`}>
-              {t.has(`supportLevels.${entitlement.supportLevel}`)
-                ? t(`supportLevels.${entitlement.supportLevel}`)
-                : entitlement.supportLevel}
-            </span>
-            <span className={`rounded px-2 py-0.5 text-xs ${STATUS_BADGES[entitlement.status] ?? STATUS_BADGES.draft}`}>
-              {t.has(`statuses.${entitlement.status}`)
-                ? t(`statuses.${entitlement.status}`)
-                : entitlement.status}
-            </span>
-          </div>
-        </div>
-        {hasOverdue ? (
-          <span title={t("titleOverdue", { count: entitlement.milestones.overdue })} className="shrink-0">
-            <ShieldAlert className="h-6 w-6 text-red-600" />
-          </span>
-        ) : entitlement.milestones.atRisk > 0 ? (
-          <span title={t("titleAtRisk", { count: entitlement.milestones.atRisk })} className="shrink-0">
-            <Shield className="h-6 w-6 text-amber-600" />
-          </span>
-        ) : entitlement.status === "active" ? (
-          <span title={t("titleOnTrack")} className="shrink-0">
-            <ShieldCheck className="h-6 w-6 text-green-600" />
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mb-3 space-y-1 border-b pb-3 text-sm">
-        <div className="flex justify-between gap-3">
-          <span className="text-muted-foreground">{t("slaPolicy")}</span>
-          <span className="truncate">{entitlement.slaPolicyName}</span>
-        </div>
-        <div className="flex justify-between gap-3">
-          <span className="text-muted-foreground">{t("valid")}</span>
-          <span className="font-mono text-xs">
-            {formatDate(entitlement.validFrom)}{" -> "}
-            {entitlement.validTo ? formatDate(entitlement.validTo) : t("open")}
-          </span>
-        </div>
-        {entitlement.isExpiringSoon && entitlement.daysUntilExpiry !== null && (
-          <div className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300">
-            <Clock className="h-3 w-3" />
-            {t("expiresIn", { days: entitlement.daysUntilExpiry })}
-          </div>
-        )}
-        <div className="flex justify-between gap-3">
-          <span className="text-muted-foreground">{t("milestoneDefs")}</span>
-          <span>{entitlement.definitionCount}</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-4 gap-2 text-center text-xs">
-        <MilestoneCount label={t("overdue")} value={entitlement.milestones.overdue} danger />
-        <MilestoneCount label={t("lt24h")} value={entitlement.milestones.atRisk} hot />
-        <MilestoneCount label={t("met7d")} value={entitlement.milestones.met7d} success />
-        <MilestoneCount label={t("missed30d")} value={entitlement.milestones.missed30d} danger />
-      </div>
-
-      {entitlement.milestones.met7d > 0 && !hasOverdue && entitlement.milestones.atRisk === 0 && (
-        <div className="mt-3 flex items-center gap-1 border-t pt-3 text-xs text-green-700 dark:text-green-300">
-          <CheckCircle2 className="h-3 w-3" />
-          {t("onTrack", { count: entitlement.milestones.met7d })}
-        </div>
-      )}
-
-      {highlighted && entitlement.status === "draft" && (
-        <div className="mt-3 rounded-md border border-primary/20 bg-background px-3 py-2 text-sm">
-          <p className="font-medium">{t("draftCreatedFocusTitle")}</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {t("draftCreatedFocusDesc")}
-          </p>
-        </div>
-      )}
-
-      <MilestoneConstructor
-        entitlement={entitlement}
-        form={milestoneForm}
-        loadingKey={milestoneLoadingKey}
-        canEdit={canEdit}
-        templates={templates}
-        t={t}
-        onFormChange={onMilestoneFormChange}
-        onFormReset={onMilestoneFormReset}
-        onSubmit={onMilestoneSubmit}
-        onTemplateApply={onMilestoneTemplateApply}
-        onEditDefinition={onMilestoneEdit}
-        onDeleteDefinition={onMilestoneDelete}
-      />
-
-      {(canEdit || actions.length > 0) && (
-        <div className="mt-4 flex flex-wrap gap-2 border-t pt-3">
-          {canEdit && (
-            <Button variant="outline" size="sm" className="gap-1" onClick={() => onEdit(entitlement)}>
-              <Pencil className="h-3.5 w-3.5" />
-              {t("edit")}
-            </Button>
-          )}
-          {actions.map((action) => (
-            <Button
-              key={action}
-              variant={action === "cancel" || action === "expire" ? "outline" : "secondary"}
-              size="sm"
-              className="gap-1"
-              onClick={() => onLifecycleAction(entitlement, action)}
-              disabled={actionLoading || ((action === "activate" || action === "resume") && activationBlocked)}
-            >
-              {actionLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : action === "activate" || action === "resume" ? (
-                <PlayCircle className="h-3.5 w-3.5" />
-              ) : action === "suspend" ? (
-                <PauseCircle className="h-3.5 w-3.5" />
-              ) : (
-                <XCircle className="h-3.5 w-3.5" />
-              )}
-              {t(`actions.${action}`)}
-            </Button>
-          ))}
-          {activationBlocked && actions.some((action) => action === "activate" || action === "resume") && (
-            <p className="basis-full text-xs text-muted-foreground">
-              {t("activationNeedsRules")}
-            </p>
-          )}
-        </div>
-      )}
-    </MotionCard>
-  )
+function lifecycleActions(entitlement: Entitlement, permissions: EntitlementPermissions): LifecycleAction[] {
+  const actions: LifecycleAction[] = entitlement.status === "draft"
+    ? ["activate", "cancel"]
+    : entitlement.status === "active"
+      ? ["suspend", "expire", "cancel"]
+      : entitlement.status === "suspended"
+        ? ["resume", "expire", "cancel"]
+        : []
+  return actions.filter((action) => action === "cancel" ? permissions.canCancel : permissions.canActivate)
 }
 
 function formatDueWindow(seconds: number, t: ReturnType<typeof useTranslations>) {
@@ -1287,287 +265,1044 @@ function formatDueWindow(seconds: number, t: ReturnType<typeof useTranslations>)
   return `${due.value} ${t(`dueUnitsShort.${due.unit}`)}`
 }
 
-function MilestoneConstructor({
-  entitlement,
-  form,
-  loadingKey,
-  canEdit,
-  templates,
-  t,
-  onFormChange,
-  onFormReset,
-  onSubmit,
-  onTemplateApply,
-  onEditDefinition,
-  onDeleteDefinition,
-}: {
-  entitlement: Entitlement
-  form: MilestoneFormState
-  loadingKey: string | null
-  canEdit: boolean
-  templates: EntitlementTemplate[]
-  t: ReturnType<typeof useTranslations>
-  onFormChange: (patch: Partial<MilestoneFormState>) => void
-  onFormReset: () => void
-  onSubmit: () => void
-  onTemplateApply: () => void
-  onEditDefinition: (definition: MilestoneDefinition) => void
-  onDeleteDefinition: (definition: MilestoneDefinition) => void
-}) {
-  const definitionLoading = loadingKey === `${entitlement.id}:definition`
-  const templateLoading = loadingKey === `${entitlement.id}:template`
-  const selectedTemplate = templates.find((template) => template.supportLevel === form.template)
-  const templateDefinitionCount = selectedTemplate?.definitions.length ?? 0
-  const templateUnavailable = !selectedTemplate?.isActive || templateDefinitionCount === 0
-  const isEditingDefinition = Boolean(form.editingDefinitionId)
+export default function EntitlementsPage() {
+  const t = useTranslations("slice2.entitlements")
+  const tc = useTranslations("slice2.common")
+  const common = useTranslations("common")
+  const locale = useLocale()
+  const [data, setData] = useState<EntitlementsResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState("")
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true)
+  const [actionError, setActionError] = useState("")
+  const [actionErrorRetryable, setActionErrorRetryable] = useState(true)
+  const [notice, setNotice] = useState("")
+  const [filters, setFilters] = useState<EntitlementFilters>(() => emptyFilters())
+
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [milestoneEditorOpen, setMilestoneEditorOpen] = useState(false)
+  const [detailError, setDetailError] = useState("")
+  const [detailErrorRetryable, setDetailErrorRetryable] = useState(true)
+  const [milestoneForm, setMilestoneForm] = useState<MilestoneFormState>(() => emptyMilestoneForm("standard"))
+  const [milestoneLoadingKey, setMilestoneLoadingKey] = useState<string | null>(null)
+  const [deleteDefinitionTarget, setDeleteDefinitionTarget] = useState<MilestoneDefinition | null>(null)
+
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<FormState>(() => emptyForm())
+  const [formBaseline, setFormBaseline] = useState<FormState>(() => emptyForm())
+  const [formError, setFormError] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
+
+  const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null)
+  const [lifecycleReason, setLifecycleReason] = useState("")
+  const [lifecycleError, setLifecycleError] = useState("")
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const desktopRowRefs = useRef(new Map<string, HTMLButtonElement>())
+  const mobileRowRefs = useRef(new Map<string, HTMLButtonElement>())
+  const listRef = useRef<HTMLElement>(null)
+  const returnFocusId = useRef<string | null>(null)
+
+  const restoreListFocus = useCallback(() => {
+    const id = returnFocusId.current
+    if (!id) return
+    const candidates = [desktopRowRefs.current.get(id), mobileRowRefs.current.get(id)]
+    const target = candidates.find((candidate) => candidate && candidate.getClientRects().length > 0)
+      ?? candidates.find(Boolean)
+    if (target) target.focus({ preventScroll: true })
+    else listRef.current?.focus({ preventScroll: true })
+    returnFocusId.current = null
+  }, [])
+
+  const formatDate = useCallback((iso: string | null) => (
+    iso ? formatDateLocale(iso, locale) : "—"
+  ), [locale])
+
+  const localApiError = useCallback((response: Response, payload: { code?: string } | null, fallback: string) => {
+    if (response.status === 403) return t("permissionApiError")
+    switch (payload?.code) {
+      case "ACTIVE_COMPANY_CONFLICT": return t("activeCompanyConflict")
+      case "MILESTONE_REQUIRED": return t("activationNeedsRules")
+      case "CANCELLATION_REASON_REQUIRED": return t("cancelReasonRequired")
+      case "INVALID_VALIDITY": return t("validityRangeError")
+      case "MILESTONE_DUPLICATE": return t("milestoneDuplicateError")
+      case "MILESTONE_IN_USE": return t("milestoneInUseError")
+      case "TERM_NOT_EDITABLE": return t("termNotEditableError")
+      default: return fallback
+    }
+  }, [t])
+
+  const fetchEntitlements = useCallback(async (background = false) => {
+    let retryable = true
+    if (background) setRefreshing(true)
+    else {
+      setLoading(true)
+      setLoadError("")
+      setLoadErrorRetryable(true)
+    }
+    try {
+      const response = await fetch("/api/v1/entitlements")
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload || !Array.isArray(payload.entitlements)) {
+        retryable = response.status !== 403
+        throw new Error(response.status === 403 ? t("permissionReadOnlyDesc") : tc("errorFetchFailed"))
+      }
+      setData(payload)
+      setLoadError("")
+      setLoadErrorRetryable(true)
+      setActionError("")
+      setActionErrorRetryable(true)
+      return payload as EntitlementsResponse
+    } catch (error) {
+      const message = error instanceof Error ? error.message : tc("errorFetchFailed")
+      if (background) {
+        setActionError(message)
+        setActionErrorRetryable(retryable)
+      } else {
+        setLoadError(message)
+        setLoadErrorRetryable(retryable)
+      }
+      return null
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [t, tc])
+
+  useEffect(() => {
+    void fetchEntitlements()
+  }, [fetchEntitlements])
+
+  const permissions = data?.permissions ?? DEFAULT_PERMISSIONS
+  const selectedEntitlement = useMemo(
+    () => data?.entitlements.find((entitlement) => entitlement.id === selectedId) ?? null,
+    [data?.entitlements, selectedId],
+  )
+  const editingEntitlement = useMemo(
+    () => data?.entitlements.find((entitlement) => entitlement.id === editingId) ?? null,
+    [data?.entitlements, editingId],
+  )
+  const filteredEntitlements = useMemo(
+    () => filterEntitlements(data?.entitlements ?? [], filters),
+    [data?.entitlements, filters],
+  )
+  const activeFilterCount = Object.values(filters).filter(Boolean).length
+  const uncoveredCompanies = data?.companies.filter(
+    (company) => company.status === "active" && !company.hasActiveEntitlement,
+  ).length ?? 0
+  const attentionMilestones = (data?.atRiskMilestones ?? 0) + (data?.overdueMilestones ?? 0)
+  const hasNoSetupOptions = Boolean(data && (data.companies.length === 0 || data.slaPolicies.length === 0))
+  const isFormDirty = JSON.stringify(form) !== JSON.stringify(formBaseline)
+  const bannerError = actionError || (data ? loadError : "")
+  const bannerErrorRetryable = actionError ? actionErrorRetryable : loadErrorRetryable
+
+  const defaultForm = useCallback((source = data) => {
+    const defaultPolicy = source?.slaPolicies.find((policy) => policy.isDefault) ?? source?.slaPolicies[0]
+    return emptyForm(defaultPolicy?.id ?? "")
+  }, [data])
+
+  const openCreate = () => {
+    if (!permissions.canWrite) {
+      setActionError(t("permissionReadOnlyDesc"))
+      return
+    }
+    const next = defaultForm()
+    setEditingId(null)
+    setForm(next)
+    setFormBaseline(next)
+    setFormError("")
+    setNotice("")
+    setFormOpen(true)
+  }
+
+  const openEdit = (entitlement: Entitlement) => {
+    if (!canEditEntitlement(entitlement, permissions)) {
+      setActionError(t("termNotEditableError"))
+      return
+    }
+    returnFocusId.current = entitlement.id
+    const next: FormState = {
+      companyId: entitlement.companyId,
+      slaPolicyId: entitlement.slaPolicyId,
+      supportLevel: asSupportLevel(entitlement.supportLevel),
+      validFrom: dateInputValue(entitlement.validFrom),
+      validTo: dateInputValue(entitlement.validTo),
+      notes: entitlement.notes ?? "",
+    }
+    setEditingId(entitlement.id)
+    setForm(next)
+    setFormBaseline(next)
+    setFormError("")
+    setNotice("")
+    setFormOpen(true)
+  }
+
+  const finishFormClose = () => {
+    setFormOpen(false)
+    setEditingId(null)
+    setFormError("")
+    window.requestAnimationFrame(restoreListFocus)
+  }
+
+  const requestFormClose = () => {
+    if (isFormDirty && !saving) setDiscardOpen(true)
+    else finishFormClose()
+  }
+
+  const submitEntitlement = async () => {
+    if (!permissions.canWrite || saving) return
+    if (!form.companyId || !form.slaPolicyId || !form.validFrom) {
+      setFormError(t("requiredFieldsError"))
+      return
+    }
+    if (form.validTo && form.validTo <= form.validFrom) {
+      setFormError(t("validityRangeError"))
+      return
+    }
+    setSaving(true)
+    setFormError("")
+    try {
+      const response = await fetch(editingId ? `/api/v1/entitlements/${editingId}` : "/api/v1/entitlements", {
+        method: editingId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(editingId ? {} : { companyId: form.companyId, slaPolicyId: form.slaPolicyId }),
+          supportLevel: form.supportLevel,
+          validFrom: form.validFrom,
+          validTo: form.validTo || null,
+          notes: form.notes.trim() || null,
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(localApiError(response, payload, editingId ? t("updateFailed") : t("createFailed")))
+      }
+
+      const createdId = typeof payload?.createdEntitlementId === "string" ? payload.createdEntitlementId : null
+      if (editingId) await fetchEntitlements(true)
+      else if (payload && Array.isArray(payload.entitlements)) setData(payload)
+      setNotice(editingId ? t("updatedNotice") : t("createdNoticeCompact"))
+      setFormBaseline(form)
+      finishFormClose()
+      const nextSelectedId = editingId ?? createdId
+      if (nextSelectedId) {
+        setSelectedId(nextSelectedId)
+        setMilestoneEditorOpen(Boolean(createdId))
+        const nextLevel = payload?.entitlements?.find((item: Entitlement) => item.id === nextSelectedId)?.supportLevel
+          ?? form.supportLevel
+        setMilestoneForm(emptyMilestoneForm(nextLevel))
+      }
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : editingId ? t("updateFailed") : t("createFailed"))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openDetails = (entitlement: Entitlement) => {
+    returnFocusId.current = entitlement.id
+    setSelectedId(entitlement.id)
+    setMilestoneEditorOpen(false)
+    setMilestoneForm(emptyMilestoneForm(entitlement.supportLevel))
+    setActionError("")
+    setDetailError("")
+    setDetailErrorRetryable(true)
+  }
+
+  const closeDetails = () => {
+    setSelectedId(null)
+    setMilestoneEditorOpen(false)
+    window.requestAnimationFrame(restoreListFocus)
+  }
+
+  const editFromDetails = () => {
+    if (!selectedEntitlement) return
+    const entitlement = selectedEntitlement
+    setSelectedId(null)
+    setMilestoneEditorOpen(false)
+    openEdit(entitlement)
+  }
+
+  const openLifecycle = (entitlement: Entitlement, action: LifecycleAction) => {
+    setLifecycleTarget({ entitlement, action })
+    setLifecycleReason("")
+    setLifecycleError("")
+    setNotice("")
+  }
+
+  const performLifecycle = async () => {
+    if (!lifecycleTarget || actionLoadingId) return
+    const { entitlement, action } = lifecycleTarget
+    if (action === "cancel" && !lifecycleReason.trim()) {
+      setLifecycleError(t("cancelReasonRequired"))
+      return
+    }
+    setActionLoadingId(entitlement.id)
+    setLifecycleError("")
+    try {
+      const response = await fetch(`/api/v1/entitlements/${entitlement.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          ...(lifecycleReason.trim() ? { reason: lifecycleReason.trim() } : {}),
+          ...(action === "cancel" ? { cancellationReason: lifecycleReason.trim() } : {}),
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(localApiError(response, payload, t("lifecycleFailed")))
+      await fetchEntitlements(true)
+      setNotice(t(`actionNotices.${action}`))
+      setLifecycleTarget(null)
+      setLifecycleReason("")
+      if (editingId === entitlement.id) finishFormClose()
+    } catch (error) {
+      setLifecycleError(error instanceof Error ? error.message : t("lifecycleFailed"))
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const submitMilestone = async () => {
+    if (!selectedEntitlement || milestoneLoadingKey) return
+    const dueValue = Number(milestoneForm.dueValue)
+    if (!Number.isFinite(dueValue) || dueValue <= 0) {
+      setDetailError(t("milestoneDueInvalid"))
+      setDetailErrorRetryable(false)
+      return
+    }
+    const severity = milestoneForm.severityTier === "all" ? null : milestoneForm.severityTier
+    const duplicate = !milestoneForm.editingDefinitionId && selectedEntitlement.definitions.some(
+      (definition) => definition.type === milestoneForm.type && definition.severityTier === severity,
+    )
+    if (duplicate) {
+      setDetailError(t("milestoneDuplicateError"))
+      setDetailErrorRetryable(false)
+      return
+    }
+
+    setMilestoneLoadingKey("save")
+    setDetailError("")
+    setDetailErrorRetryable(true)
+    setNotice("")
+    try {
+      const editingDefinitionId = milestoneForm.editingDefinitionId
+      const response = await fetch(
+        editingDefinitionId
+          ? `/api/v1/entitlements/${selectedEntitlement.id}/milestones/${editingDefinitionId}`
+          : `/api/v1/entitlements/${selectedEntitlement.id}/milestones`,
+        {
+          method: editingDefinitionId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editingDefinitionId ? {
+            name: milestoneForm.name.trim() || t(`milestoneTypes.${milestoneForm.type}`),
+            dueValue,
+            dueUnit: milestoneForm.dueUnit,
+            isRequired: milestoneForm.isRequired,
+          } : {
+            mode: "definition",
+            type: milestoneForm.type,
+            name: milestoneForm.name.trim() || t(`milestoneTypes.${milestoneForm.type}`),
+            severityTier: milestoneForm.severityTier,
+            dueValue,
+            dueUnit: milestoneForm.dueUnit,
+            isRequired: milestoneForm.isRequired,
+          }),
+        },
+      )
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        setDetailErrorRetryable(response.status !== 403)
+        throw new Error(localApiError(response, payload, t("milestoneSaveFailed")))
+      }
+      await fetchEntitlements(true)
+      setNotice(editingDefinitionId ? t("milestoneUpdatedNotice") : t("milestoneCreatedNotice"))
+      setMilestoneForm(emptyMilestoneForm(selectedEntitlement.supportLevel))
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : t("milestoneSaveFailed"))
+    } finally {
+      setMilestoneLoadingKey(null)
+    }
+  }
+
+  const applyMilestoneTemplate = async () => {
+    if (!selectedEntitlement || milestoneLoadingKey) return
+    setMilestoneLoadingKey("template")
+    setDetailError("")
+    setDetailErrorRetryable(true)
+    setNotice("")
+    try {
+      const response = await fetch(`/api/v1/entitlements/${selectedEntitlement.id}/milestones`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "template", template: milestoneForm.template }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        setDetailErrorRetryable(response.status !== 403)
+        throw new Error(localApiError(response, payload, t("templateApplyFailed")))
+      }
+      await fetchEntitlements(true)
+      setNotice(t("templateAppliedNotice"))
+      setMilestoneForm(emptyMilestoneForm(selectedEntitlement.supportLevel))
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : t("templateApplyFailed"))
+    } finally {
+      setMilestoneLoadingKey(null)
+    }
+  }
+
+  const editMilestone = (definition: MilestoneDefinition) => {
+    const due = secondsToDueWindow(definition.dueWithinSeconds)
+    setMilestoneForm({
+      editingDefinitionId: definition.id,
+      type: definition.type as MilestoneType,
+      name: definition.name,
+      severityTier: (definition.severityTier ?? "all") as MilestoneSeverityScope,
+      dueValue: String(due.value),
+      dueUnit: due.unit,
+      isRequired: definition.isRequired,
+      template: asSupportLevel(selectedEntitlement?.supportLevel ?? "standard"),
+    })
+    setMilestoneEditorOpen(true)
+  }
+
+  const deleteMilestone = async () => {
+    if (!selectedEntitlement || !deleteDefinitionTarget) return
+    setMilestoneLoadingKey(`delete:${deleteDefinitionTarget.id}`)
+    try {
+      const response = await fetch(
+        `/api/v1/entitlements/${selectedEntitlement.id}/milestones/${deleteDefinitionTarget.id}`,
+        { method: "DELETE" },
+      )
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(localApiError(response, payload, t("milestoneDeleteFailed")))
+      await fetchEntitlements(true)
+      setNotice(t("milestoneDeletedNotice"))
+      if (milestoneForm.editingDefinitionId === deleteDefinitionTarget.id) {
+        setMilestoneForm(emptyMilestoneForm(selectedEntitlement.supportLevel))
+      }
+      setDeleteDefinitionTarget(null)
+    } finally {
+      setMilestoneLoadingKey(null)
+    }
+  }
 
   return (
-    <div className="mt-4 space-y-3 border-t pt-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Settings2 className="h-4 w-4 text-muted-foreground" />
-            <h4 className="text-sm font-semibold">{t("milestoneConstructorTitle")}</h4>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-              {t("milestoneCount", { count: entitlement.definitions.length })}
-            </span>
-          </div>
-          {canEdit ? (
-            <Button asChild variant="ghost" size="sm" className="h-8 gap-1 px-3">
-              <Link href="/settings/entitlement-templates">
-                <Settings2 className="h-3.5 w-3.5" />
-                {t("editTemplates")}
-              </Link>
-            </Button>
-          ) : (
-            <span className="text-xs text-muted-foreground">{t("milestoneReadOnlyHint")}</span>
+    <SupportPageShell
+      data-testid="support-entitlements-workspace"
+      data-state={loading ? "loading" : loadError && !data ? "error" : data?.entitlements.length === 0 ? "empty" : "ready"}
+      width="wide"
+      title={t("title")}
+      description={<>{t("subtitleCompact")}{data && !permissions.canWrite && <span className="mt-1 block text-xs" data-testid="support-entitlements-read-only">{t("permissionReadOnlyHint")}</span>}</>}
+      leading={<Shield className="h-5 w-5" aria-hidden="true" />}
+      utilities={<HelpButton slug="entitlements" className="h-11 w-11 shrink-0" />}
+      actions={permissions.canWrite ? <Button className="min-h-11 shrink-0 bg-orange-700 text-white hover:bg-orange-800" onClick={openCreate} data-testid="support-entitlements-create"><Plus />{t("createButton")}</Button> : undefined}
+    >
+      <details className="group rounded-lg border bg-muted/10 px-3 py-2 text-sm">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <span className="flex-1">{t("howItWorksTitle")}</span>
+          <span className="hidden text-xs font-normal text-muted-foreground sm:inline">{t("draftFirstHint")}</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+        </summary>
+        <div className="border-t pb-2 pt-3 text-sm text-muted-foreground">
+          <p>{t("howItWorksDesc")}</p>
+          <ol className="mt-3 grid gap-2 sm:grid-cols-3">
+            {["stepCompany", "stepSla", "stepLevel", "stepValidity", "stepMilestones", "stepActivate"].map((key, index) => (
+              <li key={key} className="flex items-center gap-2"><span className="font-medium text-foreground">{index + 1}.</span>{t(key)}</li>
+            ))}
+          </ol>
+        </div>
+      </details>
+
+      {(bannerError || notice) && (
+        <div aria-live="polite" className="space-y-2">
+          {bannerError && (
+            <div role="alert" data-testid="support-entitlements-refresh-error" className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+              <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+              <span className="min-w-0 flex-1">{bannerError}</span>
+              {bannerErrorRetryable && <Button variant="outline" className="min-h-11" onClick={() => void fetchEntitlements(Boolean(data))} data-testid="support-entitlements-refresh-retry"><RotateCcw />{t("retry")}</Button>}
+            </div>
           )}
+          {notice && (
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/20 p-3 text-sm">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1">{notice}</span>
+              <Button variant="ghost" className="min-h-11" onClick={() => setNotice("")}>{common("close")}</Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <section aria-label={t("exceptionSummaryLabel")} className="grid grid-cols-2 items-center gap-x-2 border-y py-2 text-xs text-muted-foreground sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-1">
+        <button type="button" className="min-h-11 text-left hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setFilters((current) => ({ ...current, risk: "expiring" }))}>
+          <strong className="mr-1 text-sm font-semibold text-foreground">{loading ? "—" : data?.expiringSoonCount ?? 0}</strong>{t("kpiExpiring30d")}
+        </button>
+        <button type="button" className="min-h-11 text-left hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setFilters((current) => ({ ...current, risk: "attention" }))}>
+          <strong className="mr-1 text-sm font-semibold text-foreground">{loading ? "—" : attentionMilestones}</strong>{t("kpiNeedsAttention")}
+        </button>
+        <span className="col-span-2 flex min-h-11 items-center sm:col-auto"><strong className="mr-1 text-sm font-semibold text-foreground">{loading ? "—" : uncoveredCompanies}</strong>{t("kpiUncovered")}</span>
+        {refreshing && <span role="status" className="ml-auto flex items-center gap-1"><Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />{t("refreshing")}</span>}
+      </section>
+
+      {data && data.entitlements.length > 0 && (
+        <EntitlementToolbar
+          data={data}
+          filters={filters}
+          activeCount={activeFilterCount}
+          resultCount={filteredEntitlements.length}
+          t={t}
+          onChange={setFilters}
+          onReset={() => setFilters(emptyFilters())}
+        />
+      )}
+
+      <section ref={listRef} tabIndex={-1} className="overflow-hidden rounded-xl border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("listLabel")} data-testid="support-entitlements-list">
+        {loading ? (
+          <div aria-busy="true" className="divide-y" data-testid="support-entitlements-loading">
+            {Array.from({ length: 5 }, (_, index) => <div key={index} className="h-16 animate-pulse bg-muted/30 motion-reduce:animate-none" />)}
+          </div>
+        ) : loadError && !data ? (
+          <div className="flex min-h-64 flex-col items-center justify-center p-6 text-center" data-testid="support-entitlements-load-error">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+            <h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">{loadError}</p>
+            {loadErrorRetryable && <Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchEntitlements()} data-testid="support-entitlements-load-retry"><RotateCcw />{t("retry")}</Button>}
+          </div>
+        ) : data && data.entitlements.length === 0 ? (
+          <div className="flex min-h-64 flex-col items-center justify-center p-6 text-center" data-testid="support-entitlements-empty-state">
+            <Building2 className="h-8 w-8 text-muted-foreground" />
+            <h2 className="mt-3 text-base font-semibold">{t("emptyTitle")}</h2>
+            <p className="mt-1 max-w-lg text-sm text-muted-foreground">{t("emptyDesc")}</p>
+            {permissions.canWrite && <Button className="mt-4 min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={openCreate} data-testid="support-entitlements-empty-create"><Plus />{t("createButton")}</Button>}
+          </div>
+        ) : data && filteredEntitlements.length === 0 ? (
+          <div className="flex min-h-48 flex-col items-center justify-center p-6 text-center" data-testid="support-entitlements-no-results">
+            <p className="text-sm text-muted-foreground">{t("noFilterResults")}</p>
+            <Button variant="outline" className="mt-3 min-h-11" onClick={() => setFilters(emptyFilters())} data-testid="support-entitlements-reset-filters"><RotateCcw />{t("resetFilters")}</Button>
+          </div>
+        ) : data ? (
+          <>
+            <EntitlementTable
+              entitlements={filteredEntitlements}
+              permissions={permissions}
+              formatDate={formatDate}
+              t={t}
+              rowRefs={desktopRowRefs}
+              onOpen={openDetails}
+              onEdit={openEdit}
+            />
+            <EntitlementMobileList
+              entitlements={filteredEntitlements}
+              permissions={permissions}
+              formatDate={formatDate}
+              t={t}
+              rowRefs={mobileRowRefs}
+              onOpen={openDetails}
+              onEdit={openEdit}
+            />
+          </>
+        ) : null}
+      </section>
+
+      <SupportTermFormSheet
+        open={formOpen}
+        editing={editingEntitlement}
+        data={data}
+        form={form}
+        error={formError}
+        saving={saving}
+        hasNoSetupOptions={!editingId && hasNoSetupOptions}
+        t={t}
+        common={common}
+        onChange={(patch) => { setForm((current) => ({ ...current, ...patch })); setFormError("") }}
+        onClose={requestFormClose}
+        onSubmit={submitEntitlement}
+      />
+
+      <EntitlementDetailSheet
+        entitlement={selectedEntitlement}
+        interactionBlocked={Boolean(lifecycleTarget || deleteDefinitionTarget)}
+        permissions={permissions}
+        templates={data?.templates ?? []}
+        formatDate={formatDate}
+        t={t}
+        common={common}
+        error={detailError || actionError}
+        errorRetryable={detailError ? detailErrorRetryable : actionErrorRetryable}
+        notice={notice}
+        milestoneEditorOpen={milestoneEditorOpen}
+        milestoneForm={milestoneForm}
+        milestoneLoadingKey={milestoneLoadingKey}
+        onClose={closeDetails}
+        onEdit={editFromDetails}
+        onLifecycle={(action) => selectedEntitlement && openLifecycle(selectedEntitlement, action)}
+        onToggleMilestones={() => setMilestoneEditorOpen((current) => !current)}
+        onRetry={() => { setDetailError(""); setDetailErrorRetryable(true); void fetchEntitlements(true) }}
+        onMilestoneChange={(patch) => { setMilestoneForm((current) => ({ ...current, ...patch })); setDetailError(""); setDetailErrorRetryable(true) }}
+        onMilestoneReset={() => selectedEntitlement && setMilestoneForm(emptyMilestoneForm(selectedEntitlement.supportLevel))}
+        onMilestoneSubmit={submitMilestone}
+        onTemplateApply={applyMilestoneTemplate}
+        onMilestoneEdit={editMilestone}
+        onMilestoneDelete={setDeleteDefinitionTarget}
+      />
+
+      <LifecycleDialog
+        target={lifecycleTarget}
+        reason={lifecycleReason}
+        error={lifecycleError}
+        loading={Boolean(actionLoadingId)}
+        t={t}
+        common={common}
+        onReasonChange={(value) => { setLifecycleReason(value); setLifecycleError("") }}
+        onClose={() => { if (!actionLoadingId) setLifecycleTarget(null) }}
+        onConfirm={performLifecycle}
+      />
+
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        onConfirm={async () => { setDiscardOpen(false); finishFormClose() }}
+        title={t("discardTitle")}
+        description={t("discardDescription")}
+        confirmLabel={t("discardAction")}
+      />
+      {deleteDefinitionTarget && createPortal(
+        <div data-testid="support-entitlement-delete-milestone-dialog">
+          <ConfirmDialog
+            open
+            onOpenChange={(open) => { if (!open) setDeleteDefinitionTarget(null) }}
+            onConfirm={deleteMilestone}
+            title={t("deleteMilestoneTitle")}
+            description={t("deleteMilestoneDescription", { name: deleteDefinitionTarget.name })}
+          />
+        </div>,
+        document.body,
+      )}
+    </SupportPageShell>
+  )
+}
+
+function EntitlementToolbar({
+  data,
+  filters,
+  activeCount,
+  resultCount,
+  t,
+  onChange,
+  onReset,
+}: {
+  data: EntitlementsResponse
+  filters: EntitlementFilters
+  activeCount: number
+  resultCount: number
+  t: ReturnType<typeof useTranslations>
+  onChange: (filters: EntitlementFilters) => void
+  onReset: () => void
+}) {
+  const update = (patch: Partial<EntitlementFilters>) => onChange({ ...filters, ...patch })
+  return (
+    <section aria-label={t("filtersTitle")} className="rounded-xl border bg-card p-2" data-testid="support-entitlements-filters">
+      <details className="group">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden" data-testid="support-entitlements-filter-disclosure">
+          <span>{t("filtersTitle")}{activeCount > 0 ? ` · ${activeCount}` : ""}</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+        </summary>
+        <div className="hidden grid-cols-2 gap-2 group-open:grid sm:!grid lg:grid-cols-5">
+        <Select aria-label={t("company")} value={filters.companyId} onChange={(event) => update({ companyId: event.target.value })} className="min-h-11" data-testid="support-entitlements-filter-company">
+          <option value="">{t("allCompanies")}</option>
+          {data.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+        </Select>
+        <Select aria-label={t("status")} value={filters.status} onChange={(event) => update({ status: event.target.value })} className="min-h-11" data-testid="support-entitlements-filter-status">
+          <option value="">{t("allStatuses")}</option>
+          {ENTITLEMENT_STATUSES.map((status) => <option key={status} value={status}>{t(`statuses.${status}`)}</option>)}
+        </Select>
+        <Select aria-label={t("supportLevel")} value={filters.supportLevel} onChange={(event) => update({ supportLevel: event.target.value })} className="min-h-11" data-testid="support-entitlements-filter-level">
+          <option value="">{t("allSupportLevels")}</option>
+          {SUPPORT_LEVELS.map((level) => <option key={level} value={level}>{t(`supportLevels.${level}`)}</option>)}
+        </Select>
+        <Select aria-label={t("slaPolicy")} value={filters.slaPolicyId} onChange={(event) => update({ slaPolicyId: event.target.value })} className="min-h-11" data-testid="support-entitlements-filter-sla">
+          <option value="">{t("allSlaPolicies")}</option>
+          {data.slaPolicies.map((policy) => <option key={policy.id} value={policy.id}>{policy.name}</option>)}
+        </Select>
+        <Select aria-label={t("risk")} value={filters.risk} onChange={(event) => update({ risk: event.target.value })} className="min-h-11" data-testid="support-entitlements-filter-risk">
+          <option value="">{t("allRiskStates")}</option>
+          <option value="attention">{t("riskAttention")}</option>
+          <option value="expiring">{t("riskExpiring")}</option>
+          <option value="overdue">{t("riskOverdue")}</option>
+          <option value="atRisk">{t("riskAtRisk")}</option>
+        </Select>
+        </div>
+      </details>
+      <div className="mt-2 flex min-h-8 items-center justify-between gap-2 border-t px-1 pt-2 text-xs text-muted-foreground">
+        <span>{t("resultCount", { count: resultCount })}{activeCount > 0 ? ` · ${t("filtersApplied", { count: activeCount })}` : ""}</span>
+        {activeCount > 0 && <Button variant="ghost" className="min-h-11" onClick={onReset} data-testid="support-entitlements-toolbar-reset"><RotateCcw />{t("resetFilters")}</Button>}
       </div>
+    </section>
+  )
+}
 
-      {canEdit && (
-        <div className="space-y-3">
-          {entitlement.definitions.length === 0 && (
-            <>
-              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
-                <p className="font-medium">{t("milestoneEmptyNextStepTitle")}</p>
-                <p className="mt-1 text-xs leading-5">
-                  {t("milestoneEmptyNextStepDesc", {
-                    level: t(`supportLevels.${form.template}`),
-                  })}
-                </p>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <Select
-                  label={t("template")}
-                  value={form.template}
-                  onChange={(e) => onFormChange({ template: asSupportLevel(e.target.value) })}
-                >
-                  {SUPPORT_LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {t(`supportLevels.${level}`)}
-                    </option>
-                  ))}
-                </Select>
-                <Button
+interface EntitlementListProps {
+  entitlements: Entitlement[]
+  permissions: EntitlementPermissions
+  formatDate: (value: string | null) => string
+  t: ReturnType<typeof useTranslations>
+  rowRefs: React.MutableRefObject<Map<string, HTMLButtonElement>>
+  onOpen: (entitlement: Entitlement) => void
+  onEdit: (entitlement: Entitlement) => void
+}
+
+function EntitlementTable({ entitlements, permissions, formatDate, t, rowRefs, onOpen, onEdit }: EntitlementListProps) {
+  return (
+    <div className="hidden overflow-x-auto xl:block" data-testid="support-entitlements-table">
+      <table className="w-full min-w-[880px] text-sm">
+        <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
+          <tr>
+            <th scope="col" className="px-3 py-2 text-left font-medium">{t("company")}</th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">{t("supportLevel")}</th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">{t("slaPolicy")}</th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">{t("valid")}</th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">{t("milestoneHealth")}</th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">{t("status")}</th>
+            <th scope="col" className="w-14 px-2 py-2"><span className="sr-only">{t("actionsLabel")}</span></th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {entitlements.map((entitlement) => (
+            <tr key={entitlement.id} data-testid="support-entitlement-row" data-entitlement-id={entitlement.id}>
+              <th scope="row" className="px-3 py-2 text-left font-medium">
+                <button
+                  ref={(node) => { if (node) rowRefs.current.set(entitlement.id, node); else rowRefs.current.delete(entitlement.id) }}
                   type="button"
-                  variant="outline"
-                  className="gap-2 self-end"
-                  onClick={onTemplateApply}
-                  disabled={templateLoading || templateUnavailable}
+                  className="min-h-11 text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => onOpen(entitlement)}
+                  data-testid={`support-entitlement-open-${entitlement.id}`}
                 >
-                  {templateLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                  {t("applyTemplate", {
-                    count: templateDefinitionCount,
-                    level: t(`supportLevels.${form.template}`),
-                  })}
-                </Button>
-              </div>
-            </>
-          )}
-
-          <div className="grid gap-2 lg:grid-cols-2">
-            <div className="space-y-1">
-              <Label>{t("milestoneName")}</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => onFormChange({ name: e.target.value })}
-                placeholder={t(`milestoneTypes.${form.type}`)}
-              />
-            </div>
-            <Select
-              label={t("milestoneType")}
-              value={form.type}
-              onChange={(e) => onFormChange({
-                type: e.target.value as MilestoneType,
-                name: "",
-              })}
-              disabled={isEditingDefinition}
-            >
-              {MILESTONE_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {t(`milestoneTypes.${type}`)}
-                </option>
-              ))}
-            </Select>
-            <Select
-              label={t("severity")}
-              value={form.severityTier}
-              onChange={(e) => onFormChange({ severityTier: e.target.value as MilestoneSeverityScope })}
-              disabled={isEditingDefinition}
-            >
-              {MILESTONE_SEVERITY_SCOPES.map((severity) => (
-                <option key={severity} value={severity}>
-                  {t(`severityScopes.${severity}`)}
-                </option>
-              ))}
-            </Select>
-            <div className="grid grid-cols-[minmax(0,1fr)_130px] gap-2">
-              <div className="space-y-1">
-                <Label>{t("dueWindow")}</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={form.dueValue}
-                  onChange={(e) => onFormChange({ dueValue: e.target.value })}
-                />
-              </div>
-              <Select
-                label={t("dueUnit")}
-                value={form.dueUnit}
-                onChange={(e) => onFormChange({ dueUnit: e.target.value as DueWindowUnit })}
-              >
-                <option value="minutes">{t("dueUnits.minutes")}</option>
-                <option value="hours">{t("dueUnits.hours")}</option>
-                <option value="days">{t("dueUnits.days")}</option>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-muted"
-                checked={form.isRequired}
-                onChange={(e) => onFormChange({ isRequired: e.target.checked })}
-              />
-              {t("requiredMilestone")}
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {isEditingDefinition && (
-                <Button type="button" variant="ghost" size="sm" onClick={onFormReset}>
-                  <X className="h-4 w-4" />
-                  {t("cancelEdit")}
-                </Button>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                className="gap-2"
-                onClick={onSubmit}
-                disabled={definitionLoading}
-              >
-                {definitionLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : isEditingDefinition ? (
-                  <Save className="h-4 w-4" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                {isEditingDefinition ? t("saveMilestone") : t("addMilestone")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {entitlement.definitions.length > 0 ? (
-        <div className="divide-y text-sm">
-          {entitlement.definitions.map((definition) => {
-            const deleteLoading = loadingKey === `${entitlement.id}:delete:${definition.id}`
-            return (
-              <div key={definition.id} className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{definition.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t(`milestoneTypes.${definition.type}`)}
-                    {" · "}
-                    {t(`severityScopes.${definition.severityTier ?? "all"}`)}
-                    {" · "}
-                    {formatDueWindow(definition.dueWithinSeconds, t)}
-                    {" · "}
-                    {definition.isRequired ? t("required") : t("optional")}
-                  </p>
-                </div>
-                {canEdit && (
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEditDefinition(definition)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      {t("edit")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      title={t("deleteMilestone")}
-                      onClick={() => onDeleteDefinition(definition)}
-                      disabled={deleteLoading}
-                    >
-                      {deleteLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">{t("noMilestoneRules")}</p>
-      )}
+                  {entitlement.companyName || t("unknownCompany")}
+                </button>
+              </th>
+              <td className="px-3 py-2"><SupportLevelBadge level={entitlement.supportLevel} t={t} /></td>
+              <td className="max-w-48 truncate px-3 py-2">{entitlement.slaPolicyName || "—"}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-xs tabular-nums">{formatDate(entitlement.validFrom)} – {entitlement.validTo ? formatDate(entitlement.validTo) : t("open")}</td>
+              <td className="px-3 py-2"><HealthLabel entitlement={entitlement} t={t} /></td>
+              <td className="px-3 py-2"><StatusBadge status={entitlement.status} t={t} /></td>
+              <td className="px-2 py-2"><RowActions entitlement={entitlement} permissions={permissions} t={t} onOpen={onOpen} onEdit={onEdit} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-function MilestoneCount({
-  label,
-  value,
-  danger,
-  hot,
-  success,
-}: {
-  label: string
-  value: number
-  danger?: boolean
-  hot?: boolean
-  success?: boolean
-}) {
-  const color = value > 0
-    ? danger
-      ? "text-red-600"
-      : hot
-        ? "text-amber-600"
-        : success
-          ? "text-green-600"
-          : ""
-    : success
-      ? "text-green-600"
-      : ""
+function EntitlementMobileList({ entitlements, permissions, formatDate, t, rowRefs, onOpen, onEdit }: EntitlementListProps) {
   return (
-    <div>
-      <p className={`text-lg font-bold ${color}`}>{value}</p>
-      <p className="text-muted-foreground">{label}</p>
+    <div className="divide-y xl:hidden" data-testid="support-entitlements-mobile-list">
+      {entitlements.map((entitlement) => (
+        <article key={entitlement.id} className="px-3 py-2" data-testid="support-entitlement-row" data-entitlement-id={entitlement.id}>
+          <div className="flex items-start gap-2">
+            <button
+              ref={(node) => { if (node) rowRefs.current.set(entitlement.id, node); else rowRefs.current.delete(entitlement.id) }}
+              type="button"
+              className="min-h-11 min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => onOpen(entitlement)}
+              data-testid={`support-entitlement-open-${entitlement.id}`}
+            >
+              <span className="block truncate text-sm font-medium">{entitlement.companyName || t("unknownCompany")}</span>
+              <span className="mt-1 block truncate text-xs text-muted-foreground">{entitlement.slaPolicyName}</span>
+            </button>
+            <RowActions entitlement={entitlement} permissions={permissions} t={t} onOpen={onOpen} onEdit={onEdit} />
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2"><SupportLevelBadge level={entitlement.supportLevel} t={t} /><StatusBadge status={entitlement.status} t={t} /><HealthLabel entitlement={entitlement} t={t} /></div>
+          <p className="mt-2 text-xs tabular-nums text-muted-foreground">{formatDate(entitlement.validFrom)} – {entitlement.validTo ? formatDate(entitlement.validTo) : t("open")}</p>
+        </article>
+      ))}
     </div>
+  )
+}
+
+function RowActions({ entitlement, permissions, t, onOpen, onEdit }: {
+  entitlement: Entitlement
+  permissions: EntitlementPermissions
+  t: ReturnType<typeof useTranslations>
+  onOpen: (entitlement: Entitlement) => void
+  onEdit: (entitlement: Entitlement) => void
+}) {
+  const editable = canEditEntitlement(entitlement, permissions)
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("actionsNamed", { company: entitlement.companyName || t("unknownCompany") })} data-testid={`support-entitlement-actions-${entitlement.id}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem className="min-h-11" onSelect={() => onOpen(entitlement)} data-testid={`support-entitlement-details-${entitlement.id}`}><FileText />{t("openDetails")}</DropdownMenuItem>
+        {editable && <><DropdownMenuSeparator /><DropdownMenuItem className="min-h-11" onSelect={() => onEdit(entitlement)} data-testid={`support-entitlement-edit-${entitlement.id}`}><Pencil />{t("edit")}</DropdownMenuItem></>}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function SupportLevelBadge({ level, t }: { level: string; t: ReturnType<typeof useTranslations> }) {
+  const known = SUPPORT_LEVELS.includes(level as SupportLevel)
+  return <Badge variant="outline">{known ? t(`supportLevels.${level}`) : t("unknownSupportLevel")}</Badge>
+}
+
+function StatusBadge({ status, t }: { status: string; t: ReturnType<typeof useTranslations> }) {
+  const known = ENTITLEMENT_STATUSES.includes(status as (typeof ENTITLEMENT_STATUSES)[number])
+  const active = status === "active"
+  return <Badge variant={active ? "outline" : "secondary"} className="gap-1">{active ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{known ? t(`statuses.${status}`) : t("unknownStatus")}</Badge>
+}
+
+function HealthLabel({ entitlement, t }: { entitlement: Entitlement; t: ReturnType<typeof useTranslations> }) {
+  if (entitlement.milestones.overdue > 0) return <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive"><CircleAlert className="h-3.5 w-3.5" />{t("overdueCount", { count: entitlement.milestones.overdue })}</span>
+  if (entitlement.milestones.atRisk > 0) return <span className="inline-flex items-center gap-1 text-xs font-medium"><CircleAlert className="h-3.5 w-3.5" />{t("atRiskCount", { count: entitlement.milestones.atRisk })}</span>
+  if (entitlement.isExpiringSoon) return <span className="inline-flex items-center gap-1 text-xs"><Clock className="h-3.5 w-3.5" />{t("expiresIn", { days: entitlement.daysUntilExpiry ?? 0 })}</span>
+  return <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><CheckCircle2 className="h-3.5 w-3.5" />{t("onTrackCompact")}</span>
+}
+
+function SupportTermFormSheet({ open, editing, data, form, error, saving, hasNoSetupOptions, t, common, onChange, onClose, onSubmit }: {
+  open: boolean
+  editing: Entitlement | null
+  data: EntitlementsResponse | null
+  form: FormState
+  error: string
+  saving: boolean
+  hasNoSetupOptions: boolean
+  t: ReturnType<typeof useTranslations>
+  common: ReturnType<typeof useTranslations>
+  onChange: (patch: Partial<FormState>) => void
+  onClose: () => void
+  onSubmit: () => void
+}) {
+  const selectedTemplate = data?.templates.find((template) => template.supportLevel === form.supportLevel)
+  return (
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose() }}>
+      <SheetContent closeLabel={common("close")} className="!h-[100dvh] !w-full !max-w-none overflow-y-auto p-0 sm:!w-[34rem] sm:!max-w-[90vw]" data-testid="support-entitlement-form-sheet">
+        <form onSubmit={(event) => { event.preventDefault(); onSubmit() }} className="flex min-h-full flex-col" data-testid="support-entitlement-form">
+          <SheetHeader className="border-b px-4 pb-3 pr-16 pt-4">
+            <SheetTitle>{editing ? t("editFormTitle") : t("formTitle")}</SheetTitle>
+            <SheetDescription>{editing ? t("editFormDesc") : t("formDesc")}</SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 space-y-4 p-4">
+            {error && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm" data-testid="support-entitlement-form-error"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{error}</div>}
+            {hasNoSetupOptions && <div role="alert" className="rounded-lg border bg-muted/20 p-3 text-sm" data-testid="support-entitlement-setup-blocked">{data?.companies.length === 0 ? t("missingCompanies") : t("missingSlaPolicies")}</div>}
+            <Select label={t("company")} value={form.companyId} onChange={(event) => onChange({ companyId: event.target.value })} disabled={Boolean(editing) || !data?.companies.length} className="min-h-11" data-dialog-initial-focus data-testid="support-entitlement-company">
+              <option value="">{t("selectCompany")}</option>
+              {editing && !data?.companies.some((company) => company.id === editing.companyId) && <option value={editing.companyId}>{editing.companyName || t("unknownCompany")}</option>}
+              {data?.companies.map((company) => <option key={company.id} value={company.id}>{company.name}{company.hasActiveEntitlement ? ` · ${t("hasActiveTerm")}` : ""}</option>)}
+            </Select>
+            <Select label={t("slaPolicy")} value={form.slaPolicyId} onChange={(event) => onChange({ slaPolicyId: event.target.value })} disabled={Boolean(editing) || !data?.slaPolicies.length} className="min-h-11" data-testid="support-entitlement-sla">
+              <option value="">{t("selectSlaPolicy")}</option>
+              {editing && !data?.slaPolicies.some((policy) => policy.id === editing.slaPolicyId) && <option value={editing.slaPolicyId}>{editing.slaPolicyName}</option>}
+              {data?.slaPolicies.map((policy) => <option key={policy.id} value={policy.id}>{policy.name}{policy.isDefault ? ` · ${t("defaultPolicy")}` : ""}</option>)}
+            </Select>
+            <Select label={t("supportLevel")} value={form.supportLevel} onChange={(event) => onChange({ supportLevel: asSupportLevel(event.target.value) })} className="min-h-11" data-testid="support-entitlement-level">
+              {SUPPORT_LEVELS.map((level) => <option key={level} value={level}>{t(`supportLevels.${level}`)}</option>)}
+            </Select>
+            <details className="rounded-lg border bg-muted/10 p-3 text-xs text-muted-foreground">
+              <summary className="min-h-11 cursor-pointer font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("supportLevelTemplateBadge", { count: selectedTemplate?.definitions.length ?? 0 })}</summary>
+              <p>{t("supportLevelGuideDesc", { level: t(`supportLevels.${form.supportLevel}`) })}</p>
+              <ul className="mt-2 space-y-1">
+                {selectedTemplate?.definitions.map((definition) => <li key={definition.id} className="flex justify-between gap-2"><span>{t(`milestoneTypes.${definition.type}`)}</span><span>{formatDueWindow(definition.dueWithinSeconds, t)}</span></li>)}
+              </ul>
+            </details>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1"><Label htmlFor="entitlement-valid-from">{t("validFrom")}</Label><Input id="entitlement-valid-from" type="date" value={form.validFrom} onChange={(event) => onChange({ validFrom: event.target.value })} className="min-h-11" required /></div>
+              <div className="space-y-1"><Label htmlFor="entitlement-valid-to">{t("validTo")}</Label><Input id="entitlement-valid-to" type="date" value={form.validTo} onChange={(event) => onChange({ validTo: event.target.value })} className="min-h-11" min={form.validFrom} /></div>
+            </div>
+            <div className="space-y-1"><Label htmlFor="entitlement-notes">{t("notes")}</Label><Textarea id="entitlement-notes" value={form.notes} onChange={(event) => onChange({ notes: event.target.value })} placeholder={t("notesPlaceholder")} rows={4} /></div>
+            {editing && <p className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">{t("editingHint", { company: editing.companyName || t("unknownCompany") })}</p>}
+          </div>
+          <SheetFooter className="sticky bottom-0 gap-2 border-t bg-background p-4">
+            <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={saving}>{common("cancel")}</Button>
+            <Button type="submit" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" disabled={saving || hasNoSetupOptions} data-testid="support-entitlement-submit">{saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : editing ? <Save /> : <Plus />}{saving ? t("saving") : editing ? t("saveChanges") : t("createDraftCompact")}</Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+function EntitlementDetailSheet({ entitlement, interactionBlocked, permissions, templates, formatDate, t, common, error, errorRetryable, notice, milestoneEditorOpen, milestoneForm, milestoneLoadingKey, onClose, onEdit, onLifecycle, onToggleMilestones, onRetry, onMilestoneChange, onMilestoneReset, onMilestoneSubmit, onTemplateApply, onMilestoneEdit, onMilestoneDelete }: {
+  entitlement: Entitlement | null
+  interactionBlocked: boolean
+  permissions: EntitlementPermissions
+  templates: EntitlementTemplate[]
+  formatDate: (value: string | null) => string
+  t: ReturnType<typeof useTranslations>
+  common: ReturnType<typeof useTranslations>
+  error: string
+  errorRetryable: boolean
+  notice: string
+  milestoneEditorOpen: boolean
+  milestoneForm: MilestoneFormState
+  milestoneLoadingKey: string | null
+  onClose: () => void
+  onEdit: () => void
+  onLifecycle: (action: LifecycleAction) => void
+  onToggleMilestones: () => void
+  onRetry: () => void
+  onMilestoneChange: (patch: Partial<MilestoneFormState>) => void
+  onMilestoneReset: () => void
+  onMilestoneSubmit: () => void
+  onTemplateApply: () => void
+  onMilestoneEdit: (definition: MilestoneDefinition) => void
+  onMilestoneDelete: (definition: MilestoneDefinition) => void
+}) {
+  if (!entitlement) return null
+  const editable = canEditEntitlement(entitlement, permissions)
+  const actions = lifecycleActions(entitlement, permissions)
+  return (
+    <Sheet open onOpenChange={(open) => { if (!open && !interactionBlocked) onClose() }}>
+      <SheetContent
+        closeLabel={common("close")}
+        inert={interactionBlocked ? true : undefined}
+        aria-hidden={interactionBlocked ? true : undefined}
+        onInteractOutside={(event) => { if (interactionBlocked) event.preventDefault() }}
+        className={`!h-[100dvh] !w-full !max-w-none overflow-y-auto p-0 sm:!w-[42rem] sm:!max-w-[94vw] ${interactionBlocked ? "pointer-events-none" : ""}`}
+        data-testid="support-entitlement-detail-sheet"
+        data-entitlement-id={entitlement.id}
+        data-interaction-blocked={interactionBlocked ? "true" : "false"}
+      >
+        <SheetHeader className="border-b px-4 pb-3 pr-16 pt-4">
+          <SheetTitle>{entitlement.companyName || t("unknownCompany")}</SheetTitle>
+          <SheetDescription>{t("detailDescription")}</SheetDescription>
+        </SheetHeader>
+        <div className="space-y-4 p-4">
+          {error && <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm" data-testid="support-entitlement-detail-error"><AlertCircle className="h-4 w-4 shrink-0 text-destructive" /><span className="min-w-0 flex-1">{error}</span>{errorRetryable && <Button variant="outline" className="min-h-11" onClick={onRetry} data-testid="support-entitlement-detail-retry"><RotateCcw />{t("retry")}</Button>}</div>}
+          {notice && <div aria-live="polite" className="flex items-center gap-2 rounded-lg border bg-muted/20 p-3 text-sm"><CheckCircle2 className="h-4 w-4 shrink-0" />{notice}</div>}
+          <div className="flex flex-wrap items-center gap-2"><SupportLevelBadge level={entitlement.supportLevel} t={t} /><StatusBadge status={entitlement.status} t={t} /><HealthLabel entitlement={entitlement} t={t} /></div>
+          <dl className="grid gap-x-4 gap-y-3 border-y py-3 text-sm sm:grid-cols-2">
+            <div><dt className="text-xs text-muted-foreground">{t("slaPolicy")}</dt><dd className="mt-0.5 font-medium">{entitlement.slaPolicyName}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">{t("valid")}</dt><dd className="mt-0.5 tabular-nums">{formatDate(entitlement.validFrom)} – {entitlement.validTo ? formatDate(entitlement.validTo) : t("open")}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">{t("milestoneDefs")}</dt><dd className="mt-0.5 font-medium">{entitlement.definitionCount}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">{t("milestoneHealth")}</dt><dd className="mt-0.5"><HealthLabel entitlement={entitlement} t={t} /></dd></div>
+          </dl>
+          <MilestoneSummary entitlement={entitlement} t={t} />
+          {entitlement.notes && <section><h3 className="text-sm font-semibold">{t("notes")}</h3><p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{entitlement.notes}</p></section>}
+          {(editable || actions.length > 0) && (
+            <section aria-label={t("lifecycleActionsLabel")} className="flex flex-wrap gap-2 border-t pt-4">
+              {editable && <Button variant="outline" className="min-h-11" onClick={onEdit} data-testid="support-entitlement-edit"><Pencil />{t("edit")}</Button>}
+              {actions.map((action) => <Button key={action} variant={action === "cancel" || action === "expire" ? "outline" : "secondary"} className="min-h-11" onClick={() => onLifecycle(action)} disabled={(action === "activate" || action === "resume") && entitlement.definitionCount === 0} data-testid={`support-entitlement-lifecycle-${action}`}>{t(`actions.${action}`)}</Button>)}
+              {entitlement.definitionCount === 0 && actions.some((action) => action === "activate" || action === "resume") && <p className="basis-full text-xs text-muted-foreground">{t("activationNeedsRules")}</p>}
+            </section>
+          )}
+          <section className="border-t pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div><h3 className="text-sm font-semibold">{t("milestoneConstructorTitle")}</h3><p className="mt-0.5 text-xs text-muted-foreground">{t("milestoneCount", { count: entitlement.definitionCount })}</p></div>
+              {editable && <Button variant="outline" className="min-h-11" onClick={onToggleMilestones} data-testid="support-entitlement-manage-milestones"><Settings2 />{milestoneEditorOpen ? t("closeMilestoneEditor") : t("manageMilestones")}</Button>}
+            </div>
+            {milestoneEditorOpen && editable && (
+              <MilestoneEditor
+                entitlement={entitlement}
+                templates={templates}
+                form={milestoneForm}
+                loadingKey={milestoneLoadingKey}
+                t={t}
+                onChange={onMilestoneChange}
+                onReset={onMilestoneReset}
+                onSubmit={onMilestoneSubmit}
+                onTemplateApply={onTemplateApply}
+                onEdit={onMilestoneEdit}
+                onDelete={onMilestoneDelete}
+              />
+            )}
+          </section>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+function MilestoneSummary({ entitlement, t }: { entitlement: Entitlement; t: ReturnType<typeof useTranslations> }) {
+  return (
+    <section aria-label={t("milestoneSummaryLabel")} data-testid="support-entitlement-milestone-summary">
+      {entitlement.definitions.length === 0 ? <p className="text-sm text-muted-foreground">{t("noMilestoneRules")}</p> : (
+        <div className="divide-y rounded-lg border">
+          {entitlement.definitions.map((definition) => (
+            <div key={definition.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+              <div className="min-w-0"><p className="truncate font-medium">{definition.name}</p><p className="truncate text-xs text-muted-foreground">{t.has(`milestoneTypes.${definition.type}`) ? t(`milestoneTypes.${definition.type}`) : t("unknownMilestone")} · {t.has(`severityScopes.${definition.severityTier ?? "all"}`) ? t(`severityScopes.${definition.severityTier ?? "all"}`) : t("unknownSeverity")}</p></div>
+              <span className="shrink-0 text-xs tabular-nums">{formatDueWindow(definition.dueWithinSeconds, t)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function MilestoneEditor({ entitlement, templates, form, loadingKey, t, onChange, onReset, onSubmit, onTemplateApply, onEdit, onDelete }: {
+  entitlement: Entitlement
+  templates: EntitlementTemplate[]
+  form: MilestoneFormState
+  loadingKey: string | null
+  t: ReturnType<typeof useTranslations>
+  onChange: (patch: Partial<MilestoneFormState>) => void
+  onReset: () => void
+  onSubmit: () => void
+  onTemplateApply: () => void
+  onEdit: (definition: MilestoneDefinition) => void
+  onDelete: (definition: MilestoneDefinition) => void
+}) {
+  const selectedTemplate = templates.find((template) => template.supportLevel === form.template)
+  const templateUnavailable = !selectedTemplate?.isActive || !selectedTemplate.definitions.length
+  const editing = Boolean(form.editingDefinitionId)
+  return (
+    <div className="mt-4 space-y-4 rounded-xl border bg-muted/10 p-3" data-testid="support-entitlement-milestone-editor">
+      {entitlement.definitions.length === 0 && (
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <Select label={t("template")} value={form.template} onChange={(event) => onChange({ template: asSupportLevel(event.target.value) })} className="min-h-11">{SUPPORT_LEVELS.map((level) => <option key={level} value={level}>{t(`supportLevels.${level}`)}</option>)}</Select>
+          <Button type="button" variant="outline" className="min-h-11 self-end" onClick={onTemplateApply} disabled={loadingKey === "template" || templateUnavailable}>{loadingKey === "template" ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Copy />}{t("applyTemplate", { count: selectedTemplate?.definitions.length ?? 0, level: t(`supportLevels.${form.template}`) })}</Button>
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1"><Label htmlFor="milestone-name">{t("milestoneName")}</Label><Input id="milestone-name" value={form.name} onChange={(event) => onChange({ name: event.target.value })} placeholder={t(`milestoneTypes.${form.type}`)} className="min-h-11" /></div>
+        <Select label={t("milestoneType")} value={form.type} onChange={(event) => onChange({ type: event.target.value as MilestoneType, name: "" })} disabled={editing} className="min-h-11" data-testid="support-entitlement-milestone-type">{MILESTONE_TYPES.map((type) => <option key={type} value={type}>{t(`milestoneTypes.${type}`)}</option>)}</Select>
+        <Select label={t("severity")} value={form.severityTier} onChange={(event) => onChange({ severityTier: event.target.value as MilestoneSeverityScope })} disabled={editing} className="min-h-11" data-testid="support-entitlement-milestone-severity">{MILESTONE_SEVERITY_SCOPES.map((severity) => <option key={severity} value={severity}>{t(`severityScopes.${severity}`)}</option>)}</Select>
+        <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-2">
+          <div className="space-y-1"><Label htmlFor="milestone-due">{t("dueWindow")}</Label><Input id="milestone-due" type="number" min="1" value={form.dueValue} onChange={(event) => onChange({ dueValue: event.target.value })} className="min-h-11" /></div>
+          <Select label={t("dueUnit")} value={form.dueUnit} onChange={(event) => onChange({ dueUnit: event.target.value as DueWindowUnit })} className="min-h-11"><option value="minutes">{t("dueUnits.minutes")}</option><option value="hours">{t("dueUnits.hours")}</option><option value="days">{t("dueUnits.days")}</option></Select>
+        </div>
+      </div>
+      <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={form.isRequired} onChange={(event) => onChange({ isRequired: event.target.checked })} className="h-4 w-4" />{t("requiredMilestone")}</label>
+      <div className="flex flex-wrap justify-end gap-2">{editing && <Button type="button" variant="ghost" className="min-h-11" onClick={onReset}>{t("cancelEdit")}</Button>}<Button type="button" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={onSubmit} disabled={loadingKey === "save"} data-testid="support-entitlement-milestone-submit">{loadingKey === "save" ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : editing ? <Save /> : <Plus />}{editing ? t("saveMilestone") : t("addMilestone")}</Button></div>
+      {entitlement.definitions.length > 0 && (
+        <div className="divide-y border-t pt-2">
+          {entitlement.definitions.map((definition) => <div key={definition.id} className="flex items-center gap-2 py-2" data-testid="support-entitlement-milestone-row" data-milestone-id={definition.id}><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{definition.name}</p><p className="truncate text-xs text-muted-foreground">{formatDueWindow(definition.dueWithinSeconds, t)} · {definition.isRequired ? t("required") : t("optional")}</p></div><Button type="button" variant="ghost" className="min-h-11" onClick={() => onEdit(definition)} data-testid={`support-entitlement-milestone-edit-${definition.id}`}><Pencil />{t("edit")}</Button><Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label={t("deleteMilestoneNamed", { name: definition.name })} onClick={() => onDelete(definition)} disabled={loadingKey === `delete:${definition.id}`} data-testid={`support-entitlement-milestone-delete-${definition.id}`}><Trash2 /></Button></div>)}
+        </div>
+      )}
+      <Button asChild variant="ghost" className="min-h-11"><Link href="/settings/entitlement-templates"><Settings2 />{t("editTemplates")}</Link></Button>
+    </div>
+  )
+}
+
+function LifecycleDialog({ target, reason, error, loading, t, common, onReasonChange, onClose, onConfirm }: {
+  target: LifecycleTarget | null
+  reason: string
+  error: string
+  loading: boolean
+  t: ReturnType<typeof useTranslations>
+  common: ReturnType<typeof useTranslations>
+  onReasonChange: (value: string) => void
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  if (!target) return null
+  const required = target.action === "cancel"
+  return createPortal(
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }} mobileFullscreen widthClassName="max-w-lg">
+      <DialogHeader><DialogTitle>{t("lifecycleDialogTitle", { action: t(`actions.${target.action}`) })}</DialogTitle><DialogDescription>{t("lifecycleCurrentState", { company: target.entitlement.companyName || t("unknownCompany"), status: t(`statuses.${target.entitlement.status}`) })}</DialogDescription></DialogHeader>
+      <DialogContent>
+        <div className="space-y-4" data-testid="support-entitlement-lifecycle-dialog" data-action={target.action}>
+          {error && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm" data-testid="support-entitlement-lifecycle-error"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{error}</div>}
+          <section className="rounded-lg border bg-muted/20 p-3 text-sm"><h3 className="font-medium">{t("lifecycleImpactTitle")}</h3><p className="mt-1 text-muted-foreground">{t(`lifecycleImpact.${target.action}`, { company: target.entitlement.companyName || t("unknownCompany") })}</p></section>
+          <div className="space-y-1"><Label htmlFor="lifecycle-reason">{required ? t("cancelReasonLabel") : t("lifecycleReasonOptional")}</Label><Textarea id="lifecycle-reason" data-dialog-initial-focus data-testid="support-entitlement-lifecycle-reason" value={reason} onChange={(event) => onReasonChange(event.target.value)} placeholder={required ? t("cancelReasonPlaceholder") : t("lifecycleReasonPlaceholder")} rows={4} required={required} maxLength={1000} /><p className="text-xs text-muted-foreground">{t("lifecycleAuditHint")}</p></div>
+          <p className="text-sm font-medium">{t("lifecycleConfirmQuestion", { action: t(`actions.${target.action}`).toLocaleLowerCase() })}</p>
+        </div>
+      </DialogContent>
+      <DialogFooter><Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={loading}>{common("cancel")}</Button><Button type="button" variant={target.action === "cancel" || target.action === "expire" ? "destructive" : "default"} className={`min-h-11 ${target.action === "cancel" || target.action === "expire" ? "" : "bg-orange-700 text-white hover:bg-orange-800"}`} onClick={onConfirm} disabled={loading || (required && !reason.trim())} data-testid="support-entitlement-lifecycle-confirm">{loading && <Loader2 className="animate-spin motion-reduce:animate-none" />}{t("confirmLifecycleAction", { action: t(`actions.${target.action}`) })}</Button></DialogFooter>
+    </Dialog>,
+    document.body,
   )
 }

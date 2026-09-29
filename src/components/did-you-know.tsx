@@ -200,6 +200,7 @@ export function DidYouKnow({
   density?: "default" | "compact"
 }) {
   const t = useTranslations("tips")
+  const tc = useTranslations("common")
   const router = useRouter()
   const [dismissed, setDismissed] = useState<Set<string>>(() => getDismissed())
   const [currentIdx, setCurrentIdx] = useState(0)
@@ -234,10 +235,10 @@ export function DidYouKnow({
         : "border border-amber-300 dark:border-amber-800/50 bg-gradient-to-r from-amber-50 to-orange-50/80 dark:from-amber-950/30 dark:to-orange-950/20"
     } ${className}`}>
       {/* Dismiss current tip */}
-      <button onClick={handleDismiss} className={`absolute top-3 right-3 p-1 rounded-md transition-colors z-10 ${
+      <button type="button" onClick={handleDismiss} aria-label={tc("close")} className={`absolute right-1 top-1 z-10 flex h-11 w-11 items-center justify-center rounded-md transition-colors ${
         variant === "glass" ? "text-white/40 hover:text-white hover:bg-white/10" : "text-amber-500 hover:text-amber-700 hover:bg-amber-200/50 dark:hover:bg-amber-800/40"
       }`}>
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
 
       <AnimatePresence mode="wait" initial={false}>
@@ -263,7 +264,7 @@ export function DidYouKnow({
               <Button
                 variant="outline"
                 size="sm"
-                className={`${density === "compact" ? "h-6 px-2.5" : "h-7 px-3"} text-xs font-medium shadow-sm ${
+                className={`${density === "compact" ? "px-2.5" : "px-3"} min-h-11 text-xs font-medium shadow-sm ${
                   variant === "glass"
                     ? "border-white/20 text-white bg-white/10 hover:bg-white/20"
                     : "border-amber-300 text-amber-800 bg-white hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:bg-amber-900/20 dark:hover:bg-amber-800/30"
@@ -283,15 +284,17 @@ export function DidYouKnow({
           variant === "glass" ? "border-white/10" : "border-amber-200/50 dark:border-amber-800/30"
         }`}>
           <button
+            type="button"
             onClick={goPrev}
             disabled={safeIdx === 0}
-            className={`h-7 w-7 flex items-center justify-center rounded-md border disabled:opacity-25 disabled:cursor-not-allowed transition-colors shadow-sm ${
+            aria-label={tc("previousPage")}
+            className={`flex h-11 w-11 items-center justify-center rounded-md border shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-25 ${
               variant === "glass"
                 ? "border-white/20 bg-white/10 hover:bg-white/20"
                 : "border-amber-300 dark:border-amber-700 bg-white dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-800/40"
             }`}
           >
-            <ChevronLeft className={`h-4 w-4 ${variant === "glass" ? "text-white/70" : "text-amber-600 dark:text-amber-400"}`} />
+            <ChevronLeft className={`h-4 w-4 ${variant === "glass" ? "text-white/70" : "text-amber-600 dark:text-amber-400"}`} aria-hidden="true" />
           </button>
           <span className={`text-xs font-medium min-w-[3rem] text-center ${
             variant === "glass" ? "text-white/50" : "text-amber-600 dark:text-amber-400"
@@ -299,15 +302,17 @@ export function DidYouKnow({
             {safeIdx + 1} / {available.length}
           </span>
           <button
+            type="button"
             onClick={goNext}
             disabled={safeIdx >= available.length - 1}
-            className={`h-7 w-7 flex items-center justify-center rounded-md border disabled:opacity-25 disabled:cursor-not-allowed transition-colors shadow-sm ${
+            aria-label={tc("nextPage")}
+            className={`flex h-11 w-11 items-center justify-center rounded-md border shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-25 ${
               variant === "glass"
                 ? "border-white/20 bg-white/10 hover:bg-white/20"
                 : "border-amber-300 dark:border-amber-700 bg-white dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-800/40"
             }`}
           >
-            <ChevronRight className={`h-4 w-4 ${variant === "glass" ? "text-white/70" : "text-amber-600 dark:text-amber-400"}`} />
+            <ChevronRight className={`h-4 w-4 ${variant === "glass" ? "text-white/70" : "text-amber-600 dark:text-amber-400"}`} aria-hidden="true" />
           </button>
         </div>
       )}

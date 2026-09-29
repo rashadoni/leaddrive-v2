@@ -500,8 +500,18 @@ describe("Entitlement templates API", () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.templates).toHaveLength(4)
+    expect(json.permissions).toEqual({ canWrite: true })
     expect(json.templates.find((template: EntitlementTemplateMock) => template.supportLevel === "enterprise"))
       .toMatchObject({ name: "Enterprise", isActive: true })
+  })
+
+  it("exposes read-only template permissions to ticketing users", async () => {
+    db.authRole = "ticketing"
+
+    const res = await GET_TEMPLATES(req("http://localhost/api/v1/entitlement-templates"))
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ permissions: { canWrite: false } })
   })
 
   it("blocks template reads for non-support roles", async () => {
@@ -562,6 +572,29 @@ describe("Entitlement templates API", () => {
     }))
 
     expect(res.status).toBe(422)
+    expect(await res.json()).toMatchObject({ code: "TEMPLATE_ACTIVE_EMPTY" })
+    expect(replaceEntitlementTemplate).not.toHaveBeenCalled()
+  })
+
+  it("rejects duplicate milestone and severity combinations with a stable code", async () => {
+    const duplicateRule = {
+      type: "first_response",
+      name: "First response",
+      severityTier: "critical",
+      dueValue: 30,
+      dueUnit: "minutes",
+      isRequired: true,
+    }
+    const res = await PUT_TEMPLATE(jsonReq({
+      supportLevel: "standard",
+      name: "Standard",
+      description: null,
+      isActive: true,
+      definitions: [duplicateRule, { ...duplicateRule, name: "Duplicate" }],
+    }))
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ code: "TEMPLATE_DUPLICATE" })
     expect(replaceEntitlementTemplate).not.toHaveBeenCalled()
   })
 })
@@ -633,6 +666,7 @@ describe("PATCH /api/v1/entitlements/:id", () => {
     expect(duplicate.status).toBe(409)
     expect(await duplicate.json()).toMatchObject({
       error: "This company already has an active support term.",
+      code: "ACTIVE_COMPANY_CONFLICT",
     })
 
     db.duplicateActive = null
@@ -670,7 +704,7 @@ describe("PATCH /api/v1/entitlements/:id", () => {
     )
 
     expect(res.status).toBe(422)
-    expect((await res.json()).error).toMatch(/milestone rule/)
+    expect(await res.json()).toMatchObject({ code: "MILESTONE_REQUIRED" })
     expect(prisma.entitlement.update).not.toHaveBeenCalled()
   })
 
@@ -681,8 +715,28 @@ describe("PATCH /api/v1/entitlements/:id", () => {
     )
 
     expect(res.status).toBe(400)
-    expect((await res.json()).error).toMatch(/Cancellation reason/)
+    expect(await res.json()).toMatchObject({ code: "CANCELLATION_REASON_REQUIRED" })
     expect(prisma.entitlement.update).not.toHaveBeenCalled()
+  })
+
+  it("records the lifecycle-dialog reason in the entitlement audit event", async () => {
+    const res = await PATCH(
+      jsonReq({
+        action: "cancel",
+        cancellationReason: "Contract ended",
+        reason: "Customer chose a different service tier",
+      }),
+      { params: Promise.resolve({ id: "ent_existing" }) },
+    )
+
+    expect(res.status).toBe(200)
+    expect(db.auditEvents.at(-1)).toMatchObject({
+      eventType: "entitlement_cancelled",
+      payload: expect.objectContaining({
+        action: "cancel",
+        reason: "Customer chose a different service tier",
+      }),
+    })
   })
 })
 
@@ -801,7 +855,7 @@ describe("Milestone definitions", () => {
     )
 
     expect(duplicate.status).toBe(409)
-    expect((await duplicate.json()).error).toMatch(/already exists/)
+    expect(await duplicate.json()).toMatchObject({ code: "MILESTONE_DUPLICATE" })
   })
 
   it("applies a template to an editable support term", async () => {
@@ -885,7 +939,7 @@ describe("Milestone definitions", () => {
     )
 
     expect(res.status).toBe(409)
-    expect((await res.json()).error).toMatch(/already used/)
+    expect(await res.json()).toMatchObject({ code: "MILESTONE_IN_USE" })
     expect(db.deletedMilestoneDefinitionId).toBeNull()
   })
 })
@@ -954,7 +1008,7 @@ describe("POST /api/v1/entitlements", () => {
     }))
 
     expect(res.status).toBe(400)
-    expect((await res.json()).error).toMatch(/validTo/)
+    expect(await res.json()).toMatchObject({ code: "INVALID_VALIDITY" })
     expect(prisma.entitlement.create).not.toHaveBeenCalled()
   })
 })

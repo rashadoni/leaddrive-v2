@@ -1,213 +1,253 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { useTranslations } from "next-intl"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Send, Bot, User, TicketPlus, Loader2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
+import {
+  Bot,
+  CircleAlert,
+  Headphones,
+  Loader2,
+  RefreshCw,
+  Send,
+  TicketPlus,
+  User,
+  WifiOff,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { formatDate } from "@/lib/format-date"
+import {
+  PORTAL_NEW_TICKET_DRAFT_KEY,
+  serializePortalNewTicketDraft,
+} from "@/lib/ticketing/portal-ticket-draft"
 
 interface Message {
   id: string
   role: "user" | "assistant"
   content: string
   createdAt: string
-  suggestTicket?: boolean
   escalated?: boolean
   escalationTicketId?: string | null
   escalationTicketNumber?: string | null
+  degraded?: boolean
 }
+
+type Availability = "loading" | "enabled" | "disabled" | "unavailable"
 
 export default function PortalChatPage() {
   const t = useTranslations("portal")
+  const locale = useLocale()
+  const router = useRouter()
+  const scrollRef = useRef<HTMLDivElement>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [supportAiEnabled, setSupportAiEnabled] = useState<boolean | null>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const router = useRouter()
+  const [availability, setAvailability] = useState<Availability>("loading")
+  const [sendError, setSendError] = useState("")
+  const [retryMessage, setRetryMessage] = useState("")
+  const [manualDraft, setManualDraft] = useState("")
+  const [online, setOnline] = useState(true)
+
+  const loadAvailability = async () => {
+    setAvailability("loading")
+    try {
+      const response = await fetch("/api/v1/public/portal-config", { cache: "no-store" })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success) throw new Error("config")
+      setAvailability(body?.data?.features?.supportAi === true ? "enabled" : "disabled")
+    } catch {
+      setAvailability("unavailable")
+    }
+  }
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
-  }, [messages])
-
-  useEffect(() => {
-    fetch("/api/v1/public/portal-config", { cache: "no-store" })
-      .then((response) => response.json())
-      .then((body) => setSupportAiEnabled(body?.data?.features?.supportAi === true))
-      .catch(() => setSupportAiEnabled(false))
+    const storedDraft = localStorage.getItem("portal:chat-draft")
+    if (storedDraft) setInput(storedDraft)
+    setOnline(navigator.onLine)
+    const onOnline = () => setOnline(true)
+    const onOffline = () => setOnline(false)
+    window.addEventListener("online", onOnline)
+    window.addEventListener("offline", onOffline)
+    void loadAvailability()
+    return () => {
+      window.removeEventListener("online", onOnline)
+      window.removeEventListener("offline", onOffline)
+    }
   }, [])
 
-  const handleSend = async () => {
-    if (!supportAiEnabled || !input.trim() || sending) return
-    const userMsg = input
-    setInput("")
-    setSending(true)
+  useEffect(() => {
+    if (input.trim()) localStorage.setItem("portal:chat-draft", input)
+    else localStorage.removeItem("portal:chat-draft")
+  }, [input])
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: userMsg,
-      createdAt: new Date().toISOString(),
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!container) return
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    container.scrollTo({ top: container.scrollHeight, behavior: reduced ? "auto" : "smooth" })
+  }, [messages, sending])
+
+  const openManualTicket = (text = manualDraft || input) => {
+    localStorage.setItem(PORTAL_NEW_TICKET_DRAFT_KEY, serializePortalNewTicketDraft({
+      subject: t("chatRequestSubject"),
+      description: text.trim(),
+      category: "general",
+      clientRequestId: globalThis.crypto.randomUUID(),
+    }))
+    router.push("/portal/tickets?action=new")
+  }
+
+  const handleSend = async (text = input, appendUser = true) => {
+    const userText = text.trim()
+    if (availability !== "enabled" || !userText || sending) return
+    if (!navigator.onLine) {
+      setOnline(false)
+      setSendError(t("chatOffline"))
+      setRetryMessage(userText)
+      return
     }
-    setMessages(prev => [...prev, userMessage])
-
-    try {
-      const res = await fetch("/api/v1/public/portal-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg, sessionId }),
-      })
-      const json = await res.json()
-      if (json.errorKey === "supportAiDisabled") {
-        setSupportAiEnabled(false)
-        return
-      }
-      if (json.success && json.data?.reply) {
-        if (json.data.sessionId) setSessionId(json.data.sessionId)
-        const reply = json.data.reply
-        setMessages(prev => [...prev, {
-          id: reply.id || (Date.now() + 1).toString(),
-          role: "assistant",
-          content: typeof reply === "string" ? reply : (reply.content || "..."),
-          createdAt: reply.createdAt || new Date().toISOString(),
-          suggestTicket: json.data.suggestTicket || false,
-          escalated: json.data.escalated || false,
-          escalationTicketId: json.data.escalationTicketId || null,
-          escalationTicketNumber: json.data.escalationTicketNumber || null,
-        }])
-      } else {
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: json.error || t("chatError"),
-          createdAt: new Date().toISOString(),
-        }])
-      }
-    } catch {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: t("chatNetworkError"),
+    setSending(true)
+    setSendError("")
+    setRetryMessage("")
+    setManualDraft(userText)
+    if (appendUser) {
+      setMessages((current) => [...current, {
+        id: globalThis.crypto.randomUUID(),
+        role: "user",
+        content: userText,
         createdAt: new Date().toISOString(),
       }])
-    } finally { setSending(false) }
+    }
+    setInput("")
+
+    try {
+      const response = await fetch("/api/v1/public/portal-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userText, sessionId }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (body.errorKey === "supportAiDisabled") {
+        setAvailability("disabled")
+        setRetryMessage(userText)
+        return
+      }
+      if (!response.ok || !body.success || !body.data?.reply) {
+        throw new Error(t("chatError"))
+      }
+      if (body.data.sessionId) setSessionId(body.data.sessionId)
+      const reply = body.data.reply
+      setMessages((current) => [...current, {
+        id: reply.id || globalThis.crypto.randomUUID(),
+        role: "assistant",
+        content: typeof reply === "string" ? reply : reply.content || t("chatError"),
+        createdAt: reply.createdAt || new Date().toISOString(),
+        escalated: body.data.escalated === true,
+        escalationTicketId: body.data.escalationTicketId || null,
+        escalationTicketNumber: body.data.escalationTicketNumber || null,
+        degraded: body.data.degraded === true,
+      }])
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : t("chatNetworkError"))
+      setRetryMessage(userText)
+    } finally {
+      setSending(false)
+    }
   }
 
-  if (supportAiEnabled === null) {
-    return (
-      <div className="grid min-h-[40vh] place-items-center" aria-busy="true">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+  if (availability === "loading") {
+    return <div data-testid="portal-chat-workspace" data-state="loading" className="grid min-h-[40dvh] place-items-center" aria-busy="true" aria-label={t("chatLoading")}><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" /></div>
   }
 
-  if (!supportAiEnabled) {
+  if (availability === "disabled" || availability === "unavailable") {
+    const unavailable = availability === "unavailable"
     return (
-      <div className="mx-auto max-w-xl py-10">
-        <Card className="p-8 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-muted">
-            <Bot className="h-5 w-5 text-muted-foreground" />
-          </span>
-          <h1 className="mt-4 text-xl font-semibold">{t("chatUnavailableTitle")}</h1>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{t("chatUnavailableDesc")}</p>
-          <Button className="mt-5" onClick={() => router.push("/portal/tickets")}>{t("myTickets")}</Button>
-        </Card>
-      </div>
+      <section data-testid="portal-chat-workspace" data-state={availability} className="mx-auto max-w-xl rounded-lg border bg-background p-5 text-center" role={unavailable ? "alert" : "status"}>
+        {unavailable ? <CircleAlert className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden="true" /> : <Bot className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden="true" />}
+        <h1 className="mt-3 text-xl font-semibold">{unavailable ? t("chatStatusUnavailableTitle") : t("chatUnavailableTitle")}</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{unavailable ? t("chatStatusUnavailableDesc") : t("chatUnavailableDesc")}</p>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
+          <Button data-testid="portal-chat-retry-availability" variant="outline" className="min-h-11" onClick={() => void loadAvailability()}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>
+          <Button data-testid="portal-chat-manual-ticket" className="min-h-11" onClick={() => openManualTicket(retryMessage)}><TicketPlus aria-hidden="true" />{t("createManualTicket")}</Button>
+        </div>
+      </section>
     )
   }
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold">{t("chatTitle")}</h1>
-        <p className="text-muted-foreground text-sm">{t("chatDesc")}</p>
-      </div>
+    <div data-testid="portal-chat-workspace" data-state="enabled" data-online={online} className="flex min-h-[calc(100dvh-11rem)] flex-col gap-3">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">{t("chatTitle")}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("chatDesc")}</p>
+        </div>
+        <Button data-testid="portal-chat-manual-ticket" variant="outline" className="min-h-11" onClick={() => openManualTicket()}><Headphones aria-hidden="true" />{t("manualSupport")}</Button>
+      </header>
 
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      {!online && <div data-testid="portal-chat-offline" className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{t("chatOffline")}</div>}
+
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background" aria-label={t("chatTitle")}>
+        <div ref={scrollRef} data-testid="portal-chat-log" className="min-h-48 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:p-4" role="log" aria-live="polite" aria-relevant="additions text">
           {messages.length === 0 && (
-            <div className="text-center text-muted-foreground py-12">
-              <Bot className="h-12 w-12 mx-auto mb-3 text-[hsl(var(--ai-from))]/30" />
-              <p>{t("chatEmpty")}</p>
-              <p className="text-xs mt-1">{t("chatEmptyHint")}</p>
+            <div className="grid min-h-48 place-items-center text-center text-muted-foreground">
+              <div><Bot className="mx-auto h-8 w-8" aria-hidden="true" /><p className="mt-3 text-sm">{t("chatEmpty")}</p><p className="mt-1 text-xs">{t("chatEmptyHint")}</p></div>
             </div>
           )}
-          {messages.map(msg => (
-            <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
-              {msg.role === "assistant" && (
-                <div className="w-8 h-8 rounded-full bg-[hsl(var(--ai-from))]/10 flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-4 w-4 text-[hsl(var(--ai-from))]" />
+          {messages.map((message) => (
+            <article key={message.id} className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+              {message.role === "assistant" && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border"><Bot className="h-4 w-4" aria-hidden="true" /></span>}
+              <div className="max-w-[86%] sm:max-w-[72%]">
+                <div className="rounded-lg border bg-muted/20 px-3 py-2.5">
+                  <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p>
+                  <time className="mt-1 block text-[11px] text-muted-foreground" dateTime={message.createdAt}>{formatDate(message.createdAt, locale, { hour: "2-digit", minute: "2-digit" })}</time>
                 </div>
-              )}
-              <div className="max-w-[70%]">
-                <div className={`rounded-lg p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)] ${
-                  msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-zinc-200 dark:border-zinc-700"
-                }`}>
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  <p className={`text-[10px] mt-1 ${msg.role === "user" ? "opacity-70" : "text-muted-foreground"}`}>
-                    {new Date(msg.createdAt).toLocaleTimeString()}
-                  </p>
-                </div>
-                {msg.escalated && msg.escalationTicketId && (
-                  <div className="mt-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
-                    <p className="text-xs font-medium text-destructive mb-1">{t("chatEscalatedLabel")}</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                      onClick={() => router.push(`/portal/tickets/${msg.escalationTicketId}`)}
-                    >
-                      <TicketPlus className="h-3.5 w-3.5 mr-1" /> {t("chatTicketPrefix")} {msg.escalationTicketNumber || `#${msg.escalationTicketId?.slice(0, 8)}`}
-                    </Button>
+                {message.degraded && (
+                  <div className="mt-2 rounded-md border px-3 py-2 text-xs" role="status">
+                    <p>{t("chatDegraded")}</p>
+                    <Button variant="outline" size="sm" className="mt-2 min-h-11" onClick={() => openManualTicket(manualDraft)}><TicketPlus aria-hidden="true" />{t("createManualTicket")}</Button>
                   </div>
                 )}
-                {msg.suggestTicket && !msg.escalated && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 border-primary/30 text-primary hover:bg-primary/10 rounded-full"
-                    onClick={() => router.push("/portal/tickets")}
-                  >
-                    <TicketPlus className="h-3.5 w-3.5 mr-1" /> {t("newTicket")}
-                  </Button>
+                {message.escalated && message.escalationTicketId && (
+                  <div className="mt-2 rounded-md border px-3 py-2 text-xs" role="status">
+                    <p className="font-medium">{t("chatEscalatedLabel")}</p>
+                    <Button variant="outline" size="sm" className="mt-2 min-h-11" onClick={() => router.push(`/portal/tickets/${message.escalationTicketId}`)}><TicketPlus aria-hidden="true" />{t("chatTicketPrefix")} {message.escalationTicketNumber || ""}</Button>
+                  </div>
                 )}
               </div>
-              {msg.role === "user" && (
-                <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
-                  <User className="h-4 w-4 text-primary" />
-                </div>
-              )}
-            </div>
+              {message.role === "user" && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border"><User className="h-4 w-4" aria-hidden="true" /></span>}
+            </article>
           ))}
-          {sending && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-[hsl(var(--ai-from))]/10 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-[hsl(var(--ai-from))] animate-pulse" />
-              </div>
-              <div className="bg-card border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-                <p className="text-sm text-muted-foreground">{t("chatTyping")}</p>
-              </div>
+          {sending && <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />{t("chatTyping")}</div>}
+        </div>
+
+        {(sendError || retryMessage) && (
+            <div data-testid="portal-chat-send-error" className="flex flex-col gap-2 border-t px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between" role="alert">
+            <span>{sendError || t("chatRequestNotSent")}</span>
+            <div className="flex gap-2">
+              {retryMessage && online && <Button data-testid="portal-chat-retry-send" variant="outline" size="sm" className="min-h-11" onClick={() => void handleSend(retryMessage, false)} disabled={sending}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>}
+              <Button variant="ghost" size="sm" className="min-h-11" onClick={() => openManualTicket(retryMessage)}><TicketPlus aria-hidden="true" />{t("manualSupport")}</Button>
             </div>
-          )}
-        </div>
-        <div className="border-t p-4">
-          <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSend()}
-              placeholder={t("chatPlaceholder")}
-              disabled={sending}
-            />
-            <Button onClick={handleSend} disabled={sending || !input.trim()} size="icon" className="rounded-full">
-              <Send className="h-4 w-4" />
-            </Button>
           </div>
-        </div>
-      </Card>
+        )}
+
+        <form className="border-t p-3" onSubmit={(event) => { event.preventDefault(); void handleSend() }}>
+          <div className="flex items-end gap-2">
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">{t("chatPlaceholder")}</span>
+              <Textarea data-testid="portal-chat-input" value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault()
+                  void handleSend()
+                }
+              }} placeholder={t("chatPlaceholder")} rows={2} maxLength={5000} disabled={sending} className="max-h-36 min-h-11 resize-none" />
+            </label>
+            <Button data-testid="portal-chat-send" type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={sending || !input.trim() || !online} aria-label={t("sendReply")}><Send aria-hidden="true" /></Button>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t("chatComposerHelp")}</p>
+        </form>
+      </section>
     </div>
   )
 }

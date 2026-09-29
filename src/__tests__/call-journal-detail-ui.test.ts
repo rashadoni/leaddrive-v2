@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 const detailPath = "src/components/voip/call-journal-detail.tsx"
 const detailSource = existsSync(detailPath) ? readFileSync(detailPath, "utf8") : ""
 const pageSource = readFileSync("src/app/(dashboard)/support/voip/page.tsx", "utf8")
+const playerSource = readFileSync("src/components/voip/call-recording-player.tsx", "utf8")
 
 describe("call journal deep-link detail UI", () => {
   it("mounts a search-param detail inside Suspense without replacing the journal", () => {
@@ -50,7 +51,9 @@ describe("call journal deep-link detail UI", () => {
 
   it("offers only the protected recording path already returned by the API", () => {
     expect(detailSource).toContain("visibleCall.recordingPlaybackUrl")
-    expect(detailSource).toContain('rel="noopener noreferrer"')
+    expect(detailSource).toContain("candidate.recordingPlaybackUrl === protectedRecordingPath")
+    expect(detailSource).toContain("<CallRecordingPlayer")
+    expect(playerSource).toContain("src={url}")
     expect(detailSource).not.toContain("recordingUrl")
   })
 
@@ -61,10 +64,12 @@ describe("call journal deep-link detail UI", () => {
       "retry",
       "unavailable",
       "transcriptUnavailable",
-      "recordingUnavailable",
     ]) {
       expect(detailSource).toContain(`t("journal.${key}")`)
     }
+    expect(playerSource).toContain('t("recordingUnavailable")')
+    expect(playerSource).toContain('t("recordingError")')
+    expect(playerSource).toContain("audio.load()")
     expect(detailSource).toContain("min-h-11")
   })
 

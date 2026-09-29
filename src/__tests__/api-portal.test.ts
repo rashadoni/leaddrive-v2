@@ -1000,6 +1000,9 @@ describe("GET /api/v1/public/portal-kb", () => {
     expect(body.success).toBe(true)
     expect(body.data).toHaveLength(1)
     expect(body.data[0].title).toBe("How to reset password")
+    expect(prisma.kbArticle.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: "org-1", status: "published" },
+    }))
   })
 
   it("returns single article and increments viewCount when id param given", async () => {
@@ -1025,6 +1028,9 @@ describe("GET /api/v1/public/portal-kb", () => {
     expect(body.success).toBe(true)
     expect(body.data.title).toBe("Guide")
     expect(body.data.viewCount).toBe(11)
+    expect(prisma.kbArticle.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "a1", organizationId: "org-1", status: "published" },
+    }))
     expect(prisma.kbArticle.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { viewCount: { increment: 1 } } }),
     )

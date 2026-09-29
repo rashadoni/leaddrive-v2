@@ -105,8 +105,56 @@ async function assertNoHorizontalOverflow(page, label) {
   if (overflow) throw new Error(`${label}_horizontal_overflow`)
 }
 
+const activationEvidence = []
+
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  await locator.evaluate(async (element) => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (!element.matches(":disabled, [aria-disabled='true']")) return
+      await new Promise((resolve) => window.setTimeout(resolve, 50))
+    }
+    throw new Error("customer_portal_target_remained_disabled")
+  })
+
+  if (viewportName === "desktop") {
+    await locator.press(keyboardKey)
+    const detail = { inputModality: "keyboard", hitTarget: true, keyboardKey }
+    activationEvidence.push(detail)
+    return detail
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }))
+  await page.waitForTimeout(50)
+  const target = await locator.evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+    const hit = document.elementFromPoint(point.x, point.y)
+    return {
+      x: point.x,
+      y: point.y,
+      width: box.width,
+      height: box.height,
+      hitTarget: Boolean(hit && (element === hit || element.contains(hit))),
+    }
+  })
+  if (target.width < 44 || target.height < 44) {
+    throw new Error(`customer_portal_touch_target_too_small_${Math.round(target.width)}x${Math.round(target.height)}`)
+  }
+  if (!target.hitTarget) throw new Error("customer_portal_touch_hit_test_failed")
+  await page.touchscreen.tap(target.x, target.y)
+  const detail = {
+    inputModality: "playwright-touchscreen",
+    hitTarget: true,
+    targetSize: { width: Math.round(target.width), height: Math.round(target.height) },
+  }
+  activationEvidence.push(detail)
+  return detail
+}
+
 await mkdir(outputDirectory, { recursive: true })
-const report = { generatedAt: new Date().toISOString(), commit, targetHost: hostname, demoOrganization, role: "customer", locale, theme, viewport: viewportName, results: [] }
+const report = { generatedAt: new Date().toISOString(), commit, targetHost: hostname, demoOrganization, role: "customer", locale, theme, viewport: viewportName, activations: activationEvidence, results: [] }
 
 const browser = await chromium.launch({ headless: true })
 const context = await browser.newContext({ baseURL: baseUrl, viewport: viewports[viewportName], locale, colorScheme: theme, reducedMotion: "reduce", hasTouch: viewportName !== "desktop" })
@@ -145,16 +193,15 @@ try {
     })
     await page.goto("/portal/tickets", { waitUntil: "domcontentloaded" })
     await page.getByTestId("portal-tickets-error").waitFor({ state: "visible" })
-    await page.getByTestId("portal-tickets-retry").focus()
-    await page.getByTestId("portal-tickets-retry").press("Enter")
+    await activateEvidenceTarget(page, page.getByTestId("portal-tickets-retry"))
     await page.locator("[data-testid='portal-tickets-workspace'][data-state='ready']").waitFor({ state: "visible" })
     await page.getByTestId("portal-tickets-search").fill("no matching evidence ticket")
     await page.locator("[data-testid='portal-tickets-empty-state'][data-kind='filtered']").waitFor({ state: "visible" })
     await page.getByTestId("portal-tickets-search").fill("")
-    await page.getByTestId("portal-new-ticket-toggle").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-new-ticket-toggle"))
     await page.getByTestId("portal-new-ticket-subject").fill("Draft survives create failure")
     await page.getByTestId("portal-new-ticket-description").fill("Evidence draft body")
-    await page.getByTestId("portal-new-ticket-submit").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-new-ticket-submit"))
     await page.getByTestId("portal-new-ticket-error").waitFor({ state: "visible" })
     if (await page.getByTestId("portal-new-ticket-subject").inputValue() !== "Draft survives create failure") throw new Error("portal_create_failure_lost_draft")
     const storedDraft = await page.evaluate(() => localStorage.getItem("portal:new-ticket"))
@@ -193,16 +240,15 @@ try {
     })
     await page.goto(`/portal/tickets/${encodeURIComponent(ticketId)}`, { waitUntil: "domcontentloaded" })
     await page.locator("[data-testid='portal-ticket-workspace'][data-state='error']").waitFor({ state: "visible" })
-    await page.getByTestId("portal-ticket-retry").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-ticket-retry"))
     await page.locator("[data-testid='portal-ticket-workspace'][data-state='ready'][data-terminal='true']").waitFor({ state: "visible" })
     await page.getByTestId("portal-ticket-file").setInputFiles({ name: "evidence.txt", mimeType: "text/plain", buffer: Buffer.from("portal evidence\n") })
     await page.getByText("evidence.txt", { exact: true }).waitFor({ state: "visible" })
     await page.getByTestId("portal-ticket-reply").fill("Please reopen this request")
-    await page.getByTestId("portal-ticket-send").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-ticket-send"))
     await page.getByTestId("portal-ticket-mutation-error").waitFor({ state: "visible" })
     if (await page.getByTestId("portal-ticket-reply").inputValue() !== "Please reopen this request") throw new Error("portal_reply_failure_lost_draft")
-    await page.getByTestId("portal-ticket-send").focus()
-    await page.getByTestId("portal-ticket-send").press("Enter")
+    await activateEvidenceTarget(page, page.getByTestId("portal-ticket-send"))
     await page.locator("[data-testid='portal-ticket-workspace'][data-status='open'][data-terminal='false']").waitFor({ state: "visible" })
     await page.getByTestId("portal-ticket-send-success").waitFor({ state: "visible" })
     if (await page.getByTestId("portal-ticket-reply").inputValue() !== "") throw new Error("portal_successful_reply_draft_not_cleared")
@@ -218,10 +264,9 @@ try {
     await page.locator("[data-testid='portal-chat-workspace'][data-state='unavailable']").waitFor({ state: "visible" })
     await page.unroute(configPattern, unavailable)
     await installPortalConfig(page, false)
-    await page.getByTestId("portal-chat-retry-availability").focus()
-    await page.getByTestId("portal-chat-retry-availability").press("Enter")
+    await activateEvidenceTarget(page, page.getByTestId("portal-chat-retry-availability"))
     await page.locator("[data-testid='portal-chat-workspace'][data-state='disabled']").waitFor({ state: "visible" })
-    await page.getByTestId("portal-chat-manual-ticket").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-chat-manual-ticket"))
     await page.waitForURL(/\/portal\/tickets\?action=new$/)
     await page.getByTestId("portal-new-ticket-form").waitFor({ state: "visible" })
     await assertNoHorizontalOverflow(page, "portal_chat_disabled")
@@ -251,13 +296,13 @@ try {
     await page.getByTestId("portal-chat-offline").waitFor({ state: "visible" })
     if (!await page.getByTestId("portal-chat-send").isDisabled()) throw new Error("portal_chat_offline_send_not_blocked")
     await context.setOffline(false)
-    await page.getByTestId("portal-chat-input").press("Enter")
+    await activateEvidenceTarget(page, page.getByTestId("portal-chat-send"))
     await page.getByTestId("portal-chat-send-error").waitFor({ state: "visible" })
-    await page.getByTestId("portal-chat-retry-send").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-chat-retry-send"))
     await page.getByText("Use manual support if this answer is incomplete.", { exact: true }).waitFor({ state: "visible" })
     if (await page.getByTestId("portal-chat-log").getByRole("button").count() === 0) throw new Error("portal_chat_degraded_manual_handoff_missing")
     await page.getByTestId("portal-chat-input").fill("I need a human specialist")
-    await page.getByTestId("portal-chat-send").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-chat-send"))
     await page.getByText("SUP-EVIDENCE-101", { exact: false }).waitFor({ state: "visible" })
     await assertNoHorizontalOverflow(page, "portal_chat_enabled")
     return { offlineDraft: true, failedSendRecovery: true, degradedManualHandoff: true, escalationTicketLink: true }
@@ -281,13 +326,12 @@ try {
     })
     await page.goto(`/ticket-closure/${encodeURIComponent(closureToken)}`, { waitUntil: "domcontentloaded" })
     await page.getByTestId("ticket-closure-error").waitFor({ state: "visible" })
-    await page.getByTestId("ticket-closure-retry").focus()
-    await page.getByTestId("ticket-closure-retry").press("Enter")
+    await activateEvidenceTarget(page, page.getByTestId("ticket-closure-retry"))
     await page.locator("[data-testid='ticket-closure-workspace'][data-state='ready'][data-status='pending']").waitFor({ state: "visible" })
-    await page.getByTestId("ticket-closure-confirm").click()
+    await activateEvidenceTarget(page, page.getByTestId("ticket-closure-confirm"))
     await page.getByTestId("ticket-closure-save-error").waitFor({ state: "visible" })
     if (!await page.getByTestId("ticket-closure-confirm").isEnabled()) throw new Error("portal_closure_failure_not_recoverable")
-    await page.getByTestId("ticket-closure-confirm").click()
+    await activateEvidenceTarget(page, page.getByTestId("ticket-closure-confirm"))
     await page.locator("[data-testid='ticket-closure-workspace'][data-status='confirmed']").waitFor({ state: "visible" })
     await page.getByTestId("ticket-closure-success").waitFor({ state: "visible" })
     for (const terminalStatus of ["rejected", "expired", "canceled"]) {
@@ -323,7 +367,7 @@ try {
 
 await writeFile(path.join(outputDirectory, "customer-portal-flow-evidence.json"), JSON.stringify(report, null, 2) + "\n")
 const failures = report.results.filter((result) => result.status !== "passed")
-if (report.results.length !== 6 || failures.length > 0) {
-  console.error(JSON.stringify({ expected: 6, actual: report.results.length, failures }, null, 2))
+if (report.results.length !== 6 || activationEvidence.length !== 14 || failures.length > 0) {
+  console.error(JSON.stringify({ expected: 6, actual: report.results.length, expectedActivations: 14, actualActivations: activationEvidence.length, failures }, null, 2))
   process.exitCode = 1
 }

@@ -9,6 +9,11 @@ let prisma!: PrismaClient
 const DEMO_ORGANIZATION = "Northstar Support Lab"
 const DEMO_SLUG = "support-evidence"
 const SEED_CONFIRMATION = "ephemeral-support-ux-v1"
+// Evidence screenshots are compared across independent CI runs. Keep all
+// user-visible fixture dates stable so a harmless clock tick cannot create a
+// visual regression.
+const EVIDENCE_FIXTURE_EPOCH_MS = Date.UTC(2026, 8, 14, 0, 0, 0)
+const CALL_FIXTURE_INTERVAL_MS = 30 * 60 * 1000
 const LOCAL_DATABASE_HOSTS = new Set(["127.0.0.1", "localhost", "::1"])
 
 function requiredEnv(name: string): string {
@@ -43,6 +48,14 @@ function fixtureCount(value: string | undefined): number {
   return count
 }
 
+function supportUxCanaryEnabled(value: string | undefined): boolean {
+  const mode = (value || "enabled").trim()
+  if (mode !== "enabled" && mode !== "disabled") {
+    throw new Error("SUPPORT_EVIDENCE_SUPPORT_UX_CANARY must be enabled or disabled")
+  }
+  return mode === "enabled"
+}
+
 function closureToken(): { token: string; tokenHash: string } {
   const token = randomBytes(32).toString("base64url")
   return { token, tokenHash: createHash("sha256").update(token).digest("hex") }
@@ -54,6 +67,7 @@ async function main(): Promise<void> {
 
   const outputPath = requiredEnv("SUPPORT_EVIDENCE_FIXTURE_MANIFEST")
   const count = fixtureCount(process.env.SUPPORT_EVIDENCE_DATA_PROFILE)
+  const supportUxCanary = supportUxCanaryEnabled(process.env.SUPPORT_EVIDENCE_SUPPORT_UX_CANARY)
   const credentials = {
     agent: {
       email: "agent@support-evidence.invalid",
@@ -86,7 +100,10 @@ async function main(): Promise<void> {
       slug: DEMO_SLUG,
       plan: "enterprise",
       addons: ["ai", "voip"],
-      features: ["crm", "support", "settings", "analytics", "voip", "ai", "complaints_register"],
+      features: [
+        "crm", "support", "settings", "analytics", "voip", "ai", "complaints_register",
+        ...(supportUxCanary ? ["support_ux_v2_canary"] : []),
+      ],
       modules: { crm: true, support: true, settings: true, analytics: true, voip: true, ai: true },
       settings: { defaultLocale: "az", landingPath: "/tickets" },
       maxUsers: 20,
@@ -253,6 +270,11 @@ async function main(): Promise<void> {
   const kbCategory = await prisma.kbCategory.create({
     data: { organizationId: organization.id, name: "Getting started", sortOrder: 10 },
   })
+  // Both list APIs order by createdAt descending. Promise.all otherwise gives
+  // these rows effectively tied timestamps whose database order can change
+  // between independent visual baseline and comparison runs.
+  const primaryKbCreatedAt = new Date(EVIDENCE_FIXTURE_EPOCH_MS + 2 * 24 * 60 * 60 * 1000)
+  const secondaryKbCreatedAt = new Date(EVIDENCE_FIXTURE_EPOCH_MS + 1 * 24 * 60 * 60 * 1000)
   const [primaryKbArticle] = await Promise.all([
     prisma.kbArticle.create({
       data: {
@@ -265,6 +287,8 @@ async function main(): Promise<void> {
         tags: ["account", "sign-in"],
         viewCount: 24,
         helpfulCount: 18,
+        createdAt: primaryKbCreatedAt,
+        updatedAt: primaryKbCreatedAt,
       },
     }),
     prisma.kbArticle.create({
@@ -278,6 +302,8 @@ async function main(): Promise<void> {
         tags: ["tickets"],
         viewCount: 16,
         helpfulCount: 12,
+        createdAt: secondaryKbCreatedAt,
+        updatedAt: secondaryKbCreatedAt,
       },
     }),
   ])
@@ -292,6 +318,7 @@ async function main(): Promise<void> {
         customer: { email: credentials.customer.email },
       },
       fixtures: {},
+      fixtureCounts: { callLogs: 0 },
       dataProfile: process.env.SUPPORT_EVIDENCE_DATA_PROFILE || "empty",
       synthetic: true,
     }, null, 2) + "\n", { mode: 0o600 })
@@ -318,8 +345,8 @@ async function main(): Promise<void> {
       requesterPhone: contact.phone,
       tags: ["demo", "access"],
       slaPolicyName: sla.name,
-      slaFirstResponseDueAt: new Date(Date.now() + 60 * 60 * 1000),
-      slaDueAt: new Date(Date.now() + 8 * 60 * 60 * 1000),
+      slaFirstResponseDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 60 * 60 * 1000),
+      slaDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 8 * 60 * 60 * 1000),
     },
   })
   await prisma.ticketComment.createMany({
@@ -348,8 +375,8 @@ async function main(): Promise<void> {
       requesterEmail: contact.email,
       tags: ["demo", "quality"],
       slaPolicyName: sla.name,
-      slaFirstResponseDueAt: new Date(Date.now() - 30 * 60 * 1000),
-      slaDueAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      slaFirstResponseDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - 30 * 60 * 1000),
+      slaDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 2 * 60 * 60 * 1000),
     },
   })
   await prisma.complaintMeta.create({
@@ -391,14 +418,18 @@ async function main(): Promise<void> {
         requesterEmail: contact.email,
         tags: ["demo", `batch-${index % 5}`],
         slaPolicyName: sla.name,
-        slaFirstResponseDueAt: new Date(Date.now() + (index + 1) * 60 * 1000),
-        slaDueAt: new Date(Date.now() + (index + 2) * 60 * 60 * 1000),
+        slaFirstResponseDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + (index + 1) * 60 * 1000),
+        slaDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + (index + 2) * 60 * 60 * 1000),
       })),
     })
   }
 
+  // The journal intentionally requests a rolling 30-day window. Anchor call
+  // fixtures to the current UTC day so this CI-only dataset cannot silently
+  // age out while the remaining screenshot fixtures stay visually stable.
+  const callFixtureAnchorMs = new Date().setUTCHours(0, 0, 0, 0)
   await prisma.callLog.createMany({
-    data: Array.from({ length: 8 }, (_, index) => ({
+    data: Array.from({ length: count }, (_, index) => ({
       organizationId: organization.id,
       callSid: `support-evidence-${index + 1}`,
       direction: index % 2 === 0 ? "inbound" : "outbound",
@@ -415,10 +446,30 @@ async function main(): Promise<void> {
       providerCallId: `support-evidence-provider-${index + 1}`,
       wasAnswered: true,
       providerOutcome: "connected",
-      startedAt: new Date(Date.now() - (index + 1) * 60 * 60 * 1000),
-      endedAt: new Date(Date.now() - (index + 1) * 60 * 60 * 1000 + (90 + index * 15) * 1000),
+      // The VoIP timeline deliberately renders `createdAt`, so pin it with the
+      // call interval rather than leaving Prisma's default clock value here.
+      createdAt: new Date(callFixtureAnchorMs - (index + 1) * CALL_FIXTURE_INTERVAL_MS),
+      startedAt: new Date(callFixtureAnchorMs - (index + 1) * CALL_FIXTURE_INTERVAL_MS),
+      endedAt: new Date(callFixtureAnchorMs - (index + 1) * CALL_FIXTURE_INTERVAL_MS + (90 + index * 15) * 1000),
     })),
   })
+
+  const callLogCount = await prisma.callLog.count({ where: { organizationId: organization.id } })
+  if (callLogCount !== count) {
+    throw new Error(`Support evidence call fixture count mismatch: expected ${count}, received ${callLogCount}`)
+  }
+  const rollingCallLogCount = await prisma.callLog.count({
+    where: {
+      organizationId: organization.id,
+      createdAt: {
+        gte: new Date(callFixtureAnchorMs - 30 * 24 * 60 * 60 * 1000),
+        lte: new Date(),
+      },
+    },
+  })
+  if (rollingCallLogCount !== count) {
+    throw new Error(`Support evidence rolling call fixture mismatch: expected ${count}, received ${rollingCallLogCount}`)
+  }
 
   const entitlement = await prisma.entitlement.create({
     data: {
@@ -426,8 +477,8 @@ async function main(): Promise<void> {
       companyId: company.id,
       slaPolicyId: sla.id,
       supportLevel: "premium",
-      validFrom: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      validFrom: new Date(EVIDENCE_FIXTURE_EPOCH_MS - 7 * 24 * 60 * 60 * 1000),
+      validTo: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 365 * 24 * 60 * 60 * 1000),
       status: "active",
       notes: "Synthetic Support UX evidence entitlement",
       createdBy: admin.id,
@@ -490,7 +541,7 @@ async function main(): Promise<void> {
       recipient: contact.email,
       tokenHash: closure.tokenHash,
       requestedBy: agent.id,
-      dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      dueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 7 * 24 * 60 * 60 * 1000),
     },
   })
 
@@ -512,6 +563,7 @@ async function main(): Promise<void> {
       entitlementId: entitlement.id,
       closureToken: closure.token,
     },
+    fixtureCounts: { callLogs: callLogCount },
     dataProfile: process.env.SUPPORT_EVIDENCE_DATA_PROFILE || "typical",
     synthetic: true,
   }, null, 2) + "\n", { mode: 0o600 })

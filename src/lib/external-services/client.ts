@@ -246,10 +246,13 @@ async function readBoundedFetcherBody(
  */
 function transportForFetcher(fetcher: typeof fetch): OutboundWebhookTransport {
   return async (target, outboundRequest) => {
+    const requestBody = typeof outboundRequest.body === "string" || outboundRequest.body === undefined
+      ? outboundRequest.body
+      : Uint8Array.from(outboundRequest.body).buffer
     const response = await fetcher(target.url.toString(), {
       method: outboundRequest.method,
       headers: outboundRequest.headers,
-      body: outboundRequest.body,
+      body: requestBody,
       redirect: "manual",
       signal: AbortSignal.timeout(outboundRequest.timeoutMs),
     })

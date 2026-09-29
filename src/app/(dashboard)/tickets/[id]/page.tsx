@@ -1221,7 +1221,7 @@ export default function TicketDetailPage() {
       </div>
 
       {/* Stable case spine: the facts needed for the next action remain reachable on desktop. */}
-      <div className="grid grid-cols-3 overflow-hidden rounded-xl border bg-card shadow-sm sm:grid-cols-4 lg:sticky lg:top-2 lg:z-10 xl:grid-cols-7">
+      <div className="flex min-w-0 overflow-x-auto rounded-xl border bg-card shadow-sm sm:grid sm:grid-cols-4 sm:overflow-hidden lg:sticky lg:top-2 lg:z-10 xl:grid-cols-7">
         {[
           { label: t("customerLabel"), value: customerLabel },
           { label: t("channelLabel"), value: channelLabel(ticketChannel) },
@@ -1230,12 +1230,12 @@ export default function TicketDetailPage() {
           { label: t("priorityLabel"), value: priorityLabel(ticket.priority) },
           { label: t("slaResolution"), value: sla.text },
         ].map(item => (
-          <div key={item.label} className="min-w-0 border-b border-r p-2.5 xl:border-b-0">
+          <div key={item.label} className="w-32 shrink-0 border-b border-r p-2.5 sm:w-auto xl:border-b-0">
             <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">{item.label}</span>
             <span className="mt-1 block truncate text-xs font-semibold" title={item.value}>{item.value}</span>
           </div>
         ))}
-        <div className="col-span-3 flex items-center p-2 sm:col-span-2 xl:col-span-1">
+        <div className="flex w-36 shrink-0 items-center p-2 sm:col-span-2 sm:w-auto xl:col-span-1">
           {ticket.status === "closed" ? (
             <Button size="sm" variant="outline" className="h-11 w-full sm:h-9" disabled={updatingStatus} onClick={() => void handleReopen()}>{t("reopenTicket")}</Button>
           ) : !ticket.assignedTo ? (
@@ -1259,7 +1259,7 @@ export default function TicketDetailPage() {
           <Clock className="h-5 w-5 text-red-600 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium text-red-800 dark:text-red-300">{t("slaBreachedWarning")}</p>
-            <p className="text-xs text-red-600 dark:text-red-400">{t("slaDeadline")}: {formatDate(ticket.slaDueAt, locale)} · {t("priority")}: {priorityLabel(ticket.priority)}</p>
+            <p className="text-xs text-red-700 dark:text-red-300">{t("slaDeadline")}: {formatDate(ticket.slaDueAt, locale)} · {t("priority")}: {priorityLabel(ticket.priority)}</p>
           </div>
           {!ticket.assignedTo && (
             <Button size="sm" variant="destructive" className="h-11 sm:h-9" onClick={handleAutoAssign} disabled={updatingAssignee}>
@@ -1709,7 +1709,7 @@ export default function TicketDetailPage() {
                     )}
                   </div>
                 )}
-                {aiError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{aiError}</p>}
+                {aiError && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{aiError}</p>}
 
                 {isInternal && (
                   <p id="ticket-internal-note-hint" className="text-xs text-amber-700 dark:text-amber-300">{t("internalNoteHint")}</p>

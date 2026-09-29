@@ -34,6 +34,15 @@ interface WebhookPayload {
   data: Record<string, unknown>
 }
 
+interface ActiveWebhookTarget {
+  id: string
+  url: string
+  events: string[]
+  secret: string
+  provenance: string
+  createdByApiKeyId: string | null
+}
+
 async function isOrganizationActive(orgId: string): Promise<boolean> {
   try {
     const organization = await prisma.organization.findFirst({
@@ -109,7 +118,7 @@ export async function fireWebhooks(
 
   const deliveries: Promise<void>[] = []
   try {
-    const webhooks = await prisma.webhook.findMany({
+    const webhooks: ActiveWebhookTarget[] = await prisma.webhook.findMany({
       where: {
         organizationId: orgId,
         isActive: true,

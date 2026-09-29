@@ -1,0 +1,3490 @@
+# Support module UX redesign — session log
+
+This is the durable, append-only continuation record for the Support UX
+redesign. The canonical backlog and acceptance criteria remain in
+`docs/support-module-ux-redesign-implementation-plan.md`. Do not rewrite or
+delete older entries here; append a dated correction when facts change.
+
+## 2026-09-26 — Reference-session handoff
+
+### User intent and operating constraints
+
+- Continue the full Support UX implementation plan autonomously and
+  sequentially, closing each workstream only after its stated acceptance and
+  Definition of Done evidence is real.
+- Keep the current Codex conversation as a reference and continue execution in
+  a new conversation.
+- The only active repository and CI/CD route is
+  `https://github.com/rashadoni/leaddrive-v2`; the active GitHub account is
+  `rashadoni`. Do not use the retired `rashadrahimov/leaddrive-v2` copy or
+  Azure DevOps.
+- Production delivery remains reviewed feature branch -> `main` -> GitHub
+  Actions -> the registered Contabo production target. Do not bypass gates or
+  deploy a feature worktree directly.
+- Preserve unrelated and user-owned changes. Heavy builds and browser E2E run
+  in GitHub CI, not on the Contabo inspection host.
+
+### Authoritative checkout
+
+- Worktree:
+  `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-support-voip-rashadoni`
+- Branch: `codex/support-ux-voip-rashadoni`
+- Runtime-evidence head: `323b5ab585801218a77a681f6462a552d6a5f945`
+- Origin: `https://github.com/rashadoni/leaddrive-v2.git`
+- Production alias/path resolved by `codex-project-context`:
+  `leaddrive-prod`, `/opt/leaddrive-v2`
+- Release route resolved by `codex-project-context`:
+  `github-actions-main`
+- The worktree was clean and the branch matched origin before this journal was
+  added.
+
+### Delivered slices
+
+- Service Desk and Ticket Detail: delivered by PR #82. The later production
+  attachment-RLS recovery was delivered by PR #100.
+- Complaint Registry: plan status is DONE; PR #141 was merged and its
+  deployment/smoke evidence is recorded in the canonical plan.
+- Agent Desktop: plan status is DONE; PR #175 merged as
+  `27770f68be8a6d3c10d4aaaba93c91bf8e70ffdc`; production run `34771717004`
+  passed deployment and post-deploy smoke at that exact artifact SHA.
+
+The canonical plan currently contains 191 unique `SUPUX-*` checkboxes: 38 are
+checked and 153 remain open. This raw count is not a reliable estimate of
+remaining implementation time: several later workstreams already contain
+checkpointed implementation and source/recovery runners, but their checkboxes
+correctly remain open until required rendered, build, evidence, and rollout
+gates pass.
+
+### Active slice: VoIP Calls
+
+Implementation is present for the seven VoIP tasks:
+
+- one same-scope server aggregate for total, inbound, outbound, missed, and
+  average duration;
+- debounced search with stale-request cancellation;
+- compact connection/test/settings status with permission-aware actions;
+- responsive desktop rows and tablet/mobile timeline cards;
+- accessible native inline recording playback with duration, loading,
+  unavailable, error, retry, keyboard, touch, and reduced-motion behavior;
+- permission-aware callback and contact actions;
+- distinct initial loading, empty, filtered-empty, refresh-error,
+  permission-denied, and recovery states.
+
+Recent stabilization checkpoints on the runtime-evidence head are:
+
+- `92478117f` — bind visual evidence to the data-ready state;
+- `f982b26e2` — stabilize Support fixture dates;
+- `ccfa25a14` — pin VoIP timeline timestamps;
+- `f032ddf11` — avoid journal-placeholder layout shift;
+- `323b5ab58` — measure p75 layout shift across evidence samples.
+
+Green exact-SHA evidence on `323b5ab585801218a77a681f6462a552d6a5f945`:
+
+- seven-sample baseline run `34812389032` — SUCCESS;
+- exact-baseline comparison run `34814010993` — SUCCESS;
+- full typical-profile matrix run `34815649084` — SUCCESS, 72/72 rows across
+  agent/manager/admin, AZ/RU/EN, light/dark, and
+  desktop/tablet/narrow-tablet/mobile, with zero reported browser errors, axe
+  violations, overflow, or primary-work failures.
+
+The next dispatched empty-profile run `35434025638` completed FAILURE on the
+same SHA. Fixture creation and Chromium installation passed, but
+`Build isolated production-mode evidence application` failed after about nine
+minutes; capture was skipped and no evidence artifact was retained. GitHub no
+longer returns the archived step log, so no product conclusion may be inferred
+from this run. Its upload failure is secondary to the missing build output.
+
+### Precise stopping point and next actions
+
+1. Resume by inspecting the current branch/worktree and the canonical plan; do
+   not repeat the three successful VoIP evidence runs.
+2. Determine whether a newer empty-profile result already exists. If not, and
+   no equivalent heavy job is active, dispatch one correctly scoped retry for
+   the empty profile and retain its artifact/log. Diagnose a fresh failure from
+   its actual log rather than increasing general timeouts or weakening gates.
+3. Complete the remaining VoIP evidence matrix: empty, high-volume/static, and
+   the required desktop/mobile mutating recovery flows, including keyboard,
+   focus, physical touch, reduced motion, permissions, loading, empty, error,
+   and recovery coverage.
+4. Run the allowed final targeted source checks and AZ/RU/EN parity check.
+   Full build/browser work remains CI-only on this host.
+5. Compare every `SUPUX-VOIP-*` item and acceptance criterion against retained
+   evidence. Only then update VoIP checkboxes/status in the canonical plan,
+   checkpoint, push, open/update the single task PR, wait for required checks,
+   merge, deploy through GitHub Actions, and verify public ping/build-info plus
+   feature smoke at the exact production SHA.
+6. Continue sequentially with Workstream 5 (Knowledge Base), using its existing
+   implementation/recovery checkpoint as the starting point rather than
+   rebuilding completed source work.
+
+No production mutation was performed during this handoff.
+
+## 2026-09-26 — VoIP empty-profile retry completed
+
+- Read-only GitHub inspection confirmed that run `35434025638` was still the
+  newest `Support UX evidence` run and that no equivalent queued or in-progress
+  job existed. The active account and repository remained `rashadoni` and
+  `rashadoni/leaddrive-v2`; unrelated active workflows were not touched.
+- A single failed-job retry was started as attempt 2 of run `35434025638`. This
+  preserved the original workflow-dispatch scope and exact runtime SHA
+  `323b5ab585801218a77a681f6462a552d6a5f945`; no workflow timeout, memory
+  limit, runner label, or acceptance gate was changed.
+- Attempt 2 completed `SUCCESS`. The isolated production build passed from
+  `14:03:41Z` to `14:15:14Z`, the browser capture passed from `14:15:14Z` to
+  `14:20:08Z`, and the non-secret artifact
+  `support-ux-evidence-323b5ab585801218a77a681f6462a552d6a5f945-empty-capture`
+  was retained. The prior exit-134 build failure did not reproduce.
+- Artifact inspection independently confirms `dataProfile: empty`, one sample
+  per cell, and 72/72 passing VoIP rows across agent/manager/admin, AZ/RU/EN,
+  light/dark, and desktop/tablet/narrow-tablet/mobile. Totals are zero for
+  browser/API errors, axe violations, custom accessibility findings, touch
+  findings, environment mismatches, primary-work misses, and horizontal
+  overflow. Maximum recorded load p75 is 669 ms, filter p75 is 415 ms, CLS is
+  `0.009392899609308647`, and primary work begins no lower than 700 px.
+- Representative AZ/light desktop and RU/dark mobile screenshots were manually
+  inspected. They show the localized zero-value aggregate, unavailable average
+  duration rather than a fabricated `0:00`, responsive header/summary, and the
+  empty call-timeline treatment without clipped page content.
+
+Next: dispatch one high-profile static VoIP matrix at the same exact runtime
+SHA, after confirming no equivalent job became active. Desktop and mobile
+mutating recovery evidence remain pending after that matrix.
+
+## 2026-09-26 — Invalid high-profile dispatch cancelled before capture
+
+- A high-profile static VoIP capture was dispatched as run `36248317464` on
+  the exact runtime SHA `323b5ab585801218a77a681f6462a552d6a5f945` only after
+  confirming that no equivalent Support UX evidence job was active.
+- Source review while the isolated build was running found that the shared
+  evidence seed mapped `high` to 500 general Support records but still created
+  exactly eight `callLog` rows. The run therefore could not prove the required
+  high-volume VoIP state even if its browser capture had passed.
+- The run was cancelled during the isolated build. GitHub records it as
+  `cancelled`; capture was skipped and no artifact exists. It is not accepted
+  as evidence and will not be retried unchanged.
+- The corrective scope is limited to the evidence contract: make VoIP fixtures
+  honor the selected 5/50/500 profile, make the high browser gate assert the
+  actual 500-call aggregate plus bounded pagination, and make the mobile
+  mutating flow perform a physical touch activation while desktop retains the
+  keyboard/focus proof. No timeout or acceptance gate will be weakened.
+
+Next: implement and target-check that evidence-contract correction, checkpoint
+it, then run one corrected high static matrix followed by the required desktop
+and mobile mutating flows.
+
+## 2026-09-26 — VoIP high-density and input-modality correction checkpoint
+
+- Resumed in the authoritative worktree and preserved the dirty canonical
+  checkout without modification. Routing remains branch
+  `codex/support-ux-voip-rashadoni`, origin
+  `https://github.com/rashadoni/leaddrive-v2.git`, production
+  `/opt/leaddrive-v2`, release route `github-actions-main`.
+- The evidence seed now creates 0/5/50/500 call rows from the selected density
+  profile, verifies the persisted tenant-scoped count, and records that count
+  in the non-secret fixture metadata. The high-profile browser contract fails
+  closed unless the rendered VoIP surface reports 500 total calls, 20 pages,
+  and 25 rows on the current page.
+- The mutating flow now preserves explicit keyboard focus and activation proof
+  on desktop while tablet/mobile contexts use Playwright physical touch for
+  the native recording control and Retry action. Both paths still require the
+  synthetic media error, successful recovery, and a real `play` event.
+- Self-audit confirmed that these changes strengthen rather than relax the
+  existing gates: no timeout, budget, accessibility, visual, performance, or
+  environment check changed. UI changes are limited to non-visual evidence
+  data attributes derived from the already-rendered server aggregate and
+  pagination state.
+- Targeted Vitest initially found a missing test fixture variable in the new
+  contract assertion; it was corrected by explicitly loading the VoIP page.
+  The exact repeat passed 3 files and 27/27 assertions. Targeted ESLint passed
+  for the seed, VoIP page, and three changed contract tests. Both changed `.mjs`
+  runners pass `node --check`, and `git diff --check` is green.
+
+Next: commit and push this corrective checkpoint, then dispatch one corrected
+exact-SHA high static matrix after confirming no equivalent evidence job is
+active. Do not repeat the already-green baseline, typical, or empty matrices.
+
+### Addendum before checkpoint
+
+- Two additional task-owned changes appeared in the same worktree before the
+  checkpoint and were reviewed rather than overwritten: recording Retry now
+  returns keyboard focus to the native audio control after media readiness, and
+  the connection panel exposes a non-visual admin/read-only evidence state.
+- Because those files changed after the first targeted run, the updated narrow
+  gate was run against four contract files and passed 37/37 assertions.
+  Targeted ESLint also passed for the changed recording player, VoIP page, and
+  VoIP UX contract. Earlier results remain recorded above rather than erased.
+
+### Final self-audit correction before checkpoint
+
+- A duplicate legacy `codex exec resume` process was confirmed by exact PID,
+  command, and worktree and was still writing the same task files. It was
+  stopped with `SIGINT` in accordance with the user's instruction that the old
+  session remain reference-only. No file, commit, or session history was
+  deleted or reset; its relevant uncommitted work was reviewed in place.
+- The retained work strengthens recovery evidence with per-state WCAG axe,
+  horizontal-overflow, minimum-target, reduced-motion, and active-animation
+  audits; a delayed-response race proving stale search cannot overwrite the
+  latest results; explicit agent/admin connection-control contracts; and a
+  section-scoped GitHub Actions validation step for VoIP evidence runs.
+- Workflow self-audit kept the legacy `api-calls.test.ts` in the Vitest gate but
+  excluded it from the new ESLint list because the canonical plan already
+  records unrelated historical lint findings in that unchanged test. All
+  changed runners, application sources, and contract tests remain lint-gated.
+- The exact section-scoped Vitest set passed 12 files and 155/155 assertions.
+  The exact section-scoped ESLint set passed. The strengthened anti-pattern
+  scan initially found three existing reduced-motion defects in VoIP journal
+  and business-hours components; the sources now opt those transition/spinners
+  out under reduced motion, and the repeat passed across five visible TSX files
+  with zero findings. Targeted lint for both corrected files also passed.
+- AZ/RU/EN parity passed with 22,680 EN leaf keys and zero missing/extra RU or
+  AZ keys. Both evidence runners pass `node --check`; the workflow continues to
+  require an isolated production build and refuses non-ephemeral mutations.
+
+Next: create and push the stable corrective checkpoint, confirm no equivalent
+Support UX evidence job is active, and dispatch the corrected exact-SHA high
+static matrix. The already-green baseline, typical, and empty matrices remain
+accepted and must not be repeated.
+
+## 2026-09-26 — Current `origin/main` integrated before evidence
+
+- The corrective evidence contract was checkpointed as `696ee48b8`. A fresh
+  fetch then showed that the long-running branch was 645 commits behind current
+  `origin/main` (`9be24152d`), so dispatching from the stale base would not have
+  represented the current product or a mergeable pull request.
+- Current `origin/main` was merged as `065faec5c`. The only content conflict was
+  the VoIP page: `main` still contained the superseded page-local metrics,
+  raw-keystroke search, color-heavy cards, and unconditional admin controls.
+  The checkpointed redesign was retained exactly for that file; all other
+  current-main changes were integrated without conflict.
+- Post-merge self-audit passed the exact section-scoped suite: 12 Vitest files,
+  155/155 assertions; the full changed/related ESLint target; the five-file
+  VoIP anti-pattern scan with zero findings; both evidence-runner syntax checks;
+  YAML parsing of the workflow; and branch-vs-main `git diff --check`.
+- Translation parity was re-run because `main` changed all locale catalogs. It
+  passed with 23,602 EN leaf keys and zero missing/extra RU or AZ keys. Full
+  local build remains intentionally NOT RUN under the Contabo workload
+  contract; the isolated GitHub Actions build is mandatory for the next exact
+  SHA.
+
+Next: checkpoint this journal update, push the integrated feature branch,
+confirm no equivalent Support UX evidence job is active, and dispatch the one
+corrected high-profile static VoIP matrix on the resulting exact SHA.
+
+## 2026-09-26 — High-profile build failure diagnosed and corrected
+
+- Corrected high-profile run `36249945686` targeted exact SHA
+  `5c07248cd542ddd24b3ba6f79591cf6370bd6044`. The section-scoped VoIP gate and
+  500-call fixture creation passed. The production build then failed after
+  about ten minutes with exit 134 and a V8 heap OOM near the unchanged 8 GiB
+  limit; capture was skipped and the artifact upload correctly failed because
+  no evidence directory existed.
+- The retained log exposed a concrete workflow drift rather than a product
+  conclusion: the Support evidence build did not run the established
+  `prepare-hosted-build-runner.sh` step and omitted
+  `LEADDRIVE_COLD_PRODUCTION_BUILD=1`. Current production and labelled PR builds
+  require both so Next uses bounded swap, disables the unused filesystem cache,
+  and compiles server/edge/client graphs in sequential disposable workers.
+  Current `main` production run `36248740896` succeeded under that exact
+  contract with the same 8 GiB Node heap.
+- The evidence workflow now uses the same reviewed preparation step and cold
+  production-build flag and disables core dumps before `next build`. The Node
+  heap limit, job timeout, one-CPU constraint, webpack requirement, and all
+  evidence gates remain unchanged. A contract assertion prevents this memory
+  isolation from silently disappearing again.
+- The focused workflow contract test passed 17/17 assertions, the workflow
+  parses as YAML, and `git diff --check` is green. A blind rerun was not
+  attempted.
+
+Next: checkpoint the workflow correction, integrate the newest `origin/main`,
+re-run only merge-affected targeted gates, push, and dispatch one fresh
+high-profile matrix on the new exact SHA after confirming the evidence queue is
+idle.
+
+### Latest-main integration after build correction
+
+- The cold-build correction was checkpointed as `99c74afec`, then current
+  `origin/main` (`cb9a886ab`) was merged without conflict. The merge contains
+  the latest MTM and Workforce work but does not alter the VoIP/evidence task
+  surface.
+- The merge-affected workflow contract test remains green at 17/17, workflow
+  YAML parsing and branch-vs-main whitespace checks pass, and AZ/RU/EN parity
+  passes at 23,599 EN leaf keys with zero RU/AZ drift.
+
+Next: push this exact tree and run one corrected high-profile matrix after the
+queue-idle check.
+
+## 2026-09-26 — High-density rolling-window fixture defect corrected
+
+- Exact-SHA run `36251269001` on
+  `836288b134bc80739537d074191ac5080a7b90a4` passed the section-scoped VoIP
+  gate, persisted all 500 call fixtures, and passed the isolated cold
+  production build. This confirms that the prior exit-134 failure was repaired
+  by the reviewed build-isolation contract.
+- Capture completed all 72 static cells across agent/manager/admin, AZ/RU/EN,
+  light/dark, and desktop/tablet/narrow-tablet/mobile and retained artifact
+  `support-ux-evidence-836288b134bc80739537d074191ac5080a7b90a4-high-capture`.
+  Every cell was clean for axe, custom accessibility findings, horizontal
+  overflow, touch targets, browser errors, environment matching, primary-work
+  visibility, and role permissions. The fail-closed density contract alone
+  rejected every cell because the UI correctly reported 416 calls, 17 pages,
+  and 25 rendered rows instead of `500/20/25`.
+- Root cause was fixture aging within the product's required rolling-30-day
+  predicate: 500 calls had been spaced one hour apart behind a fixed visual
+  epoch, leaving the oldest 84 outside the live query window. The production
+  API predicate, pagination, and `500/20/25` evidence gate remain unchanged.
+- Call-only fixtures now anchor to the beginning of the current UTC day and use
+  a 30-minute interval, while non-call visual fixtures retain their fixed
+  epoch. The seed additionally counts the rolling-window rows and aborts unless
+  all selected 0/5/50/500 calls are queryable. This prevents a persisted-row
+  count from falsely passing again when the rendered contract cannot see the
+  same rows.
+- Focused verification passed 24/24 assertions across the seed and browser
+  contracts, targeted ESLint passed for the changed seed and test, and
+  `git diff --check` is green. Self-audit confirmed that no timeout, resource
+  limit, browser matrix, accessibility/performance gate, or acceptance
+  threshold was relaxed.
+
+Next: checkpoint and push this fixture correction, confirm the Support evidence
+queue is idle, then dispatch one fresh high-profile static matrix on the exact
+new SHA. Do not repeat the already-green baseline, typical, or empty profiles.
+
+## 2026-09-26 — High-density matrix passed; desktop recovery audit corrected
+
+- Checkpoint `b445b5dc4` was pushed and exact-SHA high run `36253067239`
+  completed `SUCCESS`. The section-scoped gate, rolling-window 500-call seed,
+  bounded cold production build, browser capture, and artifact upload all
+  passed.
+- Independent artifact inspection confirmed 72 screenshots and 72/72 passed
+  result rows across the complete role/locale/theme/viewport matrix. Every
+  density contract matched `500 total / 20 pages / 25 rendered`; all 24 admin
+  cells exposed `admin` management mode with one settings link, while all 48
+  agent/manager cells exposed read-only mode with zero settings links. Totals
+  were zero for browser errors, axe/custom accessibility issues, touch-target
+  issues, environment mismatch, primary-work misses, horizontal overflow, and
+  development Chrome hosts. Observed maxima were 637 ms load p75, 514 ms filter
+  p75, 48 ms interaction p75, and `0.009392899609308647` CLS. Representative
+  AZ/light desktop and RU/dark mobile captures were manually inspected and had
+  readable, unclipped call-journal composition.
+- Desktop mutating run `36254601143` then passed its VoIP gate, rolling-window
+  typical seed, and cold production build but failed the flow gate. Its retained
+  artifact proves 9 executed outcomes: seven passed, including stale-search
+  abort protection, empty/error/permission states, and full keyboard recording
+  error/retry/playback with restored native-audio focus. Two audits failed:
+  initial-load Retry used the primary orange treatment with insufficient text
+  contrast, and connection Retry retained a color transition after state change
+  under reduced motion.
+- The product UI, not the runner, was corrected. Initial-load Retry now uses the
+  outline action treatment, and both recovery buttons opt transitions out under
+  `prefers-reduced-motion`. No runner assertion, axe rule, target-size threshold,
+  scenario, timeout, or resource limit changed.
+- Focused VoIP UI/flow tests pass 13/13, targeted ESLint passes, `git diff
+  --check` is green, and the correctly scoped Support anti-pattern scan passes
+  the changed VoIP page with zero findings. An earlier invocation supplied an
+  unsupported CLI flag and therefore fell back to the whole default Support
+  surface, reporting the already-planned findings of later workstreams; the
+  supported `SUPPORT_UX_SCAN_ROOTS` invocation produced the relevant result.
+
+Next: checkpoint and push the two UI corrections. Because the visible product
+SHA changed, run high static, desktop keyboard recovery, and mobile physical-
+touch recovery again on that one new exact SHA; do not repeat baseline, typical
+static, or empty evidence.
+
+### Recovery audit follow-up
+
+- The first accessibility checkpoint was `db0ab4fc4`. Exact-SHA high run
+  `36255938579` completed `SUCCESS`; its retained artifact again proves 72/72
+  passing high-density cells, all `500/20/25` and role contracts matched, with
+  zero reported browser, axe, custom accessibility, touch, environment,
+  primary-work, or overflow failures. Observed maxima improved to 534 ms load
+  p75, 442 ms filter p75, 48 ms interaction p75, and `0.009392899609308647`
+  CLS.
+- Exact-SHA desktop recovery run `36257305927` passed section validation, seed,
+  and production build. The new flow artifact shows that the outline retry
+  corrected the serious contrast violation and eight of nine flows now pass.
+  The only remaining failure is the connection recovery's settled audit:
+  Chromium still reports a running transition on `voip-retry-connection` after
+  disabled-to-ready state, even though both the shared Button primitive and the
+  local control already carry `motion-reduce:transition-none` and the audit
+  waits 250 ms.
+- The operational connection recovery control now has an unconditional inline
+  `transition: none`, removing an animation that conveys no useful status and
+  avoiding dependency on utility-order/media-query resolution. The evidence
+  runner, settle delay, `document.getAnimations()` criterion, and all failure
+  thresholds remain unchanged.
+- Focused VoIP UI/flow tests pass 13/13, targeted ESLint passes, the scoped
+  anti-pattern scan passes the changed page with zero findings, and `git diff
+  --check` is green.
+
+Next: checkpoint and push this final transition correction, then obtain high,
+desktop keyboard recovery, and mobile physical-touch recovery evidence on that
+single new exact SHA before closing Workstream 4.
+
+## 2026-09-26 — Final-SHA VoIP evidence and mobile harness correction
+
+- Final product checkpoint `49754acee` passed desktop keyboard recovery run
+  `36258532529`: all 9 outcomes and 16 state audits passed, with keyboard focus,
+  recording retry/native playback, reduced motion, accessibility, overflow and
+  touch-target contracts clean.
+- The same SHA passed high-density run `36259783962`. Independent artifact
+  inspection confirmed 72/72 result rows and PNGs across agent/manager/admin,
+  AZ/RU/EN, light/dark and 1440/1024/768/375 widths. All cells matched
+  `500 total / 20 pages / 25 rendered`, all role contracts matched, and browser,
+  axe/custom accessibility, touch, overflow, environment and primary-work issue
+  totals were zero. Observed maxima were 741 ms load p75, 488 ms filter p75,
+  48 ms interaction p75 and `0.009392899609308647` CLS.
+- Mobile touchscreen run `36261470377` passed source validation, fixtures,
+  production build and eight of nine recovery outcomes. Its retained artifact
+  proves `playwright-touchscreen` input and clean state audits; recording
+  recovery alone timed out waiting for the audio element's touch marker.
+- The failure screenshot is exactly the `375x812` viewport at the top of the
+  page, while the audio player is below the fold. The evidence helper measured
+  the off-viewport audio box and sent a touchscreen coordinate without first
+  scrolling the target into view. The product UI, target-size threshold,
+  touchscreen API, touch event, playback event and timeout contracts were not
+  implicated.
+- `physicalTap` now calls `scrollIntoViewIfNeeded()` before measuring and tapping
+  every touch target. The flow contract test requires this behavior; no
+  scenario, threshold or assertion was removed or weakened.
+
+Next: run the focused runner contract/syntax/lint/diff checks, checkpoint and
+push the harness correction, then repeat the exact-SHA high, desktop keyboard
+and mobile touchscreen gates because the evidence source SHA changed.
+
+### Native-control touch follow-up
+
+- The first scroll-aware checkpoint was `42d16717f`. Exact-SHA mobile run
+  `36262569629` passed source validation, fixtures and production build, but the
+  recording step still timed out on the element-level `touchstart` marker.
+- Its retained `375x812` screenshot proves the scroll correction worked: the
+  native audio control is centered in the viewport and changed to the localized
+  Paused state after the Playwright touchscreen tap. Chromium's user-agent
+  shadow control did not surface its internal touch event to the `<audio>` host,
+  so the marker was not a valid native-control observation contract.
+- The same screenshot exposed a real UI race. Chromium emitted `pause` after a
+  failed native media start, and the player's `onPause` handler could overwrite
+  the earlier `error` state with `paused`, hiding the retry path specifically
+  under the mobile native-control event order.
+- Physical touch evidence now verifies that `document.elementFromPoint()` at
+  the measured tap coordinate resolves to the exact test-id target, then uses
+  `page.touchscreen.tap()` and requires the resulting player error or native
+  `play` event. Target scrolling, minimum 44 px sizing, retry, playback and all
+  timeouts remain required. The player now preserves terminal `error` across a
+  subsequent `pause` event.
+
+Next: run only the changed runner/player contracts and scoped static checks,
+checkpoint this product-plus-evidence correction, then obtain mobile, desktop
+and high exact-SHA evidence before closing Workstream 4.
+
+## 2026-09-26 — Workstream 4 complete
+
+- Product/evidence checkpoint `8b6f2bcba` passed exact-SHA mobile touchscreen
+  run `36264001612`. Its independently inspected artifact has 9/9 passed flows,
+  16 clean audits, `playwright-touchscreen` input, exact audio/retry hit targets
+  sized `253x44` and `107x44`, forced error, successful retry and native
+  five-second playback. The final recording screenshot was manually inspected
+  and shows the active native player in the RU dark 375 px layout.
+- Desktop keyboard run `36265201707` passed on the same SHA. Its artifact has
+  9/9 flows and 16 clean audits and proves keyboard focus, error, retry and
+  native playback recovery.
+- High-density run `36266370312` passed on the same SHA. Independent inspection
+  confirms 72/72 rows and screenshots, complete role/locale/theme/viewport
+  coverage, `500/20/25` density, correct admin versus read-only controls, and
+  zero browser, axe/custom accessibility, touch-target, overflow, environment
+  or primary-work findings. Maxima were 688 ms load p75, 507 ms filter p75,
+  48 ms interaction p75 and `0.009392899609308647` CLS.
+- Final self-audit found no weakened assertion, timeout, density, accessibility,
+  performance or role gate. The implementation plan now marks
+  `SUPUX-VOIP-001` through `SUPUX-VOIP-007` complete.
+
+Next: checkpoint the VoIP plan/journal closure, then restore and verify
+Workstream 5 Knowledge Base from implementation checkpoint `a0a68b220` and
+recovery checkpoint `7e489b1e7` without replacing newer shared evidence code.
+
+## 2026-09-26 — Workstream 5 Knowledge Base restored
+
+- VoIP plan/journal closure was checkpointed and pushed as `0002390d8`; the
+  worktree was clean before starting the next section.
+- Historical product checkpoint `a0a68b220` was restored as `1497f5d70`. The
+  only conflicts were the main KB page and AZ/RU/EN catalogs. Resolution kept
+  the compact two-pane library/header/error contract while preserving the newer
+  `loadingArticles` key and complete `slaPolicyUi` namespace in every locale.
+  JSON parsing and whitespace checks passed before continuing the cherry-pick.
+- Historical recovery checkpoint `7e489b1e7` was restored as `57e7245d5`.
+  Product selectors, list/detail/portal recovery behavior and the KB-specific
+  contract test applied. Six shared evidence files conflicted because current
+  `main` already contains later supersets for every remaining Support section.
+- Each current shared blob was inspected for the exact KB scenario, fixture ID,
+  runner dispatch and contract markers before preserving it. The current KB
+  flow runner also uses the hardened `captureSupportEvidenceScreenshot` helper,
+  while the historical incoming blob used raw `page.screenshot`; replacing the
+  current file would have regressed the evidence framework.
+- The combined KB delta is path-scoped to 16 product/test files. Observable
+  contracts for the two-pane category UI, publication labels, action menu,
+  return context, undo, list/detail/form states and portal publication boundary
+  are present. No unrelated current shared evidence file changed.
+
+Next: run resource-aware KB-only syntax, focused Vitest, changed-source ESLint,
+AZ/RU/EN parity, scoped anti-pattern and diff checks; correct any integration
+regression before pushing and dispatching exact-SHA browser evidence.
+
+### Workstream 5 current-tree integration self-audit
+
+- Resource inspection showed 14 GB available memory, 331 GB free disk and no
+  memory pressure before targeted verification. Runner syntax passed. Nine
+  focused suites passed with 154/154 assertions.
+- Changed-source ESLint passed for every new or modified KB source and contract
+  file. The two previously documented legacy aggregate suites were excluded
+  only from lint because their unchanged `no-explicit-any` debt is outside this
+  section; both complete relevant Vitest suites passed. The AZ/RU/EN catalogs
+  have no KB delta from the restored base, so their already-green parity gate
+  was not repeated.
+- The current scanner is stricter than the historical checkpoint and initially
+  reported seven findings across the four visible KB TSX files: missing
+  reduced-motion fallbacks, one undersized category filter target, one retry
+  control without a visible keyboard focus contract, and one hard-coded loading
+  label. Product markup was corrected without changing scanner rules or
+  thresholds. The scoped rerun passes with zero findings.
+- After those corrections, ESLint for the three changed pages passed and the
+  two directly affected contract suites passed 13/13 assertions. `git diff
+  --check` passes. The UI retains every role, recovery, state, 44 px,
+  accessibility and evidence assertion; no gate, scenario or timeout was
+  removed or weakened.
+- Full local typecheck/build remains **NOT RUN**: the historical 2 GB heap OOM
+  and remote-alt workload policy require the exact-SHA GitHub build gate rather
+  than a heavier Contabo retry.
+
+Next: checkpoint and push the current-tree KB integration, then run and inspect
+the exact-SHA desktop keyboard, mobile touchscreen and full high-density
+GitHub Actions evidence gates before closing Workstream 5.
+
+### Workstream 5 CI gate self-audit
+
+- Current-tree integration was checkpointed and pushed as `0a10fb1e1`.
+  Desktop diagnostic run `36268522169` is SHA-bound to that checkpoint and
+  continues through fixture creation, production build and browser capture.
+- Inspection of the live job revealed that the current workflow's dedicated
+  section validation branches cover Service Desk, Agent Desktop and VoIP only.
+  A non-`all` Knowledge Base dispatch therefore skipped the section-scoped
+  syntax, lint, i18n and contract step even though build and browser flow still
+  run. This diagnostic run will not be accepted as the mandatory KB gate.
+- Added a dedicated Knowledge Base validation branch for all three KB scenario
+  IDs. It keeps the four-file scoped anti-pattern scan and requires runner
+  syntax, i18n parity, changed-source/shared-evidence ESLint, the complete KB
+  API/UX/recovery suite, visual/performance contracts and anti-pattern contract
+  before fixture/build/capture. A static workflow contract now makes the branch
+  and all scenario predicates mandatory.
+- The changed workflow contract passes 17/17 assertions and ESLint; whitespace
+  validation passes. No existing workflow branch, test, threshold, scenario or
+  timeout was removed or relaxed.
+
+Next: checkpoint and push this CI-gate correction, then rerun all KB exact-SHA
+gates on the new commit; retain `36268522169` only as diagnostic evidence.
+
+### Workstream 5 diagnostic browser self-audit and correction
+
+- Diagnostic run `36268522169` passed fixture generation, Chromium install and
+  the exact-SHA production build. Its mutating flow produced all nine outcomes:
+  four passed and five failed. The static capture completed all three selected
+  scenarios but correctly failed the list and portal accessibility audits.
+- The independently downloaded artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36268522169`. Manual
+  inspection of all five failure screenshots showed that the two dashboard
+  failures were healthy loaded states instead of injected errors, while the
+  three portal failures had redirected to login or inherited the prior draft
+  mutation. This ruled out hidden product loading failures and identified the
+  harness/auth/cleanup causes.
+- The KB flow had incorrectly authenticated a portal customer through the
+  dashboard credentials callback. It now uses `/api/v1/public/portal-auth`,
+  verifies the disposable tenant, installs the `portal-token` cookie and primes
+  the `portal-user` state. Article/category interception now uses exact URL-path
+  predicates and verifies that the synthetic request was observed. Publication
+  evidence restores the original fixture status in `finally` through the
+  authenticated API and reopens the article to prove restoration, so a failed
+  portal assertion cannot cascade into later scenarios.
+- Mobile/tablet flow activation now scrolls the target into view, rejects
+  targets below 44 px, proves `document.elementFromPoint()` resolves to the
+  intended interactive control, and uses `page.touchscreen.tap()`. Desktop uses
+  the same helper with keyboard activation. Neither modality nor sizing gate is
+  inferred from viewport metadata alone.
+- Static evidence found a real 3.61:1 orange/white contrast failure on the KB
+  create action and real shared portal defects: three unnamed buttons, one
+  unlabeled chat input, small navigation/chat targets and the same low-contrast
+  orange. The KB CTA and portal shell/chat now use local orange-700 contrast,
+  localized accessible names, visible focus, reduced-motion fallbacks, 44 px
+  targets and viewport-bounded widget sizing. The expanded scoped scanner now
+  includes the rendered portal layout/widget and passes six files with zero
+  findings.
+- Runner syntax passes. Changed-source ESLint has zero errors (one unchanged
+  unused portal-chat helper warning remains visible), and browser/flow/KB contract suites pass
+  31/31 assertions. No assertion, timeout, role, scenario, accessibility,
+  performance or fixture-restoration gate was removed. Run `36268966684` was
+  canceled before its build because this product/harness correction changes the
+  required exact SHA.
+
+Next: checkpoint and push the diagnostic correction, rerun the mandatory
+desktop gate with the dedicated KB validation step, inspect its artifact, then
+run mobile touchscreen and full high-density matrix gates on the same SHA.
+
+### Workstream 5 second browser self-audit
+
+- Exact-SHA run `36270351888` passed the dedicated Knowledge Base validation,
+  disposable fixtures, Chromium installation and the cold production build.
+  Its independently downloaded artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36270351888`.
+- The auth, article error/permission recovery, publication boundary, fail-safe
+  fixture restore, portal list recovery and portal article recovery corrections
+  are proven: eight of nine flow outcomes pass. Static article and portal
+  scenarios pass with zero axe, browser, touch-target, overflow, environment or
+  primary-work findings. The list's previous contrast failure is gone.
+- One late edit-form category injection remained unobserved. Earlier request
+  routes work before the production service worker claims the page; the late
+  category request can then bypass Playwright routing. Other current Support
+  flow runners already block service workers for this exact reason. Both the KB
+  mutating context and shared static capture contexts now set
+  `serviceWorkers: "block"`, which also makes the existing CSP-report route
+  reliable instead of generating public rate-limit noise.
+- The list's only static failure was a transient empty document title after a
+  soft filter navigation. A server Knowledge Base route layout now declares
+  stable `Knowledge Base · LeadDrive CRM` metadata for list and detail routes.
+- Runner syntax, changed-source ESLint, the expanded seven-file anti-pattern
+  scan and 32/32 affected contract assertions pass. No failure injection,
+  fixture cleanup, accessibility, touch, scenario, timeout or build gate was
+  relaxed.
+
+Next: checkpoint and push the service-worker/title correction, repeat the
+desktop exact-SHA gate, inspect the artifact, then run mobile touchscreen and
+full high-density matrix evidence on the same SHA.
+
+### Workstream 5 third browser self-audit
+
+- Exact-SHA run `36271772314` passed the dedicated Knowledge Base validation,
+  disposable fixture setup, Chromium install and cold production build. The
+  independently downloaded artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36271772314`.
+- All nine mutating recovery outcomes pass. This includes keyboard recovery,
+  category partial failure, empty-state recovery, filter/category return
+  context, article permission/error recovery, edit/save recovery, publication
+  rollback and retry, portal list recovery and portal article recovery. The
+  publication result proves `fixtureRestored: true`.
+- Static list and article cells have zero axe, touch, overflow, environment and
+  primary-work findings, but correctly fail because each records four Serwist
+  page errors: Playwright's `serviceWorkers: "block"` returns no registration
+  and Serwist then reads `registration.waiting`. The subsequent customer role
+  is blocked when portal auth meets the shared public-POST rate limit after the
+  manager pages emit synthetic CSP reports.
+- The evidence-only cold build now sets `LEADDRIVE_DISABLE_SERVICE_WORKER=1`,
+  and `next.config.ts` uses that explicit opt-out in addition to the unchanged
+  development opt-out. Ephemeral contexts remain worker-blocked so request
+  injections cannot be bypassed; remote read-only evidence allows the real
+  target worker. The shared static runner authenticates every selected role
+  before any scenario page is opened, preventing evidence instrumentation from
+  starving a later portal login.
+- Manual review of the list, detail, edit-recovery and portal-recovery captures
+  confirms the intended compact library hierarchy, readable article layout,
+  preserved publication state and bounded portal/chat composition. Runner
+  syntax and `git diff --check` pass; focused ESLint passes; the KB flow
+  contract passed 5/5 and the corrected browser contract passes 17/17. The
+  initial combined contract invocation exposed only an over-literal new test
+  matcher, corrected to assert the exact auth and matrix contexts. No runtime
+  contract, accessibility rule, interaction modality, scenario, timeout or
+  build gate was weakened.
+
+Next: checkpoint and push this evidence-isolation correction, rerun the desktop
+exact-SHA gate, inspect its artifact, then run mobile touchscreen and the full
+high-density matrix on the same green SHA.
+
+### Workstream 5 fourth browser self-audit
+
+- Exact-SHA run `36273186696` passed the dedicated KB validation, disposable
+  fixtures, Chromium installation and the rebuilt cold production artifact.
+  The independently downloaded artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36273186696`.
+- All nine mutating recovery outcomes pass again. Both manager static scenarios
+  now pass: their browser-error arrays are empty and axe, touch-target,
+  overflow, environment, primary-work and performance gates are green. This
+  proves the evidence-only Serwist opt-out without weakening worker isolation.
+- The sole failure is the customer authentication cell with
+  `portal_authentication_failed`. App logs show the actual response is `429`
+  from the shared `public-post` bucket. The earlier conclusion that static
+  pre-authentication alone prevents this exhaustion is superseded: the mutating
+  flow runs first and already generates browser CSP reports.
+- Proxy inspection found a real rate-limit partition bug. CSP reports first
+  consume their intended `csp-report:<ip>` bucket but, on acceptance, fall
+  through into the generic `/api/v1/public/*` POST branch and also consume
+  `public:<ip>`. The existing CSP test only exercised rejection by the first
+  bucket, so it could not detect accepted-request fallthrough. The generic
+  branch now excludes `CSP_REPORT_URI`, and a new test asserts an accepted CSP
+  report never touches a `public:` key.
+- The focused middleware suite passes 21/21 and `git diff --check` passes.
+  File-wide ESLint for `src/proxy.ts` is **NOT PASSING** because of nine
+  pre-existing `no-explicit-any` findings at unchanged lines 395, 693, 805,
+  825-829 and 835; the new diff has no lint finding. No rule, assertion,
+  timeout, scenario, auth, a11y or performance gate was disabled or suppressed.
+
+Next: checkpoint and push the CSP/public rate-limit partition fix, then repeat
+the mandatory exact-SHA desktop run and inspect all flow/static evidence before
+starting mobile and high-density gates.
+
+### Workstream 5 fifth browser self-audit and mobile correction
+
+- Exact-SHA desktop run `36274423477` at
+  `5e2fdcf0920726be848ce1ad35a7a365ea97e172` passed the dedicated Knowledge
+  Base validation, disposable fixtures, Chromium installation, cold production
+  build and capture. All 9/9 mutating recovery outcomes and 3/3 static cells
+  pass; errors and axe, touch, overflow, environment and primary-work findings
+  are empty. Keyboard activation and `fixtureRestored: true` are recorded.
+- Its independently retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36274423477`. Manual review
+  of the list, detail, portal and publication screenshots confirms the intended
+  compact hierarchy and healthy loaded/recovery compositions.
+- Mobile RU/dark run `36275584366` on the same SHA passed validation and hosted
+  build but failed capture with 6/9 flows. The library recovery itself proves a
+  real Playwright touchscreen hit on a 144x44 target. The artifact at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36275584366` exposed four
+  product issues rather than harness looseness: category recovery existed only
+  in a desktop-hidden aside; two title links were 20 px high; an initially open
+  portal chat intercepted the portal retry/article taps; and mobile CSS removed
+  the tenant name from rendered text, so screenshot safety correctly failed
+  closed.
+- The category recovery alert is now outside the responsive rail/list split,
+  article title links have a real 44 px minimum flex target, the portal chat
+  starts closed while tracked-ticket polling remains independent, and the
+  company name remains screen-reader/safety-visible on mobile with a visual
+  desktop reveal. The touchscreen hit-test and tenant assertion are unchanged.
+- Resource inspection before verification showed 15 GiB available memory,
+  331 GiB free disk and zero current memory pressure. The section-scoped
+  anti-pattern scan passes all seven visible TSX files with zero findings. The
+  affected browser/KB evidence contracts pass 22/22 assertions. Changed-source
+  ESLint has zero errors and reports only the unchanged portal-chat
+  `handleCreateTicket` unused-helper warning; `git diff --check` passes. Full
+  local build/typecheck remains **NOT RUN** under the recorded remote-alt
+  workload rule; the exact-SHA hosted build remains mandatory.
+
+Next: checkpoint and push the mobile product correction, then repeat desktop,
+mobile touchscreen and the full high-density matrix on that single exact SHA.
+
+### Workstream 5 sixth browser self-audit and applied-theme gate
+
+- Exact-SHA desktop run `36276933587` on
+  `a9cc972fc6b7c4829f5b7770d41828dd8c638687` passed section validation,
+  fixtures, cold production build, all 9/9 mutating flows and 3/3 static cells.
+  Keyboard recovery, publication fixture restoration, empty browser/axe/touch/
+  overflow/environment/primary-work findings and manual list/detail/portal
+  review are confirmed. Its artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36276933587`.
+- Mobile RU/dark run `36278078793` on the same SHA also passed validation,
+  hosted build, 9/9 flows and 3/3 static cells. Library and portal retry prove
+  `playwright-touchscreen`, successful center hit-testing and respective
+  144x44/134x44 targets; fixture restoration is true. Static cells have zero
+  axe, browser, touch, overflow, environment and primary-work findings. Its
+  artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36278078793`.
+- Manual screenshot review caught a gap not represented by that environment
+  result: the customer portal was still visually light in a requested dark
+  cell. The portal route is outside the dashboard layout that owns the shared
+  nonce-aware `ThemeProvider`; the runner checked only the emulated
+  `prefers-color-scheme`, not the root class actually consumed by Tailwind dark
+  variants. The prior environment-green conclusion is therefore superseded.
+- The same `ThemeProvider` now wraps authenticated and public portal routes.
+  Static evidence records `activeTheme` from the root class and treats a
+  requested/applied mismatch as an environment failure in addition to the
+  unchanged locale, color-scheme, reduced-motion and touch checks. This
+  strengthens rather than suppresses the gate.
+- Resource inspection showed 16 GiB available memory, 331 GiB free disk and
+  zero active pressure. Runner syntax, the seven-file scoped anti-pattern scan,
+  changed-source ESLint, `git diff --check` and both affected contract suites
+  (22/22 assertions) pass.
+
+Next: checkpoint and push the portal theme/gate correction, then repeat the
+mandatory desktop, mobile and high-density matrices on the new exact SHA.
+
+### Workstream 5 seventh browser self-audit and high-matrix correction
+
+- Exact-SHA desktop run `36279059487` at
+  `f3c98116e33cc24c99b0aa766580d0499635185a` passed after retrying only its
+  transient Google-font build job on the same SHA. Its retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36279059487` and records
+  9/9 mutating outcomes, 3/3 static scenarios, restored fixtures and no browser,
+  axe, touch, overflow, environment or primary-work issue.
+- RU/dark mobile run `36280438215` passed the same gates on the same SHA. Its
+  artifact at `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36280438215`
+  proves Playwright touchscreen activation with successful hit-testing on
+  144x44 and 134x44 controls, actual applied dark theme and restored fixtures.
+  Manual portal screenshot review confirms a genuinely dark composition.
+- The required high-density run `36281427953` produced all 168 cells and failed
+  closed with 138 passed / 30 failed. The retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36281427953`. Failures
+  localize to three causes: the admin article delete label used the destructive
+  background token as foreground and missed contrast in both themes; RU mobile
+  article content began at 770 px, two pixels below the unchanged fold gate;
+  three library cells observed an empty streamed document title exactly at axe.
+- The delete action now uses explicit AA-safe red foregrounds, mobile article
+  spacing is tightened with `space-y-3` below `sm`, and list/detail pages keep a
+  localized rendered title. The audit waits on `document.title` for a full
+  second and revalidates it after injecting axe, so the title rule stays active
+  at the actual scan boundary instead of sampling a metadata-stream gap.
+- Resource inspection showed 15 GiB available memory, 331 GiB free disk and no
+  active pressure. Runner syntax, changed-source ESLint, `git diff --check`, the
+  seven-file Knowledge Base anti-pattern scan and 33/33 affected contract
+  assertions pass. An accidental default-scope scanner invocation also reported
+  untouched debt in later, not-yet-processed support workstreams; the required
+  section-scoped rerun is green and no rule or path was allowlisted.
+
+Next: checkpoint and push this high-matrix product/determinism correction, then
+repeat desktop, physical-touch mobile and all 168 high-density cells on the new
+exact SHA. Close Workstream 5 only after all three artifacts are green.
+
+### Workstream 5 eighth browser self-audit and tablet touch correction
+
+- Checkpoint `be429d668dfc193a7d81c441efd6babf9c33b156` passes EN/light desktop
+  run `36283148753`: dedicated validation, disposable fixtures, cold production
+  build, 9/9 mutating flows and 3/3 static cells. Publication fixture restoration
+  is true and every browser, axe, custom a11y, touch, overflow, environment and
+  primary-work total is zero. The retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36283148753`.
+- RU/dark mobile run `36284063452` passes the same gates on the same SHA. Its
+  retained artifact at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36284063452` records real
+  Playwright touchscreen retry hits at 144x44 and 134x44, `maxTouchPoints: 1`,
+  applied dark theme, restored fixtures and article primary work at 706 px
+  instead of the former 770 px. Manual screenshot review is healthy.
+- Full high run `36285102320` completed 168/168 cells: 164 pass and four fail.
+  All former contrast, streamed-title and fold failures are cleared; browser,
+  axe, overflow, environment and primary-work failure totals are zero. The four
+  remaining failures are one physical defect repeated across light/dark and
+  tablet/narrow-tablet for RU admin: the contextual Help button compresses to
+  19-23x32 beside the wrapped title and action row, below the unchanged 24 px
+  audit floor.
+- The article Help trigger now has `min-h-11 min-w-11 shrink-0`, preserving a
+  real 44x44 hit area under translated tablet pressure. Resource inspection
+  shows 15 GiB available memory, 331 GiB free disk and zero active pressure.
+  Focused contract tests pass 11/11; changed-file ESLint, the seven-file section
+  scan and `git diff --check` pass. No touch threshold, role, locale, theme,
+  viewport or scenario was reduced.
+
+Next: checkpoint and push the tablet touch correction, then rerun desktop,
+physical-touch mobile and the complete 168-cell matrix on one new exact SHA.
+
+### Workstream 5 ninth browser self-audit and mobile fold correction
+
+- Tablet-touch checkpoint `2b71824b6f6bb11041622779035e28adf6388b01`
+  passes EN/light desktop run `36286725261` and RU/dark mobile run
+  `36287427857`. Both complete the dedicated validation, disposable fixtures,
+  cold production build, 9/9 mutating recovery outcomes and 3/3 static cells.
+  Browser, axe, custom a11y, touch, overflow, environment and primary-work
+  totals are zero. Mobile proves Playwright touchscreen hit-testing on 144x44
+  and 134x44 retry controls and `fixtureRestored: true`; manual review of the
+  RU/dark article screenshot is healthy. Artifacts are retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36286725261` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36287427857`.
+- Full high run `36288472987` completed all 168 requested cells: 166 pass and
+  two fail. The previous RU/admin tablet and narrow-tablet Help trigger failure
+  is fully cleared. The only remaining failures are the same RU/admin article
+  mobile cell in light and dark, and only the unchanged primary-work rule:
+  article content starts at 770 px versus the 768 px maximum. Every browser,
+  axe, custom a11y, touch, environment and overflow total is zero. Its artifact
+  is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36288472987`.
+- The four non-interactive metadata facts now use a 56 px mobile row and keep
+  the prior 64 px row at `sm` and above. This removes 32 px ahead of primary
+  content while preserving every interactive 44 px target and every evidence
+  threshold. Resource inspection showed 15 GiB available memory, 331 GiB free
+  disk and zero current memory pressure. The focused contract passes 11/11;
+  changed-file ESLint, the seven-file section scan and `git diff --check` pass.
+  No role, locale, theme, viewport, scenario, timeout or gate was reduced.
+
+Next: checkpoint and push the mobile fold correction, then repeat desktop,
+physical-touch mobile and all 168 high-density cells on one new exact SHA.
+
+### Workstream 5 closure self-audit
+
+- Final product checkpoint `e16fc08cfedfb4c8ea544a7a4bfce6e094889a0e`
+  passes EN/light desktop run `36289979254`, RU/dark mobile run `36291029964`
+  and full high-density run `36291867844`. Retained artifacts are
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36289979254`,
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36291029964` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36291867844`.
+- Desktop and mobile each pass all 9/9 mutating recovery flows and 3/3 static
+  cells with restored publication fixtures and zero browser, axe, custom a11y,
+  touch, overflow, environment or primary-work issues. Mobile records applied
+  dark theme, `maxTouchPoints: 1`, Playwright touchscreen hits on 144x44 and
+  134x44 controls, and article primary work at 691 px.
+- The high artifact passes 168/168 requested cells. Every issue total is zero;
+  worst primary-work position is 743 px, maximum load is 574 ms and maximum
+  cumulative layout shift is `0.023227903289734446`. Manual inspection of the
+  RU/admin light tablet, dark narrow-tablet and dark mobile screenshots confirms
+  the compact information hierarchy, visible article content and preserved
+  Help/action targets.
+- All SUPUX-KB-001 through SUPUX-KB-009 acceptance items are closed. No gate,
+  timeout, scenario, role, locale, theme or viewport was removed or weakened.
+
+Next: create the Workstream 5 closure checkpoint, push it, then start
+Workstream 6 Ticket Categories from its recorded product/recovery commits while
+preserving the newer shared evidence runner.
+
+### Workstream 6 restoration and CI-gate self-audit
+
+- Workstream 5 closure is checkpointed and pushed as `7de53359a`. Ticket
+  Categories product commit `3946aa28b` is restored as `709677154`; recovery
+  commit `ac88d8df3` is restored as `554944cb7`.
+- The product cherry-pick conflicted only in the shared confirmation spinner;
+  the current reduced-motion-safe version was preserved. The recovery
+  cherry-pick conflicted only in shared workflow/seed/static/flow contract
+  files. Each was mechanically resolved to the current branch side and then
+  verified byte-for-byte against its pre-cherry-pick stage, preserving the
+  newer full runner while retaining category-specific page and tests.
+- Resource inspection showed 15 GiB available memory, 331 GiB free disk and
+  zero current pressure. The category-scoped anti-pattern scan passes the
+  visible page with zero findings. Four product/recovery suites pass 17/17.
+  Runner syntax and integration ESLint pass; the updated browser workflow
+  contract passes 17/17; `git diff --check` passes.
+- Self-audit found a fail-open CI path: `ticket-categories` is not `all` and did
+  not match any section-specific validation condition. The workflow now has a
+  dedicated Ticket Categories validation step covering scoped scan, i18n,
+  syntax, lint, API/product/recovery contracts and shared visual/performance
+  gates. Contract assertions lock that step and predicate.
+
+Next: checkpoint and push the section-validation correction, then run and
+inspect exact-SHA desktop mutating, physical-touch mobile mutating and complete
+high-density Ticket Categories evidence before closing Workstream 6.
+
+### Workstream 6 second self-audit and reduced-motion correction
+
+- Desktop run `36294329989` at `28c09d6950fcb946ac4a63d475cb2f5a7b6498c4`
+  reached the new dedicated validation step and failed closed before fixtures,
+  build or browser capture. This is diagnostic evidence, not a browser pass.
+- The widened section scan found two shared dropdown defects used by category
+  row actions: the animated utility line did not itself declare the reduced-
+  motion fallback, and item color transition had no fallback. The scan scope is
+  unchanged. `motion-reduce:animate-none` and
+  `motion-reduce:transition-none` now sit on the exact affected utility groups.
+- The identical four-file Ticket Categories scan passes with zero findings;
+  changed-component ESLint and `git diff --check` pass. No scan root, rule,
+  animation check or browser gate was removed.
+
+Next: checkpoint and push the reduced-motion correction, then restart the
+desktop exact-SHA gate; only after its inspected artifact is green run mobile
+and high-density matrices on that same SHA.
+
+### Workstream 6 third self-audit and rendered recovery correction
+
+- Exact-SHA desktop run `36294653841` at
+  `494a5d85a9332bf68d2ac71bef300415fc080fc2` passes the dedicated validation,
+  disposable fixtures and cold production build. Capture runs all seven
+  recovery outcomes (5 passed) plus the static cell and fails closed. Its
+  retained diagnostic artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36294653841`.
+- Static evidence found primary CTA contrast at 3.61:1 and measured the native
+  show-inactive checkbox at 16x16. The category create/save CTAs now use
+  orange-700/800 with white text. The compact checkbox visual remains, while
+  the real labelled input spans the complete 44 px control and the label exposes
+  focus-within state.
+- Hierarchy recovery incorrectly tried a no-results-only Clear Filters button
+  after entering a query that deliberately matched a child. It now clears the
+  search input directly. Discard confirmation was mounted inside the dashboard
+  stacking context below the portaled Sheet; the dirty editor now closes before
+  confirmation opens, cancel reopens the preserved form, and confirm leaves it
+  closed through an explicit confirmation ref.
+- Resource inspection showed 15 GiB available memory, 331 GiB free disk and
+  zero pressure. Runner syntax, the unchanged four-file scoped scan,
+  changed-source ESLint, `git diff --check` and the four affected suites pass
+  18/18. No contrast, touch, recovery, role or viewport gate was relaxed.
+
+Next: checkpoint and push these rendered product/runner corrections, rerun the
+desktop exact-SHA gate, inspect all seven flows and the static cell, then run
+mobile physical-touch and high-density matrices on that same green SHA.
+
+### Workstream 6 fourth self-audit and physical-touch correction
+
+- Desktop exact-SHA run `36295921892` at
+  `2f532e66efffd461eb323345cbb0ee512a82b55b` completes successfully. Its
+  retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36295921892`.
+- The inspected static cell passes with empty runtime errors, zero axe/custom
+  accessibility and touch findings, no horizontal overflow, no environment or
+  primary-work mismatch, load p75 501 ms and CLS
+  `0.0007984547556182484`. All seven recovery flows pass and the final
+  deactivate/restore flow reports `fixtureRestored: true`. Manual screenshot
+  inspection confirms the compact summary, tree hierarchy, visible actions and
+  healthy viewport composition.
+- Self-audit found that the runner set `hasTouch` outside desktop but did not
+  make an actual Playwright touchscreen input. It now activates recovery through
+  keyboard on desktop and a measured, scroll-aware, center-point
+  `page.touchscreen.tap` elsewhere. The touch path fails closed below 44x44 or
+  when `document.elementFromPoint` does not hit the intended interactive
+  control; service workers are blocked so routed recovery remains deterministic.
+- Resource inspection still shows 15 GiB available memory, 331 GiB free disk
+  and zero pressure. Runner syntax, changed-source ESLint, `git diff --check`
+  and the strengthened flow contract pass 5/5. No keyboard, touch, scenario,
+  timeout or recovery requirement was relaxed.
+
+Next: checkpoint and push the physical-touch evidence correction, then run and
+inspect a new exact-SHA desktop keyboard pass, RU/dark mobile physical-touch
+pass and full high-density matrix before closing Workstream 6.
+
+### Workstream 6 fifth self-audit and mobile overflow correction
+
+- Physical-touch checkpoint `2810f650e98fee4b1a4f37c17384b06429c80032`
+  passes desktop run `36297163496`. The inspected artifact records keyboard
+  retry, 7/7 passed flows, restored lifecycle fixture, zero static issue totals,
+  load p75 535 ms and CLS `0.0007984547556182484`.
+- RU/dark mobile run `36298128770` passes section validation, fixtures, build and
+  all 7/7 flows. It proves actual `playwright-touchscreen` activation, a true
+  center-point hit and a 144x44 recovery target; the fixture is restored. Static
+  evidence also records dark theme, `maxTouchPoints: 1`, zero runtime, axe,
+  custom accessibility, touch-target, environment or primary-work findings.
+- The mobile run fails closed solely on horizontal overflow. The inspected
+  screenshot and metrics identify `ticket-categories-new-root` from x=271 to
+  x=443: the 171 px RU create label and report action were forced into one row
+  inside the 311 px content area. The header action group now stacks full-width
+  below `sm` and returns to an auto-width row at `sm`; the detector, locale and
+  375 px viewport are unchanged.
+- Current resource inspection shows 16 GiB available memory, 331 GiB free disk
+  and zero pressure. The unchanged four-file anti-pattern scan has zero
+  findings, affected ESLint and `git diff --check` pass, and the strengthened
+  layout contract passes 9/9. No physical-touch, overflow or responsive gate
+  was relaxed.
+
+Next: checkpoint and push the mobile action-row correction, then rerun the
+exact-SHA desktop keyboard, RU/dark physical-touch mobile and full high-density
+matrix before closing Workstream 6.
+
+### Workstream 6 closure self-audit
+
+- Final product checkpoint `a6c1820e2ba60c831ffb31f81b8f3b18c596569a`
+  passes exact-SHA EN/light desktop run `36298798190`, RU/dark physical-touch
+  mobile run `36299515281` and high-density run `36300475153`. Retained
+  artifacts are `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36298798190`,
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36299515281` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36300475153`.
+- Desktop passes one static cell plus 7/7 keyboard/recovery flows, records
+  fixture restoration, primary work at 280 px, load p75 504 ms and zero issue
+  totals. Mobile passes one static cell and 7/7 flows with restored fixture,
+  actual Playwright touchscreen activation on a 144x44 hit-tested target,
+  applied dark theme, `maxTouchPoints: 1`, empty overflow samples and primary
+  work at 601 px.
+- High-density evidence passes 24/24 AZ/RU/EN × light/dark × four viewport
+  cells. Runtime/API, axe, custom accessibility, touch, overflow, environment
+  and primary-work totals are all zero; maximum primary position is 601 px,
+  maximum load is 584 ms and maximum CLS is `0.009404729549370284`. Manual AZ
+  desktop/mobile, RU tablet and EN narrow-tablet review confirms healthy
+  localized hierarchy, responsive header actions and visible management work.
+- SUPUX-CAT-001 through SUPUX-CAT-007 are closed. No gate, timeout, scenario,
+  role, locale, theme, viewport, touch requirement or recovery assertion was
+  removed or weakened.
+
+Next: create and push the Workstream 6 closure checkpoint, then restore
+Workstream 7 SLA Policies from product commit `61d4087eb` and recovery commit
+`bad92f916`, preserving current shared evidence supersets.
+
+### Workstream 7 restoration and CI-gate self-audit
+
+- Workstream 6 closure is checkpointed and pushed as `f6f18273a`. SLA Policies
+  product commit `61d4087eb` is restored as `4173ab72e`; recovery commit
+  `bad92f916` is restored as `3eb1f5c47`.
+- The product cherry-pick conflicted only between the obsolete generic
+  PageHeader/table page and the saved compact SLA matrix; the complete new SLA
+  header/matrix was retained. Recovery conflicts affected shared workflow,
+  seed, static runner, SLA flow and seed contract files. Every conflict was
+  resolved to the current branch side and verified byte-for-byte against the
+  pre-cherry-pick stage, preserving the newer full evidence system while
+  retaining the SLA-specific page/form/contracts.
+- Resource inspection showed 15 GiB available memory, 331 GiB free disk and
+  zero pressure. Runner syntax, the unchanged four-file scoped scan, changed-
+  source ESLint and `git diff --check` pass; four product/recovery suites pass
+  21/21. AZ/RU/EN translation parity passes at 23,599 leaf keys and the updated
+  browser workflow contract passes 17/17.
+- Self-audit found the same fail-open dispatch gap previously fixed for Ticket
+  Categories: `sla-policies` ran the browser flow but skipped all section-scoped
+  validation because it is neither `all` nor a previously covered scenario. A
+  dedicated SLA Policies validation step now covers scoped scan, i18n, syntax,
+  lint, product/API/recovery contracts and shared visual/performance gates.
+  Contract assertions lock its predicate, source roots and flow contract.
+
+Next: checkpoint and push the SLA section-validation correction, then run and
+inspect exact-SHA desktop mutating, physical-touch mobile mutating and complete
+high-density SLA evidence before closing Workstream 7.
+
+### Workstream 7 pre-browser physical-touch self-audit
+
+- The dedicated section gate is checkpointed and pushed as `c0c1f08bc` together
+  with the restored product/recovery commits. Before dispatch, self-audit found
+  that the SLA runner declared `hasTouch` outside desktop but only activated
+  recovery through keyboard APIs.
+- Recovery activation now uses Enter and records keyboard modality on desktop.
+  Touch viewports scroll the target into view, fail below 44x44, verify the
+  center point with `document.elementFromPoint` and perform a real
+  `page.touchscreen.tap`; service workers are blocked so synthetic routed
+  recovery remains deterministic. The result records modality, hit-test and
+  measured target size.
+- Runner syntax, scoped ESLint, `git diff --check` and the strengthened physical-
+  touch flow contract pass 5/5. No touch, keyboard, viewport or failure-
+  recovery requirement was relaxed.
+
+Next: checkpoint and push the physical-touch evidence addition, then run and
+inspect exact-SHA desktop keyboard, RU/dark physical-touch mobile and complete
+high-density SLA evidence.
+
+### Workstream 7 reduced-motion gate correction
+
+- Desktop run `36302053479` at
+  `f3ae03612f4850ede88d8d4620d587bf7805b32e` reached the new dedicated SLA
+  validation and failed closed before disposable fixtures, production build or
+  browser capture. This is diagnostic validation evidence, not a browser pass.
+- The expanded five-file scan found the shared Dialog close button used by the
+  SLA editor had `transition-colors` without a reduced-motion fallback. The
+  exact utility group now includes `motion-reduce:transition-none`; no scan root
+  or rule changed.
+- The identical five-file scan now reports zero findings. Scoped Dialog/test
+  ESLint, `git diff --check` and the strengthened SLA visual contract pass 7/7.
+
+Next: checkpoint and push the shared Dialog reduced-motion correction, then
+restart exact-SHA desktop evidence; only after its inspected artifact is green
+run RU/dark physical-touch mobile and the complete high-density matrix.
+
+### Workstream 7 regression-test lint correction
+
+- Follow-up exact-SHA run `36302392082` at
+  `798c43bb9b227e070312a1f0c685a1be5d5748f4` passes the corrected five-file
+  scan and 23,599-key translation parity, then fails closed in section-scoped
+  ESLint before fixtures/build. The restored mixed system/SLA regression file
+  contained 43 historical `no-explicit-any` violations.
+- The regression file remains inside the SLA gate because the restored product
+  checkpoint changed its SLA coverage. Mock result casts now use `never`, auth
+  error probing accepts `unknown`, and the transaction mock checks an unknown
+  callback before invoking it. No assertion, route case or lint rule was
+  removed.
+- Scoped ESLint and `git diff --check` pass; all 36 mixed system/SLA regression
+  assertions pass unchanged.
+
+Next: checkpoint and push the typed regression mocks, then rerun the same
+desktop exact-SHA gate and continue only after its artifact is inspected green.
+
+### Workstream 7 rendered validation and accessibility correction
+
+- Exact-SHA run `36302772804` at
+  `77ada9d4ebe566edbcb59715ae96a6f2f8812f66` passes dedicated validation,
+  fixtures and production build, then fails closed in capture. Its retained
+  artifact is `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36302772804`.
+- Five of six mutating outcomes pass, including keyboard retry, permission
+  handling, empty recovery, stale-snapshot recovery, dependency protection and
+  delete rollback/cleanup with `disposableFixtureRemoved: true`. The client
+  validation outcome failed because the runner expected submit to enable after
+  choosing an inactive alternative but had never filled the independently
+  required policy name. It now fills a distinct disposable name first; product
+  validation remains unchanged.
+- Static evidence has no runtime, custom accessibility, touch, overflow,
+  environment or primary-work findings, but axe correctly rejects the default
+  primary CTA at 3.61:1. Create, empty-create and submit CTAs now use
+  orange-700/800 with white text. The two form checkbox inputs also now span
+  their complete labelled surfaces instead of exposing native 16x16 hit areas,
+  with visible focus-within state and a separate compact visual mark.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  current pressure. Runner syntax, the unchanged five-file scan, changed-source
+  ESLint, `git diff --check` and the two affected suites pass 12/12. No axe,
+  touch, validation, cleanup or viewport gate was relaxed.
+
+Next: checkpoint and push the rendered product/runner corrections, rerun exact-
+SHA desktop evidence, inspect all six flows and the static cell, then run mobile
+physical-touch and full high-density matrices on the same SHA.
+
+### Workstream 7 responsive evidence-selector correction
+
+- Exact-SHA desktop run `36303939652` at
+  `8f836d1728ea70d552b6a4491810390e88c4e792` passes the dedicated section
+  gate, production build, one EN/light static cell and all 6/6 mutating flows.
+  Keyboard recovery and disposable cleanup are recorded; runtime, axe, custom
+  accessibility, touch, overflow, environment and primary-work issue totals
+  are zero. Load p75 is 476 ms, primary work begins at 295 px and CLS is
+  `0.0007984547556182484`. Manual desktop screenshot review is healthy.
+- RU/dark mobile run `36305026526` on that same SHA passes section validation,
+  fixtures, production build and its static cell, then fails closed in four
+  mutating outcomes. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36305026526`.
+  Static evidence proves dark theme, reduced motion, `maxTouchPoints: 1`, no
+  horizontal overflow and zero runtime/axe/custom-accessibility/touch issues;
+  physical touchscreen recovery passes on a hit-tested 144x44 target.
+- Artifact and screenshot audit show the product's mobile card layout is
+  healthy. Each failed outcome selected the first hidden desktop `<tr>` or its
+  hidden action button because the page intentionally renders desktop table and
+  mobile card representations with the same stable policy identifiers. The
+  flow now resolves policy rows and action buttons through explicit `:visible`
+  selectors for both responsive representations. Product layout and all flow
+  assertions remain unchanged.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and
+  negligible current pressure. Runner syntax, scoped ESLint, `git diff
+  --check` and the strengthened flow contract pass 5/5. No scenario, recovery,
+  cleanup, touch, keyboard or responsive requirement was weakened.
+
+Next: checkpoint and push the responsive selector correction, rerun RU/dark
+mobile evidence on the new exact SHA, inspect all 6/6 outcomes and cleanup, then
+run and inspect the complete high-density SLA matrix before closure.
+
+### Workstream 7 closure self-audit
+
+- Responsive-selector checkpoint `45a2b60e1d5221ea348242467846414713182bb2`
+  passes exact-SHA RU/dark mobile run `36306317998`: one static cell and all 6/6
+  mutating outcomes are green, with a real hit-tested Playwright touchscreen
+  tap on a 144x44 retry target and `disposableFixtureRemoved: true`. Dark theme,
+  reduced motion and `maxTouchPoints: 1` are applied; runtime, axe, custom
+  accessibility, touch, overflow, environment and primary-work findings are
+  zero. Load p75 is 546 ms, primary work begins at 561 px and CLS is
+  `0.009392899609308647`. The retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36306317998`.
+- High-density run `36307388154` passes 24/24 AZ/RU/EN × light/dark × desktop,
+  tablet, narrow-tablet and mobile cells on the same SHA. Every aggregate issue
+  total is zero; maximum primary-work position is 561 px, maximum load p75 is
+  601 ms and maximum CLS is `0.009629902852936656`. Manual AZ desktop/mobile,
+  RU tablet and EN narrow-tablet review confirms healthy localized hierarchy,
+  CTA/action placement, theme behavior and table-to-card responsiveness. Its
+  artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36307388154`.
+- Together with EN/light desktop run `36303939652`, the final evidence covers
+  keyboard recovery, focus-trapped editing and return, physical touch, reduced
+  motion, loading/empty/error/permission/save/refresh/delete recovery,
+  responsive composition, localization, accessibility, performance and visual
+  inspection. SUPUX-SLA-001 through SUPUX-SLA-006 are closed. No scenario,
+  role, locale, theme, viewport, state, assertion or threshold was weakened.
+
+Next: create and push the Workstream 7 closure checkpoint, then restore
+Workstream 8 Support Entitlements from product commit `27c571df4` and recovery
+commit `168aa7134`, preserving current shared evidence supersets.
+
+### Workstream 8 restoration and CI-gate self-audit
+
+- Workstream 7 closure is checkpointed and pushed as `4454ad2f9`. Support
+  Entitlements product commit `27c571df4` is restored as `23127cd2e`; recovery
+  commit `168aa7134` is restored as `737f0fd21`.
+- Product restoration applied cleanly to the compact page, translations,
+  presentation helper and contracts; API-route changes were already present in
+  current history. Recovery conflicts affected shared workflow/browser/seed
+  paths and an add/add flow runner. The shared files and runner were resolved
+  byte-for-byte to their pre-cherry-pick current versions, preserving all later
+  scenarios and the common screenshot wrapper while applying the Entitlements-
+  specific page recovery and 7-outcome contract.
+- Self-audit found `support-entitlements` dispatches skipped section validation
+  unless `all` was selected. A dedicated validation step now covers the page,
+  dialog/sheet/menu dependencies, entitlement API routes, presentation helper,
+  API/lifecycle/reports/waiver regressions and shared evidence contracts. The
+  unchanged legacy reports journey stays in Vitest but not changed-source
+  ESLint, avoiding an unrelated 84-cast cleanup without weakening its
+  functional regression coverage.
+- Mobile evidence previously set `hasTouch` but used Enter for Retry. Desktop
+  still records keyboard activation; touch viewports now scroll, require at
+  least 44x44, verify the center hit target and perform a real Playwright
+  touchscreen tap. The result records modality/hit/size and service workers are
+  blocked for deterministic routed recovery.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  current pressure. The five-file scan reports zero findings, i18n parity
+  passes at 23,599 keys, syntax/scoped ESLint/`git diff --check` pass and 14
+  suites pass 209/209 assertions. No scenario, lifecycle, report, touch,
+  keyboard, recovery or visual/performance requirement was weakened.
+
+Next: checkpoint and push the Entitlements section gate and physical-touch
+evidence, then run and inspect exact-SHA desktop mutating, RU/dark physical-
+touch mobile mutating and complete high-density matrices before closing
+Workstream 8.
+
+### Workstream 8 rendered modal and contrast correction
+
+- Gate/touch checkpoint `7bcf2a0fbac21583384d3c65bdf61447be3c4274`
+  passes dedicated validation, fixtures and production build in exact-SHA
+  desktop run `36308991093`, then fails closed in capture. Its retained artifact
+  is `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36308991093`.
+- Static EN/light evidence has no runtime, custom accessibility, touch,
+  overflow, environment or primary-work findings, but axe rejects the default
+  primary CTA at 3.61:1. Create/empty/create-form/milestone/lifecycle primary
+  actions now use orange-700/800 with white text. The visual contract permits
+  this explicit functional brand accent while continuing to reject decorative
+  palette tropes.
+- Keyboard recovery/permission, the complete 0/1/20/100 × 100-definition
+  density probe and keyboard filter reset pass. The lifecycle flow then proves
+  a real product defect: its custom dialog is rendered inside the page stacking
+  context while the Radix detail sheet is portalled at `z-50`, so the sheet
+  intercepts the dialog's confirmation even though the dialog itself uses
+  `z-[60]`. The lifecycle dialog now portals to `document.body`, placing its
+  existing layer above the sheet. The remaining edit/milestone/restore failures
+  were cascading state contamination from the blocked lifecycle modal.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  current pressure. The unchanged five-file scan reports zero findings; scoped
+  ESLint, `git diff --check` and two strengthened product/flow contracts pass
+  12/12. No lifecycle, focus, cleanup, density or recovery assertion was
+  weakened.
+
+Next: checkpoint and push the rendered modal/contrast correction, rerun the
+same exact-SHA desktop gate and inspect all 7/7 outcomes before mobile/high
+evidence.
+
+### Workstream 8 nested-modal interaction correction
+
+- Rendered-modal/contrast checkpoint `1062cbc9b289760180d51d06650f62a7c43759e2`
+  passes the dedicated 209-assertion section gate, isolated fixtures and the
+  production build in exact-SHA desktop run `36310208941`, then fails closed in
+  interactive capture. Its artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36310208941`.
+- Static EN/light evidence is fully green: runtime, axe, custom accessibility,
+  touch, overflow, environment and primary-work issue totals are zero. Load p75
+  is 454 ms and CLS is `0.0007984547556182484`, confirming the AA contrast
+  correction. Keyboard recovery/terminal permission, 0/1/20/100 density with
+  100 definitions per term, and combined-filter reset pass unchanged.
+- Screenshot and Playwright hit-testing show the lifecycle dialog is now
+  visually above the detail sheet, but the underlying Radix Sheet content still
+  wins pointer targeting where their boxes overlap. The detail sheet is now
+  explicitly `inert`, `aria-hidden` and `pointer-events-none` only while the
+  lifecycle dialog is open. This models the required nested-modal semantics;
+  the portalled lifecycle dialog remains the sole interactive surface, and the
+  existing lifecycle, rollback and cleanup assertions are unchanged.
+- Resource inspection shows 16 GiB available memory, 331 GiB free disk and zero
+  current pressure. Scoped ESLint, `git diff --check` and the affected UX/flow
+  contracts pass 12/12. No scenario, timeout, assertion or gate was weakened.
+
+Next: checkpoint and push the nested-modal interaction correction, rerun the
+same exact-SHA desktop mutating gate, inspect all 7/7 outcomes and cleanup, then
+continue with mobile and high-density evidence.
+
+### Workstream 8 Radix pointer-scope correction
+
+- Nested-modal checkpoint `782211eb8c3f99d1511d8832a0e5920b08d452e1`
+  again passes the dedicated 209-assertion gate, fixtures and production build
+  in exact-SHA run `36311342955`. Static evidence remains fully clean, with load
+  p75 526 ms and CLS `0.0007984547556182484`; the first three desktop outcomes
+  still pass. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36311342955`.
+- The changed hit target proves the prior fix worked as intended: Sheet content
+  no longer intercepts the lifecycle confirmation. The remaining interceptor is
+  the Radix Sheet overlay. Radix modal scope disables pointer input on `body`,
+  and the custom Dialog root did not explicitly opt back in, so its portalled
+  z-60 layer was visible but not hit-testable above the z-50 overlay.
+- The shared custom Dialog root now explicitly uses `pointer-events-auto`.
+  Together with the lifecycle portal and inert background Sheet, this makes the
+  visible topmost modal the sole hit-testable surface without changing overlay,
+  focus, dismissal or any flow assertion. Resource inspection shows 16 GiB
+  available memory, 331 GiB free disk and zero pressure; scoped ESLint, diff
+  check and the affected UX/flow contracts pass 12/12.
+
+Next: checkpoint and push the pointer-scope correction, rerun the unchanged
+desktop gate on the new exact SHA and inspect every outcome and cleanup field.
+
+### Workstream 8 nested-dialog outside-dismiss correction
+
+- Pointer-scope checkpoint `ecc0986eaa321a64be19ee4ab629b017a67d450e`
+  passes the section gate, fixtures, production build and static capture in
+  exact-SHA run `36312681991`. Static evidence is clean at load p75 316 ms and
+  CLS `0.0007984547556182484`; its artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36312681991`.
+- Both lifecycle confirmation clicks now execute, the entitlement is actually
+  suspended, edit failure/value retention/retry passes, and the final recovery
+  actually resumes the fixture to Active. The remaining lifecycle assertions
+  fail because Radix interprets interaction with the portalled nested dialog as
+  outside interaction and closes the detail Sheet, so Resume/Suspend controls
+  are no longer mounted even though the mutations succeeded.
+- The same outside-dismiss closes the selected detail context before the nested
+  milestone-delete confirmation can retain and show its synthetic server error.
+  The detail Sheet now treats both lifecycle and milestone-delete dialogs as
+  blocking child modals: background content is inert and pointer-blocked,
+  `onInteractOutside` is prevented, and `onOpenChange(false)` is ignored until
+  the child modal closes. This preserves the selected record and makes rollback
+  feedback visible inside the confirmation dialog.
+- Resource inspection remains healthy at 16 GiB available memory, 331 GiB free
+  disk and zero pressure. Scoped ESLint, `git diff --check` and the affected
+  UX/flow contracts pass 12/12. No outcome, wait, rollback or cleanup assertion
+  was relaxed.
+
+Next: checkpoint and push the outside-dismiss correction, rerun the identical
+desktop exact-SHA gate, then inspect all seven outcomes and fixture cleanup.
+
+### Workstream 8 focus-probe and milestone portal correction
+
+- Outside-dismiss checkpoint `776403aeea2fa77c1c6ec63df82cd333d3c3fd7d`
+  passes the section gate, fixtures, production build and clean static evidence
+  in exact-SHA run `36313820702`. Load p75 is 312 ms and CLS is
+  `0.0007984547556182484`; the retained artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36313820702`.
+- Five of seven outcomes are functionally green. Lifecycle suspend/error/retry,
+  parent Sheet preservation and focus return all succeed; the screenshot shows
+  the exact originating row action focused. The runner then calls nonexistent
+  Playwright `Locator.isFocused()`. It now uses the equivalent direct DOM
+  assertion `node === document.activeElement`; the preceding exact
+  `waitForFunction` and fail-closed error remain unchanged.
+- Edit recovery and final resume restoration pass, including
+  `entitlementRestoredActive: true`. Milestone create/error/retry reaches delete
+  confirmation, but that custom dialog is the only nested dialog still rendered
+  inside the page rather than `document.body`; Radix excludes it from the active
+  accessibility/modal layer behind the Sheet. The milestone confirmation now
+  portals to `document.body`, while the already-added Sheet blocking preserves
+  selected context so its inline synthetic error and retry can execute.
+- Resource inspection shows 16 GiB available memory, 331 GiB free disk and zero
+  pressure. Runner syntax, scoped ESLint, diff check and UX/flow contracts pass
+  12/12. No focus, error, retry, cleanup or restoration assertion was removed.
+
+Next: checkpoint and push the focus-probe/milestone-portal correction, rerun the
+unchanged desktop gate and require 7/7 plus disposable cleanup before mobile.
+
+### Workstream 8 stable milestone-confirmation evidence
+
+- Focus-probe/milestone-portal checkpoint
+  `2f136ee428bc475dbb2e83d827ec4c3cfcf618ba` passes the section gate,
+  fixtures, production build and static evidence in exact-SHA run
+  `36314797721`. Static issue totals remain zero, load p75 is 359 ms and CLS is
+  `0.0007984547556182484`; the artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36314797721`.
+- Six of seven outcomes are green, including lifecycle error/retry with exact
+  focus restoration, edit value retention/retry and final Active restoration.
+  The milestone flow reaches its inline failure, retries deletion and closes
+  the confirmation. Its final hidden wait still uses dynamic
+  `getByRole("dialog").last()`, which re-resolves to the parent detail Sheet as
+  soon as the child dialog unmounts, producing a false timeout after success.
+- The milestone confirmation portal now has a stable, conditional test-id
+  wrapper. Evidence waits for the child dialog within that wrapper, performs
+  the same error/retry actions, waits for that wrapper to disappear, and still
+  requires the created milestone row to disappear before recording
+  `disposableFixtureRemoved: true`.
+- Resource inspection shows 15 GiB available memory, 331 GiB free disk and zero
+  pressure. Runner syntax, scoped ESLint, diff check and both contracts pass
+  12/12. No product behavior, mutation, cleanup or wait threshold changed.
+
+Next: checkpoint and push the stable confirmation selector, rerun the exact
+desktop gate and require 7/7 plus both cleanup/restoration flags before mobile.
+
+### Workstream 8 desktop pass and mobile density correction
+
+- Stable-confirmation checkpoint `b6cdc2c3b078b8420f14f55b2c01fee7a09facde`
+  passes exact-SHA desktop run `36315786714`: the section gate, fixtures,
+  production build, one static cell and all 7/7 mutating outcomes are green.
+  Keyboard recovery/focus return, 0/1/20/100 records with 100 definitions per
+  term, lifecycle/edit/milestone rollback, `disposableFixtureRemoved: true` and
+  `entitlementRestoredActive: true` are confirmed. Static issue totals are all
+  zero; load p75 is 319 ms, primary work starts at 468 px and CLS is
+  `0.0007984547556182484`. Manual screenshot review is healthy. The artifact is
+  retained at `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36315786714`.
+- RU/dark mobile run `36316737126` on the same SHA passes the section/build
+  gates and 6/7 flows. Real Playwright touchscreen activation succeeds on a
+  hit-tested 144x44 retry target; lifecycle, edit, milestone cleanup and final
+  Active restoration all pass. Dark theme, RU locale, reduced motion,
+  `maxTouchPoints: 1` and no horizontal overflow are confirmed.
+- Mobile evidence exposes three measured density issues: the RU card is 146 px
+  against the unchanged 140 px compact-row limit; five one-column filters place
+  primary work at 904 px; and header squeeze reduces Help to 23x32. The toolbar
+  now uses two columns below `lg` while preserving the five-column desktop
+  layout, mobile card vertical padding is reduced by 8 px, and the page-level
+  Help trigger is fixed at 44x44 with `shrink-0`.
+- Resource inspection shows 16 GiB available memory, 331 GiB free disk and zero
+  pressure. Scoped ESLint, `git diff --check` and both contracts pass 12/12. The
+  140 px row limit, primary-work gate and touch threshold are unchanged.
+
+Next: checkpoint and push the responsive density correction, rerun RU/dark
+mobile on the new exact SHA and require static zeroes, 7/7, physical touch,
+cleanup and Active restoration before the high-density matrix.
+
+### Workstream 8 mobile primary-work boundary correction
+
+- Responsive checkpoint `f50cda29c1daee106d0ac496f703a96164995891`
+  passes the dedicated section gate, fixtures and production build in exact-SHA
+  RU/dark mobile run `36318075157`. The flow report is fully green at 7/7:
+  physical Playwright touchscreen recovery hits a 144x44 target, densities
+  0/1/20/100 with 100 definitions remain compact, and milestone cleanup plus
+  final Active restoration are true.
+- The static cell has zero axe, custom accessibility, touch-target, overflow,
+  environment and runtime-error findings. The prior 146 px row is now within
+  its unchanged limit and Help is a full touch target. Its only failure is the
+  first record beginning exactly at the 812 px viewport boundary, so
+  `primaryWorkVisible` remains false with `primaryWorkTop=812`.
+- Mobile-only workspace spacing now uses 12 px gaps, saving 16 px across the
+  four block transitions before the list; `sm` and wider retain the existing
+  16 px rhythm. The static contract records this responsive composition. No
+  browser threshold, workflow assertion or functional behavior changed.
+
+Next: run scoped resource-aware lint/diff/contracts, checkpoint and push this
+boundary correction, then repeat the identical RU/dark mobile exact-SHA gate.
+
+- Verification completed with 15 GiB available memory, 331 GiB free disk and
+  zero memory pressure. Scoped ESLint, `git diff --check` and the two affected
+  contracts pass 12/12. Heavy local build/browser gates remain assigned to the
+  exact-SHA GitHub Actions run under the host contract.
+
+### Workstream 8 mobile 768 px fold correction
+
+- Exact-SHA run `36319319790` at `4dec3d142b3c109a89205557bd0ca9a0ba280360`
+  had a transient attempt-1 `next/font` Google-loader exception before
+  application compilation. Rerunning the identical failed job on the same SHA
+  passed the production build, so no unrelated font or workflow source was
+  changed.
+- Attempt 2 again passes all 7/7 mutating outcomes: physical 144x44 touch retry,
+  0/1/20/100 records with 100 definitions, lifecycle/edit/milestone rollback,
+  disposable cleanup and final Active restoration. Static runtime, axe, custom
+  accessibility, touch-target, overflow and environment totals are zero; load
+  p75 is 371 ms and steady-state CLS p75 is `0.009392899609308647`.
+- The mobile gap correction moves the first record from 812 to 796 px and
+  `primaryWorkVisible` is true. The generic fail-closed rule is stricter:
+  `primaryWorkTop` must not exceed `min(768, viewportHeight)`, so the cell still
+  correctly fails. Screenshot inspection identifies the three exception
+  indicators as three full-width 44 px rows. They now form a two-column mobile
+  grid with the third indicator spanning row two, saving one complete row while
+  preserving 44 px targets; `sm+` retains the established flex summary.
+
+Next: run the affected scoped checks, checkpoint/push the fold correction and
+repeat the identical mobile exact-SHA gate without changing the 768 px rule.
+
+- Resource inspection remains healthy at 15 GiB available memory, 331 GiB free
+  disk and zero pressure. Scoped ESLint, `git diff --check` and the two affected
+  contracts pass 12/12. The hosted build/capture is the only repeated gate.
+
+### Workstream 8 closure self-audit
+
+- Final exact-SHA RU/dark mobile run `36321298150` on product SHA
+  `ab44777297e60b8514522e2808b970ca37d3f030` passes the dedicated section gate,
+  production build, static browser cell and all 7/7 disposable outcomes. The
+  artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36321298150`.
+- Static totals are zero for runtime, axe, custom accessibility, touch targets,
+  overflow, environment and primary-work fold. Primary work starts at 744 px,
+  load p75 is 559 ms and CLS p75 is `0.009392899609308647`. RU, dark theme,
+  reduced motion and `maxTouchPoints: 1` match the requested environment.
+- Mutation evidence proves physical Playwright touchscreen activation on a
+  hit-tested 144x44 target; compact 0/1/20/100 rendering with 100 milestone
+  definitions per term; filter reset; exact detail focus return; lifecycle,
+  edit and milestone rollback/retry; `disposableFixtureRemoved: true`; and
+  `entitlementRestoredActive: true`.
+- Final high-density run `36322443016` on the same product SHA passes all 48
+  unique read-only cells: manager/admin, AZ/RU/EN, light/dark and
+  desktop/tablet/narrow-tablet/mobile. Counts are balanced at 24 cells per role,
+  16 per locale, 24 per theme and 12 per viewport. Every issue total is zero;
+  primary-work top spans 447–744 px, maximum load p75 is 547 ms and maximum CLS
+  is `0.024733367306494537`. Four representative screenshots covering both
+  roles and all layout families were manually reviewed as healthy. The artifact
+  is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36322443016`.
+- Acceptance and all `SUPUX-ENT-001` through `SUPUX-ENT-010` requirements are
+  satisfied without weakening any gate. Desktop run `36315786714`, final mobile
+  run `36321298150` and final high run `36322443016` collectively cover
+  keyboard/focus, real touch, density, locales/themes/viewports, permissions,
+  failures/recovery, cleanup, accessibility, performance and visual review.
+
+Next: checkpoint the Workstream 8 closure and immediately restore Workstream 9
+Entitlement Templates from product `d002818b8` and recovery `f71a46049`, keeping
+the current shared evidence supersets.
+
+### Workstream 9 restoration and CI-gate self-audit
+
+- Product checkpoint `d002818b8` restored cleanly as `5115a0234`. Its page,
+  tenant-scoped draft helper and focused tests merged with the current i18n/API
+  supersets; no already-present API behavior was duplicated.
+- Recovery checkpoint `f71a46049` restored as `c499a824e`. Conflicts in the
+  workflow, generic browser runner and flow screenshot path were resolved to
+  preserve current ready/primary selectors, shared screenshot stabilization
+  and all later-workstream runners. The recovery-specific page states and flow
+  contract were applied, and the global job result now correctly includes
+  `entitlement_templates_flow_status` so a failed template flow cannot be
+  masked by a green generic capture.
+- Self-audit found that a non-`all` `entitlement-templates` dispatch skipped all
+  section validation and that mobile recovery declared touch capability while
+  pressing Retry through keyboard APIs. A dedicated section gate now covers
+  syntax, a three-file visible-source scan, translation parity, scoped lint,
+  API/draft/runtime/UX tests and shared browser/seed/visual/performance
+  contracts. Desktop keeps keyboard activation; touch viewports require a real
+  scroll-aware, hit-tested Playwright touchscreen tap on a measured 44x44
+  target. Service workers are blocked for deterministic routed recovery.
+- The first strict scan surfaced one native support-level tab without an
+  explicit focus-visible style. The tab now has an outline/ring/ring-offset
+  state and a static contract assertion. Resource inspection shows 16 GiB
+  available memory, 331 GiB free disk and zero pressure. Runner syntax and
+  `git diff --check` pass; the three-file scan reports zero findings, i18n
+  parity passes at 23,599 keys, scoped ESLint passes and 11 suites pass 162/162
+  assertions.
+- Full local build/typecheck/browser execution is **NOT RUN** under the Contabo
+  workload contract. The new exact-SHA GitHub-hosted section/build/browser
+  gates remain mandatory before any `SUPUX-TMP` checkbox closes.
+
+Next: checkpoint and push the restored Workstream 9 gate, then run EN/light
+desktop mutation evidence, RU/dark mobile physical-touch evidence and the full
+AZ/RU/EN × light/dark × four-viewport high-density matrix before closure.
+
+### Workstream 9 desktop evidence and touch-target self-audit
+
+- Exact-SHA EN/light desktop run `36324206265` at `9c58b163c06a7452d43f0602f6760fdf66e1bd42`
+  passes the dedicated Entitlement Templates gate, production build, static
+  capture and all 6/6 mutating outcomes on attempt 2. Attempt 1 stopped before
+  application compilation in the recurring transient `next/font`
+  Google-loader exception; rerunning the same job/SHA passed without a source
+  change.
+- The flow proves keyboard Retry, terminal permission handling, read-only
+  mutation suppression, compact 0/1/30-rule rendering, progressive disclosure,
+  draft recovery across level and route changes, keyboard reorder,
+  confirmed deletion, Discard, failed-save value retention, retry and final
+  fixture restoration. The static cell has zero runtime, axe, custom
+  accessibility, touch-target, overflow, environment and fold findings;
+  primary work starts at 576 px, load p75 is 441 ms and CLS p75 is `0.00505`.
+  Manual screenshot review confirms a healthy hierarchy, compact rule list,
+  legible preview and unobstructed sticky save bar. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36324206265`.
+- The broader metric payload still exposed one 16x16 native checkbox sample.
+  Source review found two such controls: template Active and rule Required.
+  Both are now full 44 px semantic switches with `role="switch"` and
+  `aria-checked`; the static contract also forbids returning to native
+  checkboxes. A strict palette-pattern test initially matched `red-` inside the
+  new `required-switch` test id, so the selector was renamed to
+  `mandatory-switch`; no visual or browser threshold was weakened.
+- Resource inspection before the edit showed 16 GiB available memory, 331 GiB
+  free disk and zero pressure. Scoped ESLint and `git diff --check` pass; the
+  updated Entitlement Templates UX contract passes 7/7. Full local build and
+  browser checks remain NOT RUN under the Contabo workload contract.
+
+Next: checkpoint and push the semantic-switch correction, then rerun the exact
+desktop mutating gate on the new SHA before RU/dark mobile and the full
+high-density matrix.
+
+### Workstream 9 replacement desktop pass and mobile layout correction
+
+- Replacement EN/light desktop run `36326499627` on semantic-switch SHA
+  `529a79ef48cfb0f8ac6e422b07c1235d4b3efbd1` is fully green. All 6/6
+  disposable outcomes pass with final fixture restoration. Static runtime,
+  axe, custom accessibility, touch, overflow, environment and fold totals are
+  zero; the previously observed metric is corrected to `smallTargets: 0`.
+  Primary work starts at 576 px, load p75 is 363 ms and CLS is
+  `0.005053974945947466`. Manual screenshot review confirms the 44 px semantic
+  switch and overall desktop composition. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36326499627`.
+- RU/dark mobile run `36327704413` on the same SHA passes all 6/6 functional
+  flows. It proves a real, hit-tested 144x44 Playwright touchscreen Retry,
+  terminal permission behavior, read-only recovery, 0/1/30 rules without flow
+  overflow, protected drafts, reorder/delete/Discard, failed-save retention,
+  retry and fixture restoration. Environment evidence confirms RU, dark,
+  reduced motion and `maxTouchPoints: 1`.
+- The independent static cell correctly fails. It identifies a 21x32 Help
+  target, Add and Save controls extending beyond the 311 px main work area,
+  and first-rule top at 935 px against the unchanged 768 px boundary. The
+  screenshot shows the long RU actions consuming metadata/rule-header width;
+  this is a responsive product defect, not a runner failure. The failed
+  artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36327704413`.
+- The page now keeps every section and control but compacts only narrow
+  layouts: Help is a non-shrinking 44 px target; tabs use a one-line label,
+  count/status icon and screen-reader status while preserving their full
+  `sm+` detail; metadata uses tighter spacing and a 60 px mobile description;
+  Add, Save and Discard use 44 px icon controls with localized ARIA labels on
+  mobile and retain visible labels from `sm` upward. Wider layouts preserve
+  the established composition. No browser, fold, touch or overflow threshold
+  changed.
+- Resource inspection shows 16 GiB available memory, 331 GiB free disk and
+  zero pressure. The scoped three-file anti-pattern scan passes with zero
+  findings; page/test ESLint and `git diff --check` pass; the updated UX
+  contract passes 7/7. Local full build/browser remain NOT RUN by host policy.
+
+Next: checkpoint and push the responsive correction, rerun the identical
+RU/dark mobile exact-SHA gate, then proceed to the 24-cell high matrix only
+after static zeroes and all six flows are green.
+
+### Workstream 9 mobile pass and screenshot quality follow-up
+
+- Responsive checkpoint `a661ca6e6ee32e601a33ef2b493bb828d21092c2`
+  passes exact-SHA RU/dark mobile run `36329299612`. All 6/6 flow outcomes pass
+  with real hit-tested 144x44 Playwright touchscreen Retry, terminal permission
+  handling, read-only recovery, 0/1/30 rules, draft protection, reorder,
+  confirmed delete, Discard, failed-save value retention, retry and final
+  fixture restoration.
+- The static cell is fully green: zero runtime, axe, custom accessibility,
+  touch-target, overflow, environment and primary-work findings. Main client
+  and scroll widths are both 311 px, `smallTargets` is zero, first rule starts
+  at 707 px, load p75 is 549 ms and maximum sampled CLS is
+  `0.02739419786939746`. RU, dark theme, reduced motion and
+  `maxTouchPoints: 1` are confirmed. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36329299612`.
+- Manual screenshot review verifies that Help is a full target, Add/Save no
+  longer overflow and primary rules are above the fold. It also catches a
+  quality issue outside the automated failures: the full RU template-active
+  label consumes too much of the shared metadata row and makes the name input
+  needlessly narrow. The switch now uses the shorter localized Active/Inactive
+  text below `sm`, retains the full Template active text from `sm` upward, and
+  exposes the full localized ARIA label at all widths. No section or control
+  moved or disappeared.
+- The three-file anti-pattern scan remains green at zero findings; scoped
+  ESLint, `git diff --check` and the updated UX contract pass 7/7. This is a
+  mobile-visible product change, so one final RU/dark mobile exact-SHA run is
+  required. The already-green desktop layout is unchanged by the responsive
+  label spans and will be covered again by the final high matrix.
+
+Next: checkpoint and push the mobile-label refinement, repeat RU/dark mobile,
+manually inspect the new screenshot, then launch the 24-cell high matrix.
+
+### Workstream 9 closure self-audit
+
+- Final product SHA `e326f3773cbaa034a63857d9fd48a9df37c8beb6`
+  passes RU/dark mobile run `36330991043`: the dedicated section gate,
+  production build, static browser cell and all 6/6 disposable outcomes are
+  green. Physical recovery uses a hit-tested 144x44 Playwright touchscreen
+  target; draft/permission/density/reorder/delete/save recovery all pass and
+  final fixture restoration is true.
+- Mobile static totals are zero for runtime, axe, custom accessibility, touch,
+  overflow, environment and fold findings. `smallTargets` is zero, main client
+  and scroll widths are both 311 px, primary work starts at 683 px, load p75
+  is 562 ms and CLS is `0.04029089519279769`. Manual screenshot review confirms
+  that the localized short switch label restores a usable name field while
+  preserving the full accessible name, 44 px control, compact tabs, readable
+  rules and unobstructed sticky actions. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36330991043`.
+- Final high-density run `36332223526` on the same SHA passes all 24 unique
+  admin × AZ/RU/EN × light/dark × desktop/tablet/narrow-tablet/mobile cells.
+  The matrix is balanced at 8 cells per locale, 12 per theme and 6 per
+  viewport. All issue totals are zero; primary-work top spans 588–683 px,
+  maximum load p75 is 588 ms and maximum CLS is
+  `0.040403880220340214`. AZ/light desktop, EN/dark tablet, AZ/dark
+  narrow-tablet and RU/dark mobile screenshots were manually reviewed as
+  healthy. The artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36332223526`.
+- Compatible EN/light desktop mutation run `36326499627`, final mobile run
+  `36330991043` and final high run `36332223526` collectively cover keyboard,
+  focus/recovery, physical touch, permissions, mutation rollback, 0/1/30
+  density, locales/themes/viewports, accessibility, performance and visual
+  quality. Workstream 9 acceptance and all `SUPUX-TMP-001` through
+  `SUPUX-TMP-007` requirements are satisfied with no relaxed gate.
+
+Next: checkpoint the Workstream 9 closure, add a bounded retry only for the
+exact confirmed `next/font` Google-loader transient, then restore Workstream 10
+Skill Routing product `b0fbbac1f` and recovery `768146ca3` while preserving the
+current shared evidence supersets.
+
+### Bounded hosted-build transient retry
+
+- The shared Support UX evidence build step now captures the first
+  `npx next build --webpack` exit status and log. It permits exactly one retry
+  only when the log simultaneously contains the `next/font` error banner, the
+  exact `TypeError: Cannot read properties of null (reading '1')` text and the
+  compiled Google font loader path observed in failed attempt 1 of run
+  `36324206265` and the earlier Workstream 8 transient.
+- An unrelated first-attempt failure exits with its original status. The retry
+  runs after `set -e` is restored, so a second failure is fatal and cannot be
+  masked. The production build remains mandatory and the workflow does not
+  change timeouts, memory, browser assertions, evidence thresholds or artifact
+  acceptance.
+- Resource inspection before verification showed 15 GiB available memory,
+  331 GiB free disk and effectively zero pressure. The workflow parses through
+  the installed `js-yaml` dependency, the extracted shell block passes
+  `bash -n`, scoped ESLint and `git diff --check` pass, and the updated shared
+  browser-evidence contract passes 17/17. A local production build is NOT RUN
+  under the Contabo workload contract; the next exact-SHA section run will
+  exercise this path on GitHub-hosted infrastructure.
+
+Next: checkpoint and push the bounded retry, then restore Workstream 10 Skill
+Routing product `b0fbbac1f` and recovery `768146ca3`, preserving the current
+shared workflow/browser supersets and adding its section-scoped gate before
+desktop/mobile/high evidence.
+
+### Workstream 10 current-tree restoration and local self-audit
+
+- Restored historical Skill Routing product `b0fbbac1f` as current-tree
+  checkpoint `5bf3b6547`. Its add/add API conflict was resolved as two explicit
+  views: the existing default response remains the minimal active ticket-
+  assignee projection, while `/support/skill-routing` opts into the rich
+  routing-agent projection with `x-skill-routing-view: routing`. Both paths use
+  the current tenant-scoped RLS wrapper and permission check.
+- Restored recovery `768146ca3` as current-tree checkpoint `5919822ad` without
+  replacing the newer shared workflow or browser scenario supersets. The
+  disposable evidence still covers six outcome groups: dual failure and
+  terminal permission, partial-source recovery, empty/filter/50-queue/100-agent
+  density, queue selection/toggle/create/delete rollback, atomic bulk skill
+  rollback/retry/fixture restoration, and read-only mutation suppression.
+- Self-audit found that targeted `skill-routing` dispatches had no dedicated
+  validation step. Added a fail-closed section gate covering syntax, focused
+  anti-pattern scanning, i18n parity, scoped lint and 13 focused suites. The
+  same audit found mobile recovery used keyboard activation; non-desktop cells
+  now require a measured 44x44 target, DOM hit test and actual Playwright
+  touchscreen tap. Desktop continues to prove keyboard activation.
+- Local verification: JavaScript syntax green; workflow YAML green; all 20
+  workflow `run` blocks pass `bash -n`; focused anti-pattern scan green at 0
+  findings across four visible TSX files; AZ/RU/EN parity green at 23,599 keys;
+  targeted ESLint green; focused Vitest green at 13 files and 91/91 assertions;
+  `git diff --check` green. The first anti-pattern pass correctly rejected three
+  missing focus/minimum-target declarations, which were fixed before the green
+  rerun. The first lint invocation exposed a stale gate path and the gate was
+  corrected from `src/lib/ticketing/auto-assign.ts` to
+  `src/lib/auto-assign.ts` before the green rerun.
+- `npx tsc --noEmit` was attempted once and aborted at the default V8 heap limit
+  near 2 GiB. It is **BLOCKED locally by the Contabo workload contract** and was
+  not retried with a larger heap. Full build and browser E2E are **NOT RUN
+  locally** by host policy; the production build and exact-SHA evidence remain
+  mandatory GitHub Actions gates.
+
+Next: checkpoint and push the self-audit fixes and documentation, then run the
+exact-SHA Skill Routing desktop mutation sample, mobile physical-touch sample
+and the full manager/admin × locale × theme × viewport high matrix. Close
+Workstream 10 only after all required runs and manual screenshot review are
+green.
+
+### Workstream 10 first desktop evidence failure and remediation
+
+- Exact-SHA EN/light desktop run `36334959005` on `2279335a7` passed the new
+  section validation gate, isolated fixture seed and mandatory production-mode
+  build. The disposable flow passed all 6/6 outcomes: both retry controls used
+  keyboard activation, partial data preserved its unaffected source, the
+  50-queue/100-agent density view had no horizontal overflow, optimistic queue
+  and two-agent skill mutations rolled back, the retry succeeded, and the
+  disposable queue/agent fixture state was restored.
+- The static manager cell failed solely on Axe `color-contrast`: the default
+  primary action rendered white 14 px text on `#e9560c` at 3.61:1 instead of
+  4.5:1. The otherwise healthy cell had zero custom accessibility, touch,
+  overflow, environment or primary-work failures; load p75 was 542 ms, filter
+  p75 37 ms, interaction p75 16 ms and CLS `0.00277125157904396`. The retained
+  artifact is
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36334959005`.
+- Manual screenshot review confirms a clear queue-first master/detail layout,
+  compact coverage summary, primary work above the fold and no clipping. The
+  evidence also reported a 36x20 switch plus four 16x16 native checkboxes as
+  intrinsically small; desktop does not count those as hard failures, but the
+  upcoming touch cell would. Remediation changes the orange actions to the
+  high-contrast foreground token and preserves the compact visual controls
+  inside actual 44x44 interactive switch/checkbox hitboxes with explicit focus
+  treatment. It does not relax Axe or touch thresholds.
+- Post-fix focused anti-pattern scan is green at 0 findings, focused ESLint is
+  green, and the UX plus disposable-flow contracts pass 12/12. The first
+  contract rerun correctly rejected Tailwind `translate-x-*` because the legacy
+  palette guard reads its `slate-` substring; the redundant wrapper transform
+  was removed, leaving the Radix thumb's existing state transform, and the
+  replacement contract run passed.
+
+Next: checkpoint and push the contrast/hitbox remediation, then run a fresh
+exact-SHA EN/light desktop mutation sample. Only after it is green and manually
+reviewed, run RU/dark mobile physical-touch evidence and the full high matrix.
+
+### Workstream 10 second desktop evidence correction
+
+- Replacement run `36336640839` on `172719fd1` again passed the dedicated
+  section gate, production build and all 6/6 disposable outcomes. The 44x44
+  switch/checkbox remediation is proven at runtime: `smallTargets` is now zero,
+  with zero custom accessibility, overflow, environment and primary-work
+  failures.
+- Axe remained correctly fail-closed because the semantic foreground on the
+  primary orange action measured 4.38:1, still below 4.5:1. The remaining fix
+  uses a stable dark-neutral foreground on orange action/selected-skill states,
+  preserving the visual hierarchy while creating sufficient contrast in both
+  themes. Focused ESLint, the four-file 0-finding anti-pattern scan, 7/7 UX
+  assertions and `git diff --check` pass.
+
+Next: checkpoint and push the final contrast token correction, then run a new
+exact-SHA desktop sample. Do not start mobile/high until the desktop cell is
+fully green and its screenshot is manually accepted.
+
+### Workstream 10 desktop pass and mobile fold/touch correction
+
+- EN/light desktop run `36337966254` on `e07076c0c` is fully green: dedicated
+  validation, production build, static browser evidence and all 6/6 mutation
+  outcomes pass. Static totals are zero for Axe, custom accessibility, touch,
+  overflow, environment and primary-work findings; `smallTargets` is zero,
+  primary work begins at 540 px, load p75 is 395 ms, filter p75 16 ms and CLS
+  `0.002943936764229145`. Keyboard recovery and final fixture restoration are
+  true. Manual screenshot review accepts the queue-first hierarchy, compact
+  coverage, dark-on-orange action contrast, unobtrusive 44x44 hitboxes and lack
+  of clipping. Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36337966254`.
+- RU/dark mobile run `36339218299` on the same SHA passed the section gate,
+  production build and 5/6 mutation outcomes. Static Axe, custom accessibility,
+  touch-target, horizontal overflow and environment totals were zero, but the
+  strict primary-work gate failed because the first queue row started at
+  1059 px. The dual-source recovery also rejected one physical tap with
+  `skill_routing_touch_hit_test_failed`; the independent partial-source retry
+  proved an actual Playwright touchscreen tap on a hit-tested 120x44 target.
+  Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36339218299`.
+- Mobile self-audit retains every section but compresses them: the three
+  coverage facts share one row, queue helper copy uses the full card width and
+  search/filter controls share a compact row. Physical retry activation now
+  centers the element inside its actual scroll container before measuring the
+  44x44 minimum and running the unchanged `elementFromPoint` test and
+  `touchscreen.tap`. The first contract pass caught two stale assertions after
+  the layout change; they were updated, and focused syntax/lint, the four-file
+  0-finding scan, 12/12 contracts and `git diff --check` pass on rerun.
+
+Next: checkpoint and push the mobile fold/touch correction, then rerun the
+RU/dark mobile mutation sample on the new exact SHA. Launch the full high matrix
+only after mobile static and all 6/6 mutation outcomes are green and the
+screenshot is manually accepted.
+
+### Workstream 10 mobile evidence retry: product tour obstruction
+
+- Replacement RU/dark mobile run `36340943346` on `d2ffc77b7` passed the
+  dedicated section gate and production build. Its static browser cell is now
+  fully green: primary work begins at 765 px inside the 812 px viewport,
+  horizontal overflow is absent, Axe/custom accessibility/touch/environment
+  findings are zero, `smallTargets` is zero, load p75 is 597 ms, filter p75 is
+  15 ms and CLS is `0.011362670889550827`.
+- Five of six disposable outcomes passed. The dual-source retry still failed
+  its strict DOM hit test, while the independent partial-source retry again
+  proved a 120x44 hit-tested Playwright touchscreen tap. The failure screenshot
+  supplied the missing evidence: the first-visit product-tour overlay covered
+  the retry control, so `elementFromPoint` correctly rejected the tap. This was
+  an evidence-harness sequencing defect, not a reason to weaken the touch gate.
+  Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36340943346`.
+- Remediation dismisses the product tour and waits until its overlay is hidden
+  before every keyboard/touch activation. The existing 44x44 measurement,
+  center-point DOM hit test and real touchscreen tap remain unchanged. A
+  contract assertion now prevents the dismissal ordering from regressing.
+- Post-fix `node --check`, targeted ESLint, the 5/5 disposable-flow contract
+  assertions and `git diff --check` are green. Memory pressure was zero before
+  the sequential checks; no heavy local build or browser run was attempted.
+
+Next: checkpoint and push the tour-obstruction fix, then repeat the exact-SHA
+RU/dark mobile mutation sample. The full high matrix remains gated on a green
+6/6 mobile flow and manual image review.
+
+### Workstream 10 closure self-audit
+
+- Final RU/dark mobile run `36342354797` on `48aab85e1` is fully green. The
+  section gate and production build pass; static Axe, custom accessibility,
+  touch, small-target, overflow, environment and primary-work findings are all
+  zero. Primary work begins at 765 px, load p75 is 325 ms, filter p75 is 13 ms
+  and CLS is `0.011320760862311631`.
+- The disposable suite passes all 6/6 outcomes. Both queue and agent recovery
+  controls in the dual-source case, plus the independent partial-source retry,
+  were activated by hit-tested Playwright touchscreen taps on measured 120x44
+  targets. Permission suppression, density, rollback, retry and fixture
+  restoration evidence remain green. Manual review confirms the tour overlay
+  is absent and the RU/dark mobile queue-first hierarchy is unclipped.
+- High-density run `36343446259` on the same SHA is green with exactly 48/48
+  unique manager/admin × AZ/RU/EN × light/dark × desktop/tablet/narrow-tablet/
+  mobile cells. Aggregate Axe, custom accessibility, touch, small-target,
+  horizontal-overflow, environment, primary-work and runtime-error totals are
+  zero. Worst load p75 is 464 ms, worst filter p75 is 15 ms and maximum CLS is
+  `0.03712765587700737`.
+- Manual self-audit accepted representative AZ/light desktop, EN/dark tablet,
+  AZ/dark narrow-tablet and RU/dark mobile screenshots: navigation, coverage,
+  queue-first master/detail, focused small-screen tabs, contrast and hitboxes
+  remain coherent across the matrix. Artifacts are retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36342354797` and
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36343446259`.
+- All eight SUPUX-RTE requirements are closed in the implementation plan.
+  Workstream 10 is complete; no required gate was waived or left unrun.
+
+Next: checkpoint and push the Workstream 10 closure documentation, then restore
+and audit Workstream 11 Agent Calendar on top of this exact tree.
+
+### Workstream 11 Agent Calendar restoration and self-audit
+
+- Restored historical product work `4e0600bf7` as current-tree checkpoint
+  `2f2ec67c4`. The result replaces the fixed hourly canvas with a selected-day
+  agenda below `xl` and a compact event-only week board on wide screens;
+  outside-hours events stay ordered and labeled, the next timed item is
+  promoted, event details use an accessible sheet, and independent source
+  failures remain visible and retryable.
+- Restored the section-owned recovery markers and flow contract as checkpoint
+  `0093778cc` while preserving the newer shared workflow, generic browser
+  runner and screenshot wrapper. Added the missing section-scoped
+  `agent-calendar` validation gate instead of relying on the much broader
+  `all` scenario.
+- Self-audit found the historical flow described touch coverage but activated
+  retry/detail/navigation controls with keyboard or synthetic click at every
+  viewport. It now keeps keyboard activation on desktop and requires measured
+  44x44 targets, center-point DOM hit-testing and real Playwright touchscreen
+  taps elsewhere. It also dismisses and waits out the first-visit tour before
+  activation, preserving the strict hit-test learned from Workstream 10.
+- Local gates are green: browser/calendar JavaScript syntax; workflow YAML;
+  all 21 workflow `run` blocks under `bash -n`; the calendar anti-pattern scan
+  at 0 findings; AZ/RU/EN parity at 23,599 keys; targeted ESLint; 93/93
+  assertions across 11 focused suites; and `git diff --check`. Memory pressure
+  was zero before the sequential checks. A full local TypeScript/build/browser
+  run is **NOT RUN** under the Contabo workload contract after the already
+  documented default-heap exhaustion; GitHub Actions remains mandatory.
+
+Next: checkpoint and push the plan/journal state, then run exact-SHA desktop
+keyboard/recovery, RU/dark mobile physical-touch and the full high-density
+locale/theme/viewport matrix. Close Workstream 11 only after all browser gates
+and manual screenshot review are green.
+
+### Workstream 11 first desktop evidence correction
+
+- Exact-SHA EN/light desktop run `36345293286` on `359b1c2f5` passed the new
+  section gate, isolated fixture seed and production build. Static evidence is
+  fully green: Axe/custom accessibility/touch/small-target/overflow/environment/
+  primary-work findings are zero, primary work begins at 312 px, load p75 is
+  556 ms and CLS is `0.0008396649563426996`.
+- Five of six disposable outcomes passed. Keyboard retry, terminal permission,
+  partial-source recovery, empty recovery, 30-item density/outside-hours/show-
+  more, and keyboard week/today navigation all succeeded. The detail/focus
+  outcome opened and closed the sheet but the harness then called the non-
+  existent Playwright Locator method `isFocused`, so the gate correctly failed
+  before claiming focus return. Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36345293286`.
+- Remediation checks focus with an in-page comparison against
+  `document.activeElement`, the actual Playwright-supported mechanism. A
+  contract assertion prevents reintroducing the invalid API; product behavior
+  and every acceptance threshold remain unchanged.
+- Post-fix JavaScript syntax, targeted ESLint, 5/5 flow-contract assertions and
+  `git diff --check` are green with zero memory pressure before the sequential
+  checks.
+
+Next: checkpoint and push the harness fix, then repeat the exact-SHA desktop
+mutation sample before mobile.
+
+### Workstream 11 second desktop evidence correction
+
+- Replacement run `36346683151` on `6c951c040` again passed the section gate,
+  production build, static browser cell and five of six flow outcomes. The
+  corrected focus assertion then exposed a real product issue:
+  `calendar_detail_focus_not_restored`. The detail sheet was opened from a
+  plain button rather than a Radix trigger, and immediate unmount on Escape
+  left no primitive-owned trigger for automatic focus restoration. Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36346683151`.
+- The page now records the exact button that opened the detail sheet and
+  explicitly restores focus to it after close/unmount. The same path covers
+  the promoted next-item control, narrow agenda items and wide week-board
+  items. A static UX contract requires the trigger ref and scheduled focus
+  restoration so the accessibility fix cannot silently disappear.
+- Focused ESLint, the one-file anti-pattern scan at 0 findings, 15/15 page/flow/
+  effect-regression assertions and `git diff --check` are green. Host memory
+  pressure remained low during the sequential checks.
+
+Next: checkpoint and push the focus-restoration fix, then repeat desktop before
+mobile/high evidence.
+
+### Workstream 11 mobile evidence correction
+
+- Exact-SHA RU/dark mobile run `36349297848` on `c0a5ba954` passed the section
+  gate, production build and all six disposable flow outcomes. Recovery,
+  terminal permission, partial-source, empty agenda, high-density/outside-
+  hours, keyboard/focus, and week/today navigation behavior are intact.
+- The independent static browser cell correctly blocked closure because the
+  title-row Help control was flex-shrunk to `19x32` px. Axe, unlabeled-control,
+  overflow, environment and primary-work checks were otherwise green;
+  primary work begins at 667 px, load p75 is 506 ms and CLS is
+  `0.009392899609308647`. Artifact:
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36349297848`.
+- The calendar now gives its Help control an explicit non-shrinking `44x44`
+  target, matching the existing previous/next controls. The calendar UX
+  contract pins this requirement so the mobile hitbox cannot regress. The
+  threshold and static gate remain unchanged.
+
+Next: run focused source checks, checkpoint and push the hitbox correction,
+then repeat the exact-SHA RU/dark mobile gate before the high matrix.
+
+### Workstream 11 closure
+
+- The Help hitbox correction passed focused ESLint, 7/7 calendar UX contract
+  assertions and `git diff --check`, then was checkpointed and pushed as
+  `74da501b5`.
+- Exact-SHA RU/dark mobile run `36350697895` is fully green: section validation,
+  production build, six of six recovery/interaction outcomes and static browser
+  evidence all pass. Both retries, item detail, next-week and Today controls
+  were activated with hit-tested Playwright touchscreen taps on targets at
+  least 44 px. Static Axe, custom accessibility, touch, small-target, overflow,
+  environment, primary-work and runtime-error findings are zero; load p75 is
+  483 ms and CLS is `0.009392899609308647`. Manual review confirms the 44x44
+  Help control, translated agenda, navigation and dense content are unclipped.
+- High-density run `36351967252` on the same SHA is green with exactly 72/72
+  unique agent/manager/admin × AZ/RU/EN × light/dark × desktop/tablet/narrow-
+  tablet/mobile cells. All aggregate issue/error totals are zero, worst load
+  p75 is 596 ms and maximum CLS is `0.009392899609308647`.
+- Manual self-audit accepted AZ/light desktop, EN/dark tablet, AZ/dark narrow-
+  tablet and RU/dark mobile screenshots. The wide compact week board and narrow
+  selected-day agenda preserve hierarchy, readable high-density scrolling,
+  non-color cues, theme contrast and touch-safe navigation.
+- All eight SUPUX-CAL requirements are closed in the implementation plan.
+  Workstream 11 is complete; no required gate was waived or left unrun.
+
+Next: checkpoint and push Workstream 11 closure documentation, then restore and
+audit Workstream 12 Escalation Rules on top of this exact tree.
+
+### Workstream 12 Escalation Rules restoration and self-audit
+
+- Restored historical product work `8f8ca41d8` as current-tree checkpoint
+  `0887bcca5`. The result provides real PATCH-based Edit, inactive-by-default
+  Duplicate, localized sentence/timing preview, exact-conflict blocking,
+  named semantic controls, rollback feedback, responsive filtering and
+  constrained manager/admin mutation APIs. The one restore conflict preserved
+  the current Lead Convert transaction fixtures while adding the escalation
+  assertions.
+- Restored section-owned recovery markers and the disposable flow contract
+  without replacing newer shared workflow/browser/screenshot supersets. Added
+  the missing section-scoped `escalation-rules` validation gate.
+- Self-audit found and repaired a runtime/preview mismatch: first-response rules
+  exposed a configurable after-breach offset, but the SLA cron ignored it.
+  Runtime now waits for first-response deadline plus `triggerMinutes`, backed by
+  a focused cron regression. Ordering copy in AZ/RU/EN now reflects the actual
+  L1→L5 evaluation, one match per cron cycle, 30-minute cooldown and suppression
+  of already-reached levels.
+- Mobile evidence is hardened to measured 44x44 center-point hit-tests and real
+  Playwright touchscreen taps for retry, editing/saving, duplicate/conflict,
+  toggle rollback and delete recovery. Desktop uses keyboard activation and
+  verifies focus restoration against `document.activeElement`; the invalid
+  historical `Locator.isFocused()` call is removed. The flow waits until the
+  first-visit tour is hidden before any activation.
+- Header wrapping, a full-width mobile create action, 44 px Help/tour controls,
+  24 px switch tracks inside 44 px labels and wrapping row actions close the
+  touch/layout risks found in source review.
+- Local gates are green: browser/flow JavaScript syntax; workflow YAML; all 22
+  workflow `run` blocks under `bash -n`; one-file anti-pattern scan at 0
+  findings; AZ/RU/EN parity at 23,599 keys; focused ESLint; 107/107 assertions
+  across 11 suites; and staged/unstaged `git diff --check`. Full local
+  TypeScript/build/browser are **NOT RUN** under the documented Contabo workload
+  and default-heap constraints; GitHub Actions remains mandatory.
+
+Next: checkpoint and push the Workstream 12 recovery/self-audit state, then run
+exact-SHA desktop keyboard/recovery, RU/dark mobile physical-touch and the full
+high-density locale/theme/viewport matrix.
+
+### Workstream 12 desktop evidence correction
+
+- Exact-SHA desktop run `36354864869` on `b9b122444` passed the section gate,
+  production build, and all 6/6 disposable mutation/recovery scenarios. The
+  independent static browser gate then correctly blocked closure on one Axe
+  `color-contrast` finding: the primary New rule action rendered white 14 px
+  text on the default `#e9560c` background at `3.61:1`, below the required
+  `4.5:1`. All custom accessibility, touch, overflow, environment,
+  primary-work and runtime-error counts were otherwise zero.
+- The Escalation Rules workspace now opts into the existing Support shell
+  surface contract, whose primary action token is the already-audited darker
+  orange (`hsl(20 92% 38%)`). This fixes the computed contrast without
+  weakening Axe or changing any gate threshold. The focused contract pins the
+  shell class.
+- The correction passes focused ESLint, 4/4 Escalation Rules evidence-contract
+  assertions and `git diff --check`. Full local build/browser remain **NOT
+  RUN** per the Contabo workload rule; the exact-SHA GitHub rerun is mandatory.
+
+Next: checkpoint and push the contrast correction, then repeat the exact-SHA
+desktop evidence gate before proceeding to mobile and the high matrix.
+
+### Workstream 12 closure
+
+- Contrast correction checkpoint `3d9929c4c` was pushed, and exact-SHA desktop
+  run `36356105829` is fully green: section validation, production build, all
+  6/6 disposable keyboard/recovery outcomes and static browser evidence pass.
+  Axe, custom a11y, touch, overflow, environment, primary-work and runtime-error
+  findings are zero; load p75 is 380 ms and CLS is
+  `0.0007984547556182484`. Manual screenshot review accepted the compact rule
+  summary, filter surface, rule controls and corrected primary action.
+- RU/dark/mobile run `36357239462` is fully green. All 13 recorded mutation and
+  recovery activations used measured, center-hit-tested Playwright touchscreen
+  taps with a minimum target dimension of 44 px. Static Axe, a11y, touch,
+  small-target, overflow, environment, primary-work and runtime-error findings
+  are zero; load p75 is 556 ms and CLS is `0.009392899609308647`. Manual review
+  confirms translated content, full-width action, stacked summary/filtering and
+  responsive rule row are readable without horizontal clipping.
+- High-profile run `36358409506` passed exactly 24/24 unique admin × AZ/RU/EN ×
+  light/dark × desktop/tablet/narrow-tablet/mobile cells. Every aggregate issue
+  and error total is zero; worst load p75 is 432 ms, max CLS is
+  `0.009392899609308647`, and primary work starts no lower than 736 px. Manual
+  review accepted representative AZ/light desktop, EN/dark tablet, AZ/dark
+  narrow-tablet and RU/dark mobile captures.
+- Self-audit found no remaining Escalation Rules acceptance gap. All seven
+  SUPUX-ESC requirements are closed in the implementation plan, with no gate
+  relaxed or left unrun.
+
+Next: checkpoint and push Workstream 12 closure documentation, then restore and
+audit Workstream 13 Macros on top of the exact green tree.
+
+### Workstream 13 Macros restoration and self-audit
+
+- Restored historical product work `f53e88a8b` as current-tree checkpoint
+  `17d7208bb`. The compact list, checked mutations, delayed confirm/Undo,
+  organization-scoped categories, scoped assignee picker, readable action
+  timeline and transactional ticket application are present. Two conflicts
+  were resolved manually: the current Ticket Detail implementation was
+  preserved while the checked macro-application response semantics were
+  retained, and the current more legible shortcut label won over the older
+  10 px variant. Focused ESLint and 76/76 product assertions passed.
+- Restored recovery markers and its six fail-closed disposable outcomes while
+  retaining the newer shared workflow/browser/screenshot supersets. Added the
+  missing section-scoped Macros validation gate across the page, Ticket Detail,
+  APIs, helpers, evidence code and relevant focused/shared contracts.
+- Self-audit removed synthetic mobile interaction and the invalid historical
+  `Locator.isFocused()` calls. Retry, reset, editor/timeline/preview/save,
+  toggle/delete/Undo and shared-category paths now use real Playwright
+  touchscreen taps after 44x44 measurement and center-point DOM hit-testing on
+  non-desktop viewports; desktop uses keyboard activation and direct
+  `document.activeElement` focus checks. Tour dismissal now waits until the
+  overlay is actually hidden.
+- The page opts into Support contrast tokens, wraps header utilities, uses a
+  full-width mobile create action, preserves 44 px tour/help/Undo controls and
+  gives the switch a 44 px activation target around its 24 px track. Category
+  Undo is exercised from the visible page notice after its modal closes, then
+  the manager is reopened and focus restoration is checked.
+- Local gates are green: browser/flow JS syntax; workflow YAML; all 23 workflow
+  shell blocks under `bash -n`; three visible TSX files with 0 anti-pattern
+  findings; AZ/RU/EN parity at 23,599 keys; section-scoped ESLint; 120/120
+  assertions across 12 suites; post-adjustment 15/15 focused assertions; and
+  `git diff --check`. Full local TypeScript/build/browser are **NOT RUN** under
+  the documented Contabo workload/default-heap rule; GitHub Actions is the
+  mandatory execution environment.
+
+Next: checkpoint and push the Workstream 13 recovery/self-audit state, then run
+exact-SHA desktop keyboard/recovery, RU/dark mobile physical-touch and the full
+high-profile locale/theme/viewport matrix.
+
+### Workstream 13 desktop build correction
+
+- Exact-SHA run `36360061337` on `bc1fd2f43` passed the new section-scoped
+  Macros gate and isolated fixture creation, then correctly stopped at the
+  mandatory production build. Webpack found duplicate recovered imports for
+  five existing shell integrations in the Macros page; capture did not run and
+  no browser claim is made from this attempt.
+- The duplicate import block is removed and the Macros UX contract now asserts
+  that every affected integration import occurs exactly once. No build rule,
+  threshold or workflow condition was changed.
+
+Next: run the focused source checks, checkpoint and push the build correction,
+then repeat the exact-SHA desktop gate before mobile/high evidence.
+
+### Workstream 13 desktop flow correction
+
+- Exact-SHA rerun `36361287276` on `1cdcd44bc` passed the section gate,
+  fixtures and production build. Capture then exposed three evidence-contract
+  defects: `DialogContent` does not forward arbitrary DOM attributes, so the
+  visible editor/category surfaces lacked their test IDs; and the flow's
+  repeated one-second tour probe consumed the deliberately shortened Undo
+  window. The screenshots confirmed all three UI states were rendered, making
+  the failed selectors and timer interaction directly observable.
+- Editor and category-manager markers now live on real nested DOM elements.
+  Tour appearance is awaited only at workspace navigation; subsequent action
+  activation uses an immediate visibility check, so it cannot consume the Undo
+  interval. The static contract pins the real marker placement and tour mode.
+- Browser/flow syntax, focused ESLint, 16/16 affected assertions and
+  `git diff --check` pass. No timeout, expected outcome or gate threshold was
+  weakened.
+
+Next: checkpoint and push the flow correction, then repeat the exact-SHA
+desktop evidence gate before mobile/high evidence.
+
+### Workstream 13 focus-restoration correction
+
+- Exact-SHA run `36362865556` on `032ea4855` passed section validation,
+  fixtures, production build, static capture and five of six mutation/recovery
+  outcomes. Both delayed delete/Undo paths and the shared-category path now
+  pass. The sole failure was `macro_editor_focus_not_restored`: the flow read
+  `document.activeElement` in the same event-loop tick as dialog cleanup.
+- Focus return now uses bounded observation for up to 2.5 seconds and never
+  calls `.focus()` itself. This preserves the requirement that the dialog must
+  restore focus while removing the React cleanup race; both editor and category
+  manager use the same check.
+
+Next: run affected source checks, checkpoint and push the focus observer, then
+repeat the exact-SHA desktop gate.
+
+### Workstream 13 dialog return-target correction
+
+- Exact-SHA run `36364020961` on `7330edeef` passed Macros section validation,
+  fixtures, the isolated production build, static capture and five of six
+  mutation/recovery outcomes. Its sole failure remained
+  `macro_editor_focus_not_restored`, after the new bounded observer waited the
+  full 2.5 seconds. This falsified the prior event-loop-race diagnosis without
+  weakening the focus requirement.
+- Root-cause review of the shared dialog contract found that the editor name
+  input used React's native `autoFocus`. It receives focus during mount before
+  the dialog's effect records `document.activeElement`, causing the dialog to
+  remember the input instead of the row button that opened it. The Macros
+  editor now uses `data-dialog-initial-focus`, which lets the dialog record the
+  trigger and then focus the name field on its managed animation frame.
+- The evidence assertion still observes focus without setting it. Focused
+  ESLint, 17/17 Macros UX/evidence-contract assertions and `git diff --check`
+  are green. Full local build/browser remain **NOT RUN** under the Contabo
+  workload rule; the next exact-SHA GitHub run remains mandatory.
+
+Next: checkpoint and push the dialog return-target correction, then rerun the
+desktop Macros gate before RU/dark mobile and the 24-cell matrix.
+
+### Workstream 13 shared tip accessibility correction
+
+- Exact-SHA run `36365556905` on `3deb238af` passed section validation,
+  fixtures and production build. All 6/6 Macros mutation/recovery outcomes now
+  pass, including `focusRestored: true` for the editor and category manager, so
+  the dialog return-target defect is closed.
+- The independent static capture correctly remained red: Axe found three
+  critical `button-name` violations on the visible Did You Know dismiss,
+  previous and next controls. The evidence had no runtime, overflow, touch,
+  environment or other Axe errors; load p75 was 449 ms and CLS was
+  `0.0019435164840133103`. The desktop screenshot was inspected and confirms
+  the failures belonged to the shared tip surface, not hidden content.
+- The shared tip now provides localized common labels for dismiss/previous/
+  next, explicit `type="button"`, decorative icon semantics and 44 px targets;
+  its CTA also has a 44 px minimum height. The Macros section gate lints this
+  shared dependency and the focused contract pins the repaired semantics.
+- Local checks are green: AZ/RU/EN parity at 23,599 keys; focused ESLint; 18/18
+  affected assertions; workflow YAML with all 23 `run` blocks passing
+  `bash -n`; and `git diff --check`. Full local build/browser remain **NOT RUN**
+  under the Contabo workload rule; GitHub remains the mandatory executor.
+
+Next: checkpoint and push the shared tip correction, then rerun the exact-SHA
+desktop Macros gate before RU/dark mobile and the 24-cell matrix.
+
+### Workstream 13 desktop closure and mobile correction
+
+- Exact-SHA desktop run `36366968426` on `33a13b6e8` passed the Macros section
+  gate, fixtures, production build and capture. Artifact review confirms 6/6
+  flow outcomes, both focus returns true and zero runtime, Axe, accessibility,
+  touch, overflow, environment and primary-work failures. Load p75 is 600 ms,
+  CLS is `0.0019435164840133103`, and the EN/light desktop screenshot was
+  manually accepted.
+- Exact-SHA RU/dark mobile run `36368291371` on the same SHA failed closed.
+  Five of six flows passed, but the late first-run tour covered the transient
+  error Retry before its real touch hit-test. The static result had zero Axe,
+  touch, runtime and environment errors, but correctly rejected a 481 px
+  intrinsic macro-row width and primary work at 1121 px. The screenshots were
+  inspected and match all three findings.
+- The Macros page now reinstates the approved shared `SupportPageShell` from
+  the completed foundation work: one short description, no permanently
+  expanded Did You Know block beside Help, and compact shell rhythm. A
+  zero-minimum one-column grid contains rows below the desktop breakpoint;
+  table headers/columns wait until `xl`, while filters use a safe two-column
+  intermediate layout. The transient error flow performs a second bounded tour
+  dismissal after the error state is visible, before measuring and tapping
+  Retry. Existing physical-touch size/hit checks and primary-work thresholds
+  are unchanged.
+- Local checks are green after correction: flow syntax; the three-file scoped
+  anti-pattern scan with zero findings; focused ESLint; 18/18 Macros UX/evidence
+  assertions; and `git diff --check`. Full local build/browser remain **NOT
+  RUN** under the Contabo workload rule.
+
+Next: checkpoint and push the mobile/layout correction, then rerun exact-SHA
+RU/dark mobile and desktop evidence before the 24-cell matrix.
+
+### Workstream 13 closure self-audit
+
+- Final code checkpoint `47c8767e2` passes exact-SHA RU/dark mobile run
+  `36370108039`: 6/6 outcomes and 28/28 physical Playwright touchscreen
+  activations with successful center hit-tests and measured targets of at least
+  44x44. Static runtime, Axe, accessibility, touch, overflow, environment and
+  primary-work totals are all zero; primary work is at 650 px, load p75 is
+  463 ms and CLS is `0.009392899609308647`. The screenshot was manually
+  accepted.
+- The same SHA passes EN/light desktop run `36371158032`: 6/6 outcomes, both
+  dialog focus returns true, every static total zero, primary work at 362 px,
+  load p75 299 ms and CLS `0.0007984547556182484`. The compact desktop
+  screenshot was manually accepted.
+- High-profile run `36372253714` on the same SHA contains exactly 24/24 unique
+  admin cells for AZ/RU/EN x light/dark x desktop/tablet/narrow-tablet/mobile.
+  All eight aggregate issue/error totals are zero. Worst load p75 is 569 ms,
+  max CLS is `0.07633567374870776`, and max primary-work top is 650 px.
+  Representative AZ/light desktop, EN/dark tablet, AZ/dark narrow-tablet and
+  RU/dark mobile screenshots were manually accepted.
+- Self-audit maps all eight MAC requirements to checked response handling,
+  confirm/delayed delete/Undo and retained drafts, the compact contained list,
+  accessible menus, scoped assignees, organization categories, keyboard-safe
+  timeline/preview controls and optional visible shortcuts. Product, recovery,
+  keyboard, physical touch, localization, theme, viewport, accessibility,
+  performance and visual gates are complete without waivers.
+
+Workstream 13 is **DONE**.
+
+Next: checkpoint and push the Workstream 13 closure record, then begin
+Workstream 14 Portal Users from its saved product/recovery checkpoints.
+
+### Workstream 14 current-tree recovery and self-audit
+
+- Restored the Portal Users product checkpoint as `584c5d9d4` and its recovery
+  evidence as `10af0aef9`. The historical evidence conflicts were resolved in
+  favor of the current WS13-complete workflow/browser/screenshot superset; only
+  the Portal Users page markers and its flow contract were new in the recovery
+  commit, so no established gate was removed or weakened.
+- The product slice passes changed-source ESLint, AZ/RU/EN parity at 23,599
+  keys, and 32/32 API/password-link/presentation/UX assertions.
+- The mandatory technical self-audit initially scored 14/20 (Accessibility 2,
+  Performance 4, Responsive 2, Theming 3, Anti-patterns 3). P1 findings were
+  20 px physical checkbox targets, a wide table at the 768 px content boundary,
+  native `autoFocus` defeating dialog return-focus capture, and mutation flow
+  evidence based on synthetic `.click()`/`.check()`. A P2 consistency finding
+  was the page's manual header outside the shared Support shell.
+- Corrections move the page to `SupportPageShell`, retain cards through tablet
+  widths (`xl` table), wrap checkboxes in 44 px labels, preserve semantic theme
+  tokens and reduced motion, replace native autofocus with the dialog-managed
+  initial-focus marker, and restore focus to the action-menu trigger after every
+  menu-launched dialog.
+- The flow now measures and center-hit-tests every non-desktop target before a
+  real Playwright touchscreen tap; desktop paths use keyboard activation. It
+  contains no `.click()` or `.check()` calls, observes focus without setting it,
+  waits out first-run tours at navigation boundaries and uses the compact card
+  surface at tablet/narrow-tablet sizes. The corrected audit score is 20/20.
+- Local post-fix gates are green: flow syntax, changed-source ESLint, 38/38
+  focused assertions, Portal Users section anti-pattern scan with 0 findings,
+  and `git diff --check`. The full inventory scanner remains red on 55 findings
+  only in still-pending customer-portal/ticket-closure files; this is an explicit
+  pending release gate, not a waiver. Full build/browser are **NOT RUN** locally
+  under the Contabo workload contract and remain mandatory in GitHub Actions.
+
+Next: checkpoint and push the WS14 self-audit, then run exact-SHA desktop,
+RU/dark physical-touch and complete high-profile Portal Users evidence before
+checking POR-001..009 and closing the section.
+
+### Workstream 14 section-gate correction
+
+- Exact-SHA desktop run `36374828281` on `9521783a3` showed the browser flow was
+  selected but the workflow had no dedicated Portal Users source-validation
+  step; the all-scenarios validation was correctly skipped for a one-scenario
+  dispatch. The run remains useful only as a diagnostic and cannot close WS14.
+- Added a fail-closed `Validate section-scoped Portal Users evidence` step ahead
+  of fixtures/build/capture. It runs browser/flow/screenshot syntax checks, the
+  Portal Users and shared shell/dialog anti-pattern scope, i18n parity, scoped
+  ESLint, API/password-link/presentation/UX tests and shared evidence contracts.
+  The Portal Users flow contract now requires this step and its route root.
+- Local validation is green: the updated flow contract is 6/6, focused ESLint
+  passes, the workflow YAML parses and all 24 embedded shell blocks pass
+  `bash -n`; `git diff --check` is clean. No existing gate or threshold changed.
+
+Next: checkpoint and push the section gate, then repeat the exact-SHA desktop
+run on the corrected workflow before mobile and full matrix evidence.
+
+### Workstream 14 physical checkbox correction
+
+- The non-authoritative diagnostic run `36374828281` on `9521783a3` completed
+  successfully after its production build. Artifact review shows 7/7 flow
+  groups, 31/31 keyboard activations, recovery/edit/password focus returns all
+  true, and zero runtime, Axe, counted accessibility, overflow, environment or
+  primary-work failures. Load p75 was 509 ms, filter p75 31 ms, interaction p75
+  16 ms and CLS `0.0007984547556182484`.
+- The same static report exposed two raw 20 px checkbox controls. Desktop does
+  not count them as touch failures, but the mobile gate would. The new shared
+  Portal Users selection control makes the actual input an invisible 44x44
+  focusable/tappable surface and renders a separate 20 px semantic-token check/
+  indeterminate indicator with focus-visible ring. Row, select-all and manual-
+  password acknowledgement paths use it.
+- Focused ESLint, 18/18 affected assertions and `git diff --check` pass. Run
+  `36375334261` on the now-obsolete pre-checkbox SHA was explicitly cancelled
+  so it cannot be mistaken for release evidence or hold the serialized runner.
+
+Next: checkpoint and push the physical-control correction, then run the full
+three-stage exact-SHA Portal Users evidence sequence.
+
+### Workstream 14 closure self-audit
+
+- Final Portal Users code checkpoint `2ce33c04c` passes exact-SHA EN/light
+  desktop run `36376361993`, RU/dark physical-touch mobile run `36377863993`
+  and high-profile 24-cell run `36377887709`. All three include the dedicated
+  section source gate, isolated fixtures, production build and browser capture.
+- Desktop and mobile flows each pass all 7/7 recovery/mutation groups with
+  31/31 activations. Desktop uses keyboard input; mobile uses real Playwright
+  touchscreen taps after 44x44 measurement and DOM center hit-testing. All
+  recovery/edit/password dialog focus-return checks are true.
+- Desktop static evidence has zero runtime, Axe, accessibility, touch,
+  overflow, environment, primary-work and raw-small-target failures; load p75
+  is 510 ms, filter p75 18 ms and CLS `0.0007984547556182484`. Mobile has the
+  same zero totals, primary work at 661 px, load p75 592 ms, filter p75 20 ms
+  and CLS `0.009392899609308647`.
+- The high-profile artifact contains exactly 24/24 unique admin combinations
+  across AZ/RU/EN, light/dark and desktop/tablet/narrow-tablet/mobile. Every
+  cell passes; all eight aggregate issue/error totals and raw small targets are
+  zero. Worst load p75 is 571 ms, filter p75 34 ms, max CLS
+  `0.009583181667435107`, and max primary-work top 661 px.
+- EN/light desktop, RU/dark mobile, EN/dark tablet and AZ/dark narrow-tablet,
+  plus AZ/light desktop, were manually inspected and accepted. The layout keeps
+  the compact card surface through tablet widths and introduces no horizontal
+  overflow or clipped primary work.
+- POR-001..009 are checked against the implemented debounce/abort behavior,
+  fail-safe mutations and audit feedback, labelled action menu and selection,
+  explicit batch scope, confirmations, responsive representation, shared shell
+  and complete recovery-password re-baseline. Technical self-audit remains
+  20/20; no gate or threshold was waived.
+- The full inventory scanner's 55 findings remain confined to the pending
+  customer-portal/ticket-closure track and stay mandatory before final merge.
+
+Workstream 14 is **DONE**.
+
+Next: checkpoint and push the WS14 closure record, then restore and self-audit
+Workstream 15 Support AI Settings from product `b280e6c83` and recovery
+`99fec139c` without replacing the current workflow/browser evidence superset.
+
+### Workstream 15 current-tree recovery and self-audit
+
+- Historical product `b280e6c83` was already present in the current tree as a
+  stronger superset, including `SupportPageShell`, persistent failure feedback
+  and terminal-permission handling. Its cherry-pick became empty after current-
+  tree conflict resolution and was skipped rather than reverting those later
+  guarantees. Recovery contract checkpoint `d22c2a545` was restored while the
+  current workflow/browser/screenshot/performance/customer-portal/navigation
+  superset was retained.
+- Initial audit score was 17/20 (Accessibility 2, Performance 4, Responsive 3,
+  Theming 4, Anti-patterns 4). It found a 36x20 real switch box hidden behind a
+  pseudo-element touch claim, 40 px persistent Retry, synthetic `.click()` flow
+  activation, a non-forwarded dialog marker and an immediate focus-return check.
+- The switch root and Retry are now true 44 px controls. The compact switch
+  track/thumb remain visually unchanged inside the larger semantic control; the
+  consequence marker moved to a real DOM node. Desktop evidence uses keyboard
+  activation, non-desktop evidence uses Playwright touchscreen center taps only
+  after 44x44 measurement and DOM hit-testing, and every activation is recorded.
+  Focus restoration is observed for up to 2.5 seconds without being forced.
+- A section-scoped Support AI Settings workflow gate now runs syntax, the
+  section/shared-shell anti-pattern scope, AZ/RU/EN parity, scoped ESLint,
+  authorization/API/execution-boundary/UX tests and shared evidence contracts
+  before fixtures, production build or capture. Its contract requires the gate,
+  physical input proof and zero `.click()`/`.check()` calls.
+- Corrected audit score is 20/20. Flow syntax, the three-file anti-pattern scan
+  (0 findings), i18n parity at 23,599 keys, focused ESLint, 195/195 assertions
+  in 15 suites, workflow YAML plus all 25 shell blocks, and `git diff --check`
+  are green. Full build/browser remain **NOT RUN** locally under the Contabo
+  workload contract; GitHub Actions is mandatory. The unrelated 55 pending
+  customer-portal/ticket-closure scan findings remain a final release gate.
+
+Next: checkpoint and push the WS15 self-audit corrections, then run exact-SHA
+desktop, RU/dark physical-touch mobile and complete 24-cell high-profile Support
+AI Settings evidence before checking SUPUX-AI-001..008.
+
+### Workstream 15 desktop focus correction
+
+- Exact-SHA desktop run `36481557007` on `f5983821d` passed the dedicated
+  Support AI Settings source gate, isolated fixtures and production build.
+  Static capture and 4/5 recovery groups passed; the fail-closed flow rejected
+  `disable-confirm-failure-rollback-and-retry` because switch focus was not
+  restored after the failed mutation. The artifact and failed screenshot were
+  inspected; no threshold or expected outcome was changed.
+- Root cause is deterministic: dialog cleanup attempts to focus the opener in
+  the same render that starts the mutation and disables the switch, so the
+  browser discards focus. The client now remembers a save-triggered focus return
+  and restores it on the next animation frame only after `saving` becomes false
+  and the real switch is enabled again. The browser flow continues to observe
+  focus for up to 2.5 seconds and never calls `.focus()` itself.
+
+Next: run affected source checks, checkpoint and push the focus correction,
+then repeat the exact-SHA desktop Support AI Settings gate.
+
+### Workstream 15 closure self-audit
+
+- Final Support AI Settings code checkpoint `fa0ceae7b` passes exact-SHA
+  EN/light desktop run `36484199436`, RU/dark physical-touch mobile run
+  `36485944133`, and high-profile 24-cell run `36485947644`. Each run includes
+  the dedicated section source gate, isolated fixtures, production build and
+  browser capture.
+- Desktop and mobile flows each pass all 5/5 recovery/mutation groups with 7/7
+  activations. Desktop uses keyboard input; mobile uses real Playwright
+  touchscreen taps after 44x44 measurement and DOM center hit-testing. The
+  failed-save dialog path restores focus to the real enabled switch.
+- Desktop static evidence has zero runtime, Axe, accessibility, touch,
+  overflow, environment, primary-work and raw-small-target failures; primary
+  work starts at 191 px, load p75 is 482 ms and CLS
+  `0.0007984547556182484`. Mobile has the same zero totals, primary work at
+  406 px, load p75 650 ms and CLS `0.009392899609308647`. Both screenshots were
+  manually accepted.
+- The high-profile artifact contains exactly 24/24 unique admin combinations
+  across AZ/RU/EN, light/dark and desktop/tablet/narrow-tablet/mobile. Every
+  cell passes; all eight aggregate issue/error totals and raw small targets are
+  zero. Worst load p75 is 672 ms, max CLS `0.009392899609308647`, and max
+  primary-work top 406 px. AZ/light desktop, EN/dark tablet, AZ/dark
+  narrow-tablet and RU/dark mobile captures were manually accepted.
+- SUPUX-AI-001..008 are checked against role/add-on/navigation/page/API and
+  execution gates, the compact consequence map, explicit unaffected/manual
+  paths, immediate/next-job disclosure, mutation rollback/retry and server
+  truth, durable audit attribution, localized accessibility/responsiveness and
+  cross-module isolation. Technical self-audit remains 20/20; no gate or
+  threshold was waived.
+
+Workstream 15 is **DONE**.
+
+Next: checkpoint and push the Workstream 15 closure record, then restore the
+Customer Support Portal product/recovery slices path-scoped from `6f80377ac`
+and `737dc6427`, preserving the current workflow/browser evidence superset.
+
+### Customer Support Portal current-tree recovery and self-audit
+
+- Restored historical product `6f80377ac` as `719dccacf` and recovery
+  `737dc6427` as `534c2f64f`. Product conflicts preserve the current
+  `ThemeProvider` while accepting safer stored-user/auth/config/navigation
+  behavior; the attachment helper differed only in whitespace. Recovery
+  conflicts preserve the current workflow, screenshot, performance and
+  navigation evidence superset.
+- Initial audit score was 16/20 (Accessibility 3, Performance 3, Responsive 4,
+  Theming 4, Anti-patterns 2). It found thirteen direct `.click()`/`.focus()`
+  evidence actions, no dedicated section source gate, hard-coded file-size
+  units, an unnamed hidden file input and a missing `portal-knowledge` selector
+  in the historical flow/gate dispatch contract.
+- The corrected runner records exactly fourteen activations. Desktop uses
+  keyboard input; non-desktop profiles use real Playwright touchscreen taps
+  only after enabled-state polling, 44x44 measurement and center hit-testing.
+  It contains no `.click()`, `.focus()` or `.check()`. File sizes are
+  locale-aware and the file input has a localized accessible name.
+- The new fail-closed Customer Portal workflow gate covers all five scenario
+  IDs and runs both scoped TypeScript graphs, the seven-file anti-pattern scope,
+  i18n, changed-source lint, portal/auth/API/isolation tests and shared evidence
+  contracts before fixtures, production build or capture. The recovery-flow
+  selector now also includes `portal-knowledge`.
+- Corrected audit score is 20/20. Syntax and diff checks pass; scoped seven-file
+  and default 47-file scans have 0 findings; i18n parity is 23,599 keys; ESLint
+  has 0 errors; 203/203 focused assertions plus 13/13 final affected contracts
+  are green; workflow YAML and all 26 shell blocks validate. The 1.5 GB UI
+  TypeScript graph is green. The API graph reached the same 1.5 GB heap ceiling
+  and was not retried with a forbidden heavier local budget; it remains a
+  mandatory GitHub-hosted gate. Full local build/browser are **NOT RUN** under
+  the Contabo workload contract.
+
+Next: checkpoint and push the corrected Customer Portal evidence contract,
+then run exact-SHA desktop, RU/dark physical-touch mobile and complete 120-cell
+five-route high-profile evidence before checking SUPUX-CXP-001..006.
+
+### Customer Support Portal overlapping gate correction
+
+- Exact-SHA desktop run `36492703201` on `e853913ef` proved that
+  `portal-knowledge` invokes both the Customer Portal and existing Knowledge
+  Base section gates. It failed closed in the latter before secrets, fixtures,
+  build or capture because a stale source assertion still required the old
+  `text-orange-700` portal brand class. Its upload also failed as expected
+  because no evidence directory existed; this diagnostic run is not accepted.
+- The overlapping Knowledge Base contract now requires the current semantic
+  portal navigation label, `aria-current` active state, company projection and
+  absence of the obsolete hard-coded orange class. Focused assertions pass 5/5,
+  targeted ESLint and `git diff --check` are green; no workflow selector or
+  product behavior was weakened.
+
+Next: checkpoint and push the overlapping-gate correction, then repeat the
+exact-SHA desktop Customer Portal run before mobile and the 120-cell matrix.
+
+### Customer Support Portal API type-gate correction
+
+- Repeated exact-SHA desktop run `36493463075` on `b12845214e` passed the
+  overlapping Knowledge Base source gate and then failed closed in the
+  dedicated Customer Portal API TypeScript graph before secrets, fixtures,
+  production build or capture. It reported nine strict-type diagnostics across
+  the portal detail route and imported auth/webhook/external-service helpers;
+  the run is diagnostic only and supplies no accepted browser evidence.
+- Root causes were a narrow TypeScript project that omitted the repository's
+  NextAuth ambient augmentation, implicit callback boundaries where the narrow
+  dependency graph did not preserve inference, a generic `Uint8Array` rejected
+  by the DOM `BodyInit` contract, and `process.env` not satisfying a required-
+  key `Pick` as a default parameter.
+- The API project now includes `src/types/next-auth.d.ts`; portal agent rows,
+  Prisma transactions and active webhook targets have explicit safe types; the
+  injected-fetch adapter copies byte bodies to an `ArrayBuffer`; and the auth-
+  secret helper defaults to an explicit two-key environment projection. The
+  dedicated API typecheck remains present and strict; no selector, threshold or
+  expected outcome was weakened.
+- Section self-audit is green: `tsc --showConfig` confirms `strict` plus the
+  ambient declaration and portal detail route, changed-source ESLint has 0
+  errors, 83/83 affected assertions pass in four suites, and `git diff --check`
+  is clean. A full local API graph repeat is **NOT RUN** because the recorded
+  1.5 GB attempt already exhausted this host's allowed heap; the required proof
+  remains the next GitHub exact-SHA gate.
+
+Next: checkpoint and push this correction, then repeat exact-SHA EN/light
+desktop Customer Portal evidence. Only a green desktop result unlocks RU/dark
+physical-touch mobile and the complete 120-cell matrix.
+
+### Customer Support Portal desktop browser-capture correction
+
+- Exact-SHA desktop run `36494925193` on `e36c284e9` passed the Knowledge Base
+  and Customer Portal source gates, including both strict TypeScript graphs,
+  then passed isolated fixtures and production build. It failed closed only in
+  browser capture, so it is not accepted as section evidence.
+- Artifact `11003740772` was downloaded and inspected. Four of six recovery
+  groups passed and ten of fourteen keyboard activations were recorded. Ticket
+  detail and closure timed out because rendering threw `TypeError: Invalid
+  option : timeStyle`; both pages passed a date-plus-time request to
+  `formatDate`/`toLocaleDateString` instead of the dedicated `formatDateTime`
+  helper. Their failed screenshots showed the error boundary/blank render.
+- Static capture additionally failed the portal ticket list on one serious Axe
+  color-contrast violation: white 14 px New Ticket text against default orange
+  was 3.61:1. Portal Knowledge and Chat passed, but the overall run correctly
+  remained red; no partial artifact is being promoted to acceptance evidence.
+- Ticket detail and closure now use `formatDateTime` for all `timeStyle` values.
+  A customer-facing scoped action rule retains the orange hue at a darker,
+  AA-safe shade for `bg-primary` controls across authenticated/public portal
+  and closure surfaces, without changing shared application tokens. Its
+  calculated white-text contrast is 5.18:1. The portal UX contract pins the
+  correct formatter and scoped contrast boundary.
+- Correction self-audit is green: the 1.5 GB UI TypeScript graph passes,
+  changed-source ESLint has 0 errors, 36/36 affected assertions pass in five
+  suites, the seven-file anti-pattern scan has 0 findings, and `git diff
+  --check` is clean. No evidence expectation, Axe rule, threshold or scenario
+  was removed or relaxed.
+
+Next: checkpoint and push this correction, then repeat exact-SHA EN/light
+desktop Customer Portal evidence from all source gates through browser capture.
+Mobile and the 120-cell matrix remain gated on that result.
+
+### Customer Support Portal desktop accessible-name correction
+
+- Exact-SHA desktop run `36497269613` on `cd6e744cb` again passed all source
+  gates, both TypeScript projects, fixtures and production build. Artifact
+  `11004796655` confirms the previous runtime and contrast failures are fixed:
+  all 6/6 recovery groups pass, all 14/14 operational activations are recorded
+  as keyboard input with valid hit targets, and all five static routes render
+  without console errors or Axe violations.
+- The workflow still failed closed because portal ticket detail had
+  `unlabeledInteractive: 1`; the other four static routes passed. Inspection of
+  the current screenshot and source identified the reply textarea, which had a
+  localized placeholder and visible heading but no programmatic relationship
+  between them. This run remains diagnostic and does not unlock mobile.
+- The reply textarea now uses `aria-labelledby` tied to its localized visible
+  heading. The terminal CSAT comment receives an explicit localized
+  `aria-label` as preventive coverage for the state exercised later in the
+  matrix. The portal UX source contract pins both names.
+- Correction self-audit is green: the bounded UI TypeScript graph passes,
+  targeted ESLint has 0 errors, 18/18 affected assertions pass in three suites,
+  the seven-file anti-pattern scan has 0 findings, and `git diff --check` is
+  clean. No evidence rule, scenario or threshold was changed.
+
+Next: checkpoint and push this accessible-name correction, then repeat the full
+exact-SHA EN/light desktop workflow. RU/dark physical-touch mobile and the
+120-cell matrix remain locked until that workflow concludes green.
+
+### Customer Support Portal desktop acceptance and mobile correction
+
+- Exact-SHA EN/light desktop run `36499556506` on `bd3d459af` is fully green.
+  Artifact `11005426640` proves 5/5 static route results, 6/6 recovery groups
+  and 14/14 keyboard activations. Runtime, Axe, counted accessibility, touch,
+  overflow, environment and primary-work totals are all zero. Load p75 ranges
+  from 213 to 325 ms, filter p75 is at most 21 ms, and max CLS is
+  `0.04134309895833334`. Ticket detail, ticket closure and Portal Chat captures
+  were manually inspected and accepted.
+- RU/dark mobile run `36501160157` passed source gates, both TypeScript graphs,
+  fixtures and production build. Its recovery evidence is also completely
+  green: 6/6 groups, 14/14 real `playwright-touchscreen` activations, every DOM
+  center hit-test true, and minimum measured width/height exactly 44x44.
+- Static mobile capture correctly failed three portal routes because the only
+  company/tenant identity in the authenticated header was hidden below `md`;
+  the fail-closed tenant assertion could not verify `Northstar Support Lab`.
+  Standalone closure rendered and had zero accessibility/touch/overflow issues,
+  but failed environment truth with `activeTheme: light` under the requested
+  dark profile because it was outside any `ThemeProvider`. Artifact
+  `11005449852` remains diagnostic only.
+- The company name is now visible as a compact truncated mobile header value,
+  retaining tenant context while the longer user name stays responsive. Ticket
+  closure now wraps its customer surface in the repository's nonce-aware
+  `ThemeProvider`. The portal UX contract pins visible company identity and the
+  standalone theme boundary.
+- Matrix run `36501162835`, dispatched on the now-superseded SHA, was cancelled
+  after the mobile evidence proved source changes were required. It is not
+  accepted evidence and will be relaunched only after mobile is green.
+- Correction self-audit is green: the bounded UI TypeScript graph passes,
+  targeted ESLint has 0 errors, 22/22 affected assertions pass in four suites,
+  the seven-file anti-pattern scan has 0 findings, and `git diff --check` is
+  clean. No gate, threshold or expected environment was relaxed.
+
+Next: checkpoint and push this responsive/theme correction, repeat exact-SHA
+RU/dark physical-touch mobile, then launch the complete 120-cell read-only
+matrix only after that run is green.
+
+## 2026-09-29 — Customer Support Portal complete
+
+- Final implementation SHA `600737cca731131fdce2ecfae2b69442b2e767b0` is
+  proven by three accepted GitHub Actions runs. No later application-source
+  change is included in this section closure.
+- RU/dark physical-touch run `36503389987`, artifact `11006767793`, passed all
+  5 static routes and 6 recovery groups with 14/14 real touchscreen
+  activations. Every center hit-test succeeded, the minimum measured target is
+  44x44, and runtime/Axe/accessibility/touch/overflow/environment/primary-work
+  totals are zero. Tickets, closure and Chat screenshots were inspected.
+- Full read-only matrix run `36505213876`, artifact `11007801780`, passed all
+  120 unique cells: 24 per route, 40 per locale, 60 per theme and 30 per
+  viewport. Every counted runtime, Axe, accessibility, touch, overflow,
+  environment, primary-work, missing-alt, duplicate-ID and development-chrome
+  total is zero. Maximum load p75 is 490 ms, filter p75 27 ms, primary-work top
+  534 px and CLS `0.09195707465277776`. Representative AZ/light desktop,
+  EN/dark tablet, AZ/dark narrow-tablet and RU/dark mobile captures were
+  inspected and accepted.
+- Final-SHA EN/light desktop mutation run `36507650941`, artifact
+  `11008147284`, passed 5/5 static routes, 6/6 recovery groups and 14/14
+  keyboard activations. All counted failure totals are zero; maximum load p75
+  is 286 ms, filter p75 26 ms, primary-work top 534 px and CLS
+  `0.04134309895833334`. Reopened-ticket and terminal-closure screenshots were
+  inspected and accepted.
+- The three accepted workflows passed the dedicated Customer Portal and
+  overlapping Knowledge Base source gates, both strict TypeScript graphs,
+  isolated fixtures and production build. CXP-001..006 are now checked against
+  the documented journey, safe public projection, mutation recovery and
+  idempotency, publication isolation, AI/manual fallback, and direct-route /
+  tenant / contact / file / closure authorization evidence. No gate was
+  weakened.
+
+Result: Customer Support Portal is DONE. Next: create and push the section
+checkpoint, integrate current `origin/main` (`eab1c60de`) into the feature
+branch without dropping either side, then resume the still-open navigation and
+shared-foundation gates.
+
+## 2026-09-29 — Current main integrated before shared gates
+
+- Fetched and merged `origin/main` at
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5` into the continuing feature
+  worktree. Merge checkpoint `5c580bb66` completed without conflicts; the
+  feature branch is now 0 commits behind current main.
+- The only paths changed on both sides since their merge base were the three
+  locale catalogs and `src/proxy.ts`. Inspection confirms the Support
+  escalation/VoIP strings remain present while all current-main translations
+  are retained. The proxy contains both the Support CSP report exclusion and
+  current-main demo-request CORS handling.
+- Post-merge translation parity is green at 23,715 leaf keys in each of AZ, RU
+  and EN. The merged middleware contract passes 109/109 assertions. RAM,
+  storage and pressure were checked before the targeted test; no full build or
+  broad local suite was run on Contabo.
+- The first full feature-branch diff audit exposed two historical blank lines
+  at EOF in Portal-owned files. They were removed without behavioral change;
+  the current working diff check is clean. This correction is checkpointed
+  with the integration journal rather than weakening the eventual PR gate.
+
+Result: current main is integrated and overlap checks are green. Next: restore
+and harden the missing navigation evidence contract, add a section-scoped
+navigation source gate, run its local self-audit, then execute exact-SHA
+mutating and full responsive browser evidence.
+
+## 2026-09-29 — Support navigation evidence restored and hardened
+
+- Restored the missing `support-ux-navigation-flow-evidence` contract and
+  `docs/support-navigation-permission-matrix.md`. Both were already referenced
+  by the plan/workflow history but absent from the continuing branch. The
+  restored matrix preserves all 15 destinations in their 5/3/7 grouping and
+  keeps navigation/page UX gates separate from API authorization.
+- Audit found two P1 evidence defects: operational flow actions used synthetic
+  `.click()`/`.focus()`, and selecting only `support-navigation` bypassed every
+  section-scoped source/type gate. The flow now records four real keyboard
+  activations plus one Playwright touchscreen activation from a separate 375 px
+  touch context, including enabled-state polling, 44x44 measurement and DOM
+  center hit-testing. It fails unless all five outcome groups and all five
+  activations are present.
+- Added a dedicated Support navigation source gate and bounded strict UI
+  TypeScript project. The gate runs syntax, four-surface anti-pattern scan,
+  i18n, TypeScript, scoped ESLint and ten navigation/permission/evidence suites
+  before fixtures, build or capture. The aggregate `all` gate was not reduced.
+- The exact scan exposed 20 existing sidebar/layout findings. Shared navigation
+  transitions and skeletons now honor reduced motion; native collapse, clear,
+  group and Support-section controls have visible focus plus 44 px targets; the
+  dashboard hydration spinner respects reduced motion. Rescan: 4 files, 0
+  findings.
+- Self-audit is green: bounded strict UI TypeScript, scoped ESLint with 0
+  errors, 111/111 assertions in ten suites, flow syntax, workflow YAML, all 27
+  shell blocks and `git diff --check`. The initial graph draft pulled the full
+  dashboard provider tree and hit the 1.5 GB host ceiling; the graph was
+  narrowed to actual navigation components without raising memory. Layout is
+  still enforced by scan, lint, source contracts and the mandatory CI build.
+  Full local build/browser are NOT RUN on Contabo.
+
+Next: checkpoint and push this correction, run the exact-SHA EN/light mutating
+navigation flow, inspect all five outcomes and input evidence, then run the
+complete 72-cell agent/manager/admin × AZ/RU/EN × light/dark × four-viewport
+read-only matrix before checking NAV-001..009.
+
+## 2026-09-29 — Navigation mobile tour race diagnosed
+
+- Exact-SHA run `36511123084` on `f62ed59e0` passed the dedicated navigation
+  source/type gate, fixtures and production build. All three agent/manager/admin
+  static desktop results passed with zero runtime, Axe, accessibility, touch,
+  overflow, environment or primary-work failures.
+- Artifact `11010395142` proves four of five flow groups and all four desktop
+  keyboard activations. The mobile outcome failed closed before its physical
+  tap with `support_navigation_touch_hit_test_failed`; the failed screenshot
+  shows the delayed first-visit tour overlay covering the labeled destination
+  select. The product control itself was visible and the other flow assertions
+  remained green. This run is diagnostic only.
+- The setup helper now waits up to three seconds for that delayed overlay,
+  dismisses it with Escape and waits for the overlay to be hidden before target
+  measurement. The 44x44 size requirement and center `elementFromPoint` check
+  remain unchanged. Syntax, targeted ESLint, 4/4 affected assertions and
+  `git diff --check` pass.
+
+Next: checkpoint and push the correction, repeat exact-SHA mutating navigation
+evidence, inspect 5/5 outcomes and 5/5 keyboard/touch activations, then unlock
+the 72-cell read-only matrix.
+
+## 2026-09-29 — Support navigation complete
+
+- Final navigation implementation SHA
+  `c0604661db4dd77bd2e33ea68a9c3f4754a730c1` is proven by two accepted GitHub
+  Actions runs. No later application-source change is included in this section
+  closure.
+- Exact-SHA mutating run `36512893404`, artifact `11010433159`, passed all
+  three agent/manager/admin static captures and all five flow groups. It records
+  four real keyboard Enter activations and one real Playwright touchscreen
+  activation. The labeled mobile selector measured 287x44 px and its center
+  DOM hit-test succeeded. Persistent group state, active-route recovery,
+  collapsed-group search, the three-group layout and role/add-on visibility all
+  passed.
+- Complete matrix run `36514758825`, artifact `11011231079`, passed all 72
+  unique role/locale/theme/viewport cells: 24 each for agent, manager and admin;
+  24 each for AZ, RU and EN; 36 per theme; and 18 per desktop, tablet,
+  narrow-tablet and mobile viewport. All runtime, Axe, accessibility, touch,
+  primary-work, environment, page-overflow, missing-alt, duplicate-ID and
+  development-chrome failure totals are zero.
+- Matrix maxima are load p75 659 ms, filter p50 23 ms, interaction p75 32 ms,
+  primary-work top 324 px and CLS `0.011741124511635809`. Representative
+  AZ/light desktop, EN/dark tablet, RU/dark mobile and AZ/dark narrow-tablet
+  screenshots were manually inspected and accepted.
+- The product owner's authorization to execute the complete recorded plan,
+  combined with preserved three-role catalog behavior and rendered evidence,
+  confirms the three-group information architecture. All 15 destination routes
+  remain intact. The documented usage/stakeholder prerequisite still blocks
+  any future route removal or merge; this closure authorizes none.
+- The dedicated source/type gate, isolated fixtures and production build passed
+  in both accepted runs. NAV-001..009 are checked against the catalog,
+  permission matrix, keyboard/touch behavior and complete responsive evidence.
+  No gate or threshold was weakened.
+
+Result: Support navigation is DONE. Next: checkpoint and push the section
+closure, restore the three shared-foundation contract tests missing from the
+continuing branch, re-audit the aggregate gate, then execute the remaining
+foundation browser evidence.
+
+## 2026-09-29 — Global foundation source contracts recovered
+
+- Restored the three foundation suites already named by the aggregate workflow:
+  the 20-surface page-shell inventory, shared form/touch contract and
+  customer-facing friendly-error contract. They were absent from the continuing
+  tree even though the workflow and implementation plan still required them.
+- The first run failed 9 assertions and exposed real current-tree regressions:
+  11 rebuilt destinations used local headers instead of the shared shell; KB
+  category/status selects had labels without matching IDs; two conditional
+  portal recovery actions had dropped below 44 px; the Macros category rename
+  input lacked a programmatic name; and seven checked surfaces could expose raw
+  server error text.
+- Migrated Agent Desktop, VoIP, Knowledge Base list/detail, Ticket Categories,
+  SLA, Entitlements, Entitlement Templates, Skill Routing, Agent Calendar and
+  Escalation Rules to the actual `SupportPageShell` component without removing
+  their role-aware actions, data-state/test markers, help/tour controls or
+  operational content. The Escalation contract now asserts the component
+  boundary instead of accepting the old CSS marker.
+- Restored both KB select bindings, 44 px portal recovery targets and a
+  localized accessible name for category rename. Ticket macro application, KB,
+  Macros, portal upload and VoIP business-hours recovery now use localized
+  fallbacks or mapped codes rather than raw backend messages.
+- Source self-audit is green: anti-pattern scan 47/47 files with zero findings;
+  AZ/RU/EN parity 23,715 keys each; changed-source ESLint zero errors/warnings;
+  restored foundation contracts 25/25; affected flow/portal/VoIP contracts
+  69/69; and clean `git diff --check`. Heavy TypeScript/build/browser checks are
+  NOT RUN locally and remain mandatory in GitHub Actions.
+
+Next: checkpoint and push this foundation source correction, run aggregate
+exact-SHA EN/light desktop mutation evidence, inspect every flow group, then
+proceed to the complete locale/theme/viewport matrix and visual comparison.
+
+## 2026-09-29 — Aggregate foundation browser failure isolated and corrected
+
+- Aggregate exact-SHA run `36517986339` on `39548ebcf` passed its source gate,
+  strict TypeScript graphs, fixture isolation and production build. Every one
+  of the 17 operational flow reports is green. Static evidence passed 48 of 54
+  scenario-role cells; the browser job failed because the remaining six cells
+  contained real accessibility findings, not because the runner stalled.
+- Artifact `11013290414` identifies three root causes. Ticket Detail repeated
+  one 12 px breached-SLA foreground at 4.36:1 for agent, manager and admin.
+  Skill Routing repeated black text at 3.68:1 on its AA-darkened brand-orange
+  CTA for manager and admin. A canceled Ticket Closure request rendered useful
+  terminal status but no keyboard-focusable destination for the customer.
+- Corrected the two foreground tokens and added a localized, 44 px customer
+  portal link to every terminal closure outcome. The Axe, keyboard and visual
+  gate logic and all thresholds are unchanged. A contract now protects the
+  terminal link and the corrected CTA foreground.
+- Local self-audit is green: targeted ESLint reports zero errors/warnings;
+  translation parity reports 23,716 leaf keys in EN, RU and AZ; and three
+  affected foundation/flow suites pass 27/27 assertions. Full build and
+  browser evidence are NOT RUN locally under the host workload contract; the
+  GitHub production build was green on the prior SHA and the new SHA must prove
+  the browser correction again.
+
+Result: the aggregate failure is diagnosed and corrected without weakening any
+gate. Next: checkpoint and push this correction, repeat exact-SHA aggregate
+mutation evidence, then inspect all static and operational reports before the
+complete matrix and visual comparison.
+
+## 2026-09-29 — Aggregate green; full matrix exposed mobile defects and timeout
+
+- Exact-SHA aggregate rerun `36521929861` on `eba8827d1`, artifact
+  `11014102077`, is accepted: 54/54 static cells pass, all 17 operational flow
+  files contain only passed results, and every counted runtime, Axe,
+  accessibility, touch, overflow, environment, primary-work, missing-alt,
+  duplicate-ID and zero-keyboard-stop failure total is zero. The six corrected
+  cells now pass; screenshots for Ticket Detail, Skill Routing and terminal
+  Closure were manually inspected.
+- Full high-profile run `36524694546` attempted the required 1296 role/locale/
+  theme/viewport cells but GitHub cancelled capture at the workflow's exact
+  90-minute limit. The job still uploaded a partial 107 MB artifact containing
+  1134 results. It is diagnostic only and is not accepted as a gate.
+- The partial report proves 1072 cells passed and exposed 32 real pre-timeout
+  mobile defects: Ticket Detail comments fell 8–24 px beyond the 768 px
+  primary-work threshold (40 px in AZ); entitlement rows, template rules and
+  Skill Routing queues appeared below the first viewport in longer locales;
+  and one highlighted new ticket used muted 12 px metadata at 4.21:1. Later
+  connection-refused/blocked results coincide with timeout stopping localhost
+  and are not misclassified as product acceptance evidence.
+- Corrected all real findings without changing evidence logic. The Ticket
+  Detail fact spine is a compact horizontal strip on mobile; entitlement
+  filters are semantically collapsible on mobile but always visible from `sm`;
+  rules and queue work move ahead of secondary metadata/help on mobile while
+  desktop order is preserved; highlighted ticket metadata uses an AA-safe
+  foreground. The workflow time budget is 180 minutes so a single complete
+  artifact remains usable as the visual baseline; matrix size and every
+  threshold are unchanged.
+- Self-audit is green: five changed visible TSX files pass the anti-pattern
+  scan with zero findings; scoped ESLint has zero errors/warnings; and ten
+  affected UX/evidence suites pass 86/86 assertions. Heavy build/browser work
+  remains in GitHub Actions.
+
+Result: aggregate Foundation evidence is green and all partial-matrix product
+findings are corrected; the incomplete timed-out matrix is not accepted. Next:
+checkpoint and push, run the 66-cell affected mobile mutating validation, then
+repeat the complete 1296-cell capture and visual comparison.
+
+## 2026-09-29 — Affected mobile static validation green; flow invocation corrected
+
+- Exact-SHA targeted run `36533684517` on checkpoint `7a70f8ddf` completed all
+  66 expected high-profile mobile static cells for the five affected scenarios.
+  Every cell passed unchanged runtime, Axe, accessible-name, touch-target,
+  primary-work, overflow, alt-text, duplicate-ID and keyboard-stop gates.
+- Manually inspected representative RU/dark Ticket Detail, EN/light
+  Entitlements, AZ/dark Entitlement Templates, RU/light Skill Routing and
+  EN/light Service Desk screenshots. The corrected primary work is above the
+  768 px boundary, controls remain available, and no clipped or hidden work was
+  observed.
+- The workflow conclusion is not accepted as a mutating-flow gate: four flow
+  scripts correctly rejected the invocation because `SUPPORT_EVIDENCE_LOCALES`
+  selected AZ, RU and EN together, while destructive flow evidence requires one
+  isolated locale. This is an invocation error rather than a product or gate
+  failure; no threshold or test logic is changed.
+
+Result: the affected static regression matrix is 66/66 green. Next: rerun the
+same exact SHA with one locale/theme for isolated mutating flows, inspect each
+flow artifact, then execute the complete 1296-cell capture.
+
+## 2026-09-29 — Single-locale mobile flow found stale disclosure interaction
+
+- Correctly isolated run `36536483415` on `d56fd456f` passed the source gate,
+  strict TypeScript graphs, fixtures, production build and all 11 static
+  EN/light/mobile cells. The downloaded artifact proves 20/20 Service Desk,
+  6/6 Entitlement Templates and 6/6 Skill Routing flow results green.
+- Support Entitlements passed six of seven outcomes. The only failure was the
+  `filters-no-results-and-reset` journey attempting `selectOption` on a status
+  filter intentionally hidden in the new closed mobile `<details>`. This is a
+  stale automation interaction exposed by the product's progressive disclosure,
+  not a reason to reopen the filters by default or bypass visibility.
+- Added a stable disclosure marker and taught the flow to activate its 44 px
+  summary with the existing physical-touch/keyboard helper before selecting.
+  The flow records whether expansion was required and waits fail-closed for the
+  actual filter to become visible. Gate thresholds and product filtering remain
+  unchanged.
+- Self-audit is green: runner syntax, scoped ESLint and one-file anti-pattern
+  scan pass; the updated flow contract passes 5/5; `git diff --check` is clean.
+
+Result: all product static evidence is green and the sole stale flow interaction
+is corrected. Next: checkpoint this repair, integrate the ten current-main
+Workforce commits before expensive evidence, rerun the isolated mobile flow on
+the integrated SHA, then launch the complete 1296-cell matrix.
+
+## 2026-09-29 — Current main integrated before final browser matrices
+
+- Fetched and reconciled `origin/main` at `f95ec0295`; the feature branch was
+  ten commits behind. Merge checkpoint `deafec609` contains only the incoming
+  Workforce timesheet slice plus automatic additions to AZ/RU/EN locale files.
+  No Support product, evidence runner or plan path conflicted.
+- Post-merge self-audit reports 23,741 translation keys in each locale with no
+  missing or extra keys. The repaired Entitlements flow, friendly-error,
+  page-shell and shared form/control contracts pass 30/30 assertions across
+  four actual test files. `git diff --check origin/main...HEAD` is clean and the
+  worktree has no uncommitted paths.
+- Full typecheck, production build and browser work are intentionally NOT RUN
+  on Contabo; the exact integrated SHA must prove them in GitHub Actions.
+
+Result: the branch now contains current main before expensive acceptance
+evidence. Next: checkpoint the integration receipt, rerun the isolated mobile
+flows on the resulting exact SHA, then launch the complete 1296-cell matrix.
+
+## 2026-09-29 — Integrated mobile flow gate green
+
+- Exact-SHA run `36539937236` on `379f6e787`, artifact `11020852792`, passed
+  section contracts, strict TypeScript graphs, isolated fixtures, production
+  build and browser evidence after the current-main integration.
+- Static evidence is 11/11 unique EN/light/mobile cells green. Runtime, Axe,
+  custom accessibility, touch-target, primary-work, overflow, environment and
+  zero-keyboard-stop failure totals are all zero; maximum primary-work top is
+  709 px.
+- All selected operational journeys are green: Service Desk 20/20, Support
+  Entitlements 7/7, Entitlement Templates 6/6 and Skill Routing 6/6. The
+  corrected filter journey records `filtersExpanded=true`, a physical
+  touchscreen activation on a 269 × 44 px hit target, the intended no-results
+  state and keyboard reset. Its screenshot was manually inspected.
+
+Result: the affected mobile correction and integrated source are accepted.
+Next: checkpoint this self-audit and launch the complete high-profile 1296-cell
+AZ/RU/EN × light/dark × four-viewport × role/scenario capture.
+
+## 2026-09-29 — Tenant-scoped Macros rollout boundary implemented
+
+- Full high-profile run `36542434997` remains in progress on frozen checkpoint
+  `7a0a45e5b`; its source gate, isolated fixtures and production build are green,
+  and its 1296-cell browser capture has not reported a failed workflow step.
+  GitHub does not expose a trustworthy live cell counter, so no invented
+  percentage is recorded. The run and its eventual artifact remain evidence for
+  that exact pre-canary SHA only.
+- Reconciled the rollout requirement against current `origin/main`. Grouped
+  Support navigation is already shipped there. Presentation-only shell changes
+  remain independently revertible by checkpoint, while tenant/RBAC/access
+  hardening is deliberately never disabled by a rollout flag. The incompatible
+  state boundary in this branch is Macros category persistence moving from
+  organization-namespaced browser storage to shared tenant DB settings.
+- Added explicit tenant flag `support_ux_v2_canary`, a no-store authenticated
+  `/api/v1/support/ux-rollout` projection and a fresh flag check inside every
+  serializable category mutation. An absent, malformed, removed or unreadable
+  flag fails closed: v2 shared-category writes return
+  `SUPPORT_UX_CANARY_DISABLED`; tenant and role enforcement remain active in
+  both states.
+- The Macros client activates tenant persistence only after an explicit
+  `enabled: true`. Flag-off or rollout-read failure uses the prior
+  `macro-categories-{organizationId}` contract with structural validation,
+  deduplication and the legacy authorized macro-update behavior for add, rename
+  and delete. Re-enabling the flag reveals the preserved tenant settings again;
+  removing it never deletes shared state.
+- Extended the isolated evidence workflow with an explicit enabled/disabled
+  canary input, records that state in the artifact and rejects visual comparison
+  across different flag states. The Macros flow now exercises add, rename,
+  delayed-delete undo and completed delete in both persistence modes. The
+  synthetic tenant enables the flag only when the selected evidence mode asks
+  for it.
+- Source self-audit is green: scoped ESLint reports zero findings; runner syntax
+  and `git diff --check` pass; the changed Macros page has zero anti-pattern
+  findings; AZ/RU/EN remain at 23,741 keys each; and six targeted suites pass
+  77/77 assertions. One initial test invocation used an unsupported Vitest CLI
+  option and was immediately corrected; one assertion incorrectly assumed a raw
+  string feature format and was corrected to the repository's documented packed
+  JSON-string format. Neither failure was a product or gate relaxation.
+- Full TypeScript, production build and flag-on/flag-off browser execution are
+  NOT RUN locally under the Contabo workload contract. This implementation is
+  not accepted for rollout until both exact-SHA Actions states are green and the
+  evidence is inspected.
+
+Result: a real, fail-closed and reversible tenant canary now exists at the only
+persisted-state migration boundary; rollout admission is still open. Next:
+checkpoint and push this source phase, accept or repair the running full matrix,
+then execute exact-SHA Macros mutation evidence with the canary enabled and
+disabled before closing any rollout checkbox.
+
+## 2026-09-29 — Canonical release issues restored
+
+- Repository issue tracking was enabled but contained no Support UX issue.
+  Created the minimum non-retroactive release hierarchy and assigned it to
+  repository owner `@rashadoni`: epic `#496`, Foundation `#492`, Evidence
+  `#493`, Performance `#494` and Rollout `#495`.
+- The epic links the four active gates. Historical page slices remain traceable
+  through their checkpoint ledger in the implementation plan instead of
+  generating closed issues after the fact.
+- The final PR, immutable evidence artifacts, protected checks, merge and deploy
+  receipts will be linked to this hierarchy as they exist. No issue was closed
+  and no pending gate was represented as complete.
+- Restored the missing non-secret evidence index at
+  `docs/support-evidence/2026-09-06/index.md` with the current 1296-cell contract,
+  immutable run/artifact ledger and explicit pending work. Restored
+  `docs/support-ux-performance-and-rollout.md` with measured budgets,
+  checkpoint rollback boundaries, fail-closed canary semantics, admission order
+  and a release ledger whose unknown values remain marked pending.
+
+Result: active slices now have canonical owner/issue traceability. Next: attach
+the full-matrix disposition to `#492`, then progress `#493`–`#495` only on green
+evidence.
+
+## 2026-09-29 — Latest current main reconciled before final-SHA evidence
+
+- Fetched `origin/main` at `13dc3a179`. It had advanced by nine Workforce
+  commits after the earlier integration. The incoming paths were Workforce
+  implementation/tests/docs plus AZ/RU/EN dictionaries; no Support product,
+  rollout, evidence-runner or deployment path overlapped.
+- Merge commit `946a084f2` completed automatically. Only the three locale files
+  were changed on both sides and they merged without conflict. The feature
+  branch is now zero commits behind `origin/main`.
+- Post-merge translation parity is green at 23,770 leaf keys in each of EN, RU
+  and AZ. The six rollout/Macros/API/evidence contract suites still pass 77/77
+  assertions, and `git diff --check origin/main...HEAD` is clean.
+- Full TypeScript, production build and browser execution are NOT RUN locally.
+  The queued canary run still names the pre-merge checkpoint and will be
+  replaced with the final audit-receipt SHA after this journal checkpoint is
+  pushed; the in-progress 1296-cell Foundation run remains intentionally bound
+  to `7a0a45e5b`.
+
+Result: current main is integrated with no Support conflict and targeted source
+contracts remain green. Next: checkpoint/push the integration receipt, replace
+the pending canary run with the integrated SHA, and continue the immutable
+Actions gates.
+
+## 2026-09-29 — Flag-off category normalization aligned with legacy contract
+
+- Pre-CI code self-audit compared the new browser fallback with the exact
+  `origin/main` Macros behavior and found one compatibility difference: legacy
+  add/rename normalized custom category names with `trim().toLowerCase()`, while
+  the first canary checkpoint retained display case in both modes.
+- Flag-off add/rename now preserves the legacy lowercase contract; flag-on tenant
+  persistence continues to retain normalized human-readable case. The dual-mode
+  browser flow selects and verifies the correct resulting category name in each
+  state before rename, undo and completed delete.
+- Targeted runner syntax, scoped ESLint, `git diff --check` and the two affected
+  contracts are green (18/18 assertions). No threshold, role, tenant or
+  evidence expectation changed.
+
+Result: old/new state compatibility now matches the prior persisted browser
+contract exactly. Next: checkpoint/push this correction and replace the pending
+flag-off run so browser evidence binds to the corrected SHA.
+
+## 2026-09-29 — Complete Foundation matrix accepted
+
+- Exact-SHA GitHub Actions run `36542434997` on
+  `7a0a45e5b2bbcc7f6b91f4db42c0d8d517524609` completed successfully. Immutable
+  artifact `11024298303`,
+  `support-ux-evidence-7a0a45e5b2bbcc7f6b91f4db42c0d8d517524609-high-capture`,
+  contains 1296 unique high-profile cells and all 1296 pass.
+- Independent manifest totals are balanced: administrator 552, manager 384,
+  agent 240 and customer 120; AZ/RU/EN 432 each; light/dark 648 each; desktop,
+  tablet, narrow-tablet and mobile 324 each. Every runtime, Axe, custom
+  accessibility, touch, overflow, environment, primary-work, missing-alt,
+  duplicate-ID, zero-keyboard-stop, visual, role and profile mismatch failure
+  counter is zero.
+- Manual visual self-audit covered Service Desk, Ticket Detail, Agent Desktop,
+  VoIP, Knowledge Base, Support Entitlements, Macros, Customer Portal and
+  Support navigation across the four viewport families, all locales and both
+  themes. The long 375 px Customer Portal capture was inspected at top, middle
+  and list continuation rather than accepted from a scaled thumbnail. No
+  release-blocking visual defect or page-level horizontal overflow was found.
+- Foundation items backed by the shared-source contracts and this rendered
+  matrix are closed in the plan. FND-016 remains deliberately open: the high
+  fixture is not substituted for the required measured 0/5/50/500 profiles.
+  Issue `#492` owns the accepted final matrix receipt; performance issue `#494`
+  owns the remaining dataset-size decision.
+
+Result: the complete Foundation matrix is accepted without a waived or relaxed
+gate. Next: checkpoint and push this plan/journal receipt, finish exact-SHA
+Macros flag-off and flag-on mutation proof, then execute the 0/5/50/500
+performance profiles and final seven-sample visual comparison.
+
+## 2026-09-29 — Tenant canary and rollback boundary accepted
+
+- Flag-off GitHub Actions run `36551225927` on source SHA
+  `0498d3a857e2230be2db20e85525a728587d5032` completed successfully with
+  artifact `11025885144`. Its production static Macros cell is 1/1 green and
+  all six mutation/recovery flows pass.
+- The category journey proves the legacy contract rather than merely rendering
+  a disabled flag: `categoryStorageMode=browser`,
+  `browserRollbackSurface=true`, `organizationCategorySurface=false`, with
+  successful retry, rename, delayed-delete undo and completed delete. Every
+  physical mobile action records a hit-tested target of at least 44 px.
+- Flag-on run `36552953697` on the same source SHA completed successfully with
+  artifact `11027281153`. Its production static cell is 1/1 green and all six
+  flows pass. The same journey proves `categoryStorageMode=tenant`,
+  `organizationCategorySurface=true`, `browserRollbackSurface=false`, retained
+  input after forced failure, retry, rename, undo, completed delete and keyboard
+  focus restoration.
+- Both exact-source artifacts record the requested canary state and have zero
+  runtime, Axe, custom accessibility, touch, horizontal-overflow, environment
+  or primary-work failures. The final rollback screenshots were manually
+  inspected and accepted. The later Foundation receipt checkpoint
+  `96b5eba1e` is documentation-only, so it does not alter the proven source.
+- ROL-001 through ROL-004 are now evidence-backed and closed in the plan.
+  ROL-005 remains blocked on protected merge/deploy/smoke. ROL-006 remains
+  intentionally open for the documented seven-day production observation and
+  is not treated as an immediate release gate or silently waived.
+
+Result: the tenant canary, old/new compatibility and rollback contract are
+accepted. Next: checkpoint and push this section receipt, finish the already
+started profile-0 evidence, then run profiles 5/50/500 and the compatible
+seven-sample capture/compare before release admission.
+
+## 2026-09-29 — Measured 0/5/50/500 performance profiles accepted
+
+- Four production-mode, canary-enabled, seven-sample runs each pass 12/12
+  Service Desk/VoIP cells for agent, manager and administrator at desktop and
+  mobile: profile 0 run `36554107100`, artifact `11027089469`; profile 5 run
+  `36555323681`, artifact `11029402390`; profile 50 run `36557478393`, artifact
+  `11030325874`; and profile 500 run `36559389503`, artifact `11030487883`.
+  Profile 0 is bound to receipt SHA `96b5eba1e`; 5/50/500 are bound to
+  `9dd18518f`. The only intervening source is the docs-only canary receipt.
+- Worst Service Desk/VoIP load p75 by profile is 401/462, 314/375, 480/547 and
+  332/341 ms. Worst Service Desk filter p75 is 42 ms; VoIP's intentionally
+  debounced filter is at most 400 ms. Worst interaction p75 is 40 ms. Maximum
+  CLS is `0.011741124511635809`; maximum primary-work top is 615 px for Service
+  Desk and 704 px for VoIP.
+- Rendered density remains bounded: Service Desk 1 empty row, 4–5 records, then
+  20 paginated rows at both 50 and the 500-record fixture; VoIP 0, 5, 25 and 25.
+  All six 500-profile VoIP cells match `500 total / 20 pages / 25 rendered`.
+  Existing pagination is therefore the measured decision; virtualization would
+  add complexity without reducing the bounded DOM in this contract.
+- Every profile has zero failed result, runtime, Axe, custom accessibility,
+  touch, horizontal-overflow, environment or primary-work gate. Empty, small,
+  medium and large representative desktop/mobile screenshots were manually
+  inspected and accepted. Portal Users operational evidence already proves
+  debounce plus stale-request abort; VoIP flow/timing proves its debounce, and
+  accepted flows/high evidence cover deferred secondary content.
+- FND-016 and PERF-001/003/004/005 are now closed. PERF-002 remains open until
+  a compatible seven-sample baseline and comparison prove no material visual,
+  timing, CLS, density or primary-work regression.
+
+Result: the required data-size and bounded-rendering decision is accepted
+without adding unmeasured virtualization. Next: checkpoint/push this profile
+receipt, capture a representative all-section seven-sample high baseline, and
+compare the exact same matrix and source before any PR/release action.
+
+## 2026-09-29 — First all-section comparison blocked on KB fixture ordering
+
+- Baseline run `36564022376` on exact SHA
+  `d5ff94555547af10b8f9669cd14329caf674e3ae`, artifact `11033040092`, passes
+  56/56 unique cells: all 28 scenarios for administrator or customer at desktop
+  and mobile, EN/light, high profile, canary enabled and seven samples. All
+  runtime, Axe, custom accessibility, touch, overflow, environment and
+  primary-work counters are zero. Load p75 spans 240–510 ms and primary work
+  spans 68–733 px.
+- Every baseline screenshot was inspected in two desktop and two mobile contact
+  sheets; the only potentially dense Portal Users mobile capture was enlarged
+  separately and accepted. No composition defect was found.
+- Exact compatible compare run `36568406862`, artifact `11036680896`, failed
+  five cells and is not accepted. Knowledge Base desktop/mobile and customer
+  Portal Knowledge desktop/mobile exceeded the unchanged 0.5% pixel threshold
+  at 0.696%, 1.530%, 0.542% and 2.277%. Direct image inspection shows the two
+  seeded articles swapping row order, not a hidden threshold or unknown visual
+  change. Knowledge Base mobile load p75 was 487 ms versus 355 ms baseline
+  (455 ms limit); Skill Routing mobile was 516 versus 389 ms (489 ms limit).
+  Those timing results remain gate failures even though the source SHA is
+  identical and Skill Routing's screenshot is byte-identical.
+- Root cause of the visual instability is explicit: both KB rows were created
+  concurrently with default `createdAt`, while internal and portal list APIs
+  sort only by `createdAt desc`; independent databases can return the tie in a
+  different order. The seed now assigns distinct fixture-epoch created/updated
+  timestamps, and a regression contract requires both pins.
+- Resource preflight reported 15 GiB available RAM, 329 GiB disk free and zero
+  current memory pressure. Scoped ESLint passes with no findings; the focused
+  browser evidence contract passes 18/18; `git diff --check` is clean. No
+  visual threshold, performance allowance, matrix dimension or assertion was
+  modified.
+
+Result: release admission remains blocked, and the nondeterministic fixture is
+corrected without weakening a gate. Next: checkpoint/push the correction,
+integrate the nine current-main commits (no Support/evidence overlap), record
+post-merge parity/contracts, then run a new exact-SHA 56-cell baseline and
+comparison pair.
+
+## 2026-09-29 — Current main integrated before replacement comparison
+
+- The preceding next-step estimate of nine commits was superseded while work
+  continued: `origin/main` advanced by another two commits before merge. Merge
+  `5173b6a5c` therefore integrates current main through `8de56f819`, eleven
+  commits beyond the branch's prior `13dc3a179` main snapshot.
+- Incoming paths are Workforce shift-segment work, social relevance fixes, an
+  ops secret-forwarding workflow, their tests/docs and AZ/RU/EN dictionary
+  additions. No Support product, evidence seed/runner, rollout or deployment
+  path conflicts. The three locale files merged automatically.
+- Post-merge self-audit is green: AZ/RU/EN each contain 23,807 leaf keys with no
+  missing/extra keys; the browser evidence contract passes 18/18; branch-vs-main
+  `git diff --check` is clean; the branch is zero commits behind the merged main
+  snapshot. Resource preflight still shows 15 GiB available memory, 329 GiB
+  disk free and zero active memory pressure.
+- Full TypeScript, production build and browser comparison are intentionally
+  NOT RUN locally. The replacement exact-SHA GitHub Actions baseline/compare
+  pair owns those mandatory gates.
+
+Result: the deterministic evidence fix now includes current main with no
+Support overlap. Next: checkpoint/push this integration receipt, then run the
+replacement 56-cell seven-sample baseline and exact compatible comparison on
+the resulting immutable SHA.
+
+## 2026-09-29 — Final visual and performance evidence accepted
+
+- Replacement baseline run `36575013443` on exact integrated SHA
+  `6fe471d03d1ccb924556c4aa36ea46e1af75ca5b` is green with artifact
+  `11038557440`: 56/56 cells, 28 scenarios, administrator/customer,
+  desktop/mobile, EN/light, high profile, canary enabled and seven samples.
+  It has 56 unique screenshots and zero runtime, Axe, custom-accessibility,
+  touch, overflow, environment or primary-work failure. Corrected internal and
+  portal Knowledge Base order was manually inspected and is stable.
+- Full compare `36580638589`, artifact `11041830573`, matches all 56 screenshots
+  with maximum changed-pixel ratio `0.003023148148148148` under the unchanged
+  `0.005` limit. It passes 54/56 performance cells and fails only Escalation
+  Rules desktop load p75 (508 versus 487 ms limit) and Agent Calendar mobile
+  load p75 (530 versus 463 ms limit). No failed result was reclassified.
+- Targeted compare `36585806513`, artifact `11041654133`, repeats only those
+  scenarios. Both original failures pass at 295 ms and 313 ms respectively,
+  without changing their limits. Its additional Escalation Rules mobile pair
+  exposed a two-sample CLS spike and correctly failed, so the signal was not
+  hidden by the otherwise green recovery.
+- Exact-cell run `36588009933`, artifact `11043736737`, repeats only the newly
+  unresolved Escalation Rules administrator/mobile cell and passes 1/1. The
+  screenshot is byte-identical, load p75 is 399 ms, and all seven CLS samples
+  are `0.011741124511635809`, matching baseline and remaining below the
+  unchanged `0.012915` limit. Runtime, accessibility, touch, overflow,
+  environment and primary-work counters are zero.
+- The aggregate now covers all 56 representative cells on the same exact SHA,
+  baseline, production mode, high fixture, canary state and seven-sample
+  contract. `SUPUX-EVD-001` through `006` and `SUPUX-PERF-002` are closed; all
+  evidence/performance items are complete. No threshold, matrix dimension,
+  sample count or assertion was relaxed.
+
+Result: final visual/performance admission is green through immutable,
+cell-scoped recovery. Next: checkpoint/push the evidence receipt, reconcile
+again with current `origin/main`, open the release PR, and require every
+protected GitHub Actions check before merge or deployment.
+
+## 2026-09-29 — Final pre-PR main reconciliation
+
+- After evidence checkpoint `101879b92`, `origin/main` had advanced eight
+  commits through `b25b4f382`. Merge `e4f0d06ab` integrates that exact snapshot
+  into `codex/support-ux-voip-rashadoni`; the branch is zero commits behind.
+- Incoming changes are confined to Workforce calendar product/tests/docs,
+  shared navigation/voice registration and their AZ/RU/EN dictionary entries.
+  No Support product, evidence harness, rollout or deployment path changed and
+  locale files merged automatically.
+- Resource preflight showed 15 GiB available RAM, 329 GiB free disk and zero
+  current full/partial memory pressure. Post-merge `npm run i18n:check` passes
+  with 23,839 leaf keys in each locale. The Support browser-evidence and shared
+  navigation contracts pass 74/74, and branch-vs-main `git diff --check` is
+  clean.
+- Full TypeScript/build/browser matrices are intentionally not repeated on
+  Contabo. Required protected PR checks own type/build/security admission; the
+  incoming source does not overlap the accepted Support/evidence implementation.
+
+Result: final branch source is reconciled with the latest protected-main
+snapshot and targeted overlap checks are green. Next: checkpoint/push this
+receipt, open the release PR, and wait for every required GitHub Actions check.
+
+## 2026-09-29 — PR static contract repair
+
+- Release PR [#501](https://github.com/rashadoni/leaddrive-v2/pull/501) opened
+  from clean checkpoint `d36f6cc7d`. Branch protection requires `pr-scope`,
+  `static-checks`, `typecheck`, `runner-policy` and `scan` with administrator
+  enforcement; no approving review is required. The first run passed
+  `pr-scope`, `runner-policy` and `scan` but `static-checks` failed closed in
+  Actions run `36591924899` while `typecheck` continued.
+- The blocking baseline comparison found four newly failing source contracts.
+  Portal Users retained a real stale `/contacts/list` empty-state link after
+  main moved the contact list to `/contacts`; it now targets the canonical
+  route. Three exact-string assertions were stale relative to the accepted
+  Support implementation: Knowledge Article now inherits shared shell spacing,
+  Dialog adds `pointer-events-auto` without changing its fixed `inset-0 m-0`
+  geometry, and Ticket Categories uses a stronger full-width mobile action row.
+- The contracts now assert those semantic invariants instead of obsolete exact
+  class strings. Resource preflight reported 15 GiB available RAM, 329 GiB free
+  disk and zero memory pressure. All four previously failing files pass 32/32;
+  scoped ESLint and `git diff --check` are green. The test baseline was not
+  updated and no failing file was allowlisted.
+
+Result: the first protected static gate exposed and fixed one stale route plus
+three integration-contract mismatches without weakening the baseline. Next:
+checkpoint/push the repair and require a fresh complete protected-check set
+before merge.
+
+## 2026-09-29 — PR typecheck contract repair
+
+- The same first protected run `36591924899` completed with `typecheck` failed
+  closed in its defect-shaped baseline step. Syntax, missing-module and
+  undefined-name checks were green; the comparison reported exactly two new
+  `TS2322` pairs and the typecheck baseline was not changed.
+- Ticket Categories constructed its optional organization header as a union
+  containing an optional `undefined` property, which was not assignable to the
+  fetch helper's `Record<string, string>` contract. It now builds an explicitly
+  typed record and conditionally adds the header.
+- The freshly merged Agent Calendar route passed a nullable event location to
+  an optional-string response field. It now normalizes database `null` to
+  `undefined`; no calendar value is fabricated and the serialized omission
+  semantics are preserved.
+- Resource preflight remained safe at 15 GiB available RAM, 329 GiB free disk
+  and zero active memory pressure. Scoped ESLint and `git diff --check` pass;
+  the Agent Calendar API plus Support Calendar contracts pass 40/40. Full
+  TypeScript is intentionally delegated to the fresh protected Actions run on
+  the immutable repair SHA, per the Contabo workload policy.
+
+Result: both new defect-shaped type errors and all four new static failures are
+repaired without changing either baseline. Next: checkpoint/push the complete
+repair and require all five protected contexts to pass on the new exact SHA.
+
+## 2026-09-29 — Protected checks green and latest main reconciled
+
+- Repair checkpoint `94cf8e4855a54958b96f8dc5a304f2fd6a4a7336` passed all five
+  required protected contexts: `pr-scope`, `runner-policy`, `scan`,
+  `static-checks` and `typecheck`. The source/static/typecheck run is
+  `36595571934`; no baseline or required-context setting changed. The optional
+  GitHub-hosted production-build job remained skipped by its existing workflow
+  policy and is not a branch-protection context.
+- The mandatory pre-merge fetch then found that protected `main` had advanced
+  five commits through merge `01f5069a732a4879a453c918bca8a52864999401`
+  (PR `#502`, Workforce team-calendar overrides and evidence). Merge
+  `2d8425c4777a` integrates that snapshot before release; the branch is again
+  zero commits behind `origin/main`.
+- Incoming paths do not touch Support product, Support evidence, rollout or
+  deployment code. The only shared paths are AZ/RU/EN dictionaries and the
+  voice section guide; locale files merged automatically. Post-merge i18n
+  parity passes with 23,861 leaf keys in every locale, focused voice/navigation
+  plus Support Agent Calendar evidence contracts pass 23/23, and
+  `git diff --check` is clean. Resource preflight shows 15 GiB available RAM,
+  329 GiB free disk and zero active memory pressure.
+
+Result: the first fully green protected run is preserved as an immutable
+repair receipt, and the feature head now includes the latest protected main.
+Next: checkpoint/push this reconciliation and require a fresh complete 5/5
+protected-check set on the final exact SHA before merge.

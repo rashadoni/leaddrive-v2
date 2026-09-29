@@ -89,6 +89,7 @@ async function dismissTour(page) {
   const overlay = page.getByTestId("tour-overlay")
   if (await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)) {
     await page.keyboard.press("Escape")
+    await overlay.waitFor({ state: "hidden", timeout: 5_000 })
   }
 }
 
@@ -98,6 +99,39 @@ async function openWorkspace(page) {
   await page.locator("[data-testid='escalation-rules-workspace'][data-state='ready']").waitFor({ state: "visible", timeout: 30_000 })
   await dismissTour(page)
   assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "Escalation Rules")
+}
+
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  await dismissTour(page)
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  if (viewportName === "desktop") {
+    await locator.focus()
+    await locator.press(keyboardKey)
+    return { inputModality: "keyboard", hitTarget: true }
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }))
+  await page.waitForTimeout(50)
+  const box = await locator.boundingBox()
+  if (!box) throw new Error("escalation_touch_target_unmeasurable")
+  if (box.width < 44 || box.height < 44) {
+    throw new Error(`escalation_touch_target_too_small_${Math.round(box.width)}x${Math.round(box.height)}`)
+  }
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const hitTarget = await locator.evaluate((element, center) => {
+    const hit = document.elementFromPoint(center.x, center.y)
+    if (!hit) return false
+    const interactive = hit.closest("button,a,input,select,textarea,[role='button']")
+    return hit === element || interactive === element || element.contains(hit)
+  }, point)
+  if (!hitTarget) throw new Error("escalation_touch_hit_test_failed")
+  await page.touchscreen.tap(point.x, point.y)
+  return {
+    inputModality: "playwright-touchscreen",
+    hitTarget,
+    targetSize: { width: Math.round(box.width), height: Math.round(box.height) },
+  }
 }
 
 function installRuleApi(page, initialRules, options = {}) {
@@ -188,8 +222,7 @@ try {
     await page.getByTestId("escalation-rules-error").waitFor({ state: "visible" })
     await page.unroute(pattern, fail)
     await installRuleApi(page, [rule(0)])
-    await page.getByTestId("escalation-rules-retry").focus()
-    await page.getByTestId("escalation-rules-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("escalation-rules-retry"))
     await page.locator("[data-testid='escalation-rules-workspace'][data-state='ready']").waitFor({ state: "visible" })
     await page.unrouteAll({ behavior: "wait" })
 
@@ -198,7 +231,14 @@ try {
     await page.reload({ waitUntil: "domcontentloaded" })
     await page.locator("[data-testid='escalation-rules-error'][data-retryable='false']").waitFor({ state: "visible" })
     if (await page.getByTestId("escalation-rules-retry").count() !== 0) throw new Error("escalation_permission_offered_misleading_retry")
-    return { transientErrorObserved: true, keyboardRetry: true, permissionStateObserved: true, misleadingRetryAbsent: true }
+    return {
+      transientErrorObserved: true,
+      keyboardRetry: viewportName === "desktop",
+      physicalTouchRetry: viewportName !== "desktop",
+      retryActivation,
+      permissionStateObserved: true,
+      misleadingRetryAbsent: true,
+    }
   })
 
   await recordStep(page, "read-only-permission-suppresses-mutations", async () => {
@@ -233,38 +273,49 @@ try {
     await installRuleApi(page, [original], { failFirstPatch: true })
     await openWorkspace(page)
     const edit = page.locator(`[data-rule-id='${original.id}']`).getByTestId("escalation-rule-edit")
-    await edit.focus()
-    await edit.press("Enter")
+    const editActivation = await activateEvidenceTarget(page, edit)
     const name = page.getByTestId("escalation-rule-name")
     await name.fill("Recovered escalation draft")
-    await page.getByTestId("escalation-rule-save").click()
+    const firstSaveActivation = await activateEvidenceTarget(page, page.getByTestId("escalation-rule-save"))
     await page.getByTestId("escalation-rule-form").getByRole("alert").waitFor({ state: "visible" })
     if (await name.inputValue() !== "Recovered escalation draft") throw new Error("escalation_failed_edit_lost_draft")
-    await page.getByTestId("escalation-rule-save").click()
-    await page.getByTestId("escalation-rule-dialog").waitFor({ state: "hidden" })
+    const retrySaveActivation = await activateEvidenceTarget(page, page.getByTestId("escalation-rule-save"))
+    await page.getByTestId("escalation-rule-form").waitFor({ state: "hidden" })
     await page.locator(`[data-rule-id='${original.id}']`).getByText("Recovered escalation draft").waitFor({ state: "visible" })
-    await edit.focus()
-    await edit.press("Enter")
+    await activateEvidenceTarget(page, edit)
     await page.keyboard.press("Escape")
-    if (!await edit.isFocused()) throw new Error("escalation_dialog_focus_not_restored")
-    return { keyboardEdit: true, draftRetainedAfterFailure: true, retrySucceeded: true, focusRestored: true }
+    const focusRestored = viewportName === "desktop"
+      ? await edit.evaluate((element) => element === document.activeElement)
+      : "not_applicable"
+    if (viewportName === "desktop" && !focusRestored) throw new Error("escalation_dialog_focus_not_restored")
+    return {
+      keyboardEdit: viewportName === "desktop",
+      physicalTouchEdit: viewportName !== "desktop",
+      editActivation,
+      firstSaveActivation,
+      retrySaveActivation,
+      draftRetainedAfterFailure: true,
+      retrySucceeded: true,
+      focusRestored,
+    }
   })
 
   await recordStep(page, "duplicate-conflict-block-and-safe-create", async () => {
     const original = rule(0)
     await installRuleApi(page, [original])
     await openWorkspace(page)
-    await page.locator(`[data-rule-id='${original.id}']`).getByTestId("escalation-rule-duplicate").click()
+    const duplicateActivation = await activateEvidenceTarget(page, page.locator(`[data-rule-id='${original.id}']`).getByTestId("escalation-rule-duplicate"))
     const active = page.getByTestId("escalation-rule-form-active")
     if (await active.getAttribute("aria-checked") !== "false") throw new Error("escalation_duplicate_not_inactive")
-    await active.click()
+    const activeTarget = active.locator("xpath=..")
+    const conflictActivation = await activateEvidenceTarget(page, activeTarget)
     await page.getByTestId("escalation-rule-conflict").waitFor({ state: "visible" })
     if (!await page.getByTestId("escalation-rule-save").isDisabled()) throw new Error("escalation_conflict_did_not_block_save")
-    await active.click()
-    await page.getByTestId("escalation-rule-save").click()
-    await page.getByTestId("escalation-rule-dialog").waitFor({ state: "hidden" })
+    const safeActivation = await activateEvidenceTarget(page, activeTarget)
+    const createActivation = await activateEvidenceTarget(page, page.getByTestId("escalation-rule-save"))
+    await page.getByTestId("escalation-rule-form").waitFor({ state: "hidden" })
     if (await page.getByTestId("escalation-rule-row").count() !== 2) throw new Error("escalation_safe_duplicate_not_created")
-    return { duplicateInactiveByDefault: true, conflictWarned: true, conflictBlocked: true, safeDuplicateCreated: true }
+    return { duplicateInactiveByDefault: true, conflictWarned: true, conflictBlocked: true, safeDuplicateCreated: true, duplicateActivation, conflictActivation, safeActivation, createActivation }
   })
 
   await recordStep(page, "toggle-rollback-and-delete-recovery", async () => {
@@ -273,20 +324,21 @@ try {
     await openWorkspace(page)
     const row = page.locator(`[data-rule-id='${original.id}']`)
     const toggle = row.getByTestId("escalation-rule-toggle")
-    await toggle.click()
+    const toggleTarget = toggle.locator("xpath=..")
+    const failedToggleActivation = await activateEvidenceTarget(page, toggleTarget)
     await page.locator("[data-testid='escalation-rules-status'][data-kind='error']").waitFor({ state: "visible" })
     if (await toggle.getAttribute("aria-checked") !== "true") throw new Error("escalation_toggle_failure_did_not_roll_back")
-    await toggle.click()
+    const retryToggleActivation = await activateEvidenceTarget(page, toggleTarget)
     await page.locator("[data-testid='escalation-rules-status'][data-kind='success']").waitFor({ state: "visible" })
-    await row.getByTestId("escalation-rule-delete").click()
+    const deleteActivation = await activateEvidenceTarget(page, row.getByTestId("escalation-rule-delete"))
     const dialog = page.getByRole("dialog")
-    await dialog.getByRole("button").last().click()
+    const failedDeleteActivation = await activateEvidenceTarget(page, dialog.getByRole("button").last())
     await dialog.getByRole("alert").waitFor({ state: "visible" })
     if (!await dialog.isVisible()) throw new Error("escalation_failed_delete_closed_confirmation")
-    await dialog.getByRole("button").last().click()
+    const retryDeleteActivation = await activateEvidenceTarget(page, dialog.getByRole("button").last())
     await dialog.waitFor({ state: "hidden" })
     if (await page.locator(`[data-rule-id='${original.id}']`).count() !== 0) throw new Error("escalation_delete_retry_failed")
-    return { toggleRollback: true, toggleRetry: true, deleteFailureRetainedDialog: true, deleteRetrySucceeded: true }
+    return { toggleRollback: true, toggleRetry: true, deleteFailureRetainedDialog: true, deleteRetrySucceeded: true, failedToggleActivation, retryToggleActivation, deleteActivation, failedDeleteActivation, retryDeleteActivation }
   })
 } finally {
   await context.close()

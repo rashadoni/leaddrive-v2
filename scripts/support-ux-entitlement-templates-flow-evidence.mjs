@@ -82,6 +82,36 @@ function jsonFailure(message, status = 503) {
   return { status, contentType: "application/json", body: JSON.stringify({ success: false, error: message }) }
 }
 
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  if (viewportName === "desktop") {
+    await locator.focus()
+    await locator.press(keyboardKey)
+    return { inputModality: "keyboard", hitTarget: true }
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  const box = await locator.boundingBox()
+  if (!box) throw new Error("entitlement_templates_touch_target_unmeasurable")
+  if (box.width < 44 || box.height < 44) {
+    throw new Error(`entitlement_templates_touch_target_too_small_${Math.round(box.width)}x${Math.round(box.height)}`)
+  }
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const hitTarget = await locator.evaluate((element, center) => {
+    const hit = document.elementFromPoint(center.x, center.y)
+    if (!hit) return false
+    const interactive = hit.closest("button,a,input,select,textarea,[role='button']")
+    return hit === element || interactive === element || element.contains(hit)
+  }, point)
+  if (!hitTarget) throw new Error("entitlement_templates_touch_hit_test_failed")
+  await page.touchscreen.tap(point.x, point.y)
+  return {
+    inputModality: "playwright-touchscreen",
+    hitTarget,
+    targetSize: { width: Math.round(box.width), height: Math.round(box.height) },
+  }
+}
+
 await mkdir(outputDirectory, { recursive: true })
 const report = {
   generatedAt: new Date().toISOString(),
@@ -103,6 +133,7 @@ const context = await browser.newContext({
   colorScheme: theme,
   reducedMotion: "reduce",
   hasTouch: viewportName !== "desktop",
+  serviceWorkers: "block",
 })
 await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
 await context.addInitScript((activeTheme) => localStorage.setItem("theme", activeTheme), theme)
@@ -134,8 +165,7 @@ try {
     await page.goto("/settings/entitlement-templates", { waitUntil: "domcontentloaded" })
     await page.getByTestId("entitlement-templates-load-error").waitFor({ state: "visible" })
     await page.unroute(collectionPattern, deny)
-    await page.getByTestId("entitlement-templates-load-retry").focus()
-    await page.getByTestId("entitlement-templates-load-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("entitlement-templates-load-retry"))
     await page.locator("[data-testid='entitlement-templates-workspace'][data-state='ready']").waitFor({ state: "visible" })
 
     const forbid = async (route) => route.fulfill(jsonFailure("Synthetic template permission denial", 403))
@@ -145,7 +175,14 @@ try {
     if (await page.getByTestId("entitlement-templates-load-retry").count() !== 0) throw new Error("template_permission_offered_misleading_retry")
     await page.unroute(collectionPattern, forbid)
     await openWorkspace(page)
-    return { transientErrorObserved: true, keyboardRetry: true, permissionStateObserved: true, misleadingRetryAbsent: true }
+    return {
+      transientErrorObserved: true,
+      keyboardRetry: retryActivation.inputModality === "keyboard",
+      physicalTouchRetry: retryActivation.inputModality === "playwright-touchscreen",
+      retryActivation,
+      permissionStateObserved: true,
+      misleadingRetryAbsent: true,
+    }
   })
 
   await recordStep(page, "read-only-permission-state-and-recovery", async () => {

@@ -14,15 +14,30 @@ const workflow = readFileSync(
   ".github/workflows/support-ux-evidence.yml",
   "utf8",
 );
+const evidenceSeed = readFileSync("scripts/seed-support-ux-evidence.ts", "utf8");
+const nextConfig = readFileSync("next.config.ts", "utf8");
 const sidebar = readFileSync("src/components/sidebar.tsx", "utf8");
 const dashboardLayout = readFileSync("src/app/(dashboard)/layout.tsx", "utf8");
 const screenshotHelper = readFileSync("scripts/support-ux-screenshot.mjs", "utf8");
 const header = readFileSync("src/components/header.tsx", "utf8");
+const voipPage = readFileSync(
+  "src/app/(dashboard)/support/voip/page.tsx",
+  "utf8",
+);
 const flowRunners = readdirSync("scripts")
   .filter((file) => file.startsWith("support-ux-") && file.endsWith("-flow-evidence.mjs"))
   .map((file) => readFileSync(`scripts/${file}`, "utf8"));
 
 describe("Support UX browser evidence contract", () => {
+  it("pins independently ordered Knowledge Base fixtures for repeatable visual comparison", () => {
+    expect(evidenceSeed).toContain("const primaryKbCreatedAt = new Date(EVIDENCE_FIXTURE_EPOCH_MS + 2 * 24 * 60 * 60 * 1000)");
+    expect(evidenceSeed).toContain("const secondaryKbCreatedAt = new Date(EVIDENCE_FIXTURE_EPOCH_MS + 1 * 24 * 60 * 60 * 1000)");
+    expect(evidenceSeed.match(/createdAt: primaryKbCreatedAt/g)).toHaveLength(1);
+    expect(evidenceSeed.match(/updatedAt: primaryKbCreatedAt/g)).toHaveLength(1);
+    expect(evidenceSeed.match(/createdAt: secondaryKbCreatedAt/g)).toHaveLength(1);
+    expect(evidenceSeed.match(/updatedAt: secondaryKbCreatedAt/g)).toHaveLength(1);
+  });
+
   it("covers every Support destination and the nested customer/case flows", () => {
     for (const path of [
       "/tickets",
@@ -101,8 +116,13 @@ describe("Support UX browser evidence contract", () => {
 
   it("reuses one authenticated session per role across the evidence matrix", () => {
     expect(runner).toContain("async function authenticateRole(browser, role)");
-    expect(runner).toContain("authenticated = await authenticateRole(browser, role)");
+    expect(runner).toContain("const authenticatedByRole = new Map()");
+    expect(runner).toContain("authenticatedByRole.set(role.key, await authenticateRole(browser, role))");
+    expect(runner).toContain("const authenticated = authenticatedByRole.get(role.key)");
     expect(runner).toContain("storageState: authenticated.storageState");
+    expect(runner).toContain('const serviceWorkers = evidenceTargetMode === "ephemeral" ? "block" : "allow"');
+    expect(runner).toContain("browser.newContext({ baseURL: baseUrl, serviceWorkers })");
+    expect(runner).toContain("serviceWorkers,\n            storageState: authenticated.storageState");
     expect(runner).toContain(
       "primeEvidenceStorage(context, theme, authenticated.portalUser)",
     );
@@ -167,6 +187,7 @@ describe("Support UX browser evidence contract", () => {
       "filterP75",
       "interactionP75",
       "cumulativeLayoutShift",
+      "cumulativeLayoutShiftSamples",
       "primaryFlowClicks",
       "axeViolations",
     ]) {
@@ -175,6 +196,9 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain('SUPPORT_EVIDENCE_SAMPLE_COUNT || "3"');
     expect(runner).toContain("[1, 3, 7].includes(sampleCount)");
     expect(runner).toContain("for (let sample = 0; sample < sampleCount");
+    expect(runner).toContain("const layoutShiftSamples = []");
+    expect(runner).toContain("layoutShiftSamples.push(metrics.cumulativeLayoutShift)");
+    expect(runner).toContain("cumulativeLayoutShift: percentile(layoutShiftSamples, 0.75)");
     expect(runner).toContain("Visual/performance comparison requires seven samples");
     expect(runner).toContain("baselineEvidence?.sampleCount !== sampleCount");
     expect(runner).toContain("if (sampleCount > 1)");
@@ -193,6 +217,8 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain("inspectKeyboard");
     expect(runner).toContain('page.keyboard.press("Tab")');
     expect(runner).toContain("documentLang");
+    expect(runner).toContain("activeTheme");
+    expect(runner).toContain("metrics.environment.activeTheme !== theme");
     expect(runner).toContain("prefersDark");
     expect(runner).toContain("reducedMotion");
     expect(runner).toContain("maxTouchPoints");
@@ -218,9 +244,9 @@ describe("Support UX browser evidence contract", () => {
       runner.indexOf('Page.setBypassCSP", { enabled: false }'),
     );
     expect(runner).toContain("waitForStableDocumentTitle(page)");
-    expect(runner).toContain('document.head.querySelector("title")?.textContent?.trim()');
-    expect(runner).toContain("now - previous.since >= 500");
-    expect(runner).toContain("{ timeout: 5_000 }");
+    expect(runner).toContain("document.title.trim()");
+    expect(runner).toContain("now - previous.since >= 1_000");
+    expect(runner).toContain("{ timeout: 10_000 }");
     expect(header).toContain('data-session-ready={orgName && userName ? "true" : "false"}');
     expect(runner).toContain("[data-testid='global-header'][data-session-ready='true']");
     expect(runner).toContain("document.fonts.ready");
@@ -287,10 +313,24 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("support-ux-visual-compare.test.ts");
     expect(workflow).toContain("scripts/support-ux-visual-compare.mjs");
     expect(workflow).toContain("runs-on: ubuntu-24.04");
+    expect(workflow).toContain("timeout-minutes: 180");
     expect(workflow).not.toContain("leaddrive-builder");
     expect(workflow).toContain("npx playwright install --with-deps chromium");
     expect(workflow).not.toMatch(/\bsudo\b/);
     expect(workflow).toContain("npx next build --webpack");
+    expect(workflow.match(/npx next build --webpack/g)).toHaveLength(2);
+    expect(workflow).toContain('build_status=${PIPESTATUS[0]}');
+    expect(workflow).toContain("An error occurred in `next/font`.");
+    expect(workflow).toContain("TypeError: Cannot read properties of null (reading '1')");
+    expect(workflow).toContain("/@next/font/dist/google/loader.js");
+    expect(workflow).toContain('exit "$build_status"');
+    expect(workflow).toContain("Retrying one confirmed transient next/font Google-loader failure");
+    expect(workflow).toContain("bash scripts/ci/prepare-hosted-build-runner.sh");
+    expect(workflow).toContain('LEADDRIVE_COLD_PRODUCTION_BUILD: "1"');
+    expect(workflow).toContain('LEADDRIVE_DISABLE_SERVICE_WORKER: "1"');
+    expect(nextConfig).toContain('process.env.LEADDRIVE_DISABLE_SERVICE_WORKER === "1"');
+    expect(nextConfig).toContain("disable: disableServiceWorker");
+    expect(workflow).toContain("ulimit -c 0");
     expect(workflow).toContain("node .next/standalone/server.js");
     expect(workflow).toContain("cp -R .next/static .next/standalone/.next/static");
     expect(workflow).toContain("cp -R public .next/standalone/public");
@@ -304,10 +344,36 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("baseline_artifact_name:");
     expect(workflow).toContain("scripts/support-ux-complaint-flow-evidence.mjs");
     expect(workflow).toContain("complaint_flow_status");
+    expect(workflow).toContain("Validate section-scoped Knowledge Base evidence");
+    expect(workflow).toContain("contains(inputs.scenarios, 'knowledge-base')");
+    expect(workflow).toContain("contains(inputs.scenarios, 'knowledge-article')");
+    expect(workflow).toContain("contains(inputs.scenarios, 'portal-knowledge')");
+    expect(workflow).toContain("src/app/(dashboard)/knowledge-base,");
+    expect(workflow).toContain("src/app/portal/knowledge-base,");
+    expect(workflow).toContain("src/app/portal/layout.tsx,");
+    expect(workflow).toContain("src/components/portal-chat-widget.tsx");
+    expect(workflow).toContain("support-ux-knowledge-base-flow-evidence-contract.test.ts");
+    expect(workflow).toContain("Validate section-scoped Ticket Categories evidence");
+    expect(workflow).toContain("contains(inputs.scenarios, 'ticket-categories')");
+    expect(workflow).toContain("src/app/(dashboard)/settings/ticket-categories,");
+    expect(workflow).toContain("support-ux-ticket-categories-flow-evidence-contract.test.ts");
+    expect(workflow).toContain("Validate section-scoped SLA Policies evidence");
+    expect(workflow).toContain("contains(inputs.scenarios, 'sla-policies')");
+    expect(workflow).toContain("src/app/(dashboard)/settings/sla-policies,");
+    expect(workflow).toContain("src/components/sla-policy-form.tsx,");
+    expect(workflow).toContain("support-ux-sla-policies-flow-evidence-contract.test.ts");
+    expect(workflow).toContain("Validate section-scoped Support Entitlements evidence");
+    expect(workflow).toContain("contains(inputs.scenarios, 'support-entitlements')");
+    expect(workflow).toContain("src/app/(dashboard)/support/entitlements,");
+    expect(workflow).toContain("src/lib/entitlement-process/presentation.ts");
+    expect(workflow).toContain("support-ux-entitlements-flow-evidence-contract.test.ts");
     expect(complaintFlow).toContain('SUPPORT_EVIDENCE_TARGET_MODE !== "ephemeral"');
     expect(workflow).toContain("actions/download-artifact@v4");
     expect(workflow).toContain("SUPPORT_EVIDENCE_REQUIRE_BASELINE");
     expect(workflow).toContain("sample_count:");
+    expect(workflow).toContain("support_ux_canary:");
+    expect(runner).toContain("supportUxCanary");
+    expect(runner).toContain("Comparable baseline evidence must use the same Support UX canary state");
     expect(workflow).toContain(
       "SUPPORT_EVIDENCE_SAMPLE_COUNT: ${{ inputs.sample_count }}",
     );
@@ -318,10 +384,31 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain("[data-testid='ticket-detail-workspace']");
     expect(runner).toContain("[data-testid='agent-desktop-workspace']");
     expect(runner).toContain("[data-testid='agent-desktop-next-case']");
-    expect(runner).toContain("[data-testid='voip-workspace']");
+    expect(runner).toContain("[data-testid='voip-workspace'][data-state='ready']");
     expect(runner).toContain("[data-testid='voip-call-timeline']");
     expect(runner).toContain("scenario.ready");
   });
+
+  it("fails high-profile VoIP evidence unless the real aggregate and pagination are bounded", () => {
+    expect(runner).toContain('new Set(["high", "500"])')
+    expect(runner).toContain("totalCalls: 500")
+    expect(runner).toContain("totalPages: 20")
+    expect(runner).toContain("renderedCalls: 25")
+    expect(runner).toContain('profileContract.status === "mismatched"')
+    expect(runner).toContain("dataProfileContract: profileContract")
+    expect(voipPage).toContain("data-total-calls={summary?.total ?? 0}")
+    expect(voipPage).toContain("data-total-pages={totalPages}")
+    expect(voipPage).toContain("data-rendered-calls={calls.length}")
+  })
+
+  it("fails VoIP role evidence when admin-only connection controls leak or disappear", () => {
+    expect(runner).toContain("function roleContract(scenario, role, metrics)")
+    expect(runner).toContain('role.key === "admin" ? "admin" : "read-only"')
+    expect(runner).toContain('role.key === "admin" ? 1 : 0')
+    expect(runner).toContain('scopedRoleContract.status === "mismatched"')
+    expect(runner).toContain("roleContract: scopedRoleContract")
+    expect(voipPage).toContain('data-management-mode={canManageConnection ? "admin" : "read-only"}')
+  })
 
   it("dismisses first-visit tours and accepts a queue that already fits without page scroll", () => {
     expect(runner).toContain('page.getByTestId("tour-overlay")');

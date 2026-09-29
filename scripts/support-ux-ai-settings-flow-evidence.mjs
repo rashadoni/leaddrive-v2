@@ -77,10 +77,14 @@ async function authenticate(context) {
   if (!response.ok()) throw new Error("support_ai_settings_authentication_failed")
 }
 
-async function dismissTour(page) {
+async function dismissTour(page, waitForAppearance = false) {
   const overlay = page.getByTestId("tour-overlay")
-  if (await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)) {
+  const visible = waitForAppearance
+    ? await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)
+    : await overlay.isVisible().catch(() => false)
+  if (visible) {
     await page.keyboard.press("Escape")
+    await overlay.waitFor({ state: "hidden", timeout: 5_000 })
   }
 }
 
@@ -88,8 +92,60 @@ async function openWorkspace(page) {
   const response = await page.goto("/support/ai-settings", { waitUntil: "domcontentloaded", timeout: 60_000 })
   if (!response || response.status() >= 400) throw new Error(`page_http_${response?.status() || 0}`)
   await page.locator("[data-testid='support-ai-settings-workspace'][data-state='ready']").waitFor({ state: "visible", timeout: 30_000 })
-  await dismissTour(page)
+  await dismissTour(page, true)
   assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "Support AI Settings")
+}
+
+const activationEvidence = []
+
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  await dismissTour(page)
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  if (viewportName === "desktop") {
+    await locator.focus()
+    await locator.press(keyboardKey)
+    const detail = { inputModality: "keyboard", hitTarget: true, keyboardKey }
+    activationEvidence.push(detail)
+    return detail
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }))
+  await page.waitForTimeout(50)
+  const target = await locator.evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+    const hit = document.elementFromPoint(point.x, point.y)
+    return {
+      x: point.x,
+      y: point.y,
+      width: box.width,
+      height: box.height,
+      hitTarget: Boolean(hit && (element === hit || element.contains(hit))),
+    }
+  })
+  if (target.width < 44 || target.height < 44) {
+    throw new Error(`support_ai_touch_target_too_small_${Math.round(target.width)}x${Math.round(target.height)}`)
+  }
+  if (!target.hitTarget) throw new Error("support_ai_touch_hit_test_failed")
+  await page.touchscreen.tap(target.x, target.y)
+  const detail = {
+    inputModality: "playwright-touchscreen",
+    hitTarget: true,
+    targetSize: { width: Math.round(target.width), height: Math.round(target.height) },
+  }
+  activationEvidence.push(detail)
+  return detail
+}
+
+async function waitForFocusRestoration(locator) {
+  return locator.evaluate(async (element) => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (element === document.activeElement) return true
+      await new Promise((resolve) => window.setTimeout(resolve, 50))
+    }
+    return element === document.activeElement
+  })
 }
 
 function installAiApi(page, initialEnabled, options = {}) {
@@ -135,6 +191,7 @@ const report = {
   locale,
   theme,
   viewport: viewportName,
+  activations: activationEvidence,
   results: [],
 }
 
@@ -176,10 +233,10 @@ try {
     await page.route(pattern, fail)
     await page.goto("/support/ai-settings", { waitUntil: "domcontentloaded" })
     await page.getByTestId("support-ai-settings-error").waitFor({ state: "visible" })
+    await dismissTour(page, true)
     await page.unroute(pattern, fail)
     await installAiApi(page, true)
-    await page.getByTestId("support-ai-settings-retry").focus()
-    await page.getByTestId("support-ai-settings-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("support-ai-settings-retry"))
     await page.locator("[data-testid='support-ai-settings-workspace'][data-state='ready']").waitFor({ state: "visible" })
     await page.unrouteAll({ behavior: "wait" })
 
@@ -188,7 +245,7 @@ try {
     await page.reload({ waitUntil: "domcontentloaded" })
     await page.locator("[data-testid='support-ai-settings-error'][data-retryable='false']").waitFor({ state: "visible" })
     if (await page.getByTestId("support-ai-settings-retry").count() !== 0) throw new Error("support_ai_permission_offered_misleading_retry")
-    return { transientErrorObserved: true, keyboardRetry: true, permissionStateObserved: true, misleadingRetryAbsent: true }
+    return { transientErrorObserved: true, recoveryInput: retryActivation.inputModality, permissionStateObserved: true, misleadingRetryAbsent: true }
   })
 
   await recordStep(page, "consequence-unaffected-and-audit-empty-density", async () => {
@@ -206,32 +263,31 @@ try {
     await installAiApi(page, true, { failPatchAttempts: [1], patchDelay: 250 })
     await openWorkspace(page)
     const toggle = page.getByTestId("support-ai-master-switch")
-    await toggle.focus()
-    await toggle.press("Space")
+    const toggleActivation = await activateEvidenceTarget(page, toggle, "Space")
     const dialog = page.getByTestId("support-ai-disable-dialog")
     await dialog.waitFor({ state: "visible" })
     if ((await dialog.innerText()).trim().length < 20) throw new Error("support_ai_disable_consequences_missing")
-    await page.getByTestId("support-ai-confirm-disable").click()
+    const confirmActivation = await activateEvidenceTarget(page, page.getByTestId("support-ai-confirm-disable"))
     await page.locator("[data-testid='support-ai-settings-workspace'][data-state='saving']").waitFor({ state: "visible" })
     if (!await toggle.isDisabled()) throw new Error("support_ai_duplicate_toggle_not_blocked")
     await page.locator("[data-testid='support-ai-settings-notice'][data-kind='error']").waitFor({ state: "visible" })
     await page.locator("[data-testid='support-ai-settings-workspace'][data-enabled='true']").waitFor({ state: "visible" })
-    if (!await toggle.isFocused()) throw new Error("support_ai_disable_focus_not_restored")
-    await page.getByTestId("support-ai-settings-save-retry").focus()
-    await page.getByTestId("support-ai-settings-save-retry").press("Enter")
+    const focusRestored = await waitForFocusRestoration(toggle)
+    if (!focusRestored) throw new Error("support_ai_disable_focus_not_restored")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("support-ai-settings-save-retry"))
     await page.locator("[data-testid='support-ai-settings-workspace'][data-state='ready'][data-enabled='false']").waitFor({ state: "visible" })
     await page.locator("[data-testid='support-ai-settings-notice'][data-kind='success']").waitFor({ state: "visible" })
-    return { keyboardConfirmation: true, consequencesVisible: true, duplicateToggleBlocked: true, rollback: true, focusRestored: true, retrySucceeded: true }
+    return { toggleInput: toggleActivation.inputModality, confirmInput: confirmActivation.inputModality, retryInput: retryActivation.inputModality, consequencesVisible: true, duplicateToggleBlocked: true, rollback: true, focusRestored, retrySucceeded: true }
   })
 
   await recordStep(page, "saved-state-survives-audit-refresh-failure", async () => {
     await installAiApi(page, true, { failVerification: true })
     await openWorkspace(page)
-    await page.getByTestId("support-ai-master-switch").click()
-    await page.getByTestId("support-ai-confirm-disable").click()
+    const toggleActivation = await activateEvidenceTarget(page, page.getByTestId("support-ai-master-switch"), "Space")
+    const confirmActivation = await activateEvidenceTarget(page, page.getByTestId("support-ai-confirm-disable"))
     await page.locator("[data-testid='support-ai-settings-workspace'][data-state='ready'][data-enabled='false']").waitFor({ state: "visible" })
     await page.locator("[data-testid='support-ai-settings-notice'][data-kind='success']").waitFor({ state: "visible" })
-    return { mutationTruthPreserved: true, auditRefreshFailureDidNotRollback: true, truthfulSuccessFeedback: true }
+    return { toggleInput: toggleActivation.inputModality, confirmInput: confirmActivation.inputModality, mutationTruthPreserved: true, auditRefreshFailureDidNotRollback: true, truthfulSuccessFeedback: true }
   })
 
   await recordStep(page, "direct-enable-and-recorded-audit", async () => {
@@ -246,12 +302,11 @@ try {
     })
     await openWorkspace(page)
     await page.locator("[data-testid='support-ai-audit'][data-state='recorded']").waitFor({ state: "visible" })
-    await page.getByTestId("support-ai-master-switch").focus()
-    await page.getByTestId("support-ai-master-switch").press("Space")
+    const enableActivation = await activateEvidenceTarget(page, page.getByTestId("support-ai-master-switch"), "Space")
     if (await page.getByTestId("support-ai-disable-dialog").count() !== 0) throw new Error("support_ai_safe_enable_opened_confirmation")
     await page.locator("[data-testid='support-ai-settings-workspace'][data-state='ready'][data-enabled='true']").waitFor({ state: "visible" })
     await page.locator("[data-testid='support-ai-settings-notice'][data-kind='success']").waitFor({ state: "visible" })
-    return { auditActorOrganizationTimeVisible: true, keyboardEnable: true, noUnnecessaryConfirmation: true, enabled: true }
+    return { auditActorOrganizationTimeVisible: true, enableInput: enableActivation.inputModality, noUnnecessaryConfirmation: true, enabled: true }
   })
 } finally {
   await context.close()

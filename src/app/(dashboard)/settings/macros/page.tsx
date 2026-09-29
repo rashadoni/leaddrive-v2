@@ -1,831 +1,664 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Folder,
+  Keyboard,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
+  Zap,
+} from "lucide-react"
+
+import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
+import { TourReplayButton } from "@/components/tour/tour-replay-button"
+import { useAutoTour } from "@/components/tour/tour-provider"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import {
-  Plus, Trash2, Zap, GripVertical, MessageSquare, Tag, UserCheck,
-  ArrowRightCircle, Flag, ChevronDown, ChevronUp, Hash, StickyNote,
-  Keyboard, AlertCircle, X, Pencil, Check, FolderPlus, Settings2
-} from "lucide-react"
+  MACRO_ACTION_TYPES,
+  MACRO_DEFAULT_CATEGORIES,
+  type MacroAction,
+  type MacroActionType,
+  type MacroAgent,
+  type MacroRecord,
+  macroMatchesQuery,
+  normalizeMacroCategory,
+  uniqueMacroCategories,
+} from "@/lib/ticket-macros/presentation"
 import { cn } from "@/lib/utils"
-import { PageDescription } from "@/components/page-description"
-import { useAutoTour } from "@/components/tour/tour-provider"
-import { TourReplayButton } from "@/components/tour/tour-replay-button"
-import { HelpButton } from "@/components/help/help-button"
-import { DidYouKnow } from "@/components/did-you-know"
-import { PageHeader } from "@/components/page-header"
 
-interface MacroAction {
-  type: string
-  value: string
-}
-
-interface TicketMacro {
-  id: string
-  name: string
-  description: string | null
-  category: string
-  actions: MacroAction[]
-  shortcutKey: string | null
-  usageCount: number
-  isActive: boolean
-  sortOrder: number
+const ACTION_META: Record<MacroActionType, { label: string; group: "ticket" | "message" | "tag" }> = {
+  set_status: { label: "setStatus", group: "ticket" },
+  set_priority: { label: "setPriority", group: "ticket" },
+  set_assignee: { label: "setAssignee", group: "ticket" },
+  add_comment: { label: "addReply", group: "message" },
+  add_internal_note: { label: "addInternalNote", group: "message" },
+  add_tag: { label: "addTag", group: "tag" },
+  remove_tag: { label: "removeTag", group: "tag" },
 }
 
 const TICKET_STATUSES = ["new", "in_progress", "waiting", "resolved", "closed"] as const
 const TICKET_PRIORITIES = ["low", "medium", "high", "critical"] as const
+const DELETE_DELAY_MS = 7_000
 
-const ACTION_TYPES = [
-  { value: "set_status", tKey: "setStatus", icon: ArrowRightCircle, group: "ticket" },
-  { value: "set_priority", tKey: "setPriority", icon: Flag, group: "ticket" },
-  { value: "set_assignee", tKey: "setAssignee", icon: UserCheck, group: "ticket" },
-  { value: "add_comment", tKey: "addReply", icon: MessageSquare, group: "message" },
-  { value: "add_internal_note", tKey: "addInternalNote", icon: StickyNote, group: "message" },
-  { value: "add_tag", tKey: "addTag", icon: Tag, group: "tag" },
-  { value: "remove_tag", tKey: "removeTag", icon: X, group: "tag" },
-] as const
-
-const DEFAULT_CATEGORIES = ["general", "billing", "technical", "onboarding", "sales"]
-
-// Default categories already have localized labels in messages (macrosPage.{general|billing|...}).
-// Custom / DB-defined categories fall back to their raw stored name (CSS `capitalize` handles casing).
-type Translator = ((key: string) => string) & { has: (key: string) => boolean }
-function categoryLabel(category: string, t: Translator): string {
-  return DEFAULT_CATEGORIES.includes(category) && t.has(category) ? t(category) : category
+interface DraftAction extends MacroAction {
+  clientId: string
 }
 
-const PALETTE = [
-  "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
-  "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
-  "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
-  "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
-]
-
-function getCategoryColor(category: string, allCategories: string[]): string {
-  const idx = allCategories.indexOf(category)
-  return PALETTE[idx >= 0 ? idx % PALETTE.length : 0]
+interface Draft {
+  name: string
+  description: string
+  category: string
+  shortcutKey: string
+  actions: DraftAction[]
 }
 
-function getActionIcon(type: string) {
-  const found = ACTION_TYPES.find(a => a.value === type)
-  return found?.icon || Zap
+type Notice = { kind: "success" | "error" | "info"; text: string }
+type DeleteTarget = { type: "macro"; macro: MacroRecord } | { type: "category"; category: string; count: number }
+type CategoryStorageMode = "browser" | "tenant"
+
+const EMPTY_DRAFT: Draft = { name: "", description: "", category: "general", shortcutKey: "", actions: [] }
+
+function legacyCategoryStorageKey(orgId: string): string {
+  return `macro-categories-${orgId}`
 }
 
-function ActionPill({ action, t }: { action: MacroAction; t: (key: string) => string }) {
-  const Icon = getActionIcon(action.type)
-  const actionDef = ACTION_TYPES.find(a => a.value === action.type)
-  const label = actionDef ? t(actionDef.tKey as any) : action.type
-
-  let displayValue = action.value
-  if (action.value.length > 30) {
-    displayValue = action.value.slice(0, 30) + "..."
-  }
-
-  const colorClass = actionDef?.group === "ticket"
-    ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800"
-    : actionDef?.group === "message"
-    ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800"
-    : "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800"
-
-  return (
-    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs border border-zinc-200 dark:border-zinc-700", colorClass)}>
-      <Icon className="h-3 w-3 shrink-0" />
-      <span className="font-medium">{label}</span>
-      {displayValue && <span className="opacity-70">: {displayValue}</span>}
-    </span>
-  )
-}
-
-function ActionValueInput({
-  action, onChange, t, tc
-}: {
-  action: MacroAction
-  onChange: (value: string) => void
-  t: (key: string) => string
-  tc: (key: string) => string
-}) {
-  switch (action.type) {
-    case "set_status":
-      return (
-        <Select value={action.value} onChange={e => onChange(e.target.value)} className="flex-1">
-          <option value="">{t("selectStatus")}</option>
-          {TICKET_STATUSES.map(s => (
-            <option key={s} value={s}>{t(`status_${s}` as any)}</option>
-          ))}
-        </Select>
-      )
-    case "set_priority":
-      return (
-        <Select value={action.value} onChange={e => onChange(e.target.value)} className="flex-1">
-          <option value="">{t("selectPriority")}</option>
-          {TICKET_PRIORITIES.map(p => (
-            <option key={p} value={p}>{t(`priority_${p}` as any)}</option>
-          ))}
-        </Select>
-      )
-    case "set_assignee":
-      return (
-        <Input
-          value={action.value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={t("assigneePlaceholder")}
-          className="flex-1"
-        />
-      )
-    case "add_comment":
-    case "add_internal_note":
-      return (
-        <Textarea
-          value={action.value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={action.type === "add_comment" ? t("replyPlaceholder") : t("notePlaceholder")}
-          className="flex-1 min-h-[60px]"
-          rows={2}
-        />
-      )
-    case "add_tag":
-    case "remove_tag":
-      return (
-        <Input
-          value={action.value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={t("tagPlaceholder")}
-          className="flex-1"
-        />
-      )
-    default:
-      return (
-        <Input
-          value={action.value}
-          onChange={e => onChange(e.target.value)}
-          placeholder="..."
-          className="flex-1"
-        />
-      )
+function readLegacyCategories(orgId: string): string[] {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(legacyCategoryStorageKey(orgId)) || "[]") as unknown
+    return Array.isArray(value)
+      ? uniqueMacroCategories(value.filter((item): item is string => typeof item === "string"))
+      : []
+  } catch {
+    return []
   }
 }
 
-function ActionBuilder({
-  actions, setActions, t, tc
-}: {
-  actions: MacroAction[]
-  setActions: (actions: MacroAction[]) => void
-  t: (key: string) => string
-  tc: (key: string) => string
-}) {
-  const addAction = (type: string) => {
-    setActions([...actions, { type, value: "" }])
+function writeLegacyCategories(orgId: string, categories: readonly string[]): void {
+  window.localStorage.setItem(legacyCategoryStorageKey(orgId), JSON.stringify(uniqueMacroCategories(categories)))
+}
+
+function legacyVisibleCategories(orgId: string, macros: readonly MacroRecord[]): string[] {
+  return uniqueMacroCategories([
+    ...MACRO_DEFAULT_CATEGORIES,
+    ...readLegacyCategories(orgId),
+    ...macros.map((macro) => macro.category),
+  ])
+}
+
+function actionId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`
+}
+
+function responseError(code: string | undefined, fallback: string, t: ReturnType<typeof useTranslations>): string {
+  const keyByCode: Record<string, string> = {
+    MACRO_WRITE_FORBIDDEN: "readOnlyError",
+    MACRO_ASSIGNEE_INVALID: "assigneeInvalid",
+    MACRO_SHORTCUT_CONFLICT: "shortcutConflict",
+    MACRO_CATEGORY_CONFLICT: "categoryConflict",
+    MACRO_CATEGORY_DEFAULT: "defaultCategoryError",
+    MACRO_CATEGORY_NOT_FOUND: "categoryMissing",
   }
+  const key = code ? keyByCode[code] : undefined
+  return key && t.has(key) ? t(key) : fallback
+}
 
-  const updateType = (index: number, type: string) => {
-    const next = [...actions]
-    next[index] = { type, value: "" }
-    setActions(next)
+async function checkedJson<T>(response: Response): Promise<T> {
+  const body = await response.json().catch(() => ({})) as { error?: string; code?: string }
+  if (!response.ok) {
+    const error = new Error(`HTTP ${response.status}`) as Error & { code?: string; status?: number }
+    error.code = body.code
+    error.status = response.status
+    throw error
   }
-
-  const updateValue = (index: number, value: string) => {
-    const next = [...actions]
-    next[index] = { ...next[index], value }
-    setActions(next)
-  }
-
-  const removeAction = (index: number) => {
-    setActions(actions.filter((_, i) => i !== index))
-  }
-
-  const moveAction = (index: number, direction: "up" | "down") => {
-    const next = [...actions]
-    const target = direction === "up" ? index - 1 : index + 1
-    if (target < 0 || target >= next.length) return
-    ;[next[index], next[target]] = [next[target], next[index]]
-    setActions(next)
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <Label className="text-sm font-medium">{t("actionsLabel")}</Label>
-        <span className="text-xs text-muted-foreground">{t("actionsHint")}</span>
-      </div>
-
-      {actions.length === 0 && (
-        <div className="border border-dashed rounded-lg p-6 text-center text-muted-foreground">
-          <Zap className="h-8 w-8 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">{t("noActions")}</p>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        {actions.map((action, i) => {
-          const Icon = getActionIcon(action.type)
-          const actionDef = ACTION_TYPES.find(a => a.value === action.type)
-
-          return (
-            <div key={i} className="group border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 bg-card hover:border-primary/30 transition-colors">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono text-muted-foreground w-5 text-center">{i + 1}</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => moveAction(i, "up")}
-                    disabled={i === 0}
-                    className="p-0.5 rounded hover:bg-muted disabled:opacity-20"
-                  >
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveAction(i, "down")}
-                    disabled={i === actions.length - 1}
-                    className="p-0.5 rounded hover:bg-muted disabled:opacity-20"
-                  >
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-                <Select
-                  value={action.type}
-                  onChange={e => updateType(i, e.target.value)}
-                  className="h-8 text-sm font-medium flex-1"
-                >
-                  <optgroup label={t("groupTicket")}>
-                    {ACTION_TYPES.filter(a => a.group === "ticket").map(at => (
-                      <option key={at.value} value={at.value}>{t(at.tKey as any)}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label={t("groupMessage")}>
-                    {ACTION_TYPES.filter(a => a.group === "message").map(at => (
-                      <option key={at.value} value={at.value}>{t(at.tKey as any)}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label={t("groupTag")}>
-                    {ACTION_TYPES.filter(a => a.group === "tag").map(at => (
-                      <option key={at.value} value={at.value}>{t(at.tKey as any)}</option>
-                    ))}
-                  </optgroup>
-                </Select>
-                <button
-                  type="button"
-                  onClick={() => removeAction(i)}
-                  className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-
-              <div className="ml-7">
-                <ActionValueInput action={action} onChange={v => updateValue(i, v)} t={t} tc={tc} />
-                {!action.value.trim() && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {t("valueRequired")}
-                  </p>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Add action button with quick picks */}
-      <div className="border border-dashed rounded-lg p-2">
-        <p className="text-xs text-muted-foreground mb-2 px-1">{t("addActionLabel")}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {ACTION_TYPES.map(at => {
-            const Icon = at.icon
-            return (
-              <button
-                key={at.value}
-                type="button"
-                onClick={() => addAction(at.value)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-card hover:bg-muted transition-colors"
-              >
-                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                {t(at.tKey as any)}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
+  return body as T
 }
 
 export default function MacrosSettingsPage() {
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const t = useTranslations("macrosPage")
-  useAutoTour("macros")
   const tc = useTranslations("common")
+  useAutoTour("macros")
+
   const orgId = session?.user?.organizationId
-  const headers = orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>
-
-  const [macros, setMacros] = useState<TicketMacro[]>([])
+  const headers = useMemo<Record<string, string>>(() => {
+    const next: Record<string, string> = {}
+    if (orgId) next["x-organization-id"] = String(orgId)
+    return next
+  }, [orgId])
+  const [macros, setMacros] = useState<MacroRecord[]>([])
+  const [categories, setCategories] = useState<string[]>([...MACRO_DEFAULT_CATEGORIES])
+  const [categoryStorageMode, setCategoryStorageMode] = useState<CategoryStorageMode>("browser")
+  const [agents, setAgents] = useState<MacroAgent[]>([])
+  const [canWrite, setCanWrite] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [filterCategory, setFilterCategory] = useState<string>("all")
-
-  // Form state
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [category, setCategory] = useState("general")
-  const [shortcutKey, setShortcutKey] = useState("")
-  const [actions, setActions] = useState<MacroAction[]>([])
-
-  // Category management state
-  const [showCategoryManager, setShowCategoryManager] = useState(false)
-  const [newCategoryName, setNewCategoryName] = useState("")
+  const [loadError, setLoadError] = useState("")
+  const [loadRetryable, setLoadRetryable] = useState(true)
+  const [query, setQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
+  const [notice, setNotice] = useState<Notice | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
+  const [saving, setSaving] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [newActionType, setNewActionType] = useState<MacroActionType>("set_status")
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
+  const [newCategory, setNewCategory] = useState("")
   const [editingCategory, setEditingCategory] = useState<string | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState("")
+  const [categoryBusy, setCategoryBusy] = useState(false)
+  const [confirmTarget, setConfirmTarget] = useState<DeleteTarget | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<DeleteTarget | null>(null)
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set())
+  const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const fetchMacros = async () => {
+  const load = useCallback(async () => {
+    if (!orgId) return
+    setLoading(true)
+    setLoadError("")
+    setLoadRetryable(true)
     try {
-      const res = await fetch("/api/v1/ticket-macros", { headers })
-      const json = await res.json()
-      if (json.success) setMacros(json.data)
-    } catch {} finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchMacros() }, [session])
-
-  // Category management functions
-  const addCategory = () => {
-    const trimmed = newCategoryName.trim().toLowerCase()
-    if (!trimmed || mergedCategories.includes(trimmed)) return
-    const updated = [...customCategories, trimmed]
-    localStorage.setItem(`macro-categories-${orgId}`, JSON.stringify(updated))
-    setCustomCategories(updated)
-    setNewCategoryName("")
-  }
-
-  const renameCategory = async (oldName: string, newName: string) => {
-    const trimmed = newName.trim().toLowerCase()
-    if (!trimmed || trimmed === oldName) {
-      setEditingCategory(null)
-      return
+      const rolloutRequest = fetch("/api/v1/support/ux-rollout", { headers })
+        .then(async (response) => {
+          if (!response.ok) return false
+          const body = await response.json().catch(() => null) as { data?: { enabled?: unknown } } | null
+          return body?.data?.enabled === true
+        })
+        .catch(() => false)
+      const [result, tenantCategoryPersistence] = await Promise.all([checkedJson<{
+        data: MacroRecord[]
+        categories: string[]
+        agents: MacroAgent[]
+        permissions: { canWrite: boolean }
+      }>(await fetch("/api/v1/ticket-macros", { headers })), rolloutRequest])
+      setMacros(result.data)
+      setCategoryStorageMode(tenantCategoryPersistence ? "tenant" : "browser")
+      setCategories(tenantCategoryPersistence ? result.categories : legacyVisibleCategories(orgId, result.data))
+      setAgents(result.agents)
+      setCanWrite(result.permissions.canWrite)
+    } catch (error) {
+      const apiError = error as Error & { status?: number }
+      setLoadError(t(apiError.status === 403 ? "permissionError" : "loadError"))
+      setLoadRetryable(apiError.status !== 403)
+    } finally {
+      setLoading(false)
     }
-    // Update all macros with this category
-    const toUpdate = macros.filter(m => m.category === oldName)
-    for (const macro of toUpdate) {
-      await fetch(`/api/v1/ticket-macros/${macro.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ category: trimmed }),
-      })
-    }
-    // Update localStorage
-    const updated = customCategories.map(c => c === oldName ? trimmed : c)
-    // If renaming a default category, add the new name as custom
-    if (DEFAULT_CATEGORIES.includes(oldName) && !updated.includes(trimmed)) {
-      updated.push(trimmed)
-    }
-    const deduped = [...new Set(updated)]
-    localStorage.setItem(`macro-categories-${orgId}`, JSON.stringify(deduped))
-    setCustomCategories(deduped)
-    setEditingCategory(null)
-    if (filterCategory === oldName) setFilterCategory(trimmed)
-    fetchMacros()
-  }
+  }, [headers, orgId, t])
 
-  const deleteCategory = async (catName: string) => {
-    // Move all macros in this category to "general"
-    const toUpdate = macros.filter(m => m.category === catName)
-    for (const macro of toUpdate) {
-      await fetch(`/api/v1/ticket-macros/${macro.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ category: "general" }),
-      })
-    }
-    const updated = customCategories.filter(c => c !== catName)
-    localStorage.setItem(`macro-categories-${orgId}`, JSON.stringify(updated))
-    setCustomCategories(updated)
-    if (filterCategory === catName) setFilterCategory("all")
-    fetchMacros()
-  }
-
-  // Include localStorage custom categories in allCategories
-  const [customCategories, setCustomCategories] = useState<string[]>([])
   useEffect(() => {
-    if (orgId) {
-      const stored = JSON.parse(localStorage.getItem(`macro-categories-${orgId}`) || "[]")
-      setCustomCategories(stored)
+    if (sessionStatus === "authenticated" && orgId) void load()
+    if (sessionStatus === "unauthenticated") {
+      setLoading(false)
+      setLoadError(t("permissionError"))
+      setLoadRetryable(false)
     }
-  }, [orgId, macros])
+  }, [load, orgId, sessionStatus, t])
 
-  const mergedCategories = Array.from(new Set([
-    ...DEFAULT_CATEGORIES,
-    ...customCategories,
-    ...macros.map(m => m.category),
-  ]))
+  useEffect(() => () => {
+    if (deleteTimer.current) clearTimeout(deleteTimer.current)
+  }, [])
 
-  const resetForm = () => {
-    setName("")
-    setDescription("")
-    setCategory("general")
-    setShortcutKey("")
-    setActions([])
-    setEditId(null)
+  const filteredMacros = useMemo(
+    () => macros.filter((macro) => macroMatchesQuery(macro, query, categoryFilter, statusFilter)),
+    [categoryFilter, macros, query, statusFilter],
+  )
+  const activeCount = macros.filter((macro) => macro.isActive).length
+  const assignedShortcuts = new Set(macros.filter((macro) => macro.id !== editingId).map((macro) => macro.shortcutKey).filter(Boolean))
+  const draftValid = draft.name.trim().length > 0
+    && draft.actions.length > 0
+    && draft.actions.every((action) => action.value.trim().length > 0)
+    && (!draft.shortcutKey || !assignedShortcuts.has(draft.shortcutKey))
+
+  const categoryLabel = (category: string) => MACRO_DEFAULT_CATEGORIES.includes(category as typeof MACRO_DEFAULT_CATEGORIES[number])
+    ? t(category)
+    : category
+
+  const agentLabel = (id: string) => {
+    const agent = agents.find((candidate) => candidate.id === id)
+    return agent ? `${agent.name} · ${t(`role_${agent.role}`)}` : t("assigneeUnavailable")
   }
 
-  const openEdit = (macro: TicketMacro) => {
-    setEditId(macro.id)
-    setName(macro.name)
-    setDescription(macro.description || "")
-    setCategory(macro.category)
-    setShortcutKey(macro.shortcutKey || "")
-    setActions(macro.actions || [])
-    setShowForm(true)
+  const actionValueLabel = (action: MacroAction) => {
+    if (action.type === "set_status" && t.has(`status_${action.value}`)) return t(`status_${action.value}`)
+    if (action.type === "set_priority" && t.has(`priority_${action.value}`)) return t(`priority_${action.value}`)
+    if (action.type === "set_assignee") return agentLabel(action.value)
+    return action.value
   }
 
-  const handleSave = async () => {
-    if (!name.trim()) return
-    const validActions = actions.filter(a => a.value.trim())
-    if (validActions.length === 0) return
+  const openCreate = () => {
+    setEditingId(null)
+    setDraft({ ...EMPTY_DRAFT, actions: [] })
+    setShowPreview(false)
+    setNotice(null)
+    setEditorOpen(true)
+  }
 
-    const payload = { name, description: description || undefined, category, shortcutKey: shortcutKey || undefined, actions: validActions }
+  const openEdit = (macro: MacroRecord) => {
+    setEditingId(macro.id)
+    setDraft({
+      name: macro.name,
+      description: macro.description ?? "",
+      category: macro.category,
+      shortcutKey: macro.shortcutKey ?? "",
+      actions: macro.actions.map((action) => ({ ...action, clientId: actionId() })),
+    })
+    setShowPreview(false)
+    setNotice(null)
+    setEditorOpen(true)
+  }
 
-    if (editId) {
-      await fetch(`/api/v1/ticket-macros/${editId}`, {
+  const updateAction = (clientId: string, patch: Partial<MacroAction>) => {
+    setDraft((current) => ({
+      ...current,
+      actions: current.actions.map((action) => action.clientId === clientId ? { ...action, ...patch } : action),
+    }))
+  }
+
+  const moveAction = (index: number, direction: "up" | "down") => {
+    setDraft((current) => {
+      const target = direction === "up" ? index - 1 : index + 1
+      if (target < 0 || target >= current.actions.length) return current
+      const actions = [...current.actions]
+      ;[actions[index], actions[target]] = [actions[target], actions[index]]
+      return { ...current, actions }
+    })
+  }
+
+  const saveMacro = async () => {
+    if (!draftValid || saving) return
+    setSaving(true)
+    setNotice(null)
+    const payload = {
+      name: draft.name.trim(),
+      description: draft.description.trim() || null,
+      category: draft.category,
+      shortcutKey: draft.shortcutKey || null,
+      actions: draft.actions.map(({ type, value }) => ({ type, value: value.trim() })),
+    }
+    try {
+      const result = await checkedJson<{ data: MacroRecord }>(await fetch(
+        editingId ? `/api/v1/ticket-macros/${editingId}` : "/api/v1/ticket-macros",
+        {
+          method: editingId ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json", ...headers },
+          body: JSON.stringify(payload),
+        },
+      ))
+      setMacros((current) => editingId
+        ? current.map((macro) => macro.id === editingId ? result.data : macro)
+        : [...current, result.data])
+      setEditorOpen(false)
+      setNotice({ kind: "success", text: t(editingId ? "updatedSuccess" : "createdSuccess") })
+    } catch (error) {
+      const apiError = error as Error & { code?: string }
+      setNotice({ kind: "error", text: responseError(apiError.code, t("saveError"), t) })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleActive = async (macro: MacroRecord, isActive: boolean) => {
+    const previous = macros
+    setMacros((current) => current.map((item) => item.id === macro.id ? { ...item, isActive } : item))
+    setTogglingIds((current) => new Set(current).add(macro.id))
+    setNotice(null)
+    try {
+      const result = await checkedJson<{ data: MacroRecord }>(await fetch(`/api/v1/ticket-macros/${macro.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ isActive }),
+      }))
+      setMacros((current) => current.map((item) => item.id === macro.id ? result.data : item))
+      setNotice({ kind: "success", text: t(isActive ? "activatedSuccess" : "deactivatedSuccess") })
+    } catch {
+      setMacros(previous)
+      setNotice({ kind: "error", text: t("toggleError") })
+    } finally {
+      setTogglingIds((current) => {
+        const next = new Set(current)
+        next.delete(macro.id)
+        return next
       })
-    } else {
-      await fetch("/api/v1/ticket-macros", {
+    }
+  }
+
+  const addCategory = async () => {
+    if (!newCategory.trim() || categoryBusy) return
+    setCategoryBusy(true)
+    setNotice(null)
+    try {
+      const normalized = normalizeMacroCategory(newCategory)
+      if (categories.some((category) => category.toLocaleLowerCase() === normalized.toLocaleLowerCase())) {
+        setNotice({ kind: "error", text: t("categoryConflict") })
+        return
+      }
+      if (categoryStorageMode === "browser") {
+        const legacyCategory = normalized.toLocaleLowerCase()
+        writeLegacyCategories(orgId!, [...readLegacyCategories(orgId!), legacyCategory])
+        setCategories((current) => uniqueMacroCategories([...current, legacyCategory]))
+        setNewCategory("")
+        setNotice({ kind: "success", text: t("categoryAdded") })
+        return
+      }
+      await checkedJson(await fetch("/api/v1/ticket-macros/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify(payload),
-      })
+        body: JSON.stringify({ name: newCategory }),
+      }))
+      setNewCategory("")
+      setNotice({ kind: "success", text: t("categoryAdded") })
+      await load()
+    } catch (error) {
+      const apiError = error as Error & { code?: string }
+      setNotice({ kind: "error", text: responseError(apiError.code, t("categorySaveError"), t) })
+      if (apiError.code === "SUPPORT_UX_CANARY_DISABLED") await load()
+    } finally {
+      setCategoryBusy(false)
     }
-
-    resetForm()
-    setShowForm(false)
-    fetchMacros()
   }
 
-  const handleDelete = async (id: string) => {
-    await fetch(`/api/v1/ticket-macros/${id}`, { method: "DELETE", headers })
-    fetchMacros()
+  const renameCategory = async () => {
+    if (!editingCategory || !editingCategoryName.trim() || categoryBusy) return
+    setCategoryBusy(true)
+    setNotice(null)
+    try {
+      const normalized = normalizeMacroCategory(editingCategoryName)
+      if (categories.some((category) => category.toLocaleLowerCase() === normalized.toLocaleLowerCase() && category.toLocaleLowerCase() !== editingCategory.toLocaleLowerCase())) {
+        setNotice({ kind: "error", text: t("categoryConflict") })
+        return
+      }
+      if (categoryStorageMode === "browser") {
+        const legacyCategory = normalized.toLocaleLowerCase()
+        const matching = macros.filter((macro) => macro.category.toLocaleLowerCase() === editingCategory.toLocaleLowerCase())
+        for (const macro of matching) {
+          await checkedJson(await fetch(`/api/v1/ticket-macros/${macro.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", ...headers },
+            body: JSON.stringify({ category: legacyCategory }),
+          }))
+        }
+        const stored = readLegacyCategories(orgId!)
+        writeLegacyCategories(orgId!, [...stored.filter((category) => category.toLocaleLowerCase() !== editingCategory.toLocaleLowerCase()), legacyCategory])
+        if (categoryFilter === editingCategory) setCategoryFilter(legacyCategory)
+        setEditingCategory(null)
+        setEditingCategoryName("")
+        setNotice({ kind: "success", text: t("categoryRenamed") })
+        await load()
+        return
+      }
+      await checkedJson(await fetch("/api/v1/ticket-macros/categories", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ name: editingCategory, newName: editingCategoryName }),
+      }))
+      if (categoryFilter === editingCategory) setCategoryFilter(editingCategoryName.trim())
+      setEditingCategory(null)
+      setEditingCategoryName("")
+      setNotice({ kind: "success", text: t("categoryRenamed") })
+      await load()
+    } catch (error) {
+      const apiError = error as Error & { code?: string }
+      setNotice({ kind: "error", text: responseError(apiError.code, t("categorySaveError"), t) })
+      if (apiError.code === "SUPPORT_UX_CANARY_DISABLED") await load()
+    } finally {
+      setCategoryBusy(false)
+    }
   }
 
-  const toggleActive = async (id: string, isActive: boolean) => {
-    await fetch(`/api/v1/ticket-macros/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify({ isActive }),
-    })
-    fetchMacros()
+  const finishDelete = useCallback(async (target: DeleteTarget) => {
+    try {
+      if (target.type === "macro") {
+        await checkedJson(await fetch(`/api/v1/ticket-macros/${target.macro.id}`, { method: "DELETE", headers }))
+        setMacros((current) => current.filter((macro) => macro.id !== target.macro.id))
+        setNotice({ kind: "success", text: t("deletedSuccess") })
+      } else {
+        if (categoryStorageMode === "browser") {
+          const matching = macros.filter((macro) => macro.category.toLocaleLowerCase() === target.category.toLocaleLowerCase())
+          for (const macro of matching) {
+            await checkedJson(await fetch(`/api/v1/ticket-macros/${macro.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", ...headers },
+              body: JSON.stringify({ category: "general" }),
+            }))
+          }
+          writeLegacyCategories(orgId!, readLegacyCategories(orgId!).filter((category) => category.toLocaleLowerCase() !== target.category.toLocaleLowerCase()))
+        } else {
+          await checkedJson(await fetch("/api/v1/ticket-macros/categories", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json", ...headers },
+            body: JSON.stringify({ name: target.category }),
+          }))
+        }
+        setCategories((current) => current.filter((category) => category.toLocaleLowerCase() !== target.category.toLocaleLowerCase()))
+        setMacros((current) => current.map((macro) => macro.category.toLocaleLowerCase() === target.category.toLocaleLowerCase() ? { ...macro, category: "general" } : macro))
+        if (categoryFilter === target.category) setCategoryFilter("all")
+        setNotice({ kind: "success", text: t("categoryDeleted", { count: target.count }) })
+      }
+    } catch {
+      setNotice({ kind: "error", text: t(target.type === "macro" ? "deleteError" : "categoryDeleteError") })
+    } finally {
+      setPendingDelete(null)
+      deleteTimer.current = null
+    }
+  }, [categoryFilter, categoryStorageMode, headers, macros, orgId, t])
+
+  const queueDelete = () => {
+    if (!confirmTarget || pendingDelete) return
+    const target = confirmTarget
+    setConfirmTarget(null)
+    if (target.type === "category") setCategoryManagerOpen(false)
+    setPendingDelete(target)
+    setNotice({ kind: "info", text: t(target.type === "macro" ? "deletePending" : "categoryDeletePending") })
+    deleteTimer.current = setTimeout(() => void finishDelete(target), DELETE_DELAY_MS)
   }
 
-  const filteredMacros = filterCategory === "all"
-    ? macros
-    : macros.filter(m => m.category === filterCategory)
+  const undoDelete = () => {
+    if (deleteTimer.current) clearTimeout(deleteTimer.current)
+    deleteTimer.current = null
+    setPendingDelete(null)
+    setNotice({ kind: "success", text: t("deleteCancelled") })
+  }
 
-  const hasValidActions = actions.filter(a => a.value.trim()).length > 0
+  const renderActionInput = (action: DraftAction) => {
+    if (action.type === "set_status") return <Select value={action.value} onChange={(event) => updateAction(action.clientId, { value: event.target.value })}><option value="">{t("selectStatus")}</option>{TICKET_STATUSES.map((status) => <option key={status} value={status}>{t(`status_${status}`)}</option>)}</Select>
+    if (action.type === "set_priority") return <Select value={action.value} onChange={(event) => updateAction(action.clientId, { value: event.target.value })}><option value="">{t("selectPriority")}</option>{TICKET_PRIORITIES.map((priority) => <option key={priority} value={priority}>{t(`priority_${priority}`)}</option>)}</Select>
+    if (action.type === "set_assignee") return (
+      <Select value={action.value} onChange={(event) => updateAction(action.clientId, { value: event.target.value })}>
+        <option value="">{t("selectAssignee")}</option>
+        {action.value && !agents.some((agent) => agent.id === action.value) && <option value={action.value}>{t("assigneeUnavailable")}</option>}
+        {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name} · {t(`role_${agent.role}`)}{!agent.isAvailable ? ` · ${t("unavailable")}` : ""}</option>)}
+      </Select>
+    )
+    if (action.type === "add_comment" || action.type === "add_internal_note") return <Textarea rows={2} value={action.value} onChange={(event) => updateAction(action.clientId, { value: event.target.value })} placeholder={t(action.type === "add_comment" ? "replyPlaceholder" : "notePlaceholder")} />
+    return <Input value={action.value} onChange={(event) => updateAction(action.clientId, { value: event.target.value })} placeholder={t("tagPlaceholder")} />
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <PageHeader
-        title={
-          <>
-            {t("title")} <TourReplayButton tourId="macros" /> <HelpButton slug="macros" variant="label" />
-          </>
-        }
-        titleTourId="macros-header"
-        description={
-          <>
-            <p className="text-muted-foreground">{t("subtitle")}</p>
-            <PageDescription text={t("description")} />
-          </>
-        }
-        actions={
-          <Button data-tour-id="macros-new" onClick={() => { resetForm(); setShowForm(true) }}>
-            <Plus className="h-4 w-4 mr-1" /> {t("newMacro")}
-          </Button>
-        }
-      />
+    <SupportPageShell
+      data-testid="macros-workspace"
+      data-state={loading ? "loading" : loadError ? "error" : "ready"}
+      data-write={canWrite ? "allowed" : "read-only"}
+      data-category-storage={categoryStorageMode}
+      width="fluid"
+      title={<span data-tour-id="macros-header">{t("title")}</span>}
+      description={t("subtitle")}
+      utilities={<><TourReplayButton tourId="macros" className="min-h-11 px-2" /><HelpButton slug="macros" variant="label" className="min-h-11 shrink-0" /></>}
+      actions={canWrite ? <Button data-tour-id="macros-new" data-testid="macro-create" onClick={openCreate} className="min-h-11 w-full shrink-0 self-start sm:w-auto"><Plus className="mr-2 h-4 w-4" />{t("newMacro")}</Button> : undefined}
+    >
 
-      <DidYouKnow page="macros" className="mb-0" />
-
-      {/* Category filter tabs + management */}
-      <div data-tour-id="macros-filters" className="flex items-center gap-1.5 flex-wrap">
-        <button
-          onClick={() => setFilterCategory("all")}
-          className={cn(
-            "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
-            filterCategory === "all"
-              ? "bg-foreground text-background border-foreground"
-              : "bg-card hover:bg-muted border-zinc-200 dark:border-zinc-700"
-          )}
-        >
-          {tc("all")} ({macros.length})
-        </button>
-        {mergedCategories.map(cat => {
-          const count = macros.filter(m => m.category === cat).length
-          return (
-            <button
-              key={cat}
-              onClick={() => setFilterCategory(cat)}
-              className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors capitalize",
-                filterCategory === cat
-                  ? "bg-foreground text-background border-foreground"
-                  : cn("hover:opacity-80 border-transparent", getCategoryColor(cat, mergedCategories))
-              )}
-            >
-              {categoryLabel(cat, t)} {count > 0 && `(${count})`}
-            </button>
-          )
-        })}
-        <button
-          onClick={() => setShowCategoryManager(!showCategoryManager)}
-          className={cn(
-            "px-2 py-1.5 rounded-full text-xs border transition-colors",
-            showCategoryManager
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-card hover:bg-muted border-zinc-200 dark:border-zinc-700 text-muted-foreground"
-          )}
-          title={t("manageCategories")}
-        >
-          <Settings2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {/* Category manager panel */}
-      {showCategoryManager && (
-        <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-card space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">{t("manageCategories")}</h3>
-            <button onClick={() => setShowCategoryManager(false)} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Existing categories */}
-          <div className="space-y-1.5">
-            {mergedCategories.map(cat => {
-              const count = macros.filter(m => m.category === cat).length
-              const isEditing = editingCategory === cat
-              const isDefault = cat === "general"
-
-              return (
-                <div key={cat} className="flex items-center gap-2 group">
-                  <span className={cn("w-3 h-3 rounded-full shrink-0", getCategoryColor(cat, mergedCategories))} />
-                  {isEditing ? (
-                    <div className="flex items-center gap-1.5 flex-1">
-                      <Input
-                        value={editingCategoryName}
-                        onChange={e => setEditingCategoryName(e.target.value)}
-                        className="h-7 text-sm flex-1"
-                        autoFocus
-                        onKeyDown={e => {
-                          if (e.key === "Enter") renameCategory(cat, editingCategoryName)
-                          if (e.key === "Escape") setEditingCategory(null)
-                        }}
-                      />
-                      <button
-                        onClick={() => renameCategory(cat, editingCategoryName)}
-                        className="p-1 rounded hover:bg-emerald-50 text-emerald-600 dark:hover:bg-emerald-900/20"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setEditingCategory(null)}
-                        className="p-1 rounded hover:bg-muted text-muted-foreground"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <span className="text-sm capitalize flex-1">{categoryLabel(cat, t)}</span>
-                      <span className="text-xs text-muted-foreground">{count}</span>
-                      <button
-                        onClick={() => { setEditingCategory(cat); setEditingCategoryName(cat) }}
-                        className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground transition-opacity"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
-                      {!isDefault && (
-                        <button
-                          onClick={() => deleteCategory(cat)}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-50 text-red-400 hover:text-red-600 dark:hover:bg-red-900/20 transition-opacity"
-                          title={count > 0 ? t("deleteCategoryHint") : undefined}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Add new category */}
-          <div className="flex items-center gap-2 pt-1 border-t">
-            <FolderPlus className="h-4 w-4 text-muted-foreground shrink-0" />
-            <Input
-              value={newCategoryName}
-              onChange={e => setNewCategoryName(e.target.value)}
-              placeholder={t("newCategoryPlaceholder")}
-              className="h-7 text-sm flex-1"
-              onKeyDown={e => { if (e.key === "Enter") addCategory() }}
-            />
-            <Button size="sm" variant="outline" onClick={addCategory} disabled={!newCategoryName.trim()} className="h-7 text-xs">
-              {tc("add")}
-            </Button>
-          </div>
+      {notice && (
+        <div role="status" aria-live="polite" className={cn("flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm", notice.kind === "error" && "border-destructive/40 text-destructive")} data-testid="macros-notice" data-kind={notice.kind}>
+          {notice.kind === "error" ? <AlertCircle className="h-4 w-4" /> : notice.kind === "success" ? <CheckCircle2 className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+          <span className="flex-1">{notice.text}</span>
+          {pendingDelete && <Button size="sm" variant="outline" onClick={undoDelete} className="min-h-11" data-testid="macro-delete-undo">{t("undo")}</Button>}
         </div>
       )}
 
-      {/* Macros list */}
+      {!loading && !loadError && !canWrite && (
+        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm" data-testid="macros-read-only"><strong>{t("readOnlyTitle")}</strong> {t("readOnlyHint")}</div>
+      )}
+
+      <section data-tour-id="macros-filters" data-testid="macros-filters" aria-label={t("libraryControls")} className="space-y-3 rounded-lg border p-3">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(15rem,1fr)_12rem_12rem_auto]">
+          <Label className="relative">
+            <span className="sr-only">{t("searchLabel")}</span>
+            <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlaceholder")} className="h-11 pl-9" data-testid="macros-search" />
+          </Label>
+          <Label>
+            <span className="sr-only">{t("categoryFilter")}</span>
+            <Select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-11"><option value="all">{t("allCategories")}</option>{categories.map((item) => <option key={item} value={item}>{categoryLabel(item)}</option>)}</Select>
+          </Label>
+          <Label>
+            <span className="sr-only">{t("statusFilter")}</span>
+            <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="h-11"><option value="all">{t("allStatuses")}</option><option value="active">{t("active")}</option><option value="inactive">{t("inactive")}</option></Select>
+          </Label>
+          {canWrite && <Button variant="outline" className="min-h-11" onClick={() => setCategoryManagerOpen(true)} data-testid="macro-categories-manage"><Folder className="mr-2 h-4 w-4" />{t("manageCategories")}</Button>}
+        </div>
+        <div className="flex flex-wrap gap-x-5 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
+          <span><strong className="text-foreground">{macros.length}</strong> {t("totalLabel")}</span>
+          <span><strong className="text-foreground">{activeCount}</strong> {t("activeLabel")}</span>
+          <span><strong className="text-foreground">{macros.length - activeCount}</strong> {t("inactiveLabel")}</span>
+        </div>
+      </section>
+
       {loading ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-40 bg-muted rounded-xl animate-pulse" />
-          ))}
-        </div>
+        <div aria-label={t("loading")} className="space-y-2" data-testid="macros-loading">{[1, 2, 3, 4].map((item) => <div key={item} className="h-16 animate-pulse rounded-lg border bg-muted motion-reduce:animate-none" />)}</div>
+      ) : loadError ? (
+        <div role="alert" className="rounded-lg border border-destructive/40 p-6 text-center" data-testid="macros-error" data-retryable={loadRetryable ? "true" : "false"}><AlertCircle className="mx-auto h-6 w-6 text-destructive" /><p className="mt-2 text-sm">{loadError}</p>{loadRetryable && <Button variant="outline" className="mt-4 min-h-11" onClick={() => void load()} data-testid="macros-retry">{t("retry")}</Button>}</div>
       ) : macros.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Zap className="h-14 w-14 mx-auto mb-4 opacity-20" />
-          <p className="text-lg font-medium mb-1">{t("noMacros")}</p>
-          <p className="text-sm mb-4">{t("noMacrosHint")}</p>
-          <Button variant="outline" onClick={() => { resetForm(); setShowForm(true) }}>
-            <Plus className="h-4 w-4 mr-1" /> {t("createFirst")}
-          </Button>
-        </div>
+        <div className="rounded-lg border p-8 text-center" data-testid="macros-empty"><Zap className="mx-auto h-7 w-7 text-muted-foreground" /><h2 className="mt-3 text-base font-semibold">{t("noMacros")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("noMacrosHint")}</p>{canWrite && <Button variant="outline" className="mt-4 min-h-11" onClick={openCreate}>{t("createFirst")}</Button>}</div>
       ) : filteredMacros.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p className="text-sm">{t("noCategoryMacros")}</p>
-        </div>
+        <div className="rounded-lg border p-7 text-center" data-testid="macros-filter-empty"><p className="text-sm text-muted-foreground">{t("noResults")}</p><Button variant="ghost" className="mt-2 min-h-11" onClick={() => { setQuery(""); setCategoryFilter("all"); setStatusFilter("all") }} data-testid="macros-reset-filters">{t("resetFilters")}</Button></div>
       ) : (
-        <div data-tour-id="macros-list" className="grid gap-3 sm:grid-cols-2">
-          {filteredMacros.map(macro => (
-            <div
-              key={macro.id}
-              onClick={() => openEdit(macro)}
-              className={cn(
-                "group relative border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 cursor-pointer transition-all hover:shadow-md hover:border-primary/30",
-                !macro.isActive && "opacity-60"
-              )}
-            >
-              {/* Top row: name + switch */}
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="font-semibold text-sm truncate">{macro.name}</h3>
-                    {macro.shortcutKey && (
-                      <kbd className="shrink-0 px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono border border-zinc-200 dark:border-zinc-700">
-                        {macro.shortcutKey}
-                      </kbd>
-                    )}
-                  </div>
-                  {macro.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-1">{macro.description}</p>
-                  )}
+        <div data-tour-id="macros-list" data-testid="macros-list" className="min-w-0 overflow-hidden rounded-lg border">
+          <div className="hidden grid-cols-[minmax(12rem,1.4fr)_minmax(12rem,1fr)_7rem_7rem_6rem] gap-3 border-b bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground xl:grid"><span>{t("macroColumn")}</span><span>{t("actionsColumn")}</span><span>{t("shortcutKey")}</span><span>{t("usageColumn")}</span><span className="text-right">{t("controlsColumn")}</span></div>
+          {filteredMacros.map((macro) => {
+            const deleting = pendingDelete?.type === "macro" && pendingDelete.macro.id === macro.id
+            return (
+              <article key={macro.id} className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-b p-3 last:border-b-0 xl:grid-cols-[minmax(12rem,1.4fr)_minmax(12rem,1fr)_7rem_7rem_6rem] xl:items-center", deleting && "opacity-50")} data-testid="macro-row" data-macro-id={macro.id}>
+                <button type="button" onClick={() => openEdit(macro)} className="min-h-11 min-w-0 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={deleting} data-testid="macro-row-open">
+                  <span className="flex min-w-0 items-center gap-2"><span className="min-w-0 truncate text-sm font-medium">{macro.name}</span><span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">{categoryLabel(macro.category)}</span></span>
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">{macro.description || t("noDescription")}</span>
+                </button>
+                <button type="button" onClick={() => openEdit(macro)} className="min-h-11 min-w-0 rounded-md text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={deleting}>
+                  <span className="block truncate"><strong>1.</strong> {t(ACTION_META[macro.actions[0]?.type]?.label ?? "unknownAction")} · {macro.actions[0] ? actionValueLabel(macro.actions[0]) : t("noActions")}</span>
+                  {macro.actions.length > 1 && <span className="mt-1 block text-muted-foreground">{t("moreActions", { count: macro.actions.length - 1 })}</span>}
+                </button>
+                <span className="text-xs"><span className="text-muted-foreground xl:hidden">{t("shortcutKey")}: </span>{macro.shortcutKey ? <kbd className="rounded border bg-muted px-1.5 py-1 font-mono">{macro.shortcutKey}</kbd> : t("none")}</span>
+                <span className="text-xs text-muted-foreground">{t("usedTimes", { count: macro.usageCount })}</span>
+                <div className="flex min-h-11 items-center justify-end gap-1">
+                  <label className="flex h-11 w-11 items-center justify-center" data-testid="macro-toggle-target"><Switch checked={macro.isActive} onCheckedChange={(checked) => void toggleActive(macro, checked)} disabled={!canWrite || deleting || togglingIds.has(macro.id)} aria-label={t(macro.isActive ? "deactivateNamed" : "activateNamed", { name: macro.name })} className="h-6 w-11" data-testid="macro-toggle" /></label>
+                  {canWrite && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("macroMenu", { name: macro.name })} data-testid="macro-menu"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="min-h-11" onSelect={() => openEdit(macro)} data-testid="macro-menu-edit"><Pencil />{t("editAction")}</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="min-h-11 text-destructive focus:text-destructive" disabled={Boolean(pendingDelete)} onSelect={() => setConfirmTarget({ type: "macro", macro })} data-testid="macro-menu-delete"><Trash2 />{t("deleteAction")}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
                 </div>
-                <div className="shrink-0 flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                  <Switch
-                    checked={macro.isActive}
-                    onCheckedChange={checked => toggleActive(macro.id, checked)}
-                  />
-                </div>
-              </div>
-
-              {/* Category + usage */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium capitalize", getCategoryColor(macro.category, mergedCategories))}>
-                  {categoryLabel(macro.category, t)}
-                </span>
-                {macro.usageCount > 0 && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {t("usedTimes", { count: macro.usageCount })}
-                  </span>
-                )}
-              </div>
-
-              {/* Action pills preview */}
-              <div className="flex flex-wrap gap-1">
-                {(macro.actions as MacroAction[]).map((action, i) => (
-                  <ActionPill key={i} action={action} t={t} />
-                ))}
-              </div>
-
-              {/* Delete button (on hover) */}
-              <button
-                onClick={e => { e.stopPropagation(); handleDelete(macro.id) }}
-                className="absolute top-2 right-12 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-600 transition-all"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
+              </article>
+            )
+          })}
         </div>
       )}
 
-      {/* Keyboard shortcuts hint */}
-      {macros.some(m => m.shortcutKey) && (
-        <div data-tour-id="macros-shortcuts" className="flex items-center gap-3 px-4 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/30 text-sm text-muted-foreground">
-          <Keyboard className="h-5 w-5 shrink-0" />
-          <div>
-            <span className="font-medium text-foreground">{t("shortcutsHintTitle")}</span>
-            {" — "}
-            {macros.filter(m => m.shortcutKey).map((m, i) => (
-              <span key={m.id}>
-                {i > 0 && ", "}
-                <kbd className="px-1 py-0.5 bg-background rounded text-[10px] font-mono border border-zinc-200 dark:border-zinc-700">{m.shortcutKey}</kbd>
-                {" "}{m.name}
-              </span>
-            ))}
+      {macros.some((macro) => macro.shortcutKey) && (
+        <section data-tour-id="macros-shortcuts" className="rounded-lg border bg-muted/20 p-3 text-sm">
+          <div className="flex items-start gap-2"><Keyboard className="mt-0.5 h-4 w-4" /><div><h2 className="font-medium">{t("shortcutsHintTitle")}</h2><p className="mt-0.5 text-xs text-muted-foreground">{t("shortcutsDiscovery")}</p><div className="mt-2 flex flex-wrap gap-2">{macros.filter((macro) => macro.shortcutKey).map((macro) => <span key={macro.id} className="text-xs"><kbd className="rounded border bg-background px-1.5 py-1 font-mono">{macro.shortcutKey}</kbd> {macro.name}</span>)}</div></div></div>
+        </section>
+      )}
+
+      <Dialog open={editorOpen} onOpenChange={(open) => { if (!saving) setEditorOpen(open) }} widthClassName="max-w-[52rem]" maxHeightClassName="max-h-[92vh]" mobileFullscreen mobileFullscreenBreakpoint="md">
+        <DialogHeader><DialogTitle>{editingId ? t("editMacro") : t("newMacro")}</DialogTitle><DialogDescription>{t("editorDescription")}</DialogDescription></DialogHeader>
+        <DialogContent className="p-4 md:p-6">
+          <div className="space-y-4" data-testid="macro-editor" data-mode={editingId ? "edit" : "create"}>
+          {notice?.kind === "error" && <div role="alert" className="flex gap-2 rounded-lg border border-destructive/40 p-3 text-sm text-destructive"><AlertCircle className="h-4 w-4 shrink-0" />{notice.text}</div>}
+          <div className="grid gap-3 md:grid-cols-2">
+            <Label>{t("name")} *<Input data-dialog-initial-focus value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder={t("placeholderName")} className="mt-1 h-11" maxLength={255} data-testid="macro-name" /></Label>
+            <Label>{t("description2")}<Input value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} placeholder={t("placeholderDesc")} className="mt-1 h-11" maxLength={1000} /></Label>
+            <Label>{t("category")}<Select value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))} className="mt-1 h-11">{categories.map((item) => <option key={item} value={item}>{categoryLabel(item)}</option>)}</Select></Label>
+            <Label>{t("shortcutKey")}<Select value={draft.shortcutKey} onChange={(event) => setDraft((current) => ({ ...current, shortcutKey: event.target.value }))} className="mt-1 h-11"><option value="">{t("none")}</option>{[1,2,3,4,5,6,7,8,9].map((number) => <option key={number} value={`Alt+${number}`} disabled={assignedShortcuts.has(`Alt+${number}`)}>Alt+{number}{assignedShortcuts.has(`Alt+${number}`) ? ` · ${t("inUse")}` : ""}</option>)}</Select></Label>
           </div>
-        </div>
-      )}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={showForm} onOpenChange={v => { setShowForm(v); if (!v) resetForm() }}>
-        <DialogHeader>
-          <DialogTitle>{editId ? t("editMacro") : t("newMacro")}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="max-h-[75vh] overflow-y-auto">
-          <div className="space-y-5">
-            {/* Basic info section */}
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm font-medium">{t("name")} *</Label>
-                <Input
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder={t("placeholderName")}
-                  className="mt-1"
-                />
-              </div>
+          <section aria-labelledby="macro-actions-title" className="space-y-3 border-t pt-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><h3 id="macro-actions-title" className="text-sm font-semibold">{t("actionsLabel")}</h3><p className="text-xs text-muted-foreground">{t("actionsHint")}</p></div><Button type="button" variant="outline" className="min-h-11 self-start" onClick={() => setShowPreview((value) => !value)} data-testid="macro-preview-toggle"><Eye className="mr-2 h-4 w-4" />{t(showPreview ? "hidePreview" : "showPreview")}</Button></div>
+            {draft.actions.length === 0 ? <div className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">{t("noActions")}</div> : (
+              <ol className="space-y-2">
+                {draft.actions.map((action, index) => (
+                  <li key={action.clientId} className="relative rounded-lg border p-3 pl-11 before:absolute before:bottom-[-0.55rem] before:left-5 before:top-10 before:w-px before:bg-border last:before:hidden" data-testid="macro-action-row">
+                    <span className="absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border bg-background text-xs font-semibold">{index + 1}</span>
+                    <div className="grid gap-2 sm:grid-cols-[13rem_minmax(0,1fr)_auto] sm:items-start">
+                      <Label><span className="sr-only">{t("actionType", { number: index + 1 })}</span><Select value={action.type} onChange={(event) => updateAction(action.clientId, { type: event.target.value as MacroActionType, value: "" })} className="h-11">{MACRO_ACTION_TYPES.map((type) => <option key={type} value={type}>{t(ACTION_META[type].label)}</option>)}</Select></Label>
+                      <Label><span className="sr-only">{t("actionValue", { number: index + 1 })}</span>{renderActionInput(action)}{!action.value.trim() && <span className="mt-1 block text-xs text-destructive">{t("valueRequired")}</span>}</Label>
+                      <div className="flex gap-1"><Button type="button" variant="ghost" size="icon" className="h-11 w-11" disabled={index === 0} onClick={() => moveAction(index, "up")} aria-label={t("moveUp", { number: index + 1 })} data-testid="macro-action-up"><ChevronUp className="h-4 w-4" /></Button><Button type="button" variant="ghost" size="icon" className="h-11 w-11" disabled={index === draft.actions.length - 1} onClick={() => moveAction(index, "down")} aria-label={t("moveDown", { number: index + 1 })} data-testid="macro-action-down"><ChevronDown className="h-4 w-4" /></Button><Button type="button" variant="ghost" size="icon" className="h-11 w-11 text-destructive" onClick={() => setDraft((current) => ({ ...current, actions: current.actions.filter((item) => item.clientId !== action.clientId) }))} aria-label={t("removeAction", { number: index + 1 })} data-testid="macro-action-remove"><Trash2 className="h-4 w-4" /></Button></div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <div className="flex flex-col gap-2 rounded-lg border border-dashed p-2 sm:flex-row sm:items-center"><Label className="flex-1"><span className="sr-only">{t("newActionType")}</span><Select value={newActionType} onChange={(event) => setNewActionType(event.target.value as MacroActionType)} className="h-11">{(["ticket", "message", "tag"] as const).map((group) => <optgroup key={group} label={t(`group_${group}`)}>{MACRO_ACTION_TYPES.filter((type) => ACTION_META[type].group === group).map((type) => <option key={type} value={type}>{t(ACTION_META[type].label)}</option>)}</optgroup>)}</Select></Label><Button type="button" variant="outline" className="min-h-11" onClick={() => setDraft((current) => ({ ...current, actions: [...current.actions, { clientId: actionId(), type: newActionType, value: "" }] }))}><Plus className="mr-2 h-4 w-4" />{t("addAction")}</Button></div>
+          </section>
 
-              <div>
-                <Label className="text-sm font-medium">{t("description2")}</Label>
-                <Input
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder={t("placeholderDesc")}
-                  className="mt-1"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-sm font-medium">{t("category")}</Label>
-                  <Select value={category} onChange={e => setCategory(e.target.value)} className="mt-1 capitalize">
-                    {mergedCategories.map(c => (
-                      <option key={c} value={c} className="capitalize">{categoryLabel(c, t)}</option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium flex items-center gap-1.5">
-                    <Keyboard className="h-3.5 w-3.5" />
-                    {t("shortcutKey")}
-                  </Label>
-                  <Select value={shortcutKey} onChange={e => setShortcutKey(e.target.value)} className="mt-1">
-                    <option value="">{t("none")}</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                      <option key={n} value={`Alt+${n}`}>Alt+{n}</option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="border-t" />
-
-            {/* Actions builder */}
-            <ActionBuilder actions={actions} setActions={setActions} t={t} tc={tc} />
+          {showPreview && <section aria-label={t("previewTitle")} className="rounded-lg border bg-muted/20 p-3" data-testid="macro-preview"><h3 className="text-sm font-semibold">{t("previewTitle")}</h3><p className="mt-1 text-xs text-muted-foreground">{t("previewHint")}</p>{draft.actions.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">{t("noActions")}</p> : <ol className="mt-3 space-y-2">{draft.actions.map((action, index) => <li key={action.clientId} className="flex gap-2 text-sm"><span className="font-semibold">{index + 1}.</span><span><strong>{t(ACTION_META[action.type].label)}</strong>{action.value ? ` — ${actionValueLabel(action)}` : ` — ${t("valueMissing")}`}</span></li>)}</ol>}</section>}
+          {draft.shortcutKey && assignedShortcuts.has(draft.shortcutKey) && <p role="alert" className="text-sm text-destructive">{t("shortcutConflict")}</p>}
           </div>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => { setShowForm(false); resetForm() }}>{tc("cancel")}</Button>
-          <Button onClick={handleSave} disabled={!name.trim() || !hasValidActions}>
-            {editId ? t("saveChanges") : t("createMacro")}
-          </Button>
-        </DialogFooter>
+        <DialogFooter className="flex-col-reverse sm:flex-row"><Button variant="outline" className="min-h-11" onClick={() => setEditorOpen(false)} disabled={saving}>{tc("cancel")}</Button><Button className="min-h-11" onClick={() => void saveMacro()} disabled={!draftValid || saving} data-testid="macro-save">{saving ? t("saving") : editingId ? t("saveChanges") : t("createMacro")}</Button></DialogFooter>
       </Dialog>
-    </div>
+
+      <Dialog open={categoryManagerOpen} onOpenChange={setCategoryManagerOpen} widthClassName="max-w-[34rem]">
+        <DialogHeader><DialogTitle>{t("manageCategories")}</DialogTitle><DialogDescription>{t("sharedCategoriesHint")}</DialogDescription></DialogHeader>
+        <DialogContent>
+          <div className="space-y-3" data-testid="macro-category-manager">
+          {notice && <div role="status" aria-live="polite" className={cn("flex gap-2 rounded-lg border p-3 text-sm", notice.kind === "error" && "border-destructive/40 text-destructive")}>{notice.kind === "error" ? <AlertCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}<span>{notice.text}</span></div>}
+          {categories.map((item) => {
+            const count = macros.filter((macro) => macro.category === item).length
+            const isDefault = MACRO_DEFAULT_CATEGORIES.includes(item as typeof MACRO_DEFAULT_CATEGORIES[number])
+            const deleting = pendingDelete?.type === "category" && pendingDelete.category === item
+            return <div key={item} className={cn("flex min-h-12 items-center gap-2 border-b py-2 last:border-b-0", deleting && "opacity-50")} data-testid="macro-category-row" data-category={item}>
+              {editingCategory === item ? <><Input autoFocus value={editingCategoryName} onChange={(event) => setEditingCategoryName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void renameCategory(); if (event.key === "Escape") setEditingCategory(null) }} className="h-11 flex-1" aria-label={`${t("renameAction")}: ${categoryLabel(item)}`} data-testid="macro-category-rename-input" /><Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => void renameCategory()} disabled={categoryBusy} aria-label={t("saveCategory")} data-testid="macro-category-rename-save"><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => setEditingCategory(null)} aria-label={tc("cancel")}><RotateCcw className="h-4 w-4" /></Button></> : <><span className="flex-1 text-sm"><strong>{categoryLabel(item)}</strong><span className="ml-2 text-xs text-muted-foreground">{t("macroCount", { count })}</span>{isDefault && <span className="ml-2 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">{t("defaultLabel")}</span>}</span>{!isDefault && canWrite && <DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-11 w-11" aria-label={t("categoryMenu", { name: item })} data-testid="macro-category-menu"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="min-h-11" onSelect={() => { setEditingCategory(item); setEditingCategoryName(item) }} data-testid="macro-category-rename"><Pencil />{t("renameAction")}</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="min-h-11 text-destructive focus:text-destructive" disabled={Boolean(pendingDelete)} onSelect={() => setConfirmTarget({ type: "category", category: item, count })} data-testid="macro-category-delete"><Trash2 />{t("deleteAction")}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</>}
+            </div>
+          })}
+          <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row"><Label className="flex-1"><span className="sr-only">{t("newCategoryPlaceholder")}</span><Input value={newCategory} onChange={(event) => setNewCategory(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void addCategory() }} placeholder={t("newCategoryPlaceholder")} className="h-11" maxLength={80} data-testid="macro-category-new" /></Label><Button variant="outline" className="min-h-11" onClick={() => void addCategory()} disabled={!newCategory.trim() || categoryBusy} data-testid="macro-category-add"><Plus className="mr-2 h-4 w-4" />{tc("add")}</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(confirmTarget)} onOpenChange={(open) => { if (!open) setConfirmTarget(null) }} widthClassName="max-w-[28rem]">
+        <DialogHeader><DialogTitle>{confirmTarget?.type === "macro" ? t("deleteMacroTitle") : t("deleteCategoryTitle")}</DialogTitle><DialogDescription>{confirmTarget?.type === "macro" ? t("deleteMacroImpact", { name: confirmTarget.macro.name }) : confirmTarget ? t("deleteCategoryImpact", { name: confirmTarget.category, count: confirmTarget.count }) : ""}</DialogDescription></DialogHeader>
+        <DialogFooter><Button variant="outline" className="min-h-11" onClick={() => setConfirmTarget(null)}>{tc("cancel")}</Button><Button variant="destructive" className="min-h-11" onClick={queueDelete} data-testid="macro-delete-confirm">{t("confirmDelete")}</Button></DialogFooter>
+      </Dialog>
+    </SupportPageShell>
   )
 }

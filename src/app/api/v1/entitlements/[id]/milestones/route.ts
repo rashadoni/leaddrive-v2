@@ -230,7 +230,7 @@ export const POST = withRlsAuth(
     }
     if (!editableStatuses.has(entitlement.status)) {
       return NextResponse.json(
-        { error: "Milestone rules can be changed only while the support term is draft or suspended." },
+        { error: "Milestone rules can be changed only while the support term is draft or suspended.", code: "TERM_NOT_EDITABLE" },
         { status: 422 },
       )
     }
@@ -266,7 +266,7 @@ export const POST = withRlsAuth(
         )
         if (duplicate) {
           return NextResponse.json(
-            { error: "Template conflicts with an existing milestone definition." },
+            { error: "Template conflicts with an existing milestone definition.", code: "MILESTONE_DUPLICATE" },
             { status: 409 },
           )
         }
@@ -368,9 +368,10 @@ export const POST = withRlsAuth(
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create milestone definition."
+      const duplicate = message.includes("already exists")
       return NextResponse.json(
-        { error: message },
-        { status: message.includes("already exists") ? 409 : 500 },
+        { error: message, ...(duplicate ? { code: "MILESTONE_DUPLICATE" } : {}) },
+        { status: duplicate ? 409 : 500 },
       )
     }
 

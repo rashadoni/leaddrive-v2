@@ -7,6 +7,28 @@ interface AutoAssignResult {
   queueName?: string
 }
 
+interface AutoAssignQueue {
+  id: string
+  name: string
+  skills: string[]
+  autoAssign: boolean
+  assignMethod: string
+  lastAssignedTo: string | null
+}
+
+interface AutoAssignAgent {
+  id: string
+  name: string | null
+  email: string
+  skills: string[]
+  maxTickets: number
+}
+
+interface AssignmentCount {
+  assignedTo: string | null
+  _count: { id: number }
+}
+
 /**
  * Auto-assign a ticket to the best available agent based on:
  * 1. Find a TicketQueue matching the ticket's category (via skills overlap)
@@ -24,18 +46,18 @@ export async function autoAssignTicket(
     const queues = await prisma.ticketQueue.findMany({
       where: { organizationId: orgId, isActive: true },
       orderBy: { priority: "desc" },
-    })
+    }) as AutoAssignQueue[]
 
     // Try to find a queue whose skills include the ticket category
-    let matchedQueue = queues.find((q: any) =>
-      (q.skills as string[]).some(
+    let matchedQueue = queues.find((q) =>
+      q.skills.some(
         (s: string) => s.toLowerCase() === category.toLowerCase()
       )
     )
 
     // Fallback: use the highest-priority queue with no skill filter (catch-all)
     if (!matchedQueue) {
-      matchedQueue = queues.find((q: any) => (q.skills as string[]).length === 0)
+      matchedQueue = queues.find((q) => q.skills.length === 0)
     }
 
     // If still no queue, fall back to simple least-loaded across all agents
@@ -57,7 +79,7 @@ export async function autoAssignTicket(
         organizationId: orgId,
         isAvailable: true,
         isActive: true,
-        role: { in: ["admin", "manager", "agent"] },
+        role: { in: ["admin", "manager", "agent", "support", "ticketing"] },
       },
       select: {
         id: true,
@@ -66,13 +88,13 @@ export async function autoAssignTicket(
         skills: true,
         maxTickets: true,
       },
-    })
+    }) as AutoAssignAgent[]
 
     // Filter agents who have at least one matching skill (or all agents if queue has no skills)
     const matchingAgents =
       queueSkills.length > 0
-        ? allAgents.filter((agent: any) =>
-            (agent.skills as string[]).some((s: string) =>
+        ? allAgents.filter((agent) =>
+            agent.skills.some((s: string) =>
               queueSkills.includes(s.toLowerCase())
             )
           )
@@ -88,10 +110,10 @@ export async function autoAssignTicket(
       where: {
         organizationId: orgId,
         status: { notIn: ["closed", "resolved"] },
-        assignedTo: { in: matchingAgents.map((a: any) => a.id) },
+        assignedTo: { in: matchingAgents.map((agent) => agent.id) },
       },
       _count: { id: true },
-    })
+    }) as AssignmentCount[]
 
     const countMap: Record<string, number> = {}
     for (const row of openCounts) {
@@ -100,7 +122,7 @@ export async function autoAssignTicket(
 
     // Filter agents who are under their maxTickets limit
     const availableAgents = matchingAgents.filter(
-      (a: any) => (countMap[a.id] || 0) < a.maxTickets
+      (agent) => (countMap[agent.id] || 0) < agent.maxTickets
     )
 
     if (availableAgents.length === 0) {
@@ -108,13 +130,13 @@ export async function autoAssignTicket(
     }
 
     // 3. Select agent based on method
-    let selectedAgent: any
+    let selectedAgent: AutoAssignAgent
 
     if (matchedQueue.assignMethod === "round_robin") {
       // Round robin: pick the next agent after lastAssignedTo
       const lastIdx = matchedQueue.lastAssignedTo
         ? availableAgents.findIndex(
-            (a: any) => a.id === matchedQueue!.lastAssignedTo
+            (agent) => agent.id === matchedQueue.lastAssignedTo
           )
         : -1
       const nextIdx = (lastIdx + 1) % availableAgents.length
@@ -128,7 +150,7 @@ export async function autoAssignTicket(
     } else {
       // Weighted scoring: combines load, category expertise, and resolution speed
       // Batch queries for all agents at once (avoids N+1)
-      const agentIds = availableAgents.map((a: any) => a.id)
+      const agentIds = availableAgents.map((agent) => agent.id)
 
       const [expertiseCounts, recentResolved] = await Promise.all([
         // Category expertise: count resolved tickets per agent in this category
@@ -170,7 +192,7 @@ export async function autoAssignTicket(
         speedCounts[t.assignedTo] = (speedCounts[t.assignedTo] || 0) + 1
       }
 
-      const agentScores = availableAgents.map((agent: any) => {
+      const agentScores = availableAgents.map((agent) => {
         const load = countMap[agent.id] || 0
         const resolvedInCategory = expertiseMap[agent.id] || 0
         const avgResolutionHours = speedCounts[agent.id]
@@ -188,7 +210,7 @@ export async function autoAssignTicket(
         }
       })
 
-      agentScores.sort((a: any, b: any) => a.score - b.score)
+      agentScores.sort((left, right) => left.score - right.score)
       selectedAgent = agentScores[0].agent
     }
 
@@ -222,10 +244,10 @@ async function fallbackAssign(
       organizationId: orgId,
       isAvailable: true,
       isActive: true,
-      role: { in: ["admin", "manager", "agent"] },
+      role: { in: ["admin", "manager", "agent", "support", "ticketing"] },
     },
     select: { id: true, name: true, email: true, maxTickets: true },
-  })
+  }) as Omit<AutoAssignAgent, "skills">[]
 
   if (agents.length === 0) return { assigned: false }
 
@@ -234,10 +256,10 @@ async function fallbackAssign(
     where: {
       organizationId: orgId,
       status: { notIn: ["closed", "resolved"] },
-      assignedTo: { in: agents.map((a: any) => a.id) },
+      assignedTo: { in: agents.map((agent) => agent.id) },
     },
     _count: { id: true },
-  })
+  }) as AssignmentCount[]
 
   const countMap: Record<string, number> = {}
   for (const row of openCounts) {
@@ -245,12 +267,12 @@ async function fallbackAssign(
   }
 
   const available = agents.filter(
-    (a: any) => (countMap[a.id] || 0) < a.maxTickets
+    (agent) => (countMap[agent.id] || 0) < agent.maxTickets
   )
   if (available.length === 0) return { assigned: false }
 
   available.sort(
-    (a: any, b: any) => (countMap[a.id] || 0) - (countMap[b.id] || 0)
+    (left, right) => (countMap[left.id] || 0) - (countMap[right.id] || 0)
   )
   const selected = available[0]
 
