@@ -10,6 +10,12 @@ import {
   type RelevanceConfidencePolicy,
 } from "@/lib/social/relevance-confidence-policy"
 
+/**
+ * The only judge whose verdict counts as a second signal: the one that is told
+ * where the brand operates. See the block above `hasSecondSignal`.
+ */
+const GEOGRAPHY_AWARE_JUDGE_VERSION = "jev_relevance_judge_v1"
+
 export const SUBJECT_MATCHER_VERSION = "subject_relevance_v12_negative_parent_threads"
 
 export type SubjectMatchDecision = {
@@ -477,10 +483,30 @@ function evaluateSubject(subject: SubjectForMatch, input: IngestInput, corpus: s
   // «судья согласен с верными приёмами», а не «судья отсекает тёзок» — то есть
   // измерялась не та популяция, к которой правило потом применили.
   //
-  // Вернуть можно только после того, как в промпт попадёт география объекта и
-  // замер пройдёт на выборке С ТЁЗКАМИ. Провенанс в contextSignals оставлен:
-  // по нему видно, какие находки держались на слове судьи.
-  const hasSecondSignal = contextAliases.length > 0
+  // ВЕРНУЛСЯ 2026-09-29, и ровно на условиях, записанных выше: география
+  // объекта теперь уходит в промпт, и замер прошёл на выборке С ТЁЗКАМИ.
+  //
+  // Замер (docs/social-relevance-benchmark.md, 2204 продовых строки): из 75
+  // записей, которые держались на слове старого судьи, 20 — явные зарубежные
+  // тёзки, те самые «Bravo on 41», «Oba market Benin city» и немецкий прайс на
+  // баранину из инцидента 3 августа. Судья с географией не считает нашей НИ
+  // ОДНУ из этих двадцати. Из 55 местных он уверенно подтверждает 5 — мало, и
+  // это правильная цена: гейт неоднозначного алиаса стоит против тёзок, а не
+  // против осторожности.
+  //
+  // Поэтому вторым сигналом считается не любой приговор, а только:
+  //   1) от судьи, который ЗНАЕТ географию объекта (версия проверяется ниже —
+  //      старые отметки `ai_relevance_judge_v2` не подходят, они получены без
+  //      неё и именно они вернули тёзок);
+  //   2) «про нас» — «не уверен» вторым сигналом не бывает;
+  //   3) при уверенности не ниже 0.9: ниже этого порога замер показал долю
+  //      совпадений около двух третей, то есть монетку.
+  // Порог применяет проход судьи (ai-relevance-judge-pass.ts): сюда приговор
+  // доезжает, только если он его прошёл.
+  const judgeConfirms = input.aiRelevanceJudge?.version === GEOGRAPHY_AWARE_JUDGE_VERSION
+    && input.aiRelevanceJudge.verdicts?.[subject.id] === "about_subject"
+  const hasSecondSignal = judgeConfirms
+    || contextAliases.length > 0
     || requiredContextMatches.length > 0
     || geographyMatches.length > 0
     || Boolean(trustedOwnedSource)
@@ -523,6 +549,8 @@ function evaluateSubject(subject: SubjectForMatch, input: IngestInput, corpus: s
       trustedOwnedSource: Boolean(trustedOwnedSource),
       verifiedGoogleAlertsExactAlias,
       ambiguousOnly,
+      // Видно, какие находки держатся на слове судьи, и какого именно.
+      ...(judgeConfirms ? { heldByJudge: input.aiRelevanceJudge?.version } : {}),
       officialHosts: subjectOfficialHosts(subject),
       // Не решение, а наблюдение: по нему можно фильтровать показ и считать,
       // насколько часто язык расходится с настройками объекта.
