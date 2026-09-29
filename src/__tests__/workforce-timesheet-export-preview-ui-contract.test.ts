@@ -5,7 +5,7 @@ const workbench = readFileSync("src/components/workforce/workforce-workbench.tsx
 
 describe("Workforce approved-export preview UI boundary", () => {
   it("loads only a just-recorded immutable approval with the fixed HR purpose", () => {
-    expect(workbench).toContain("if (!record || previewingExport) return")
+    expect(workbench).toContain("if (!record || previewingExport || loading) return")
     expect(workbench).toContain("encodeURIComponent(approvalId)")
     expect(workbench).toContain("/preview?purpose=HR_RECORD_REVIEW")
     expect(workbench).toContain('cache: "no-store"')
