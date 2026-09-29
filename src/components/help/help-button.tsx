@@ -26,9 +26,10 @@ interface HelpButtonProps {
   slug: HelpSlug
   variant?: "icon" | "label"
   className?: string
+  onOpenChange?: (open: boolean) => void
 }
 
-export function HelpButton({ slug, variant = "icon", className }: HelpButtonProps) {
+export function HelpButton({ slug, variant = "icon", className, onOpenChange }: HelpButtonProps) {
   const [open, setOpen] = useState(false)
   // `nav.help` lives in messages/{en,ru,az}.json — keep the key generic
   // so the same button label works across every feature page. All three
@@ -36,13 +37,17 @@ export function HelpButton({ slug, variant = "icon", className }: HelpButtonProp
   // not a runtime concern → no fallback wrapper needed.
   const t = useTranslations("nav")
   const label = t("help")
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
 
   const trigger =
     variant === "label" ? (
       <Button
         variant="outline"
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={() => handleOpenChange(true)}
         className={`border-orange-200 bg-orange-50/60 text-orange-800 hover:bg-orange-100 hover:text-orange-900 dark:border-orange-900/60 dark:bg-orange-950/20 dark:text-orange-300 dark:hover:bg-orange-950/40 ${className ?? ""}`}
       >
         <HelpCircle className="h-4 w-4 mr-1.5" />
@@ -55,7 +60,7 @@ export function HelpButton({ slug, variant = "icon", className }: HelpButtonProp
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => setOpen(true)}
+        onClick={() => handleOpenChange(true)}
         aria-label={label}
         className={`h-8 w-8 rounded-full bg-orange-50 text-orange-800 ring-1 ring-orange-200 hover:bg-orange-100 hover:text-orange-900 transition-colors dark:bg-orange-950/30 dark:text-orange-300 dark:ring-orange-900/60 dark:hover:bg-orange-950/50 ${className ?? ""}`}
       >
@@ -76,7 +81,7 @@ export function HelpButton({ slug, variant = "icon", className }: HelpButtonProp
         </TooltipContent>
       </Tooltip>
 
-      <HelpDrawer slug={slug} open={open} onOpenChange={setOpen} />
+      <HelpDrawer slug={slug} open={open} onOpenChange={handleOpenChange} />
     </>
   )
 }
