@@ -68,6 +68,7 @@ async function dismissTour(page) {
   const overlay = page.getByTestId("tour-overlay")
   if (await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)) {
     await page.keyboard.press("Escape")
+    await overlay.waitFor({ state: "hidden", timeout: 5_000 })
   }
 }
 
@@ -81,6 +82,41 @@ async function openWorkspace(page) {
 
 function jsonFailure(message, status = 503) {
   return { status, contentType: "application/json", body: JSON.stringify({ success: false, error: message }) }
+}
+
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  // A first-visit product tour can cover otherwise valid controls. Dismiss it
+  // before proving the target's real keyboard/touch hit area.
+  await dismissTour(page)
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  if (viewportName === "desktop") {
+    await locator.focus()
+    await locator.press(keyboardKey)
+    return { inputModality: "keyboard", hitTarget: true }
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }))
+  await page.waitForTimeout(50)
+  const box = await locator.boundingBox()
+  if (!box) throw new Error("skill_routing_touch_target_unmeasurable")
+  if (box.width < 44 || box.height < 44) {
+    throw new Error(`skill_routing_touch_target_too_small_${Math.round(box.width)}x${Math.round(box.height)}`)
+  }
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const hitTarget = await locator.evaluate((element, center) => {
+    const hit = document.elementFromPoint(center.x, center.y)
+    if (!hit) return false
+    const interactive = hit.closest("button,a,input,select,textarea,[role='button']")
+    return hit === element || interactive === element || element.contains(hit)
+  }, point)
+  if (!hitTarget) throw new Error("skill_routing_touch_hit_test_failed")
+  await page.touchscreen.tap(point.x, point.y)
+  return {
+    inputModality: "playwright-touchscreen",
+    hitTarget,
+    targetSize: { width: Math.round(box.width), height: Math.round(box.height) },
+  }
 }
 
 await mkdir(outputDirectory, { recursive: true })
@@ -104,6 +140,7 @@ const context = await browser.newContext({
   colorScheme: theme,
   reducedMotion: "reduce",
   hasTouch: viewportName !== "desktop",
+  serviceWorkers: "block",
 })
 await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
 await context.addInitScript((activeTheme) => localStorage.setItem("theme", activeTheme), theme)
@@ -140,11 +177,9 @@ try {
     await page.getByTestId("routing-agents-error").waitFor({ state: "attached" })
     await page.unroute(queuesPattern, denyQueues)
     await page.unroute(agentsPattern, denyAgents)
-    await page.getByTestId("routing-queues-retry").focus()
-    await page.getByTestId("routing-queues-retry").press("Enter")
+    const queueRetryActivation = await activateEvidenceTarget(page, page.getByTestId("routing-queues-retry"))
     if (usesFocusedTabs) await page.getByTestId("skill-routing-tab-agents").click()
-    await page.getByTestId("routing-agents-retry").focus()
-    await page.getByTestId("routing-agents-retry").press("Enter")
+    const agentRetryActivation = await activateEvidenceTarget(page, page.getByTestId("routing-agents-retry"))
     await page.locator("[data-testid='skill-routing-workspace'][data-state='ready']").waitFor({ state: "visible" })
 
     const forbidQueues = async (route) => route.fulfill(jsonFailure("Synthetic queue permission denial", 403))
@@ -159,7 +194,14 @@ try {
     await page.unroute(queuesPattern, forbidQueues)
     await page.unroute(agentsPattern, forbidAgents)
     await openWorkspace(page)
-    return { totalFailureObserved: true, keyboardRetry: true, permissionStateObserved: true, misleadingRetryAbsent: true }
+    return {
+      totalFailureObserved: true,
+      keyboardRetry: queueRetryActivation.inputModality === "keyboard" && agentRetryActivation.inputModality === "keyboard",
+      physicalTouchRetry: queueRetryActivation.inputModality === "playwright-touchscreen" && agentRetryActivation.inputModality === "playwright-touchscreen",
+      retryActivation: { queues: queueRetryActivation, agents: agentRetryActivation },
+      permissionStateObserved: true,
+      misleadingRetryAbsent: true,
+    }
   })
 
   await recordStep(page, "partial-source-failure-and-recovery", async () => {
@@ -171,10 +213,15 @@ try {
     await page.getByTestId("skill-routing-partial").waitFor({ state: "visible" })
     await page.locator("[data-testid='routing-agents-manager'][data-state='ready']").waitFor({ state: "attached" })
     await page.unroute(queuesPattern, denyQueues)
-    await page.getByTestId("routing-queues-retry").focus()
-    await page.getByTestId("routing-queues-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("routing-queues-retry"))
     await page.locator("[data-testid='skill-routing-workspace'][data-state='ready']").waitFor({ state: "visible" })
-    return { partialStateObserved: true, unaffectedSourcePreserved: true, keyboardRetry: true }
+    return {
+      partialStateObserved: true,
+      unaffectedSourcePreserved: true,
+      keyboardRetry: retryActivation.inputModality === "keyboard",
+      physicalTouchRetry: retryActivation.inputModality === "playwright-touchscreen",
+      retryActivation,
+    }
   })
 
   await recordStep(page, "empty-filtered-and-operational-density", async () => {

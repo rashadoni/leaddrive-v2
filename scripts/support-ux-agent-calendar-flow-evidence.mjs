@@ -68,6 +68,7 @@ async function dismissTour(page) {
   const overlay = page.getByTestId("tour-overlay")
   if (await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)) {
     await page.keyboard.press("Escape")
+    await overlay.waitFor({ state: "hidden", timeout: 5_000 })
   }
 }
 
@@ -81,6 +82,39 @@ async function openWorkspace(page) {
 
 function jsonFailure(message, status = 503) {
   return { status, contentType: "application/json", body: JSON.stringify({ success: false, error: message }) }
+}
+
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  await dismissTour(page)
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  if (viewportName === "desktop") {
+    await locator.focus()
+    await locator.press(keyboardKey)
+    return { inputModality: "keyboard", hitTarget: true }
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }))
+  await page.waitForTimeout(50)
+  const box = await locator.boundingBox()
+  if (!box) throw new Error("agent_calendar_touch_target_unmeasurable")
+  if (box.width < 44 || box.height < 44) {
+    throw new Error(`agent_calendar_touch_target_too_small_${Math.round(box.width)}x${Math.round(box.height)}`)
+  }
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const hitTarget = await locator.evaluate((element, center) => {
+    const hit = document.elementFromPoint(center.x, center.y)
+    if (!hit) return false
+    const interactive = hit.closest("button,a,input,select,textarea,[role='button']")
+    return hit === element || interactive === element || element.contains(hit)
+  }, point)
+  if (!hitTarget) throw new Error("agent_calendar_touch_hit_test_failed")
+  await page.touchscreen.tap(point.x, point.y)
+  return {
+    inputModality: "playwright-touchscreen",
+    hitTarget,
+    targetSize: { width: Math.round(box.width), height: Math.round(box.height) },
+  }
 }
 
 function syntheticItems(count) {
@@ -175,8 +209,7 @@ try {
     await page.goto("/support/calendar", { waitUntil: "domcontentloaded" })
     await page.getByTestId("support-calendar-error").waitFor({ state: "visible" })
     await page.unroute(pattern, deny)
-    await page.getByTestId("support-calendar-retry").focus()
-    await page.getByTestId("support-calendar-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("support-calendar-retry"))
     await page.locator("[data-testid='support-calendar-workspace'][data-state='ready']").waitFor({ state: "visible" })
 
     const forbid = async (route) => route.fulfill(jsonFailure("Synthetic calendar permission denial", 403))
@@ -186,7 +219,14 @@ try {
     if (await page.getByTestId("support-calendar-retry").count() !== 0) throw new Error("calendar_permission_offered_misleading_retry")
     await page.unroute(pattern, forbid)
     await openWorkspace(page)
-    return { transientErrorObserved: true, keyboardRetry: true, permissionStateObserved: true, misleadingRetryAbsent: true }
+    return {
+      transientErrorObserved: true,
+      keyboardRetry: retryActivation.inputModality === "keyboard",
+      physicalTouchRetry: retryActivation.inputModality === "playwright-touchscreen",
+      retryActivation,
+      permissionStateObserved: true,
+      misleadingRetryAbsent: true,
+    }
   })
 
   await recordStep(page, "partial-source-failure-and-recovery", async () => {
@@ -201,10 +241,15 @@ try {
     await page.locator("[data-testid='support-calendar-workspace'][data-state='partial']").waitFor({ state: "visible" })
     await page.getByTestId("support-calendar-partial").waitFor({ state: "visible" })
     await page.unroute(pattern, partial)
-    await page.getByTestId("support-calendar-partial-retry").focus()
-    await page.getByTestId("support-calendar-partial-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("support-calendar-partial-retry"))
     await page.locator("[data-testid='support-calendar-workspace'][data-state='ready']").waitFor({ state: "visible" })
-    return { partialStateObserved: true, availableItemsPreserved: true, keyboardRetry: true }
+    return {
+      partialStateObserved: true,
+      availableItemsPreserved: true,
+      keyboardRetry: retryActivation.inputModality === "keyboard",
+      physicalTouchRetry: retryActivation.inputModality === "playwright-touchscreen",
+      retryActivation,
+    }
   })
 
   await recordStep(page, "empty-selected-day-and-recovery", async () => {
@@ -240,32 +285,43 @@ try {
 
   await recordStep(page, "keyboard-touch-detail-and-focus-return", async () => {
     const trigger = page.locator("[data-testid='support-calendar-item'][data-outside-hours='true']:visible").first()
-    await trigger.focus()
-    await trigger.press("Enter")
+    const activation = await activateEvidenceTarget(page, trigger)
     const detail = page.getByTestId("support-calendar-detail")
     await detail.waitFor({ state: "visible" })
     if (!await detail.innerText()) throw new Error("calendar_detail_content_missing")
     await page.keyboard.press("Escape")
     await detail.waitFor({ state: "hidden" })
-    if (!await trigger.isFocused()) throw new Error("calendar_detail_focus_not_restored")
-    return { keyboardOpen: true, touchTargetPresent: true, outsideHoursDetail: true, focusRestored: true }
+    const focusRestored = await trigger.evaluate((element) => element === document.activeElement)
+    if (viewportName === "desktop" && !focusRestored) throw new Error("calendar_detail_focus_not_restored")
+    return {
+      keyboardOpen: activation.inputModality === "keyboard",
+      physicalTouchOpen: activation.inputModality === "playwright-touchscreen",
+      activation,
+      outsideHoursDetail: true,
+      focusRestored: viewportName === "desktop" ? focusRestored : "not_applicable",
+    }
   })
 
   await recordStep(page, "week-navigation-and-today-recovery", async () => {
     await openWorkspace(page)
     const before = await page.getByTestId("support-calendar-week-label").innerText()
-    await page.getByTestId("support-calendar-next").focus()
-    await page.getByTestId("support-calendar-next").press("Enter")
+    const nextActivation = await activateEvidenceTarget(page, page.getByTestId("support-calendar-next"))
     await page.waitForFunction((previous) => document.querySelector("[data-testid='support-calendar-week-label']")?.textContent !== previous, before)
     await page.locator("[data-testid='support-calendar-workspace'][data-state='ready']").waitFor({ state: "visible" })
     const after = await page.getByTestId("support-calendar-week-label").innerText()
     if (after === before) throw new Error("calendar_next_week_did_not_change_range")
     const today = page.locator("[data-testid='support-calendar-today']:visible, [data-testid='support-calendar-today-mobile']:visible").first()
-    await today.click()
+    const todayActivation = await activateEvidenceTarget(page, today)
     await page.waitForFunction((expected) => document.querySelector("[data-testid='support-calendar-week-label']")?.textContent === expected, before)
     await page.locator("[data-testid='support-calendar-workspace'][data-state='ready']").waitFor({ state: "visible" })
     if (await page.getByTestId("support-calendar-week-label").innerText() !== before) throw new Error("calendar_today_did_not_restore_current_week")
-    return { keyboardWeekNavigation: true, todayRestored: true }
+    return {
+      keyboardWeekNavigation: nextActivation.inputModality === "keyboard",
+      physicalTouchWeekNavigation: nextActivation.inputModality === "playwright-touchscreen" && todayActivation.inputModality === "playwright-touchscreen",
+      nextActivation,
+      todayActivation,
+      todayRestored: true,
+    }
   })
 } finally {
   await context.close()

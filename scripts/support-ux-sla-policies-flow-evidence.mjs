@@ -83,6 +83,44 @@ function jsonFailure(message, status = 503) {
   return { status, contentType: "application/json", body: JSON.stringify({ success: false, error: message }) }
 }
 
+function visiblePolicyRow(page, policyId) {
+  return page.locator(`[data-testid='sla-policy-row'][data-policy-id='${policyId}']:visible`)
+}
+
+function visiblePolicyAction(page, policyId) {
+  return page.locator(`[data-testid='sla-policy-actions-${policyId}']:visible`)
+}
+
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  if (viewportName === "desktop") {
+    await locator.focus()
+    await locator.press(keyboardKey)
+    return { inputModality: "keyboard", hitTarget: true }
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  const box = await locator.boundingBox()
+  if (!box) throw new Error("sla_policies_touch_target_unmeasurable")
+  if (box.width < 44 || box.height < 44) {
+    throw new Error(`sla_policies_touch_target_too_small_${Math.round(box.width)}x${Math.round(box.height)}`)
+  }
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const hitTarget = await locator.evaluate((element, center) => {
+    const hit = document.elementFromPoint(center.x, center.y)
+    if (!hit) return false
+    const interactive = hit.closest("button,a,input,select,textarea,[role='button']")
+    return hit === element || interactive === element || element.contains(hit)
+  }, point)
+  if (!hitTarget) throw new Error("sla_policies_touch_hit_test_failed")
+  await page.touchscreen.tap(point.x, point.y)
+  return {
+    inputModality: "playwright-touchscreen",
+    hitTarget,
+    targetSize: { width: Math.round(box.width), height: Math.round(box.height) },
+  }
+}
+
 await mkdir(outputDirectory, { recursive: true })
 const report = {
   generatedAt: new Date().toISOString(),
@@ -104,6 +142,7 @@ const context = await browser.newContext({
   colorScheme: theme,
   reducedMotion: "reduce",
   hasTouch: viewportName !== "desktop",
+  serviceWorkers: "block",
 })
 await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
 await context.addInitScript((activeTheme) => localStorage.setItem("theme", activeTheme), theme)
@@ -136,8 +175,7 @@ try {
     await page.goto("/settings/sla-policies", { waitUntil: "domcontentloaded" })
     await page.getByTestId("sla-policies-load-error").waitFor({ state: "visible" })
     await page.unroute(collectionPattern, deny)
-    await page.getByTestId("sla-policies-load-retry").focus()
-    await page.getByTestId("sla-policies-load-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("sla-policies-load-retry"))
     await page.locator("[data-testid='sla-policies-workspace'][data-state='ready']").waitFor({ state: "visible" })
 
     const forbid = async (route) => route.fulfill(jsonFailure("Synthetic permission denial", 403))
@@ -147,7 +185,14 @@ try {
     if (await page.getByTestId("sla-policies-load-retry").count() !== 0) throw new Error("sla_permission_offered_misleading_retry")
     await page.unroute(collectionPattern, forbid)
     await openWorkspace(page)
-    return { transientErrorObserved: true, keyboardRetry: true, permissionStateObserved: true, misleadingRetryAbsent: true }
+    return {
+      transientErrorObserved: true,
+      keyboardRetry: retryActivation.inputModality === "keyboard",
+      physicalTouchRetry: retryActivation.inputModality === "playwright-touchscreen",
+      retryActivation,
+      permissionStateObserved: true,
+      misleadingRetryAbsent: true,
+    }
   })
 
   await recordStep(page, "empty-state-and-recovery", async () => {
@@ -159,7 +204,7 @@ try {
     await page.getByTestId("sla-policies-empty-create").waitFor({ state: "visible" })
     await page.unroute(collectionPattern, empty)
     await page.reload({ waitUntil: "domcontentloaded" })
-    await page.locator(`[data-testid='sla-policy-row'][data-policy-id='${protectedPolicyId}']`).first().waitFor({ state: "visible" })
+    await visiblePolicyRow(page, protectedPolicyId).waitFor({ state: "visible" })
     return { emptyStateObserved: true, createPathPresent: true, recoverySucceeded: true }
   })
 
@@ -169,6 +214,7 @@ try {
     const form = page.getByTestId("sla-policy-form")
     await form.waitFor({ state: "visible" })
     await page.getByTestId("sla-policy-preview").waitFor({ state: "visible" })
+    await page.locator("#sla-policy-name").fill("Inactive validation alternative")
     await page.getByTestId("sla-resolution-hours").fill("2")
     await page.getByTestId("sla-response-hours").fill("4")
     await page.getByTestId("sla-policy-validation-error").waitFor({ state: "visible" })
@@ -208,10 +254,10 @@ try {
     await page.getByTestId("sla-policy-submit").click()
     await page.getByTestId("sla-policy-form").waitFor({ state: "hidden" })
     await page.getByTestId("sla-policies-refresh-error").waitFor({ state: "visible" })
-    if (await page.locator(`[data-testid='sla-policy-row'][data-policy-id='${protectedPolicyId}']`).count() === 0) throw new Error("sla_refresh_failure_discarded_snapshot")
+    if (await visiblePolicyRow(page, protectedPolicyId).count() === 0) throw new Error("sla_refresh_failure_discarded_snapshot")
     await page.unroute(collectionPattern, denyRefresh)
     await page.getByTestId("sla-policies-refresh-retry").click()
-    const created = page.getByTestId("sla-policy-row").filter({ hasText: "Disposable evidence policy" }).first()
+    const created = page.locator("[data-testid='sla-policy-row']:visible").filter({ hasText: "Disposable evidence policy" }).first()
     await created.waitFor({ state: "visible" })
     createdPolicyId = await created.getAttribute("data-policy-id") || ""
     if (!createdPolicyId) throw new Error("created_sla_policy_id_missing")
@@ -220,7 +266,7 @@ try {
 
   await recordStep(page, "dependency-delete-is-blocked", async () => {
     await openWorkspace(page)
-    await page.getByTestId(`sla-policy-actions-${protectedPolicyId}`).first().click()
+    await visiblePolicyAction(page, protectedPolicyId).click()
     const deleteAction = page.getByTestId(`sla-policy-delete-${protectedPolicyId}`)
     await deleteAction.waitFor({ state: "visible" })
     if (await deleteAction.getAttribute("aria-disabled") !== "true") throw new Error("linked_sla_policy_delete_not_blocked")
@@ -236,16 +282,16 @@ try {
       ? route.fulfill(jsonFailure("Synthetic SLA delete failure"))
       : route.continue()
     await page.route(itemPattern, denyDelete)
-    await page.getByTestId(`sla-policy-actions-${createdPolicyId}`).first().click()
+    await visiblePolicyAction(page, createdPolicyId).click()
     await page.getByTestId(`sla-policy-delete-${createdPolicyId}`).click()
     const confirmation = page.getByRole("dialog")
     await confirmation.locator("button").last().click()
     await confirmation.getByRole("alert").waitFor({ state: "visible" })
-    if (await page.locator(`[data-testid='sla-policy-row'][data-policy-id='${createdPolicyId}']`).count() === 0) throw new Error("sla_delete_failure_removed_policy")
+    if (await visiblePolicyRow(page, createdPolicyId).count() === 0) throw new Error("sla_delete_failure_removed_policy")
     await page.unroute(itemPattern, denyDelete)
     await confirmation.locator("button").last().click()
     await confirmation.waitFor({ state: "hidden" })
-    await page.locator(`[data-testid='sla-policy-row'][data-policy-id='${createdPolicyId}']`).first().waitFor({ state: "hidden" })
+    await visiblePolicyRow(page, createdPolicyId).waitFor({ state: "hidden" })
     return { deleteRollback: true, retrySucceeded: true, disposableFixtureRemoved: true }
   })
 } finally {

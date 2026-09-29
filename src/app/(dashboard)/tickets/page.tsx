@@ -827,7 +827,7 @@ export default function TicketsPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className={cn("flex items-center gap-2 text-xs", newIds.has(item.id) ? "text-foreground/80" : "text-muted-foreground")}>
                       <span className="font-mono">{item.ticketNumber}</span>
                       <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium", statusColors[item.status] || statusColors.open)}>
                         <span className={cn("h-1.5 w-1.5 rounded-full", statusDot[item.status] || "bg-zinc-400")} />
@@ -835,7 +835,7 @@ export default function TicketsPage() {
                       </span>
                     </div>
                     <h2 className="mt-1 line-clamp-2 text-sm font-semibold leading-5">{item.subject}</h2>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">{item.requesterName || item.companyName || "—"}</p>
+                    <p className={cn("mt-1 truncate text-xs", newIds.has(item.id) ? "text-foreground/80" : "text-muted-foreground")}>{item.requesterName || item.companyName || "—"}</p>
                   </div>
                   <span className={cn("shrink-0 rounded-full px-2 py-1 text-xs font-medium", priorityColors[item.priority])}>{priorityLabel(item.priority)}</span>
                 </div>

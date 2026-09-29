@@ -112,10 +112,14 @@ async function authenticate(context) {
   if (!response.ok()) throw new Error("portal_users_authentication_failed")
 }
 
-async function dismissTour(page) {
+async function dismissTour(page, waitForAppearance = false) {
   const overlay = page.getByTestId("tour-overlay")
-  if (await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)) {
+  const visible = waitForAppearance
+    ? await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)
+    : await overlay.isVisible().catch(() => false)
+  if (visible) {
     await page.keyboard.press("Escape")
+    await overlay.waitFor({ state: "hidden", timeout: 5_000 })
   }
 }
 
@@ -123,8 +127,64 @@ async function openWorkspace(page) {
   const response = await page.goto("/settings/portal-users", { waitUntil: "domcontentloaded", timeout: 60_000 })
   if (!response || response.status() >= 400) throw new Error(`page_http_${response?.status() || 0}`)
   await page.locator("[data-testid='portal-users-workspace'][data-state='ready']").waitFor({ state: "visible", timeout: 30_000 })
-  await dismissTour(page)
+  await dismissTour(page, true)
   assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "Portal Users")
+}
+
+const activationEvidence = []
+
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  await dismissTour(page)
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  if (viewportName === "desktop") {
+    await locator.focus()
+    await locator.press(keyboardKey)
+    const detail = { inputModality: "keyboard", hitTarget: true, keyboardKey }
+    activationEvidence.push(detail)
+    return detail
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }))
+  await page.waitForTimeout(50)
+  const target = await locator.evaluate((element) => {
+    const input = element instanceof HTMLInputElement ? element : null
+    const surface = input && (input.type === "checkbox" || input.type === "radio")
+      ? input.closest("label") || input
+      : element
+    const box = surface.getBoundingClientRect()
+    const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+    const hit = document.elementFromPoint(point.x, point.y)
+    return {
+      x: point.x,
+      y: point.y,
+      width: box.width,
+      height: box.height,
+      hitTarget: Boolean(hit && (surface === hit || surface.contains(hit))),
+    }
+  })
+  if (target.width < 44 || target.height < 44) {
+    throw new Error(`portal_users_touch_target_too_small_${Math.round(target.width)}x${Math.round(target.height)}`)
+  }
+  if (!target.hitTarget) throw new Error("portal_users_touch_hit_test_failed")
+  await page.touchscreen.tap(target.x, target.y)
+  const detail = {
+    inputModality: "playwright-touchscreen",
+    hitTarget: true,
+    targetSize: { width: Math.round(target.width), height: Math.round(target.height) },
+  }
+  activationEvidence.push(detail)
+  return detail
+}
+
+async function waitForFocusRestoration(locator) {
+  return locator.evaluate(async (element) => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (element === document.activeElement) return true
+      await new Promise((resolve) => window.setTimeout(resolve, 50))
+    }
+    return element === document.activeElement
+  })
 }
 
 function visibleContact(page, id) {
@@ -182,14 +242,16 @@ function installPortalApi(page, initialContacts, options = {}) {
 
 async function chooseMenuAction(page, contactId, testId) {
   const row = visibleContact(page, contactId)
-  await row.getByTestId("portal-user-menu").click()
-  await page.getByTestId(testId).click()
+  const trigger = row.getByTestId("portal-user-menu")
+  await activateEvidenceTarget(page, trigger)
+  await activateEvidenceTarget(page, page.getByTestId(testId))
+  return trigger
 }
 
 async function confirmOpenDialog(page) {
   const dialog = page.getByRole("dialog")
   await dialog.waitFor({ state: "visible" })
-  await dialog.getByRole("button").last().click()
+  await activateEvidenceTarget(page, dialog.getByRole("button").last())
   return dialog
 }
 
@@ -203,6 +265,7 @@ const report = {
   locale,
   theme,
   viewport: viewportName,
+  activations: activationEvidence,
   results: [],
 }
 
@@ -244,10 +307,10 @@ try {
     await page.route(pattern, fail)
     await page.goto("/settings/portal-users", { waitUntil: "domcontentloaded" })
     await page.getByTestId("portal-users-error").waitFor({ state: "visible" })
+    await dismissTour(page, true)
     await page.unroute(pattern, fail)
     await installPortalApi(page, [contact(0)])
-    await page.getByTestId("portal-users-retry").focus()
-    await page.getByTestId("portal-users-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("portal-users-retry"))
     await page.locator("[data-testid='portal-users-workspace'][data-state='ready']").waitFor({ state: "visible" })
     await page.unrouteAll({ behavior: "wait" })
 
@@ -256,7 +319,7 @@ try {
     await page.reload({ waitUntil: "domcontentloaded" })
     await page.locator("[data-testid='portal-users-error'][data-retryable='false']").waitFor({ state: "visible" })
     if (await page.getByTestId("portal-users-retry").count() !== 0) throw new Error("portal_users_permission_offered_misleading_retry")
-    return { transientErrorObserved: true, keyboardRetry: true, permissionStateObserved: true, misleadingRetryAbsent: true }
+    return { transientErrorObserved: true, recoveryInput: retryActivation.inputModality, permissionStateObserved: true, misleadingRetryAbsent: true }
   })
 
   await recordStep(page, "empty-six-recovery-states-and-density", async () => {
@@ -270,7 +333,7 @@ try {
     for (const state of ["contact_inactive", "disabled", "setup_pending", "registered", "recovery_active", "recovery_expired"]) {
       await page.locator(`[data-access-state='${state}']:visible`).first().waitFor({ state: "visible" })
     }
-    const visibleSurface = viewportName === "mobile" ? page.getByTestId("portal-users-mobile-list") : page.getByTestId("portal-users-desktop-table")
+    const visibleSurface = viewportName === "desktop" ? page.getByTestId("portal-users-desktop-table") : page.getByTestId("portal-users-mobile-list")
     await visibleSurface.waitFor({ state: "visible" })
     const rows = await page.locator("[data-testid='portal-user-row']:visible, [data-testid='portal-user-card']:visible").count()
     if (rows !== 36) throw new Error("portal_users_density_row_count_mismatch")
@@ -295,7 +358,7 @@ try {
     }
     await page.route(pattern, handler)
     await openWorkspace(page)
-    await page.locator("[data-testid='portal-user-select']:visible").first().check()
+    await activateEvidenceTarget(page, page.locator("[data-testid='portal-user-select']:visible").first(), "Space")
     await page.getByTestId("portal-users-bulk").waitFor({ state: "visible" })
     await page.getByTestId("portal-users-search").fill("slow")
     await slowStarted
@@ -313,16 +376,16 @@ try {
     await installPortalApi(page, contacts, { failPatchAttempts: [1], patchDelay: 250 })
     await openWorkspace(page)
     const selects = page.locator("[data-testid='portal-user-select']:visible")
-    await selects.nth(0).check()
-    await selects.nth(1).check()
-    await page.getByTestId("portal-users-bulk-disable").click()
+    await activateEvidenceTarget(page, selects.nth(0), "Space")
+    await activateEvidenceTarget(page, selects.nth(1), "Space")
+    await activateEvidenceTarget(page, page.getByTestId("portal-users-bulk-disable"))
     const dialog = page.getByRole("dialog")
     const confirm = dialog.getByRole("button").last()
-    await confirm.click()
+    await activateEvidenceTarget(page, confirm)
     if (!await confirm.isDisabled()) throw new Error("portal_users_bulk_duplicate_submit_not_blocked")
     await dialog.getByRole("alert").waitFor({ state: "visible" })
     if (await page.locator("[data-testid='portal-user-select']:visible:checked").count() !== 2) throw new Error("portal_users_bulk_failure_lost_selection")
-    await confirm.click()
+    await activateEvidenceTarget(page, confirm)
     await dialog.waitFor({ state: "hidden" })
     if (await page.getByTestId("portal-users-bulk").count() !== 0) throw new Error("portal_users_bulk_success_kept_selection")
     return { confirmation: true, duplicateSubmitBlocked: true, failedSelectionRetained: true, retrySucceeded: true, selectionClearedAfterSuccess: true }
@@ -332,49 +395,55 @@ try {
     const original = contact(0)
     await installPortalApi(page, [original], { failPatchAttempts: [1], auditRecorded: false })
     await openWorkspace(page)
-    await chooseMenuAction(page, original.id, "portal-user-recovery")
+    const recoveryTrigger = await chooseMenuAction(page, original.id, "portal-user-recovery")
     const dialog = await confirmOpenDialog(page)
     await dialog.getByRole("alert").waitFor({ state: "visible" })
     if (!await dialog.isVisible()) throw new Error("portal_recovery_failure_closed_dialog")
-    await dialog.getByRole("button").last().click()
+    await activateEvidenceTarget(page, dialog.getByRole("button").last())
     await dialog.waitFor({ state: "hidden" })
+    const recoveryFocusReturned = viewportName !== "desktop" || await waitForFocusRestoration(recoveryTrigger)
+    if (!recoveryFocusReturned) throw new Error("portal_recovery_focus_not_restored")
     await page.locator(`[data-contact-id='${original.id}'][data-access-state='recovery_active']:visible`).waitFor({ state: "visible" })
     await page.locator("[data-testid='portal-users-notice'][data-kind='error']").waitFor({ state: "visible" })
-    return { failureRetainedDialog: true, retrySucceeded: true, activeExpiryRendered: true, auditFailureDistinguished: true }
+    return { failureRetainedDialog: true, retrySucceeded: true, activeExpiryRendered: true, auditFailureDistinguished: true, focusReturned: recoveryFocusReturned }
   })
 
   await recordStep(page, "edit-and-manual-password-recovery", async () => {
     const original = contact(0)
     await installPortalApi(page, [original], { failPatchAttempts: [1, 3], patchDelay: 150 })
     await openWorkspace(page)
-    await chooseMenuAction(page, original.id, "portal-user-edit")
+    const editTrigger = await chooseMenuAction(page, original.id, "portal-user-edit")
     const name = page.getByTestId("portal-user-edit-name")
     await name.fill("Recovered portal profile")
-    await page.getByTestId("portal-user-edit-save").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-user-edit-save"))
     await page.getByTestId("portal-user-edit-form").getByRole("alert").waitFor({ state: "visible" })
     if (await name.inputValue() !== "Recovered portal profile") throw new Error("portal_edit_failure_lost_draft")
-    await page.getByTestId("portal-user-edit-save").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-user-edit-save"))
     await page.getByTestId("portal-user-edit-form").waitFor({ state: "hidden" })
+    const editFocusReturned = viewportName !== "desktop" || await waitForFocusRestoration(editTrigger)
+    if (!editFocusReturned) throw new Error("portal_edit_focus_not_restored")
     await visibleContact(page, original.id).getByText("Recovered portal profile").waitFor({ state: "visible" })
 
-    await chooseMenuAction(page, original.id, "portal-user-manual-password")
+    const passwordTrigger = await chooseMenuAction(page, original.id, "portal-user-manual-password")
     const password = page.getByTestId("portal-user-password")
     const confirmation = page.getByTestId("portal-user-password-confirm")
     await password.fill("Portal#Evidence2026")
     await confirmation.fill("Portal#Evidence2027")
-    await page.getByTestId("portal-user-password-save").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-user-password-save"))
     await page.getByTestId("portal-user-password-form").getByRole("alert").waitFor({ state: "visible" })
     await confirmation.fill("Portal#Evidence2026")
-    await page.getByTestId("portal-user-password-save").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-user-password-save"))
     await page.getByTestId("portal-user-password-form").getByRole("alert").waitFor({ state: "visible" })
-    await page.getByTestId("portal-user-password-ack").check()
-    await page.getByTestId("portal-user-password-save").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-user-password-ack"), "Space")
+    await activateEvidenceTarget(page, page.getByTestId("portal-user-password-save"))
     await page.getByTestId("portal-user-password-form").getByRole("alert").waitFor({ state: "hidden" })
     await page.getByTestId("portal-user-password-form").getByRole("alert").waitFor({ state: "visible" })
     if (await password.inputValue() !== "Portal#Evidence2026") throw new Error("portal_password_failure_lost_input")
-    await page.getByTestId("portal-user-password-save").click()
+    await activateEvidenceTarget(page, page.getByTestId("portal-user-password-save"))
     await page.getByTestId("portal-user-password-form").waitFor({ state: "hidden" })
-    return { editDraftRetained: true, editRetrySucceeded: true, mismatchBlocked: true, acknowledgementRequired: true, passwordFailureRetained: true, passwordRetrySucceeded: true }
+    const passwordFocusReturned = viewportName !== "desktop" || await waitForFocusRestoration(passwordTrigger)
+    if (!passwordFocusReturned) throw new Error("portal_password_focus_not_restored")
+    return { editDraftRetained: true, editRetrySucceeded: true, editFocusReturned, mismatchBlocked: true, acknowledgementRequired: true, passwordFailureRetained: true, passwordRetrySucceeded: true, passwordFocusReturned }
   })
 
   await recordStep(page, "single-disable-clear-chat-and-removal-recovery", async () => {
@@ -382,10 +451,10 @@ try {
     const second = contact(1)
     await installPortalApi(page, [first, second], { failPatchAttempts: [1] })
     await openWorkspace(page)
-    await visibleContact(page, first.id).getByTestId("portal-user-access").click()
+    await activateEvidenceTarget(page, visibleContact(page, first.id).getByTestId("portal-user-access"))
     const disableDialog = await confirmOpenDialog(page)
     await disableDialog.getByRole("alert").waitFor({ state: "visible" })
-    await disableDialog.getByRole("button").last().click()
+    await activateEvidenceTarget(page, disableDialog.getByRole("button").last())
     await disableDialog.waitFor({ state: "hidden" })
     await page.locator(`[data-contact-id='${first.id}'][data-access-state='disabled']:visible`).waitFor({ state: "visible" })
 

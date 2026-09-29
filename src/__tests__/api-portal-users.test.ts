@@ -4,8 +4,8 @@ import { NextRequest } from "next/server"
 const authState = vi.hoisted(() => ({ role: "admin" }))
 
 vi.mock("@/lib/with-rls", () => ({
-  withRlsSessionAuth: (handler: (req: NextRequest, auth: { orgId: string; role: string }) => Promise<Response>) =>
-    (req: NextRequest) => handler(req, { orgId: "org-1", role: authState.role }),
+  withRlsSessionAuth: (handler: (req: NextRequest, auth: { orgId: string; userId: string; role: string }) => Promise<Response>) =>
+    (req: NextRequest) => handler(req, { orgId: "org-1", userId: "admin-1", role: authState.role }),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -19,6 +19,7 @@ vi.mock("@/lib/prisma", () => ({
     aiChatSession: { findMany: vi.fn(), deleteMany: vi.fn() },
     aiChatMessage: { deleteMany: vi.fn() },
     auditLog: { create: vi.fn() },
+    $transaction: vi.fn((operations: Promise<unknown>[]) => Promise.all(operations)),
   },
 }))
 
@@ -30,7 +31,7 @@ vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn() },
 }))
 
-import { PATCH } from "@/app/api/v1/portal-users/route"
+import { GET, PATCH } from "@/app/api/v1/portal-users/route"
 import { prisma } from "@/lib/prisma"
 import { issuePortalPasswordLink } from "@/lib/portal-password-link"
 import bcrypt from "bcryptjs"
@@ -63,7 +64,7 @@ beforeEach(() => {
   vi.mocked(prisma.contact.findFirst).mockResolvedValue(contact as never)
   vi.mocked(prisma.contact.updateMany).mockResolvedValue({ count: 1 } as never)
   vi.mocked(prisma.aiChatSession.findMany).mockResolvedValue([] as never)
-  vi.mocked(issuePortalPasswordLink).mockResolvedValue({ ok: true, mode: "reset" })
+  vi.mocked(issuePortalPasswordLink).mockResolvedValue({ ok: true, mode: "reset", expiresAt: "2026-09-06T12:00:00.000Z" })
   vi.mocked(bcrypt.hash).mockResolvedValue("new-password-hash" as never)
 })
 
@@ -81,7 +82,7 @@ describe("PATCH /api/v1/portal-users", () => {
     const res = await PATCH(request({ contactId: contact.id, sendPasswordLink: true }))
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ success: true, data: { mode: "reset" } })
+    expect(await res.json()).toEqual({ success: true, data: { mode: "reset", expiresAt: "2026-09-06T12:00:00.000Z" }, auditRecorded: true })
     expect(issuePortalPasswordLink).toHaveBeenCalledWith(expect.objectContaining({
       id: contact.id,
       organizationId: "org-1",
@@ -105,7 +106,7 @@ describe("PATCH /api/v1/portal-users", () => {
     }))
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ success: true, data: { credentialsRevoked: true } })
+    expect(await res.json()).toEqual({ success: true, data: { credentialsRevoked: true }, auditRecorded: true })
     expect(prisma.contact.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: contact.id, organizationId: "org-1" },
       data: expect.objectContaining({
@@ -130,7 +131,7 @@ describe("PATCH /api/v1/portal-users", () => {
     }))
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ success: true })
+    expect(await res.json()).toEqual({ success: true, auditRecorded: true })
     expect(bcrypt.hash).toHaveBeenCalledWith("Customer#Portal2026", 12)
     expect(prisma.contact.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: contact.id, organizationId: "org-1" },
@@ -142,7 +143,7 @@ describe("PATCH /api/v1/portal-users", () => {
       }),
     }))
     expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ action: "portal_password_set_by_admin", details: { source: "manual" } }),
+      data: expect.objectContaining({ action: "portal_password_set_by_admin", details: { source: "manual", actorUserId: "admin-1" } }),
     }))
   })
 
@@ -163,7 +164,7 @@ describe("PATCH /api/v1/portal-users", () => {
     const res = await PATCH(request({ contactId: contact.id, removeFromPortal: true }))
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ success: true, removed: true })
+    expect(await res.json()).toEqual({ success: true, removed: true, auditRecorded: true })
     expect(prisma.aiChatMessage.deleteMany).toHaveBeenCalledWith({ where: { sessionId: { in: ["chat-1"] } } })
     expect(prisma.aiChatSession.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ["chat-1"] } } })
     expect(prisma.contact.updateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -174,5 +175,65 @@ describe("PATCH /api/v1/portal-users", () => {
         portalVerificationToken: null,
       }),
     }))
+  })
+
+  it("reports an audit delivery failure without pretending the access mutation failed", async () => {
+    vi.mocked(prisma.auditLog.create).mockRejectedValueOnce(new Error("audit unavailable"))
+    const res = await PATCH(request({ contactId: contact.id, portalAccessEnabled: false }))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ success: true, auditRecorded: false })
+    expect(prisma.contact.updateMany).toHaveBeenCalled()
+  })
+
+  it("does not enable portal access for an inactive CRM contact", async () => {
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ ...contact, isActive: false, portalAccessEnabled: false } as never)
+    const res = await PATCH(request({ contactId: contact.id, portalAccessEnabled: true }))
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("PORTAL_CONTACT_INACTIVE")
+    expect(prisma.contact.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("rejects a bulk enable when any selected CRM contact is inactive or has no email", async () => {
+    vi.mocked(prisma.contact.count).mockResolvedValue(1)
+    const res = await PATCH(request({ contactIds: ["c1", "c2"], action: "enable" }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe("PORTAL_BULK_INELIGIBLE")
+    expect(prisma.contact.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("audits bulk scope and returns the actual updated count", async () => {
+    vi.mocked(prisma.contact.updateMany).mockResolvedValue({ count: 2 } as never)
+    const res = await PATCH(request({ contactIds: ["c1", "c2"], action: "disable" }))
+    expect(await res.json()).toEqual({ success: true, updated: 2, auditRecorded: true })
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "portal_access_bulk_disabled",
+        details: { requested: 2, updated: 2, actorUserId: "admin-1" },
+      }),
+    }))
+  })
+})
+
+describe("GET /api/v1/portal-users", () => {
+  it("returns recovery expiry, a bounded result scope and write permission", async () => {
+    vi.mocked(prisma.contact.findMany)
+      .mockResolvedValueOnce([{ ...contact, company: { name: "Acme" } }] as never)
+      .mockResolvedValueOnce([{ portalAccessEnabled: true, portalPasswordHash: "hash", portalLastLoginAt: new Date() }] as never)
+    const res = await GET(new NextRequest("http://localhost/api/v1/portal-users?search=Jane"))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.data.contacts[0]).toMatchObject({
+      id: "contact-1",
+      recoveryExpiresAt: contact.portalVerificationExpires.toISOString(),
+    })
+    expect(json.data.scope).toMatchObject({ shown: 1, truncated: false })
+    expect(json.permissions).toEqual({ canWrite: true, role: "admin" })
+  })
+
+  it("rejects non-administrators before querying contacts", async () => {
+    authState.role = "support"
+    const res = await GET(new NextRequest("http://localhost/api/v1/portal-users"))
+    expect(res.status).toBe(403)
+    expect(prisma.contact.findMany).not.toHaveBeenCalled()
   })
 })

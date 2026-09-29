@@ -7248,7 +7248,7 @@
     "sentenceActions": { "increase_priority": "increase ticket priority", "reassign": "reassign the ticket" },
     "sentence": "When {trigger}, {action} at escalation level L{level}.",
     "previewTitle": "Behavior preview",
-    "orderBehavior": "Active rules are evaluated from L1 to L5. Every matching rule can run; a higher level does not cancel a lower one.",
+    "orderBehavior": "Active rules are checked from L1 to L5. At most one matching rule runs per cron cycle; after the 30-minute cooldown, the next higher matching level can run. Levels already reached are skipped.",
     "sampleDeadline": "Sample SLA deadline",
     "simulationResult": "This rule would run at {time}.",
     "conflictWarning": "This exactly matches active rule “{name}”. Change the timing/action or keep this copy inactive.",
@@ -7928,6 +7928,7 @@
     "closureReject": "Return to support",
     "closureConfirmedMessage": "The ticket is closed. Thank you for confirming.",
     "closureRejectedMessage": "The ticket is back with the support team.",
+    "closureReturnToPortal": "Go to customer portal",
     "ticketFallback": "Support ticket",
     "closureStatus": {
       "pending": "Waiting for your answer",
@@ -10718,7 +10719,10 @@
       "claimFailed": "Could not claim this missed call. Try again.",
       "missedAt": "Missed {time}",
       "statusOpen": "Unassigned",
-      "loading": "Loading missed calls…"
+      "loading": "Loading missed calls…",
+      "openCount": "{count} waiting",
+      "expand": "Show queue",
+      "collapse": "Hide queue"
     },
     "journal": {
       "title": "Call details",

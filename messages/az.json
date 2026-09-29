@@ -7244,7 +7244,7 @@
     "sentenceActions": { "increase_priority": "tiket prioritetini artır", "reassign": "tiketi yenidən təyin et" },
     "sentence": "{trigger} olduqda L{level} eskalasiya səviyyəsində {action}.",
     "previewTitle": "Davranışın önizləməsi",
-    "orderBehavior": "Aktiv qaydalar L1-dən L5-ə yoxlanılır. Uyğun gələn hər qayda işləyə bilər; yüksək səviyyə aşağı səviyyəni ləğv etmir.",
+    "orderBehavior": "Aktiv qaydalar L1-dən L5-ə yoxlanılır. Hər cron dövründə ən çox bir uyğun qayda işləyir; 30 dəqiqəlik fasilədən sonra növbəti uyğun yüksək səviyyə işləyə bilər. Artıq çatılmış səviyyələr ötürülür.",
     "sampleDeadline": "Nümunə SLA müddəti",
     "simulationResult": "Bu qayda {time} vaxtında işləyəcək.",
     "conflictWarning": "Bu, aktiv {name} qaydası ilə tam üst-üstə düşür. Vaxtı/hərəkəti dəyişin və ya surəti deaktiv saxlayın.",
@@ -7924,6 +7924,7 @@
     "closureReject": "Dəstəyə qaytar",
     "closureConfirmedMessage": "Müraciət bağlandı. Təsdiq etdiyiniz üçün təşəkkür edirik.",
     "closureRejectedMessage": "Müraciət dəstək komandasına qaytarıldı.",
+    "closureReturnToPortal": "Müştəri portalına keç",
     "ticketFallback": "Dəstək müraciəti",
     "closureStatus": {
       "pending": "Cavabınızı gözləyir",
@@ -10714,7 +10715,10 @@
       "claimFailed": "Zəngi üzərinizə götürmək mümkün olmadı. Yenidən cəhd edin.",
       "missedAt": "Buraxılıb: {time}",
       "statusOpen": "Məsul şəxs yoxdur",
-      "loading": "Buraxılmış zənglər yüklənir…"
+      "loading": "Buraxılmış zənglər yüklənir…",
+      "openCount": "{count} zəng gözləyir",
+      "expand": "Növbəni göstər",
+      "collapse": "Növbəni gizlət"
     },
     "journal": {
       "title": "Zəng detalları",

@@ -407,7 +407,7 @@ export const POST = withRlsAuth("tickets", "write", async (req, { orgId, userId,
   }
   if (validTo && validTo <= validFrom) {
     return NextResponse.json(
-      { error: "validTo must be after validFrom." },
+      { error: "validTo must be after validFrom.", code: "INVALID_VALIDITY" },
       { status: 400 },
     )
   }
@@ -423,10 +423,10 @@ export const POST = withRlsAuth("tickets", "write", async (req, { orgId, userId,
     }),
   ])
   if (!company) {
-    return NextResponse.json({ error: "Company not found." }, { status: 404 })
+    return NextResponse.json({ error: "Company not found.", code: "COMPANY_NOT_FOUND" }, { status: 404 })
   }
   if (!slaPolicy) {
-    return NextResponse.json({ error: "Active SLA policy not found." }, { status: 404 })
+    return NextResponse.json({ error: "Active SLA policy not found.", code: "SLA_POLICY_NOT_FOUND" }, { status: 404 })
   }
 
   try {

@@ -111,7 +111,7 @@ export const PATCH = withRlsAuth(
     }
     if (!ensureEditable(definition)) {
       return NextResponse.json(
-        { error: "Milestone rules can be changed only while the support term is draft or suspended." },
+        { error: "Milestone rules can be changed only while the support term is draft or suspended.", code: "TERM_NOT_EDITABLE" },
         { status: 422 },
       )
     }
@@ -181,13 +181,13 @@ export const DELETE = withRlsAuth(
     }
     if (!ensureEditable(definition)) {
       return NextResponse.json(
-        { error: "Milestone rules can be changed only while the support term is draft or suspended." },
+        { error: "Milestone rules can be changed only while the support term is draft or suspended.", code: "TERM_NOT_EDITABLE" },
         { status: 422 },
       )
     }
     if ((definition._count?.ticketMilestones ?? 0) > 0) {
       return NextResponse.json(
-        { error: "This milestone definition is already used by tickets and cannot be deleted." },
+        { error: "This milestone definition is already used by tickets and cannot be deleted.", code: "MILESTONE_IN_USE" },
         { status: 409 },
       )
     }

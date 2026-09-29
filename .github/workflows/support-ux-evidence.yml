@@ -43,6 +43,14 @@ on:
         description: Fixture profile label (empty, typical, high, 0, 5, 50, 500)
         required: true
         default: typical
+      support_ux_canary:
+        description: Tenant Support UX state contract used by the isolated fixture
+        required: true
+        type: choice
+        default: enabled
+        options:
+          - enabled
+          - disabled
       sample_count:
         description: One load for matrix coverage, three for inspection, seven for comparable p75 evidence
         required: true
@@ -80,7 +88,7 @@ concurrency:
 jobs:
   capture:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 180
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -110,6 +118,7 @@ jobs:
       SUPPORT_EVIDENCE_THEMES: ${{ inputs.themes }}
       SUPPORT_EVIDENCE_VIEWPORTS: ${{ inputs.viewports }}
       SUPPORT_EVIDENCE_DATA_PROFILE: ${{ inputs.data_profile }}
+      SUPPORT_EVIDENCE_SUPPORT_UX_CANARY: ${{ inputs.support_ux_canary }}
       SUPPORT_EVIDENCE_SAMPLE_COUNT: ${{ inputs.sample_count }}
       SUPPORT_EVIDENCE_REQUIRE_BASELINE: ${{ inputs.visual_mode == 'compare' }}
       SUPPORT_EVIDENCE_BASELINE_DIR: ${{ inputs.visual_mode == 'compare' && 'artifacts/support-ux-baseline' || '' }}
@@ -142,6 +151,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Prepare bounded GitHub-hosted build memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
 
       - run: npm ci
 
@@ -257,6 +269,811 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts \
             src/__tests__/support-ux-evidence-seed-contract.test.ts
+
+      - name: Validate section-scoped VoIP evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'voip') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/support/voip,
+            src/app/api/v1/calls,
+            src/components/voip
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-voip-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-voip-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/support/voip/page.tsx \
+            src/app/api/v1/calls/route.ts \
+            src/components/voip/call-recording-player.tsx \
+            src/components/voip/missed-inbound-queue.tsx \
+            src/__tests__/api-voip-channel-admin-gate.test.ts \
+            src/__tests__/lib-calls-access.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-voip-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
+            src/__tests__/voip-business-hours-ui.test.ts \
+            src/__tests__/voip-ux-contract.test.ts
+          npx vitest run \
+            src/__tests__/api-calls.test.ts \
+            src/__tests__/api-voip-channel-admin-gate.test.ts \
+            src/__tests__/lib-calls-access.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-voip-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
+            src/__tests__/voip-business-hours-ui.test.ts \
+            src/__tests__/voip-ux-contract.test.ts
+
+      - name: Validate section-scoped Knowledge Base evidence
+        if: ${{ inputs.scenarios != 'all' && (contains(inputs.scenarios, 'knowledge-base') || contains(inputs.scenarios, 'knowledge-article') || contains(inputs.scenarios, 'portal-knowledge')) }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/knowledge-base,
+            src/app/portal/knowledge-base,
+            src/app/portal/layout.tsx,
+            src/components/kb-article-form.tsx,
+            src/components/portal-chat-widget.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-knowledge-base-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-knowledge-base-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/knowledge-base/layout.tsx \
+            src/app/\(dashboard\)/knowledge-base/page.tsx \
+            src/app/\(dashboard\)/knowledge-base/\[id\]/page.tsx \
+            src/app/portal/knowledge-base/page.tsx \
+            src/app/portal/layout.tsx \
+            src/components/kb-article-form.tsx \
+            src/components/portal-chat-widget.tsx \
+            src/app/api/v1/kb-categories/\[id\]/route.ts \
+            src/app/api/v1/kb-categories/route.ts \
+            src/app/api/v1/kb/\[id\]/route.ts \
+            src/app/api/v1/kb/route.ts \
+            src/app/api/v1/public/portal-kb/route.ts \
+            src/__tests__/api-kb-ux.test.ts \
+            src/__tests__/knowledge-base-ux-contract.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-knowledge-base-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-kb.test.ts \
+            src/__tests__/api-kb-ux.test.ts \
+            src/__tests__/api-misc-system.test.ts \
+            src/__tests__/api-portal.test.ts \
+            src/__tests__/knowledge-base-ux-contract.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-knowledge-base-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Ticket Categories evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'ticket-categories') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/settings/ticket-categories,
+            src/components/delete-confirm-dialog.tsx,
+            src/components/ui/dropdown-menu.tsx,
+            src/components/ui/sheet.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-ticket-categories-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-ticket-categories-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/settings/ticket-categories/page.tsx \
+            src/app/api/v1/ticket-categories/\[id\]/route.ts \
+            src/components/delete-confirm-dialog.tsx \
+            src/components/ui/dropdown-menu.tsx \
+            src/components/ui/sheet.tsx \
+            src/lib/ticketing/category-tree-view.ts \
+            src/__tests__/api-ticket-category-state.test.ts \
+            src/__tests__/lib-ticket-category-tree-view.test.ts \
+            src/__tests__/ticket-categories-ux-contract.test.ts \
+            src/__tests__/support-ux-ticket-categories-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-ticket-category-state.test.ts \
+            src/__tests__/lib-ticket-category-tree-view.test.ts \
+            src/__tests__/ticket-categories-ux-contract.test.ts \
+            src/__tests__/support-ux-ticket-categories-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped SLA Policies evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'sla-policies') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/settings/sla-policies,
+            src/components/sla-policy-form.tsx,
+            src/components/delete-confirm-dialog.tsx,
+            src/components/ui/dialog.tsx,
+            src/components/ui/dropdown-menu.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-sla-policies-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-sla-policies-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/settings/sla-policies/page.tsx \
+            src/app/api/v1/sla-policies/route.ts \
+            src/app/api/v1/sla-policies/\[id\]/route.ts \
+            src/components/sla-policy-form.tsx \
+            src/components/delete-confirm-dialog.tsx \
+            src/components/ui/dialog.tsx \
+            src/components/ui/dropdown-menu.tsx \
+            src/lib/ticketing/sla-policy.ts \
+            src/__tests__/api-misc-system.test.ts \
+            src/__tests__/api-sla-policy-validation.test.ts \
+            src/__tests__/lib-sla-policy.test.ts \
+            src/__tests__/sla-policies-ux-contract.test.ts \
+            src/__tests__/support-ux-sla-policies-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-misc-system.test.ts \
+            src/__tests__/api-sla-policy-validation.test.ts \
+            src/__tests__/lib-sla-policy.test.ts \
+            src/__tests__/sla-policies-ux-contract.test.ts \
+            src/__tests__/support-ux-sla-policies-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Support Entitlements evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'support-entitlements') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/support/entitlements,
+            src/components/delete-confirm-dialog.tsx,
+            src/components/ui/dialog.tsx,
+            src/components/ui/dropdown-menu.tsx,
+            src/components/ui/sheet.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-entitlements-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-entitlements-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/support/entitlements/page.tsx \
+            src/app/api/v1/entitlements/route.ts \
+            src/app/api/v1/entitlements/\[id\]/route.ts \
+            src/app/api/v1/entitlements/\[id\]/milestones/route.ts \
+            src/app/api/v1/entitlements/\[id\]/milestones/\[milestoneId\]/route.ts \
+            src/components/delete-confirm-dialog.tsx \
+            src/components/ui/dialog.tsx \
+            src/components/ui/dropdown-menu.tsx \
+            src/components/ui/sheet.tsx \
+            src/lib/entitlement-process/presentation.ts \
+            src/__tests__/api-entitlements.test.ts \
+            src/__tests__/api-ticket-entitlement-waive.test.ts \
+            src/__tests__/entitlement-presentation.test.ts \
+            src/__tests__/lib-entitlement-milestone-automation.test.ts \
+            src/__tests__/lib-entitlement-process.test.ts \
+            src/__tests__/support-entitlements-ux-contract.test.ts \
+            src/__tests__/support-ux-entitlements-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-entitlements.test.ts \
+            src/__tests__/api-reports-journeys.test.ts \
+            src/__tests__/api-ticket-entitlement-waive.test.ts \
+            src/__tests__/entitlement-presentation.test.ts \
+            src/__tests__/lib-entitlement-milestone-automation.test.ts \
+            src/__tests__/lib-entitlement-process.test.ts \
+            src/__tests__/support-entitlements-ux-contract.test.ts \
+            src/__tests__/support-ux-entitlements-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Entitlement Templates evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'entitlement-templates') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/settings/entitlement-templates,
+            src/components/delete-confirm-dialog.tsx,
+            src/components/ui/dialog.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-entitlement-templates-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-entitlement-templates-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/settings/entitlement-templates/page.tsx \
+            src/app/api/v1/entitlement-templates/route.ts \
+            src/components/delete-confirm-dialog.tsx \
+            src/components/ui/dialog.tsx \
+            src/lib/entitlement-process/template-draft.ts \
+            src/__tests__/api-entitlements.test.ts \
+            src/__tests__/entitlement-template-draft.test.ts \
+            src/__tests__/entitlement-templates-ux-contract.test.ts \
+            src/__tests__/lib-entitlement-process.test.ts \
+            src/__tests__/support-ux-entitlement-templates-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-entitlements.test.ts \
+            src/__tests__/entitlement-template-draft.test.ts \
+            src/__tests__/entitlement-templates-ux-contract.test.ts \
+            src/__tests__/lib-entitlement-process.test.ts \
+            src/__tests__/support-ux-entitlement-templates-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Skill Routing evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'skill-routing') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/support/skill-routing,
+            src/components/support/agent-skills-manager.tsx,
+            src/components/support/queue-manager.tsx,
+            src/components/skill-picker.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-skill-routing-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-skill-routing-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/support/skill-routing/page.tsx \
+            src/app/api/v1/skill-routing/agents/route.ts \
+            src/app/api/v1/ticket-queues/route.ts \
+            src/app/api/v1/ticket-queues/\[id\]/route.ts \
+            src/components/support/agent-skills-manager.tsx \
+            src/components/support/queue-manager.tsx \
+            src/components/skill-picker.tsx \
+            src/lib/skill-routing/presentation.ts \
+            src/lib/auto-assign.ts \
+            src/__tests__/api-skill-routing.test.ts \
+            src/__tests__/api-ticket-assignees.test.ts \
+            src/__tests__/api-ticket-extras.test.ts \
+            src/__tests__/auto-assign.test.ts \
+            src/__tests__/skill-routing-presentation.test.ts \
+            src/__tests__/skill-routing-ux-contract.test.ts \
+            src/__tests__/support-ux-skill-routing-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-skill-routing.test.ts \
+            src/__tests__/api-ticket-assignees.test.ts \
+            src/__tests__/api-ticket-extras.test.ts \
+            src/__tests__/auto-assign.test.ts \
+            src/__tests__/skill-routing-presentation.test.ts \
+            src/__tests__/skill-routing-ux-contract.test.ts \
+            src/__tests__/support-ux-skill-routing-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Agent Calendar evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'agent-calendar') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/support/calendar
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-agent-calendar-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-agent-calendar-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/support/calendar/page.tsx \
+            src/app/api/v1/calendar/agent/route.ts \
+            src/components/ui/sheet.tsx \
+            src/lib/support-calendar/presentation.ts \
+            src/__tests__/api-calendar-integrations.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/support-calendar-presentation.test.ts \
+            src/__tests__/support-calendar-ux-contract.test.ts \
+            src/__tests__/support-ux-agent-calendar-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-calendar-integrations.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/support-calendar-presentation.test.ts \
+            src/__tests__/support-calendar-ux-contract.test.ts \
+            src/__tests__/support-ux-agent-calendar-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Escalation Rules evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'escalation-rules') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/settings/escalation,
+            src/app/api/v1/escalation-rules,
+            src/app/api/cron/sla-escalation,
+            src/lib/escalation-rules
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-escalation-rules-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-escalation-rules-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/settings/escalation/page.tsx \
+            src/app/api/cron/sla-escalation/route.ts \
+            src/app/api/v1/escalation-rules/route.ts \
+            src/app/api/v1/escalation-rules/\[id\]/route.ts \
+            src/lib/escalation-rules/presentation.ts \
+            src/__tests__/api-cron.test.ts \
+            src/__tests__/api-misc-crm-sub.test.ts \
+            src/__tests__/escalation-rule-presentation.test.ts \
+            src/__tests__/escalation-rules-ux-contract.test.ts \
+            src/__tests__/support-ux-escalation-rules-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-cron.test.ts \
+            src/__tests__/api-misc-crm-sub.test.ts \
+            src/__tests__/escalation-rule-presentation.test.ts \
+            src/__tests__/escalation-rules-ux-contract.test.ts \
+            src/__tests__/support-ux-escalation-rules-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Macros evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'macros') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/settings/macros,
+            src/app/(dashboard)/tickets/[id],
+            src/app/api/v1/ticket-macros,
+            src/lib/ticket-macros,
+            src/lib/inbox-channels.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-macros-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-macros-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/settings/macros/page.tsx \
+            src/app/\(dashboard\)/tickets/\[id\]/page.tsx \
+            src/app/api/v1/ticket-macros/route.ts \
+            src/app/api/v1/ticket-macros/\[id\]/route.ts \
+            src/app/api/v1/ticket-macros/\[id\]/apply/route.ts \
+            src/app/api/v1/ticket-macros/categories/route.ts \
+            src/components/did-you-know.tsx \
+            src/lib/inbox-channels.tsx \
+            src/lib/ticket-macros/presentation.ts \
+            src/lib/ticket-macros/schema.ts \
+            src/__tests__/api-ticket-extras.test.ts \
+            src/__tests__/lib-inbox-channels.test.ts \
+            src/__tests__/macros-ux-contract.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/ticket-macro-presentation.test.ts \
+            src/__tests__/support-ux-macros-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-ticket-extras.test.ts \
+            src/__tests__/lib-inbox-channels.test.ts \
+            src/__tests__/macros-ux-contract.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/ticket-macro-presentation.test.ts \
+            src/__tests__/support-ux-macros-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Portal Users evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'portal-users') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/settings/portal-users,
+            src/components/support/support-page-shell.tsx,
+            src/components/delete-confirm-dialog.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-portal-users-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-portal-users-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/settings/portal-users/page.tsx \
+            src/app/api/v1/portal-users/route.ts \
+            src/components/delete-confirm-dialog.tsx \
+            src/components/support/support-page-shell.tsx \
+            src/lib/portal-password-link.ts \
+            src/lib/portal-users/presentation.ts \
+            src/__tests__/api-portal-users.test.ts \
+            src/__tests__/portal-password-link.test.ts \
+            src/__tests__/portal-users-presentation.test.ts \
+            src/__tests__/portal-users-ux-contract.test.ts \
+            src/__tests__/support-ux-portal-users-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-portal-users.test.ts \
+            src/__tests__/portal-password-link.test.ts \
+            src/__tests__/portal-users-presentation.test.ts \
+            src/__tests__/portal-users-ux-contract.test.ts \
+            src/__tests__/support-ux-portal-users-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Support AI Settings evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'support-ai-settings') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/support/ai-settings,
+            src/components/support/support-page-shell.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-ai-settings-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-ai-settings-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/support/ai-settings/page.tsx \
+            src/app/\(dashboard\)/support/ai-settings/support-ai-settings-client.tsx \
+            src/app/api/v1/settings/ai-features/route.ts \
+            src/app/api/v1/support/ai-settings/route.ts \
+            src/components/support/support-page-shell.tsx \
+            src/lib/ai/support-settings-access.ts \
+            src/__tests__/api-settings-ai-features.test.ts \
+            src/__tests__/api-support-ai-settings.test.ts \
+            src/__tests__/api-tickets-sub.test.ts \
+            src/__tests__/lib-support-settings-access.test.ts \
+            src/__tests__/nav-items.test.ts \
+            src/__tests__/support-ai-execution-boundary.test.ts \
+            src/__tests__/support-ai-page-access.test.ts \
+            src/__tests__/support-ai-settings-ux-contract.test.ts \
+            src/__tests__/support-ux-ai-settings-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-settings-ai-features.test.ts \
+            src/__tests__/api-support-ai-settings.test.ts \
+            src/__tests__/api-tickets-sub.test.ts \
+            src/__tests__/lib-support-settings-access.test.ts \
+            src/__tests__/nav-items.test.ts \
+            src/__tests__/support-ai-execution-boundary.test.ts \
+            src/__tests__/support-ai-page-access.test.ts \
+            src/__tests__/support-ai-settings-ux-contract.test.ts \
+            src/__tests__/support-ux-ai-settings-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Customer Portal evidence
+        if: ${{ inputs.scenarios != 'all' && (contains(inputs.scenarios, 'portal-tickets') || contains(inputs.scenarios, 'portal-ticket-detail') || contains(inputs.scenarios, 'portal-knowledge') || contains(inputs.scenarios, 'portal-chat') || contains(inputs.scenarios, 'ticket-closure')) }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/portal/tickets,
+            src/app/portal/knowledge-base,
+            src/app/portal/chat,
+            src/app/portal/layout.tsx,
+            src/app/ticket-closure,
+            src/components/portal-chat-widget.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-customer-portal-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx tsc --noEmit -p tsconfig.support-customer-portal-ui.json
+          npx tsc --noEmit -p tsconfig.support-customer-portal-api.json
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-customer-portal-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/portal/layout.tsx \
+            src/app/portal/tickets/page.tsx \
+            src/app/portal/tickets/\[id\]/page.tsx \
+            src/app/portal/knowledge-base/page.tsx \
+            src/app/portal/chat/page.tsx \
+            src/app/ticket-closure/\[token\]/page.tsx \
+            src/app/api/v1/public/portal-chat/route.ts \
+            src/app/api/v1/public/portal-kb/route.ts \
+            src/app/api/v1/public/portal-tickets/route.ts \
+            src/app/api/v1/public/portal-tickets/\[id\]/route.ts \
+            src/app/api/v1/public/portal-tickets/\[id\]/files/route.ts \
+            src/app/api/v1/public/portal-tickets/\[id\]/files/\[fileId\]/route.ts \
+            src/app/api/v1/public/ticket-closure/\[token\]/route.ts \
+            src/app/api/v1/tickets/\[id\]/files/route.ts \
+            src/components/portal-chat-widget.tsx \
+            src/lib/ticketing/portal-ticket-draft.ts \
+            src/lib/ticketing/portal-ticket-presentation.ts \
+            src/lib/ticketing/ticket-attachment-storage.ts \
+            src/__tests__/lib-portal-auth.test.ts \
+            src/__tests__/customer-support-portal-ux-contract.test.ts \
+            src/__tests__/knowledge-base-ux-contract.test.ts \
+            src/__tests__/portal-attachment-api.test.ts \
+            src/__tests__/portal-closure-api.test.ts \
+            src/__tests__/portal-ticket-detail-api.test.ts \
+            src/__tests__/portal-ticket-draft.test.ts \
+            src/__tests__/portal-ticket-presentation.test.ts \
+            src/__tests__/support-ux-customer-portal-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-ai-extras.test.ts \
+            src/__tests__/api-portal.test.ts \
+            src/__tests__/lib-portal-auth.test.ts \
+            src/__tests__/customer-support-portal-ux-contract.test.ts \
+            src/__tests__/knowledge-base-ux-contract.test.ts \
+            src/__tests__/portal-attachment-api.test.ts \
+            src/__tests__/portal-closure-api.test.ts \
+            src/__tests__/portal-ticket-detail-api.test.ts \
+            src/__tests__/portal-ticket-draft.test.ts \
+            src/__tests__/portal-ticket-presentation.test.ts \
+            src/__tests__/support-ux-customer-portal-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
+      - name: Validate section-scoped Support navigation evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'support-navigation') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/components/sidebar.tsx,
+            src/components/support-mobile-navigation.tsx,
+            src/components/support/support-page-shell.tsx,
+            src/app/(dashboard)/layout.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-navigation-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx tsc --noEmit -p tsconfig.support-navigation-ui.json
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-navigation-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/lib/nav-items.ts \
+            src/components/sidebar.tsx \
+            src/components/support-mobile-navigation.tsx \
+            src/components/support/support-page-shell.tsx \
+            src/app/\(dashboard\)/layout.tsx \
+            src/__tests__/nav-group-labels.test.ts \
+            src/__tests__/nav-items.test.ts \
+            src/__tests__/support-navigation-ux-contract.test.ts \
+            src/__tests__/support-ux-navigation-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/nav-group-labels.test.ts \
+            src/__tests__/nav-items.test.ts \
+            src/__tests__/permissions-resolve-me.test.ts \
+            src/__tests__/support-ai-page-access.test.ts \
+            src/__tests__/support-navigation-ux-contract.test.ts \
+            src/__tests__/support-ux-navigation-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
+            src/__tests__/tenant-capability-access.test.ts
 
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
@@ -459,9 +1276,26 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192
           NEXT_BUILD_CPUS: "1"
           NEXT_WEBPACK_PARALLELISM: "1"
+          LEADDRIVE_COLD_PRODUCTION_BUILD: "1"
+          LEADDRIVE_DISABLE_SERVICE_WORKER: "1"
           NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: ${{ secrets.CARTO_BASEMAPS_API_KEY }}
         run: |
-          npx next build --webpack
+          ulimit -c 0
+          build_log="$(mktemp "${RUNNER_TEMP}/support-ux-next-build.XXXXXX.log")"
+          set +e
+          npx next build --webpack 2>&1 | tee "$build_log"
+          build_status=${PIPESTATUS[0]}
+          set -e
+          if [ "$build_status" -ne 0 ]; then
+            if grep -Fq 'An error occurred in `next/font`.' "$build_log" && \
+              grep -Fq "TypeError: Cannot read properties of null (reading '1')" "$build_log" && \
+              grep -Fq '/@next/font/dist/google/loader.js' "$build_log"; then
+              echo "::warning::Retrying one confirmed transient next/font Google-loader failure"
+              npx next build --webpack
+            else
+              exit "$build_status"
+            fi
+          fi
           mkdir -p .next/standalone/.next
           cp -R .next/static .next/standalone/.next/static
           cp -R public .next/standalone/public
@@ -617,7 +1451,7 @@ jobs:
                   ;;
               esac
               case "$selected" in
-                *,all,*|*,portal-tickets,*|*,portal-ticket-detail,*|*,portal-chat,*|*,ticket-closure,*)
+                *,all,*|*,portal-tickets,*|*,portal-ticket-detail,*|*,portal-knowledge,*|*,portal-chat,*|*,ticket-closure,*)
                   node scripts/support-ux-customer-portal-flow-evidence.mjs || customer_portal_flow_status=$?
                   ;;
               esac
@@ -629,7 +1463,7 @@ jobs:
             fi
           fi
           node scripts/support-ux-browser-evidence.mjs || capture_status=$?
-          if [ "$capture_status" -ne 0 ] || [ "$service_desk_flow_status" -ne 0 ] || [ "$complaint_flow_status" -ne 0 ] || [ "$agent_desktop_flow_status" -ne 0 ] || [ "$voip_flow_status" -ne 0 ] || [ "$knowledge_base_flow_status" -ne 0 ] || [ "$ticket_categories_flow_status" -ne 0 ] || [ "$sla_policies_flow_status" -ne 0 ] || [ "$entitlements_flow_status" -ne 0 ] || [ "$skill_routing_flow_status" -ne 0 ] || [ "$agent_calendar_flow_status" -ne 0 ] || [ "$escalation_rules_flow_status" -ne 0 ] || [ "$macros_flow_status" -ne 0 ] || [ "$portal_users_flow_status" -ne 0 ] || [ "$support_ai_settings_flow_status" -ne 0 ] || [ "$customer_portal_flow_status" -ne 0 ] || [ "$support_navigation_flow_status" -ne 0 ]; then
+          if [ "$capture_status" -ne 0 ] || [ "$service_desk_flow_status" -ne 0 ] || [ "$complaint_flow_status" -ne 0 ] || [ "$agent_desktop_flow_status" -ne 0 ] || [ "$voip_flow_status" -ne 0 ] || [ "$knowledge_base_flow_status" -ne 0 ] || [ "$ticket_categories_flow_status" -ne 0 ] || [ "$sla_policies_flow_status" -ne 0 ] || [ "$entitlements_flow_status" -ne 0 ] || [ "$entitlement_templates_flow_status" -ne 0 ] || [ "$skill_routing_flow_status" -ne 0 ] || [ "$agent_calendar_flow_status" -ne 0 ] || [ "$escalation_rules_flow_status" -ne 0 ] || [ "$macros_flow_status" -ne 0 ] || [ "$portal_users_flow_status" -ne 0 ] || [ "$support_ai_settings_flow_status" -ne 0 ] || [ "$customer_portal_flow_status" -ne 0 ] || [ "$support_navigation_flow_status" -ne 0 ]; then
             if [ "$SUPPORT_EVIDENCE_TARGET_MODE" = "ephemeral" ]; then
               tail -n 400 /tmp/support-ux-evidence-app.log
             fi
@@ -640,7 +1474,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.visual_mode }}
+          name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.support_ux_canary }}-${{ inputs.visual_mode }}
           path: artifacts/support-ux/${{ github.sha }}
           if-no-files-found: error
           retention-days: 30

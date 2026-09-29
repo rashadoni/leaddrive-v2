@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest"
 import { extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments, type MacroLike } from "@/lib/inbox-channels"
 
@@ -39,6 +40,14 @@ describe("extractQuickReplies", () => {
       { id: "3", name: "BlankText", actions: [{ type: "add_comment", value: "" }] },
     ]
     expect(extractQuickReplies(macros)).toEqual([])
+  })
+
+  it("never exposes an inactive macro as an inbox quick reply", () => {
+    const macros: MacroLike[] = [
+      { id: "1", name: "Disabled", isActive: false, actions: [{ type: "add_comment", value: "Old reply" }] },
+      { id: "2", name: "Enabled", isActive: true, actions: [{ type: "add_comment", value: "Current reply" }] },
+    ]
+    expect(extractQuickReplies(macros)).toEqual([{ id: "2", name: "Enabled", text: "Current reply" }])
   })
 })
 

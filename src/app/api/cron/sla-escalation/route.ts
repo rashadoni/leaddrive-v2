@@ -96,7 +96,13 @@ export async function POST(req: NextRequest) {
           // Check trigger type match
           let triggered = false
           if (rule.triggerType === "first_response_breach" && isFirstResponseBreach) {
-            triggered = true
+            if (rule.triggerMinutes > 0 && ticket.slaFirstResponseDueAt) {
+              const breachTime = ticket.slaFirstResponseDueAt.getTime()
+              const triggerTime = breachTime + rule.triggerMinutes * 60000
+              triggered = now.getTime() >= triggerTime
+            } else {
+              triggered = true
+            }
           } else if (rule.triggerType === "resolution_breach" && isResolutionBreach) {
             // Check if enough time has passed since breach (triggerMinutes after breach)
             if (rule.triggerMinutes > 0 && ticket.slaDueAt) {

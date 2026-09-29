@@ -74,7 +74,8 @@ describe("ticket workspace navigation state", () => {
 
   it("keeps queue and case work above narrow-screen overflow", () => {
     expect(queueSource).toContain('descriptionClassName="hidden sm:block"')
-    expect(detailSource).toContain('className="grid grid-cols-3 overflow-hidden')
+    expect(detailSource).toContain('className="flex min-w-0 overflow-x-auto')
+    expect(detailSource).toContain('sm:grid sm:grid-cols-4 sm:overflow-hidden')
     expect(detailSource).toContain("sm:grid-cols-4")
     expect(detailSource).toContain("xl:grid-cols-7")
     expect(detailSource).toContain('className="grid min-w-0 gap-4 lg:grid-cols-3"')

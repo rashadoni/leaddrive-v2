@@ -35,6 +35,7 @@ function singleSelection(name, fallback, allowed) {
 const locale = singleSelection("SUPPORT_EVIDENCE_LOCALES", "az", new Set(["az", "ru", "en"]))
 const theme = singleSelection("SUPPORT_EVIDENCE_THEMES", "light", new Set(["light", "dark"]))
 const viewportName = singleSelection("SUPPORT_EVIDENCE_VIEWPORTS", "desktop", new Set(["desktop", "tablet", "narrow-tablet", "mobile"]))
+const supportUxCanary = singleSelection("SUPPORT_EVIDENCE_SUPPORT_UX_CANARY", "enabled", new Set(["enabled", "disabled"]))
 const viewports = {
   desktop: { width: 1440, height: 900 },
   tablet: { width: 1024, height: 900 },
@@ -88,10 +89,14 @@ async function authenticate(context) {
   if (!response.ok()) throw new Error("macros_authentication_failed")
 }
 
-async function dismissTour(page) {
+async function dismissTour(page, waitForAppearance = false) {
   const overlay = page.getByTestId("tour-overlay")
-  if (await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)) {
+  const visible = waitForAppearance
+    ? await overlay.waitFor({ state: "visible", timeout: 1_000 }).then(() => true).catch(() => false)
+    : await overlay.isVisible().catch(() => false)
+  if (visible) {
     await page.keyboard.press("Escape")
+    await overlay.waitFor({ state: "hidden", timeout: 5_000 })
   }
 }
 
@@ -99,8 +104,51 @@ async function openWorkspace(page) {
   const response = await page.goto("/settings/macros", { waitUntil: "domcontentloaded", timeout: 60_000 })
   if (!response || response.status() >= 400) throw new Error(`page_http_${response?.status() || 0}`)
   await page.locator("[data-testid='macros-workspace'][data-state='ready']").waitFor({ state: "visible", timeout: 30_000 })
-  await dismissTour(page)
+  await dismissTour(page, true)
   assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "Macros")
+}
+
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  await dismissTour(page)
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  if (viewportName === "desktop") {
+    await locator.focus()
+    await locator.press(keyboardKey)
+    return { inputModality: "keyboard", hitTarget: true }
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "center" }))
+  await page.waitForTimeout(50)
+  const box = await locator.boundingBox()
+  if (!box) throw new Error("macro_touch_target_unmeasurable")
+  if (box.width < 44 || box.height < 44) {
+    throw new Error(`macro_touch_target_too_small_${Math.round(box.width)}x${Math.round(box.height)}`)
+  }
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const hitTarget = await locator.evaluate((element, center) => {
+    const hit = document.elementFromPoint(center.x, center.y)
+    if (!hit) return false
+    const interactive = hit.closest("button,a,input,select,textarea,[role='button']")
+    return hit === element || interactive === element || element.contains(hit)
+  }, point)
+  if (!hitTarget) throw new Error("macro_touch_hit_test_failed")
+  await page.touchscreen.tap(point.x, point.y)
+  return {
+    inputModality: "playwright-touchscreen",
+    hitTarget,
+    targetSize: { width: Math.round(box.width), height: Math.round(box.height) },
+  }
+}
+
+async function waitForFocusRestoration(locator) {
+  return locator.evaluate(async (element) => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (element === document.activeElement) return true
+      await new Promise((resolve) => window.setTimeout(resolve, 50))
+    }
+    return element === document.activeElement
+  })
 }
 
 function installMacroApi(page, initialMacros, options = {}) {
@@ -128,6 +176,19 @@ function installMacroApi(page, initialMacros, options = {}) {
       const body = request.postDataJSON()
       categories = [...categories, body.name.trim()]
       return route.fulfill(json({ success: true, data: { categories } }, 201))
+    }
+    if (isCategories && method === "PATCH") {
+      const body = request.postDataJSON()
+      categories = categories.map((category) => category === body.name ? body.newName.trim() : category)
+      macros = macros.map((item) => item.category === body.name ? { ...item, category: body.newName.trim() } : item)
+      return route.fulfill(json({ success: true, data: { categories } }))
+    }
+    if (isCategories && method === "DELETE") {
+      const body = request.postDataJSON()
+      const moved = macros.filter((item) => item.category === body.name).length
+      categories = categories.filter((category) => category !== body.name)
+      macros = macros.map((item) => item.category === body.name ? { ...item, category: "general" } : item)
+      return route.fulfill(json({ success: true, data: { categories, moved } }))
     }
     if (method === "POST") {
       const body = request.postDataJSON()
@@ -163,6 +224,7 @@ const report = {
   locale,
   theme,
   viewport: viewportName,
+  supportUxCanary,
   results: [],
 }
 
@@ -208,11 +270,12 @@ try {
     const fail = async (route) => route.fulfill(json({ success: false, error: "Synthetic macro load failure" }, 503))
     await page.route(pattern, fail)
     await page.goto("/settings/macros", { waitUntil: "domcontentloaded" })
+    await dismissTour(page, true)
     await page.getByTestId("macros-error").waitFor({ state: "visible" })
+    await dismissTour(page, true)
     await page.unroute(pattern, fail)
     await installMacroApi(page, [macro(0)])
-    await page.getByTestId("macros-retry").focus()
-    await page.getByTestId("macros-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(page, page.getByTestId("macros-retry"))
     await page.locator("[data-testid='macros-workspace'][data-state='ready']").waitFor({ state: "visible" })
     await page.unrouteAll({ behavior: "wait" })
 
@@ -221,7 +284,7 @@ try {
     await page.reload({ waitUntil: "domcontentloaded" })
     await page.locator("[data-testid='macros-error'][data-retryable='false']").waitFor({ state: "visible" })
     if (await page.getByTestId("macros-retry").count() !== 0) throw new Error("macros_permission_offered_misleading_retry")
-    return { transientErrorObserved: true, keyboardRetry: true, permissionStateObserved: true, misleadingRetryAbsent: true }
+    return { transientErrorObserved: true, keyboardRetry: viewportName === "desktop", physicalTouchRetry: viewportName !== "desktop", retryActivation, permissionStateObserved: true, misleadingRetryAbsent: true }
   })
 
   await recordStep(page, "read-only-library-suppresses-mutations", async () => {
@@ -245,11 +308,11 @@ try {
     if (await page.getByTestId("macro-row").count() !== 40) throw new Error("macros_density_row_count_mismatch")
     await page.getByTestId("macros-search").fill("no matching macro evidence")
     await page.getByTestId("macros-filter-empty").waitFor({ state: "visible" })
-    await page.getByTestId("macros-reset-filters").click()
+    const resetActivation = await activateEvidenceTarget(page, page.getByTestId("macros-reset-filters"))
     if (await page.getByTestId("macro-row").count() !== 40) throw new Error("macros_filter_reset_failed")
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
     if (overflow) throw new Error("macros_density_horizontal_overflow")
-    return { emptyObserved: true, macros: 40, filteredEmptyObserved: true, resetRecovered: true, horizontalOverflow: false }
+    return { emptyObserved: true, macros: 40, filteredEmptyObserved: true, resetRecovered: true, resetActivation, horizontalOverflow: false }
   })
 
   await recordStep(page, "editor-timeline-assignee-preview-and-draft-recovery", async () => {
@@ -257,29 +320,30 @@ try {
     await installMacroApi(page, [original], { failFirstPut: true })
     await openWorkspace(page)
     const open = page.locator(`[data-macro-id='${original.id}']`).getByTestId("macro-row-open")
-    await open.focus()
-    await open.press("Enter")
+    const openActivation = await activateEvidenceTarget(page, open)
     await page.getByTestId("macro-editor").waitFor({ state: "visible" })
     if (await page.getByTestId("macro-action-row").count() !== 2) throw new Error("macro_timeline_action_count_mismatch")
     if (!await page.getByTestId("macro-editor").getByText("Evidence Agent", { exact: false }).count()) throw new Error("macro_scoped_assignee_missing")
-    await page.getByTestId("macro-action-row").nth(1).getByTestId("macro-action-up").click()
-    await page.getByTestId("macro-preview-toggle").click()
+    const reorderActivation = await activateEvidenceTarget(page, page.getByTestId("macro-action-row").nth(1).getByTestId("macro-action-up"))
+    const previewActivation = await activateEvidenceTarget(page, page.getByTestId("macro-preview-toggle"))
     await page.getByTestId("macro-preview").waitFor({ state: "visible" })
     const name = page.getByTestId("macro-name")
     await name.fill("Recovered macro draft")
-    await page.getByTestId("macro-save").click()
+    const failedSaveActivation = await activateEvidenceTarget(page, page.getByTestId("macro-save"))
     await page.locator("[data-testid='macros-notice'][data-kind='error']").waitFor({ state: "visible" })
     if (await name.inputValue() !== "Recovered macro draft") throw new Error("macro_failed_save_lost_draft")
     if (await page.getByTestId("macro-action-row").count() !== 2) throw new Error("macro_failed_save_lost_actions")
-    await page.getByTestId("macro-save").click()
+    const retrySaveActivation = await activateEvidenceTarget(page, page.getByTestId("macro-save"))
     await page.getByTestId("macro-editor").waitFor({ state: "hidden" })
     await page.locator(`[data-macro-id='${original.id}']`).getByText("Recovered macro draft").waitFor({ state: "visible" })
     const reopened = page.locator(`[data-macro-id='${original.id}']`).getByTestId("macro-row-open")
-    await reopened.focus()
-    await reopened.press("Enter")
+    const reopenActivation = await activateEvidenceTarget(page, reopened)
     await page.keyboard.press("Escape")
-    if (!await reopened.isFocused()) throw new Error("macro_editor_focus_not_restored")
-    return { keyboardOpen: true, orderedTimeline: true, scopedAssignee: true, preview: true, draftRetained: true, retrySucceeded: true, focusRestored: true }
+    const focusRestored = viewportName === "desktop"
+      ? await waitForFocusRestoration(reopened)
+      : "not_applicable"
+    if (viewportName === "desktop" && !focusRestored) throw new Error("macro_editor_focus_not_restored")
+    return { keyboardOpen: viewportName === "desktop", physicalTouchOpen: viewportName !== "desktop", openActivation, reorderActivation, previewActivation, failedSaveActivation, retrySaveActivation, reopenActivation, orderedTimeline: true, scopedAssignee: true, preview: true, draftRetained: true, retrySucceeded: true, focusRestored }
   })
 
   await recordStep(page, "toggle-rollback-delete-undo-and-delete-recovery", async () => {
@@ -288,51 +352,79 @@ try {
     await openWorkspace(page)
     const row = page.locator(`[data-macro-id='${original.id}']`)
     const toggle = row.getByTestId("macro-toggle")
-    await toggle.click()
+    const toggleTarget = row.getByTestId("macro-toggle-target")
+    const failedToggleActivation = await activateEvidenceTarget(page, toggleTarget)
     await page.locator("[data-testid='macros-notice'][data-kind='error']").waitFor({ state: "visible" })
     if (await toggle.getAttribute("aria-checked") !== "true") throw new Error("macro_toggle_failure_did_not_roll_back")
-    await toggle.click()
+    const retryToggleActivation = await activateEvidenceTarget(page, toggleTarget)
     await page.locator("[data-testid='macros-notice'][data-kind='success']").waitFor({ state: "visible" })
 
     const queueDelete = async () => {
-      await row.getByTestId("macro-menu").click()
-      await page.getByTestId("macro-menu-delete").click()
-      await page.getByTestId("macro-delete-confirm").click()
+      const menuActivation = await activateEvidenceTarget(page, row.getByTestId("macro-menu"))
+      const deleteActivation = await activateEvidenceTarget(page, page.getByTestId("macro-menu-delete"))
+      const confirmActivation = await activateEvidenceTarget(page, page.getByTestId("macro-delete-confirm"))
+      return { menuActivation, deleteActivation, confirmActivation }
     }
-    await queueDelete()
-    await page.getByTestId("macro-delete-undo").click()
+    const undoDeleteActivations = await queueDelete()
+    const undoActivation = await activateEvidenceTarget(page, page.getByTestId("macro-delete-undo"))
     if (await page.locator(`[data-macro-id='${original.id}']`).count() !== 1) throw new Error("macro_delete_undo_removed_row")
-    await queueDelete()
+    const failedDeleteActivations = await queueDelete()
     await page.locator("[data-testid='macros-notice'][data-kind='error']").waitFor({ state: "visible", timeout: 3_000 })
     if (await page.locator(`[data-macro-id='${original.id}']`).count() !== 1) throw new Error("macro_failed_delete_removed_row")
-    await queueDelete()
+    const retryDeleteActivations = await queueDelete()
     await page.locator(`[data-macro-id='${original.id}']`).waitFor({ state: "detached", timeout: 3_000 })
-    return { toggleRollback: true, toggleRetry: true, deleteUndo: true, failedDeletePreservedRow: true, deleteRetrySucceeded: true }
+    return { toggleRollback: true, toggleRetry: true, deleteUndo: true, failedDeletePreservedRow: true, deleteRetrySucceeded: true, failedToggleActivation, retryToggleActivation, undoDeleteActivations, undoActivation, failedDeleteActivations, retryDeleteActivations }
   })
 
-  await recordStep(page, "shared-category-failure-retains-input-and-retries", async () => {
+  await recordStep(page, "category-storage-contract-crud-and-rollback", async () => {
     await installMacroApi(page, [macro(0)], { failFirstCategoryPost: true })
     await openWorkspace(page)
+    const categoryStorageMode = await page.getByTestId("macros-workspace").getAttribute("data-category-storage")
+    if (!new Set(["browser", "tenant"]).has(categoryStorageMode)) throw new Error("macro_category_storage_mode_missing")
     const manage = page.getByTestId("macro-categories-manage")
-    await manage.focus()
-    await manage.press("Enter")
+    const manageActivation = await activateEvidenceTarget(page, manage)
     const input = page.getByTestId("macro-category-new")
     await input.fill("Recovered shared category")
-    await page.getByTestId("macro-category-add").click()
-    await page.getByTestId("macro-category-manager").getByRole("status").waitFor({ state: "visible" })
-    if (await input.inputValue() !== "Recovered shared category") throw new Error("macro_category_failure_lost_input")
-    await page.getByTestId("macro-category-add").click()
-    const category = page.locator("[data-testid='macro-category-row'][data-category='Recovered shared category']")
+    let failedAddActivation = "not_applicable"
+    let retryAddActivation = "not_applicable"
+    if (categoryStorageMode === "tenant") {
+      failedAddActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-add"))
+      await page.getByTestId("macro-category-manager").getByRole("status").waitFor({ state: "visible" })
+      if (await input.inputValue() !== "Recovered shared category") throw new Error("macro_category_failure_lost_input")
+      retryAddActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-add"))
+    } else {
+      retryAddActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-add"))
+    }
+    const addedCategory = categoryStorageMode === "browser" ? "recovered shared category" : "Recovered shared category"
+    let category = page.locator(`[data-testid='macro-category-row'][data-category='${addedCategory}']`)
     await category.waitFor({ state: "visible" })
-    await category.getByTestId("macro-category-menu").click()
-    await page.getByTestId("macro-category-delete").click()
-    await page.getByTestId("macro-delete-confirm").click()
-    await page.getByTestId("macro-delete-undo").click()
-    await manage.click()
+    const categoryMenuActivation = await activateEvidenceTarget(page, category.getByTestId("macro-category-menu"))
+    const categoryRenameActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-rename"))
+    const renameInput = page.getByTestId("macro-category-rename-input")
+    await renameInput.fill("Renamed shared category")
+    const categoryRenameSaveActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-rename-save"))
+    const renamedCategory = categoryStorageMode === "browser" ? "renamed shared category" : "Renamed shared category"
+    category = page.locator(`[data-testid='macro-category-row'][data-category='${renamedCategory}']`)
     await category.waitFor({ state: "visible" })
+    const renamedCategoryMenuActivation = await activateEvidenceTarget(page, category.getByTestId("macro-category-menu"))
+    const categoryDeleteActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-delete"))
+    const categoryConfirmActivation = await activateEvidenceTarget(page, page.getByTestId("macro-delete-confirm"))
+    const categoryUndoActivation = await activateEvidenceTarget(page, page.getByTestId("macro-delete-undo"))
+    const reopenManagerActivation = await activateEvidenceTarget(page, manage)
+    await category.waitFor({ state: "visible" })
+    const finalCategoryMenuActivation = await activateEvidenceTarget(page, category.getByTestId("macro-category-menu"))
+    const finalCategoryDeleteActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-delete"))
+    const finalCategoryConfirmActivation = await activateEvidenceTarget(page, page.getByTestId("macro-delete-confirm"))
+    await page.locator("[data-testid='macros-notice'][data-kind='info']").waitFor({ state: "visible", timeout: 3_000 })
+    await page.locator("[data-testid='macros-notice'][data-kind='success']").waitFor({ state: "visible", timeout: 3_000 })
+    const reopenAfterDeleteActivation = await activateEvidenceTarget(page, manage)
+    await category.waitFor({ state: "detached", timeout: 3_000 })
     await page.keyboard.press("Escape")
-    if (!await manage.isFocused()) throw new Error("macro_category_focus_not_restored")
-    return { organizationCategorySurface: true, inputRetained: true, retrySucceeded: true, categoryDeleteUndo: true, focusRestored: true }
+    const focusRestored = viewportName === "desktop"
+      ? await waitForFocusRestoration(manage)
+      : "not_applicable"
+    if (viewportName === "desktop" && !focusRestored) throw new Error("macro_category_focus_not_restored")
+    return { categoryStorageMode, organizationCategorySurface: categoryStorageMode === "tenant", browserRollbackSurface: categoryStorageMode === "browser", inputRetained: categoryStorageMode === "tenant", retrySucceeded: true, categoryRename: true, categoryDeleteUndo: true, categoryDeletePersisted: true, focusRestored, manageActivation, failedAddActivation, retryAddActivation, categoryMenuActivation, categoryRenameActivation, categoryRenameSaveActivation, renamedCategoryMenuActivation, categoryDeleteActivation, categoryConfirmActivation, categoryUndoActivation, reopenManagerActivation, finalCategoryMenuActivation, finalCategoryDeleteActivation, finalCategoryConfirmActivation, reopenAfterDeleteActivation }
   })
 } finally {
   await context.close()

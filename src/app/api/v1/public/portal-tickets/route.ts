@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
+import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { getPortalUser } from "@/lib/portal-auth"
 import { enrichComplaintInBackground } from "@/lib/complaint-ai"
-import { resolveTicketSla, normalizeTicketPriority } from "@/lib/sla-resolver"
+import { resolveTicketSla } from "@/lib/sla-resolver"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { lockTicketNumberSequence, nextTicketNumber } from "@/lib/ticket-number"
 import { createTicketEntitlementMilestones } from "@/lib/entitlement-process/ticket-milestones"
@@ -21,6 +22,21 @@ type PortalComplaintMeta = {
   complaintObjectDetail?: string | null
   complaintType?: "complaint" | "suggestion"
 }
+
+const createPortalTicketSchema = z.object({
+  subject: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(10_000).optional().default(""),
+  category: z.string().trim().max(100).optional().default("general"),
+  clientRequestId: z.string().uuid().optional(),
+  isComplaint: z.boolean().optional().default(false),
+  complaintMeta: z.object({
+    brand: z.string().max(200).nullable().optional(),
+    productCategory: z.string().max(200).nullable().optional(),
+    complaintObject: z.string().max(300).nullable().optional(),
+    complaintObjectDetail: z.string().max(300).nullable().optional(),
+    complaintType: z.enum(["complaint", "suggestion"]).optional(),
+  }).optional().default({}),
+})
 
 export async function GET() {
   const user = await getPortalUser()
@@ -40,16 +56,15 @@ export async function GET() {
         ticketNumber: true,
         subject: true,
         status: true,
-        priority: true,
         category: true,
-        categoryId: true,
-        categoryRef: { select: { id: true, name: true, slug: true } },
-        requesterName: true,
-        requesterEmail: true,
+        categoryRef: { select: { name: true, slug: true } },
         createdAt: true,
         updatedAt: true,
         resolvedAt: true,
         closedAt: true,
+        slaDueAt: true,
+        slaFirstResponseDueAt: true,
+        firstResponseAt: true,
       },
     })
   )
@@ -61,21 +76,29 @@ export async function POST(req: NextRequest) {
   const user = await getPortalUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const body = await req.json()
-  const { subject, description, category, priority } = body as {
-    subject?: string
-    description?: string
-    category?: string
-    priority?: string
-  }
-  const isComplaint = body?.isComplaint === true
-  const meta: PortalComplaintMeta = (body?.complaintMeta as PortalComplaintMeta) || {}
-  if (!subject) return NextResponse.json({ error: "Subject is required" }, { status: 400 })
+  const parsed = createPortalTicketSchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+  const { subject, description, category, clientRequestId, isComplaint } = parsed.data
+  const meta: PortalComplaintMeta = parsed.data.complaintMeta
 
   // RLS: org comes from the verified portal JWT — whole handler runs
   // tenant-scoped (the fire-and-forget AI enrichment starts inside the
   // scope and inherits it).
   return await runWithTenant(user.organizationId, async () => {
+  if (clientRequestId) {
+    const existing = await prisma.ticket.findFirst({
+      where: {
+        organizationId: user.organizationId,
+        contactId: user.contactId,
+        source: "portal",
+        sourceMeta: { path: ["clientRequestId"], equals: clientRequestId },
+      },
+    })
+    if (existing) {
+      return NextResponse.json({ success: true, data: existing, replayed: true })
+    }
+  }
+
   // Only honour isComplaint if the tenant actually has the feature enabled.
   let complaintsEnabled = false
   if (isComplaint) {
@@ -87,9 +110,6 @@ export async function POST(req: NextRequest) {
     complaintsEnabled = featureFlagsToArray(org?.features).includes("complaints_register")
   }
 
-  // Normalize the free-form body priority to a valid tier (defends both the SLA
-  // lookup and the cron's increase_priority from a bad/non-tier value).
-  const ticketPriority = normalizeTicketPriority(priority)
   const resolvedCategory = await resolveTicketCategoryForWrite(user.organizationId, {
     category: complaintsEnabled ? "complaint" : category,
     scope: complaintsEnabled ? "complaint" : "ticket",
@@ -99,9 +119,11 @@ export async function POST(req: NextRequest) {
   // portal-raised tickets are tracked + escalated like any other.
   const sla = await resolveTicketSla(user.organizationId, {
     companyId: user.companyId,
-    priority: priority ? ticketPriority : resolvedCategory.defaultPriority || ticketPriority,
+    priority: resolvedCategory.defaultPriority || "medium",
   })
-  const effectivePriority = priority ? ticketPriority : resolvedCategory.defaultPriority || ticketPriority
+  // Portal callers cannot self-assign an internal urgency. The selected ticket
+  // category's configured default remains authoritative.
+  const effectivePriority = resolvedCategory.defaultPriority || "medium"
   const requesterSnapshot = buildTicketRequesterSnapshot({
     name: user.fullName,
     email: user.email,
@@ -125,6 +147,7 @@ export async function POST(req: NextRequest) {
       requesterEmail: user.email,
       requesterExternalId: user.contactId,
       requesterMeta: { source: "portal" },
+      sourceMeta: clientRequestId ? { clientRequestId } : undefined,
     })
 
     return NextResponse.json({ success: true, data: ticket }, { status: 201 })
@@ -147,6 +170,7 @@ export async function POST(req: NextRequest) {
         companyId: user.companyId,
         createdBy: user.contactId,
         source: "portal",
+        sourceMeta: clientRequestId ? { clientRequestId } : undefined,
         requesterName: requesterSnapshot.requesterName,
         requesterEmail: requesterSnapshot.requesterEmail,
         requesterPhone: requesterSnapshot.requesterPhone,

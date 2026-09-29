@@ -176,6 +176,21 @@ describe("middleware CSP headers", () => {
     expect(seenKeys.filter((k) => k.startsWith("public:"))).toHaveLength(0)
   })
 
+  it("does not consume the shared public POST bucket when a csp-report is accepted", async () => {
+    const seenKeys: string[] = []
+    vi.mocked(checkRateLimit).mockImplementation((key: string) => {
+      seenKeys.push(key)
+      return true
+    })
+    const url = new URL("/api/v1/public/csp-report", "http://app.leaddrivecrm.org")
+    const req = new NextRequest(url, { method: "POST", headers: { host: "app.leaddrivecrm.org", "x-real-ip": "10.0.0.2" } }) as RequestWithAuth
+    req.auth = null
+    const res = await authMiddleware(req)
+    expect(res.status).toBe(200)
+    expect(seenKeys).toContain("csp-report:10.0.0.2")
+    expect(seenKeys.filter((key) => key.startsWith("public:"))).toHaveLength(0)
+  })
+
   it("allows same-origin framing for the invoice preview", async () => {
     const res = await authMiddleware(
       makeReq({

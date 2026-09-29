@@ -14,6 +14,8 @@ const axeSource = await readFile(require.resolve("axe-core/axe.min.js"), "utf8")
 
 const { baseUrl, hostname } = requireScreenshotTarget()
 const demoOrganization = requireDemoTenant()
+const evidenceTargetMode = (process.env.SUPPORT_EVIDENCE_TARGET_MODE || "").trim()
+const serviceWorkers = evidenceTargetMode === "ephemeral" ? "block" : "allow"
 const commit = (process.env.SUPPORT_EVIDENCE_COMMIT || "").trim()
 if (!/^[0-9a-f]{7,40}$/i.test(commit)) throw new Error("SUPPORT_EVIDENCE_COMMIT must be an exact Git commit")
 
@@ -35,6 +37,10 @@ const dataProfile = (process.env.SUPPORT_EVIDENCE_DATA_PROFILE || "typical").tri
 if (!new Set(["empty", "typical", "high", "0", "5", "50", "500"]).has(dataProfile)) {
   throw new Error("SUPPORT_EVIDENCE_DATA_PROFILE must identify empty/typical/high or 0/5/50/500")
 }
+const supportUxCanary = (process.env.SUPPORT_EVIDENCE_SUPPORT_UX_CANARY || "enabled").trim()
+if (!new Set(["enabled", "disabled"]).has(supportUxCanary)) {
+  throw new Error("SUPPORT_EVIDENCE_SUPPORT_UX_CANARY must be enabled or disabled")
+}
 const sampleCount = Number.parseInt(process.env.SUPPORT_EVIDENCE_SAMPLE_COUNT || "3", 10)
 if (![1, 3, 7].includes(sampleCount)) {
   throw new Error("SUPPORT_EVIDENCE_SAMPLE_COUNT must be 1, 3 or 7")
@@ -47,6 +53,9 @@ if (requireBaseline && baselineEvidence?.sampleCount !== sampleCount) {
 }
 if (requireBaseline && baselineEvidence?.dataProfile !== dataProfile) {
   throw new Error("Comparable baseline evidence must use the same data profile")
+}
+if (requireBaseline && baselineEvidence?.supportUxCanary !== supportUxCanary) {
+  throw new Error("Comparable baseline evidence must use the same Support UX canary state")
 }
 if (requireBaseline && baselineEvidence?.appMode !== appMode) {
   throw new Error("Comparable baseline evidence must use the same application mode")
@@ -99,7 +108,7 @@ const scenarios = [
   { id: "complaint-import", path: "/complaints/import", roles: ["manager", "admin"], primaryClicks: 2, ready: "[data-testid='complaint-import-workspace']", primary: "[data-testid='complaint-import-dropzone']", performanceBudget: { loadP75: 350 } },
   { id: "complaint-detail", path: () => envPath("SUPPORT_EVIDENCE_COMPLAINT_ID", "/complaints/"), roles: ["manager", "admin"], primaryClicks: 2, ready: "[data-testid='complaint-detail-workspace']", primary: "[aria-labelledby='complaint-conversation-title']", performanceBudget: { loadP75: 400 } },
   { id: "agent-desktop", path: "/support/agent-desktop", roles: ["agent", "manager", "admin"], primaryClicks: 1, filter: true, ready: "[data-testid='agent-desktop-workspace']", primary: "[data-testid='agent-desktop-next-case']" },
-  { id: "voip", path: "/support/voip", roles: ["agent", "manager", "admin"], primaryClicks: 1, filter: true, ready: "[data-testid='voip-workspace']", primary: "[data-testid='voip-call-timeline']" },
+  { id: "voip", path: "/support/voip", roles: ["agent", "manager", "admin"], primaryClicks: 1, filter: true, ready: "[data-testid='voip-workspace'][data-state='ready']", primary: "[data-testid='voip-call-timeline']" },
   { id: "knowledge-base", path: "/knowledge-base", roles: ["agent", "manager", "admin"], primaryClicks: 1, filter: true, ready: "[data-testid='knowledge-base-workspace'][data-state='ready']", primary: "[data-testid='knowledge-base-article-row'], [data-testid='knowledge-base-empty-state']" },
   { id: "knowledge-article", path: () => envPath("SUPPORT_EVIDENCE_KB_ARTICLE_ID", "/knowledge-base/"), roles: ["agent", "manager", "admin"], primaryClicks: 2, ready: "[data-testid='knowledge-article-workspace'][data-state='ready']", primary: "[data-testid='knowledge-article-content']" },
   { id: "ticket-categories", path: "/settings/ticket-categories", roles: ["admin"], primaryClicks: 2, filter: true, ready: "[data-testid='ticket-categories-workspace'][data-state='ready']", primary: "[data-testid='ticket-categories-tree'], [data-testid='ticket-categories-empty-state']" },
@@ -184,7 +193,7 @@ async function authenticate(context, role) {
 }
 
 async function authenticateRole(browser, role) {
-  const context = await browser.newContext({ baseURL: baseUrl })
+  const context = await browser.newContext({ baseURL: baseUrl, serviceWorkers })
   try {
     const portalUser = await authenticate(context, role)
     return {
@@ -274,6 +283,34 @@ function performanceComparison(common, performance, metrics, budgets) {
   return compareSupportPerformance(performance, metrics, baseline, budgets)
 }
 
+function dataProfileContract(scenario, metrics) {
+  if (scenario.id !== "voip" || !new Set(["high", "500"]).has(dataProfile)) {
+    return { status: "not_applicable" }
+  }
+  const expected = { totalCalls: 500, totalPages: 20, renderedCalls: 25 }
+  const actual = metrics.voipDensity
+  const matched = actual
+    && actual.totalCalls === expected.totalCalls
+    && actual.totalPages === expected.totalPages
+    && actual.renderedCalls === expected.renderedCalls
+  return { status: matched ? "matched" : "mismatched", expected, actual }
+}
+
+function roleContract(scenario, role, metrics) {
+  if (scenario.id !== "voip") return { status: "not_applicable" }
+  const expectedMode = role.key === "admin" ? "admin" : "read-only"
+  const expectedSettingsLinks = role.key === "admin" ? 1 : 0
+  const actual = metrics.voipRole
+  const matched = actual
+    && actual.managementMode === expectedMode
+    && actual.settingsLinks === expectedSettingsLinks
+  return {
+    status: matched ? "matched" : "mismatched",
+    expected: { managementMode: expectedMode, settingsLinks: expectedSettingsLinks },
+    actual,
+  }
+}
+
 async function inspectPage(page, workspaceSelector, primarySelector) {
   return page.evaluate(({ workspaceSelector, primarySelector }) => {
     const hiddenByClosedDetails = (element) => {
@@ -360,6 +397,17 @@ async function inspectPage(page, workspaceSelector, primarySelector) {
     const mainOverflowX = getComputedStyle(main).overflowX
     const mainScrollableHorizontalOverflow = !["hidden", "clip"].includes(mainOverflowX) && main.scrollWidth > main.clientWidth + 2
     const performanceState = window.__supportUxEvidencePerformance || { cumulativeLayoutShift: 0, eventDurations: [] }
+    const voipWorkspace = document.querySelector("[data-testid='voip-workspace']")
+    const voipDensity = voipWorkspace ? {
+      totalCalls: Number(voipWorkspace.dataset.totalCalls),
+      totalPages: Number(voipWorkspace.dataset.totalPages),
+      renderedCalls: Number(voipWorkspace.dataset.renderedCalls),
+    } : null
+    const voipConnection = document.querySelector("[data-testid='voip-connection-state']")
+    const voipRole = voipConnection ? {
+      managementMode: voipConnection.dataset.managementMode || null,
+      settingsLinks: voipConnection.querySelectorAll("a[href='/settings/voip']").length,
+    } : null
     return {
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -374,6 +422,8 @@ async function inspectPage(page, workspaceSelector, primarySelector) {
       workspaceTop: workspace ? Math.round(workspace.getBoundingClientRect().top) : null,
       blockCount: main.children.length,
       renderedRows: rows,
+      voipDensity,
+      voipRole,
       borderedRoundedBlocks: cards,
       immediatelyVisibleActions: interactive.filter((element) => element.getBoundingClientRect().top < window.innerHeight).length,
       primaryWorkTop: firstWorkRect ? Math.round(firstWorkRect.top) : null,
@@ -400,6 +450,7 @@ async function inspectPage(page, workspaceSelector, primarySelector) {
         : null,
       environment: {
         documentLang: document.documentElement.lang,
+        activeTheme: document.documentElement.classList.contains("dark") ? "dark" : "light",
         prefersDark: matchMedia("(prefers-color-scheme: dark)").matches,
         reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
         maxTouchPoints: navigator.maxTouchPoints,
@@ -466,7 +517,7 @@ async function waitForStableApplicationShell(page, role) {
 
 async function waitForStableDocumentTitle(page) {
   await page.waitForFunction(() => {
-    const value = document.head.querySelector("title")?.textContent?.trim() || ""
+    const value = document.title.trim()
     const now = performance.now()
     const previous = window.__supportUxEvidenceTitle
     if (!value) {
@@ -477,8 +528,8 @@ async function waitForStableDocumentTitle(page) {
       window.__supportUxEvidenceTitle = { value, since: now }
       return false
     }
-    return now - previous.since >= 500
-  }, undefined, { timeout: 5_000 })
+    return now - previous.since >= 1_000
+  }, undefined, { timeout: 10_000 })
 }
 
 async function inspectAccessibility(page) {
@@ -491,6 +542,9 @@ async function inspectAccessibility(page) {
   try {
     await cdp.send("Page.setBypassCSP", { enabled: true })
     await page.addScriptTag({ content: axeSource })
+    // Script injection can overlap the final streamed metadata patch. Audit
+    // only once the browser-visible title is stable at the exact axe boundary.
+    await waitForStableDocumentTitle(page)
     return await page.evaluate(async () => {
       const result = await window.axe.run(document, {
         runOnly: {
@@ -549,6 +603,7 @@ function markdown(report) {
     "- Target host: " + report.targetHost,
     "- Demo organization: " + report.demoOrganization,
     "- Data profile: " + report.dataProfile,
+    "- Support UX canary: " + report.supportUxCanary,
     "- Loads per matrix cell: " + report.sampleCount,
     "",
     "| Scenario | Role | Locale | Theme | Viewport | Result | Overflow | A11y issues | p50/p75 load | Perf compare | Screenshot |",
@@ -575,16 +630,17 @@ const report = {
   appMode,
   demoOrganization,
   dataProfile,
+  supportUxCanary,
   sampleCount,
   results: [],
 }
 
 const browser = await chromium.launch({ headless: true })
 try {
+  const authenticatedByRole = new Map()
   for (const role of roles) {
-    let authenticated
     try {
-      authenticated = await authenticateRole(browser, role)
+      authenticatedByRole.set(role.key, await authenticateRole(browser, role))
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
       for (const locale of selectedLocales) {
@@ -594,8 +650,11 @@ try {
           }
         }
       }
-      continue
     }
+  }
+  for (const role of roles) {
+    const authenticated = authenticatedByRole.get(role.key)
+    if (!authenticated) continue
     for (const locale of selectedLocales) {
       for (const theme of selectedThemes) {
         for (const viewportName of selectedViewports) {
@@ -608,6 +667,7 @@ try {
             colorScheme: theme,
             reducedMotion: "reduce",
             hasTouch: expectsTouch,
+            serviceWorkers,
             storageState: authenticated.storageState,
           })
           await context.route("**/api/v1/public/csp-report", async (route) => {
@@ -648,6 +708,7 @@ try {
               try {
                 const loadSamples = []
                 const filterSamples = []
+                const layoutShiftSamples = []
                 let metrics = null
                 const openScenario = async () => {
                   const response = await page.goto(scenarioPath, { waitUntil: "domcontentloaded", timeout: 60_000 })
@@ -676,6 +737,9 @@ try {
                   await openScenario()
                   metrics = await inspectPage(page, scenario.ready, scenario.primary)
                   if (metrics.timing?.loadMs) loadSamples.push(metrics.timing.loadMs)
+                  if (Number.isFinite(metrics.cumulativeLayoutShift)) {
+                    layoutShiftSamples.push(metrics.cumulativeLayoutShift)
+                  }
                   if (scenario.filter) {
                     const filterFeedbackMs = await measureFilterFeedback(page, scenario.ready)
                     if (filterFeedbackMs !== null) filterSamples.push(filterFeedbackMs)
@@ -705,6 +769,7 @@ try {
                   + metrics.accessibility.missingImageAlt
                   + metrics.accessibility.duplicateIds.length
                 const environmentMismatch = !metrics.environment.documentLang.toLowerCase().startsWith(locale)
+                  || metrics.environment.activeTheme !== theme
                   || metrics.environment.prefersDark !== (theme === "dark")
                   || !metrics.environment.reducedMotion
                   || (expectsTouch && metrics.environment.maxTouchPoints < 1)
@@ -717,12 +782,20 @@ try {
                   filterP75: percentile(filterSamples, 0.75),
                   filterSamples,
                   interactionP75: metrics.interactionP75,
-                  cumulativeLayoutShift: metrics.cumulativeLayoutShift,
+                  // Treat CLS like the other performance metrics: seven-sample
+                  // evidence must compare a p75, not whichever navigation
+                  // happened to be last on a shared runner.
+                  cumulativeLayoutShift: percentile(layoutShiftSamples, 0.75),
+                  cumulativeLayoutShiftSamples: layoutShiftSamples,
                 }
                 const visual = await baselineComparison(fileName, screenshotPath)
                 const comparedPerformance = performanceComparison(common, performance, metrics, scenario.performanceBudget)
+                const profileContract = dataProfileContract(scenario, metrics)
+                const scopedRoleContract = roleContract(scenario, role, metrics)
                 const failed = errors.length || metrics.horizontalOverflow || a11yIssueCount || primaryWorkMiss
                   || axeViolations.length || keyboard.uniqueStops === 0 || environmentMismatch
+                  || profileContract.status === "mismatched"
+                  || scopedRoleContract.status === "mismatched"
                   || (requireBaseline ? visual.status !== "matched" || comparedPerformance.status !== "matched" : visual.status === "changed")
                 report.results.push({
                   ...common,
@@ -738,6 +811,8 @@ try {
                   primaryWorkMiss,
                   errors,
                   visual,
+                  dataProfileContract: profileContract,
+                  roleContract: scopedRoleContract,
                   performance,
                   performanceComparison: comparedPerformance,
                 })

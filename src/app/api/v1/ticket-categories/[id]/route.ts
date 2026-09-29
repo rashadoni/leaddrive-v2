@@ -114,7 +114,10 @@ export const DELETE = withRlsAuth("tickets", "delete", async (_req: NextRequest,
 
     const category = await prisma.ticketCategory.update({
       where: { id },
-      data: { isActive: false, isPortalVisible: false },
+      // Visibility is already gated by isActive in category consumers. Keep the
+      // configured portal preference so a later restore returns to the previous
+      // business state instead of silently becoming internal-only.
+      data: { isActive: false },
     })
 
     return NextResponse.json({ success: true, data: category })

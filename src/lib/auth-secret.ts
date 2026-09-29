@@ -75,7 +75,10 @@ export function validateAuthSecret(
 }
 
 export function requireAuthSecret(
-  env: Pick<NodeJS.ProcessEnv, "NEXTAUTH_SECRET" | "NODE_ENV"> = process.env,
+  env: Pick<NodeJS.ProcessEnv, "NEXTAUTH_SECRET" | "NODE_ENV"> = {
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    NODE_ENV: process.env.NODE_ENV,
+  },
 ): string {
   return validateAuthSecret(env.NEXTAUTH_SECRET, env.NODE_ENV)
 }

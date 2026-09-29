@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "tsBuildInfoFile": null
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/app/portal/layout.tsx",
+    "src/app/portal/tickets/page.tsx",
+    "src/app/portal/tickets/[id]/page.tsx",
+    "src/app/portal/chat/page.tsx",
+    "src/app/ticket-closure/[token]/page.tsx",
+    "src/lib/ticketing/portal-ticket-draft.ts",
+    "src/lib/ticketing/portal-ticket-presentation.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "src/__tests__"
+  ]
+}

@@ -2,22 +2,27 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
+import { canManageEscalationRules } from "@/lib/escalation-rules/presentation"
 
-const actionSchema = z.object({
-  type: z.enum(["notify", "increase_priority", "reassign"]),
-  target: z.string().optional(),
-})
+const actionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("notify"), target: z.enum(["manager", "admin"]) }),
+  z.object({ type: z.literal("increase_priority") }),
+  z.object({ type: z.literal("reassign") }),
+])
 
 const updateRuleSchema = z.object({
-  name: z.string().min(1).max(200).optional(),
+  name: z.string().trim().min(1).max(200).optional(),
   triggerType: z.enum(["first_response_breach", "resolution_breach", "resolution_warning"]).optional(),
-  triggerMinutes: z.number().int().min(0).optional(),
+  triggerMinutes: z.number().int().min(0).max(525_600).optional(),
   level: z.number().int().min(1).max(5).optional(),
-  actions: z.array(actionSchema).min(1).optional(),
+  actions: z.array(actionSchema).length(1).optional(),
   isActive: z.boolean().optional(),
 })
 
-export const PATCH = withRlsAuth("settings", "write", async (req, authResult, { params }: { params: Promise<{ id: string }> }) => {
+export const PATCH = withRlsAuth("tickets", "write", async (req, authResult, { params }: { params: Promise<{ id: string }> }) => {
+  if (!canManageEscalationRules(authResult.role)) {
+    return NextResponse.json({ error: "Forbidden", code: "ESCALATION_WRITE_FORBIDDEN" }, { status: 403 })
+  }
   const orgId = authResult.orgId
   const { id } = await params
 
@@ -30,6 +35,29 @@ export const PATCH = withRlsAuth("settings", "write", async (req, authResult, { 
       where: { id, organizationId: orgId },
     })
     if (!existing) return NextResponse.json({ error: "Rule not found" }, { status: 404 })
+
+    const next = {
+      triggerType: parsed.data.triggerType ?? existing.triggerType,
+      triggerMinutes: parsed.data.triggerMinutes ?? existing.triggerMinutes,
+      level: parsed.data.level ?? existing.level,
+      actions: parsed.data.actions ?? existing.actions,
+      isActive: parsed.data.isActive ?? existing.isActive,
+    }
+    if (next.isActive) {
+      const conflicting = await prisma.escalationRule.findFirst({
+        where: {
+          organizationId: orgId,
+          id: { not: id },
+          isActive: true,
+          triggerType: next.triggerType,
+          triggerMinutes: next.triggerMinutes,
+          level: next.level,
+          actions: { equals: next.actions },
+        },
+        select: { id: true },
+      })
+      if (conflicting) return NextResponse.json({ error: "An identical active escalation rule already exists.", code: "ESCALATION_RULE_CONFLICT" }, { status: 409 })
+    }
 
     const updated = await prisma.escalationRule.update({
       where: { id },
@@ -50,7 +78,10 @@ export const PATCH = withRlsAuth("settings", "write", async (req, authResult, { 
   }
 })
 
-export const DELETE = withRlsAuth("settings", "delete", async (_req, authResult, { params }: { params: Promise<{ id: string }> }) => {
+export const DELETE = withRlsAuth("tickets", "write", async (_req, authResult, { params }: { params: Promise<{ id: string }> }) => {
+  if (!canManageEscalationRules(authResult.role)) {
+    return NextResponse.json({ error: "Forbidden", code: "ESCALATION_WRITE_FORBIDDEN" }, { status: 403 })
+  }
   const orgId = authResult.orgId
   const { id } = await params
 

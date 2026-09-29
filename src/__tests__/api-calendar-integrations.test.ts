@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -122,6 +123,29 @@ describe("GET /api/v1/calendar/agent", () => {
     expect(json.data.items[0].type).toBe("event")
     expect(json.data.counts.events).toBe(1)
     expect(json.data.counts.tickets).toBe(0)
+    expect(json.data.sources).toEqual({ tickets: "ok", tasks: "ok", events: "ok", activities: "ok" })
+  })
+
+  it("returns available items with explicit partial-source status", async () => {
+    vi.mocked(prisma.ticket.findMany).mockRejectedValue(new Error("tickets unavailable"))
+    vi.mocked(prisma.task.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.event.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.activity.findMany).mockResolvedValue([] as any)
+
+    const res = await GET_AGENT(makeReq("http://localhost:3000/api/v1/calendar/agent?from=2026-04-01&to=2026-04-07"))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ success: true, data: { sources: { tickets: "failed", tasks: "ok", events: "ok", activities: "ok" } } })
+  })
+
+  it("returns a retryable failure when every calendar source fails", async () => {
+    vi.mocked(prisma.ticket.findMany).mockRejectedValue(new Error("down"))
+    vi.mocked(prisma.task.findMany).mockRejectedValue(new Error("down"))
+    vi.mocked(prisma.event.findMany).mockRejectedValue(new Error("down"))
+    vi.mocked(prisma.activity.findMany).mockRejectedValue(new Error("down"))
+
+    const res = await GET_AGENT(makeReq("http://localhost:3000/api/v1/calendar/agent?from=2026-04-01&to=2026-04-07"))
+    expect(res.status).toBe(503)
+    expect(await res.json()).toMatchObject({ success: false, code: "CALENDAR_SOURCES_FAILED" })
   })
 })
 

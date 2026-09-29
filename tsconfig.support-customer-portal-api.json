@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "tsBuildInfoFile": null
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/types/next-auth.d.ts",
+    "src/app/api/v1/public/portal-tickets/route.ts",
+    "src/app/api/v1/public/portal-tickets/[id]/route.ts",
+    "src/app/api/v1/public/portal-tickets/[id]/files/route.ts",
+    "src/app/api/v1/public/portal-tickets/[id]/files/[fileId]/route.ts",
+    "src/app/api/v1/public/ticket-closure/[token]/route.ts",
+    "src/app/api/v1/tickets/[id]/files/route.ts",
+    "src/lib/ticketing/ticket-attachment-storage.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "src/__tests__"
+  ]
+}

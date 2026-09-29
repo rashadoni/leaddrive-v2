@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "tsBuildInfoFile": null
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/types/next-auth.d.ts",
+    "src/lib/nav-items.ts",
+    "src/components/sidebar.tsx",
+    "src/components/support-mobile-navigation.tsx",
+    "src/components/support/support-page-shell.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "src/__tests__"
+  ]
+}

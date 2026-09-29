@@ -31,6 +31,7 @@ const editableFieldsSchema = z.object({
 const lifecycleActionSchema = z.object({
   action: z.enum(["activate", "suspend", "resume", "expire", "cancel"]),
   cancellationReason: z.string().min(1).max(1000).optional(),
+  reason: z.string().trim().max(1000).optional(),
 })
 const patchSchema = editableFieldsSchema.merge(lifecycleActionSchema.partial())
 
@@ -172,7 +173,7 @@ export const PATCH = withRlsAuth(
         })
         if (duplicate) {
           return NextResponse.json(
-            { error: "This company already has an active support term." },
+            { error: "This company already has an active support term.", code: "ACTIVE_COMPANY_CONFLICT" },
             { status: 409 },
           )
         }
@@ -184,14 +185,14 @@ export const PATCH = withRlsAuth(
         })
         if (definitionCount === 0) {
           return NextResponse.json(
-            { error: "Add at least one milestone rule before activation." },
+            { error: "Add at least one milestone rule before activation.", code: "MILESTONE_REQUIRED" },
             { status: 422 },
           )
         }
       }
       if (targetStatus === "cancelled" && !parsed.data.cancellationReason?.trim()) {
         return NextResponse.json(
-          { error: "Cancellation reason is required." },
+          { error: "Cancellation reason is required.", code: "CANCELLATION_REASON_REQUIRED" },
           { status: 400 },
         )
       }
@@ -223,6 +224,7 @@ export const PATCH = withRlsAuth(
                 fromStatus: existing.status,
                 toStatus: targetStatus,
                 action: parsed.data.action,
+                reason: parsed.data.reason?.trim() || parsed.data.cancellationReason?.trim() || null,
               },
             },
           })
@@ -240,7 +242,7 @@ export const PATCH = withRlsAuth(
 
     if (!["draft", "suspended"].includes(currentStatus)) {
       return NextResponse.json(
-        { error: "Only draft or suspended support terms can be edited." },
+        { error: "Only draft or suspended support terms can be edited.", code: "TERM_NOT_EDITABLE" },
         { status: 422 },
       )
     }
@@ -272,7 +274,7 @@ export const PATCH = withRlsAuth(
     }
     if (nextValidTo && nextValidTo <= nextValidFrom) {
       return NextResponse.json(
-        { error: "validTo must be after validFrom." },
+        { error: "validTo must be after validFrom.", code: "INVALID_VALIDITY" },
         { status: 400 },
       )
     }
