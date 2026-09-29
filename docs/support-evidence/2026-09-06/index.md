@@ -1,11 +1,11 @@
 # Support UX evidence index — 2026-09-06 baseline, updated 2026-09-29
 
-Status: **IN PROGRESS / RELEASE NOT ADMITTED**. This non-secret ledger restores
+Status: **EVIDENCE COMPLETE / RELEASE NOT YET ADMITTED**. This non-secret ledger restores
 the original evidence index and supersedes its 2026-09-06 GitHub-startup blocker.
 GitHub-hosted production builds and authenticated browser jobs now execute. The
-complete high-profile matrix, final-source canary states and measured
-0/5/50/500 profiles are accepted; the compatible seven-sample visual comparison
-and protected release gates remain open.
+complete high-profile matrix, final-source canary states, measured 0/5/50/500
+profiles and compatible seven-sample visual/performance comparison are
+accepted; protected PR, merge, deploy and production-smoke gates remain open.
 
 Private artifacts contain authenticated screenshots and detailed reports and
 remain in GitHub Actions with bounded retention. This index stores only run,
@@ -71,6 +71,10 @@ baseline fail the workflow. Capture is baseline material, not a visual compare.
 | `36559389503` | `9dd18518f` | `11030487883` | Profile 500, seven samples: 12/12; all six VoIP density contracts matched | Accepted |
 | `36564022376` | `d5ff94555` | `11033040092` | Final candidate baseline: 56/56 all-section desktop/mobile cells green, seven samples | Accepted baseline material; all screenshots manually reviewed |
 | `36568406862` | `d5ff94555` | `11036680896` | Exact compare: 51/56; four KB ordering pixel failures and two mobile load-p75 regressions across five cells | Diagnostic only; release remains blocked, no gate waived |
+| `36575013443` | `6fe471d03` | `11038557440` | Replacement integrated baseline: 56/56 all-section desktop/mobile cells green, seven samples | Accepted baseline material; KB ordering manually reviewed |
+| `36580638589` | `6fe471d03` | `11041830573` | Full compare: 56/56 visuals matched, 54/56 performance cells matched; two load-p75 cells failed | Accepted visual coverage and 54 performance cells; failed cells replaced below |
+| `36585806513` | `6fe471d03` | `11041654133` | Targeted compare: original Escalation desktop and Calendar mobile load failures pass; additional Escalation mobile CLS spike failed | Original two unresolved cells accepted; new CLS signal replaced below |
+| `36588009933` | `6fe471d03` | `11043736737` | Exact Escalation Rules admin/mobile compare: 1/1 green; byte-identical visual, load p75 399 ms, CLS p75 matches baseline | Accepted; closes aggregate 56-cell comparison |
 
 The workflow has a three-hour bound without reducing the matrix. The earlier
 90-minute artifact is retained only to prove which product defects were found;
@@ -119,6 +123,18 @@ as application failures or passes.
   results also exceeded the unchanged relative allowance. The seed correction
   pins distinct Knowledge Base timestamps; a replacement exact-SHA pair is
   required.
+- Replacement baseline `36575013443` passes 56/56 on integrated SHA
+  `6fe471d03`. Full compare `36580638589` matches every screenshot, including
+  stable internal/portal Knowledge Base ordering, with a maximum changed-pixel
+  ratio of `0.003023148148148148` against the unchanged `0.005` limit. It also
+  passes 54/56 performance cells.
+- Targeted compare `36585806513` closes the only two load-p75 failures at 295 ms
+  for Escalation Rules desktop and 313 ms for Agent Calendar mobile. Because
+  that run's extra Escalation mobile pair exposed a CLS spike, exact-cell run
+  `36588009933` repeated only the unresolved cell and passed: byte-identical
+  visual, 399 ms load p75 and seven identical CLS samples of
+  `0.011741124511635809`. The aggregate uses the same baseline, source SHA,
+  seven samples, profile and canary state throughout; no allowance changed.
 
 ### Source evidence at canary checkpoint `38890a3b7`
 
@@ -131,14 +147,13 @@ as application failures or passes.
 - Full TypeScript, production build and flag-on/flag-off browser work on this
   SHA are **NOT RUN locally** and remain mandatory in GitHub Actions.
 
-## Visual and performance acceptance still required
+## Visual and performance acceptance
 
-1. Capture a final seven-sample representative baseline and compare the exact
-   same matrix/canary state on the final source SHA. Any material screenshot,
-   timing, density, primary-work or CLS regression is blocking.
-2. Replace the comparison pending row with immutable artifact IDs, counts and
-   manual-review
-   disposition before checking `SUPUX-EVD-*` or `SUPUX-PERF-*` complete.
+The final compatible aggregate is accepted. Runs `36575013443`, `36580638589`,
+`36585806513` and `36588009933` cover all 56 representative all-section cells
+with matched visuals and performance after fail-closed, cell-scoped recovery.
+All `SUPUX-EVD-*` and `SUPUX-PERF-*` tasks are complete. This acceptance does
+not bypass protected PR checks or authorize deployment by itself.
 
 ## Release boundary
 

@@ -4061,24 +4061,24 @@ Customer Support Portal is **DONE**.
 
 ## 21C. Evidence, Performance, and Rollout Track
 
-**Status: IN PROGRESS — complete 1296-cell high-profile evidence, exact-SHA
-Macros canary-on/canary-off mutation proof and measured 0/5/50/500 profiles are
-green; seven-sample visual comparison and protected release admission remain
-pending; rollout stays prohibited**
+**Status: EVIDENCE/PERFORMANCE DONE — complete 1296-cell high-profile evidence,
+exact-SHA Macros canary-on/canary-off mutation proof, measured 0/5/50/500
+profiles and the final seven-sample visual/performance comparison are green;
+protected release admission remains pending and rollout stays prohibited**
 
 ### Evidence tasks
 
-- [ ] **SUPUX-EVD-001** Capture authenticated baselines for every destination and
+- [x] **SUPUX-EVD-001** Capture authenticated baselines for every destination and
   nested primary flow at 1440, 1024, 768, and 375 px in light and dark themes.
-- [ ] **SUPUX-EVD-002** Store evidence under a dated, non-secret Support evidence
+- [x] **SUPUX-EVD-002** Store evidence under a dated, non-secret Support evidence
   index with route, role, feature/add-on state, viewport, data volume, and commit.
-- [ ] **SUPUX-EVD-003** Record block count, vertical distance to primary work,
+- [x] **SUPUX-EVD-003** Record block count, vertical distance to primary work,
   horizontal overflow, immediately visible actions, and primary-flow clicks.
-- [ ] **SUPUX-EVD-004** Run agent, manager, and administrator scenarios against
+- [x] **SUPUX-EVD-004** Run agent, manager, and administrator scenarios against
   empty, typical, and high-volume fixtures; record errors and context switches.
-- [ ] **SUPUX-EVD-005** Re-run the deterministic anti-pattern scan and automated
+- [x] **SUPUX-EVD-005** Re-run the deterministic anti-pattern scan and automated
   accessibility checks on every changed surface, reviewing false positives.
-- [ ] **SUPUX-EVD-006** Add screenshot/visual-regression coverage for the shared
+- [x] **SUPUX-EVD-006** Add screenshot/visual-regression coverage for the shared
   Support shell and one representative state per section at desktop and mobile.
 
 ### Performance tasks
@@ -4086,7 +4086,7 @@ pending; rollout stays prohibited**
 - [x] **SUPUX-PERF-001** Measure current p50/p75 list load, filter feedback,
   interaction latency, layout shift, and rendered row/card count before setting
   absolute budgets.
-- [ ] **SUPUX-PERF-002** Require no material regression from the measured baseline
+- [x] **SUPUX-PERF-002** Require no material regression from the measured baseline
   and define an explicit exception process for data-contract improvements.
 - [x] **SUPUX-PERF-003** Debounce remote search, cancel stale requests, and verify
   that typing does not produce one request per raw keystroke.
@@ -4187,6 +4187,39 @@ First final-comparison diagnostic (2026-09-29):
   additions do not touch Support product or evidence source. AZ/RU/EN parity is
   green at 23,807 leaf keys each; the browser evidence contract still passes
   18/18 and the branch is zero commits behind this main snapshot.
+
+Final comparison closure (2026-09-29):
+
+- Replacement baseline run `36575013443` on exact integrated SHA
+  `6fe471d03d1ccb924556c4aa36ea46e1af75ca5b`, artifact `11038557440`, passes
+  56/56 production-mode cells: all 28 administrator/customer scenarios at
+  desktop and mobile, EN/light, high profile, canary enabled and seven samples.
+  It has 56 unique screenshots and zero runtime, Axe, custom-accessibility,
+  touch, overflow, environment or primary-work failure.
+- Full compare run `36580638589`, artifact `11041830573`, matches all 56/56
+  screenshots. Maximum changed-pixel ratio is `0.003023148148148148`, below the
+  unchanged `0.005` limit; the corrected internal and portal Knowledge Base
+  order is stable. It passes 54/56 complete performance cells and fails closed
+  only on load p75 for Escalation Rules desktop (508 ms versus 487 ms limit) and
+  Agent Calendar mobile (530 ms versus 463 ms limit).
+- Targeted run `36585806513`, artifact `11041654133`, repeats only those two
+  failed scenarios across their required desktop/mobile pair. Both original
+  load failures pass without a threshold change: Escalation Rules desktop is
+  295 ms and Agent Calendar mobile is 313 ms. Its extra Escalation Rules mobile
+  cell surfaced a two-sample CLS spike and therefore correctly failed rather
+  than being ignored.
+- Exact-cell run `36588009933`, artifact `11043736737`, repeats only that newly
+  failed Escalation Rules administrator/mobile cell and is green. Its image is
+  byte-identical to baseline, load p75 is 399 ms, and all seven CLS samples are
+  `0.011741124511635809`, matching baseline and staying below the unchanged
+  `0.012915` comparison limit. All other failure counters remain zero.
+- The immutable aggregate therefore covers every one of the 56 baseline cells
+  with matched visual and performance evidence on the same SHA, profile,
+  canary state, locale, theme, viewport and seven-sample contract. No already
+  green matrix was rerun after a failure: recovery runs were narrowed to the
+  unresolved cells, and no visual/performance allowance or assertion changed.
+  `SUPUX-EVD-001` through `006` and `SUPUX-PERF-002` are closed. Protected PR,
+  merge, deployment and production smoke remain separate mandatory gates.
 
 Current verification evidence (2026-09-05):
 

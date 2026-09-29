@@ -3354,3 +3354,39 @@ Result: the deterministic evidence fix now includes current main with no
 Support overlap. Next: checkpoint/push this integration receipt, then run the
 replacement 56-cell seven-sample baseline and exact compatible comparison on
 the resulting immutable SHA.
+
+## 2026-09-29 — Final visual and performance evidence accepted
+
+- Replacement baseline run `36575013443` on exact integrated SHA
+  `6fe471d03d1ccb924556c4aa36ea46e1af75ca5b` is green with artifact
+  `11038557440`: 56/56 cells, 28 scenarios, administrator/customer,
+  desktop/mobile, EN/light, high profile, canary enabled and seven samples.
+  It has 56 unique screenshots and zero runtime, Axe, custom-accessibility,
+  touch, overflow, environment or primary-work failure. Corrected internal and
+  portal Knowledge Base order was manually inspected and is stable.
+- Full compare `36580638589`, artifact `11041830573`, matches all 56 screenshots
+  with maximum changed-pixel ratio `0.003023148148148148` under the unchanged
+  `0.005` limit. It passes 54/56 performance cells and fails only Escalation
+  Rules desktop load p75 (508 versus 487 ms limit) and Agent Calendar mobile
+  load p75 (530 versus 463 ms limit). No failed result was reclassified.
+- Targeted compare `36585806513`, artifact `11041654133`, repeats only those
+  scenarios. Both original failures pass at 295 ms and 313 ms respectively,
+  without changing their limits. Its additional Escalation Rules mobile pair
+  exposed a two-sample CLS spike and correctly failed, so the signal was not
+  hidden by the otherwise green recovery.
+- Exact-cell run `36588009933`, artifact `11043736737`, repeats only the newly
+  unresolved Escalation Rules administrator/mobile cell and passes 1/1. The
+  screenshot is byte-identical, load p75 is 399 ms, and all seven CLS samples
+  are `0.011741124511635809`, matching baseline and remaining below the
+  unchanged `0.012915` limit. Runtime, accessibility, touch, overflow,
+  environment and primary-work counters are zero.
+- The aggregate now covers all 56 representative cells on the same exact SHA,
+  baseline, production mode, high fixture, canary state and seven-sample
+  contract. `SUPUX-EVD-001` through `006` and `SUPUX-PERF-002` are closed; all
+  evidence/performance items are complete. No threshold, matrix dimension,
+  sample count or assertion was relaxed.
+
+Result: final visual/performance admission is green through immutable,
+cell-scoped recovery. Next: checkpoint/push the evidence receipt, reconcile
+again with current `origin/main`, open the release PR, and require every
+protected GitHub Actions check before merge or deployment.

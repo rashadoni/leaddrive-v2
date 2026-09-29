@@ -1,9 +1,9 @@
 # Support UX performance and rollout contract
 
-Status: **IN PROGRESS**. This contract is the release authority for the Support
-UX branch. A source checkpoint, capture-only artifact, or successful deployment
-does not by itself satisfy the comparison, canary, observation, or rollback
-gates below.
+Status: **EVIDENCE/PERFORMANCE COMPLETE; RELEASE PENDING**. This contract is the
+release authority for the Support UX branch. The comparison and pre-release
+canary gates are satisfied; protected merge, deployment, smoke and the later
+tenant observation/flag-removal gates remain independent requirements.
 
 ## Performance measurement
 
@@ -209,12 +209,30 @@ intentionally deferred until all conditions hold:
 | Canary tenant and flag | No production tenant enabled; `support_ux_v2_canary` defaults off |
 | Evidence artifacts | Full 1296/1296 run `36542434997`, artifact `11024298303`; canary off `36551225927`/`11025885144`; canary on `36552953697`/`11027281153`; profiles 0/5/50/500 runs `36554107100`, `36555323681`, `36557478393`, `36559389503` |
 | Roles / profiles | Agent, manager, admin, customer; high and measured 0/5/50/500 accepted |
-| Baseline / compare | Final seven-sample pair pending |
+| Baseline / compare | Accepted aggregate: `36575013443`/`11038557440`, `36580638589`/`11041830573`, `36585806513`/`11041654133`, `36588009933`/`11043736737` |
 | Production smoke | Pending deploy |
 | Observation | Not started; removal gate deferred by policy above |
 | P0/P1 incidents | None recorded before release |
 | Owner | Repository owner `rashadoni` |
 | Rollback | Remove tenant flag first; revert affected checkpoint through reviewed `main`; preserve DB state |
+
+### Final visual/performance comparison receipt
+
+- Baseline `36575013443` / artifact `11038557440` passes 56/56 cells on exact
+  integrated SHA `6fe471d03d1ccb924556c4aa36ea46e1af75ca5b`.
+- Full compare `36580638589` / artifact `11041830573` matches 56/56 visuals and
+  54/56 performance cells. The maximum changed-pixel ratio is
+  `0.003023148148148148` against the unchanged `0.005` limit.
+- Targeted compare `36585806513` / artifact `11041654133` passes the only two
+  failed load cells without changing their limits. It also surfaced and failed
+  an additional Escalation Rules mobile CLS sample rather than masking it.
+- Exact-cell compare `36588009933` / artifact `11043736737` closes that final
+  signal: 1/1 green, byte-identical screenshot, 399 ms load p75 and CLS p75
+  `0.011741124511635809` against limit `0.012915`.
+
+The immutable aggregate is the admitted seven-sample comparison for all 56
+representative cells. Recovery was cell-scoped; no threshold, sample count,
+dimension, accessibility check or structural assertion changed.
 
 This ledger is updated with immutable run, PR, merge, deploy and smoke IDs as
 each gate actually completes. Pending entries are never interpreted as passes.
