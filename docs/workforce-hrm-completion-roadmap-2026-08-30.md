@@ -2469,3 +2469,34 @@ from this worktree.
   author checks pass, but remediation is uncommitted.
 - Next action: checkpoint only explicit remediation paths, recompute the exact
   full identity and require a completely fresh independent rereview.
+
+## 2026-09-29 — WF-C8-007b second review P2 remediated
+
+- Fresh review of exact head `7b065c3665640a2888a93ce4f389a0c4e3185fd9`
+  closed the unknown-POST P2 but returned RED with one remaining P2: the new
+  calendar link still inherited legacy CRM `permissionScope: workforce`, so a
+  support/ticketing user with an independent Scheduler grant could not see it.
+- The narrow `/workforce/calendar` item now gates only on the tenant Workforce
+  capability. Exact GET/POST grants remain server-authoritative, and the broad
+  `/workforce/configuration` menu entry remains admin/superadmin-only. A
+  support-role regression proves the legacy empty permission set no longer
+  suppresses the grant-capable calendar path.
+- No completion/gate credit is added: `WF-C8-007` remains `PARTIAL`; progress
+  remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the remaining navigation P2 is fixed but uncommitted;
+  prior RED identities remain ineligible for merge.
+- Next action: rerun the bounded gates, checkpoint, recompute identity and
+  require another fresh full-range independent review.
+
+## 2026-09-29 — WF-C8-007b permission-scope remediation verification
+
+- PASS after removing the legacy calendar navigation scope: seven targeted
+  files / 88 tests, scoped ESLint on all 11 affected TS/TSX paths, i18n
+  23,834/0/0 and whitespace.
+- Full typecheck/build/suite, browser/AT/device, Android/Gradle, load/chaos,
+  real-Postgres race, signed-device and pilot remain `NOT RUN`. No progress or
+  gate credit is added.
+- Precise stopping point: all known independent findings are remediated and
+  bounded author checks pass; the final remediation is uncommitted.
+- Next action: checkpoint, freeze a new identity and require a fresh complete
+  author-independent review before push.

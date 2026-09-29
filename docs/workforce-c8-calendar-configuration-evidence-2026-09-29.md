@@ -144,3 +144,32 @@ real-Postgres race injection, signed-device and pilot remain `NOT RUN` under
 the Contabo placement rule. A new commit, exact identity and completely fresh
 author-independent review are required; the rejected identity is not eligible
 for approval or merge.
+
+### Second frozen rereview and permission-scope remediation
+
+Fresh full-range rereview of exact head
+`7b065c3665640a2888a93ce4f389a0c4e3185fd9` returned
+`P0=0, P1=0, P2=1, P3=0`. It confirmed the unknown-POST outcome finding was
+closed, then found that the new menu item still carried legacy
+`permissionScope: "workforce"`. That coarse CRM filter admits manager/sales
+but hides support/ticketing, even though the independent `SCHEDULER` grant may
+be assigned to any active tenant user.
+
+The narrow calendar item is now capability-only in navigation and deliberately
+omits the legacy permission scope. This is discoverability, not authorization:
+the page contains only the calendar component, while GET and POST still require
+the exact durable `SCHEDULE_READ` and `SCHEDULE_WRITE` decision. The broad
+configuration item remains explicitly admin/superadmin-only. Navigation tests
+now cover a support-role grant candidate whose legacy Workforce permission is
+empty.
+
+The rejected identity was 17 paths / 88,446 bytes / SHA-256
+`8faef26fa99cfadbd9bee2aecc9faf1f701b74438c9a19d880e019351dceef3a`.
+It is not eligible for approval or merge. A new checkpoint, identity, targeted
+verification and fresh author-independent rereview are mandatory.
+
+Permission-scope remediation verification is green: seven targeted files / 88
+tests, scoped ESLint on the complete 11-path TS/TSX set, i18n 23,834/0/0 and
+whitespace. Full typecheck/build/suite and physical/browser/device/load gates
+remain `NOT RUN` under host policy. This author verification does not replace
+the required fresh independent review.

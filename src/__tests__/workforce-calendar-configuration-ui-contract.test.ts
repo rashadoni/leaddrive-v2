@@ -19,7 +19,8 @@ describe("Workforce calendar configuration UI contract", () => {
   it("mounts a separate Scheduler-visible surface on a dedicated calendar page", () => {
     expect(page).toContain("<WorkforceCalendarConfiguration />")
     expect(broadConfigurationPage).not.toContain("<WorkforceCalendarConfiguration />")
-    expect(navigation).toContain('{ href: "/workforce/calendar", icon: CalendarDays, tKey: "workforceCalendar", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" }')
+    expect(navigation).toContain('{ href: "/workforce/calendar", icon: CalendarDays, tKey: "workforceCalendar", group: "HRM", capability: "workforce-hrm" }')
+    expect(navigation).toContain("legacy CRM permissionScope")
     expect(component).toContain('request("GET")')
     expect(component).toContain('request("POST", { date, kind, name })')
     expect(component).toContain('"/api/v1/workforce/configuration/calendar"')

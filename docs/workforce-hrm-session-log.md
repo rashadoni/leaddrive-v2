@@ -2363,3 +2363,42 @@ corrections as new entries that explicitly supersede the earlier fact.
   targeted checks pass, but the remediation is not committed.
 - Next action: checkpoint explicit remediation paths, compute a new frozen
   identity and obtain a completely fresh author-independent rereview.
+
+## 2026-09-29 — WF-C8-007b second rereview RED remediation
+
+- Full-range independent rereview matched head
+  `7b065c3665640a2888a93ce4f389a0c4e3185fd9`, 17 paths / 88,446 bytes /
+  `8faef26fa99cfadbd9bee2aecc9faf1f701b74438c9a19d880e019351dceef3a`
+  and returned `P0=0`, `P1=0`, `P2=1`, `P3=0`.
+- The first remediation's outcome-unknown POST behavior is independently
+  closed. The remaining P2 was partial discoverability: legacy
+  `permissionScope: workforce` hid the calendar from support/ticketing CRM
+  roles even when an independent organization Scheduler grant could exist.
+- Removed only that legacy coarse-role filter from the narrow calendar nav
+  item. Tenant capability still gates the menu; the dedicated page exposes no
+  broad admin surfaces; GET/POST still enforce exact durable grants; broad
+  configuration remains admin/superadmin-only.
+- Added regression coverage for a support-role grant candidate with no legacy
+  Workforce permission. No server authorization was weakened.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: the final known P2 is remediated in the working tree;
+  bounded checks, checkpoint and fresh exact-head review remain.
+- Next action: repeat targeted verification, commit explicit paths, freeze a
+  new identity and request another complete independent rereview.
+
+## 2026-09-29 — WF-C8-007b final known-finding verification
+
+- The capability-only navigation correction passes seven targeted files / 88
+  tests, including the support-role/no-legacy-permission regression and RLS
+  route coverage. Scoped ESLint on 11 TS/TSX paths, i18n 23,834/0/0 and
+  whitespace also pass.
+- Full typecheck/build/suite, browser/AT/device, Android/Gradle, load/chaos,
+  real-Postgres race, signed-device and pilot remain `NOT RUN` under host
+  policy. A fresh independent exact-head review is still mandatory.
+- Progress is unchanged: `WF-C8-007` remains `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: all known review findings are fixed and author checks
+  pass, but the final remediation is not committed.
+- Next action: checkpoint the explicit six remediation/evidence paths, compute
+  the new full identity and start a fresh complete rereview.

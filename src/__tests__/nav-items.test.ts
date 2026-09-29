@@ -146,9 +146,18 @@ describe("accessibleNavItems", () => {
       role: "admin",
       modules: { "workforce-hrm": true },
     })
+    const grantOnlySchedulerCandidate = accessibleNavItems({
+      plan: "enterprise",
+      role: "support",
+      modules: { "workforce-hrm": true },
+    })
 
     expect(schedulerCompatible.some((item) => item.href === "/workforce/calendar")).toBe(true)
     expect(schedulerCompatible.some((item) => item.href === "/workforce/configuration")).toBe(false)
+    // Support has no legacy Workforce permission. Navigation stays available
+    // because an independent SCHEDULER grant, resolved by the API, may exist.
+    expect(grantOnlySchedulerCandidate.some((item) => item.href === "/workforce/calendar")).toBe(true)
+    expect(grantOnlySchedulerCandidate.some((item) => item.href === "/workforce/configuration")).toBe(false)
     expect(administrator.some((item) => item.href === "/workforce/calendar")).toBe(true)
     expect(administrator.some((item) => item.href === "/workforce/configuration")).toBe(true)
   })
