@@ -7,9 +7,11 @@ import {
   WorkforceCalendarConfigurationError,
   createWorkforceCalendarOverride,
   listWorkforceCalendarOverrides,
+  searchWorkforceCalendarAgents,
   searchWorkforceCalendarTeams,
 } from "@/lib/workforce/calendar-configuration"
 import {
+  WORKFORCE_CALENDAR_AGENT_SEARCH_LIMIT,
   WORKFORCE_CALENDAR_TEAM_SEARCH_LIMIT,
   WorkforceCalendarOverrideCreateSchema,
   WorkforceCalendarScopeSelectionSchema,
@@ -25,6 +27,7 @@ function configurationError(error: WorkforceCalendarConfigurationError): Respons
   const status = error.code === "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS"
     ? 409
     : error.code === "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_UNAVAILABLE"
+      || error.code === "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE"
       ? 404
       : 400
   return NextResponse.json({ error: error.message, code: error.code }, { status })
@@ -36,6 +39,9 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
       scope: req.nextUrl.searchParams.get("scope") ?? undefined,
       ...(req.nextUrl.searchParams.has("teamId")
         ? { teamId: req.nextUrl.searchParams.get("teamId") ?? undefined }
+        : {}),
+      ...(req.nextUrl.searchParams.has("agentId")
+        ? { agentId: req.nextUrl.searchParams.get("agentId") ?? undefined }
         : {}),
     })
     if (!selection.success) {
@@ -51,16 +57,33 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
     const teamQuery = req.nextUrl.searchParams.get("teamQuery") ?? ""
     const rawTeamLimit = req.nextUrl.searchParams.get("teamLimit")
     const teamLimit = rawTeamLimit === null ? WORKFORCE_CALENDAR_TEAM_SEARCH_LIMIT : Number(rawTeamLimit)
-    const directory = await searchWorkforceCalendarTeams({
-      organizationId: auth.orgId,
-      query: teamQuery,
-      limit: teamLimit,
-      selectedTeamId: selection.data.scope === "TEAM" ? selection.data.teamId : undefined,
-    })
-    if (selection.data.scope === "TEAM" && !directory.selectedTeam) {
+    const agentQuery = req.nextUrl.searchParams.get("agentQuery") ?? ""
+    const rawAgentLimit = req.nextUrl.searchParams.get("agentLimit")
+    const agentLimit = rawAgentLimit === null ? WORKFORCE_CALENDAR_AGENT_SEARCH_LIMIT : Number(rawAgentLimit)
+    const [teamDirectory, agentDirectory] = await Promise.all([
+      searchWorkforceCalendarTeams({
+        organizationId: auth.orgId,
+        query: teamQuery,
+        limit: teamLimit,
+        selectedTeamId: selection.data.scope === "TEAM" ? selection.data.teamId : undefined,
+      }),
+      searchWorkforceCalendarAgents({
+        organizationId: auth.orgId,
+        query: agentQuery,
+        limit: agentLimit,
+        selectedAgentId: selection.data.scope === "AGENT" ? selection.data.agentId : undefined,
+      }),
+    ])
+    if (selection.data.scope === "TEAM" && !teamDirectory.selectedTeam) {
       throw new WorkforceCalendarConfigurationError(
         "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_UNAVAILABLE",
         "The selected team is unavailable",
+      )
+    }
+    if (selection.data.scope === "AGENT" && !agentDirectory.selectedAgent) {
+      throw new WorkforceCalendarConfigurationError(
+        "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE",
+        "The selected employee is unavailable",
       )
     }
     const days = await listWorkforceCalendarOverrides({
@@ -70,6 +93,7 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
       endExclusive,
       scope: selection.data.scope,
       teamId: selection.data.teamId,
+      agentId: selection.data.agentId,
     })
     return NextResponse.json({
       success: true,
@@ -78,12 +102,19 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
         start,
         endExclusive,
         scope: selection.data.scope,
-        team: directory.selectedTeam,
+        team: teamDirectory.selectedTeam,
+        agent: agentDirectory.selectedAgent,
         teamDirectory: {
-          items: directory.teams,
-          query: directory.query,
-          limit: directory.limit,
-          hasMore: directory.hasMore,
+          items: teamDirectory.teams,
+          query: teamDirectory.query,
+          limit: teamDirectory.limit,
+          hasMore: teamDirectory.hasMore,
+        },
+        agentDirectory: {
+          items: agentDirectory.agents,
+          query: agentDirectory.query,
+          limit: agentDirectory.limit,
+          hasMore: agentDirectory.hasMore,
         },
         days,
       },
@@ -119,6 +150,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRIT
         ...clock,
         scope: parsed.data.scope,
         team: result.team,
+        agent: result.agent,
         day: result.day,
       },
     }, { status: result.created ? 201 : 200 })

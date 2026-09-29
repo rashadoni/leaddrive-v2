@@ -974,7 +974,7 @@ from Route & Field.
 | WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
 | WF-C8-006 | P1 | DONE | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | [`workforce-c8-sites-geofences-evidence-2026-08-30.md`](./workforce-c8-sites-geofences-evidence-2026-08-30.md): administrator-only named sites, future calibrated circles, assignment-only impact preview and immutable revision history; no browser location collection or physical-presence claim |
-| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md) and [`future organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments and strict future organization holiday/closure/exception authoring are source-complete; team/employee and moved-day workflows, update/delete governance, break-policy authoring and real browser/AT evidence remain open |
+| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md), [`organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md), [`team calendar evidence`](./workforce-c8-team-calendar-configuration-evidence-2026-09-29.md) and [`employee calendar evidence`](./workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments and strict future organization/team/employee holiday/closure/exception create/list are source-complete; moved-day workflow, update/delete governance, break-policy authoring and real browser/AT evidence remain open |
 | WF-C8-008 | P1 | PARTIAL | Web | Add proof-policy, QR station and trusted-device administration separated by permission | [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): named-site/effective-circle QR station creation plus device/QR lifecycle UI are administrator-only; proof-policy UI and granular separation-of-duties await C7/C5 gates |
 | WF-C8-009 | P1 | PARTIAL | Web | Add restricted evidence timeline and access audit; normal view shows verdict instead of exact coordinates | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md): a visible named-employee web timeline now returns only bounded localized verdict/reason records after exact grant, explicit context and successful access audit; raw-investigation policy/UI and real-browser acceptance remain open |
 | WF-C8-010 | P1 | PARTIAL | Web/I18n | Complete AZ/RU/EN, keyboard, focus, contrast, 200% zoom, responsive tablet/phone and error/empty states | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md) and [`bulk preview evidence`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): AZ/RU/EN, concise announcements, focus transfer, bounded named search, responsive source and error/empty states exist; real browser/AT/contrast/200%-zoom/mobile evidence remains open |
@@ -2684,3 +2684,123 @@ from this worktree.
   three-document GREEN receipt is uncommitted.
 - Next action: checkpoint the receipt, prove implementation fingerprint
   unchanged, obtain receipt-integrity GREEN, then push/open the bounded PR.
+
+## 2026-09-29 — PR #502 future team calendar production release
+
+- Final head `8d58b217f32ea458b140e8c6a6dfdef5e4c7420a` retained the independently
+  GREEN implementation fingerprint. All required exact-head checks passed:
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`.
+- PR #502 merged normally as main
+  `01f5069a732a4879a453c918bca8a52864999401`. Deploy run `36595610621`
+  passed quality/security, SHA-bound standalone build and artifact publish,
+  immutable staging, atomic deploy, built-in smokes and retention cleanup.
+- Independent no-cache TLS probes pinned the public hostname to approved
+  production `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and
+  build-info returned HTTP 200 with exact
+  `artifactSha=01f5069a732a4879a453c918bca8a52864999401` and
+  `builtAt=2026-09-29T16:15:50Z`.
+- Only GitHub `main` through `.github/workflows/deploy.yml` was used. No direct
+  deploy, worktree copy, Azure or retired target/owner was used.
+- `WF-C8-007` remains `PARTIAL`; no task/gate credit changes. Progress remains
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: organization and named-team future calendar
+  create/list are reviewed, merged, deployed and exact-SHA production-verified;
+  successor branch `codex/workforce-completion-part12` starts at that merge.
+- Next action: implement bounded `WF-C8-007d` future employee/AGENT-scope
+  create/list with a tenant-safe named employee directory, locked current-team
+  baseline and no moved/update/delete/request-approval scope.
+
+## 2026-09-29 — WF-C8-007d future employee calendar implementation checkpoint
+
+- Extended the released organization/team calendar boundary with strict
+  employee scope, tenant-bound bounded active-employee search, same-tenant
+  inactive/suspended read continuity and exact employee-only future list.
+- Employee creation takes the shared organization/date advisory lock, then
+  locks the active tenant employee row `FOR SHARE` before reading the exact
+  employee, locked current-team and organization calendar candidates. The
+  stored Route flag inherits team/organization/default state without using the
+  target employee row as its own baseline.
+- Exact `ADMIN` replay remains a no-op. Different state, unique collision and
+  existing request-created leave/absence provenance fail closed; calendar row
+  and target/operator audit remain atomic. Safe response and directory fields
+  omit email, phone, credential/device material and calendar provenance.
+- The localized UI uses a named employee picker with status/current-team
+  context, inactive read-only continuity, explicit schedule-not-leave wording,
+  latest-GET fencing and eight-control POST reconciliation freezing.
+- Focused current-tree PASS: 41 domain/API/UI tests, 16 retained calendar
+  precedence/API tests, 33 authorization/RLS tests, 4 voice coverage tests,
+  scoped ESLint, i18n 23,879/0/0, JSON and whitespace checks.
+- Full typecheck/build/suite, real-PostgreSQL race, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  host policy. Exact-head CI and fresh author-independent frozen review remain
+  mandatory.
+- Evidence:
+  `docs/workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md`.
+- No progress credit is claimed. `WF-C8-007` remains `PARTIAL`; progress stays
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation, regressions, localization and bounded
+  author verification are complete in the working tree; checkpoint freeze is
+  in progress.
+- Next action: commit only explicit slice/evidence paths, compute exact diff
+  identities and obtain a fresh author-independent full-range frozen-head
+  review before any push or PR.
+
+## 2026-09-29 — WF-C8-007d live-main reconciliation
+
+- Live `origin/main` had advanced to
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`; it was merged normally before
+  frozen review. Only EN/RU/AZ catalogs overlapped and merged without conflict,
+  retaining both the independent Support UX keys and this calendar slice.
+- Post-integration PASS: all 94 bounded tests, scoped ESLint, whitespace and
+  i18n 23,883/0/0. No calendar implementation/test conflict resolution was
+  required. Full heavy checks remain `NOT RUN` locally and required in CI.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: current main is integrated and bounded checks are
+  green; only the post-reconciliation receipt is uncommitted.
+- Next action: checkpoint this receipt, compute new exact identities against
+  live main and start author-independent frozen-head review.
+
+## 2026-09-29 — WF-C8-007d first frozen review remediation
+
+- Independent review of exact head
+  `a6423c114c74a75661e4be8d36151df7ab98ca7f` returned RED:
+  `P0=0`, `P1=0`, `P2=1`, `P3=1`. The P2 was a privacy/copy contract that
+  invited a leave/medical reason into the schedule-visible and audited personal
+  label; the P3 was the stale authoritative `WF-C8-007` acceptance row.
+- Employee scope now presents a localized, described non-sensitive display
+  label, explicitly prohibits leave/absence, medical/health, disciplinary and
+  proof details, and discloses its schedule visibility/audit retention.
+  Evidence now describes the stored label truthfully.
+- The `WF-C8-007` row now links organization/team/employee evidence and leaves
+  only moved-day, update/delete, break-policy and browser/AT work open.
+- Post-remediation PASS: 9 files / 95 tests, scoped ESLint, JSON, whitespace
+  and i18n 23,886/0/0. Heavy local gates remain `NOT RUN`; the rejected head is
+  ineligible and fresh exact-head independent GREEN remains mandatory.
+- No progress credit changes: `WF-C8-007` stays `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: both review findings are remediated in the working
+  tree; the remediation/evidence are uncommitted.
+- Next action: checkpoint explicit paths, recompute live-main identities and
+  obtain a fresh full-range author-independent review.
+
+## 2026-09-29 — WF-C8-007d frozen review GREEN
+
+- Fresh author-independent full-range review returned GREEN
+  (`P0=P1=P2=P3=0`) on exact clean head
+  `21d3dc6506193bb4e6e2ce7f9cc30bd15439197b` against live main/merge-base
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`.
+- Full identity matched 15 paths / 136,737 bytes /
+  `5d54d093714f0fdb73d486d71f5785a51c262ca0ea81bbd6ac6d6b76eb6ab7d0`;
+  non-doc identity matched 11 paths / 103,986 bytes /
+  `0891d37e861491d2a94acd056e1088651d28ce4f0a902923222e6893ab332d83`.
+- Both prior findings are closed and the complete runtime/evidence boundary was
+  re-reviewed. Reviewer checks passed 95/95, ESLint, i18n 23,886/0/0, JSON,
+  whitespace and session-prefix integrity; heavy gates remain `NOT RUN` and
+  mandatory in CI.
+- Progress remains unchanged: `WF-C8-007` is `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: reviewed runtime/test/i18n bytes are frozen; only
+  this three-document GREEN receipt is uncommitted.
+- Next action: commit the receipt, verify non-doc identity is byte-identical,
+  obtain receipt-integrity GREEN, then push/open the bounded PR.

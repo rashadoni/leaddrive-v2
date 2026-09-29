@@ -4,8 +4,12 @@ import { resolveWorkCalendarDay } from "@/lib/mtm/work-calendar"
 import { prisma } from "@/lib/prisma"
 import type { WorkforceConfigurationAuditContext } from "@/lib/workforce/configuration-management"
 import {
+  WORKFORCE_CALENDAR_AGENT_QUERY_MAX_LENGTH,
+  WORKFORCE_CALENDAR_AGENT_SEARCH_LIMIT,
   WORKFORCE_CALENDAR_TEAM_QUERY_MAX_LENGTH,
   WORKFORCE_CALENDAR_TEAM_SEARCH_LIMIT,
+  type WorkforceCalendarAgentSummary,
+  type WorkforceCalendarAgentStatus,
   type WorkforceCalendarConfigurationScope,
   type WorkforceCalendarOverrideDraft,
   type WorkforceCalendarOverrideSummary,
@@ -37,6 +41,14 @@ const calendarTeamSelect = {
   isActive: true,
 } satisfies Prisma.MtmTeamSelect
 
+const calendarAgentSelect = {
+  id: true,
+  name: true,
+  externalCode: true,
+  status: true,
+  team: { select: calendarTeamSelect },
+} satisfies Prisma.MtmAgentSelect
+
 export class WorkforceCalendarConfigurationError extends Error {
   constructor(
     readonly code:
@@ -44,6 +56,8 @@ export class WorkforceCalendarConfigurationError extends Error {
       | "WORKFORCE_CALENDAR_CONFIGURATION_DATE_NOT_FUTURE"
       | "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS"
       | "WORKFORCE_CALENDAR_CONFIGURATION_SCOPE_INVALID"
+      | "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE"
+      | "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_SEARCH_INVALID"
       | "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_UNAVAILABLE"
       | "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_SEARCH_INVALID",
     message: string = code,
@@ -96,24 +110,42 @@ function isPrismaCode(error: unknown, code: string): boolean {
   return (error as { code?: unknown } | null)?.code === code
 }
 
-function teamIdForScope(input: {
+function targetForScope(input: {
   scope: WorkforceCalendarConfigurationScope
   teamId?: string
-}): string | null {
+  agentId?: string
+}): { teamId: string | null; agentId: string | null } {
   if (input.scope === "TEAM") {
-    if (input.teamId) return input.teamId
-    throw new WorkforceCalendarConfigurationError(
-      "WORKFORCE_CALENDAR_CONFIGURATION_SCOPE_INVALID",
-      "Choose one supported calendar scope",
-    )
+    if (input.teamId && input.agentId === undefined) {
+      return { teamId: input.teamId, agentId: null }
+    }
+  } else if (input.scope === "AGENT") {
+    if (input.agentId && input.teamId === undefined) {
+      return { teamId: null, agentId: input.agentId }
+    }
+  } else if (input.teamId === undefined && input.agentId === undefined) {
+    return { teamId: null, agentId: null }
   }
-  if (input.teamId !== undefined) {
-    throw new WorkforceCalendarConfigurationError(
-      "WORKFORCE_CALENDAR_CONFIGURATION_SCOPE_INVALID",
-      "Choose one supported calendar scope",
-    )
+  throw new WorkforceCalendarConfigurationError(
+    "WORKFORCE_CALENDAR_CONFIGURATION_SCOPE_INVALID",
+    "Choose one supported calendar scope",
+  )
+}
+
+function calendarAgentSummary(row: {
+  id: string
+  name: string
+  externalCode: string | null
+  status: string
+  team: WorkforceCalendarTeamSummary | null
+}): WorkforceCalendarAgentSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    externalCode: row.externalCode,
+    status: row.status as WorkforceCalendarAgentStatus,
+    currentTeam: row.team,
   }
-  return null
 }
 
 export async function searchWorkforceCalendarTeams(input: {
@@ -177,6 +209,67 @@ export async function searchWorkforceCalendarTeams(input: {
   }
 }
 
+export async function searchWorkforceCalendarAgents(input: {
+  organizationId: string
+  query: string
+  limit?: number
+  selectedAgentId?: string
+  db?: PrismaClient
+}): Promise<{
+  agents: WorkforceCalendarAgentSummary[]
+  selectedAgent: WorkforceCalendarAgentSummary | null
+  query: string
+  limit: number
+  hasMore: boolean
+}> {
+  const query = input.query.trim()
+  const limit = input.limit ?? WORKFORCE_CALENDAR_AGENT_SEARCH_LIMIT
+  if (
+    query.length > WORKFORCE_CALENDAR_AGENT_QUERY_MAX_LENGTH
+    || !Number.isSafeInteger(limit)
+    || limit < 1
+    || limit > WORKFORCE_CALENDAR_AGENT_SEARCH_LIMIT
+  ) {
+    throw new WorkforceCalendarConfigurationError(
+      "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_SEARCH_INVALID",
+      "Choose a valid bounded employee search",
+    )
+  }
+  const db = input.db ?? prisma
+  const [matches, selectedAgent] = await Promise.all([
+    db.mtmAgent.findMany({
+      where: {
+        organizationId: input.organizationId,
+        status: "ACTIVE",
+        ...(query
+          ? {
+              OR: [
+                { name: { contains: query, mode: "insensitive" as const } },
+                { externalCode: { contains: query, mode: "insensitive" as const } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      take: limit + 1,
+      select: calendarAgentSelect,
+    }),
+    input.selectedAgentId
+      ? db.mtmAgent.findFirst({
+          where: { organizationId: input.organizationId, id: input.selectedAgentId },
+          select: calendarAgentSelect,
+        })
+      : Promise.resolve(null),
+  ])
+  return {
+    agents: matches.slice(0, limit).map(calendarAgentSummary),
+    selectedAgent: selectedAgent ? calendarAgentSummary(selectedAgent) : null,
+    query,
+    limit,
+    hasMore: matches.length > limit,
+  }
+}
+
 export async function listWorkforceCalendarOverrides(input: {
   organizationId: string
   currentDate: string
@@ -184,10 +277,11 @@ export async function listWorkforceCalendarOverrides(input: {
   endExclusive: string
   scope: WorkforceCalendarConfigurationScope
   teamId?: string
+  agentId?: string
   db?: PrismaClient
 }): Promise<WorkforceCalendarOverrideSummary[]> {
   assertFutureRange(input)
-  const teamId = teamIdForScope(input)
+  const target = targetForScope(input)
   const db = input.db ?? prisma
   const rows = await db.mtmWorkCalendarDay.findMany({
     where: {
@@ -196,8 +290,8 @@ export async function listWorkforceCalendarOverrides(input: {
         gte: asDatabaseDate(input.start),
         lt: asDatabaseDate(input.endExclusive),
       },
-      teamId,
-      agentId: null,
+      teamId: target.teamId,
+      agentId: target.agentId,
       deletedAt: null,
     },
     orderBy: [{ date: "asc" }, { id: "asc" }],
@@ -207,9 +301,10 @@ export async function listWorkforceCalendarOverrides(input: {
 }
 
 /**
- * Adds one organization/team future exception to the retained calendar
- * ledger. The operation is state-idempotent: an exact existing state is a
- * safe retry; a different state for the same tenant/date/scope is a conflict.
+ * Adds one organization/team/employee future exception to the retained
+ * calendar ledger. The operation is state-idempotent: an exact existing state
+ * is a safe retry; a different state for the same tenant/date/scope is a
+ * conflict.
  */
 export async function createWorkforceCalendarOverride(input: {
   organizationId: string
@@ -221,6 +316,7 @@ export async function createWorkforceCalendarOverride(input: {
 }): Promise<{
   day: WorkforceCalendarOverrideSummary
   team: WorkforceCalendarTeamSummary | null
+  agent: WorkforceCalendarAgentSummary | null
   created: boolean
 }> {
   if (!isDateKey(input.currentDate) || input.draft.date <= input.currentDate) {
@@ -229,7 +325,7 @@ export async function createWorkforceCalendarOverride(input: {
       "Calendar overrides must start after the organization's current date",
     )
   }
-  const expectedTeamId = teamIdForScope(input.draft)
+  const target = targetForScope(input.draft)
   const db = input.db ?? prisma
 
   try {
@@ -239,7 +335,7 @@ export async function createWorkforceCalendarOverride(input: {
         ? await tx.mtmTeam.findFirst({
             where: {
               organizationId: input.organizationId,
-              id: expectedTeamId as string,
+              id: target.teamId as string,
               isActive: true,
             },
             select: calendarTeamSelect,
@@ -252,40 +348,109 @@ export async function createWorkforceCalendarOverride(input: {
         )
       }
 
+      let agent: WorkforceCalendarAgentSummary | null = null
+      let currentAgentTeamId: string | null = null
+      if (input.draft.scope === "AGENT") {
+        const [lockedAgent] = await tx.$queryRaw<Array<{
+          id: string
+          name: string
+          externalCode: string | null
+          status: string
+          teamId: string | null
+          teamRecordId: string | null
+          teamName: string | null
+          teamCode: string | null
+          teamIsActive: boolean | null
+        }>>(Prisma.sql`
+          SELECT
+            agent."id",
+            agent."name",
+            agent."externalCode",
+            agent."status"::text AS "status",
+            agent."teamId",
+            team."id" AS "teamRecordId",
+            team."name" AS "teamName",
+            team."code" AS "teamCode",
+            team."isActive" AS "teamIsActive"
+          FROM "mtm_agents" AS agent
+          LEFT JOIN "mtm_teams" AS team
+            ON team."organizationId" = agent."organizationId"
+           AND team."id" = agent."teamId"
+          WHERE agent."organizationId" = ${input.organizationId}
+            AND agent."id" = ${target.agentId as string}
+            AND agent."status" = 'ACTIVE'
+          FOR SHARE OF agent
+        `)
+        if (!lockedAgent) {
+          throw new WorkforceCalendarConfigurationError(
+            "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE",
+            "The selected active employee is unavailable",
+          )
+        }
+        currentAgentTeamId = lockedAgent.teamId
+        agent = {
+          id: lockedAgent.id,
+          name: lockedAgent.name,
+          externalCode: lockedAgent.externalCode,
+          status: "ACTIVE",
+          currentTeam: lockedAgent.teamRecordId && lockedAgent.teamName
+            ? {
+                id: lockedAgent.teamRecordId,
+                name: lockedAgent.teamName,
+                code: lockedAgent.teamCode,
+                isActive: lockedAgent.teamIsActive === true,
+              }
+            : null,
+        }
+      }
+
+      const candidateScopes: Prisma.MtmWorkCalendarDayWhereInput[] = input.draft.scope === "AGENT"
+        ? [
+            { teamId: null, agentId: target.agentId },
+            { teamId: null, agentId: null },
+            ...(currentAgentTeamId ? [{ teamId: currentAgentTeamId, agentId: null }] : []),
+          ]
+        : input.draft.scope === "TEAM"
+          ? [{ teamId: target.teamId, agentId: null }, { teamId: null, agentId: null }]
+          : [{ teamId: null, agentId: null }]
+
       const candidates = await tx.mtmWorkCalendarDay.findMany({
         where: {
           organizationId: input.organizationId,
           date: asDatabaseDate(input.draft.date),
-          agentId: null,
           deletedAt: null,
-          OR: input.draft.scope === "TEAM"
-            ? [{ teamId: expectedTeamId }, { teamId: null }]
-            : [{ teamId: null }],
+          OR: candidateScopes,
         },
-        orderBy: [{ teamId: "asc" }, { id: "asc" }],
+        orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
         select: calendarExistingSelect,
       })
-      const existing = candidates.find((candidate) => candidate.teamId === expectedTeamId)
+      const existing = candidates.find((candidate) => (
+        candidate.teamId === target.teamId && candidate.agentId === target.agentId
+      ))
+      const baselineOverrides = input.draft.scope === "AGENT"
+        ? candidates.filter((candidate) => candidate.agentId === null)
+        : input.draft.scope === "TEAM"
+          ? candidates.filter((candidate) => candidate.teamId === null && candidate.agentId === null)
+          : []
       const routePlanningAllowed = resolveWorkCalendarDay({
         date: input.draft.date,
-        // An organization row is the state being validated, not its own
-        // baseline. Only a team override inherits a pre-existing organization
-        // decision for the same date.
-        overrides: input.draft.scope === "TEAM"
-          ? candidates.filter((candidate) => candidate.teamId === null)
-          : [],
-        teamId: expectedTeamId,
+        // The target row is the state being validated, never its own baseline.
+        // Team scope inherits organization state; employee scope inherits the
+        // locked current team's effective organization/team state.
+        overrides: baselineOverrides,
+        teamId: input.draft.scope === "AGENT" ? currentAgentTeamId : target.teamId,
+        agentId: target.agentId,
       }).routePlanningAllowed
       if (existing) {
         const exactState = existing.kind === input.draft.kind
           && existing.name === input.draft.name
-          && existing.teamId === expectedTeamId
-          && existing.agentId == null
+          && existing.teamId === target.teamId
+          && existing.agentId === target.agentId
           && existing.movedToDate == null
           && existing.routePlanningAllowed === routePlanningAllowed
           && existing.source === "ADMIN"
         if (exactState) {
-          return { day: calendarSummary(existing), team, created: false }
+          return { day: calendarSummary(existing), team, agent, created: false }
         }
         throw new WorkforceCalendarConfigurationError(
           "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS",
@@ -299,8 +464,8 @@ export async function createWorkforceCalendarOverride(input: {
           date: asDatabaseDate(input.draft.date),
           kind: input.draft.kind,
           name: input.draft.name,
-          teamId: expectedTeamId,
-          agentId: null,
+          teamId: target.teamId,
+          agentId: target.agentId,
           movedToDate: null,
           routePlanningAllowed,
           source: "ADMIN",
@@ -312,7 +477,7 @@ export async function createWorkforceCalendarOverride(input: {
       await tx.mtmAuditLog.create({
         data: {
           organizationId: input.organizationId,
-          agentId: null,
+          agentId: target.agentId,
           actorUserId: input.audit.actorUserId,
           action: "WORKFORCE_CALENDAR_OVERRIDE_CREATED",
           entity: "work_calendar_day",
@@ -327,6 +492,14 @@ export async function createWorkforceCalendarOverride(input: {
             teamId: team?.id ?? null,
             teamName: team?.name ?? null,
             teamCode: team?.code ?? null,
+            agentId: agent?.id ?? null,
+            agentName: agent?.name ?? null,
+            agentExternalCode: agent?.externalCode ?? null,
+            agentStatus: agent?.status ?? null,
+            currentTeamId: agent?.currentTeam?.id ?? null,
+            currentTeamName: agent?.currentTeam?.name ?? null,
+            currentTeamCode: agent?.currentTeam?.code ?? null,
+            currentTeamIsActive: agent?.currentTeam?.isActive ?? null,
             source: "ADMIN",
             routePlanningBaseline: routePlanningAllowed,
           },
@@ -334,7 +507,7 @@ export async function createWorkforceCalendarOverride(input: {
           userAgent: input.audit.userAgent ?? null,
         },
       })
-      return { day: calendarSummary(created), team, created: true }
+      return { day: calendarSummary(created), team, agent, created: true }
     })
   } catch (error) {
     if (error instanceof WorkforceCalendarConfigurationError) throw error

@@ -2610,3 +2610,155 @@ corrections as new entries that explicitly supersede the earlier fact.
   frozen; only this GREEN receipt is uncommitted.
 - Next action: commit the three docs, verify runtime fingerprint integrity,
   obtain receipt-only review and then push/open the ≤400 KB PR.
+
+## 2026-09-29 — PR #502 released to production
+
+- Final receipt-integrity review returned GREEN on exact clean head
+  `8d58b217f32ea458b140e8c6a6dfdef5e4c7420a`; all five required exact-head
+  checks then passed: `pr-scope`, `static-checks`, `typecheck`,
+  `runner-policy` and `scan`.
+- PR #502 merged normally at `2026-09-29T16:09:09Z` as main
+  `01f5069a732a4879a453c918bca8a52864999401`; no branch-protection bypass was
+  used.
+- Deploy run `36595610621` completed quality/security, SHA-bound standalone
+  build and artifact publication, immutable staging, atomic production deploy,
+  scheduler/tenant-isolation checks, built-in smokes and artifact retention.
+- Independent no-cache TLS probes forced `app.leaddrivecrm.org` to approved
+  production `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`; `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=01f5069a732a4879a453c918bca8a52864999401` and
+  `builtAt=2026-09-29T16:15:50Z`.
+- Release used only GitHub `main -> .github/workflows/deploy.yml` to
+  `/opt/leaddrive-v2`; no Azure, retired host/owner, direct server deploy or
+  worktree copy was used.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows. Browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN`.
+- Precise stopping point: PR #502 is merged, deploy and independent exact-SHA
+  public smokes are green; successor branch
+  `codex/workforce-completion-part12` is based on that merge SHA.
+- Next action: checkpoint this release receipt, then implement bounded
+  `WF-C8-007d` future AGENT-scope create/list using exact schedule grants,
+  tenant-safe named employee selection and current-team Route baseline;
+  moved-day/update/delete/request-approval remain outside the slice.
+
+## 2026-09-29 — WF-C8-007d employee calendar implementation and author checks
+
+- Resumed only in the recorded worktree on
+  `codex/workforce-completion-part12`, based on released main
+  `01f5069a732a4879a453c918bca8a52864999401`. Origin remains
+  `rashadoni/leaddrive-v2`; release routing remains only GitHub
+  `main -> deploy.yml -> 13.140.132.245:/opt/leaddrive-v2`.
+- The user asked for a direct remaining-work count. Current evidence remains 80
+  non-DONE roadmap rows, with the separately weighted completion summary at
+  59%; no unsupported 100% claim was made and autonomous implementation
+  continued.
+- Implemented strict named `AGENT` scope on the released future calendar API
+  and UI: bounded tenant-safe active-employee search by name/external code,
+  same-tenant inactive/suspended read continuity, exact employee inventory and
+  future active-employee creation.
+- The write path serializes on the released organization/date advisory lock,
+  then locks the active tenant employee row `FOR SHARE` to freeze current team.
+  Route baseline is derived from current-team/organization/default candidates
+  with the employee target row excluded. Exact `ADMIN` replay is no-op;
+  different/provenance/concurrent state fails closed and audit is atomic.
+- Existing request-created leave/absence personal rows remain visible and are
+  never replaced by this writer. The UI explicitly calls the new action a
+  personal scheduling exception, not leave/absence approval; no schema,
+  moved-day, update/delete, transfer editor, new grant or Route behavior was
+  added.
+- Current-tree PASS: focused calendar domain/API/UI 41 tests; retained
+  calendar precedence/API 16; Workforce auth/RLS 33; voice coverage 4; scoped
+  ESLint on all changed TS/TSX; i18n source 23,879 with RU/AZ missing 0 and
+  extra 0; JSON and whitespace. The voice-length test initially exposed an
+  overlong guide entry; it was shortened and rerun GREEN.
+- Full local typecheck/build/suite, real-PostgreSQL concurrency, browser/AT/
+  device, Android/Gradle, load/chaos, signed-device and tenant-pilot remain
+  `NOT RUN` under host policy. GitHub exact-head CI is mandatory.
+- Evidence:
+  `docs/workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md`.
+- `WF-C8-007` remains `PARTIAL`; no row/gate credit changes. Progress remains
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation, tests, i18n and evidence are complete
+  in the working tree; no checkpoint commit or independent frozen review has
+  yet been recorded for this slice.
+- Next action: rerun final bounded checks, checkpoint explicit paths, compute
+  the exact full/non-doc identities and require fresh author-independent
+  full-range GREEN before push/opening the next reviewable PR.
+
+## 2026-09-29 — WF-C8-007d reconciled with live main
+
+- Frozen-review preparation found `origin/main` 162 commits ahead at
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`, containing an independently
+  released Support UX stream. The branch was merged with that live main rather
+  than reviewing against the stale merge base.
+- The only overlapping task paths were `messages/en.json`, `messages/ru.json`
+  and `messages/az.json`; Git merged them cleanly and retained both key sets.
+  No calendar source, route, component or test required conflict resolution.
+- Post-merge PASS: 9 files / 94 bounded tests, scoped ESLint, `git diff
+  --check`, and i18n EN 23,883 with RU/AZ missing 0 and extra 0. Heavy local
+  gates remain `NOT RUN` by host policy.
+- No progress credit changes: `WF-C8-007` is `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: live main is integrated and verified; the
+  reconciliation receipt is uncommitted and no frozen reviewer has yet
+  approved the post-merge head.
+- Next action: checkpoint only the three evidence/continuity documents,
+  fingerprint the live-main diff, then require fresh author-independent GREEN.
+
+## 2026-09-29 — WF-C8-007d first frozen review RED remediated
+
+- Reviewer confirmed clean exact head
+  `a6423c114c74a75661e4be8d36151df7ab98ca7f`, live-main base
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`, full identity 15 paths /
+  122,670 bytes / `85a48b366c67e686f7a24e00450ae717cd88c3f5f357dbb0f4fc5f2f5288db8f`
+  and non-doc identity 11 paths / 100,387 bytes /
+  `46eb3061254840b27d78ceffdee8e0bca5e32fea9f5b7f847684e076b8b4c0af`.
+- Verdict was RED with `P0=0`, `P1=0`, `P2=1`, `P3=1`. The P2 found that
+  "Name or reason" invited sensitive leave/medical content into a personal
+  label returned to schedule readers and retained in audit. The P3 found the
+  authoritative `WF-C8-007` row still called team/employee workflows open.
+- Employee scope now uses a separate accessible non-sensitive display-label
+  field, neutral example, explicit localized ban on leave/absence,
+  medical/health, disciplinary and proof details, and disclosure that the
+  label is schedule-visible and audited. Evidence states actual retention
+  rather than promising that a stored label cannot be a reason.
+- The authoritative row now links released organization/team evidence and this
+  employee evidence; real remaining scope is moved-day, update/delete,
+  break-policy and browser/AT acceptance.
+- A separately examined cross-tenant nested-team concern was not confirmed:
+  session tenant context plus FORCE RLS/NOBYPASSRLS hides a corrupt foreign
+  relation, and the write SQL also joins on organization.
+- Post-remediation PASS: 9 files / 95 tests, scoped ESLint, JSON/diff and i18n
+  EN 23,886 with RU/AZ missing 0 and extra 0. Full typecheck/build/suite,
+  real-PostgreSQL concurrency, browser/AT/device, Android/Gradle, load/chaos,
+  signed-device and pilot remain `NOT RUN` locally.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: both findings are fixed but uncommitted; rejected
+  head is not eligible for push/merge.
+- Next action: checkpoint the six runtime/i18n/test/docs paths plus continuity,
+  compute a new exact identity and require fresh independent GREEN.
+
+## 2026-09-29 — WF-C8-007d independent frozen review GREEN
+
+- Fresh author-independent review returned GREEN (`P0=P1=P2=P3=0`) on clean
+  exact head `21d3dc6506193bb4e6e2ce7f9cc30bd15439197b`; live main and merge-base were
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`.
+- Reviewer matched full 15-path / 136,737-byte identity
+  `5d54d093714f0fdb73d486d71f5785a51c262ca0ea81bbd6ac6d6b76eb6ab7d0`
+  and non-doc 11-path / 103,986-byte identity
+  `0891d37e861491d2a94acd056e1088651d28ce4f0a902923222e6893ab332d83`.
+- Both rejected-head findings are closed. Full-range re-review found no new
+  tenant/auth, scope, locking/baseline, idempotency/audit, UI race/privacy/
+  accessibility, i18n or evidence issue. The current-team relation is safely
+  contained by tenant RLS and the writer's organization join.
+- Reviewer PASS: 9 files / 95 tests, scoped ESLint, i18n 23,886/0/0, JSON,
+  whitespace and append-only session prefixes. Heavy local gates remain
+  `NOT RUN` and exact-head GitHub CI remains mandatory.
+- No progress credit changes: `WF-C8-007` stays `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: independently reviewed runtime/test/i18n blobs are
+  frozen; only the GREEN receipt is uncommitted.
+- Next action: commit the three docs, prove runtime fingerprint integrity,
+  require receipt-only review and then push/open the ≤400 KB PR.

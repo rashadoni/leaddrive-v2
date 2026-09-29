@@ -54,7 +54,7 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(state.controller).toBeNull()
   })
 
-  it("offers only the three released additive organization/team override kinds", () => {
+  it("offers only the three released additive organization/team/employee override kinds", () => {
     expect(WORKFORCE_CALENDAR_EDITOR_KINDS).toEqual([
       "PUBLIC_HOLIDAY",
       "COMPANY_HOLIDAY",
@@ -69,6 +69,8 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(component).toContain('id="workforce-calendar-scope"')
     expect(component).toContain('id="workforce-calendar-team"')
     expect(component).toContain('id="workforce-calendar-team-search"')
+    expect(component).toContain('id="workforce-calendar-agent"')
+    expect(component).toContain('id="workforce-calendar-agent-search"')
     expect(component).toContain('id="workforce-calendar-date"')
     expect(component).toContain('id="workforce-calendar-kind"')
     expect(component).toContain('id="workforce-calendar-name"')
@@ -81,11 +83,13 @@ describe("Workforce calendar configuration UI contract", () => {
   })
 
   it("freezes every selection and draft control until a submitted mutation is reconciled", () => {
-    expect(component.match(/disabled=\{saving\}/g)).toHaveLength(6)
+    expect(component.match(/disabled=\{saving\}/g)).toHaveLength(8)
     for (const control of [
       "workforce-calendar-scope",
       "workforce-calendar-team",
       "workforce-calendar-team-search",
+      "workforce-calendar-agent",
+      "workforce-calendar-agent-search",
       "workforce-calendar-date",
       "workforce-calendar-kind",
       "workforce-calendar-name",
@@ -95,17 +99,32 @@ describe("Workforce calendar configuration UI contract", () => {
     }
   })
 
-  it("uses a named bounded team picker and keeps unrelated storage and Route fields out of the browser", () => {
+  it("uses named bounded target pickers and keeps PII, storage and Route fields out of the browser", () => {
     expect(component).toContain('team.name')
     expect(component).toContain('team.code')
     expect(component).toContain('maxLength={100}')
     expect(component).toContain('teamDirectory.hasMore')
-    expect(component).toContain('scope === "TEAM" ? { teamId } : {}')
-    expect(component).not.toMatch(/\bagentId\b/)
+    expect(component).toContain('agent.name')
+    expect(component).toContain('agent.externalCode')
+    expect(component).toContain('agentDirectory.hasMore')
+    expect(component).toContain('submittedSelection.scope === "AGENT" ? { agentId: submittedSelection.agentId } : {}')
+    expect(component).not.toMatch(/\bemail\b/)
+    expect(component).not.toMatch(/\bphone\b/)
+    expect(component).not.toMatch(/\bpasswordHash\b/)
     expect(component).not.toMatch(/\bmovedToDate\b/)
     expect(component).not.toMatch(/\broutePlanningAllowed\b/)
     expect(component).not.toMatch(/\bcreatedBy\b/)
     expect(component).not.toContain('source: "ADMIN"')
+  })
+
+  it("uses a non-sensitive employee display-label contract instead of inviting HR reasons", () => {
+    expect(component).toContain('t(scope === "AGENT" ? "agentName" : "name")')
+    expect(component).toContain('t(scope === "AGENT" ? "agentNamePlaceholder" : "namePlaceholder")')
+    expect(component).toContain('aria-describedby={scope === "AGENT" ? "workforce-calendar-agent-name-hint" : undefined}')
+    expect(component).toContain('id="workforce-calendar-agent-name-hint"')
+    expect(messages("en").agentName).toBe("Non-sensitive display label")
+    expect(messages("en").agentNameHint).toContain("Do not enter leave, absence, medical")
+    expect(messages("en").createHintAgent).toContain("visible to schedule readers and retained in audit")
   })
 
   it("has complete non-empty EN, RU and AZ copy including every readable kind", () => {
@@ -117,6 +136,7 @@ describe("Workforce calendar configuration UI contract", () => {
       "scope",
       "organizationScopeHint",
       "teamScopeHint",
+      "agentScopeHint",
       "team",
       "selectTeam",
       "inactiveTeam",
@@ -127,27 +147,47 @@ describe("Workforce calendar configuration UI contract", () => {
       "noTeams",
       "selectTeamHint",
       "teamInactive",
+      "agent",
+      "selectAgent",
+      "agentSearch",
+      "agentSearchPlaceholder",
+      "searchAgents",
+      "agentSearchNarrower",
+      "noAgents",
+      "selectAgentHint",
+      "agentInactive",
+      "agentContext",
+      "noCurrentTeam",
+      "agentName",
+      "agentNamePlaceholder",
+      "agentNameHint",
       "date",
       "kind",
       "name",
       "namePlaceholder",
       "createHintOrganization",
       "createHintTeam",
+      "createHintAgent",
       "create",
       "createdOrganization",
       "createdTeam",
+      "createdAgent",
       "alreadyRecorded",
       "upcomingTitleOrganization",
       "upcomingTitleTeam",
+      "upcomingTitleAgent",
       "upcomingHint",
       "emptyOrganization",
       "emptyTeam",
+      "emptyAgent",
       "unnamed",
       "dateNotFuture",
       "dateRangeInvalid",
       "overrideExists",
       "teamUnavailable",
       "teamSearchInvalid",
+      "agentUnavailable",
+      "agentSearchInvalid",
       "scopeInvalid",
       "invalidInput",
       "accessRequired",
@@ -164,6 +204,11 @@ describe("Workforce calendar configuration UI contract", () => {
       const scopes = localized.scopes as Record<string, unknown>
       expect(scopes.ORGANIZATION).toEqual(expect.any(String))
       expect(scopes.TEAM).toEqual(expect.any(String))
+      expect(scopes.AGENT).toEqual(expect.any(String))
+      const statuses = localized.agentStatuses as Record<string, unknown>
+      for (const status of ["ACTIVE", "INACTIVE", "SUSPENDED"]) {
+        expect(statuses[status], `${locale}.agentStatuses.${status} is missing`).toEqual(expect.any(String))
+      }
       expect(localized.outcomeUnknown).not.toBe(localized.requestFailed)
       for (const kind of [
         "WORKING_DAY",
