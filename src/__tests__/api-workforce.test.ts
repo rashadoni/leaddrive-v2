@@ -403,12 +403,13 @@ describe("independent Workforce read models", () => {
     }))
   })
 
-  it("uses the historical planned-start team calendar after a same-day transfer", async () => {
+  it("anchors a persisted no-show to its historical plan and calendar after a same-day transfer", async () => {
+    vi.setSystemTime(new Date("2026-08-28T13:00:00.000Z"))
     const teamAShift = {
       startTime: "09:00", endTime: "18:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
     }
     const teamBShift = {
-      startTime: "10:00", endTime: "19:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
+      startTime: "14:00", endTime: "22:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
     }
     const shiftTemplate = (id: string, teamId: string, definition: typeof teamAShift) => ({
       id, name: id, teamId, isDefault: false, version: 1, status: "ACTIVE", timezone: "UTC",
@@ -420,16 +421,22 @@ describe("independent Workforce read models", () => {
     }] as never)
     vi.mocked(prisma.$queryRaw)
       .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-b" }] as never)
-      .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-a" }] as never)
-      .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-a" }] as never)
-    vi.mocked(prisma.workforceShiftTeamDefaultAssignment.findMany)
+      .mockResolvedValueOnce([{ requestId: "case-no-show-a", teamId: "team-a" }] as never)
+    vi.mocked(prisma.workforceShiftTeamDefaultAssignment.findMany).mockResolvedValue([{
+      id: "default-b", teamId: "team-b",
+      template: shiftTemplate("team-b-day", "team-b", teamBShift),
+    }] as never)
+    vi.mocked(prisma.workforceShiftSegment.findMany).mockResolvedValue([{
+      id: "segment-a", siteId: null, sequence: 1, startTime: "09:00",
+      template: shiftTemplate("team-a-day", "team-a", teamAShift),
+    }] as never)
+    vi.mocked(prisma.workforceExceptionCase.findMany)
       .mockResolvedValueOnce([{
-        id: "default-b", teamId: "team-b",
-        template: shiftTemplate("team-b-day", "team-b", teamBShift),
+        id: "case-no-show-a", agentId: "agent-1", segmentId: "segment-a",
+        expectedWorkDate: new Date("2026-08-28T00:00:00.000Z"), workdayEvent: null, workday: null,
       }] as never)
       .mockResolvedValueOnce([{
-        id: "default-a", teamId: "team-a",
-        template: shiftTemplate("team-a-day", "team-a", teamAShift),
+        id: "case-no-show-a", agentId: "agent-1", kind: "NO_SHOW", decisions: [],
       }] as never)
     vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([{
       id: "team-b-holiday", date: new Date("2026-08-28T00:00:00.000Z"),
@@ -442,9 +449,14 @@ describe("independent Workforce read models", () => {
 
     expect(response.status).toBe(200)
     expect(body.data.people[0]).toMatchObject({
-      plan: { templateName: "team-a-day", plannedStartAt: "2026-08-28T09:00:00.000Z" },
+      plan: {
+        source: "PERSISTED_NO_SHOW_CASE",
+        templateName: "team-a-day",
+        plannedStartAt: "2026-08-28T09:00:00.000Z",
+      },
       calendar: { state: "SCHEDULED", attendanceExpected: true },
-      attendance: { state: "SCHEDULED_NOT_STARTED" },
+      attendance: { state: "NO_SHOW" },
+      exceptions: [{ type: "NO_SHOW", status: "OPEN" }],
     })
     const calendarQuery = vi.mocked(prisma.mtmWorkCalendarDay.findMany).mock.calls[0][0]
     expect(JSON.stringify(calendarQuery)).toContain("team-a")
@@ -613,6 +625,13 @@ describe("independent Workforce read models", () => {
       organizationId: "org-workforce",
       agentId: "agent-self",
       status: "NOT_STARTED",
+      plannedContext: expect.objectContaining({
+        templateId: null,
+        calendarTeamId: null,
+        scopeInstant: new Date("2026-08-28T09:00:00.000Z"),
+        plan: expect.objectContaining({ state: "UNAVAILABLE" }),
+      }),
+      now: new Date("2026-08-28T09:00:00.000Z"),
     }))
     expect(prisma.mtmAgent.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ organizationId: "org-workforce", id: { in: ["agent-self"] } }),

@@ -17,11 +17,14 @@ import {
   resolveWorkforceManagerTodayPlanContexts,
   summarizeWorkforceManagerTodayRows,
   workforceManagerTodayCalendarFromSnapshot,
+  workforceManagerTodayPlanContextFromNoShowCase,
   workforceManagerTodayPlanFromSnapshot,
+  workforceManagerTodayUnavailableCalendar,
   WorkforceManagerTodayBoundsError,
   WORKFORCE_MANAGER_TODAY_LIMITS,
   type WorkforceManagerTodayException,
   type WorkforceManagerTodayPlan,
+  type WorkforceManagerTodayPlanContext,
 } from "@/lib/workforce/manager-today"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 import {
@@ -137,6 +140,25 @@ function unavailablePlan(): WorkforceManagerTodayPlan {
     plannedStartAt: null,
     plannedEndAt: null,
   }
+}
+
+type NoShowPlanContext =
+  | { state: "VALID"; context: WorkforceManagerTodayPlanContext }
+  | { state: "UNAVAILABLE" }
+
+function samePlanContext(
+  left: WorkforceManagerTodayPlanContext,
+  right: WorkforceManagerTodayPlanContext,
+): boolean {
+  return left.calendarTeamId === right.calendarTeamId
+    && left.templateId === right.templateId
+    && left.scopeInstant.getTime() === right.scopeInstant.getTime()
+    && left.plan.state === right.plan.state
+    && left.plan.source === right.plan.source
+    && left.plan.templateName === right.plan.templateName
+    && left.plan.timezone === right.plan.timezone
+    && left.plan.plannedStartAt === right.plan.plannedStartAt
+    && left.plan.plannedEndAt === right.plan.plannedEndAt
 }
 
 function exceptionReadAllowed(input: {
@@ -305,39 +327,6 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
       workDate: date,
       resolutionAt: now,
     })
-    const calendarTeamIds = [...new Set(livePlanAgentIds.flatMap((agentId) => {
-      const teamId = livePlanContexts.get(agentId)?.calendarTeamId
-      return teamId ? [teamId] : []
-    }))]
-    const calendarMaximum = Math.max(1, (livePlanAgentIds.length + calendarTeamIds.length + 1) * 2)
-    const calendarOverrides = livePlanAgentIds.length === 0 ? [] : await prisma.mtmWorkCalendarDay.findMany({
-      where: {
-        organizationId: auth.orgId,
-        date: workDate,
-        deletedAt: null,
-        OR: [
-          { agentId: { in: livePlanAgentIds }, teamId: null },
-          ...(calendarTeamIds.length > 0
-            ? [{ agentId: null, teamId: { in: calendarTeamIds } }]
-            : []),
-          { agentId: null, teamId: null },
-        ],
-      },
-      orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
-      take: calendarMaximum + 1,
-      select: {
-        id: true,
-        date: true,
-        kind: true,
-        name: true,
-        teamId: true,
-        agentId: true,
-        movedToDate: true,
-        routePlanningAllowed: true,
-        source: true,
-      },
-    })
-    if (calendarOverrides.length > calendarMaximum) throw new WorkforceManagerTodayBoundsError()
 
     const previousPairs = previousGroups.flatMap((group) => group._max.workDate
       ? [{ agentId: group.agentId, workDate: group._max.workDate }]
@@ -364,6 +353,11 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
     }
 
     const exceptionAccessByAgent = new Set<string>()
+    const exceptionScopes = await resolveWorkforceExceptionCaseReadScopes(prisma, {
+      organizationId: auth.orgId,
+      candidates: exceptionCandidates,
+      resolutionAt: now,
+    })
     let readableExceptionIds: string[] = []
     if (legacyExceptionReader) {
       agentIds.forEach((agentId) => exceptionAccessByAgent.add(agentId))
@@ -378,16 +372,11 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
           teamId: agent.teamId,
         })) exceptionAccessByAgent.add(agent.id)
       }
-      const scopes = await resolveWorkforceExceptionCaseReadScopes(prisma, {
-        organizationId: auth.orgId,
-        candidates: exceptionCandidates,
-        resolutionAt: now,
-      })
       const authorization = authorizeWorkforceExceptionReadCandidates({
         organizationId: auth.orgId,
         principalUserId: auth.userId,
-        candidates: scopes.candidates,
-        historicalTeamByCaseId: scopes.historicalTeamByCaseId,
+        candidates: exceptionScopes.candidates,
+        historicalTeamByCaseId: exceptionScopes.historicalTeamByCaseId,
         grants: readScope.grants,
         now,
       })
@@ -410,6 +399,35 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
         detail,
       ])
     }
+    const projectedExceptionByCaseId = new Map<string, WorkforceManagerTodayException>()
+    const noShowPlanContextByAgent = new Map<string, NoShowPlanContext>()
+    for (const detail of exceptionDetails) {
+      const projected = projectWorkforceTimesheetExceptions([], [{
+        kind: detail.kind,
+        decisions: detail.decisions,
+        decisionHistoryTruncated: detail.decisions.length > WORKFORCE_MANAGER_TODAY_LIMITS.decisionsPerCase,
+      }])
+      const exception = projected[0]
+      if (!exception) throw new WorkforceManagerTodayBoundsError()
+      projectedExceptionByCaseId.set(detail.id, exception)
+      if (
+        todayByAgent.has(detail.agentId)
+        || exception.type !== "NO_SHOW"
+        || exception.status === "RESOLVED"
+      ) continue
+      const scheduleContext = exceptionScopes.scheduleOnlyContextByCaseId.get(detail.id)
+      const context = scheduleContext
+        ? workforceManagerTodayPlanContextFromNoShowCase(scheduleContext)
+        : null
+      const prior = noShowPlanContextByAgent.get(detail.agentId)
+      if (!context || prior?.state === "UNAVAILABLE") {
+        noShowPlanContextByAgent.set(detail.agentId, { state: "UNAVAILABLE" })
+      } else if (prior?.state === "VALID" && !samePlanContext(prior.context, context)) {
+        noShowPlanContextByAgent.set(detail.agentId, { state: "UNAVAILABLE" })
+      } else {
+        noShowPlanContextByAgent.set(detail.agentId, { state: "VALID", context })
+      }
+    }
     const exceptionsByAgent = new Map<string, WorkforceManagerTodayException[]>()
     for (const agentId of exceptionAccessByAgent) {
       const details = exceptionDetailsByAgent.get(agentId) ?? []
@@ -419,6 +437,47 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
         decisionHistoryTruncated: detail.decisions.length > WORKFORCE_MANAGER_TODAY_LIMITS.decisionsPerCase,
       }))))
     }
+
+    const displayPlanContexts = new Map(livePlanContexts)
+    const unavailableNoShowAgents = new Set<string>()
+    for (const [agentId, noShowContext] of noShowPlanContextByAgent) {
+      if (noShowContext.state === "VALID") displayPlanContexts.set(agentId, noShowContext.context)
+      else unavailableNoShowAgents.add(agentId)
+    }
+    const calendarAgentIds = livePlanAgentIds.filter((agentId) => !unavailableNoShowAgents.has(agentId))
+    const calendarTeamIds = [...new Set(calendarAgentIds.flatMap((agentId) => {
+      const teamId = displayPlanContexts.get(agentId)?.calendarTeamId
+      return teamId ? [teamId] : []
+    }))]
+    const calendarMaximum = Math.max(1, (calendarAgentIds.length + calendarTeamIds.length + 1) * 2)
+    const calendarOverrides = calendarAgentIds.length === 0 ? [] : await prisma.mtmWorkCalendarDay.findMany({
+      where: {
+        organizationId: auth.orgId,
+        date: workDate,
+        deletedAt: null,
+        OR: [
+          { agentId: { in: calendarAgentIds }, teamId: null },
+          ...(calendarTeamIds.length > 0
+            ? [{ agentId: null, teamId: { in: calendarTeamIds } }]
+            : []),
+          { agentId: null, teamId: null },
+        ],
+      },
+      orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
+      take: calendarMaximum + 1,
+      select: {
+        id: true,
+        date: true,
+        kind: true,
+        name: true,
+        teamId: true,
+        agentId: true,
+        movedToDate: true,
+        routePlanningAllowed: true,
+        source: true,
+      },
+    })
+    if (calendarOverrides.length > calendarMaximum) throw new WorkforceManagerTodayBoundsError()
 
     const previousByAgent = new Map(previousOpenWorkdays.map((workday) => [workday.agentId, workday]))
     const calendars = new Map(agents.map((agent) => {
@@ -433,10 +492,13 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
           scheduleSnapshot: workday.workforceWorkdayScheduleSnapshot,
         })] as const
       }
+      if (unavailableNoShowAgents.has(agent.id)) {
+        return [agent.id, workforceManagerTodayUnavailableCalendar()] as const
+      }
       return [agent.id, resolveWorkforceCalendarDay({
         date,
         overrides: calendarOverrides,
-        teamId: livePlanContexts.get(agent.id)?.calendarTeamId ?? null,
+        teamId: displayPlanContexts.get(agent.id)?.calendarTeamId ?? null,
         agentId: agent.id,
       })] as const
     }))
@@ -448,15 +510,21 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
       const exceptions = exceptionAccessByAgent.has(agent.id)
         ? exceptionsByAgent.get(agent.id) ?? []
         : null
-      const livePlan = livePlanContexts.get(agent.id)?.plan ?? unavailablePlan()
+      const displayContext = displayPlanContexts.get(agent.id)
+      const displayPlan = displayContext?.plan ?? unavailablePlan()
+      const persistedNoShow = noShowPlanContextByAgent.has(agent.id)
       const plan = workday
         ? workforceManagerTodayPlanFromSnapshot({
             workDate: date,
             snapshot: workday.workforceShiftSnapshot,
           })
-        : !calendar.attendanceExpected
-          ? calendarNonWorkingPlan()
-          : livePlan
+        : unavailableNoShowAgents.has(agent.id)
+          ? unavailablePlan()
+          : persistedNoShow
+            ? displayPlan
+            : !calendar.attendanceExpected
+              ? calendarNonWorkingPlan()
+              : displayPlan
       const status = (workday?.status ?? "NOT_STARTED") as WorkdayStatus | "NOT_STARTED"
       return {
         id: agent.id,
@@ -509,6 +577,12 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
           workday: selfWorkday ?? null,
           previousOpen: self.previousOpenWorkday != null,
           calendar: calendars.get(self.id)!,
+          plannedContext: selfWorkday
+            ? undefined
+            : unavailableNoShowAgents.has(self.id)
+              ? null
+              : displayPlanContexts.get(self.id) ?? null,
+          now,
         })
       : null
 

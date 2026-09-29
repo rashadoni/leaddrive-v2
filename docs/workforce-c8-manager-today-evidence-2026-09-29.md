@@ -20,18 +20,25 @@ roster rather than from employees who already have a workday:
 - current workdays expose a plan only from their hash-verified immutable shift
   snapshot. A missing or corrupt snapshot is `UNAVAILABLE` and is never
   reconstructed from mutable configuration;
-- employees without a workday use one bounded batch resolver for personal,
-  historical-team and organization schedule precedence. It has no per-person
-  database loop and fails overlap, overflow or unstable historical-team
-  resolution closed;
+- employees without a workday and without a readable persisted no-show use one
+  bounded batch resolver for personal, team and organization schedule
+  precedence. Its explicit live-row rule is one append-only membership
+  snapshot at the server resolution instant; it has no per-person database
+  loop and fails overlap or overflow closed;
 - calendar state remains distinct across scheduled, non-working, public
   holiday, tenant closure, approved leave, approved absence and personal
   exception;
 - a previous open workday is retained as a review fact. This read never closes
   it, invents a finish or rewrites its date;
 - `NO_SHOW` is displayed only when an independently authorized persisted C6
-  case projects to an unresolved no-show. This GET neither infers nor creates
-  a case;
+  case projects to an unresolved no-show. The plan and historical calendar
+  team are reconstructed from that validated case-bound schedule context;
+  missing, corrupt or conflicting contexts fail plan/calendar closed. This GET
+  neither infers nor creates a case;
+- the SELF model receives the same exact team/template/scope instant selected
+  by Today and revalidates assignment plus policy against it. A concurrent or
+  inconsistent resolution fails the action model closed instead of combining
+  calendar, assignment or policy from different teams;
 - `TEAM_ATTENDANCE_READ` does not imply `TEAM_EXCEPTION_READ`. Unauthorized
   exception data is `null`; authorized empty scope is `[]`;
 - the manager projection excludes reasons, actors, case identifiers, raw
@@ -59,14 +66,17 @@ never substituted.
 - shared queue exception metadata: existing 1,000-case bound;
 - decision history: 64 decisions per case plus one sentinel;
 - shift assignments/defaults/legacy defaults: fixed per-page/tier sentinels;
-- historical team correction: at most two batch fixed-point passes.
+- ordinary live-row membership: one bounded append-only batch at the exact
+  server resolution instant;
+- exception-case historical membership: one bounded batch for the already
+  bounded case-candidate set.
 
 ## Working-tree verification
 
-- PASS — targeted API/helper/UI Vitest matrix: **6 files / 59 tests**.
-- PASS — scoped ESLint for all **13** changed TypeScript/TSX runtime and test
+- PASS — targeted API/helper/UI Vitest matrix: **9 files / 84 tests**.
+- PASS — scoped ESLint for all **16** changed TypeScript/TSX runtime and test
   paths.
-- PASS — `npm run i18n:check`: 23,765 English leaf keys, `missing=0` and
+- PASS — `npm run i18n:check`: 23,766 English leaf keys, `missing=0` and
   `extra=0` for RU/AZ.
 - PASS — all three message catalogs parse as JSON.
 - PASS — `git diff --check`.
@@ -127,3 +137,33 @@ acceptance evidence exist.
 - `WF-C8-002` remains **PARTIAL** and progress remains `DONE 81/161`,
   `GATES 14/15`, C8 36%, overall 59%. The changed repair head requires a
   fresh complete independent review before publication.
+
+## 2026-09-29 replacement review findings and repair
+
+- The replacement complete-diff review froze deployed main
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through clean head
+  `b446ed7d3fe246e6a9a2071ebade0b9448d7098b`: 21 paths / 166,274 binary
+  bytes / SHA-256
+  `9db5aacacf2e59202871a3f5b0c847da97f9f6a6dd32b4031b616e5b83b0ffcf`.
+  Verdict was RED with `P0=0`, `P1=0`, `P2=2`, `P3=0`.
+- The first P2 showed that the two-pass planned-start fixed point could select
+  the wrong plan after a same-day transfer and had no case-bound source of
+  truth for an already persisted schedule-only no-show. The fixed-point rule
+  recorded above is superseded: ordinary fact-free live rows now use one
+  explicit membership-as-of-read context, while an authorized unresolved
+  no-show uses only its validated case date, first segment, template lifecycle
+  and membership at planned start. Missing or conflicting case contexts are
+  `UNAVAILABLE`.
+- The second P2 showed that SELF could receive the manager calendar for one
+  team and independently resolve assignment/policy for another. Today now
+  passes one authoritative team/template/scope context into the employee
+  loader; the loader verifies exact template, team, schedule times, timezone,
+  name and policy team at that same instant and fails closed on a mismatch.
+- PASS — expanded targeted matrix: **9 files / 84 tests**; scoped ESLint on
+  all **16** candidate TypeScript/TSX paths; translation parity
+  **23,766/0/0**; three JSON catalogs; `git diff --check`.
+- NOT RUN — local full typecheck/build/suite, real browser/AT,
+  Android/Gradle, load, signed device and pilot under Contabo workload policy.
+- `WF-C8-002` remains **PARTIAL**. Progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. The repair still
+  requires a clean checkpoint and fresh author-independent full-range GREEN.

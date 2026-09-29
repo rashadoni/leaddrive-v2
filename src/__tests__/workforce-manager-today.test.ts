@@ -6,6 +6,7 @@ import {
   resolveWorkforceManagerTodayPlanContexts,
   resolveWorkforceManagerTodayPlans,
   workforceManagerTodayCalendarFromSnapshot,
+  workforceManagerTodayPlanContextFromNoShowCase,
   workforceManagerTodayPlanFromSnapshot,
 } from "@/lib/workforce/manager-today"
 
@@ -183,19 +184,15 @@ describe("Workforce manager Today read model", () => {
     })
   })
 
-  it("pins the display calendar to the stable historical planned-start team", async () => {
-    const teamA = template("team-a-day", "team-a", "09:00", "18:00")
+  it("uses one explicit append-only membership-at-read-time context for an unfactored live row", async () => {
     const teamB = template("team-b-day", "team-b", "10:00", "19:00")
     const db = {
-      $queryRaw: vi.fn()
-        .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-b" }])
-        .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-a" }])
-        .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-a" }]),
+      $queryRaw: vi.fn().mockResolvedValue([{ requestId: "agent-1", teamId: "team-b" }]),
       workforceShiftAssignment: { findMany: vi.fn().mockResolvedValue([]) },
       workforceShiftDefaultAssignment: { findMany: vi.fn().mockResolvedValue([]) },
-      workforceShiftTeamDefaultAssignment: { findMany: vi.fn()
-        .mockResolvedValueOnce([{ id: "default-b", teamId: "team-b", template: teamB }])
-        .mockResolvedValueOnce([{ id: "default-a", teamId: "team-a", template: teamA }]) },
+      workforceShiftTeamDefaultAssignment: { findMany: vi.fn().mockResolvedValue([
+        { id: "default-b", teamId: "team-b", template: teamB },
+      ]) },
       workforceShiftTemplate: { findMany: vi.fn().mockResolvedValue([]) },
     }
 
@@ -207,51 +204,37 @@ describe("Workforce manager Today read model", () => {
     })
 
     expect(contexts.get("agent-1")).toMatchObject({
-      calendarTeamId: "team-a",
+      calendarTeamId: "team-b",
+      templateId: "team-b-day",
+      scopeInstant: RESOLUTION_AT,
       plan: {
         state: "ASSIGNED",
-        templateName: "team-a-day",
+        templateName: "team-b-day",
+        plannedStartAt: "2026-08-31T10:00:00.000Z",
+      },
+    })
+    expect(db.$queryRaw).toHaveBeenCalledTimes(1)
+  })
+
+  it("reconstructs a persisted no-show plan only from its validated case scope", () => {
+    expect(workforceManagerTodayPlanContextFromNoShowCase({
+      workDate: WORK_DATE,
+      calendarTeamId: "team-a",
+      templateId: "team-a-day",
+      templateName: "Team A day",
+      timezone: "UTC",
+      plannedStartAt: "2026-08-31T09:00:00.000Z",
+      plannedEndAt: "2026-08-31T18:00:00.000Z",
+    })).toMatchObject({
+      calendarTeamId: "team-a",
+      templateId: "team-a-day",
+      scopeInstant: new Date("2026-08-31T09:00:00.000Z"),
+      plan: {
+        state: "ASSIGNED",
+        source: "PERSISTED_NO_SHOW_CASE",
+        templateName: "Team A day",
         plannedStartAt: "2026-08-31T09:00:00.000Z",
       },
     })
-    expect(db.$queryRaw).toHaveBeenCalledTimes(3)
-  })
-
-  it("fails closed only the employee whose historical-team fixed point stays unstable", async () => {
-    const teamA = template("team-a-day", "team-a", "09:00", "18:00")
-    const teamB = template("team-b-day", "team-b", "10:00", "19:00")
-    const db = {
-      $queryRaw: vi.fn()
-        .mockResolvedValueOnce([
-          { requestId: "agent-1", teamId: "team-a" },
-          { requestId: "agent-2", teamId: "team-a" },
-        ])
-        .mockResolvedValueOnce([
-          { requestId: "agent-1", teamId: "team-b" },
-          { requestId: "agent-2", teamId: "team-a" },
-        ])
-        .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-a" }]),
-      workforceShiftAssignment: { findMany: vi.fn().mockResolvedValue([]) },
-      workforceShiftDefaultAssignment: { findMany: vi.fn().mockResolvedValue([]) },
-      workforceShiftTeamDefaultAssignment: { findMany: vi.fn()
-        .mockResolvedValueOnce([{ id: "default-a", teamId: "team-a", template: teamA }])
-        .mockResolvedValueOnce([{ id: "default-b", teamId: "team-b", template: teamB }]) },
-      workforceShiftTemplate: { findMany: vi.fn().mockResolvedValue([]) },
-    }
-
-    const plans = await resolveWorkforceManagerTodayPlans(db as never, {
-      organizationId: "org-workforce",
-      agentIds: ["agent-1", "agent-2"],
-      workDate: WORK_DATE,
-      resolutionAt: RESOLUTION_AT,
-    })
-
-    expect(plans.get("agent-1")?.state).toBe("UNAVAILABLE")
-    expect(plans.get("agent-2")).toMatchObject({
-      state: "ASSIGNED",
-      templateName: "team-a-day",
-      plannedStartAt: "2026-08-31T09:00:00.000Z",
-    })
-    expect(db.$queryRaw).toHaveBeenCalledTimes(3)
   })
 })

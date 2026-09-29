@@ -27,7 +27,7 @@ export const WORKFORCE_MANAGER_TODAY_LIMITS = {
 
 export type WorkforceManagerTodayPlan = {
   state: "ASSIGNED" | "NON_WORKING_DAY" | "UNAVAILABLE"
-  source: "IMMUTABLE_WORKDAY_SNAPSHOT" | "EFFECTIVE_PUBLISHED_SCHEDULE" | "CALENDAR" | "UNAVAILABLE"
+  source: "IMMUTABLE_WORKDAY_SNAPSHOT" | "EFFECTIVE_PUBLISHED_SCHEDULE" | "PERSISTED_NO_SHOW_CASE" | "CALENDAR" | "UNAVAILABLE"
   templateName: string | null
   timezone: string | null
   plannedStartAt: string | null
@@ -48,8 +48,10 @@ export type WorkforceManagerTodayCalendar = Pick<
 
 export type WorkforceManagerTodayPlanContext = {
   plan: WorkforceManagerTodayPlan
-  /** Historical team at the stable planned-start instant; null fails closed. */
+  /** Append-only team at the context's explicit scope instant. */
   calendarTeamId: string | null
+  templateId: string | null
+  scopeInstant: Date
 }
 
 export type WorkforceManagerTodayAttendanceState =
@@ -287,6 +289,39 @@ export function workforceManagerTodayCalendarFromSnapshot(input: {
   }
 }
 
+export function workforceManagerTodayPlanContextFromNoShowCase(input: {
+  workDate: string
+  calendarTeamId: string | null
+  templateId: string
+  templateName: string
+  timezone: string
+  plannedStartAt: string
+  plannedEndAt: string
+}): WorkforceManagerTodayPlanContext | null {
+  const plannedStartAt = new Date(input.plannedStartAt)
+  const plannedEndAt = new Date(input.plannedEndAt)
+  if (
+    !isDateKey(input.workDate)
+    || !input.templateId
+    || !isValidTimezone(input.timezone)
+    || !Number.isFinite(plannedStartAt.getTime())
+    || !Number.isFinite(plannedEndAt.getTime())
+    || plannedStartAt.getTime() >= plannedEndAt.getTime()
+  ) return null
+  return {
+    plan: assignedPlan({
+      source: "PERSISTED_NO_SHOW_CASE",
+      templateName: input.templateName,
+      timezone: input.timezone,
+      plannedStartAt: plannedStartAt.toISOString(),
+      plannedEndAt: plannedEndAt.toISOString(),
+    }),
+    calendarTeamId: input.calendarTeamId,
+    templateId: input.templateId,
+    scopeInstant: plannedStartAt,
+  }
+}
+
 function groupBy<T>(values: readonly T[], key: (value: T) => string): Map<string, T[]> {
   const result = new Map<string, T[]>()
   for (const value of values) {
@@ -414,8 +449,11 @@ function resolveLoadedShift(input: {
 /**
  * Resolves a whole visible roster page with a constant number of bounded
  * queries. It mirrors personal/team/org/legacy precedence and re-evaluates
- * historical team membership at the resolved planned start without issuing
- * one query sequence per employee.
+ * one append-only membership snapshot at the server resolution instant
+ * without issuing one query sequence per employee. An accepted workday and
+ * a persisted no-show use their own immutable/case-bound contexts instead;
+ * this resolver is only the explicit as-of-now planning rule for rows that
+ * have neither fact.
  */
 type WorkforceManagerTodayPlanInput = {
   organizationId: string
@@ -486,7 +524,6 @@ export async function resolveWorkforceManagerTodayPlanContexts(
   const teamDefaults = new Map<string, TeamDefault[]>()
   const teamLegacyDefaults = new Map<string, Template[]>()
   const loadedTeamIds = new Set<string>()
-  const calendarTeams = new Map(initialTeams)
 
   const ensureTeams = async (values: Iterable<string | null>) => {
     const missing = [...new Set([...values].filter((value): value is string => Boolean(value)))]
@@ -519,53 +556,6 @@ export async function resolveWorkforceManagerTodayPlanContexts(
     }))
   }
 
-  let pendingAgentIds = [...input.agentIds]
-  for (let pass = 0; pass < 2; pass += 1) {
-    const candidates = pendingAgentIds.flatMap((agentId) => {
-      const schedule = resolved.get(agentId)?.schedule
-      if (!schedule) return []
-      return [{ requestId: agentId, agentId, workdayStartedAt: new Date(schedule.plannedStartAt) }]
-    })
-    if (candidates.length === 0) break
-    const teams = await resolveWorkforceHistoricalTeamMemberships(db, {
-      organizationId: input.organizationId,
-      candidates,
-    })
-    await ensureTeams(teams.values())
-    const changedAgentIds: string[] = []
-    for (const candidate of candidates) {
-      const prior = resolved.get(candidate.agentId)
-      const historicalTeamId = teams.get(candidate.agentId) ?? null
-      calendarTeams.set(candidate.agentId, historicalTeamId)
-      const next = resolveLoadedShift({
-        agentId: candidate.agentId,
-        teamId: historicalTeamId,
-        workDate: input.workDate,
-        scopeInstant: candidate.workdayStartedAt,
-        resolutionAt: input.resolutionAt,
-        personalByAgent,
-        teamDefaults,
-        organizationDefaults,
-        teamLegacyDefaults,
-        organizationLegacyDefaults,
-      })
-      const changed = next?.schedule?.plannedStartAt !== prior?.schedule?.plannedStartAt
-      if (changed) changedAgentIds.push(candidate.agentId)
-      // A schedule that disappears after moving the membership instant has
-      // no second immutable instant against which it can be validated.
-      resolved.set(candidate.agentId, changed && next?.schedule == null ? null : next)
-    }
-    if (changedAgentIds.length === 0) break
-    if (pass === 1) {
-      for (const agentId of changedAgentIds) {
-        resolved.set(agentId, null)
-        calendarTeams.set(agentId, null)
-      }
-    } else {
-      pendingAgentIds = changedAgentIds
-    }
-  }
-
   const contexts = new Map<string, WorkforceManagerTodayPlanContext>()
   for (const agentId of input.agentIds) {
     const shift = resolved.get(agentId)
@@ -582,7 +572,9 @@ export async function resolveWorkforceManagerTodayPlanContexts(
           })
     contexts.set(agentId, {
       plan,
-      calendarTeamId: calendarTeams.get(agentId) ?? null,
+      calendarTeamId: initialTeams.get(agentId) ?? null,
+      templateId: shift?.id ?? null,
+      scopeInstant: input.resolutionAt,
     })
   }
   return contexts

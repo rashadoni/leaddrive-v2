@@ -2159,3 +2159,33 @@ from this worktree.
   the changed repair plus receipts are uncommitted.
 - Next action: checkpoint explicit paths, fingerprint the replacement full
   candidate and obtain a fresh author-independent complete-diff verdict.
+
+## 2026-09-29 — WF-C8-002 replacement review P2x2 repaired
+
+- Independent review matched exact clean range
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486..b446ed7d3fe246e6a9a2071ebade0b9448d7098b`
+  at 21 paths / 166,274 binary bytes / SHA-256
+  `9db5aacacf2e59202871a3f5b0c847da97f9f6a6dd32b4031b616e5b83b0ffcf`
+  and returned RED: `P0=0`, `P1=0`, `P2=2`, `P3=0`.
+- Finding one rejected the planned-start fixed-point rule: a same-day Team A
+  shift followed by a Team B transfer/shift could display the persisted Team A
+  no-show against Team B plan/calendar. Authorized schedule-only no-shows now
+  use their validated case-bound first segment, date, template lifecycle and
+  historical membership. Missing or conflicting contexts fail closed;
+  ordinary no-fact live rows have the explicit canonical rule of one
+  append-only membership snapshot at the server resolution instant.
+- Finding two rejected SELF's independent at-now assignment/policy lookup.
+  Today now supplies its exact team/template/scope context and the employee
+  loader verifies assignment, schedule fields and policy team at that instant;
+  any mismatch closes assignment/action rather than mixing team contexts.
+- PASS: expanded 9-file / 84-test targeted matrix, scoped ESLint on all 16
+  full-candidate TypeScript/TSX paths, JSON catalogs, i18n 23,766/0/0 and
+  whitespace. Full local typecheck/build/suite, browser/AT, Android/Gradle,
+  load, signed-device and pilot remain `NOT RUN` under host policy.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. Neither RED
+  review transfers authority to the changed source.
+- Precise stopping point: both review findings and regressions are repaired
+  in the working tree but not yet checkpointed.
+- Next action: commit only explicit slice paths, fingerprint the complete
+  candidate and obtain a fresh independent full-range review from zero.

@@ -82,6 +82,15 @@ describe("Workforce exception case read scopes", () => {
 
     expect(result.candidates).toEqual([{ id: "case-1", agentId: "agent-1", siteId: "site-1" }])
     expect(result.historicalTeamByCaseId.get("case-1")).toBe("team-1")
+    expect(result.scheduleOnlyContextByCaseId.get("case-1")).toEqual({
+      workDate: "2026-08-31",
+      calendarTeamId: "team-1",
+      templateId: "template-1",
+      templateName: "Team day",
+      timezone: "UTC",
+      plannedStartAt: "2026-08-31T09:00:00.000Z",
+      plannedEndAt: "2026-08-31T18:00:00.000Z",
+    })
     expect(db.workforceShiftSegment.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { organizationId: "org-workforce", id: { in: ["segment-1"] } },
     }))
@@ -105,6 +114,7 @@ describe("Workforce exception case read scopes", () => {
     })
 
     expect(result.historicalTeamByCaseId.get("case-1")).toBeNull()
+    expect(result.scheduleOnlyContextByCaseId.has("case-1")).toBe(false)
     expect(db.$queryRaw).not.toHaveBeenCalled()
   })
 

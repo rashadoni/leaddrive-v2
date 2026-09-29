@@ -39,6 +39,19 @@ export type WorkforceEmployeeTodayAssignment = {
   segments: WorkforceEmployeeTodaySegment[]
 }
 
+export type WorkforceEmployeeTodayPlannedContext = {
+  templateId: string | null
+  calendarTeamId: string | null
+  scopeInstant: Date
+  plan: {
+    state: "ASSIGNED" | "NON_WORKING_DAY" | "UNAVAILABLE"
+    templateName: string | null
+    timezone: string | null
+    plannedStartAt: string | null
+    plannedEndAt: string | null
+  }
+}
+
 export type WorkforceEmployeeTodayEvidence = {
   state: "NOT_REQUIRED" | "REQUIRED" | "UNAVAILABLE"
   methods: Array<"QR" | "TRUSTED_DEVICE" | "LOCAL_BIOMETRIC">
@@ -333,8 +346,91 @@ async function activeAssignment(
 
 async function plannedAssignment(
   db: EmployeeTodayDb,
-  input: { organizationId: string; agentId: string; date: string; timezone: string; now: Date },
+  input: {
+    organizationId: string
+    agentId: string
+    date: string
+    timezone: string
+    now: Date
+    plannedContext?: WorkforceEmployeeTodayPlannedContext | null
+  },
 ): Promise<LoadedAssignment> {
+  const context = input.plannedContext
+  const scopeInstant = context?.scopeInstant ?? input.now
+  if (
+    context === null
+    || context?.plan.state === "UNAVAILABLE"
+    || !(scopeInstant instanceof Date)
+    || !Number.isFinite(scopeInstant.getTime())
+  ) {
+    return {
+      assignment: {
+        state: "UNAVAILABLE",
+        templateName: null,
+        timezone: input.timezone,
+        plannedStartAt: null,
+        plannedEndAt: null,
+        segments: [],
+      },
+      policyDefinition: null,
+      policyUnavailable: true,
+    }
+  }
+
+  let shift: Awaited<ReturnType<typeof resolveCurrentWorkforceShift>>
+  try {
+    shift = await resolveCurrentWorkforceShift(db, {
+      organizationId: input.organizationId,
+      agentId: input.agentId,
+      ...(context?.templateId ? { templateId: context.templateId } : {}),
+      workDate: input.date,
+      workdayStartedAt: scopeInstant,
+      resolutionAt: input.now,
+    })
+  } catch (error) {
+    if (!(error instanceof WorkforceShiftResolutionError)) throw error
+    return {
+      assignment: {
+        state: "UNAVAILABLE",
+        templateName: null,
+        timezone: input.timezone,
+        plannedStartAt: null,
+        plannedEndAt: null,
+        segments: [],
+      },
+      policyDefinition: null,
+      policyUnavailable: context !== undefined,
+    }
+  }
+
+  const schedule = shift.schedule
+  const expectedPlanMatches = context === undefined || (
+    shift.id === context.templateId
+    && shift.teamIdAtWorkday === context.calendarTeamId
+    && (context.plan.state === "NON_WORKING_DAY"
+      ? schedule == null
+      : context.plan.state === "ASSIGNED"
+        && schedule != null
+        && schedule.plannedStartAt === context.plan.plannedStartAt
+        && schedule.plannedEndAt === context.plan.plannedEndAt
+        && shift.timezone === context.plan.timezone
+        && (shift.name ?? null) === context.plan.templateName)
+  )
+  if (!expectedPlanMatches) {
+    return {
+      assignment: {
+        state: "UNAVAILABLE",
+        templateName: null,
+        timezone: input.timezone,
+        plannedStartAt: null,
+        plannedEndAt: null,
+        segments: [],
+      },
+      policyDefinition: null,
+      policyUnavailable: true,
+    }
+  }
+
   let policyDefinition: unknown | null = null
   let policyUnavailable = false
   try {
@@ -342,37 +438,34 @@ async function plannedAssignment(
       organizationId: input.organizationId,
       agentId: input.agentId,
       workDate: input.date,
-      workdayStartedAt: input.now,
+      workdayStartedAt: scopeInstant,
       resolutionAt: input.now,
     })
-    policyDefinition = policy.definition
+    if (context !== undefined && policy.teamIdAtWorkday !== context.calendarTeamId) {
+      policyUnavailable = true
+    } else {
+      policyDefinition = policy.definition
+    }
   } catch (error) {
     if (!(error instanceof WorkforcePolicyResolutionError)) throw error
     if (error.code !== "WORKFORCE_POLICY_MISSING") policyUnavailable = true
   }
 
-  try {
-    const shift = await resolveCurrentWorkforceShift(db, {
-      organizationId: input.organizationId,
-      agentId: input.agentId,
-      workDate: input.date,
-      workdayStartedAt: input.now,
-      resolutionAt: input.now,
-    })
-    if (!shift.schedule) {
-      return {
-        assignment: {
-          state: "NON_WORKING_DAY",
-          templateName: shift.name ?? null,
-          timezone: shift.timezone,
-          plannedStartAt: null,
-          plannedEndAt: null,
-          segments: [],
-        },
-        policyDefinition,
-        policyUnavailable,
-      }
+  if (!schedule) {
+    return {
+      assignment: {
+        state: "NON_WORKING_DAY",
+        templateName: shift.name ?? null,
+        timezone: shift.timezone,
+        plannedStartAt: null,
+        plannedEndAt: null,
+        segments: [],
+      },
+      policyDefinition,
+      policyUnavailable,
     }
+  }
+  try {
     const segments = await db.workforceShiftSegment.findMany({
       where: { organizationId: input.organizationId, templateId: shift.id },
       orderBy: { sequence: "asc" },
@@ -389,8 +482,8 @@ async function plannedAssignment(
         state: "ASSIGNED",
         templateName: shift.name ?? null,
         timezone: shift.timezone,
-        plannedStartAt: shift.schedule.plannedStartAt,
-        plannedEndAt: shift.schedule.plannedEndAt,
+        plannedStartAt: schedule.plannedStartAt,
+        plannedEndAt: schedule.plannedEndAt,
         segments: segments.map((segment) => ({
           sequence: segment.sequence,
           mode: segment.mode,
@@ -418,8 +511,8 @@ async function plannedAssignment(
         plannedEndAt: null,
         segments: [],
       },
-      policyDefinition,
-      policyUnavailable,
+      policyDefinition: null,
+      policyUnavailable: true,
     }
   }
 }
@@ -466,6 +559,7 @@ export async function loadWorkforceEmployeeToday(
     workday: EmployeeTodayWorkday | null
     previousOpen: boolean
     calendar: EmployeeTodayCalendar
+    plannedContext?: WorkforceEmployeeTodayPlannedContext | null
     now?: Date
   },
 ): Promise<WorkforceEmployeeToday> {
@@ -484,6 +578,7 @@ export async function loadWorkforceEmployeeToday(
         date: input.date,
         timezone: input.timezone,
         now,
+        plannedContext: input.plannedContext,
       })
   const lastEvent = input.workday
     ? await db.mtmAgentWorkdayEvent.findFirst({

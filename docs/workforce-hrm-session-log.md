@@ -2002,3 +2002,39 @@ corrections as new entries that explicitly supersede the earlier fact.
   complete but uncommitted on `codex/workforce-completion-part8`.
 - Next action: checkpoint only explicit paths, compute exact replacement
   identity and request a fresh full-range independent review from zero.
+
+## 2026-09-29 — WF-C8-002 second frozen review RED and repair
+
+- Fresh complete review froze deployed main
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through clean head
+  `b446ed7d3fe246e6a9a2071ebade0b9448d7098b`: 21 paths / 166,274 binary
+  bytes / SHA-256
+  `9db5aacacf2e59202871a3f5b0c847da97f9f6a6dd32b4031b616e5b83b0ffcf`.
+  The author-independent verdict was RED with `P0=0`, `P1=0`, `P2=2`,
+  `P3=0`; its 8-file / 72-test matrix, scoped ESLint, JSON, i18n and whitespace
+  passed, while heavy/dependency-backed checks remained `NOT RUN`.
+- P2 one proved that the two-pass planned-start fixed point could combine the
+  wrong live plan with a persisted Team A no-show after a same-day Team B
+  transfer. The old fixed-point description is superseded. Authorized
+  schedule-only no-shows now reconstruct plan/team only from their validated
+  case date, first segment, template lifecycle and historical membership;
+  missing, corrupt or conflicting contexts fail plan/calendar closed.
+  Ordinary no-workday/no-case rows use one explicit append-only membership
+  snapshot at the server resolution instant.
+- P2 two proved that SELF independently re-resolved assignment/policy at now
+  after the route selected its calendar. The route now passes its authoritative
+  team/template/scope context into the employee loader. Exact template, team,
+  planned times, timezone/name and policy team are revalidated at that same
+  instant; inconsistency disables the assignment/action model.
+- The current repair preserves the prior canonical type/status ordering for
+  exception badges and adds transfer/case-context plus SELF mismatch
+  regressions. PASS: 9 focused files / 84 tests, scoped ESLint across all 16
+  full-candidate TS/TSX paths, i18n 23,766/0/0, JSON and whitespace.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical-device and human-pilot checks remain `NOT RUN` under Contabo
+  policy. `WF-C8-002` stays `PARTIAL`; progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: both P2 repairs, focused verification and receipts
+  are complete but uncommitted on `codex/workforce-completion-part8`.
+- Next action: checkpoint explicit paths, calculate the exact full candidate
+  identity and request fresh author-independent complete-diff review.

@@ -31,6 +31,17 @@ export type WorkforceExceptionCaseAuthorizedCandidate = {
 export type WorkforceExceptionCaseReadScopes = {
   candidates: readonly WorkforceExceptionCaseAuthorizedCandidate[]
   historicalTeamByCaseId: ReadonlyMap<string, string | null>
+  scheduleOnlyContextByCaseId: ReadonlyMap<string, WorkforceExceptionCaseScheduleContext>
+}
+
+export type WorkforceExceptionCaseScheduleContext = {
+  workDate: string
+  calendarTeamId: string | null
+  templateId: string
+  templateName: string
+  timezone: string
+  plannedStartAt: string
+  plannedEndAt: string
 }
 
 type WorkforceExceptionCaseReadScopeDb = Pick<
@@ -67,6 +78,7 @@ type ScopeSegment = Prisma.WorkforceShiftSegmentGetPayload<{
 type ScheduleOnlyScope = {
   date: string
   plannedStartAt: Date
+  plannedEndAt: Date
   segment: ScopeSegment
 }
 
@@ -108,17 +120,20 @@ function scheduleOnlyScope(
     })
     if (!schedule) return null
     const plannedStartAt = new Date(schedule.plannedStartAt)
-    return validInstant(plannedStartAt) ? { date, plannedStartAt, segment } : null
+    const plannedEndAt = new Date(schedule.plannedEndAt)
+    return validInstant(plannedStartAt) && validInstant(plannedEndAt)
+      ? { date, plannedStartAt, plannedEndAt, segment }
+      : null
   } catch {
     return null
   }
 }
 
-function validatedHistoricalTeam(input: {
+function validatedScheduleOnlyContext(input: {
   scope: ScheduleOnlyScope
   teamId: string | null
   resolutionAt: Date
-}): string | null {
+}): WorkforceExceptionCaseScheduleContext | null {
   try {
     const template = input.scope.segment.template satisfies WorkforceShiftTemplateCandidate
     const resolved = resolveWorkforceShiftTemplate({
@@ -129,9 +144,19 @@ function validatedHistoricalTeam(input: {
       teamIdAtWorkday: input.teamId,
       template,
     })
-    return resolved.schedule?.plannedStartAt === input.scope.plannedStartAt.toISOString()
-      ? input.teamId
-      : null
+    if (
+      resolved.schedule?.plannedStartAt !== input.scope.plannedStartAt.toISOString()
+      || resolved.schedule.plannedEndAt !== input.scope.plannedEndAt.toISOString()
+    ) return null
+    return {
+      workDate: input.scope.date,
+      calendarTeamId: input.teamId,
+      templateId: resolved.id,
+      templateName: resolved.name ?? input.scope.segment.template.name,
+      timezone: resolved.timezone,
+      plannedStartAt: resolved.schedule.plannedStartAt,
+      plannedEndAt: resolved.schedule.plannedEndAt,
+    }
   } catch {
     return null
   }
@@ -199,12 +224,15 @@ export async function resolveWorkforceExceptionCaseReadScopes(
     candidates: membershipCandidates,
   })
   const historicalTeamByCaseId = new Map<string, string | null>()
+  const scheduleOnlyContextByCaseId = new Map<string, WorkforceExceptionCaseScheduleContext>()
   for (const candidate of input.candidates) {
     const teamId = resolvedTeams.get(candidate.id) ?? null
     const scheduleOnly = scheduleOnlyByCaseId.get(candidate.id)
-    historicalTeamByCaseId.set(candidate.id, scheduleOnly
-      ? validatedHistoricalTeam({ scope: scheduleOnly, teamId, resolutionAt: input.resolutionAt })
-      : teamId)
+    const context = scheduleOnly
+      ? validatedScheduleOnlyContext({ scope: scheduleOnly, teamId, resolutionAt: input.resolutionAt })
+      : null
+    historicalTeamByCaseId.set(candidate.id, scheduleOnly ? context?.calendarTeamId ?? null : teamId)
+    if (context) scheduleOnlyContextByCaseId.set(candidate.id, context)
   }
   return {
     candidates: input.candidates.map((candidate) => ({
@@ -215,5 +243,6 @@ export async function resolveWorkforceExceptionCaseReadScopes(
         : segmentById.get(candidate.segmentId)?.siteId ?? null,
     })),
     historicalTeamByCaseId,
+    scheduleOnlyContextByCaseId,
   }
 }

@@ -30,7 +30,7 @@ export type WorkforceManagerTodayPerson = {
   } | null
   plan: {
     state: "ASSIGNED" | "NON_WORKING_DAY" | "UNAVAILABLE"
-    source: "IMMUTABLE_WORKDAY_SNAPSHOT" | "EFFECTIVE_PUBLISHED_SCHEDULE" | "CALENDAR" | "UNAVAILABLE"
+    source: "IMMUTABLE_WORKDAY_SNAPSHOT" | "EFFECTIVE_PUBLISHED_SCHEDULE" | "PERSISTED_NO_SHOW_CASE" | "CALENDAR" | "UNAVAILABLE"
     templateName: string | null
     timezone: string | null
     plannedStartAt: string | null
