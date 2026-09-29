@@ -10,6 +10,7 @@ import {
   WorkforceCalendarConfigurationError,
   createWorkforceCalendarOverride,
   listWorkforceCalendarOverrides,
+  searchWorkforceCalendarAgents,
   searchWorkforceCalendarTeams,
 } from "@/lib/workforce/calendar-configuration"
 import { WorkforceCalendarOverrideCreateSchema } from "@/lib/workforce/calendar-configuration-contract"
@@ -30,6 +31,7 @@ function persisted(input: {
   routePlanningAllowed?: boolean
   source?: string
   teamId?: string | null
+  agentId?: string | null
 } = {}) {
   return {
     id: input.id ?? "calendar-1",
@@ -37,7 +39,7 @@ function persisted(input: {
     kind: input.kind ?? "COMPANY_HOLIDAY",
     name: input.name ?? "Company day",
     teamId: input.teamId ?? null,
-    agentId: null,
+    agentId: input.agentId ?? null,
     movedToDate: null,
     routePlanningAllowed: input.routePlanningAllowed ?? true,
     source: input.source ?? "ADMIN",
@@ -60,6 +62,13 @@ describe("Workforce organization calendar configuration", () => {
       kind: "COMPANY_HOLIDAY",
       name: "North team day",
     })).toMatchObject({ scope: "TEAM", teamId: "team-north" })
+    expect(WorkforceCalendarOverrideCreateSchema.parse({
+      scope: "AGENT",
+      agentId: "agent-one",
+      date: "2026-10-05",
+      kind: "COMPANY_HOLIDAY",
+      name: "Personal schedule exception",
+    })).toMatchObject({ scope: "AGENT", agentId: "agent-one" })
     expect(() => WorkforceCalendarOverrideCreateSchema.parse({
       date: "2026-02-30",
       kind: "PUBLIC_HOLIDAY",
@@ -82,6 +91,20 @@ describe("Workforce organization calendar configuration", () => {
       kind: "COMPANY_HOLIDAY",
       name: "Missing team",
     })).toThrow(/active team/i)
+    expect(() => WorkforceCalendarOverrideCreateSchema.parse({
+      scope: "AGENT",
+      teamId: "team-north",
+      agentId: "agent-one",
+      date: "2026-10-05",
+      kind: "COMPANY_HOLIDAY",
+      name: "Mixed target",
+    })).toThrow()
+    expect(() => WorkforceCalendarOverrideCreateSchema.parse({
+      scope: "AGENT",
+      date: "2026-10-05",
+      kind: "COMPANY_HOLIDAY",
+      name: "Missing employee",
+    })).toThrow(/active employee/i)
   })
 
   it("lists only tenant-owned active organization rows in a bounded future range", async () => {
@@ -143,6 +166,32 @@ describe("Workforce organization calendar configuration", () => {
     }))
   })
 
+  it("lists one tenant-owned employee scope without mixing organization or team rows", async () => {
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([
+      persisted({ agentId: "agent-one", name: "Personal schedule exception" }),
+    ] as never)
+
+    await expect(listWorkforceCalendarOverrides({
+      organizationId,
+      currentDate: "2026-09-29",
+      start: "2026-10-01",
+      endExclusive: "2026-11-01",
+      scope: "AGENT",
+      agentId: "agent-one",
+    })).resolves.toEqual([
+      { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Personal schedule exception" },
+    ])
+
+    expect(prisma.mtmWorkCalendarDay.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        organizationId,
+        teamId: null,
+        agentId: "agent-one",
+        deletedAt: null,
+      }),
+    }))
+  })
+
   it("rejects today, past and unbounded read windows before querying", async () => {
     for (const range of [
       { start: "2026-09-29", endExclusive: "2026-10-01" },
@@ -172,6 +221,7 @@ describe("Workforce organization calendar configuration", () => {
     })).resolves.toEqual({
       day: { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Company day" },
       team: null,
+      agent: null,
       created: true,
     })
 
@@ -355,6 +405,81 @@ describe("Workforce organization calendar configuration", () => {
     })
   })
 
+  it("keeps the employee directory tenant-bound, PII-minimized and explicitly truncated", async () => {
+    const agents = Array.from({ length: 101 }, (_, index) => ({
+      id: `agent-${index}`,
+      name: `Employee ${index}`,
+      externalCode: index === 0 ? "EMP-001" : null,
+      status: "ACTIVE",
+      team: index === 0
+        ? { id: "team-north", name: "North team", code: "NORTH", isActive: true }
+        : null,
+    }))
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue(agents as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: "agent-selected",
+      name: "Selected employee",
+      externalCode: "EMP-SELECTED",
+      status: "SUSPENDED",
+      team: { id: "team-south", name: "South team", code: null, isActive: false },
+    } as never)
+
+    const result = await searchWorkforceCalendarAgents({
+      organizationId,
+      query: " employee ",
+      selectedAgentId: "agent-selected",
+    })
+    expect(result).toMatchObject({
+      query: "employee",
+      limit: 100,
+      hasMore: true,
+      selectedAgent: {
+        id: "agent-selected",
+        name: "Selected employee",
+        externalCode: "EMP-SELECTED",
+        status: "SUSPENDED",
+        currentTeam: { id: "team-south", name: "South team", isActive: false },
+      },
+      agents: expect.arrayContaining([{
+        id: "agent-0",
+        name: "Employee 0",
+        externalCode: "EMP-001",
+        status: "ACTIVE",
+        currentTeam: { id: "team-north", name: "North team", code: "NORTH", isActive: true },
+      }]),
+    })
+    expect(result.agents).toHaveLength(100)
+    expect(prisma.mtmAgent.findMany).toHaveBeenCalledWith({
+      where: {
+        organizationId,
+        status: "ACTIVE",
+        OR: [
+          { name: { contains: "employee", mode: "insensitive" } },
+          { externalCode: { contains: "employee", mode: "insensitive" } },
+        ],
+      },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      take: 101,
+      select: {
+        id: true,
+        name: true,
+        externalCode: true,
+        status: true,
+        team: { select: { id: true, name: true, code: true, isActive: true } },
+      },
+    })
+    expect(prisma.mtmAgent.findFirst).toHaveBeenCalledWith({
+      where: { organizationId, id: "agent-selected" },
+      select: {
+        id: true,
+        name: true,
+        externalCode: true,
+        status: true,
+        team: { select: { id: true, name: true, code: true, isActive: true } },
+      },
+    })
+  })
+
   it("validates an active tenant team under the shared date lock and preserves the organization Route baseline", async () => {
     const organizationOverride = persisted({
       id: "organization-day",
@@ -480,6 +605,188 @@ describe("Workforce organization calendar configuration", () => {
     expect(prisma.mtmTeam.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: { organizationId, id: "team-unavailable", isActive: true },
     }))
+    expect(prisma.mtmWorkCalendarDay.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("locks an active tenant employee after the shared date lock and snapshots the current-team Route baseline", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{
+      id: "agent-one",
+      name: "Employee One",
+      externalCode: "EMP-001",
+      status: "ACTIVE",
+      teamId: "team-north",
+      teamRecordId: "team-north",
+      teamName: "North team",
+      teamCode: "NORTH",
+      teamIsActive: true,
+    }] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([
+      persisted({
+        id: "organization-day",
+        name: "Organization closure",
+        routePlanningAllowed: false,
+      }),
+      persisted({
+        id: "team-day",
+        teamId: "team-north",
+        name: "North route day",
+        routePlanningAllowed: true,
+      }),
+    ] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.create).mockResolvedValue(persisted({
+      id: "agent-day",
+      agentId: "agent-one",
+      name: "Personal schedule exception",
+      routePlanningAllowed: true,
+    }) as never)
+
+    await expect(createWorkforceCalendarOverride({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: {
+        scope: "AGENT",
+        agentId: "agent-one",
+        date: "2026-10-05",
+        kind: "COMPANY_HOLIDAY",
+        name: "Personal schedule exception",
+      },
+      audit,
+    })).resolves.toEqual({
+      day: { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Personal schedule exception" },
+      team: null,
+      agent: {
+        id: "agent-one",
+        name: "Employee One",
+        externalCode: "EMP-001",
+        status: "ACTIVE",
+        currentTeam: { id: "team-north", name: "North team", code: "NORTH", isActive: true },
+      },
+      created: true,
+    })
+
+    expect(prisma.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(prisma.$queryRaw.mock.invocationCallOrder[0])
+    expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(prisma.mtmWorkCalendarDay.findMany.mock.invocationCallOrder[0])
+    const rowLock = prisma.$queryRaw.mock.calls[0]?.[0] as { strings?: readonly string[] }
+    expect(rowLock.strings?.join(" ")).toContain('FOR SHARE OF agent')
+    expect(rowLock.strings?.join(" ")).toContain('agent."status" = \'ACTIVE\'')
+    expect(prisma.mtmWorkCalendarDay.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        organizationId,
+        OR: [
+          { teamId: null, agentId: "agent-one" },
+          { teamId: null, agentId: null },
+          { teamId: "team-north", agentId: null },
+        ],
+      }),
+    }))
+    expect(prisma.mtmWorkCalendarDay.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        teamId: null,
+        agentId: "agent-one",
+        routePlanningAllowed: true,
+        source: "ADMIN",
+      }),
+    }))
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId,
+        agentId: "agent-one",
+        actorUserId: createdByUserId,
+        newData: expect.objectContaining({
+          scope: "AGENT",
+          agentId: "agent-one",
+          agentName: "Employee One",
+          agentExternalCode: "EMP-001",
+          currentTeamId: "team-north",
+          routePlanningBaseline: true,
+        }),
+      }),
+    })
+  })
+
+  it("replays only an exact ADMIN employee state and never replaces request-created personal rows", async () => {
+    const lockedAgent = {
+      id: "agent-one",
+      name: "Employee One",
+      externalCode: null,
+      status: "ACTIVE",
+      teamId: null,
+      teamRecordId: null,
+      teamName: null,
+      teamCode: null,
+      teamIsActive: null,
+    }
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([lockedAgent] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValueOnce([
+      persisted({
+        id: "agent-day",
+        agentId: "agent-one",
+        name: "Personal schedule exception",
+        routePlanningAllowed: true,
+      }),
+    ] as never)
+
+    const draft = {
+      scope: "AGENT" as const,
+      agentId: "agent-one",
+      date: "2026-10-05",
+      kind: "COMPANY_HOLIDAY" as const,
+      name: "Personal schedule exception",
+    }
+    await expect(createWorkforceCalendarOverride({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft,
+      audit,
+    })).resolves.toMatchObject({ created: false, agent: { id: "agent-one" } })
+    expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([lockedAgent] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValueOnce([
+      persisted({
+        id: "approved-absence",
+        agentId: "agent-one",
+        name: "Personal schedule exception",
+        routePlanningAllowed: true,
+        source: "WORKFORCE_ABSENCE",
+      }),
+    ] as never)
+    await expect(createWorkforceCalendarOverride({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft,
+      audit,
+    })).rejects.toMatchObject({ code: "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS" })
+    expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("makes missing, inactive, suspended and cross-tenant employee targets indistinguishable", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never)
+
+    await expect(createWorkforceCalendarOverride({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: {
+        scope: "AGENT",
+        agentId: "agent-unavailable",
+        date: "2026-10-05",
+        kind: "COMPANY_HOLIDAY",
+        name: "Unavailable employee day",
+      },
+      audit,
+    })).rejects.toMatchObject({ code: "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE" })
+
+    expect(prisma.$executeRaw).toHaveBeenCalled()
+    expect(prisma.$queryRaw).toHaveBeenCalled()
     expect(prisma.mtmWorkCalendarDay.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()

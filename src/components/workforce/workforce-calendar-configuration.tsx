@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import type {
+  WorkforceCalendarAgentSummary,
   WorkforceCalendarConfigurationScope,
   WorkforceCalendarCreateKind,
   WorkforceCalendarOverrideSummary,
@@ -29,6 +30,13 @@ type TeamDirectory = {
   hasMore: boolean
 }
 
+type AgentDirectory = {
+  items: WorkforceCalendarAgentSummary[]
+  query: string
+  limit: number
+  hasMore: boolean
+}
+
 type CalendarData = {
   timezone: string
   currentDate: string
@@ -36,7 +44,9 @@ type CalendarData = {
   endExclusive: string
   scope: WorkforceCalendarConfigurationScope
   team: WorkforceCalendarTeamSummary | null
+  agent: WorkforceCalendarAgentSummary | null
   teamDirectory: TeamDirectory
+  agentDirectory: AgentDirectory
   days: WorkforceCalendarOverrideSummary[]
 }
 
@@ -44,6 +54,8 @@ type ReadSelection = {
   scope: WorkforceCalendarConfigurationScope
   teamId: string
   teamQuery: string
+  agentId: string
+  agentQuery: string
 }
 
 type ApiFailure = Error & { code?: string }
@@ -108,6 +120,8 @@ function localizedKnownFailure(t: ReturnType<typeof useTranslations>, code: stri
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS") return t("overrideExists")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_UNAVAILABLE") return t("teamUnavailable")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_SEARCH_INVALID") return t("teamSearchInvalid")
+  if (code === "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE") return t("agentUnavailable")
+  if (code === "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_SEARCH_INVALID") return t("agentSearchInvalid")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_SCOPE_INVALID") return t("scopeInvalid")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_INVALID") return t("invalidInput")
   if ([
@@ -135,8 +149,9 @@ function localizedMutationFailure(t: ReturnType<typeof useTranslations>, failure
 }
 
 /**
- * Forward-only organization/team calendar editor. Authorization remains in
- * the API so a granular Scheduler is not hidden behind the legacy CRM role.
+ * Forward-only organization/team/employee calendar editor. Authorization
+ * remains in the API so a granular Scheduler is not hidden behind the legacy
+ * CRM role.
  */
 export function WorkforceCalendarConfiguration() {
   const { data: session } = useSession()
@@ -146,6 +161,8 @@ export function WorkforceCalendarConfiguration() {
   const [scope, setScope] = useState<WorkforceCalendarConfigurationScope>("ORGANIZATION")
   const [teamId, setTeamId] = useState("")
   const [teamQuery, setTeamQuery] = useState("")
+  const [agentId, setAgentId] = useState("")
+  const [agentQuery, setAgentQuery] = useState("")
   const [date, setDate] = useState("")
   const [kind, setKind] = useState<WorkforceCalendarCreateKind>("PUBLIC_HOLIDAY")
   const [name, setName] = useState("")
@@ -170,7 +187,9 @@ export function WorkforceCalendarConfiguration() {
     if (method === "GET" && selection) {
       query.set("scope", selection.scope)
       if (selection.scope === "TEAM" && selection.teamId) query.set("teamId", selection.teamId)
+      if (selection.scope === "AGENT" && selection.agentId) query.set("agentId", selection.agentId)
       if (selection.teamQuery.trim()) query.set("teamQuery", selection.teamQuery.trim())
+      if (selection.agentQuery.trim()) query.set("agentQuery", selection.agentQuery.trim())
     }
     const queryString = query.toString()
     const response = await fetch(
@@ -206,7 +225,8 @@ export function WorkforceCalendarConfiguration() {
     }
     setLoading(true)
     try {
-      const requestSelection = selection.scope === "TEAM" && !selection.teamId
+      const requestSelection = (selection.scope === "TEAM" && !selection.teamId)
+        || (selection.scope === "AGENT" && !selection.agentId)
         ? { ...selection, scope: "ORGANIZATION" as const }
         : selection
       const result = await request<CalendarData>("GET", undefined, requestSelection, attempt.controller.signal)
@@ -231,7 +251,15 @@ export function WorkforceCalendarConfiguration() {
     setScope("ORGANIZATION")
     setTeamId("")
     setTeamQuery("")
-    void load({ scope: "ORGANIZATION", teamId: "", teamQuery: "" })
+    setAgentId("")
+    setAgentQuery("")
+    void load({
+      scope: "ORGANIZATION",
+      teamId: "",
+      teamQuery: "",
+      agentId: "",
+      agentQuery: "",
+    })
   }, [load])
 
   async function createOverride(event: FormEvent<HTMLFormElement>) {
@@ -239,19 +267,25 @@ export function WorkforceCalendarConfiguration() {
     setSaving(true)
     setError(null)
     setNotice(null)
+    const submittedSelection: ReadSelection = { scope, teamId, teamQuery, agentId, agentQuery }
     try {
       const result = await request<Record<string, unknown>>("POST", {
-        scope,
-        ...(scope === "TEAM" ? { teamId } : {}),
+        scope: submittedSelection.scope,
+        ...(submittedSelection.scope === "TEAM" ? { teamId: submittedSelection.teamId } : {}),
+        ...(submittedSelection.scope === "AGENT" ? { agentId: submittedSelection.agentId } : {}),
         date,
         kind,
         name,
       })
       setNotice(result.status === 201
-        ? t(scope === "TEAM" ? "createdTeam" : "createdOrganization")
+        ? t(submittedSelection.scope === "TEAM"
+            ? "createdTeam"
+            : submittedSelection.scope === "AGENT"
+              ? "createdAgent"
+              : "createdOrganization")
         : t("alreadyRecorded"))
       setName("")
-      await load({ scope, teamId, teamQuery })
+      await load(submittedSelection)
     } catch (failure) {
       setError(localizedMutationFailure(t, failure))
     } finally {
@@ -265,16 +299,29 @@ export function WorkforceCalendarConfiguration() {
   if (calendar?.team && !teamOptions.some((team) => team.id === calendar.team?.id)) {
     teamOptions.unshift(calendar.team)
   }
+  const agentOptions = [...(calendar?.agentDirectory.items ?? [])]
+  if (calendar?.agent && !agentOptions.some((agent) => agent.id === calendar.agent?.id)) {
+    agentOptions.unshift(calendar.agent)
+  }
   const visibleCalendar = calendar
     && calendar.scope === scope
-    && (scope === "ORGANIZATION" || calendar.team?.id === teamId)
+    && (
+      scope === "ORGANIZATION"
+      || (scope === "TEAM" && calendar.team?.id === teamId)
+      || (scope === "AGENT" && calendar.agent?.id === agentId)
+    )
     ? calendar
     : null
   const minimumDate = visibleCalendar ? nextDateKey(visibleCalendar.currentDate) : undefined
   const selectedTeam = scope === "TEAM" && visibleCalendar ? visibleCalendar.team : null
+  const selectedAgent = scope === "AGENT" && visibleCalendar ? visibleCalendar.agent : null
   const canCreate = Boolean(
     visibleCalendar
-    && (scope === "ORGANIZATION" || selectedTeam?.isActive)
+    && (
+      scope === "ORGANIZATION"
+      || selectedTeam?.isActive
+      || selectedAgent?.status === "ACTIVE"
+    )
     && date
     && name.trim(),
   )
@@ -298,7 +345,7 @@ export function WorkforceCalendarConfiguration() {
         type="button"
         variant="outline"
         className="min-h-11"
-        onClick={() => void load({ scope, teamId, teamQuery })}
+        onClick={() => void load({ scope, teamId, teamQuery, agentId, agentQuery })}
         disabled={loading || saving}
       >
         {loading ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}
@@ -320,18 +367,29 @@ export function WorkforceCalendarConfiguration() {
           onChange={(event) => {
             const nextScope = event.target.value as WorkforceCalendarConfigurationScope
             setScope(nextScope)
+            setTeamId("")
+            setTeamQuery("")
+            setAgentId("")
+            setAgentQuery("")
             setNotice(null)
-            if (nextScope === "ORGANIZATION") {
-              setTeamId("")
-              setTeamQuery("")
-              void load({ scope: "ORGANIZATION", teamId: "", teamQuery: "" })
-            }
+            void load({
+              scope: nextScope,
+              teamId: "",
+              teamQuery: "",
+              agentId: "",
+              agentQuery: "",
+            })
           }}
         >
           <option value="ORGANIZATION">{t("scopes.ORGANIZATION")}</option>
           <option value="TEAM">{t("scopes.TEAM")}</option>
+          <option value="AGENT">{t("scopes.AGENT")}</option>
         </Select>
-        <p className="text-xs leading-5 text-muted-foreground">{t(scope === "TEAM" ? "teamScopeHint" : "organizationScopeHint")}</p>
+        <p className="text-xs leading-5 text-muted-foreground">{t(scope === "TEAM"
+          ? "teamScopeHint"
+          : scope === "AGENT"
+            ? "agentScopeHint"
+            : "organizationScopeHint")}</p>
       </div>
 
       {scope === "TEAM" ? <div className="space-y-2">
@@ -345,7 +403,13 @@ export function WorkforceCalendarConfiguration() {
             const nextTeamId = event.target.value
             setTeamId(nextTeamId)
             setNotice(null)
-            if (nextTeamId) void load({ scope: "TEAM", teamId: nextTeamId, teamQuery })
+            if (nextTeamId) void load({
+              scope: "TEAM",
+              teamId: nextTeamId,
+              teamQuery,
+              agentId: "",
+              agentQuery: "",
+            })
           }}
           required
         >
@@ -372,7 +436,7 @@ export function WorkforceCalendarConfiguration() {
             type="button"
             variant="outline"
             className="min-h-11 sm:shrink-0"
-            onClick={() => void load({ scope, teamId, teamQuery })}
+            onClick={() => void load({ scope, teamId, teamQuery, agentId, agentQuery })}
             disabled={loading || saving}
           >
             <Search aria-hidden="true" />
@@ -382,10 +446,74 @@ export function WorkforceCalendarConfiguration() {
         {calendar?.teamDirectory.hasMore ? <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">{t("teamSearchNarrower")}</p> : null}
         {!loading && calendar && calendar.teamDirectory.items.length === 0 ? <p className="text-xs leading-5 text-muted-foreground">{t("noTeams")}</p> : null}
       </div> : null}
+
+      {scope === "AGENT" ? <div className="space-y-2">
+        <label className="text-sm font-medium" htmlFor="workforce-calendar-agent">{t("agent")}</label>
+        <Select
+          id="workforce-calendar-agent"
+          className="min-h-11"
+          value={agentId}
+          disabled={saving}
+          onChange={(event) => {
+            const nextAgentId = event.target.value
+            setAgentId(nextAgentId)
+            setNotice(null)
+            if (nextAgentId) void load({
+              scope: "AGENT",
+              teamId: "",
+              teamQuery: "",
+              agentId: nextAgentId,
+              agentQuery,
+            })
+          }}
+          required
+        >
+          <option value="">{t("selectAgent")}</option>
+          {agentOptions.map((agent) => <option key={agent.id} value={agent.id}>
+            {agent.name}{agent.externalCode ? ` · ${agent.externalCode}` : ""} · {t(`agentStatuses.${agent.status}`)}
+          </option>)}
+        </Select>
+        {selectedAgent ? <p className="text-xs leading-5 text-muted-foreground">{t("agentContext", {
+          status: t(`agentStatuses.${selectedAgent.status}`),
+          team: selectedAgent.currentTeam
+            ? `${selectedAgent.currentTeam.name}${selectedAgent.currentTeam.code ? ` · ${selectedAgent.currentTeam.code}` : ""}`
+            : t("noCurrentTeam"),
+        })}</p> : null}
+      </div> : null}
+
+      {scope === "AGENT" ? <div className="space-y-2 lg:col-span-2">
+        <label className="text-sm font-medium" htmlFor="workforce-calendar-agent-search">{t("agentSearch")}</label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="workforce-calendar-agent-search"
+            className="min-h-11"
+            value={agentQuery}
+            disabled={saving}
+            onChange={(event) => setAgentQuery(event.target.value)}
+            maxLength={100}
+            placeholder={t("agentSearchPlaceholder")}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 sm:shrink-0"
+            onClick={() => void load({ scope, teamId, teamQuery, agentId, agentQuery })}
+            disabled={loading || saving}
+          >
+            <Search aria-hidden="true" />
+            {t("searchAgents")}
+          </Button>
+        </div>
+        {calendar?.agentDirectory.hasMore ? <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">{t("agentSearchNarrower")}</p> : null}
+        {!loading && calendar && calendar.agentDirectory.items.length === 0 ? <p className="text-xs leading-5 text-muted-foreground">{t("noAgents")}</p> : null}
+      </div> : null}
     </div>
 
     {scope === "TEAM" && selectedTeam && !selectedTeam.isActive
       ? <p className="border-b border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100 sm:px-6" role="alert">{t("teamInactive")}</p>
+      : null}
+    {scope === "AGENT" && selectedAgent && selectedAgent.status !== "ACTIVE"
+      ? <p className="border-b border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100 sm:px-6" role="alert">{t("agentInactive")}</p>
       : null}
 
     {visibleCalendar ? <>
@@ -433,7 +561,9 @@ export function WorkforceCalendarConfiguration() {
           <p className="mb-4 text-sm leading-6 text-muted-foreground">{
             scope === "TEAM" && selectedTeam
               ? t("createHintTeam", { timezone: visibleCalendar.timezone, team: selectedTeam.name })
-              : t("createHintOrganization", { timezone: visibleCalendar.timezone })
+              : scope === "AGENT" && selectedAgent
+                ? t("createHintAgent", { timezone: visibleCalendar.timezone, agent: selectedAgent.name })
+                : t("createHintOrganization", { timezone: visibleCalendar.timezone })
           }</p>
           <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={saving || loading || !canCreate}>
             {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Plus />}
@@ -447,12 +577,18 @@ export function WorkforceCalendarConfiguration() {
           <h3 className="font-semibold">{
             scope === "TEAM" && selectedTeam
               ? t("upcomingTitleTeam", { team: selectedTeam.name })
-              : t("upcomingTitleOrganization")
+              : scope === "AGENT" && selectedAgent
+                ? t("upcomingTitleAgent", { agent: selectedAgent.name })
+                : t("upcomingTitleOrganization")
           }</h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("upcomingHint", { timezone: visibleCalendar.timezone })}</p>
         </div>
         {visibleCalendar.days.length === 0
-          ? <p className="border-t border-zinc-200 px-5 py-8 text-sm text-muted-foreground dark:border-zinc-800 sm:px-6">{t(scope === "TEAM" ? "emptyTeam" : "emptyOrganization")}</p>
+          ? <p className="border-t border-zinc-200 px-5 py-8 text-sm text-muted-foreground dark:border-zinc-800 sm:px-6">{t(scope === "TEAM"
+              ? "emptyTeam"
+              : scope === "AGENT"
+                ? "emptyAgent"
+                : "emptyOrganization")}</p>
           : <ul className="divide-y divide-zinc-200 border-t border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
             {visibleCalendar.days.map((day) => <li key={`${day.date}:${day.kind}`} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div>
@@ -467,6 +603,8 @@ export function WorkforceCalendarConfiguration() {
       ? <div className="flex items-center gap-2 px-5 py-8 text-sm text-muted-foreground sm:px-6"><Loader2 className="animate-spin motion-reduce:animate-none" />{t("loading")}</div>
       : scope === "TEAM" && !teamId
         ? <p className="px-5 py-8 text-sm leading-6 text-muted-foreground sm:px-6">{t("selectTeamHint")}</p>
-        : null}
+        : scope === "AGENT" && !agentId
+          ? <p className="px-5 py-8 text-sm leading-6 text-muted-foreground sm:px-6">{t("selectAgentHint")}</p>
+          : null}
   </section>
 }

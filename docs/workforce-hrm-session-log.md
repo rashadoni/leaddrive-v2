@@ -2641,3 +2641,47 @@ corrections as new entries that explicitly supersede the earlier fact.
   `WF-C8-007d` future AGENT-scope create/list using exact schedule grants,
   tenant-safe named employee selection and current-team Route baseline;
   moved-day/update/delete/request-approval remain outside the slice.
+
+## 2026-09-29 — WF-C8-007d employee calendar implementation and author checks
+
+- Resumed only in the recorded worktree on
+  `codex/workforce-completion-part12`, based on released main
+  `01f5069a732a4879a453c918bca8a52864999401`. Origin remains
+  `rashadoni/leaddrive-v2`; release routing remains only GitHub
+  `main -> deploy.yml -> 13.140.132.245:/opt/leaddrive-v2`.
+- The user asked for a direct remaining-work count. Current evidence remains 80
+  non-DONE roadmap rows, with the separately weighted completion summary at
+  59%; no unsupported 100% claim was made and autonomous implementation
+  continued.
+- Implemented strict named `AGENT` scope on the released future calendar API
+  and UI: bounded tenant-safe active-employee search by name/external code,
+  same-tenant inactive/suspended read continuity, exact employee inventory and
+  future active-employee creation.
+- The write path serializes on the released organization/date advisory lock,
+  then locks the active tenant employee row `FOR SHARE` to freeze current team.
+  Route baseline is derived from current-team/organization/default candidates
+  with the employee target row excluded. Exact `ADMIN` replay is no-op;
+  different/provenance/concurrent state fails closed and audit is atomic.
+- Existing request-created leave/absence personal rows remain visible and are
+  never replaced by this writer. The UI explicitly calls the new action a
+  personal scheduling exception, not leave/absence approval; no schema,
+  moved-day, update/delete, transfer editor, new grant or Route behavior was
+  added.
+- Current-tree PASS: focused calendar domain/API/UI 41 tests; retained
+  calendar precedence/API 16; Workforce auth/RLS 33; voice coverage 4; scoped
+  ESLint on all changed TS/TSX; i18n source 23,879 with RU/AZ missing 0 and
+  extra 0; JSON and whitespace. The voice-length test initially exposed an
+  overlong guide entry; it was shortened and rerun GREEN.
+- Full local typecheck/build/suite, real-PostgreSQL concurrency, browser/AT/
+  device, Android/Gradle, load/chaos, signed-device and tenant-pilot remain
+  `NOT RUN` under host policy. GitHub exact-head CI is mandatory.
+- Evidence:
+  `docs/workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md`.
+- `WF-C8-007` remains `PARTIAL`; no row/gate credit changes. Progress remains
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation, tests, i18n and evidence are complete
+  in the working tree; no checkpoint commit or independent frozen review has
+  yet been recorded for this slice.
+- Next action: rerun final bounded checks, checkpoint explicit paths, compute
+  the exact full/non-doc identities and require fresh author-independent
+  full-range GREEN before push/opening the next reviewable PR.

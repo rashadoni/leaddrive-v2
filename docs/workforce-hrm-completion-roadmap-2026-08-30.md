@@ -2709,3 +2709,38 @@ from this worktree.
 - Next action: implement bounded `WF-C8-007d` future employee/AGENT-scope
   create/list with a tenant-safe named employee directory, locked current-team
   baseline and no moved/update/delete/request-approval scope.
+
+## 2026-09-29 — WF-C8-007d future employee calendar implementation checkpoint
+
+- Extended the released organization/team calendar boundary with strict
+  employee scope, tenant-bound bounded active-employee search, same-tenant
+  inactive/suspended read continuity and exact employee-only future list.
+- Employee creation takes the shared organization/date advisory lock, then
+  locks the active tenant employee row `FOR SHARE` before reading the exact
+  employee, locked current-team and organization calendar candidates. The
+  stored Route flag inherits team/organization/default state without using the
+  target employee row as its own baseline.
+- Exact `ADMIN` replay remains a no-op. Different state, unique collision and
+  existing request-created leave/absence provenance fail closed; calendar row
+  and target/operator audit remain atomic. Safe response and directory fields
+  omit email, phone, credential/device material and calendar provenance.
+- The localized UI uses a named employee picker with status/current-team
+  context, inactive read-only continuity, explicit schedule-not-leave wording,
+  latest-GET fencing and eight-control POST reconciliation freezing.
+- Focused current-tree PASS: 41 domain/API/UI tests, 16 retained calendar
+  precedence/API tests, 33 authorization/RLS tests, 4 voice coverage tests,
+  scoped ESLint, i18n 23,879/0/0, JSON and whitespace checks.
+- Full typecheck/build/suite, real-PostgreSQL race, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  host policy. Exact-head CI and fresh author-independent frozen review remain
+  mandatory.
+- Evidence:
+  `docs/workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md`.
+- No progress credit is claimed. `WF-C8-007` remains `PARTIAL`; progress stays
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation, regressions, localization and bounded
+  author verification are complete in the working tree; checkpoint freeze is
+  in progress.
+- Next action: commit only explicit slice/evidence paths, compute exact diff
+  identities and obtain a fresh author-independent full-range frozen-head
+  review before any push or PR.
