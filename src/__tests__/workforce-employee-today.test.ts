@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
+  loadWorkforceEmployeeToday,
   workforceEmployeeSegmentTransition,
   workforceEmployeeTodayProjection,
   workforceEmployeeTodayServerOutcome,
 } from "@/lib/workforce/employee-today"
+import { workforcePolicyDefinitionHash } from "@/lib/workforce/policy-definition"
+import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
 
 const assignment = {
   state: "ASSIGNED" as const,
@@ -163,5 +166,138 @@ describe("employee Workforce Today projection", () => {
     })
     expect(result.serverOutcome?.state).toBe("PENDING_REVIEW")
     expect(result.action.enabled).toBe(true)
+  })
+
+  it("blocks START when Today supplies no actionable planned context", async () => {
+    const result = await loadWorkforceEmployeeToday({} as never, {
+      organizationId: "org-workforce",
+      agentId: "agent-1",
+      date: "2026-08-31",
+      timezone: "UTC",
+      status: "NOT_STARTED",
+      workday: null,
+      previousOpen: false,
+      calendar: { attendanceExpected: true },
+      plannedContext: null,
+      now: new Date("2026-08-31T12:00:00.000Z"),
+    })
+
+    expect(result.assignment.state).toBe("UNAVAILABLE")
+    expect(result.action).toMatchObject({
+      primary: "START",
+      enabled: false,
+      blockedReason: "ASSIGNMENT_UNAVAILABLE",
+    })
+  })
+
+  it("uses the manager plan's exact scope for self assignment and policy", async () => {
+    const shiftDefinition = {
+      startTime: "09:00", endTime: "18:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
+    }
+    const policyDefinition = { expectedWorkSeconds: 28_800 }
+    const db = {
+      $queryRaw: vi.fn().mockResolvedValue([{
+        id: "membership-a", teamId: "team-a", effectiveAt: new Date("2026-01-01T00:00:00.000Z"),
+      }]),
+      mtmAgent: { findFirst: vi.fn().mockResolvedValue({ id: "agent-1" }) },
+      workforceShiftAssignment: { findMany: vi.fn() },
+      workforceShiftDefaultAssignment: { findMany: vi.fn() },
+      workforceShiftTeamDefaultAssignment: { findMany: vi.fn() },
+      workforceShiftTemplate: { findFirst: vi.fn().mockResolvedValue({
+        id: "team-a-day", name: "Team A day", teamId: "team-a", isDefault: false,
+        version: 1, status: "ACTIVE", timezone: "UTC",
+        activatedAt: new Date("2026-01-01T00:00:00.000Z"), retiredAt: null,
+        definition: shiftDefinition, definitionHash: workforceShiftDefinitionHash(shiftDefinition),
+      }) },
+      workforceShiftSegment: { findMany: vi.fn().mockResolvedValue([]) },
+      workforcePolicy: { findMany: vi.fn().mockResolvedValue([{
+        id: "team-a-policy", teamId: "team-a", version: 1, status: "ACTIVE", name: "Team A",
+        effectiveFrom: new Date("2026-01-01T00:00:00.000Z"), effectiveTo: null,
+        activatedAt: new Date("2026-01-01T00:00:00.000Z"), retiredAt: null,
+        definition: policyDefinition, definitionHash: workforcePolicyDefinitionHash(policyDefinition),
+      }]) },
+    }
+    const scopeInstant = new Date("2026-08-31T09:00:00.000Z")
+    const result = await loadWorkforceEmployeeToday(db as never, {
+      organizationId: "org-workforce",
+      agentId: "agent-1",
+      date: "2026-08-31",
+      timezone: "UTC",
+      status: "NOT_STARTED",
+      workday: null,
+      previousOpen: false,
+      calendar: { attendanceExpected: true },
+      plannedContext: {
+        templateId: "team-a-day",
+        calendarTeamId: "team-a",
+        scopeInstant,
+        plan: {
+          state: "ASSIGNED",
+          templateName: "Team A day",
+          timezone: "UTC",
+          plannedStartAt: "2026-08-31T09:00:00.000Z",
+          plannedEndAt: "2026-08-31T18:00:00.000Z",
+        },
+      },
+      now: new Date("2026-08-31T12:00:00.000Z"),
+    })
+
+    expect(result.assignment).toMatchObject({
+      state: "ASSIGNED",
+      templateName: "Team A day",
+      plannedStartAt: "2026-08-31T09:00:00.000Z",
+    })
+    expect(result.action).toMatchObject({ primary: "START", enabled: true, blockedReason: null })
+    expect(db.$queryRaw).toHaveBeenCalledTimes(2)
+  })
+
+  it("fails self assignment closed when the authoritative team context no longer verifies", async () => {
+    const shiftDefinition = {
+      startTime: "09:00", endTime: "18:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
+    }
+    const db = {
+      $queryRaw: vi.fn().mockResolvedValue([{
+        id: "membership-b", teamId: "team-b", effectiveAt: new Date("2026-08-31T10:00:00.000Z"),
+      }]),
+      mtmAgent: { findFirst: vi.fn().mockResolvedValue({ id: "agent-1" }) },
+      workforceShiftAssignment: { findMany: vi.fn() },
+      workforceShiftDefaultAssignment: { findMany: vi.fn() },
+      workforceShiftTeamDefaultAssignment: { findMany: vi.fn() },
+      workforceShiftTemplate: { findFirst: vi.fn().mockResolvedValue({
+        id: "team-a-day", name: "Team A day", teamId: "team-a", isDefault: false,
+        version: 1, status: "ACTIVE", timezone: "UTC",
+        activatedAt: new Date("2026-01-01T00:00:00.000Z"), retiredAt: null,
+        definition: shiftDefinition, definitionHash: workforceShiftDefinitionHash(shiftDefinition),
+      }) },
+      workforceShiftSegment: { findMany: vi.fn() },
+      workforcePolicy: { findMany: vi.fn() },
+    }
+    const result = await loadWorkforceEmployeeToday(db as never, {
+      organizationId: "org-workforce",
+      agentId: "agent-1",
+      date: "2026-08-31",
+      timezone: "UTC",
+      status: "NOT_STARTED",
+      workday: null,
+      previousOpen: false,
+      calendar: { attendanceExpected: true },
+      plannedContext: {
+        templateId: "team-a-day",
+        calendarTeamId: "team-a",
+        scopeInstant: new Date("2026-08-31T09:00:00.000Z"),
+        plan: {
+          state: "ASSIGNED",
+          templateName: "Team A day",
+          timezone: "UTC",
+          plannedStartAt: "2026-08-31T09:00:00.000Z",
+          plannedEndAt: "2026-08-31T18:00:00.000Z",
+        },
+      },
+      now: new Date("2026-08-31T12:00:00.000Z"),
+    })
+
+    expect(result.assignment.state).toBe("UNAVAILABLE")
+    expect(result.action).toMatchObject({ enabled: false, blockedReason: "ASSIGNMENT_UNAVAILABLE" })
+    expect(db.workforcePolicy.findMany).not.toHaveBeenCalled()
   })
 })

@@ -12,6 +12,7 @@ vi.mock("@/lib/with-workforce-rls-auth", () => ({
 import { GET } from "@/app/api/v1/workforce/exceptions/route"
 import { prisma } from "@/lib/prisma"
 import { readWorkforceExceptionActionToken } from "@/lib/workforce/exception-workbench-token"
+import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
 
 const AUTH = { orgId: "org-workforce", userId: "manager-1", role: "admin", principalType: "session" as const }
 const callGet = GET as unknown as (request: NextRequest, auth: typeof AUTH) => Promise<Response>
@@ -20,9 +21,10 @@ function candidate(id = "case-00000001", agentId = "agent-1") {
   return {
     id,
     agentId,
+    segmentId: "segment-1",
+    expectedWorkDate: null,
     workdayEvent: { occurredAt: new Date("2026-08-30T09:00:00.000Z") },
     workday: { startedAt: new Date("2026-08-30T09:00:00.000Z") },
-    segment: { siteId: "site-1" },
   }
 }
 
@@ -94,9 +96,10 @@ describe("Workforce scoped exception queue API", () => {
       select: {
         id: true,
         agentId: true,
+        segmentId: true,
+        expectedWorkDate: true,
         workdayEvent: { select: { occurredAt: true } },
         workday: { select: { startedAt: true } },
-        segment: { select: { siteId: true } },
       },
     })
     expect(metadataCall?.[0]?.select).not.toHaveProperty("agent")
@@ -140,6 +143,47 @@ describe("Workforce scoped exception queue API", () => {
     expect(vi.mocked(prisma.workforceExceptionCase.findMany).mock.calls[1]?.[0]).toMatchObject({
       where: { organizationId: AUTH.orgId, id: { in: ["case-allowed-01"] } },
     })
+  })
+
+  it("authorizes a schedule-only no-show from its immutable first segment", async () => {
+    const shift = {
+      startTime: "09:00", endTime: "18:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
+    }
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: ["workforce-hrm", "workforce-granular-access-v1"],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([grantRow] as never)
+    vi.mocked(prisma.workforceShiftSegment.findMany).mockResolvedValue([{
+      id: "segment-1",
+      siteId: "site-1",
+      sequence: 1,
+      startTime: "09:00",
+      template: {
+        id: "template-1", name: "Team day", teamId: "team-1", isDefault: false,
+        version: 1, status: "ACTIVE", timezone: "UTC",
+        activatedAt: new Date("2026-08-01T00:00:00.000Z"), retiredAt: null,
+        definition: shift, definitionHash: workforceShiftDefinitionHash(shift),
+      },
+    }] as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ requestId: "case-00000001", teamId: "team-1" }] as never)
+    vi.mocked(prisma.workforceExceptionCase.findMany)
+      .mockResolvedValueOnce([{
+        ...candidate(),
+        expectedWorkDate: new Date("2026-08-31T00:00:00.000Z"),
+        workdayEvent: null,
+        workday: null,
+      }] as never)
+      .mockResolvedValueOnce([detail()] as never)
+
+    const response = await callGet(new NextRequest("http://localhost/api/v1/workforce/exceptions"), AUTH)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.cases).toHaveLength(1)
+    expect(body.data.cases[0]).toMatchObject({ type: "NO_SHOW", employeeDisplayName: "Aysel Aliyeva" })
+    expect(prisma.workforceShiftSegment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: AUTH.orgId, id: { in: ["segment-1"] } },
+    }))
   })
 
   it("withholds only the employee-response action when its tenant rollout is absent", async () => {

@@ -29,6 +29,10 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  WorkforceManagerToday,
+  type WorkforceManagerTodayPerson,
+} from "@/components/workforce/workforce-manager-today"
+import {
   createWorkforceReadIdentity,
   shouldRenderWorkforceData,
   TimesheetApprovalRefreshLifecycle,
@@ -42,6 +46,8 @@ type TodayData = {
   timezone: string
   scope: string
   summary: { started: number; paused: number; completed: number; notStarted: number; previousOpen: number }
+  summaryScope: "LOADED_PAGE"
+  pagination: { pageSize: number; nextCursor: string | null }
   employeeToday: {
     assignment: {
       state: "ASSIGNED" | "NON_WORKING_DAY" | "UNAVAILABLE"
@@ -79,14 +85,7 @@ type TodayData = {
       appliedAt: string
     } | null
   } | null
-  people: Array<{
-    id: string
-    name: string
-    role: string
-    status: "STARTED" | "PAUSED" | "COMPLETED" | "NOT_STARTED"
-    workday: { id: string; startedAt: string; pausedAt: string | null; completedAt: string | null } | null
-    previousOpenWorkday: { id: string; workDate: string; status: "STARTED" | "PAUSED" } | null
-  }>
+  people: WorkforceManagerTodayPerson[]
 }
 
 type WorkforceTimesheetCalculationView = {
@@ -509,6 +508,8 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
     retry,
     timesheetQuery,
   })
+  const activeLoadIdentityRef = useRef(activeLoadIdentity)
+  activeLoadIdentityRef.current = activeLoadIdentity
 
   function requestReload(options: { preserveTimesheet?: boolean } = {}) {
     if (!options.preserveTimesheet && approvalRefreshLifecycle.isBusy()) return
@@ -699,6 +700,50 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
     }
   }
 
+  async function loadMoreToday() {
+    const cursor = today?.pagination.nextCursor
+    if (!cursor || loadingMore) return
+    const requestedIdentity = activeLoadIdentity
+    setLoadingMore(true)
+    try {
+      const response = await fetch(`${apiForView.today}?cursor=${encodeURIComponent(cursor)}`, {
+        headers: organizationId ? { "x-organization-id": organizationId } : {},
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) throw new Error(result.error || `HTTP ${response.status}`)
+      if (activeLoadIdentityRef.current !== requestedIdentity) return
+      const page = result.data as TodayData
+      setData((current) => {
+        if (!current || !("people" in current) || !("pagination" in current)) return current
+        if (
+          current.date !== page.date
+          || current.timezone !== page.timezone
+          || current.scope !== page.scope
+          || current.pagination.nextCursor !== cursor
+        ) return current
+        const known = new Set(current.people.map((person) => person.id))
+        return {
+          ...page,
+          employeeToday: current.employeeToday,
+          people: [...current.people, ...page.people.filter((person) => !known.has(person.id))],
+          summary: {
+            started: current.summary.started + page.summary.started,
+            paused: current.summary.paused + page.summary.paused,
+            completed: current.summary.completed + page.summary.completed,
+            notStarted: current.summary.notStarted + page.summary.notStarted,
+            previousOpen: current.summary.previousOpen + page.summary.previousOpen,
+          },
+        }
+      })
+    } catch (cause) {
+      if (activeLoadIdentityRef.current === requestedIdentity) {
+        toast.error(cause instanceof Error ? cause.message : t("loadFailed"))
+      }
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   async function submitSelfRequest(input: {
     clientRequestId: string
     type: "LEAVE" | "ABSENCE" | "TIME_CORRECTION"
@@ -867,7 +912,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
         </section>
       ) : null}
 
-      {!loading && !error && today ? <TodayView data={today} t={t} formatter={formatter} locale={locale} submittingWorkday={submittingWorkday} workdayOutcome={workdayOutcome} onWorkdayAction={submitWorkdayAction} /> : null}
+      {!loading && !error && today ? <TodayView data={today} t={t} formatter={formatter} locale={locale} submittingWorkday={submittingWorkday} workdayOutcome={workdayOutcome} loadingMore={loadingMore} onLoadMore={loadMoreToday} onWorkdayAction={submitWorkdayAction} /> : null}
       {!error && timesheet ? (
         <TimesheetView
           data={timesheet}
@@ -911,13 +956,15 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   )
 }
 
-function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutcome, onWorkdayAction }: {
+function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutcome, loadingMore, onLoadMore, onWorkdayAction }: {
   data: TodayData
   t: ReturnType<typeof useTranslations>
   formatter: Intl.DateTimeFormat
   locale: string
   submittingWorkday: boolean
   workdayOutcome: "SENDING" | "APPLIED" | "PENDING_REVIEW" | "CONFLICT" | null
+  loadingMore: boolean
+  onLoadMore: () => void
   onWorkdayAction: () => void
 }) {
   const timeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
@@ -925,12 +972,6 @@ function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutco
     minute: "2-digit",
     timeZone: data.timezone,
   }), [data.timezone, locale])
-  const items = [
-    { key: "started", label: t("started"), value: data.summary.started, icon: Clock3 },
-    { key: "paused", label: t("paused"), value: data.summary.paused, icon: Pause },
-    { key: "completed", label: t("completed"), value: data.summary.completed, icon: Check },
-    { key: "previousOpen", label: t("needsReview"), value: data.summary.previousOpen, icon: TriangleAlert },
-  ]
   if (data.scope === "SELF" && data.employeeToday && data.people[0]) {
     const employee = data.people[0]
     const today = data.employeeToday
@@ -1014,28 +1055,7 @@ function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutco
       </section>
     </>
   }
-  return <>
-    <section className="grid gap-px overflow-hidden rounded-xl border border-zinc-200 bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-700 sm:grid-cols-2 xl:grid-cols-4" aria-label={t("dailySummary")}>
-      {items.map(({ key, label, value, icon: Icon }) => <div key={key} className="flex min-h-28 flex-col justify-between bg-card p-5">
-        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-        <div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-sm text-muted-foreground">{label}</p></div>
-      </div>)}
-    </section>
-    <section aria-labelledby="workforce-today-list" className="border-y border-zinc-200 dark:border-zinc-700">
-      <div className="flex flex-col gap-1 px-1 py-5 sm:flex-row sm:items-baseline sm:justify-between">
-        <div><h3 id="workforce-today-list" className="text-base font-semibold">{t("teamToday")}</h3><p className="text-sm text-muted-foreground">{formatter.format(new Date(`${data.date}T12:00:00`))} · {data.timezone}</p></div>
-        <span className="text-sm text-muted-foreground">{t("peopleCount", { count: data.people.length })}</span>
-      </div>
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
-        {data.people.map((person) => <article key={person.id} className="grid gap-3 px-1 py-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
-          <div className="min-w-0"><p className="truncate font-medium">{person.name}</p><p className="text-sm text-muted-foreground">{person.role}</p></div>
-          <Badge variant={statusTone(person.status)}>{t(`status.${person.status}`)}</Badge>
-          {person.previousOpenWorkday ? <span className="inline-flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300"><TriangleAlert className="h-4 w-4" />{t("previousOpen", { date: person.previousOpenWorkday.workDate.slice(0, 10) })}</span> : <span className="text-sm text-muted-foreground">{person.workday?.startedAt ? t("startedAt", { time: timeFormatter.format(new Date(person.workday.startedAt)) }) : t("notStarted")}</span>}
-        </article>)}
-        {data.people.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{t("noPeople")}</p> : null}
-      </div>
-    </section>
-  </>
+  return <WorkforceManagerToday data={data} loadingMore={loadingMore} onLoadMore={onLoadMore} />
 }
 
 function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, loading, approving, canApproveTimesheet, onFiltersChange, onApplyFilters, onApprove, onPreviewApprovedExport }: {

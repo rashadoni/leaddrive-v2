@@ -344,3 +344,33 @@ Android and physical gates remain `NOT RUN`. This GREEN authorizes only
 publication and replacement exact-head CI. `WF-C8-004` remains **PARTIAL** at
 `DONE 80/161`, `GATES 14/15`, C8 27%, overall 58% until merge and release
 evidence are complete.
+
+## PR #489 exact-head release and production acceptance
+
+Final exact head `46f9f602525507d8f3c2b1a6f3148a4ffe323a36` retained the
+independently GREEN 16-path / 178,681-byte candidate with SHA-256
+`08f234b95fbb8721d8cfda6190259376a7cbaadc5de2f5b00063c368bd359cb0`.
+Replacement run `36518016723` passed `pr-scope`, `static-checks`, `typecheck`,
+`runner-policy` and `scan`; the scope-conditioned PR production-build job was
+correctly skipped. In particular, the required type gate closed the seven
+diagnostics from the rejected head rather than inheriting its result.
+
+PR #489 merged normally at `2026-09-29T04:02:27Z` as
+`f95ec02952c425e97a470aba5d2e591ffb5b9486`. Exact-SHA deploy run
+`36519816277` completed SUCCESS at `2026-09-29T04:23:25Z`: quality/security,
+standalone build and immutable artifact publication, atomic production
+deployment, scheduler and tenant-isolation checks, public database ping,
+revision and login/asset smoke, and artifact retention all passed through the
+documented GitHub Actions path.
+
+Independent no-cache HTTPS reads pinned `app.leaddrivecrm.org` to the only
+approved production IP `13.140.132.245`. `/api/v1/ping` returned HTTP 200 with
+`{"ok":true}`. `/api/v1/public/build-info` returned HTTP 200 with
+`artifactSha=f95ec02952c425e97a470aba5d2e591ffb5b9486` and
+`builtAt=2026-09-29T04:08:34Z`, exactly matching merged main. No direct deploy,
+worktree copy, Azure or retired host was used.
+
+`WF-C8-004` is therefore **DONE**. Progress is `DONE 81/161`,
+`GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. Full local
+typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
+physical-device and pilot evidence remain `NOT RUN` and are not inferred.

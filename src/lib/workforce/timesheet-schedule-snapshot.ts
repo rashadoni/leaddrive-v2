@@ -3,6 +3,7 @@ import { isDateKey } from "@/lib/mtm/mobile-week"
 import type {
   WorkforceTimesheetImmutableScheduleContext,
 } from "@/lib/workforce/timesheet-calculation"
+import type { ResolvedWorkforceCalendarDay } from "@/lib/workforce/calendar"
 import { workforceWorkdayScheduleSnapshotHash } from "@/lib/workforce/snapshot-writer"
 
 const Identifier = z.string().min(1).max(191).refine(
@@ -183,5 +184,28 @@ export function verifyWorkforceTimesheetScheduleSnapshot(input: {
     calendarTreatment: "PINNED_EXPECTED_WORKDAY",
     exceptionTreatment: "RESOLUTION_REQUIRED_BEFORE_APPROVAL",
     correctionTreatment: "IMMUTABLE_LEDGER_REPLAY",
+  }
+}
+
+/**
+ * Returns the safe calendar projection only after the complete immutable
+ * schedule envelope has passed the same link, schema and hash checks used by
+ * timesheet calculation. Manager-facing reads must not reinterpret an
+ * existing workday from mutable team/calendar configuration.
+ */
+export function workforceCalendarFromVerifiedScheduleSnapshot(
+  input: Parameters<typeof verifyWorkforceTimesheetScheduleSnapshot>[0],
+): ResolvedWorkforceCalendarDay {
+  verifyWorkforceTimesheetScheduleSnapshot(input)
+  const calendar = CalendarSnapshot.parse(input.snapshot.calendarSnapshot)
+  return {
+    date: calendar.date,
+    calendarKind: calendar.calendarKind,
+    state: calendar.state,
+    attendanceExpected: calendar.attendanceExpected,
+    noShowEligible: calendar.noShowEligible,
+    excused: calendar.excused,
+    source: calendar.source,
+    overrideId: calendar.overrideId,
   }
 }
