@@ -3766,6 +3766,35 @@ Next: checkpoint and push the accessible-name correction, then repeat the full
 exact-SHA desktop gate. Mobile and the 120-cell matrix remain locked until the
 desktop workflow itself concludes green.
 
+Desktop acceptance and mobile responsive/theme correction (2026-09-29):
+
+- Exact-SHA EN/light desktop run `36499556506` on `bd3d459af` is fully green.
+  Artifact `11005426640` contains 5/5 passing static routes, all 6/6 recovery
+  groups and 14/14 keyboard activations. Runtime, Axe, accessibility, touch,
+  overflow, environment and primary-work totals are all zero. Load p75 ranges
+  from 213 to 325 ms; max CLS is `0.04134309895833334`. Ticket detail, closure
+  and Chat captures were manually inspected and accepted.
+- RU/dark mobile run `36501160157` passed every source/build gate and all 6/6
+  recovery groups with 14/14 real Playwright touchscreen activations. Every
+  center hit-test succeeded and the minimum measured target is 44x44. It still
+  failed closed in static capture: company/tenant identity was completely
+  hidden below `md`, so three portal routes could not pass the tenant assertion;
+  ticket closure reported `activeTheme: light` because that standalone route
+  had no `ThemeProvider`. Artifact `11005449852` is diagnostic only.
+- Company identity is now a compact, truncated but visible mobile header value,
+  preserving tenant context without widening the page. The standalone closure
+  surface now uses the same nonce-aware `ThemeProvider` as the portal and can
+  honor the primed dark theme. Source contracts pin both boundaries.
+- Superseded read-only matrix run `36501162835` was cancelled after mobile
+  proved source changes were required; it cannot be accepted for release.
+  Correction self-audit is green: bounded UI TypeScript, targeted ESLint,
+  22/22 assertions in four suites, 0 anti-pattern findings and `git diff
+  --check`. No tenant, theme, touch or matrix gate was waived.
+
+Next: checkpoint and push the responsive/theme correction, repeat RU/dark
+physical-touch mobile on the exact SHA, and only after green launch the complete
+120-cell read-only matrix.
+
 ## 21C. Evidence, Performance, and Rollout Track
 
 **Status: IN PROGRESS — source/evidence contracts green; GitHub browser jobs

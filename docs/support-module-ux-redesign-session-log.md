@@ -2707,3 +2707,40 @@ Mobile and the 120-cell matrix remain gated on that result.
 Next: checkpoint and push this accessible-name correction, then repeat the full
 exact-SHA EN/light desktop workflow. RU/dark physical-touch mobile and the
 120-cell matrix remain locked until that workflow concludes green.
+
+### Customer Support Portal desktop acceptance and mobile correction
+
+- Exact-SHA EN/light desktop run `36499556506` on `bd3d459af` is fully green.
+  Artifact `11005426640` proves 5/5 static route results, 6/6 recovery groups
+  and 14/14 keyboard activations. Runtime, Axe, counted accessibility, touch,
+  overflow, environment and primary-work totals are all zero. Load p75 ranges
+  from 213 to 325 ms, filter p75 is at most 21 ms, and max CLS is
+  `0.04134309895833334`. Ticket detail, ticket closure and Portal Chat captures
+  were manually inspected and accepted.
+- RU/dark mobile run `36501160157` passed source gates, both TypeScript graphs,
+  fixtures and production build. Its recovery evidence is also completely
+  green: 6/6 groups, 14/14 real `playwright-touchscreen` activations, every DOM
+  center hit-test true, and minimum measured width/height exactly 44x44.
+- Static mobile capture correctly failed three portal routes because the only
+  company/tenant identity in the authenticated header was hidden below `md`;
+  the fail-closed tenant assertion could not verify `Northstar Support Lab`.
+  Standalone closure rendered and had zero accessibility/touch/overflow issues,
+  but failed environment truth with `activeTheme: light` under the requested
+  dark profile because it was outside any `ThemeProvider`. Artifact
+  `11005449852` remains diagnostic only.
+- The company name is now visible as a compact truncated mobile header value,
+  retaining tenant context while the longer user name stays responsive. Ticket
+  closure now wraps its customer surface in the repository's nonce-aware
+  `ThemeProvider`. The portal UX contract pins visible company identity and the
+  standalone theme boundary.
+- Matrix run `36501162835`, dispatched on the now-superseded SHA, was cancelled
+  after the mobile evidence proved source changes were required. It is not
+  accepted evidence and will be relaunched only after mobile is green.
+- Correction self-audit is green: the bounded UI TypeScript graph passes,
+  targeted ESLint has 0 errors, 22/22 affected assertions pass in four suites,
+  the seven-file anti-pattern scan has 0 findings, and `git diff --check` is
+  clean. No gate, threshold or expected environment was relaxed.
+
+Next: checkpoint and push this responsive/theme correction, repeat exact-SHA
+RU/dark physical-touch mobile, then launch the complete 120-cell read-only
+matrix only after that run is green.

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
 import { CheckCircle2, CircleAlert, Loader2, RefreshCw, RotateCcw } from "lucide-react"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Button } from "@/components/ui/button"
 import { formatDateTime } from "@/lib/format-date"
 
@@ -86,8 +87,9 @@ export default function TicketClosurePage() {
   const statusLabel = request ? t(`closureStatus.${request.status}`) : ""
 
   return (
-    <main data-testid="ticket-closure-workspace" data-state={loading ? "loading" : error && !request ? "error" : "ready"} data-status={request?.status || "unknown"} className="customer-support-surface grid min-h-screen place-items-center bg-background px-4 py-8 text-foreground sm:py-12">
-      <section className="w-full max-w-xl rounded-lg border bg-background p-4 sm:p-6" aria-labelledby="closure-title">
+    <ThemeProvider>
+      <main data-testid="ticket-closure-workspace" data-state={loading ? "loading" : error && !request ? "error" : "ready"} data-status={request?.status || "unknown"} className="customer-support-surface grid min-h-screen place-items-center bg-background px-4 py-8 text-foreground sm:py-12">
+        <section className="w-full max-w-xl rounded-lg border bg-background p-4 sm:p-6" aria-labelledby="closure-title">
         {loading ? (
           <div data-testid="ticket-closure-loading" className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground" aria-busy="true" aria-label={t("closureLoading")}>
             <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
@@ -140,7 +142,8 @@ export default function TicketClosurePage() {
             )}
           </div>
         ) : null}
-      </section>
-    </main>
+        </section>
+      </main>
+    </ThemeProvider>
   )
 }

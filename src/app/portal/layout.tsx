@@ -112,7 +112,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               <span className="truncate text-base font-semibold">{t("title")}</span>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="hidden max-w-48 truncate text-sm sm:block">{user.fullName}</span>
-                {user.companyName && <span className="hidden max-w-40 truncate text-xs text-muted-foreground md:block">{user.companyName}</span>}
+                {user.companyName && <span data-testid="portal-company-name" className="block max-w-28 truncate text-xs text-muted-foreground sm:max-w-40">{user.companyName}</span>}
                 <button type="button" onClick={() => void handleLogout()} className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring" aria-label={t("signOut")}>
                   <LogOut className="h-4 w-4" aria-hidden="true" />
                 </button>
