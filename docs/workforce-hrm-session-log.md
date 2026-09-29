@@ -2478,3 +2478,135 @@ corrections as new entries that explicitly supersede the earlier fact.
   GREEN and frozen; only this append-only receipt is uncommitted.
 - Next action: commit the receipt, verify frozen blob identity, push the new
   head and wait for every required replacement CI context.
+
+## 2026-09-29 — PR #500 released to production
+
+- Receipt-integrity review returned GREEN on final head
+  `83a5960227d9245fd515f92d93a6a1ba841ba8ff`; all five required exact-head
+  checks then passed: `pr-scope`, `static-checks`, `typecheck`,
+  `runner-policy` and `scan`.
+- PR #500 merged normally at `2026-09-29T14:04:08Z` as main
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`. No admin bypass was used.
+- Deploy run `36579854359` completed quality/security, SHA-bound standalone
+  build and artifact publication, immutable staging, atomic production deploy,
+  built-in post-deploy smoke and artifact-retention cleanup.
+- Independent no-cache TLS checks forced `app.leaddrivecrm.org` to the only
+  approved production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`; `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=b25b4f382ebc8d323b0e975ccf34aee1731379f7` and
+  `builtAt=2026-09-29T14:10:41Z`.
+- Release used only GitHub `main` through `.github/workflows/deploy.yml` to
+  `/opt/leaddrive-v2`; no Azure, retired host/owner, direct server deploy or
+  worktree copy was used.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows. Full local build,
+  browser/AT/device, Android/Gradle, load/chaos, signed-device and pilot remain
+  `NOT RUN`.
+- Precise stopping point: PR #500 is merged, deploy run and independent public
+  exact-SHA smokes are green; successor branch
+  `codex/workforce-completion-part11` is based on that merge SHA.
+- Next action: checkpoint this release receipt, then implement the bounded
+  `WF-C8-007c` TEAM-scope future calendar slice with shared org/date locking,
+  tenant-safe active-team selection and no employee/moved/update/delete scope.
+
+## 2026-09-29 — WF-C8-007c team calendar implementation and pre-review
+
+- Continued only in the recorded worktree on
+  `codex/workforce-completion-part11`, based on released main
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`. Routing remains
+  `rashadoni/leaddrive-v2`; production remains only
+  `13.140.132.245:/opt/leaddrive-v2` through `main -> deploy.yml`.
+- Implemented strict named TEAM scope on the released future calendar surface:
+  bounded active-team search, tenant-safe selected context, exact team list,
+  active-team create, shared organization/date locking, exact replay,
+  fail-closed conflicts and atomic actor/team audit.
+- The slice adds no schema, employee scope, moved-day workflow, update/delete,
+  break-policy editor, Route UI/API or broad admin exposure. Inactive selected
+  teams remain visible only for read continuity and cannot receive new writes.
+- Independent pre-review found two P2 issues in the first draft: organization
+  replay used its own Route flag as baseline, and old GET responses could win
+  scope/team/search races. Both were fixed with regressions. Rereview found a
+  third P2 where mutable controls during POST allowed old reconciliation to
+  replace a new selection and erase new input; all six controls are now frozen
+  through reconciliation and pinned by a source-contract test.
+- Final uncommitted-diff pre-review is GREEN (`P0=P1=P2=P3=0`). This does not
+  replace fresh author-independent review of the exact checkpoint head.
+- Focused current-tree PASS: 3 files / 32 tests, Workforce auth wrapper 30,
+  RLS coverage 3, scoped ESLint, i18n 23,857/0/0 and whitespace. Broader
+  calendar/voice sets are rerun after the evidence append. Full typecheck,
+  build/suite, browser/AT/device, real-Postgres race, Android/Gradle,
+  load/chaos, signed-device and pilot are `NOT RUN` under host policy.
+- Evidence: `docs/workforce-c8-team-calendar-configuration-evidence-2026-09-29.md`.
+- `WF-C8-007` remains `PARTIAL`; progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation and all known pre-review findings are
+  remediated; current-tree verification and evidence freeze are in progress.
+- Next action: finish bounded checks, commit only explicit slice paths, compute
+  exact diff identities and obtain fresh frozen-head independent GREEN before
+  any push or PR.
+
+## 2026-09-29 — WF-C8-007c bounded author verification complete
+
+- PASS on the final pre-checkpoint tree: six calendar/domain/API/UI/resolver/
+  navigation files / 97 tests; Workforce authorization wrapper 30 tests; RLS
+  route-context coverage 3; affected voice guide/navigation evaluation 21;
+  scoped ESLint on all eight changed TS/TSX paths; i18n 23,857 EN keys with
+  RU/AZ missing 0 and extra 0; `git diff --check`.
+- Full typecheck/build/suite, browser/AT/device, real-Postgres concurrency,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  the Contabo workload contract. GitHub exact-head CI remains mandatory.
+- Progress remains unchanged: `WF-C8-007` is `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: all implementation, evidence and author verification
+  paths are ready for an explicit checkpoint commit.
+- Next action: commit only those paths, compute full and implementation diff
+  identities and start a fresh author-independent frozen-head review.
+
+## 2026-09-29 — WF-C8-007c frozen review evidence correction
+
+- Author-independent full-range review matched clean head
+  `0ba46fa7b72443c8bc63304f8ae5c88fabf7a3c7`, live main/merge-base
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`, full identity 15 paths /
+  113,826 bytes / `0e81891ea9f17e17db068505b1edca9168f2025bb9cb78761f2a1c29a22afb0c`
+  and non-doc identity 11 paths / 94,369 bytes /
+  `88fb46ce11f08978765c4406df6278f8a954f0f14a42daddd1679839f5b212dd`.
+- Verdict was RED only for one P3 evidence-accuracy finding. Runtime review and
+  97 calendar, 33 auth/RLS, 21 voice tests, ESLint, i18n 23,857/0/0, diff and
+  append-only-prefix checks were green.
+- Corrected the evidence to say that team summaries intentionally expose the
+  stable team ID with name/code, same-tenant inactive selections are
+  GET-readable only, GET 404 unifies missing/cross-tenant, POST 404 unifies
+  missing/inactive/cross-tenant, and calendar-row/provenance IDs stay hidden.
+- Runtime/test/i18n bytes are unchanged. Full typecheck/build/suite,
+  real-Postgres race, browser/AT/device, Android/Gradle, load/chaos,
+  signed-device and pilot remain `NOT RUN` under host policy.
+- No progress credit changes: `WF-C8-007` remains `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the sole P3 is corrected in the working tree; the
+  rejected head remains ineligible.
+- Next action: commit only the three docs, verify the implementation identity
+  is byte-identical and obtain a new exact-head independent review.
+
+## 2026-09-29 — WF-C8-007c independent frozen review GREEN
+
+- Fresh review returned GREEN (`P0=P1=P2=P3=0`) on clean head
+  `2ed08b6dc4c2e82e797004effa8530ad44e19d8c`; live main and merge-base were
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`.
+- Reviewer re-matched full 15-path / 117,683-byte identity
+  `76de83da90a744dee5843a157b5886dff2e5c4fee634180570af22ece1683770`
+  and byte-identical non-doc 11-path / 94,369-byte identity
+  `88fb46ce11f08978765c4406df6278f8a954f0f14a42daddd1679839f5b212dd`.
+- The prior P3 correction exactly matches runtime; all historical and
+  remediation append-only prefixes are intact. Current-head 32 focused tests
+  and diff checks passed; the unchanged implementation carries forward the
+  independently checked 97 calendar, 33 auth/RLS, 21 voice, ESLint and i18n
+  23,857/0/0 results.
+- Full typecheck/build/suite, real-Postgres concurrency, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  host policy. GitHub exact-head CI is required.
+- No task or gate credit changes: `WF-C8-007` is `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: independently reviewed runtime/test/i18n blobs are
+  frozen; only this GREEN receipt is uncommitted.
+- Next action: commit the three docs, verify runtime fingerprint integrity,
+  obtain receipt-only review and then push/open the ≤400 KB PR.
