@@ -3330,3 +3330,27 @@ corrected without weakening a gate. Next: checkpoint/push the correction,
 integrate the nine current-main commits (no Support/evidence overlap), record
 post-merge parity/contracts, then run a new exact-SHA 56-cell baseline and
 comparison pair.
+
+## 2026-09-29 — Current main integrated before replacement comparison
+
+- The preceding next-step estimate of nine commits was superseded while work
+  continued: `origin/main` advanced by another two commits before merge. Merge
+  `5173b6a5c` therefore integrates current main through `8de56f819`, eleven
+  commits beyond the branch's prior `13dc3a179` main snapshot.
+- Incoming paths are Workforce shift-segment work, social relevance fixes, an
+  ops secret-forwarding workflow, their tests/docs and AZ/RU/EN dictionary
+  additions. No Support product, evidence seed/runner, rollout or deployment
+  path conflicts. The three locale files merged automatically.
+- Post-merge self-audit is green: AZ/RU/EN each contain 23,807 leaf keys with no
+  missing/extra keys; the browser evidence contract passes 18/18; branch-vs-main
+  `git diff --check` is clean; the branch is zero commits behind the merged main
+  snapshot. Resource preflight still shows 15 GiB available memory, 329 GiB
+  disk free and zero active memory pressure.
+- Full TypeScript, production build and browser comparison are intentionally
+  NOT RUN locally. The replacement exact-SHA GitHub Actions baseline/compare
+  pair owns those mandatory gates.
+
+Result: the deterministic evidence fix now includes current main with no
+Support overlap. Next: checkpoint/push this integration receipt, then run the
+replacement 56-cell seven-sample baseline and exact compatible comparison on
+the resulting immutable SHA.

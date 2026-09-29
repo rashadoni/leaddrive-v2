@@ -4182,6 +4182,11 @@ First final-comparison diagnostic (2026-09-29):
   clean. No pixel threshold, performance allowance, matrix dimension or
   assertion changed. A new integrated exact-SHA baseline and comparison remain
   mandatory.
+- Before that replacement pair, current `origin/main` through `8de56f819` was
+  merged by `5173b6a5c`. The incoming Workforce/social/ops slice and locale
+  additions do not touch Support product or evidence source. AZ/RU/EN parity is
+  green at 23,807 leaf keys each; the browser evidence contract still passes
+  18/18 and the branch is zero commits behind this main snapshot.
 
 Current verification evidence (2026-09-05):
 
