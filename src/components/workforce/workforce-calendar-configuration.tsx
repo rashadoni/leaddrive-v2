@@ -42,15 +42,39 @@ function previousDateKey(value: string): string {
   return date.toISOString().slice(0, 10)
 }
 
-function localizedFailure(t: ReturnType<typeof useTranslations>, failure: unknown): string {
-  const code = failure && typeof failure === "object" && "code" in failure
+function failureCode(failure: unknown): string {
+  return failure && typeof failure === "object" && "code" in failure
     ? String((failure as { code?: unknown }).code ?? "")
     : ""
+}
+
+function localizedKnownFailure(t: ReturnType<typeof useTranslations>, code: string): string | null {
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_DATE_NOT_FUTURE") return t("dateNotFuture")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_DATE_RANGE_INVALID") return t("dateRangeInvalid")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS") return t("overrideExists")
-  if (code === "WORKFORCE_GRANULAR_ACCESS_REQUIRED") return t("accessRequired")
+  if (code === "WORKFORCE_CALENDAR_CONFIGURATION_INVALID") return t("invalidInput")
+  if ([
+    "WORKFORCE_GRANULAR_ACCESS_REQUIRED",
+    "WORKFORCE_POLICY_ADMIN_REQUIRED",
+    "WORKFORCE_SESSION_PERMISSION_REQUIRED",
+    "TENANT_CAPABILITY_DISABLED",
+  ].includes(code)) return t("accessRequired")
+  return null
+}
+
+function localizedReadFailure(t: ReturnType<typeof useTranslations>, failure: unknown): string {
+  const known = localizedKnownFailure(t, failureCode(failure))
+  if (known) return known
   return t("requestFailed")
+}
+
+function localizedMutationFailure(t: ReturnType<typeof useTranslations>, failure: unknown): string {
+  const known = localizedKnownFailure(t, failureCode(failure))
+  if (known) return known
+  // A transport or parse failure can happen after the server committed. The
+  // exact-state retry contract makes refresh/resubmit safe; never claim that
+  // an unknown mutation outcome left the calendar unchanged.
+  return t("outcomeUnknown")
 }
 
 /**
@@ -107,7 +131,7 @@ export function WorkforceCalendarConfiguration() {
       setError(null)
     } catch (failure) {
       setCalendar(null)
-      setError(localizedFailure(t, failure))
+      setError(localizedReadFailure(t, failure))
     } finally {
       setLoading(false)
     }
@@ -128,7 +152,7 @@ export function WorkforceCalendarConfiguration() {
       setName("")
       await load()
     } catch (failure) {
-      setError(localizedFailure(t, failure))
+      setError(localizedMutationFailure(t, failure))
     } finally {
       setSaving(false)
     }

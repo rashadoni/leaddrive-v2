@@ -12,16 +12,27 @@ function messages(locale: string): Record<string, unknown> {
 
 describe("Workforce calendar configuration UI contract", () => {
   const component = source("src/components/workforce/workforce-calendar-configuration.tsx")
-  const page = source("src/app/(dashboard)/workforce/configuration/page.tsx")
+  const page = source("src/app/(dashboard)/workforce/calendar/page.tsx")
+  const broadConfigurationPage = source("src/app/(dashboard)/workforce/configuration/page.tsx")
+  const navigation = source("src/lib/nav-items.ts")
 
-  it("mounts a separate Scheduler-visible surface on the configuration page", () => {
+  it("mounts a separate Scheduler-visible surface on a dedicated calendar page", () => {
     expect(page).toContain("<WorkforceCalendarConfiguration />")
+    expect(broadConfigurationPage).not.toContain("<WorkforceCalendarConfiguration />")
+    expect(navigation).toContain('{ href: "/workforce/calendar", icon: CalendarDays, tKey: "workforceCalendar", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" }')
     expect(component).toContain('request("GET")')
     expect(component).toContain('request("POST", { date, kind, name })')
     expect(component).toContain('"/api/v1/workforce/configuration/calendar"')
     expect(component).not.toContain("/api/v1/mtm/work-calendar")
     expect(component).not.toContain("isAdministrator")
     expect(component).not.toContain('role === "admin"')
+  })
+
+  it("reports an unknown POST outcome without falsely claiming no mutation", () => {
+    expect(component).toContain("localizedMutationFailure")
+    expect(component).toContain("setError(localizedMutationFailure(t, failure))")
+    expect(component).toContain('return t("outcomeUnknown")')
+    expect(component).toContain("exact-state retry contract")
   })
 
   it("offers only the three released additive organization override kinds", () => {
@@ -77,8 +88,10 @@ describe("Workforce calendar configuration UI contract", () => {
       "dateNotFuture",
       "dateRangeInvalid",
       "overrideExists",
+      "invalidInput",
       "accessRequired",
       "requestFailed",
+      "outcomeUnknown",
     ]
     for (const locale of ["en", "ru", "az"]) {
       const localized = messages(locale)
@@ -87,6 +100,7 @@ describe("Workforce calendar configuration UI contract", () => {
         expect((localized[key] as string).trim(), `${locale}.${key} is empty`).not.toBe("")
       }
       const kinds = localized.kinds as Record<string, unknown>
+      expect(localized.outcomeUnknown).not.toBe(localized.requestFailed)
       for (const kind of [
         "WORKING_DAY",
         "WEEKEND",
@@ -99,5 +113,6 @@ describe("Workforce calendar configuration UI contract", () => {
         expect(kinds[kind], `${locale}.kinds.${kind} is missing`).toEqual(expect.any(String))
       }
     }
+    expect(messages("en").requestFailed).not.toContain("No calendar day was changed")
   })
 })

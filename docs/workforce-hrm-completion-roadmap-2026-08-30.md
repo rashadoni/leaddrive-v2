@@ -2444,3 +2444,28 @@ from this worktree.
   uncommitted on `codex/workforce-completion-part10`.
 - Next action: checkpoint explicit slice paths, freeze the exact diff identity
   and obtain a fresh author-independent read-only review before any PR.
+
+## 2026-09-29 — WF-C8-007b independent review RED remediated
+
+- Independent review rejected frozen head
+  `6ca356a952871ed1d0c0594f91cb9f2651a7ee4b` with
+  `P0=0, P1=0, P2=2, P3=0`. Server boundaries were green; the findings were
+  non-admin Scheduler discoverability and false certainty after an unknown
+  POST transport/parse outcome.
+- Calendar authoring now has a dedicated `/workforce/calendar` HRM navigation
+  path available to a non-admin Workforce operator. The broad
+  `/workforce/configuration` route stays admin-only, and the calendar API still
+  decides the exact durable `SCHEDULE_READ`/`SCHEDULE_WRITE` grant.
+- Unknown POST state now instructs the operator to refresh or safely repeat the
+  exact desired state; it no longer claims the calendar was unchanged. Known
+  validation, conflict and access rejections retain specific localized copy.
+- Remediation PASS: seven targeted files / 88 tests, scoped ESLint on 11 paths,
+  i18n 23,834/0/0 and whitespace. Full typecheck/build/suite, browser/AT/device,
+  Android/Gradle, load/chaos, real-Postgres race, signed-device and pilot remain
+  `NOT RUN` under host policy.
+- No DONE/gate credit is added. `WF-C8-007` remains `PARTIAL`; progress stays
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: both independent P2 findings are remediated and
+  author checks pass, but remediation is uncommitted.
+- Next action: checkpoint only explicit remediation paths, recompute the exact
+  full identity and require a completely fresh independent rereview.

@@ -117,6 +117,7 @@ describe("accessibleNavItems", () => {
       "/workforce/reports",
       "/workforce/reports/site-transitions",
       "/workforce/requests",
+      "/workforce/calendar",
     ]
     const hasEveryWorkforcePage = (modules: Record<string, boolean>) => {
       const hrefs = accessibleNavItems({ plan: "enterprise", role: "manager", modules }).map((item) => item.href)
@@ -134,8 +135,8 @@ describe("accessibleNavItems", () => {
     expect(routesOnly.some((item) => item.href === "/mtm")).toBe(true)
   })
 
-  it("shows Workforce configuration only to tenant administrators", () => {
-    const manager = accessibleNavItems({
+  it("gives a non-admin Workforce operator a calendar path while keeping broad configuration admin-only", () => {
+    const schedulerCompatible = accessibleNavItems({
       plan: "enterprise",
       role: "manager",
       modules: { "workforce-hrm": true },
@@ -146,7 +147,9 @@ describe("accessibleNavItems", () => {
       modules: { "workforce-hrm": true },
     })
 
-    expect(manager.some((item) => item.href === "/workforce/configuration")).toBe(false)
+    expect(schedulerCompatible.some((item) => item.href === "/workforce/calendar")).toBe(true)
+    expect(schedulerCompatible.some((item) => item.href === "/workforce/configuration")).toBe(false)
+    expect(administrator.some((item) => item.href === "/workforce/calendar")).toBe(true)
     expect(administrator.some((item) => item.href === "/workforce/configuration")).toBe(true)
   })
 

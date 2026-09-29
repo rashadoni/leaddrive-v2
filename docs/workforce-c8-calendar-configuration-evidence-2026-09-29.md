@@ -103,3 +103,44 @@ is now implemented in source, but team/employee and moved-day workflows,
 update/delete governance, break-policy authoring and real browser/AT evidence
 remain outside this slice. Progress remains `DONE 81/161`, `GATES 14/15`, C8
 36%, overall 59%, with 80 non-DONE rows.
+
+## Independent frozen review and remediation
+
+The first author-independent review rejected exact head
+`6ca356a952871ed1d0c0594f91cb9f2651a7ee4b` with
+`P0=0, P1=0, P2=2, P3=0`. It matched the full 15-path / 75,007-byte identity
+`d6c21a1c016ba2fb4fae8726216dbf0105190a79633865cabecc60e21a14af00`
+and found no server-domain, tenant, transaction, audit or Route-baseline issue.
+The two UI findings were real:
+
+1. the calendar component was mounted only on the broad configuration page,
+   whose sole navigation entry remained CRM-admin-only, so a non-admin holder
+   of the independent `SCHEDULER` grant could not discover it normally;
+2. a transport or response-parse failure after POST used copy claiming no day
+   changed, even though the transaction might already have committed.
+
+The remediation keeps the broad `/workforce/configuration` page and its menu
+entry admin-only. The calendar component moved to a narrow dedicated
+`/workforce/calendar` page with a normal Workforce-capability/read navigation
+entry; the server remains authoritative for `SCHEDULE_READ` and
+`SCHEDULE_WRITE`. A non-admin Workforce operator can now discover the page
+without exposing policy, access-management or attendance-security controls.
+
+Mutation failures now distinguish confirmed domain/access rejection from an
+unknown transport/parse outcome. Unknown POST state tells the operator to
+refresh or safely submit the same state again, relying on the exact-state
+replay contract; generic read/refresh failure makes no mutation claim. EN, RU
+and AZ copy and the UI contract test pin this behavior.
+
+Remediation PASS:
+
+- seven targeted calendar/domain/navigation/RLS files / 88 tests;
+- scoped ESLint on 11 affected TS/TSX implementation and test paths;
+- i18n parity at 23,834 EN leaf keys, RU/AZ missing 0 and extra 0;
+- whitespace.
+
+Full typecheck/build/suite, browser/AT/device, Android/Gradle, load/chaos,
+real-Postgres race injection, signed-device and pilot remain `NOT RUN` under
+the Contabo placement rule. A new commit, exact identity and completely fresh
+author-independent review are required; the rejected identity is not eligible
+for approval or merge.

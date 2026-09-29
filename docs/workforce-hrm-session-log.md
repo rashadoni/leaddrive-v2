@@ -2332,3 +2332,34 @@ corrections as new entries that explicitly supersede the earlier fact.
   complete but uncommitted.
 - Next action: commit only explicit task paths, fingerprint the exact candidate
   and request fresh author-independent read-only review before push or PR.
+
+## 2026-09-29 — WF-C8-007b frozen review RED and remediation
+
+- Author-independent review matched exact head
+  `6ca356a952871ed1d0c0594f91cb9f2651a7ee4b`, base
+  `93ee5a8ce2892778874457c83b37d9c7d05dfe8e` and full identity 15 paths /
+  75,007 bytes /
+  `d6c21a1c016ba2fb4fae8726216dbf0105190a79633865cabecc60e21a14af00`.
+  Verdict was RED: `P0=0`, `P1=0`, `P2=2`, `P3=0`.
+- P2 #1: the component lacked its own admin check, but it existed only on the
+  admin-only navigation path, so a legitimate non-admin granular Scheduler
+  could not discover it. Remediation moved it to dedicated
+  `/workforce/calendar` and added a normal HRM menu item while preserving the
+  broad configuration page's admin-only entry. API grant checks remain the
+  authorization authority.
+- P2 #2: generic POST transport/parse failure falsely said no calendar day
+  changed. Remediation separates confirmed validation/conflict/access
+  rejection from outcome-unknown failure and tells the operator to refresh or
+  safely replay the same desired state. Read/refresh failure is neutral.
+- Added navigation and UI-contract regression coverage plus EN/RU/AZ copy.
+  PASS after remediation: seven files / 88 tests, scoped ESLint on 11 paths,
+  i18n 23,834/0/0 and whitespace.
+- Full typecheck/build/suite, browser/AT/contrast/zoom/device, Android/Gradle,
+  load/chaos, real-Postgres concurrent race, signed-device and pilot remain
+  `NOT RUN`. Exact-head CI and fresh independent rereview remain mandatory.
+- `WF-C8-007` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: both P2 findings are fixed in the working tree and
+  targeted checks pass, but the remediation is not committed.
+- Next action: checkpoint explicit remediation paths, compute a new frozen
+  identity and obtain a completely fresh author-independent rereview.
