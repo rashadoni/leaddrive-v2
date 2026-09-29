@@ -3155,3 +3155,26 @@ disabled before closing any rollout checkbox.
 Result: active slices now have canonical owner/issue traceability. Next: attach
 the full-matrix disposition to `#492`, then progress `#493`–`#495` only on green
 evidence.
+
+## 2026-09-29 — Latest current main reconciled before final-SHA evidence
+
+- Fetched `origin/main` at `13dc3a179`. It had advanced by nine Workforce
+  commits after the earlier integration. The incoming paths were Workforce
+  implementation/tests/docs plus AZ/RU/EN dictionaries; no Support product,
+  rollout, evidence-runner or deployment path overlapped.
+- Merge commit `946a084f2` completed automatically. Only the three locale files
+  were changed on both sides and they merged without conflict. The feature
+  branch is now zero commits behind `origin/main`.
+- Post-merge translation parity is green at 23,770 leaf keys in each of EN, RU
+  and AZ. The six rollout/Macros/API/evidence contract suites still pass 77/77
+  assertions, and `git diff --check origin/main...HEAD` is clean.
+- Full TypeScript, production build and browser execution are NOT RUN locally.
+  The queued canary run still names the pre-merge checkpoint and will be
+  replaced with the final audit-receipt SHA after this journal checkpoint is
+  pushed; the in-progress 1296-cell Foundation run remains intentionally bound
+  to `7a0a45e5b`.
+
+Result: current main is integrated with no Support conflict and targeted source
+contracts remain green. Next: checkpoint/push the integration receipt, replace
+the pending canary run with the integrated SHA, and continue the immutable
+Actions gates.
