@@ -94,3 +94,47 @@ Current state: PR #505 is open with the implementation head fully green. This
 journal update is the final docs checkpoint for the section and must itself be
 pushed and observed through the PR checks. Next after that green head: await an
 explicit decision to merge and deploy, or leave the reviewed PR ready.
+
+## 2026-09-29 — Production release and transfer to a new Sol session
+
+- The user explicitly authorized completion and production release after the
+  earlier PR-ready stopping point.
+- PR #505 was merged at `2026-09-29T21:07:51Z`; the resulting immutable main
+  revision is `13d13bcc58e8872ef676fd011e78a1adb954e210`.
+- The mandatory post-merge main checks run `36631193616` completed successfully
+  for that exact SHA:
+  `https://github.com/rashadoni/leaddrive-v2/actions/runs/36631193616`.
+- The supported GitHub Actions production workflow run `36631193346` completed
+  successfully for the same exact SHA:
+  `https://github.com/rashadoni/leaddrive-v2/actions/runs/36631193346`.
+  Its green jobs include quality/security gates, production build and immutable
+  artifact publication, atomic production deployment, `/api/v1/ping`, exact
+  deployed-revision verification, login/assets feature smoke, tenant-isolation
+  smoke, scheduler checks, and artifact-retention checks.
+- No direct server deploy or feature-worktree copy was used. The documented
+  release route was preserved: reviewed main merge -> GitHub Actions ->
+  SHA-bound artifact -> `13.140.132.245:/opt/leaddrive-v2`.
+- A separate final `curl` attempt for live `/api/v1/ping` and public build-info
+  was started after the green workflow, but its command output was truncated by
+  the tool transport and therefore is deliberately not recorded as an
+  independently observed PASS. The workflow's own production smoke and exact
+  revision check are green. If the new session wants an additional independent
+  observation, rerun only those two small read-only requests; do not repeat the
+  completed CI or deployment.
+- At the user's request, this session now stops and transfers continuity to a
+  new session, preferably GPT-6.1 Sol if that model is offered by the selected
+  client/workspace. The current `remote-alt` session exposes only GPT-5.6 Sol
+  and GPT-5.6 Terra, so this session cannot force or promise a 6.1 handoff. The
+  older Support UX history remains reference-only in
+  `docs/support-module-ux-redesign-session-log.md`; this journal is the active
+  source for the Help button and AI assistant guide work.
+
+Current result/status: the localized Help-button and Da Vinci AI-assistant
+guides are merged and the exact merge SHA has a successful production deploy
+plus successful post-merge checks. Last completed action: re-confirmed PR #505,
+main checks run `36631193616`, and deploy run `36631193346` directly from
+GitHub. Precise stopping point: no implementation, merge, or deploy work remains;
+only the optional independent two-endpoint live observation lacks captured
+output. Next action in the new session: read this journal and, if desired, run
+the two small live requests, append their output, self-audit the journal diff,
+and create the final post-deploy documentation checkpoint without redeploying.
