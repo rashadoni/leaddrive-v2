@@ -1916,3 +1916,47 @@ from this worktree.
   verified but uncommitted.
 - Next action: checkpoint explicit paths and require a fresh full-range
   author-independent review; no prior RED transfers authority.
+
+## 2026-09-29 — WF-C8-004 third review RED and request-identity repair
+
+- Third fresh review of clean head
+  `cb5f31419a73e2b8bf1a2c9c749515e9cadcf01a` returned RED with `P0=0`,
+  `P1=1`, `P2=0`, `P3=0`. It independently measured the complete candidate
+  as 13 paths / 127,919 binary bytes / SHA-256
+  `984184f4d8327294c8864e0ae1f9eb7c2888aaad97afd5eb5e6002840e07c8fc`
+  and found no further issue outside the UI load lifecycle.
+- The approval retry marker was not consumed, while the old timesheet stayed
+  mounted during every load. A later filter/manual/tenant request could leave
+  an old approval action interactive and treat its failure as a preserved
+  background failure. The earlier statement that ordinary load failure was
+  unchanged is superseded by this finding.
+- The repair binds preservation to one exact view/tenant/retry/query identity,
+  consumes it after live settlement, preserves it across only a cancelled
+  Strict Mode restart, and discards it on any competing request. Data is
+  rendered only for the current load identity unless that exact approval
+  refresh is active; approval is disabled and guarded while it is active.
+- Five behavioral lifecycle cases plus the UI integration contract pass 2
+  files / 11 tests; scoped ESLint passes. The complete bounded matrix is still
+  pending, and no RED verdict grants release authority.
+- Status remains `WF-C8-004 PARTIAL`, `DONE 80/161`, `GATES 14/15`, C8 27%,
+  overall 58%.
+- Precise stopping point: the third P1 repair, tests and append-only receipts
+  are uncommitted on top of rejected head `cb5f31419`.
+- Next action: run the full targeted slice, checkpoint explicit paths and
+  require a fourth fresh full-range author-independent review.
+
+## 2026-09-29 — WF-C8-004 exact-request repair checks complete
+
+- The complete bounded author rerun passes 19 targeted files / 137 tests,
+  scoped ESLint for all eight changed runtime/test TypeScript paths, JSON
+  parsing, EN/RU/AZ parity at 23,737/0/0 and whitespace.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical-device and pilot evidence remain `NOT RUN` under host policy;
+  exact-head CI remains mandatory.
+- Status remains `WF-C8-004 PARTIAL`, `DONE 80/161`, `GATES 14/15`, C8 27%,
+  overall 58%.
+- Precise stopping point: verified third-review repair and receipts are
+  uncommitted on top of rejected head `cb5f31419`.
+- Next action: checkpoint only the seven explicit repair/receipt paths,
+  measure the complete candidate and obtain a fourth independent full-range
+  verdict from zero.

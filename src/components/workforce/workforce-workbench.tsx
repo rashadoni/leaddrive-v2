@@ -28,6 +28,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  createWorkforceReadIdentity,
+  shouldRenderWorkforceData,
+  TimesheetApprovalRefreshLifecycle,
+} from "@/lib/workforce/timesheet-refresh-lifecycle"
 
 type WorkforceView = "today" | "timesheet" | "requests"
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
@@ -471,9 +476,11 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   const t = useTranslations("workforcePage")
   const tNav = useTranslations("nav")
   const [data, setData] = useState<TodayData | TimesheetData | RequestsData | null>(null)
+  const [dataLoadIdentity, setDataLoadIdentity] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [retry, setRetry] = useState(0)
-  const preserveTimesheetLoadRef = useRef<number | null>(null)
+  const retryRef = useRef(0)
+  const [approvalRefreshLifecycle] = useState(() => new TimesheetApprovalRefreshLifecycle())
   const [error, setError] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [conflicts, setConflicts] = useState<Record<string, RouteConflict[]>>({})
@@ -496,11 +503,34 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   const preselectedExceptionCaseId = view === "requests"
     ? searchParams.get("exceptionCaseId")
     : null
+  const activeLoadIdentity = createWorkforceReadIdentity({
+    view,
+    organizationId,
+    retry,
+    timesheetQuery,
+  })
+
+  function requestReload(options: { preserveTimesheet?: boolean } = {}) {
+    const nextRetry = retryRef.current + 1
+    retryRef.current = nextRetry
+    if (options.preserveTimesheet) {
+      approvalRefreshLifecycle.tag(createWorkforceReadIdentity({
+        view,
+        organizationId,
+        retry: nextRetry,
+        timesheetQuery,
+      }))
+    } else {
+      approvalRefreshLifecycle.clear()
+    }
+    setRetry(nextRetry)
+  }
 
   useEffect(() => {
     let cancelled = false
     const controller = new AbortController()
-    const preserveTimesheet = view === "timesheet" && preserveTimesheetLoadRef.current === retry
+    const taggedApprovalLoad = approvalRefreshLifecycle.begin(activeLoadIdentity)
+    const preserveTimesheet = view === "timesheet" && taggedApprovalLoad
     setLoading(true)
     setError(null)
     fetch(endpointForView(view, timesheetQuery), {
@@ -512,6 +542,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
         if (!response.ok || !result.success) throw new Error(result.error || `HTTP ${response.status}`)
         if (!cancelled) {
           setData(result.data)
+          setDataLoadIdentity(activeLoadIdentity)
           if (view === "timesheet") {
             const resultData = result.data as TimesheetData
             setTimesheetFilters({
@@ -525,25 +556,39 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       .catch((cause: unknown) => {
         const aborted = cause instanceof Error && cause.name === "AbortError"
         if (!cancelled && !aborted) {
-          if (preserveTimesheet) toast.error(t("loadFailed"))
+          if (preserveTimesheet) {
+            setDataLoadIdentity(activeLoadIdentity)
+            toast.error(t("loadFailed"))
+          }
           else {
             setError(cause instanceof Error ? cause.message : t("loadFailed"))
             setData(null)
+            setDataLoadIdentity(null)
           }
         }
       })
       .finally(() => {
+        approvalRefreshLifecycle.settle(activeLoadIdentity, cancelled)
         if (!cancelled) setLoading(false)
       })
     return () => {
       cancelled = true
       controller.abort()
     }
-  }, [organizationId, retry, t, timesheetQuery, view])
+  }, [activeLoadIdentity, approvalRefreshLifecycle, organizationId, t, timesheetQuery, view])
 
-  const today = view === "today" ? data as TodayData | null : null
-  const timesheet = view === "timesheet" ? data as TimesheetData | null : null
-  const requests = view === "requests" ? data as RequestsData | null : null
+  const taggedApprovalRefresh = view === "timesheet"
+    && approvalRefreshLifecycle.isActive(activeLoadIdentity)
+  const displayCurrentData = shouldRenderWorkforceData({
+    loadedIdentity: dataLoadIdentity,
+    activeIdentity: activeLoadIdentity,
+    loading,
+    taggedApprovalRefresh,
+  })
+  const currentData = displayCurrentData ? data : null
+  const today = view === "today" ? currentData as TodayData | null : null
+  const timesheet = view === "timesheet" ? currentData as TimesheetData | null : null
+  const requests = view === "requests" ? currentData as RequestsData | null : null
   const formatter = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }), [locale])
 
   async function decide(request: WorkforceRequest, decision: "APPROVED" | "REJECTED", acknowledgeRouteConflicts = false) {
@@ -574,7 +619,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
         delete next[request.id]
         return next
       })
-      setRetry((value) => value + 1)
+      requestReload()
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : t("decisionFailed"))
     } finally {
@@ -611,14 +656,14 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       if (response.status === 409) {
         setWorkdayOutcome("CONFLICT")
         toast.error(t("employeeActionConflict"))
-        setRetry((value) => value + 1)
+        requestReload()
         return
       }
       if (!response.ok || !result.success) throw new Error(result.error || `HTTP ${response.status}`)
       const pendingReview = result.data?.review?.state === "PENDING_REVIEW"
       setWorkdayOutcome(pendingReview ? "PENDING_REVIEW" : "APPLIED")
       toast.success(t(pendingReview ? "employeeActionPendingReview" : "employeeActionApplied"))
-      setRetry((value) => value + 1)
+      requestReload()
     } catch (cause) {
       setWorkdayOutcome(null)
       toast.error(cause instanceof Error ? cause.message : t("employeeActionFailed"))
@@ -676,7 +721,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       const result = await response.json().catch(() => ({}))
       if (!response.ok || !result.success) throw new Error(result.error || "HTTP " + response.status)
       toast.success(result.idempotent ? t("selfRequestAlreadySubmitted") : t("selfRequestSubmitted"))
-      setRetry((value) => value + 1)
+      requestReload()
       return { idempotent: Boolean(result.idempotent) }
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : t("selfRequestSubmitFailed"))
@@ -696,7 +741,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       const result = await response.json().catch(() => ({}))
       if (!response.ok || !result.success) throw new Error(result.error || "HTTP " + response.status)
       toast.success(result.idempotent ? t("selfRequestAlreadyCancelled") : t("selfRequestCancelled"))
-      setRetry((value) => value + 1)
+      requestReload()
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : t("selfRequestCancelFailed"))
     } finally {
@@ -740,11 +785,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       }
       const data = result.data as TimesheetApprovalData
       toast.success(result.idempotent ? t("timesheetApprovalAlreadyRecorded") : t(data.recordKind === "CORRECTION" ? "timesheetCorrectionRecorded" : "timesheetApprovalRecorded"))
-      setRetry((value) => {
-        const next = value + 1
-        preserveTimesheetLoadRef.current = next
-        return next
-      })
+      requestReload({ preserveTimesheet: true })
       return { success: true, idempotent: Boolean(result.idempotent), data }
     } catch (cause) {
       return {
@@ -795,17 +836,17 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
             const label = item === "today" ? tNav("workforceToday") : item === "timesheet" ? tNav("workforceTimesheet") : tNav("workforceRequests")
             return <Button key={item} asChild size="sm" variant={item === view ? "default" : "outline"} className="min-h-12"><Link href={href}>{label}</Link></Button>
           })}
-          <Button type="button" size="sm" variant="ghost" className="min-h-12" onClick={() => setRetry((value) => value + 1)} disabled={loading}>
+          <Button type="button" size="sm" variant="ghost" className="min-h-12" onClick={() => requestReload()} disabled={loading}>
             <RefreshCw className={loading ? "animate-spin motion-reduce:animate-none" : ""} />{t("refresh")}
           </Button>
         </nav>
       </header>
 
-      {loading && !timesheet ? <div className="h-48 animate-pulse border-y border-zinc-200 bg-muted/40 motion-reduce:animate-none dark:border-zinc-700" aria-label={t("loading")} role="status" /> : null}
+      {loading && !taggedApprovalRefresh ? <div className="h-48 animate-pulse border-y border-zinc-200 bg-muted/40 motion-reduce:animate-none dark:border-zinc-700" aria-label={t("loading")} role="status" /> : null}
       {!loading && error ? (
         <section className="flex flex-col gap-3 border-y border-zinc-200 bg-card py-5 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
           <div><p className="font-medium">{t("loadFailed")}</p><p className="mt-1 text-sm text-muted-foreground">{error}</p></div>
-          <Button type="button" variant="outline" className="min-h-12" onClick={() => setRetry((value) => value + 1)}>{t("tryAgain")}</Button>
+          <Button type="button" variant="outline" className="min-h-12" onClick={() => requestReload()}>{t("tryAgain")}</Button>
         </section>
       ) : null}
 
@@ -1160,7 +1201,7 @@ function TimesheetApprovalPanel({
     && failure.error.toLowerCase().includes("correction reason")
 
   async function submit() {
-    if (!selectedAgent || !approvalReady || !canApproveTimesheet) return
+    if (loading || !selectedAgent || !approvalReady || !canApproveTimesheet) return
     const outcome = await onApprove({
       agentId: selectedAgent.id,
       periodStart: data.start,
@@ -1384,7 +1425,7 @@ function TimesheetApprovalPanel({
             <Button
               type="button"
               className="min-h-12"
-              disabled={!approvalReady || approving || (correctionReasonRequired && !correctionReason.trim())}
+              disabled={loading || !approvalReady || approving || (correctionReasonRequired && !correctionReason.trim())}
               onClick={submit}
             >
               {approving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}

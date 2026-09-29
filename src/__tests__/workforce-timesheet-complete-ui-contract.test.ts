@@ -52,17 +52,20 @@ describe("Workforce complete timesheet UI contract", () => {
 
   it("refreshes the verified revision history after a successful approval write", () => {
     expect(approveTimesheet).toContain("toast.success")
-    expect(approveTimesheet).toContain("preserveTimesheetLoadRef.current = next")
-    expect(approveTimesheet).toContain("return next")
+    expect(approveTimesheet).toContain("requestReload({ preserveTimesheet: true })")
   })
 
-  it("keeps the approval panel and its preview record mounted during that background refresh", () => {
-    expect(workbench).toContain("{loading && !timesheet ?")
-    expect(workbench).toContain("{!error && timesheet ? (")
-    expect(workbench).not.toContain("{!loading && !error && timesheet ? (")
-    expect(workbench).toContain('const preserveTimesheet = view === "timesheet" && preserveTimesheetLoadRef.current === retry')
-    expect(workbench).toContain('if (preserveTimesheet) toast.error(t("loadFailed"))')
+  it("keeps the approval panel only for its exact tagged background refresh", () => {
+    expect(workbench).toContain("const taggedApprovalLoad = approvalRefreshLifecycle.begin(activeLoadIdentity)")
+    expect(workbench).toContain("approvalRefreshLifecycle.settle(activeLoadIdentity, cancelled)")
+    expect(workbench).toContain("approvalRefreshLifecycle.isActive(activeLoadIdentity)")
+    expect(workbench).toContain("shouldRenderWorkforceData({")
+    expect(workbench).toContain("{loading && !taggedApprovalRefresh ?")
+    expect(workbench).toContain("setDataLoadIdentity(activeLoadIdentity)")
+    expect(workbench).toContain("if (preserveTimesheet) {")
     expect(workbench).toContain('key={[appliedFilters.agentId, data.start, data.end].join(":")}')
+    expect(workbench).toContain("if (loading || !selectedAgent || !approvalReady || !canApproveTimesheet) return")
+    expect(workbench).toContain("disabled={loading || !approvalReady || approving")
   })
 
   it("has equivalent finite review and revision labels in every supported locale", () => {

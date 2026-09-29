@@ -1730,3 +1730,48 @@ corrections as new entries that explicitly supersede the earlier fact.
   remain uncommitted on top of rejected head `ab289618`.
 - Next action: commit only explicit task paths, measure the full candidate and
   obtain a fresh independent frozen review before publication.
+
+## 2026-09-29 — WF-C8-004 third frozen review RED and exact-load repair
+
+- The third independent complete-diff audit froze
+  `cb5f31419a73e2b8bf1a2c9c749515e9cadcf01a` against deployed main
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`: 13 paths / 127,919 binary
+  bytes / SHA-256
+  `984184f4d8327294c8864e0ae1f9eb7c2888aaad97afd5eb5e6002840e07c8fc`.
+  Verdict was RED, `P0=0`, `P1=1`, `P2=0`, `P3=0`; all non-lifecycle areas
+  were rechecked with no new finding.
+- The P1 proved the retry marker survived settlement and the old panel stayed
+  mounted for non-approval loads. A subsequent filter/manual/tenant load could
+  expose an actionable stale period and preserve it after failure. The earlier
+  narrower repair receipt is retained as history but superseded on that claim.
+- The new repair assigns each read an exact view/tenant/retry/query identity,
+  tags only one approval refresh, consumes it after live settlement, preserves
+  it across a Strict Mode abort/restart, and clears it when another request
+  wins. Ordinary transitions hide data whose producer identity no longer
+  matches; the approval handler and button are blocked while the exact
+  background refresh is active.
+- Behavioral lifecycle and UI integration checks pass 2 files / 11 tests;
+  scoped ESLint passes. The complete slice rerun remains pending. Heavy/full
+  typecheck, build, suite, browser/AT, Android/Gradle, load, signed APK,
+  physical-device and pilot remain `NOT RUN` locally.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: third-review repair and append-only evidence are
+  uncommitted on `codex/workforce-completion-part7`.
+- Next action: run the complete bounded author checks, checkpoint only explicit
+  task paths, then obtain a fresh full-range review from zero.
+
+## 2026-09-29 — WF-C8-004 exact-request repair verification complete
+
+- The exact post-P1 author matrix passes 19 files / 137 tests, scoped ESLint
+  for all eight changed runtime/test TypeScript paths, three-catalog JSON
+  parsing, i18n 23,737/0/0 and whitespace.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical-device and pilot checks remain explicitly `NOT RUN`; no
+  release evidence is inferred.
+- `WF-C8-004` remains `PARTIAL`; progress stays `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: the exact-request repair and all append-only receipts
+  are verified but uncommitted on top of `cb5f31419`.
+- Next action: commit the seven explicit repair/receipt paths, fingerprint the
+  full candidate and request a fourth fresh independent complete-diff review.

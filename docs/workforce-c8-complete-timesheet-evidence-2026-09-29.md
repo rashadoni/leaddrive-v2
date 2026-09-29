@@ -170,3 +170,53 @@ three JSON catalogs, EN/RU/AZ parity at 23,737/0/0 and whitespace also pass.
 Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
 physical-device and pilot checks remain `NOT RUN` under host policy. No
 completion credit is added before a fresh frozen GREEN and release evidence.
+
+## Third review RED and exact-request lifecycle repair
+
+The second replacement checkpoint was
+`cb5f31419a73e2b8bf1a2c9c749515e9cadcf01a`. A third fresh full-range
+author-independent review verified the complete 13-path / 127,919-byte diff,
+SHA-256
+`984184f4d8327294c8864e0ae1f9eb7c2888aaad97afd5eb5e6002840e07c8fc`,
+and returned **RED** with `P0=0`, `P1=1`, `P2=0`, `P3=0`. It found no new
+server-model, authorization, privacy, bounds, hash-chain, C6, i18n or
+accessibility issue.
+
+The P1 showed that the retry-number marker was never consumed and the render
+condition retained the old panel for every timesheet load, not only for the
+approval-triggered request. A later filter/manual/organization load could
+therefore expose an interactive old approval surface, and a failure could keep
+stale data instead of entering the ordinary error state. This supersedes the
+earlier claim that ordinary load behavior was unchanged; that claim was not
+release authority.
+
+The repair now gives every read an identity over view, tenant, retry and exact
+timesheet query. A small lifecycle object tags only the next approval refresh,
+survives a cancelled Strict Mode effect restart, consumes the tag after live
+success/failure, and discards it when a different view, tenant, filter or
+manual retry replaces the request. Loaded data carries the identity that
+produced it, so an ordinary transition hides the prior panel before its effect
+runs. A tagged failure deliberately rebinds the retained verified data to that
+single settled request; the following ordinary load again has normal
+hide/clear/error behavior. Approval is disabled and guarded throughout the
+tagged background load.
+
+Five behavioral lifecycle regressions cover exact tagging, successful
+replacement, retained tagged failure followed by an ordinary filter load,
+Strict Mode abort/restart, and tag discard on a competing query. Together with
+the updated UI integration contract, the focused check passes 2 files / 11
+tests and scoped ESLint. The complete bounded matrix, clean checkpoint and a
+new full-range review remain mandatory. `WF-C8-004` stays **PARTIAL** at
+`DONE 80/161`, `GATES 14/15`, C8 27%, overall 58%.
+
+## Exact-request repair verification
+
+The complete bounded post-repair author matrix passes 19 files / 137 tests,
+including the prior 18-file consumer/read-model matrix plus the new behavioral
+lifecycle suite. Scoped ESLint passes for all eight changed runtime/test
+TypeScript paths; EN/RU/AZ parity remains 23,737 English leaf keys with
+`missing=0`, `extra=0`; all catalogs parse and `git diff --check` passes.
+Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
+physical-device and pilot checks remain `NOT RUN` under host policy. A clean
+checkpoint and fourth fresh full-range independent review remain mandatory;
+no completion credit is added.
