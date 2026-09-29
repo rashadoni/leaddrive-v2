@@ -1040,7 +1040,7 @@ payroll engine or leaking sensitive evidence.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C11-001 | P1 | PARTIAL | Backend | Complete deterministic calculation for segments, approved breaks/travel, calendar, exceptions and corrections | [`deterministic immutable rehydration evidence`](./workforce-c11-deterministic-rehydration-evidence-2026-09-29.md): full policy/shift/schedule hashes, calendar/segments, actual-pause-only breaks, non-payroll travel and correction replay are bound in v2; exact-head CI/release remains pending |
+| WF-C11-001 | P1 | DONE | Backend | Complete deterministic calculation for segments, approved breaks/travel, calendar, exceptions and corrections | [`deterministic immutable rehydration evidence`](./workforce-c11-deterministic-rehydration-evidence-2026-09-29.md): v2 binds full policy/shift/schedule hashes, calendar/segments, actual-pause-only breaks, non-payroll travel and correction replay; exact-head CI, merge, deploy and production SHA are verified |
 | WF-C11-002 | P1 | DONE | Backend/Web | Block approval on incomplete facts, unresolved blocking cases or snapshot/history errors | [`C11 approval blocker evidence`](./workforce-c11-approval-blockers-evidence-2026-09-13.md): exact minimized rows/reasons cover finality, snapshots, replay, current deviations and C6 lifecycle; resolved bounded periods remain deterministic/idempotent |
 | WF-C11-003 | P1 | DONE | Backend | Add approved-export endpoint from immutable approval/revision, never live mutable rows | [`workforce-c11-approved-export-evidence-2026-08-30.md`](./workforce-c11-approved-export-evidence-2026-08-30.md): persisted calculation/row/fact hashes are reproduced before a narrow attachment is returned |
 | WF-C11-004 | P1 | PARTIAL | Security/Web | Require purpose, recipient, authorized scope and encrypted delivery channel; set artifact expiry | [`workforce-c11-direct-export-purpose-evidence-2026-08-30.md`](./workforce-c11-direct-export-purpose-evidence-2026-08-30.md): fixed direct-review purpose, MFA, shared rate guard and historic export-custodian scope exist; external encrypted artifact delivery/expiry remain open |
@@ -1758,3 +1758,56 @@ from this worktree.
   clean; only this three-document receipt is uncommitted.
 - Next action: checkpoint the receipt, obtain final exact-head integrity GREEN,
   then push the replacement head and require all contexts again.
+
+## 2026-09-29 — WF-C11-001 exact-head release GREEN
+
+- PR #488 froze final independently reviewed head
+  `a90e0981fc8444cc8a2fa7172cf848c31ac8c9b1`: 19 paths / 101,395
+  plain-binary bytes / SHA-256
+  `8e6bb049e2643993fd885e7df9e4318c0394d5baec52d526ae5538de5c3ac009`,
+  with `P0=P1=P2=P3=0`. All fifteen source/test blobs matched the reviewed
+  repair checkpoint and the receipt-only delta was append-only.
+- Replacement exact-head run `36496540485` passed `pr-scope`,
+  `static-checks` and `typecheck`; separate exact-head `runner-policy` and
+  `scan` also passed. The scope-conditioned PR production-build job was
+  `SKIPPED`, not represented as a pass.
+- PR #488 merged normally without bypass at `2026-09-28T23:31:26Z` as main
+  SHA `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`. Deploy workflow
+  `36498458944` completed `SUCCESS` at `2026-09-28T23:55:50Z`, including
+  full quality/security, SHA-bound production build/artifact, atomic rollout,
+  post-deploy smoke and artifact retention.
+- Independent no-cache checks pinned to the only approved production IP
+  `13.140.132.245` returned HTTP 200 from `/api/v1/ping` with `{"ok":true}`
+  and HTTP 200 from `/api/v1/public/build-info`; `artifactSha` exactly matched
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5` and `builtAt` was
+  `2026-09-28T23:37:22Z`.
+- `WF-C11-001` is therefore `DONE`. Progress is now `DONE 83/161`,
+  `GATES 14/15` and C11 90%. The strict register has 78 non-DONE rows plus one
+  gate; no browser, Android, load, signed-device or human-pilot evidence is
+  inferred from this backend release.
+- Precise stopping point: PR #488 is independently reviewed, exact-head green,
+  merged, deployed and exact-SHA production-verified; this release receipt is
+  uncommitted on clean successor branch `codex/workforce-completion-part7`.
+- Next action: checkpoint this receipt, then implement the next independently
+  selected technically completable roadmap row in another sub-400 KB PR.
+
+## 2026-09-29 — accepted-task arithmetic reconciliation
+
+- The preceding `DONE 83/161` release count is superseded. A deterministic
+  audit of the final active status for all 161 unique `WF-*` identifiers gives
+  exactly 80 `DONE`, 55 `PARTIAL`, 16 `PLANNED`, six `OWNER DECISION`, one
+  `PARTIAL (OWNER ATTESTATION)` and three `BLOCKED` rows.
+- The saved ledger was already three credits above the active task register
+  before PR #486 and then incremented normally for WF-C2-009 and WF-C11-001.
+  No active row or task-level acceptance receipt supports those three earlier
+  credits, so they are removed rather than hidden. The denominator remains
+  161; no scope or released implementation is removed.
+- Correct progress after the independently reviewed and production-verified
+  PR #488 is therefore `DONE 80/161`, `GATES 14/15`, C11 90%, with 81
+  non-DONE tasks. Under the printed progress formula the overall completion
+  index is 58%, not the historical release-slice label of 99%.
+- Precise stopping point: the PR #488 release receipt and this arithmetic
+  correction are uncommitted on `codex/workforce-completion-part7`.
+- Next action: checkpoint the corrected receipt, then implement independently
+  selected `WF-C8-004` as the next bounded sub-400 KB slice without claiming
+  browser, physical-device, load or pilot evidence.

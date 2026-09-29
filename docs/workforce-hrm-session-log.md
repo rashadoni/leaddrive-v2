@@ -1567,3 +1567,60 @@ corrections as new entries that explicitly supersede the earlier fact.
   and this receipt is uncommitted in three durable documents.
 - Next action: checkpoint the receipt, run final independent integrity review,
   push the replacement PR head and wait for every required context.
+
+## 2026-09-29 — PR #488 merged, deployed and exact-SHA verified
+
+- Final PR head `a90e0981fc8444cc8a2fa7172cf848c31ac8c9b1` retained independent
+  GREEN `P0=P1=P2=P3=0`: 19 paths / 101,395 plain-binary bytes / SHA-256
+  `8e6bb049e2643993fd885e7df9e4318c0394d5baec52d526ae5538de5c3ac009`.
+  All fifteen source/test blobs remained identical to the reviewed repair and
+  the three receipt documents were append-only.
+- Exact-head replacement run `36496540485` passed `pr-scope`,
+  `static-checks`, `typecheck`, `runner-policy` and `scan`. The
+  scope-conditioned PR production-build job was `SKIPPED`; no pass is claimed
+  for it.
+- PR #488 merged normally without bypass at `2026-09-28T23:31:26Z` as main
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`. Exact-SHA deploy workflow
+  `36498458944` completed `SUCCESS` at `2026-09-28T23:55:50Z`, with full
+  quality/security, immutable production artifact, atomic rollout and
+  post-deploy smoke green.
+- Fresh no-cache checks forced `app.leaddrivecrm.org` to the sole approved
+  production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`; `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=eab1c60de3e56e4ea26001c9ddfd01fc603524a5` and
+  `builtAt=2026-09-28T23:37:22Z`. No Azure, retired host, direct worktree copy
+  or manual production deploy was used.
+- `WF-C11-001` is accepted as `DONE`. Progress becomes `DONE 83/161`,
+  `GATES 14/15`, C11 90%; 78 non-DONE rows and one gate remain. Full local
+  build/typecheck/suite, browser E2E, Android/Gradle, load, signed APK,
+  physical-device and human-pilot evidence remains `NOT RUN`.
+- Precise stopping point: PR #488 is reviewed, merged, deployed and
+  production-verified; this three-document release receipt is uncommitted on
+  clean successor branch `codex/workforce-completion-part7` from exact main.
+- Next action: checkpoint the release receipt, then continue the next bounded
+  code-verifiable roadmap row chosen by read-only dependency audit.
+
+## 2026-09-29 — accepted-task counter corrected before continuation
+
+- The `DONE 83/161` count in the immediately preceding receipt is
+  superseded. An exact unique-ID audit of the active task register gives 80
+  `DONE`, 55 `PARTIAL`, 16 `PLANNED`, six `OWNER DECISION`, one
+  `PARTIAL (OWNER ATTESTATION)` and three `BLOCKED` rows: 161 total and 81
+  non-DONE.
+- History shows the saved counter was already three above the active register
+  before the two real status changes for WF-C2-009 and WF-C11-001. No active
+  row or task-level acceptance receipt supplies those three credits. The
+  correction changes only progress arithmetic; both released tasks remain
+  `DONE`, PR #488 and production evidence remain valid, and the denominator
+  stays 161.
+- Correct current progress is `DONE 80/161`, `GATES 14/15`, C11 90%; the
+  roadmap formula yields a 58% completion index. The earlier 99% label was a
+  release-slice display and is not a whole-program completion claim.
+- Read-only dependency audit selected `WF-C8-004` as the next technically
+  completable P1 slice: add a bounded privacy-safe timesheet read model for
+  evidence review, exception state and verified approval/correction revision
+  history, with no schema or migration.
+- Precise stopping point: the corrected PR #488 receipt is ready for an
+  explicit checkpoint commit on `codex/workforce-completion-part7`.
+- Next action: commit only the three receipt documents, then implement and
+  independently review `WF-C8-004` before exact-head CI and release.
