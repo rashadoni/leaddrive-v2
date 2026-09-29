@@ -264,3 +264,29 @@ typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
 physical-device and pilot remain `NOT RUN` under host policy. No completion
 credit is added before a clean checkpoint, fifth fresh GREEN and exact-head
 release evidence.
+
+## Fifth independent review GREEN
+
+Clean checkpoint `b506cad5cbced9c131cffd738adc46a9e590753b` received a fresh
+complete-diff author-independent **GREEN** with `P0=P1=P2=P3=0`. The reviewer
+independently confirmed base/live main/merge-base
+`eab1c60de3e56e4ea26001c9ddfd01fc603524a5` and measured 16 paths / 164,032
+binary bytes / SHA-256
+`d76bd9a9c1f315eb9511143c48ab01982ab36d5a88e250da90336144a6513467`.
+
+The review re-audited the entire candidate rather than inheriting earlier
+verdicts: tenant and read authority, privacy projection, request sentinels,
+schedule-only `NO_SHOW`, calculation-version filtering, C6 history integrity,
+v1/v2 approval hash/chain rules, approval readiness, UI/i18n/a11y and
+append-only continuity records. It specifically proved the synchronous
+submission-to-refresh interlock, exact identity handoff, Strict Mode restart,
+success/failure settlement, subsequent ordinary-load behavior and the
+reachable explicit-period invariant. No finding remains.
+
+Reviewer verification passes 19 files / 139 tests, scoped ESLint for nine
+changed TypeScript paths, JSON, i18n 23,737/0/0, exact-range whitespace and
+append-only journal prefix. Full typecheck/build/suite, browser/AT,
+Android/Gradle, load, signed APK, physical-device and pilot remain `NOT RUN`
+locally and must not be inferred. `WF-C8-004` remains **PARTIAL** and progress
+stays `DONE 80/161`, `GATES 14/15`, C8 27%, overall 58% until exact-head CI,
+normal merge, deploy and production SHA verification complete.

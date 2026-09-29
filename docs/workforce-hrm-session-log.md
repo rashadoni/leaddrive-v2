@@ -1822,3 +1822,26 @@ corrections as new entries that explicitly supersede the earlier fact.
   are uncommitted on top of rejected head `c1422649d`.
 - Next action: commit only the eight explicit paths and request a fifth fresh
   full-range independent review.
+
+## 2026-09-29 — WF-C8-004 fifth frozen review GREEN
+
+- Fresh full-range independent review of clean head
+  `b506cad5cbced9c131cffd738adc46a9e590753b` is GREEN with
+  `P0=P1=P2=P3=0`. Live main and merge-base remain
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`; exact diff is 16 paths /
+  164,032 binary bytes / SHA-256
+  `d76bd9a9c1f315eb9511143c48ab01982ab36d5a88e250da90336144a6513467`.
+- The reviewer independently re-audited all server-model, authorization,
+  tenant, privacy, bounded-query, exception, revision-chain, readiness,
+  UI/i18n/a11y and continuity surfaces. The complete approval lifecycle and
+  every reported race now pass without a remaining finding.
+- Reviewer verification passes 19 files / 139 tests, nine-path scoped ESLint,
+  JSON, i18n 23,737/0/0, exact-range whitespace and byte-prefix append-only
+  journal verification. Full local typecheck/build/suite, browser/AT,
+  Android/Gradle, load, signed APK, physical-device and pilot remain `NOT RUN`.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows until release.
+- Precise stopping point: independently GREEN code head is clean; only this
+  three-document receipt is uncommitted.
+- Next action: commit the receipt, get final exact-head integrity confirmation,
+  then push/open the bounded PR and wait for all required checks.

@@ -2003,3 +2003,26 @@ from this worktree.
   are complete but uncommitted.
 - Next action: checkpoint the eight explicit paths, fingerprint the full
   candidate and obtain a fifth fresh complete-diff independent verdict.
+
+## 2026-09-29 — WF-C8-004 fifth independent review GREEN
+
+- Exact clean head `b506cad5cbced9c131cffd738adc46a9e590753b` received fresh
+  author-independent GREEN with `P0=P1=P2=P3=0`. Base/live main/merge-base is
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`; full identity is 16 paths /
+  164,032 binary bytes / SHA-256
+  `d76bd9a9c1f315eb9511143c48ab01982ab36d5a88e250da90336144a6513467`.
+- The reviewer rechecked the full data, authority, privacy, bounds, exception,
+  hash-chain, readiness, localization and lifecycle surfaces from zero. The
+  POST-to-tagged-GET busy interval, Strict Mode restart, success/failure,
+  subsequent ordinary request and explicit-period edge all passed with no
+  residual finding.
+- Reviewer checks pass 19 files / 139 tests, scoped ESLint for nine TS paths,
+  JSON, i18n 23,737/0/0, whitespace and append-only journal prefix. Heavy/full
+  and physical/browser gates remain `NOT RUN` locally.
+- `WF-C8-004` remains `PARTIAL`; progress stays `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%. GREEN permits publication for exact-head
+  gates but is not release evidence.
+- Precise stopping point: reviewed code head is clean and this three-document
+  GREEN receipt is uncommitted.
+- Next action: checkpoint the receipt, obtain final exact-head integrity GREEN,
+  then push/open the sub-400 KB PR and require every mandatory context.
