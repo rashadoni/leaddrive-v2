@@ -2572,3 +2572,28 @@ from this worktree.
   three-document GREEN receipt is uncommitted.
 - Next action: checkpoint the receipt, prove implementation identity unchanged,
   push PR #500 and require all replacement CI contexts before merge.
+
+## 2026-09-29 — PR #500 future organization calendar production release
+
+- Final head `83a5960227d9245fd515f92d93a6a1ba841ba8ff` retained the
+  independently GREEN implementation fingerprint. All five required exact-head
+  contexts passed: `pr-scope`, `static-checks`, `typecheck`, `runner-policy`
+  and `scan`.
+- PR #500 merged normally as main
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`. Deploy run `36579854359`
+  passed quality/security, SHA-bound standalone build and artifact publication,
+  immutable staging, atomic deployment, built-in smokes and retention cleanup.
+- Independent no-cache TLS probes pinned the public hostname to approved
+  production `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and
+  build-info returned HTTP 200 with exact
+  `artifactSha=b25b4f382ebc8d323b0e975ccf34aee1731379f7` and
+  `builtAt=2026-09-29T14:10:41Z`.
+- Only GitHub `main` through `.github/workflows/deploy.yml` was used. No direct
+  production deploy, worktree copy, Azure or retired target/owner was used.
+- `WF-C8-007` remains `PARTIAL`; no task/gate credit changes. Progress remains
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: organization-scope future calendar authoring is
+  reviewed, merged, deployed and exact-SHA production-verified.
+- Next action: implement bounded `WF-C8-007c` future TEAM-scope create/list on
+  the released calendar surface; employee/moved-day/update/delete/break-policy
+  and real browser/AT evidence stay outside that slice.

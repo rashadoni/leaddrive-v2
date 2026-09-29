@@ -251,3 +251,29 @@ Fresh author-independent review returned GREEN with
 Full local typecheck/build/suite, browser/AT/device, Android/Gradle,
 load/chaos, real-Postgres race, signed-device and pilot remain `NOT RUN`.
 Replacement exact-head CI is mandatory; the review adds no progress credit.
+
+### PR #500 production release receipt
+
+Final head `83a5960227d9245fd515f92d93a6a1ba841ba8ff` preserved the
+independently reviewed 15-path implementation identity byte-for-byte. Required
+exact-head contexts `pr-scope`, `static-checks`, `typecheck`, `runner-policy`
+and `scan` passed; the scope-derived production-build job was correctly
+skipped. PR #500 was merged normally, without bypass, as main
+`b25b4f382ebc8d323b0e975ccf34aee1731379f7` at
+`2026-09-29T14:04:08Z`.
+
+Deploy run `36579854359` passed quality/security, built and published the
+SHA-bound standalone artifact, staged it immutably, deployed atomically,
+completed built-in post-deploy smoke and capped retained artifacts. Independent
+no-cache TLS probes pinned `app.leaddrivecrm.org` to the sole approved target
+`13.140.132.245`: `/api/v1/ping` returned HTTP 200 with `{"ok":true}` and
+`/api/v1/public/build-info` returned HTTP 200 with
+`artifactSha=b25b4f382ebc8d323b0e975ccf34aee1731379f7` and
+`builtAt=2026-09-29T14:10:41Z`.
+
+Only GitHub `main` through `.github/workflows/deploy.yml` was used; no Azure,
+retired host/owner, direct production deploy or worktree copy was used. The
+organization calendar slice is released, but `WF-C8-007` remains `PARTIAL`:
+team/employee and moved-day workflows, update/delete governance, break-policy
+authoring and real browser/AT evidence remain open. Progress therefore remains
+`DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.

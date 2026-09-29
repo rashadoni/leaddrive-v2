@@ -2478,3 +2478,33 @@ corrections as new entries that explicitly supersede the earlier fact.
   GREEN and frozen; only this append-only receipt is uncommitted.
 - Next action: commit the receipt, verify frozen blob identity, push the new
   head and wait for every required replacement CI context.
+
+## 2026-09-29 — PR #500 released to production
+
+- Receipt-integrity review returned GREEN on final head
+  `83a5960227d9245fd515f92d93a6a1ba841ba8ff`; all five required exact-head
+  checks then passed: `pr-scope`, `static-checks`, `typecheck`,
+  `runner-policy` and `scan`.
+- PR #500 merged normally at `2026-09-29T14:04:08Z` as main
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`. No admin bypass was used.
+- Deploy run `36579854359` completed quality/security, SHA-bound standalone
+  build and artifact publication, immutable staging, atomic production deploy,
+  built-in post-deploy smoke and artifact-retention cleanup.
+- Independent no-cache TLS checks forced `app.leaddrivecrm.org` to the only
+  approved production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`; `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=b25b4f382ebc8d323b0e975ccf34aee1731379f7` and
+  `builtAt=2026-09-29T14:10:41Z`.
+- Release used only GitHub `main` through `.github/workflows/deploy.yml` to
+  `/opt/leaddrive-v2`; no Azure, retired host/owner, direct server deploy or
+  worktree copy was used.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows. Full local build,
+  browser/AT/device, Android/Gradle, load/chaos, signed-device and pilot remain
+  `NOT RUN`.
+- Precise stopping point: PR #500 is merged, deploy run and independent public
+  exact-SHA smokes are green; successor branch
+  `codex/workforce-completion-part11` is based on that merge SHA.
+- Next action: checkpoint this release receipt, then implement the bounded
+  `WF-C8-007c` TEAM-scope future calendar slice with shared org/date locking,
+  tenant-safe active-team selection and no employee/moved/update/delete scope.
