@@ -2217,3 +2217,30 @@ from this worktree.
   in the working tree but not yet checkpointed.
 - Next action: commit explicit paths, recompute the complete identity and
   obtain a fresh author-independent full-range verdict.
+
+## 2026-09-29 — WF-C8-002 replacement full-range review GREEN
+
+- Fresh author-independent read-only review returned GREEN with
+  `P0=P1=P2=P3=0` on exact live origin/main/local main/merge-base
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through clean head
+  `756731f7d9417e8df16a61414f921025e4aba84a`.
+- Independent full identity matched 23 paths / 200,352 plain-binary bytes /
+  SHA-256
+  `1ef2da7544b2e9003926b00c31369ddea508ed54a30d010226d48173466586c0`;
+  the last repair delta is exactly six paths.
+- All three previous P2 classes are closed: one exact live context for
+  ordinary no-case rows and SELF, validated case-bound context for readable
+  persisted no-show plan/calendar, and display-only/no-START treatment for
+  persisted no-show SELF. Tenant/access/privacy/bounds/snapshots/lifecycle,
+  pagination, UI/i18n and evidence passed without a new finding.
+- Reviewer PASS: 9 files / 86 tests, ESLint 16/16 TS/TSX paths, i18n
+  23,766/0/0, three JSON catalogs and whitespace. Full local
+  typecheck/build/suite, browser/AT, Android/Gradle, load, physical device and
+  pilot remain `NOT RUN` under host policy.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. Review GREEN
+  authorizes publication for exact-head CI but adds no completion/gate credit.
+- Precise stopping point: independently reviewed code/test head is clean;
+  only this three-document GREEN receipt is uncommitted.
+- Next action: checkpoint the receipt, obtain exact-head blob-integrity GREEN,
+  push/open the sub-400 KB PR and require every mandatory context.

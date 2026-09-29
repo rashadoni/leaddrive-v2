@@ -6,8 +6,8 @@
 
 **Branch:** `codex/workforce-completion-part8`
 
-**Status:** PARTIAL (working checkpoint; independent review, exact-head CI,
-release and real browser/AT evidence remain mandatory)
+**Status:** PARTIAL (independent review GREEN; exact-head CI, release and real
+browser/AT evidence remain mandatory)
 
 ## Delivered contract
 
@@ -196,3 +196,28 @@ acceptance evidence exist.
 - The RED verdict does not transfer to changed source. `WF-C8-002` remains
   **PARTIAL** at `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
   non-DONE rows; a clean checkpoint and fresh independent review are required.
+
+## 2026-09-29 replacement frozen review GREEN
+
+- Fresh author-independent read-only review completed from exact live
+  origin/main/local main/merge-base
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through clean head
+  `756731f7d9417e8df16a61414f921025e4aba84a`. Verdict is GREEN with
+  `P0=0`, `P1=0`, `P2=0`, `P3=0`.
+- Independent identity matched 23 paths / 200,352 plain-binary bytes / SHA-256
+  `1ef2da7544b2e9003926b00c31369ddea508ed54a30d010226d48173466586c0`;
+  the third-review repair delta is exactly the six claimed paths.
+- The reviewer re-audited the complete tenant/access/privacy/bounds/snapshot,
+  exception lifecycle/order, pagination, SELF/write-context, UI/i18n and
+  evidence surfaces. All three prior P2 classes are closed with no actionable
+  finding. The site-scoped exception regression matches current access-control
+  semantics and does not widen the SELF roster.
+- Reviewer PASS: 9 files / 86 tests, scoped ESLint on all 16 TypeScript/TSX
+  paths, i18n 23,766/0/0, all three JSON catalogs and `git diff --check`.
+  Live main, merge-base and clean-tree identity were rechecked at the end.
+- NOT RUN under Contabo policy: full local typecheck/build/suite, real
+  browser/keyboard/AT/contrast/zoom/responsive devices, Android/Gradle,
+  signed/physical device, load, pilot and DB apply (no schema change).
+- `WF-C8-002` remains **PARTIAL** at `DONE 81/161`, `GATES 14/15`, C8 36%,
+  overall 59%, with 80 non-DONE rows. GREEN permits exact-head CI publication;
+  it does not substitute for release or real browser/AT acceptance evidence.

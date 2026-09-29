@@ -2071,3 +2071,29 @@ corrections as new entries that explicitly supersede the earlier fact.
   uncommitted on `codex/workforce-completion-part8`.
 - Next action: rerun the complete bounded gates, checkpoint explicit paths,
   fingerprint the full candidate and request fresh independent review.
+
+## 2026-09-29 — WF-C8-002 replacement independent review GREEN
+
+- Fresh author-independent full-range read-only review returned GREEN with
+  `P0=0`, `P1=0`, `P2=0`, `P3=0` from exact live origin/main/local
+  main/merge-base `f95ec02952c425e97a470aba5d2e591ffb5b9486` through clean
+  head `756731f7d9417e8df16a61414f921025e4aba84a`.
+- Independent identity matched 23 paths / 200,352 plain-binary bytes / SHA-256
+  `1ef2da7544b2e9003926b00c31369ddea508ed54a30d010226d48173466586c0`;
+  the third-review repair range contains exactly its six claimed paths.
+- The reviewer rechecked the full tenant/access/privacy/bounds/snapshot,
+  exception lifecycle/order, pagination, SELF/write-context, UI/i18n and docs
+  surfaces. Ordinary live rows share/revalidate one exact route context;
+  persisted no-show plan/calendar uses validated case history; persisted
+  no-show SELF cannot start under that historical context. No finding remains.
+- Reviewer PASS: 9 files / 86 tests, scoped ESLint 16/16 paths, i18n
+  23,766/0/0, EN/RU/AZ JSON and whitespace. Live main/merge-base and clean
+  tree were revalidated after the checks.
+- Full local typecheck/build/suite, browser/keyboard/AT/contrast/zoom/device,
+  Android/Gradle, signed/physical device, load, pilot and DB apply remain
+  `NOT RUN` under Contabo policy. `WF-C8-002` stays `PARTIAL`; progress remains
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: reviewed runtime/test head is clean and this GREEN
+  receipt is the only uncommitted change set.
+- Next action: commit only the three receipt documents, verify reviewed
+  runtime/test blobs byte-identically, then publish for exact-head CI.
