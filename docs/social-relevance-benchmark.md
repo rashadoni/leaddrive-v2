@@ -278,3 +278,33 @@ pass does not ask one: without `TYPESAFE_API_KEY` it returns
 `reason: "no_geography_aware_judge"` before it even queries for candidates. The
 schedule can therefore be installed before the key is delivered — it is a no-op,
 not a bill.
+
+## Reverted the same day — 2026-09-29
+
+The first record the geography-aware judge restored on production was an advert
+from **GrandMart Clothing_Official** on Instagram — "Pick any 3 shirts @ 999/-",
+an Indian clothing shop — returned into the Azerbaijani **Grandmart**
+supermarket's feed. The second signal was switched off again within the hour.
+
+Why 0.9 confidence did not catch it: the brand name is in the AUTHOR NAME, and
+the record's own text carries no marker of country at all — not the subject's
+language, not a place, not a currency in words. "Is this about that brand?" has
+no true answer for such a record without knowing which GrandMart is monitored,
+and the model answers yes: honestly, and wrongly.
+
+The general lesson, and the reason this is written down rather than retried:
+**the judge's verdict adds something only where no other signal exists** — if
+the language matches, or a geography term is found, or a context alias is
+present, there is already a second signal without it. And "no other signal" is
+precisely the class where the judge is unreliable. Its usefulness and its
+unreliability live in the same place.
+
+Re-enabling needs a signal independent of the text: the account established as
+the subject's own source, or a platform-provided geographic attribution of the
+record itself. Model confidence alone is not enough — measured twice now, on
+2026-08-03 and on 2026-09-29.
+
+What stays: Jev as the judge (it answers, it is cheap, it refuses pictures), the
+widened queue, the stamping of verdicts with their confidence, and the no-op
+without a key. Those produce the data a better rule would be built on; they just
+do not move anything into a client's feed on their own.
