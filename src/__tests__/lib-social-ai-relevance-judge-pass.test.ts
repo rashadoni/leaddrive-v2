@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const deps = vi.hoisted(() => ({
   findMany: vi.fn(),
   update: vi.fn(),
+  findUnique: vi.fn(),
   judge: vi.fn(),
   evaluate: vi.fn(),
   persist: vi.fn(),
@@ -13,7 +14,11 @@ const deps = vi.hoisted(() => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    socialMentionSubjectMatch: { findMany: deps.findMany, update: deps.update },
+    socialMentionSubjectMatch: {
+      findMany: deps.findMany,
+      update: deps.update,
+      findUnique: deps.findUnique,
+    },
   },
 }))
 // Реальная обёртка тенанта в этом тесте не нужна: она проверяется отдельно, а
@@ -110,6 +115,7 @@ beforeEach(() => {
     matches: [{ subjectId: "subject-1", status: "MATCHED", reason: "subject_alias_match" }],
   })
   deps.persist.mockResolvedValue(undefined)
+  deps.findUnique.mockResolvedValue({ contextSignals: { ambiguousOnly: true } })
 })
 
 describe("проход судьи по отказам «родовой алиас без второго признака»", () => {
@@ -349,5 +355,37 @@ describe("судья на Jev", () => {
     expect(deps.judge).not.toHaveBeenCalled()
     // И в базу за кандидатами не ходит: это не только деньги, но и запросы.
     expect(deps.findMany).not.toHaveBeenCalled()
+  })
+})
+
+// Боевая оценка переписывает contextSignals целиком, вместе с отметкой судьи.
+// Без повторной отметки подтверждённая строка возвращается в выборку и
+// оплачивается заново каждые 15 минут — на проде 2026-09-29 одна и та же
+// индийская реклама была разобрана дважды подряд.
+describe("подтверждённую строку тоже помечаем", () => {
+  beforeEach(() => {
+    vi.stubEnv("TYPESAFE_API_KEY", "apikey_test")
+    vi.stubEnv("SOCIAL_JUDGE_PROVIDER", "jev")
+  })
+  afterEach(() => vi.unstubAllEnvs())
+
+  it("ставит отметку поверх свежих сигналов, не затирая их", async () => {
+    deps.jev.mockResolvedValue({ verdict: "about_subject", confidence: 0.96, errorClass: null })
+    // То, что записала боевая оценка после пересчёта.
+    deps.findUnique.mockResolvedValue({ contextSignals: { ambiguousOnly: true, languageMatchesSubject: true } })
+
+    await judgeAmbiguousAliasRejections()
+
+    expect(deps.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "match-1" },
+      data: expect.objectContaining({
+        contextSignals: expect.objectContaining({
+          languageMatchesSubject: true,
+          aiJudgeVerdict: "about_subject",
+          aiJudgeVersion: "jev_relevance_judge_v1",
+          aiJudgeConfidence: 0.96,
+        }),
+      }),
+    }))
   })
 })

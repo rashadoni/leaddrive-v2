@@ -186,6 +186,35 @@ async function stampVerdict(
   })
 }
 
+/**
+ * Отметка поверх свежих сигналов строки: читаем то, что записала боевая
+ * оценка, и добавляем к нему отметку судьи, ничего не затирая.
+ */
+async function stampJudgedRow(
+  matchId: string,
+  verdict: string,
+  now: Date,
+  confidence: number | null,
+): Promise<void> {
+  const row = await prisma.socialMentionSubjectMatch.findUnique({
+    where: { id: matchId },
+    select: { contextSignals: true },
+  })
+  if (!row) return
+  await prisma.socialMentionSubjectMatch.update({
+    where: { id: matchId },
+    data: {
+      contextSignals: {
+        ...asRecord(row.contextSignals),
+        aiJudgeVerdict: verdict,
+        aiJudgeVersion: judgeVersion(),
+        aiJudgedAt: now.toISOString(),
+        ...(confidence === null ? {} : { aiJudgeConfidence: confidence }),
+      },
+    },
+  })
+}
+
 /** The stamp carries which judge decided, so a re-run never re-pays for a row
  *  the OTHER judge already answered. */
 function judgeVersion(): string {
@@ -396,6 +425,17 @@ export async function judgeAmbiguousAliasRejections(options: {
       ))
     })
     if (restored) result.restored += 1
+    // Пометить НАДО в любом случае, и вот почему. Боевая оценка переписывает
+    // contextSignals строки целиком, вместе с отметкой судьи, — поэтому
+    // подтверждённая им строка приходила в следующую выборку как неосуждённая
+    // и оплачивалась заново каждые 15 минут. Замечено на проде 2026-09-29:
+    // одна и та же индийская реклама была разобрана дважды подряд.
+    await runWithTenant(candidate.organizationId, () => stampJudgedRow(
+      candidate.id,
+      "about_subject",
+      now,
+      confidence,
+    ))
   }
 
   return result
