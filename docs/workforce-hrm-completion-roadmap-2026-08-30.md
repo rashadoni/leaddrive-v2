@@ -2684,3 +2684,28 @@ from this worktree.
   three-document GREEN receipt is uncommitted.
 - Next action: checkpoint the receipt, prove implementation fingerprint
   unchanged, obtain receipt-integrity GREEN, then push/open the bounded PR.
+
+## 2026-09-29 — PR #502 future team calendar production release
+
+- Final head `8d58b217f32ea458b140e8c6a6dfdef5e4c7420a` retained the independently
+  GREEN implementation fingerprint. All required exact-head checks passed:
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`.
+- PR #502 merged normally as main
+  `01f5069a732a4879a453c918bca8a52864999401`. Deploy run `36595610621`
+  passed quality/security, SHA-bound standalone build and artifact publish,
+  immutable staging, atomic deploy, built-in smokes and retention cleanup.
+- Independent no-cache TLS probes pinned the public hostname to approved
+  production `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and
+  build-info returned HTTP 200 with exact
+  `artifactSha=01f5069a732a4879a453c918bca8a52864999401` and
+  `builtAt=2026-09-29T16:15:50Z`.
+- Only GitHub `main` through `.github/workflows/deploy.yml` was used. No direct
+  deploy, worktree copy, Azure or retired target/owner was used.
+- `WF-C8-007` remains `PARTIAL`; no task/gate credit changes. Progress remains
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: organization and named-team future calendar
+  create/list are reviewed, merged, deployed and exact-SHA production-verified;
+  successor branch `codex/workforce-completion-part12` starts at that merge.
+- Next action: implement bounded `WF-C8-007d` future employee/AGENT-scope
+  create/list with a tenant-safe named employee directory, locked current-team
+  baseline and no moved/update/delete/request-approval scope.

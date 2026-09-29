@@ -2610,3 +2610,34 @@ corrections as new entries that explicitly supersede the earlier fact.
   frozen; only this GREEN receipt is uncommitted.
 - Next action: commit the three docs, verify runtime fingerprint integrity,
   obtain receipt-only review and then push/open the ≤400 KB PR.
+
+## 2026-09-29 — PR #502 released to production
+
+- Final receipt-integrity review returned GREEN on exact clean head
+  `8d58b217f32ea458b140e8c6a6dfdef5e4c7420a`; all five required exact-head
+  checks then passed: `pr-scope`, `static-checks`, `typecheck`,
+  `runner-policy` and `scan`.
+- PR #502 merged normally at `2026-09-29T16:09:09Z` as main
+  `01f5069a732a4879a453c918bca8a52864999401`; no branch-protection bypass was
+  used.
+- Deploy run `36595610621` completed quality/security, SHA-bound standalone
+  build and artifact publication, immutable staging, atomic production deploy,
+  scheduler/tenant-isolation checks, built-in smokes and artifact retention.
+- Independent no-cache TLS probes forced `app.leaddrivecrm.org` to approved
+  production `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`; `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=01f5069a732a4879a453c918bca8a52864999401` and
+  `builtAt=2026-09-29T16:15:50Z`.
+- Release used only GitHub `main -> .github/workflows/deploy.yml` to
+  `/opt/leaddrive-v2`; no Azure, retired host/owner, direct server deploy or
+  worktree copy was used.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows. Browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN`.
+- Precise stopping point: PR #502 is merged, deploy and independent exact-SHA
+  public smokes are green; successor branch
+  `codex/workforce-completion-part12` is based on that merge SHA.
+- Next action: checkpoint this release receipt, then implement bounded
+  `WF-C8-007d` future AGENT-scope create/list using exact schedule grants,
+  tenant-safe named employee selection and current-team Route baseline;
+  moved-day/update/delete/request-approval remain outside the slice.

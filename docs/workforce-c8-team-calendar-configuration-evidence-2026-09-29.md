@@ -170,3 +170,30 @@ Full typecheck/build/suite, real-Postgres concurrency, browser/AT/device,
 Android/Gradle, load/chaos, signed-device and tenant-pilot remain `NOT RUN`.
 This review adds no completion or gate credit. A final receipt-integrity check
 must confirm these reviewed implementation bytes are unchanged before push.
+
+## PR #502 production release receipt
+
+Final head `8d58b217f32ea458b140e8c6a6dfdef5e4c7420a` preserved the independently
+GREEN 11-path implementation identity byte-for-byte. Required exact-head
+contexts `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`
+all passed; the scope-derived production-build PR job was correctly skipped.
+
+PR #502 merged normally at `2026-09-29T16:09:09Z` as main
+`01f5069a732a4879a453c918bca8a52864999401`. Deploy run `36595610621`
+completed quality/security, SHA-bound standalone build and artifact
+publication, immutable staging, atomic production deployment, scheduler and
+tenant-isolation verification, built-in public smokes and artifact-retention
+cleanup.
+
+Independent no-cache TLS requests pinned `app.leaddrivecrm.org` to the only
+approved production IP `13.140.132.245`:
+
+- `/api/v1/ping` returned HTTP 200 with `{"ok":true}`;
+- `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=01f5069a732a4879a453c918bca8a52864999401` and
+  `builtAt=2026-09-29T16:15:50Z`.
+
+Release used only GitHub `main -> .github/workflows/deploy.yml` to
+`/opt/leaddrive-v2`. No direct production mutation, worktree copy, Azure,
+retired host or retired owner was used. `WF-C8-007` remains `PARTIAL`; no
+task/gate credit changes.
