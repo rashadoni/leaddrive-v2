@@ -3390,3 +3390,25 @@ Result: final visual/performance admission is green through immutable,
 cell-scoped recovery. Next: checkpoint/push the evidence receipt, reconcile
 again with current `origin/main`, open the release PR, and require every
 protected GitHub Actions check before merge or deployment.
+
+## 2026-09-29 — Final pre-PR main reconciliation
+
+- After evidence checkpoint `101879b92`, `origin/main` had advanced eight
+  commits through `b25b4f382`. Merge `e4f0d06ab` integrates that exact snapshot
+  into `codex/support-ux-voip-rashadoni`; the branch is zero commits behind.
+- Incoming changes are confined to Workforce calendar product/tests/docs,
+  shared navigation/voice registration and their AZ/RU/EN dictionary entries.
+  No Support product, evidence harness, rollout or deployment path changed and
+  locale files merged automatically.
+- Resource preflight showed 15 GiB available RAM, 329 GiB free disk and zero
+  current full/partial memory pressure. Post-merge `npm run i18n:check` passes
+  with 23,839 leaf keys in each locale. The Support browser-evidence and shared
+  navigation contracts pass 74/74, and branch-vs-main `git diff --check` is
+  clean.
+- Full TypeScript/build/browser matrices are intentionally not repeated on
+  Contabo. Required protected PR checks own type/build/security admission; the
+  incoming source does not overlap the accepted Support/evidence implementation.
+
+Result: final branch source is reconciled with the latest protected-main
+snapshot and targeted overlap checks are green. Next: checkpoint/push this
+receipt, open the release PR, and wait for every required GitHub Actions check.

@@ -4220,6 +4220,15 @@ Final comparison closure (2026-09-29):
   unresolved cells, and no visual/performance allowance or assertion changed.
   `SUPUX-EVD-001` through `006` and `SUPUX-PERF-002` are closed. Protected PR,
   merge, deployment and production smoke remain separate mandatory gates.
+- Immediately before PR admission, current `origin/main` through `b25b4f382`
+  was merged by `e4f0d06ab`. Its eight commits add Workforce calendar product,
+  tests/docs, navigation/voice registration and matching AZ/RU/EN keys; no
+  Support product, evidence harness, rollout or deploy path changed. The locale
+  files merged without conflict. Post-merge parity is 23,839 leaf keys in each
+  locale, the Support evidence plus shared navigation contracts pass 74/74,
+  branch-vs-main `git diff --check` is clean and the branch is zero commits
+  behind this protected-main snapshot. Repeating already green browser cells
+  is neither required nor substituted for the upcoming protected PR gates.
 
 Current verification evidence (2026-09-05):
 
