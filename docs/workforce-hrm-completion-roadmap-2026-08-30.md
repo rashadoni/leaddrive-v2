@@ -2572,3 +2572,115 @@ from this worktree.
   three-document GREEN receipt is uncommitted.
 - Next action: checkpoint the receipt, prove implementation identity unchanged,
   push PR #500 and require all replacement CI contexts before merge.
+
+## 2026-09-29 — PR #500 future organization calendar production release
+
+- Final head `83a5960227d9245fd515f92d93a6a1ba841ba8ff` retained the
+  independently GREEN implementation fingerprint. All five required exact-head
+  contexts passed: `pr-scope`, `static-checks`, `typecheck`, `runner-policy`
+  and `scan`.
+- PR #500 merged normally as main
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`. Deploy run `36579854359`
+  passed quality/security, SHA-bound standalone build and artifact publication,
+  immutable staging, atomic deployment, built-in smokes and retention cleanup.
+- Independent no-cache TLS probes pinned the public hostname to approved
+  production `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and
+  build-info returned HTTP 200 with exact
+  `artifactSha=b25b4f382ebc8d323b0e975ccf34aee1731379f7` and
+  `builtAt=2026-09-29T14:10:41Z`.
+- Only GitHub `main` through `.github/workflows/deploy.yml` was used. No direct
+  production deploy, worktree copy, Azure or retired target/owner was used.
+- `WF-C8-007` remains `PARTIAL`; no task/gate credit changes. Progress remains
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: organization-scope future calendar authoring is
+  reviewed, merged, deployed and exact-SHA production-verified.
+- Next action: implement bounded `WF-C8-007c` future TEAM-scope create/list on
+  the released calendar surface; employee/moved-day/update/delete/break-policy
+  and real browser/AT evidence stay outside that slice.
+
+## 2026-09-29 — WF-C8-007c future team calendar implementation checkpoint
+
+- Extended the released calendar boundary with exact organization/team scope,
+  tenant-bound named active-team search, selected-team read continuity and
+  future team-only create/list. Missing, inactive and cross-tenant write
+  targets are indistinguishable and fail before any calendar write.
+- Team writes revalidate the active tenant team inside the transaction and use
+  the same organization/date advisory lock as organization writes. Exact
+  replay remains no-op; different state and unique collision fail closed; the
+  calendar row and actor/team audit remain atomic.
+- Route safety is explicit: organization replay uses an independent default
+  baseline, while a team override inherits only the existing organization
+  decision for that date. Caller input still cannot set source, actor, moved
+  date or Route fields.
+- UI adds a bounded named team picker, inactive-team read-only state, latest
+  GET request fencing and mutation-time control freezing. EN/RU/AZ and voice
+  identity copy describe only released behavior.
+- Independent pre-review found and drove remediation of three P2 races/
+  baseline defects; final uncommitted-diff pre-review is GREEN with no P0–P3
+  findings. Frozen exact-head review remains mandatory.
+- Evidence: `docs/workforce-c8-team-calendar-configuration-evidence-2026-09-29.md`.
+- No progress credit is claimed. `WF-C8-007` remains `PARTIAL`; progress stays
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation, remediations and pre-review are
+  complete; final author verification/evidence are being frozen for commit.
+- Next action: rerun the bounded current-tree gates, checkpoint explicit paths,
+  compute exact identities and require a fresh author-independent frozen-head
+  review before push.
+
+## 2026-09-29 — WF-C8-007c author verification complete
+
+- Current tree PASS: calendar/domain/API/UI/resolver/navigation 6 files / 97
+  tests; Workforce auth wrapper 30; RLS route coverage 3; affected voice
+  coverage/evaluation 21; scoped ESLint on all eight changed TS/TSX paths;
+  i18n 23,857/0/0; whitespace.
+- Full typecheck/build/suite, real-Postgres race, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  host policy. Exact-head CI remains required.
+- No completion or gate credit changes: `WF-C8-007` is still `PARTIAL`,
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation, evidence and bounded author checks
+  are complete and uncommitted.
+- Next action: checkpoint only explicit slice paths, fingerprint the exact diff
+  and obtain a fresh full-range author-independent frozen-head review.
+
+## 2026-09-29 — WF-C8-007c first frozen review P3 remediation
+
+- Exact clean head `0ba46fa7b72443c8bc63304f8ae5c88fabf7a3c7` was reviewed over the
+  complete 15-path PR range. Verdict: RED with `P0=0`, `P1=0`, `P2=0`,
+  `P3=1`; no runtime finding was reported.
+- The evidence overstated response minimization and inactive-team rejection.
+  Correct contract: directory/team context includes the stable team ID plus
+  name/code; same-tenant inactive selected teams remain GET-readable; GET 404
+  covers missing/cross-tenant, while POST 404 covers missing/inactive/
+  cross-tenant; calendar-row IDs and provenance fields remain omitted.
+- Evidence is corrected without changing implementation, tests or i18n. The
+  rejected identity is ineligible for merge and a new exact-head review is
+  mandatory.
+- Progress is unchanged: `WF-C8-007` remains `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the sole P3 is remediated in docs but uncommitted.
+- Next action: checkpoint the three evidence/continuity documents, prove the
+  runtime fingerprint unchanged and request a fresh full-range frozen review.
+
+## 2026-09-29 — WF-C8-007c frozen review GREEN
+
+- Fresh author-independent review of exact clean head
+  `2ed08b6dc4c2e82e797004effa8530ad44e19d8c` against live main/merge-base
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7` returned GREEN with
+  `P0=P1=P2=P3=0`.
+- Full identity matched 15 paths / 117,683 bytes /
+  `76de83da90a744dee5843a157b5886dff2e5c4fee634180570af22ece1683770`;
+  non-doc implementation identity remained 11 paths / 94,369 bytes /
+  `88fb46ce11f08978765c4406df6278f8a954f0f14a42daddd1679839f5b212dd`.
+- Prior baseline/race findings and the evidence P3 are closed. Append-only
+  prefixes, focused 32/32 regression and the unchanged broader verification
+  evidence were independently confirmed.
+- Full local typecheck/build/suite, real-Postgres race, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN`;
+  exact-head CI is mandatory.
+- `WF-C8-007` remains `PARTIAL`; progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: reviewed implementation is frozen; only this
+  three-document GREEN receipt is uncommitted.
+- Next action: checkpoint the receipt, prove implementation fingerprint
+  unchanged, obtain receipt-integrity GREEN, then push/open the bounded PR.

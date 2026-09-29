@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { WORKFORCE_CALENDAR_EDITOR_KINDS } from "@/components/workforce/workforce-calendar-configuration"
+import {
+  WORKFORCE_CALENDAR_EDITOR_KINDS,
+  beginLatestCalendarRequest,
+  finishLatestCalendarRequest,
+  isLatestCalendarRequest,
+} from "@/components/workforce/workforce-calendar-configuration"
 
 function source(path: string): string {
   return readFileSync(path, "utf8")
@@ -21,9 +26,9 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(broadConfigurationPage).not.toContain("<WorkforceCalendarConfiguration />")
     expect(navigation).toContain('{ href: "/workforce/calendar", icon: CalendarDays, tKey: "workforceCalendar", group: "HRM", capability: "workforce-hrm" }')
     expect(navigation).toContain("legacy CRM permissionScope")
-    expect(component).toContain('request("GET")')
-    expect(component).toContain('request("POST", { date, kind, name })')
-    expect(component).toContain('"/api/v1/workforce/configuration/calendar"')
+    expect(component).toContain('request<CalendarData>("GET", undefined, requestSelection, attempt.controller.signal)')
+    expect(component).toContain('request<Record<string, unknown>>("POST", {')
+    expect(component).toContain('/api/v1/workforce/configuration/calendar')
     expect(component).not.toContain("/api/v1/mtm/work-calendar")
     expect(component).not.toContain("isAdministrator")
     expect(component).not.toContain('role === "admin"')
@@ -36,7 +41,20 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(component).toContain("exact-state retry contract")
   })
 
-  it("offers only the three released additive organization override kinds", () => {
+  it("lets only the newest scope, team or search request commit and finish loading", () => {
+    const state = { sequence: 0, controller: null as AbortController | null }
+    const organizationAttempt = beginLatestCalendarRequest(state)
+    const teamAttempt = beginLatestCalendarRequest(state)
+
+    expect(organizationAttempt.controller.signal.aborted).toBe(true)
+    expect(isLatestCalendarRequest(state, organizationAttempt)).toBe(false)
+    expect(finishLatestCalendarRequest(state, organizationAttempt)).toBe(false)
+    expect(isLatestCalendarRequest(state, teamAttempt)).toBe(true)
+    expect(finishLatestCalendarRequest(state, teamAttempt)).toBe(true)
+    expect(state.controller).toBeNull()
+  })
+
+  it("offers only the three released additive organization/team override kinds", () => {
     expect(WORKFORCE_CALENDAR_EDITOR_KINDS).toEqual([
       "PUBLIC_HOLIDAY",
       "COMPANY_HOLIDAY",
@@ -48,6 +66,9 @@ describe("Workforce calendar configuration UI contract", () => {
   })
 
   it("uses named inputs, inline feedback, touch targets and responsive divider rhythm", () => {
+    expect(component).toContain('id="workforce-calendar-scope"')
+    expect(component).toContain('id="workforce-calendar-team"')
+    expect(component).toContain('id="workforce-calendar-team-search"')
     expect(component).toContain('id="workforce-calendar-date"')
     expect(component).toContain('id="workforce-calendar-kind"')
     expect(component).toContain('id="workforce-calendar-name"')
@@ -59,8 +80,27 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(component).toContain("motion-reduce:animate-none")
   })
 
-  it("keeps storage and Route-planning fields out of the browser contract", () => {
-    expect(component).not.toMatch(/\bteamId\b/)
+  it("freezes every selection and draft control until a submitted mutation is reconciled", () => {
+    expect(component.match(/disabled=\{saving\}/g)).toHaveLength(6)
+    for (const control of [
+      "workforce-calendar-scope",
+      "workforce-calendar-team",
+      "workforce-calendar-team-search",
+      "workforce-calendar-date",
+      "workforce-calendar-kind",
+      "workforce-calendar-name",
+    ]) {
+      const controlSource = component.slice(component.indexOf(`id=\"${control}\"`))
+      expect(controlSource.slice(0, 320), `${control} must be frozen while saving`).toContain("disabled={saving}")
+    }
+  })
+
+  it("uses a named bounded team picker and keeps unrelated storage and Route fields out of the browser", () => {
+    expect(component).toContain('team.name')
+    expect(component).toContain('team.code')
+    expect(component).toContain('maxLength={100}')
+    expect(component).toContain('teamDirectory.hasMore')
+    expect(component).toContain('scope === "TEAM" ? { teamId } : {}')
     expect(component).not.toMatch(/\bagentId\b/)
     expect(component).not.toMatch(/\bmovedToDate\b/)
     expect(component).not.toMatch(/\broutePlanningAllowed\b/)
@@ -74,21 +114,41 @@ describe("Workforce calendar configuration UI contract", () => {
       "subtitle",
       "refresh",
       "loading",
+      "scope",
+      "organizationScopeHint",
+      "teamScopeHint",
+      "team",
+      "selectTeam",
+      "inactiveTeam",
+      "teamSearch",
+      "teamSearchPlaceholder",
+      "searchTeams",
+      "teamSearchNarrower",
+      "noTeams",
+      "selectTeamHint",
+      "teamInactive",
       "date",
       "kind",
       "name",
       "namePlaceholder",
-      "createHint",
+      "createHintOrganization",
+      "createHintTeam",
       "create",
-      "created",
+      "createdOrganization",
+      "createdTeam",
       "alreadyRecorded",
-      "upcomingTitle",
+      "upcomingTitleOrganization",
+      "upcomingTitleTeam",
       "upcomingHint",
-      "empty",
+      "emptyOrganization",
+      "emptyTeam",
       "unnamed",
       "dateNotFuture",
       "dateRangeInvalid",
       "overrideExists",
+      "teamUnavailable",
+      "teamSearchInvalid",
+      "scopeInvalid",
       "invalidInput",
       "accessRequired",
       "requestFailed",
@@ -101,6 +161,9 @@ describe("Workforce calendar configuration UI contract", () => {
         expect((localized[key] as string).trim(), `${locale}.${key} is empty`).not.toBe("")
       }
       const kinds = localized.kinds as Record<string, unknown>
+      const scopes = localized.scopes as Record<string, unknown>
+      expect(scopes.ORGANIZATION).toEqual(expect.any(String))
+      expect(scopes.TEAM).toEqual(expect.any(String))
       expect(localized.outcomeUnknown).not.toBe(localized.requestFailed)
       for (const kind of [
         "WORKING_DAY",
