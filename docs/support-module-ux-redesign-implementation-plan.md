@@ -808,6 +808,38 @@ Next: checkpoint and push the accessibility correction, repeat the aggregate
 exact-SHA mutating evidence, inspect all 54 static cells and 17 flow reports,
 then execute the complete responsive matrix and visual comparison.
 
+Aggregate acceptance and full-matrix diagnostic (2026-09-29):
+
+- Exact-SHA aggregate rerun `36521929861`, artifact `11014102077`, is green on
+  `eba8827d1`: 54/54 unique static cells pass and all 17 operational flow
+  reports have zero failed results. Every runtime, Axe, accessible-name, touch,
+  overflow, primary-work, environment, missing-alt, duplicate-ID and zero-
+  keyboard-stop counter is zero. The six prior failures all pass; the terminal
+  closure state now records one keyboard stop. Ticket Detail, Skill Routing and
+  terminal Closure screenshots were inspected and accepted.
+- The complete 1296-cell high-profile run `36524694546` reached the workflow's
+  90-minute limit during capture and was cancelled before completion. Its
+  partial artifact contains 1134 cells: 1072 passed; 32 pre-timeout failures
+  are actionable mobile UX defects; the remaining failed/blocked records are
+  localhost connection refusals produced as the timed-out job stopped the app.
+  The partial artifact is diagnostic only and does not satisfy a gate.
+- The actionable failures are not waived: the mobile Ticket Detail case spine
+  now scrolls horizontally instead of consuming three vertical rows; mobile
+  entitlement filters collapse behind a semantic summary; template rules and
+  Skill Routing queues precede secondary metadata/help on mobile; and new-
+  ticket metadata uses a foreground with sufficient contrast on its orange
+  recovery highlight. Desktop ordering and all controls remain available.
+- Workflow execution budget is raised from 90 to 180 minutes so one unchanged
+  1296-cell artifact can serve as the required visual baseline. No scenario,
+  role, locale, theme, viewport, assertion, performance budget, Axe rule or
+  visual threshold is removed or relaxed. Targeted source audit is green: five
+  changed visible TSX files have zero anti-pattern findings, scoped ESLint has
+  zero errors/warnings, and ten affected suites pass 86/86 assertions.
+
+Next: checkpoint and push the mobile/foundation correction, run a 66-cell
+AZ/RU/EN × light/dark × mobile exact-SHA mutating validation for the five
+affected scenarios, then repeat the full 1296-cell capture and visual compare.
+
 ## 8. Workstream 1 — Service Desk
 
 **Status: DONE — full acceptance matrix, CI, merge, deployment and smoke green**

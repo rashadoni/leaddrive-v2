@@ -303,6 +303,7 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("support-ux-visual-compare.test.ts");
     expect(workflow).toContain("scripts/support-ux-visual-compare.mjs");
     expect(workflow).toContain("runs-on: ubuntu-24.04");
+    expect(workflow).toContain("timeout-minutes: 180");
     expect(workflow).not.toContain("leaddrive-builder");
     expect(workflow).toContain("npx playwright install --with-deps chromium");
     expect(workflow).not.toMatch(/\bsudo\b/);

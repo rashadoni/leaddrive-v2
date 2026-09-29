@@ -427,8 +427,8 @@ export default function EntitlementTemplatesPage() {
         <div role="alert" className="flex min-h-64 flex-col items-center justify-center rounded-xl border p-6 text-center" data-testid="entitlement-templates-load-error"><AlertCircle className="h-8 w-8 text-destructive" /><h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{error || t("loadFailed")}</p>{errorRetryable && <Button variant="outline" className="mt-4 min-h-11" onClick={() => void loadTemplates()} data-testid="entitlement-templates-load-retry"><RotateCcw />{t("retry")}</Button>}</div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <section className="min-w-0 space-y-4" aria-label={t("editorTitle", { level: te(`supportLevels.${activeLevel}`) })}>
-            <section aria-labelledby="template-meta-title" className="rounded-xl border bg-card p-3 sm:p-4">
+          <section className="flex min-w-0 flex-col gap-4" aria-label={t("editorTitle", { level: te(`supportLevels.${activeLevel}`) })}>
+            <section aria-labelledby="template-meta-title" className="order-2 rounded-xl border bg-card p-3 sm:order-1 sm:p-4">
               <div className="mb-2 flex items-center justify-between gap-3 sm:mb-3"><h2 id="template-meta-title" className="text-base font-semibold">{t("editorTitle", { level: te(`supportLevels.${activeLevel}`) })}</h2>{isDirty && <Badge variant="secondary" className="gap-1"><Clock3 className="h-3 w-3" />{t("draft")}</Badge>}</div>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
                 <div className="space-y-1"><Label htmlFor="template-name">{t("name")}</Label><Input id="template-name" value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} className="min-h-11" disabled={!permissions.canWrite} /></div>
@@ -437,7 +437,7 @@ export default function EntitlementTemplatesPage() {
               <div className="mt-3 space-y-1"><Label htmlFor="template-description">{t("description")}</Label><Textarea id="template-description" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder={t("descriptionPlaceholder")} rows={2} className="!min-h-[60px] sm:!min-h-[80px]" disabled={!permissions.canWrite} /></div>
             </section>
 
-            <section aria-labelledby="template-rules-title" className="rounded-xl border bg-card p-3 sm:p-4">
+            <section aria-labelledby="template-rules-title" className="order-1 rounded-xl border bg-card p-3 sm:order-2 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1"><h2 id="template-rules-title" className="text-base font-semibold">{t("rules")}</h2><p className="mt-0.5 text-xs text-muted-foreground">{t("orderHint")}</p></div>
                 {permissions.canWrite && <Button type="button" variant="outline" aria-label={t("addRule")} className="h-11 w-11 shrink-0 px-0 sm:w-auto sm:px-5" onClick={addDefinition} disabled={draft.definitions.length >= 30} data-testid="entitlement-template-add-rule"><Plus /><span className="sr-only sm:not-sr-only">{t("addRule")}</span></Button>}

@@ -2962,3 +2962,41 @@ Result: the aggregate failure is diagnosed and corrected without weakening any
 gate. Next: checkpoint and push this correction, repeat exact-SHA aggregate
 mutation evidence, then inspect all static and operational reports before the
 complete matrix and visual comparison.
+
+## 2026-09-29 — Aggregate green; full matrix exposed mobile defects and timeout
+
+- Exact-SHA aggregate rerun `36521929861` on `eba8827d1`, artifact
+  `11014102077`, is accepted: 54/54 static cells pass, all 17 operational flow
+  files contain only passed results, and every counted runtime, Axe,
+  accessibility, touch, overflow, environment, primary-work, missing-alt,
+  duplicate-ID and zero-keyboard-stop failure total is zero. The six corrected
+  cells now pass; screenshots for Ticket Detail, Skill Routing and terminal
+  Closure were manually inspected.
+- Full high-profile run `36524694546` attempted the required 1296 role/locale/
+  theme/viewport cells but GitHub cancelled capture at the workflow's exact
+  90-minute limit. The job still uploaded a partial 107 MB artifact containing
+  1134 results. It is diagnostic only and is not accepted as a gate.
+- The partial report proves 1072 cells passed and exposed 32 real pre-timeout
+  mobile defects: Ticket Detail comments fell 8–24 px beyond the 768 px
+  primary-work threshold (40 px in AZ); entitlement rows, template rules and
+  Skill Routing queues appeared below the first viewport in longer locales;
+  and one highlighted new ticket used muted 12 px metadata at 4.21:1. Later
+  connection-refused/blocked results coincide with timeout stopping localhost
+  and are not misclassified as product acceptance evidence.
+- Corrected all real findings without changing evidence logic. The Ticket
+  Detail fact spine is a compact horizontal strip on mobile; entitlement
+  filters are semantically collapsible on mobile but always visible from `sm`;
+  rules and queue work move ahead of secondary metadata/help on mobile while
+  desktop order is preserved; highlighted ticket metadata uses an AA-safe
+  foreground. The workflow time budget is 180 minutes so a single complete
+  artifact remains usable as the visual baseline; matrix size and every
+  threshold are unchanged.
+- Self-audit is green: five changed visible TSX files pass the anti-pattern
+  scan with zero findings; scoped ESLint has zero errors/warnings; and ten
+  affected UX/evidence suites pass 86/86 assertions. Heavy build/browser work
+  remains in GitHub Actions.
+
+Result: aggregate Foundation evidence is green and all partial-matrix product
+findings are corrected; the incomplete timed-out matrix is not accepted. Next:
+checkpoint and push, run the 66-cell affected mobile mutating validation, then
+repeat the complete 1296-cell capture and visual comparison.

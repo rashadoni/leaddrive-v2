@@ -118,7 +118,7 @@ export default function SkillRoutingPage() {
       leading={<Network className="h-5 w-5" aria-hidden="true" />}
       utilities={<><TourReplayButton tourId="skillRouting" /><HelpButton slug="skill-routing" /></>}
     >
-      <details className="rounded-lg border px-3 py-2 text-sm">
+      <details className="order-last rounded-lg border px-3 py-2 text-sm lg:order-none">
         <summary className="min-h-11 cursor-pointer rounded-sm py-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("howItWorksTitle")}</summary>
         <p className="pb-2 text-muted-foreground">{t("howItWorksBody")}</p>
       </details>

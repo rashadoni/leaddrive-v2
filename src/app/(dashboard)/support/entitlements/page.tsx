@@ -906,7 +906,12 @@ function EntitlementToolbar({
   const update = (patch: Partial<EntitlementFilters>) => onChange({ ...filters, ...patch })
   return (
     <section aria-label={t("filtersTitle")} className="rounded-xl border bg-card p-2" data-testid="support-entitlements-filters">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+      <details className="group">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden">
+          <span>{t("filtersTitle")}{activeCount > 0 ? ` · ${activeCount}` : ""}</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+        </summary>
+        <div className="hidden grid-cols-2 gap-2 group-open:grid sm:!grid lg:grid-cols-5">
         <Select aria-label={t("company")} value={filters.companyId} onChange={(event) => update({ companyId: event.target.value })} className="min-h-11" data-testid="support-entitlements-filter-company">
           <option value="">{t("allCompanies")}</option>
           {data.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
@@ -930,7 +935,8 @@ function EntitlementToolbar({
           <option value="overdue">{t("riskOverdue")}</option>
           <option value="atRisk">{t("riskAtRisk")}</option>
         </Select>
-      </div>
+        </div>
+      </details>
       <div className="mt-2 flex min-h-8 items-center justify-between gap-2 border-t px-1 pt-2 text-xs text-muted-foreground">
         <span>{t("resultCount", { count: resultCount })}{activeCount > 0 ? ` · ${t("filtersApplied", { count: activeCount })}` : ""}</span>
         {activeCount > 0 && <Button variant="ghost" className="min-h-11" onClick={onReset} data-testid="support-entitlements-toolbar-reset"><RotateCcw />{t("resetFilters")}</Button>}
