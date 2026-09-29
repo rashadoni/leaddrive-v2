@@ -42,6 +42,8 @@ export type HelpSlug =
   | "skill-routing"
   | "sequences"
   | "crm-dashboard"
+  | "help-center"
+  | "ai-assistant"
   | "campaigns"
   | "segments"
   | "campaign-roi"
@@ -806,6 +808,40 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
       en: lazy(() => import("./crm-dashboard/en")),
       ru: lazy(() => import("./crm-dashboard/ru")),
       az: lazy(() => import("./crm-dashboard/az")),
+    },
+  },
+  "help-center": {
+    title: {
+      en: "Using Help",
+      ru: "Как пользоваться справкой",
+      az: "Köməkdən istifadə",
+    },
+    subtitle: {
+      en: "Open the right guide, understand what is contextual, and return to your work without losing your place.",
+      ru: "Открывайте справку нужного раздела, понимайте её контекст и возвращайтесь к работе без потери места.",
+      az: "Düzgün bölmə təlimatını açın, onun kontekstini anlayın və yerinizi itirmədən işə qayıdın.",
+    },
+    content: {
+      en: lazy(() => import("./help-center/en")),
+      ru: lazy(() => import("./help-center/ru")),
+      az: lazy(() => import("./help-center/az")),
+    },
+  },
+  "ai-assistant": {
+    title: {
+      en: "Da Vinci AI Assistant",
+      ru: "ИИ-ассистент Da Vinci",
+      az: "Da Vinci süni intellekt köməkçisi",
+    },
+    subtitle: {
+      en: "Ask focused CRM questions, read verified results, and review actions before they change data.",
+      ru: "Задавайте точные вопросы по CRM, читайте проверяемые результаты и проверяйте действия до изменения данных.",
+      az: "CRM üzrə dəqiq suallar verin, yoxlanılan nəticələri oxuyun və məlumat dəyişməzdən əvvəl əməliyyatları nəzərdən keçirin.",
+    },
+    content: {
+      en: lazy(() => import("./ai-assistant/en")),
+      ru: lazy(() => import("./ai-assistant/ru")),
+      az: lazy(() => import("./ai-assistant/az")),
     },
   },
   campaigns: {
