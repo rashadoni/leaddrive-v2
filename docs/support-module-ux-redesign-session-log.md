@@ -3292,3 +3292,41 @@ Result: the required data-size and bounded-rendering decision is accepted
 without adding unmeasured virtualization. Next: checkpoint/push this profile
 receipt, capture a representative all-section seven-sample high baseline, and
 compare the exact same matrix and source before any PR/release action.
+
+## 2026-09-29 — First all-section comparison blocked on KB fixture ordering
+
+- Baseline run `36564022376` on exact SHA
+  `d5ff94555547af10b8f9669cd14329caf674e3ae`, artifact `11033040092`, passes
+  56/56 unique cells: all 28 scenarios for administrator or customer at desktop
+  and mobile, EN/light, high profile, canary enabled and seven samples. All
+  runtime, Axe, custom accessibility, touch, overflow, environment and
+  primary-work counters are zero. Load p75 spans 240–510 ms and primary work
+  spans 68–733 px.
+- Every baseline screenshot was inspected in two desktop and two mobile contact
+  sheets; the only potentially dense Portal Users mobile capture was enlarged
+  separately and accepted. No composition defect was found.
+- Exact compatible compare run `36568406862`, artifact `11036680896`, failed
+  five cells and is not accepted. Knowledge Base desktop/mobile and customer
+  Portal Knowledge desktop/mobile exceeded the unchanged 0.5% pixel threshold
+  at 0.696%, 1.530%, 0.542% and 2.277%. Direct image inspection shows the two
+  seeded articles swapping row order, not a hidden threshold or unknown visual
+  change. Knowledge Base mobile load p75 was 487 ms versus 355 ms baseline
+  (455 ms limit); Skill Routing mobile was 516 versus 389 ms (489 ms limit).
+  Those timing results remain gate failures even though the source SHA is
+  identical and Skill Routing's screenshot is byte-identical.
+- Root cause of the visual instability is explicit: both KB rows were created
+  concurrently with default `createdAt`, while internal and portal list APIs
+  sort only by `createdAt desc`; independent databases can return the tie in a
+  different order. The seed now assigns distinct fixture-epoch created/updated
+  timestamps, and a regression contract requires both pins.
+- Resource preflight reported 15 GiB available RAM, 329 GiB disk free and zero
+  current memory pressure. Scoped ESLint passes with no findings; the focused
+  browser evidence contract passes 18/18; `git diff --check` is clean. No
+  visual threshold, performance allowance, matrix dimension or assertion was
+  modified.
+
+Result: release admission remains blocked, and the nondeterministic fixture is
+corrected without weakening a gate. Next: checkpoint/push the correction,
+integrate the nine current-main commits (no Support/evidence overlap), record
+post-merge parity/contracts, then run a new exact-SHA 56-cell baseline and
+comparison pair.

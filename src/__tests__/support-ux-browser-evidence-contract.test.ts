@@ -14,6 +14,7 @@ const workflow = readFileSync(
   ".github/workflows/support-ux-evidence.yml",
   "utf8",
 );
+const evidenceSeed = readFileSync("scripts/seed-support-ux-evidence.ts", "utf8");
 const nextConfig = readFileSync("next.config.ts", "utf8");
 const sidebar = readFileSync("src/components/sidebar.tsx", "utf8");
 const dashboardLayout = readFileSync("src/app/(dashboard)/layout.tsx", "utf8");
@@ -28,6 +29,15 @@ const flowRunners = readdirSync("scripts")
   .map((file) => readFileSync(`scripts/${file}`, "utf8"));
 
 describe("Support UX browser evidence contract", () => {
+  it("pins independently ordered Knowledge Base fixtures for repeatable visual comparison", () => {
+    expect(evidenceSeed).toContain("const primaryKbCreatedAt = new Date(EVIDENCE_FIXTURE_EPOCH_MS + 2 * 24 * 60 * 60 * 1000)");
+    expect(evidenceSeed).toContain("const secondaryKbCreatedAt = new Date(EVIDENCE_FIXTURE_EPOCH_MS + 1 * 24 * 60 * 60 * 1000)");
+    expect(evidenceSeed.match(/createdAt: primaryKbCreatedAt/g)).toHaveLength(1);
+    expect(evidenceSeed.match(/updatedAt: primaryKbCreatedAt/g)).toHaveLength(1);
+    expect(evidenceSeed.match(/createdAt: secondaryKbCreatedAt/g)).toHaveLength(1);
+    expect(evidenceSeed.match(/updatedAt: secondaryKbCreatedAt/g)).toHaveLength(1);
+  });
+
   it("covers every Support destination and the nested customer/case flows", () => {
     for (const path of [
       "/tickets",

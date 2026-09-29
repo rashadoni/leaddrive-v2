@@ -4159,6 +4159,30 @@ Final data-profile evidence (2026-09-29):
   PERF-002 alone remains open until a compatible baseline/compare proves no
   material regression.
 
+First final-comparison diagnostic (2026-09-29):
+
+- Exact-SHA baseline run `36564022376`, artifact `11033040092`, passes all 56
+  admin/customer × 28-scenario × desktop/mobile cells with seven samples, high
+  profile and canary enabled. Every static failure counter is zero. All 56
+  screenshots were inspected through desktop/mobile contact sheets; Portal
+  Users mobile was also enlarged separately and no blocking composition defect
+  was found.
+- Same-SHA compare `36568406862`, artifact `11036680896`, correctly failed
+  five cells rather than admitting release. Knowledge Base desktop/mobile and
+  customer Portal Knowledge desktop/mobile exceeded the 0.5% pixel threshold
+  because two fixture articles swapped order. The seed created them in
+  `Promise.all` with effectively tied default timestamps while both list APIs
+  sort only by `createdAt desc`, so PostgreSQL ordering differed across the two
+  isolated databases. Knowledge Base mobile and Skill Routing mobile also had
+  two load samples each above the relative allowance; those timing failures
+  remain failures and require the replacement pair.
+- The evidence seed now pins distinct stable created/updated timestamps for
+  both Knowledge Base rows, with a browser-contract regression test. Scoped
+  ESLint is clean, the focused contract passes 18/18 and `git diff --check` is
+  clean. No pixel threshold, performance allowance, matrix dimension or
+  assertion changed. A new integrated exact-SHA baseline and comparison remain
+  mandatory.
+
 Current verification evidence (2026-09-05):
 
 - Checkpoint `1624cd66f` adds a fail-closed, SHA-bound browser evidence runner and

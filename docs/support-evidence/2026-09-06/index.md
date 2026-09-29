@@ -69,6 +69,8 @@ baseline fail the workflow. Capture is baseline material, not a visual compare.
 | `36555323681` | `9dd18518f` | `11029402390` | Profile 5, seven samples: 12/12 | Accepted |
 | `36557478393` | `9dd18518f` | `11030325874` | Profile 50, seven samples: 12/12 | Accepted |
 | `36559389503` | `9dd18518f` | `11030487883` | Profile 500, seven samples: 12/12; all six VoIP density contracts matched | Accepted |
+| `36564022376` | `d5ff94555` | `11033040092` | Final candidate baseline: 56/56 all-section desktop/mobile cells green, seven samples | Accepted baseline material; all screenshots manually reviewed |
+| `36568406862` | `d5ff94555` | `11036680896` | Exact compare: 51/56; four KB ordering pixel failures and two mobile load-p75 regressions across five cells | Diagnostic only; release remains blocked, no gate waived |
 
 The workflow has a three-hour bound without reducing the matrix. The earlier
 90-minute artifact is retained only to prove which product defects were found;
@@ -111,6 +113,12 @@ as application failures or passes.
   preserves 20/25 rendered rows and all six VoIP results match `500 total / 20
   pages / 25 rendered`, supporting existing pagination instead of
   virtualization. Representative captures for every profile were inspected.
+- The first all-section final baseline passes 56/56 and its screenshots are
+  manually accepted. Its comparison is not accepted: tied Knowledge Base
+  fixture timestamps caused article-order pixel changes, while two mobile p75
+  results also exceeded the unchanged relative allowance. The seed correction
+  pins distinct Knowledge Base timestamps; a replacement exact-SHA pair is
+  required.
 
 ### Source evidence at canary checkpoint `38890a3b7`
 

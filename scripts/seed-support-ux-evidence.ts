@@ -270,6 +270,11 @@ async function main(): Promise<void> {
   const kbCategory = await prisma.kbCategory.create({
     data: { organizationId: organization.id, name: "Getting started", sortOrder: 10 },
   })
+  // Both list APIs order by createdAt descending. Promise.all otherwise gives
+  // these rows effectively tied timestamps whose database order can change
+  // between independent visual baseline and comparison runs.
+  const primaryKbCreatedAt = new Date(EVIDENCE_FIXTURE_EPOCH_MS + 2 * 24 * 60 * 60 * 1000)
+  const secondaryKbCreatedAt = new Date(EVIDENCE_FIXTURE_EPOCH_MS + 1 * 24 * 60 * 60 * 1000)
   const [primaryKbArticle] = await Promise.all([
     prisma.kbArticle.create({
       data: {
@@ -282,6 +287,8 @@ async function main(): Promise<void> {
         tags: ["account", "sign-in"],
         viewCount: 24,
         helpfulCount: 18,
+        createdAt: primaryKbCreatedAt,
+        updatedAt: primaryKbCreatedAt,
       },
     }),
     prisma.kbArticle.create({
@@ -295,6 +302,8 @@ async function main(): Promise<void> {
         tags: ["tickets"],
         viewCount: 16,
         helpfulCount: 12,
+        createdAt: secondaryKbCreatedAt,
+        updatedAt: secondaryKbCreatedAt,
       },
     }),
   ])
