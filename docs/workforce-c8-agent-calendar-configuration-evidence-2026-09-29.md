@@ -216,3 +216,36 @@ Fresh author-independent full-range review returned GREEN with
 This GREEN review adds no task or gate credit. Only this receipt changes after
 the reviewed head; receipt-integrity review must prove the implementation
 identity unchanged before push.
+
+## 2026-09-29 — PR #503 production release
+
+- Final receipt head `9b0cf7f7a46ca2d55cad635c9346b05612b2ce58` passed an
+  author-independent receipt-integrity review with `P0=P1=P2=P3=0`. The
+  non-document identity remained exactly 11 paths / 103,986 bytes /
+  `0891d37e861491d2a94acd056e1088651d28ce4f0a902923222e6893ab332d83`.
+- PR #503 stayed within the review bound at 15 paths / 140,801 bytes and was
+  `CLEAN` and `MERGEABLE`. Required `pr-scope`, `static-checks`, `typecheck`,
+  `runner-policy` and `scan` checks all passed; the scope-controlled PR
+  production-build job was correctly skipped. No bypass or weakened gate was
+  used.
+- The PR merged normally as main
+  `5e1a8ffcbbe8fb0fcce592e9755ecabff5072706`. Deploy run `36610432747`
+  completed successfully through quality/security gates, SHA-stamped
+  standalone build, immutable artifact publication, production staging,
+  atomic deployment, built-in smoke checks and artifact retention cleanup.
+- Independent no-cache TLS probes pinned `app.leaddrivecrm.org` to the approved
+  production host `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`, and `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=5e1a8ffcbbe8fb0fcce592e9755ecabff5072706` and
+  `builtAt=2026-09-29T18:20:33Z`.
+- Only GitHub `main -> .github/workflows/deploy.yml ->
+  13.140.132.245:/opt/leaddrive-v2` was used. No direct server deployment,
+  worktree copy, Azure, retired host or retired owner was used.
+
+`WF-C8-007` remains `PARTIAL`: moved-day, update/delete governance,
+break-policy and real browser/AT acceptance remain open. Progress therefore
+stays `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE
+rows. The successor branch `codex/workforce-completion-part13` starts from the
+verified merge. The next bounded slice is `WF-C8-007e`: atomic reciprocal
+organization/team moved-day create/list without schema change; AGENT,
+update/delete, repair, bulk and Route mutation remain excluded.

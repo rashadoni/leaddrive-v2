@@ -2804,3 +2804,33 @@ from this worktree.
   this three-document GREEN receipt is uncommitted.
 - Next action: commit the receipt, verify non-doc identity is byte-identical,
   obtain receipt-integrity GREEN, then push/open the bounded PR.
+
+## 2026-09-29 — WF-C8-007d PR #503 production release receipt
+
+- Receipt-integrity review on final head
+  `9b0cf7f7a46ca2d55cad635c9346b05612b2ce58` was GREEN with
+  `P0=P1=P2=P3=0`; the reviewed non-doc fingerprint remained exactly 11 paths
+  / 103,986 bytes /
+  `0891d37e861491d2a94acd056e1088651d28ce4f0a902923222e6893ab332d83`.
+- PR #503 was 15 paths / 140,801 bytes, `CLEAN` and `MERGEABLE`. Required
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan` passed,
+  and it merged normally as main
+  `5e1a8ffcbbe8fb0fcce592e9755ecabff5072706` without bypass.
+- Deploy run `36610432747` succeeded through full quality/security, SHA-bound
+  production build/artifact, atomic deploy, built-in smoke and retention.
+  Independent no-cache TLS probes pinned to `13.140.132.245` returned HTTP 200
+  from `/api/v1/ping` and exact
+  `artifactSha=5e1a8ffcbbe8fb0fcce592e9755ecabff5072706` from
+  `/api/v1/public/build-info` (`builtAt=2026-09-29T18:20:33Z`).
+- Release routing was exclusively GitHub `main -> deploy.yml ->
+  13.140.132.245:/opt/leaddrive-v2`; no direct deploy or retired route was
+  used.
+- `WF-C8-007` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows. Remaining acceptance
+  is moved-day, update/delete governance, break-policy and real browser/AT.
+- Precise stopping point: employee future-calendar create/list is reviewed,
+  merged, deployed and exact-SHA production-verified; successor branch
+  `codex/workforce-completion-part13` is based on that merge.
+- Next action: implement bounded `WF-C8-007e` atomic organization/team
+  moved-day pair create/list, explicitly excluding AGENT, update/delete,
+  repair/backfill, bulk authoring and Route mutation.

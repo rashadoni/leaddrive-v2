@@ -2762,3 +2762,40 @@ corrections as new entries that explicitly supersede the earlier fact.
   frozen; only the GREEN receipt is uncommitted.
 - Next action: commit the three docs, prove runtime fingerprint integrity,
   require receipt-only review and then push/open the ≤400 KB PR.
+
+## 2026-09-29 — WF-C8-007d PR #503 released to production
+
+- Final receipt-integrity review was author-independent GREEN
+  (`P0=P1=P2=P3=0`) on
+  `9b0cf7f7a46ca2d55cad635c9346b05612b2ce58`. It confirmed a clean tree,
+  exact 15-path / 140,801-byte full identity and unchanged 11-path /
+  103,986-byte runtime/test/i18n fingerprint
+  `0891d37e861491d2a94acd056e1088651d28ce4f0a902923222e6893ab332d83`.
+- PR #503 passed `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and
+  `scan`, stayed `CLEAN`/`MERGEABLE` and merged normally without bypass as
+  main `5e1a8ffcbbe8fb0fcce592e9755ecabff5072706`.
+- SHA-specific deploy run `36610432747` completed SUCCESS: quality/security,
+  standalone build, immutable artifact, staging, atomic production switch,
+  built-in smoke and retention all passed.
+- Independent no-cache TLS checks resolved the public hostname directly to
+  approved production `13.140.132.245`. `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`; `/api/v1/public/build-info` returned HTTP 200 with
+  `artifactSha=5e1a8ffcbbe8fb0fcce592e9755ecabff5072706` and
+  `builtAt=2026-09-29T18:20:33Z`.
+- No direct deploy, worktree copy, Azure, retired production host or retired
+  GitHub owner was used. The only release route was GitHub `main ->
+  .github/workflows/deploy.yml -> 13.140.132.245:/opt/leaddrive-v2`.
+- Progress remains honest and unchanged: `WF-C8-007 PARTIAL`,
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Read-only next-slice preflight found that the existing schema already
+  supports reciprocal moved rows. The safe sub-400 KB boundary is
+  organization/team-only atomic moved-day create/list; AGENT is excluded
+  because approved personal leave/absence can replace a personal calendar row
+  and would orphan the reciprocal half. Legacy mutable MTM endpoints must be
+  fenced from moved-row mutation.
+- Precise stopping point: production receipt is appended on successor branch
+  `codex/workforce-completion-part13` at verified main
+  `5e1a8ffcbbe8fb0fcce592e9755ecabff5072706`; receipt files are uncommitted.
+- Next action: verify and checkpoint the three append-only receipt files, then
+  implement `WF-C8-007e` with deterministic dual-date locks, atomic reciprocal
+  rows/audit, strict replay/conflict handling and explicit scope exclusions.
