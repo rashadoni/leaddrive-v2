@@ -109,3 +109,27 @@ publication.
   changed nothing and left the worktree clean.
 - Full local typecheck/build/suite and browser/Android/load/device/pilot gates
   remain `NOT RUN` under host policy. Exact-head CI remains mandatory.
+
+## PR #497 production release
+
+- Exact reviewed head `ebca5dce8938c5a1ff07c641d67887fd7ac186a1`
+  passed all five required contexts. PR run `36556087209` closed `pr-scope`,
+  `static-checks` and `typecheck`; runner-policy run `36556087203` and secret
+  scan run `36556087058` passed. The scope-conditioned production build was
+  correctly skipped on the PR.
+- PR #497 merged normally, without an admin bypass, as main SHA
+  `6bc764977470d5b6ee65fe9986ced7c45204fcd8`. Deploy workflow
+  `36558084579` completed SUCCESS: quality/security 10m06s, SHA-bound
+  build/publish 15m48s, and atomic production deployment plus workflow smoke
+  7m33s.
+- Separate no-cache TLS probes pinned to approved production
+  `13.140.132.245` returned `/api/v1/ping` `{"ok":true}` and build-info
+  `artifactSha=6bc764977470d5b6ee65fe9986ced7c45204fcd8`, built at
+  `2026-09-29T10:55:40Z`.
+- A separate PR #490 subsequently advanced `main` to
+  `6157c4d94b5e42c8fc9019d9b338873dac65d39b`; that merge is a direct
+  descendant of the verified Workforce release and is not modified by this
+  task. Successor work starts from that current `main`.
+- Browser/AT/contrast/zoom/device acceptance remains `NOT RUN`, so
+  `WF-C8-007` remains `PARTIAL`. Progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.

@@ -321,6 +321,11 @@ export const navItems: NavItem[] = [
   { href: "/workforce/reports/site-transitions", icon: Route, tKey: "workforceSiteTransitions", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
   { href: "/workforce/evidence", icon: Shield, tKey: "workforceEvidence", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
   { href: "/workforce/requests", icon: ClipboardList, tKey: "workforceRequests", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
+  // Grant-aware authorization remains server-side. This narrow page contains
+  // only the SCHEDULE_READ/WRITE-gated calendar surface. Deliberately omit the
+  // legacy CRM permissionScope: an independent Workforce SCHEDULER grant may
+  // belong to any active tenant user, including support/ticketing CRM roles.
+  { href: "/workforce/calendar", icon: CalendarDays, tKey: "workforceCalendar", group: "HRM", capability: "workforce-hrm" },
   { href: "/workforce/exceptions", icon: AlertTriangle, tKey: "workforceExceptions", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce", allowedRoles: ["admin", "superadmin"] },
   { href: "/workforce/configuration", icon: Settings, tKey: "workforceConfiguration", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce", allowedRoles: ["admin", "superadmin"] },
   // Phase 7 — R2 Health Cloud
