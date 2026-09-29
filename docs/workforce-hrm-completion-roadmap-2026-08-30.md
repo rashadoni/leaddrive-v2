@@ -969,9 +969,9 @@ from Route & Field.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C8-001 | P1 | DONE | Web | Add employee Workforce Today web fallback with one valid action, assignment, evidence requirement and sync/server outcome | [`Employee Workforce Today evidence`](./workforce-c8-employee-today-evidence-2026-09-13.md): self-only assignment/segments, exactly one canonical action, fail-closed proof requirements and explicit server/pending-review outcome on `/workforce`; no Route dependency or second state machine |
-| WF-C8-002 | P1 | PARTIAL | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | Scheduled absent employee is visible and explained |
+| WF-C8-002 | P1 | PARTIAL | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | [`bounded manager Today evidence`](./workforce-c8-manager-today-evidence-2026-09-29.md): scheduled roster, immutable/live plan boundary, distinct calendar, previous-open fact and independently authorized persisted exception projection are implemented with stable pagination and safe response minimization; real browser/AT proof that the absent employee is visible and explained remains open |
 | WF-C8-003 | P1 | DONE | Web | Add multi-site day timeline and transition status | [`workforce-c8-multisite-timeline-evidence-2026-09-13.md`](./workforce-c8-multisite-timeline-evidence-2026-09-13.md): the self-only timeline shows Site/Travel/Site plans and append-only arrival/departure/review states without raw proof or physical-presence claims |
-| WF-C8-004 | P1 | PARTIAL | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history now join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, and successful writes refresh history. Replacement frozen review, exact-head CI and production release remain mandatory before DONE. |
+| WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
 | WF-C8-006 | P1 | DONE | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | [`workforce-c8-sites-geofences-evidence-2026-08-30.md`](./workforce-c8-sites-geofences-evidence-2026-08-30.md): administrator-only named sites, future calibrated circles, assignment-only impact preview and immutable revision history; no browser location collection or physical-presence claim |
 | WF-C8-007 | P1 | PLANNED | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | No raw IDs; published history is immutable |
@@ -2075,3 +2075,222 @@ from this worktree.
   GREEN receipt is uncommitted and PR #489 still points to the rejected head.
 - Next action: checkpoint the receipt, obtain exact-head receipt-integrity
   confirmation, push and require all replacement mandatory contexts.
+
+## 2026-09-29 — WF-C8-004 released and DONE
+
+- Final PR head `46f9f602525507d8f3c2b1a6f3148a4ffe323a36` retained the
+  independently reviewed 16-path / 178,681-byte candidate with SHA-256
+  `08f234b95fbb8721d8cfda6190259376a7cbaadc5de2f5b00063c368bd359cb0`.
+  Both independent reviews were GREEN with `P0=P1=P2=P3=0`.
+- Replacement run `36518016723` passed all five required exact-head contexts:
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`. The
+  scope-conditioned PR production-build job was correctly skipped.
+- PR #489 merged normally at `2026-09-29T04:02:27Z` as main SHA
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486`. Deploy run `36519816277`
+  completed SUCCESS at `2026-09-29T04:23:25Z` through the documented GitHub
+  main route, including quality/security, SHA-bound standalone artifact,
+  atomic rollout, scheduler/tenant-isolation checks, public ping/revision/login
+  and hashed-asset smoke, plus artifact retention.
+- Fresh no-cache TLS checks forced `app.leaddrivecrm.org` to the sole approved
+  production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}` and `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=f95ec02952c425e97a470aba5d2e591ffb5b9486` and
+  `builtAt=2026-09-29T04:08:34Z`.
+- `WF-C8-004` is now `DONE`. Progress is `DONE 81/161`, `GATES 14/15`, C8
+  36%, overall 59%, with 80 non-DONE rows. Full local typecheck/build/suite,
+  browser/AT, Android/Gradle, load, signed APK, physical-device and pilot remain
+  `NOT RUN`; exact-head CI supplied the type/build-quality evidence claimed
+  above.
+- Precise stopping point: production serves exact merged main; this release
+  receipt is uncommitted on clean successor branch
+  `codex/workforce-completion-part8`.
+- Next action: checkpoint the three release records, then implement the
+  bounded manager-Today portion of `WF-C8-002` without inferring no-show or
+  widening exception access.
+
+## 2026-09-29 — WF-C8-002 bounded manager Today working checkpoint
+
+- Manager Today now starts from a grant-preauthorized, stable 25-row roster
+  page and loads names/facts only for the exact authorized IDs. Existing
+  workdays use a verified immutable shift snapshot; scheduled employees with
+  no workday use one bounded batch resolver with no N+1 reads.
+- Calendar state, previous-open state and attendance state remain separate.
+  A no-show is never inferred or written by GET: only an unresolved persisted
+  C6 case can project `NO_SHOW`.
+- Exception visibility requires independent `TEAM_EXCEPTION_READ`; ordinary
+  attendance authority returns `exceptions: null`. The queue and Today share
+  a two-phase historical-team/site resolver that now authorizes valid
+  schedule-only cases from their case-bound first segment.
+- The manager UI renders localized EN/RU/AZ plan/calendar/attendance and safe
+  type/status exception badges, uses only a generic exception-queue link and
+  states the non-presence boundary. Pagination merges only an exact live read
+  identity.
+- PASS: 6 targeted files / 59 tests, scoped ESLint on 13 changed TS/TSX paths,
+  JSON, i18n 23,765/0/0 and whitespace. Full local typecheck/build/suite,
+  real browser/AT, Android/Gradle, load, signed-device and pilot are `NOT RUN`.
+- An initial independent helper-only audit found two P2 resolver defects
+  (lower-priority ambiguity and page-wide invalidation); both are repaired.
+  A new clean full-diff review is still mandatory.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: implementation, focused verification and evidence
+  are complete but uncommitted on `codex/workforce-completion-part8`.
+- Next action: checkpoint only the explicit slice paths, freeze/fingerprint
+  the full diff and obtain fresh author-independent full-range review.
+
+## 2026-09-29 — WF-C8-002 historical calendar review repair
+
+- Complete review of exact head `eab14f1d4f7393e7509b46cdf812b3198d470912`
+  was RED with one P2: Today combined a historical live plan with a mutable
+  current-team calendar after same-day transfers.
+- Live rows now resolve calendar overrides with the stable historical team at
+  planned start. Existing-workday rows use only a schema/link/hash-verified
+  immutable schedule calendar and fail closed as `UNAVAILABLE`; current team
+  remains only the roster authorization boundary.
+- Transfer/divergent-calendar and immutable-workday regressions pass. The
+  expanded targeted matrix is 8 files / 72 tests; scoped ESLint on 14
+  candidate TS/TSX paths, JSON, i18n 23,766/0/0 and whitespace pass.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical-device and pilot remain `NOT RUN` under host policy.
+- `WF-C8-002` remains `PARTIAL`; no completion or gate credit is added.
+  Progress stays `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows.
+- Precise stopping point: the reviewed P2 is repaired and bounded checks pass;
+  the changed repair plus receipts are uncommitted.
+- Next action: checkpoint explicit paths, fingerprint the replacement full
+  candidate and obtain a fresh author-independent complete-diff verdict.
+
+## 2026-09-29 — WF-C8-002 replacement review P2x2 repaired
+
+- Independent review matched exact clean range
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486..b446ed7d3fe246e6a9a2071ebade0b9448d7098b`
+  at 21 paths / 166,274 binary bytes / SHA-256
+  `9db5aacacf2e59202871a3f5b0c847da97f9f6a6dd32b4031b616e5b83b0ffcf`
+  and returned RED: `P0=0`, `P1=0`, `P2=2`, `P3=0`.
+- Finding one rejected the planned-start fixed-point rule: a same-day Team A
+  shift followed by a Team B transfer/shift could display the persisted Team A
+  no-show against Team B plan/calendar. Authorized schedule-only no-shows now
+  use their validated case-bound first segment, date, template lifecycle and
+  historical membership. Missing or conflicting contexts fail closed;
+  ordinary no-fact live rows have the explicit canonical rule of one
+  append-only membership snapshot at the server resolution instant.
+- Finding two rejected SELF's independent at-now assignment/policy lookup.
+  Today now supplies its exact team/template/scope context and the employee
+  loader verifies assignment, schedule fields and policy team at that instant;
+  any mismatch closes assignment/action rather than mixing team contexts.
+- PASS: expanded 9-file / 84-test targeted matrix, scoped ESLint on all 16
+  full-candidate TypeScript/TSX paths, JSON catalogs, i18n 23,766/0/0 and
+  whitespace. Full local typecheck/build/suite, browser/AT, Android/Gradle,
+  load, signed-device and pilot remain `NOT RUN` under host policy.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. Neither RED
+  review transfers authority to the changed source.
+- Precise stopping point: both review findings and regressions are repaired
+  in the working tree but not yet checkpointed.
+- Next action: commit only explicit slice paths, fingerprint the complete
+  candidate and obtain a fresh independent full-range review from zero.
+
+## 2026-09-29 — WF-C8-002 SELF no-show START review repair
+
+- Fresh review matched clean exact base/live main/merge-base
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through head
+  `9e812b3f06389573c521ca0d9dcbb19adaa4f66b`: 23 paths / 190,805 binary
+  bytes / SHA-256
+  `66d20f47c67be331bc18287e8e8f6c75d9635c7dd897e6e391c3ebaae64c0c24`.
+  The author-independent verdict was RED: `P0=0`, `P1=0`, `P2=1`, `P3=0`.
+- The remaining P2 was a read/write-context gap: SELF could see and enable
+  `START` under historical Team A no-show context, while POST snapshots at the
+  actual accepted start and could persist Team B after a same-day transfer.
+- Persisted no-show plan/calendar is now display-only. SELF receives no
+  actionable planned context, assignment fails closed and `START` is disabled
+  until a separately reviewed recovery/case flow exists. Ordinary fact-free
+  live rows still share and revalidate one exact route-selected context. No
+  raw client team/template identifier or new write protocol was introduced.
+- PASS: expanded 9-file / 86-test targeted matrix, scoped ESLint on all 16
+  candidate TS/TSX paths, i18n 23,766/0/0, JSON catalogs and whitespace.
+  Full local typecheck/build/suite, browser/AT, Android/Gradle, load,
+  signed-device and pilot remain `NOT RUN` under host policy.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. The RED verdict
+  does not authorize changed source.
+- Precise stopping point: P2 repair, two regressions and receipts are complete
+  in the working tree but not yet checkpointed.
+- Next action: commit explicit paths, recompute the complete identity and
+  obtain a fresh author-independent full-range verdict.
+
+## 2026-09-29 — WF-C8-002 replacement full-range review GREEN
+
+- Fresh author-independent read-only review returned GREEN with
+  `P0=P1=P2=P3=0` on exact live origin/main/local main/merge-base
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through clean head
+  `756731f7d9417e8df16a61414f921025e4aba84a`.
+- Independent full identity matched 23 paths / 200,352 plain-binary bytes /
+  SHA-256
+  `1ef2da7544b2e9003926b00c31369ddea508ed54a30d010226d48173466586c0`;
+  the last repair delta is exactly six paths.
+- All three previous P2 classes are closed: one exact live context for
+  ordinary no-case rows and SELF, validated case-bound context for readable
+  persisted no-show plan/calendar, and display-only/no-START treatment for
+  persisted no-show SELF. Tenant/access/privacy/bounds/snapshots/lifecycle,
+  pagination, UI/i18n and evidence passed without a new finding.
+- Reviewer PASS: 9 files / 86 tests, ESLint 16/16 TS/TSX paths, i18n
+  23,766/0/0, three JSON catalogs and whitespace. Full local
+  typecheck/build/suite, browser/AT, Android/Gradle, load, physical device and
+  pilot remain `NOT RUN` under host policy.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. Review GREEN
+  authorizes publication for exact-head CI but adds no completion/gate credit.
+- Precise stopping point: independently reviewed code/test head is clean;
+  only this three-document GREEN receipt is uncommitted.
+- Next action: checkpoint the receipt, obtain exact-head blob-integrity GREEN,
+  push/open the sub-400 KB PR and require every mandatory context.
+
+## 2026-09-29 — PR #491 typecheck RED and explicit payload repair
+
+- PR #491 exact head `8413cb8a33fabd27ba8c3b0e1685c4e9063fea18` passed
+  `pr-scope`, `static-checks`, `runner-policy` and `scan`; static checks
+  completed in 14m26s, and the scoped production build was correctly skipped.
+  Run `36539911706` failed required `typecheck` after 16m12s.
+- The blocking delta was confined to `today/route.ts`: 39 `TS2339` plus one
+  `TS2322`. Conditional empty/query results lost the selected Prisma shapes,
+  cascading rows to `{}` and the SELF workday away from its accepted input
+  type.
+- Exact Prisma select constants and generated payload types now bind named
+  agents, current/previous workdays, calendar overrides and exception rows;
+  the three parallel query outputs enter typed variables. Filters, ordering,
+  bounds, selected columns, parallelism and response behavior are unchanged;
+  no cast or typecheck-baseline update was introduced.
+- PASS: 9 files / 86 tests, scoped ESLint 16/16 paths, i18n 23,766/0/0, JSON
+  and whitespace. Full local typecheck/build/suite remains `NOT RUN`; only
+  replacement exact-head CI can close the failed compiler gate.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. The previous
+  GREEN is invalidated for changed source.
+- Precise stopping point: compiler repair and bounded checks pass in the
+  working tree but are uncommitted on the open PR branch.
+- Next action: checkpoint explicit paths, obtain fresh independent repair and
+  full-range review, push replacement head and rerun every mandatory context.
+
+## 2026-09-29 — WF-C8-002 type-repair review GREEN
+
+- Fresh independent repair/full-range review returned GREEN with
+  `P0=P1=P2=P3=0` on clean head
+  `43cf8a9836803b91e0303335b153258bab89922a`; live main and merge-base remain
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486`.
+- Full identity matched 23 paths / 212,220 bytes / SHA-256
+  `226af4b828799971a976d173b593eb81768bdf12aa734ea7f532492327d5f3a0`;
+  repair identity matched exactly four paths / 18,150 bytes / SHA-256
+  `07fce38abdbd44c41c7b51843b06a684ffdc3af5cca5c6e2c89f4804f31ae162`.
+- Generated Prisma payload compatibility and parallel tuple assignment passed.
+  Zero-agent/no-query and nonzero concurrency are unchanged; filters, order,
+  bounds, selected columns, query count and response fields remain identical.
+  There is no unsafe cast, suppression or typecheck-baseline weakening.
+- Independent PASS: 9 files / 86 tests, ESLint 16/16, i18n 23,766/0/0, JSON
+  and full/repair whitespace. Full local typecheck/build/suite and physical/
+  browser/load/pilot gates remain `NOT RUN`; exact-head CI is mandatory.
+- `WF-C8-002` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: reviewed repair head is clean and only this
+  three-document GREEN receipt is uncommitted.
+- Next action: checkpoint receipt, obtain exact-head blob-integrity GREEN,
+  push PR #491 replacement head and rerun every required context.

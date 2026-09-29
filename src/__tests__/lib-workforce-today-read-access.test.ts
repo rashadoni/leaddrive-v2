@@ -9,7 +9,10 @@ vi.mock("@/lib/workforce/granular-access-rollout", () => ({
 
 import { readPersistedWorkforceAccessGrants } from "@/lib/workforce/access-grant-resolution"
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
-import { requireWorkforceTodayReadAccess } from "@/lib/workforce/today-read-access"
+import {
+  requireWorkforceTodayReadAccess,
+  resolveWorkforceTodayReadScope,
+} from "@/lib/workforce/today-read-access"
 
 const candidates = [
   { id: "employee-a", teamId: "team-a" },
@@ -67,6 +70,26 @@ describe("Workforce Today granular read access", () => {
       organizationId: "org-workforce",
       principalUserId: "manager-user",
     }))
+  })
+
+  it("derives a technical roster filter before any employee candidate is read", async () => {
+    vi.mocked(workforceGranularAccessEnabled).mockReturnValue(true)
+    vi.mocked(readPersistedWorkforceAccessGrants).mockResolvedValue([teamGrant])
+
+    await expect(resolveWorkforceTodayReadScope({
+      db: input.db,
+      organizationId: input.organizationId,
+      organizationFeatures: input.organizationFeatures,
+      principalUserId: input.principalUserId,
+      selfAgentId: "employee-self",
+      now: new Date("2026-08-31T12:00:00.000Z"),
+    })).resolves.toMatchObject({
+      granularAccess: true,
+      organizationWide: false,
+      teamIds: ["team-a"],
+      agentIds: ["employee-self"],
+    })
+    expect(readPersistedWorkforceAccessGrants).toHaveBeenCalledTimes(1)
   })
 
   it("does not infer a site or current CRM team when no matching persisted grant exists", async () => {
