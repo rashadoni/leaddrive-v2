@@ -312,3 +312,26 @@ correction supersedes that attribution:
 No check result, implementation byte or progress accounting changes. The
 rejected reconciliation-review head cannot authorize publication; a fresh
 exact-head independent integrity review is required after this correction.
+
+## Corrected reconciliation review GREEN and session handoff
+
+Fresh author-independent replacement review returned GREEN with
+`P0=P1=P2=P3=0` on exact clean head
+`c88bc144a53164a2b00dc8a9f0be365a0992b585` against live main/merge-base
+`13d13bcc58e8872ef676fd011e78a1adb954e210`.
+
+- Full identity matched 23 paths / 178,684 bytes / SHA-256
+  `9f04d5de318a004e6579a8d2eb316c0d8f169b6ac239b6031566c52711ba3c96`.
+- Non-doc identity remained 19 paths / 121,643 bytes / SHA-256
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- The corrected three-document range was append-only (`+15/+19/+18`) and the
+  reviewer verified exact CI attribution, byte prefixes and whitespace.
+- Runtime, security, concurrency, UI and workflow bytes remained unchanged;
+  no additional finding was reported.
+
+At the user's request, work now hands off to a new Sol 6.1 session before
+republishing. PR #506 still points to remote head `f1739b23a`; this local
+replacement has not been pushed. The next session must integrity-review this
+final handoff receipt, push the exact replacement head, rerun every required
+context, refetch live main, then merge/deploy/verify only if still exact and
+green.

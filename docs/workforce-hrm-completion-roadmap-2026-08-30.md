@@ -3036,3 +3036,23 @@ from this worktree.
   uncommitted; the rejected head is ineligible.
 - Next action: checkpoint the three corrections and obtain a fresh exact-head
   author-independent integrity GREEN before push.
+
+## 2026-09-29 — WF-C8-007e corrected review GREEN; Sol 6.1 handoff
+
+- Fresh replacement review returned GREEN (`P0=P1=P2=P3=0`) on exact clean
+  head `c88bc144a53164a2b00dc8a9f0be365a0992b585` against live main/merge-base
+  `13d13bcc58e8872ef676fd011e78a1adb954e210`.
+- Full identity matched 23 paths / 178,684 bytes /
+  `9f04d5de318a004e6579a8d2eb316c0d8f169b6ac239b6031566c52711ba3c96`;
+  non-doc remained 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+  Corrected receipts are append-only and no runtime finding remains.
+- The user requested transfer to a new Sol 6.1 session before publication.
+  Remote PR #506 remains at `f1739b23a`; the reconciled replacement is local
+  only and must not be merged from the stale remote head.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: corrected full-range review is GREEN; this final
+  three-document handoff receipt is the only uncommitted change.
+- Next action: checkpoint and receipt-review the handoff, then in the new
+  session push exact head, rerun all PR gates, fetch main and release #506.

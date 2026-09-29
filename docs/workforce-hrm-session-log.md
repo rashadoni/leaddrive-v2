@@ -3038,3 +3038,36 @@ corrections as new entries that explicitly supersede the earlier fact.
   and the rejected review head is not publishable.
 - Next action: commit only the three docs and require a fresh exact-head
   independent integrity review before repush.
+
+## 2026-09-29 — Sol 6.1 handoff checkpoint after corrected GREEN
+
+- Fresh author-independent replacement review returned GREEN
+  (`P0=P1=P2=P3=0`) on clean head
+  `c88bc144a53164a2b00dc8a9f0be365a0992b585`, base/live main/merge-base
+  `13d13bcc58e8872ef676fd011e78a1adb954e210`.
+- Exact identity: full 23 paths / 178,684 bytes /
+  `9f04d5de318a004e6579a8d2eb316c0d8f169b6ac239b6031566c52711ba3c96`;
+  non-doc 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+  CI attribution is now exact and no runtime/security/concurrency/UI/workflow
+  finding remains.
+- The user requested that the entire task continue in a new Sol 6.1 session.
+  No further push, merge or deploy is authorized in this session after this
+  checkpoint. PR #506 remote head is still `f1739b23a`; local reconciled head
+  is six commits ahead before this receipt.
+- Required release sequence in the new session: receipt-integrity review;
+  push exact head; all required PR contexts; fresh-main check/reconciliation;
+  normal merge; wait `deploy.yml`; verify `/api/v1/ping` and exact
+  `/api/v1/public/build-info.artifactSha`; append release receipts.
+- After release, continue a successor branch with bounded `WF-C8-007f` atomic
+  moved-day pair reversal. Read-only preflight recommends an opaque source-row
+  pair generation ID to prevent date-only ABA, sorted dual locks, exact CAS
+  soft-delete of both rows plus one atomic audit, exact audit-backed replay and
+  real-PostgreSQL concurrency/rollback/replacement tests. General update/delete,
+  break policy, AGENT moves and Route mutation stay excluded.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: corrected code/docs are independently GREEN; only
+  this three-document handoff receipt is uncommitted and nothing is pushed.
+- Next action: commit this receipt, independently verify its integrity, then
+  resume publication from the same worktree/branch in the new Sol 6.1 session.
