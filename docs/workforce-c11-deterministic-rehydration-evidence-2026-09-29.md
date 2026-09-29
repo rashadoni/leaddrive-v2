@@ -6,7 +6,7 @@
 
 **Branch:** `codex/workforce-timesheet-rehydration-part6`
 
-**Status:** PARTIAL (implementation candidate; exact-head CI and release pending)
+**Status:** DONE (exact-head CI, merge, deploy and production SHA verified)
 
 ## Delivered contract
 
@@ -125,3 +125,48 @@ with no runtime, union, CI script, package or baseline change. Its 11-file /
 98-test matrix, scoped ESLint and both repair/full-range whitespace checks
 pass. Replacement exact-head CI is still required; `WF-C11-001` remains
 **PARTIAL**.
+
+## Exact-head CI, merge and production acceptance
+
+The final independently reviewed PR head was
+`a90e0981fc8444cc8a2fa7172cf848c31ac8c9b1`: 19 paths / 101,395
+plain-binary bytes / SHA-256
+`8e6bb049e2643993fd885e7df9e4318c0394d5baec52d526ae5538de5c3ac009`,
+with `P0=P1=P2=P3=0`. All fifteen source/test blobs were identical to the
+reviewed repair checkpoint; the final three-document delta was append-only.
+
+Replacement exact-head PR evidence is complete:
+
+- PASS — `pr-scope`, `static-checks` and `typecheck` in PR run
+  `36496540485`;
+- PASS — separate exact-head `runner-policy` and `scan` contexts;
+- SKIPPED — the scope-conditioned PR production-build job; it is not counted
+  as a pass;
+- PASS — normal non-bypass merge of PR #488 at `2026-09-28T23:31:26Z`,
+  producing main SHA `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`;
+- PASS — deploy workflow `36498458944`, completed `SUCCESS` at
+  `2026-09-28T23:55:50Z`, including full quality/security gates, production
+  build, immutable artifact publication, atomic rollout and workflow smoke;
+- PASS — independent no-cache `/api/v1/ping` pinned to the sole approved
+  production IP `13.140.132.245`, HTTP 200 with `{"ok":true}`;
+- PASS — independent pinned `/api/v1/public/build-info`, HTTP 200 with exact
+  `artifactSha=eab1c60de3e56e4ea26001c9ddfd01fc603524a5` and
+  `builtAt=2026-09-28T23:37:22Z`.
+
+No schema, migration, UI, Android or rollout-policy change was part of this
+slice. Browser E2E, Android/Gradle, load, signed APK, physical-device and
+human-pilot evidence remains `NOT RUN` and is not implied by this acceptance.
+The backend acceptance in this document is complete, so `WF-C11-001` moves
+from **PARTIAL** to **DONE**. Ledger progress becomes `DONE 83/161`,
+`GATES 14/15` and C11 90%.
+
+## Accepted-task arithmetic correction
+
+The preceding `83/161` statement is superseded for progress reporting only.
+An exact audit of the final active status for every unique `WF-*` identifier
+found 161 tasks: 80 `DONE`, 55 `PARTIAL`, 16 `PLANNED`, six
+`OWNER DECISION`, one `PARTIAL (OWNER ATTESTATION)` and three `BLOCKED`.
+The saved counter already exceeded the active register by three before this
+release; no task-level acceptance evidence justifies carrying those three
+credits forward. `WF-C11-001` remains **DONE**, while the corrected ledger is
+`DONE 80/161`, `GATES 14/15`, C11 90%, with 81 non-DONE tasks.

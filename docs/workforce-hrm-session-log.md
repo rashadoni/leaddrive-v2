@@ -1567,3 +1567,334 @@ corrections as new entries that explicitly supersede the earlier fact.
   and this receipt is uncommitted in three durable documents.
 - Next action: checkpoint the receipt, run final independent integrity review,
   push the replacement PR head and wait for every required context.
+
+## 2026-09-29 — PR #488 merged, deployed and exact-SHA verified
+
+- Final PR head `a90e0981fc8444cc8a2fa7172cf848c31ac8c9b1` retained independent
+  GREEN `P0=P1=P2=P3=0`: 19 paths / 101,395 plain-binary bytes / SHA-256
+  `8e6bb049e2643993fd885e7df9e4318c0394d5baec52d526ae5538de5c3ac009`.
+  All fifteen source/test blobs remained identical to the reviewed repair and
+  the three receipt documents were append-only.
+- Exact-head replacement run `36496540485` passed `pr-scope`,
+  `static-checks`, `typecheck`, `runner-policy` and `scan`. The
+  scope-conditioned PR production-build job was `SKIPPED`; no pass is claimed
+  for it.
+- PR #488 merged normally without bypass at `2026-09-28T23:31:26Z` as main
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`. Exact-SHA deploy workflow
+  `36498458944` completed `SUCCESS` at `2026-09-28T23:55:50Z`, with full
+  quality/security, immutable production artifact, atomic rollout and
+  post-deploy smoke green.
+- Fresh no-cache checks forced `app.leaddrivecrm.org` to the sole approved
+  production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}`; `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=eab1c60de3e56e4ea26001c9ddfd01fc603524a5` and
+  `builtAt=2026-09-28T23:37:22Z`. No Azure, retired host, direct worktree copy
+  or manual production deploy was used.
+- `WF-C11-001` is accepted as `DONE`. Progress becomes `DONE 83/161`,
+  `GATES 14/15`, C11 90%; 78 non-DONE rows and one gate remain. Full local
+  build/typecheck/suite, browser E2E, Android/Gradle, load, signed APK,
+  physical-device and human-pilot evidence remains `NOT RUN`.
+- Precise stopping point: PR #488 is reviewed, merged, deployed and
+  production-verified; this three-document release receipt is uncommitted on
+  clean successor branch `codex/workforce-completion-part7` from exact main.
+- Next action: checkpoint the release receipt, then continue the next bounded
+  code-verifiable roadmap row chosen by read-only dependency audit.
+
+## 2026-09-29 — accepted-task counter corrected before continuation
+
+- The `DONE 83/161` count in the immediately preceding receipt is
+  superseded. An exact unique-ID audit of the active task register gives 80
+  `DONE`, 55 `PARTIAL`, 16 `PLANNED`, six `OWNER DECISION`, one
+  `PARTIAL (OWNER ATTESTATION)` and three `BLOCKED` rows: 161 total and 81
+  non-DONE.
+- History shows the saved counter was already three above the active register
+  before the two real status changes for WF-C2-009 and WF-C11-001. No active
+  row or task-level acceptance receipt supplies those three credits. The
+  correction changes only progress arithmetic; both released tasks remain
+  `DONE`, PR #488 and production evidence remain valid, and the denominator
+  stays 161.
+- Correct current progress is `DONE 80/161`, `GATES 14/15`, C11 90%; the
+  roadmap formula yields a 58% completion index. The earlier 99% label was a
+  release-slice display and is not a whole-program completion claim.
+- Read-only dependency audit selected `WF-C8-004` as the next technically
+  completable P1 slice: add a bounded privacy-safe timesheet read model for
+  evidence review, exception state and verified approval/correction revision
+  history, with no schema or migration.
+- Precise stopping point: the corrected PR #488 receipt is ready for an
+  explicit checkpoint commit on `codex/workforce-completion-part7`.
+- Next action: commit only the three receipt documents, then implement and
+  independently review `WF-C8-004` before exact-head CI and release.
+
+## 2026-09-29 — WF-C8-004 complete timesheet working checkpoint
+
+- The next P1 web slice adds a bounded, tenant-scoped review projection to the
+  deterministic timesheet. It reports finite event/transition review state,
+  allowlisted calculation exceptions, and C6 lifecycle derived only from a
+  complete contiguous decision history; corrupt or truncated history becomes
+  an explicit data-integrity review state.
+- Exact selected-employee approval/correction revisions are recomputed from
+  immutable stored rows, hash-verified and chain-verified across legacy v1 and
+  current v2 calculations. Branches, gaps, scope mixing, version downgrade and
+  tampering fail closed. The public projection contains only revision number,
+  kind and calculation version, never IDs, hashes, rows, reasons, actors,
+  proof or location.
+- The EN/RU/AZ timesheet UI now shows plan, fact, evidence review, exception
+  lifecycle and verified revisions. Existing server authority is unchanged:
+  approval remains unavailable unless every recorded day is completed and
+  reproducible from immutable snapshots.
+- Targeted author checks pass 16 files / 121 tests, scoped ESLint, JSON,
+  i18n 23,734/0/0 and whitespace. Full local typecheck/build/suite, browser/AT,
+  Android/Gradle, load, signed APK, physical-device and pilot checks are
+  `NOT RUN`; no schema/migration exists in this slice.
+- `WF-C8-004` remains `PARTIAL`; current progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: code, tests, translations and evidence are
+  uncommitted on `codex/workforce-completion-part7`; no frozen independent
+  review exists.
+- Next action: verify size/fingerprint, checkpoint explicit paths, and send the
+  exact clean diff to a fresh read-only reviewer before any push or PR.
+
+## 2026-09-29 — WF-C8-004 frozen review RED and complete repair set
+
+- Fresh author-independent review of base/current main/merge-base
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5` through clean head
+  `6b46c38ea93272d5130de8a94e2fe128b53ca117` verified 13 paths / 94,821
+  binary bytes / SHA-256
+  `d4b5e413e4926e96874dd2bd48903e457a3ddbb83857cfde4780a845eba569cb`
+  and returned RED with `P0=0`, `P1=1`, `P2=4`, `P3=0`. No GREEN or release
+  authority is inherited from it.
+- P1: a schedule-only `NO_SHOW` with no workday disappeared from the GET view
+  while the canonical POST correctly blocked approval. P2s: stale calculation
+  revisions appeared current; three new evidence queries materialized without
+  sentinels; linked unresolved exceptions left Ready/enabled UI; successful
+  writes left the new immutable revision panel stale.
+- All five are repaired: schedule-only cases now form a minimized bounded
+  employee/date/type/status period collection even with zero workdays;
+  calculation exceptions match only reconstructed current/core versions;
+  query-level 20,000/10,000/5,000 plus-one sentinels return safe 413 on
+  overflow; unresolved linked or unrecorded cases disable readiness; and a
+  successful write triggers a timesheet/history refetch.
+- Replacement author verification passes 18 targeted files / 132 tests,
+  scoped ESLint, JSON, i18n 23,737/0/0 and whitespace. Full local
+  typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
+  physical-device and pilot checks remain `NOT RUN`.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: replacement runtime/tests/translations/evidence are
+  uncommitted on top of the RED checkpoint in
+  `codex/workforce-completion-part7`.
+- Next action: verify and checkpoint only explicit paths, then start a fresh
+  full-range read-only review; no push, PR, merge or deploy before GREEN.
+
+## 2026-09-29 — WF-C8-004 replacement RED and preview preservation
+
+- Fresh review of clean replacement head
+  `ab289618132908ce00c0d5bfcda759332e9b9f67` was independently RED with
+  `P0=0`, `P1=1`, `P2=0`, `P3=0`. It verified base/current main/merge-base
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`, 13 paths / 116,103 binary
+  bytes / SHA-256
+  `f3b8e3a176c758835dd2029bcef20e4dfa7cb17825da12d56fb536831af61c90`.
+  It confirmed the prior data/bounds/readiness findings repaired and found one
+  new lifecycle regression.
+- After a successful approval, the history retry set global loading and
+  unmounted the panel, deleting its local approval record. Since the privacy-
+  minimized history has no approval ID, the only approved-export preview
+  control could not return after refetch.
+- The repair tags the exact approval retry number, preserves the loaded
+  TimesheetView and its stable-key panel throughout the background request,
+  and therefore retains the local ID/preview while fresh history replaces the
+  data. Background failure keeps verified data mounted and emits only the
+  localized generic load toast; ordinary load failure still clears stale data.
+- A lifecycle source regression covers retry tagging, mounted rendering,
+  stable key and the preservation failure branch. Three focused UI files / 11
+  tests, scoped ESLint and whitespace pass; the complete targeted matrix is
+  pending rerun.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: lifecycle code/test plus append-only RED/repair
+  receipts are uncommitted on `codex/workforce-completion-part7`.
+- Next action: rerun all bounded checks, checkpoint explicit paths and start a
+  fresh complete-diff independent review; do not push a RED head.
+
+## 2026-09-29 — WF-C8-004 lifecycle repair checks complete
+
+- The complete post-repair author matrix passes 18 targeted files / 133 tests,
+  scoped ESLint for all six changed TypeScript paths, JSON parsing, EN/RU/AZ
+  parity at 23,737/0/0 and whitespace.
+- Heavy/full typecheck, build, full suite, browser/AT, Android/Gradle, load,
+  signed APK, physical-device and pilot gates remain `NOT RUN` locally and are
+  not inferred.
+- `WF-C8-004` remains `PARTIAL`; progress is still `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%.
+- Precise stopping point: verified lifecycle repair plus append-only evidence
+  remain uncommitted on top of rejected head `ab289618`.
+- Next action: commit only explicit task paths, measure the full candidate and
+  obtain a fresh independent frozen review before publication.
+
+## 2026-09-29 — WF-C8-004 third frozen review RED and exact-load repair
+
+- The third independent complete-diff audit froze
+  `cb5f31419a73e2b8bf1a2c9c749515e9cadcf01a` against deployed main
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`: 13 paths / 127,919 binary
+  bytes / SHA-256
+  `984184f4d8327294c8864e0ae1f9eb7c2888aaad97afd5eb5e6002840e07c8fc`.
+  Verdict was RED, `P0=0`, `P1=1`, `P2=0`, `P3=0`; all non-lifecycle areas
+  were rechecked with no new finding.
+- The P1 proved the retry marker survived settlement and the old panel stayed
+  mounted for non-approval loads. A subsequent filter/manual/tenant load could
+  expose an actionable stale period and preserve it after failure. The earlier
+  narrower repair receipt is retained as history but superseded on that claim.
+- The new repair assigns each read an exact view/tenant/retry/query identity,
+  tags only one approval refresh, consumes it after live settlement, preserves
+  it across a Strict Mode abort/restart, and clears it when another request
+  wins. Ordinary transitions hide data whose producer identity no longer
+  matches; the approval handler and button are blocked while the exact
+  background refresh is active.
+- Behavioral lifecycle and UI integration checks pass 2 files / 11 tests;
+  scoped ESLint passes. The complete slice rerun remains pending. Heavy/full
+  typecheck, build, suite, browser/AT, Android/Gradle, load, signed APK,
+  physical-device and pilot remain `NOT RUN` locally.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: third-review repair and append-only evidence are
+  uncommitted on `codex/workforce-completion-part7`.
+- Next action: run the complete bounded author checks, checkpoint only explicit
+  task paths, then obtain a fresh full-range review from zero.
+
+## 2026-09-29 — WF-C8-004 exact-request repair verification complete
+
+- The exact post-P1 author matrix passes 19 files / 137 tests, scoped ESLint
+  for all eight changed runtime/test TypeScript paths, three-catalog JSON
+  parsing, i18n 23,737/0/0 and whitespace.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical-device and pilot checks remain explicitly `NOT RUN`; no
+  release evidence is inferred.
+- `WF-C8-004` remains `PARTIAL`; progress stays `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: the exact-request repair and all append-only receipts
+  are verified but uncommitted on top of `cb5f31419`.
+- Next action: commit the seven explicit repair/receipt paths, fingerprint the
+  full candidate and request a fourth fresh independent complete-diff review.
+
+## 2026-09-29 — WF-C8-004 fourth frozen review RED and busy interlock repair
+
+- The fourth independent full-range audit froze clean head
+  `c1422649d8044658409295b9aeb840960f56da0a`: unchanged live main and
+  merge-base `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`, 15 paths / 150,087
+  bytes / SHA-256
+  `f9a9605ce9b337fdc424125009b3e678f7554bb2290e4feaf350b760ec53b8d2`.
+  It returned RED, `P0=0`, `P1=1`, `P2=0`, `P3=0`; no other area produced a
+  finding.
+- While approval POST was pending, refresh/filter controls were not covered by
+  read loading. A competing reload could unmount the child before success
+  installed its server approval ID, recreating the preview-loss defect before
+  the tagged refresh began.
+- The lifecycle now enters busy synchronously before transport and remains
+  busy through the exact tagged refresh. Generic request/filter handlers,
+  duplicate submission, navigation, refresh and affected panel controls all
+  fail closed across that interval; the tag bridges the state before the GET
+  effect sets loading.
+- Focused lifecycle/UI tests pass 2 files / 13 tests and scoped ESLint passes.
+  The complete matrix remains pending. Full local typecheck/build/suite,
+  browser/AT, Android/Gradle, load, signed APK, physical-device and pilot stay
+  `NOT RUN`.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: fourth-review repair and receipts are uncommitted on
+  `codex/workforce-completion-part7`.
+- Next action: run the full bounded checks, checkpoint explicit paths and seek
+  a fifth fresh author-independent complete-diff verdict.
+
+## 2026-09-29 — WF-C8-004 submission-interlock verification complete
+
+- The initial complete rerun failed only because the existing approved-export
+  UI contract still expected the pre-interlock preview guard. That assertion
+  was updated to require the new loading guard; the full replacement rerun now
+  passes 19 files / 139 tests.
+- Scoped ESLint for all nine changed runtime/test TypeScript paths, three JSON
+  catalogs, translation parity 23,737/0/0 and `git diff --check` pass.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical-device and pilot checks remain `NOT RUN`; exact-head CI remains
+  mandatory.
+- `WF-C8-004` remains `PARTIAL`; progress is unchanged at `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: verified submission-to-refresh repair and receipts
+  are uncommitted on top of rejected head `c1422649d`.
+- Next action: commit only the eight explicit paths and request a fifth fresh
+  full-range independent review.
+
+## 2026-09-29 — WF-C8-004 fifth frozen review GREEN
+
+- Fresh full-range independent review of clean head
+  `b506cad5cbced9c131cffd738adc46a9e590753b` is GREEN with
+  `P0=P1=P2=P3=0`. Live main and merge-base remain
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`; exact diff is 16 paths /
+  164,032 binary bytes / SHA-256
+  `d76bd9a9c1f315eb9511143c48ab01982ab36d5a88e250da90336144a6513467`.
+- The reviewer independently re-audited all server-model, authorization,
+  tenant, privacy, bounded-query, exception, revision-chain, readiness,
+  UI/i18n/a11y and continuity surfaces. The complete approval lifecycle and
+  every reported race now pass without a remaining finding.
+- Reviewer verification passes 19 files / 139 tests, nine-path scoped ESLint,
+  JSON, i18n 23,737/0/0, exact-range whitespace and byte-prefix append-only
+  journal verification. Full local typecheck/build/suite, browser/AT,
+  Android/Gradle, load, signed APK, physical-device and pilot remain `NOT RUN`.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows until release.
+- Precise stopping point: independently GREEN code head is clean; only this
+  three-document receipt is uncommitted.
+- Next action: commit the receipt, get final exact-head integrity confirmation,
+  then push/open the bounded PR and wait for all required checks.
+
+## 2026-09-29 — PR #489 exact-head typecheck failure and repair
+
+- PR #489 published exact independently reviewed head
+  `f9f484d8a4ffdf95a3eda4bdc361d91667a1c7f3`. Four required contexts passed:
+  `pr-scope`, `static-checks`, `runner-policy`, `scan`; the conditional build
+  was `SKIPPED`. Run `36514032198` failed required `typecheck` with seven new
+  defect-shaped diagnostics confined to the changed timesheet route:
+  `TS2322` x4, `TS2339` x1, `TS2345` x2.
+- The conditional six-query `Promise.all` lost its heterogeneous tuple types
+  to the shared workday-ID shape, while the calculation version array narrowed
+  to `2[]`. The type-only repair declares the minimized selected records, the
+  exact six-result tuple and `Array<1 | 2>`. Runtime branches, SQL queries,
+  limits, response shape, baseline and workflow are unchanged.
+- The replacement complete bounded matrix passes 19 files / 139 tests and
+  scoped ESLint for all nine changed TypeScript paths. Full local typecheck,
+  build/suite, browser/AT, Android/Gradle, load, signed APK, physical-device
+  and pilot remain `NOT RUN` under host policy.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows. The previous
+  review does not authorize a changed head.
+- Precise stopping point: type-only repair plus append-only receipt are
+  uncommitted on `codex/workforce-completion-part7`; PR #489 still points to
+  the red head.
+- Next action: checkpoint only the four explicit paths, obtain fresh
+  independent review, push the replacement head and rerun all required gates.
+
+## 2026-09-29 — WF-C8-004 repair review GREEN
+
+- Fresh independent review of exact clean head
+  `c494d4ec63d5c46a03b41ef2d0c903ca8872788f` is GREEN with
+  `P0=P1=P2=P3=0`; unchanged main/merge-base is
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5`.
+- Repair identity: 4 paths / 8,784 binary bytes / SHA-256
+  `143d23fee0b3ac6b0a0fd262c6ec67deec668106021c4665100847c0379b5b06`.
+  Full candidate: 16 paths / 173,780 binary bytes / SHA-256
+  `a458f97af4c525ec4d7afeb623af49e787d50fb6e35a2ecc23abfc4d49be9251`.
+- The reviewer independently matched all seven CI diagnostics, validated the
+  six typed payloads against generated Prisma metadata, confirmed no cast or
+  runtime/query/workflow/baseline change, and proved old/new emitted route JS
+  byte-identical at 23,057 bytes.
+- PASS: exact 19 files / 139 tests, scoped ESLint on nine TypeScript paths,
+  JSON, i18n 23,737/0/0, whitespace and append-only-prefix checks. Full local
+  typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
+  physical-device and pilot remain `NOT RUN`. The bounded compiler probe OOM
+  is not evidence and was not retried.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows. Review GREEN
+  permits only replacement CI.
+- Precise stopping point: code repair is independently GREEN and clean; this
+  receipt is uncommitted while PR #489 remains on `f9f484d8`.
+- Next action: commit only the three receipt files, obtain final integrity
+  GREEN, push the replacement head and wait for every required gate.
