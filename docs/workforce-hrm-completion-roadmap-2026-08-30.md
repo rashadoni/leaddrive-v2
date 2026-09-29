@@ -2341,3 +2341,24 @@ from this worktree.
   `codex/workforce-completion-part9`.
 - Next action: checkpoint explicit paths, fingerprint the exact candidate and
   obtain fresh author-independent full-range review before PR publication.
+
+## 2026-09-29 — WF-C8-007a independent-review remediation
+
+- Independent review of frozen head
+  `319326a717f6f5b2bc1dadec110a17bc3ed9c7e4` returned RED with
+  `P0=0`, `P1=0`, `P2=0`, `P3=1`. The only finding was three trailing-space
+  markers in the new evidence metadata; this made `git diff --check` fail and
+  contradicted the recorded whitespace PASS. No product-code finding was
+  reported.
+- The three spaces were removed. Full and implementation-range whitespace now
+  pass, and the complete bounded verification was repeated: six files / 67
+  tests, scoped ESLint 4/4, i18n 23,803/0/0 and EN/RU/AZ JSON are green.
+- Full typecheck/build/suite, browser/AT/device, Android/Gradle, load,
+  signed-device and pilot gates remain `NOT RUN` under host policy. Exact-head
+  CI and a fresh independent review remain mandatory.
+- `WF-C8-007` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: the independently found evidence defect is corrected
+  and reverified in the working tree but not yet checkpointed.
+- Next action: commit the explicit documentation paths, compute a new exact
+  identity and obtain fresh author-independent review before any push.

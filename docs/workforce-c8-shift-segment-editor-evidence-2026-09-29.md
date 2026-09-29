@@ -1,8 +1,8 @@
 # WF-C8-007a ordered shift-segment editor evidence
 
-Date: 2026-09-29  
-Task: bounded `WF-C8-007a` slice of `WF-C8-007`  
-Base production/main SHA: `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`  
+Date: 2026-09-29
+Task: bounded `WF-C8-007a` slice of `WF-C8-007`
+Base production/main SHA: `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`
 Branch: `codex/workforce-completion-part9`
 
 ## Delivered boundary
@@ -74,3 +74,20 @@ diff and real browser/AT acceptance remain outside this PR. No task or gate
 credit is added: `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
 non-DONE rows. Author-independent exact-diff review is still required before
 publication.
+
+## Independent review remediation
+
+- Independent review of frozen head
+  `319326a717f6f5b2bc1dadec110a17bc3ed9c7e4` returned RED with
+  `P0=0`, `P1=0`, `P2=0`, `P3=1`: the three metadata lines at the top of this
+  evidence file contained Markdown trailing spaces, so the recorded
+  whitespace PASS did not match that exact head. No functional, API, domain,
+  accessibility-source or localization finding was reported.
+- The three trailing-space markers were removed without changing source,
+  tests, translations or runtime behavior. Both the full `origin/main` delta
+  and implementation delta from `d12ae080bfd3566edf8ebcb99bcd5f076e893636`
+  now pass `git diff --check`.
+- The complete bounded author verification was repeated after the correction:
+  six files / 67 tests PASS, scoped ESLint PASS, i18n 23,803/0/0 and EN/RU/AZ
+  JSON PASS. A fresh author-independent exact-head review remains mandatory;
+  the previous RED cannot be reused as approval.

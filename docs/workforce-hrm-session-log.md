@@ -2213,3 +2213,25 @@ corrections as new entries that explicitly supersede the earlier fact.
   complete but uncommitted after release receipt commit `d12ae080b`.
 - Next action: run final bounded checks, commit only explicit slice paths,
   compute exact diff identity and request a fresh author-independent review.
+
+## 2026-09-29 — WF-C8-007a frozen review RED remediated
+
+- The author-independent review of exact frozen head
+  `319326a717f6f5b2bc1dadec110a17bc3ed9c7e4` returned RED with
+  `P0=0`, `P1=0`, `P2=0`, `P3=1`. The sole finding was trailing whitespace on
+  three metadata lines in the new evidence file, which made the exact diff
+  fail `git diff --check` despite the recorded PASS. The reviewer found no
+  functional or source-level defect.
+- The three whitespace markers were removed without touching runtime, test or
+  translation code. Full and implementation deltas now pass whitespace.
+  Repeated bounded checks pass: six files / 67 tests, scoped ESLint 4/4,
+  i18n 23,803/0/0 and EN/RU/AZ JSON.
+- Full local typecheck/build/suite, browser/AT/contrast/zoom/device,
+  Android/Gradle, load, signed device and pilot remain `NOT RUN`; exact-head CI
+  remains authoritative.
+- No completion credit is claimed. `WF-C8-007` remains `PARTIAL`; progress is
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: remediation and repeated bounded author checks pass
+  but the three-document receipt is uncommitted.
+- Next action: checkpoint explicit documentation paths, fingerprint the new
+  exact candidate and request a completely fresh independent review.
