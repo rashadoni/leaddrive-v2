@@ -3523,7 +3523,7 @@ Workstream 15 is **DONE**.
 
 ## 21B. Cross-surface Track — Customer Support Portal
 
-**Status: IN PROGRESS — current-tree product/recovery restored and self-audit corrected; exact-SHA browser/CI gates pending**
+**Status: DONE — final code checkpoint `600737cca`; exact-SHA desktop, physical-touch mobile and 120-cell browser evidence green**
 **Routes:** `/portal/tickets`, `/portal/tickets/[id]`,
 `/portal/knowledge-base`, `/portal/chat`, `/ticket-closure/[token]`
 
@@ -3531,17 +3531,17 @@ The internal Support UX is incomplete if customer-facing status, replies,
 knowledge, chat, or closure contradict the agent workspace. This track does not
 redesign the whole portal; it verifies and repairs only Support continuity.
 
-- [ ] **SUPUX-CXP-001** Map the customer journey from creating a ticket through
+- [x] **SUPUX-CXP-001** Map the customer journey from creating a ticket through
   reply, attachment, status tracking, closure request, confirmation, and reopen.
-- [ ] **SUPUX-CXP-002** Keep customer and agent status/SLA language consistent
+- [x] **SUPUX-CXP-002** Keep customer and agent status/SLA language consistent
   without exposing internal-only metadata or actions.
-- [ ] **SUPUX-CXP-003** Verify drafts, upload/send progress, duplicate-submit
+- [x] **SUPUX-CXP-003** Verify drafts, upload/send progress, duplicate-submit
   protection, errors, offline recovery, and mobile keyboard behavior.
-- [ ] **SUPUX-CXP-004** Verify portal knowledge visibility matches article
+- [x] **SUPUX-CXP-004** Verify portal knowledge visibility matches article
   publication/access settings in the internal Knowledge Base.
-- [ ] **SUPUX-CXP-005** Verify Portal Chat communicates Support AI disabled,
+- [x] **SUPUX-CXP-005** Verify Portal Chat communicates Support AI disabled,
   unavailable, handoff, and manual fallback states truthfully.
-- [ ] **SUPUX-CXP-006** Test isolation and direct-route authorization for portal
+- [x] **SUPUX-CXP-006** Test isolation and direct-route authorization for portal
   users across tickets, articles, attachments, and closure tokens.
 
 Acceptance:
@@ -3794,6 +3794,42 @@ Desktop acceptance and mobile responsive/theme correction (2026-09-29):
 Next: checkpoint and push the responsive/theme correction, repeat RU/dark
 physical-touch mobile on the exact SHA, and only after green launch the complete
 120-cell read-only matrix.
+
+Final exact-SHA acceptance (2026-09-29):
+
+- RU/dark physical-touch run `36503389987` on final code SHA `600737cca`
+  passed all five static routes and all six recovery groups. Artifact
+  `11006767793` records 14/14 real Playwright touchscreen activations, every
+  center hit-test true and a 44x44 minimum measured target. Runtime, Axe,
+  counted accessibility, touch, overflow, environment and primary-work totals
+  are all zero; every page reports RU, dark theme, reduced motion and a touch
+  context. Representative tickets, closure and Chat captures were manually
+  inspected and accepted.
+- Complete read-only run `36505213876` on the same SHA passed 120/120 unique
+  scenario/locale/theme/viewport cells. Artifact `11007801780` contains 24
+  cells per route, 40 per locale, 60 per theme and 30 per viewport. Runtime,
+  Axe, accessibility, touch, overflow, environment, primary-work, missing-alt,
+  duplicate-ID and development-chrome totals are all zero. Maximum load p75 is
+  490 ms, filter p75 27 ms, primary-work top 534 px and CLS
+  `0.09195707465277776`. AZ/light desktop, EN/dark tablet, AZ/dark narrow-tablet
+  and RU/dark mobile captures were manually inspected and accepted.
+- Final-SHA EN/light desktop run `36507650941` closed the exact-code mutation
+  gate after the responsive/theme correction. Artifact `11008147284` proves
+  5/5 static routes, 6/6 recovery groups and 14/14 keyboard activations with no
+  bad hit target. Runtime, Axe, accessibility, touch, overflow, environment and
+  primary-work totals are zero; maximum load p75 is 286 ms, filter p75 26 ms,
+  primary-work top 534 px and CLS `0.04134309895833334`. Reopened-ticket and
+  terminal closure captures were manually inspected and accepted.
+- CXP-001 through CXP-006 map directly to the documented create/reply/file/
+  closure/reopen journey, safe public status/SLA projection, recoverable and
+  idempotent mutations, published tenant-only knowledge, truthful AI/manual
+  fallback states, and tenant/contact/file/token authorization regressions.
+  All three accepted workflows also passed the dedicated Customer Portal and
+  overlapping Knowledge Base source gates, strict UI/API TypeScript projects,
+  isolated fixtures and production build. No scenario, assertion, Axe rule,
+  threshold or environment expectation was removed or relaxed.
+
+Customer Support Portal is **DONE**.
 
 ## 21C. Evidence, Performance, and Rollout Track
 

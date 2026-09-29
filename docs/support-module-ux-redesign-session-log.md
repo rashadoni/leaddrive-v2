@@ -2744,3 +2744,40 @@ exact-SHA EN/light desktop workflow. RU/dark physical-touch mobile and the
 Next: checkpoint and push this responsive/theme correction, repeat exact-SHA
 RU/dark physical-touch mobile, then launch the complete 120-cell read-only
 matrix only after that run is green.
+
+## 2026-09-29 — Customer Support Portal complete
+
+- Final implementation SHA `600737cca731131fdce2ecfae2b69442b2e767b0` is
+  proven by three accepted GitHub Actions runs. No later application-source
+  change is included in this section closure.
+- RU/dark physical-touch run `36503389987`, artifact `11006767793`, passed all
+  5 static routes and 6 recovery groups with 14/14 real touchscreen
+  activations. Every center hit-test succeeded, the minimum measured target is
+  44x44, and runtime/Axe/accessibility/touch/overflow/environment/primary-work
+  totals are zero. Tickets, closure and Chat screenshots were inspected.
+- Full read-only matrix run `36505213876`, artifact `11007801780`, passed all
+  120 unique cells: 24 per route, 40 per locale, 60 per theme and 30 per
+  viewport. Every counted runtime, Axe, accessibility, touch, overflow,
+  environment, primary-work, missing-alt, duplicate-ID and development-chrome
+  total is zero. Maximum load p75 is 490 ms, filter p75 27 ms, primary-work top
+  534 px and CLS `0.09195707465277776`. Representative AZ/light desktop,
+  EN/dark tablet, AZ/dark narrow-tablet and RU/dark mobile captures were
+  inspected and accepted.
+- Final-SHA EN/light desktop mutation run `36507650941`, artifact
+  `11008147284`, passed 5/5 static routes, 6/6 recovery groups and 14/14
+  keyboard activations. All counted failure totals are zero; maximum load p75
+  is 286 ms, filter p75 26 ms, primary-work top 534 px and CLS
+  `0.04134309895833334`. Reopened-ticket and terminal-closure screenshots were
+  inspected and accepted.
+- The three accepted workflows passed the dedicated Customer Portal and
+  overlapping Knowledge Base source gates, both strict TypeScript graphs,
+  isolated fixtures and production build. CXP-001..006 are now checked against
+  the documented journey, safe public projection, mutation recovery and
+  idempotency, publication isolation, AI/manual fallback, and direct-route /
+  tenant / contact / file / closure authorization evidence. No gate was
+  weakened.
+
+Result: Customer Support Portal is DONE. Next: create and push the section
+checkpoint, integrate current `origin/main` (`eab1c60de`) into the feature
+branch without dropping either side, then resume the still-open navigation and
+shared-foundation gates.
