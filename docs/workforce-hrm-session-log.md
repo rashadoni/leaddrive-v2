@@ -2181,3 +2181,35 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: commit these three receipt files, then begin bounded
   `WF-C8-007a` (ordered shift-segment draft editor, named sites, safe
   validation and EN/RU/AZ) with no calendar/proof-policy/schema expansion.
+
+## 2026-09-29 — WF-C8-007a implementation checkpoint
+
+- Implemented the bounded ordered multi-site segment editor on successor
+  branch `codex/workforce-completion-part9`. It reuses the shipped schema/API;
+  no Prisma, migration, permission, calendar, assignment or proof-policy
+  administration change was made.
+- Administrators can add and reorder up to 24 released-mode segments, choose
+  named ACTIVE sites only for SITE, edit local times and grace, and review
+  named segment summaries. Legacy zero-segment shifts retain their continuous
+  window. Safe defaults skip planned breaks; the last detailed segment cannot
+  be silently cleared against the server's non-empty replacement contract.
+- Full-array create/edit payloads preserve stored hidden proof-policy
+  references exactly. Unreleased `ON_CALL` is never offered and blocks draft
+  save until replaced. Archived/missing sites are named or labelled
+  unavailable without rendering identifiers. ACTIVE history remains
+  read-only.
+- The `impeccable` project guidance kept the extension inside the existing
+  light CRM shell: divider-based hierarchy, no nested-card redesign,
+  responsive fields, explicit empty/error states, stable keyboard reordering
+  and 44px controls. Real visual/browser inspection is still `NOT RUN` by the
+  Contabo placement rule.
+- PASS: six targeted files / 67 tests, scoped ESLint on four TS/TSX paths,
+  i18n 23,803/0/0, JSON and whitespace. Full local typecheck/build/suite,
+  browser/AT/contrast/zoom/device, Android/Gradle, load, signed device and
+  pilot are `NOT RUN`; CI/authorized workers remain authoritative.
+- `WF-C8-007` is now `PARTIAL`; no DONE/gate credit is claimed. Progress
+  remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE.
+- Precise stopping point: source, focused checks and initial evidence are
+  complete but uncommitted after release receipt commit `d12ae080b`.
+- Next action: run final bounded checks, commit only explicit slice paths,
+  compute exact diff identity and request a fresh author-independent review.
