@@ -221,11 +221,19 @@ comes back.
 Two production actions remain, and both are the owner's:
 
 ```bash
-# 1. the key, through the operator workflow that owns production env
-gh workflow run set-social-app-secrets.yml   # TYPESAFE_API_KEY
-# 2. install the schedule
-ssh prod 'bash /usr/local/lib/leaddrive-v2/ops/current/scripts/install-resilience-crons.sh'
+# 1. add TYPESAFE_API_KEY as a repository secret, then deliver it to the
+#    canonical production app env (the workflow carries the key since
+#    2026-09-29; before that it had a fixed list that did not include it)
+gh workflow run set-social-app-secrets.yml --repo rashadoni/leaddrive-v2
+
+# 2. install the schedule. The installer ships inside the deployed artifact;
+#    /usr/local/lib/leaddrive-v2/ops/current holds only cron-scripts, not this.
+ssh prod 'bash /opt/leaddrive-v2/.next/standalone/scripts/install-resilience-crons.sh'
 ```
+
+Order matters: with the schedule installed and no key, the pass runs on the
+Anthropic judge instead — about twenty times the price per record, on a
+provider whose answers were never measured on these records.
 
 Until both are done nothing is restored and nothing is spent: without the key
 the provider selection falls back to the Haiku judge, and without the schedule
