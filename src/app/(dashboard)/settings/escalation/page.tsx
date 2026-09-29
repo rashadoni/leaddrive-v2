@@ -18,6 +18,7 @@ import {
 
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { Badge } from "@/components/ui/badge"
@@ -291,12 +292,16 @@ export default function EscalationSettingsPage() {
   }
 
   return (
-    <div className="support-page-shell space-y-4" data-testid="escalation-rules-workspace" data-state={loading ? "loading" : error ? "error" : "ready"} data-write={canWrite ? "allowed" : "read-only"}>
-      <header className="flex flex-wrap items-start gap-3" data-tour-id="escalation-header">
-        <AlertTriangle className="mt-0.5 h-5 w-5 text-muted-foreground" />
-        <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1><TourReplayButton tourId="escalationSettings" className="min-h-11 px-2" /><HelpButton slug="escalation" className="h-11 w-11 shrink-0" /></div><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("subtitleCompact")}</p></div>
-        {canWrite && <Button className="min-h-11 w-full shrink-0 sm:w-auto" onClick={() => openForm("create")} data-tour-id="escalation-new"><Plus />{t("newRule")}</Button>}
-      </header>
+    <SupportPageShell
+      data-testid="escalation-rules-workspace"
+      data-state={loading ? "loading" : error ? "error" : "ready"}
+      data-write={canWrite ? "allowed" : "read-only"}
+      title={<span data-tour-id="escalation-header">{t("title")}</span>}
+      description={t("subtitleCompact")}
+      leading={<AlertTriangle className="h-5 w-5" aria-hidden="true" />}
+      utilities={<><TourReplayButton tourId="escalationSettings" className="min-h-11 px-2" /><HelpButton slug="escalation" className="h-11 w-11 shrink-0" /></>}
+      actions={canWrite ? <Button className="min-h-11 w-full shrink-0 sm:w-auto" onClick={() => openForm("create")} data-tour-id="escalation-new"><Plus />{t("newRule")}</Button> : undefined}
+    >
 
       {!loading && !error && <section aria-label={t("summaryTitle")} className="grid divide-y rounded-xl border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0" data-testid="escalation-rules-summary"><div className="p-3"><p className="text-lg font-semibold tabular-nums">{rules.length}</p><p className="text-xs text-muted-foreground">{t("totalRules")}</p></div><div className="p-3"><p className="text-lg font-semibold tabular-nums">{rules.filter((rule) => rule.isActive).length}</p><p className="text-xs text-muted-foreground">{t("activeRules")}</p></div><div className="p-3"><p className="text-lg font-semibold tabular-nums">{conflictIds.size}</p><p className="text-xs text-muted-foreground">{t("conflictingRules")}</p></div></section>}
 
@@ -317,6 +322,6 @@ export default function EscalationSettingsPage() {
 
       <RuleFormDialog open={formOpen} mode={formMode} sourceRule={sourceRule} rules={rules} onOpenChange={(open) => { setFormOpen(open); if (!open) setSourceRule(null) }} onSaved={() => { setStatus({ kind: "success", text: formMode === "edit" ? t("ruleSaved") : t("ruleCreated") }); void fetchRules() }} />
       <ConfirmDialog open={Boolean(deleteRule)} onOpenChange={(open) => { if (!open) setDeleteRule(null) }} onConfirm={confirmDelete} title={t("deleteTitle")} description={deleteRule ? t("deleteDescription", { name: deleteRule.name }) : undefined} />
-    </div>
+    </SupportPageShell>
   )
 }

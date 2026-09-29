@@ -22,6 +22,7 @@ import {
 
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -395,20 +396,15 @@ export default function EntitlementTemplatesPage() {
           : t("draftSavedLocally")
 
   return (
-    <div
-      className="space-y-3 sm:space-y-4"
+    <SupportPageShell
       data-testid="entitlement-templates-workspace"
       data-state={loading ? "loading" : templates.length === 0 ? "error" : "ready"}
       data-permission={permissions.canWrite ? "write" : "read-only"}
+      title={t("title")}
+      description={t("subtitleCompact")}
+      leading={<Settings2 className="h-5 w-5" aria-hidden="true" />}
+      utilities={<HelpButton slug="entitlements" className="h-11 w-11 shrink-0" />}
     >
-      <header className="flex items-start gap-3">
-        <Settings2 className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2"><h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight">{t("title")}</h1><HelpButton slug="entitlements" className="h-11 w-11 shrink-0" /></div>
-          <p className="mt-1 line-clamp-1 max-w-3xl text-sm text-muted-foreground sm:line-clamp-none">{t("subtitleCompact")}</p>
-        </div>
-      </header>
-
       {error && templates.length > 0 && <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm" data-testid="entitlement-templates-save-error"><AlertCircle className="h-4 w-4 shrink-0 text-destructive" /><span className="min-w-0 flex-1">{error}</span></div>}
 
       <nav aria-label={t("levels")} className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="tablist">
@@ -495,7 +491,7 @@ export default function EntitlementTemplatesPage() {
       )}
 
       <ConfirmDialog open={Boolean(deleteRuleTarget)} onOpenChange={(open) => { if (!open) setDeleteRuleTarget(null) }} onConfirm={removeDefinition} title={t("deleteRuleTitle")} description={deleteRuleTarget ? t("deleteRuleDescription", { name: deleteRuleTarget.name || t("unnamedRule") }) : undefined} />
-    </div>
+    </SupportPageShell>
   )
 }
 

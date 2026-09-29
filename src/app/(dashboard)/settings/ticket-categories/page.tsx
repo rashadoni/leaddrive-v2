@@ -25,6 +25,7 @@ import { toast } from "sonner"
 
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { Badge } from "@/components/ui/badge"
@@ -398,25 +399,20 @@ export default function TicketCategoriesPage() {
   const workspaceState = loading ? "loading" : loadError ? "error" : "ready"
 
   return (
-    <div data-testid="ticket-categories-workspace" data-state={workspaceState} className="space-y-4">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Tags className="h-5 w-5 text-muted-foreground" />
-            <h1 className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1>
-            <TourReplayButton tourId="ticketCategories" />
-            <HelpButton slug="tickets" />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-          {!canWrite && <p className="mt-1 text-xs text-muted-foreground">{t("readOnlyHint")}</p>}
-        </div>
-        <div className="flex flex-col gap-2 sm:shrink-0 sm:flex-row">
+    <SupportPageShell
+      data-testid="ticket-categories-workspace"
+      data-state={workspaceState}
+      title={t("title")}
+      description={<>{t("subtitle")}{!canWrite && <span className="mt-1 block text-xs">{t("readOnlyHint")}</span>}</>}
+      leading={<Tags className="h-5 w-5" aria-hidden="true" />}
+      utilities={<><TourReplayButton tourId="ticketCategories" /><HelpButton slug="tickets" /></>}
+      actions={<div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row">
           <Button variant="outline" asChild className="min-h-11 w-full px-4 sm:w-auto">
             <Link href="/tickets?view=reports#ticketing-report"><BarChart3 />{t("viewServiceDesk")}</Link>
           </Button>
           {canWrite && <Button data-testid="ticket-categories-new-root" className="min-h-11 w-full bg-orange-700 px-4 text-white hover:bg-orange-800 sm:w-auto" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
-        </div>
-      </header>
+        </div>}
+    >
 
       <section aria-label={t("summaryLabel")} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs text-muted-foreground">
         <span><strong className="font-semibold text-foreground">{stats.total}</strong> {t("statsTotal")}</span>
@@ -713,6 +709,6 @@ export default function TicketCategoriesPage() {
         }) : undefined}
         confirmLabel={t("deactivate")}
       />
-    </div>
+    </SupportPageShell>
   )
 }

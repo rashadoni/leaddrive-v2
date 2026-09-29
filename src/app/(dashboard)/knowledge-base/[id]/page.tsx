@@ -22,6 +22,7 @@ import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
 import { KbArticleForm } from "@/components/kb-article-form"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/format-date"
@@ -69,8 +70,8 @@ function safeReturnPath(value: string | null): string {
 }
 
 async function responseError(response: Response, fallback: string): Promise<Error> {
-  const payload = await response.json().catch(() => null)
-  return new Error(payload?.error || fallback)
+  await response.body?.cancel().catch(() => undefined)
+  return new Error(fallback)
 }
 
 export default function KbArticleDetailPage() {
@@ -215,18 +216,15 @@ export default function KbArticleDetailPage() {
   const isPublished = article.status === "published"
 
   return (
-    <div data-testid="knowledge-article-workspace" data-state="ready" className="space-y-3 sm:space-y-4">
-      <Button asChild variant="ghost" className="min-h-11 px-3">
-          <Link data-testid="knowledge-article-back" href={returnTo}><ArrowLeft />{t("backToLibrary")}</Link>
-      </Button>
-
-      <header className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-start gap-2">
-            <h1 className="min-w-0 text-xl font-semibold leading-7 tracking-tight">{article.title}</h1>
-            <HelpButton slug="kb-article-detail" className="min-h-11 min-w-11 shrink-0" />
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+    <SupportPageShell
+      data-testid="knowledge-article-workspace"
+      data-state="ready"
+      width="wide"
+      title={article.title}
+      leading={<Button asChild variant="ghost" className="min-h-11 px-3"><Link data-testid="knowledge-article-back" href={returnTo}><ArrowLeft />{t("backToLibrary")}</Link></Button>}
+      utilities={<HelpButton slug="kb-article-detail" className="min-h-11 min-w-11 shrink-0" />}
+      description={
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Badge data-testid="knowledge-article-status" data-status={article.status} variant={isPublished ? "outline" : "secondary"} className="gap-1">
               {isPublished ? <CheckCircle2 className="h-3 w-3" /> : <FilePenLine className="h-3 w-3" />}
               {isPublished ? t("publishedStatus") : t("draftStatus")}
@@ -235,8 +233,8 @@ export default function KbArticleDetailPage() {
             <span aria-hidden="true">·</span>
             <span>{t("updatedOn", { date: formatDate(article.updatedAt, locale, { day: "2-digit", month: "short", year: "numeric" }) })}</span>
           </div>
-        </div>
-        {(canWrite || canDelete) && (
+      }
+      actions={(canWrite || canDelete) ? (
           <div className="flex flex-wrap gap-2 sm:shrink-0">
             {canWrite && (
               <Button data-testid="knowledge-article-publication" variant="outline" className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => setPublicationOpen(true)}>
@@ -247,8 +245,8 @@ export default function KbArticleDetailPage() {
             {canWrite && <Button data-testid="knowledge-article-edit" variant="outline" className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => setEditOpen(true)}><Pencil />{tc("edit")}</Button>}
             {canDelete && <Button variant="outline" className="min-h-11 px-4 text-red-700 hover:text-red-800 dark:text-red-300 dark:hover:text-red-200" onClick={() => setDeleteOpen(true)}><Trash2 />{tc("delete")}</Button>}
           </div>
-        )}
-      </header>
+        ) : undefined}
+    >
 
       <section aria-label={t("articleStateLabel")} className="grid divide-y rounded-xl border bg-card sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
         <ArticleFact icon={isPublished ? CheckCircle2 : FilePenLine} label={t("portalVisibilityLabel")} value={isPublished ? t("visibleInPortal") : t("hiddenFromPortal")} />
@@ -330,7 +328,7 @@ export default function KbArticleDetailPage() {
         title={t("deleteArticle")}
         description={t("deleteArticleDescription", { title: article.title })}
       />
-    </div>
+    </SupportPageShell>
   )
 }
 

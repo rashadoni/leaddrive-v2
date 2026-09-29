@@ -88,7 +88,7 @@ export function VoiceCallingHours() {
     try {
       const response = await fetch("/api/v1/voip/business-hours", { cache: "no-store", signal });
       const body = await response.json().catch(() => ({})) as VoiceHoursResponse;
-      if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
+      if (!response.ok) throw new Error(t("businessHoursLoadError"));
       if (body.data) {
         setTimezone(body.data.timezone || defaultTimezone());
         setSchedule(normalizeVoiceHoursSchedule(body.data.schedule));
@@ -157,8 +157,7 @@ export function VoiceCallingHours() {
           awayMessage: null,
         }),
       });
-      const body = await response.json().catch(() => ({})) as VoiceHoursResponse;
-      if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
+      if (!response.ok) throw new Error(t("businessHoursSaveError"));
       setSaved(true);
     } catch (saveError) {
       setError((saveError as Error).message || t("businessHoursSaveError"));

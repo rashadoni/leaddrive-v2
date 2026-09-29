@@ -58,7 +58,7 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
         headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
       })
       const json = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(json?.error || tk("categoriesLoadFailed"))
+      if (!res.ok) throw new Error(tk("categoriesLoadFailed"))
       setCategories(json?.data || [])
     } catch (fetchError) {
       setCategoriesError(fetchError instanceof Error ? fetchError.message : tk("categoriesLoadFailed"))
@@ -109,8 +109,7 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
           tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
         }),
       })
-      const json = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(json?.error || tk("saveFailed"))
+      if (!res.ok) throw new Error(tk("saveFailed"))
       onSaved()
       onOpenChange(false)
     } catch (submitError) {
@@ -150,7 +149,7 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="categoryId">{tc("category")}</Label>
-                <Select value={form.categoryId} onChange={(e) => update("categoryId", e.target.value)} disabled={categoriesLoading} className="min-h-11">
+                <Select id="categoryId" value={form.categoryId} onChange={(e) => update("categoryId", e.target.value)} disabled={categoriesLoading} className="min-h-11">
                   <option value="">{tk("noCategory")}</option>
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -159,7 +158,7 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
               </div>
               <div>
                 <Label htmlFor="status">{tc("status")}</Label>
-                <Select value={form.status} onChange={(e) => update("status", e.target.value)} className="min-h-11">
+                <Select id="status" value={form.status} onChange={(e) => update("status", e.target.value)} className="min-h-11">
                   <option value="draft">{tc("draft")}</option>
                   <option value="published">{tc("published")}</option>
                 </Select>

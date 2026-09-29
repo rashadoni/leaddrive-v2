@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 
 import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -196,16 +197,19 @@ export default function AgentCalendarPage() {
   const partial = failedSources.length > 0 && failedSources.length < 4
 
   return (
-    <div className="space-y-4" data-testid="support-calendar-workspace" data-state={loading ? "loading" : error ? "error" : partial ? "partial" : "ready"}>
-      <header className="flex items-start gap-3">
-        <Calendar className="mt-0.5 h-5 w-5 text-muted-foreground" />
-        <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1><HelpButton slug="agent-calendar" className="h-11 w-11 shrink-0" /></div><p className="mt-1 text-sm text-muted-foreground" data-testid="support-calendar-week-label">{weekLabel}</p></div>
-        <div className="flex items-center gap-1">
+    <SupportPageShell
+      data-testid="support-calendar-workspace"
+      data-state={loading ? "loading" : error ? "error" : partial ? "partial" : "ready"}
+      title={t("title")}
+      description={<span data-testid="support-calendar-week-label">{weekLabel}</span>}
+      leading={<Calendar className="h-5 w-5" aria-hidden="true" />}
+      utilities={<HelpButton slug="agent-calendar" className="h-11 w-11 shrink-0" />}
+      actions={<div className="flex items-center gap-1">
           <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => changeWeek(-1)} aria-label={t("previousWeek")} data-testid="support-calendar-previous"><ChevronLeft /></Button>
           <Button variant="outline" className="hidden min-h-11 sm:inline-flex" onClick={goToday} data-testid="support-calendar-today">{t("today")}</Button>
           <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => changeWeek(1)} aria-label={t("nextWeek")} data-testid="support-calendar-next"><ChevronRight /></Button>
-        </div>
-      </header>
+        </div>}
+    >
       <Button variant="outline" className="min-h-11 w-full sm:hidden" onClick={goToday} data-testid="support-calendar-today-mobile">{t("today")}</Button>
 
       {!loading && !error && <section aria-label={t("weekSummary")} className="flex flex-wrap divide-x rounded-xl border bg-card">
@@ -248,6 +252,6 @@ export default function AgentCalendarPage() {
       )}
 
       <ItemDetailSheet item={selectedItem} onOpenChange={changeDetailOpen} onNavigate={(url) => router.push(url)} />
-    </div>
+    </SupportPageShell>
   )
 }

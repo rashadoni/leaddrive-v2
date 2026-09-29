@@ -2902,3 +2902,35 @@ Result: Support navigation is DONE. Next: checkpoint and push the section
 closure, restore the three shared-foundation contract tests missing from the
 continuing branch, re-audit the aggregate gate, then execute the remaining
 foundation browser evidence.
+
+## 2026-09-29 — Global foundation source contracts recovered
+
+- Restored the three foundation suites already named by the aggregate workflow:
+  the 20-surface page-shell inventory, shared form/touch contract and
+  customer-facing friendly-error contract. They were absent from the continuing
+  tree even though the workflow and implementation plan still required them.
+- The first run failed 9 assertions and exposed real current-tree regressions:
+  11 rebuilt destinations used local headers instead of the shared shell; KB
+  category/status selects had labels without matching IDs; two conditional
+  portal recovery actions had dropped below 44 px; the Macros category rename
+  input lacked a programmatic name; and seven checked surfaces could expose raw
+  server error text.
+- Migrated Agent Desktop, VoIP, Knowledge Base list/detail, Ticket Categories,
+  SLA, Entitlements, Entitlement Templates, Skill Routing, Agent Calendar and
+  Escalation Rules to the actual `SupportPageShell` component without removing
+  their role-aware actions, data-state/test markers, help/tour controls or
+  operational content. The Escalation contract now asserts the component
+  boundary instead of accepting the old CSS marker.
+- Restored both KB select bindings, 44 px portal recovery targets and a
+  localized accessible name for category rename. Ticket macro application, KB,
+  Macros, portal upload and VoIP business-hours recovery now use localized
+  fallbacks or mapped codes rather than raw backend messages.
+- Source self-audit is green: anti-pattern scan 47/47 files with zero findings;
+  AZ/RU/EN parity 23,715 keys each; changed-source ESLint zero errors/warnings;
+  restored foundation contracts 25/25; affected flow/portal/VoIP contracts
+  69/69; and clean `git diff --check`. Heavy TypeScript/build/browser checks are
+  NOT RUN locally and remain mandatory in GitHub Actions.
+
+Next: checkpoint and push this foundation source correction, run aggregate
+exact-SHA EN/light desktop mutation evidence, inspect every flow group, then
+proceed to the complete locale/theme/viewport matrix and visual comparison.

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { AlertCircle, Network } from "lucide-react"
 
 import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { AgentSkillsManager } from "@/components/support/agent-skills-manager"
 import { QueueManager } from "@/components/support/queue-manager"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
@@ -109,19 +110,14 @@ export default function SkillRoutingPage() {
   }
 
   return (
-    <div
-      className="space-y-3 sm:space-y-4"
+    <SupportPageShell
       data-testid="skill-routing-workspace"
       data-state={queuesLoading || agentsLoading ? "loading" : queuesError && agentsError ? "error" : partial ? "partial" : "ready"}
+      title={<span data-tour-id="sr-header">{t("title")}</span>}
+      description={t("subtitleCompact")}
+      leading={<Network className="h-5 w-5" aria-hidden="true" />}
+      utilities={<><TourReplayButton tourId="skillRouting" /><HelpButton slug="skill-routing" /></>}
     >
-      <header className="flex items-start gap-3">
-        <Network className="mt-0.5 h-5 w-5 text-muted-foreground" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2"><h1 data-tour-id="sr-header" className="text-xl font-semibold tracking-tight">{t("title")}</h1><TourReplayButton tourId="skillRouting" /><HelpButton slug="skill-routing" /></div>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("subtitleCompact")}</p>
-        </div>
-      </header>
-
       <details className="rounded-lg border px-3 py-2 text-sm">
         <summary className="min-h-11 cursor-pointer rounded-sm py-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("howItWorksTitle")}</summary>
         <p className="pb-2 text-muted-foreground">{t("howItWorksBody")}</p>
@@ -150,6 +146,6 @@ export default function SkillRoutingPage() {
           <AgentSkillsManager agents={agents} selectedQueue={selectedQueue} availableSkills={availableSkills} canWrite={agentCanWrite} loading={agentsLoading} error={agentsError} errorRetryable={agentsErrorRetryable} onRetry={() => void loadAgents()} onAgentsChange={setAgents} />
         </div>
       </div>
-    </div>
+    </SupportPageShell>
   )
 }

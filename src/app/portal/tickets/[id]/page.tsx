@@ -101,7 +101,7 @@ function uploadPortalAttachment(
         onProgress(100)
         resolve(body.data)
       } else {
-        reject(new Error(body.error || "upload_failed"))
+        reject(new Error("upload_failed"))
       }
     })
     request.addEventListener("error", () => reject(new Error("upload_failed")))
@@ -457,7 +457,7 @@ export default function PortalTicketDetailPage() {
             {draftAttachmentIds.length > draftAttachments.length && (
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs" role="status">
                 <span>{t("attachmentRecoveryPending", { count: draftAttachmentIds.length - draftAttachments.length })}</span>
-                <Button type="button" variant="ghost" size="sm" onClick={() => void loadDraftAttachments(draftAttachmentIds)}>{t("tryAgain")}</Button>
+                <Button type="button" variant="ghost" size="sm" className="min-h-11" onClick={() => void loadDraftAttachments(draftAttachmentIds)}>{t("tryAgain")}</Button>
               </div>
             )}
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

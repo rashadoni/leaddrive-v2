@@ -28,6 +28,7 @@ import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
 import { KbArticleForm } from "@/components/kb-article-form"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { Badge } from "@/components/ui/badge"
@@ -114,8 +115,8 @@ function previewContent(content?: string | null): string {
 }
 
 async function responseError(response: Response, fallback: string): Promise<Error> {
-  const payload = await response.json().catch(() => null)
-  return new Error(payload?.error || fallback)
+  await response.body?.cancel().catch(() => undefined)
+  return new Error(fallback)
 }
 
 export default function KnowledgeBasePage() {
@@ -415,18 +416,14 @@ export default function KnowledgeBasePage() {
   const workspaceState = loading ? "loading" : articlesError && articles.length === 0 ? "error" : "ready"
 
   return (
-    <div className="space-y-4" data-testid="knowledge-base-workspace" data-state={workspaceState}>
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1>
-            <TourReplayButton tourId="knowledgeBase" />
-            <HelpButton slug="knowledge-base" />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{t("pageDescription")}</p>
-          {!canWrite && <p className="mt-1 text-xs text-muted-foreground">{t("readOnlyHint")}</p>}
-        </div>
-        {canWrite && (
+    <SupportPageShell
+      data-testid="knowledge-base-workspace"
+      data-state={workspaceState}
+      width="wide"
+      title={t("title")}
+      description={<>{t("pageDescription")}{!canWrite && <span className="mt-1 block text-xs">{t("readOnlyHint")}</span>}</>}
+      utilities={<><TourReplayButton tourId="knowledgeBase" /><HelpButton slug="knowledge-base" /></>}
+      actions={canWrite ? (
           <div className="flex gap-2 sm:shrink-0">
             <Button
               data-testid="knowledge-base-manage-categories"
@@ -446,8 +443,8 @@ export default function KnowledgeBasePage() {
               <Plus /> {t("newArticle")}
             </Button>
           </div>
-        )}
-      </header>
+        ) : undefined}
+    >
 
       <section aria-label={t("librarySummaryLabel")} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs text-muted-foreground">
         <span><strong className="font-semibold text-foreground">{summary.total}</strong> {t("articles")}</span>
@@ -723,7 +720,7 @@ export default function KnowledgeBasePage() {
             })
           : undefined}
       />
-    </div>
+    </SupportPageShell>
   )
 }
 

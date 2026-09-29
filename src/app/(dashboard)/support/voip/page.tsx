@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { CallJournalDetail } from "@/components/voip/call-journal-detail"
 import { CallRecordingPlayer } from "@/components/voip/call-recording-player"
 import { MissedInboundQueue } from "@/components/voip/missed-inbound-queue"
@@ -280,23 +281,18 @@ export default function VoipCallsPage() {
   }
 
   return (
-    <div
+    <SupportPageShell
       data-testid="voip-workspace"
       data-state={loading && calls.length === 0 ? "loading" : "ready"}
       data-total-calls={summary?.total ?? 0}
       data-total-pages={totalPages}
       data-rendered-calls={calls.length}
-      className="mx-auto max-w-[1180px] space-y-3 pb-8 sm:space-y-4"
+      width="wide"
+      title={t("title")}
+      description={t("description")}
+      leading={<Phone className="h-5 w-5" aria-hidden="true" />}
+      utilities={<HelpButton slug="voip" variant="label" />}
     >
-      <header className="border-b pb-3 sm:pb-4">
-        <div className="flex items-center gap-2">
-          <Phone className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
-          <HelpButton slug="voip" variant="label" />
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
-      </header>
-
       <aside data-testid="voip-connection-state" data-state={connectionState} data-management-mode={canManageConnection ? "admin" : "read-only"} className="flex flex-col gap-3 rounded-lg border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between" aria-label={t("connectionStatus")}>
         <div className="flex min-h-11 items-center gap-2" aria-live="polite">
           {connectionState === "checking" ? (
@@ -460,7 +456,7 @@ export default function VoipCallsPage() {
           </nav>
         )}
       </section>
-    </div>
+    </SupportPageShell>
   )
 }
 

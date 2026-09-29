@@ -17,6 +17,7 @@ import { toast } from "sonner"
 
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { SlaPolicyForm } from "@/components/sla-policy-form"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
@@ -151,20 +152,15 @@ export default function SlaPoliciesPage() {
   const workspaceState = loading ? "loading" : loadError ? "error" : "ready"
 
   return (
-    <div data-testid="sla-policies-workspace" data-state={workspaceState} className="space-y-4">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-muted-foreground" />
-            <h1 data-tour-id="sla-header" className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1>
-            <TourReplayButton tourId="slaPolicies" />
-            <HelpButton slug="sla-policies" />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
-          {!canWrite && <p className="mt-1 text-xs text-muted-foreground">{t("readOnlyHint")}</p>}
-        </div>
-        {canWrite && <Button data-testid="sla-policies-create" className="min-h-11 bg-orange-700 px-4 text-white hover:bg-orange-800 sm:shrink-0" onClick={startCreate}><Plus />{t("addPolicy")}</Button>}
-      </header>
+    <SupportPageShell
+      data-testid="sla-policies-workspace"
+      data-state={workspaceState}
+      title={<span data-tour-id="sla-header">{t("title")}</span>}
+      description={<>{t("description")}{!canWrite && <span className="mt-1 block text-xs">{t("readOnlyHint")}</span>}</>}
+      leading={<Clock className="h-5 w-5" aria-hidden="true" />}
+      utilities={<><TourReplayButton tourId="slaPolicies" /><HelpButton slug="sla-policies" /></>}
+      actions={canWrite ? <Button data-testid="sla-policies-create" className="min-h-11 bg-orange-700 px-4 text-white hover:bg-orange-800 sm:shrink-0" onClick={startCreate}><Plus />{t("addPolicy")}</Button> : undefined}
+    >
 
       <section aria-label={t("summaryLabel")} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs text-muted-foreground">
         <span><strong className="font-semibold text-foreground">{policies.length}</strong> {t("totalPolicies")}</span>
@@ -280,7 +276,7 @@ export default function SlaPoliciesPage() {
           entitlements: deleteTarget._count?.entitlements || 0,
         }) : undefined}
       />
-    </div>
+    </SupportPageShell>
   )
 }
 

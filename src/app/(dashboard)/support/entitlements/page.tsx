@@ -26,6 +26,7 @@ import {
 
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
+import { SupportPageShell } from "@/components/support/support-page-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -690,26 +691,16 @@ export default function EntitlementsPage() {
   }
 
   return (
-    <div
-      className="space-y-3 sm:space-y-4"
+    <SupportPageShell
       data-testid="support-entitlements-workspace"
       data-state={loading ? "loading" : loadError && !data ? "error" : data?.entitlements.length === 0 ? "empty" : "ready"}
+      width="wide"
+      title={t("title")}
+      description={<>{t("subtitleCompact")}{data && !permissions.canWrite && <span className="mt-1 block text-xs" data-testid="support-entitlements-read-only">{t("permissionReadOnlyHint")}</span>}</>}
+      leading={<Shield className="h-5 w-5" aria-hidden="true" />}
+      utilities={<HelpButton slug="entitlements" className="h-11 w-11 shrink-0" />}
+      actions={permissions.canWrite ? <Button className="min-h-11 shrink-0 bg-orange-700 text-white hover:bg-orange-800" onClick={openCreate} data-testid="support-entitlements-create"><Plus />{t("createButton")}</Button> : undefined}
     >
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-muted-foreground" />
-            <h1 className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1>
-            <HelpButton slug="entitlements" className="h-11 w-11 shrink-0" />
-          </div>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("subtitleCompact")}</p>
-          {data && !permissions.canWrite && <p className="mt-1 text-xs text-muted-foreground" data-testid="support-entitlements-read-only">{t("permissionReadOnlyHint")}</p>}
-        </div>
-        {permissions.canWrite && (
-          <Button className="min-h-11 shrink-0 bg-orange-700 text-white hover:bg-orange-800" onClick={openCreate} data-testid="support-entitlements-create"><Plus />{t("createButton")}</Button>
-        )}
-      </header>
-
       <details className="group rounded-lg border bg-muted/10 px-3 py-2 text-sm">
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <FileText className="h-4 w-4 text-muted-foreground" />
@@ -891,7 +882,7 @@ export default function EntitlementsPage() {
         </div>,
         document.body,
       )}
-    </div>
+    </SupportPageShell>
   )
 }
 

@@ -755,6 +755,39 @@ Current foundation evidence (2026-09-06):
   origin without a newer run record. Source evidence is not described as
   rendered proof.
 
+Current-tree foundation recovery and self-audit (2026-09-29):
+
+- The continuing branch referenced but no longer contained the page-shell,
+  form-control and friendly-error contract suites. Restoring them exposed
+  current regressions instead of being treated as a mechanical history repair:
+  11 rebuilt destinations had reverted to page-local headers, two Knowledge
+  Base selects had lost their IDs, two portal recovery controls were below the
+  44 px contract, the Macros category rename input had no programmatic name,
+  and seven checked surfaces could reuse raw backend error text.
+- Agent Desktop, VoIP, Knowledge Base list/detail, Ticket Categories, SLA,
+  Entitlements, Entitlement Templates, Skill Routing, Agent Calendar and
+  Escalation Rules now use the real `SupportPageShell` component while
+  preserving their test IDs, data states, help/tour controls, role-aware actions
+  and operational children. The inventory again covers all 20 internal Support
+  destinations and required nested workflows; it does not accept a CSS class as
+  a substitute for the component boundary.
+- Knowledge Base select labels are again bound by matching IDs. Portal draft
+  reset and attachment recovery actions meet the 44 px minimum. The Macros
+  category rename control has a localized accessible name. Checked ticket, KB,
+  Macros, portal and VoIP recovery paths now expose localized safe fallbacks or
+  mapped error codes rather than server-provided text.
+- Current source self-audit is green: 47 visible TSX files pass the
+  anti-pattern scan with zero findings; AZ/RU/EN parity is 23,715 keys;
+  changed-source ESLint has zero errors and warnings; restored foundation
+  contracts pass 25/25 assertions; and affected flow, portal and VoIP contracts
+  pass 69/69 assertions. `git diff --check` is clean. Full TypeScript/build and
+  browser execution remain **NOT RUN locally** under the Contabo workload
+  contract and are mandatory in the exact-SHA GitHub Actions run.
+
+Next: checkpoint and push the current foundation correction, then execute the
+aggregate exact-SHA source/build gate and mutating EN/light desktop evidence
+before the complete responsive matrix and visual comparison.
+
 ## 8. Workstream 1 — Service Desk
 
 **Status: DONE — full acceptance matrix, CI, merge, deployment and smoke green**

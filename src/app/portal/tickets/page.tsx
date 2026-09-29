@@ -272,7 +272,7 @@ export default function PortalTicketsPage() {
               <h2 id="portal-new-ticket-title" className="text-sm font-semibold">{t("newTicket")}</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">{t("draftSavedHelp")}</p>
             </div>
-            {(subject || description) && <Button type="button" variant="ghost" size="sm" onClick={resetDraft}>{t("clearDraft")}</Button>}
+            {(subject || description) && <Button type="button" variant="ghost" size="sm" className="min-h-11" onClick={resetDraft}>{t("clearDraft")}</Button>}
           </div>
           <form className="space-y-3" onSubmit={handleCreate}>
             {formError && <p data-testid="portal-new-ticket-error" className="rounded-md border px-3 py-2 text-sm text-destructive" role="alert">{formError}</p>}
