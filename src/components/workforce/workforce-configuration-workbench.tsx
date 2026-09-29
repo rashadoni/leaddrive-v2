@@ -12,9 +12,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import {
+  WorkforceShiftSegmentEditor,
+  WorkforceShiftSegmentSummary,
+  type WorkforceShiftSegmentRecord,
+} from "@/components/workforce/workforce-shift-segment-editor"
+import {
   workforceDefaultPolicyDefinition,
   workforceDefaultShiftDefinition,
 } from "@/lib/workforce/default-profile"
+import {
+  workforceShiftSegmentPayload,
+  validateWorkforceShiftSegmentDraft,
+  type WorkforceShiftSegmentDraft,
+  type WorkforceShiftSegmentValidationIssue,
+} from "@/lib/workforce/shift-segment-draft"
 
 type PolicyDefinition = {
   expectedWorkSeconds: number
@@ -62,6 +73,7 @@ type WorkforceShift = {
   definitionHash: string
   provenance: "TENANT_ADMIN" | "SYSTEM_PROVISIONING"
   systemProfileVersion: string | null
+  segments: WorkforceShiftSegmentRecord[]
 }
 
 type WorkforceEmployee = {
@@ -191,6 +203,7 @@ type ShiftForm = {
     startTime: string
     endTime: string
   }>
+  segments: WorkforceShiftSegmentDraft[]
 }
 
 type AssignmentForm = {
@@ -327,6 +340,7 @@ function emptyShiftForm(): ShiftForm {
     timezone: definition.timezone,
     daysOfWeek: definition.daysOfWeek,
     plannedBreaks: definition.plannedBreaks,
+    segments: [],
   }
 }
 
@@ -403,6 +417,7 @@ export function WorkforceConfigurationWorkbench() {
   const [error, setError] = useState<string | null>(null)
   const [policyForm, setPolicyForm] = useState<PolicyForm>(emptyPolicyForm)
   const [shiftForm, setShiftForm] = useState<ShiftForm>(emptyShiftForm)
+  const [shiftSegmentValidationIssue, setShiftSegmentValidationIssue] = useState<WorkforceShiftSegmentValidationIssue | null>(null)
   const [assignmentForm, setAssignmentForm] = useState<AssignmentForm>(emptyAssignmentForm)
   const [rosterSearchInput, setRosterSearchInput] = useState("")
   const [rosterSearch, setRosterSearch] = useState("")
@@ -594,6 +609,7 @@ export function WorkforceConfigurationWorkbench() {
 
   function startShiftEdit(shift: WorkforceShift) {
     const definition = shift.definition
+    setShiftSegmentValidationIssue(null)
     setShiftForm({
       id: shift.id,
       code: shift.code,
@@ -604,6 +620,15 @@ export function WorkforceConfigurationWorkbench() {
       timezone: definition.timezone,
       daysOfWeek: definition.daysOfWeek,
       plannedBreaks: definition.plannedBreaks ?? [],
+      segments: shift.segments.map((segment) => ({
+        editorKey: segment.id,
+        mode: segment.mode,
+        siteId: segment.siteId,
+        startTime: segment.startTime,
+        endTime: segment.endTime,
+        lateGraceSeconds: String(segment.lateGraceSeconds),
+        proofPolicyReference: segment.proofPolicyReference,
+      })),
     })
   }
 
@@ -678,9 +703,23 @@ export function WorkforceConfigurationWorkbench() {
       || shiftForm.daysOfWeek.length === 0
       || plannedBreaks.some((plannedBreak) => !plannedBreak.startTime || !plannedBreak.endTime)
     ) {
+      setShiftSegmentValidationIssue(null)
       toast.error(t("shiftValidationFailed"))
       return
     }
+    const segmentValidationIssue = validateWorkforceShiftSegmentDraft({
+      segments: shiftForm.segments,
+      shiftStartTime: shiftForm.startTime,
+      shiftEndTime: shiftForm.endTime,
+      plannedBreaks,
+      activeSiteIds: new Set((data?.sites ?? []).filter((site) => site.status === "ACTIVE").map((site) => site.id)),
+    })
+    if (segmentValidationIssue) {
+      setShiftSegmentValidationIssue(segmentValidationIssue)
+      toast.error(t(`shiftSegmentValidation.${segmentValidationIssue}`))
+      return
+    }
+    setShiftSegmentValidationIssue(null)
     setSavingShift(true)
     try {
       const definition = {
@@ -690,10 +729,12 @@ export function WorkforceConfigurationWorkbench() {
         daysOfWeek: [...shiftForm.daysOfWeek].sort((left, right) => left - right),
         ...(plannedBreaks.length > 0 ? { plannedBreaks } : {}),
       }
+      const segments = workforceShiftSegmentPayload(shiftForm.segments)
       if (shiftForm.id) {
         await request("/api/v1/workforce/configuration/shifts/" + encodeURIComponent(shiftForm.id), "PATCH", {
           name: shiftForm.name.trim(),
           definition,
+          ...(segments.length > 0 ? { segments } : {}),
         })
       } else {
         await request("/api/v1/workforce/configuration/shifts", "POST", {
@@ -701,6 +742,7 @@ export function WorkforceConfigurationWorkbench() {
           name: shiftForm.name.trim(),
           teamId: shiftForm.teamId.trim() || null,
           definition,
+          ...(segments.length > 0 ? { segments } : {}),
         })
       }
       setShiftForm(emptyShiftForm())
@@ -1263,28 +1305,37 @@ export function WorkforceConfigurationWorkbench() {
           <form className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700" onSubmit={saveShift}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-medium">{shiftFormTitle}</h3>
-              {shiftForm.id ? <Button type="button" variant="ghost" className="min-h-10" onClick={() => setShiftForm(emptyShiftForm)}><X />{t("cancelEdit")}</Button> : null}
+              {shiftForm.id ? <Button type="button" variant="ghost" className="min-h-10" onClick={() => { setShiftForm(emptyShiftForm()); setShiftSegmentValidationIssue(null) }}><X />{t("cancelEdit")}</Button> : null}
             </div>
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
               <div className="space-y-1.5"><label htmlFor="workforce-shift-code" className="text-sm font-medium">{t("shiftCode")}</label><Input id="workforce-shift-code" value={shiftForm.code} onChange={(event) => setShiftForm((current) => ({ ...current, code: event.target.value }))} maxLength={80} required disabled={Boolean(shiftForm.id)} /><p className="text-xs leading-5 text-muted-foreground">{shiftForm.id ? t("scopeImmutableHint") : null}</p></div>
               <div className="space-y-1.5"><label htmlFor="workforce-shift-name" className="text-sm font-medium">{t("name")}</label><Input id="workforce-shift-name" value={shiftForm.name} onChange={(event) => setShiftForm((current) => ({ ...current, name: event.target.value }))} maxLength={160} required /></div>
               <div className="space-y-1.5"><Select id="workforce-shift-team" label={t("teamScopePicker")} value={shiftForm.teamId} onChange={(event) => setShiftForm((current) => ({ ...current, teamId: event.target.value }))} disabled={Boolean(shiftForm.id)}><option value="">{t("organizationScope")}</option>{data.roster.teams.map((team) => <option key={team.id} value={team.id}>{team.name}{team.code ? " · " + team.code : ""} · {t(team.isActive ? "directoryStatus.ACTIVE" : "directoryStatus.INACTIVE")}</option>)}</Select></div>
               <div className="space-y-1.5"><label htmlFor="workforce-shift-timezone" className="text-sm font-medium">{t("timezone")}</label><Input id="workforce-shift-timezone" value={shiftForm.timezone} onChange={(event) => setShiftForm((current) => ({ ...current, timezone: event.target.value }))} placeholder="Asia/Baku" required /></div>
-              <div className="space-y-1.5"><label htmlFor="workforce-shift-start" className="text-sm font-medium">{t("shiftStart")}</label><Input id="workforce-shift-start" type="time" value={shiftForm.startTime} onChange={(event) => setShiftForm((current) => ({ ...current, startTime: event.target.value }))} required /></div>
-              <div className="space-y-1.5"><label htmlFor="workforce-shift-end" className="text-sm font-medium">{t("shiftEnd")}</label><Input id="workforce-shift-end" type="time" value={shiftForm.endTime} onChange={(event) => setShiftForm((current) => ({ ...current, endTime: event.target.value }))} required /></div>
+              <div className="space-y-1.5"><label htmlFor="workforce-shift-start" className="text-sm font-medium">{t("shiftStart")}</label><Input id="workforce-shift-start" type="time" value={shiftForm.startTime} onChange={(event) => { setShiftForm((current) => ({ ...current, startTime: event.target.value })); setShiftSegmentValidationIssue(null) }} required /></div>
+              <div className="space-y-1.5"><label htmlFor="workforce-shift-end" className="text-sm font-medium">{t("shiftEnd")}</label><Input id="workforce-shift-end" type="time" value={shiftForm.endTime} onChange={(event) => { setShiftForm((current) => ({ ...current, endTime: event.target.value })); setShiftSegmentValidationIssue(null) }} required /></div>
             </div>
             <fieldset className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
               <legend className="text-sm font-medium">{t("plannedBreaks")}</legend>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("plannedBreaksHint")}</p>
               <div className="mt-4 space-y-3">
                 {shiftForm.plannedBreaks.map((plannedBreak, index) => <div key={index} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-                  <div className="space-y-1.5"><label htmlFor={`workforce-shift-break-${index}-start`} className="text-sm font-medium">{t("plannedBreakStart", { value: index + 1 })}</label><Input id={`workforce-shift-break-${index}-start`} type="time" value={plannedBreak.startTime} onChange={(event) => setShiftForm((current) => ({ ...current, plannedBreaks: current.plannedBreaks.map((item, itemIndex) => itemIndex === index ? { ...item, startTime: event.target.value } : item) }))} required /></div>
-                  <div className="space-y-1.5"><label htmlFor={`workforce-shift-break-${index}-end`} className="text-sm font-medium">{t("plannedBreakEnd", { value: index + 1 })}</label><Input id={`workforce-shift-break-${index}-end`} type="time" value={plannedBreak.endTime} onChange={(event) => setShiftForm((current) => ({ ...current, plannedBreaks: current.plannedBreaks.map((item, itemIndex) => itemIndex === index ? { ...item, endTime: event.target.value } : item) }))} required /></div>
-                  <Button type="button" variant="outline" className="min-h-11" aria-label={t("removePlannedBreak", { value: index + 1 })} onClick={() => setShiftForm((current) => ({ ...current, plannedBreaks: current.plannedBreaks.filter((_, itemIndex) => itemIndex !== index) }))}><X />{t("removePlannedBreak", { value: index + 1 })}</Button>
+                  <div className="space-y-1.5"><label htmlFor={`workforce-shift-break-${index}-start`} className="text-sm font-medium">{t("plannedBreakStart", { value: index + 1 })}</label><Input id={`workforce-shift-break-${index}-start`} type="time" value={plannedBreak.startTime} onChange={(event) => { setShiftForm((current) => ({ ...current, plannedBreaks: current.plannedBreaks.map((item, itemIndex) => itemIndex === index ? { ...item, startTime: event.target.value } : item) })); setShiftSegmentValidationIssue(null) }} required /></div>
+                  <div className="space-y-1.5"><label htmlFor={`workforce-shift-break-${index}-end`} className="text-sm font-medium">{t("plannedBreakEnd", { value: index + 1 })}</label><Input id={`workforce-shift-break-${index}-end`} type="time" value={plannedBreak.endTime} onChange={(event) => { setShiftForm((current) => ({ ...current, plannedBreaks: current.plannedBreaks.map((item, itemIndex) => itemIndex === index ? { ...item, endTime: event.target.value } : item) })); setShiftSegmentValidationIssue(null) }} required /></div>
+                  <Button type="button" variant="outline" className="min-h-11" aria-label={t("removePlannedBreak", { value: index + 1 })} onClick={() => { setShiftForm((current) => ({ ...current, plannedBreaks: current.plannedBreaks.filter((_, itemIndex) => itemIndex !== index) })); setShiftSegmentValidationIssue(null) }}><X />{t("removePlannedBreak", { value: index + 1 })}</Button>
                 </div>)}
               </div>
-              <Button type="button" variant="outline" className="mt-4 min-h-11" disabled={shiftForm.plannedBreaks.length >= 8} onClick={() => setShiftForm((current) => ({ ...current, plannedBreaks: [...current.plannedBreaks, { startTime: "", endTime: "" }] }))}><Plus />{t("addPlannedBreak")}</Button>
+              <Button type="button" variant="outline" className="mt-4 min-h-11" disabled={shiftForm.plannedBreaks.length >= 8} onClick={() => { setShiftForm((current) => ({ ...current, plannedBreaks: [...current.plannedBreaks, { startTime: "", endTime: "" }] })); setShiftSegmentValidationIssue(null) }}><Plus />{t("addPlannedBreak")}</Button>
             </fieldset>
+            <WorkforceShiftSegmentEditor
+              segments={shiftForm.segments}
+              sites={data.sites}
+              shiftStartTime={shiftForm.startTime}
+              shiftEndTime={shiftForm.endTime}
+              plannedBreaks={shiftForm.plannedBreaks}
+              validationIssue={shiftSegmentValidationIssue}
+              onChange={(segments) => { setShiftForm((current) => ({ ...current, segments })); setShiftSegmentValidationIssue(null) }}
+            />
             <fieldset className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
               <legend className="text-sm font-medium">{t("workdays")}</legend>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -1299,7 +1350,7 @@ export function WorkforceConfigurationWorkbench() {
           </form>
           <div className="mt-8 border-t border-zinc-200 dark:border-zinc-700">
             {data.shifts.map((shift) => <article key={shift.id} className="flex flex-col gap-4 py-5 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{shift.name}</p><Badge variant={shift.status === "ACTIVE" ? "default" : "secondary"}>{shift.status === "ACTIVE" ? t("active") : t("draft")}</Badge><Badge variant="outline">{shift.code}</Badge><Badge variant="outline">{t("version", { value: shift.version })}</Badge>{shift.provenance === "SYSTEM_PROVISIONING" ? <Badge variant="outline">{t("systemDefaultProfile", { version: shift.systemProfileVersion ?? "—" })}</Badge> : null}</div><p className="mt-2 text-sm text-muted-foreground">{shift.teamId ? t("teamScope", { teamId: shift.teamId }) : t("organizationScope")}</p><p className="mt-1 text-sm text-muted-foreground">{t("shiftSummary", { start: shift.definition.startTime, end: shift.definition.endTime, timezone: shift.definition.timezone })}</p>{(shift.definition.plannedBreaks ?? []).map((plannedBreak, index) => <p key={`${plannedBreak.startTime}-${plannedBreak.endTime}-${index}`} className="mt-1 text-sm text-muted-foreground">{t("plannedBreakSummary", { start: plannedBreak.startTime, end: plannedBreak.endTime })}</p>)}</div>
+              <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{shift.name}</p><Badge variant={shift.status === "ACTIVE" ? "default" : "secondary"}>{shift.status === "ACTIVE" ? t("active") : t("draft")}</Badge><Badge variant="outline">{shift.code}</Badge><Badge variant="outline">{t("version", { value: shift.version })}</Badge>{shift.provenance === "SYSTEM_PROVISIONING" ? <Badge variant="outline">{t("systemDefaultProfile", { version: shift.systemProfileVersion ?? "—" })}</Badge> : null}</div><p className="mt-2 text-sm text-muted-foreground">{shift.teamId ? t("teamScope", { teamId: shift.teamId }) : t("organizationScope")}</p><p className="mt-1 text-sm text-muted-foreground">{t("shiftSummary", { start: shift.definition.startTime, end: shift.definition.endTime, timezone: shift.definition.timezone })}</p>{(shift.definition.plannedBreaks ?? []).map((plannedBreak, index) => <p key={`${plannedBreak.startTime}-${plannedBreak.endTime}-${index}`} className="mt-1 text-sm text-muted-foreground">{t("plannedBreakSummary", { start: plannedBreak.startTime, end: plannedBreak.endTime })}</p>)}<WorkforceShiftSegmentSummary segments={shift.segments} sites={data.sites} /></div>
               {shift.status === "DRAFT" ? <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-12" onClick={() => startShiftEdit(shift)}><Pencil />{t("editDraft")}</Button><Button type="button" className="min-h-12" disabled={activating !== null} onClick={() => void activate("shift", shift.id)}>{activating === "shift:" + shift.id ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}{t("activateShift")}</Button></div> : null}
             </article>)}
             {data.shifts.length === 0 ? <p className="py-8 text-sm text-muted-foreground">{t("noShifts")}</p> : null}

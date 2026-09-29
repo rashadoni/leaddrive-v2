@@ -33,6 +33,31 @@ import {
  */
 export const AI_RELEVANCE_JUDGE_PASS_FEATURE = "ai"
 
+/**
+ * Which rejections are worth a second opinion (owner decision, 2026-09-28).
+ *
+ * The pass used to look at one class only, and the records the judge was built
+ * to recover mostly sit in the others: a comment under the brand's own post, a
+ * record the automatic triage read as an irrelevant parent comment, a rejection
+ * left behind by the language gate that has since been demoted to a label.
+ *
+ * `official_author` and its backfill are deliberately absent. Those are the
+ * brand's OWN posts, rejected by policy rather than by a judgement call, and a
+ * judge would confirm them as "about the brand" every time — which is true and
+ * beside the point. Putting a company's own marketing back into its monitoring
+ * feed is not a recovery.
+ *
+ * The live relevance evaluation still decides: the judge only adds a second
+ * signal, and a rejection that stands for another reason stays rejected.
+ */
+export const JUDGEABLE_REJECTION_REASONS = [
+  "ambiguous_alias_requires_second_signal",
+  "condolence_parent_post_no_inheritance",
+  "automatic_review_irrelevant_parent_comment",
+  "subject_language_mismatch",
+  "foreign_namesake_foreign_script",
+] as const
+
 const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 200
 // Запас на уже осуждённые строки, которые отбрасываются в коде.
@@ -179,6 +204,16 @@ export async function judgeAmbiguousAliasRejections(options: {
   const limit = Math.max(1, Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT))
   const result = emptyResult()
 
+  // Since 2026-09-29 the live evaluation accepts a second signal only from the
+  // judge that knows where the brand operates (see subject-relevance.ts, and
+  // the 2026-08-03 incident it records). Any other judge would be paid for an
+  // answer that cannot restore anything — so it is not asked at all. The pass
+  // waits instead: without the key this is a no-op, not a bill.
+  if (result.provider !== "jev") {
+    result.reason = "no_geography_aware_judge"
+    return result
+  }
+
   // Уже осуждённые этой версией отбираются В КОДЕ, а не JSON-фильтром.
   // Прод показал почему: у строки без ключа `aiJudgeVersion` путь даёт NULL, и
   // `not: <версия>` для неё неизвестен, то есть ложен — выборка вернула ноль
@@ -187,7 +222,7 @@ export async function judgeAmbiguousAliasRejections(options: {
     where: {
       ...(options.organizationId ? { organizationId: options.organizationId } : {}),
       status: "REJECTED",
-      reason: "ambiguous_alias_requires_second_signal",
+      reason: { in: JUDGEABLE_REJECTION_REASONS },
       mention: { purgedAt: null, deletedAtSource: null },
     },
     orderBy: { decidedAt: "desc" },

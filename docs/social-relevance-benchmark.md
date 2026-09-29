@@ -221,12 +221,60 @@ comes back.
 Two production actions remain, and both are the owner's:
 
 ```bash
-# 1. the key, through the operator workflow that owns production env
-gh workflow run set-social-app-secrets.yml   # TYPESAFE_API_KEY
-# 2. install the schedule
-ssh prod 'bash /usr/local/lib/leaddrive-v2/ops/current/scripts/install-resilience-crons.sh'
+# 1. add TYPESAFE_API_KEY as a repository secret, then deliver it to the
+#    canonical production app env (the workflow carries the key since
+#    2026-09-29; before that it had a fixed list that did not include it)
+gh workflow run set-social-app-secrets.yml --repo rashadoni/leaddrive-v2
+
+# 2. install the schedule. The installer ships inside the deployed artifact;
+#    /usr/local/lib/leaddrive-v2/ops/current holds only cron-scripts, not this.
+ssh prod 'bash /opt/leaddrive-v2/.next/standalone/scripts/install-resilience-crons.sh'
 ```
+
+Order matters: with the schedule installed and no key, the pass runs on the
+Anthropic judge instead — about twenty times the price per record, on a
+provider whose answers were never measured on these records.
 
 Until both are done nothing is restored and nothing is spent: without the key
 the provider selection falls back to the Haiku judge, and without the schedule
 the pass is never called.
+
+## The judge's verdict counts again — 2026-09-29
+
+The live evaluation had stopped treating the judge as a second signal. The
+comment in `subject-relevance.ts` records why: on 2026-08-03 enabling it
+restored 49 records that turned out to be foreign namesakes — "Back To School
+Sale at your Bravo on 41" (USA), "Oba market Benin city" (Nigeria), a German
+lamb price list. The judge answered honestly; it simply was not told that the
+monitored brand is Azerbaijani. The same comment names the condition for
+bringing it back: **geography in the prompt, and a measurement on a sample WITH
+namesakes.**
+
+Both are now true, and the measurement is on exactly the population that broke:
+
+- 75 records held on the old judge's word. **20 of them are foreign namesakes**
+  — the Florida, Benin, Bonn, Lagos and Adana records.
+- The geography-aware judge confirms **none of those 20**.
+- Of the 55 local ones it confirms 5 at confidence ≥ 0.9.
+
+So the verdict is a second signal again, under three conditions, and only
+together: it must come from the geography-aware judge (`jev_relevance_judge_v1`
+— old `ai_relevance_judge_v2` stamps never qualify, they are the ones that
+brought the namesakes back), it must say `about_subject`, and it must have
+passed the 0.9 threshold in the pass. Records restored this way carry
+`heldByJudge` in their context signals, so it stays visible what a finding
+rests on.
+
+The queue widened at the same time. It was one rejection class; it is now five,
+with the brand's own posts (`official_author*`) deliberately excluded — a judge
+would confirm those every time, and putting a company's own marketing back into
+its monitoring feed is not a recovery.
+
+### And nobody else is asked
+
+Since the verdict only counts when it comes from the geography-aware judge, any
+other judge would be paid for an answer that cannot restore anything. So the
+pass does not ask one: without `TYPESAFE_API_KEY` it returns
+`reason: "no_geography_aware_judge"` before it even queries for candidates. The
+schedule can therefore be installed before the key is delivered — it is a no-op,
+not a bill.
