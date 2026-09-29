@@ -974,7 +974,7 @@ from Route & Field.
 | WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
 | WF-C8-006 | P1 | DONE | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | [`workforce-c8-sites-geofences-evidence-2026-08-30.md`](./workforce-c8-sites-geofences-evidence-2026-08-30.md): administrator-only named sites, future calibrated circles, assignment-only impact preview and immutable revision history; no browser location collection or physical-presence claim |
-| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md) and [`future organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments and strict future organization holiday/closure/exception authoring are source-complete; team/employee and moved-day workflows, update/delete governance, break-policy authoring and real browser/AT evidence remain open |
+| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md), [`organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md), [`team calendar evidence`](./workforce-c8-team-calendar-configuration-evidence-2026-09-29.md) and [`employee calendar evidence`](./workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments and strict future organization/team/employee holiday/closure/exception create/list are source-complete; moved-day workflow, update/delete governance, break-policy authoring and real browser/AT evidence remain open |
 | WF-C8-008 | P1 | PARTIAL | Web | Add proof-policy, QR station and trusted-device administration separated by permission | [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): named-site/effective-circle QR station creation plus device/QR lifecycle UI are administrator-only; proof-policy UI and granular separation-of-duties await C7/C5 gates |
 | WF-C8-009 | P1 | PARTIAL | Web | Add restricted evidence timeline and access audit; normal view shows verdict instead of exact coordinates | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md): a visible named-employee web timeline now returns only bounded localized verdict/reason records after exact grant, explicit context and successful access audit; raw-investigation policy/UI and real-browser acceptance remain open |
 | WF-C8-010 | P1 | PARTIAL | Web/I18n | Complete AZ/RU/EN, keyboard, focus, contrast, 200% zoom, responsive tablet/phone and error/empty states | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md) and [`bulk preview evidence`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): AZ/RU/EN, concise announcements, focus transfer, bounded named search, responsive source and error/empty states exist; real browser/AT/contrast/200%-zoom/mobile evidence remains open |
@@ -2760,3 +2760,26 @@ from this worktree.
   green; only the post-reconciliation receipt is uncommitted.
 - Next action: checkpoint this receipt, compute new exact identities against
   live main and start author-independent frozen-head review.
+
+## 2026-09-29 — WF-C8-007d first frozen review remediation
+
+- Independent review of exact head
+  `a6423c114c74a75661e4be8d36151df7ab98ca7f` returned RED:
+  `P0=0`, `P1=0`, `P2=1`, `P3=1`. The P2 was a privacy/copy contract that
+  invited a leave/medical reason into the schedule-visible and audited personal
+  label; the P3 was the stale authoritative `WF-C8-007` acceptance row.
+- Employee scope now presents a localized, described non-sensitive display
+  label, explicitly prohibits leave/absence, medical/health, disciplinary and
+  proof details, and discloses its schedule visibility/audit retention.
+  Evidence now describes the stored label truthfully.
+- The `WF-C8-007` row now links organization/team/employee evidence and leaves
+  only moved-day, update/delete, break-policy and browser/AT work open.
+- Post-remediation PASS: 9 files / 95 tests, scoped ESLint, JSON, whitespace
+  and i18n 23,886/0/0. Heavy local gates remain `NOT RUN`; the rejected head is
+  ineligible and fresh exact-head independent GREEN remains mandatory.
+- No progress credit changes: `WF-C8-007` stays `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: both review findings are remediated in the working
+  tree; the remediation/evidence are uncommitted.
+- Next action: checkpoint explicit paths, recompute live-main identities and
+  obtain a fresh full-range author-independent review.

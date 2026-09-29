@@ -83,9 +83,13 @@ unique collision fails closed with 409. Exact retry writes neither a second row
 nor a second audit. Audit failure rolls the row back with the transaction.
 
 The audit separates operator from target: `actorUserId` is the authenticated
-writer and `agentId` is the selected employee. Metadata contains only the safe
-employee/current-team labels, scope, date, day kind/name, `ADMIN` source and
-computed Route baseline; it contains no email, phone, proof or leave reason.
+writer and `agentId` is the selected employee. Metadata contains the safe
+employee/current-team labels, scope, date, day kind, the operator-supplied
+calendar display label, `ADMIN` source and computed Route baseline. That label
+is deliberately returned to schedule readers and retained in audit; it is not
+a private HR field. The UI therefore calls it a non-sensitive display label
+and explicitly forbids leave, absence, medical, health, disciplinary or proof
+details. Email, phone and request/proof records are not selected or copied.
 
 ## API and UI contract
 
@@ -96,7 +100,10 @@ computed Route baseline; it contains no email, phone, proof or leave reason.
   cannot smuggle an employee and employee input cannot smuggle a team.
 - The UI labels this operation as a personal scheduling exception, not leave or
   absence approval, and states that existing request-created entries remain
-  visible and are never replaced.
+  visible and are never replaced. Employee scope replaces the general
+  "name or reason" prompt with a described non-sensitive display-label field;
+  its warning says not to enter leave/absence, medical/health, disciplinary or
+  proof details and discloses that the label is schedule-visible and audited.
 - Same-tenant inactive/suspended selected employees remain readable with status
   and current-team context, while creation is disabled and server-rejected.
 - All GETs share the released AbortController plus monotonic latest-request
@@ -152,3 +159,33 @@ sets. The complete bounded verification was rerun on the integrated head:
 integrated EN catalog has 23,883 leaf keys with RU/AZ missing 0 and extra 0.
 No calendar implementation/test path required conflict resolution. A fresh
 review must use this post-reconciliation exact head and live-main diff.
+
+## First frozen-head review RED and remediation
+
+Author-independent full-range review of exact clean head
+`a6423c114c74a75661e4be8d36151df7ab98ca7f` against live main
+`bd83c5d41182fca0003282e2241e5ad9ae35c04b` returned RED with
+`P0=0, P1=0, P2=1, P3=1`.
+
+- P2: the shared "name or reason" UI label invited a scheduling operator to
+  put leave/medical details into an employee calendar label that is returned to
+  schedule readers and retained in audit. Employee scope now uses a distinct
+  accessible "non-sensitive display label", neutral example and localized
+  prohibition on leave/absence, medical/health, disciplinary and proof details.
+  Its create disclosure truthfully states schedule visibility and audit
+  retention. Evidence no longer claims that the stored label cannot be a
+  reason; it documents the contract and actual storage/visibility boundary.
+- P3: the authoritative `WF-C8-007` row still described team/employee workflows
+  as open. It now links organization, team and employee evidence and lists only
+  the real remaining work: moved-day, update/delete, break-policy and real
+  browser/AT acceptance.
+
+The reviewer separately tested the nested current-team tenant concern and did
+not confirm a finding: the session route establishes tenant RLS,
+`mtm_teams` is under FORCE RLS and the supported application role cannot bypass
+it, while the write join also matches organization and team ID. A corrupted
+foreign team link is therefore projected as no current team, not disclosed.
+
+Post-remediation author checks pass: 9 files / 95 tests, scoped ESLint, JSON,
+whitespace and i18n EN 23,886 with RU/AZ missing 0 and extra 0. The rejected
+head is ineligible; a new exact-head full-range independent review is mandatory.

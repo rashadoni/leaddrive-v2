@@ -25567,6 +25567,9 @@
     "agentInactive": "Bu əməkdaş artıq qeyri-aktivdir və ya dayandırılıb. Gələcək qeydləri görünür, lakin onun üçün yeni təqvim günü yazmaq olmaz.",
     "agentContext": "Status: {status} · cari komanda: {team}",
     "noCurrentTeam": "Cari komanda yoxdur",
+    "agentName": "Həssas olmayan görünən etiket",
+    "agentNamePlaceholder": "Məsələn, planlaşdırılmış təlim günü",
+    "agentNameHint": "Məzuniyyət, yoxluq, tibbi, sağlamlıq, intizam və ya sübut məlumatlarını daxil etməyin. Belə qeydlər üçün təsdiqlənmiş müraciət prosesindən istifadə edin.",
     "agentStatuses": {
       "ACTIVE": "Aktiv",
       "INACTIVE": "Qeyri-aktiv",
@@ -25578,7 +25581,7 @@
     "namePlaceholder": "Məsələn, şirkətin illik toplantısı",
     "createHintOrganization": "Yalnız təşkilatın {timezone} saat qurşağında bugünkü tarixdən sonrakı tarixlər qəbul edilir.",
     "createHintTeam": "{team} komandası üçün yalnız təşkilatın {timezone} saat qurşağında bugünkü tarixdən sonrakı tarixlər qəbul edilir.",
-    "createHintAgent": "{agent} əməkdaşı üçün yalnız təşkilatın {timezone} saat qurşağında bugünkü tarixdən sonrakı tarixlər qəbul edilir. Bu, məzuniyyət və ya yoxluq təsdiqi deyil, şəxsi planlaşdırma istisnasıdır.",
+    "createHintAgent": "{agent} əməkdaşı üçün yalnız təşkilatın {timezone} saat qurşağında bugünkü tarixdən sonrakı tarixlər qəbul edilir. Bu, məzuniyyət və ya yoxluq təsdiqi deyil; həssas olmayan görünən etiket planlaşdırma oxucularına göstərilir və auditdə saxlanılır.",
     "create": "Təqvim gününü qeydə al",
     "createdOrganization": "Təşkilatın gələcək təqvim günü qeydə alındı.",
     "createdTeam": "Komandanın gələcək təqvim günü qeydə alındı.",

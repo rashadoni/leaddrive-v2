@@ -545,7 +545,9 @@ export function WorkforceCalendarConfiguration() {
           </Select>
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="workforce-calendar-name">{t("name")}</label>
+          <label className="text-sm font-medium" htmlFor="workforce-calendar-name">{
+            t(scope === "AGENT" ? "agentName" : "name")
+          }</label>
           <Input
             id="workforce-calendar-name"
             className="min-h-11"
@@ -553,9 +555,14 @@ export function WorkforceCalendarConfiguration() {
             disabled={saving}
             onChange={(event) => { setName(event.target.value); setNotice(null) }}
             maxLength={160}
-            placeholder={t("namePlaceholder")}
+            placeholder={t(scope === "AGENT" ? "agentNamePlaceholder" : "namePlaceholder")}
+            aria-describedby={scope === "AGENT" ? "workforce-calendar-agent-name-hint" : undefined}
             required
           />
+          {scope === "AGENT" ? <p
+            id="workforce-calendar-agent-name-hint"
+            className="text-xs leading-5 text-muted-foreground"
+          >{t("agentNameHint")}</p> : null}
         </div>
         <div className="md:col-span-3">
           <p className="mb-4 text-sm leading-6 text-muted-foreground">{

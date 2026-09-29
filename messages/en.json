@@ -25571,6 +25571,9 @@
     "agentInactive": "This employee is now inactive or suspended. Their future entries remain visible, but no new calendar day can be recorded for them.",
     "agentContext": "Status: {status} · current team: {team}",
     "noCurrentTeam": "No current team",
+    "agentName": "Non-sensitive display label",
+    "agentNamePlaceholder": "For example, scheduled training day",
+    "agentNameHint": "Do not enter leave, absence, medical, health, disciplinary or proof details. Use the approved request workflow for those records.",
     "agentStatuses": {
       "ACTIVE": "Active",
       "INACTIVE": "Inactive",
@@ -25582,7 +25585,7 @@
     "namePlaceholder": "For example, annual company meeting",
     "createHintOrganization": "Only dates after today's {timezone} organization date are accepted.",
     "createHintTeam": "Only dates after today's {timezone} organization date are accepted for {team}.",
-    "createHintAgent": "Only dates after today's {timezone} organization date are accepted for {agent}. This is a personal scheduling exception, not a leave or absence approval.",
+    "createHintAgent": "Only dates after today's {timezone} organization date are accepted for {agent}. This is a personal scheduling exception, not a leave or absence approval; its non-sensitive display label is visible to schedule readers and retained in audit.",
     "create": "Record calendar day",
     "createdOrganization": "The future organization calendar day was recorded.",
     "createdTeam": "The future team calendar day was recorded.",

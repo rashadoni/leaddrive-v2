@@ -117,6 +117,16 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(component).not.toContain('source: "ADMIN"')
   })
 
+  it("uses a non-sensitive employee display-label contract instead of inviting HR reasons", () => {
+    expect(component).toContain('t(scope === "AGENT" ? "agentName" : "name")')
+    expect(component).toContain('t(scope === "AGENT" ? "agentNamePlaceholder" : "namePlaceholder")')
+    expect(component).toContain('aria-describedby={scope === "AGENT" ? "workforce-calendar-agent-name-hint" : undefined}')
+    expect(component).toContain('id="workforce-calendar-agent-name-hint"')
+    expect(messages("en").agentName).toBe("Non-sensitive display label")
+    expect(messages("en").agentNameHint).toContain("Do not enter leave, absence, medical")
+    expect(messages("en").createHintAgent).toContain("visible to schedule readers and retained in audit")
+  })
+
   it("has complete non-empty EN, RU and AZ copy including every readable kind", () => {
     const keys = [
       "title",
@@ -148,6 +158,9 @@ describe("Workforce calendar configuration UI contract", () => {
       "agentInactive",
       "agentContext",
       "noCurrentTeam",
+      "agentName",
+      "agentNamePlaceholder",
+      "agentNameHint",
       "date",
       "kind",
       "name",

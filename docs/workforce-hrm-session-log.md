@@ -2705,3 +2705,37 @@ corrections as new entries that explicitly supersede the earlier fact.
   approved the post-merge head.
 - Next action: checkpoint only the three evidence/continuity documents,
   fingerprint the live-main diff, then require fresh author-independent GREEN.
+
+## 2026-09-29 — WF-C8-007d first frozen review RED remediated
+
+- Reviewer confirmed clean exact head
+  `a6423c114c74a75661e4be8d36151df7ab98ca7f`, live-main base
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`, full identity 15 paths /
+  122,670 bytes / `85a48b366c67e686f7a24e00450ae717cd88c3f5f357dbb0f4fc5f2f5288db8f`
+  and non-doc identity 11 paths / 100,387 bytes /
+  `46eb3061254840b27d78ceffdee8e0bca5e32fea9f5b7f847684e076b8b4c0af`.
+- Verdict was RED with `P0=0`, `P1=0`, `P2=1`, `P3=1`. The P2 found that
+  "Name or reason" invited sensitive leave/medical content into a personal
+  label returned to schedule readers and retained in audit. The P3 found the
+  authoritative `WF-C8-007` row still called team/employee workflows open.
+- Employee scope now uses a separate accessible non-sensitive display-label
+  field, neutral example, explicit localized ban on leave/absence,
+  medical/health, disciplinary and proof details, and disclosure that the
+  label is schedule-visible and audited. Evidence states actual retention
+  rather than promising that a stored label cannot be a reason.
+- The authoritative row now links released organization/team evidence and this
+  employee evidence; real remaining scope is moved-day, update/delete,
+  break-policy and browser/AT acceptance.
+- A separately examined cross-tenant nested-team concern was not confirmed:
+  session tenant context plus FORCE RLS/NOBYPASSRLS hides a corrupt foreign
+  relation, and the write SQL also joins on organization.
+- Post-remediation PASS: 9 files / 95 tests, scoped ESLint, JSON/diff and i18n
+  EN 23,886 with RU/AZ missing 0 and extra 0. Full typecheck/build/suite,
+  real-PostgreSQL concurrency, browser/AT/device, Android/Gradle, load/chaos,
+  signed-device and pilot remain `NOT RUN` locally.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: both findings are fixed but uncommitted; rejected
+  head is not eligible for push/merge.
+- Next action: checkpoint the six runtime/i18n/test/docs paths plus continuity,
+  compute a new exact identity and require fresh independent GREEN.
