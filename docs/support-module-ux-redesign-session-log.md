@@ -2864,3 +2864,41 @@ read-only matrix before checking NAV-001..009.
 Next: checkpoint and push the correction, repeat exact-SHA mutating navigation
 evidence, inspect 5/5 outcomes and 5/5 keyboard/touch activations, then unlock
 the 72-cell read-only matrix.
+
+## 2026-09-29 — Support navigation complete
+
+- Final navigation implementation SHA
+  `c0604661db4dd77bd2e33ea68a9c3f4754a730c1` is proven by two accepted GitHub
+  Actions runs. No later application-source change is included in this section
+  closure.
+- Exact-SHA mutating run `36512893404`, artifact `11010433159`, passed all
+  three agent/manager/admin static captures and all five flow groups. It records
+  four real keyboard Enter activations and one real Playwright touchscreen
+  activation. The labeled mobile selector measured 287x44 px and its center
+  DOM hit-test succeeded. Persistent group state, active-route recovery,
+  collapsed-group search, the three-group layout and role/add-on visibility all
+  passed.
+- Complete matrix run `36514758825`, artifact `11011231079`, passed all 72
+  unique role/locale/theme/viewport cells: 24 each for agent, manager and admin;
+  24 each for AZ, RU and EN; 36 per theme; and 18 per desktop, tablet,
+  narrow-tablet and mobile viewport. All runtime, Axe, accessibility, touch,
+  primary-work, environment, page-overflow, missing-alt, duplicate-ID and
+  development-chrome failure totals are zero.
+- Matrix maxima are load p75 659 ms, filter p50 23 ms, interaction p75 32 ms,
+  primary-work top 324 px and CLS `0.011741124511635809`. Representative
+  AZ/light desktop, EN/dark tablet, RU/dark mobile and AZ/dark narrow-tablet
+  screenshots were manually inspected and accepted.
+- The product owner's authorization to execute the complete recorded plan,
+  combined with preserved three-role catalog behavior and rendered evidence,
+  confirms the three-group information architecture. All 15 destination routes
+  remain intact. The documented usage/stakeholder prerequisite still blocks
+  any future route removal or merge; this closure authorizes none.
+- The dedicated source/type gate, isolated fixtures and production build passed
+  in both accepted runs. NAV-001..009 are checked against the catalog,
+  permission matrix, keyboard/touch behavior and complete responsive evidence.
+  No gate or threshold was weakened.
+
+Result: Support navigation is DONE. Next: checkpoint and push the section
+closure, restore the three shared-foundation contract tests missing from the
+continuing branch, re-audit the aggregate gate, then execute the remaining
+foundation browser evidence.

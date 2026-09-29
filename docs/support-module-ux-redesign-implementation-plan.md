@@ -440,22 +440,22 @@ Visibility contract from the current navigation baseline:
 
 ### 6.2 Navigation tasks
 
-**Status: IN PROGRESS — current-main source/evidence contracts corrected and local self-audit green; exact-SHA browser gates pending**
+**Status: DONE — current-main source/evidence contracts, exact-SHA interaction evidence and complete responsive matrix green**
 
-- [ ] **SUPUX-NAV-001** Confirm the three-group information architecture with
+- [x] **SUPUX-NAV-001** Confirm the three-group information architecture with
   agents, managers, and administrators.
-- [ ] **SUPUX-NAV-002** Preserve all 15 destination routes while changing
+- [x] **SUPUX-NAV-002** Preserve all 15 destination routes while changing
   presentation only; preserve nested operational routes as well.
-- [ ] **SUPUX-NAV-003** Make group state persistent without hiding the active route.
-- [ ] **SUPUX-NAV-004** Keep Support search aware of collapsed destinations.
-- [ ] **SUPUX-NAV-005** Verify permission and feature-gate behavior for every item.
-- [ ] **SUPUX-NAV-006** Provide a mobile navigation pattern with labels, not a
+- [x] **SUPUX-NAV-003** Make group state persistent without hiding the active route.
+- [x] **SUPUX-NAV-004** Keep Support search aware of collapsed destinations.
+- [x] **SUPUX-NAV-005** Verify permission and feature-gate behavior for every item.
+- [x] **SUPUX-NAV-006** Provide a mobile navigation pattern with labels, not a
   forced icon-only mystery state.
-- [ ] **SUPUX-NAV-007** Add navigation analytics or usability evidence before
+- [x] **SUPUX-NAV-007** Add navigation analytics or usability evidence before
   considering any route removal or merge.
-- [ ] **SUPUX-NAV-008** Update navigation tests and the inventory whenever a
+- [x] **SUPUX-NAV-008** Update navigation tests and the inventory whenever a
   feature/add-on-gated Support destination is added or removed.
-- [ ] **SUPUX-NAV-009** Document the page/API permission matrix for all Support
+- [x] **SUPUX-NAV-009** Document the page/API permission matrix for all Support
   destinations; hiding a nav item is never sufficient authorization.
 
 Acceptance criteria:
@@ -564,6 +564,42 @@ First current-tree browser diagnostic (2026-09-29):
 
 Next: checkpoint and push the tour-race correction, then repeat the full
 exact-SHA mutating navigation workflow before launching the 72-cell matrix.
+
+Final current-tree navigation acceptance (2026-09-29):
+
+- Product-owner authorization to execute the recorded plan, the preserved
+  three-role catalog contract and the rendered agent/manager/admin evidence
+  confirm the 5 Work / 3 Team / 7 Rules and Settings information architecture.
+  No destination or nested route was removed, merged or renamed; therefore the
+  documented usage-evidence prerequisite for a future removal remains intact
+  and no removal migration is implied by this closure.
+- Exact-SHA mutating run `36512893404` on
+  `c0604661db4dd77bd2e33ea68a9c3f4754a730c1`, artifact `11010433159`, passed
+  agent, manager and administrator static captures plus all five navigation
+  flow groups. It records exactly five real activations: four keyboard Enter
+  actions and one `playwright-touchscreen` tap. The mobile destination control
+  measured 287x44 px and passed its center hit-test. The three-group default,
+  active-route recovery, persistent collapse state, collapsed-destination
+  search, labeled mobile pattern and role/add-on visibility all passed.
+- Complete read-only matrix run `36514758825`, artifact `11011231079`, passed
+  72/72 unique cells: 24 per role, 24 per locale, 36 per theme and 18 per
+  desktop/tablet/narrow-tablet/mobile viewport. Runtime errors, Axe violations,
+  counted accessibility and touch findings, primary-work misses, environment
+  mismatches, page overflow, missing image alternatives, duplicate IDs and
+  development chrome are all zero. Maximum load p75 is 659 ms, filter p50
+  23 ms, interaction p75 32 ms, primary-work top 324 px and CLS
+  `0.011741124511635809`.
+- Representative AZ/light desktop, EN/dark tablet, RU/dark mobile and AZ/dark
+  narrow-tablet captures were manually inspected. The active destination,
+  localized group labels, labeled narrow-width destination control, responsive
+  work surface and dark/light states remain legible with no clipped or hidden
+  navigation. The dedicated source/type gate, production build, permission
+  matrix and exact-SHA browser evidence are all green; no threshold or gate was
+  relaxed.
+
+Result: SUPUX-NAV-001..009 and the Support navigation section are complete.
+Next: restore the three missing shared-foundation contract tests, re-audit the
+current aggregate gate and execute the remaining foundation evidence matrix.
 
 ## 7. Slice 0 — Global UX Foundation
 
