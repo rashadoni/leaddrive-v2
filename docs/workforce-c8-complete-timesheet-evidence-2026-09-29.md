@@ -290,3 +290,28 @@ Android/Gradle, load, signed APK, physical-device and pilot remain `NOT RUN`
 locally and must not be inferred. `WF-C8-004` remains **PARTIAL** and progress
 stays `DONE 80/161`, `GATES 14/15`, C8 27%, overall 58% until exact-head CI,
 normal merge, deploy and production SHA verification complete.
+
+## PR #489 exact-head type gate RED and repair
+
+Final reviewed head `f9f484d8a4ffdf95a3eda4bdc361d91667a1c7f3` was published as
+PR #489. Exact-head `pr-scope`, `static-checks`, `runner-policy` and `scan`
+passed; the scope-conditioned production-build job was `SKIPPED`. Run
+`36514032198` correctly failed the required type baseline after the advisory
+compile found seven new defect-shaped diagnostics, all in the changed
+timesheet route: four `TS2322`, one `TS2339` and two `TS2345`.
+
+The route's heterogeneous conditional `Promise.all` results had been inferred
+through their common `{ workdayId }` shape, losing attendance, exception,
+event, correction and approval fields. Separately, the reconstructed
+calculation-version list was inferred as `2[]`, so adding the verified v1 core
+version failed. The repair adds explicit selected-record types and a six-item
+result tuple, plus an explicit `Array<1 | 2>` for the current/core versions.
+It does not change a query, limit, runtime branch, response, generated Prisma
+client, workflow or accepted type baseline.
+
+Post-repair author verification passes the complete 19-file / 139-test matrix
+and scoped ESLint for all nine changed runtime/test TypeScript paths. Full
+local typecheck remains `NOT RUN` under host policy; replacement exact-head CI
+must prove the repair. The prior GREEN cannot authorize this changed head, so
+`WF-C8-004` remains **PARTIAL** at `DONE 80/161`, `GATES 14/15`, C8 27%,
+overall 58% pending a fresh independent review and all replacement gates.

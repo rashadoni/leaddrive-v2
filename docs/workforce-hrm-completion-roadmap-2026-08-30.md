@@ -2026,3 +2026,26 @@ from this worktree.
   GREEN receipt is uncommitted.
 - Next action: checkpoint the receipt, obtain final exact-head integrity GREEN,
   then push/open the sub-400 KB PR and require every mandatory context.
+
+## 2026-09-29 — PR #489 type gate RED and explicit tuple repair
+
+- PR #489 published exact reviewed head
+  `f9f484d8a4ffdf95a3eda4bdc361d91667a1c7f3`. `pr-scope`,
+  `static-checks`, `runner-policy` and `scan` passed; the conditional production
+  build was `SKIPPED`. Required run `36514032198` failed `typecheck` on seven
+  new route diagnostics: `TS2322` x4, `TS2339` x1 and `TS2345` x2.
+- TypeScript collapsed the heterogeneous conditional `Promise.all` results to
+  their common workday-ID shape, and inferred the current-version list as
+  `2[]`. Explicit selected-record/result tuple types and `Array<1 | 2>` repair
+  those diagnostics without altering runtime, queries, generated code,
+  workflows or the accepted baseline.
+- Replacement author checks pass 19 files / 139 tests and all nine-path scoped
+  ESLint. Full typecheck is `NOT RUN` locally and remains an exact-head CI
+  gate.
+- `WF-C8-004` stays `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%. The prior GREEN is invalidated for the
+  changed head.
+- Precise stopping point: type-only route repair and this receipt are
+  uncommitted on the open PR branch.
+- Next action: checkpoint explicit paths, obtain a fresh independent repair and
+  full-range verdict, then push and rerun every mandatory context.

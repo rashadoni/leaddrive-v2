@@ -23,6 +23,9 @@ import {
   summarizeWorkforceTimesheetApprovalRevisions,
   WORKFORCE_TIMESHEET_READ_MODEL_LIMITS,
   WorkforceTimesheetReadModelError,
+  type WorkforceTimesheetApprovalRevisionReadInput,
+  type WorkforceTimesheetAttendanceReviewInput,
+  type WorkforceTimesheetExceptionReadInput,
 } from "@/lib/workforce/timesheet-read-model"
 import {
   WORKFORCE_WORKDAY_JOURNAL_ORDER,
@@ -45,6 +48,19 @@ type WorkforceWorkdayEventRecord = Parameters<typeof workforceWorkdayEventFact>[
   attendanceReviewState: "LEGACY_UNKNOWN" | "NOT_REQUIRED" | "PENDING_REVIEW"
 }
 type WorkforceCorrectionRecord = WorkforceTimeCorrectionReplayFact & { workdayId: string }
+type WorkforceAttendanceReviewRecord = WorkforceTimesheetAttendanceReviewInput & { workdayId: string }
+type WorkforceCalculationExceptionRecord = WorkforceTimesheetExceptionReadInput & {
+  workdayId: string
+  calculationVersion: number
+}
+type WorkforceExceptionCaseRecord = {
+  agentId: string
+  kind: string
+  workdayId: string | null
+  expectedWorkDate: Date | null
+  workdayEvent: { workdayId: string } | null
+  decisions: Array<{ decisionCode: string; caseRevision: number }>
+}
 type WorkforceProjectedExceptionCase = {
   kind: string
   decisions: Array<{ decisionCode: string; caseRevision: number }>
@@ -241,6 +257,13 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       calculationExceptions,
       exceptionCases,
       approvalRevisions,
+    ]: [
+      WorkforceWorkdayEventRecord[],
+      WorkforceCorrectionRecord[],
+      WorkforceAttendanceReviewRecord[],
+      WorkforceCalculationExceptionRecord[],
+      WorkforceExceptionCaseRecord[],
+      WorkforceTimesheetApprovalRevisionReadInput[],
     ] = await Promise.all([
       workdayIds.length > 0
         ? prisma.mtmAgentWorkdayEvent.findMany({
@@ -451,7 +474,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           events: (eventsByWorkday.get(workday.id) ?? []).map(workforceWorkdayEventFact),
           corrections: correctionsByWorkday.get(workday.id) ?? [],
         })
-        const calculationVersions = [result.calculation.calculationVersion]
+        const calculationVersions: Array<1 | 2> = [result.calculation.calculationVersion]
         if ("coreCalculationVersion" in result.calculation) {
           calculationVersions.push(result.calculation.coreCalculationVersion)
         }

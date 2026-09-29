@@ -1845,3 +1845,29 @@ corrections as new entries that explicitly supersede the earlier fact.
   three-document receipt is uncommitted.
 - Next action: commit the receipt, get final exact-head integrity confirmation,
   then push/open the bounded PR and wait for all required checks.
+
+## 2026-09-29 — PR #489 exact-head typecheck failure and repair
+
+- PR #489 published exact independently reviewed head
+  `f9f484d8a4ffdf95a3eda4bdc361d91667a1c7f3`. Four required contexts passed:
+  `pr-scope`, `static-checks`, `runner-policy`, `scan`; the conditional build
+  was `SKIPPED`. Run `36514032198` failed required `typecheck` with seven new
+  defect-shaped diagnostics confined to the changed timesheet route:
+  `TS2322` x4, `TS2339` x1, `TS2345` x2.
+- The conditional six-query `Promise.all` lost its heterogeneous tuple types
+  to the shared workday-ID shape, while the calculation version array narrowed
+  to `2[]`. The type-only repair declares the minimized selected records, the
+  exact six-result tuple and `Array<1 | 2>`. Runtime branches, SQL queries,
+  limits, response shape, baseline and workflow are unchanged.
+- The replacement complete bounded matrix passes 19 files / 139 tests and
+  scoped ESLint for all nine changed TypeScript paths. Full local typecheck,
+  build/suite, browser/AT, Android/Gradle, load, signed APK, physical-device
+  and pilot remain `NOT RUN` under host policy.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows. The previous
+  review does not authorize a changed head.
+- Precise stopping point: type-only repair plus append-only receipt are
+  uncommitted on `codex/workforce-completion-part7`; PR #489 still points to
+  the red head.
+- Next action: checkpoint only the four explicit paths, obtain fresh
+  independent review, push the replacement head and rerun all required gates.
