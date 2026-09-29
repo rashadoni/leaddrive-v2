@@ -56,7 +56,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmWorkCalendarDay.findFirst).mockResolvedValue(null)
-  vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-1" } as any)
+  vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-1" } as never)
 })
 
 describe("GET /api/v1/mtm/work-calendar", () => {
@@ -68,7 +68,7 @@ describe("GET /api/v1/mtm/work-calendar", () => {
       kind: "PUBLIC_HOLIDAY",
       team: null,
       agent: null,
-    }] as any)
+    }] as never)
 
     const response = await GET(request(
       "/api/v1/mtm/work-calendar?start=2026-07-13&endExclusive=2026-07-20",
@@ -83,7 +83,9 @@ describe("GET /api/v1/mtm/work-calendar", () => {
     })
     expect(json.data.days).toHaveLength(1)
 
-    const args = vi.mocked(prisma.mtmWorkCalendarDay.findMany).mock.calls[0][0] as any
+    const args = vi.mocked(prisma.mtmWorkCalendarDay.findMany).mock.calls[0][0] as {
+      where: unknown
+    }
     expect(args.where).toMatchObject({
       organizationId: ORG,
       deletedAt: null,
@@ -119,7 +121,7 @@ describe("PUT /api/v1/mtm/work-calendar", () => {
       teamId: null,
       agentId: null,
     }
-    vi.mocked(prisma.mtmWorkCalendarDay.create).mockResolvedValue(created as any)
+    vi.mocked(prisma.mtmWorkCalendarDay.create).mockResolvedValue(created as never)
 
     const response = await PUT(putRequest({
       date: "2026-07-15",
@@ -148,11 +150,11 @@ describe("PUT /api/v1/mtm/work-calendar", () => {
       organizationId: ORG,
       date: new Date("2026-07-15T00:00:00.000Z"),
       kind: "PUBLIC_HOLIDAY",
-    } as any)
+    } as never)
     vi.mocked(prisma.mtmWorkCalendarDay.update).mockResolvedValue({
       id: "calendar-1",
       kind: "EXCEPTION_WORKDAY",
-    } as any)
+    } as never)
 
     const response = await PUT(putRequest({
       date: "2026-07-15",
@@ -184,6 +186,54 @@ describe("PUT /api/v1/mtm/work-calendar", () => {
     expect(await invalidTeam.json()).toMatchObject({ code: "MTM_CALENDAR_REFERENCE_INVALID" })
   })
 
+  it("fences valid moved kinds and stray moved destinations from the legacy writer", async () => {
+    const movedKind = await PUT(putRequest({
+      date: "2026-07-15",
+      kind: "MOVED_DAY_OFF",
+      movedToDate: "2026-07-18",
+      name: "Moved pair",
+    }))
+    expect(movedKind.status).toBe(409)
+    expect(await movedKind.json()).toMatchObject({ code: "MTM_CALENDAR_MOVED_PAIR_REQUIRED" })
+
+    const strayDestination = await PUT(putRequest({
+      date: "2026-07-15",
+      kind: "PUBLIC_HOLIDAY",
+      movedToDate: "2026-07-18",
+      name: "Invalid partial pair",
+    }))
+    expect(strayDestination.status).toBe(409)
+    expect(await strayDestination.json()).toMatchObject({ code: "MTM_CALENDAR_MOVED_PAIR_REQUIRED" })
+    expect(prisma.mtmTeam.findFirst).not.toHaveBeenCalled()
+    expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+    expect(prisma.mtmWorkCalendarDay.findFirst).not.toHaveBeenCalled()
+    expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
+    expect(prisma.mtmWorkCalendarDay.update).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("cannot convert an existing moved row through a normal legacy update", async () => {
+    vi.mocked(prisma.mtmWorkCalendarDay.findFirst).mockResolvedValue({
+      id: "moved-off",
+      organizationId: ORG,
+      date: new Date("2026-07-15T00:00:00.000Z"),
+      kind: "MOVED_DAY_OFF",
+      movedToDate: new Date("2026-07-18T00:00:00.000Z"),
+    } as never)
+
+    const response = await PUT(putRequest({
+      id: "moved-off",
+      date: "2026-07-15",
+      kind: "PUBLIC_HOLIDAY",
+      name: "Convert one half",
+    }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: "MTM_CALENDAR_MOVED_PAIR_REQUIRED" })
+    expect(prisma.mtmWorkCalendarDay.update).not.toHaveBeenCalled()
+    expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
   it("allows only an MTM administrator to mutate the calendar", async () => {
     vi.mocked(requireAuth).mockResolvedValue({ ...ADMIN_AUTH, role: "viewer" })
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null)
@@ -202,8 +252,8 @@ describe("DELETE /api/v1/mtm/work-calendar/:id", () => {
       id: "calendar-1",
       organizationId: ORG,
       kind: "PUBLIC_HOLIDAY",
-    } as any)
-    vi.mocked(prisma.mtmWorkCalendarDay.updateMany).mockResolvedValue({ count: 1 } as any)
+    } as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.updateMany).mockResolvedValue({ count: 1 } as never)
 
     const response = await DELETE(
       request("/api/v1/mtm/work-calendar/calendar-1", { method: "DELETE" }),
@@ -214,5 +264,23 @@ describe("DELETE /api/v1/mtm/work-calendar/:id", () => {
       where: { id: "calendar-1", organizationId: ORG, deletedAt: null },
       data: expect.objectContaining({ deletedAt: expect.any(Date), updatedBy: "admin-user" }),
     })
+  })
+
+  it("cannot delete one half of a moved pair through the legacy endpoint", async () => {
+    vi.mocked(prisma.mtmWorkCalendarDay.findFirst).mockResolvedValue({
+      id: "moved-off",
+      organizationId: ORG,
+      kind: "MOVED_DAY_OFF",
+      movedToDate: new Date("2026-07-18T00:00:00.000Z"),
+    } as never)
+
+    const response = await DELETE(
+      request("/api/v1/mtm/work-calendar/moved-off", { method: "DELETE" }),
+      { params: Promise.resolve({ id: "moved-off" }) },
+    )
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: "MTM_CALENDAR_MOVED_PAIR_REQUIRED" })
+    expect(prisma.mtmWorkCalendarDay.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 })

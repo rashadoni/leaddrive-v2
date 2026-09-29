@@ -2799,3 +2799,66 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: verify and checkpoint the three append-only receipt files, then
   implement `WF-C8-007e` with deterministic dual-date locks, atomic reciprocal
   rows/audit, strict replay/conflict handling and explicit scope exclusions.
+
+## 2026-09-29 — WF-C8-007e atomic moved-day implementation and author checks
+
+- Continued only in the recorded worktree on
+  `codex/workforce-completion-part13`, based on released main
+  `5e1a8ffcbbe8fb0fcce592e9755ecabff5072706`. Origin remains
+  `rashadoni/leaddrive-v2`; release routing remains only GitHub
+  `main -> deploy.yml -> 13.140.132.245:/opt/leaddrive-v2`.
+- The user again requested a direct remaining-work answer. The strict register
+  still has 80 non-DONE rows and the separately weighted completion summary is
+  59%, so 41% remains; no unsupported 100% claim was made and implementation
+  continued.
+- Implemented strict `MOVE_WORKDAY` create/list for organization and named
+  active-team scope. Both future dates are written as one reciprocal
+  `MOVED_DAY_OFF` / `MOVED_WORKDAY` pair and one audit in a single transaction.
+  Employee scope, update/reversal/delete, repair, bulk, schema changes and
+  Route mutation remain explicitly excluded.
+- The writer sorts and acquires both tenant/date advisory locks, row-locks a
+  team when selected, validates effective HR working/non-working source and
+  destination state, and freezes each date's independent Route baseline.
+  Exact complete `ADMIN` pair replay is no-op; partial, occupied, mismatched,
+  foreign-provenance or nullable-baseline state fails closed.
+- The legacy MTM PUT/DELETE endpoints now reject moved kinds, moved
+  destinations and existing moved rows with
+  `MTM_CALENDAR_MOVED_PAIR_REQUIRED`, preventing one-sided mutation. The web
+  UI exposes a single explicit move operation, not internal row kinds, and
+  includes described source/destination inputs, paired-date inventory and
+  EN/RU/AZ feedback while preserving mutation-time control freezing.
+- Initial focused run had 72/74 passes; both failures were stale source-string
+  expectations in the UI contract after the form gained two operations. Those
+  expectations were corrected and the same set passed 74/74. Targeted ESLint
+  then exposed ten legacy `any` casts in the now-modified MTM API test; they
+  were replaced with typed/`never` fixtures and lint passed.
+- Read-only preflight found the first PostgreSQL proof could not detect removal
+  of date sorting. It was replaced with a deterministic barrier after the
+  first real advisory lock plus `pg_stat_activity` wait observation. Without
+  sorting, reversed inputs own opposite keys and the test deadlocks. A second
+  real-DB proof runs two Prisma writers in a unique temporary schema and
+  requires exactly two reciprocal rows and one audit under concurrent retry.
+  Both PR and deploy workflows run this gate.
+- The same preflight also found that a future internal type cast could pass
+  employee scope and that nullable legacy Route baselines were too weak for
+  exact replay. The domain writer now independently rejects non-organization/
+  team scope and replay requires non-null boolean baselines; regression tests
+  cover both repairs.
+- Current-tree PASS: 116 focused tests across 11 calendar/API/UI/auth/RLS/
+  voice files; scoped ESLint across all changed TS/TSX; i18n EN 23,905 with
+  RU/AZ missing 0 and extra 0; event-platform workflow assets; runner policy;
+  JSON and whitespace. Two real-PostgreSQL cases were discovered but
+  `SKIPPED` locally because the CI-only database URL is absent.
+- Full local typecheck/build/suite, real PostgreSQL, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot are `NOT RUN` under host
+  policy. Exact-head GitHub CI remains mandatory.
+- Evidence:
+  `docs/workforce-c8-moved-day-configuration-evidence-2026-09-29.md`.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. No task or gate
+  credit is added.
+- Precise stopping point: implementation, regression tests, real-PostgreSQL CI
+  gate, locales and first evidence receipts are complete but uncommitted.
+- Next action: run final bounded verification, checkpoint explicit task paths,
+  fetch/reconcile live main, compute exact full/non-doc identities and require
+  a fresh author-independent full-range GREEN before push/PR.

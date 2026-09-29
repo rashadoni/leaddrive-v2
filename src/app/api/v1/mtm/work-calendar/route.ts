@@ -20,6 +20,19 @@ function isUniqueViolation(error: unknown): boolean {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002")
 }
 
+function movedPairRequired() {
+  return NextResponse.json({
+    error: "Moved workdays must use the atomic Workforce calendar workflow",
+    code: "MTM_CALENDAR_MOVED_PAIR_REQUIRED",
+  }, { status: 409 })
+}
+
+function isMovedCalendarState(value: { kind: string; movedToDate?: unknown }): boolean {
+  return value.kind === "MOVED_WORKDAY"
+    || value.kind === "MOVED_DAY_OFF"
+    || value.movedToDate != null
+}
+
 async function calendarActor(auth: { orgId: string; userId: string; role: string; agentId?: string | null }) {
   return resolveMtmRouteActor(prisma, {
     organizationId: auth.orgId,
@@ -104,6 +117,7 @@ export const PUT = withWorkforceHrmRlsAuth("write", async (req, auth) => {
   const parsed = parseBody(WorkCalendarDayUpsertSchema, await req.json().catch(() => ({})))
   if (!parsed.ok) return parsed.response
   const body = parsed.data
+  if (isMovedCalendarState(body)) return movedPairRequired()
   const date = utcDate(body.date)
   const teamId = body.teamId ?? null
   const agentId = body.agentId ?? null
@@ -137,6 +151,7 @@ export const PUT = withWorkforceHrmRlsAuth("write", async (req, auth) => {
   if (body.id && !existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
+  if (existing && isMovedCalendarState(existing)) return movedPairRequired()
 
   const data = {
     date,

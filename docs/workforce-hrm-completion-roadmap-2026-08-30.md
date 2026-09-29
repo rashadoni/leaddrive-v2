@@ -974,7 +974,7 @@ from Route & Field.
 | WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
 | WF-C8-006 | P1 | DONE | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | [`workforce-c8-sites-geofences-evidence-2026-08-30.md`](./workforce-c8-sites-geofences-evidence-2026-08-30.md): administrator-only named sites, future calibrated circles, assignment-only impact preview and immutable revision history; no browser location collection or physical-presence claim |
-| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md), [`organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md), [`team calendar evidence`](./workforce-c8-team-calendar-configuration-evidence-2026-09-29.md) and [`employee calendar evidence`](./workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments and strict future organization/team/employee holiday/closure/exception create/list are source-complete; moved-day workflow, update/delete governance, break-policy authoring and real browser/AT evidence remain open |
+| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md), [`organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md), [`team calendar evidence`](./workforce-c8-team-calendar-configuration-evidence-2026-09-29.md), [`employee calendar evidence`](./workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md) and [`atomic moved-day evidence`](./workforce-c8-moved-day-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments, strict future organization/team/employee holiday/closure/exception create/list and atomic organization/team moved-day create/list are source-complete; moved-day reversal/delete, general update/delete governance, break-policy authoring and real browser/AT evidence remain open |
 | WF-C8-008 | P1 | PARTIAL | Web | Add proof-policy, QR station and trusted-device administration separated by permission | [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): named-site/effective-circle QR station creation plus device/QR lifecycle UI are administrator-only; proof-policy UI and granular separation-of-duties await C7/C5 gates |
 | WF-C8-009 | P1 | PARTIAL | Web | Add restricted evidence timeline and access audit; normal view shows verdict instead of exact coordinates | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md): a visible named-employee web timeline now returns only bounded localized verdict/reason records after exact grant, explicit context and successful access audit; raw-investigation policy/UI and real-browser acceptance remain open |
 | WF-C8-010 | P1 | PARTIAL | Web/I18n | Complete AZ/RU/EN, keyboard, focus, contrast, 200% zoom, responsive tablet/phone and error/empty states | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md) and [`bulk preview evidence`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): AZ/RU/EN, concise announcements, focus transfer, bounded named search, responsive source and error/empty states exist; real browser/AT/contrast/200%-zoom/mobile evidence remains open |
@@ -2834,3 +2834,45 @@ from this worktree.
 - Next action: implement bounded `WF-C8-007e` atomic organization/team
   moved-day pair create/list, explicitly excluding AGENT, update/delete,
   repair/backfill, bulk authoring and Route mutation.
+
+## 2026-09-29 — WF-C8-007e atomic moved-day working checkpoint
+
+- Implemented strict forward-only `MOVE_WORKDAY` creation for organization and
+  named active-team scope on the released Workforce calendar surface. Two
+  future dates become one reciprocal `MOVED_DAY_OFF` / `MOVED_WORKDAY` pair in
+  one transaction with one audit; inventory exposes only the paired date in
+  addition to its existing minimized fields.
+- Dual tenant/date advisory locks are de-duplicated and sorted. The source must
+  be an effective HR working day and the destination an effective HR
+  non-working day. Each row independently retains the pre-move Route baseline;
+  this slice does not mutate Route behavior.
+- Exact replay requires a complete reciprocal `ADMIN` pair and two non-null
+  server-owned Route baselines. Partial, mismatched, foreign-provenance and
+  occupied state fails closed. The exported domain writer independently
+  rejects runtime employee scope.
+- Legacy MTM PUT/DELETE cannot create, convert or independently remove moved
+  rows. The UI exposes one explicit operation rather than internal moved kinds,
+  describes both dates and freezes all mutable controls through reconciliation.
+- Added a mandatory real-PostgreSQL CI/deploy gate. Its barrier proves reversed
+  date input cannot deadlock after deterministic sorting; its real Prisma
+  writer proof requires concurrent retries to leave exactly two reciprocal
+  rows and one audit.
+- Author PASS: 116 focused tests across 11 files, scoped ESLint, i18n EN
+  23,905 with RU/AZ 0 missing/0 extra, event-platform workflow assets, runner
+  policy and whitespace. The two PostgreSQL cases were discovered but are
+  `SKIPPED` locally because the CI-only database URL is absent.
+- Full local typecheck/build/suite, real PostgreSQL, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  host policy. Exact-head CI and fresh author-independent frozen review remain
+  mandatory.
+- Evidence:
+  [`WF-C8-007e moved-day evidence`](./workforce-c8-moved-day-configuration-evidence-2026-09-29.md).
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. No provisional
+  task or gate credit is added.
+- Precise stopping point: implementation, test, workflow, i18n and evidence
+  changes are complete in the working tree; no checkpoint commit or frozen
+  independent review has been recorded for this slice.
+- Next action: run final bounded checks, checkpoint only explicit task paths,
+  reconcile against live main, compute exact identities and require a fresh
+  author-independent full-range GREEN before opening the bounded PR.

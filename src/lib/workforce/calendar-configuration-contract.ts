@@ -70,16 +70,46 @@ export const WorkforceCalendarOverrideCreateSchema = z.object({
   name: z.string().trim().min(1).max(160),
 }).strict().superRefine(validateScopeSelection)
 
+export const WorkforceCalendarMovedDayCreateSchema = z.object({
+  operation: z.literal("MOVE_WORKDAY"),
+  scope: z.enum(["ORGANIZATION", "TEAM"]),
+  teamId: WorkforceCalendarTeamIdSchema.optional(),
+  sourceDate: WorkforceCalendarDateSchema,
+  destinationDate: WorkforceCalendarDateSchema,
+  name: z.string().trim().min(1).max(160),
+}).strict().superRefine((selection, context) => {
+  if (selection.scope === "TEAM" && !selection.teamId) {
+    context.addIssue({ code: "custom", path: ["teamId"], message: "Choose an active team" })
+  }
+  if (selection.scope === "ORGANIZATION" && selection.teamId !== undefined) {
+    context.addIssue({ code: "custom", path: ["teamId"], message: "Only team scope can include a team" })
+  }
+  if (selection.sourceDate === selection.destinationDate) {
+    context.addIssue({
+      code: "custom",
+      path: ["destinationDate"],
+      message: "Choose two different calendar dates",
+    })
+  }
+})
+
+export const WorkforceCalendarConfigurationCreateSchema = z.union([
+  WorkforceCalendarMovedDayCreateSchema,
+  WorkforceCalendarOverrideCreateSchema,
+])
+
 export type WorkforceCalendarCreateKind = (typeof WORKFORCE_CALENDAR_CREATE_KINDS)[number]
 export type WorkforceCalendarReadKind = (typeof WORKFORCE_CALENDAR_READ_KINDS)[number]
 export type WorkforceCalendarConfigurationScope = (typeof WORKFORCE_CALENDAR_CONFIGURATION_SCOPES)[number]
 export type WorkforceCalendarScopeSelection = z.infer<typeof WorkforceCalendarScopeSelectionSchema>
 export type WorkforceCalendarOverrideDraft = z.infer<typeof WorkforceCalendarOverrideCreateSchema>
+export type WorkforceCalendarMovedDayDraft = z.infer<typeof WorkforceCalendarMovedDayCreateSchema>
 
 export type WorkforceCalendarOverrideSummary = {
   date: string
   kind: WorkforceCalendarReadKind
   name: string | null
+  pairedDate: string | null
 }
 
 export type WorkforceCalendarTeamSummary = {
