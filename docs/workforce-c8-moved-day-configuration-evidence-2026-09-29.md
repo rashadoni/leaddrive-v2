@@ -114,9 +114,16 @@ and one audit. The schema is dropped after the test.
 
 PASS on the current implementation tree:
 
-- 11 focused calendar/domain/API/UI/auth/RLS/voice files: 116 tests passed;
-- the two real-PostgreSQL tests were discovered and skipped locally because
-  the CI-only database URL is intentionally absent;
+- exact focused calendar/API/UI/auth/RLS/voice selection: 118 tests passed;
+  the selection is `api-mtm-work-calendar`,
+  `api-workforce-calendar-configuration`, `lib-mtm-work-calendar`,
+  `lib-workforce-calendar-configuration-lock-postgres`,
+  `workforce-calendar-configuration-ui-contract`,
+  `workforce-calendar-configuration`, `workforce-calendar`,
+  `mtm-rls-coverage`, `rls-route-context-coverage`, `voice-guide-coverage`
+  and `with-workforce-rls-auth`;
+- the two real-PostgreSQL tests in that selection were discovered and skipped
+  locally because the CI-only database URL is intentionally absent;
 - scoped ESLint on all changed TypeScript/TSX implementation and test paths;
 - `npm run i18n:check`: EN source 23,905 leaf keys, RU/AZ missing 0 and extra
   0;
@@ -151,8 +158,33 @@ Monitoring source/test/evidence paths. No calendar implementation, workflow,
 locale, test or evidence path overlapped, and the merge completed without a
 manual resolution.
 
-On the integrated head, the same 11 focused files pass 116 tests with both
+On the integrated head, the same exact 11 focused files pass 118 tests with both
 real-PostgreSQL cases discovered and skipped locally, scoped ESLint passes,
 i18n remains EN 23,905 with RU/AZ 0/0, event-platform workflow assets and
 runner policy pass, and `git diff --check` is clean. The fresh independent
 review must use this post-reconciliation head and the live-main merge base.
+
+## First frozen-head review RED and evidence repair
+
+Author-independent full-range review of exact clean head
+`55b3562ef8e3ee3e3650e20a42e341c53c8d818e` against live main/merge-base
+`8c8ca4360285dec692caf7784d805936c276ae1e` returned RED with
+`P0=0`, `P1=0`, `P2=0`, `P3=1`.
+
+The sole P3 found that this evidence named only an 11-file category and said
+116 tests passed. That count was reproducible with a selection containing an
+unrelated lead-qualification copy test, while the stronger relevant selection
+uses `mtm-rls-coverage` and passes 118 tests plus two locally skipped
+PostgreSQL tests. The exact canonical files are now enumerated above and all
+current receipts use 118/2. Earlier 116 statements in append-only roadmap and
+session receipts are preserved as history and explicitly superseded by the
+correction receipts below them.
+
+The reviewer found no runtime/auth/RLS/atomicity/lock/baseline/replay/audit/
+legacy-fence/PostgreSQL-CI/API/UI/i18n issue. Rejected-head identity was 23
+paths / 151,576 bytes / SHA-256
+`f0417914a5fd76788b7efc89370b8bc2442e147e2900c0a81c5dd6646aceb98c`; non-doc
+identity was 19 paths / 120,990 bytes / SHA-256
+`649cc46ccc979f90e7438b4d62860f6d43f8a60dfb0db219a6da7ec5ecb98eed`.
+This documentation repair does not alter non-doc bytes. The rejected GREEN
+authority cannot transfer; a fresh exact-head full-range review is mandatory.

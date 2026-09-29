@@ -2887,3 +2887,35 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint this receipt, fingerprint the full and non-doc live-
   main diff, then require a fresh author-independent full-range GREEN before
   push/opening the ≤400 KB PR.
+
+## 2026-09-29 — WF-C8-007e first frozen review RED and P3 repair
+
+- Independent full-range review of clean exact head
+  `55b3562ef8e3ee3e3650e20a42e341c53c8d818e` against live main/merge-base
+  `8c8ca4360285dec692caf7784d805936c276ae1e` returned RED:
+  `P0=0`, `P1=0`, `P2=0`, `P3=1`.
+- The sole P3 was an ambiguous evidence count. The earlier 116-pass entries
+  above used an alternate 11-file selection containing an unrelated
+  lead-qualification copy test. They remain preserved for append-only history
+  but are superseded by this correction. The canonical relevant selection
+  replaces that file with `mtm-rls-coverage` and passes 118 tests while two
+  real-PostgreSQL tests are discovered and skipped locally.
+- Canonical evidence now enumerates all 11 exact files and standardizes current
+  results to 118 pass / 2 skip. The reviewer otherwise found zero issue in
+  tenant/auth/RLS, transaction atomicity, deterministic locks, team baseline,
+  replay/conflict/audit, legacy mutation fences, PostgreSQL CI wiring, API
+  minimization, UI race/accessibility, i18n or append-only integrity.
+- Rejected identity: full 23 paths / 151,576 bytes /
+  `f0417914a5fd76788b7efc89370b8bc2442e147e2900c0a81c5dd6646aceb98c`;
+  non-doc 19 paths / 120,990 bytes /
+  `649cc46ccc979f90e7438b4d62860f6d43f8a60dfb0db219a6da7ec5ecb98eed`.
+  This repair changes only documentation, so the non-doc fingerprint must stay
+  byte-identical.
+- Full local typecheck/build/suite, real PostgreSQL, browser/AT/device,
+  Android/Gradle, load/chaos and pilot remain `NOT RUN` under host policy.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` stays `PARTIAL`.
+- Precise stopping point: the evidence P3 is corrected but uncommitted; the
+  rejected head cannot authorize push or merge.
+- Next action: checkpoint the three docs, verify exact non-doc identity and run
+  a fresh author-independent full-range review on the replacement head.

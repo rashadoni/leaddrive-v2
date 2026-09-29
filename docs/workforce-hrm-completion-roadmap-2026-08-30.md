@@ -2894,3 +2894,31 @@ from this worktree.
   only this reconciliation receipt is uncommitted.
 - Next action: checkpoint the receipt, compute exact full/non-doc identities
   against `8c8ca4360` and require a fresh author-independent full-range GREEN.
+
+## 2026-09-29 — WF-C8-007e first frozen review P3 corrected
+
+- Independent review of exact head
+  `55b3562ef8e3ee3e3650e20a42e341c53c8d818e` returned RED with
+  `P0=0`, `P1=0`, `P2=0`, `P3=1`. Full identity was 23 paths / 151,576 bytes /
+  `f0417914a5fd76788b7efc89370b8bc2442e147e2900c0a81c5dd6646aceb98c`;
+  non-doc identity was 19 paths / 120,990 bytes /
+  `649cc46ccc979f90e7438b4d62860f6d43f8a60dfb0db219a6da7ec5ecb98eed`.
+- The sole P3 was evidence ambiguity, not a code finding. The earlier appended
+  116-test statements used an alternate selection containing an unrelated
+  lead-qualification copy test and are superseded by this receipt. The
+  canonical 11-file calendar/API/UI/auth/RLS/voice selection explicitly uses
+  `mtm-rls-coverage` and passes 118 tests, with two real-PostgreSQL tests
+  separately discovered and skipped locally.
+- Canonical evidence now enumerates all 11 files and reports exact 118 pass /
+  2 skip results. No non-doc byte changed. Reviewer found no tenant/auth/RLS,
+  atomicity, locking, baseline, replay/audit, legacy-fence, PG-CI, API/UI,
+  accessibility or i18n issue.
+- Full local typecheck/build/suite, real PostgreSQL, browser/AT/device,
+  Android/Gradle, load/chaos and pilot remain `NOT RUN` under host policy.
+- Progress remains unchanged: `WF-C8-007 PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the evidence-only P3 is repaired in the working tree;
+  the rejected head is ineligible and no replacement review has run.
+- Next action: checkpoint only the three corrected evidence/continuity docs,
+  prove the non-doc identity unchanged and require a fresh exact-head
+  author-independent full-range GREEN.
