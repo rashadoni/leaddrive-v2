@@ -16,6 +16,9 @@ export const WORKFORCE_TIMESHEET_READ_MODEL_LIMITS = {
   decisionsPerCase: 64,
   approvalRevisions: 64,
   rowsPerApproval: 93,
+  eventRecordsPerRequest: 20_000,
+  transitionRecordsPerRequest: 10_000,
+  calculationExceptionRecordsPerRequest: 5_000,
 } as const
 
 const ATTENDANCE_REVIEW_STATES = [

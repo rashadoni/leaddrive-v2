@@ -85,3 +85,45 @@ complete-diff review, the sub-400 KB PR passes every required exact-head gate,
 merges normally, and the merged main artifact is deployed and verified on the
 only approved production target. Progress therefore remains `DONE 80/161`,
 `GATES 14/15`, C8 27% and overall 58% until that evidence exists.
+
+## Frozen review RED and replacement repair
+
+The first clean checkpoint was
+`6b46c38ea93272d5130de8a94e2fe128b53ca117`. A fresh author-independent
+review verified base/current main/merge-base
+`eab1c60de3e56e4ea26001c9ddfd01fc603524a5` and the complete 13-path /
+94,821-byte diff with SHA-256
+`d4b5e413e4926e96874dd2bd48903e457a3ddbb83857cfde4780a845eba569cb`,
+then returned **RED** with `P0=0`, `P1=1`, `P2=4`, `P3=0`:
+
+- a valid schedule-only `NO_SHOW` with no workday was omitted even though the
+  canonical approval service blocks it;
+- stale calculation-version exceptions were presented as current;
+- event, transition and calculated-exception limits were enforced only after
+  unbounded query materialization;
+- visible unresolved exceptions did not disable client approval readiness;
+- a successful approval/correction did not refresh the displayed revision
+  chain.
+
+No authority transfers from that RED verdict. The replacement repairs every
+finding without weakening the canonical approval service:
+
+- period-bound schedule-only cases are queried even with zero workdays and
+  returned as a separate minimized employee/date/type/status collection;
+- calculated exceptions are selected with `calculationVersion` and retained
+  only when they match the rehydrated calculation or its v2 core version;
+- Prisma reads stop at explicit request sentinels: 20,000 events, 10,000 site
+  transitions and 5,000 calculated exceptions, plus one overflow row; overflow
+  returns safe `413 WORKFORCE_TIMESHEET_READ_LIMIT_EXCEEDED`;
+- unresolved linked or schedule-only exceptions make the selected period
+  visibly not ready and disable the approval action;
+- a successful approval/correction increments the existing read retry and
+  reloads the hash-verified revision history.
+
+Replacement author verification passes 18 targeted files / 132 tests, scoped
+ESLint for all six changed TypeScript files, JSON parsing, EN/RU/AZ parity at
+23,737/0/0 and whitespace. Full local typecheck/build/suite, browser/AT,
+Android/Gradle, load, signed-device and pilot checks remain `NOT RUN` under
+host policy. A new clean checkpoint and a fresh complete-diff independent
+review remain mandatory; `WF-C8-004` is still **PARTIAL** and progress remains
+`DONE 80/161`, `GATES 14/15`, C8 27%, overall 58%.

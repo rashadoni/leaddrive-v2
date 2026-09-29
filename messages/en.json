@@ -24729,6 +24729,8 @@
     "timesheetEventReview": "Workday actions: {state}",
     "timesheetTransitionReview": "Site transitions: {state}",
     "timesheetNoExceptions": "No recorded exceptions",
+    "timesheetUnrecordedExceptionsTitle": "Scheduled exceptions without a workday",
+    "timesheetUnrecordedExceptionsHint": "These period-bound cases have no recorded workday yet. Unresolved cases still block approval.",
     "timesheetEvidenceReviewState": {
       "NOT_RECORDED": "No review-bearing claim recorded",
       "NOT_REQUIRED": "No human review required",
@@ -24811,6 +24813,7 @@
     "approvalNotReady": "Not approval-ready",
     "approvalNoWorkdays": "This employee has no recorded workdays in the selected period.",
     "approvalIncompleteWorkdays": "Every recorded workday must be completed and reproducible from its policy and shift snapshots before it can be approved.",
+    "approvalUnresolvedExceptions": "Resolve every current exception, including scheduled days without a workday, before approval.",
     "approvalManagerRequired": "Only a manager or tenant administrator can record a timesheet approval.",
     "timesheetRevisionHistoryTitle": "Approval and correction revisions",
     "timesheetRevisionHistoryHint": "Only hash-verified immutable revisions for this exact employee and period are shown. Reasons, actors and evidence are excluded.",

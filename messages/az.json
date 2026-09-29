@@ -24725,6 +24725,8 @@
     "timesheetEventReview": "İş günü əməlləri: {state}",
     "timesheetTransitionReview": "Məkan keçidləri: {state}",
     "timesheetNoExceptions": "Qeydə alınmış istisna yoxdur",
+    "timesheetUnrecordedExceptionsTitle": "İş günü olmayan planlı istisnalar",
+    "timesheetUnrecordedExceptionsHint": "Bu hallar seçilmiş dövrə aiddir, lakin hələ iş günü qeydə alınmayıb. Həll olunmamış hallar təsdiqi bloklayır.",
     "timesheetEvidenceReviewState": {
       "NOT_RECORDED": "Yoxlama tələb edən qeyd yoxdur",
       "NOT_REQUIRED": "İnsan yoxlaması tələb olunmur",
@@ -24807,6 +24809,7 @@
     "approvalNotReady": "Təsdiqə hazır deyil",
     "approvalNoWorkdays": "Bu əməkdaşın seçilmiş dövrdə qeydə alınmış iş günü yoxdur.",
     "approvalIncompleteWorkdays": "Təsdiqdən əvvəl hər qeydə alınmış iş günü tamamlanmalı və siyasət/növbə snapshot-larından bərpa edilə bilməlidir.",
+    "approvalUnresolvedExceptions": "Təsdiqdən əvvəl iş günü olmayan planlı günlər də daxil olmaqla bütün cari istisnaları həll edin.",
     "approvalManagerRequired": "İş vaxtı cədvəli təsdiqini yalnız menecer və ya tenant administratoru qeydə ala bilər.",
     "timesheetRevisionHistoryTitle": "Təsdiq və düzəliş redaksiyaları",
     "timesheetRevisionHistoryHint": "Yalnız bu əməkdaş və dəqiq dövr üçün hash ilə yoxlanmış dəyişməz redaksiyalar göstərilir. Səbəblər, müəlliflər və sübutlar çıxarılıb.",

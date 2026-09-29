@@ -1653,3 +1653,35 @@ corrections as new entries that explicitly supersede the earlier fact.
   review exists.
 - Next action: verify size/fingerprint, checkpoint explicit paths, and send the
   exact clean diff to a fresh read-only reviewer before any push or PR.
+
+## 2026-09-29 — WF-C8-004 frozen review RED and complete repair set
+
+- Fresh author-independent review of base/current main/merge-base
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5` through clean head
+  `6b46c38ea93272d5130de8a94e2fe128b53ca117` verified 13 paths / 94,821
+  binary bytes / SHA-256
+  `d4b5e413e4926e96874dd2bd48903e457a3ddbb83857cfde4780a845eba569cb`
+  and returned RED with `P0=0`, `P1=1`, `P2=4`, `P3=0`. No GREEN or release
+  authority is inherited from it.
+- P1: a schedule-only `NO_SHOW` with no workday disappeared from the GET view
+  while the canonical POST correctly blocked approval. P2s: stale calculation
+  revisions appeared current; three new evidence queries materialized without
+  sentinels; linked unresolved exceptions left Ready/enabled UI; successful
+  writes left the new immutable revision panel stale.
+- All five are repaired: schedule-only cases now form a minimized bounded
+  employee/date/type/status period collection even with zero workdays;
+  calculation exceptions match only reconstructed current/core versions;
+  query-level 20,000/10,000/5,000 plus-one sentinels return safe 413 on
+  overflow; unresolved linked or unrecorded cases disable readiness; and a
+  successful write triggers a timesheet/history refetch.
+- Replacement author verification passes 18 targeted files / 132 tests,
+  scoped ESLint, JSON, i18n 23,737/0/0 and whitespace. Full local
+  typecheck/build/suite, browser/AT, Android/Gradle, load, signed APK,
+  physical-device and pilot checks remain `NOT RUN`.
+- `WF-C8-004` remains `PARTIAL`; progress remains `DONE 80/161`,
+  `GATES 14/15`, C8 27%, overall 58%, with 81 non-DONE rows.
+- Precise stopping point: replacement runtime/tests/translations/evidence are
+  uncommitted on top of the RED checkpoint in
+  `codex/workforce-completion-part7`.
+- Next action: verify and checkpoint only explicit paths, then start a fresh
+  full-range read-only review; no push, PR, merge or deploy before GREEN.

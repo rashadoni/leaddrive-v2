@@ -19,6 +19,7 @@ import type {
 import { requireWorkforceTimesheetReadAccess } from "@/lib/workforce/timesheet-read-access"
 import {
   buildWorkforceTimesheetReadModel,
+  projectWorkforceTimesheetExceptions,
   summarizeWorkforceTimesheetApprovalRevisions,
   WORKFORCE_TIMESHEET_READ_MODEL_LIMITS,
   WorkforceTimesheetReadModelError,
@@ -44,10 +45,19 @@ type WorkforceWorkdayEventRecord = Parameters<typeof workforceWorkdayEventFact>[
   attendanceReviewState: "LEGACY_UNKNOWN" | "NOT_REQUIRED" | "PENDING_REVIEW"
 }
 type WorkforceCorrectionRecord = WorkforceTimeCorrectionReplayFact & { workdayId: string }
+type WorkforceProjectedExceptionCase = {
+  kind: string
+  decisions: Array<{ decisionCode: string; caseRevision: number }>
+  decisionHistoryTruncated: boolean
+  [key: string]: unknown
+}
 
 const MAX_TIMESHEET_EXCEPTION_CASES = WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.exceptionCases
 const MAX_TIMESHEET_EXCEPTION_DECISIONS = WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.decisionsPerCase
 const MAX_TIMESHEET_APPROVAL_REVISIONS = WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.approvalRevisions
+const MAX_TIMESHEET_EVENT_RECORDS = WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.eventRecordsPerRequest
+const MAX_TIMESHEET_TRANSITION_RECORDS = WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.transitionRecordsPerRequest
+const MAX_TIMESHEET_CALCULATION_EXCEPTION_RECORDS = WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.calculationExceptionRecordsPerRequest
 
 function workforceScopeDenied() {
   return NextResponse.json({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, { status: 403 })
@@ -236,6 +246,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         ? prisma.mtmAgentWorkdayEvent.findMany({
             where: { organizationId: auth.orgId, workdayId: { in: workdayIds } },
             orderBy: [{ workdayId: "asc" }, ...WORKFORCE_WORKDAY_JOURNAL_ORDER],
+            take: MAX_TIMESHEET_EVENT_RECORDS + 1,
             select: {
               ...WORKFORCE_WORKDAY_JOURNAL_SELECT,
               workdayId: true,
@@ -254,6 +265,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         ? prisma.workforceSiteTransition.findMany({
             where: { organizationId: auth.orgId, workdayId: { in: workdayIds } },
             orderBy: [{ workdayId: "asc" }, { claimedAt: "asc" }, { id: "asc" }],
+            take: MAX_TIMESHEET_TRANSITION_RECORDS + 1,
             select: { workdayId: true, attendanceReviewState: true },
           })
         : Promise.resolve([]),
@@ -261,10 +273,11 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         ? prisma.workforceAttendanceException.findMany({
             where: { organizationId: auth.orgId, workdayId: { in: workdayIds } },
             orderBy: [{ workdayId: "asc" }, { type: "asc" }, { id: "asc" }],
-            select: { workdayId: true, type: true, status: true },
+            take: MAX_TIMESHEET_CALCULATION_EXCEPTION_RECORDS + 1,
+            select: { workdayId: true, type: true, status: true, calculationVersion: true },
           })
         : Promise.resolve([]),
-      workdayIds.length > 0
+      agentIds.length > 0
         ? prisma.workforceExceptionCase.findMany({
             where: {
               organizationId: auth.orgId,
@@ -317,6 +330,17 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           })
         : Promise.resolve([]),
     ])
+    if (
+      events.length > MAX_TIMESHEET_EVENT_RECORDS
+      || siteTransitions.length > MAX_TIMESHEET_TRANSITION_RECORDS
+      || calculationExceptions.length > MAX_TIMESHEET_CALCULATION_EXCEPTION_RECORDS
+      || approvalRevisions.length > MAX_TIMESHEET_APPROVAL_REVISIONS
+    ) {
+      return NextResponse.json({
+        error: "Too many records for one safe timesheet view",
+        code: "WORKFORCE_TIMESHEET_READ_LIMIT_EXCEEDED",
+      }, { status: 413 })
+    }
     if (exceptionCases.length > MAX_TIMESHEET_EXCEPTION_CASES) {
       return NextResponse.json({
         error: "Too many exception cases for one safe timesheet view",
@@ -331,29 +355,68 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       `${workday.agentId}\u0000${workday.workDate.toISOString().slice(0, 10)}`,
       workday.id,
     ]))
-    const exceptionCasesByWorkday = new Map<string, Array<{
-      kind: string
-      decisions: Array<{ decisionCode: string; caseRevision: number }>
-      decisionHistoryTruncated: boolean
-    }>>()
+    const exceptionCasesByWorkday = new Map<string, WorkforceProjectedExceptionCase[]>()
+    const unrecordedExceptionCasesByAgentDate = new Map<string, {
+      agentId: string
+      workDate: string
+      cases: WorkforceProjectedExceptionCase[]
+    }>()
     for (const exceptionCase of exceptionCases) {
       const expectedDate = exceptionCase.expectedWorkDate?.toISOString().slice(0, 10)
       const workdayId = exceptionCase.workdayId
         ?? exceptionCase.workdayEvent?.workdayId
         ?? (expectedDate ? workdayIdByAgentDate.get(`${exceptionCase.agentId}\u0000${expectedDate}`) : undefined)
-      if (!workdayId) continue
       const projected = {
         kind: exceptionCase.kind,
         decisions: exceptionCase.decisions.slice(0, MAX_TIMESHEET_EXCEPTION_DECISIONS),
         decisionHistoryTruncated: exceptionCase.decisions.length > MAX_TIMESHEET_EXCEPTION_DECISIONS,
       }
-      const existing = exceptionCasesByWorkday.get(workdayId)
-      if (existing) existing.push(projected)
-      else exceptionCasesByWorkday.set(workdayId, [projected])
+      if (workdayId) {
+        const existing = exceptionCasesByWorkday.get(workdayId)
+        if (existing) existing.push(projected)
+        else exceptionCasesByWorkday.set(workdayId, [projected])
+      } else if (expectedDate) {
+        const key = `${exceptionCase.agentId}\u0000${expectedDate}`
+        const existing = unrecordedExceptionCasesByAgentDate.get(key)
+        if (existing) existing.cases.push(projected)
+        else {
+          unrecordedExceptionCasesByAgentDate.set(key, {
+            agentId: exceptionCase.agentId,
+            workDate: expectedDate,
+            cases: [projected],
+          })
+        }
+      }
     }
+    const unrecordedWorkdayExceptions = [...unrecordedExceptionCasesByAgentDate.values()]
+      .map(({ agentId, workDate, cases }) => ({
+        agentId,
+        workDate,
+        exceptions: projectWorkforceTimesheetExceptions([], cases),
+      }))
+      .sort((left, right) => (
+        left.agentId.localeCompare(right.agentId) || left.workDate.localeCompare(right.workDate)
+      ))
     const approvalHistory = requestedAgentId
       ? summarizeWorkforceTimesheetApprovalRevisions(approvalRevisions)
       : null
+    const reviewForWorkday = (workdayId: string, calculationVersions: readonly number[]) => {
+      const currentCalculationVersions = new Set(calculationVersions)
+      const readModel = buildWorkforceTimesheetReadModel({
+        events: eventsByWorkday.get(workdayId) ?? [],
+        transitions: transitionsByWorkday.get(workdayId) ?? [],
+        exceptions: (calculatedExceptionsByWorkday.get(workdayId) ?? [])
+          .filter((exception) => currentCalculationVersions.has(exception.calculationVersion)),
+        exceptionCases: exceptionCasesByWorkday.get(workdayId) ?? [],
+        approvals: [],
+      })
+      return {
+        source: readModel.source,
+        evidenceReview: readModel.evidenceReview,
+        exceptions: readModel.exceptions,
+        boundaries: readModel.boundaries,
+      }
+    }
     const now = new Date()
     const rows = workdays.map((workday) => {
       const policySnapshot = policyByWorkday.get(workday.id)
@@ -362,25 +425,11 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       const base = {
         ...workday,
         date: workday.workDate.toISOString().slice(0, 10),
-        review: (() => {
-          const readModel = buildWorkforceTimesheetReadModel({
-            events: eventsByWorkday.get(workday.id) ?? [],
-            transitions: transitionsByWorkday.get(workday.id) ?? [],
-            exceptions: calculatedExceptionsByWorkday.get(workday.id) ?? [],
-            exceptionCases: exceptionCasesByWorkday.get(workday.id) ?? [],
-            approvals: [],
-          })
-          return {
-            source: readModel.source,
-            evidenceReview: readModel.evidenceReview,
-            exceptions: readModel.exceptions,
-            boundaries: readModel.boundaries,
-          }
-        })(),
       }
       if (!policySnapshot || !shiftSnapshot || !scheduleSnapshot) {
         return {
           ...base,
+          review: reviewForWorkday(workday.id, []),
           // Legacy projection timestamps remain canonical workday facts, but
           // they are not an immutable policy/shift calculation and must never
           // look approval- or export-ready in the Workforce timesheet.
@@ -402,8 +451,13 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           events: (eventsByWorkday.get(workday.id) ?? []).map(workforceWorkdayEventFact),
           corrections: correctionsByWorkday.get(workday.id) ?? [],
         })
+        const calculationVersions = [result.calculation.calculationVersion]
+        if ("coreCalculationVersion" in result.calculation) {
+          calculationVersions.push(result.calculation.coreCalculationVersion)
+        }
         return {
           ...base,
+          review: reviewForWorkday(workday.id, calculationVersions),
           workedSeconds: result.calculation.fact.workedSeconds,
           calculation: result.calculation,
           calculationStatus: "WORKFORCE_TIMESHEET_CALCULATED",
@@ -414,6 +468,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           // failure: that would make a corrupted closed day look exportable.
           return {
             ...base,
+            review: reviewForWorkday(workday.id, []),
             workedSeconds: null,
             calculation: null,
             calculationStatus: "WORKFORCE_WORKDAY_HISTORY_INVALID",
@@ -434,6 +489,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         end,
         agents,
         rows,
+        unrecordedWorkdayExceptions,
         approvalHistory,
         summary: { totalWorkedSeconds, workdayCount: rows.length, calculatedWorkdayCount, unavailableWorkdayCount },
       },

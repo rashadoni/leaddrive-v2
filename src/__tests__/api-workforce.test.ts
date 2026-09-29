@@ -60,6 +60,7 @@ import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
 import { workforceWorkdayScheduleSnapshotHash } from "@/lib/workforce/snapshot-writer"
 import { buildWorkforceTimesheetApproval } from "@/lib/workforce/timesheet-approval"
 import type { WorkforceTimesheetCalculation } from "@/lib/workforce/timesheet-calculation"
+import { WORKFORCE_TIMESHEET_READ_MODEL_LIMITS } from "@/lib/workforce/timesheet-read-model"
 
 const AUTH = {
   orgId: "org-workforce",
@@ -453,19 +454,29 @@ describe("independent Workforce read models", () => {
       status: "COMPLETED", startedAt: new Date("2026-08-28T09:00:00.000Z"), pausedAt: null,
       completedAt: new Date("2026-08-28T18:00:00.000Z"), totalPausedSeconds: 3_600,
     }] as never)
-    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([{
-      id: "event-private", workdayId: "workday-1", type: "START",
-      occurredAt: new Date("2026-08-28T09:00:00.000Z"), attendanceReviewState: "NOT_REQUIRED",
-      attendanceReviewReasonCode: "reason-private",
-    }] as never)
+    vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([timesheetPolicySnapshot()] as never)
+    vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([timesheetShiftSnapshot()] as never)
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findMany).mockResolvedValue([timesheetScheduleSnapshot()] as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
+      { id: "event-private", workdayId: "workday-1", type: "START", occurredAt: new Date("2026-08-28T09:00:00.000Z"), attendanceReviewState: "NOT_REQUIRED", attendanceReviewReasonCode: "reason-private" },
+      { id: "event-pause", workdayId: "workday-1", type: "PAUSE", occurredAt: new Date("2026-08-28T12:00:00.000Z"), attendanceReviewState: "NOT_REQUIRED" },
+      { id: "event-resume", workdayId: "workday-1", type: "RESUME", occurredAt: new Date("2026-08-28T13:00:00.000Z"), attendanceReviewState: "NOT_REQUIRED" },
+      { id: "event-finish", workdayId: "workday-1", type: "FINISH", occurredAt: new Date("2026-08-28T18:00:00.000Z"), attendanceReviewState: "NOT_REQUIRED" },
+    ] as never)
     vi.mocked(prisma.workforceSiteTransition.findMany).mockResolvedValue([{
       id: "transition-private", workdayId: "workday-1", attendanceReviewState: "PENDING_REVIEW",
       attendanceReviewReasonCode: "transition-reason-private",
     }] as never)
-    vi.mocked(prisma.workforceAttendanceException.findMany).mockResolvedValue([{
-      workdayId: "workday-1", type: "LATE_START", status: "ACKNOWLEDGED",
-      resolutionNote: "calculation-reason-private",
-    }] as never)
+    vi.mocked(prisma.workforceAttendanceException.findMany).mockResolvedValue([
+      {
+        workdayId: "workday-1", type: "LATE_START", status: "OPEN", calculationVersion: 0,
+        resolutionNote: "stale-calculation-reason-private",
+      },
+      {
+        workdayId: "workday-1", type: "LATE_START", status: "ACKNOWLEDGED", calculationVersion: 1,
+        resolutionNote: "calculation-reason-private",
+      },
+    ] as never)
     vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([{
       id: "case-private", agentId: "agent-1", kind: "NO_SHOW", workdayId: "workday-1",
       expectedWorkDate: null, workdayEvent: null,
@@ -508,12 +519,20 @@ describe("independent Workforce read models", () => {
     const serialized = JSON.stringify(body)
     for (const privateValue of [
       "event-private", "reason-private", "transition-private", "transition-reason-private",
-      "calculation-reason-private", "case-private", "decision-reason-private",
+      "stale-calculation-reason-private", "calculation-reason-private", "case-private", "decision-reason-private",
       "response-reason-private", "approval-private", storedTimesheetApprovalRevision().rowsHash,
     ]) expect(serialized).not.toContain(privateValue)
     expect(prisma.workforceSiteTransition.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { organizationId: "org-workforce", workdayId: { in: ["workday-1"] } },
+      take: WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.transitionRecordsPerRequest + 1,
       select: { workdayId: true, attendanceReviewState: true },
+    }))
+    expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      take: WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.eventRecordsPerRequest + 1,
+    }))
+    expect(prisma.workforceAttendanceException.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      take: WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.calculationExceptionRecordsPerRequest + 1,
+      select: { workdayId: true, type: true, status: true, calculationVersion: true },
     }))
     expect(prisma.workforceTimesheetApproval.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: {
@@ -524,6 +543,75 @@ describe("independent Workforce read models", () => {
       },
       take: 65,
     }))
+  })
+
+  it("returns a schedule-only no-show even when the period has no workday row", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Aysel", role: "AGENT", teamId: "team-1" },
+    ] as never)
+    vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([{
+      id: "case-private", agentId: "agent-1", kind: "NO_SHOW", workdayId: null,
+      expectedWorkDate: new Date("2026-08-28T00:00:00.000Z"), workdayEvent: null,
+      decisions: [], detectorVersion: "detector-private",
+    }] as never)
+
+    const response = await timesheetGet(
+      request("/api/v1/workforce/timesheet?start=2026-08-28&end=2026-08-28&agentId=agent-1"),
+      AUTH as never,
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.rows).toEqual([])
+    expect(body.data.unrecordedWorkdayExceptions).toEqual([{
+      agentId: "agent-1",
+      workDate: "2026-08-28",
+      exceptions: [{ type: "NO_SHOW", status: "OPEN" }],
+    }])
+    expect(JSON.stringify(body)).not.toContain("case-private")
+    expect(JSON.stringify(body)).not.toContain("detector-private")
+    expect(prisma.workforceExceptionCase.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        organizationId: "org-workforce",
+        agentId: { in: ["agent-1"] },
+        OR: expect.arrayContaining([
+          { expectedWorkDate: { gte: new Date("2026-08-28T00:00:00.000Z"), lt: new Date("2026-08-29T00:00:00.000Z") } },
+        ]),
+      }),
+      take: 501,
+    }))
+  })
+
+  it("rejects a request-level evidence overflow after a query-level sentinel", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Aysel", role: "AGENT", teamId: "team-1" },
+    ] as never)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([{
+      id: "workday-1", agentId: "agent-1", workDate: new Date("2026-08-28T00:00:00.000Z"),
+      status: "COMPLETED", startedAt: new Date("2026-08-28T09:00:00.000Z"), pausedAt: null,
+      completedAt: new Date("2026-08-28T18:00:00.000Z"), totalPausedSeconds: 0,
+    }] as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(Array.from(
+      { length: WORKFORCE_TIMESHEET_READ_MODEL_LIMITS.eventRecordsPerRequest + 1 },
+      (_, index) => ({
+        id: `event-${index}`,
+        workdayId: "workday-1",
+        type: "START",
+        occurredAt: new Date("2026-08-28T09:00:00.000Z"),
+        attendanceReviewState: "NOT_REQUIRED",
+      }),
+    ) as never)
+
+    const response = await timesheetGet(
+      request("/api/v1/workforce/timesheet?start=2026-08-28&end=2026-08-28"),
+      AUTH as never,
+    )
+
+    expect(response.status).toBe(413)
+    await expect(response.json()).resolves.toEqual({
+      error: "Too many records for one safe timesheet view",
+      code: "WORKFORCE_TIMESHEET_READ_LIMIT_EXCEEDED",
+    })
   })
 
   it("fails closed when a selected employee approval revision cannot be hash-verified", async () => {

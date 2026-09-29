@@ -107,6 +107,10 @@ type WorkforceTimesheetCalculationView = {
 
 type TimesheetEvidenceReviewState = "NOT_RECORDED" | "NOT_REQUIRED" | "PENDING_REVIEW" | "LEGACY_UNKNOWN"
 type TimesheetExceptionStatus = "OPEN" | "ACKNOWLEDGED" | "AWAITING_EMPLOYEE_RESPONSE" | "HR_REVIEW" | "RESOLVED" | "DATA_INTEGRITY_REVIEW"
+type TimesheetException = {
+  type: "LATE_START" | "UNDERTIME" | "OVERTIME" | "LONG_PAUSE" | "NO_SHOW" | "MISSED_FINISH" | "DELAYED_CLAIM" | "SITE_TRANSITION_REVIEW" | "DEVICE_SECURITY_REVIEW" | "ATTENDANCE_PROOF_REVIEW"
+  status: TimesheetExceptionStatus
+}
 
 type TimesheetApprovalHistory = {
   state: "NOT_APPROVED" | "APPROVED" | "CORRECTED"
@@ -144,11 +148,13 @@ type TimesheetData = {
         events: TimesheetEvidenceReviewState
         transitions: TimesheetEvidenceReviewState
       }
-      exceptions: Array<{
-        type: "LATE_START" | "UNDERTIME" | "OVERTIME" | "LONG_PAUSE" | "NO_SHOW" | "MISSED_FINISH" | "DELAYED_CLAIM" | "SITE_TRANSITION_REVIEW" | "DEVICE_SECURITY_REVIEW" | "ATTENDANCE_PROOF_REVIEW"
-        status: TimesheetExceptionStatus
-      }>
+      exceptions: TimesheetException[]
     }
+  }>
+  unrecordedWorkdayExceptions: Array<{
+    agentId: string
+    workDate: string
+    exceptions: TimesheetException[]
   }>
   approvalHistory: TimesheetApprovalHistory | null
   summary: { totalWorkedSeconds: number; workdayCount: number }
@@ -729,6 +735,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       }
       const data = result.data as TimesheetApprovalData
       toast.success(result.idempotent ? t("timesheetApprovalAlreadyRecorded") : t(data.recordKind === "CORRECTION" ? "timesheetCorrectionRecorded" : "timesheetApprovalRecorded"))
+      setRetry((value) => value + 1)
       return { success: true, idempotent: Boolean(result.idempotent), data }
     } catch (cause) {
       return {
@@ -1066,6 +1073,27 @@ function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, lo
         {data.rows.length === 0 ? <tr><td colSpan={8} className="px-1 py-12 text-center text-muted-foreground">{t("noWorkdays")}</td></tr> : null}
       </tbody></table>
     </div>
+    {data.unrecordedWorkdayExceptions.length > 0 ? (
+      <section aria-labelledby="workforce-timesheet-unrecorded-exceptions" className="border-y border-zinc-200 py-5 dark:border-zinc-700">
+        <h3 id="workforce-timesheet-unrecorded-exceptions" className="text-base font-semibold">{t("timesheetUnrecordedExceptionsTitle")}</h3>
+        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("timesheetUnrecordedExceptionsHint")}</p>
+        <ul className="mt-4 divide-y divide-zinc-200 dark:divide-zinc-700">
+          {data.unrecordedWorkdayExceptions.map((entry) => (
+            <li key={`${entry.agentId}:${entry.workDate}`} className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.5fr)] sm:items-start">
+              <span className="font-medium">{names.get(entry.agentId) ?? t("unknownEmployee")}</span>
+              <span className="text-sm text-muted-foreground">{formatter.format(new Date(`${entry.workDate}T12:00:00`))}</span>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                {entry.exceptions.map((exception) => (
+                  <li key={`${exception.type}:${exception.status}`}>
+                    {t(`timesheetApprovalException.${exception.type}`)} · {t(`timesheetExceptionStatus.${exception.status}`)}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null}
   </>
 }
 
@@ -1108,9 +1136,17 @@ function TimesheetApprovalPanel({
   const selectedRows = selectedAgent
     ? data.rows.filter((row) => row.agentId === selectedAgent.id)
     : []
+  const selectedUnrecordedExceptions = selectedAgent
+    ? data.unrecordedWorkdayExceptions.filter((entry) => entry.agentId === selectedAgent.id)
+    : []
+  const hasApprovalBlockingExceptions = selectedRows.some((row) => (
+    row.review.exceptions.some((exception) => exception.status !== "RESOLVED")
+  )) || selectedUnrecordedExceptions.some((entry) => (
+    entry.exceptions.some((exception) => exception.status !== "RESOLVED")
+  ))
   const approvalReady = selectedRows.length > 0 && selectedRows.every((row) => (
     row.status === "COMPLETED" && row.calculationStatus === "WORKFORCE_TIMESHEET_CALCULATED"
-  ))
+  )) && !hasApprovalBlockingExceptions
   const correctionReasonRequired = failure?.code === "WORKFORCE_TIMESHEET_APPROVAL_INVALID"
     && failure.error.toLowerCase().includes("correction reason")
 
@@ -1198,7 +1234,7 @@ function TimesheetApprovalPanel({
             </div>
             <Badge variant={approvalReady ? "default" : "secondary"}>{approvalReady ? t("approvalReady") : t("approvalNotReady")}</Badge>
           </div>
-          {!approvalReady ? <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">{selectedRows.length === 0 ? t("approvalNoWorkdays") : t("approvalIncompleteWorkdays")}</p> : null}
+          {!approvalReady ? <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">{hasApprovalBlockingExceptions ? t("approvalUnresolvedExceptions") : selectedRows.length === 0 ? t("approvalNoWorkdays") : t("approvalIncompleteWorkdays")}</p> : null}
           {!canApproveTimesheet ? <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">{t("approvalManagerRequired")}</p> : null}
           <div className="mt-5 border-y border-zinc-200 py-4 dark:border-zinc-700" aria-labelledby="workforce-timesheet-revisions">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
