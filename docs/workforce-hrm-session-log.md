@@ -2154,3 +2154,110 @@ corrections as new entries that explicitly supersede the earlier fact.
   and this three-document GREEN receipt is the only uncommitted change.
 - Next action: commit the receipt, confirm exact-head runtime/test integrity,
   push the replacement PR head and require all five contexts again.
+
+## 2026-09-29 — PR #491 merged, deployed and exact-SHA verified
+
+- Replacement exact head `9f7e5f2d622b6b6f4faf4d5651c8625764a6ec8e` passed all five
+  required contexts. PR checks run `36543790838` closed `pr-scope`,
+  `static-checks` and `typecheck`; runner-policy `36543790711` and scan
+  `36543790785` passed independently. Production build was correctly skipped
+  for PR scope.
+- PR #491 was merged normally, without an admin bypass, as main SHA
+  `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`.
+- Deploy workflow `36545693169` completed SUCCESS: quality/security 11m06s,
+  SHA-bound artifact build/publish 17m15s, atomic production deploy and smoke
+  6m24s. No direct worktree copy or server-side release was used.
+- Separate public no-cache TLS checks pinned to the approved production IP
+  `13.140.132.245` returned `/api/v1/ping` `{"ok":true}` and build-info
+  `artifactSha=13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`, built at
+  `2026-09-29T09:00:10Z`.
+- The worktree is now on successor branch
+  `codex/workforce-completion-part9`, based exactly on deployed `origin/main`.
+  `WF-C8-002` remains `PARTIAL`: real browser/AT/contrast/zoom/device evidence
+  is `NOT RUN`; Android, load, signed-device and pilot gates are also
+  `NOT RUN`. Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall
+  59%, with 80 non-DONE rows.
+- Precise stopping point: release evidence is appended but not checkpointed.
+- Next action: commit these three receipt files, then begin bounded
+  `WF-C8-007a` (ordered shift-segment draft editor, named sites, safe
+  validation and EN/RU/AZ) with no calendar/proof-policy/schema expansion.
+
+## 2026-09-29 — WF-C8-007a implementation checkpoint
+
+- Implemented the bounded ordered multi-site segment editor on successor
+  branch `codex/workforce-completion-part9`. It reuses the shipped schema/API;
+  no Prisma, migration, permission, calendar, assignment or proof-policy
+  administration change was made.
+- Administrators can add and reorder up to 24 released-mode segments, choose
+  named ACTIVE sites only for SITE, edit local times and grace, and review
+  named segment summaries. Legacy zero-segment shifts retain their continuous
+  window. Safe defaults skip planned breaks; the last detailed segment cannot
+  be silently cleared against the server's non-empty replacement contract.
+- Full-array create/edit payloads preserve stored hidden proof-policy
+  references exactly. Unreleased `ON_CALL` is never offered and blocks draft
+  save until replaced. Archived/missing sites are named or labelled
+  unavailable without rendering identifiers. ACTIVE history remains
+  read-only.
+- The `impeccable` project guidance kept the extension inside the existing
+  light CRM shell: divider-based hierarchy, no nested-card redesign,
+  responsive fields, explicit empty/error states, stable keyboard reordering
+  and 44px controls. Real visual/browser inspection is still `NOT RUN` by the
+  Contabo placement rule.
+- PASS: six targeted files / 67 tests, scoped ESLint on four TS/TSX paths,
+  i18n 23,803/0/0, JSON and whitespace. Full local typecheck/build/suite,
+  browser/AT/contrast/zoom/device, Android/Gradle, load, signed device and
+  pilot are `NOT RUN`; CI/authorized workers remain authoritative.
+- `WF-C8-007` is now `PARTIAL`; no DONE/gate credit is claimed. Progress
+  remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE.
+- Precise stopping point: source, focused checks and initial evidence are
+  complete but uncommitted after release receipt commit `d12ae080b`.
+- Next action: run final bounded checks, commit only explicit slice paths,
+  compute exact diff identity and request a fresh author-independent review.
+
+## 2026-09-29 — WF-C8-007a frozen review RED remediated
+
+- The author-independent review of exact frozen head
+  `319326a717f6f5b2bc1dadec110a17bc3ed9c7e4` returned RED with
+  `P0=0`, `P1=0`, `P2=0`, `P3=1`. The sole finding was trailing whitespace on
+  three metadata lines in the new evidence file, which made the exact diff
+  fail `git diff --check` despite the recorded PASS. The reviewer found no
+  functional or source-level defect.
+- The three whitespace markers were removed without touching runtime, test or
+  translation code. Full and implementation deltas now pass whitespace.
+  Repeated bounded checks pass: six files / 67 tests, scoped ESLint 4/4,
+  i18n 23,803/0/0 and EN/RU/AZ JSON.
+- Full local typecheck/build/suite, browser/AT/contrast/zoom/device,
+  Android/Gradle, load, signed device and pilot remain `NOT RUN`; exact-head CI
+  remains authoritative.
+- No completion credit is claimed. `WF-C8-007` remains `PARTIAL`; progress is
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: remediation and repeated bounded author checks pass
+  but the three-document receipt is uncommitted.
+- Next action: checkpoint explicit documentation paths, fingerprint the new
+  exact candidate and request a completely fresh independent review.
+
+## 2026-09-29 — WF-C8-007a independent rereview GREEN
+
+- A completely fresh author-independent rereview returned GREEN with
+  `P0=P1=P2=P3=0` on exact clean head
+  `a6e29375e93e32142155db9ab3e33fd29678c1c3`. Live `origin/main` and the
+  merge-base were independently rechecked at
+  `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`.
+- Exact full identity: 11 paths / 75,583 bytes / SHA-256
+  `1b442cd0af85df258ed396341c8dc35fc2ef33abdadd858b28b6a816c53f1334`.
+  Exact implementation identity: 10 paths / 70,283 bytes / SHA-256
+  `d8a67d254121eea5f78a17b1ed7d16231fe2d3b33bc3341f624ad5abf13b3be1`.
+- The reviewer closed the prior whitespace P3 and found no remaining issue in
+  code, API, UI, domain rules, accessibility source, localization or evidence.
+  Independent PASS: all relevant diff-checks, six files / 67 tests, scoped
+  ESLint 4/4, i18n 23,803/0/0 and EN/RU/AZ JSON. The reviewer made no changes
+  and left the worktree clean.
+- Full local typecheck/build/suite, browser/AT/contrast/zoom/device,
+  Android/Gradle, load, signed device and pilot remain `NOT RUN`; exact-head CI
+  is required before merge.
+- No progress credit is added: `WF-C8-007` remains `PARTIAL`; progress is
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: reviewed runtime/test/i18n blobs are frozen, with
+  only this three-document GREEN receipt uncommitted.
+- Next action: checkpoint the receipt, verify exact-head blob integrity, then
+  push the branch, open the bounded PR and require all five CI contexts.

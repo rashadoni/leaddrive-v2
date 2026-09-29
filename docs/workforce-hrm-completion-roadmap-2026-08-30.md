@@ -974,7 +974,7 @@ from Route & Field.
 | WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
 | WF-C8-006 | P1 | DONE | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | [`workforce-c8-sites-geofences-evidence-2026-08-30.md`](./workforce-c8-sites-geofences-evidence-2026-08-30.md): administrator-only named sites, future calibrated circles, assignment-only impact preview and immutable revision history; no browser location collection or physical-presence claim |
-| WF-C8-007 | P1 | PLANNED | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | No raw IDs; published history is immutable |
+| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md): named ACTIVE sites, released modes, safe break-aware defaults, full-array draft writes, hidden proof-reference preservation and immutable ACTIVE summaries; calendar authoring and real browser/AT evidence remain open |
 | WF-C8-008 | P1 | PARTIAL | Web | Add proof-policy, QR station and trusted-device administration separated by permission | [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): named-site/effective-circle QR station creation plus device/QR lifecycle UI are administrator-only; proof-policy UI and granular separation-of-duties await C7/C5 gates |
 | WF-C8-009 | P1 | PARTIAL | Web | Add restricted evidence timeline and access audit; normal view shows verdict instead of exact coordinates | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md): a visible named-employee web timeline now returns only bounded localized verdict/reason records after exact grant, explicit context and successful access audit; raw-investigation policy/UI and real-browser acceptance remain open |
 | WF-C8-010 | P1 | PARTIAL | Web/I18n | Complete AZ/RU/EN, keyboard, focus, contrast, 200% zoom, responsive tablet/phone and error/empty states | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md) and [`bulk preview evidence`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): AZ/RU/EN, concise announcements, focus transfer, bounded named search, responsive source and error/empty states exist; real browser/AT/contrast/200%-zoom/mobile evidence remains open |
@@ -2294,3 +2294,94 @@ from this worktree.
   three-document GREEN receipt is uncommitted.
 - Next action: checkpoint receipt, obtain exact-head blob-integrity GREEN,
   push PR #491 replacement head and rerun every required context.
+
+## 2026-09-29 — WF-C8-002 PR #491 production release receipt
+
+- Exact reviewed PR head `9f7e5f2d622b6b6f4faf4d5651c8625764a6ec8e` passed required
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`.
+  Replacement PR run `36543790838`, runner-policy run `36543790711` and
+  secret-scan run `36543790785` are green; the scope-conditioned production
+  build was correctly skipped.
+- PR #491 merged normally as main SHA
+  `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`. Exact-SHA deploy workflow
+  `36545693169` completed SUCCESS through quality/security, immutable artifact
+  build, atomic production deployment and workflow post-deploy smoke.
+- Separate no-cache TLS probes pinned to approved production
+  `13.140.132.245` returned `{"ok":true}` from `/api/v1/ping` and exact
+  `artifactSha=13dc3a179c8f5c0148c5f96d9e64c29815cd9d76` from
+  `/api/v1/public/build-info`.
+- Browser/AT/contrast/zoom/device acceptance remains `NOT RUN`, so
+  `WF-C8-002` remains `PARTIAL`. No completion or gate credit is added:
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the bounded Manager Today source is live on the
+  exact verified production artifact; only this append-only release receipt
+  is uncommitted on successor branch `codex/workforce-completion-part9`.
+- Next action: checkpoint the release receipt, then implement the bounded
+  `WF-C8-007a` ordered multi-site shift-segment draft editor without expanding
+  into calendar, proof-policy or schema work.
+
+## 2026-09-29 — WF-C8-007a ordered segment editor checkpoint
+
+- The existing shift draft now supports a bounded ordered timeline of
+  released Site/Remote/Field/Travel/Exception modes with named ACTIVE sites,
+  44px keyboard controls, break-aware defaults, inline localized validation
+  and named read-only summaries. `ON_CALL` is not offered.
+- POST and PATCH send the complete ordered array when detailed segments are
+  present. Legacy continuous-window drafts still omit segments. Existing
+  hidden proof-policy references round-trip exactly without appearing in UI;
+  ACTIVE history remains immutable.
+- PASS: six focused files / 67 tests; scoped ESLint 4/4; i18n 23,803/0/0;
+  EN/RU/AZ JSON and whitespace. Full local typecheck/build/suite and real
+  browser/AT/device/load evidence remain `NOT RUN` under host policy.
+- `WF-C8-007` is **PARTIAL**, not DONE. Calendar authoring and real browser/AT
+  acceptance remain open. Progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: implementation, focused verification and initial
+  evidence are complete but uncommitted on
+  `codex/workforce-completion-part9`.
+- Next action: checkpoint explicit paths, fingerprint the exact candidate and
+  obtain fresh author-independent full-range review before PR publication.
+
+## 2026-09-29 — WF-C8-007a independent-review remediation
+
+- Independent review of frozen head
+  `319326a717f6f5b2bc1dadec110a17bc3ed9c7e4` returned RED with
+  `P0=0`, `P1=0`, `P2=0`, `P3=1`. The only finding was three trailing-space
+  markers in the new evidence metadata; this made `git diff --check` fail and
+  contradicted the recorded whitespace PASS. No product-code finding was
+  reported.
+- The three spaces were removed. Full and implementation-range whitespace now
+  pass, and the complete bounded verification was repeated: six files / 67
+  tests, scoped ESLint 4/4, i18n 23,803/0/0 and EN/RU/AZ JSON are green.
+- Full typecheck/build/suite, browser/AT/device, Android/Gradle, load,
+  signed-device and pilot gates remain `NOT RUN` under host policy. Exact-head
+  CI and a fresh independent review remain mandatory.
+- `WF-C8-007` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: the independently found evidence defect is corrected
+  and reverified in the working tree but not yet checkpointed.
+- Next action: commit the explicit documentation paths, compute a new exact
+  identity and obtain fresh author-independent review before any push.
+
+## 2026-09-29 — WF-C8-007a fresh independent review GREEN
+
+- Fresh author-independent review returned GREEN with
+  `P0=P1=P2=P3=0` on exact clean head
+  `a6e29375e93e32142155db9ab3e33fd29678c1c3`; live `origin/main` and
+  merge-base remained `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`.
+- The reviewer matched the full identity at 11 paths / 75,583 bytes / SHA-256
+  `1b442cd0af85df258ed396341c8dc35fc2ef33abdadd858b28b6a816c53f1334`
+  and the implementation identity at 10 paths / 70,283 bytes / SHA-256
+  `d8a67d254121eea5f78a17b1ed7d16231fe2d3b33bc3341f624ad5abf13b3be1`.
+- The previous whitespace P3 is closed. Independent PASS: full and
+  implementation diff-checks, six files / 67 tests, scoped ESLint 4/4, i18n
+  23,803/0/0 and EN/RU/AZ JSON. No code, API, UI, domain, a11y-source,
+  localization or documentation finding remains.
+- Full typecheck/build/suite, browser/AT/device, Android/Gradle, load, signed
+  device and pilot remain `NOT RUN`; required exact-head CI is next.
+- `WF-C8-007` stays `PARTIAL`, so progress is unchanged: `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: the reviewed source is frozen; only this append-only
+  GREEN receipt is uncommitted.
+- Next action: checkpoint the receipt, obtain exact-head blob-integrity GREEN,
+  then push and open the bounded PR for all five required contexts.

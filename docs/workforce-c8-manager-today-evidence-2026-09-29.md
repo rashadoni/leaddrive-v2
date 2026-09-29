@@ -270,3 +270,29 @@ acceptance evidence exist.
 - Full local typecheck/build/suite and browser/device/load/pilot gates remain
   `NOT RUN`; replacement exact-head CI must prove the compiler repair.
   `WF-C8-002` stays **PARTIAL** with unchanged progress and no new credit.
+
+## 2026-09-29 PR #491 release receipt
+
+- Replacement PR head `9f7e5f2d622b6b6f4faf4d5651c8625764a6ec8e` retained the
+  independently reviewed runtime/test blobs and passed every required context:
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`.
+  PR-check run `36543790838` completed `static-checks` in 8m08s and
+  `typecheck` in 15m35s; the scope-conditioned production-build job was
+  correctly skipped. Runner-policy run `36543790711` and secret-scan run
+  `36543790785` also passed.
+- GitHub merged PR #491 normally into `main` as
+  `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76`; no protection bypass, force
+  push or direct production copy was used.
+- Exact-SHA deploy workflow `36545693169` completed SUCCESS. Its quality and
+  security job passed in 11m06s, SHA-bound production build/publish passed in
+  17m15s, and atomic production deploy plus workflow smoke passed in 6m24s.
+- Independent no-cache TLS checks pinned to approved production
+  `13.140.132.245` returned `/api/v1/ping` as `{"ok":true}` and
+  `/api/v1/public/build-info.artifactSha` as the exact merged main SHA
+  `13dc3a179c8f5c0148c5f96d9e64c29815cd9d76` (`builtAt`
+  `2026-09-29T09:00:10Z`).
+- Real browser/keyboard/AT/contrast/200%-zoom/responsive-device evidence is
+  still `NOT RUN`; Android/Gradle, signed/physical device, load and pilot are
+  also `NOT RUN` under the placement policy. Therefore `WF-C8-002` remains
+  **PARTIAL**, and progress remains `DONE 81/161`, `GATES 14/15`, C8 36%,
+  overall 59%, with 80 non-DONE rows.
