@@ -204,6 +204,16 @@ export async function judgeAmbiguousAliasRejections(options: {
   const limit = Math.max(1, Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT))
   const result = emptyResult()
 
+  // Since 2026-09-29 the live evaluation accepts a second signal only from the
+  // judge that knows where the brand operates (see subject-relevance.ts, and
+  // the 2026-08-03 incident it records). Any other judge would be paid for an
+  // answer that cannot restore anything — so it is not asked at all. The pass
+  // waits instead: without the key this is a no-op, not a bill.
+  if (result.provider !== "jev") {
+    result.reason = "no_geography_aware_judge"
+    return result
+  }
+
   // Уже осуждённые этой версией отбираются В КОДЕ, а не JSON-фильтром.
   // Прод показал почему: у строки без ключа `aiJudgeVersion` путь даёт NULL, и
   // `not: <версия>` для неё неизвестен, то есть ложен — выборка вернула ноль

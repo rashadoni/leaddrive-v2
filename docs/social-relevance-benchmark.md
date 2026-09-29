@@ -269,3 +269,12 @@ The queue widened at the same time. It was one rejection class; it is now five,
 with the brand's own posts (`official_author*`) deliberately excluded — a judge
 would confirm those every time, and putting a company's own marketing back into
 its monitoring feed is not a recovery.
+
+### And nobody else is asked
+
+Since the verdict only counts when it comes from the geography-aware judge, any
+other judge would be paid for an answer that cannot restore anything. So the
+pass does not ask one: without `TYPESAFE_API_KEY` it returns
+`reason: "no_geography_aware_judge"` before it even queries for candidates. The
+schedule can therefore be installed before the key is delivered — it is a no-op,
+not a bill.
