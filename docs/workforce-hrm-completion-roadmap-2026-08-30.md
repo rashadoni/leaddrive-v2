@@ -2189,3 +2189,31 @@ from this worktree.
   in the working tree but not yet checkpointed.
 - Next action: commit only explicit slice paths, fingerprint the complete
   candidate and obtain a fresh independent full-range review from zero.
+
+## 2026-09-29 — WF-C8-002 SELF no-show START review repair
+
+- Fresh review matched clean exact base/live main/merge-base
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through head
+  `9e812b3f06389573c521ca0d9dcbb19adaa4f66b`: 23 paths / 190,805 binary
+  bytes / SHA-256
+  `66d20f47c67be331bc18287e8e8f6c75d9635c7dd897e6e391c3ebaae64c0c24`.
+  The author-independent verdict was RED: `P0=0`, `P1=0`, `P2=1`, `P3=0`.
+- The remaining P2 was a read/write-context gap: SELF could see and enable
+  `START` under historical Team A no-show context, while POST snapshots at the
+  actual accepted start and could persist Team B after a same-day transfer.
+- Persisted no-show plan/calendar is now display-only. SELF receives no
+  actionable planned context, assignment fails closed and `START` is disabled
+  until a separately reviewed recovery/case flow exists. Ordinary fact-free
+  live rows still share and revalidate one exact route-selected context. No
+  raw client team/template identifier or new write protocol was introduced.
+- PASS: expanded 9-file / 86-test targeted matrix, scoped ESLint on all 16
+  candidate TS/TSX paths, i18n 23,766/0/0, JSON catalogs and whitespace.
+  Full local typecheck/build/suite, browser/AT, Android/Gradle, load,
+  signed-device and pilot remain `NOT RUN` under host policy.
+- `WF-C8-002` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. The RED verdict
+  does not authorize changed source.
+- Precise stopping point: P2 repair, two regressions and receipts are complete
+  in the working tree but not yet checkpointed.
+- Next action: commit explicit paths, recompute the complete identity and
+  obtain a fresh author-independent full-range verdict.

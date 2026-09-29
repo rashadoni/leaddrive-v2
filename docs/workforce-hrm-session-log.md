@@ -2038,3 +2038,36 @@ corrections as new entries that explicitly supersede the earlier fact.
   are complete but uncommitted on `codex/workforce-completion-part8`.
 - Next action: checkpoint explicit paths, calculate the exact full candidate
   identity and request fresh author-independent complete-diff review.
+
+## 2026-09-29 — WF-C8-002 third frozen review RED and START repair
+
+- Independent review exactly matched deployed/live main and merge-base
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through clean head
+  `9e812b3f06389573c521ca0d9dcbb19adaa4f66b`: 23 paths / 190,805 binary
+  bytes / SHA-256
+  `66d20f47c67be331bc18287e8e8f6c75d9635c7dd897e6e391c3ebaae64c0c24`.
+  Verdict was RED with `P0=0`, `P1=0`, `P2=1`, `P3=0`; reviewer checks passed
+  9 files / 84 tests, ESLint 16 paths, i18n 23,766/0/0, JSON and whitespace.
+- The P2 identified the final read/write mismatch. A SELF user could receive
+  enabled `START` based on historical Team A no-show plan/policy/calendar, but
+  the existing action POST accepts no such context and snapshots at actual
+  start, potentially under Team B after the same-day transfer.
+- The repair deliberately avoids a raw client-supplied team/template or a new
+  unreviewed write protocol. A persisted no-show context is display-only:
+  Today supplies `plannedContext: null` to SELF, the employee projection marks
+  assignment unavailable and `START` is disabled until a dedicated reviewed
+  recovery/case flow exists. Ordinary no-case live rows still use the exact
+  route-selected context and fail closed on revalidation mismatch.
+- Added a route regression for a self-only principal with independent site
+  exception authority after Team A to Team B transfer, plus a direct employee
+  projection regression for null actionable context. PASS: 9 focused files /
+  86 tests; scoped ESLint on all 16 candidate TS/TSX paths; i18n 23,766/0/0;
+  JSON and whitespace.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical-device and pilot remain `NOT RUN`. `WF-C8-002` stays
+  `PARTIAL`; progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall
+  59%, with 80 non-DONE rows.
+- Precise stopping point: the third-review P2 is repaired and recorded but
+  uncommitted on `codex/workforce-completion-part8`.
+- Next action: rerun the complete bounded gates, checkpoint explicit paths,
+  fingerprint the full candidate and request fresh independent review.

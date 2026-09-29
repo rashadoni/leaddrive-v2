@@ -168,6 +168,28 @@ describe("employee Workforce Today projection", () => {
     expect(result.action.enabled).toBe(true)
   })
 
+  it("blocks START when Today supplies no actionable planned context", async () => {
+    const result = await loadWorkforceEmployeeToday({} as never, {
+      organizationId: "org-workforce",
+      agentId: "agent-1",
+      date: "2026-08-31",
+      timezone: "UTC",
+      status: "NOT_STARTED",
+      workday: null,
+      previousOpen: false,
+      calendar: { attendanceExpected: true },
+      plannedContext: null,
+      now: new Date("2026-08-31T12:00:00.000Z"),
+    })
+
+    expect(result.assignment.state).toBe("UNAVAILABLE")
+    expect(result.action).toMatchObject({
+      primary: "START",
+      enabled: false,
+      blockedReason: "ASSIGNMENT_UNAVAILABLE",
+    })
+  })
+
   it("uses the manager plan's exact scope for self assignment and policy", async () => {
     const shiftDefinition = {
       startTime: "09:00", endTime: "18:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],

@@ -602,6 +602,65 @@ describe("independent Workforce read models", () => {
     expect(JSON.stringify(body)).not.toMatch(/case-no-show|PRIVATE_REASON|PRIVATE_EVIDENCE|site-1/)
   })
 
+  it("does not offer SELF start from a persisted historical no-show context", async () => {
+    const shift = {
+      startTime: "09:00", endTime: "18:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
+    }
+    const teamATemplate = {
+      id: "team-a-day", name: "Team A day", teamId: "team-a", isDefault: false,
+      version: 1, status: "ACTIVE", timezone: "UTC",
+      activatedAt: new Date("2026-01-01T00:00:00.000Z"), retiredAt: null,
+      definition: shift, definitionHash: workforceShiftDefinitionHash(shift),
+    }
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: [WORKFORCE_GRANULAR_ACCESS_FLAG],
+    } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-self", role: "AGENT" } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{
+      id: "agent-self", name: "Aysel", role: "AGENT", teamId: "team-b",
+    }] as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant-site-a", organizationId: AUTH.orgId, principalUserId: "user-self",
+      role: "TEAM_MANAGER", scopeKind: "SITE", scopeTeamId: null, scopeSiteId: "site-a",
+      scopeAgentId: null, effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+      effectiveUntil: null, revocation: null,
+    }] as never)
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([{ requestId: "agent-self", teamId: "team-b" }] as never)
+      .mockResolvedValueOnce([{ requestId: "case-no-show-a", teamId: "team-a" }] as never)
+    vi.mocked(prisma.workforceShiftSegment.findMany).mockResolvedValue([{
+      id: "segment-a", siteId: "site-a", sequence: 1, startTime: "09:00",
+      template: teamATemplate,
+    }] as never)
+    vi.mocked(prisma.workforceExceptionCase.findMany)
+      .mockResolvedValueOnce([{
+        id: "case-no-show-a", agentId: "agent-self", segmentId: "segment-a",
+        expectedWorkDate: new Date("2026-08-28T00:00:00.000Z"), workdayEvent: null, workday: null,
+      }] as never)
+      .mockResolvedValueOnce([{
+        id: "case-no-show-a", agentId: "agent-self", kind: "NO_SHOW", decisions: [],
+      }] as never)
+
+    const response = await todayGet(
+      request("/api/v1/workforce/today"),
+      { ...AUTH, userId: "user-self", role: "user" } as never,
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data).toMatchObject({
+      scope: "SELF",
+      people: [{
+        plan: { source: "PERSISTED_NO_SHOW_CASE" },
+        attendance: { state: "NO_SHOW" },
+      }],
+    })
+    expect(loadWorkforceEmployeeToday).toHaveBeenCalledWith(prisma, expect.objectContaining({
+      agentId: "agent-self",
+      plannedContext: null,
+    }))
+  })
+
   it("attaches the self-only employee action model without widening tenant scope", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-self", role: "AGENT" } as never)
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([

@@ -579,7 +579,11 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
           calendar: calendars.get(self.id)!,
           plannedContext: selfWorkday
             ? undefined
-            : unavailableNoShowAgents.has(self.id)
+            // A persisted no-show plan is a historical manager/read context,
+            // not authority for a new START. The write endpoint snapshots at
+            // the accepted start instant, so exposing START here could show
+            // Team A while persisting Team B after a same-day transfer.
+            : noShowPlanContextByAgent.has(self.id)
               ? null
               : displayPlanContexts.get(self.id) ?? null,
           now,

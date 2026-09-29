@@ -35,10 +35,12 @@ roster rather than from employees who already have a workday:
   team are reconstructed from that validated case-bound schedule context;
   missing, corrupt or conflicting contexts fail plan/calendar closed. This GET
   neither infers nor creates a case;
-- the SELF model receives the same exact team/template/scope instant selected
-  by Today and revalidates assignment plus policy against it. A concurrent or
-  inconsistent resolution fails the action model closed instead of combining
-  calendar, assignment or policy from different teams;
+- for an ordinary live row, the SELF model receives the same exact
+  team/template/scope instant selected by Today and revalidates assignment plus
+  policy against it. A concurrent or inconsistent resolution fails the action
+  model closed instead of combining calendar, assignment or policy from
+  different teams. A persisted no-show context is display-only: SELF `START`
+  remains disabled until a separately reviewed case/recovery flow exists;
 - `TEAM_ATTENDANCE_READ` does not imply `TEAM_EXCEPTION_READ`. Unauthorized
   exception data is `null`; authorized empty scope is `[]`;
 - the manager projection excludes reasons, actors, case identifiers, raw
@@ -73,7 +75,7 @@ never substituted.
 
 ## Working-tree verification
 
-- PASS — targeted API/helper/UI Vitest matrix: **9 files / 84 tests**.
+- PASS — targeted API/helper/UI Vitest matrix: **9 files / 86 tests**.
 - PASS — scoped ESLint for all **16** changed TypeScript/TSX runtime and test
   paths.
 - PASS — `npm run i18n:check`: 23,766 English leaf keys, `missing=0` and
@@ -167,3 +169,30 @@ acceptance evidence exist.
 - `WF-C8-002` remains **PARTIAL**. Progress remains `DONE 81/161`,
   `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. The repair still
   requires a clean checkpoint and fresh author-independent full-range GREEN.
+
+## 2026-09-29 SELF no-show START review repair
+
+- Fresh author-independent review matched exact clean base/live main/merge-base
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through head
+  `9e812b3f06389573c521ca0d9dcbb19adaa4f66b`: 23 paths / 190,805 binary
+  bytes / SHA-256
+  `66d20f47c67be331bc18287e8e8f6c75d9635c7dd897e6e391c3ebaae64c0c24`.
+  Verdict was RED with `P0=0`, `P1=0`, `P2=1`, `P3=0`.
+- The P2 showed that SELF could be offered `START` from historical Team A
+  no-show context while the existing POST snapshots a newly accepted start at
+  its actual instant, potentially under Team B after a same-day transfer. The
+  UI contract and write contract would therefore disagree.
+- Persisted no-show plan/team/calendar is now read-only display context. Today
+  passes no actionable planned context to SELF, so assignment is
+  `UNAVAILABLE` and `START` is disabled. Ordinary no-case live rows retain the
+  exact shared context/revalidation path. No raw client template/team identity
+  or unreviewed write protocol was added.
+- Regressions prove both route selection and employee fail-closed action.
+  PASS — expanded targeted matrix: **9 files / 86 tests**; scoped ESLint on
+  all **16** candidate TS/TSX paths; i18n **23,766/0/0**; three JSON catalogs;
+  `git diff --check`.
+- NOT RUN — local full typecheck/build/suite, real browser/AT,
+  Android/Gradle, load, signed device and pilot under Contabo workload policy.
+- The RED verdict does not transfer to changed source. `WF-C8-002` remains
+  **PARTIAL** at `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; a clean checkpoint and fresh independent review are required.
