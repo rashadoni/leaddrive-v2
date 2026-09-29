@@ -4356,6 +4356,18 @@ Estimates remain `TBD` until Phase A measures data and integration complexity.
 `Owner` names must be assigned in the canonical issue tracker; the table records
 the accountable discipline, not a person.
 
+Current canonical release traceability (owner: `@rashadoni`):
+
+- Epic [#496](https://github.com/rashadoni/leaddrive-v2/issues/496)
+- Foundation final matrix [#492](https://github.com/rashadoni/leaddrive-v2/issues/492)
+- Authenticated evidence and visual comparison [#493](https://github.com/rashadoni/leaddrive-v2/issues/493)
+- Performance profiles and non-regression [#494](https://github.com/rashadoni/leaddrive-v2/issues/494)
+- Canary, protected merge and production receipt [#495](https://github.com/rashadoni/leaddrive-v2/issues/495)
+
+Historical page-slice checkpoints remain in this plan rather than creating
+retroactive tracker noise. The four still-active release gates above own every
+remaining acceptance item and will link the final PR, artifacts and deploy.
+
 | Slice | Priority | Blocking dependency | Accountable disciplines | Estimate |
 | --- | --- | --- | --- | --- |
 | Canonical plan + evidence | P1 | Product confirmation | Product, Design, QA | TBD |
@@ -4510,25 +4522,28 @@ measurements with representative users; do not invent improvement percentages.
 | Support AI switch leaks into other modules or blocks manual work | High | Cross-module execution tests plus auditable canary/rollback |
 | User prefers a different aesthetic direction | Medium | Direction is provisionally confirmed; validate the reference slice before extraction |
 
-## 28. Open Decisions Requiring Product Confirmation
+## 28. Resolved Product Decisions
 
-1. Are the primary Support roles correctly identified as agent, manager, and
-   tenant administrator? Which role has priority when goals conflict?
-2. Approve or adjust the proposed Work / Team / Rules and Settings navigation.
-3. Should Agent Calendar live under Work or Team?
-4. Should Support have a dedicated landing/hub route, or should Service Desk
-   remain the module entry point?
-5. The direction **calm, operational, human**, restrained orange accent, compact
-   typography, visible hooks, and avoidance of generic AI palettes is treated as
-   confirmed by product feedback. Confirm only if this interpretation is wrong.
-6. Should typography changes remain Support-scoped or become a later product-wide
-   design-system initiative?
-7. Service Desk plus Ticket Detail is the recommended reference slice. Confirm
-   whether any operational dependency makes that sequence temporarily unsafe.
-8. Confirm that customer-portal continuity is included as a dependency track,
-   not as a full portal redesign.
-9. Confirm whether Support AI Settings belongs under Rules and Settings or in a
-   dedicated AI subsection if more Support AI controls are added later.
+The user's instruction to execute the canonical plan through release resolves
+the remaining implementation choices without reopening already accepted work:
+
+1. Agent, manager and tenant administrator are the primary internal roles;
+   customer remains the continuity role. Daily agent work wins density conflicts,
+   while manager/admin-only configuration stays explicit and permission-bound.
+2. Work / Team / Rules and Settings is accepted. It already exists on current
+   `main`, so this branch preserves rather than re-canaries that navigation.
+3. Agent Calendar remains under Team.
+4. Service Desk remains the Support entry point; no empty hub route is added.
+5. The accepted visual direction is **calm, operational, human**, restrained
+   orange accent, compact typography, visible operational hooks and no generic
+   AI-dashboard palette.
+6. Typography changes remain Support-scoped; a product-wide type-system change
+   is outside this release.
+7. Service Desk plus Ticket Detail is the completed reference slice.
+8. Customer-portal continuity is included as a dependency track, not a wholesale
+   portal redesign.
+9. Support AI Settings remains under Rules and Settings until a separately
+   approved set of additional Support AI controls justifies another subsection.
 
 ## 29. Do Not Do
 

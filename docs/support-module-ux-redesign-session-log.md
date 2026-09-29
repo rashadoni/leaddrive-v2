@@ -3132,3 +3132,26 @@ persisted-state migration boundary; rollout admission is still open. Next:
 checkpoint and push this source phase, accept or repair the running full matrix,
 then execute exact-SHA Macros mutation evidence with the canary enabled and
 disabled before closing any rollout checkbox.
+
+## 2026-09-29 — Canonical release issues restored
+
+- Repository issue tracking was enabled but contained no Support UX issue.
+  Created the minimum non-retroactive release hierarchy and assigned it to
+  repository owner `@rashadoni`: epic `#496`, Foundation `#492`, Evidence
+  `#493`, Performance `#494` and Rollout `#495`.
+- The epic links the four active gates. Historical page slices remain traceable
+  through their checkpoint ledger in the implementation plan instead of
+  generating closed issues after the fact.
+- The final PR, immutable evidence artifacts, protected checks, merge and deploy
+  receipts will be linked to this hierarchy as they exist. No issue was closed
+  and no pending gate was represented as complete.
+- Restored the missing non-secret evidence index at
+  `docs/support-evidence/2026-09-06/index.md` with the current 1296-cell contract,
+  immutable run/artifact ledger and explicit pending work. Restored
+  `docs/support-ux-performance-and-rollout.md` with measured budgets,
+  checkpoint rollback boundaries, fail-closed canary semantics, admission order
+  and a release ledger whose unknown values remain marked pending.
+
+Result: active slices now have canonical owner/issue traceability. Next: attach
+the full-matrix disposition to `#492`, then progress `#493`–`#495` only on green
+evidence.
