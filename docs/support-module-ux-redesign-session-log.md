@@ -2781,3 +2781,28 @@ Result: Customer Support Portal is DONE. Next: create and push the section
 checkpoint, integrate current `origin/main` (`eab1c60de`) into the feature
 branch without dropping either side, then resume the still-open navigation and
 shared-foundation gates.
+
+## 2026-09-29 — Current main integrated before shared gates
+
+- Fetched and merged `origin/main` at
+  `eab1c60de3e56e4ea26001c9ddfd01fc603524a5` into the continuing feature
+  worktree. Merge checkpoint `5c580bb66` completed without conflicts; the
+  feature branch is now 0 commits behind current main.
+- The only paths changed on both sides since their merge base were the three
+  locale catalogs and `src/proxy.ts`. Inspection confirms the Support
+  escalation/VoIP strings remain present while all current-main translations
+  are retained. The proxy contains both the Support CSP report exclusion and
+  current-main demo-request CORS handling.
+- Post-merge translation parity is green at 23,715 leaf keys in each of AZ, RU
+  and EN. The merged middleware contract passes 109/109 assertions. RAM,
+  storage and pressure were checked before the targeted test; no full build or
+  broad local suite was run on Contabo.
+- The first full feature-branch diff audit exposed two historical blank lines
+  at EOF in Portal-owned files. They were removed without behavioral change;
+  the current working diff check is clean. This correction is checkpointed
+  with the integration journal rather than weakening the eventual PR gate.
+
+Result: current main is integrated and overlap checks are green. Next: restore
+and harden the missing navigation evidence contract, add a section-scoped
+navigation source gate, run its local self-audit, then execute exact-SHA
+mutating and full responsive browser evidence.

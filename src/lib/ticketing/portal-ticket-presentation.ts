@@ -30,4 +30,3 @@ export function publicSlaPhase(ticket: {
   if (ticket.slaDueAt) return { kind: "resolution", dueAt: ticket.slaDueAt }
   return { kind: "none" }
 }
-
