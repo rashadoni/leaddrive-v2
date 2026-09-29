@@ -603,9 +603,10 @@ current aggregate gate and execute the remaining foundation evidence matrix.
 
 ## 7. Slice 0 — Global UX Foundation
 
-**Status: IN PROGRESS — aggregate source/build/flow gate and 66/66 affected
-mobile static cells are green through `7a70f8ddf`; corrected single-locale
-mutating-flow rerun, complete 1296-cell matrix and comparison remain pending**
+**Status: IN PROGRESS — aggregate source/build/flow gate and 77/77 affected
+mobile static cells are green through `d56fd456f`; the single-locale flow rerun
+exposed one stale collapsed-filter interaction now corrected; current-main
+integration, rerun, complete 1296-cell matrix and comparison remain pending**
 
 This slice is a dependency for all page-specific work. It should land as small,
 reviewable commits rather than one broad visual rewrite.
@@ -840,6 +841,24 @@ Aggregate acceptance and full-matrix diagnostic (2026-09-29):
 Next: checkpoint and push the mobile/foundation correction, run a 66-cell
 AZ/RU/EN × light/dark × mobile exact-SHA mutating validation for the five
 affected scenarios, then repeat the full 1296-cell capture and visual compare.
+
+Affected mobile validation follow-up (2026-09-29):
+
+- Run `36533684517` proves 66/66 AZ/RU/EN × light/dark × mobile static cells
+  green. Its flow invocation was invalid because mutating evidence deliberately
+  accepts only one locale. Corrected run `36536483415` on `d56fd456f` proves
+  another 11/11 EN/light/mobile static cells plus all 20 Service Desk, six
+  Entitlement Templates and six Skill Routing flow outcomes.
+- Six of seven Entitlements outcomes pass. The remaining flow correctly found
+  the status filter hidden inside the new mobile disclosure: the product is
+  behaving as designed, but the recovery journey attempted a programmatic
+  selection without first opening the disclosure. The runner now activates the
+  44 px summary through the same keyboard/touch helper used by other controls,
+  waits for the filter to become visible and records that activation. No
+  product behavior, result expectation or gate threshold changed.
+- Node syntax, targeted ESLint and the anti-pattern scan are green; the updated
+  Entitlements flow contract passes 5/5 assertions and `git diff --check` is
+  clean. The repaired flow still requires exact-SHA GitHub execution.
 
 ## 8. Workstream 1 — Service Desk
 

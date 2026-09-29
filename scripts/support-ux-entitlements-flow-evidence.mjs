@@ -123,6 +123,18 @@ async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
   }
 }
 
+async function revealCollapsedFilters(page) {
+  const statusFilter = page.getByTestId("support-entitlements-filter-status")
+  if (await statusFilter.isVisible()) return { filtersExpanded: false }
+
+  const activation = await activateEvidenceTarget(
+    page,
+    page.getByTestId("support-entitlements-filter-disclosure"),
+  )
+  await statusFilter.waitFor({ state: "visible", timeout: 10_000 })
+  return { filtersExpanded: true, filterDisclosureActivation: activation }
+}
+
 await mkdir(outputDirectory, { recursive: true })
 const report = {
   generatedAt: new Date().toISOString(),
@@ -252,12 +264,13 @@ try {
 
   await recordStep(page, "filters-no-results-and-reset", async () => {
     await openWorkspace(page)
+    const disclosure = await revealCollapsedFilters(page)
     await page.getByTestId("support-entitlements-filter-status").selectOption("cancelled")
     await page.getByTestId("support-entitlements-no-results").waitFor({ state: "visible" })
     await page.getByTestId("support-entitlements-reset-filters").focus()
     await page.getByTestId("support-entitlements-reset-filters").press("Enter")
     await page.locator(`[data-testid='support-entitlement-row'][data-entitlement-id='${entitlementId}']:visible`).waitFor({ state: "visible" })
-    return { combinedToolbarUsed: true, noResultsObserved: true, keyboardReset: true }
+    return { combinedToolbarUsed: true, noResultsObserved: true, keyboardReset: true, ...disclosure }
   })
 
   await recordStep(page, "detail-context-focus-and-lifecycle-rollback", async () => {

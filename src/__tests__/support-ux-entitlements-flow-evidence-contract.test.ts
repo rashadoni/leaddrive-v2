@@ -32,6 +32,8 @@ describe("Support Entitlements mutating evidence contract", () => {
     expect(flow).toContain("milestone_delete_failure_removed_definition")
     expect(flow).toContain('getByTestId("support-entitlement-delete-milestone-dialog")')
     expect(flow).toContain("entitlementRestoredActive: true")
+    expect(flow).toContain('getByTestId("support-entitlements-filter-disclosure")')
+    expect(flow).toContain('statusFilter.waitFor({ state: "visible"')
     expect(flow).toContain('"support-entitlements-flow-evidence.json"')
     expect(flow).toContain("report.results.length !== 7")
   })
@@ -42,6 +44,7 @@ describe("Support Entitlements mutating evidence contract", () => {
       'data-testid="support-entitlements-load-error"',
       'data-testid="support-entitlements-refresh-error"',
       'data-testid="support-entitlements-empty-state"',
+      'data-testid="support-entitlements-filter-disclosure"',
       'data-testid="support-entitlement-row"',
       'data-testid="support-entitlement-detail-sheet"',
       'data-testid="support-entitlement-form"',

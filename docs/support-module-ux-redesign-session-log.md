@@ -3021,3 +3021,27 @@ repeat the complete 1296-cell capture and visual comparison.
 Result: the affected static regression matrix is 66/66 green. Next: rerun the
 same exact SHA with one locale/theme for isolated mutating flows, inspect each
 flow artifact, then execute the complete 1296-cell capture.
+
+## 2026-09-29 — Single-locale mobile flow found stale disclosure interaction
+
+- Correctly isolated run `36536483415` on `d56fd456f` passed the source gate,
+  strict TypeScript graphs, fixtures, production build and all 11 static
+  EN/light/mobile cells. The downloaded artifact proves 20/20 Service Desk,
+  6/6 Entitlement Templates and 6/6 Skill Routing flow results green.
+- Support Entitlements passed six of seven outcomes. The only failure was the
+  `filters-no-results-and-reset` journey attempting `selectOption` on a status
+  filter intentionally hidden in the new closed mobile `<details>`. This is a
+  stale automation interaction exposed by the product's progressive disclosure,
+  not a reason to reopen the filters by default or bypass visibility.
+- Added a stable disclosure marker and taught the flow to activate its 44 px
+  summary with the existing physical-touch/keyboard helper before selecting.
+  The flow records whether expansion was required and waits fail-closed for the
+  actual filter to become visible. Gate thresholds and product filtering remain
+  unchanged.
+- Self-audit is green: runner syntax, scoped ESLint and one-file anti-pattern
+  scan pass; the updated flow contract passes 5/5; `git diff --check` is clean.
+
+Result: all product static evidence is green and the sole stale flow interaction
+is corrected. Next: checkpoint this repair, integrate the ten current-main
+Workforce commits before expensive evidence, rerun the isolated mobile flow on
+the integrated SHA, then launch the complete 1296-cell matrix.

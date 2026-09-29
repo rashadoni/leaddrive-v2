@@ -907,7 +907,7 @@ function EntitlementToolbar({
   return (
     <section aria-label={t("filtersTitle")} className="rounded-xl border bg-card p-2" data-testid="support-entitlements-filters">
       <details className="group">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden" data-testid="support-entitlements-filter-disclosure">
           <span>{t("filtersTitle")}{activeCount > 0 ? ` · ${activeCount}` : ""}</span>
           <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
         </summary>
