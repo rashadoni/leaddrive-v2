@@ -605,8 +605,9 @@ current aggregate gate and execute the remaining foundation evidence matrix.
 
 **Status: IN PROGRESS — aggregate source/build/flow gate and 77/77 affected
 mobile static cells are green through `d56fd456f`; the single-locale flow rerun
-exposed one stale collapsed-filter interaction now corrected; current-main
-integration, rerun, complete 1296-cell matrix and comparison remain pending**
+exposed one stale collapsed-filter interaction now corrected; current main is
+integrated at `deafec609`; the exact-SHA rerun, complete 1296-cell matrix and
+comparison remain pending**
 
 This slice is a dependency for all page-specific work. It should land as small,
 reviewable commits rather than one broad visual rewrite.
@@ -859,6 +860,11 @@ Affected mobile validation follow-up (2026-09-29):
 - Node syntax, targeted ESLint and the anti-pattern scan are green; the updated
   Entitlements flow contract passes 5/5 assertions and `git diff --check` is
   clean. The repaired flow still requires exact-SHA GitHub execution.
+- Current `origin/main` at `f95ec0295` is integrated by merge checkpoint
+  `deafec609`. The ten incoming Workforce commits touched no Support product or
+  evidence source; all three locale files merged without conflict. Post-merge
+  parity is 23,741 keys per locale, the four Foundation/flow suites pass 30/30
+  assertions and the branch-versus-main whitespace check is clean.
 
 ## 8. Workstream 1 — Service Desk
 

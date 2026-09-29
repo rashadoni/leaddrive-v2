@@ -3045,3 +3045,21 @@ Result: all product static evidence is green and the sole stale flow interaction
 is corrected. Next: checkpoint this repair, integrate the ten current-main
 Workforce commits before expensive evidence, rerun the isolated mobile flow on
 the integrated SHA, then launch the complete 1296-cell matrix.
+
+## 2026-09-29 — Current main integrated before final browser matrices
+
+- Fetched and reconciled `origin/main` at `f95ec0295`; the feature branch was
+  ten commits behind. Merge checkpoint `deafec609` contains only the incoming
+  Workforce timesheet slice plus automatic additions to AZ/RU/EN locale files.
+  No Support product, evidence runner or plan path conflicted.
+- Post-merge self-audit reports 23,741 translation keys in each locale with no
+  missing or extra keys. The repaired Entitlements flow, friendly-error,
+  page-shell and shared form/control contracts pass 30/30 assertions across
+  four actual test files. `git diff --check origin/main...HEAD` is clean and the
+  worktree has no uncommitted paths.
+- Full typecheck, production build and browser work are intentionally NOT RUN
+  on Contabo; the exact integrated SHA must prove them in GitHub Actions.
+
+Result: the branch now contains current main before expensive acceptance
+evidence. Next: checkpoint the integration receipt, rerun the isolated mobile
+flows on the resulting exact SHA, then launch the complete 1296-cell matrix.
