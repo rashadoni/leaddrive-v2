@@ -2997,3 +2997,26 @@ corrections as new entries that explicitly supersede the earlier fact.
   uncommitted.
 - Next action: commit the three docs, verify non-doc fingerprint, obtain a
   receipt-only GREEN, then update PR #506 and rerun exact-head CI.
+
+## 2026-09-29 — WF-C8-007e PR #506 GREEN, live main advanced
+
+- Replacement PR head `f1739b23a633c55b9c036e85eaf86a0176ec3018`
+  passed all required contexts. PR-checks run `36630565484` completed
+  `static-checks` in 13m34s, including real PostgreSQL and unit baseline, and
+  `typecheck` in 16m07s; `pr-scope`, `runner-policy` and `scan` also passed.
+  The PR-only production build skipped correctly.
+- Before merge, fresh fetch detected PR #505 on main at
+  `13d13bcc58e8872ef676fd011e78a1adb954e210`. Its 12 Help/Da Vinci guide paths
+  do not overlap the calendar slice. It was merged without manual conflict at
+  branch head `73e08829b39f9e78f02515ea30bcb5cc6ede3175`.
+- Against new main/merge-base, task bytes remain exactly full 23 paths /
+  171,486 bytes /
+  `4800c046ba480546981fcbd07eecde12144177ca28c628db77c6519278c693e2`
+  and non-doc 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- Progress is unchanged: `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%,
+  80 non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: main integration is complete and clean; only this
+  reconciliation/green-CI receipt is uncommitted.
+- Next action: commit explicit docs, rerun bounded checks, obtain independent
+  exact-head integrity review, push and repeat required PR contexts.

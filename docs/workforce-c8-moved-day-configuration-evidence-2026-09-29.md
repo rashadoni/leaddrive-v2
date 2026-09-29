@@ -271,3 +271,29 @@ build/suite/browser/AT/device/Android/load/chaos/pilot remain `NOT RUN` where
 policy or scope excludes them. Only this receipt changes after the reviewed
 head, so a receipt-integrity review must confirm the non-doc identity before
 push.
+
+## PR #506 replacement CI GREEN and live-main reconciliation
+
+Replacement exact head `f1739b23a633c55b9c036e85eaf86a0176ec3018`
+passed all required PR contexts in run `36630565484`: `pr-scope`,
+`static-checks`, `typecheck`, `runner-policy` and `scan`. Static checks took
+13m34s and passed the mandatory PostgreSQL moved-day proofs plus the repository
+unit baseline. Typecheck took 16m07s and returned to the accepted baseline, so
+the new route `TS2322` pair is closed. The PR-only production build skipped as
+designed.
+
+The mandatory pre-merge fetch then found live main advanced from
+`8c8ca4360285dec692caf7784d805936c276ae1e` to
+`13d13bcc58e8872ef676fd011e78a1adb954e210` through PR #505. That release added
+only Help/Da Vinci guide content, components, contract test and evidence across
+12 paths; it did not overlap a calendar, workflow, locale or moved-day evidence
+path. The merge completed without manual resolution at
+`73e08829b39f9e78f02515ea30bcb5cc6ede3175`.
+
+Against the new live main/merge-base, the task diff is byte-identical to the
+reviewed final candidate: 23 paths / 171,486 bytes / SHA-256
+`4800c046ba480546981fcbd07eecde12144177ca28c628db77c6519278c693e2`;
+non-doc remains 19 paths / 121,643 bytes / SHA-256
+`aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+This reconciliation receipt still requires exact-head independent integrity
+review and replacement CI before merge. Progress remains unchanged.

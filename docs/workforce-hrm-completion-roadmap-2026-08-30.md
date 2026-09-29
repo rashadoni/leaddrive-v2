@@ -2994,3 +2994,26 @@ from this worktree.
   three-document GREEN receipt is uncommitted.
 - Next action: commit the receipt, prove non-doc identity unchanged, obtain
   receipt-integrity GREEN, push exact head and rerun every PR gate.
+
+## 2026-09-29 — WF-C8-007e replacement CI GREEN and second reconciliation
+
+- PR #506 replacement head `f1739b23a633c55b9c036e85eaf86a0176ec3018`
+  passed all required contexts: `pr-scope`, `static-checks`, `typecheck`,
+  `runner-policy` and `scan`. Run `36630565484` passed real PostgreSQL and the
+  unit baseline in 13m34s; typecheck passed in 16m07s. PR production build
+  skipped as designed.
+- A fresh pre-merge fetch found main advanced through PR #505 to
+  `13d13bcc58e8872ef676fd011e78a1adb954e210`. Its 12 Help/Da Vinci guide paths
+  do not overlap this slice. Integration completed without manual resolution
+  at `73e08829b39f9e78f02515ea30bcb5cc6ede3175`.
+- Relative to new live main/merge-base, the task diff remains byte-identical:
+  full 23 paths / 171,486 bytes /
+  `4800c046ba480546981fcbd07eecde12144177ca28c628db77c6519278c693e2`;
+  non-doc 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: live main is integrated and the previously reviewed
+  task bytes are unchanged; this reconciliation receipt is uncommitted.
+- Next action: checkpoint the receipt, repeat bounded verification and obtain
+  exact-head independent integrity GREEN before repush/repeated CI.
