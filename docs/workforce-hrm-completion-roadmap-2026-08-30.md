@@ -2270,3 +2270,27 @@ from this worktree.
   working tree but are uncommitted on the open PR branch.
 - Next action: checkpoint explicit paths, obtain fresh independent repair and
   full-range review, push replacement head and rerun every mandatory context.
+
+## 2026-09-29 — WF-C8-002 type-repair review GREEN
+
+- Fresh independent repair/full-range review returned GREEN with
+  `P0=P1=P2=P3=0` on clean head
+  `43cf8a9836803b91e0303335b153258bab89922a`; live main and merge-base remain
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486`.
+- Full identity matched 23 paths / 212,220 bytes / SHA-256
+  `226af4b828799971a976d173b593eb81768bdf12aa734ea7f532492327d5f3a0`;
+  repair identity matched exactly four paths / 18,150 bytes / SHA-256
+  `07fce38abdbd44c41c7b51843b06a684ffdc3af5cca5c6e2c89f4804f31ae162`.
+- Generated Prisma payload compatibility and parallel tuple assignment passed.
+  Zero-agent/no-query and nonzero concurrency are unchanged; filters, order,
+  bounds, selected columns, query count and response fields remain identical.
+  There is no unsafe cast, suppression or typecheck-baseline weakening.
+- Independent PASS: 9 files / 86 tests, ESLint 16/16, i18n 23,766/0/0, JSON
+  and full/repair whitespace. Full local typecheck/build/suite and physical/
+  browser/load/pilot gates remain `NOT RUN`; exact-head CI is mandatory.
+- `WF-C8-002` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: reviewed repair head is clean and only this
+  three-document GREEN receipt is uncommitted.
+- Next action: checkpoint receipt, obtain exact-head blob-integrity GREEN,
+  push PR #491 replacement head and rerun every required context.

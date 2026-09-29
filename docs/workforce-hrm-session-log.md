@@ -2127,3 +2127,30 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint only the four explicit paths, fingerprint repair and
   full candidate, obtain fresh independent review, then push replacement head
   and rerun all required checks.
+
+## 2026-09-29 — WF-C8-002 typecheck repair review GREEN
+
+- Fresh author-independent repair and complete-diff review returned GREEN
+  with `P0=0`, `P1=0`, `P2=0`, `P3=0` on exact clean head
+  `43cf8a9836803b91e0303335b153258bab89922a`. Live origin/main/local main and
+  merge-base remain `f95ec02952c425e97a470aba5d2e591ffb5b9486`.
+- Independent full identity matched 23 paths / 212,220 bytes / SHA-256
+  `226af4b828799971a976d173b593eb81768bdf12aa734ea7f532492327d5f3a0`.
+  Repair identity matched exactly four paths / 18,150 bytes / SHA-256
+  `07fce38abdbd44c41c7b51843b06a684ffdc3af5cca5c6e2c89f4804f31ae162`.
+- The reviewer verified generated Prisma select/payload compatibility, manual
+  groupBy structural assignment and the three parallel results. Zero-agent
+  no-query and nonzero Promise.all concurrency remain exact; no cast, `any`,
+  `unknown`, suppression or baseline weakening exists. Filters, ordering,
+  bounds, selected columns, query count and response fields are unchanged.
+- Independent PASS: 9 files / 86 tests, scoped ESLint 16/16, i18n
+  23,766/0/0, JSON and full/repair whitespace. All prior P2 closures remain
+  behaviorally unchanged and append-only docs remain accurate.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load,
+  signed/physical device and pilot remain `NOT RUN`; replacement exact-head CI
+  is mandatory. `WF-C8-002` stays `PARTIAL`; progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: independently reviewed code/test repair head is clean
+  and this three-document GREEN receipt is the only uncommitted change.
+- Next action: commit the receipt, confirm exact-head runtime/test integrity,
+  push the replacement PR head and require all five contexts again.

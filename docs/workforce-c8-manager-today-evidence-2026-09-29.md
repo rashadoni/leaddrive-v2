@@ -6,8 +6,8 @@
 
 **Branch:** `codex/workforce-completion-part8`
 
-**Status:** PARTIAL (typecheck repair; replacement independent review,
-exact-head CI, release and real browser/AT evidence remain mandatory)
+**Status:** PARTIAL (typecheck repair review GREEN; replacement exact-head CI,
+release and real browser/AT evidence remain mandatory)
 
 ## Delivered contract
 
@@ -247,3 +247,26 @@ acceptance evidence exist.
 - The previous GREEN does not authorize changed source. `WF-C8-002` remains
   **PARTIAL** at `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
   non-DONE rows; fresh repair/full-range review is mandatory before push.
+
+## 2026-09-29 post-typecheck-repair review GREEN
+
+- Fresh independent repair and full-range review returned GREEN with
+  `P0=P1=P2=P3=0` on exact clean head
+  `43cf8a9836803b91e0303335b153258bab89922a`; live origin/main/local main and
+  merge-base remain `f95ec02952c425e97a470aba5d2e591ffb5b9486`.
+- Full identity independently matched 23 paths / 212,220 bytes / SHA-256
+  `226af4b828799971a976d173b593eb81768bdf12aa734ea7f532492327d5f3a0`.
+  Repair identity independently matched exactly four paths / 18,150 bytes /
+  SHA-256
+  `07fce38abdbd44c41c7b51843b06a684ffdc3af5cca5c6e2c89f4804f31ae162`.
+- The reviewer verified exact generated Prisma payload compatibility, the
+  groupBy structural assignment and all three parallel results. Zero-agent
+  no-query and nonzero Promise.all concurrency remain unchanged; no cast,
+  `any`, `unknown`, suppression or baseline weakening was added. Every filter,
+  order, bound, selected column, query count and response field is unchanged.
+- Independent PASS: 9 files / 86 tests, scoped ESLint 16/16, i18n
+  23,766/0/0, JSON and full/repair whitespace. Prior P2 closures and
+  append-only continuity remain valid; tree and live main were rechecked.
+- Full local typecheck/build/suite and browser/device/load/pilot gates remain
+  `NOT RUN`; replacement exact-head CI must prove the compiler repair.
+  `WF-C8-002` stays **PARTIAL** with unchanged progress and no new credit.
