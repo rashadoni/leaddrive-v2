@@ -4045,8 +4045,11 @@ Customer Support Portal is **DONE**.
 
 ## 21C. Evidence, Performance, and Rollout Track
 
-**Status: IN PROGRESS — source/evidence contracts green; GitHub browser jobs
-blocked before startup; rollout stays prohibited**
+**Status: IN PROGRESS — source/evidence contracts and targeted browser flows
+are green; the complete 1296-cell high-profile matrix is running on exact SHA
+`7a0a45e5b`; a tenant-scoped Macros state-migration canary is source-complete
+but flag-on/flag-off browser proof, final comparison and release admission remain
+pending; rollout stays prohibited**
 
 ### Evidence tasks
 

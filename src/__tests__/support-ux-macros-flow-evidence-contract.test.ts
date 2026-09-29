@@ -21,7 +21,7 @@ describe("Macros flow evidence contract", () => {
       "empty-filter-and-forty-macro-density",
       "editor-timeline-assignee-preview-and-draft-recovery",
       "toggle-rollback-delete-undo-and-delete-recovery",
-      "shared-category-failure-retains-input-and-retries",
+      "category-storage-contract-crud-and-rollback",
     ]) expect(flow).toContain(id)
     expect(flow).toContain("macros_permission_offered_misleading_retry")
     expect(flow).toContain("macro_failed_save_lost_draft")
@@ -29,6 +29,9 @@ describe("Macros flow evidence contract", () => {
     expect(flow).toContain("macro_delete_undo_removed_row")
     expect(flow).toContain("macro_category_failure_lost_input")
     expect(flow).toContain("categoryDeleteUndo: true")
+    expect(flow).toContain("categoryDeletePersisted: true")
+    expect(flow).toContain("browserRollbackSurface")
+    expect(flow).toContain("data-category-storage")
     expect(flow).toContain('inputModality: "playwright-touchscreen"')
     expect(flow).toContain("elementFromPoint")
     expect(flow).toContain("box.width < 44 || box.height < 44")

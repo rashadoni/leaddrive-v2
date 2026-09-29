@@ -37,6 +37,10 @@ const dataProfile = (process.env.SUPPORT_EVIDENCE_DATA_PROFILE || "typical").tri
 if (!new Set(["empty", "typical", "high", "0", "5", "50", "500"]).has(dataProfile)) {
   throw new Error("SUPPORT_EVIDENCE_DATA_PROFILE must identify empty/typical/high or 0/5/50/500")
 }
+const supportUxCanary = (process.env.SUPPORT_EVIDENCE_SUPPORT_UX_CANARY || "enabled").trim()
+if (!new Set(["enabled", "disabled"]).has(supportUxCanary)) {
+  throw new Error("SUPPORT_EVIDENCE_SUPPORT_UX_CANARY must be enabled or disabled")
+}
 const sampleCount = Number.parseInt(process.env.SUPPORT_EVIDENCE_SAMPLE_COUNT || "3", 10)
 if (![1, 3, 7].includes(sampleCount)) {
   throw new Error("SUPPORT_EVIDENCE_SAMPLE_COUNT must be 1, 3 or 7")
@@ -49,6 +53,9 @@ if (requireBaseline && baselineEvidence?.sampleCount !== sampleCount) {
 }
 if (requireBaseline && baselineEvidence?.dataProfile !== dataProfile) {
   throw new Error("Comparable baseline evidence must use the same data profile")
+}
+if (requireBaseline && baselineEvidence?.supportUxCanary !== supportUxCanary) {
+  throw new Error("Comparable baseline evidence must use the same Support UX canary state")
 }
 if (requireBaseline && baselineEvidence?.appMode !== appMode) {
   throw new Error("Comparable baseline evidence must use the same application mode")
@@ -596,6 +603,7 @@ function markdown(report) {
     "- Target host: " + report.targetHost,
     "- Demo organization: " + report.demoOrganization,
     "- Data profile: " + report.dataProfile,
+    "- Support UX canary: " + report.supportUxCanary,
     "- Loads per matrix cell: " + report.sampleCount,
     "",
     "| Scenario | Role | Locale | Theme | Viewport | Result | Overflow | A11y issues | p50/p75 load | Perf compare | Screenshot |",
@@ -622,6 +630,7 @@ const report = {
   appMode,
   demoOrganization,
   dataProfile,
+  supportUxCanary,
   sampleCount,
   results: [],
 }

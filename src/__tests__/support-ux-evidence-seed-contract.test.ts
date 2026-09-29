@@ -38,7 +38,9 @@ describe("Support UX evidence seed safety contract", () => {
     expect(seed).toContain('const DEMO_ORGANIZATION = "Northstar Support Lab"')
     expect(seed).toContain('const DEMO_SLUG = "support-evidence"')
     expect(seed).toContain("@support-evidence.invalid")
-    expect(seed).toContain('"analytics", "voip", "ai", "complaints_register"')
+    expect(seed).toContain('...(supportUxCanary ? ["support_ux_v2_canary"] : [])')
+    expect(seed).toContain("SUPPORT_EVIDENCE_SUPPORT_UX_CANARY")
+    expect(workflow).toContain("support_ux_canary:")
     expect(seed).toContain("analytics: true")
     expect(seed).not.toContain("reports: true")
     for (const model of [

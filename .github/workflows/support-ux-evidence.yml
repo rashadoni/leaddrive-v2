@@ -43,6 +43,14 @@ on:
         description: Fixture profile label (empty, typical, high, 0, 5, 50, 500)
         required: true
         default: typical
+      support_ux_canary:
+        description: Tenant Support UX state contract used by the isolated fixture
+        required: true
+        type: choice
+        default: enabled
+        options:
+          - enabled
+          - disabled
       sample_count:
         description: One load for matrix coverage, three for inspection, seven for comparable p75 evidence
         required: true
@@ -110,6 +118,7 @@ jobs:
       SUPPORT_EVIDENCE_THEMES: ${{ inputs.themes }}
       SUPPORT_EVIDENCE_VIEWPORTS: ${{ inputs.viewports }}
       SUPPORT_EVIDENCE_DATA_PROFILE: ${{ inputs.data_profile }}
+      SUPPORT_EVIDENCE_SUPPORT_UX_CANARY: ${{ inputs.support_ux_canary }}
       SUPPORT_EVIDENCE_SAMPLE_COUNT: ${{ inputs.sample_count }}
       SUPPORT_EVIDENCE_REQUIRE_BASELINE: ${{ inputs.visual_mode == 'compare' }}
       SUPPORT_EVIDENCE_BASELINE_DIR: ${{ inputs.visual_mode == 'compare' && 'artifacts/support-ux-baseline' || '' }}
@@ -1465,7 +1474,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.visual_mode }}
+          name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.support_ux_canary }}-${{ inputs.visual_mode }}
           path: artifacts/support-ux/${{ github.sha }}
           if-no-files-found: error
           retention-days: 30

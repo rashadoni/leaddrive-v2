@@ -35,6 +35,7 @@ function singleSelection(name, fallback, allowed) {
 const locale = singleSelection("SUPPORT_EVIDENCE_LOCALES", "az", new Set(["az", "ru", "en"]))
 const theme = singleSelection("SUPPORT_EVIDENCE_THEMES", "light", new Set(["light", "dark"]))
 const viewportName = singleSelection("SUPPORT_EVIDENCE_VIEWPORTS", "desktop", new Set(["desktop", "tablet", "narrow-tablet", "mobile"]))
+const supportUxCanary = singleSelection("SUPPORT_EVIDENCE_SUPPORT_UX_CANARY", "enabled", new Set(["enabled", "disabled"]))
 const viewports = {
   desktop: { width: 1440, height: 900 },
   tablet: { width: 1024, height: 900 },
@@ -176,6 +177,19 @@ function installMacroApi(page, initialMacros, options = {}) {
       categories = [...categories, body.name.trim()]
       return route.fulfill(json({ success: true, data: { categories } }, 201))
     }
+    if (isCategories && method === "PATCH") {
+      const body = request.postDataJSON()
+      categories = categories.map((category) => category === body.name ? body.newName.trim() : category)
+      macros = macros.map((item) => item.category === body.name ? { ...item, category: body.newName.trim() } : item)
+      return route.fulfill(json({ success: true, data: { categories } }))
+    }
+    if (isCategories && method === "DELETE") {
+      const body = request.postDataJSON()
+      const moved = macros.filter((item) => item.category === body.name).length
+      categories = categories.filter((category) => category !== body.name)
+      macros = macros.map((item) => item.category === body.name ? { ...item, category: "general" } : item)
+      return route.fulfill(json({ success: true, data: { categories, moved } }))
+    }
     if (method === "POST") {
       const body = request.postDataJSON()
       const created = { ...body, id: `macro-created-${macros.length}`, usageCount: 0, isActive: true, sortOrder: macros.length }
@@ -210,6 +224,7 @@ const report = {
   locale,
   theme,
   viewport: viewportName,
+  supportUxCanary,
   results: [],
 }
 
@@ -361,31 +376,53 @@ try {
     return { toggleRollback: true, toggleRetry: true, deleteUndo: true, failedDeletePreservedRow: true, deleteRetrySucceeded: true, failedToggleActivation, retryToggleActivation, undoDeleteActivations, undoActivation, failedDeleteActivations, retryDeleteActivations }
   })
 
-  await recordStep(page, "shared-category-failure-retains-input-and-retries", async () => {
+  await recordStep(page, "category-storage-contract-crud-and-rollback", async () => {
     await installMacroApi(page, [macro(0)], { failFirstCategoryPost: true })
     await openWorkspace(page)
+    const categoryStorageMode = await page.getByTestId("macros-workspace").getAttribute("data-category-storage")
+    if (!new Set(["browser", "tenant"]).has(categoryStorageMode)) throw new Error("macro_category_storage_mode_missing")
     const manage = page.getByTestId("macro-categories-manage")
     const manageActivation = await activateEvidenceTarget(page, manage)
     const input = page.getByTestId("macro-category-new")
     await input.fill("Recovered shared category")
-    const failedAddActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-add"))
-    await page.getByTestId("macro-category-manager").getByRole("status").waitFor({ state: "visible" })
-    if (await input.inputValue() !== "Recovered shared category") throw new Error("macro_category_failure_lost_input")
-    const retryAddActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-add"))
-    const category = page.locator("[data-testid='macro-category-row'][data-category='Recovered shared category']")
+    let failedAddActivation = "not_applicable"
+    let retryAddActivation = "not_applicable"
+    if (categoryStorageMode === "tenant") {
+      failedAddActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-add"))
+      await page.getByTestId("macro-category-manager").getByRole("status").waitFor({ state: "visible" })
+      if (await input.inputValue() !== "Recovered shared category") throw new Error("macro_category_failure_lost_input")
+      retryAddActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-add"))
+    } else {
+      retryAddActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-add"))
+    }
+    let category = page.locator("[data-testid='macro-category-row'][data-category='Recovered shared category']")
     await category.waitFor({ state: "visible" })
     const categoryMenuActivation = await activateEvidenceTarget(page, category.getByTestId("macro-category-menu"))
+    const categoryRenameActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-rename"))
+    const renameInput = page.getByTestId("macro-category-rename-input")
+    await renameInput.fill("Renamed shared category")
+    const categoryRenameSaveActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-rename-save"))
+    category = page.locator("[data-testid='macro-category-row'][data-category='Renamed shared category']")
+    await category.waitFor({ state: "visible" })
+    const renamedCategoryMenuActivation = await activateEvidenceTarget(page, category.getByTestId("macro-category-menu"))
     const categoryDeleteActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-delete"))
     const categoryConfirmActivation = await activateEvidenceTarget(page, page.getByTestId("macro-delete-confirm"))
     const categoryUndoActivation = await activateEvidenceTarget(page, page.getByTestId("macro-delete-undo"))
     const reopenManagerActivation = await activateEvidenceTarget(page, manage)
     await category.waitFor({ state: "visible" })
+    const finalCategoryMenuActivation = await activateEvidenceTarget(page, category.getByTestId("macro-category-menu"))
+    const finalCategoryDeleteActivation = await activateEvidenceTarget(page, page.getByTestId("macro-category-delete"))
+    const finalCategoryConfirmActivation = await activateEvidenceTarget(page, page.getByTestId("macro-delete-confirm"))
+    await page.locator("[data-testid='macros-notice'][data-kind='info']").waitFor({ state: "visible", timeout: 3_000 })
+    await page.locator("[data-testid='macros-notice'][data-kind='success']").waitFor({ state: "visible", timeout: 3_000 })
+    const reopenAfterDeleteActivation = await activateEvidenceTarget(page, manage)
+    await category.waitFor({ state: "detached", timeout: 3_000 })
     await page.keyboard.press("Escape")
     const focusRestored = viewportName === "desktop"
       ? await waitForFocusRestoration(manage)
       : "not_applicable"
     if (viewportName === "desktop" && !focusRestored) throw new Error("macro_category_focus_not_restored")
-    return { organizationCategorySurface: true, inputRetained: true, retrySucceeded: true, categoryDeleteUndo: true, focusRestored, manageActivation, failedAddActivation, retryAddActivation, categoryMenuActivation, categoryDeleteActivation, categoryConfirmActivation, categoryUndoActivation, reopenManagerActivation }
+    return { categoryStorageMode, organizationCategorySurface: categoryStorageMode === "tenant", browserRollbackSurface: categoryStorageMode === "browser", inputRetained: categoryStorageMode === "tenant", retrySucceeded: true, categoryRename: true, categoryDeleteUndo: true, categoryDeletePersisted: true, focusRestored, manageActivation, failedAddActivation, retryAddActivation, categoryMenuActivation, categoryRenameActivation, categoryRenameSaveActivation, renamedCategoryMenuActivation, categoryDeleteActivation, categoryConfirmActivation, categoryUndoActivation, reopenManagerActivation, finalCategoryMenuActivation, finalCategoryDeleteActivation, finalCategoryConfirmActivation, reopenAfterDeleteActivation }
   })
 } finally {
   await context.close()

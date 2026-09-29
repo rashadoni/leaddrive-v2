@@ -63,8 +63,10 @@ import { GET as GET_MACROS, POST as POST_MACRO } from "@/app/api/v1/ticket-macro
 import { GET as GET_MACRO, PUT as PUT_MACRO, DELETE as DELETE_MACRO } from "@/app/api/v1/ticket-macros/[id]/route"
 import { POST as APPLY_MACRO } from "@/app/api/v1/ticket-macros/[id]/apply/route"
 import { POST as POST_MACRO_CATEGORY, PATCH as PATCH_MACRO_CATEGORY, DELETE as DELETE_MACRO_CATEGORY } from "@/app/api/v1/ticket-macros/categories/route"
+import { GET as GET_SUPPORT_UX_ROLLOUT } from "@/app/api/v1/support/ux-rollout/route"
 import { prisma } from "@/lib/prisma"
 import { getOrgId, requireAuth } from "@/lib/api-auth"
+import { SUPPORT_UX_V2_CANARY_FLAG } from "@/lib/support-ux-rollout"
 
 function makeReq(url: string, init?: RequestInit) {
   return new Request(url, init) as any
@@ -78,7 +80,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getOrgId).mockResolvedValue("org-1")
   vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "user-1", role: "admin" } as any)
-  vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: {} } as any)
+  vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: {}, features: [SUPPORT_UX_V2_CANARY_FLAG] } as any)
   vi.mocked(prisma.organization.update).mockResolvedValue({} as any)
   vi.mocked(prisma.user.findMany).mockResolvedValue([] as any)
   vi.mocked(prisma.user.count).mockResolvedValue(0)
@@ -397,7 +399,7 @@ describe("/api/v1/ticket-macros/categories", () => {
   })
 
   it("renames the category and every matching macro atomically", async () => {
-    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: { ticketMacroCategories: ["Old"] } } as any)
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: { ticketMacroCategories: ["Old"] }, features: [SUPPORT_UX_V2_CANARY_FLAG] } as any)
     vi.mocked(prisma.ticketMacro.updateMany).mockResolvedValue({ count: 2 } as any)
     const res = await PATCH_MACRO_CATEGORY(makeReq("http://localhost/api/v1/ticket-macros/categories", {
       method: "PATCH",
@@ -411,7 +413,7 @@ describe("/api/v1/ticket-macros/categories", () => {
   })
 
   it("moves macros to General when a shared custom category is deleted", async () => {
-    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: { ticketMacroCategories: ["Legacy"] } } as any)
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: { ticketMacroCategories: ["Legacy"] }, features: [SUPPORT_UX_V2_CANARY_FLAG] } as any)
     vi.mocked(prisma.ticketMacro.updateMany).mockResolvedValue({ count: 3 } as any)
     const res = await DELETE_MACRO_CATEGORY(makeReq("http://localhost/api/v1/ticket-macros/categories", {
       method: "DELETE",
@@ -419,5 +421,45 @@ describe("/api/v1/ticket-macros/categories", () => {
     }))
     expect(res.status).toBe(200)
     expect((await res.json()).data.moved).toBe(3)
+  })
+
+  it("fails closed before shared category persistence when the tenant canary is absent", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: {}, features: [] } as any)
+    const response = await POST_MACRO_CATEGORY(makeReq("http://localhost/api/v1/ticket-macros/categories", {
+      method: "POST",
+      body: JSON.stringify({ name: "Not shared" }),
+    }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: "SUPPORT_UX_CANARY_DISABLED" })
+    expect(prisma.organization.update).not.toHaveBeenCalled()
+  })
+
+  it("keeps every category lookup and write bound to the authenticated tenant", async () => {
+    await POST_MACRO_CATEGORY(makeReq("http://localhost/api/v1/ticket-macros/categories", {
+      method: "POST",
+      body: JSON.stringify({ name: "Tenant owned" }),
+    }))
+    expect(prisma.organization.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "org-1" } }))
+    expect(prisma.organization.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "org-1" } }))
+  })
+})
+
+describe("GET /api/v1/support/ux-rollout", () => {
+  it("returns only the authenticated tenant's explicit canary state without caching", async () => {
+    const response = await GET_SUPPORT_UX_ROLLOUT(makeReq("http://localhost/api/v1/support/ux-rollout"))
+    expect(response.status).toBe(200)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(await response.json()).toMatchObject({ data: { enabled: true } })
+    expect(prisma.organization.findUnique).toHaveBeenCalledWith({
+      where: { id: "org-1" },
+      select: { features: true },
+    })
+  })
+
+  it("fails closed when the feature flag is absent", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: [] } as any)
+    const response = await GET_SUPPORT_UX_ROLLOUT(makeReq("http://localhost/api/v1/support/ux-rollout"))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ data: { enabled: false } })
   })
 })

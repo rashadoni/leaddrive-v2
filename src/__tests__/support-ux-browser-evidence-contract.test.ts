@@ -361,6 +361,9 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("actions/download-artifact@v4");
     expect(workflow).toContain("SUPPORT_EVIDENCE_REQUIRE_BASELINE");
     expect(workflow).toContain("sample_count:");
+    expect(workflow).toContain("support_ux_canary:");
+    expect(runner).toContain("supportUxCanary");
+    expect(runner).toContain("Comparable baseline evidence must use the same Support UX canary state");
     expect(workflow).toContain(
       "SUPPORT_EVIDENCE_SAMPLE_COUNT: ${{ inputs.sample_count }}",
     );

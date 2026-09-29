@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 const page = readFileSync("src/app/(dashboard)/settings/macros/page.tsx", "utf8")
 const applyPage = readFileSync("src/app/(dashboard)/tickets/[id]/page.tsx", "utf8")
 const categoryRoute = readFileSync("src/app/api/v1/ticket-macros/categories/route.ts", "utf8")
+const rolloutRoute = readFileSync("src/app/api/v1/support/ux-rollout/route.ts", "utf8")
 const didYouKnow = readFileSync("src/components/did-you-know.tsx", "utf8")
 
 describe("macros UX contract", () => {
@@ -81,11 +82,18 @@ describe("macros UX contract", () => {
     expect(page).toContain("setTimeout(() => void finishDelete")
   })
 
-  it("stores categories in the organization contract and updates macros atomically", () => {
+  it("canaries tenant category persistence while retaining a validated browser rollback path", () => {
     expect(categoryRoute).toContain("organization.update")
     expect(categoryRoute).toContain("ticketMacro.updateMany")
     expect(categoryRoute).toContain("isolationLevel: \"Serializable\"")
-    expect(page).not.toContain("localStorage")
+    expect(categoryRoute).toContain("supportUxV2CanaryEnabled")
+    expect(rolloutRoute).toContain('withRlsAuth("tickets", "read"')
+    expect(rolloutRoute).toContain('"Cache-Control": "private, no-store"')
+    expect(page).toContain('type CategoryStorageMode = "browser" | "tenant"')
+    expect(page).toContain("readLegacyCategories")
+    expect(page).toContain("uniqueMacroCategories")
+    expect(page).toContain('fetch("/api/v1/support/ux-rollout"')
+    expect(page).toContain('data-category-storage={categoryStorageMode}')
   })
 
   it("has explicit loading, empty, filtered-empty, error, permission and rollback states", () => {

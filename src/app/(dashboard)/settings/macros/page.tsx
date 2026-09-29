@@ -54,6 +54,8 @@ import {
   type MacroAgent,
   type MacroRecord,
   macroMatchesQuery,
+  normalizeMacroCategory,
+  uniqueMacroCategories,
 } from "@/lib/ticket-macros/presentation"
 import { cn } from "@/lib/utils"
 
@@ -85,8 +87,36 @@ interface Draft {
 
 type Notice = { kind: "success" | "error" | "info"; text: string }
 type DeleteTarget = { type: "macro"; macro: MacroRecord } | { type: "category"; category: string; count: number }
+type CategoryStorageMode = "browser" | "tenant"
 
 const EMPTY_DRAFT: Draft = { name: "", description: "", category: "general", shortcutKey: "", actions: [] }
+
+function legacyCategoryStorageKey(orgId: string): string {
+  return `macro-categories-${orgId}`
+}
+
+function readLegacyCategories(orgId: string): string[] {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(legacyCategoryStorageKey(orgId)) || "[]") as unknown
+    return Array.isArray(value)
+      ? uniqueMacroCategories(value.filter((item): item is string => typeof item === "string"))
+      : []
+  } catch {
+    return []
+  }
+}
+
+function writeLegacyCategories(orgId: string, categories: readonly string[]): void {
+  window.localStorage.setItem(legacyCategoryStorageKey(orgId), JSON.stringify(uniqueMacroCategories(categories)))
+}
+
+function legacyVisibleCategories(orgId: string, macros: readonly MacroRecord[]): string[] {
+  return uniqueMacroCategories([
+    ...MACRO_DEFAULT_CATEGORIES,
+    ...readLegacyCategories(orgId),
+    ...macros.map((macro) => macro.category),
+  ])
+}
 
 function actionId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -132,6 +162,7 @@ export default function MacrosSettingsPage() {
   }, [orgId])
   const [macros, setMacros] = useState<MacroRecord[]>([])
   const [categories, setCategories] = useState<string[]>([...MACRO_DEFAULT_CATEGORIES])
+  const [categoryStorageMode, setCategoryStorageMode] = useState<CategoryStorageMode>("browser")
   const [agents, setAgents] = useState<MacroAgent[]>([])
   const [canWrite, setCanWrite] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -163,14 +194,22 @@ export default function MacrosSettingsPage() {
     setLoadError("")
     setLoadRetryable(true)
     try {
-      const result = await checkedJson<{
+      const rolloutRequest = fetch("/api/v1/support/ux-rollout", { headers })
+        .then(async (response) => {
+          if (!response.ok) return false
+          const body = await response.json().catch(() => null) as { data?: { enabled?: unknown } } | null
+          return body?.data?.enabled === true
+        })
+        .catch(() => false)
+      const [result, tenantCategoryPersistence] = await Promise.all([checkedJson<{
         data: MacroRecord[]
         categories: string[]
         agents: MacroAgent[]
         permissions: { canWrite: boolean }
-      }>(await fetch("/api/v1/ticket-macros", { headers }))
+      }>(await fetch("/api/v1/ticket-macros", { headers })), rolloutRequest])
       setMacros(result.data)
-      setCategories(result.categories)
+      setCategoryStorageMode(tenantCategoryPersistence ? "tenant" : "browser")
+      setCategories(tenantCategoryPersistence ? result.categories : legacyVisibleCategories(orgId, result.data))
       setAgents(result.agents)
       setCanWrite(result.permissions.canWrite)
     } catch (error) {
@@ -324,6 +363,18 @@ export default function MacrosSettingsPage() {
     setCategoryBusy(true)
     setNotice(null)
     try {
+      const normalized = normalizeMacroCategory(newCategory)
+      if (categories.some((category) => category.toLocaleLowerCase() === normalized.toLocaleLowerCase())) {
+        setNotice({ kind: "error", text: t("categoryConflict") })
+        return
+      }
+      if (categoryStorageMode === "browser") {
+        writeLegacyCategories(orgId!, [...readLegacyCategories(orgId!), normalized])
+        setCategories((current) => uniqueMacroCategories([...current, normalized]))
+        setNewCategory("")
+        setNotice({ kind: "success", text: t("categoryAdded") })
+        return
+      }
       await checkedJson(await fetch("/api/v1/ticket-macros/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
@@ -335,6 +386,7 @@ export default function MacrosSettingsPage() {
     } catch (error) {
       const apiError = error as Error & { code?: string }
       setNotice({ kind: "error", text: responseError(apiError.code, t("categorySaveError"), t) })
+      if (apiError.code === "SUPPORT_UX_CANARY_DISABLED") await load()
     } finally {
       setCategoryBusy(false)
     }
@@ -345,6 +397,29 @@ export default function MacrosSettingsPage() {
     setCategoryBusy(true)
     setNotice(null)
     try {
+      const normalized = normalizeMacroCategory(editingCategoryName)
+      if (categories.some((category) => category.toLocaleLowerCase() === normalized.toLocaleLowerCase() && category.toLocaleLowerCase() !== editingCategory.toLocaleLowerCase())) {
+        setNotice({ kind: "error", text: t("categoryConflict") })
+        return
+      }
+      if (categoryStorageMode === "browser") {
+        const matching = macros.filter((macro) => macro.category.toLocaleLowerCase() === editingCategory.toLocaleLowerCase())
+        for (const macro of matching) {
+          await checkedJson(await fetch(`/api/v1/ticket-macros/${macro.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", ...headers },
+            body: JSON.stringify({ category: normalized }),
+          }))
+        }
+        const stored = readLegacyCategories(orgId!)
+        writeLegacyCategories(orgId!, [...stored.filter((category) => category.toLocaleLowerCase() !== editingCategory.toLocaleLowerCase()), normalized])
+        if (categoryFilter === editingCategory) setCategoryFilter(normalized)
+        setEditingCategory(null)
+        setEditingCategoryName("")
+        setNotice({ kind: "success", text: t("categoryRenamed") })
+        await load()
+        return
+      }
       await checkedJson(await fetch("/api/v1/ticket-macros/categories", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...headers },
@@ -358,6 +433,7 @@ export default function MacrosSettingsPage() {
     } catch (error) {
       const apiError = error as Error & { code?: string }
       setNotice({ kind: "error", text: responseError(apiError.code, t("categorySaveError"), t) })
+      if (apiError.code === "SUPPORT_UX_CANARY_DISABLED") await load()
     } finally {
       setCategoryBusy(false)
     }
@@ -370,13 +446,25 @@ export default function MacrosSettingsPage() {
         setMacros((current) => current.filter((macro) => macro.id !== target.macro.id))
         setNotice({ kind: "success", text: t("deletedSuccess") })
       } else {
-        await checkedJson(await fetch("/api/v1/ticket-macros/categories", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json", ...headers },
-          body: JSON.stringify({ name: target.category }),
-        }))
-        setCategories((current) => current.filter((category) => category !== target.category))
-        setMacros((current) => current.map((macro) => macro.category === target.category ? { ...macro, category: "general" } : macro))
+        if (categoryStorageMode === "browser") {
+          const matching = macros.filter((macro) => macro.category.toLocaleLowerCase() === target.category.toLocaleLowerCase())
+          for (const macro of matching) {
+            await checkedJson(await fetch(`/api/v1/ticket-macros/${macro.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", ...headers },
+              body: JSON.stringify({ category: "general" }),
+            }))
+          }
+          writeLegacyCategories(orgId!, readLegacyCategories(orgId!).filter((category) => category.toLocaleLowerCase() !== target.category.toLocaleLowerCase()))
+        } else {
+          await checkedJson(await fetch("/api/v1/ticket-macros/categories", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json", ...headers },
+            body: JSON.stringify({ name: target.category }),
+          }))
+        }
+        setCategories((current) => current.filter((category) => category.toLocaleLowerCase() !== target.category.toLocaleLowerCase()))
+        setMacros((current) => current.map((macro) => macro.category.toLocaleLowerCase() === target.category.toLocaleLowerCase() ? { ...macro, category: "general" } : macro))
         if (categoryFilter === target.category) setCategoryFilter("all")
         setNotice({ kind: "success", text: t("categoryDeleted", { count: target.count }) })
       }
@@ -386,7 +474,7 @@ export default function MacrosSettingsPage() {
       setPendingDelete(null)
       deleteTimer.current = null
     }
-  }, [categoryFilter, headers, t])
+  }, [categoryFilter, categoryStorageMode, headers, macros, orgId, t])
 
   const queueDelete = () => {
     if (!confirmTarget || pendingDelete) return
@@ -424,6 +512,7 @@ export default function MacrosSettingsPage() {
       data-testid="macros-workspace"
       data-state={loading ? "loading" : loadError ? "error" : "ready"}
       data-write={canWrite ? "allowed" : "read-only"}
+      data-category-storage={categoryStorageMode}
       width="fluid"
       title={<span data-tour-id="macros-header">{t("title")}</span>}
       description={t("subtitle")}
@@ -556,7 +645,7 @@ export default function MacrosSettingsPage() {
             const isDefault = MACRO_DEFAULT_CATEGORIES.includes(item as typeof MACRO_DEFAULT_CATEGORIES[number])
             const deleting = pendingDelete?.type === "category" && pendingDelete.category === item
             return <div key={item} className={cn("flex min-h-12 items-center gap-2 border-b py-2 last:border-b-0", deleting && "opacity-50")} data-testid="macro-category-row" data-category={item}>
-              {editingCategory === item ? <><Input autoFocus value={editingCategoryName} onChange={(event) => setEditingCategoryName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void renameCategory(); if (event.key === "Escape") setEditingCategory(null) }} className="h-11 flex-1" aria-label={`${t("renameAction")}: ${categoryLabel(item)}`} /><Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => void renameCategory()} disabled={categoryBusy} aria-label={t("saveCategory")}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => setEditingCategory(null)} aria-label={tc("cancel")}><RotateCcw className="h-4 w-4" /></Button></> : <><span className="flex-1 text-sm"><strong>{categoryLabel(item)}</strong><span className="ml-2 text-xs text-muted-foreground">{t("macroCount", { count })}</span>{isDefault && <span className="ml-2 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">{t("defaultLabel")}</span>}</span>{!isDefault && canWrite && <DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-11 w-11" aria-label={t("categoryMenu", { name: item })} data-testid="macro-category-menu"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="min-h-11" onSelect={() => { setEditingCategory(item); setEditingCategoryName(item) }}><Pencil />{t("renameAction")}</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="min-h-11 text-destructive focus:text-destructive" disabled={Boolean(pendingDelete)} onSelect={() => setConfirmTarget({ type: "category", category: item, count })} data-testid="macro-category-delete"><Trash2 />{t("deleteAction")}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</>}
+              {editingCategory === item ? <><Input autoFocus value={editingCategoryName} onChange={(event) => setEditingCategoryName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void renameCategory(); if (event.key === "Escape") setEditingCategory(null) }} className="h-11 flex-1" aria-label={`${t("renameAction")}: ${categoryLabel(item)}`} data-testid="macro-category-rename-input" /><Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => void renameCategory()} disabled={categoryBusy} aria-label={t("saveCategory")} data-testid="macro-category-rename-save"><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => setEditingCategory(null)} aria-label={tc("cancel")}><RotateCcw className="h-4 w-4" /></Button></> : <><span className="flex-1 text-sm"><strong>{categoryLabel(item)}</strong><span className="ml-2 text-xs text-muted-foreground">{t("macroCount", { count })}</span>{isDefault && <span className="ml-2 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">{t("defaultLabel")}</span>}</span>{!isDefault && canWrite && <DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-11 w-11" aria-label={t("categoryMenu", { name: item })} data-testid="macro-category-menu"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="min-h-11" onSelect={() => { setEditingCategory(item); setEditingCategoryName(item) }} data-testid="macro-category-rename"><Pencil />{t("renameAction")}</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="min-h-11 text-destructive focus:text-destructive" disabled={Boolean(pendingDelete)} onSelect={() => setConfirmTarget({ type: "category", category: item, count })} data-testid="macro-category-delete"><Trash2 />{t("deleteAction")}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</>}
             </div>
           })}
           <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row"><Label className="flex-1"><span className="sr-only">{t("newCategoryPlaceholder")}</span><Input value={newCategory} onChange={(event) => setNewCategory(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void addCategory() }} placeholder={t("newCategoryPlaceholder")} className="h-11" maxLength={80} data-testid="macro-category-new" /></Label><Button variant="outline" className="min-h-11" onClick={() => void addCategory()} disabled={!newCategory.trim() || categoryBusy} data-testid="macro-category-add"><Plus className="mr-2 h-4 w-4" />{tc("add")}</Button></div>

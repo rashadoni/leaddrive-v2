@@ -48,6 +48,14 @@ function fixtureCount(value: string | undefined): number {
   return count
 }
 
+function supportUxCanaryEnabled(value: string | undefined): boolean {
+  const mode = (value || "enabled").trim()
+  if (mode !== "enabled" && mode !== "disabled") {
+    throw new Error("SUPPORT_EVIDENCE_SUPPORT_UX_CANARY must be enabled or disabled")
+  }
+  return mode === "enabled"
+}
+
 function closureToken(): { token: string; tokenHash: string } {
   const token = randomBytes(32).toString("base64url")
   return { token, tokenHash: createHash("sha256").update(token).digest("hex") }
@@ -59,6 +67,7 @@ async function main(): Promise<void> {
 
   const outputPath = requiredEnv("SUPPORT_EVIDENCE_FIXTURE_MANIFEST")
   const count = fixtureCount(process.env.SUPPORT_EVIDENCE_DATA_PROFILE)
+  const supportUxCanary = supportUxCanaryEnabled(process.env.SUPPORT_EVIDENCE_SUPPORT_UX_CANARY)
   const credentials = {
     agent: {
       email: "agent@support-evidence.invalid",
@@ -91,7 +100,10 @@ async function main(): Promise<void> {
       slug: DEMO_SLUG,
       plan: "enterprise",
       addons: ["ai", "voip"],
-      features: ["crm", "support", "settings", "analytics", "voip", "ai", "complaints_register"],
+      features: [
+        "crm", "support", "settings", "analytics", "voip", "ai", "complaints_register",
+        ...(supportUxCanary ? ["support_ux_v2_canary"] : []),
+      ],
       modules: { crm: true, support: true, settings: true, analytics: true, voip: true, ai: true },
       settings: { defaultLocale: "az", landingPath: "/tickets" },
       maxUsers: 20,

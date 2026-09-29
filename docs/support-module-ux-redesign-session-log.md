@@ -3082,3 +3082,53 @@ flows on the resulting exact SHA, then launch the complete 1296-cell matrix.
 Result: the affected mobile correction and integrated source are accepted.
 Next: checkpoint this self-audit and launch the complete high-profile 1296-cell
 AZ/RU/EN × light/dark × four-viewport × role/scenario capture.
+
+## 2026-09-29 — Tenant-scoped Macros rollout boundary implemented
+
+- Full high-profile run `36542434997` remains in progress on frozen checkpoint
+  `7a0a45e5b`; its source gate, isolated fixtures and production build are green,
+  and its 1296-cell browser capture has not reported a failed workflow step.
+  GitHub does not expose a trustworthy live cell counter, so no invented
+  percentage is recorded. The run and its eventual artifact remain evidence for
+  that exact pre-canary SHA only.
+- Reconciled the rollout requirement against current `origin/main`. Grouped
+  Support navigation is already shipped there. Presentation-only shell changes
+  remain independently revertible by checkpoint, while tenant/RBAC/access
+  hardening is deliberately never disabled by a rollout flag. The incompatible
+  state boundary in this branch is Macros category persistence moving from
+  organization-namespaced browser storage to shared tenant DB settings.
+- Added explicit tenant flag `support_ux_v2_canary`, a no-store authenticated
+  `/api/v1/support/ux-rollout` projection and a fresh flag check inside every
+  serializable category mutation. An absent, malformed, removed or unreadable
+  flag fails closed: v2 shared-category writes return
+  `SUPPORT_UX_CANARY_DISABLED`; tenant and role enforcement remain active in
+  both states.
+- The Macros client activates tenant persistence only after an explicit
+  `enabled: true`. Flag-off or rollout-read failure uses the prior
+  `macro-categories-{organizationId}` contract with structural validation,
+  deduplication and the legacy authorized macro-update behavior for add, rename
+  and delete. Re-enabling the flag reveals the preserved tenant settings again;
+  removing it never deletes shared state.
+- Extended the isolated evidence workflow with an explicit enabled/disabled
+  canary input, records that state in the artifact and rejects visual comparison
+  across different flag states. The Macros flow now exercises add, rename,
+  delayed-delete undo and completed delete in both persistence modes. The
+  synthetic tenant enables the flag only when the selected evidence mode asks
+  for it.
+- Source self-audit is green: scoped ESLint reports zero findings; runner syntax
+  and `git diff --check` pass; the changed Macros page has zero anti-pattern
+  findings; AZ/RU/EN remain at 23,741 keys each; and six targeted suites pass
+  77/77 assertions. One initial test invocation used an unsupported Vitest CLI
+  option and was immediately corrected; one assertion incorrectly assumed a raw
+  string feature format and was corrected to the repository's documented packed
+  JSON-string format. Neither failure was a product or gate relaxation.
+- Full TypeScript, production build and flag-on/flag-off browser execution are
+  NOT RUN locally under the Contabo workload contract. This implementation is
+  not accepted for rollout until both exact-SHA Actions states are green and the
+  evidence is inspected.
+
+Result: a real, fail-closed and reversible tenant canary now exists at the only
+persisted-state migration boundary; rollout admission is still open. Next:
+checkpoint and push this source phase, accept or repair the running full matrix,
+then execute exact-SHA Macros mutation evidence with the canary enabled and
+disabled before closing any rollout checkbox.
