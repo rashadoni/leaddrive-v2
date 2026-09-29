@@ -2934,3 +2934,31 @@ foundation browser evidence.
 Next: checkpoint and push this foundation source correction, run aggregate
 exact-SHA EN/light desktop mutation evidence, inspect every flow group, then
 proceed to the complete locale/theme/viewport matrix and visual comparison.
+
+## 2026-09-29 — Aggregate foundation browser failure isolated and corrected
+
+- Aggregate exact-SHA run `36517986339` on `39548ebcf` passed its source gate,
+  strict TypeScript graphs, fixture isolation and production build. Every one
+  of the 17 operational flow reports is green. Static evidence passed 48 of 54
+  scenario-role cells; the browser job failed because the remaining six cells
+  contained real accessibility findings, not because the runner stalled.
+- Artifact `11013290414` identifies three root causes. Ticket Detail repeated
+  one 12 px breached-SLA foreground at 4.36:1 for agent, manager and admin.
+  Skill Routing repeated black text at 3.68:1 on its AA-darkened brand-orange
+  CTA for manager and admin. A canceled Ticket Closure request rendered useful
+  terminal status but no keyboard-focusable destination for the customer.
+- Corrected the two foreground tokens and added a localized, 44 px customer
+  portal link to every terminal closure outcome. The Axe, keyboard and visual
+  gate logic and all thresholds are unchanged. A contract now protects the
+  terminal link and the corrected CTA foreground.
+- Local self-audit is green: targeted ESLint reports zero errors/warnings;
+  translation parity reports 23,716 leaf keys in EN, RU and AZ; and three
+  affected foundation/flow suites pass 27/27 assertions. Full build and
+  browser evidence are NOT RUN locally under the host workload contract; the
+  GitHub production build was green on the prior SHA and the new SHA must prove
+  the browser correction again.
+
+Result: the aggregate failure is diagnosed and corrected without weakening any
+gate. Next: checkpoint and push this correction, repeat exact-SHA aggregate
+mutation evidence, then inspect all static and operational reports before the
+complete matrix and visual comparison.

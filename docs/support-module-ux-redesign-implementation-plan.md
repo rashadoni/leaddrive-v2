@@ -784,9 +784,29 @@ Current-tree foundation recovery and self-audit (2026-09-29):
   browser execution remain **NOT RUN locally** under the Contabo workload
   contract and are mandatory in the exact-SHA GitHub Actions run.
 
-Next: checkpoint and push the current foundation correction, then execute the
-aggregate exact-SHA source/build gate and mutating EN/light desktop evidence
-before the complete responsive matrix and visual comparison.
+Aggregate browser diagnostic and correction (2026-09-29):
+
+- Exact-SHA run `36517986339` on `39548ebcf` passed the aggregate source gate,
+  both strict TypeScript graphs, isolated fixture setup and production build.
+  All 17 operational flow evidence files passed every one of their recorded
+  results. The static browser pass accepted 48/54 scenario-role cells and
+  failed six without browser errors, overflow, missing primary work, unlabeled
+  controls, undersized touch targets or environment mismatches.
+- Private artifact `11013290414` reduced those six failures to three real
+  accessibility defects: a 12 px breached-SLA line at 4.36:1 on Ticket Detail;
+  black text at 3.68:1 on the darkened brand-orange primary actions in Skill
+  Routing; and the terminal Ticket Closure state having no keyboard-focusable
+  action. The gate and its Axe/keyboard thresholds remain unchanged.
+- Breached-SLA and AI failure text now use the AA-safe red token, Skill Routing
+  primary actions use white text, and all terminal closure outcomes provide a
+  localized 44 px link to the customer portal. Targeted ESLint is clean,
+  AZ/RU/EN parity is 23,716 keys, and the affected foundation/flow suites pass
+  27/27 assertions. The correction requires a new exact-SHA browser run before
+  any Foundation checkbox closes.
+
+Next: checkpoint and push the accessibility correction, repeat the aggregate
+exact-SHA mutating evidence, inspect all 54 static cells and 17 flow reports,
+then execute the complete responsive matrix and visual comparison.
 
 ## 8. Workstream 1 — Service Desk
 

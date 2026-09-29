@@ -83,7 +83,7 @@ function QueueFormDialog({ open, onOpenChange, editQueue, availableSkills, onSav
             <p className="-mt-3 text-xs text-muted-foreground">{t("autoAssignHint")}</p>
           </div>
         </DialogContent>
-        <DialogFooter><Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving}>{tc("cancel")}</Button><Button type="submit" className="min-h-11 text-zinc-950" disabled={saving || !form.name.trim()} data-testid="routing-queue-form-submit">{saving ? <><Loader2 className="animate-spin motion-reduce:animate-none" />{tc("saving")}</> : editQueue ? tc("save") : t("createQueue")}</Button></DialogFooter>
+        <DialogFooter><Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving}>{tc("cancel")}</Button><Button type="submit" className="min-h-11 text-white" disabled={saving || !form.name.trim()} data-testid="routing-queue-form-submit">{saving ? <><Loader2 className="animate-spin motion-reduce:animate-none" />{tc("saving")}</> : editQueue ? tc("save") : t("createQueue")}</Button></DialogFooter>
       </form>
     </Dialog>
   )
@@ -168,7 +168,7 @@ export function QueueManager({
   return (
     <section aria-labelledby="routing-queues-title" className="min-w-0 rounded-xl border bg-card" data-testid="routing-queues-manager" data-state={loading ? "loading" : error ? "error" : queues.length === 0 ? "empty" : "ready"}>
       <div className="border-b p-3 sm:p-4">
-        <div className="flex items-start gap-2"><h2 id="routing-queues-title" className="min-w-0 flex-1 text-base font-semibold">{t("title")}</h2>{canWrite && <Button type="button" className="min-h-11 shrink-0 text-zinc-950" onClick={() => { setEditQueue(null); setFormOpen(true) }} data-testid="routing-queue-create"><Plus />{t("newQueue")}</Button>}</div>
+        <div className="flex items-start gap-2"><h2 id="routing-queues-title" className="min-w-0 flex-1 text-base font-semibold">{t("title")}</h2>{canWrite && <Button type="button" className="min-h-11 shrink-0 text-white" onClick={() => { setEditQueue(null); setFormOpen(true) }} data-testid="routing-queue-create"><Plus />{t("newQueue")}</Button>}</div>
         <p className="mt-0.5 text-xs text-muted-foreground">{t("queueFirstHint")}</p>
         <div className="mt-3 grid grid-cols-[minmax(0,1fr)_8rem] gap-2 lg:grid-cols-1">
           <label className="relative block"><span className="sr-only">{t("searchQueues")}</span><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchQueues")} className="min-h-11 pl-9" data-testid="routing-queue-search" /></label>
@@ -183,7 +183,7 @@ export function QueueManager({
       ) : error ? (
         <div role="alert" className="flex min-h-48 flex-col items-center justify-center p-5 text-center" data-testid="routing-queues-error"><AlertCircle className="h-7 w-7 text-destructive" /><p className="mt-2 text-sm font-medium">{error}</p>{errorRetryable && <Button variant="outline" className="mt-3 min-h-11" onClick={onRetry} data-testid="routing-queues-retry">{t("retry")}</Button>}</div>
       ) : queues.length === 0 ? (
-        <div className="p-6 text-center" data-testid="routing-queues-empty"><h3 className="text-sm font-semibold">{t("noQueues")}</h3><p className="mt-1 text-sm text-muted-foreground">{t("noQueuesDesc")}</p>{canWrite && <Button className="mt-4 min-h-11 text-zinc-950" onClick={() => setFormOpen(true)}><Plus />{t("createFirstQueue")}</Button>}</div>
+        <div className="p-6 text-center" data-testid="routing-queues-empty"><h3 className="text-sm font-semibold">{t("noQueues")}</h3><p className="mt-1 text-sm text-muted-foreground">{t("noQueuesDesc")}</p>{canWrite && <Button className="mt-4 min-h-11 text-white" onClick={() => setFormOpen(true)}><Plus />{t("createFirstQueue")}</Button>}</div>
       ) : visibleQueues.length === 0 ? (
         <div className="p-6 text-center" data-testid="routing-queues-no-results"><p className="text-sm font-medium">{t("noQueueResults")}</p><Button variant="ghost" className="mt-2 min-h-11" onClick={() => { setQuery(""); setFilter("all") }} data-testid="routing-queues-reset">{t("resetFilters")}</Button></div>
       ) : (

@@ -7922,6 +7922,7 @@
     "closureReject": "Dəstəyə qaytar",
     "closureConfirmedMessage": "Müraciət bağlandı. Təsdiq etdiyiniz üçün təşəkkür edirik.",
     "closureRejectedMessage": "Müraciət dəstək komandasına qaytarıldı.",
+    "closureReturnToPortal": "Müştəri portalına keç",
     "ticketFallback": "Dəstək müraciəti",
     "closureStatus": {
       "pending": "Cavabınızı gözləyir",

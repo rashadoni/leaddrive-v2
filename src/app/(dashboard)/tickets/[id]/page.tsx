@@ -1259,7 +1259,7 @@ export default function TicketDetailPage() {
           <Clock className="h-5 w-5 text-red-600 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium text-red-800 dark:text-red-300">{t("slaBreachedWarning")}</p>
-            <p className="text-xs text-red-600 dark:text-red-400">{t("slaDeadline")}: {formatDate(ticket.slaDueAt, locale)} · {t("priority")}: {priorityLabel(ticket.priority)}</p>
+            <p className="text-xs text-red-700 dark:text-red-300">{t("slaDeadline")}: {formatDate(ticket.slaDueAt, locale)} · {t("priority")}: {priorityLabel(ticket.priority)}</p>
           </div>
           {!ticket.assignedTo && (
             <Button size="sm" variant="destructive" className="h-11 sm:h-9" onClick={handleAutoAssign} disabled={updatingAssignee}>
@@ -1709,7 +1709,7 @@ export default function TicketDetailPage() {
                     )}
                   </div>
                 )}
-                {aiError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{aiError}</p>}
+                {aiError && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{aiError}</p>}
 
                 {isInternal && (
                   <p id="ticket-internal-note-hint" className="text-xs text-amber-700 dark:text-amber-300">{t("internalNoteHint")}</p>

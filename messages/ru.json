@@ -7926,6 +7926,7 @@
     "closureReject": "Вернуть в поддержку",
     "closureConfirmedMessage": "Обращение закрыто. Спасибо за подтверждение.",
     "closureRejectedMessage": "Обращение возвращено команде поддержки.",
+    "closureReturnToPortal": "Перейти в портал клиента",
     "ticketFallback": "Обращение в поддержку",
     "closureStatus": {
       "pending": "Ждёт вашего ответа",

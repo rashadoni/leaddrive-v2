@@ -7926,6 +7926,7 @@
     "closureReject": "Return to support",
     "closureConfirmedMessage": "The ticket is closed. Thank you for confirming.",
     "closureRejectedMessage": "The ticket is back with the support team.",
+    "closureReturnToPortal": "Go to customer portal",
     "ticketFallback": "Support ticket",
     "closureStatus": {
       "pending": "Waiting for your answer",

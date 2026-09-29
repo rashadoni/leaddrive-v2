@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import Link from "next/link"
 import { useParams } from "next/navigation"
-import { CheckCircle2, CircleAlert, Loader2, RefreshCw, RotateCcw } from "lucide-react"
+import { ArrowRight, CheckCircle2, CircleAlert, Loader2, RefreshCw, RotateCcw } from "lucide-react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Button } from "@/components/ui/button"
 import { formatDateTime } from "@/lib/format-date"
@@ -138,7 +139,14 @@ export default function TicketClosurePage() {
                 </Button>
               </div>
             ) : (
-              <p data-testid="ticket-closure-outcome" className="text-sm leading-6 text-muted-foreground" role="status">{t(`closureOutcome.${request.status}`)}</p>
+              <div className="space-y-3">
+                <p data-testid="ticket-closure-outcome" className="text-sm leading-6 text-muted-foreground" role="status">{t(`closureOutcome.${request.status}`)}</p>
+                <Button asChild variant="outline" className="min-h-11">
+                  <Link href="/portal/login" data-testid="ticket-closure-portal-link">
+                    {t("closureReturnToPortal")}<ArrowRight aria-hidden="true" />
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
         ) : null}

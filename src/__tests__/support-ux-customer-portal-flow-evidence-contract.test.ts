@@ -74,6 +74,7 @@ describe("Customer Support Portal flow evidence contract", () => {
       'data-testid="ticket-closure-error"',
       'data-testid="ticket-closure-confirm"',
       'data-testid="ticket-closure-outcome"',
+      'data-testid="ticket-closure-portal-link"',
     ]) expect(closure).toContain(marker)
   })
 

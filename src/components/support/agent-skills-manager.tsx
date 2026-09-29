@@ -166,7 +166,7 @@ export function AgentSkillsManager({
             <SkillPicker value={bulkSkills} onChange={setBulkSkills} options={availableSkills} emptyHint={t("noQueueSkills")} ariaLabel={t("bulkSkillsLabel")} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" className="min-h-11 text-zinc-950" onClick={() => void handleBulk("add")} disabled={bulkSkills.length === 0 || savingIds.length > 0} data-testid="routing-agent-bulk-add">{t("bulkAdd", { count: selectedIds.length })}</Button>
+            <Button type="button" className="min-h-11 text-white" onClick={() => void handleBulk("add")} disabled={bulkSkills.length === 0 || savingIds.length > 0} data-testid="routing-agent-bulk-add">{t("bulkAdd", { count: selectedIds.length })}</Button>
             <Button type="button" variant="outline" className="min-h-11" onClick={() => void handleBulk("remove")} disabled={bulkSkills.length === 0 || savingIds.length > 0} data-testid="routing-agent-bulk-remove">{t("bulkRemove", { count: selectedIds.length })}</Button>
             <Button type="button" variant="ghost" className="min-h-11" onClick={() => setSelectedIds([])}>{t("clearSelection")}</Button>
           </div>
