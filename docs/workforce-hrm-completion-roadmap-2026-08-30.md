@@ -971,7 +971,7 @@ from Route & Field.
 | WF-C8-001 | P1 | DONE | Web | Add employee Workforce Today web fallback with one valid action, assignment, evidence requirement and sync/server outcome | [`Employee Workforce Today evidence`](./workforce-c8-employee-today-evidence-2026-09-13.md): self-only assignment/segments, exactly one canonical action, fail-closed proof requirements and explicit server/pending-review outcome on `/workforce`; no Route dependency or second state machine |
 | WF-C8-002 | P1 | PARTIAL | Web | Rebuild manager Today around scheduled roster, no-show/previous-open and exceptions rather than only existing workdays | Scheduled absent employee is visible and explained |
 | WF-C8-003 | P1 | DONE | Web | Add multi-site day timeline and transition status | [`workforce-c8-multisite-timeline-evidence-2026-09-13.md`](./workforce-c8-multisite-timeline-evidence-2026-09-13.md): the self-only timeline shows Site/Travel/Site plans and append-only arrival/departure/review states without raw proof or physical-presence claims |
-| WF-C8-004 | P1 | PARTIAL | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history now join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, and successful writes refresh history. Replacement frozen review, exact-head CI and production release remain mandatory before DONE. |
+| WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
 | WF-C8-006 | P1 | DONE | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | [`workforce-c8-sites-geofences-evidence-2026-08-30.md`](./workforce-c8-sites-geofences-evidence-2026-08-30.md): administrator-only named sites, future calibrated circles, assignment-only impact preview and immutable revision history; no browser location collection or physical-presence claim |
 | WF-C8-007 | P1 | PLANNED | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | No raw IDs; published history is immutable |
@@ -2075,3 +2075,35 @@ from this worktree.
   GREEN receipt is uncommitted and PR #489 still points to the rejected head.
 - Next action: checkpoint the receipt, obtain exact-head receipt-integrity
   confirmation, push and require all replacement mandatory contexts.
+
+## 2026-09-29 — WF-C8-004 released and DONE
+
+- Final PR head `46f9f602525507d8f3c2b1a6f3148a4ffe323a36` retained the
+  independently reviewed 16-path / 178,681-byte candidate with SHA-256
+  `08f234b95fbb8721d8cfda6190259376a7cbaadc5de2f5b00063c368bd359cb0`.
+  Both independent reviews were GREEN with `P0=P1=P2=P3=0`.
+- Replacement run `36518016723` passed all five required exact-head contexts:
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`. The
+  scope-conditioned PR production-build job was correctly skipped.
+- PR #489 merged normally at `2026-09-29T04:02:27Z` as main SHA
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486`. Deploy run `36519816277`
+  completed SUCCESS at `2026-09-29T04:23:25Z` through the documented GitHub
+  main route, including quality/security, SHA-bound standalone artifact,
+  atomic rollout, scheduler/tenant-isolation checks, public ping/revision/login
+  and hashed-asset smoke, plus artifact retention.
+- Fresh no-cache TLS checks forced `app.leaddrivecrm.org` to the sole approved
+  production IP `13.140.132.245`: `/api/v1/ping` returned HTTP 200
+  `{"ok":true}` and `/api/v1/public/build-info` returned HTTP 200 with exact
+  `artifactSha=f95ec02952c425e97a470aba5d2e591ffb5b9486` and
+  `builtAt=2026-09-29T04:08:34Z`.
+- `WF-C8-004` is now `DONE`. Progress is `DONE 81/161`, `GATES 14/15`, C8
+  36%, overall 59%, with 80 non-DONE rows. Full local typecheck/build/suite,
+  browser/AT, Android/Gradle, load, signed APK, physical-device and pilot remain
+  `NOT RUN`; exact-head CI supplied the type/build-quality evidence claimed
+  above.
+- Precise stopping point: production serves exact merged main; this release
+  receipt is uncommitted on clean successor branch
+  `codex/workforce-completion-part8`.
+- Next action: checkpoint the three release records, then implement the
+  bounded manager-Today portion of `WF-C8-002` without inferring no-show or
+  widening exception access.

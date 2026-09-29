@@ -1898,3 +1898,38 @@ corrections as new entries that explicitly supersede the earlier fact.
   receipt is uncommitted while PR #489 remains on `f9f484d8`.
 - Next action: commit only the three receipt files, obtain final integrity
   GREEN, push the replacement head and wait for every required gate.
+
+## 2026-09-29 — WF-C8-004 PR #489 released and accepted
+
+- Final exact head `46f9f602525507d8f3c2b1a6f3148a4ffe323a36` received fresh
+  full-range and receipt-integrity independent GREEN verdicts with
+  `P0=P1=P2=P3=0`. Its complete candidate was 16 paths / 178,681 binary-diff
+  bytes / SHA-256
+  `08f234b95fbb8721d8cfda6190259376a7cbaadc5de2f5b00063c368bd359cb0`.
+- Replacement run `36518016723` passed every required exact-head context:
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`; the
+  conditional PR production-build job was `SKIPPED` as designed.
+- PR #489 merged normally at `2026-09-29T04:02:27Z` as
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486`. Deploy run `36519816277`
+  completed SUCCESS at `2026-09-29T04:23:25Z`, including quality/security,
+  SHA-bound standalone artifact publication, atomic production deployment,
+  scheduler/tenant-isolation checks, public ping/revision/login/assets smoke
+  and retention cleanup.
+- Fresh no-cache TLS checks pinned the public hostname to the sole approved
+  target `13.140.132.245`: ping returned HTTP 200 `{"ok":true}` and build-info
+  returned HTTP 200 with exact
+  `artifactSha=f95ec02952c425e97a470aba5d2e591ffb5b9486` and
+  `builtAt=2026-09-29T04:08:34Z`. No Azure, retired host, direct worktree copy
+  or manual production deploy was used.
+- `WF-C8-004` is now `DONE`; progress is `DONE 81/161`, `GATES 14/15`, C8
+  36%, overall 59%, with 80 non-DONE rows. Full local typecheck/build/suite,
+  browser/AT, Android/Gradle, load, signed APK, physical-device and pilot
+  checks remain `NOT RUN`; exact-head CI is the claimed heavy evidence.
+- Work continues only in the same designated worktree on clean successor
+  branch `codex/workforce-completion-part8`, based exactly on deployed main.
+- Precise stopping point: PR #489 is independently reviewed, merged, deployed
+  and exact-SHA production verified; only these three release records are
+  uncommitted.
+- Next action: verify and checkpoint the release records, then implement the
+  bounded `WF-C8-002` manager-Today slice with independently authorized
+  exception projection and no GET-side no-show inference or mutation.
