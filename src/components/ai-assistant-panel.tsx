@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl"
 import { QueryResultCard, type QueryResult, type SearchUiText } from "@/components/ai/query-result-card"
 import { markdownToHtml } from "@/lib/simple-markdown"
 import { sanitizeRichHtml } from "@/lib/sanitize"
+import { HelpButton } from "@/components/help/help-button"
 
 interface AiAction {
   tool: string
@@ -230,6 +231,7 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
   const [locale, setLocale] = useState("ru")
   const launcherRef = useRef<HTMLButtonElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -254,13 +256,13 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
   }, [])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || helpOpen) return
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") closePanel()
     }
     window.addEventListener("keydown", handleEscape)
     return () => window.removeEventListener("keydown", handleEscape)
-  }, [closePanel, open])
+  }, [closePanel, helpOpen, open])
 
   const handleApproveAction = async (msgId: string, actionIndex: number, decision: "approve" | "reject") => {
     const msg = messages.find(m => m.id === msgId)
@@ -392,6 +394,11 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
               </div>
             </div>
             <div className="flex gap-1">
+              <HelpButton
+                slug="ai-assistant"
+                className="h-11 w-11 bg-transparent text-muted-foreground ring-0 hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
+                onOpenChange={setHelpOpen}
+              />
               <Button type="button" variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground sm:h-9 sm:w-9"
                 onClick={() => setExpanded(e => !e)}
                 aria-label={expanded ? uiText.collapse : uiText.expand}

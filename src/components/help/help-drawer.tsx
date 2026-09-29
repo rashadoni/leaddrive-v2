@@ -12,7 +12,7 @@
  * controlled directly via the `open`/`onOpenChange` props if a parent
  * page needs to surface help from a different trigger.
  */
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
   Sheet,
@@ -22,7 +22,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { Loader2, Video } from "lucide-react"
+import { ArrowLeft, BookOpenText, Loader2, Video } from "lucide-react"
 import {
   resolveHelpArticle,
   type HelpLocale,
@@ -43,6 +43,18 @@ const VIDEO_LABEL: Record<HelpLocale, string> = {
   ru: "Видео",
 }
 
+const HELP_GUIDE_LABEL: Record<HelpLocale, string> = {
+  az: "Kömək haqqında",
+  en: "About Help",
+  ru: "О справке",
+}
+
+const BACK_TO_ARTICLE_LABEL: Record<HelpLocale, string> = {
+  az: "Bölmə təlimatına qayıt",
+  en: "Back to section guide",
+  ru: "Назад к справке раздела",
+}
+
 interface HelpDrawerProps {
   slug: HelpSlug
   open: boolean
@@ -53,23 +65,26 @@ export function HelpDrawer({ slug, open, onOpenChange }: HelpDrawerProps) {
   const rawLocale = useLocale()
   const locale = toHelpLocale(rawLocale)
   const t = useTranslations("nav")
-  const [resolved, setResolved] = useState(() => resolveHelpArticle(slug, locale))
-
-  // If the user switches locale while the drawer is mounted, refresh.
-  useEffect(() => {
-    setResolved(resolveHelpArticle(slug, locale))
-  }, [slug, locale])
+  const [activeSlug, setActiveSlug] = useState<HelpSlug>(slug)
+  const resolved = resolveHelpArticle(activeSlug, locale)
 
   if (!resolved) {
     // Unknown slug → silently no-op rather than crash; surfaces in dev only.
     if (process.env.NODE_ENV !== "production") {
-      console.warn(`[HelpDrawer] No article registered for slug="${slug}"`)
+      console.warn(`[HelpDrawer] No article registered for slug="${activeSlug}"`)
     }
     return null
   }
 
   const { component: ArticleComponent, title, subtitle, locale: rendered } = resolved
-  const videoEntry = getHelpVideoForSlug(slug, normalizeHelpVideoLocale(locale))
+  const videoEntry = getHelpVideoForSlug(activeSlug, normalizeHelpVideoLocale(locale))
+
+  function handleOpenChange(nextOpen: boolean) {
+    // Switching to the general guide is local to one drawer session. Reset on
+    // close so the next open always starts with the caller's section article.
+    if (!nextOpen) setActiveSlug(slug)
+    onOpenChange(nextOpen)
+  }
 
   function openVideo() {
     if (!videoEntry) return
@@ -79,11 +94,11 @@ export function HelpDrawer({ slug, open, onOpenChange }: HelpDrawerProps) {
         detail: { slug: videoEntry.slug },
       })
     )
-    onOpenChange(false)
+    handleOpenChange(false)
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
         className="w-full sm:max-w-xl flex flex-col gap-0 p-0"
@@ -94,18 +109,40 @@ export function HelpDrawer({ slug, open, onOpenChange }: HelpDrawerProps) {
               <SheetTitle className="text-base">{title}</SheetTitle>
               <SheetDescription className="text-xs">{subtitle}</SheetDescription>
             </div>
-            {videoEntry && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={openVideo}
-              >
-                <Video className="h-3.5 w-3.5" />
-                {VIDEO_LABEL[locale]}
-              </Button>
-            )}
+            <div className="flex shrink-0 items-center gap-1">
+              {videoEntry && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={openVideo}
+                >
+                  <Video className="h-3.5 w-3.5" />
+                  {VIDEO_LABEL[locale]}
+                </Button>
+              )}
+              {activeSlug === slug && slug !== "help-center" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveSlug("help-center")}
+                >
+                  <BookOpenText className="h-3.5 w-3.5" />
+                  {HELP_GUIDE_LABEL[locale]}
+                </Button>
+              ) : activeSlug !== slug ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveSlug(slug)}
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  {BACK_TO_ARTICLE_LABEL[locale]}
+                </Button>
+              ) : null}
+            </div>
           </div>
           {rendered !== locale && (
             <p className="text-[0.65rem] text-amber-600 dark:text-amber-400 pt-1">
