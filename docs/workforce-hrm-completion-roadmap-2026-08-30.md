@@ -2922,3 +2922,28 @@ from this worktree.
 - Next action: checkpoint only the three corrected evidence/continuity docs,
   prove the non-doc identity unchanged and require a fresh exact-head
   author-independent full-range GREEN.
+
+## 2026-09-29 — WF-C8-007e replacement frozen review GREEN
+
+- Fresh author-independent full-range review returned GREEN
+  (`P0=P1=P2=P3=0`) on clean exact head
+  `4f75afff6884b616376085da11e508a8461a607a` against live main/merge-base
+  `8c8ca4360285dec692caf7784d805936c276ae1e`.
+- Full identity matched 23 paths / 157,139 bytes /
+  `77f4ed3599f5291afa0c611d3c6e15c3de6226096e046fe01a091c93156dbe45`;
+  non-doc identity stayed exactly 19 paths / 120,990 bytes /
+  `649cc46ccc979f90e7438b4d62860f6d43f8a60dfb0db219a6da7ec5ecb98eed`.
+- The evidence P3 is closed. Reviewer reran the enumerated relevant selection
+  at 118 pass / 2 PostgreSQL skipped and found no runtime/auth/RLS, atomicity,
+  locking, baseline, replay/audit, legacy-fence, PG-CI, API/UI/accessibility,
+  i18n or append-only-integrity issue.
+- Reviewer checks also passed RLS scan 553/847/0, event assets 27/86/5,
+  runner policy 38 workflows, scoped ESLint, i18n 23,905/0/0, JSON and
+  whitespace. Heavy/physical/local PostgreSQL gates remain `NOT RUN`; exact-
+  head CI is mandatory.
+- No task/gate credit changes: `WF-C8-007 PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: runtime/test/i18n/workflow bytes are independently
+  frozen; only this GREEN receipt is uncommitted.
+- Next action: commit the three docs, prove non-doc fingerprint integrity,
+  obtain receipt-only GREEN, then push/open the ≤400 KB PR.

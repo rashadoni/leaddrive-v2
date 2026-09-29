@@ -188,3 +188,30 @@ identity was 19 paths / 120,990 bytes / SHA-256
 `649cc46ccc979f90e7438b4d62860f6d43f8a60dfb0db219a6da7ec5ecb98eed`.
 This documentation repair does not alter non-doc bytes. The rejected GREEN
 authority cannot transfer; a fresh exact-head full-range review is mandatory.
+
+## Replacement frozen-head independent review GREEN
+
+Fresh author-independent full-range review returned GREEN with
+`P0=P1=P2=P3=0` on clean exact head
+`4f75afff6884b616376085da11e508a8461a607a` against live main/merge-base
+`8c8ca4360285dec692caf7784d805936c276ae1e`.
+
+- Full identity matched 23 paths / 157,139 bytes / SHA-256
+  `77f4ed3599f5291afa0c611d3c6e15c3de6226096e046fe01a091c93156dbe45`.
+- Non-doc identity remained exactly 19 paths / 120,990 bytes / SHA-256
+  `649cc46ccc979f90e7438b4d62860f6d43f8a60dfb0db219a6da7ec5ecb98eed`.
+- The prior P3 is closed: the exact relevant 11-file selection is enumerated,
+  passes 118 tests and discovers two locally skipped PostgreSQL tests; the
+  append-only roadmap/session preserve and supersede their earlier 116
+  statements.
+- Reviewer checks passed focused tests, scoped ESLint, i18n 23,905/0/0, RLS
+  scan 553 models / 847 helpers / 0 gaps, event assets 27/86/5, runner policy
+  across 38 workflows, JSON, whitespace and append-only-prefix integrity.
+- Full runtime/security/concurrency/workflow/API/UI/evidence re-review found no
+  other issue. Real PostgreSQL, full typecheck/build/suite, browser/AT/device,
+  Android/Gradle, load/chaos and pilot remain `NOT RUN` locally and exact-head
+  CI remains mandatory.
+
+This GREEN freezes the reviewed implementation. Only this receipt changes
+after that head; a receipt-integrity review must confirm the non-doc identity
+before publication.

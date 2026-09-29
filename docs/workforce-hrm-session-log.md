@@ -2919,3 +2919,30 @@ corrections as new entries that explicitly supersede the earlier fact.
   rejected head cannot authorize push or merge.
 - Next action: checkpoint the three docs, verify exact non-doc identity and run
   a fresh author-independent full-range review on the replacement head.
+
+## 2026-09-29 — WF-C8-007e replacement frozen review GREEN
+
+- Fresh author-independent complete-diff review returned GREEN
+  (`P0=P1=P2=P3=0`) on exact clean head
+  `4f75afff6884b616376085da11e508a8461a607a`; live main and merge-base remained
+  `8c8ca4360285dec692caf7784d805936c276ae1e` after a fresh fetch.
+- Reviewer matched full 23-path / 157,139-byte identity
+  `77f4ed3599f5291afa0c611d3c6e15c3de6226096e046fe01a091c93156dbe45`
+  and byte-identical non-doc 19-path / 120,990-byte identity
+  `649cc46ccc979f90e7438b4d62860f6d43f8a60dfb0db219a6da7ec5ecb98eed`.
+- The prior evidence P3 is closed: the canonical selection explicitly names
+  all 11 relevant files, passes 118 tests and discovers two locally skipped
+  PostgreSQL cases; older 116 entries remain preserved and superseded.
+- Full runtime/security/concurrency/workflow/API/UI/evidence rereview found no
+  other issue. Reviewer PASS also covered scoped ESLint, i18n 23,905/0/0, RLS
+  scan 553 models / 847 helpers / 0 gaps, event assets 27/86/5, runner policy
+  38 workflows, JSON, whitespace and append-only-prefix integrity.
+- Real PostgreSQL, full local typecheck/build/suite, browser/AT/device,
+  Android/Gradle, load/chaos and pilot remain `NOT RUN`; exact-head GitHub CI
+  is mandatory.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: independently reviewed non-doc bytes are frozen;
+  only this three-document GREEN receipt is uncommitted.
+- Next action: commit the receipt, verify non-doc fingerprint integrity,
+  obtain author-independent receipt-only GREEN, then push/open the bounded PR.
