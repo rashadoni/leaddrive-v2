@@ -79,8 +79,13 @@ export function ContactCreateRequestQueue() {
     }
   }
 
+  // Owner 2026-09-27 («слишком много места занимает»): an empty queue was a
+  // whole card saying «Новых запросов нет» above the list. It shows when there
+  // is something to decide.
+  if (rows.length === 0) return null
+
   return (
-    <section className="mb-5 overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
+    <section data-testid="mtm-contact-create-requests" className="mb-5 overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-200 p-4 dark:border-zinc-700 sm:p-5">
         <div>
           <h2 className="flex items-center gap-2 text-base font-semibold"><UserPlus className="h-4 w-4 text-primary" />{copy.title}{rows.length ? <Badge variant="warning">{rows.length}</Badge> : null}</h2>

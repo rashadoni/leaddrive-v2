@@ -206,6 +206,8 @@ describe("Workforce Android foundation", () => {
     const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
     const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
+    const responseContract = read("app/src/test/java/com/leaddrive/workforce/android/data/WorkforceExceptionResponseContractTest.kt")
+    const appGradle = read("app/build.gradle.kts")
     const catalogs = [
       read("app/src/main/res/values/strings.xml"),
       read("app/src/main/res/values-ru/strings.xml"),
@@ -218,6 +220,11 @@ describe("Workforce Android foundation", () => {
     expect(api).toContain("WorkforceHistoryRequestState")
     expect(api).toContain('"/api/v1/mtm/mobile/hrm/exceptions"')
     expect(api).toContain("WorkforceSelfException")
+    expect(api).toContain('val responseRecording = data.opt("responseRecording")')
+    expect(api).toContain("enum class WorkforceSelfExceptionResponseState")
+    expect(api).toContain("val responseState: WorkforceSelfExceptionResponseState")
+    expect(api).toContain('if (responseRecording != "AVAILABLE")')
+    expect(api).not.toContain("enumValueOf<WorkforceSelfExceptionResponseState>")
     expect(api).toContain('put("exceptionCaseId", it)')
     expect(api).toContain("MAX_HRM_REQUEST_DAYS = 366L")
     expect(api).toContain("Requested finish must be after requested start")
@@ -231,6 +238,10 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("R.string.request_timeline_submitted")
     expect(activity).toContain("R.string.request_status_unknown")
     expect(activity).toContain("R.string.exception_corrections_explainer")
+    expect(activity).toContain("private fun WorkforceSelfExceptionResponseState.localizedLabel()")
+    expect(activity).toContain("Text(exception.responseState.localizedLabel())")
+    expect(activity).not.toContain("Text(exception.responseState.toString())")
+    expect(activity).toContain("onAcknowledgeException")
     expect(activity).toContain("exceptionCaseId = exception.caseId")
     expect(activity).toContain("if (correctionWorkdayId != day.workday!!.id) exceptionCaseId = \"\"")
     expect(activity).toContain("ownExceptions.isEmpty()")
@@ -242,11 +253,144 @@ describe("Workforce Android foundation", () => {
     expect(repository).toContain("data class Queued(val localRecovery: WorkforceRequestLocalRecovery)")
     expect(activity).toContain("requestLocalRecovery")
     expect(activity).toContain("R.string.request_local_sync_explainer")
+    expect(responseContract).toContain("exact available contract maps only known card states")
+    expect(responseContract).toContain("missing malformed or disabled rollout always fails closed")
+    expect(responseContract).toContain("available rollout still rejects unknown or malformed card state")
+    expect(appGradle).toContain('testImplementation("junit:junit:4.13.2")')
     for (const catalog of catalogs) {
       expect(catalog).toContain('name="request_local_sync_explainer"')
       expect(catalog).toContain('name="request_local_sync_pending"')
       expect(catalog).toContain('name="request_local_sync_conflict"')
       expect(catalog).toContain('name="request_local_sync_review"')
+      expect(catalog).toContain('name="exception_response_acknowledged"')
+      expect(catalog).toContain('name="exception_response_not_acknowledged"')
+      expect(catalog).toContain('name="exception_response_unavailable"')
+    }
+  })
+
+  it("submits only a server-offered revision-bound exception acknowledgement through a downgrade-safe encrypted lane", () => {
+    const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
+    const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
+    const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
+    const responseContract = read("app/src/test/java/com/leaddrive/workforce/android/data/WorkforceExceptionResponseContractTest.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
+
+    expect(api).toContain("data class WorkforceSelfExceptionResponseAction(")
+    expect(api).toContain("internal fun resolveWorkforceSelfExceptionResponseAction(")
+    expect(api).toContain("data class WorkforceExceptionAcknowledgementOperation(")
+    expect(api).toContain('path = "/api/v1/mtm/mobile/hrm/exceptions/${operation.caseId}/response"')
+    const directRequest = api.match(
+      /path = "\/api\/v1\/mtm\/mobile\/hrm\/exceptions\/\$\{operation\.caseId\}\/response",[\s\S]*?body = (JSONObject\(\)[\s\S]*?\.toString\(\)),/,
+    )
+    expect(directRequest).not.toBeNull()
+    const directBodyKeys = [...directRequest![1].matchAll(/\.put\("([^"]+)"/g)].map((match) => match[1])
+    expect(directBodyKeys).toEqual(["operationId", "expectedCaseRevision"])
+    expect(directRequest![1]).not.toMatch(/responseCode|reason|proof|location|qr|device|timestamp/i)
+
+    expect(outbox).toContain("EXCEPTION_RESPONSE")
+    expect(api).toContain("WorkforceOutboxDomain.EXCEPTION_RESPONSE")
+    expect(outbox).toMatch(
+      /WorkforceOutboxDomain\.EXCEPTION_RESPONSE[\s\S]{0,240}EXCEPTION_RESPONSE_QUEUED/,
+    )
+    expect(outbox).toMatch(
+      /WorkforceOutboxDomain\.EXCEPTION_RESPONSE[\s\S]{0,240}EXCEPTION_RESPONSE_RETRY/,
+    )
+    expect(outbox).toContain(
+      "state = operation.domain.storedPendingState(WorkforceOutboxState.QUEUED)",
+    )
+    expect(outbox).toContain(
+      "state = domain.storedPendingState(WorkforceOutboxState.RETRY)",
+    )
+
+    const queryBefore = (method: string): string => {
+      const methodIndex = outbox.indexOf(`suspend fun ${method}`)
+      expect(methodIndex).toBeGreaterThan(-1)
+      const queryIndex = outbox.lastIndexOf("@Query(", methodIndex)
+      expect(queryIndex).toBeGreaterThan(-1)
+      return outbox.slice(queryIndex, methodIndex)
+    }
+    for (const method of [
+      "pendingDomains",
+      "oldestPending",
+      "nextPendingAttemptAtEpochMs",
+      "deferPendingForMandatoryUpdate",
+    ]) {
+      const query = queryBefore(method)
+      expect(query).toContain("EXCEPTION_RESPONSE_QUEUED")
+      expect(query).toContain("EXCEPTION_RESPONSE_RETRY")
+    }
+    expect(queryBefore("retry")).toContain("state = :state")
+    const recoveryHintStart = outbox.indexOf("private fun recoveryHint(")
+    const recoveryHintEnd = outbox.indexOf("private companion object", recoveryHintStart)
+    expect(recoveryHintStart).toBeGreaterThan(-1)
+    expect(recoveryHintEnd).toBeGreaterThan(recoveryHintStart)
+    const recoveryHint = outbox.slice(recoveryHintStart, recoveryHintEnd)
+    expect(recoveryHint).toContain("EXCEPTION_RESPONSE_QUEUED")
+    expect(recoveryHint).toContain("EXCEPTION_RESPONSE_RETRY")
+    expect(outbox).toContain(
+      "@Database(entities = [WorkforceOutboxEntity::class], version = 2, exportSchema = true)",
+    )
+    expect(outbox).not.toContain("Migration(2, 3)")
+
+    expect(repository).toContain("WorkforceExceptionAcknowledgementOperation")
+    expect(repository).toContain("WorkforceExceptionResponseLocalRecovery")
+    expect(repository).toContain("outbox.recoveryStateCountsForDomain(")
+    const exactResponseCounts = queryBefore("countRecoveryStates")
+    expect(exactResponseCounts).toContain("COUNT(*) AS count")
+    expect(exactResponseCounts).toContain("accountScope = :accountScope")
+    expect(exactResponseCounts).toContain("domain = :domain")
+    expect(exactResponseCounts).not.toContain("LIMIT 100")
+    expect(activity).toContain("onAcknowledgeException")
+    expect(activity).toContain("exception.availableResponseAction")
+    expect(activity).toContain("onAcknowledgeException = acknowledge@")
+    expect(activity).toContain("busyExceptionResponseCaseId != null")
+    expect(activity).toContain("val currentException = ownExceptions?.singleOrNull")
+    expect(activity).toContain("catch (error: CancellationException)")
+    expect(activity).toContain("exceptionResponseLocalRecovery?.hasPendingDelivery == false")
+    expect(activity).not.toContain("exceptionResponseLocalRecovery?.hasOutstanding == false")
+    expect(repository).toContain("val hasPendingDelivery: Boolean get() = pendingCount > 0")
+    expect(activity).not.toContain(
+      "responseState = WorkforceSelfExceptionResponseState.ACKNOWLEDGED",
+    )
+    expect(activity).not.toContain(
+      "copy(responseState = WorkforceSelfExceptionResponseState.ACKNOWLEDGED",
+    )
+
+    expect(responseContract).toContain(
+      "exact acknowledgement offer accepts only bounded integral revisions",
+    )
+    expect(responseContract).toContain(
+      "acknowledgement offer fails closed for malformed rollout state or kind",
+    )
+    expect(responseContract).toContain(
+      "acknowledgement offer rejects missing coerced fractional or out of range revisions",
+    )
+    expect(responseContract).toContain(
+      "downgrade safe response states remain ordinary recovery states to this version",
+    )
+    expect(responseContract).toContain(
+      "response recovery aggregates every stored state without exposing row identity",
+    )
+    for (const catalog of catalogs) {
+      for (const key of [
+        "exception_response_acknowledge",
+        "exception_response_action_explainer",
+        "exception_response_local_sync_explainer",
+        "exception_response_local_sync_pending",
+        "exception_response_local_sync_conflict",
+        "exception_response_local_sync_review",
+        "status_exception_response_submitting",
+        "status_exception_response_accepted",
+        "status_exception_response_queued",
+        "recovery_domain_exception_response",
+      ]) {
+        expect(catalog).toContain(`name="${key}"`)
+      }
     }
   })
 

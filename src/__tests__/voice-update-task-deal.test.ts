@@ -47,7 +47,15 @@ const client = vi.hoisted(() => ({
   contact: { findFirst: vi.fn(async () => ({ id: "contact-1" })) },
   company: { findFirst: vi.fn(async () => ({ id: "company-1" })) },
   pipeline: { findFirst: vi.fn() },
-  pipelineStage: { findFirst: vi.fn() },
+  // wonStageNames/lostStageNames read this; the where clause decides which.
+  pipelineStage: {
+    findFirst: vi.fn(),
+    findMany: vi.fn(async (args: { where?: { isWon?: boolean; isLost?: boolean } }) => (
+      args?.where?.isWon ? [{ name: "WON" }] : args?.where?.isLost ? [{ name: "LOST" }] : []
+    )),
+  },
+  attributionModel: { updateMany: vi.fn(async () => ({ count: 0 })) },
+  dealContactRole: { findMany: vi.fn(async () => []) },
   activity: { createMany: effects.activityCreateMany },
 }))
 
@@ -284,6 +292,64 @@ describe("a voice deal update", () => {
     )
     expect(effects.activityCreateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: [expect.objectContaining({ subject: "Value: 1,000 → 2,000", createdBy: "user-1" })],
+    }))
+  })
+})
+
+/**
+ * Moving a deal is its own receipt (owner request, 2026-09-28). The command is
+ * shared with an ordinary deal edit, so what keeps them apart is the actor's
+ * `voiceAction` — and each receipt may perform only what it showed.
+ */
+describe("a voice stage move", () => {
+  const stageMove = () => ({ ...voice(), voiceAction: "move_deal_stage" })
+
+  it("may change the stage, which an ordinary deal edit may not", async () => {
+    await updateDealCommand(stageMove(), "deal-1", {
+      stage: "WON",
+      expectedUpdatedAt: VERSION.toISOString(),
+    })
+    expect(db.dealUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ stage: "WON" }),
+    }))
+  })
+
+  it("may do nothing else", async () => {
+    for (const field of ["name", "valueAmount", "assignedTo", "notes"]) {
+      db.dealUpdateMany.mockClear()
+      await expect(updateDealCommand(stageMove(), "deal-1", {
+        [field]: field === "valueAmount" ? 5000 : "x",
+        expectedUpdatedAt: VERSION.toISOString(),
+      })).rejects.toMatchObject({ code: "FORBIDDEN_FIELD" })
+      expect(db.dealUpdateMany).not.toHaveBeenCalled()
+    }
+  })
+
+  it("carries the reviewed version like every other voice write", async () => {
+    db.dealFindFirst.mockResolvedValue(deal({ updatedAt: LATER }))
+    await expect(updateDealCommand(stageMove(), "deal-1", {
+      stage: "WON",
+      expectedUpdatedAt: VERSION.toISOString(),
+    })).rejects.toMatchObject({ code: "STALE_WRITE" })
+  })
+
+  // Winning is not an edit: it pays cashback, surveys the customer and awards
+  // loyalty. Those must fire, and must fire only after the transaction commits.
+  it("sets off the winning side effects, and not before the commit", async () => {
+    const postCommitEffects: CrmCommandPostCommitEffect[] = []
+    await updateDealCommand(stageMove(), "deal-1", {
+      stage: "WON",
+      expectedUpdatedAt: VERSION.toISOString(),
+    }, { transaction: client as never, postCommitEffects })
+
+    expect(anyEffectFired()).toBe(false)
+    dispatchCollectedCommandEffects(postCommitEffects)
+    await vi.waitFor(() => expect(effects.createNotification).toHaveBeenCalled())
+    expect(effects.createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Сделка выиграна!", kind: "deal.won" }),
+    )
+    expect(effects.activityCreateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ subject: "Stage: Negotiation → WON" })],
     }))
   })
 })

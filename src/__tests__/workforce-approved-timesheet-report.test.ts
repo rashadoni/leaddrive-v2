@@ -12,9 +12,9 @@ function storedApproval(input: {
     workdayId: row.workdayId,
     agentId: row.agentId ?? "agent-1",
     workDate: row.workDate,
-    calculationVersion: 1,
+    calculationVersion: 1 as const,
     calculation: {
-      calculationVersion: 1,
+      calculationVersion: 1 as const,
       policySnapshotId: "policy-" + row.workdayId,
       shiftSnapshotId: "shift-" + row.workdayId,
       status: "COMPLETED" as const,

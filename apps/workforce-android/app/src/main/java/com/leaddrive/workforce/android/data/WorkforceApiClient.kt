@@ -14,11 +14,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 private const val MAX_HRM_REQUEST_DAYS = 366L
+private const val MAX_WORKFORCE_EXCEPTION_REVISION = 63
 private const val MAX_QR_TOKEN_LENGTH = 4_096
 private val IDENTIFIER = Regex("[A-Za-z0-9_-]{1,100}")
 private val ENROLLMENT_CHALLENGE = Regex("[A-Za-z0-9_-]{24,256}")
 private val WORKFORCE_SCHEDULE_SEGMENT_MODES = setOf("SITE", "REMOTE", "FIELD", "TRAVEL", "ON_CALL", "EXCEPTION")
 private val WORKFORCE_LOCAL_TIME = Regex("^(?:[01]\\d|2[0-3]):[0-5]\\d$")
+private val WORKFORCE_EXCEPTION_RESPONSE_CONFLICT_CODES = setOf(
+    "WORKFORCE_EXCEPTION_RESPONSE_UNAVAILABLE",
+    "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE",
+    "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
+    "WORKFORCE_EXCEPTION_RESPONSE_LINK_INVALID",
+)
 
 /**
  * Small, explicit Workforce-only HTTP adapter. The app never discovers or
@@ -386,6 +394,10 @@ class WorkforceApiClient(
         deviceId: String,
         operation: WorkforceSyncOperation,
     ) = withContext(Dispatchers.IO) {
+        if (operation is WorkforceExceptionAcknowledgementOperation) {
+            submitExceptionAcknowledgement(session, deviceId, operation)
+            return@withContext
+        }
         val response = request(
             method = "POST",
             path = "/api/v1/mtm/mobile/sync/push",
@@ -421,6 +433,52 @@ class WorkforceApiClient(
                 // would be a bypass attempt, so it is never queued.
                 recoverable = false,
                 recoveryCode = result.optJSONObject("serverData")?.optString("code"),
+            )
+        }
+    }
+
+    /**
+     * Records only the exact acknowledgement action offered by the latest
+     * exception projection. The generic sync endpoint cannot carry this
+     * operation: its UUID and expected revision belong to the dedicated
+     * revision-bound server writer.
+     */
+    private fun submitExceptionAcknowledgement(
+        session: WorkforceStoredSession,
+        deviceId: String,
+        operation: WorkforceExceptionAcknowledgementOperation,
+    ) {
+        val response = try {
+            request(
+                method = "POST",
+                path = "/api/v1/mtm/mobile/hrm/exceptions/${operation.caseId}/response",
+                token = session.token,
+                deviceId = deviceId,
+                body = JSONObject()
+                    .put("operationId", operation.operationId)
+                    .put("expectedCaseRevision", operation.expectedCaseRevision)
+                    .toString(),
+            )
+        } catch (error: WorkforceApiException) {
+            if (error.recoveryCode in WORKFORCE_EXCEPTION_RESPONSE_CONFLICT_CODES) {
+                throw WorkforceActionConflictException(
+                    message = error.message ?: "This exception changed. Refresh before acknowledging it.",
+                    recoveryCode = error.recoveryCode,
+                )
+            }
+            throw error
+        }
+        val data = response.optJSONObject("data")
+        if (data == null
+            || response.opt("success") != true
+            || data.optString("caseId") != operation.caseId
+            || data.optString("responseCode") != "ACKNOWLEDGED"
+        ) {
+            // A malformed 2xx is ambiguous: the server may have committed the
+            // UUID. Queue the same operation rather than minting a second fact.
+            throw WorkforceApiException(
+                "The acknowledgement response was incomplete. Delivery will be retried safely.",
+                recoverable = true,
             )
         }
     }
@@ -484,12 +542,39 @@ class WorkforceApiClient(
         )
         val data = response.optJSONObject("data")
             ?: throw WorkforceApiException("The Workforce exception response was incomplete.", recoverable = true)
+        val responseRecording = data.opt("responseRecording")
         val values = data.optJSONArray("cases") ?: return@withContext emptyList()
         buildList {
             for (index in 0 until values.length()) {
-                values.optJSONObject(index)?.toSelfException()?.let(::add)
+                values.optJSONObject(index)?.toSelfException(responseRecording)?.let(::add)
             }
         }
+    }
+
+    fun newExceptionAcknowledgement(
+        exception: WorkforceSelfException,
+        now: Instant = Instant.now(),
+    ): WorkforceExceptionAcknowledgementOperation {
+        val action = exception.availableResponseAction
+            ?: throw WorkforceApiException(
+                "This exception is not available for acknowledgement. Refresh it before trying again.",
+                recoverable = false,
+            )
+        if (
+            exception.responseState != WorkforceSelfExceptionResponseState.NOT_ACKNOWLEDGED
+            || !IDENTIFIER.matches(exception.caseId)
+        ) {
+            throw WorkforceApiException(
+                "This exception changed. Refresh it before trying again.",
+                recoverable = false,
+            )
+        }
+        return WorkforceExceptionAcknowledgementOperation(
+            operationId = UUID.randomUUID().toString(),
+            caseId = exception.caseId,
+            expectedCaseRevision = action.expectedCaseRevision,
+            queuedAt = now.toString(),
+        )
     }
 
     private fun request(
@@ -653,6 +738,26 @@ data class WorkforceHrmRequestCancelOperation(
         .put("cancelledAt", cancelledAt)
 }
 
+/**
+ * Durable only inside the AES-GCM envelope. The case and revision never enter
+ * Room metadata, diagnostics or the generic mobile sync endpoint.
+ */
+data class WorkforceExceptionAcknowledgementOperation(
+    override val operationId: String,
+    val caseId: String,
+    val expectedCaseRevision: Int,
+    override val queuedAt: String,
+) : WorkforceSyncOperation {
+    override val domain = WorkforceOutboxDomain.EXCEPTION_RESPONSE
+    override val entity = "exceptionResponses"
+    override val opType = "acknowledge"
+
+    override fun toDataJson(): JSONObject = JSONObject()
+        .put("caseId", caseId)
+        .put("expectedCaseRevision", expectedCaseRevision)
+        .put("queuedAt", queuedAt)
+}
+
 data class WorkforceWorkdayOperation(
     override val operationId: String,
     val action: WorkforceWorkdayAction,
@@ -726,6 +831,8 @@ data class WorkforceWorkdayOperation(
                 entity == "workdays" && opType == "create" -> workdayOperationFromJson(operationId, data)
                 entity == "hrmRequests" && opType == "create" -> hrmCreateOperationFromJson(operationId, data)
                 entity == "hrmRequests" && opType == "update" -> hrmCancelOperationFromJson(operationId, data)
+                entity == "exceptionResponses" && opType == "acknowledge" ->
+                    exceptionAcknowledgementOperationFromJson(operationId, data)
                 else -> null
             } ?: return null
             WorkforceStoredOperation(organizationSlug = organizationSlug, accountScope = accountScope, operation = operation)
@@ -782,6 +889,30 @@ data class WorkforceWorkdayOperation(
             val cancelledAt = data.optString("cancelledAt")
             return if (requestId.isBlank() || cancelledAt.isBlank()) null
             else WorkforceHrmRequestCancelOperation(operationId, requestId, cancelledAt)
+        }
+
+        private fun exceptionAcknowledgementOperationFromJson(
+            operationId: String,
+            data: JSONObject,
+        ): WorkforceExceptionAcknowledgementOperation? {
+            val canonicalOperationId = runCatching { UUID.fromString(operationId).toString() }.getOrNull()
+            if (canonicalOperationId != operationId) return null
+            val caseId = data.optString("caseId")
+            val revision = data.opt("expectedCaseRevision")
+            val queuedAt = data.optString("queuedAt")
+            val action = resolveWorkforceSelfExceptionResponseAction(
+                responseRecording = "AVAILABLE",
+                responseState = "NOT_ACKNOWLEDGED",
+                kind = "ACKNOWLEDGE",
+                expectedCaseRevision = revision,
+            ) ?: return null
+            if (!IDENTIFIER.matches(caseId) || runCatching { Instant.parse(queuedAt) }.isFailure) return null
+            return WorkforceExceptionAcknowledgementOperation(
+                operationId = operationId,
+                caseId = caseId,
+                expectedCaseRevision = action.expectedCaseRevision,
+                queuedAt = queuedAt,
+            )
         }
     }
 }
@@ -1002,7 +1133,7 @@ private fun JSONObject.toHrmRequest(): WorkforceHrmRequest? {
     )
 }
 
-private fun JSONObject.toSelfException(): WorkforceSelfException? {
+private fun JSONObject.toSelfException(responseRecording: Any?): WorkforceSelfException? {
     val caseId = optString("caseId").takeIf { it.isNotBlank() && it.length <= 128 } ?: return null
     val reference = optString("displayReference").takeIf { it.isNotBlank() && it.length <= 32 } ?: return null
     val type = optString("type").takeIf { it.isNotBlank() && it.length <= 64 } ?: return null
@@ -1010,12 +1141,34 @@ private fun JSONObject.toSelfException(): WorkforceSelfException? {
     val workDate = optString("workDate").takeIf { it.isNotBlank() && it.length == 10 } ?: return null
     if (runCatching { LocalDate.parse(workDate) }.getOrNull() == null) return null
     if (optString("availableAction") != "REQUEST_CORRECTION") return null
+    val responseStateValue = opt("responseState")
+    val actionValue = opt("availableResponseAction")
+        .takeUnless { it == null || it == JSONObject.NULL } as? JSONObject
+    val availableResponseAction = if (
+        IDENTIFIER.matches(caseId)
+        && actionValue != null
+        && actionValue.length() == 2
+        && actionValue.has("kind")
+        && actionValue.has("expectedCaseRevision")
+    ) {
+        resolveWorkforceSelfExceptionResponseAction(
+            responseRecording = responseRecording,
+            responseState = responseStateValue,
+            kind = actionValue.opt("kind"),
+            expectedCaseRevision = actionValue.opt("expectedCaseRevision"),
+        )
+    } else null
     return WorkforceSelfException(
         caseId = caseId,
         displayReference = reference,
         type = type,
         workdayId = workdayId,
         workDate = workDate,
+        responseState = resolveWorkforceSelfExceptionResponseState(
+            responseRecording = responseRecording,
+            responseState = responseStateValue,
+        ),
+        availableResponseAction = availableResponseAction,
     )
 }
 
@@ -1244,13 +1397,67 @@ data class WorkforceHistorySnapshot(
     val requests: List<WorkforceHrmRequest>,
 )
 
-/** Raw proof, employee reasons and response-ledger state never enter this card. */
+enum class WorkforceSelfExceptionResponseState {
+    UNAVAILABLE,
+    NOT_ACKNOWLEDGED,
+    ACKNOWLEDGED,
+}
+
+data class WorkforceSelfExceptionResponseAction(
+    val expectedCaseRevision: Int,
+)
+
+/**
+ * A button exists only for the exact server offer bound to the current case
+ * revision. Unknown shapes remain a readable correction card but never a
+ * locally inferred mutation.
+ */
+internal fun resolveWorkforceSelfExceptionResponseAction(
+    responseRecording: Any?,
+    responseState: Any?,
+    kind: Any?,
+    expectedCaseRevision: Any?,
+): WorkforceSelfExceptionResponseAction? {
+    if (
+        responseRecording != "AVAILABLE"
+        || responseState != "NOT_ACKNOWLEDGED"
+        || kind != "ACKNOWLEDGE"
+    ) return null
+    val number = expectedCaseRevision as? Number ?: return null
+    val numeric = number.toDouble()
+    if (!numeric.isFinite() || numeric % 1.0 != 0.0) return null
+    val revision = number.toLong()
+    if (revision !in 0L..MAX_WORKFORCE_EXCEPTION_REVISION.toLong() || numeric != revision.toDouble()) return null
+    return WorkforceSelfExceptionResponseAction(revision.toInt())
+}
+
+/**
+ * Fail closed unless both the fresh top-level rollout state and the per-card
+ * projection are exact known wire values. Malformed metadata never hides an
+ * otherwise valid generic correction card.
+ */
+internal fun resolveWorkforceSelfExceptionResponseState(
+    responseRecording: Any?,
+    responseState: Any?,
+): WorkforceSelfExceptionResponseState {
+    if (responseRecording != "AVAILABLE") return WorkforceSelfExceptionResponseState.UNAVAILABLE
+    return when (responseState) {
+        "NOT_ACKNOWLEDGED" -> WorkforceSelfExceptionResponseState.NOT_ACKNOWLEDGED
+        "ACKNOWLEDGED" -> WorkforceSelfExceptionResponseState.ACKNOWLEDGED
+        "UNAVAILABLE" -> WorkforceSelfExceptionResponseState.UNAVAILABLE
+        else -> WorkforceSelfExceptionResponseState.UNAVAILABLE
+    }
+}
+
+/** Raw proof, employee reasons and response-ledger identity never enter this card. */
 data class WorkforceSelfException(
     val caseId: String,
     val displayReference: String,
     val type: String,
     val workdayId: String,
     val workDate: String,
+    val responseState: WorkforceSelfExceptionResponseState,
+    val availableResponseAction: WorkforceSelfExceptionResponseAction? = null,
 )
 
 data class WorkforceHistoryDay(

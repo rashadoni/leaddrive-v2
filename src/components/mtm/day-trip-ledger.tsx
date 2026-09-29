@@ -21,7 +21,7 @@ export type DayTripData = {
         visit: { id: string; customerId: string; customerName: string } | null
       }
     | { kind: "MOVE"; id: string; startedAt: string; endedAt: string; durationSeconds: number; distanceMeters: number; pointCount: number }
-    | { kind: "GAP"; id: string; startedAt: string; endedAt: string; durationSeconds: number; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"; displacementMeters: number }
+    | { kind: "GAP"; id: string; startedAt: string; endedAt: string; durationSeconds: number; reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"; displacementMeters: number; roadMeters?: number | null }
   >
   summary: {
     movingSeconds: number
@@ -61,6 +61,7 @@ export function DayTripLedger({
   onFocus,
   formatMoment,
   formatDuration,
+  roadsMatched = false,
 }: {
   trip: DayTripData
   multiDay: boolean
@@ -68,6 +69,8 @@ export function DayTripLedger({
   onFocus: (focus: DayTripFocus | null) => void
   formatMoment: (value: string, options?: Intl.DateTimeFormatOptions) => string
   formatDuration: (seconds: number) => string
+  /** Distances were counted along the roads (road-distance.ts), not straight between fixes. */
+  roadsMatched?: boolean
 }) {
   const t = useTranslations("mtmMap.history.trip")
   const clock = (value: string) => formatMoment(value, { hour: "2-digit", minute: "2-digit" })
@@ -135,9 +138,11 @@ export function DayTripLedger({
               break
             case "GAP":
               title = entry.reason === "WORKDAY_PAUSED" ? t("pause") : t("noSignal")
-              detail = entry.reason === "TELEMETRY_GAP" && entry.displacementMeters >= MEANINGFUL_DISPLACEMENT_METERS
-                ? t("noSignalMoved", { duration: formatDuration(entry.durationSeconds), distance: kilometres(entry.displacementMeters) })
-                : formatDuration(entry.durationSeconds)
+              detail = entry.reason === "TELEMETRY_GAP" && entry.roadMeters != null && entry.roadMeters >= MEANINGFUL_DISPLACEMENT_METERS
+                ? t("noSignalRoad", { duration: formatDuration(entry.durationSeconds), distance: kilometres(entry.roadMeters) })
+                : entry.reason === "TELEMETRY_GAP" && entry.displacementMeters >= MEANINGFUL_DISPLACEMENT_METERS
+                  ? t("noSignalMoved", { duration: formatDuration(entry.durationSeconds), distance: kilometres(entry.displacementMeters) })
+                  : formatDuration(entry.durationSeconds)
               break
           }
           const time = "at" in entry
@@ -180,7 +185,7 @@ export function DayTripLedger({
           )
         })}
       </ol>
-      <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">{t("straightLineNote")}</p>
+      <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">{t(roadsMatched ? "roadsNote" : "straightLineNote")}</p>
     </section>
   )
 }

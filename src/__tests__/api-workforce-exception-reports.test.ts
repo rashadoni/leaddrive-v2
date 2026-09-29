@@ -32,7 +32,7 @@ function caseRecord(overrides: Record<string, unknown> = {}) {
   return {
     agentId: "agent-1",
     kind: "NO_SHOW",
-    decisions: [{ decisionCode: "ACKNOWLEDGE" }],
+    decisions: [{ decisionCode: "ACKNOWLEDGE", caseRevision: 1 }],
     employeeResponses: [],
     ...overrides,
   }
@@ -97,7 +97,11 @@ describe("GET /api/v1/workforce/exception-reports", () => {
       },
       take: 5_001,
       select: expect.objectContaining({
-        decisions: expect.objectContaining({ take: 65, select: { decisionCode: true } }),
+        decisions: expect.objectContaining({
+          orderBy: { caseRevision: "asc" },
+          take: 65,
+          select: { decisionCode: true, caseRevision: true },
+        }),
       }),
     }))
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({

@@ -12,6 +12,11 @@ import {
   decidePersistedWorkforceAccess,
   type WorkforceAccessGrantReaderDb,
 } from "@/lib/workforce/access-grant-resolution"
+import {
+  lockWorkforceExceptionLinkedMutation,
+  WorkforceExceptionLinkedMutationError,
+  type WorkforceExceptionLinkedMutationDb,
+} from "@/lib/workforce/exception-linked-mutation"
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
 import {
@@ -184,6 +189,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
       startDate: true,
       endDate: true,
       correctionWorkdayId: true,
+      exceptionCaseId: true,
       requestedStartAt: true,
       requestedEndAt: true,
       reason: true,
@@ -232,6 +238,8 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
 
   const affectsAvailability = input.decision === "APPROVED"
     && (request.type === "LEAVE" || request.type === "ABSENCE")
+  const appliesTimeCorrection = input.decision === "APPROVED"
+    && request.type === "TIME_CORRECTION"
   const conflictingRoutes: WorkforceRouteConflict[] = includeRouteConflicts && affectsAvailability
     ? await prisma.mtmRoute.findMany({
         where: {
@@ -266,14 +274,65 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
         where: { id: organizationId },
         select: { features: true },
       })
+      let authorizationRequest: WorkforceRequestDecisionGrantTarget = request
+      if (appliesTimeCorrection) {
+        // Global order for transactions that need both fences is always
+        // workday → exception case. Timesheet approval already owns this
+        // order; reversing it here would allow a cross-domain deadlock.
+        await lockMtmWorkdayTransitions(tx, { organizationId, agentId: request.agentId })
+        const currentRequest = await tx.mtmHrmRequest.findFirst({
+          where: { id: request.id, organizationId },
+          select: {
+            agentId: true,
+            type: true,
+            status: true,
+            correctionWorkdayId: true,
+            exceptionCaseId: true,
+            requestedStartAt: true,
+            requestedEndAt: true,
+            submittedAt: true,
+            correctionWorkday: { select: { startedAt: true } },
+          },
+        })
+        if (!currentRequest
+          || currentRequest.agentId !== request.agentId
+          || currentRequest.type !== request.type
+          || currentRequest.status !== "PENDING"
+          || currentRequest.correctionWorkdayId !== request.correctionWorkdayId
+          || currentRequest.exceptionCaseId !== request.exceptionCaseId
+          || currentRequest.requestedStartAt?.getTime() !== request.requestedStartAt?.getTime()
+          || currentRequest.requestedEndAt?.getTime() !== request.requestedEndAt?.getTime()) {
+          throw new DecisionConflict("Request changed before its correction could be decided")
+        }
+        authorizationRequest = currentRequest
+      }
       if (workforceGranularAccessEnabled(currentOrganization?.features)) {
         const allowed = await canDecideWorkforceRequestAfterGranularCutover({
           db: tx as unknown as WorkforceRequestDecisionGrantDb,
           organizationId,
           userId,
-          request,
+          request: authorizationRequest,
         })
         if (!allowed) throw new DecisionAccessDenied()
+      }
+      if (request.exceptionCaseId) {
+        try {
+          // An approved correction already owns the workday fence above, so
+          // every transaction needing both locks follows workday → case. A
+          // rejection needs no workday mutation and can take only the case
+          // fence without creating the opposite half of a deadlock cycle.
+          await lockWorkforceExceptionLinkedMutation({
+            db: tx as unknown as WorkforceExceptionLinkedMutationDb,
+            organizationId,
+            caseId: request.exceptionCaseId,
+          })
+        } catch (error) {
+          if (!(error instanceof WorkforceExceptionLinkedMutationError)) throw error
+          throw new DecisionConflict(
+            "This exception is no longer available for a linked request decision",
+            error.code,
+          )
+        }
       }
       const updated = await tx.mtmHrmRequest.updateMany({
         where: { id: request.id, organizationId, status: "PENDING" },
@@ -343,7 +402,6 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
         // Share the same per-agent fence as the mobile state machine. Without
         // it, a FINISH and a manager correction could both read a stale
         // projection and one would fail only at the completed-workday guard.
-        await lockMtmWorkdayTransitions(tx, { organizationId, agentId: request.agentId })
         const workday = await tx.mtmAgentWorkday.findFirst({
           where: {
             id: request.correctionWorkdayId ?? undefined,

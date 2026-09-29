@@ -18,7 +18,9 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "authorize-site-transition-report"
     | "read-site-transition-report"
     | "authorize-evidence-timeline"
+    | "authorize-evidence-directory"
     | "read-evidence-timeline"
+    | "search-evidence-timeline-targets"
     | "retention-raw-location-dry-run"
     | "verify-attendance-mfa"
     | "verify-attendance-administration"
@@ -27,7 +29,11 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "configuration-access-grant-inventory"
     | "configuration-access-grant-target-search"
     | "configuration-access-review"
+    | "configuration-exception-response-cycle-audit"
+    | "configuration-exception-policy-revision-read"
+    | "configuration-exception-policy-revision-write"
     | "read-request-list"
+    | "read-exception-queue"
 }): void {
   console.error("[workforce/privacy] sensitive operation failed", { operation: input.operation })
 }

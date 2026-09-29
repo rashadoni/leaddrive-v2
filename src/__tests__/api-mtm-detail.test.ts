@@ -1208,8 +1208,8 @@ describe("GET /api/v1/mtm/mobile/location", () => {
   it("uses organization-local day boundaries and returns travelled distance", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue(routeMobileAuth("a1") as any)
     vi.mocked(prisma.mtmAgentLocation.findMany).mockResolvedValue([
-      { id: "loc-1", latitude: 40.4, longitude: 49.8 },
-      { id: "loc-2", latitude: 40.5, longitude: 49.9 },
+      { id: "loc-1", latitude: 40.4, longitude: 49.8, recordedAt: new Date("2026-07-15T06:00:00.000Z") },
+      { id: "loc-2", latitude: 40.5, longitude: 49.9, recordedAt: new Date("2026-07-15T06:00:30.000Z") },
     ] as any)
     const res = await GET(makeReq("/api/v1/mtm/mobile/location?date=2026-07-15"))
     const json = await res.json()

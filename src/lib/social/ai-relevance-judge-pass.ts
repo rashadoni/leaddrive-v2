@@ -4,8 +4,14 @@ import { checkAiBudget, isAiFeatureEnabled } from "@/lib/ai/budget"
 import {
   AI_RELEVANCE_JUDGE_VERSION,
   judgeSubjectRelevance,
+  type AiRelevanceVerdict,
 } from "@/lib/social/ai-relevance-judge"
 import { evaluateSubjectRelevance, persistSubjectMatches } from "@/lib/social/subject-relevance"
+import {
+  jevVerdictIsTrustworthy,
+  judgeSubjectRelevanceWithJev,
+  JEV_RELEVANCE_JUDGE_VERSION,
+} from "@/lib/social/jev-relevance-judge"
 
 /**
  * Фоновый проход судьи по отказам «родовой алиас без второго признака».
@@ -42,7 +48,27 @@ export type AiRelevanceJudgePassResult = {
   unsure: number
   failed: number
   skippedOrgs: number
+  /** Records whose own text is too short to judge — a picture, in practice. */
+  noText: number
+  /** Answers below the restore threshold: heard, deliberately not acted on. */
+  belowThreshold: number
+  provider: "jev" | "anthropic"
   reason?: string
+}
+
+/**
+ * Which judge runs (owner decision, 2026-09-28: "Jev wherever it copes").
+ *
+ * Jev is chosen when its key is present because it was measured on our own
+ * records and reports a confidence we can gate on; the Haiku judge stays as
+ * the path for installations without that key. `SOCIAL_JUDGE_PROVIDER`
+ * overrides both, so a bad provider day is one environment variable away from
+ * being switched back rather than a deploy.
+ */
+export function relevanceJudgeProvider(): "jev" | "anthropic" {
+  const forced = process.env.SOCIAL_JUDGE_PROVIDER
+  if (forced === "jev" || forced === "anthropic") return forced
+  return process.env.TYPESAFE_API_KEY ? "jev" : "anthropic"
 }
 
 function emptyResult(): AiRelevanceJudgePassResult {
@@ -55,6 +81,9 @@ function emptyResult(): AiRelevanceJudgePassResult {
     unsure: 0,
     failed: 0,
     skippedOrgs: 0,
+    noText: 0,
+    belowThreshold: 0,
+    provider: relevanceJudgeProvider(),
   }
 }
 
@@ -96,8 +125,11 @@ type JudgeCandidate = {
   subject: {
     id: string
     name: string
+    type?: string | null
     requiredContext: string[]
     exclusions: string[]
+    geographies?: string[]
+    languages?: string[]
     aliases: Array<{ value: string }>
   }
 }
@@ -113,6 +145,7 @@ async function stampVerdict(
   candidate: JudgeCandidate,
   verdict: string,
   now: Date,
+  extra: Record<string, unknown> = {},
 ): Promise<void> {
   await prisma.socialMentionSubjectMatch.update({
     where: { id: candidate.id },
@@ -120,11 +153,20 @@ async function stampVerdict(
       contextSignals: {
         ...asRecord(candidate.contextSignals),
         aiJudgeVerdict: verdict,
-        aiJudgeVersion: AI_RELEVANCE_JUDGE_VERSION,
+        aiJudgeVersion: judgeVersion(),
         aiJudgedAt: now.toISOString(),
+        ...extra,
       },
     },
   })
+}
+
+/** The stamp carries which judge decided, so a re-run never re-pays for a row
+ *  the OTHER judge already answered. */
+function judgeVersion(): string {
+  return relevanceJudgeProvider() === "jev"
+    ? JEV_RELEVANCE_JUDGE_VERSION
+    : AI_RELEVANCE_JUDGE_VERSION
 }
 
 export async function judgeAmbiguousAliasRejections(options: {
@@ -169,7 +211,8 @@ export async function judgeAmbiguousAliasRejections(options: {
       },
       subject: {
         select: {
-          id: true, name: true, requiredContext: true, exclusions: true,
+          id: true, name: true, type: true, requiredContext: true, exclusions: true,
+          geographies: true, languages: true,
           aliases: { select: { value: true } },
         },
       },
@@ -177,7 +220,7 @@ export async function judgeAmbiguousAliasRejections(options: {
   }) as unknown as JudgeCandidate[]
 
   const candidates = rows
-    .filter(row => asRecord(row.contextSignals).aiJudgeVersion !== AI_RELEVANCE_JUDGE_VERSION)
+    .filter(row => asRecord(row.contextSignals).aiJudgeVersion !== judgeVersion())
     .slice(0, limit)
 
   result.scanned = candidates.length
@@ -205,7 +248,7 @@ export async function judgeAmbiguousAliasRejections(options: {
     if (!candidate.mention?.text?.trim() || !candidate.subject) continue
     if (!await allowedForOrg(candidate.organizationId)) continue
 
-    const verdict = await judgeSubjectRelevance({
+    const common = {
       text: candidate.mention.text,
       platform: candidate.mention.platform,
       authorName: candidate.mention.authorName,
@@ -214,7 +257,45 @@ export async function judgeAmbiguousAliasRejections(options: {
       aliases: candidate.subject.aliases.map(alias => alias.value),
       requiredContext: candidate.subject.requiredContext ?? [],
       negativeTerms: candidate.subject.exclusions ?? [],
-    })
+    }
+    let confidence: number | null = null
+    // `version` travels with the verdict into the live relevance evaluation,
+    // so the stored decision names which judge produced it.
+    let verdict: { verdict: AiRelevanceVerdict | null; version: string }
+    if (result.provider === "jev") {
+      const answer = await judgeSubjectRelevanceWithJev({
+        ...common,
+        subjectType: candidate.subject.type ?? null,
+        geographies: candidate.subject.geographies ?? [],
+        languages: candidate.subject.languages ?? [],
+      })
+      confidence = answer.confidence
+      // A picture is not evidence, and a provider that did not answer has said
+      // nothing. Neither is stamped: both rows come back on the next pass.
+      if (answer.errorClass === "NO_TEXT") {
+        result.judged += 1
+        result.noText += 1
+        continue
+      }
+      // "about_subject" below the threshold is not acted on — the benchmark
+      // measured that region as a coin flip — but it IS stamped, because the
+      // answer will not change on a re-run and paying for it twice is waste.
+      if (jevVerdictIsTrustworthy(answer) || answer.verdict !== "about_subject") {
+        verdict = { verdict: answer.verdict, version: JEV_RELEVANCE_JUDGE_VERSION }
+      } else {
+        result.judged += 1
+        result.belowThreshold += 1
+        await runWithTenant(candidate.organizationId, () => stampVerdict(
+          candidate,
+          "unsure",
+          now,
+          { aiJudgeConfidence: answer.confidence, aiJudgeRawVerdict: answer.verdict },
+        ))
+        continue
+      }
+    } else {
+      verdict = await judgeSubjectRelevance(common)
+    }
     result.judged += 1
     if (!verdict.verdict) {
       // Провал провайдера НЕ отмечаем: строка должна остаться в очереди на
@@ -225,7 +306,12 @@ export async function judgeAmbiguousAliasRejections(options: {
     if (verdict.verdict !== "about_subject") {
       if (verdict.verdict === "not_about_subject") result.notAbout += 1
       else result.unsure += 1
-      await runWithTenant(candidate.organizationId, () => stampVerdict(candidate, verdict.verdict!, now))
+      await runWithTenant(candidate.organizationId, () => stampVerdict(
+        candidate,
+        verdict.verdict!,
+        now,
+        confidence === null ? {} : { aiJudgeConfidence: confidence },
+      ))
       continue
     }
 

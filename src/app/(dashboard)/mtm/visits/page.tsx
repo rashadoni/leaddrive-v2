@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { medianVisitDurationMinutes } from "@/lib/mtm/visit-duration-median"
 import { nextWiderPeriod } from "@/lib/mtm/empty-period-fallback"
+import { VISIT_PAGE_SIZE, mergeFirstPageRefresh, visitsRemainingInPeriod } from "@/lib/mtm/visit-history-pages"
 import {
   AlertTriangle,
   ArrowLeft,
@@ -20,7 +21,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
-  Search,
+  RefreshCw,
   Timer,
   Trash2,
   UserRound,
@@ -30,6 +31,7 @@ import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
 import { MtmVisitForm } from "@/components/mtm/visit-form"
+import { MtmFilterBar, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { PageDescription } from "@/components/page-description"
 import { Button } from "@/components/ui/button"
 import {
@@ -38,8 +40,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
 import { formatDateTime } from "@/lib/format-date"
 import {
   isOwnVisitExecution,
@@ -139,6 +139,7 @@ export default function MtmVisitsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const t = useTranslations("mtmVisitsPage")
+  const tFilters = useTranslations("mtmFilters")
   const tf = useTranslations("mtmForms")
   const tw = useTranslations("mtmVisitWorkspace")
   const [visits, setVisits] = useState<MtmVisitRow[]>([])
@@ -164,6 +165,10 @@ export default function MtmVisitsPage() {
   const [activeFilter, setActiveFilter] = useState("all")
   const [sortBy, setSortBy] = useState("date_desc")
   const [historyRange, setHistoryRange] = useState<HistoryRange>("today")
+  // Audit 2026-09-24: «вся история» stopped at the latest 200 visits.
+  const [visitsPage, setVisitsPage] = useState(1)
+  const [lastPageFull, setLastPageFull] = useState(false)
+  const [visitsLoadingMore, setVisitsLoadingMore] = useState(false)
   // Audit 2026-09-21: the page opened on «Сегодня» and showed a full set of
   // controls around nothing while a week of visits sat one click away.
   const [rangeChosenByUser, setRangeChosenByUser] = useState(false)
@@ -255,7 +260,7 @@ export default function MtmVisitsPage() {
 
     try {
       const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
-      const res = await fetch(`/api/v1/mtm/visits?limit=200&range=${historyRange}`, { headers, signal: controller.signal })
+      const res = await fetch(`/api/v1/mtm/visits?limit=${VISIT_PAGE_SIZE}&range=${historyRange}`, { headers, signal: controller.signal })
       const result = await res.json().catch(() => null)
       if (!isCurrentRequest()) return
       if (!res.ok || !result?.success) {
@@ -265,14 +270,21 @@ export default function MtmVisitsPage() {
       }
 
       const listed: MtmVisitRow[] = result.data.visits || []
+      const firstPageFull = listed.length >= VISIT_PAGE_SIZE
       setVisits((current) => {
+        // A background refresh keeps what «Показать ещё» brought below the first page.
+        const rows = silent ? mergeFirstPageRefresh(current, listed) : listed
         // A focused visit outside this period stays pinned on top instead of vanishing.
         const focusedId = focusedVisitIdRef.current
-        const pinned = focusedId && !listed.some((visit) => visit.id === focusedId)
+        const pinned = focusedId && !rows.some((visit) => visit.id === focusedId)
           ? current.find((visit) => visit.id === focusedId)
           : undefined
-        return pinned ? [pinned, ...listed] : listed
+        return pinned ? [pinned, ...rows] : rows
       })
+      if (!silent) {
+        setVisitsPage(1)
+        setLastPageFull(firstPageFull)
+      }
       setMeta({
         total: typeof result.data.total === "number" ? result.data.total : null,
         totalExact: result.data.totalExact === true,
@@ -289,6 +301,35 @@ export default function MtmVisitsPage() {
       if (isCurrentRequest() && !silent) setLoading(false)
     }
   }, [historyRange, listIdentityKey, orgId, t])
+
+  async function loadMoreVisits() {
+    const requestId = visitRequestRef.current.id
+    const nextPage = visitsPage + 1
+    setVisitsLoadingMore(true)
+    try {
+      const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
+      const res = await fetch(`/api/v1/mtm/visits?limit=${VISIT_PAGE_SIZE}&range=${historyRange}&page=${nextPage}`, { headers })
+      const result = await res.json().catch(() => null)
+      // A reload in between started the list over; this page belongs to the old one.
+      if (visitRequestRef.current.id !== requestId) return
+      if (!res.ok || !result?.success) {
+        toast.error(t("loadMoreFailed"))
+        return
+      }
+      const more: MtmVisitRow[] = result.data.visits || []
+      setVisits((current) => {
+        const known = new Set(current.map((visit) => visit.id))
+        return [...current, ...more.filter((visit) => !known.has(visit.id))]
+      })
+      setVisitsPage(nextPage)
+      setLastPageFull(more.length >= VISIT_PAGE_SIZE)
+      if (typeof result.data.total === "number") setMeta((current) => ({ ...current, total: result.data.total }))
+    } catch {
+      if (visitRequestRef.current.id === requestId) toast.error(t("loadMoreFailed"))
+    } finally {
+      setVisitsLoadingMore(false)
+    }
+  }
 
   /**
    * The focused row, once per opened visit. Skipped when the list already
@@ -481,6 +522,16 @@ export default function MtmVisitsPage() {
   const medianDuration = medianVisitDurationMinutes(visits)
   const confirmedGps = visits.filter((visit) => visitPlaceSummary(visit, meta.geofenceRadius).verdict === "at_point").length
   const displayedTotal = meta.totalExact && meta.total != null ? meta.total : visits.length
+  const visitsRemaining = visitsRemainingInPeriod({
+    total: meta.total,
+    totalExact: meta.totalExact,
+    candidateLimit: meta.candidateLimit,
+    pagesRead: visitsPage,
+    lastPageFull,
+  })
+  // The counts beside it are over the visits shown; the period's total goes
+  // only where they are the whole period.
+  const listIsPartial = visitsRemaining > 0 || meta.sourceTruncated
   const ownActiveVisits = activeVisits.filter((visit) => isOwnVisitExecution(viewer, { agentId: visit.agentId, status: "CHECKED_IN" }))
   const teamActiveVisits = activeVisits.filter((visit) => !ownActiveVisits.includes(visit))
   const focusedOwnExecution = Boolean(focusedVisitId && ownActiveVisits.some((visit) => visit.id === focusedVisitId))
@@ -734,86 +785,54 @@ export default function MtmVisitsPage() {
 
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-card shadow-sm dark:border-zinc-800" aria-labelledby="visit-history-title">
         <header className="space-y-4 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 id="visit-history-title" className="text-lg font-semibold text-foreground">{t("historyTitle")}</h2>
-            </div>
-            <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 sm:flex" role="group" aria-label={t("rangeLabel")}>
-              {HISTORY_RANGES.map((range) => (
-                <button
-                  key={range.value}
-                  type="button"
-                  aria-pressed={historyRange === range.value}
-                  className={`min-h-10 rounded-lg px-3 text-sm font-medium transition-colors ${historyRange === range.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                  onClick={() => {
-                    setRangeChosenByUser(true)
-                    setWidenedFrom(null)
-                    setHistoryRange(range.value)
-                  }}
-                >
-                  {t(range.label)}
-                </button>
-              ))}
-            </div>
-          </div>
+          <h2 id="visit-history-title" className="text-lg font-semibold text-foreground">{t("historyTitle")}</h2>
+          {/* Owner 2026-09-27: filters in one row. The period sat apart as
+              a segmented control and four stat tiles stood between it and
+              the rest; the numbers are one line under the row now. */}
+          <MtmFilterBar testId="mtm-visits-filters">
+            <MtmFilterSearch value={search} onChange={setSearch} delayMs={150} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
+            <MtmFilterSelect testId="mtm-visits-range" label={t("rangeLabel")} value={historyRange} emptyValue="today" showValue allLabel={t("rangeToday")}
+              options={HISTORY_RANGES.map((range) => ({ value: range.value, label: t(range.label) }))}
+              onChange={(value) => {
+                setRangeChosenByUser(true)
+                setWidenedFrom(null)
+                setHistoryRange(value as HistoryRange)
+              }} />
+            <MtmFilterSelect testId="mtm-visits-status" label={t("statusFilterLabel")} value={activeFilter} emptyValue="all" allLabel={t("all")}
+              options={[
+                { value: "all", label: `${t("all")} (${visits.length})` },
+                ...(["CHECKED_IN", "CHECKED_OUT"] as const).map((status) => ({ value: status, label: `${t(VISIT_FILTER_LABELS[status])} (${statusCounts[status] || 0})` })),
+              ]}
+              onChange={setActiveFilter} />
+            <MtmFilterSelect testId="mtm-visits-sort" label={tFilters("sort")} value={sortBy} emptyValue="date_desc" showValue clearable={false} allLabel={t("sortDateDesc")}
+              options={[
+                { value: "date_desc", label: t("sortDateDesc") },
+                { value: "date_asc", label: t("sortDateAsc") },
+                { value: "duration", label: t("sortDuration") },
+              ]}
+              onChange={setSortBy} />
+          </MtmFilterBar>
           {widenedFrom ? (
             <p role="status" data-testid="mtm-visits-widened" className="text-sm text-muted-foreground">
               {t("widenedNotice", { from: t(rangeLabelKey(widenedFrom)), to: t(rangeLabelKey(historyRange)) })}
             </p>
           ) : null}
-
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-zinc-200 bg-zinc-200 dark:border-zinc-800 dark:bg-zinc-800 sm:grid-cols-4">
-            <div className="bg-card p-3 sm:p-4">
-              <p className="text-xs font-medium text-muted-foreground">{t("statTotal")}</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{displayedTotal}</p>
-            </div>
-            <div className="bg-card p-3 sm:p-4">
-              <p className="text-xs font-medium text-muted-foreground">{t("statCheckedOut")}</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{statusCounts.CHECKED_OUT || 0}</p>
-            </div>
-            <div className="bg-card p-3 sm:p-4">
-              <p className="text-xs font-medium text-muted-foreground">{t("statMedianDuration")}</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums" data-testid="mtm-visits-median-duration">
-                {medianDuration == null ? "—" : <>{medianDuration} <span className="text-sm font-medium text-muted-foreground">{t("min")}</span></>}
-              </p>
-            </div>
-            <div className="bg-card p-3 sm:p-4">
-              <p className="text-xs font-medium text-muted-foreground">{t("statGpsConfirmed")}</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{confirmedGps}</p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 xl:grid-cols-[auto_minmax(18rem,1fr)_12rem] xl:items-center">
-            <div className="flex flex-wrap gap-2" role="group" aria-label={t("statusFilterLabel")}>
-              <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" className="min-h-10" onClick={() => setActiveFilter("all")}>
-                {t("all")} ({visits.length})
-              </Button>
-              {(["CHECKED_IN", "CHECKED_OUT"] as const).map((status) => (
-                <Button key={status} variant={activeFilter === status ? "default" : "outline"} size="sm" className="min-h-10" onClick={() => setActiveFilter(status)}>
-                  {t(VISIT_FILTER_LABELS[status])} ({statusCounts[status] || 0})
-                </Button>
-              ))}
-            </div>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input placeholder={t("searchPlaceholder")} value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" />
-            </div>
-            <Select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="min-h-11 w-full">
-              <option value="date_desc">{t("sortDateDesc")}</option>
-              <option value="date_asc">{t("sortDateAsc")}</option>
-              <option value="duration">{t("sortDuration")}</option>
-            </Select>
-          </div>
-
-          {meta.sourceTruncated ? (
-            <p role="status" className="text-xs text-amber-700 dark:text-amber-300">
-              {t("resultBounded", { shown: visits.length, limit: meta.candidateLimit || 2_000 })}
-            </p>
-          ) : meta.totalExact && meta.total != null && meta.total > visits.length ? (
-            <p role="status" className="text-xs text-muted-foreground">{t("resultPartial", { shown: visits.length, total: meta.total })}</p>
-          ) : (
-            <p role="status" className="text-xs text-muted-foreground">{t("resultCount", { count: filtered.length })}</p>
-          )}
+          <MtmResultLine
+            aside={<span data-testid="mtm-visits-summary">
+              {listIsPartial ? null : <>{t("statTotal")}: {displayedTotal} · </>}{t("statCheckedOut")}: {statusCounts.CHECKED_OUT || 0} · {t("statMedianDuration")}:{" "}
+              <span data-testid="mtm-visits-median-duration">{medianDuration == null ? "—" : `${medianDuration} ${t("min")}`}</span> · {t("statGpsConfirmed")}: {confirmedGps}
+            </span>}
+          >
+            {meta.sourceTruncated ? (
+              <span role="status" className="text-amber-700 dark:text-amber-300">
+                {t("resultBounded", { shown: visits.length, limit: meta.candidateLimit || 2_000 })}
+              </span>
+            ) : meta.totalExact && meta.total != null && meta.total > visits.length ? (
+              <span role="status">{t("resultPartial", { shown: visits.length, total: meta.total })}</span>
+            ) : (
+              <span role="status" className="font-medium text-foreground">{t("resultCount", { count: filtered.length })}</span>
+            )}
+          </MtmResultLine>
         </header>
 
         {loading ? (
@@ -918,6 +937,14 @@ export default function MtmVisitsPage() {
             </div>
           </div>
         )}
+        {!loading && visitsRemaining > 0 ? (
+          <div className="flex justify-center border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+            <Button data-testid="mtm-visits-load-more" variant="outline" className="min-h-11" disabled={visitsLoadingMore} onClick={() => void loadMoreVisits()}>
+              {visitsLoadingMore ? <RefreshCw className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+              {t("loadMore", { count: Math.min(VISIT_PAGE_SIZE, visitsRemaining) })}
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       <MtmVisitForm

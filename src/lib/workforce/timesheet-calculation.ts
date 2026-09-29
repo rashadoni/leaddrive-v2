@@ -56,8 +56,7 @@ export type WorkforceTimesheetCalculationInput = {
   facts: WorkforceWorkdayFactsInput | null
 }
 
-export type WorkforceTimesheetCalculation = {
-  calculationVersion: number
+type WorkforceTimesheetCalculationCore = {
   policySnapshotId: string
   shiftSnapshotId: string
   status: WorkforceTimesheetStatus
@@ -86,12 +85,47 @@ export type WorkforceTimesheetCalculation = {
   exceptions: WorkforceAttendanceException[]
 }
 
+export type WorkforceTimesheetImmutableScheduleContext = {
+  scheduleSnapshotId: string
+  scheduleSnapshotHash: string
+  policyDefinitionHash: string
+  shiftDefinitionHash: string
+  calendarState: "SCHEDULED"
+  segmentCount: number
+  segmentModes: ReadonlyArray<"SITE" | "REMOTE" | "FIELD" | "TRAVEL" | "ON_CALL" | "EXCEPTION">
+  plannedBreakCount: number
+  breakTreatment: "ACTUAL_PAUSE_EVENTS_ONLY"
+  travelTreatment: "NON_PAYROLL_NO_AUTOMATIC_ADJUSTMENT"
+  calendarTreatment: "PINNED_EXPECTED_WORKDAY"
+  exceptionTreatment: "RESOLUTION_REQUIRED_BEFORE_APPROVAL"
+  correctionTreatment: "IMMUTABLE_LEDGER_REPLAY"
+}
+
+/** Historical calculation rows remain verifiable with their original shape. */
+export type WorkforceTimesheetCalculationV1 = WorkforceTimesheetCalculationCore & {
+  calculationVersion: 1
+}
+
+/**
+ * Version 2 keeps v1 arithmetic but binds the result to the complete immutable
+ * policy, shift and schedule context used by approval/export rehydration.
+ */
+export type WorkforceTimesheetCalculationV2 = WorkforceTimesheetCalculationCore & {
+  calculationVersion: 2
+  coreCalculationVersion: 1
+  immutableSchedule: WorkforceTimesheetImmutableScheduleContext
+}
+
+export type WorkforceTimesheetCalculation =
+  | WorkforceTimesheetCalculationV1
+  | WorkforceTimesheetCalculationV2
+
 export class WorkforceTimesheetCalculationError extends Error {
   readonly code = "WORKFORCE_TIMESHEET_FACTS_INVALID"
 }
 
 const SECOND_MS = 1000
-export const WORKFORCE_TIMESHEET_CALCULATION_VERSION = 1
+export const WORKFORCE_TIMESHEET_CALCULATION_VERSION = 1 as const
 const WORKDAY_STATUSES = new Set<WorkforceWorkdayFactsInput["status"]>(["STARTED", "PAUSED", "COMPLETED"])
 
 function instant(name: string, value: string): number {
@@ -136,7 +170,7 @@ function exception(
  */
 export function calculateWorkforceTimesheetDay(
   input: WorkforceTimesheetCalculationInput,
-): WorkforceTimesheetCalculation {
+): WorkforceTimesheetCalculationV1 {
   const asOf = instant("asOf", input.asOf)
   const plannedStart = instant("plannedStartAt", input.schedule.plannedStartAt)
   const plannedEnd = instant("plannedEndAt", input.schedule.plannedEndAt)

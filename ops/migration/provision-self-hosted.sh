@@ -83,9 +83,22 @@ set +a
 ROLE_STATE=$(psql "$MIGRATION_DATABASE_URL" -X -v ON_ERROR_STOP=1 -AtF '|' -c \
   "SELECT session_user, rolsuper::int, rolbypassrls::int, rolcanlogin::int,
           pg_has_role(session_user, '$APP_OWNER_ROLE', 'MEMBER')::int,
-          current_setting('lock_timeout')
+          current_setting('lock_timeout'),
+          current_setting('statement_timeout'),
+          current_setting('idle_in_transaction_session_timeout'),
+          (SELECT (setting = '10000' AND unit = 'ms')::int
+             FROM pg_settings WHERE name = 'lock_timeout'),
+          (SELECT (setting = '840000' AND unit = 'ms')::int
+             FROM pg_settings WHERE name = 'statement_timeout'),
+          (SELECT (setting = '60000' AND unit = 'ms')::int
+             FROM pg_settings WHERE name = 'idle_in_transaction_session_timeout')
    FROM pg_roles WHERE rolname = session_user")
-[ "$ROLE_STATE" = "$MIGRATION_ROLE|0|1|1|1|10s" ] || fatal "unexpected role state: $ROLE_STATE"
+IFS='|' read -r ROLE_NAME ROLE_SUPER ROLE_BYPASS ROLE_LOGIN ROLE_OWNER_MEMBER \
+  ROLE_LOCK_TIMEOUT ROLE_STATEMENT_TIMEOUT ROLE_IDLE_TIMEOUT \
+  ROLE_LOCK_OK ROLE_STATEMENT_OK ROLE_IDLE_OK <<<"$ROLE_STATE"
+[ "$ROLE_NAME|$ROLE_SUPER|$ROLE_BYPASS|$ROLE_LOGIN|$ROLE_OWNER_MEMBER|$ROLE_LOCK_OK|$ROLE_STATEMENT_OK|$ROLE_IDLE_OK" \
+  = "$MIGRATION_ROLE|0|1|1|1|1|1|1" ] || \
+  fatal "unexpected role state: $ROLE_STATE"
 
 psql "$MIGRATION_DATABASE_URL" -X -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
 BEGIN;

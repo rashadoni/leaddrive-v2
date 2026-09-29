@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type FormEvent,
 } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -14,22 +13,16 @@ import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowRightLeft,
   Bookmark,
-  Building2,
   ChevronLeft,
   ChevronRight,
-  Filter,
   Mail,
   Phone,
   RefreshCw,
-  Search,
-  SlidersHorizontal,
   Trash2,
   UserMinus,
   UserPlus,
-  UserRound,
   UserRoundPlus,
   UsersRound,
-  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { PageDescription } from "@/components/page-description"
@@ -39,6 +32,7 @@ import {
   type ContactTransferAgent,
 } from "@/components/mtm/contact-transfer-dialog"
 import { ContactTransferReceiptPanel } from "@/components/mtm/contact-transfer-receipt-panel"
+import { MtmFilterBar, MtmFilterDate, MtmFilterMore, MtmFilterReset, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
 import { ContactAssignmentDialog } from "@/components/mtm/contact-assignment-dialog"
 import { MtmContactCreateDialog } from "@/components/mtm/contact-create-dialog"
 import {
@@ -263,6 +257,7 @@ function statusVariant(status: string): "success" | "warning" | "outline" {
 
 export function MtmContactExplorer() {
   const t = useTranslations("mtmContactExplorer")
+  const tf = useTranslations("mtmFilters")
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -274,7 +269,6 @@ export function MtmContactExplorer() {
   )
   const isRouteDoctorFlow = routeAssignmentHandoff?.direction === "DOCTOR"
   const [filters, setFilters] = useState<ContactExplorerFilters>(initial.filters)
-  const [searchDraft, setSearchDraft] = useState(initial.filters.search)
   const [page, setPage] = useState(initial.page)
   const [limit, setLimit] = useState(initial.limit)
   const [payload, setPayload] = useState<ContactPayload | null>(null)
@@ -377,7 +371,6 @@ export function MtmContactExplorer() {
   const applySavedView = useCallback((view: ContactSavedView) => {
     const restored = contactSavedViewState(view.filters)
     setFilters(restored.filters)
-    setSearchDraft(restored.filters.search)
     setPage(1)
     setLimit(restored.limit)
     setSelected(new Set())
@@ -499,24 +492,19 @@ export function MtmContactExplorer() {
         ? t("selection.currentPage")
         : t("selection.custom")
   const advancedFilterCount = ADVANCED_FILTER_KEYS.filter((key) => Boolean(filters[key])).length
+  const hasActiveFilters = (Object.keys(EMPTY_CONTACT_FILTERS) as (keyof ContactExplorerFilters)[])
+    .some((key) => filters[key] !== EMPTY_CONTACT_FILTERS[key])
   const routeAssignmentAgent = (payload?.availableAgents ?? []).find((agent) => agent.id === routeAssignmentHandoff?.agentId)
 
   const updateFilter = (key: keyof ContactExplorerFilters, value: string) => {
     setFilters((current) => ({ ...current, [key]: value }))
-    if (key === "search") setSearchDraft(value)
     setPage(1)
     setSelected(new Set())
     setActiveSavedViewId("")
   }
 
-  const submitSearch = (event: FormEvent) => {
-    event.preventDefault()
-    updateFilter("search", searchDraft.trim())
-  }
-
   const clearFilters = () => {
     setFilters(EMPTY_CONTACT_FILTERS)
-    setSearchDraft("")
     setPage(1)
     setSelected(new Set())
     setActiveSavedViewId("")
@@ -650,10 +638,32 @@ export function MtmContactExplorer() {
     <div data-testid="mtm-contact-explorer" aria-busy={loading} className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <PageDescription icon={UsersRound} title={t("title")} description={t("subtitle")} />
+          <PageDescription icon={UsersRound} title={t("title")} />
           <HelpButton slug="mtm-contacts" variant="label" />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1">
+            <MtmFilterSelect testId="mtm-contact-saved-view" label={tf("view")} value={activeSavedViewId} allLabel={t("savedViewsPlaceholder")} clearable={false}
+              onChange={(value) => {
+                const view = savedViews.find((item) => item.id === value)
+                if (view) applySavedView(view)
+                else setActiveSavedViewId("")
+              }}
+              options={savedViews.map((view) => ({ value: view.id, label: `${view.isDefault ? "★ " : ""}${view.name}${view.isShared ? ` · ${t("sharedView")}` : ""}` }))} />
+            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full" title={t("saveCurrentView")} aria-label={t("saveCurrentView")} disabled={savedViewsBusy}
+              onClick={() => {
+                setSavedViewName("")
+                setSavedViewDefault(false)
+                setSaveViewOpen(true)
+              }}>
+              <Bookmark className="h-4 w-4" />
+            </Button>
+            {activeSavedView?.canDelete ? (
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full text-destructive" title={t("deleteSavedView")} aria-label={t("deleteSavedView")} disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </span>
           <Button type="button" size="sm" className="min-h-11" onClick={() => setCreateOpen(true)}>
             <UserRoundPlus className="mr-1.5 h-4 w-4" />
             {t("createClient")}
@@ -683,178 +693,61 @@ export function MtmContactExplorer() {
         </section>
       ) : null}
 
-      <section className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
-        <details className="group -mx-4 -mt-4 border-b border-zinc-200 dark:border-zinc-700">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-medium marker:hidden">
-            <Bookmark className="h-4 w-4 text-muted-foreground" />
-            {t("savedViews")}
-            {activeSavedView ? <span className="max-w-[14rem] truncate rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary" title={activeSavedView.name}>{activeSavedView.name}</span> : null}
-          </summary>
-          <div className="flex flex-col gap-3 border-t border-zinc-200 p-4 dark:border-zinc-700 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0 flex-1 sm:max-w-md">
-              <Label htmlFor="mtm-contact-saved-view" className="text-xs text-muted-foreground">{t("savedViews")}</Label>
-              <Select
-                id="mtm-contact-saved-view"
-                value={activeSavedViewId}
-                onChange={(event) => {
-                  const view = savedViews.find((item) => item.id === event.target.value)
-                  if (view) applySavedView(view)
-                  else setActiveSavedViewId("")
-                }}
-                className="mt-1.5 min-h-11"
-                disabled={savedViewsBusy}
-              >
-                <option value="">{t("savedViewsPlaceholder")}</option>
-                {savedViews.map((view) => (
-                  <option key={view.id} value={view.id}>
-                    {view.isDefault ? `★ ${view.name}` : view.name}
-                    {view.isShared ? ` · ${t("sharedView")}` : ""}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {savedViews.find((view) => view.id === activeSavedViewId)?.canDelete ? (
-                <Button type="button" variant="ghost" size="sm" className="min-h-11 text-destructive" disabled={savedViewsBusy} onClick={() => void deleteActiveSavedView()}>
-                  <Trash2 className="mr-1.5 h-4 w-4" />
-                  {t("deleteSavedView")}
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-11"
-                disabled={savedViewsBusy}
-                onClick={() => {
-                  setSavedViewName("")
-                  setSavedViewDefault(false)
-                  setSaveViewOpen(true)
-                }}
-              >
-                <Bookmark className="mr-1.5 h-4 w-4" />
-                {t("saveCurrentView")}
-              </Button>
-            </div>
-          </div>
-        </details>
-        <div className="mt-3 flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">{t("filters")}</h2>
-        </div>
-        <form onSubmit={submitSearch} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))]">
-          <div>
-            <Label htmlFor="mtm-contact-search" className="text-xs text-muted-foreground">{t("searchLabel")}</Label>
-            <div className="mt-1.5 flex gap-2">
-              <Input
-                id="mtm-contact-search"
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="min-h-11"
-              />
-              <Button type="submit" size="icon" className="min-h-11 min-w-11" aria-label={t("search")}>
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <FilterSelect id="mtm-contact-type" label={t("type")} value={filters.type} onChange={(value) => updateFilter("type", value)}>
-            <option value="">{t("all")}</option>
-            <option value="DOCTOR">{t("types.DOCTOR")}</option>
-            <option value="PHARMACIST">{t("types.PHARMACIST")}</option>
-            <option value="OTHER">{t("types.OTHER")}</option>
-          </FilterSelect>
-          <FilterSelect id="mtm-contact-status" label={t("status")} value={filters.status} onChange={(value) => updateFilter("status", value)}>
-            <option value="">{t("all")}</option>
-            {["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"].map((status) => (
-              <option key={status} value={status}>{t(`statuses.${status}`)}</option>
+      {/* Owner 2026-09-27: «слишком много места занимает, не интерактивен, не
+          интуитивен». One row of pills instead of a card of labelled fields,
+          a saved-views panel, a heading, an explanation line and stat tiles. */}
+      <section data-testid="mtm-contact-filters" className="space-y-2">
+        <MtmFilterBar>
+          <MtmFilterSearch
+            testId="mtm-contact-search"
+            value={filters.search}
+            onChange={(value) => updateFilter("search", value)}
+            placeholder={t("searchPlaceholder")}
+            label={t("searchLabel")}
+            clearLabel={tf("clearSearch")}
+          />
+          <MtmFilterSelect testId="mtm-contact-status" label={t("status")} value={filters.status} onChange={(value) => updateFilter("status", value)} allLabel={t("all")}
+            options={["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"].map((status) => ({ value: status, label: t(`statuses.${status}`) }))} />
+          <MtmFilterSelect testId="mtm-contact-type" label={t("type")} value={filters.type} onChange={(value) => updateFilter("type", value)} allLabel={t("all")}
+            options={["DOCTOR", "PHARMACIST", "OTHER"].map((type) => ({ value: type, label: t(`types.${type}`) }))} />
+          <MtmFilterSelect testId="mtm-contact-category" label={t("category")} value={filters.category} onChange={(value) => updateFilter("category", value)} allLabel={t("all")}
+            options={["A", "B", "C", "D"].map((category) => ({ value: category, label: category }))} />
+          <MtmFilterSelect testId="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)} allLabel={t("allAccessible")}
+            options={(payload?.availableAgents ?? []).map((agent) => ({ value: agent.id, label: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }))} />
+          <MtmFilterSelect testId="mtm-contact-assignment-state" label={t("assignmentState")} value={filters.assignmentState} onChange={(value) => updateFilter("assignmentState", value)} allLabel={t("all")}
+            options={[{ value: "ASSIGNED", label: t("assigned") }, { value: "UNASSIGNED", label: t("unassigned") }]} />
+          <MtmFilterMore testId="mtm-contact-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={advancedFilterCount} label={tf("more")} />
+          <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />
+        </MtmFilterBar>
+        {advancedOpen ? (
+          <MtmFilterBar testId="mtm-contact-advanced-filters">
+            {([
+              ["specialtyCode", "specialty", facets?.specialtyCodes],
+              ["profile", "profile", facets?.profiles],
+              ["qualificationCategory", "qualificationCategory", facets?.qualificationCategories],
+              ["region", "region", facets?.regions],
+              ["administrativeDistrict", "administrativeDistrict", facets?.administrativeDistricts],
+              ["locality", "locality", facets?.localities],
+              ["cityDistrict", "cityDistrict", facets?.cityDistricts],
+              ["organizationKind", "organizationKind", facets?.organizationKinds],
+            ] as const).map(([key, labelKey, values]) => (
+              <MtmFilterSelect key={key} testId={`mtm-contact-${key}`} label={t(labelKey)} value={filters[key]} onChange={(value) => updateFilter(key, value)} allLabel={t("all")}
+                options={(values ?? []).map((value) => ({ value, label: value }))} />
             ))}
-          </FilterSelect>
-          <FilterSelect id="mtm-contact-category" label={t("category")} value={filters.category} onChange={(value) => updateFilter("category", value)}>
-            <option value="">{t("all")}</option>
-            {["A", "B", "C", "D"].map((category) => <option key={category} value={category}>{category}</option>)}
-          </FilterSelect>
-          <FilterSelect id="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)}>
-            <option value="">{t("allAccessible")}</option>
-            {(payload?.availableAgents ?? []).map((agent) => (
-              <option key={agent.id} value={agent.id}>
-                {agent.name}{agent.status !== "ACTIVE" ? ` · ${t("agentInactive")}` : ""}
-              </option>
-            ))}
-          </FilterSelect>
-        </form>
-        <div className="mt-3 max-w-xs">
-          <FilterSelect id="mtm-contact-assignment-state" label={t("assignmentState")} value={filters.assignmentState} onChange={(value) => updateFilter("assignmentState", value)}>
-            <option value="">{t("all")}</option>
-            <option value="ASSIGNED">{t("assigned")}</option>
-            <option value="UNASSIGNED">{t("unassigned")}</option>
-          </FilterSelect>
-        </div>
-        <div className="mt-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setAdvancedOpen((open) => !open)}
-            aria-expanded={advancedOpen}
-          >
-            <SlidersHorizontal className="mr-1.5 h-4 w-4" />
-            {advancedOpen ? t("hideAdvanced") : t("showAdvanced")}
-            {advancedFilterCount > 0 ? (
-              <Badge variant="secondary" className="ml-2">{advancedFilterCount}</Badge>
-            ) : null}
-          </Button>
-          {advancedOpen ? (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <FacetSelect id="mtm-contact-specialty" label={t("specialty")} value={filters.specialtyCode} values={facets?.specialtyCodes ?? []} onChange={(value) => updateFilter("specialtyCode", value)} allLabel={t("all")} />
-              <FacetSelect id="mtm-contact-profile" label={t("profile")} value={filters.profile} values={facets?.profiles ?? []} onChange={(value) => updateFilter("profile", value)} allLabel={t("all")} />
-              <FacetSelect id="mtm-contact-qualification" label={t("qualificationCategory")} value={filters.qualificationCategory} values={facets?.qualificationCategories ?? []} onChange={(value) => updateFilter("qualificationCategory", value)} allLabel={t("all")} />
-              <FacetSelect id="mtm-contact-region" label={t("region")} value={filters.region} values={facets?.regions ?? []} onChange={(value) => updateFilter("region", value)} allLabel={t("all")} />
-              <FacetSelect id="mtm-contact-admin-district" label={t("administrativeDistrict")} value={filters.administrativeDistrict} values={facets?.administrativeDistricts ?? []} onChange={(value) => updateFilter("administrativeDistrict", value)} allLabel={t("all")} />
-              <FacetSelect id="mtm-contact-locality" label={t("locality")} value={filters.locality} values={facets?.localities ?? []} onChange={(value) => updateFilter("locality", value)} allLabel={t("all")} />
-              <FacetSelect id="mtm-contact-city-district" label={t("cityDistrict")} value={filters.cityDistrict} values={facets?.cityDistricts ?? []} onChange={(value) => updateFilter("cityDistrict", value)} allLabel={t("all")} />
-              <FacetSelect id="mtm-contact-organization-kind" label={t("organizationKind")} value={filters.organizationKind} values={facets?.organizationKinds ?? []} onChange={(value) => updateFilter("organizationKind", value)} allLabel={t("all")} />
-              <FilterSelect id="mtm-contact-object-type" label={t("organizationType")} value={filters.objectType} onChange={(value) => updateFilter("objectType", value)}>
-                <option value="">{t("all")}</option>
-                {(facets?.objectTypes ?? []).map((value) => (
-                  <option key={value} value={value}>{t(`objectTypes.${value}`)}</option>
-                ))}
-              </FilterSelect>
-              <div>
-                <Label htmlFor="mtm-contact-coverage-period" className="text-xs text-muted-foreground">{t("coveragePeriod")}</Label>
-                <Input
-                  id="mtm-contact-coverage-period"
-                  type="month"
-                  value={filters.coveragePeriod || payload?.coveragePeriod.key || ""}
-                  onChange={(event) => updateFilter("coveragePeriod", event.target.value)}
-                  className="mt-1.5 min-h-11"
-                />
-              </div>
-            </div>
-          ) : null}
-          {facetsError ? <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{facetsError}</p> : null}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-          <p className="text-xs text-muted-foreground">
+            <MtmFilterSelect testId="mtm-contact-object-type" label={t("organizationType")} value={filters.objectType} onChange={(value) => updateFilter("objectType", value)} allLabel={t("all")}
+              options={(facets?.objectTypes ?? []).map((value) => ({ value, label: t(`objectTypes.${value}`) }))} />
+            <MtmFilterDate testId="mtm-contact-coverage-period" type="month" label={t("coveragePeriod")} value={filters.coveragePeriod || payload?.coveragePeriod.key || ""} onChange={(value) => updateFilter("coveragePeriod", value)} />
+            {facetsError ? <p className="w-full text-xs text-amber-700 dark:text-amber-300">{facetsError}</p> : null}
+          </MtmFilterBar>
+        ) : null}
+        <MtmResultLine
+          aside={<>
             {t("asOf", { date: payload?.asOf ?? "—" })}
             {payload?.coveragePeriod ? ` · ${t("coveragePeriodRange", { start: payload.coveragePeriod.start, end: payload.coveragePeriod.end })}` : ""}
-          </p>
-          <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
-            <X className="mr-1 h-4 w-4" />
-            {t("clearFilters")}
-          </Button>
-        </div>
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-3">
-        <Stat label={t("found")} value={total} icon={UsersRound} />
-        <Stat label={t("selected")} value={selected.size} icon={UserRound} />
-        <Stat
-          label={t("ownerFilter")}
-          value={(payload?.availableAgents ?? []).find((agent) => agent.id === filters.ownerAgentId)?.name || t("allAccessible")}
-          icon={Building2}
-          text
-        />
+          </>}
+        >
+          <span className="font-medium text-foreground">{tf("found", { count: total })}</span>
+        </MtmResultLine>
       </section>
 
       {transferReceipt ? (
@@ -1178,74 +1071,6 @@ export function MtmContactExplorer() {
           </Button>
         </DialogFooter>
       </Dialog>
-    </div>
-  )
-}
-
-function FilterSelect({
-  id,
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
-      <Select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 min-h-11">
-        {children}
-      </Select>
-    </div>
-  )
-}
-
-function FacetSelect({
-  id,
-  label,
-  value,
-  values,
-  allLabel,
-  onChange,
-}: {
-  id: string
-  label: string
-  value: string
-  values: string[]
-  allLabel: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <FilterSelect id={id} label={label} value={value} onChange={onChange}>
-      <option value="">{allLabel}</option>
-      {values.map((option) => <option key={option} value={option}>{option}</option>)}
-    </FilterSelect>
-  )
-}
-
-function Stat({
-  label,
-  value,
-  icon: Icon,
-  text = false,
-}: {
-  label: string
-  value: number | string
-  icon: typeof UsersRound
-  text?: boolean
-}) {
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        {label}
-      </div>
-      <p className={`mt-2 font-semibold ${text ? "truncate text-sm" : "text-2xl tabular-nums"}`}>{value}</p>
     </div>
   )
 }

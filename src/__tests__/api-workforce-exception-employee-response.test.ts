@@ -25,7 +25,7 @@ vi.mock("@/lib/workforce/exception-employee-response-writer", async () => {
   const actual = await vi.importActual<typeof import("@/lib/workforce/exception-employee-response-writer")>(
     "@/lib/workforce/exception-employee-response-writer",
   )
-  return { ...actual, appendAuthorizedWorkforceExceptionEmployeeResponse: vi.fn() }
+  return { ...actual, appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse: vi.fn() }
 })
 
 import { POST } from "@/app/api/v1/workforce/exceptions/[id]/response/route"
@@ -33,7 +33,7 @@ import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { requireWorkforceExceptionEmployeeResponseRateLimit } from "@/lib/workforce/exception-employee-response-rate-limit"
 import {
-  appendAuthorizedWorkforceExceptionEmployeeResponse,
+  appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse,
   WorkforceExceptionEmployeeResponseWriterError,
 } from "@/lib/workforce/exception-employee-response-writer"
 import { WORKFORCE_EXCEPTION_RESPONSE_FLAG } from "@/lib/workforce/exception-response-rollout"
@@ -60,19 +60,20 @@ beforeEach(() => {
   transaction.mockClear()
   vi.mocked(resolveWorkforceActor).mockReset()
   vi.mocked(requireWorkforceExceptionEmployeeResponseRateLimit).mockResolvedValue(null)
-  vi.mocked(appendAuthorizedWorkforceExceptionEmployeeResponse).mockReset()
+  vi.mocked(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).mockReset()
 })
 
 describe("Workforce employee exception response API", () => {
   it("uses a session-only write boundary and derives exact own case links on the server", async () => {
     vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
     findFirst.mockResolvedValue({ workdayId: "workday-1", segmentId: "segment-1" })
-    vi.mocked(appendAuthorizedWorkforceExceptionEmployeeResponse).mockResolvedValue({ responseId: "response-1", idempotent: false })
+    vi.mocked(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).mockResolvedValue({ responseId: "response-1", idempotent: false })
 
     const response = await callPost(request({
       responseCode: "CORRECTION_REQUESTED",
       correctionRequestId: "request-1",
       clientResponseId: "response-client-1",
+      expectedCaseRevision: 2,
     }), AUTH, { params: Promise.resolve({ id: "case-1" }) })
 
     expect(response.status).toBe(201)
@@ -83,7 +84,8 @@ describe("Workforce employee exception response API", () => {
       where: { organizationId: "org-1", id: "case-1", agentId: "agent-1", workdayId: { not: null } },
       select: { workdayId: true, segmentId: true },
     })
-    expect(appendAuthorizedWorkforceExceptionEmployeeResponse).toHaveBeenCalledWith(expect.objectContaining({
+    expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).toHaveBeenCalledWith(expect.objectContaining({
+      expectedCaseRevision: 2,
       draft: expect.objectContaining({
         organizationId: "org-1",
         caseId: "case-1",
@@ -94,6 +96,29 @@ describe("Workforce employee exception response API", () => {
         actorUserId: "user-1",
       }),
     }))
+    const authorize = vi.mocked(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse)
+      .mock.calls[0][0].authorize
+    await expect(authorize({
+      operation: "EMPLOYEE_RESPONSE_APPEND",
+      organizationId: "org-1",
+      caseId: "case-1",
+      agentId: "agent-1",
+      actorUserId: "user-1",
+    })).resolves.toBe(true)
+    await expect(authorize({
+      operation: "EMPLOYEE_RESPONSE_APPEND",
+      organizationId: "other-org",
+      caseId: "case-1",
+      agentId: "agent-1",
+      actorUserId: "user-1",
+    })).resolves.toBe(false)
+    await expect(authorize({
+      operation: "EMPLOYEE_RESPONSE_APPEND",
+      organizationId: "org-1",
+      caseId: "other-case",
+      agentId: "agent-1",
+      actorUserId: "user-1",
+    })).resolves.toBe(false)
     expect(requireWorkforceExceptionEmployeeResponseRateLimit).toHaveBeenCalledWith({
       organizationId: "org-1", principalUserId: "user-1",
     })
@@ -104,7 +129,11 @@ describe("Workforce employee exception response API", () => {
     vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
     organizationFindUnique.mockResolvedValue({ features: [] })
 
-    const response = await callPost(request({ responseCode: "ACKNOWLEDGED", clientResponseId: "response-client-disabled" }), AUTH, {
+    const response = await callPost(request({
+      responseCode: "ACKNOWLEDGED",
+      clientResponseId: "response-client-disabled",
+      expectedCaseRevision: 1,
+    }), AUTH, {
       params: Promise.resolve({ id: "case-1" }),
     })
 
@@ -115,7 +144,7 @@ describe("Workforce employee exception response API", () => {
       code: "WORKFORCE_EXCEPTION_RESPONSE_MIGRATION_REQUIRED",
     })
     expect(findFirst).not.toHaveBeenCalled()
-    expect(appendAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
+    expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
     expect(requireWorkforceExceptionEmployeeResponseRateLimit).toHaveBeenCalledWith({
       organizationId: "org-1", principalUserId: "user-1",
     })
@@ -128,20 +157,25 @@ describe("Workforce employee exception response API", () => {
     const response = await callPost(request({
       responseCode: "ACKNOWLEDGED",
       clientResponseId: "response-client-rate-limited",
+      expectedCaseRevision: 1,
     }), AUTH, { params: Promise.resolve({ id: "case-1" }) })
 
     expect(response.status).toBe(429)
     expect(resolveWorkforceActor).not.toHaveBeenCalled()
     expect(organizationFindUnique).not.toHaveBeenCalled()
     expect(findFirst).not.toHaveBeenCalled()
-    expect(appendAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
+    expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
   })
 
   it("does not use an unavailable or another employee's case as an id oracle", async () => {
     vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
     findFirst.mockResolvedValue(null)
 
-    const response = await callPost(request({ responseCode: "ACKNOWLEDGED", clientResponseId: "response-client-2" }), AUTH, {
+    const response = await callPost(request({
+      responseCode: "ACKNOWLEDGED",
+      clientResponseId: "response-client-2",
+      expectedCaseRevision: 1,
+    }), AUTH, {
       params: Promise.resolve({ id: "other-case" }),
     })
 
@@ -150,13 +184,17 @@ describe("Workforce employee exception response API", () => {
       error: "This exception is unavailable for an employee response",
       code: "WORKFORCE_EXCEPTION_RESPONSE_UNAVAILABLE",
     })
-    expect(appendAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
+    expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
     expect(transaction).not.toHaveBeenCalled()
   })
 
   it("requires a self employee actor and rejects a malformed request before case lookup", async () => {
     vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: null, role: "ADMIN", scopedAgentIds: null })
-    const denied = await callPost(request({ responseCode: "ACKNOWLEDGED", clientResponseId: "response-client-3" }), AUTH, {
+    const denied = await callPost(request({
+      responseCode: "ACKNOWLEDGED",
+      clientResponseId: "response-client-3",
+      expectedCaseRevision: 1,
+    }), AUTH, {
       params: Promise.resolve({ id: "case-1" }),
     })
     expect(denied.status).toBe(403)
@@ -164,24 +202,70 @@ describe("Workforce employee exception response API", () => {
     vi.mocked(resolveWorkforceActor).mockReset()
     vi.mocked(requireWorkforceExceptionEmployeeResponseRateLimit).mockClear()
     vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
-    const invalid = await callPost(request({ responseCode: "CORRECTION_REQUESTED", clientResponseId: "response-client-4" }), AUTH, {
+    const invalid = await callPost(request({
+      responseCode: "CORRECTION_REQUESTED",
+      clientResponseId: "response-client-4",
+      expectedCaseRevision: 1,
+    }), AUTH, {
       params: Promise.resolve({ id: "case-1" }),
     })
     expect(invalid.status).toBe(400)
     expect(findFirst).not.toHaveBeenCalled()
-    expect(appendAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
+    expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
     expect(requireWorkforceExceptionEmployeeResponseRateLimit).not.toHaveBeenCalled()
     expect(resolveWorkforceActor).not.toHaveBeenCalled()
+  })
+
+  it("requires a bounded displayed case revision before rate limiting or case lookup", async () => {
+    for (const body of [
+      { responseCode: "ACKNOWLEDGED", clientResponseId: "response-client-no-revision" },
+      { responseCode: "ACKNOWLEDGED", clientResponseId: "response-client-negative", expectedCaseRevision: -1 },
+      { responseCode: "ACKNOWLEDGED", clientResponseId: "response-client-over-bound", expectedCaseRevision: 64 },
+      { responseCode: "ACKNOWLEDGED", clientResponseId: "response-client-fraction", expectedCaseRevision: 1.5 },
+    ]) {
+      const response = await callPost(request(body), AUTH, { params: Promise.resolve({ id: "case-1" }) })
+      expect(response.status).toBe(400)
+    }
+
+    expect(requireWorkforceExceptionEmployeeResponseRateLimit).not.toHaveBeenCalled()
+    expect(resolveWorkforceActor).not.toHaveBeenCalled()
+    expect(findFirst).not.toHaveBeenCalled()
+    expect(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
+  })
+
+  it("returns a refreshable conflict when the displayed revision is stale", async () => {
+    vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
+    findFirst.mockResolvedValue({ workdayId: "workday-1", segmentId: null })
+    vi.mocked(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).mockRejectedValue(
+      new WorkforceExceptionEmployeeResponseWriterError("WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT"),
+    )
+
+    const response = await callPost(request({
+      responseCode: "ACKNOWLEDGED",
+      clientResponseId: "response-client-stale",
+      expectedCaseRevision: 1,
+    }), AUTH, { params: Promise.resolve({ id: "case-1" }) })
+
+    expect(response.status).toBe(409)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    await expect(response.json()).resolves.toEqual({
+      error: "This exception changed; refresh it before responding",
+      code: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    })
   })
 
   it("returns an idempotency conflict without making a second response", async () => {
     vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
     findFirst.mockResolvedValue({ workdayId: "workday-1", segmentId: null })
-    vi.mocked(appendAuthorizedWorkforceExceptionEmployeeResponse).mockRejectedValue(
+    vi.mocked(appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse).mockRejectedValue(
       new WorkforceExceptionEmployeeResponseWriterError("WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT"),
     )
 
-    const response = await callPost(request({ responseCode: "ACKNOWLEDGED", clientResponseId: "response-client-5" }), AUTH, {
+    const response = await callPost(request({
+      responseCode: "ACKNOWLEDGED",
+      clientResponseId: "response-client-5",
+      expectedCaseRevision: 1,
+    }), AUTH, {
       params: Promise.resolve({ id: "case-1" }),
     })
 

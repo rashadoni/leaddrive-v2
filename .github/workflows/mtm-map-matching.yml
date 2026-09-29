@@ -1,0 +1,146 @@
+name: MTM map matching (OSRM)
+
+# Owner 2026-09-27: the day's GPS track drawn along the streets, on our own
+# OSRM (src/lib/mtm/map-matching.ts). The road graph of Azerbaijan is built
+# from OpenStreetMap here, on a hosted runner — never on the production host —
+# proven to answer a match, and only then shipped. On production it runs as a
+# container bound to 127.0.0.1:5055; scripts/ops/mtm-osrm-switch.sh stages the
+# new graph on a side port before it replaces the live one.
+#
+# Nothing in the app depends on it: without an answer the history map keeps
+# straight lines between GPS fixes.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monthly, for fresh roads (Geofabrik updates the extract daily).
+    - cron: "17 2 3 * *"
+
+permissions:
+  contents: read
+
+env:
+  OSRM_IMAGE: ghcr.io/project-osrm/osrm-backend:v5.27.1
+  PBF_URL: https://download.geofabrik.de/asia/azerbaijan-latest.osm.pbf
+
+jobs:
+  build:
+    name: Build and prove the road graph
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Download the OpenStreetMap extract
+        run: |
+          set -euo pipefail
+          mkdir -p osrm
+          curl -fsSL --retry 3 -o osrm/azerbaijan-latest.osm.pbf "$PBF_URL"
+          curl -fsSL --retry 3 -o osrm/azerbaijan-latest.osm.pbf.md5 "$PBF_URL.md5"
+          (cd osrm && awk '{print $1"  azerbaijan-latest.osm.pbf"}' azerbaijan-latest.osm.pbf.md5 | md5sum -c -)
+          ls -lh osrm
+
+      - name: Build the car road graph (MLD)
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD/osrm:/data" "$OSRM_IMAGE" osrm-extract -p /opt/car.lua /data/azerbaijan-latest.osm.pbf
+          docker run --rm -v "$PWD/osrm:/data" "$OSRM_IMAGE" osrm-partition /data/azerbaijan-latest.osrm
+          docker run --rm -v "$PWD/osrm:/data" "$OSRM_IMAGE" osrm-customize /data/azerbaijan-latest.osrm
+          rm -f osrm/azerbaijan-latest.osm.pbf osrm/azerbaijan-latest.osm.pbf.md5
+          du -sh osrm
+
+      - name: Prove it matches a trace along a Baku road
+        run: |
+          set -euo pipefail
+          docker run -d --name osrm-proof -p 127.0.0.1:5055:5000 -v "$PWD/osrm:/data:ro" "$OSRM_IMAGE" \
+            osrm-routed --algorithm mld --max-matching-size 500 /data/azerbaijan-latest.osrm
+          for _ in $(seq 1 45); do
+            curl -fs "http://127.0.0.1:5055/nearest/v1/driving/49.8671,40.4093" >/dev/null && break
+            sleep 2
+          done
+          # A route between two central points gives coordinates that are on a road;
+          # matching three of them, a minute apart, must succeed.
+          route=$(curl -fsS "http://127.0.0.1:5055/route/v1/driving/49.8671,40.4093;49.8350,40.3665?overview=full&geometries=geojson")
+          echo "$route" | jq -e '.code == "Ok"' >/dev/null
+          coords=$(echo "$route" | jq -r '.routes[0].geometry.coordinates as $c | [$c[0], $c[($c|length/2|floor)], $c[-1]] | map("\(.[0]),\(.[1])") | join(";")')
+          now=$(date +%s)
+          match=$(curl -fsS "http://127.0.0.1:5055/match/v1/driving/${coords}?timestamps=${now};$((now + 60));$((now + 120))&radiuses=50;50;50&geometries=geojson&overview=full&gaps=split&tidy=true")
+          echo "$match" | jq -e '.code == "Ok" and (.matchings | length) > 0' >/dev/null
+          echo "match ok: $(echo "$match" | jq '.matchings | length') matching(s)"
+          docker rm -f osrm-proof >/dev/null
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          # osrm-extract writes some files as root, mode 600 (.fileIndex).
+          sudo chown -R "$(id -u):$(id -g)" osrm
+          tar -C osrm -czf osrm-az.tgz .
+          sha256sum osrm-az.tgz > osrm-az.tgz.sha256
+          ls -lh osrm-az.tgz
+          cat osrm-az.tgz.sha256
+
+      - name: Keep the graph for the deploy job
+        uses: actions/upload-artifact@v4
+        with:
+          name: osrm-az
+          path: |
+            osrm-az.tgz
+            osrm-az.tgz.sha256
+          retention-days: 7
+
+  deploy:
+    name: Put the graph on production
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: read
+      actions: read
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Require the protected production environment
+        uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+
+      - name: Fetch the proven graph
+        uses: actions/download-artifact@v4
+        with:
+          name: osrm-az
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Upload the graph
+        run: |
+          set -euo pipefail
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "mkdir -p /opt/mtm-osrm/incoming /opt/mtm-osrm/releases"
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key osrm-az.tgz osrm-az.tgz.sha256 \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/mtm-osrm/incoming/
+
+      - name: Stage and switch OSRM
+        run: |
+          set -euo pipefail
+          release="$(date -u +%Y%m%d%H%M)-${GITHUB_RUN_ID}"
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'bash -s' -- "$release" "$OSRM_IMAGE" < scripts/ops/mtm-osrm-switch.sh
+
+      - name: Smoke public endpoint
+        run: |
+          curl --fail --silent --show-error --max-time 15 \
+            https://app.leaddrivecrm.org/api/v1/ping >/dev/null
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

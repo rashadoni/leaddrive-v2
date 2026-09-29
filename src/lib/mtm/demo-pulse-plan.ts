@@ -135,15 +135,64 @@ export function planDemoPulseDay(input: {
   }
 }
 
+/** Key of the drive between two stops, for `roads`. */
+export function demoPulseLegKey(fromCustomerId: string, toCustomerId: string): string {
+  return `${fromCustomerId}>${toCustomerId}`
+}
+
+/** The drive between two stops, one per `demoPulseLegKey`, in the order they are driven. */
+export function demoPulseLegs(day: DemoPulseDay): Array<{ key: string; fromCustomerId: string; toCustomerId: string; leftAt: Date; arriveAt: Date }> {
+  return day.stops.slice(1).map((stop, index) => {
+    const previous = day.stops[index]
+    return {
+      key: demoPulseLegKey(previous.customerId, stop.customerId),
+      fromCustomerId: previous.customerId,
+      toCustomerId: stop.customerId,
+      leftAt: previous.checkOutAt,
+      arriveAt: stop.checkInAt,
+    }
+  })
+}
+
+/**
+ * The point `share` of the way along a line, by length. Owner 2026-09-28:
+ * a straight line between two customers crosses houses — the road track of
+ * the history map drew it as loops, and its kilometres came out 2.4 times the
+ * chord. Along a real road the demo drives like a car.
+ */
+export function pointAlong(line: ReadonlyArray<readonly [number, number]>, share: number): { latitude: number; longitude: number } {
+  const lengths: number[] = []
+  let total = 0
+  for (let index = 1; index < line.length; index += 1) {
+    const [a, b] = [line[index - 1], line[index]]
+    const piece = Math.hypot(a[0] - b[0], (a[1] - b[1]) * Math.cos((a[0] * Math.PI) / 180))
+    lengths.push(piece)
+    total += piece
+  }
+  let remaining = Math.min(1, Math.max(0, share)) * total
+  for (let index = 1; index < line.length; index += 1) {
+    const piece = lengths[index - 1]
+    if (remaining <= piece || index === line.length - 1) {
+      const part = piece > 0 ? Math.min(1, remaining / piece) : 0
+      const [a, b] = [line[index - 1], line[index]]
+      return { latitude: a[0] + (b[0] - a[0]) * part, longitude: a[1] + (b[1] - a[1]) * part }
+    }
+    remaining -= piece
+  }
+  return { latitude: line[0][0], longitude: line[0][1] }
+}
+
 /**
  * Where the agent is at `now` during the shift: at the customer during a
- * visit, otherwise on the straight line between the last stop and the next.
+ * visit, otherwise between the last stop and the next — along the road when
+ * `roads` has it (keyed by demoPulseLegKey), on the straight line when not.
  * Null outside the shift. `positions` maps customerId → coordinates.
  */
 export function demoPulsePosition(
   day: DemoPulseDay,
   positions: ReadonlyMap<string, { latitude: number; longitude: number }>,
   now: Date,
+  roads?: ReadonlyMap<string, ReadonlyArray<readonly [number, number]>>,
 ): { latitude: number; longitude: number; isMoving: boolean } | null {
   const time = now.getTime()
   if (time < day.shiftStartAt.getTime() || time >= day.shiftEndAt.getTime()) return null
@@ -159,6 +208,8 @@ export function demoPulsePosition(
       const leftAt = previous ? previous.checkOutAt.getTime() : day.shiftStartAt.getTime()
       const span = Math.max(1, stop.checkInAt.getTime() - leftAt)
       const share = Math.min(1, Math.max(0, (time - leftAt) / span))
+      const road = previous ? roads?.get(demoPulseLegKey(previous.customerId, stop.customerId)) : undefined
+      if (road && road.length > 1) return { ...pointAlong(road, share), isMoving: true }
       return {
         latitude: from.latitude + (to.latitude - from.latitude) * share,
         longitude: from.longitude + (to.longitude - from.longitude) * share,

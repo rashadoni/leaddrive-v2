@@ -35,7 +35,8 @@ describe("screens that no longer open on an empty period", () => {
 
   /** The agent and status filters are the reader's choices; only the period is ours. */
   it("measures photo emptiness on the period alone", () => {
-    expect(photos).toContain("rows: periodPhotos.length,")
+    // The server's count of the period across statuses (audit 2026-09-26).
+    expect(photos).toContain("rows: periodTotal,")
     expect(photos).not.toContain("rows: filtered.length,")
   })
 

@@ -230,3 +230,32 @@ describe("GET /api/v1/mtm/reports", () => {
     expect(json.error).toBeTruthy()
   })
 })
+
+// Audit 2026-09-26 (prod, week): 45 routes, «Завершено 45», «Завершённость
+// 100%» — while routes were closed with stops left unvisited.
+describe("GET /api/v1/mtm/reports?type=route", () => {
+  it("measures execution by stops visited of planned, and shows each route as visited/planned", async () => {
+    vi.mocked(prisma.mtmRoute.groupBy).mockResolvedValue([{ status: "COMPLETED", _count: { _all: 2 } }] as any)
+    vi.mocked(prisma.mtmRoute.aggregate).mockResolvedValue({ _sum: { totalPoints: 10, visitedPoints: 8 } } as any)
+    const today = new Date()
+    vi.mocked(prisma.mtmRoute.findMany)
+      .mockResolvedValueOnce([{ createdAt: today }, { createdAt: today }] as any)
+      .mockResolvedValueOnce([] as any)
+      .mockResolvedValueOnce([
+        { id: "r1", createdAt: today, status: "COMPLETED", totalPoints: 5, visitedPoints: 3, agent: { name: "Anar" } },
+        { id: "r2", createdAt: today, status: "COMPLETED", totalPoints: 5, visitedPoints: 5, agent: { name: "Aysel" } },
+      ] as any)
+
+    const res = await GET(makeReq("?type=route&period=week"))
+    const json = await res.json()
+    const summary = Object.fromEntries(json.data.summary.map((s: any) => [s.labelKey, s.value]))
+    expect(summary["sum.completed"]).toBe(2)
+    expect(summary["sum.completionRate"]).toBeUndefined()
+    expect(summary["sum.completedStops"]).toBe("8 / 10")
+    expect(summary["sum.compliance"]).toBe(80)
+    expect(json.data.reportData.map((row: any) => row.points)).toEqual(["3/5", "5/5"])
+    // Drafts and withdrawn routes are nobody's plan.
+    const stopsWhere = (vi.mocked(prisma.mtmRoute.aggregate).mock.calls[0][0] as any).where
+    expect(stopsWhere.status).toEqual({ notIn: ["DRAFT", "CANCELLED"] })
+  })
+})

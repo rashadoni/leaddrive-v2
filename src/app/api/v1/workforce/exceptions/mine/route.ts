@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
+import {
+  workforceSessionRoleAllows,
+  withWorkforceSessionAuth,
+} from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { resolveWorkforceExceptionResponseRecording } from "@/lib/workforce/exception-response-rollout"
+import {
+  MAX_WORKFORCE_EXCEPTION_DECISIONS,
+  projectWorkforceExceptionSelfResponseState,
+} from "@/lib/workforce/exception-workbench"
 
 const MAX_SELF_EXCEPTION_CASES = 100
 
@@ -37,6 +44,8 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
     // A missing organization or unknown flag shape remains the safe disabled
     // state. The response table must not be queried before an explicit rollout.
     const responseRecording = resolveWorkforceExceptionResponseRecording(organization?.features)
+    const canMutateResponses = responseRecording === "AVAILABLE"
+      && workforceSessionRoleAllows(auth.role, "write")
     const cases = await prisma.workforceExceptionCase.findMany({
       where: {
         organizationId: auth.orgId,
@@ -59,7 +68,19 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
         expectedWorkDate: true,
         workday: { select: { id: true, workDate: true } },
         ...(responseRecording === "AVAILABLE"
-          ? { employeeResponses: { take: 1, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true } } }
+          ? {
+              decisions: {
+                orderBy: { caseRevision: "asc" },
+                take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
+                select: { decisionCode: true, caseRevision: true },
+              },
+              employeeResponses: {
+                where: { observedCaseRevision: { not: null } },
+                orderBy: [{ observedCaseRevision: "desc" }, { id: "desc" }],
+                take: 1,
+                select: { observedCaseRevision: true },
+              },
+            }
           : {}),
       },
     })
@@ -75,14 +96,30 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
         disposition: "SELF_SERVICE_CORRECTION_ONLY",
         responseRecording,
         cases: cases.flatMap((item) => {
+          const decisions = "decisions" in item && Array.isArray(item.decisions)
+            ? item.decisions
+            : null
+          const employeeResponses = "employeeResponses" in item && Array.isArray(item.employeeResponses)
+            ? item.employeeResponses
+            : null
           const responseState = responseRecording === "AVAILABLE"
-            && "employeeResponses" in item
-            && Array.isArray(item.employeeResponses)
-            && item.employeeResponses.length > 0
-            ? "ACKNOWLEDGED" as const
-            : responseRecording === "AVAILABLE"
-              ? "NOT_ACKNOWLEDGED" as const
-              : "UNAVAILABLE" as const
+            && decisions !== null
+            && employeeResponses !== null
+            ? projectWorkforceExceptionSelfResponseState({
+                workdayId: item.workday?.id ?? null,
+                priorDecisions: decisions.slice(0, MAX_WORKFORCE_EXCEPTION_DECISIONS),
+                decisionHistoryComplete: decisions.length <= MAX_WORKFORCE_EXCEPTION_DECISIONS,
+                employeeResponses,
+              })
+            : "UNAVAILABLE" as const
+          const availableResponseAction = canMutateResponses
+            && responseState === "NOT_ACKNOWLEDGED"
+            && decisions !== null
+            ? {
+                kind: "ACKNOWLEDGE" as const,
+                expectedCaseRevision: decisions.length,
+              }
+            : null
           if (item.workday) {
             return [{
               caseId: item.id,
@@ -93,6 +130,7 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
               workDate: item.workday.workDate,
               availableAction: "REQUEST_CORRECTION" as const,
               responseState,
+              availableResponseAction,
             }]
           }
           if (item.kind === "NO_SHOW" && item.expectedWorkDate) {
@@ -108,6 +146,7 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
               // schedule-only case exposes no acknowledgement button even
               // after the additive response ledger has rolled out.
               responseState: "UNAVAILABLE" as const,
+              availableResponseAction: null,
             }]
           }
           return []

@@ -100,6 +100,15 @@ type WorkforceSnapshottedSegmentAt = {
   siteId: string | null
 }
 
+const WORKFORCE_SNAPSHOT_SEGMENT_MODES = new Set([
+  "SITE",
+  "REMOTE",
+  "FIELD",
+  "TRAVEL",
+  "ON_CALL",
+  "EXCEPTION",
+])
+
 /**
  * Resolves the one immutable planned segment that contained an accepted event
  * instant. It never trusts a client-provided segment id and never consults a
@@ -200,18 +209,34 @@ export function workforceSnapshottedSiteGeofence(
 export function workforceScheduledSnapshotSiteTransitionContext(
   value: unknown,
   segmentId: string,
-): { id: string; mode: string; siteId: string; previousSiteSegmentId: string | null } | null {
-  if (!Array.isArray(value)) return null
-  const segments = value.map((candidate) => {
+): {
+  id: string
+  mode: "SITE"
+  siteId: string
+  previousSiteSegmentId: string | null
+  previousSiteId: string | null
+} | null {
+  if (!Array.isArray(value) || !segmentId.trim()) return null
+  const segmentIds = new Set<string>()
+  const segments: Array<{ id: string; mode: string; siteId: string | null }> = []
+  for (const candidate of value) {
     if (candidate == null || typeof candidate !== "object") return null
     const segment = candidate as { id?: unknown; mode?: unknown; siteId?: unknown }
     if (
       typeof segment.id !== "string"
+      || !segment.id.trim()
       || typeof segment.mode !== "string"
+      || !segment.mode.trim()
+      || !WORKFORCE_SNAPSHOT_SEGMENT_MODES.has(segment.mode)
       || (typeof segment.siteId !== "string" && segment.siteId !== null)
+      || (typeof segment.siteId === "string" && !segment.siteId.trim())
+      || (segment.mode === "SITE" && segment.siteId === null)
+      || (segment.mode !== "SITE" && segment.siteId !== null)
+      || segmentIds.has(segment.id)
     ) return null
-    return { id: segment.id, mode: segment.mode, siteId: segment.siteId }
-  })
+    segmentIds.add(segment.id)
+    segments.push({ id: segment.id, mode: segment.mode, siteId: segment.siteId })
+  }
   const currentIndex = segments.findIndex((segment) => segment?.id === segmentId)
   const current = currentIndex < 0 ? null : segments[currentIndex]
   if (current == null || current.mode !== "SITE" || current.siteId == null) return null
@@ -223,10 +248,17 @@ export function workforceScheduledSnapshotSiteTransitionContext(
         mode: current.mode,
         siteId: current.siteId,
         previousSiteSegmentId: previous.id,
+        previousSiteId: previous.siteId,
       }
     }
   }
-  return { id: current.id, mode: current.mode, siteId: current.siteId, previousSiteSegmentId: null }
+  return {
+    id: current.id,
+    mode: current.mode,
+    siteId: current.siteId,
+    previousSiteSegmentId: null,
+    previousSiteId: null,
+  }
 }
 
 /** Rejects a v3 claimed segment unless this employee workday already pinned it. */

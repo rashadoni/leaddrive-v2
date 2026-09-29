@@ -17,6 +17,7 @@ import {
   DEMO_JOURNEY_HAPPY_PATH,
   DEMO_JOURNEY_STATES,
   PROSPECT_TO_CLOSED_WON,
+  demoSourceChannelOf,
   findSection,
   findStep,
   rebuildRecordsAtState,
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       jobTitle: grant.request.jobTitle,
       emailMasked: maskEmail(grant.request.email),
       phoneMasked: grant.request.phone ? maskPhone(grant.request.phone) : null,
-      sourceChannel: "website",
+      sourceChannel: demoSourceChannelOf(grant.request.source),
     }
     const records = rebuildRecordsAtState(identity, state, now, DEMO_JOURNEY_HAPPY_PATH)
     const grounding = buildAssistantGrounding(

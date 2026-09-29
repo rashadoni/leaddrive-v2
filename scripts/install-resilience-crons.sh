@@ -44,6 +44,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/v1\/social\/cron\/poll-all/ { next }
   /cron-trigger\.sh \/api\/cron\/social-monitoring-sources/ { next }
   /cron-trigger\.sh \/api\/cron\/social-monitoring-run-jobs/ { next }
+  /cron-trigger\.sh \/api\/cron\/social-relevance-judge/ { next }
   /cron-trigger\.sh \/api\/v1\/social\/cron\/reconcile-providers/ { next }
   /cron-trigger\.sh \/api\/v1\/social\/cron\/process-media/ { next }
   /cron-trigger\.sh \/api\/v1\/social\/cron\/purge-observations/ { next }
@@ -125,6 +126,12 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # behind their existing opt-in state. Retaining the marker also ensures an
   # older installer preserves the disabled state during rollback.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/social-monitoring-run-jobs >> $LOG 2>&1"
+  # The relevance judge's second-signal pass. Every fifteen minutes, not every
+  # minute: it asks a paid provider per record, the queue it drains is finite
+  # (records it has answered are stamped and never asked again), and the only
+  # thing a slower schedule delays is how soon a wrongly rejected mention comes
+  # back. Each answered record is stamped, so a repeated tick re-reads nothing.
+  printf '%s\n' "*/15 * * * * $TRIGGER /api/cron/social-relevance-judge >> $LOG 2>&1"
   if [ "$SOCIAL_CRONS_DISABLED" = true ]; then
     printf '%s\n' "$SOCIAL_DISABLED_MARKER"
     printf '%s\n' "# 2,17,32,47 * * * * $TRIGGER /api/v1/social/cron/poll-all >> $LOG 2>&1"

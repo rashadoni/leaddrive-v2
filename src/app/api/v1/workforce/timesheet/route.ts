@@ -13,6 +13,9 @@ import {
   type WorkforceShiftSnapshotForCalculation,
   type WorkforceTimesheetWorkday,
 } from "@/lib/workforce/timesheet-rehydration"
+import type {
+  WorkforceWorkdayScheduleSnapshotForCalculation,
+} from "@/lib/workforce/timesheet-schedule-snapshot"
 import { requireWorkforceTimesheetReadAccess } from "@/lib/workforce/timesheet-read-access"
 import {
   WORKFORCE_WORKDAY_JOURNAL_ORDER,
@@ -146,9 +149,10 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         })
       : []
     const workdayIds = workdays.map((workday) => workday.id)
-    const [policySnapshots, shiftSnapshots]: [
+    const [policySnapshots, shiftSnapshots, scheduleSnapshots]: [
       WorkforcePolicySnapshotForCalculation[],
       WorkforceShiftSnapshotForCalculation[],
+      WorkforceWorkdayScheduleSnapshotForCalculation[],
     ] = workdayIds.length > 0
       ? await Promise.all([
           prisma.workforcePolicySnapshot.findMany({
@@ -158,6 +162,8 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
               workdayId: true,
               agentId: true,
               workDate: true,
+              definition: true,
+              definitionHash: true,
               expectedWorkSeconds: true,
               lateGraceSeconds: true,
               undertimeToleranceSeconds: true,
@@ -172,17 +178,39 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
               workdayId: true,
               agentId: true,
               workDate: true,
+              definition: true,
+              definitionHash: true,
               timezone: true,
               plannedStartAt: true,
               plannedEndAt: true,
             },
           }),
+          prisma.workforceWorkdayScheduleSnapshot.findMany({
+            where: { organizationId: auth.orgId, workdayId: { in: workdayIds } },
+            select: {
+              id: true,
+              workdayId: true,
+              agentId: true,
+              workDate: true,
+              policySnapshotId: true,
+              shiftSnapshotId: true,
+              schemaVersion: true,
+              calendarState: true,
+              calendarSnapshot: true,
+              segments: true,
+              sites: true,
+              snapshotHash: true,
+            },
+          }),
         ])
-      : [[], []]
+      : [[], [], []]
     const policyByWorkday = new Map(policySnapshots.map((snapshot) => [snapshot.workdayId, snapshot]))
     const shiftByWorkday = new Map(shiftSnapshots.map((snapshot) => [snapshot.workdayId, snapshot]))
+    const scheduleByWorkday = new Map(scheduleSnapshots.map((snapshot) => [snapshot.workdayId, snapshot]))
     const snapshottedWorkdayIds = workdayIds.filter((workdayId) => (
-      policyByWorkday.has(workdayId) && shiftByWorkday.has(workdayId)
+      policyByWorkday.has(workdayId)
+      && shiftByWorkday.has(workdayId)
+      && scheduleByWorkday.has(workdayId)
     ))
     const [events, corrections]: [WorkforceWorkdayEventRecord[], WorkforceCorrectionRecord[]] = snapshottedWorkdayIds.length > 0
       ? await Promise.all([
@@ -204,11 +232,12 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
     const rows = workdays.map((workday) => {
       const policySnapshot = policyByWorkday.get(workday.id)
       const shiftSnapshot = shiftByWorkday.get(workday.id)
+      const scheduleSnapshot = scheduleByWorkday.get(workday.id)
       const base = {
         ...workday,
         date: workday.workDate.toISOString().slice(0, 10),
       }
-      if (!policySnapshot || !shiftSnapshot) {
+      if (!policySnapshot || !shiftSnapshot || !scheduleSnapshot) {
         return {
           ...base,
           // Legacy projection timestamps remain canonical workday facts, but
@@ -228,6 +257,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           workday,
           policySnapshot,
           shiftSnapshot,
+          scheduleSnapshot,
           events: (eventsByWorkday.get(workday.id) ?? []).map(workforceWorkdayEventFact),
           corrections: correctionsByWorkday.get(workday.id) ?? [],
         })

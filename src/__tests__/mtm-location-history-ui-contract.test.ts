@@ -56,16 +56,18 @@ describe("SWM-10 GPS history presentation contract", () => {
     expect(panel).toContain("void loadHistory()")
   })
 
-  it("lays out the full filter row from the panel width instead of the viewport", () => {
+  // Owner 2026-09-27: filters in one row. The fixed seven-column grid is a
+  // row of pills that wraps inside the panel, so it cannot overflow it.
+  it("lays the filters out as one wrapping row of pills, with «Показать» kept", () => {
     expect(panel).toContain('data-testid="mtm-location-history-filter-form"')
     expect(panel).toContain('className="@container rounded-lg')
-    // Two date columns since the range (owner 2026-09-22).
-    expect(panel).toContain("@min-[64rem]:grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto]")
-    expect(panel).toContain('data-testid="mtm-location-history-accuracy"')
+    expect(panel).toContain('<MtmFilterBar testId="mtm-location-history-filters">')
+    expect(panel).not.toContain("grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto]")
+    // Two date pills since the range (owner 2026-09-22).
+    expect(panel).toContain('testId="mtm-location-history-date-from"')
+    expect(panel).toContain('testId="mtm-location-history-date-to"')
+    expect(panel).toContain('testId="mtm-location-history-accuracy"')
     expect(panel).toContain('data-testid="mtm-location-history-submit"')
-    expect(panel).toContain("@min-[64rem]:w-auto")
-    expect(panel).not.toContain("lg:grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto]")
-    expect(panel).not.toContain("lg:w-auto")
   })
 
   it("keeps the visit table heading separate from the visit status dictionary", () => {
@@ -163,7 +165,7 @@ describe("SWM-10 GPS history presentation contract", () => {
     expect(clampHistoryEndDate("2026-09-15", "2026-09-22")).toBe("2026-09-22")
     expect(panel).toContain("const end = clampHistoryEndDate(start, toDate)")
     expect(panel).not.toContain("toDate === date ? start :")
-    expect(panel).toContain('data-testid="mtm-location-history-date-to"')
+    expect(panel).toContain('testId="mtm-location-history-date-to"')
     expect(panel).toContain('if (toDate !== date) params.set("toDate", toDate)')
     expect(panel).toContain('data-testid="mtm-history-range-workdays"')
     for (const messages of locales) {

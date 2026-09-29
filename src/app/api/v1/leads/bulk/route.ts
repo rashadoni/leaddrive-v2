@@ -3,8 +3,13 @@ import { z } from "zod"
 import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
+import { applyRecordFilter } from "@/lib/sharing-rules"
+import { fireWebhooks } from "@/lib/webhooks"
 import { clearDeletedMentionRefs } from "@/lib/social/mention-refs"
 import { clearTaskRelationsMany } from "@/lib/tasks/clear-task-relations"
+import { updateLeadCommand } from "@/lib/crm-commands/lead/update-lead"
+import { createRestActorContext } from "@/lib/crm-commands/actor-context"
+import { CrmCommandError } from "@/lib/crm-commands/errors"
 
 /**
  * Bulk-actions endpoint for the leads list page.
@@ -23,6 +28,24 @@ import { clearTaskRelationsMany } from "@/lib/tasks/clear-task-relations"
  * needs a deal record with its own value/probability/stage, which can't
  * be derived bulk-safely without per-lead context. Use the per-row
  * convert button (existing UX).
+ *
+ * Roadmap C1.13, 2026-09-28: the two write actions run `updateLeadCommand`
+ * once per lead — the same command the single-lead route and a voice receipt
+ * run. Before that this endpoint wrote through `updateMany` directly, and the
+ * difference was not cosmetic:
+ *
+ *  - it ignored the record filter, so a seller could change leads that are not
+ *    theirs and that they cannot even open;
+ *  - it accepted any string as the new owner, including a user of another
+ *    organisation, because nothing checked membership;
+ *  - it wrote no author into the audit row, fired no workflow, notified no new
+ *    owner, re-scored nothing and sent no webhook, so an integration never
+ *    learned that fifty leads had changed hands;
+ *  - it answered `affected: ids.length` without looking at how many rows were
+ *    actually written.
+ *
+ * A hundred leads therefore cost a hundred small transactions. That is the
+ * price of the guarantees above, and the endpoint is capped at a hundred ids.
  */
 
 // Lead.status enum from the model docstring. `converted` excluded from
@@ -35,6 +58,31 @@ const bulkSchema = z.object({
   value: z.string().optional(),
 })
 
+type BulkFailure = { id: string; code: string }
+
+/** Run one command per lead, and report honestly what happened to each. */
+async function applyToEach(
+  ids: readonly string[],
+  actor: ReturnType<typeof createRestActorContext>,
+  data: Record<string, unknown>,
+): Promise<{ updated: number; failures: BulkFailure[] }> {
+  let updated = 0
+  const failures: BulkFailure[] = []
+  for (const id of ids) {
+    try {
+      await updateLeadCommand(actor, id, data)
+      updated += 1
+    } catch (error) {
+      // A lead the caller may not see is `NOT_FOUND`, exactly as it is on the
+      // single-lead route. One unreachable lead does not abandon the rest.
+      const code = error instanceof CrmCommandError ? error.code : "INTERNAL"
+      if (!(error instanceof CrmCommandError)) console.error("[Leads Bulk]", id, error)
+      failures.push({ id, code })
+    }
+  }
+  return { updated, failures }
+}
+
 export const POST = withRlsAuth("leads", "write", async (req: NextRequest, authResult) => {
   const orgId = authResult.orgId
 
@@ -45,10 +93,14 @@ export const POST = withRlsAuth("leads", "write", async (req: NextRequest, authR
   }
 
   const { ids, action, value } = parsed.data
+  const actor = createRestActorContext({
+    organizationId: orgId,
+    userId: authResult.userId,
+    role: authResult.role,
+    requestId: req.headers.get("x-request-id"),
+  })
 
   try {
-    const where = { id: { in: ids }, organizationId: orgId }
-
     switch (action) {
       case "delete": {
         // RBAC-equivalent to the prior inner requireAuth(…,"leads","delete");
@@ -60,12 +112,39 @@ export const POST = withRlsAuth("leads", "write", async (req: NextRequest, authR
             { status: 403 },
           )
         }
-        const result = await prisma.lead.deleteMany({ where })
-        logAudit(orgId, "bulk_delete", "lead", ids.join(","), `Deleted ${result.count} leads`)
+        // The same record filter the single-lead DELETE applies: without it a
+        // seller could delete leads they cannot see.
+        const where = await applyRecordFilter(orgId, authResult.userId ?? "", authResult.role, "lead", {
+          id: { in: ids },
+          organizationId: orgId,
+        })
+        const deletable = await prisma.lead.findMany({
+          where,
+          select: { id: true, contactName: true },
+        })
+        const deletableIds = deletable.map((lead: { id: string }) => lead.id)
+        if (deletableIds.length === 0) {
+          return NextResponse.json({ success: true, affected: 0, failed: ids.map((id) => ({ id, code: "NOT_FOUND" })) })
+        }
+        const result = await prisma.lead.deleteMany({
+          where: { id: { in: deletableIds }, organizationId: orgId },
+        })
+        logAudit(orgId, "bulk_delete", "lead", deletableIds.join(","), `Deleted ${result.count} leads`, {
+          userId: authResult.userId ?? undefined,
+        })
+        // The single-lead route announces each deletion; an integration that
+        // only hears about one-by-one deletions has an incomplete picture.
+        for (const lead of deletable) {
+          fireWebhooks(orgId, "lead.deleted", { id: lead.id, contactName: lead.contactName }).catch(() => {})
+        }
         // Drop social-mention back-references to the deleted leads (no FK → not auto-nulled).
-        await clearDeletedMentionRefs(orgId, "leadId", ids)
-        await clearTaskRelationsMany(orgId, "lead", ids)
-        break
+        await clearDeletedMentionRefs(orgId, "leadId", deletableIds)
+        await clearTaskRelationsMany(orgId, "lead", deletableIds)
+        return NextResponse.json({
+          success: true,
+          affected: result.count,
+          failed: ids.filter((id) => !deletableIds.includes(id)).map((id) => ({ id, code: "NOT_FOUND" })),
+        })
       }
 
       case "update_status": {
@@ -84,24 +163,28 @@ export const POST = withRlsAuth("leads", "write", async (req: NextRequest, authR
             { status: 400 },
           )
         }
-        const result = await prisma.lead.updateMany({ where, data: { status: value } })
-        logAudit(orgId, "bulk_update", "lead", ids.join(","), `Updated ${result.count} leads to status "${value}"`)
-        break
+        const { updated, failures } = await applyToEach(ids, actor, { status: value })
+        logAudit(orgId, "bulk_update", "lead", ids.join(","), `Updated ${updated} leads to status "${value}"`, {
+          userId: authResult.userId ?? undefined,
+        })
+        return NextResponse.json({ success: true, affected: updated, failed: failures })
       }
 
       case "reassign": {
-        // `value === ""` clears the assignedTo FK (lead.assignedTo: String?)
+        // `value === ""` clears the assignedTo FK (lead.assignedTo: String?).
+        // A non-empty value is checked against active members of this
+        // organisation inside the command, so a foreign user id is refused
+        // rather than written.
         const newOwner = value && value.length > 0 ? value : null
-        const result = await prisma.lead.updateMany({
-          where,
-          data: { assignedTo: newOwner },
+        const { updated, failures } = await applyToEach(ids, actor, { assignedTo: newOwner })
+        logAudit(orgId, "bulk_update", "lead", ids.join(","), `Reassigned ${updated} leads to ${newOwner ?? "unassigned"}`, {
+          userId: authResult.userId ?? undefined,
         })
-        logAudit(orgId, "bulk_update", "lead", ids.join(","), `Reassigned ${result.count} leads to ${newOwner ?? "unassigned"}`)
-        break
+        return NextResponse.json({ success: true, affected: updated, failed: failures })
       }
     }
 
-    return NextResponse.json({ success: true, affected: ids.length })
+    return NextResponse.json({ success: true, affected: 0 })
   } catch (e) {
     console.error("[Leads Bulk]", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

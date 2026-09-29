@@ -16,3 +16,16 @@ export function resolveWorkforceExceptionResponseRecording(
     ? "AVAILABLE"
     : "MIGRATION_REQUIRED"
 }
+
+/**
+ * The manager decision stream predates the employee-response channel. Keep
+ * every unrelated decision available while failing closed only for the
+ * request that depends on that tenant's migrated response channel.
+ */
+export function isWorkforceExceptionDecisionEnabledForResponseRollout(
+  decisionCode: string,
+  features: unknown,
+): boolean {
+  return decisionCode !== "REQUEST_EMPLOYEE_RESPONSE"
+    || resolveWorkforceExceptionResponseRecording(features) === "AVAILABLE"
+}

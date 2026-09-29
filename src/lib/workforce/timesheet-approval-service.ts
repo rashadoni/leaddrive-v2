@@ -29,6 +29,9 @@ import {
   type WorkforceShiftSnapshotForCalculation,
   type WorkforceTimesheetWorkday,
 } from "@/lib/workforce/timesheet-rehydration"
+import type {
+  WorkforceWorkdayScheduleSnapshotForCalculation,
+} from "@/lib/workforce/timesheet-schedule-snapshot"
 import {
   WORKFORCE_WORKDAY_JOURNAL_ORDER,
   WORKFORCE_WORKDAY_JOURNAL_SELECT,
@@ -197,9 +200,10 @@ async function rebuildApprovalRows(
   }
 
   const workdayIds = workdays.map((workday) => workday.id)
-  const [policySnapshots, shiftSnapshots]: [
+  const [policySnapshots, shiftSnapshots, scheduleSnapshots]: [
     WorkforcePolicySnapshotForCalculation[],
     WorkforceShiftSnapshotForCalculation[],
+    WorkforceWorkdayScheduleSnapshotForCalculation[],
   ] = await Promise.all([
     tx.workforcePolicySnapshot.findMany({
       where: { organizationId: scope.organizationId, workdayId: { in: workdayIds } },
@@ -208,6 +212,8 @@ async function rebuildApprovalRows(
         workdayId: true,
         agentId: true,
         workDate: true,
+        definition: true,
+        definitionHash: true,
         expectedWorkSeconds: true,
         lateGraceSeconds: true,
         undertimeToleranceSeconds: true,
@@ -222,20 +228,48 @@ async function rebuildApprovalRows(
         workdayId: true,
         agentId: true,
         workDate: true,
+        definition: true,
+        definitionHash: true,
         timezone: true,
         plannedStartAt: true,
         plannedEndAt: true,
       },
     }),
+    tx.workforceWorkdayScheduleSnapshot.findMany({
+      where: { organizationId: scope.organizationId, workdayId: { in: workdayIds } },
+      select: {
+        id: true,
+        workdayId: true,
+        agentId: true,
+        workDate: true,
+        policySnapshotId: true,
+        shiftSnapshotId: true,
+        schemaVersion: true,
+        calendarState: true,
+        calendarSnapshot: true,
+        segments: true,
+        sites: true,
+        snapshotHash: true,
+      },
+    }),
   ])
   const policyByWorkday = new Map(policySnapshots.map((snapshot) => [snapshot.workdayId, snapshot]))
   const shiftByWorkday = new Map(shiftSnapshots.map((snapshot) => [snapshot.workdayId, snapshot]))
-  if (workdays.some((workday) => !policyByWorkday.has(workday.id) || !shiftByWorkday.has(workday.id))) {
+  const scheduleByWorkday = new Map(scheduleSnapshots.map((snapshot) => [snapshot.workdayId, snapshot]))
+  if (workdays.some((workday) => (
+    !policyByWorkday.has(workday.id)
+    || !shiftByWorkday.has(workday.id)
+    || !scheduleByWorkday.has(workday.id)
+  ))) {
     throw conflict(
       "WORKFORCE_TIMESHEET_APPROVAL_SNAPSHOT_MISSING",
-      "Every recorded workday in the requested period needs immutable policy and shift snapshots",
+      "Every recorded workday in the requested period needs immutable policy, shift and schedule snapshots",
       workdays
-        .filter((workday) => !policyByWorkday.has(workday.id) || !shiftByWorkday.has(workday.id))
+        .filter((workday) => (
+          !policyByWorkday.has(workday.id)
+          || !shiftByWorkday.has(workday.id)
+          || !scheduleByWorkday.has(workday.id)
+        ))
         .map((workday) => ({
           workdayId: workday.id,
           workDate: workday.workDate.toISOString().slice(0, 10),
@@ -262,6 +296,7 @@ async function rebuildApprovalRows(
   const rows = workdays.map((workday) => {
     const policySnapshot = policyByWorkday.get(workday.id)!
     const shiftSnapshot = shiftByWorkday.get(workday.id)!
+    const scheduleSnapshot = scheduleByWorkday.get(workday.id)!
     try {
       const result = rehydrateWorkforceTimesheetDay({
         // `completedAt` is present above, so approval never freezes a
@@ -270,6 +305,7 @@ async function rebuildApprovalRows(
         workday,
         policySnapshot,
         shiftSnapshot,
+        scheduleSnapshot,
         events: (eventsByWorkday.get(workday.id) ?? []).map(workforceWorkdayEventFact),
         corrections: correctionsByWorkday.get(workday.id) ?? [],
       })
@@ -359,9 +395,9 @@ async function rebuildApprovalRows(
         expectedWorkDate: true,
         workdayEvent: { select: { workdayId: true, workday: { select: { workDate: true } } } },
         decisions: {
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          orderBy: { caseRevision: "asc" },
           take: MAX_APPROVAL_CASE_DECISIONS + 1,
-          select: { decisionCode: true },
+          select: { decisionCode: true, caseRevision: true },
         },
       },
     })
@@ -378,7 +414,11 @@ async function rebuildApprovalRows(
     if (
       !row
       || !workday
-      || row.calculationVersion !== exception.calculationVersion
+      || (
+        row.calculationVersion !== exception.calculationVersion
+        && !("coreCalculationVersion" in row.calculation
+          && row.calculation.coreCalculationVersion === exception.calculationVersion)
+      )
       || (exception.status !== "OPEN" && exception.status !== "ACKNOWLEDGED")
     ) return []
     return [{
@@ -391,8 +431,9 @@ async function rebuildApprovalRows(
   })
 
   const caseBlockers: WorkforceTimesheetApprovalBlocker[] = exceptionCases.flatMap((exceptionCase) => {
-    const decisionsTruncated = exceptionCase.decisions.length > MAX_APPROVAL_CASE_DECISIONS
-    const lifecycle = decisionsTruncated
+    const decisionsInvalid = exceptionCase.decisions.length > MAX_APPROVAL_CASE_DECISIONS
+      || exceptionCase.decisions.some((decision, index) => decision.caseRevision !== index + 1)
+    const lifecycle = decisionsInvalid
       ? null
       : evaluateWorkforceExceptionDraftLifecycle(exceptionCase.decisions)
     if (lifecycle?.valid && lifecycle.stage === "RESOLVED") return []

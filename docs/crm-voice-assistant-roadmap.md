@@ -398,7 +398,27 @@ No voice write tools are enabled in this phase.
       there is nothing to preserve there yet.
 - [ ] C1.12 Introduce a transactional outbox where external side effects cannot
       safely share the record transaction.
+      **Not ours to build (2026-09-28).** This is already an accepted platform
+      decision: `docs/event-platform/ADR-001-KAFKA-EVENT-BACKBONE.md` says a
+      business transaction appends a canonical event and an outbox row in the
+      same PostgreSQL transaction, and the `effect_outbox` table exists with
+      RLS, leases, attempts and reconciliation states. What is missing is a
+      drainer — nothing in `src/app` references `effectOutbox`, so today the
+      table is written by nobody and read by nobody. Building a second outbox
+      for CRM commands is exactly the duplication ADR-001 was written against.
+      Moving the commands onto the platform path needs the platform workstream,
+      so this item waits on it rather than being solved locally.
 - [ ] C1.13 Route current REST operations through the same command services.
+      Progress 2026-09-28: the bulk endpoints. `/api/v1/leads/bulk` and
+      `/api/v1/deals/bulk` now run `updateLeadCommand` / `updateDealCommand`
+      once per record for their write actions, and the lead bulk delete applies
+      the record filter and fires `lead.deleted` per lead as the single-lead
+      route does. What that closed: bulk writes ignored the record filter,
+      accepted any user id as the new owner (including another tenant's),
+      wrote no author into the audit row, fired no workflow, notified no new
+      owner, re-scored nothing, sent no webhook, and answered `affected:
+      ids.length` without looking. A bulk move of deals into the won stage paid
+      no cashback, sent no survey and awarded no loyalty points.
       Progress 2026-09-21: `PATCH /api/v1/tasks/:id` and `PUT|PATCH
       /api/v1/deals/:id` now run `updateTaskCommand` / `updateDealCommand`,
       the handlers moved verbatim (board permissions, TaskActivity, recurrence,
@@ -978,6 +998,8 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
 | 2026-09-21 | Confirm by voice; create in its section (P0.4 amended) | Production deployed | PR #335; merge `5c440d647`; active artifact `376f06a3fb69570bd21500a8534ce3341a0a4931`; deploy `35620838258`; microphone fix PR #331 (`0a7dd1ff3`) live since artifact `e36336180` | Owner's voice test: a spoken yes now executes the receipt through the button's path, decided by app code from the user's transcript and never by the model. Prompt: open the section first, ask once what else to add, list fields only on request. |
 | 2026-09-21 | Show the saved record | Production deployed | PR #344; merge `feff35fc1`; active artifact `e89855be2807e106001baf42044932543d62ba0c`; deploy `35629195341` | Owner: after a change or creation the result must be on screen. The console opens the saved task/lead/deal; on the lead's own card it re-reads the card instead. The model is told the record is open and asks the user to check it. |
+| 2026-09-28 | Bulk actions run the shared commands (C1.13) | Code complete | Branch `codex/voice-command-outbox`; targeted Vitest + 4 mutation checks; full suite matches baseline | Lead and deal bulk writes go through the same commands as the single-record routes and a voice receipt: record filter, tenant-checked assignee, per-record audit with the author, workflows, notifications, scoring, webhooks. Bulk lead delete now filters by visibility and announces each deletion. |
+| 2026-09-28 | Move a deal between stages by voice (V1.2c) | Production deployed | PR #472; merge `494e14f51`; active artifact `494e14f515f0228b00b78fbefc1fd76a1a010c32`; 6 mutation checks | `propose_move_deal_stage` resolves the spoken stage against the stages that deal's pipeline actually has (RU/AZ/EN bridge, the org's own names win). Its own receipt and its own closed field list: stage + lostReason, nothing else. Winning or losing carries a warning naming the cashback, the customer survey and the loyalty award. |
 | 2026-09-21 | Edit tasks and deals by voice | Production deployed | PR #350; merge `4a7234ba9`; active artifact `f3db78e53cfec85d5aaa38d8493f60c1cc3d3d83`; deploy `35641255526`; 7 mutation checks | `update_task` (title, description, priority, due date, assignee, status by meaning) and `update_deal` (name, amount, currency, close date, company, contact, assignee, notes). No deal stage/pipeline/probability by voice. Receipts now name people, companies and contacts instead of printing ids. |
 | 2026-09-21 | Audit provenance and fabrication proof (V1.9, V1.10) | Production deployed | PR #314; merge `759b10a90`; shipped in artifact `a37ec1d776fe9edb32e6b39618e8d5f1a27ea635`; migration applied by deploy `35594125227` | Every CRM audit row from the five commands names its actor; the produced record is indexed back to its intent. Closes Phase 7 (V1). |
 | 2026-09-21 | Tool-call ceilings (V1.8) | Production deployed | Targeted Vitest: 544 files / 5699 green, 8 known-baseline reds; targeted ESLint; i18n parity | Per-turn and per-session read ceilings, a proposal ceiling that does not refill, and a deadline on the proposal call. |

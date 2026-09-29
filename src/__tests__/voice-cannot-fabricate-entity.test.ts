@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => ({
   contacts: vi.fn(),
   pipeline: vi.fn(),
   stage: vi.fn(),
+  stages: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -44,7 +45,7 @@ vi.mock("@/lib/prisma", () => ({
     company: { findMany: mocks.companies },
     contact: { findMany: mocks.contacts },
     pipeline: { findFirst: mocks.pipeline },
-    pipelineStage: { findFirst: mocks.stage },
+    pipelineStage: { findFirst: mocks.stage, findMany: mocks.stages },
   },
 }))
 vi.mock("@/lib/sharing-rules", () => ({
@@ -92,6 +93,11 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   propose_update_deal: {
     dealName: POISON, name: POISON, companyName: POISON, contactName: POISON, assigneeName: POISON, notes: POISON,
   },
+  // The stage is words, resolved against the deal's own pipeline; the poison
+  // must not become a stage name either.
+  // A real stage word, because an unmatched stage is a question to the user
+  // rather than a draft; the poisoned-stage case has its own test below.
+  propose_move_deal_stage: { dealName: POISON, stage: "negotiation", lostReason: POISON },
 }
 
 beforeEach(() => {
@@ -102,8 +108,12 @@ beforeEach(() => {
   mocks.contacts.mockResolvedValue([{ id: DB_IDS.contact, fullName: POISON }])
   mocks.tasks.mockResolvedValue([{ id: DB_IDS.task, title: POISON, divisionId: null }])
   mocks.deals.mockResolvedValue([{ id: DB_IDS.deal, name: POISON }])
-  mocks.pipeline.mockResolvedValue(null)
+  mocks.pipeline.mockResolvedValue({ id: "db-pipeline-0001" })
   mocks.stage.mockResolvedValue(null)
+  mocks.stages.mockResolvedValue([
+    { name: "NEGOTIATION", displayName: "Negotiation", isWon: false, isLost: false },
+    { name: "WON", displayName: "Won", isWon: true, isLost: false },
+  ])
 })
 
 describe("no proposal tool lets the model choose a record", () => {
@@ -164,6 +174,30 @@ describe("no proposal tool lets the model choose a record", () => {
       if (field === "assignedTo") continue
       expect(lead.payload[field], field).toBeUndefined()
     }
+  })
+
+  it("never lets the model invent a deal stage", async () => {
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_move_deal_stage",
+      { stage: POISON },
+      { recordType: "deal", recordId: "screen-deal-0001" },
+    )
+    // The stage must be one of the pipeline's own; anything else is a question.
+    expect(result.kind).toBe("clarify")
+    if (result.kind === "clarify") {
+      expect(result.candidates.map((candidate) => candidate.id)).toEqual(["NEGOTIATION", "WON"])
+    }
+  })
+
+  it("stores the pipeline's own spelling, not the spoken one", async () => {
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_move_deal_stage",
+      { stage: "переговоры" },
+      { recordType: "deal", recordId: "screen-deal-0001" },
+    )
+    expect(result).toMatchObject({ actionType: "move_deal_stage", payload: { stage: "NEGOTIATION" } })
   })
 
   it("never lets the model name the record an update touches directly", async () => {

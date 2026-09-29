@@ -18,16 +18,38 @@ describe("MTM photos page", () => {
   it("lands on this week's photos and filters employees on the server", () => {
     expect(page).toContain('useState<PhotoPeriod>("week")')
     expect(page).toContain('params.set("agentId", agentFilter)')
-    expect(page).toContain('data-testid="mtm-photos-period"')
-    expect(page).toContain('data-testid="mtm-photos-agent"')
+    expect(page).toContain('testId="mtm-photos-period"')
+    expect(page).toContain('testId="mtm-photos-agent"')
   })
 
-  it("counts the cards over the chosen period so they add up; the server total is only a note", () => {
-    expect(page).toContain('<ColorStatCard label={t("statTotal")} value={periodPhotos.length}')
-    expect(page).toContain("for (const p of periodPhotos) statusCounts[p.status]")
+  it("counts the cards over the chosen period on the server, so «all» is not the page size", () => {
+    // Audit 2026-09-26: «Всего 200» while 1367 photos were stored.
+    // The status chips carry the counts; the four stat cards that repeated them are gone (2026-09-27).
+    expect(page).toContain('{t("all")} ({periodTotal})')
+    expect(page).not.toContain("<ColorStatCard")
+    expect(page).toContain("setStatusCounts(r.data.byStatus && typeof r.data.byStatus === \"object\" ? r.data.byStatus : {})")
+    expect(page).toContain('params.set("since", new Date(mtmPhotoPeriodStart(period, new Date(), timezone)).toISOString())')
+    expect(page).toContain('if (activeFilter !== "all") params.set("status", activeFilter)')
     expect(page).toContain('t("latestOfTotal", { shown: photos.length, total })')
-    expect(page).not.toContain("value={total}")
     expect(page).not.toContain("value={photos.length}")
+    // A response to an earlier choice must not paint over the current one.
+    expect(page).toContain("if (requestId !== photoRequestRef.current) return")
+  })
+
+  it("does not offer to approve a photo whose file is missing, and keeps the tile's buttons inside it", () => {
+    expect(page).toContain('photo.status === "PENDING" && (!photo.url || missingFiles.has(photo.id)) ? (')
+    expect(page).toContain('data-testid="mtm-photo-review-unavailable"')
+    expect(page).toContain("if (!missingFiles.has(id)) updatePhotoStatus(id, \"APPROVED\")")
+    expect(page).toContain('<div className="mt-2 grid grid-cols-2 gap-1">')
+  })
+
+  it("has no dead Export button, no duplicate agent search, and names its view modes", () => {
+    expect(page).not.toContain("Export (")
+    expect(page).not.toContain('t("searchPlaceholder")')
+    expect(page).toContain('{t("modeGallery")}')
+    expect(page).toContain('{t("modeCompare")}')
+    expect(page).toContain('{t("modeBatch")}')
+    expect(page).not.toContain('description={t("subtitle")}')
   })
 
   it("uses the organization's timezone and the roster for its filters", () => {

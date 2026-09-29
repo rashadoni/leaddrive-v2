@@ -76,11 +76,11 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextReques
         agentId: true,
         kind: true,
         decisions: {
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          orderBy: { caseRevision: "asc" },
           // Any case at the sentinel length is retained for integrity review;
           // never derive a terminal state from a truncated decision ledger.
           take: MAX_DECISIONS_PER_CASE + 1,
-          select: { decisionCode: true },
+          select: { decisionCode: true, caseRevision: true },
         },
         employeeResponses: { take: 1, select: { id: true } },
       },
@@ -97,7 +97,8 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextReques
         agentId: item.agentId,
         kind: item.kind,
         decisionCodes: item.decisions.slice(0, MAX_DECISIONS_PER_CASE).map((decision) => decision.decisionCode),
-        decisionHistoryTruncated: item.decisions.length >= MAX_DECISIONS_PER_CASE + 1,
+        decisionHistoryTruncated: item.decisions.length >= MAX_DECISIONS_PER_CASE + 1
+          || item.decisions.some((decision, index) => decision.caseRevision !== index + 1),
         recordedEmployeeResponseCount: item.employeeResponses.length,
       })),
     })

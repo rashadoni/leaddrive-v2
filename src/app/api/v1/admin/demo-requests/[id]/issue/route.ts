@@ -54,6 +54,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ success: false, error: "Rejected requests cannot be issued" }, { status: 409 })
   }
 
+  // A database refusal used to escape as a bare 500 the editor could not read,
+  // so the owner saw «Demo verilə bilmədi» with no reason, three days running.
   const result = await issueDemoGrant({
     request: demoRequest,
     actorUserId: actor.userId,
@@ -66,6 +68,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       locale: parsed.data.locale,
       liveCallEnabled: parsed.data.liveCallEnabled,
     },
+  }).catch((error: unknown) => {
+    console.error("[demo-issue] issuing failed", { requestId }, error)
+    return { ok: false as const, status: 500, error: `The demo could not be stored: ${error instanceof Error ? error.message.split("\n").at(-1) : "unknown error"}` }
   })
   if (!result.ok) {
     return NextResponse.json({ success: false, error: result.error }, { status: result.status })

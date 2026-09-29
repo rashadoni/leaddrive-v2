@@ -217,6 +217,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       : new Set<string>()
 
     const byStatus: Record<string, number> = Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all]))
+    // The contact chip read «Контекст контакта: cmf8x…» — the database id
+    // (tasks audit 2026-09-24). The name, from this organization only.
+    const contactContext = contactId
+      ? await prisma.mtmContact.findFirst({ where: { id: contactId, organizationId: auth.orgId }, select: { id: true, displayName: true } })
+      : null
 
     return NextResponse.json({
       success: true,
@@ -227,6 +232,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
           awaitingReview: awaitingIds.has(task.id),
         })),
         total,
+        contact: contactContext,
         summary: {
           ...byStatus,
           // «Open» chip: not completed and not cancelled (task-overdue.ts).

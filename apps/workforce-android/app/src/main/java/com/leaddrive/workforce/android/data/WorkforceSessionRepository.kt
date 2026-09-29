@@ -124,11 +124,55 @@ class WorkforceSessionRepository(
     }
 
     /** Read-only self-service discovery; it is never queued or made into a fact. */
-    suspend fun loadOwnExceptions(): List<WorkforceSelfException> {
-        val session = secureStore.readSession()
-            ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
-        return api.loadOwnExceptions(session, secureStore.installationId())
+    suspend fun loadOwnExceptions(): List<WorkforceSelfException> = sessionMutex.withLock {
+        api.loadOwnExceptions(requireSession(), secureStore.installationId())
     }
+
+    /**
+     * Combines fresh server cards with counts-only local response delivery
+     * state. No case identifier is decrypted or assigned to a pending row.
+     */
+    suspend fun loadOwnExceptionsWithLocalRecovery(): WorkforceOwnExceptionsWithLocalRecovery = sessionMutex.withLock {
+        val session = requireSession()
+        WorkforceOwnExceptionsWithLocalRecovery(
+            exceptions = api.loadOwnExceptions(session, secureStore.installationId()),
+            localRecovery = exceptionResponseLocalRecovery(session),
+        )
+    }
+
+    suspend fun loadExceptionResponseLocalRecovery(): WorkforceExceptionResponseLocalRecovery = sessionMutex.withLock {
+        exceptionResponseLocalRecovery(requireSession())
+    }
+
+    /**
+     * Uses one UUID for the direct attempt and every encrypted retry. A local
+     * pending row never changes the visible server state to acknowledged.
+     */
+    suspend fun acknowledgeOwnException(
+        bootstrap: WorkforceBootstrap,
+        exception: WorkforceSelfException,
+    ): WorkforceExceptionResponseSubmission = sessionMutex.withLock {
+        bootstrap.requireMutableRelease()
+        val session = requireSession()
+        val operation: WorkforceExceptionAcknowledgementOperation = api.newExceptionAcknowledgement(exception)
+        try {
+            api.submitOperation(session, secureStore.installationId(), operation)
+            WorkforceExceptionResponseSubmission.Accepted
+        } catch (error: Throwable) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            if (!error.isEligibleForOfflineOutbox()) throw error
+            outbox.enqueue(session, operation)
+            WorkforceExceptionResponseSubmission.Queued(
+                exceptionResponseLocalRecovery(session),
+            )
+        }
+    }
+
+    private suspend fun exceptionResponseLocalRecovery(
+        session: WorkforceStoredSession,
+    ): WorkforceExceptionResponseLocalRecovery = WorkforceExceptionResponseLocalRecovery.fromCounts(
+        outbox.recoveryStateCountsForDomain(session, WorkforceOutboxDomain.EXCEPTION_RESPONSE),
+    )
 
     /**
      * Reconciles only opt-in generic local reminders from fresh server truth.
@@ -534,6 +578,11 @@ data class WorkforceHistoryWithLocalRecovery(
     val requestLocalRecovery: WorkforceRequestLocalRecovery,
 )
 
+data class WorkforceOwnExceptionsWithLocalRecovery(
+    val exceptions: List<WorkforceSelfException>,
+    val localRecovery: WorkforceExceptionResponseLocalRecovery,
+)
+
 /** Counts only known Work Time outbox states; it carries no event/day/payload. */
 data class WorkforceHistoryLocalRecovery(
     val pendingCount: Int,
@@ -586,6 +635,35 @@ data class WorkforceRequestLocalRecovery(
     }
 }
 
+/** Counts only exception-response delivery state; it carries no case/revision/UUID. */
+data class WorkforceExceptionResponseLocalRecovery(
+    val pendingCount: Long,
+    val conflictCount: Long,
+    val reviewCount: Long,
+) {
+    val hasPendingDelivery: Boolean get() = pendingCount > 0
+    val hasOutstanding: Boolean get() = pendingCount > 0 || conflictCount > 0 || reviewCount > 0
+
+    companion object {
+        fun fromCounts(counts: List<WorkforceOutboxRecoveryStateCount>): WorkforceExceptionResponseLocalRecovery {
+            return WorkforceExceptionResponseLocalRecovery(
+                pendingCount = counts.sumOf {
+                    if (it.state == WorkforceOutboxState.QUEUED || it.state == WorkforceOutboxState.RETRY) it.count else 0L
+                },
+                conflictCount = counts.sumOf {
+                    if (it.state == WorkforceOutboxState.CONFLICT) it.count else 0L
+                },
+                reviewCount = counts.sumOf {
+                    if (it.state == WorkforceOutboxState.EXPIRED
+                        || it.state == WorkforceOutboxState.REQUIRES_REVIEW
+                        || it.state == null
+                    ) it.count else 0L
+                },
+            )
+        }
+    }
+}
+
 data class WorkforceReminderSettings(
     val enabled: Boolean,
     val state: WorkforceReminderState,
@@ -594,6 +672,13 @@ data class WorkforceReminderSettings(
 sealed interface WorkforceHrmSubmission {
     data object Accepted : WorkforceHrmSubmission
     data class Queued(val localRecovery: WorkforceRequestLocalRecovery) : WorkforceHrmSubmission
+}
+
+sealed interface WorkforceExceptionResponseSubmission {
+    data object Accepted : WorkforceExceptionResponseSubmission
+    data class Queued(
+        val localRecovery: WorkforceExceptionResponseLocalRecovery,
+    ) : WorkforceExceptionResponseSubmission
 }
 
 data class WorkforcePendingDeviceEnrollment(

@@ -40,6 +40,18 @@ vi.mock("@/lib/permissions", () => ({
 vi.mock("@/lib/modules", () => ({
   hasModule: vi.fn().mockReturnValue(true),
   moduleRecordFromOrgFields: vi.fn().mockReturnValue({ mtm: true }),
+  featureFlagsToArray: vi.fn((features: unknown) => {
+    if (Array.isArray(features)) return features.filter((value): value is string => typeof value === "string")
+    if (typeof features !== "string") return []
+    try {
+      const parsed: unknown = JSON.parse(features)
+      return Array.isArray(parsed)
+        ? parsed.filter((value): value is string => typeof value === "string")
+        : []
+    } catch {
+      return []
+    }
+  }),
   MODULE_REGISTRY: {},
 }))
 
@@ -202,6 +214,7 @@ describe("resolveMobileAuth — revocation check", () => {
       workforceHrm: true,
       attendanceQr: false,
       attendanceDeviceTrust: false,
+      workforceExceptionResponse: false,
     })
   })
 
@@ -227,6 +240,52 @@ describe("resolveMobileAuth — revocation check", () => {
       workforceHrm: true,
       attendanceQr: false,
       attendanceDeviceTrust: false,
+      workforceExceptionResponse: false,
+    })
+  })
+
+  it("snapshots the response rollout from the same fresh Workforce tenant row", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      ...ACTIVE_AGENT,
+      organization: {
+        isActive: true,
+        plan: "enterprise",
+        addons: [],
+        features: JSON.stringify(["workforce-hrm", "workforce-exception-response-v1"]),
+        modules: { mtm: false, "workforce-hrm": true },
+      },
+    } as never)
+    vi.mocked(hasModule).mockReturnValueOnce(false)
+
+    const result = await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/mobile/hrm/exceptions"))
+
+    expect(result?.tenantCapabilities).toMatchObject({
+      routeField: false,
+      workforceHrm: true,
+      workforceExceptionResponse: true,
+    })
+    expect(prisma.organization.findUnique).not.toHaveBeenCalled()
+  })
+
+  it("does not grant response rollout to a Route-only tenant with the raw flag", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      ...ACTIVE_AGENT,
+      organization: {
+        isActive: true,
+        plan: "enterprise",
+        addons: [],
+        features: ["route-field", "workforce-exception-response-v1"],
+        modules: { "route-field": true, "workforce-hrm": false, mtm: false },
+      },
+    } as never)
+    vi.mocked(hasModule).mockImplementation((context, moduleId) => context.modules?.[moduleId] === true)
+
+    const result = await resolveMobileAuth(makeRequestWithMobileBearer("/api/v1/mtm/mobile/bootstrap"))
+
+    expect(result?.tenantCapabilities).toMatchObject({
+      routeField: true,
+      workforceHrm: false,
+      workforceExceptionResponse: false,
     })
   })
 

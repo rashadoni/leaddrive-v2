@@ -13,21 +13,19 @@ import {
   ChevronRight,
   CalendarOff,
   ClipboardList,
-  Filter,
   Plus,
   RefreshCw,
-  Search,
   UserRound,
   X,
 } from "lucide-react"
 
 import { HelpButton } from "@/components/help/help-button"
+import { MtmFilterBar, MtmFilterReset, MtmFilterSearch, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { PageDescription } from "@/components/page-description"
 import { mtmTaskDueFormat } from "@/lib/mtm/task-due"
 import { MtmTaskForm, type TaskAgentOption, type TaskGroupOption } from "@/components/mtm/task-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { invalidateOperationalWeekSnapshotsAfterTaskMutation } from "@/lib/mtm/operational-week-cache"
 import { formatInTimezone } from "@/lib/timezone"
@@ -71,6 +69,8 @@ type TaskListData = {
   summary?: Record<string, number>
   /** Undated open tasks, lifted above the paginated list (task-undated-group.ts). */
   undatedOpen?: { tasks: TaskSummary[]; total: number }
+  /** The contact the list is narrowed to, by name. */
+  contactName?: string
 }
 
 type LoadPhase = "loading" | "ready" | "permission" | "error"
@@ -116,6 +116,7 @@ export function taskReturnPath(pathname: string, params: URLSearchParams): strin
 
 export default function MtmTasksPage() {
   const t = useTranslations("mtmTasksPage")
+  const tFilters = useTranslations("mtmFilters")
   const locale = useLocale()
   const { data: session } = useSession()
   const router = useRouter()
@@ -140,7 +141,6 @@ export default function MtmTasksPage() {
   const [selected, setSelected] = useState<string[]>([])
   const [bulkAgentId, setBulkAgentId] = useState("")
   const [bulkSaving, setBulkSaving] = useState(false)
-  const [filterOpen, setFilterOpen] = useState(Boolean(searchParams.get("agentId") || searchParams.get("teamId")))
   const [contactId, setContactId] = useState(searchParams.get("contactId") || "")
   const requestRef = useRef<AbortController | null>(null)
   const limit = 50
@@ -196,6 +196,7 @@ export default function MtmTasksPage() {
         undatedOpen: payload.undatedOpen && Array.isArray(payload.undatedOpen.tasks)
           ? { tasks: payload.undatedOpen.tasks, total: Number(payload.undatedOpen.total) || payload.undatedOpen.tasks.length }
           : undefined,
+        contactName: typeof payload.contact?.displayName === "string" ? payload.contact.displayName : undefined,
       })
       setSelected([])
       setPhase("ready")
@@ -334,44 +335,32 @@ export default function MtmTasksPage() {
         </div>
       </header>
 
-      <section className="space-y-4" aria-label={t("filtersTitle")}>
-        {contactId ? (
-          <div className="flex flex-wrap items-center gap-2" role="status">
-            <Badge variant="info" className="min-h-8 gap-2 px-3">
-              {t("contactContext", { id: contactId })}
-              <button type="button" className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-full hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:hover:bg-white/10" onClick={() => { setContactId(""); setPage(1) }} aria-label={t("clearContactContext")}><X className="h-3.5 w-3.5" /></button>
-            </Badge>
-            <span className="text-xs text-muted-foreground">{t("contactContextHint")}</span>
-          </div>
-        ) : null}
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={t("searchPlaceholder")} className="min-h-11 pl-9" aria-label={t("searchPlaceholder")} />
-          </div>
-          <Button type="button" variant="outline" className="min-h-11" onClick={() => setFilterOpen((open) => !open)} aria-expanded={filterOpen}>
-            <Filter className="h-4 w-4" />{t("moreFilters")}{panelFilters ? <Badge variant="brand">{panelFilters}</Badge> : null}
-          </Button>
-        </div>
-        {filterOpen ? (
-          <div className="grid gap-3 border-y border-zinc-200 py-4 dark:border-zinc-700 sm:grid-cols-[1fr_1fr_auto]">
-            <Select value={teamId} onChange={(event) => {
-              const nextTeamId = event.target.value
-              setTeamId(nextTeamId)
-              const selectedAgent = (data?.filters.agents || []).find((agent) => agent.id === agentId)
-              if (selectedAgent && nextTeamId && selectedAgent.teamId !== nextTeamId && selectedAgent.team?.id !== nextTeamId) setAgentId("")
-              setPage(1)
-            }} className="min-h-11" aria-label={t("teamFilter")}>
-              <option value="">{t("allTeams")}</option>
-              {(data?.filters.teams || []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-            </Select>
-            <Select value={agentId} onChange={(event) => { setAgentId(event.target.value); setPage(1) }} className="min-h-11" aria-label={t("agentFilter")}>
-              <option value="">{t("allAgents")}</option>
-              {(data?.filters.agents || []).filter((agent) => !teamId || agent.teamId === teamId || agent.team?.id === teamId).map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
-            </Select>
-            <Button type="button" variant="ghost" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>
-          </div>
-        ) : null}
+      {/* Owner 2026-09-27: filters in one row. Team and employee — the filters
+          a manager uses most — sat behind «Ещё фильтры». */}
+      <section aria-label={t("filtersTitle")}>
+        <MtmFilterBar testId="mtm-task-filters">
+          <MtmFilterSearch value={searchInput} onChange={setSearchInput} delayMs={0} placeholder={t("searchPlaceholder")} label={t("searchPlaceholder")} clearLabel={tFilters("clearSearch")} />
+          {contactId ? (
+            <span role="status" className="inline-flex h-10 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1.5 text-sm text-primary">
+              {t("contactContext", { name: data?.contactName ?? "…" })}
+              <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-primary/15" onClick={() => { setContactId(""); setPage(1) }} aria-label={t("clearContactContext")}><X className="h-3.5 w-3.5" /></button>
+            </span>
+          ) : null}
+          {(data?.filters.teams || []).length > 0 ? (
+            <MtmFilterSelect testId="mtm-task-team" label={t("teamFilter")} value={teamId} allLabel={t("allTeams")}
+              options={(data?.filters.teams || []).map((team) => ({ value: team.id, label: team.name }))}
+              onChange={(nextTeamId) => {
+                setTeamId(nextTeamId)
+                const selectedAgent = (data?.filters.agents || []).find((agent) => agent.id === agentId)
+                if (selectedAgent && nextTeamId && selectedAgent.teamId !== nextTeamId && selectedAgent.team?.id !== nextTeamId) setAgentId("")
+                setPage(1)
+              }} />
+          ) : null}
+          <MtmFilterSelect testId="mtm-task-agent" label={t("agentFilter")} value={agentId} allLabel={t("allAgents")}
+            options={(data?.filters.agents || []).filter((agent) => !teamId || agent.teamId === teamId || agent.team?.id === teamId).map((agent) => ({ value: agent.id, label: agent.name }))}
+            onChange={(value) => { setAgentId(value); setPage(1) }} />
+          <MtmFilterReset show={Boolean(search || panelFilters || contactId)} onReset={clearFilters} label={tFilters("reset")} />
+        </MtmFilterBar>
       </section>
 
       {phase === "permission" ? (

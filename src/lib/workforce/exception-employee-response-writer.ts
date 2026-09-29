@@ -2,17 +2,47 @@ import {
   createWorkforceExceptionEmployeeResponseDraft,
   type WorkforceExceptionEmployeeResponseDraft,
 } from "@/lib/workforce/exception-employee-response"
+import { lockWorkforceExceptionDecisionStream } from "@/lib/workforce/exception-case-writer"
+import {
+  requireWorkforceExceptionLinkedMutationAfterLock,
+  WorkforceExceptionLinkedMutationError,
+  type WorkforceExceptionLinkedMutationDb,
+} from "@/lib/workforce/exception-linked-mutation"
 
-type StoredResponse = WorkforceExceptionEmployeeResponseDraft & { id: string }
+type StoredResponse = WorkforceExceptionEmployeeResponseDraft & {
+  id: string
+  observedCaseRevision: number | null
+}
+type WorkforceExceptionEmployeeResponseWriteData = WorkforceExceptionEmployeeResponseDraft & {
+  observedCaseRevision: number
+}
+type CreatedResponse = WorkforceExceptionEmployeeResponseWriteData & { id: string }
 
-export type WorkforceExceptionEmployeeResponseWriterDb = {
-  $executeRaw: (query: TemplateStringsArray, ...values: readonly unknown[]) => Promise<unknown>
+export type WorkforceExceptionEmployeeResponseWriterDb = WorkforceExceptionLinkedMutationDb & {
   workforceExceptionEmployeeResponse: {
-    create: (args: { data: WorkforceExceptionEmployeeResponseDraft }) => Promise<StoredResponse>
+    create: (args: { data: WorkforceExceptionEmployeeResponseWriteData }) => Promise<CreatedResponse>
     findFirst: (args: {
       where: { organizationId: string; agentId: string; clientResponseId: string }
-      select: { id: true; organizationId: true; caseId: true; agentId: true; workdayId: true; segmentId: true; correctionRequestId: true; responseCode: true; clientResponseId: true; actorUserId: true }
+      select: { id: true; organizationId: true; caseId: true; agentId: true; workdayId: true; segmentId: true; correctionRequestId: true; responseCode: true; clientResponseId: true; actorUserId: true; observedCaseRevision: true }
     }) => Promise<StoredResponse | null>
+    findMany: (args: {
+      where: { organizationId: string; caseId: string; observedCaseRevision: number }
+      select: { id: true }
+      take: 1
+    }) => Promise<readonly { id: string }[]>
+  }
+  mtmHrmRequest: {
+    findFirst: (args: {
+      where: {
+        id: string
+        organizationId: string
+        agentId: string
+        type: "TIME_CORRECTION"
+        correctionWorkdayId: string
+        exceptionCaseId: string
+      }
+      select: { id: true }
+    }) => PromiseLike<{ id: string } | null>
   }
   mtmAuditLog: {
     create: (args: {
@@ -40,7 +70,9 @@ export type WorkforceExceptionEmployeeResponseAuthorization = (input: {
 export class WorkforceExceptionEmployeeResponseWriterError extends Error {
   constructor(readonly code:
     | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_NOT_AUTHORIZED"
-    | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
+    | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT"
+    | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE"
+    | "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
   ) {
     super(code)
   }
@@ -66,17 +98,23 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002"
 }
 
-/**
- * Persists an exact employee-owned response only after authorization. The
- * migration trigger verifies case/workday/segment/request topology at the
- * transaction boundary; this writer preserves retry safety and metadata-only
- * audit without reading raw proof or correction text.
- */
-export async function appendAuthorizedWorkforceExceptionEmployeeResponse(input: {
+type AppendAuthorizedWorkforceExceptionEmployeeResponseInput = {
   db: WorkforceExceptionEmployeeResponseWriterDb
   draft: WorkforceExceptionEmployeeResponseDraft
   authorize: WorkforceExceptionEmployeeResponseAuthorization
-}): Promise<{ responseId: string; idempotent: boolean }> {
+}
+
+async function appendAuthorizedWorkforceExceptionEmployeeResponseInternal(
+  input: AppendAuthorizedWorkforceExceptionEmployeeResponseInput & {
+    expectedCaseRevision?: number
+  },
+): Promise<{ responseId: string; idempotent: boolean }> {
+  if (input.expectedCaseRevision !== undefined
+    && (!Number.isInteger(input.expectedCaseRevision) || input.expectedCaseRevision < 0)) {
+    throw new WorkforceExceptionEmployeeResponseWriterError(
+      "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    )
+  }
   const draft = createWorkforceExceptionEmployeeResponseDraft(input.draft)
   const authorized = await input.authorize({
     operation: "EMPLOYEE_RESPONSE_APPEND",
@@ -89,50 +127,160 @@ export async function appendAuthorizedWorkforceExceptionEmployeeResponse(input: 
     throw new WorkforceExceptionEmployeeResponseWriterError("WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_NOT_AUTHORIZED")
   }
 
+  // Resolution/reopen and every linked writer share this lock. Resolve an
+  // exact completed retry before the lifecycle guard so a later resolution
+  // cannot turn an acknowledged response replay into a false conflict. The
+  // client response id is global across the employee's cases, so its fence
+  // must also be held before this read; different case locks are insufficient.
+  await lockWorkforceExceptionDecisionStream(input.db, draft)
   await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey(draft)}))`
+  const existing = await input.db.workforceExceptionEmployeeResponse.findFirst({
+    where: {
+      organizationId: draft.organizationId,
+      agentId: draft.agentId,
+      clientResponseId: draft.clientResponseId,
+    },
+    select: {
+      id: true,
+      organizationId: true,
+      caseId: true,
+      agentId: true,
+      workdayId: true,
+      segmentId: true,
+      correctionRequestId: true,
+      responseCode: true,
+      clientResponseId: true,
+      actorUserId: true,
+      observedCaseRevision: true,
+    },
+  })
+  if (existing) {
+    if (sameResponse(draft, existing)
+      && (input.expectedCaseRevision === undefined
+        || existing.observedCaseRevision === input.expectedCaseRevision)) {
+      return { responseId: existing.id, idempotent: true }
+    }
+    throw new WorkforceExceptionEmployeeResponseWriterError(
+      "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
+    )
+  }
+  let observedCaseRevision: number
   try {
-    const created = await input.db.workforceExceptionEmployeeResponse.create({ data: draft })
-    await input.db.mtmAuditLog.create({
-      data: {
+    const snapshot = await requireWorkforceExceptionLinkedMutationAfterLock({
+      db: input.db,
+      organizationId: draft.organizationId,
+      caseId: draft.caseId,
+    })
+    observedCaseRevision = snapshot.caseRevision
+  } catch (error) {
+    if (error instanceof WorkforceExceptionLinkedMutationError) {
+      throw new WorkforceExceptionEmployeeResponseWriterError(
+        "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE",
+      )
+    }
+    throw error
+  }
+  if (input.expectedCaseRevision !== undefined
+    && observedCaseRevision !== input.expectedCaseRevision) {
+    throw new WorkforceExceptionEmployeeResponseWriterError(
+      "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    )
+  }
+  if (draft.correctionRequestId !== null) {
+    const correctionRequest = await input.db.mtmHrmRequest.findFirst({
+      where: {
+        id: draft.correctionRequestId,
         organizationId: draft.organizationId,
         agentId: draft.agentId,
-        action: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_RECORDED",
-        entity: "workforce_exception_employee_response",
-        entityId: created.id,
-        metadataKind: "workforce_exception_employee_response",
-        newData: {
-          caseId: draft.caseId,
-          workdayId: draft.workdayId,
-          segmentLinked: draft.segmentId !== null,
-          correctionRequested: draft.responseCode === "CORRECTION_REQUESTED",
-        },
+        type: "TIME_CORRECTION",
+        correctionWorkdayId: draft.workdayId,
+        exceptionCaseId: draft.caseId,
       },
+      select: { id: true },
     })
-    return { responseId: created.id, idempotent: false }
+    if (!correctionRequest) {
+      throw new WorkforceExceptionEmployeeResponseWriterError(
+        "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE",
+      )
+    }
+  }
+
+  // The case lock serializes every cooperating response writer for this
+  // lifecycle stream. Re-read the response cycle while holding it so a
+  // different operation id cannot append a second immutable response for the
+  // same presented revision. Do not alias this to idempotent success: that
+  // would leave the new operation id unbound and unsafe to reuse elsewhere.
+  const existingCycleResponse = await input.db.workforceExceptionEmployeeResponse.findMany({
+    where: {
+      organizationId: draft.organizationId,
+      caseId: draft.caseId,
+      observedCaseRevision,
+    },
+    select: { id: true },
+    take: 1,
+  })
+  if (existingCycleResponse.length > 0) {
+    throw new WorkforceExceptionEmployeeResponseWriterError(
+      "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_REVISION_CONFLICT",
+    )
+  }
+
+  let created: CreatedResponse
+  try {
+    created = await input.db.workforceExceptionEmployeeResponse.create({
+      data: { ...draft, observedCaseRevision },
+    })
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
-    const existing = await input.db.workforceExceptionEmployeeResponse.findFirst({
-      where: {
-        organizationId: draft.organizationId,
-        agentId: draft.agentId,
-        clientResponseId: draft.clientResponseId,
-      },
-      select: {
-        id: true,
-        organizationId: true,
-        caseId: true,
-        agentId: true,
-        workdayId: true,
-        segmentId: true,
-        correctionRequestId: true,
-        responseCode: true,
-        clientResponseId: true,
-        actorUserId: true,
-      },
-    })
-    if (!existing || !sameResponse(draft, existing)) {
-      throw new WorkforceExceptionEmployeeResponseWriterError("WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT")
-    }
-    return { responseId: existing.id, idempotent: true }
+    // PostgreSQL aborts the transaction on a unique violation. Never try a
+    // replay query here (it would fail with 25P02); every cooperating writer
+    // already serialized and re-read above, so this is an out-of-contract
+    // collision and must roll back as a controlled conflict.
+    throw new WorkforceExceptionEmployeeResponseWriterError(
+      "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_WRITE_CONFLICT",
+    )
   }
+  await input.db.mtmAuditLog.create({
+    data: {
+      organizationId: draft.organizationId,
+      agentId: draft.agentId,
+      action: "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_RECORDED",
+      entity: "workforce_exception_employee_response",
+      entityId: created.id,
+      metadataKind: "workforce_exception_employee_response",
+      newData: {
+        caseId: draft.caseId,
+        workdayId: draft.workdayId,
+        observedCaseRevision,
+        segmentLinked: draft.segmentId !== null,
+        correctionRequested: draft.responseCode === "CORRECTION_REQUESTED",
+      },
+    },
+  })
+  return { responseId: created.id, idempotent: false }
+}
+
+/**
+ * Persists an exact employee-owned response after authorization. This
+ * compatibility primitive is only safe for callers that do not act on an
+ * earlier presentation; every presentation-bound route uses the stricter
+ * entry point below.
+ */
+export async function appendAuthorizedWorkforceExceptionEmployeeResponse(
+  input: AppendAuthorizedWorkforceExceptionEmployeeResponseInput,
+): Promise<{ responseId: string; idempotent: boolean }> {
+  return appendAuthorizedWorkforceExceptionEmployeeResponseInternal(input)
+}
+
+/**
+ * Employee response variant bound to the exact decision revision shown to the
+ * employee. The revision is checked only after the canonical case lock; exact
+ * completed retries still resolve before lifecycle validation.
+ */
+export async function appendRevisionBoundAuthorizedWorkforceExceptionEmployeeResponse(
+  input: AppendAuthorizedWorkforceExceptionEmployeeResponseInput & {
+    expectedCaseRevision: number
+  },
+): Promise<{ responseId: string; idempotent: boolean }> {
+  return appendAuthorizedWorkforceExceptionEmployeeResponseInternal(input)
 }

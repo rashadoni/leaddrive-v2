@@ -52,6 +52,8 @@ import com.leaddrive.workforce.android.data.WorkforceBootstrap
 import com.leaddrive.workforce.android.data.WorkforceDeviceBindingLifecycle
 import com.leaddrive.workforce.android.data.WorkforceDeviceTrustState
 import com.leaddrive.workforce.android.data.WorkforceEncryptedOutbox
+import com.leaddrive.workforce.android.data.WorkforceExceptionResponseLocalRecovery
+import com.leaddrive.workforce.android.data.WorkforceExceptionResponseSubmission
 import com.leaddrive.workforce.android.data.WorkforceHistorySnapshot
 import com.leaddrive.workforce.android.data.WorkforceHistoryDayDetail
 import com.leaddrive.workforce.android.data.WorkforceHistoryLocalRecovery
@@ -64,6 +66,7 @@ import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestTimelineEntry
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestTimelineEvent
 import com.leaddrive.workforce.android.data.WorkforceSelfException
+import com.leaddrive.workforce.android.data.WorkforceSelfExceptionResponseState
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceLocationProof
 import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryItem
@@ -92,6 +95,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -139,6 +143,7 @@ private fun WorkforceRoot(
     var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
     var historyLocalRecovery by remember { mutableStateOf<WorkforceHistoryLocalRecovery?>(null) }
     var requestLocalRecovery by remember { mutableStateOf<WorkforceRequestLocalRecovery?>(null) }
+    var exceptionResponseLocalRecovery by remember { mutableStateOf<WorkforceExceptionResponseLocalRecovery?>(null) }
     var ownExceptions by remember { mutableStateOf<List<WorkforceSelfException>?>(null) }
     var recoveryItems by remember { mutableStateOf<List<WorkforceOutboxRecoveryItem>?>(null) }
     var deviceTrust by remember { mutableStateOf<WorkforceDeviceTrustState?>(null) }
@@ -165,6 +170,9 @@ private fun WorkforceRoot(
     val signingIn = stringResource(R.string.status_signing_in)
     val loadingHistory = stringResource(R.string.status_loading_history)
     val loadingOwnExceptions = stringResource(R.string.status_loading_exceptions)
+    val submittingExceptionResponse = stringResource(R.string.status_exception_response_submitting)
+    val exceptionResponseAccepted = stringResource(R.string.status_exception_response_accepted)
+    val exceptionResponseQueued = stringResource(R.string.status_exception_response_queued)
     val loadingRecovery = stringResource(R.string.status_loading_recovery)
     val submittingRequest = stringResource(R.string.status_submitting_request)
     val requestAccepted = stringResource(R.string.status_request_accepted)
@@ -210,6 +218,7 @@ private fun WorkforceRoot(
     var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
     var busyAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
+    var busyExceptionResponseCaseId by remember { mutableStateOf<String?>(null) }
     var scanningQrAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
     var activeQrScanAttemptId by remember { mutableStateOf<Long?>(null) }
     var nextQrScanAttemptId by remember { mutableStateOf(0L) }
@@ -258,6 +267,7 @@ private fun WorkforceRoot(
                 history = null
                 historyLocalRecovery = null
                 requestLocalRecovery = null
+                exceptionResponseLocalRecovery = null
                 ownExceptions = null
                 recoveryItems = null
                 status = null
@@ -278,6 +288,7 @@ private fun WorkforceRoot(
                     history = null
                     historyLocalRecovery = null
                     requestLocalRecovery = null
+                    exceptionResponseLocalRecovery = null
                     ownExceptions = null
                     recoveryItems = null
                     deviceTrust = null
@@ -534,6 +545,7 @@ private fun WorkforceRoot(
                         history = null
                         historyLocalRecovery = null
                         requestLocalRecovery = null
+                        exceptionResponseLocalRecovery = null
                         ownExceptions = null
                         recoveryItems = null
                         deviceTrust = null
@@ -550,11 +562,13 @@ private fun WorkforceRoot(
             history = history,
             historyLocalRecovery = historyLocalRecovery,
             requestLocalRecovery = requestLocalRecovery,
+            exceptionResponseLocalRecovery = exceptionResponseLocalRecovery,
             ownExceptions = ownExceptions,
             recoveryItems = recoveryItems,
             deviceTrust = deviceTrust,
             reminderSettings = reminderSettings,
             busyAction = busyAction,
+            busyExceptionResponseCaseId = busyExceptionResponseCaseId,
             scanningQrAction = scanningQrAction,
             onRefresh = ::refreshToday,
             onSelectSection = { section = it },
@@ -581,10 +595,18 @@ private fun WorkforceRoot(
             },
             onLoadOwnExceptions = {
                 status = loadingOwnExceptions
+                // Never leave an old revision actionable while local terminal
+                // recovery state and fresh server truth are being reconciled.
+                ownExceptions = null
                 scope.launch {
-                    runCatching { repository.loadOwnExceptions() }
-                        .onSuccess {
-                            ownExceptions = it
+                    // Local metadata is useful even if the fresh GET is
+                    // unavailable; it never reveals which case is pending.
+                    runCatching { repository.loadExceptionResponseLocalRecovery() }
+                        .onSuccess { exceptionResponseLocalRecovery = it }
+                    runCatching { repository.loadOwnExceptionsWithLocalRecovery() }
+                        .onSuccess { loaded ->
+                            ownExceptions = loaded.exceptions
+                            exceptionResponseLocalRecovery = loaded.localRecovery
                             status = null
                         }
                         .onFailure { status = it.employeeMessage(employeeErrorCopy) }
@@ -605,6 +627,65 @@ private fun WorkforceRoot(
             onBeginDeviceEnrollment = ::beginDeviceEnrollment,
             onRevokeDeviceEnrollment = ::revokeOwnDeviceEnrollment,
             onSetLocalReminders = ::setLocalReminders,
+            onAcknowledgeException = acknowledge@{ exception ->
+                if (
+                    busyExceptionResponseCaseId != null
+                    || exceptionResponseLocalRecovery?.hasPendingDelivery != false
+                ) return@acknowledge
+                val currentBootstrap = bootstrap ?: return@acknowledge
+                val currentException = ownExceptions?.singleOrNull {
+                    it.caseId == exception.caseId
+                        && it.responseState == WorkforceSelfExceptionResponseState.NOT_ACKNOWLEDGED
+                        && it.availableResponseAction == exception.availableResponseAction
+                        && it.availableResponseAction != null
+                } ?: return@acknowledge
+                busyExceptionResponseCaseId = exception.caseId
+                status = submittingExceptionResponse
+                scope.launch {
+                    try {
+                        val submission = repository.acknowledgeOwnException(currentBootstrap, currentException)
+                        // Never project a local success. Hide the stale card
+                        // until a fresh GET returns server truth.
+                        ownExceptions = null
+                        val resultStatus = when (submission) {
+                            WorkforceExceptionResponseSubmission.Accepted -> exceptionResponseAccepted
+                            is WorkforceExceptionResponseSubmission.Queued -> {
+                                exceptionResponseLocalRecovery = submission.localRecovery
+                                exceptionResponseQueued
+                            }
+                        }
+                        try {
+                            val loaded = repository.loadOwnExceptionsWithLocalRecovery()
+                            ownExceptions = loaded.exceptions
+                            exceptionResponseLocalRecovery = loaded.localRecovery
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Throwable) {
+                            // The mutation result remains authoritative. A
+                            // later manual refresh can restore the card list.
+                        }
+                        status = resultStatus
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Throwable) {
+                        // A stale revision or unavailable case is a contained
+                        // conflict. Refresh before another tap.
+                        ownExceptions = null
+                        try {
+                            val loaded = repository.loadOwnExceptionsWithLocalRecovery()
+                            ownExceptions = loaded.exceptions
+                            exceptionResponseLocalRecovery = loaded.localRecovery
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Throwable) {
+                            // Keep the original action failure visible.
+                        }
+                        status = error.employeeMessage(employeeErrorCopy)
+                    } finally {
+                        busyExceptionResponseCaseId = null
+                    }
+                }
+            },
             onSubmitRequest = { draft ->
                 status = submittingRequest
                 scope.launch {
@@ -651,10 +732,13 @@ private fun WorkforceRoot(
                             history = null
                             historyLocalRecovery = null
                             requestLocalRecovery = null
+                            exceptionResponseLocalRecovery = null
+                            ownExceptions = null
                             recoveryItems = null
                             deviceTrust = null
                             reminderSettings = null
                             busyAction = null
+                            busyExceptionResponseCaseId = null
                             scanningQrAction = null
                             activeQrScanAttemptId = null
                             status = null
@@ -743,11 +827,13 @@ private fun WorkforceHome(
     history: WorkforceHistorySnapshot?,
     historyLocalRecovery: WorkforceHistoryLocalRecovery?,
     requestLocalRecovery: WorkforceRequestLocalRecovery?,
+    exceptionResponseLocalRecovery: WorkforceExceptionResponseLocalRecovery?,
     ownExceptions: List<WorkforceSelfException>?,
     recoveryItems: List<WorkforceOutboxRecoveryItem>?,
     deviceTrust: WorkforceDeviceTrustState?,
     reminderSettings: WorkforceReminderSettings?,
     busyAction: WorkforceWorkdayAction?,
+    busyExceptionResponseCaseId: String?,
     scanningQrAction: WorkforceWorkdayAction?,
     onRefresh: () -> Unit,
     onSelectSection: (WorkforceSection) -> Unit,
@@ -758,6 +844,7 @@ private fun WorkforceHome(
     onBeginDeviceEnrollment: (String, String?) -> Unit,
     onRevokeDeviceEnrollment: (String) -> Unit,
     onSetLocalReminders: (Boolean) -> Unit,
+    onAcknowledgeException: (WorkforceSelfException) -> Unit,
     onSubmitRequest: (WorkforceHrmRequestDraft) -> Unit,
     onCancelRequest: (String) -> Unit,
     onAction: (WorkforceWorkdayAction) -> Unit,
@@ -820,11 +907,14 @@ private fun WorkforceHome(
             WorkforceSection.REQUESTS -> WorkforceRequests(
                 history = history,
                 localRecovery = requestLocalRecovery,
+                exceptionResponseLocalRecovery = exceptionResponseLocalRecovery,
                 ownExceptions = ownExceptions,
                 defaultDate = today?.date.orEmpty(),
                 mutationsBlocked = bootstrap.release.mutationsBlocked,
+                busyExceptionResponseCaseId = busyExceptionResponseCaseId,
                 onLoad = onLoadHistory,
                 onLoadOwnExceptions = onLoadOwnExceptions,
+                onAcknowledgeException = onAcknowledgeException,
                 onSubmit = onSubmitRequest,
                 onCancel = onCancelRequest,
             )
@@ -947,6 +1037,15 @@ private fun String.localizedExceptionType(): String = stringResource(
 )
 
 @Composable
+private fun WorkforceSelfExceptionResponseState.localizedLabel(): String = stringResource(
+    when (this) {
+        WorkforceSelfExceptionResponseState.UNAVAILABLE -> R.string.exception_response_unavailable
+        WorkforceSelfExceptionResponseState.NOT_ACKNOWLEDGED -> R.string.exception_response_not_acknowledged
+        WorkforceSelfExceptionResponseState.ACKNOWLEDGED -> R.string.exception_response_acknowledged
+    },
+)
+
+@Composable
 private fun WorkforceWorkdayAction.localizedLabel(): String = stringResource(labelRes())
 
 @StringRes
@@ -1007,6 +1106,7 @@ private fun WorkforceOutboxDomain?.localizedLabel(): String = stringResource(
     when (this) {
         WorkforceOutboxDomain.WORKDAY -> R.string.recovery_domain_workday
         WorkforceOutboxDomain.HRM_REQUEST -> R.string.recovery_domain_request
+        WorkforceOutboxDomain.EXCEPTION_RESPONSE -> R.string.recovery_domain_exception_response
         null -> R.string.recovery_domain_unknown
     },
 )
@@ -1235,11 +1335,14 @@ private fun deviceEnrollmentStatus(status: String): Int = when (status) {
 private fun WorkforceRequests(
     history: WorkforceHistorySnapshot?,
     localRecovery: WorkforceRequestLocalRecovery?,
+    exceptionResponseLocalRecovery: WorkforceExceptionResponseLocalRecovery?,
     ownExceptions: List<WorkforceSelfException>?,
     defaultDate: String,
     mutationsBlocked: Boolean,
+    busyExceptionResponseCaseId: String?,
     onLoad: () -> Unit,
     onLoadOwnExceptions: () -> Unit,
+    onAcknowledgeException: (WorkforceSelfException) -> Unit,
     onSubmit: (WorkforceHrmRequestDraft) -> Unit,
     onCancel: (String) -> Unit,
 ) {
@@ -1254,6 +1357,7 @@ private fun WorkforceRequests(
     var exceptionCaseId by rememberSaveable { mutableStateOf("") }
     var requestedStartAt by rememberSaveable { mutableStateOf("") }
     var requestedEndAt by rememberSaveable { mutableStateOf("") }
+    var pendingAcknowledgement by remember { mutableStateOf<WorkforceSelfException?>(null) }
     LaunchedEffect(defaultDate) {
         if (startDate.isBlank()) startDate = defaultDate
         if (endDate.isBlank()) endDate = defaultDate
@@ -1284,6 +1388,19 @@ private fun WorkforceRequests(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(stringResource(R.string.exception_corrections_title), style = MaterialTheme.typography.titleMedium)
                 Text(stringResource(R.string.exception_corrections_explainer))
+                Text(stringResource(R.string.exception_response_action_explainer))
+                exceptionResponseLocalRecovery?.takeIf { it.hasOutstanding }?.let { recovery ->
+                    Text(stringResource(R.string.exception_response_local_sync_explainer))
+                    if (recovery.pendingCount > 0) {
+                        Text(stringResource(R.string.exception_response_local_sync_pending, recovery.pendingCount))
+                    }
+                    if (recovery.conflictCount > 0) {
+                        Text(stringResource(R.string.exception_response_local_sync_conflict, recovery.conflictCount))
+                    }
+                    if (recovery.reviewCount > 0) {
+                        Text(stringResource(R.string.exception_response_local_sync_review, recovery.reviewCount))
+                    }
+                }
                 TextButton(onClick = onLoadOwnExceptions) { Text(stringResource(R.string.exception_corrections_load)) }
                 when {
                     ownExceptions == null -> Text(stringResource(R.string.exception_corrections_not_loaded))
@@ -1304,6 +1421,21 @@ private fun WorkforceRequests(
                                     exception.workDate,
                                 ),
                             )
+                        }
+                        Text(exception.responseState.localizedLabel())
+                        if (exception.availableResponseAction != null) {
+                            TextButton(
+                                modifier = Modifier.workforceTapTarget(),
+                                enabled = !mutationsBlocked
+                                    // Terminal rows remain visible for recovery,
+                                    // but only an in-flight delivery blocks an
+                                    // action from this freshly loaded card.
+                                    && exceptionResponseLocalRecovery?.hasPendingDelivery == false
+                                    && busyExceptionResponseCaseId == null,
+                                onClick = { pendingAcknowledgement = exception },
+                            ) {
+                                Text(stringResource(R.string.exception_response_acknowledge))
+                            }
                         }
                     }
                 }
@@ -1463,6 +1595,28 @@ private fun WorkforceRequests(
                 }
             }
         }
+    }
+    pendingAcknowledgement?.let { exception ->
+        AlertDialog(
+            onDismissRequest = { if (busyExceptionResponseCaseId == null) pendingAcknowledgement = null },
+            title = { Text(stringResource(R.string.exception_response_confirm_title)) },
+            text = { Text(stringResource(R.string.exception_response_confirm_body)) },
+            confirmButton = {
+                TextButton(
+                    enabled = busyExceptionResponseCaseId == null,
+                    onClick = {
+                        pendingAcknowledgement = null
+                        onAcknowledgeException(exception)
+                    },
+                ) { Text(stringResource(R.string.exception_response_acknowledge)) }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = busyExceptionResponseCaseId == null,
+                    onClick = { pendingAcknowledgement = null },
+                ) { Text(stringResource(R.string.cancel)) }
+            },
+        )
     }
 }
 

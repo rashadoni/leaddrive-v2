@@ -44,6 +44,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { MtmFilterBar, MtmFilterDate, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -3076,47 +3077,25 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
    * «Last successful response: —» were instruction, not fact (audit 2026-09-21).
    */
   function renderScopeControls(compact: boolean) {
+    // Owner 2026-09-27: filters in one row. Region, team and employee were
+    // labelled selects on a grid, the period, date and «< >» a row of their own.
     const regionField = (
-      <label className="grid gap-1 text-sm font-medium">
-        <span>{t("region")}</span>
-        <select
-          className="h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
-          value={query?.regionId || ""}
-          onChange={(event) => query && updateQuery({ ...query, regionId: event.target.value, teamId: "", agentId: "" }, "region")}
-          disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.regions.length === 0}
-        >
-          <option value="">{t("allRegions")}</option>
-          {filters.regions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-        </select>
-      </label>
+      <MtmFilterSelect testId="mtm-week-region" label={t("region")} value={query?.regionId || ""} allLabel={t("allRegions")}
+        options={filters.regions.map((option) => ({ value: option.id, label: option.name }))}
+        disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.regions.length === 0}
+        onChange={(value) => query && updateQuery({ ...query, regionId: value, teamId: "", agentId: "" }, "region")} />
     )
     const teamField = (
-      <label className="grid gap-1 text-sm font-medium">
-        <span>{t("team")}</span>
-        <select
-          className="h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
-          value={query?.teamId || ""}
-          onChange={(event) => query && updateQuery({ ...query, teamId: event.target.value, agentId: "" }, "team")}
-          disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.teams.length === 0}
-        >
-          <option value="">{t("allTeams")}</option>
-          {filters.teams.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-        </select>
-      </label>
+      <MtmFilterSelect testId="mtm-week-team" label={t("team")} value={query?.teamId || ""} allLabel={t("allTeams")}
+        options={filters.teams.map((option) => ({ value: option.id, label: option.name }))}
+        disabled={!query || Boolean(mutatingAction) || phase === "loading" && filters.teams.length === 0}
+        onChange={(value) => query && updateQuery({ ...query, teamId: value, agentId: "" }, "team")} />
     )
     const employeeField = (
-      <label className="grid gap-1 text-sm font-medium">
-        <span>{t("employee")}</span>
-        <select
-          className="h-11 w-full rounded-lg border border-zinc-200 bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
-          value={effectiveAgentId}
-          onChange={(event) => query && updateQuery({ ...query, agentId: event.target.value })}
-          disabled={!query || Boolean(mutatingAction) || phase === "loading" && displayedAgentOptions.length === 0}
-        >
-          <option value="">{t("chooseEmployee")}</option>
-          {displayedAgentOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-        </select>
-      </label>
+      <MtmFilterSelect testId="mtm-week-employee" label={t("employee")} value={effectiveAgentId} allLabel={t("chooseEmployee")}
+        options={displayedAgentOptions.map((option) => ({ value: option.id, label: option.name }))}
+        disabled={!query || Boolean(mutatingAction) || phase === "loading" && displayedAgentOptions.length === 0}
+        onChange={(value) => query && updateQuery({ ...query, agentId: value })} />
     )
     const refreshButton = (
       <Button
@@ -3136,15 +3115,13 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
       // The section's h2 is rendered by the caller, above the team summary,
       // so a screen reader's heading list keeps the section before its content.
       return (
-        <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700 lg:px-5">
-          <div className="flex items-end gap-3">
-            <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-3">
-              {regionField}
-              {teamField}
-              {employeeField}
-            </div>
-            {refreshButton}
-          </div>
+        <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:px-5">
+          <MtmFilterBar testId="mtm-week-filters">
+            {regionField}
+            {teamField}
+            {employeeField}
+            <span className="ml-auto">{refreshButton}</span>
+          </MtmFilterBar>
         </div>
       )
     }
@@ -3170,45 +3147,33 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(10rem,1fr)_minmax(10rem,1fr)_minmax(12rem,1.25fr)_auto]">
-          {regionField}
-          {teamField}
-          {employeeField}
-          <div className="grid gap-1">
-            <span className="text-sm font-medium">{t("period")}</span>
-            <div className="flex min-h-11 items-center rounded-full border border-zinc-200 p-1 dark:border-zinc-700" role="group" aria-label={t("period") }>
+        <div className="mt-4">
+          <MtmFilterBar testId="mtm-week-filters">
+            {regionField}
+            {teamField}
+            {employeeField}
+            <div className="flex h-10 items-center rounded-full border border-zinc-200 p-0.5 dark:border-zinc-700" role="group" aria-label={t("period") }>
               {([1, 5, 7] as WeekDays[]).map((days) => (
                 <button
                   key={days}
                   type="button"
                   aria-pressed={query?.days === days}
                   disabled={Boolean(mutatingAction)}
-                  className={cn("min-h-11 min-w-11 rounded-full px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", query?.days === days ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                  className={cn("h-9 min-w-11 rounded-full px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40", query?.days === days ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
                   onClick={() => query && updateQuery({ ...query, days, day: query.date })}
                 >
                   {t("days", { count: days })}
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <label className="grid gap-1 text-sm font-medium">
-            <span>{t("anchorDate")}</span>
-            <input
-              type="date"
-              className="h-11 rounded-lg border border-zinc-200 bg-card px-3 text-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:border-zinc-700"
-              value={query?.date || ""}
-              disabled={Boolean(mutatingAction)}
-              onChange={(event) => query && updateQuery({ ...query, date: validDateKey(event.target.value), day: validDateKey(event.target.value) })}
-            />
-          </label>
-          <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <Button type="button" variant="outline" size="icon" className="h-11 w-11" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(-1)} aria-label={t("previousPeriod")}><ChevronLeft className="h-4 w-4" /></Button>
-            <span className="min-w-36 text-center text-sm font-medium tabular-nums">{periodLabel}</span>
-            <Button type="button" variant="outline" size="icon" className="h-11 w-11" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(1)} aria-label={t("nextPeriod")}><ChevronRight className="h-4 w-4" /></Button>
-          </div>
+            <MtmFilterDate testId="mtm-week-anchor-date" label={t("anchorDate")} value={query?.date || ""} disabled={Boolean(mutatingAction)}
+              onChange={(value) => query && updateQuery({ ...query, date: validDateKey(value), day: validDateKey(value) })} />
+            <span className="ml-auto flex items-center gap-1">
+              <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(-1)} aria-label={t("previousPeriod")}><ChevronLeft className="h-4 w-4" /></Button>
+              <span className="min-w-36 text-center text-sm font-medium tabular-nums">{periodLabel}</span>
+              <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={Boolean(mutatingAction)} onClick={() => movePeriod(1)} aria-label={t("nextPeriod")}><ChevronRight className="h-4 w-4" /></Button>
+            </span>
+          </MtmFilterBar>
         </div>
       </div>
     )

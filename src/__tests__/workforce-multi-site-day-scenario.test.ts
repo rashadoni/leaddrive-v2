@@ -229,12 +229,16 @@ describe("Workforce multi-site day scenario", () => {
 
     vi.mocked(db.workforceSiteTransition.findFirst)
       .mockResolvedValueOnce(null as never)
-      .mockResolvedValueOnce({ id: "site-a-departure" } as never)
+      .mockResolvedValueOnce({
+        id: "site-a-departure",
+        claimedAt: new Date("2026-08-30T09:00:00.000Z"),
+      } as never)
     vi.mocked(db.mtmAgentWorkday.findFirst).mockResolvedValue({ id: WORKDAY_ID } as never)
     vi.mocked(db.workforceShiftSegment.findFirst).mockResolvedValue({ id: "segment-site-b" } as never)
     vi.mocked(db.workforceWorkdayScheduleSnapshot.findFirst).mockResolvedValue({
       id: "schedule-multi-site-r1",
       segments: scheduledSegments,
+      sites: snapshottedSites,
     } as never)
     vi.mocked(db.workforceSiteTransition.create).mockImplementation(async (value: unknown) => {
       const data = (value as { data: Record<string, unknown> }).data

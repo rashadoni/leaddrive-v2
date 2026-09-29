@@ -1,0 +1,214 @@
+# Workforce C6 employee-response rollout fence evidence — 2026-09-27
+
+## Scope and task effect
+
+This bounded server-only slice closes one rollout mismatch in the existing C6
+exception workbench. The employee self-response GET/POST channel already fails
+closed unless the tenant has `workforce-exception-response-v1`, but the manager
+queue could still issue a `REQUEST_EMPLOYEE_RESPONSE` action token and the
+decision writer could consume it without that flag. That could move a case to
+an employee-response waiting stage while the employee channel remained
+unavailable.
+
+The repair narrows WF-C6-002 and WF-C6-006 from `PARTIAL` to a safer
+`PARTIAL`. It does not complete either task and adds no task or phase-gate
+credit. Progress stays `81/161`, `14/15`, C5 81%, C6 20% and C9 99%.
+WF-C8-005 and the visible UI are unchanged.
+
+## Fail-closed contract
+
+- One pure rollout predicate requires the explicit tenant flag only for
+  `REQUEST_EMPLOYEE_RESPONSE`. `ACKNOWLEDGE`, `REQUEST_TIME_CORRECTION` and the
+  still-inactive terminal codes retain their existing lifecycle treatment.
+- The scoped queue filters server-derived decisions through that predicate
+  before it mints an encrypted action token. An absent, malformed or unrelated
+  feature set therefore cannot produce an employee-response request token.
+- The manager write service applies the same predicate during its tenant-mode
+  preflight before any case or grant lookup. A token issued before flag removal
+  is only a locator and returns the existing generic unavailable response.
+- The service rereads tenant features after the case and operation advisory
+  locks and before any new append. Removing the flag while a writer waits
+  raises the existing generic lifecycle conflict and creates no decision.
+- The employee self-response channel remains session-only, self-scoped,
+  workday/case-bound, rate-limited, rollout-gated and protected by the existing
+  database ownership trigger. This slice does not alter its payload or expose
+  proof, reason, time, case identifiers or another employee's data.
+
+The queue continues to offer correction review without the response flag, and
+the released frontend still hides `REQUEST_EMPLOYEE_RESPONSE`, terminal and
+unknown actions. No employee notification or durable outbox is claimed.
+
+## Current verification
+
+- PASS — core rollout/API selection: three files / 27 tests. Coverage includes
+  absent/malformed/unrelated flag states, active rollout, queue token filtering,
+  exact token binding, preflight rejection and flag removal after lock
+  acquisition with no append.
+- PASS — adjacent employee-response/workbench selection: five files / 32 tests.
+  Existing self GET/POST rollout, response writer, rate limit, ownership and
+  lifecycle behavior remain green.
+- PASS — targeted ESLint for all six changed runtime/test files.
+- PASS — diff whitespace check.
+- The commands used the existing exact-lock dependency tree whose
+  `package-lock.json` SHA-256 is
+  `54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`;
+  its temporary symlink was removed after every command.
+- NOT RUN on Contabo — full local typecheck/build, browser E2E, Android/Gradle,
+  load, physical-device and human-pilot checks. Exact-head CI, the real
+  PostgreSQL shared-lock gate and a fresh author-independent complete-diff
+  review remain mandatory before merge.
+
+## Release boundary
+
+This slice adds no schema, migration, RLS policy, UI, translation, notification,
+tenant activation or terminal transition. It does not assert that an employee
+was notified, responded or acknowledged anything. The branch must stay below
+400 KB, receive a zero-finding independent frozen review, pass every required
+exact-head check and use only the normal GitHub `main` deployment path before
+production claims are made.
+
+## Independent read-only preflight GREEN
+
+An author-independent reviewer inspected the complete working snapshot from
+base `316caedc933407589aa5f7a5acffb86aed267b15`: nine paths / 34,671 combined
+tracked-plus-untracked binary-patch bytes, SHA-256
+`77ca058977501c0abe839a401116db46564e571bb9f697d2cfb9f43da4d2672e`.
+The verdict was GREEN with zero P0-P3 findings.
+
+The review confirmed that the queue cannot mint a response-request token when
+the flag is unavailable, a crafted or previously minted token fails before
+case/grant lookup, and a flag removal visible at the post-lock reread prevents
+a new append. ACK/correction, tenant/principal token binding, exact replay and
+generic 404/409 containment remain sound. The residual `READ COMMITTED`
+micro-window after the final organization read is the existing authorization
+model; this evidence does not describe the flag as a linearizable emergency
+kill switch.
+
+Reviewer-side diff/whitespace checks and the pure helper suite (3/3) passed.
+Reviewer-side API suites were `NOT RUN`: external dependency resolution stopped
+before collection and no author result was relabelled. This was an uncommitted
+preflight only; the receipt changes the snapshot, so a clean checkpoint and a
+fresh frozen complete-diff review remain mandatory.
+
+## Frozen complete-diff review GREEN
+
+The clean frozen identity was exact base/current `origin/main`/merge-base
+`000eb2532402cf4860afcb270ea8bfac6a6796d0` through head
+`6268f618a027e33beec1ca700a8fe3454eccf0e7`: 10 paths / 44,535 binary-diff
+bytes, SHA-256
+`c215ff2555c734ddacfc57aee1c2629e686a1d6e436d13aeedc2d11628e44fce`, below
+400 KB. The author-independent reviewer recomputed the identity and clean
+status at both ends, reread the complete diff from zero and returned GREEN
+with zero P0-P3 findings.
+
+The review covered the inherited PR #461 release receipt plus every runtime,
+test and current evidence path. It confirmed filter-before-mint, rejection
+before case/grant lookup, the post-lock mutable flag reread before a new
+create, no-new-append exact replay, tenant/principal/revision token binding,
+generic 404/409 containment, unchanged ACK/correction behavior and honest
+READ COMMITTED boundaries.
+
+Reviewer-side identity/clean checks, diff whitespace, append-only prefix
+integrity, pure-helper Vitest 3/3 and live PR #461 merge/check receipt passed.
+API Vitest, targeted ESLint, full typecheck/build, the real PostgreSQL gate,
+browser, Android, load, physical-device, pilot and repeated deploy/public smoke
+were `NOT RUN` reviewer-side and are not inferred. Only this evidence file,
+the roadmap and append-only session log may change after the verdict; an
+independent receipt-integrity check must prove all six reviewed runtime/test
+blobs unchanged before push.
+
+## PR #462 exact-head type-boundary repair
+
+PR run `36333811862` passed `pr-scope`, `runner-policy`, `scan` and
+`static-checks`; the latter completed in 13m30s and included the real
+PostgreSQL Workforce shared-lock gate. Exact-head `typecheck` correctly blocked
+merge after 16m52s with one new defect-shaped diagnostic:
+`exception-decision-service.ts` TS2345. The policy-writer callback intentionally
+exposes its canonical decision code as `string`, while the response-only
+rollout predicate had unnecessarily required the narrower workbench union.
+
+The bounded repair makes that pure predicate accept the storage boundary's
+string. It still denies only the exact `REQUEST_EMPLOYEE_RESPONSE` code when
+the flag is unavailable; every other string proceeds to the existing
+workbench lifecycle validator and gains no authority from this helper. The
+test now includes a future/unknown decision string to preserve that separation
+of concerns. Core API/helper coverage passes 27/27, targeted ESLint and diff
+whitespace pass. The failed check and every previous review/check identity are
+not transferable; a new checkpoint, frozen independent review and all five
+replacement exact-head checks are mandatory.
+
+## Repair integrated with current main
+
+Before freezing the repaired head, a fresh fetch showed `origin/main` had
+advanced from the PR #461 merge to
+`bc126735cc316cfc7f206aae839288884d5a9d5d` through PR #456's unrelated MTM
+compact-filter work. Its 19 changed paths had no overlap with this slice. The
+current main was merged without conflict as
+`4ee1655fe1c0c547923b9e7f3c6cd06c31361bc2` rather than reviewing or rerunning
+CI on a stale base.
+
+On that exact integrated source tree, all eight selected Workforce files pass
+59/59 tests, targeted ESLint for the six changed runtime/test files passes and
+the current-main diff whitespace check passes. Full local typecheck/build and
+the other heavy gates remain `NOT RUN`; a clean documentation checkpoint,
+fresh frozen review from current main and all five replacement CI checks remain
+mandatory.
+
+## Replacement frozen complete-diff review GREEN
+
+The replacement clean identity was exact base/current `origin/main`/merge-base
+`bc126735cc316cfc7f206aae839288884d5a9d5d` through head
+`2711f194d5615c9efbbc2701412b3b535b157416`: 10 paths / 55,819 binary-diff
+bytes, SHA-256
+`a33d15906defd7735979da6da144cb4dfb99adda6abf3efff1daf25d2d891367`, below
+400 KB. A fresh author-independent reviewer verified the identity and clean
+status at both ends, reread the complete current-main diff from zero and
+returned GREEN with zero P0-P3 findings.
+
+The review confirmed filter-before-mint, response-only preflight/post-lock
+gating, token/grant/lifecycle authority, exact replay with no new append,
+unknown-code rejection beyond the widened storage type boundary, honest READ
+COMMITTED limits, the TS2345 repair, test/evidence accuracy and the inherited
+PR #461 release receipt. It also verified that current-main PR #456 changed 19
+non-overlapping MTM paths.
+
+Reviewer identity/clean/diff checks passed. Reviewer Vitest, ESLint, typecheck
+and heavy gates were `NOT RUN`, and author results were not relabelled. Only
+this evidence file, the roadmap and append-only session log may change after
+the verdict; all six reviewed runtime/test blobs must remain byte-identical in
+an independent receipt-integrity review before the replacement head is pushed.
+
+## Reviewed production release
+
+The receipt-integrity review proved that
+`2711f194d5615c9efbbc2701412b3b535b157416..ac4049444b0ddd874002a8b8c580bbdc8dc067da`
+changed only this evidence file, the roadmap and append-only session log, and
+kept all six reviewed runtime/test blobs byte-identical. The final complete
+diff from exact base `bc126735cc316cfc7f206aae839288884d5a9d5d` through
+head `ac4049444b0ddd874002a8b8c580bbdc8dc067da` was 10 paths / 59,462
+binary-diff bytes, SHA-256
+`4fed3a4afe2fcf1911f6a42f291d341effc04f632ced0324dcbcd9acdc3b5259`.
+Both independent reviews were GREEN with zero P0-P3 findings.
+
+PR #462 passed `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and
+`scan` on its replacement exact head; `static-checks` completed in 8m22s and
+included the real PostgreSQL Workforce shared-lock gate, while `typecheck`
+completed in 17m45s. The normal PR production build was skipped as designed.
+Fresh main had advanced through unrelated PR #423 to
+`76de0cd9969026f50b7ea0b03fa37ee8e5ed8990`; it had no path overlap, and GitHub reported the PR clean and
+mergeable. PR #462 merged normally at `2026-09-27T17:29:31Z` as
+`bf1cd5786dfe1968eda4912135556ef0247437c6`.
+
+Deploy run `36337133864` completed GREEN at `2026-09-27T17:50:34Z` through
+the documented GitHub `main` route. Quality/security gates completed in
+11m40s, the SHA-bound standalone build and artifact publication in 14m14s,
+and immutable staging, atomic production deployment, scheduler and
+tenant-isolation checks plus built-in public smokes in 6m30s. Independent
+no-cache production reads returned `{"ok":true}` and
+`{"sha":"bf1cd5786dfe","artifactSha":"bf1cd5786dfe1968eda4912135556ef0247437c6","builtAt":"2026-09-27T17:35:39Z"}`.
+The artifact SHA exactly matches the merged main SHA.
+
+No direct server deployment, worktree copy, retired host/owner or Azure path
+was used. Full browser E2E, Android/Gradle, load, physical-device and human
+pilot evidence remains `NOT RUN`. Progress stays `81/161`, `14/15`, C5 81%,
+C6 20% and C9 99%; the released fence adds no task or phase-gate credit.

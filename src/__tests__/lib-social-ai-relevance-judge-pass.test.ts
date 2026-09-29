@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const deps = vi.hoisted(() => ({
   findMany: vi.fn(),
@@ -8,6 +8,7 @@ const deps = vi.hoisted(() => ({
   persist: vi.fn(),
   isAiFeatureEnabled: vi.fn(),
   checkAiBudget: vi.fn(),
+  jev: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -28,6 +29,12 @@ vi.mock("@/lib/social/ai-relevance-judge", () => ({
   AI_RELEVANCE_JUDGE_VERSION: "ai_relevance_judge_v2",
   judgeSubjectRelevance: deps.judge,
 }))
+vi.mock("@/lib/social/jev-relevance-judge", async (importOriginal) => {
+  // The threshold helper stays real: the pass's restore rule is what is under
+  // test, not a re-statement of it.
+  const actual = await importOriginal<typeof import("@/lib/social/jev-relevance-judge")>()
+  return { ...actual, judgeSubjectRelevanceWithJev: deps.jev }
+})
 vi.mock("@/lib/social/subject-relevance", () => ({
   evaluateSubjectRelevance: deps.evaluate,
   persistSubjectMatches: deps.persist,
@@ -74,8 +81,11 @@ function candidate(overrides: Record<string, unknown> = {}) {
     subject: {
       id: "subject-1",
       name: "Grandmart",
+      type: "COMPANY",
       requiredContext: [],
       exclusions: [],
+      geographies: ["Azərbaycan"],
+      languages: ["az", "ru"],
       aliases: [{ value: "Grandmart" }],
     },
     ...overrides,
@@ -212,5 +222,106 @@ describe("проход судьи по отказам «родовой алиа�
 
     expect(result).toMatchObject({ scanned: 2, judged: 0, reason: "deadline_reached" })
     expect(deps.judge).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Jev as the judge (owner decision, 2026-09-28: "Jev wherever it copes", with
+ * two named limits — it may not answer, and it cannot read pictures). The pass
+ * is where those limits have to turn into behaviour: what gets restored, what
+ * gets stamped so it is not paid for twice, and what is left alone to be
+ * looked at again.
+ */
+describe("судья на Jev", () => {
+  beforeEach(() => {
+    vi.stubEnv("TYPESAFE_API_KEY", "apikey_test")
+    vi.stubEnv("SOCIAL_JUDGE_PROVIDER", "jev")
+  })
+  afterEach(() => vi.unstubAllEnvs())
+
+  it("возвращает в ленту только уверенный ответ", async () => {
+    deps.jev.mockResolvedValue({ verdict: "about_subject", confidence: 0.97, errorClass: null })
+
+    const result = await judgeAmbiguousAliasRejections()
+
+    expect(result).toMatchObject({ provider: "jev", judged: 1, confirmed: 1, restored: 1 })
+    expect(deps.judge).not.toHaveBeenCalled()
+    // Страна и язык бренда уходят в вопрос — без них одноимённый магазин за
+    // рубежом читается как наша сеть.
+    expect(deps.jev).toHaveBeenCalledWith(expect.objectContaining({
+      geographies: ["Azərbaycan"],
+      languages: ["az", "ru"],
+    }))
+  })
+
+  // Ниже порога ответ измеренно ненадёжен: не действуем, но помечаем — он не
+  // изменится на следующем проходе, а платить за него дважды незачем.
+  it("не возвращает ответ ниже порога, но помечает его", async () => {
+    deps.jev.mockResolvedValue({ verdict: "about_subject", confidence: 0.62, errorClass: null })
+
+    const result = await judgeAmbiguousAliasRejections()
+
+    expect(result).toMatchObject({ belowThreshold: 1, confirmed: 0, restored: 0 })
+    expect(deps.evaluate).not.toHaveBeenCalled()
+    expect(deps.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        contextSignals: expect.objectContaining({
+          aiJudgeVerdict: "unsure",
+          aiJudgeConfidence: 0.62,
+          aiJudgeRawVerdict: "about_subject",
+        }),
+      }),
+    }))
+  })
+
+  // Фотография: судить нечего. Строку НЕ помечаем — текст может приехать
+  // позже правкой, и тогда её посмотрят заново.
+  it("не судит запись без собственного текста и не помечает её", async () => {
+    deps.jev.mockResolvedValue({ verdict: null, confidence: null, errorClass: "NO_TEXT" })
+
+    const result = await judgeAmbiguousAliasRejections()
+
+    expect(result).toMatchObject({ noText: 1, confirmed: 0, restored: 0, failed: 0 })
+    expect(deps.update).not.toHaveBeenCalled()
+    expect(deps.evaluate).not.toHaveBeenCalled()
+  })
+
+  // Провайдер не ответил — значит, он ничего не сказал: строка остаётся в
+  // очереди, а не уходит из неё с пустым вердиктом.
+  it.each(["TIMEOUT", "PROVIDER_ERROR", "MISSING_KEY"])("молчание провайдера (%s) ничего не меняет", async (errorClass) => {
+    deps.jev.mockResolvedValue({ verdict: null, confidence: null, errorClass })
+
+    const result = await judgeAmbiguousAliasRejections()
+
+    expect(result).toMatchObject({ failed: 1, confirmed: 0, restored: 0 })
+    expect(deps.update).not.toHaveBeenCalled()
+  })
+
+  it("на вердикте «не про нас» помечает и не трогает ленту", async () => {
+    deps.jev.mockResolvedValue({ verdict: "not_about_subject", confidence: 0.95, errorClass: null })
+
+    const result = await judgeAmbiguousAliasRejections()
+
+    expect(result).toMatchObject({ notAbout: 1, restored: 0 })
+    expect(deps.evaluate).not.toHaveBeenCalled()
+    expect(deps.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        contextSignals: expect.objectContaining({
+          aiJudgeVerdict: "not_about_subject",
+          aiJudgeVersion: "jev_relevance_judge_v1",
+        }),
+      }),
+    }))
+  })
+
+  it("без ключа возвращается к судье на Haiku", async () => {
+    vi.unstubAllEnvs()
+    vi.stubEnv("TYPESAFE_API_KEY", "")
+    deps.judge.mockResolvedValue({ verdict: "about_subject", errorClass: null, version: "ai_relevance_judge_v2" })
+
+    const result = await judgeAmbiguousAliasRejections()
+
+    expect(result).toMatchObject({ provider: "anthropic", restored: 1 })
+    expect(deps.jev).not.toHaveBeenCalled()
   })
 })

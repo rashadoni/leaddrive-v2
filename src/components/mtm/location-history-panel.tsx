@@ -7,6 +7,7 @@ import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { Activity, AlertTriangle, CheckCircle2, Clock3, Download, Layers3, LocateFixed, MapPin, Pause, Play, RefreshCw, RotateCcw, Route, Satellite, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { MtmFilterBar, MtmFilterDate, MtmFilterSelect } from "@/components/mtm/filter-bar"
 import { Select } from "@/components/ui/select"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import { formatTime } from "@/lib/format-date"
@@ -54,6 +55,8 @@ type HistoryData = {
   }
   summary: {
     distanceMeters: number | null
+    /** What the kilometres were counted along (road-distance.ts). */
+    distanceBasis?: "ROADS" | "PARTIAL" | "STRAIGHT"
     firstPointAt: string | null
     lastPointAt: string | null
     stopCount: number
@@ -105,6 +108,8 @@ type HistoryData = {
     recordedAt: string
     workdayId: string | null
   }>
+  /** The track along the streets (self-hosted OSRM); null when it did not answer. */
+  matchedTrack?: { segments: Array<Array<[number, number]>>; matchedPoints: number; totalPoints: number } | null
   stops: Array<{
     id: string
     startedAt: string
@@ -277,6 +282,7 @@ export function LocationHistoryPanel() {
     stops: true,
     visits: true,
     gaps: true,
+    roads: true,
   })
 
   const invalidateHistory = useCallback(() => {
@@ -476,117 +482,64 @@ export function LocationHistoryPanel() {
           void loadHistory()
         }}
       >
-        <div className="grid gap-3 sm:grid-cols-2 @min-[64rem]:grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto] @min-[64rem]:items-end">
-          <label className="space-y-1 text-xs font-medium">
-            <span>{t("agent")}</span>
-            <Select
-              data-testid="mtm-location-history-agent"
-              className="min-h-11"
-              value={agentId}
-              onChange={(event) => {
-                invalidateHistory()
-                setAgentId(event.target.value)
-              }}
-              disabled={!agents.length}
-            >
-              {!agents.length && <option value="">{t("noAgents")}</option>}
-              {agents.map((agent) => (
-                <option key={agent.id} value={agent.id}>{agent.name}{agent.team ? ` · ${agent.team.name}` : ""}</option>
-              ))}
-            </Select>
-          </label>
-          <label className="space-y-1 text-xs font-medium">
-            <span>{t("dateFrom")}</span>
-            <input
-              data-testid="mtm-location-history-date-from"
-              className="min-h-11 w-full rounded-md border bg-background px-3 text-sm"
-              type="date"
-              value={date}
-              onChange={(event) => {
-                invalidateHistory()
-                const start = event.target.value
-                // Owner 2026-09-22: the end stays where it is (today by default);
-                // it moves only when the new start passes it or the window
-                // would exceed its limit.
-                const end = clampHistoryEndDate(start, toDate)
-                setDate(start)
-                setToDate(end)
-                const historyWindow = defaultHistoryWindow(end, timezone)
-                autoWindowRef.current = true
-                setFrom(historyWindow.from)
-                setTo(historyWindow.to)
-              }}
-              required
-            />
-          </label>
-          <label className="space-y-1 text-xs font-medium">
-            <span>{t("dateTo")}</span>
-            <input
-              data-testid="mtm-location-history-date-to"
-              className="min-h-11 w-full rounded-md border bg-background px-3 text-sm"
-              type="date"
-              value={toDate}
-              min={date}
-              max={addDays(date, MAX_RANGE_DAYS - 1)}
-              onChange={(event) => {
-                invalidateHistory()
-                const end = clampHistoryEndDate(date, event.target.value)
-                setToDate(end)
-                const historyWindow = defaultHistoryWindow(end, timezone)
-                autoWindowRef.current = true
-                setFrom(historyWindow.from)
-                setTo(historyWindow.to)
-              }}
-              required
-            />
-          </label>
-          <label className="space-y-1 text-xs font-medium">
-            <span>{t("from")}</span>
-            <input
-              className="min-h-11 w-full rounded-md border bg-background px-3 text-sm"
-              type="time"
-              value={from}
-              onChange={(event) => {
-                invalidateHistory()
-                autoWindowRef.current = false
-                setFrom(event.target.value)
-              }}
-              required
-            />
-          </label>
-          <label className="space-y-1 text-xs font-medium">
-            <span>{t("to")}</span>
-            <input
-              className="min-h-11 w-full rounded-md border bg-background px-3 text-sm"
-              type="time"
-              value={to}
-              onChange={(event) => {
-                invalidateHistory()
-                autoWindowRef.current = false
-                setTo(event.target.value)
-              }}
-              required
-            />
-          </label>
-          <label className="space-y-1 text-xs font-medium">
-            <span>{t("accuracyFilter")}</span>
-            <Select
-              data-testid="mtm-location-history-accuracy"
-              className="min-h-11"
-              value={String(accuracy)}
-              onChange={(event) => {
-                invalidateHistory()
-                setAccuracy(Number(event.target.value))
-              }}
-            >
-              {[25, 50, 100, 200, 500].map((value) => <option key={value} value={value}>≤ {value} m</option>)}
-            </Select>
-          </label>
-          <Button data-testid="mtm-location-history-submit" type="submit" disabled={!agentId || loadingHistory} className="min-h-11 w-full @min-[64rem]:w-auto">
+        {/* Owner 2026-09-27: filters in one row. Seven labelled fields on a
+            fixed grid became pills that wrap; «Показать» stays — a history
+            load is heavy and runs when asked for. */}
+        <MtmFilterBar testId="mtm-location-history-filters">
+          <MtmFilterSelect testId="mtm-location-history-agent" label={t("agent")} value={agentId} emptyValue="__none__" showValue clearable={false}
+            allLabel={t("noAgents")} disabled={!agents.length}
+            options={agents.map((agent) => ({ value: agent.id, label: `${agent.name}${agent.team ? ` · ${agent.team.name}` : ""}` }))}
+            onChange={(value) => {
+              invalidateHistory()
+              setAgentId(value)
+            }} />
+          <MtmFilterDate testId="mtm-location-history-date-from" label={t("dateFrom")} value={date}
+            onChange={(start) => {
+              invalidateHistory()
+              // Owner 2026-09-22: the end stays where it is (today by default);
+              // it moves only when the new start passes it or the window
+              // would exceed its limit.
+              const end = clampHistoryEndDate(start, toDate)
+              setDate(start)
+              setToDate(end)
+              const historyWindow = defaultHistoryWindow(end, timezone)
+              autoWindowRef.current = true
+              setFrom(historyWindow.from)
+              setTo(historyWindow.to)
+            }} />
+          <MtmFilterDate testId="mtm-location-history-date-to" label={t("dateTo")} value={toDate} min={date} max={addDays(date, MAX_RANGE_DAYS - 1)}
+            onChange={(value) => {
+              invalidateHistory()
+              const end = clampHistoryEndDate(date, value)
+              setToDate(end)
+              const historyWindow = defaultHistoryWindow(end, timezone)
+              autoWindowRef.current = true
+              setFrom(historyWindow.from)
+              setTo(historyWindow.to)
+            }} />
+          <MtmFilterDate type="time" label={t("from")} value={from}
+            onChange={(value) => {
+              invalidateHistory()
+              autoWindowRef.current = false
+              setFrom(value)
+            }} />
+          <MtmFilterDate type="time" label={t("to")} value={to}
+            onChange={(value) => {
+              invalidateHistory()
+              autoWindowRef.current = false
+              setTo(value)
+            }} />
+          <MtmFilterSelect testId="mtm-location-history-accuracy" label={t("accuracyFilter")} value={String(accuracy)} emptyValue="100" showValue clearable={false} allLabel="≤ 100 m"
+            options={[25, 50, 100, 200, 500].map((value) => ({ value: String(value), label: `≤ ${value} m` }))}
+            onChange={(value) => {
+              invalidateHistory()
+              setAccuracy(Number(value))
+            }} />
+          <Button data-testid="mtm-location-history-submit" type="submit" disabled={!agentId || loadingHistory} className="h-10 rounded-full px-4">
             <RefreshCw className={`mr-1.5 h-4 w-4 ${loadingHistory ? "animate-spin" : ""}`} />
             {loadingHistory ? t("loading") : t("show")}
           </Button>
-        </div>
+        </MtmFilterBar>
         <p className="mt-2 text-xs text-muted-foreground">{t("timezoneHint", { timezone })} {t("rangeHint", { days: MAX_RANGE_DAYS })}</p>
       </form>
 
@@ -647,7 +600,7 @@ export function LocationHistoryPanel() {
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-card p-2 dark:border-zinc-700">
             <div className="flex flex-wrap items-center gap-1.5" aria-label={t("layers")}>
               <span className="mr-1 inline-flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground"><Layers3 className="h-3.5 w-3.5" />{t("layers")}</span>
-              {(Object.keys(layers) as Array<keyof typeof layers>).map((layer) => (
+              {(Object.keys(layers) as Array<keyof typeof layers>).filter((layer) => layer !== "roads" || Boolean(data?.matchedTrack)).map((layer) => (
                 <button
                   key={layer}
                   type="button"
@@ -764,11 +717,15 @@ export function LocationHistoryPanel() {
                 timezone={timezone}
                 playbackIndex={playbackIndex}
                 focus={tripFocus}
+                matchedTrack={data.matchedTrack ?? null}
               />
             </div>
             {/* Owner 2026-09-22: «lines by colours, by pieces — no explanation». */}
             <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
-              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{t("legendTrack")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{data.matchedTrack && layers.roads ? t("legendRoads") : t("legendTrack")}</li>
+              {data.matchedTrack && layers.roads ? (
+                <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-2 border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.raw }} />{t("legendRaw")}</li>
+              ) : null}
               <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.gap }} />{t("legendGap")}</li>
               <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dashed" style={{ borderColor: HISTORY_MAP_COLORS.plan }} />{t("legendPlan")}</li>
               <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.stop }} />{t("legendStop")}</li>
@@ -786,6 +743,7 @@ export function LocationHistoryPanel() {
                   onFocus={setTripFocus}
                   formatMoment={formatMoment}
                   formatDuration={formatDuration}
+                  roadsMatched={data.summary.distanceBasis === "ROADS"}
                 />
               )}
               {data.capabilities?.workforce !== false ? <section className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
