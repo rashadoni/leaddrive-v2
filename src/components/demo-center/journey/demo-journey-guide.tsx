@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleDot, Play, PlayCircle, SkipForward, Sparkles } from "lucide-react"
+import { useEffect, useState } from "react"
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleDot, Play, PlayCircle, SkipForward, Sparkles, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { getHelpVideoAsset, getHelpVideoForSlug } from "@/content/help/video-assets"
@@ -23,6 +23,8 @@ import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 import { DemoLiveCall, type DemoLiveCallState } from "./demo-live-call"
 import { DemoLiveWhatsApp } from "./demo-live-whatsapp"
 import { demoTarget } from "./demo-target"
+import { useGuideVoice, type GuideVoice } from "./demo-guide-voice"
+import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 
 /**
  * The guide panel: where the prospect is in the story, what to do now, and
@@ -116,6 +118,22 @@ export function DemoJourneyGuide({
   // is no coach mark, and the panel expands to carry the step on its own.
   const stepIsOnScene = sceneHasCoachMark && !anchorMissing && !reviewMode
 
+  // The guide reads each step aloud when it opens (guide-voice.ts). Keyed by
+  // the step, so a re-render never restarts a sentence mid-way.
+  const voice = useGuideVoice()
+  const narration = step && !reviewMode ? stepVoiceUrl(step) : null
+  useEffect(() => {
+    if (narration) voice.play(narration)
+    else voice.stop()
+    // voice.play/stop are stable; the recording is the only thing that changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [narration])
+  // A clip carries its own voiceover: the guide falls silent for it.
+  const clipEvent = (name: DemoClipEvent) => {
+    if (name === "video.started") voice.stop()
+    onClipEvent?.(name)
+  }
+
   return (
     <aside
       data-tour-id="demo-guide-panel"
@@ -129,6 +147,19 @@ export function DemoJourneyGuide({
         </p>
         <h2 className="mt-1 text-base font-semibold leading-snug">{section.title}</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.summary}</p>
+        {/* Words, not an icon: a bare speaker glyph was the kind of control
+            the owner found unreadable. */}
+        <Button
+          size="sm"
+          variant={voice.on ? "secondary" : "outline"}
+          className="mt-2 h-8 text-xs"
+          aria-pressed={voice.on}
+          data-testid="demo-guide-voice"
+          onClick={() => voice.toggle(narration)}
+        >
+          {voice.on ? <VolumeX className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> : <Volume2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />}
+          {voice.on ? S.voiceOff : S.voiceOn}
+        </Button>
       </div>
 
       <div>
@@ -216,7 +247,7 @@ export function DemoJourneyGuide({
       )}
 
       {section.intro && manifest.capabilities.video && (
-        <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} variant={variant} onClipEvent={onClipEvent} />
+        <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} variant={variant} onClipEvent={clipEvent} />
       )}
 
       {step && step.completion.kind === "outcome" && !reviewMode && variant === "granted" && liveCall?.enabled && onOutcome ? (
@@ -234,6 +265,7 @@ export function DemoJourneyGuide({
         variant={variant}
         snapshot={snapshot}
         prompts={section.assistantPrompts ?? []}
+        voice={voice}
       />
 
       <ol className="space-y-1.5" aria-label={S.guide}>
@@ -311,12 +343,15 @@ function DemoAssistant({
   variant,
   snapshot,
   prompts,
+  voice,
 }: {
   enabled: boolean
   token: string
   variant: DemoJourneyVariant
   snapshot: DemoJourneySnapshot
   prompts: readonly string[]
+  /** A prepared answer comes with its recording; Da Vinci's own words stay text. */
+  voice?: GuideVoice
 }) {
   const [question, setQuestion] = useState("")
   const [answer, setAnswer] = useState<string | null>(null)
@@ -358,13 +393,15 @@ function DemoAssistant({
         }),
       })
       const payload = await response.json().catch(() => null) as
-        { success?: boolean; answer?: string; error?: string; remaining?: number } | null
+        { success?: boolean; answer?: string; error?: string; remaining?: number; audio?: string } | null
       if (typeof payload?.remaining === "number") setRemaining(payload.remaining)
       if (!response.ok || !payload?.success || !payload.answer) {
         setError(payload?.error ?? S.assistantFailed)
         return
       }
       setAnswer(payload.answer)
+      // Only our own recordings: a path under the guide's sound folder.
+      if (payload.audio?.startsWith("/sounds/demo-guide/")) voice?.play(payload.audio)
       setQuestion("")
     } catch {
       setError(S.assistantFailed)

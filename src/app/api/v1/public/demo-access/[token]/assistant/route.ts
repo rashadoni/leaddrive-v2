@@ -4,6 +4,7 @@ import { calculateAiCost } from "@/lib/ai/budget"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
 import { buildAssistantGrounding } from "@/lib/demo-center/assistant/context"
 import { routeDemoQuestion } from "@/lib/demo-center/demo-question-router"
+import { demoVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { preparedAnswer } from "@/lib/demo-center/assistant/prepared-answers"
 import {
   DEMO_ASSISTANT_MAX_PREPARED,
@@ -141,7 +142,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           },
         })
         return NextResponse.json(
-          { success: true, answer, remaining: allowance.remaining, source: "prepared", intent: route.intent },
+          // Every prepared answer has a recording (guide-voice.ts; the test
+          // fails while one is missing), so the guide can say it aloud.
+          { success: true, answer, remaining: allowance.remaining, source: "prepared", intent: route.intent, audio: demoVoiceUrl(answer) },
           { headers: noStoreHeaders() },
         )
       }
