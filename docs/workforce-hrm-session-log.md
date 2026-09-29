@@ -1975,3 +1975,30 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: create an explicit-path checkpoint, fingerprint the complete
   sub-400 KB candidate and request a fresh author-independent full-range
   review from deployed main.
+
+## 2026-09-29 — WF-C8-002 frozen-review P2 repaired
+
+- Independent review matched exact clean range
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486..eab14f1d4f7393e7509b46cdf812b3198d470912`
+  at 20 paths / 144,051 bytes / SHA-256
+  `7ea3d6d0862ad5fbaeeb8a3561f67537cb9914451b4146e555592ae86d717fb6`
+  and returned RED: `P0=0`, `P1=0`, `P2=1`, `P3=0`.
+- The finding was a real transfer-day inconsistency: schedule fixed-point used
+  historical membership at planned start, but calendar overrides still used
+  mutable `agent.teamId`. A new-team holiday could hide an old-team shift or
+  conflict with a persisted no-show.
+- The batch resolver now carries the stable historical calendar team into the
+  route, which queries no current-team calendar facts. Existing workdays read
+  only their complete hash-verified immutable calendar snapshot and expose
+  `UNAVAILABLE` on missing/corrupt history.
+- Added same-day-transfer/divergent-calendar and immutable-workday regression
+  coverage. PASS: 8 focused files / 72 tests, scoped ESLint on all 14
+  candidate TS/TSX paths, JSON, i18n 23,766/0/0 and whitespace.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical device and pilot remain `NOT RUN` per host policy.
+- `WF-C8-002` stays `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: repair, regressions and append-only receipts are
+  complete but uncommitted on `codex/workforce-completion-part8`.
+- Next action: checkpoint only explicit paths, compute exact replacement
+  identity and request a fresh full-range independent review from zero.

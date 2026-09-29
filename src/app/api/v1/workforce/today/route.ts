@@ -14,8 +14,9 @@ import { resolveWorkforceExceptionCaseReadScopes } from "@/lib/workforce/excepti
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import {
   buildWorkforceManagerTodayRow,
-  resolveWorkforceManagerTodayPlans,
+  resolveWorkforceManagerTodayPlanContexts,
   summarizeWorkforceManagerTodayRows,
+  workforceManagerTodayCalendarFromSnapshot,
   workforceManagerTodayPlanFromSnapshot,
   WorkforceManagerTodayBoundsError,
   WORKFORCE_MANAGER_TODAY_LIMITS,
@@ -40,8 +41,15 @@ const todayWorkdaySelect = {
   startedAt: true,
   pausedAt: true,
   completedAt: true,
+  workforcePolicySnapshot: {
+    select: {
+      id: true,
+      definitionHash: true,
+    },
+  },
   workforceShiftSnapshot: {
     select: {
+      id: true,
       workDate: true,
       timezone: true,
       definition: true,
@@ -49,6 +57,22 @@ const todayWorkdaySelect = {
       plannedStartAt: true,
       plannedEndAt: true,
       template: { select: { name: true } },
+    },
+  },
+  workforceWorkdayScheduleSnapshot: {
+    select: {
+      id: true,
+      workdayId: true,
+      agentId: true,
+      workDate: true,
+      policySnapshotId: true,
+      shiftSnapshotId: true,
+      schemaVersion: true,
+      calendarState: true,
+      calendarSnapshot: true,
+      segments: true,
+      sites: true,
+      snapshotHash: true,
     },
   },
 } satisfies Prisma.MtmAgentWorkdaySelect
@@ -228,12 +252,10 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
       return agent ? [agent] : []
     })
     const agentIds = agents.map((agent) => agent.id)
-    const teamIds = [...new Set(agents.flatMap((agent) => agent.teamId ? [agent.teamId] : []))]
-    const calendarMaximum = Math.max(1, (agentIds.length + teamIds.length + 1) * 2)
     const legacyExceptionReader = !granularAccess && (auth.role === "admin" || auth.role === "superadmin")
 
-    const [todayWorkdays, previousGroups, calendarOverrides, exceptionCandidates] = agentIds.length === 0
-      ? [[], [], [], []] as const
+    const [todayWorkdays, previousGroups, exceptionCandidates] = agentIds.length === 0
+      ? [[], [], []] as const
       : await Promise.all([
           prisma.mtmAgentWorkday.findMany({
             where: { organizationId: auth.orgId, agentId: { in: agentIds }, workDate },
@@ -251,31 +273,6 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
             _max: { workDate: true },
             orderBy: { agentId: "asc" },
             take: WORKFORCE_MANAGER_TODAY_LIMITS.page + 1,
-          }),
-          prisma.mtmWorkCalendarDay.findMany({
-            where: {
-              organizationId: auth.orgId,
-              date: workDate,
-              deletedAt: null,
-              OR: [
-                { agentId: { in: agentIds }, teamId: null },
-                ...(teamIds.length > 0 ? [{ agentId: null, teamId: { in: teamIds } }] : []),
-                { agentId: null, teamId: null },
-              ],
-            },
-            orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
-            take: calendarMaximum + 1,
-            select: {
-              id: true,
-              date: true,
-              kind: true,
-              name: true,
-              teamId: true,
-              agentId: true,
-              movedToDate: true,
-              routePlanningAllowed: true,
-              source: true,
-            },
           }),
           granularAccess || legacyExceptionReader
             ? prisma.workforceExceptionCase.findMany({
@@ -297,9 +294,50 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
     if (
       todayWorkdays.length > WORKFORCE_MANAGER_TODAY_LIMITS.page
       || previousGroups.length > WORKFORCE_MANAGER_TODAY_LIMITS.page
-      || calendarOverrides.length > calendarMaximum
       || exceptionCandidates.length > WORKFORCE_MANAGER_TODAY_LIMITS.exceptionCases
     ) throw new WorkforceManagerTodayBoundsError()
+
+    const todayByAgent = new Map(todayWorkdays.map((workday) => [workday.agentId, workday]))
+    const livePlanAgentIds = agents.flatMap((agent) => todayByAgent.has(agent.id) ? [] : [agent.id])
+    const livePlanContexts = await resolveWorkforceManagerTodayPlanContexts(prisma, {
+      organizationId: auth.orgId,
+      agentIds: livePlanAgentIds,
+      workDate: date,
+      resolutionAt: now,
+    })
+    const calendarTeamIds = [...new Set(livePlanAgentIds.flatMap((agentId) => {
+      const teamId = livePlanContexts.get(agentId)?.calendarTeamId
+      return teamId ? [teamId] : []
+    }))]
+    const calendarMaximum = Math.max(1, (livePlanAgentIds.length + calendarTeamIds.length + 1) * 2)
+    const calendarOverrides = livePlanAgentIds.length === 0 ? [] : await prisma.mtmWorkCalendarDay.findMany({
+      where: {
+        organizationId: auth.orgId,
+        date: workDate,
+        deletedAt: null,
+        OR: [
+          { agentId: { in: livePlanAgentIds }, teamId: null },
+          ...(calendarTeamIds.length > 0
+            ? [{ agentId: null, teamId: { in: calendarTeamIds } }]
+            : []),
+          { agentId: null, teamId: null },
+        ],
+      },
+      orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
+      take: calendarMaximum + 1,
+      select: {
+        id: true,
+        date: true,
+        kind: true,
+        name: true,
+        teamId: true,
+        agentId: true,
+        movedToDate: true,
+        routePlanningAllowed: true,
+        source: true,
+      },
+    })
+    if (calendarOverrides.length > calendarMaximum) throw new WorkforceManagerTodayBoundsError()
 
     const previousPairs = previousGroups.flatMap((group) => group._max.workDate
       ? [{ agentId: group.agentId, workDate: group._max.workDate }]
@@ -382,23 +420,26 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
       }))))
     }
 
-    const todayByAgent = new Map(todayWorkdays.map((workday) => [workday.agentId, workday]))
     const previousByAgent = new Map(previousOpenWorkdays.map((workday) => [workday.agentId, workday]))
-    const calendars = new Map(agents.map((agent) => [agent.id, resolveWorkforceCalendarDay({
-      date,
-      overrides: calendarOverrides,
-      teamId: agent.teamId,
-      agentId: agent.id,
-    })]))
-    const livePlanAgentIds = agents.flatMap((agent) => (
-      todayByAgent.has(agent.id) || !calendars.get(agent.id)?.attendanceExpected ? [] : [agent.id]
-    ))
-    const livePlans = await resolveWorkforceManagerTodayPlans(prisma, {
-      organizationId: auth.orgId,
-      agentIds: livePlanAgentIds,
-      workDate: date,
-      resolutionAt: now,
-    })
+    const calendars = new Map(agents.map((agent) => {
+      const workday = todayByAgent.get(agent.id)
+      if (workday) {
+        return [agent.id, workforceManagerTodayCalendarFromSnapshot({
+          workDate: date,
+          workdayId: workday.id,
+          agentId: workday.agentId,
+          policySnapshot: workday.workforcePolicySnapshot,
+          shiftSnapshot: workday.workforceShiftSnapshot,
+          scheduleSnapshot: workday.workforceWorkdayScheduleSnapshot,
+        })] as const
+      }
+      return [agent.id, resolveWorkforceCalendarDay({
+        date,
+        overrides: calendarOverrides,
+        teamId: livePlanContexts.get(agent.id)?.calendarTeamId ?? null,
+        agentId: agent.id,
+      })] as const
+    }))
 
     const people = agents.map((agent) => {
       const workday = todayByAgent.get(agent.id)
@@ -407,6 +448,7 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
       const exceptions = exceptionAccessByAgent.has(agent.id)
         ? exceptionsByAgent.get(agent.id) ?? []
         : null
+      const livePlan = livePlanContexts.get(agent.id)?.plan ?? unavailablePlan()
       const plan = workday
         ? workforceManagerTodayPlanFromSnapshot({
             workDate: date,
@@ -414,7 +456,7 @@ export const GET = withWorkforceSessionAuth("read", async (request: NextRequest,
           })
         : !calendar.attendanceExpected
           ? calendarNonWorkingPlan()
-          : livePlans.get(agent.id) ?? unavailablePlan()
+          : livePlan
       const status = (workday?.status ?? "NOT_STARTED") as WorkdayStatus | "NOT_STARTED"
       return {
         id: agent.id,

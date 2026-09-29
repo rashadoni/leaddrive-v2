@@ -117,6 +117,16 @@ function timesheetScheduleSnapshot() {
   }
 }
 
+function managerTodaySnapshotRelations() {
+  const policy = timesheetPolicySnapshot()
+  const shift = timesheetShiftSnapshot()
+  return {
+    workforcePolicySnapshot: { id: policy.id, definitionHash: policy.definitionHash },
+    workforceShiftSnapshot: { ...shift, template: { name: "Published day" } },
+    workforceWorkdayScheduleSnapshot: timesheetScheduleSnapshot(),
+  }
+}
+
 function storedTimesheetApprovalRevision() {
   const calculation: WorkforceTimesheetCalculation = {
     calculationVersion: 1,
@@ -327,8 +337,10 @@ describe("independent Workforce read models", () => {
     ] as never)
     vi.mocked(prisma.mtmAgentWorkday.findMany)
       .mockResolvedValueOnce([{
-        id: "today-1", agentId: "agent-1", status: "STARTED",
+        id: "workday-1", agentId: "agent-1", status: "STARTED",
+        workDate: new Date("2026-08-28T00:00:00.000Z"),
         startedAt: new Date("2026-08-28T08:00:00.000Z"), pausedAt: null, completedAt: null,
+        ...managerTodaySnapshotRelations(),
       }] as never)
       .mockResolvedValueOnce([{
         id: "previous-2", agentId: "agent-2", workDate: new Date("2026-08-27T00:00:00.000Z"),
@@ -361,6 +373,10 @@ describe("independent Workforce read models", () => {
       { id: "agent-1", name: "Aysel", role: "AGENT", teamId: "team-1" },
       { id: "agent-2", name: "Murad", role: "AGENT", teamId: "team-2" },
     ] as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { requestId: "agent-1", teamId: "team-1" },
+      { requestId: "agent-2", teamId: "team-2" },
+    ] as never)
     vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([
       {
         id: "holiday", date: new Date("2026-08-28T00:00:00.000Z"), kind: "PUBLIC_HOLIDAY",
@@ -385,6 +401,82 @@ describe("independent Workforce read models", () => {
     expect(prisma.mtmWorkCalendarDay.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ organizationId: "org-workforce", deletedAt: null }),
     }))
+  })
+
+  it("uses the historical planned-start team calendar after a same-day transfer", async () => {
+    const teamAShift = {
+      startTime: "09:00", endTime: "18:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
+    }
+    const teamBShift = {
+      startTime: "10:00", endTime: "19:00", timezone: "UTC", daysOfWeek: [1, 2, 3, 4, 5],
+    }
+    const shiftTemplate = (id: string, teamId: string, definition: typeof teamAShift) => ({
+      id, name: id, teamId, isDefault: false, version: 1, status: "ACTIVE", timezone: "UTC",
+      activatedAt: new Date("2026-01-01T00:00:00.000Z"), retiredAt: null,
+      definition, definitionHash: workforceShiftDefinitionHash(definition),
+    })
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{
+      id: "agent-1", name: "Aysel", role: "AGENT", teamId: "team-b",
+    }] as never)
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-b" }] as never)
+      .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-a" }] as never)
+      .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-a" }] as never)
+    vi.mocked(prisma.workforceShiftTeamDefaultAssignment.findMany)
+      .mockResolvedValueOnce([{
+        id: "default-b", teamId: "team-b",
+        template: shiftTemplate("team-b-day", "team-b", teamBShift),
+      }] as never)
+      .mockResolvedValueOnce([{
+        id: "default-a", teamId: "team-a",
+        template: shiftTemplate("team-a-day", "team-a", teamAShift),
+      }] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([{
+      id: "team-b-holiday", date: new Date("2026-08-28T00:00:00.000Z"),
+      kind: "PUBLIC_HOLIDAY", name: "New team holiday", teamId: "team-b", agentId: null,
+      movedToDate: null, routePlanningAllowed: false, source: "WORKFORCE_CONFIG",
+    }] as never)
+
+    const response = await todayGet(request("/api/v1/workforce/today"), AUTH as never)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.people[0]).toMatchObject({
+      plan: { templateName: "team-a-day", plannedStartAt: "2026-08-28T09:00:00.000Z" },
+      calendar: { state: "SCHEDULED", attendanceExpected: true },
+      attendance: { state: "SCHEDULED_NOT_STARTED" },
+    })
+    const calendarQuery = vi.mocked(prisma.mtmWorkCalendarDay.findMany).mock.calls[0][0]
+    expect(JSON.stringify(calendarQuery)).toContain("team-a")
+    expect(JSON.stringify(calendarQuery)).not.toContain("team-b")
+  })
+
+  it("keeps an existing workday on its immutable calendar after a team transfer", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{
+      id: "agent-1", name: "Aysel", role: "AGENT", teamId: "team-b",
+    }] as never)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValueOnce([{
+      id: "workday-1", agentId: "agent-1", status: "STARTED",
+      workDate: new Date("2026-08-28T00:00:00.000Z"),
+      startedAt: new Date("2026-08-28T09:00:00.000Z"), pausedAt: null, completedAt: null,
+      ...managerTodaySnapshotRelations(),
+    }] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([{
+      id: "team-b-holiday", date: new Date("2026-08-28T00:00:00.000Z"),
+      kind: "PUBLIC_HOLIDAY", name: "New team holiday", teamId: "team-b", agentId: null,
+      movedToDate: null, routePlanningAllowed: false, source: "WORKFORCE_CONFIG",
+    }] as never)
+
+    const response = await todayGet(request("/api/v1/workforce/today"), AUTH as never)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.people[0]).toMatchObject({
+      plan: { source: "IMMUTABLE_WORKDAY_SNAPSHOT", templateName: "Published day" },
+      calendar: { state: "SCHEDULED", attendanceExpected: true },
+      attendance: { state: "STARTED", acceptedStartRecorded: true },
+    })
+    expect(prisma.mtmWorkCalendarDay.findMany).not.toHaveBeenCalled()
   })
 
   it("does not expose exception data through an attendance-only grant", async () => {

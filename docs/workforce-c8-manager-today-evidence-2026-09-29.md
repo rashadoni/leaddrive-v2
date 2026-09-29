@@ -93,3 +93,37 @@ explained. No completion credit, gate increase or `100%` claim is made by this
 working checkpoint. Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%
 and overall 59% until independently reviewed release and the remaining
 acceptance evidence exist.
+
+## 2026-09-29 frozen review finding and repair
+
+- The first complete author-independent review froze deployed main
+  `f95ec02952c425e97a470aba5d2e591ffb5b9486` through implementation head
+  `eab14f1d4f7393e7509b46cdf812b3198d470912`: 20 paths / 144,051 binary
+  bytes / SHA-256
+  `7ea3d6d0862ad5fbaeeb8a3561f67537cb9914451b4146e555592ae86d717fb6`.
+  Verdict was RED with `P0=0`, `P1=0`, `P2=1`, `P3=0`.
+- The P2 proved that roster authorization's mutable current team also fed the
+  display calendar while the live plan was corrected to the historical team
+  at planned start. A same-day transfer could therefore hide an old-team
+  scheduled shift behind the new team's holiday, manufacture a scheduled
+  state on the inverse calendar, or contradict a persisted no-show.
+- The live plan resolver now returns its stable historical planned-start team
+  context. Calendar overrides are loaded only for those historical teams;
+  the current directory team remains roster/authorization metadata and is no
+  longer an attendance/display fact.
+- Existing workdays no longer consult any live calendar. Their calendar is
+  projected only after the complete immutable workday schedule envelope,
+  snapshot links, schema and SHA-256 hash verify; missing or corrupt history
+  is explicitly `UNAVAILABLE` and fails closed.
+- New regressions cover a same-day Team B transfer with a divergent Team B
+  holiday while the stable Team A plan/calendar remains scheduled, plus an
+  existing snapshotted workday that remains scheduled without a live calendar
+  query after transfer.
+- PASS — expanded targeted matrix: **8 files / 72 tests**; scoped ESLint on
+  all **14** candidate TypeScript/TSX paths; translation parity
+  **23,766/0/0**; three JSON catalogs; `git diff --check`.
+- NOT RUN — local full typecheck/build/suite, real browser/AT,
+  Android/Gradle, load, signed device and pilot under Contabo workload policy.
+- `WF-C8-002` remains **PARTIAL** and progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%. The changed repair head requires a
+  fresh complete independent review before publication.

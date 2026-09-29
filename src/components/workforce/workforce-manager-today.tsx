@@ -37,7 +37,7 @@ export type WorkforceManagerTodayPerson = {
     plannedEndAt: string | null
   }
   calendar: {
-    state: "SCHEDULED" | "NON_WORKING" | "PUBLIC_HOLIDAY" | "TENANT_CLOSURE" | "APPROVED_LEAVE" | "APPROVED_ABSENCE" | "PERSONAL_EXCEPTION"
+    state: "SCHEDULED" | "NON_WORKING" | "PUBLIC_HOLIDAY" | "TENANT_CLOSURE" | "APPROVED_LEAVE" | "APPROVED_ABSENCE" | "PERSONAL_EXCEPTION" | "UNAVAILABLE"
     attendanceExpected: boolean
     noShowEligible: boolean
     excused: boolean

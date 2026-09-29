@@ -24679,7 +24679,8 @@
       "TENANT_CLOSURE": "Şirkət bağlıdır",
       "APPROVED_LEAVE": "Təsdiqlənmiş məzuniyyət",
       "APPROVED_ABSENCE": "Təsdiqlənmiş iştirak etməmə",
-      "PERSONAL_EXCEPTION": "Şəxsi təqvim istisnası"
+      "PERSONAL_EXCEPTION": "Şəxsi təqvim istisnası",
+      "UNAVAILABLE": "Tarixi təqvim əlçatan deyil"
     },
     "employeeTodayTitle": "İş gününüz, {name}",
     "employeeCurrentState": "Cari vəziyyət",

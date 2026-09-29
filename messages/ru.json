@@ -24683,7 +24683,8 @@
       "TENANT_CLOSURE": "Компания закрыта",
       "APPROVED_LEAVE": "Согласованный отпуск",
       "APPROVED_ABSENCE": "Согласованное отсутствие",
-      "PERSONAL_EXCEPTION": "Личное исключение календаря"
+      "PERSONAL_EXCEPTION": "Личное исключение календаря",
+      "UNAVAILABLE": "Исторический календарь недоступен"
     },
     "employeeTodayTitle": "Ваш рабочий день, {name}",
     "employeeCurrentState": "Текущее состояние",

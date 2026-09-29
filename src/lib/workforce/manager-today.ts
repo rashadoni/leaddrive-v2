@@ -12,6 +12,7 @@ import {
   type WorkforceShiftTemplateCandidate,
 } from "@/lib/workforce/shift-resolution"
 import { resolveWorkforceHistoricalTeamMemberships } from "@/lib/workforce/team-membership"
+import { workforceCalendarFromVerifiedScheduleSnapshot } from "@/lib/workforce/timesheet-schedule-snapshot"
 import type {
   WorkforceTimesheetExceptionStatus,
 } from "@/lib/workforce/timesheet-read-model"
@@ -38,6 +39,19 @@ export type WorkforceManagerTodayException = {
   status: WorkforceTimesheetExceptionStatus
 }
 
+export type WorkforceManagerTodayCalendar = Pick<
+  ResolvedWorkforceCalendarDay,
+  "attendanceExpected" | "noShowEligible" | "excused"
+> & {
+  state: ResolvedWorkforceCalendarDay["state"] | "UNAVAILABLE"
+}
+
+export type WorkforceManagerTodayPlanContext = {
+  plan: WorkforceManagerTodayPlan
+  /** Historical team at the stable planned-start instant; null fails closed. */
+  calendarTeamId: string | null
+}
+
 export type WorkforceManagerTodayAttendanceState =
   | "STARTED"
   | "PAUSED"
@@ -49,10 +63,7 @@ export type WorkforceManagerTodayAttendanceState =
 
 export type WorkforceManagerTodayRow = {
   plan: WorkforceManagerTodayPlan
-  calendar: Pick<
-    ResolvedWorkforceCalendarDay,
-    "state" | "attendanceExpected" | "noShowEligible" | "excused"
-  >
+  calendar: WorkforceManagerTodayCalendar
   attendance: {
     state: WorkforceManagerTodayAttendanceState
     acceptedStartRecorded: boolean
@@ -134,6 +145,15 @@ function unavailablePlan(): WorkforceManagerTodayPlan {
   }
 }
 
+export function workforceManagerTodayUnavailableCalendar(): WorkforceManagerTodayCalendar {
+  return {
+    state: "UNAVAILABLE",
+    attendanceExpected: false,
+    noShowEligible: false,
+    excused: false,
+  }
+}
+
 function nonWorkingPlan(source: WorkforceManagerTodayPlan["source"]): WorkforceManagerTodayPlan {
   return {
     state: "NON_WORKING_DAY",
@@ -204,6 +224,66 @@ export function workforceManagerTodayPlanFromSnapshot(input: {
     })
   } catch {
     return unavailablePlan()
+  }
+}
+
+export function workforceManagerTodayCalendarFromSnapshot(input: {
+  workDate: string
+  workdayId: string
+  agentId: string
+  policySnapshot: {
+    id: string
+    definitionHash: string
+  } | null
+  shiftSnapshot: {
+    id: string
+    definition: unknown
+    definitionHash: string
+  } | null
+  scheduleSnapshot: {
+    id: string
+    workdayId: string
+    agentId: string
+    workDate: Date
+    policySnapshotId: string
+    shiftSnapshotId: string
+    schemaVersion: number
+    calendarState: string
+    calendarSnapshot: unknown
+    segments: unknown
+    sites: unknown
+    snapshotHash: string
+  } | null
+}): WorkforceManagerTodayCalendar {
+  const { policySnapshot, shiftSnapshot, scheduleSnapshot } = input
+  if (
+    !isDateKey(input.workDate)
+    || !policySnapshot
+    || !shiftSnapshot
+    || !scheduleSnapshot
+    || scheduleSnapshot.workdayId !== input.workdayId
+    || scheduleSnapshot.agentId !== input.agentId
+    || canonicalDate(scheduleSnapshot.workDate) !== input.workDate
+  ) return workforceManagerTodayUnavailableCalendar()
+  try {
+    const shiftDefinition = parseWorkforceShiftDefinition(shiftSnapshot.definition)
+    const calendar = workforceCalendarFromVerifiedScheduleSnapshot({
+      snapshot: scheduleSnapshot,
+      workDate: input.workDate,
+      policySnapshotId: policySnapshot.id,
+      policyDefinitionHash: policySnapshot.definitionHash,
+      shiftSnapshotId: shiftSnapshot.id,
+      shiftDefinitionHash: shiftSnapshot.definitionHash,
+      shiftDefinition,
+    })
+    return {
+      state: calendar.state,
+      attendanceExpected: calendar.attendanceExpected,
+      noShowEligible: calendar.noShowEligible,
+      excused: calendar.excused,
+    }
+  } catch {
+    return workforceManagerTodayUnavailableCalendar()
   }
 }
 
@@ -337,15 +417,17 @@ function resolveLoadedShift(input: {
  * historical team membership at the resolved planned start without issuing
  * one query sequence per employee.
  */
-export async function resolveWorkforceManagerTodayPlans(
+type WorkforceManagerTodayPlanInput = {
+  organizationId: string
+  agentIds: readonly string[]
+  workDate: string
+  resolutionAt: Date
+}
+
+export async function resolveWorkforceManagerTodayPlanContexts(
   db: ManagerTodayShiftDb,
-  input: {
-    organizationId: string
-    agentIds: readonly string[]
-    workDate: string
-    resolutionAt: Date
-  },
-): Promise<ReadonlyMap<string, WorkforceManagerTodayPlan>> {
+  input: WorkforceManagerTodayPlanInput,
+): Promise<ReadonlyMap<string, WorkforceManagerTodayPlanContext>> {
   if (
     !input.organizationId
     || !isDateKey(input.workDate)
@@ -404,6 +486,7 @@ export async function resolveWorkforceManagerTodayPlans(
   const teamDefaults = new Map<string, TeamDefault[]>()
   const teamLegacyDefaults = new Map<string, Template[]>()
   const loadedTeamIds = new Set<string>()
+  const calendarTeams = new Map(initialTeams)
 
   const ensureTeams = async (values: Iterable<string | null>) => {
     const missing = [...new Set([...values].filter((value): value is string => Boolean(value)))]
@@ -452,9 +535,11 @@ export async function resolveWorkforceManagerTodayPlans(
     const changedAgentIds: string[] = []
     for (const candidate of candidates) {
       const prior = resolved.get(candidate.agentId)
+      const historicalTeamId = teams.get(candidate.agentId) ?? null
+      calendarTeams.set(candidate.agentId, historicalTeamId)
       const next = resolveLoadedShift({
         agentId: candidate.agentId,
-        teamId: teams.get(candidate.agentId) ?? null,
+        teamId: historicalTeamId,
         workDate: input.workDate,
         scopeInstant: candidate.workdayStartedAt,
         resolutionAt: input.resolutionAt,
@@ -472,16 +557,19 @@ export async function resolveWorkforceManagerTodayPlans(
     }
     if (changedAgentIds.length === 0) break
     if (pass === 1) {
-      for (const agentId of changedAgentIds) resolved.set(agentId, null)
+      for (const agentId of changedAgentIds) {
+        resolved.set(agentId, null)
+        calendarTeams.set(agentId, null)
+      }
     } else {
       pendingAgentIds = changedAgentIds
     }
   }
 
-  const plans = new Map<string, WorkforceManagerTodayPlan>()
+  const contexts = new Map<string, WorkforceManagerTodayPlanContext>()
   for (const agentId of input.agentIds) {
     const shift = resolved.get(agentId)
-    plans.set(agentId, shift == null
+    const plan = shift == null
       ? unavailablePlan()
       : shift.schedule == null
         ? nonWorkingPlan("EFFECTIVE_PUBLISHED_SCHEDULE")
@@ -491,15 +579,29 @@ export async function resolveWorkforceManagerTodayPlans(
             timezone: shift.timezone,
             plannedStartAt: shift.schedule.plannedStartAt,
             plannedEndAt: shift.schedule.plannedEndAt,
-          }))
+          })
+    contexts.set(agentId, {
+      plan,
+      calendarTeamId: calendarTeams.get(agentId) ?? null,
+    })
   }
+  return contexts
+}
+
+export async function resolveWorkforceManagerTodayPlans(
+  db: ManagerTodayShiftDb,
+  input: WorkforceManagerTodayPlanInput,
+): Promise<ReadonlyMap<string, WorkforceManagerTodayPlan>> {
+  const contexts = await resolveWorkforceManagerTodayPlanContexts(db, input)
+  const plans = new Map<string, WorkforceManagerTodayPlan>()
+  for (const [agentId, context] of contexts) plans.set(agentId, context.plan)
   return plans
 }
 
 export function buildWorkforceManagerTodayRow(input: {
   workdayStatus: "STARTED" | "PAUSED" | "COMPLETED" | null
   plan: WorkforceManagerTodayPlan
-  calendar: ResolvedWorkforceCalendarDay
+  calendar: WorkforceManagerTodayCalendar
   exceptions: WorkforceManagerTodayException[] | null
 }): WorkforceManagerTodayRow {
   const persistedNoShow = input.workdayStatus == null && input.exceptions?.some((exception) => (
@@ -508,7 +610,9 @@ export function buildWorkforceManagerTodayRow(input: {
   const state: WorkforceManagerTodayAttendanceState = input.workdayStatus
     ?? (persistedNoShow
       ? "NO_SHOW"
-      : !input.calendar.attendanceExpected || input.plan.state === "NON_WORKING_DAY"
+      : input.calendar.state === "UNAVAILABLE"
+        ? "SCHEDULE_UNAVAILABLE"
+        : !input.calendar.attendanceExpected || input.plan.state === "NON_WORKING_DAY"
         ? "NOT_EXPECTED"
         : input.plan.state === "ASSIGNED"
           ? "SCHEDULED_NOT_STARTED"

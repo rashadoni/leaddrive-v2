@@ -2137,3 +2137,25 @@ from this worktree.
   are complete but uncommitted on `codex/workforce-completion-part8`.
 - Next action: checkpoint only the explicit slice paths, freeze/fingerprint
   the full diff and obtain fresh author-independent full-range review.
+
+## 2026-09-29 — WF-C8-002 historical calendar review repair
+
+- Complete review of exact head `eab14f1d4f7393e7509b46cdf812b3198d470912`
+  was RED with one P2: Today combined a historical live plan with a mutable
+  current-team calendar after same-day transfers.
+- Live rows now resolve calendar overrides with the stable historical team at
+  planned start. Existing-workday rows use only a schema/link/hash-verified
+  immutable schedule calendar and fail closed as `UNAVAILABLE`; current team
+  remains only the roster authorization boundary.
+- Transfer/divergent-calendar and immutable-workday regressions pass. The
+  expanded targeted matrix is 8 files / 72 tests; scoped ESLint on 14
+  candidate TS/TSX paths, JSON, i18n 23,766/0/0 and whitespace pass.
+- Full local typecheck/build/suite, browser/AT, Android/Gradle, load, signed
+  APK, physical-device and pilot remain `NOT RUN` under host policy.
+- `WF-C8-002` remains `PARTIAL`; no completion or gate credit is added.
+  Progress stays `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows.
+- Precise stopping point: the reviewed P2 is repaired and bounded checks pass;
+  the changed repair plus receipts are uncommitted.
+- Next action: checkpoint explicit paths, fingerprint the replacement full
+  candidate and obtain a fresh author-independent complete-diff verdict.

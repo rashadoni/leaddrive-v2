@@ -24683,7 +24683,8 @@
       "TENANT_CLOSURE": "Company closure",
       "APPROVED_LEAVE": "Approved leave",
       "APPROVED_ABSENCE": "Approved absence",
-      "PERSONAL_EXCEPTION": "Personal calendar exception"
+      "PERSONAL_EXCEPTION": "Personal calendar exception",
+      "UNAVAILABLE": "Historical calendar unavailable"
     },
     "employeeTodayTitle": "Your workday, {name}",
     "employeeCurrentState": "Current state",

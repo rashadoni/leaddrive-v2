@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
+import { workforceWorkdayScheduleSnapshotHash } from "@/lib/workforce/snapshot-writer"
 import {
   buildWorkforceManagerTodayRow,
+  resolveWorkforceManagerTodayPlanContexts,
   resolveWorkforceManagerTodayPlans,
+  workforceManagerTodayCalendarFromSnapshot,
   workforceManagerTodayPlanFromSnapshot,
 } from "@/lib/workforce/manager-today"
 
@@ -69,6 +72,66 @@ describe("Workforce manager Today read model", () => {
     }).state).toBe("UNAVAILABLE")
   })
 
+  it("uses only a hash-verified immutable calendar for an existing workday", () => {
+    const shift = definition()
+    const calendarSnapshot = {
+      date: WORK_DATE,
+      state: "SCHEDULED",
+      calendarKind: "WORKING_DAY",
+      attendanceExpected: true,
+      noShowEligible: true,
+      excused: false,
+      source: null,
+      overrideId: null,
+      teamMembership: { id: "membership-a", teamId: "team-a" },
+    }
+    const payload = {
+      schemaVersion: 2,
+      calendar: calendarSnapshot,
+      segments: [],
+      sites: [],
+      policySnapshotId: "policy-snapshot-1",
+      shiftSnapshotId: "shift-snapshot-1",
+    }
+    const scheduleSnapshot = {
+      id: "schedule-snapshot-1",
+      workdayId: "workday-1",
+      agentId: "agent-1",
+      workDate: new Date(`${WORK_DATE}T00:00:00.000Z`),
+      policySnapshotId: payload.policySnapshotId,
+      shiftSnapshotId: payload.shiftSnapshotId,
+      schemaVersion: 2,
+      calendarState: "SCHEDULED",
+      calendarSnapshot,
+      segments: [],
+      sites: [],
+      snapshotHash: workforceWorkdayScheduleSnapshotHash(payload),
+    }
+    const input = {
+      workDate: WORK_DATE,
+      workdayId: "workday-1",
+      agentId: "agent-1",
+      policySnapshot: { id: payload.policySnapshotId, definitionHash: "a".repeat(64) },
+      shiftSnapshot: {
+        id: payload.shiftSnapshotId,
+        definition: shift,
+        definitionHash: workforceShiftDefinitionHash(shift),
+      },
+      scheduleSnapshot,
+    }
+
+    expect(workforceManagerTodayCalendarFromSnapshot(input)).toEqual({
+      state: "SCHEDULED",
+      attendanceExpected: true,
+      noShowEligible: true,
+      excused: false,
+    })
+    expect(workforceManagerTodayCalendarFromSnapshot({
+      ...input,
+      scheduleSnapshot: { ...scheduleSnapshot, snapshotHash: "0".repeat(64) },
+    }).state).toBe("UNAVAILABLE")
+  })
+
   it("shows no-show only from an authorized persisted case", () => {
     expect(buildWorkforceManagerTodayRow({
       workdayStatus: null,
@@ -118,6 +181,40 @@ describe("Workforce manager Today read model", () => {
       templateName: "personal",
       plannedStartAt: "2026-08-31T09:00:00.000Z",
     })
+  })
+
+  it("pins the display calendar to the stable historical planned-start team", async () => {
+    const teamA = template("team-a-day", "team-a", "09:00", "18:00")
+    const teamB = template("team-b-day", "team-b", "10:00", "19:00")
+    const db = {
+      $queryRaw: vi.fn()
+        .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-b" }])
+        .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-a" }])
+        .mockResolvedValueOnce([{ requestId: "agent-1", teamId: "team-a" }]),
+      workforceShiftAssignment: { findMany: vi.fn().mockResolvedValue([]) },
+      workforceShiftDefaultAssignment: { findMany: vi.fn().mockResolvedValue([]) },
+      workforceShiftTeamDefaultAssignment: { findMany: vi.fn()
+        .mockResolvedValueOnce([{ id: "default-b", teamId: "team-b", template: teamB }])
+        .mockResolvedValueOnce([{ id: "default-a", teamId: "team-a", template: teamA }]) },
+      workforceShiftTemplate: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+
+    const contexts = await resolveWorkforceManagerTodayPlanContexts(db as never, {
+      organizationId: "org-workforce",
+      agentIds: ["agent-1"],
+      workDate: WORK_DATE,
+      resolutionAt: RESOLUTION_AT,
+    })
+
+    expect(contexts.get("agent-1")).toMatchObject({
+      calendarTeamId: "team-a",
+      plan: {
+        state: "ASSIGNED",
+        templateName: "team-a-day",
+        plannedStartAt: "2026-08-31T09:00:00.000Z",
+      },
+    })
+    expect(db.$queryRaw).toHaveBeenCalledTimes(3)
   })
 
   it("fails closed only the employee whose historical-team fixed point stays unstable", async () => {
