@@ -2970,3 +2970,27 @@ from this worktree.
   verification are complete but uncommitted.
 - Next action: checkpoint the repair/evidence, reconcile live main, fingerprint
   the replacement head and obtain a fresh full-range independent GREEN.
+
+## 2026-09-29 — WF-C8-007e post-fix frozen review GREEN
+
+- Fresh author-independent full-range review returned GREEN
+  (`P0=P1=P2=P3=0`) on exact clean head
+  `b42330c0b56ffaa469825675223e466983c0dd08` against unchanged live main and
+  merge-base `8c8ca4360285dec692caf7784d805936c276ae1e`.
+- Full identity matched 23 paths / 166,907 bytes /
+  `7c6d257daeb7834478100d6f0a3dc8b85d9ac2c1df1c6ab182492958352f1d5c`;
+  non-doc identity matched 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- The reviewer confirmed the new type predicate safely closes the exact CI
+  finding with unchanged runtime/auth/tenant behavior and found no issue in
+  the complete diff. PASS included 118 tests / 2 local PostgreSQL skips,
+  scoped ESLint, i18n 23,905/0/0, RLS 553/847/0, event assets 27/86/5,
+  runner policy 38, JSON, whitespace and append-only integrity.
+- New-head full typecheck and real PostgreSQL remain mandatory in exact-head
+  CI; other heavy/physical gates remain `NOT RUN` under policy.
+- Progress remains `WF-C8-007 PARTIAL`, `DONE 81/161`, `GATES 14/15`, C8
+  36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: independently reviewed code is frozen; only this
+  three-document GREEN receipt is uncommitted.
+- Next action: commit the receipt, prove non-doc identity unchanged, obtain
+  receipt-integrity GREEN, push exact head and rerun every PR gate.

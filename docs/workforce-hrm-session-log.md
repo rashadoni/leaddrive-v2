@@ -2970,3 +2970,30 @@ corrections as new entries that explicitly supersede the earlier fact.
   working tree and await checkpoint/reconciliation/review.
 - Next action: commit explicit paths, reconcile live main, compute exact diff
   identities and run a fresh full-range independent review before repush.
+
+## 2026-09-29 — WF-C8-007e post-typecheck-fix review GREEN
+
+- Fresh author-independent complete-diff review returned GREEN
+  (`P0=P1=P2=P3=0`) on exact clean head
+  `b42330c0b56ffaa469825675223e466983c0dd08`; live main/merge-base remains
+  `8c8ca4360285dec692caf7784d805936c276ae1e`.
+- Reviewer matched full 23-path / 166,907-byte identity
+  `7c6d257daeb7834478100d6f0a3dc8b85d9ac2c1df1c6ab182492958352f1d5c`
+  and non-doc 19-path / 121,643-byte identity
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- The type predicate is sound for strict parsed Zod output, preserves runtime
+  routing and narrows the ordinary branch without auth/tenant/API regression.
+  Full-diff review found no other issue.
+- Reviewer PASS: 118 tests / 2 local PostgreSQL skips; scoped ESLint; i18n
+  23,905/0/0; RLS 553/847/0; event assets 27/86/5; runner policy 38; JSON,
+  whitespace and append-only prefixes. Old-head GitHub evidence was also
+  confirmed: both real PostgreSQL proofs passed and exactly one route TS2322
+  pair caused the block.
+- New exact-head full typecheck and PostgreSQL remain mandatory CI gates;
+  remaining heavy/physical checks stay `NOT RUN` under policy.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: reviewed code is frozen and only this receipt is
+  uncommitted.
+- Next action: commit the three docs, verify non-doc fingerprint, obtain a
+  receipt-only GREEN, then update PR #506 and rerun exact-head CI.

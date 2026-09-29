@@ -243,3 +243,31 @@ baseline. Because a non-doc byte changed, all earlier frozen-head review
 authority is invalidated and a fresh author-independent complete-diff review
 is mandatory before republishing. Progress remains `DONE 81/161`,
 `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+
+## Post-typecheck-fix independent review GREEN
+
+Fresh author-independent complete-diff review returned GREEN with
+`P0=P1=P2=P3=0` on exact clean head
+`b42330c0b56ffaa469825675223e466983c0dd08` against live main/merge-base
+`8c8ca4360285dec692caf7784d805936c276ae1e`.
+
+- Full identity matched 23 paths / 166,907 bytes / SHA-256
+  `7c6d257daeb7834478100d6f0a3dc8b85d9ac2c1df1c6ab182492958352f1d5c`.
+- Non-doc identity matched 19 paths / 121,643 bytes / SHA-256
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- The reviewer confirmed `isMovedDayDraft` is sound for the strict Zod-union
+  output, keeps runtime routing unchanged and narrows the false branch to the
+  ordinary override type without an auth, tenant or API behavior change.
+- Complete runtime/security/concurrency/workflow/UI/evidence review found no
+  issue. Reviewer PASS covered 118 tests / 2 local PostgreSQL skips, scoped
+  ESLint, i18n 23,905/0/0, RLS 553/847/0, event assets 27/86/5, runner policy
+  across 38 workflows, JSON, whitespace and append-only prefixes.
+- The reviewer directly confirmed the old-head CI evidence: both real
+  PostgreSQL tests passed and the only new typecheck pair was the repaired
+  route `TS2322`.
+
+New-head real PostgreSQL and full typecheck remain mandatory in exact-head CI;
+build/suite/browser/AT/device/Android/load/chaos/pilot remain `NOT RUN` where
+policy or scope excludes them. Only this receipt changes after the reviewed
+head, so a receipt-integrity review must confirm the non-doc identity before
+push.
