@@ -219,7 +219,7 @@ export const GET = withRls(async (req, { orgId }) => {
         hour: d.getHours(),
         endHour: endD ? endD.getHours() : d.getHours() + 1,
         status: ev.status,
-        location: ev.location,
+        location: ev.location ?? undefined,
         isOnline: ev.isOnline,
         eventType: ev.type,
         url: `/events/${ev.id}`,

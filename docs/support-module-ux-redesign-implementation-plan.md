@@ -4229,6 +4229,23 @@ Final comparison closure (2026-09-29):
   branch-vs-main `git diff --check` is clean and the branch is zero commits
   behind this protected-main snapshot. Repeating already green browser cells
   is neither required nor substituted for the upcoming protected PR gates.
+- PR `#501` first-run `static-checks` in Actions run `36591924899` then found
+  four newly failing source contracts. The real stale Portal Users
+  `/contacts/list` action now uses canonical `/contacts`; three brittle class
+  assertions now verify the accepted shared shell spacing, fixed dialog
+  geometry plus pointer interception, and full-width mobile category actions.
+  The baseline allowlist was not changed. Focused regression is 32/32, scoped
+  ESLint and `git diff --check` are green; a fresh protected-check set remains
+  mandatory before merge.
+- The same run's blocking typecheck comparison reported exactly two new
+  defect-shaped `TS2322` pairs while syntax, missing-module and undefined-name
+  gates remained green. Ticket Categories now constructs an explicitly typed
+  optional organization-header record, and the freshly merged Agent Calendar
+  route normalizes nullable database location to its optional-string response
+  contract. Neither typecheck baseline nor compiler policy changed. Scoped
+  ESLint and diff checks are clean, and the calendar API/Support contracts pass
+  40/40; full TypeScript remains owned by the fresh protected Actions run on
+  the immutable repair SHA.
 
 Current verification evidence (2026-09-05):
 

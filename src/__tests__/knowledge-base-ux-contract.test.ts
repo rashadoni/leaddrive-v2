@@ -16,7 +16,9 @@ describe("knowledge base UX contract", () => {
 
   it("keeps destructive controls contrast-safe and primary article work above the mobile fold", () => {
     const detail = source("src/app/(dashboard)/knowledge-base/[id]/page.tsx")
-    expect(detail).toContain('className="space-y-3 sm:space-y-4"')
+    const shell = source("src/components/support/support-page-shell.tsx")
+    expect(detail).toContain("<SupportPageShell")
+    expect(shell).toContain('gap-[var(--support-space-section)]')
     expect(detail).toContain('className="min-h-11 min-w-11 shrink-0"')
     expect(detail).toContain('min-h-14 items-center gap-3 px-4 py-2.5 sm:min-h-16 sm:py-3')
     expect(detail).toContain("text-red-700")

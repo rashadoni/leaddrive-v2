@@ -27,7 +27,8 @@ const builder = readFileSync("src/components/mtm/route-builder.tsx", "utf8")
 
 describe("C15: the planner sheet is exactly the screen", () => {
   it("does not let a parent's spacing shorten a fixed dialog root", () => {
-    expect(dialog).toContain("className={`fixed inset-0 z-[60] m-0 flex justify-center")
+    expect(dialog).toContain("fixed inset-0 z-[60] m-0 flex justify-center")
+    expect(dialog).toContain("pointer-events-auto")
   })
 
   it("contains the scroller's absolutely positioned labels inside the scroller", () => {

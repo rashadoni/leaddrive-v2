@@ -137,9 +137,11 @@ export default function TicketCategoriesPage() {
   const rowRefs = useRef(new Map<string, HTMLDivElement>())
   const discardConfirmedRef = useRef(false)
 
-  const orgHeaders = useMemo<Record<string, string>>(() => (
-    orgId ? { "x-organization-id": String(orgId) } : {}
-  ), [orgId])
+  const orgHeaders = useMemo<Record<string, string>>(() => {
+    const headers: Record<string, string> = {}
+    if (orgId) headers["x-organization-id"] = String(orgId)
+    return headers
+  }, [orgId])
 
   const fetchCategories = useCallback(async () => {
     setLoading(true)

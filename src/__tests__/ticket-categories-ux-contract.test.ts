@@ -77,7 +77,7 @@ describe("ticket categories UX contract", () => {
     expect(page).toContain("bg-orange-700")
     expect(page).toContain("hover:bg-orange-800")
     expect(page).toContain('className="absolute inset-0 h-full w-full cursor-pointer opacity-0"')
-    expect(page).toContain('className="flex flex-col gap-2 sm:shrink-0 sm:flex-row"')
+    expect(page).toContain('className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row"')
     expect(page).toContain("min-h-11 w-full bg-orange-700")
     expect(page).not.toMatch(/(?:violet|purple|cyan|fuchsia)-/)
     expect(page).not.toContain("bg-gradient")

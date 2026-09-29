@@ -3412,3 +3412,53 @@ protected GitHub Actions check before merge or deployment.
 Result: final branch source is reconciled with the latest protected-main
 snapshot and targeted overlap checks are green. Next: checkpoint/push this
 receipt, open the release PR, and wait for every required GitHub Actions check.
+
+## 2026-09-29 — PR static contract repair
+
+- Release PR [#501](https://github.com/rashadoni/leaddrive-v2/pull/501) opened
+  from clean checkpoint `d36f6cc7d`. Branch protection requires `pr-scope`,
+  `static-checks`, `typecheck`, `runner-policy` and `scan` with administrator
+  enforcement; no approving review is required. The first run passed
+  `pr-scope`, `runner-policy` and `scan` but `static-checks` failed closed in
+  Actions run `36591924899` while `typecheck` continued.
+- The blocking baseline comparison found four newly failing source contracts.
+  Portal Users retained a real stale `/contacts/list` empty-state link after
+  main moved the contact list to `/contacts`; it now targets the canonical
+  route. Three exact-string assertions were stale relative to the accepted
+  Support implementation: Knowledge Article now inherits shared shell spacing,
+  Dialog adds `pointer-events-auto` without changing its fixed `inset-0 m-0`
+  geometry, and Ticket Categories uses a stronger full-width mobile action row.
+- The contracts now assert those semantic invariants instead of obsolete exact
+  class strings. Resource preflight reported 15 GiB available RAM, 329 GiB free
+  disk and zero memory pressure. All four previously failing files pass 32/32;
+  scoped ESLint and `git diff --check` are green. The test baseline was not
+  updated and no failing file was allowlisted.
+
+Result: the first protected static gate exposed and fixed one stale route plus
+three integration-contract mismatches without weakening the baseline. Next:
+checkpoint/push the repair and require a fresh complete protected-check set
+before merge.
+
+## 2026-09-29 — PR typecheck contract repair
+
+- The same first protected run `36591924899` completed with `typecheck` failed
+  closed in its defect-shaped baseline step. Syntax, missing-module and
+  undefined-name checks were green; the comparison reported exactly two new
+  `TS2322` pairs and the typecheck baseline was not changed.
+- Ticket Categories constructed its optional organization header as a union
+  containing an optional `undefined` property, which was not assignable to the
+  fetch helper's `Record<string, string>` contract. It now builds an explicitly
+  typed record and conditionally adds the header.
+- The freshly merged Agent Calendar route passed a nullable event location to
+  an optional-string response field. It now normalizes database `null` to
+  `undefined`; no calendar value is fabricated and the serialized omission
+  semantics are preserved.
+- Resource preflight remained safe at 15 GiB available RAM, 329 GiB free disk
+  and zero active memory pressure. Scoped ESLint and `git diff --check` pass;
+  the Agent Calendar API plus Support Calendar contracts pass 40/40. Full
+  TypeScript is intentionally delegated to the fresh protected Actions run on
+  the immutable repair SHA, per the Contabo workload policy.
+
+Result: both new defect-shaped type errors and all four new static failures are
+repaired without changing either baseline. Next: checkpoint/push the complete
+repair and require all five protected contexts to pass on the new exact SHA.
