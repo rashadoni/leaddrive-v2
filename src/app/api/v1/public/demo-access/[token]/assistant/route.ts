@@ -3,7 +3,10 @@ import { getAnthropicClient } from "@/lib/ai/anthropic-client"
 import { calculateAiCost } from "@/lib/ai/budget"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
 import { buildAssistantGrounding } from "@/lib/demo-center/assistant/context"
+import { routeDemoQuestion } from "@/lib/demo-center/demo-question-router"
+import { preparedAnswer } from "@/lib/demo-center/assistant/prepared-answers"
 import {
+  DEMO_ASSISTANT_MAX_PREPARED,
   DEMO_ASSISTANT_MAX_QUESTIONS,
   DEMO_ASSISTANT_MAX_TOKENS,
   DEMO_ASSISTANT_MODEL,
@@ -49,6 +52,8 @@ import { runWithRlsBypass } from "@/lib/rls-context"
 
 const SCENARIO = PROSPECT_TO_CLOSED_WON
 const ASKED = "ASSISTANT_ASKED"
+/** An answer from prepared-answers.ts; free of the Da Vinci allowance. */
+const PREPARED = "ASSISTANT_PREPARED"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -87,21 +92,62 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
     if (!SCENARIO.capabilities.assistant) return refuse("not_enabled", 403)
 
-    const [count, previous] = await Promise.all([
+    const [count, preparedCount, previous] = await Promise.all([
       prisma.demoAccessEvent.count({ where: { grantId: grant.id, eventType: ASKED } }),
+      prisma.demoAccessEvent.count({ where: { grantId: grant.id, eventType: PREPARED } }),
+      // The pace applies to every question, whoever answers it.
       prisma.demoAccessEvent.findFirst({
-        where: { grantId: grant.id, eventType: ASKED },
+        where: { grantId: grant.id, eventType: { in: [ASKED, PREPARED] } },
         orderBy: { occurredAt: "desc" },
         select: { occurredAt: true },
       }),
     ])
     const allowance = checkAssistantAllowance({ asked: count, lastAskedAt: previous?.occurredAt ?? null }, now)
-    if (!allowance.ok) {
-      return NextResponse.json(
-        { success: false, error: DEMO_ASSISTANT_REFUSAL_TEXT[allowance.refusal!], remaining: allowance.remaining },
+    const refusal = (refused: DemoAssistantRefusal) =>
+      NextResponse.json(
+        { success: false, error: DEMO_ASSISTANT_REFUSAL_TEXT[refused], remaining: allowance.remaining },
         { status: 429, headers: noStoreHeaders() },
       )
+    if (allowance.refusal === "too_fast") return refusal("too_fast")
+
+    // A prepared answer first (assistant/prepared-answers.ts, demo-question-router.ts): approved
+    // text, picked by a decision model in a fraction of a second for a
+    // fraction of a cent. It does not spend the Da Vinci allowance, so it is
+    // offered even after that runs out; it has its own cap because the model's
+    // rate limit is shared with the social relevance judge.
+    if (preparedCount < DEMO_ASSISTANT_MAX_PREPARED) {
+      const located = findStep(SCENARIO, stepId)
+      const route = await routeDemoQuestion(asked.question!, {
+        sectionTitle: findSection(SCENARIO, sectionId)?.title ?? null,
+        stepTitle: located?.step.title ?? null,
+      })
+      const answer = route ? preparedAnswer(route.intent, { step: located?.step ?? null }) : null
+      if (route && answer) {
+        await prisma.demoAccessEvent.create({
+          data: {
+            grantId: grant.id,
+            eventType: PREPARED,
+            stepId,
+            metadata: {
+              sectionId,
+              state,
+              intent: route.intent,
+              confidence: route.confidence,
+              model: "jev",
+              inputTokens: route.inputTokens,
+              costUsd: route.costUsd,
+              latencyMs: route.latencyMs,
+            },
+          },
+        })
+        return NextResponse.json(
+          { success: true, answer, remaining: allowance.remaining, source: "prepared", intent: route.intent },
+          { headers: noStoreHeaders() },
+        )
+      }
     }
+
+    if (!allowance.ok) return refusal(allowance.refusal!)
 
     const identity: DemoProspectIdentity = {
       name: grant.request.name,
