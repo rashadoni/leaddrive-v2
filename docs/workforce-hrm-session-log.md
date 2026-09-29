@@ -2586,3 +2586,27 @@ corrections as new entries that explicitly supersede the earlier fact.
   rejected head remains ineligible.
 - Next action: commit only the three docs, verify the implementation identity
   is byte-identical and obtain a new exact-head independent review.
+
+## 2026-09-29 — WF-C8-007c independent frozen review GREEN
+
+- Fresh review returned GREEN (`P0=P1=P2=P3=0`) on clean head
+  `2ed08b6dc4c2e82e797004effa8530ad44e19d8c`; live main and merge-base were
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7`.
+- Reviewer re-matched full 15-path / 117,683-byte identity
+  `76de83da90a744dee5843a157b5886dff2e5c4fee634180570af22ece1683770`
+  and byte-identical non-doc 11-path / 94,369-byte identity
+  `88fb46ce11f08978765c4406df6278f8a954f0f14a42daddd1679839f5b212dd`.
+- The prior P3 correction exactly matches runtime; all historical and
+  remediation append-only prefixes are intact. Current-head 32 focused tests
+  and diff checks passed; the unchanged implementation carries forward the
+  independently checked 97 calendar, 33 auth/RLS, 21 voice, ESLint and i18n
+  23,857/0/0 results.
+- Full typecheck/build/suite, real-Postgres concurrency, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  host policy. GitHub exact-head CI is required.
+- No task or gate credit changes: `WF-C8-007` is `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: independently reviewed runtime/test/i18n blobs are
+  frozen; only this GREEN receipt is uncommitted.
+- Next action: commit the three docs, verify runtime fingerprint integrity,
+  obtain receipt-only review and then push/open the ≤400 KB PR.

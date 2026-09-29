@@ -145,3 +145,28 @@ are implemented, while employee and moved-day workflows, update/delete
 governance, break-policy authoring and real browser/AT evidence remain open.
 Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
 non-DONE rows.
+
+## Frozen-head independent review GREEN
+
+Fresh author-independent full-range review returned GREEN with
+`P0=P1=P2=P3=0` on exact clean head
+`2ed08b6dc4c2e82e797004effa8530ad44e19d8c` against live main/merge-base
+`b25b4f382ebc8d323b0e975ccf34aee1731379f7`.
+
+- Full identity: 15 paths / 117,683 bytes / SHA-256
+  `76de83da90a744dee5843a157b5886dff2e5c4fee634180570af22ece1683770`.
+- Non-doc implementation identity remained byte-identical: 11 paths / 94,369
+  bytes / SHA-256
+  `88fb46ce11f08978765c4406df6278f8a954f0f14a42daddd1679839f5b212dd`.
+- The prior evidence P3 is closed. Directory/team transport IDs,
+  same-tenant inactive GET continuity, GET versus POST not-found boundaries
+  and omitted calendar-row/provenance fields now match runtime exactly.
+- All historical append-only prefixes and both remediation prefixes matched
+  byte-for-byte. Current-head focused regression passed 32/32; the unchanged
+  implementation retained the independently verified 97 calendar, 33
+  auth/RLS, 21 voice, ESLint and i18n 23,857/0/0 results.
+
+Full typecheck/build/suite, real-Postgres concurrency, browser/AT/device,
+Android/Gradle, load/chaos, signed-device and tenant-pilot remain `NOT RUN`.
+This review adds no completion or gate credit. A final receipt-integrity check
+must confirm these reviewed implementation bytes are unchanged before push.

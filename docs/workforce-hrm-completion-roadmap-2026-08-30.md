@@ -2661,3 +2661,26 @@ from this worktree.
 - Precise stopping point: the sole P3 is remediated in docs but uncommitted.
 - Next action: checkpoint the three evidence/continuity documents, prove the
   runtime fingerprint unchanged and request a fresh full-range frozen review.
+
+## 2026-09-29 — WF-C8-007c frozen review GREEN
+
+- Fresh author-independent review of exact clean head
+  `2ed08b6dc4c2e82e797004effa8530ad44e19d8c` against live main/merge-base
+  `b25b4f382ebc8d323b0e975ccf34aee1731379f7` returned GREEN with
+  `P0=P1=P2=P3=0`.
+- Full identity matched 15 paths / 117,683 bytes /
+  `76de83da90a744dee5843a157b5886dff2e5c4fee634180570af22ece1683770`;
+  non-doc implementation identity remained 11 paths / 94,369 bytes /
+  `88fb46ce11f08978765c4406df6278f8a954f0f14a42daddd1679839f5b212dd`.
+- Prior baseline/race findings and the evidence P3 are closed. Append-only
+  prefixes, focused 32/32 regression and the unchanged broader verification
+  evidence were independently confirmed.
+- Full local typecheck/build/suite, real-Postgres race, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN`;
+  exact-head CI is mandatory.
+- `WF-C8-007` remains `PARTIAL`; progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: reviewed implementation is frozen; only this
+  three-document GREEN receipt is uncommitted.
+- Next action: checkpoint the receipt, prove implementation fingerprint
+  unchanged, obtain receipt-integrity GREEN, then push/open the bounded PR.
