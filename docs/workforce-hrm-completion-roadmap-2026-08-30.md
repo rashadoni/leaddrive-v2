@@ -2783,3 +2783,24 @@ from this worktree.
   tree; the remediation/evidence are uncommitted.
 - Next action: checkpoint explicit paths, recompute live-main identities and
   obtain a fresh full-range author-independent review.
+
+## 2026-09-29 — WF-C8-007d frozen review GREEN
+
+- Fresh author-independent full-range review returned GREEN
+  (`P0=P1=P2=P3=0`) on exact clean head
+  `21d3dc6506193bb4e6e2ce7f9cc30bd15439197b` against live main/merge-base
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`.
+- Full identity matched 15 paths / 136,737 bytes /
+  `5d54d093714f0fdb73d486d71f5785a51c262ca0ea81bbd6ac6d6b76eb6ab7d0`;
+  non-doc identity matched 11 paths / 103,986 bytes /
+  `0891d37e861491d2a94acd056e1088651d28ce4f0a902923222e6893ab332d83`.
+- Both prior findings are closed and the complete runtime/evidence boundary was
+  re-reviewed. Reviewer checks passed 95/95, ESLint, i18n 23,886/0/0, JSON,
+  whitespace and session-prefix integrity; heavy gates remain `NOT RUN` and
+  mandatory in CI.
+- Progress remains unchanged: `WF-C8-007` is `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: reviewed runtime/test/i18n bytes are frozen; only
+  this three-document GREEN receipt is uncommitted.
+- Next action: commit the receipt, verify non-doc identity is byte-identical,
+  obtain receipt-integrity GREEN, then push/open the bounded PR.

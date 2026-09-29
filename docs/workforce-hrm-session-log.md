@@ -2739,3 +2739,26 @@ corrections as new entries that explicitly supersede the earlier fact.
   head is not eligible for push/merge.
 - Next action: checkpoint the six runtime/i18n/test/docs paths plus continuity,
   compute a new exact identity and require fresh independent GREEN.
+
+## 2026-09-29 — WF-C8-007d independent frozen review GREEN
+
+- Fresh author-independent review returned GREEN (`P0=P1=P2=P3=0`) on clean
+  exact head `21d3dc6506193bb4e6e2ce7f9cc30bd15439197b`; live main and merge-base were
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`.
+- Reviewer matched full 15-path / 136,737-byte identity
+  `5d54d093714f0fdb73d486d71f5785a51c262ca0ea81bbd6ac6d6b76eb6ab7d0`
+  and non-doc 11-path / 103,986-byte identity
+  `0891d37e861491d2a94acd056e1088651d28ce4f0a902923222e6893ab332d83`.
+- Both rejected-head findings are closed. Full-range re-review found no new
+  tenant/auth, scope, locking/baseline, idempotency/audit, UI race/privacy/
+  accessibility, i18n or evidence issue. The current-team relation is safely
+  contained by tenant RLS and the writer's organization join.
+- Reviewer PASS: 9 files / 95 tests, scoped ESLint, i18n 23,886/0/0, JSON,
+  whitespace and append-only session prefixes. Heavy local gates remain
+  `NOT RUN` and exact-head GitHub CI remains mandatory.
+- No progress credit changes: `WF-C8-007` stays `PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: independently reviewed runtime/test/i18n blobs are
+  frozen; only the GREEN receipt is uncommitted.
+- Next action: commit the three docs, prove runtime fingerprint integrity,
+  require receipt-only review and then push/open the ≤400 KB PR.
