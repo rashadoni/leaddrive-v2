@@ -2385,3 +2385,33 @@ from this worktree.
   GREEN receipt is uncommitted.
 - Next action: checkpoint the receipt, obtain exact-head blob-integrity GREEN,
   then push and open the bounded PR for all five required contexts.
+
+## 2026-09-29 — WF-C8-007a PR #497 production release receipt
+
+- Exact reviewed PR head `ebca5dce8938c5a1ff07c641d67887fd7ac186a1`
+  passed `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan`.
+  PR checks run `36556087209`, runner-policy run `36556087203` and scan run
+  `36556087058` are green; the scope-conditioned production build was
+  correctly skipped.
+- PR #497 merged normally as main SHA
+  `6bc764977470d5b6ee65fe9986ced7c45204fcd8`. Exact-SHA deploy workflow
+  `36558084579` completed SUCCESS through quality/security, immutable artifact
+  build, atomic deployment, scheduler/tenant-isolation checks and public
+  workflow smoke.
+- Independent no-cache TLS probes pinned to approved production
+  `13.140.132.245` returned `{"ok":true}` from `/api/v1/ping` and exact
+  `artifactSha=6bc764977470d5b6ee65fe9986ced7c45204fcd8` from
+  `/api/v1/public/build-info`.
+- Unrelated PR #490 then advanced `main` to descendant
+  `6157c4d94b5e42c8fc9019d9b338873dac65d39b`. Successor branch
+  `codex/workforce-completion-part10` is based on that current main; no foreign
+  commit is edited.
+- `WF-C8-007` remains `PARTIAL` because broader calendar authoring and real
+  browser/AT acceptance remain open. No completion or gate credit is added:
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: ordered shift-segment authoring is live on the exact
+  verified artifact; only this append-only release receipt is uncommitted on
+  the successor branch.
+- Next action: checkpoint the receipt, then implement bounded `WF-C8-007b`
+  future organization-calendar override authoring without schema, Route UI,
+  update/delete or employee/team override expansion.

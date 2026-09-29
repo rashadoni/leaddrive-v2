@@ -2261,3 +2261,34 @@ corrections as new entries that explicitly supersede the earlier fact.
   only this three-document GREEN receipt uncommitted.
 - Next action: checkpoint the receipt, verify exact-head blob integrity, then
   push the branch, open the bounded PR and require all five CI contexts.
+
+## 2026-09-29 — PR #497 merged, deployed and exact-SHA verified
+
+- Exact reviewed head `ebca5dce8938c5a1ff07c641d67887fd7ac186a1`
+  passed all five required contexts. PR run `36556087209` closed `pr-scope`,
+  `static-checks` and `typecheck`; runner-policy `36556087203` and secret scan
+  `36556087058` passed. The PR production-build job was correctly skipped by
+  scope.
+- PR #497 merged normally, with no admin bypass, as main SHA
+  `6bc764977470d5b6ee65fe9986ced7c45204fcd8`.
+- Deploy workflow `36558084579` completed SUCCESS: quality/security 10m06s,
+  SHA-bound artifact build/publish 15m48s, and atomic production deployment
+  plus scheduler, tenant-isolation and public smoke 7m33s. No direct worktree
+  copy or server-side ad hoc release was used.
+- Separate public no-cache TLS checks pinned to the approved production IP
+  `13.140.132.245` returned `/api/v1/ping` `{"ok":true}` and build-info
+  `artifactSha=6bc764977470d5b6ee65fe9986ced7c45204fcd8`, built at
+  `2026-09-29T10:55:40Z`.
+- Unrelated PR #490 subsequently advanced current `main` to direct descendant
+  `6157c4d94b5e42c8fc9019d9b338873dac65d39b`. The worktree is now on
+  successor branch `codex/workforce-completion-part10` from that main; this
+  task does not modify the foreign commit.
+- `WF-C8-007` remains `PARTIAL`; real browser/AT/contrast/zoom/device evidence
+  and broader calendar authoring remain `NOT RUN`/open. Android, load, signed
+  device and pilot are also `NOT RUN`. Progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: ordered segment authoring is verified live; the
+  release receipt is appended but uncommitted on the successor branch.
+- Next action: checkpoint these three receipt files, then begin bounded
+  `WF-C8-007b` future organization calendar override authoring with strict
+  future-only, organization-only and create-only boundaries.
