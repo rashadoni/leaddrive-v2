@@ -2402,3 +2402,28 @@ corrections as new entries that explicitly supersede the earlier fact.
   pass, but the final remediation is not committed.
 - Next action: checkpoint the explicit six remediation/evidence paths, compute
   the new full identity and start a fresh complete rereview.
+
+## 2026-09-29 — WF-C8-007b third full-range review GREEN
+
+- Fresh author-independent review returned GREEN with
+  `P0=P1=P2=P3=0` on exact clean head
+  `6149e9713e9c6787268e0b664776cf7b5964e34e`; base, live main and merge-base
+  were `8de56f819b839a7c84951978ef3c619654f855e2`.
+- Reviewer matched full identity 17 paths / 94,946 bytes /
+  `ac2dc7621d60087cef1f044f16827aea981a6641e09882cf8f83e6fb222ef27d`
+  and implementation identity 13 paths / 62,756 bytes /
+  `e58f11d8226388ece1d1187784aca263a155fb6b47fa8ad3f02764eb948989e0`.
+- Independent checks pass: seven focused files / 88 tests, Workforce wrapper
+  30 tests, scoped ESLint 11 paths, i18n 23,834/0/0, both diff-checks and
+  direct navigation evaluation for support, ticketing, manager and admin.
+- Both prior discoverability findings and the unknown-POST finding are closed.
+  The reviewer found no new tenant, auth, calendar, transaction, audit, Route,
+  response-minimization, accessibility-source, localization or evidence issue.
+- Full typecheck/build/suite, browser/AT/device, Android/Gradle, load/chaos,
+  real-Postgres race, signed-device and pilot remain `NOT RUN`; CI is required.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: runtime/test/i18n is independently reviewed and
+  frozen; only this append-only GREEN receipt is uncommitted.
+- Next action: checkpoint the three receipt documents, verify implementation
+  blob integrity, then push/open the bounded PR and require all CI contexts.
