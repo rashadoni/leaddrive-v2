@@ -142,3 +142,17 @@ general update/delete governance, break-policy authoring and real browser/AT
 acceptance remain open. Progress stays `DONE 81/161`, `GATES 14/15`, C8 36%,
 overall 59%, with 80 non-DONE rows. No completion or gate credit is claimed by
 this checkpoint.
+
+## Live-main reconciliation
+
+The implementation checkpoint `b11798b93` was merged with live `origin/main`
+`8c8ca4360285dec692caf7784d805936c276ae1e`. Main contributed only five Social
+Monitoring source/test/evidence paths. No calendar implementation, workflow,
+locale, test or evidence path overlapped, and the merge completed without a
+manual resolution.
+
+On the integrated head, the same 11 focused files pass 116 tests with both
+real-PostgreSQL cases discovered and skipped locally, scoped ESLint passes,
+i18n remains EN 23,905 with RU/AZ 0/0, event-platform workflow assets and
+runner policy pass, and `git diff --check` is clean. The fresh independent
+review must use this post-reconciliation head and the live-main merge base.

@@ -2862,3 +2862,28 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: run final bounded verification, checkpoint explicit task paths,
   fetch/reconcile live main, compute exact full/non-doc identities and require
   a fresh author-independent full-range GREEN before push/PR.
+
+## 2026-09-29 — WF-C8-007e live-main reconciliation complete
+
+- Fetch found live main three commits ahead at
+  `8c8ca4360285dec692caf7784d805936c276ae1e`. The implementation was first
+  checkpointed as `b11798b93`, then merged with that exact main in the same
+  recorded worktree and branch.
+- The merge added only five independently released Social Monitoring
+  source/test/evidence paths and had no overlap with this slice's calendar,
+  workflow, locale, test or documentation paths. No manual conflict resolution
+  was needed.
+- Integrated-head PASS: 116 focused tests across 11 files; scoped ESLint;
+  i18n EN 23,905 with RU/AZ missing 0/extra 0; event-platform workflow assets;
+  runner policy; whitespace. The two new real-PostgreSQL cases were discovered
+  and remain `SKIPPED` locally because the CI-only database URL is absent.
+- Full local typecheck/build/suite, real PostgreSQL, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  host policy and mandatory where applicable in exact-head CI.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: live main is integrated and all bounded author checks
+  are green; only the three-document reconciliation receipt is uncommitted.
+- Next action: checkpoint this receipt, fingerprint the full and non-doc live-
+  main diff, then require a fresh author-independent full-range GREEN before
+  push/opening the ≤400 KB PR.

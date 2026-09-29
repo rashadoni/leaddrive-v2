@@ -2876,3 +2876,21 @@ from this worktree.
 - Next action: run final bounded checks, checkpoint only explicit task paths,
   reconcile against live main, compute exact identities and require a fresh
   author-independent full-range GREEN before opening the bounded PR.
+
+## 2026-09-29 — WF-C8-007e reconciled with live main
+
+- The implementation checkpoint `b11798b93` was merged with live
+  `origin/main` `8c8ca4360285dec692caf7784d805936c276ae1e`. Main contributed only five
+  Social Monitoring paths; no calendar/runtime/workflow/locale/test/evidence
+  path overlapped and no manual conflict resolution was needed.
+- Post-merge PASS: 116 focused tests, scoped ESLint, i18n EN 23,905 with RU/AZ
+  0/0, event-platform workflow assets, runner policy and whitespace. The two
+  real-PostgreSQL cases remain locally `SKIPPED` without the CI-only database
+  URL; full typecheck/build/suite and physical/browser/heavy gates remain
+  `NOT RUN` under host policy.
+- `WF-C8-007` stays `PARTIAL`; progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: live main is integrated and bounded checks are green;
+  only this reconciliation receipt is uncommitted.
+- Next action: checkpoint the receipt, compute exact full/non-doc identities
+  against `8c8ca4360` and require a fresh author-independent full-range GREEN.
