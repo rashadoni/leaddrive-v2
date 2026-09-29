@@ -1,9 +1,9 @@
 # Support UX performance and rollout contract
 
-Status: **EVIDENCE/PERFORMANCE COMPLETE; RELEASE PENDING**. This contract is the
-release authority for the Support UX branch. The comparison and pre-release
-canary gates are satisfied; protected merge, deployment, smoke and the later
-tenant observation/flag-removal gates remain independent requirements.
+Status: **RELEASED; FLAG REMOVAL DEFERRED**. Evidence, performance, protected
+merge, immutable deployment and production smoke are complete. No production
+tenant was enabled, so the separate seven-day observation and flag-removal
+release remains intentionally deferred under the policy below.
 
 ## Performance measurement
 
@@ -204,17 +204,35 @@ intentionally deferred until all conditions hold:
 
 | Field | Value |
 | --- | --- |
-| Slice / PR / merge SHA | Pending final PR and protected merge |
-| Production artifact SHA | Pending GitHub Actions deploy |
+| Slice / PR / merge SHA | Full Support UX redesign / PR `#501` / `bd83c5d41182fca0003282e2241e5ad9ae35c04b` |
+| Production artifact SHA | `bd83c5d41182fca0003282e2241e5ad9ae35c04b`; deploy run `36600569942`; artifact `11049297509` (`leaddrive-prod-bd83c5d41182fca0003282e2241e5ad9ae35c04b`) |
 | Canary tenant and flag | No production tenant enabled; `support_ux_v2_canary` defaults off |
 | Evidence artifacts | Full 1296/1296 run `36542434997`, artifact `11024298303`; canary off `36551225927`/`11025885144`; canary on `36552953697`/`11027281153`; profiles 0/5/50/500 runs `36554107100`, `36555323681`, `36557478393`, `36559389503` |
 | Roles / profiles | Agent, manager, admin, customer; high and measured 0/5/50/500 accepted |
 | Baseline / compare | Accepted aggregate: `36575013443`/`11038557440`, `36580638589`/`11041830573`, `36585806513`/`11041654133`, `36588009933`/`11043736737` |
-| Production smoke | Pending deploy |
+| Production smoke | Built-in artifact revision, health/CSS/database and side-effect-free cron smoke green; independent ping/build-info/auth-fence/redirect smoke green on 2026-09-29 |
 | Observation | Not started; removal gate deferred by policy above |
-| P0/P1 incidents | None recorded before release |
+| P0/P1 incidents | None recorded through deployment and immediate smoke |
 | Owner | Repository owner `rashadoni` |
-| Rollback | Remove tenant flag first; revert affected checkpoint through reviewed `main`; preserve DB state |
+| Rollback | No tenant flag was enabled and rollback was not activated; if required, keep flags off and revert through reviewed `main` while preserving DB state |
+
+### Final protected release receipt
+
+- Final PR head `8ef809a7b9c2e4cd3401b280092391be10cf3916` passed the five
+  required contexts in the final admission set; source/static/type run
+  `36598285873` is green. PR `#501` merged only after the branch was current
+  with protected main and reported CLEAN/MERGEABLE.
+- Main merge SHA `bd83c5d41182fca0003282e2241e5ad9ae35c04b` deployed only through
+  `.github/workflows/deploy.yml` run `36600569942`. The immutable artifact is
+  `11049297509`, 439,486,547 bytes, retained through 2026-10-29.
+- The deploy job verified the exact artifact revision and returned HTTP 200 for
+  health, CSS and database probes before completing its cron and public-page
+  smoke. Independent `/api/v1/ping` returned `{"ok":true}` and build-info
+  returned the exact 40-character artifact SHA. Unauthenticated rollout API
+  and `/settings/macros` both redirected to login with correct callback URLs.
+- ROL-005 is complete. ROL-006 remains deliberately deferred: shipping code
+  with all tenant flags off is reversible deployment, not observation, and no
+  seven-day canary result or flag-removal claim is recorded.
 
 ### Final visual/performance comparison receipt
 

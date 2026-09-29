@@ -4061,10 +4061,11 @@ Customer Support Portal is **DONE**.
 
 ## 21C. Evidence, Performance, and Rollout Track
 
-**Status: EVIDENCE/PERFORMANCE DONE — complete 1296-cell high-profile evidence,
-exact-SHA Macros canary-on/canary-off mutation proof, measured 0/5/50/500
-profiles and the final seven-sample visual/performance comparison are green;
-protected release admission remains pending and rollout stays prohibited**
+**Status: RELEASED — complete 1296-cell high-profile evidence, exact-SHA Macros
+canary-on/canary-off mutation proof, measured 0/5/50/500 profiles, final
+seven-sample visual/performance comparison, protected admission, main merge,
+immutable production deployment and smoke are green; flag removal remains
+explicitly deferred until the separate seven-day tenant observation gate**
 
 ### Evidence tasks
 
@@ -4105,10 +4106,12 @@ protected release admission remains pending and rollout stays prohibited**
   before any API or persisted preference change.
 - [x] **SUPUX-ROL-004** Run permission, tenant-isolation, feature/add-on, and
   direct-route regression before enabling each canary.
-- [ ] **SUPUX-ROL-005** Record production revision, smoke evidence, observed
+- [x] **SUPUX-ROL-005** Record production revision, smoke evidence, observed
   metrics, owner, and rollback decision for every released slice.
-- [ ] **SUPUX-ROL-006** Remove a flag only after representative tenants pass the
-  agreed observation window with no unresolved P0/P1 regression.
+- [ ] **SUPUX-ROL-006 — DEFERRED BY POLICY** Remove a flag only after
+  representative tenants pass the agreed observation window with no unresolved
+  P0/P1 regression. No production tenant was enabled in this release, so the
+  seven-day window has not started and flag removal is a later audited release.
 
 Final canary evidence (2026-09-29):
 
@@ -4255,6 +4258,31 @@ Final comparison closure (2026-09-29):
   deploy overlap; shared locale and voice-guide integration is green at 23,861
   keys per locale plus 23/23 focused contracts. A new protected 5/5 run on the
   final head remains mandatory.
+
+Protected release closure (2026-09-29):
+
+- Final head `8ef809a7b9c2e4cd3401b280092391be10cf3916` passed all five
+  required contexts: `pr-scope`, `runner-policy`, `scan`, `static-checks` and
+  `typecheck`. Source/static/type admission is run `36598285873`; branch
+  protection reported CLEAN/MERGEABLE and the head was zero commits behind
+  protected main. No baseline, threshold, matrix dimension, sample count or
+  required gate changed.
+- PR `#501` merged that pinned head as main SHA
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`. GitHub Actions deploy run
+  `36600569942` passed quality/security, production build, immutable artifact
+  publication, atomic deployment, built-in post-deploy smoke and artifact
+  retention. Artifact `11049297509`, named
+  `leaddrive-prod-bd83c5d41182fca0003282e2241e5ad9ae35c04b`, is retained to
+  2026-10-29.
+- Deployment verified the exact artifact revision, health/CSS/database probes
+  at HTTP 200 and its side-effect-free cron smoke set. Independent public smoke
+  returned `{"ok":true}` from `/api/v1/ping`; build-info reported the complete
+  merge/artifact SHA; unauthenticated rollout API and `/settings/macros` both
+  redirected to login with their exact callback URLs.
+- `SUPUX-ROL-005` is complete. `SUPUX-ROL-006` remains an explicit policy-backed
+  deferral: all production tenant flags remain off, no observation window was
+  invented, and future tenant enablement plus seven-day observation require a
+  separate audited configuration/release decision.
 
 Current verification evidence (2026-09-05):
 

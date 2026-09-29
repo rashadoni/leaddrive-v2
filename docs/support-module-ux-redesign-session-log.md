@@ -3488,3 +3488,41 @@ Result: the first fully green protected run is preserved as an immutable
 repair receipt, and the feature head now includes the latest protected main.
 Next: checkpoint/push this reconciliation and require a fresh complete 5/5
 protected-check set on the final exact SHA before merge.
+
+## 2026-09-29 — Protected merge and production release complete
+
+- Final branch head `8ef809a7b9c2e4cd3401b280092391be10cf3916` passed every
+  protected context: `pr-scope`, `runner-policy`, `scan`, `static-checks` and
+  `typecheck`. The final source/static/type run is `36598285873`. Immediately
+  before merge, the branch was zero commits behind `origin/main`; GitHub
+  reported PR `#501` CLEAN/MERGEABLE. No admission baseline, required context,
+  threshold, matrix dimension, sample count or assertion was weakened.
+- PR `#501` merged the pinned head as protected-main SHA
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b` at 2026-09-29T16:49:44Z.
+  The final admission receipt is preserved in PR comment `5894678618`.
+- GitHub Actions deploy run `36600569942` completed green on that exact merge
+  SHA. Quality/security, production build, immutable artifact publication,
+  atomic production deployment, built-in post-deploy smoke and artifact
+  retention all passed. Artifact `11049297509`, named
+  `leaddrive-prod-bd83c5d41182fca0003282e2241e5ad9ae35c04b`, is 439,486,547
+  bytes and retained until 2026-10-29.
+- Deployment verified artifact revision `bd83c5d41182`, then reported HTTP 200
+  for health, CSS and database probes. Built-in public smoke returned ping 200,
+  exact 40-character build-info revision and a login page whose CSS/JS assets
+  returned 200; side-effect-free commitment, MTM close, campaign send, missed
+  inbound and queue/cleanup cron probes also passed.
+- Independent public smoke confirmed `/api/v1/ping` as `{"ok":true}` and
+  `/api/v1/public/build-info` as full artifact SHA
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`, built at
+  `2026-09-29T16:56:37Z`. Unauthenticated `/api/v1/support/ux-rollout` and
+  `/settings/macros` both returned 307 to login with exact callback URLs.
+- Issue `#495` (rollout) and epic `#496` are closed with immutable release
+  receipts. `SUPUX-ROL-005` is complete. `SUPUX-ROL-006` remains explicitly
+  deferred by policy: no production tenant was enabled, the seven-day
+  representative-tenant observation window has not started, and no flag was
+  removed or claimed ready for removal.
+
+Result: the complete Support module UX redesign is merged and deployed to the
+registered production target with protected admission, exact-SHA artifact and
+green smoke. Next: no action is required for this release; any future tenant
+canary enablement and seven-day observation is a separate audited task.
