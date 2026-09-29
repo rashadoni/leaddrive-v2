@@ -606,8 +606,8 @@ current aggregate gate and execute the remaining foundation evidence matrix.
 **Status: IN PROGRESS — aggregate source/build/flow gate and 77/77 affected
 mobile static cells are green through `d56fd456f`; the single-locale flow rerun
 exposed one stale collapsed-filter interaction now corrected; current main is
-integrated at `deafec609`; the exact-SHA rerun, complete 1296-cell matrix and
-comparison remain pending**
+integrated and exact-SHA affected evidence is green at `379f6e787`; the complete
+1296-cell matrix and comparison remain pending**
 
 This slice is a dependency for all page-specific work. It should land as small,
 reviewable commits rather than one broad visual rewrite.
@@ -865,6 +865,12 @@ Affected mobile validation follow-up (2026-09-29):
   evidence source; all three locale files merged without conflict. Post-merge
   parity is 23,741 keys per locale, the four Foundation/flow suites pass 30/30
   assertions and the branch-versus-main whitespace check is clean.
+- Exact integrated-SHA run `36539937236`, artifact `11020852792`, is green:
+  11/11 EN/light/mobile static cells and 39/39 selected recovery outcomes pass.
+  All static runtime, Axe, semantic accessibility, touch, primary-work,
+  overflow, environment and zero-keyboard-stop counters are zero. The repaired
+  Entitlements step records a real touchscreen activation on its 269 × 44 px
+  disclosure, visible no-results state and keyboard reset.
 
 ## 8. Workstream 1 — Service Desk
 

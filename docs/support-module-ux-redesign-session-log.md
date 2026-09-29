@@ -3063,3 +3063,22 @@ the integrated SHA, then launch the complete 1296-cell matrix.
 Result: the branch now contains current main before expensive acceptance
 evidence. Next: checkpoint the integration receipt, rerun the isolated mobile
 flows on the resulting exact SHA, then launch the complete 1296-cell matrix.
+
+## 2026-09-29 — Integrated mobile flow gate green
+
+- Exact-SHA run `36539937236` on `379f6e787`, artifact `11020852792`, passed
+  section contracts, strict TypeScript graphs, isolated fixtures, production
+  build and browser evidence after the current-main integration.
+- Static evidence is 11/11 unique EN/light/mobile cells green. Runtime, Axe,
+  custom accessibility, touch-target, primary-work, overflow, environment and
+  zero-keyboard-stop failure totals are all zero; maximum primary-work top is
+  709 px.
+- All selected operational journeys are green: Service Desk 20/20, Support
+  Entitlements 7/7, Entitlement Templates 6/6 and Skill Routing 6/6. The
+  corrected filter journey records `filtersExpanded=true`, a physical
+  touchscreen activation on a 269 × 44 px hit target, the intended no-results
+  state and keyboard reset. Its screenshot was manually inspected.
+
+Result: the affected mobile correction and integrated source are accepted.
+Next: checkpoint this self-audit and launch the complete high-profile 1296-cell
+AZ/RU/EN × light/dark × four-viewport × role/scenario capture.
