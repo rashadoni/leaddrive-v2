@@ -227,3 +227,27 @@ real-Postgres race, signed-device and pilot remain `NOT RUN` locally. The
 repaired complete diff requires a new checkpoint, fresh author-independent
 review and replacement exact-head CI. `WF-C8-007` remains `PARTIAL`; progress
 stays `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+
+### Voice-remediation full-range independent review GREEN
+
+Fresh author-independent review returned GREEN with
+`P0=P1=P2=P3=0` on exact clean head
+`cfea07c3e685652e37b13fafc4c4fabb5ded57be`; live main and merge-base were
+`8de56f819b839a7c84951978ef3c619654f855e2`.
+
+- Full identity: 19 paths / 109,505 bytes / SHA-256
+  `6f2414b1e8a3a5f83b4a2668cd154bb2fd0cc585279ece7927a2802251365116`.
+- Implementation identity excluding four append-only documents: 15 paths /
+  68,059 bytes / SHA-256
+  `8d482f468fe553f4faa0f3158b83c3ba3eac7fe1bff9b5934f2858f8fff3b223`.
+- Independent PASS: calendar/navigation/RLS 88 tests, voice coverage/evaluation
+  21 tests, Workforce auth wrapper 30 tests, scoped ESLint on 14 paths, i18n
+  23,835/0/0, voice static audit 144 sections / 576 cases / 0 mismatches /
+  0 live requests / 0 CRM tools, both diff checks and append-only prefixes.
+- Review confirmed the calendar tenant/date/transaction/audit/Route boundaries
+  remain sound and `config` classification prevents generic voice reads or
+  writes. No provider, TTS or media path was added.
+
+Full local typecheck/build/suite, browser/AT/device, Android/Gradle,
+load/chaos, real-Postgres race, signed-device and pilot remain `NOT RUN`.
+Replacement exact-head CI is mandatory; the review adds no progress credit.

@@ -2548,3 +2548,27 @@ from this worktree.
   transfer to these changed bytes.
 - Next action: checkpoint explicit paths, freeze the new identity and obtain a
   fresh complete author-independent review before pushing replacement CI.
+
+## 2026-09-29 — PR #500 repaired full-range review GREEN
+
+- Fresh author-independent review of exact clean head
+  `cfea07c3e685652e37b13fafc4c4fabb5ded57be` against live main/merge-base
+  `8de56f819b839a7c84951978ef3c619654f855e2` returned GREEN with
+  `P0=P1=P2=P3=0`.
+- Full identity matched 19 paths / 109,505 bytes /
+  `6f2414b1e8a3a5f83b4a2668cd154bb2fd0cc585279ece7927a2802251365116`;
+  implementation excluding four append-only docs matched 15 paths / 68,059
+  bytes / `8d482f468fe553f4faa0f3158b83c3ba3eac7fe1bff9b5934f2858f8fff3b223`.
+- Independent checks passed 88 calendar/navigation/RLS tests, 21 voice tests,
+  30 auth-wrapper tests, scoped ESLint, i18n 23,835/0/0, a 576-case static
+  voice audit with zero mismatches/live requests/tool calls, whitespace and
+  append-only-prefix verification. No finding remains.
+- Full local typecheck/build/suite, browser/AT/device, Android/Gradle,
+  load/chaos, real-Postgres race, signed-device and pilot remain `NOT RUN`;
+  replacement exact-head CI is mandatory.
+- `WF-C8-007` remains `PARTIAL`; progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: reviewed implementation blobs are frozen; only this
+  three-document GREEN receipt is uncommitted.
+- Next action: checkpoint the receipt, prove implementation identity unchanged,
+  push PR #500 and require all replacement CI contexts before merge.

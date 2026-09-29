@@ -2452,3 +2452,29 @@ corrections as new entries that explicitly supersede the earlier fact.
   receipts are verified but uncommitted; fresh complete review is mandatory.
 - Next action: checkpoint explicit paths, compute the new complete identity,
   obtain independent GREEN and only then push replacement exact-head CI.
+
+## 2026-09-29 — PR #500 repaired independent review GREEN
+
+- Independent full-range review returned GREEN (`P0=P1=P2=P3=0`) on clean
+  head `cfea07c3e685652e37b13fafc4c4fabb5ded57be` against live main/merge-base
+  `8de56f819b839a7c84951978ef3c619654f855e2`.
+- The reviewer re-matched the full 19-path / 109,505-byte identity
+  `6f2414b1e8a3a5f83b4a2668cd154bb2fd0cc585279ece7927a2802251365116`
+  and the 15-path / 68,059-byte implementation identity
+  `8d482f468fe553f4faa0f3158b83c3ba3eac7fe1bff9b5934f2858f8fff3b223`.
+- Independent PASS: 88 calendar/navigation/RLS tests, 21 voice tests, 30
+  Workforce auth-wrapper tests, 14-path ESLint, i18n 23,835/0/0, 144-section
+  and 576-case static voice audit with zero mismatches/live requests/CRM tool
+  calls, both diff checks and append-only-prefix checks.
+- Manual review confirmed tenant/date/transaction/audit/Route behavior and
+  UI/error/i18n evidence remain sound. The voice metadata cannot expose the
+  calendar through the generic reader or mutate it; no provider/TTS/media path
+  exists.
+- Full local typecheck/build/suite, browser/AT/device, Android/Gradle,
+  load/chaos, real-Postgres race, signed-device and pilot remain `NOT RUN`.
+- No completion/gate credit changes: `WF-C8-007` is `PARTIAL`, progress is
+  `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: implementation/test/i18n blobs are independently
+  GREEN and frozen; only this append-only receipt is uncommitted.
+- Next action: commit the receipt, verify frozen blob identity, push the new
+  head and wait for every required replacement CI context.
