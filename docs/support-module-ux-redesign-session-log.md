@@ -3000,3 +3000,24 @@ Result: aggregate Foundation evidence is green and all partial-matrix product
 findings are corrected; the incomplete timed-out matrix is not accepted. Next:
 checkpoint and push, run the 66-cell affected mobile mutating validation, then
 repeat the complete 1296-cell capture and visual comparison.
+
+## 2026-09-29 — Affected mobile static validation green; flow invocation corrected
+
+- Exact-SHA targeted run `36533684517` on checkpoint `7a70f8ddf` completed all
+  66 expected high-profile mobile static cells for the five affected scenarios.
+  Every cell passed unchanged runtime, Axe, accessible-name, touch-target,
+  primary-work, overflow, alt-text, duplicate-ID and keyboard-stop gates.
+- Manually inspected representative RU/dark Ticket Detail, EN/light
+  Entitlements, AZ/dark Entitlement Templates, RU/light Skill Routing and
+  EN/light Service Desk screenshots. The corrected primary work is above the
+  768 px boundary, controls remain available, and no clipped or hidden work was
+  observed.
+- The workflow conclusion is not accepted as a mutating-flow gate: four flow
+  scripts correctly rejected the invocation because `SUPPORT_EVIDENCE_LOCALES`
+  selected AZ, RU and EN together, while destructive flow evidence requires one
+  isolated locale. This is an invocation error rather than a product or gate
+  failure; no threshold or test logic is changed.
+
+Result: the affected static regression matrix is 66/66 green. Next: rerun the
+same exact SHA with one locale/theme for isolated mutating flows, inspect each
+flow artifact, then execute the complete 1296-cell capture.

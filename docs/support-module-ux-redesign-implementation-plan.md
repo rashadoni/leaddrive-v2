@@ -603,8 +603,9 @@ current aggregate gate and execute the remaining foundation evidence matrix.
 
 ## 7. Slice 0 — Global UX Foundation
 
-**Status: IN PROGRESS — shared compact shell and control contracts implemented through `a959654ef`;
-rendered browser matrices pending**
+**Status: IN PROGRESS — aggregate source/build/flow gate and 66/66 affected
+mobile static cells are green through `7a70f8ddf`; corrected single-locale
+mutating-flow rerun, complete 1296-cell matrix and comparison remain pending**
 
 This slice is a dependency for all page-specific work. It should land as small,
 reviewable commits rather than one broad visual rewrite.
