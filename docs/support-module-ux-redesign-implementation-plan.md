@@ -4246,6 +4246,15 @@ Final comparison closure (2026-09-29):
   ESLint and diff checks are clean, and the calendar API/Support contracts pass
   40/40; full TypeScript remains owned by the fresh protected Actions run on
   the immutable repair SHA.
+- Repair SHA `94cf8e4855a54958b96f8dc5a304f2fd6a4a7336` passed every required
+  context (`pr-scope`, `runner-policy`, `scan`, `static-checks`, `typecheck`),
+  with source/static/type admission in run `36595571934` and no gate change.
+  The pre-merge fetch then found protected `main` advanced through PR `#502`,
+  so merge `2d8425c4777a` integrates exact main SHA `01f5069a732a` before
+  release. Incoming Workforce calendar work has no Support/evidence/rollout/
+  deploy overlap; shared locale and voice-guide integration is green at 23,861
+  keys per locale plus 23/23 focused contracts. A new protected 5/5 run on the
+  final head remains mandatory.
 
 Current verification evidence (2026-09-05):
 

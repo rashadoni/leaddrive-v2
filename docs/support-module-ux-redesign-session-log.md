@@ -3462,3 +3462,29 @@ before merge.
 Result: both new defect-shaped type errors and all four new static failures are
 repaired without changing either baseline. Next: checkpoint/push the complete
 repair and require all five protected contexts to pass on the new exact SHA.
+
+## 2026-09-29 — Protected checks green and latest main reconciled
+
+- Repair checkpoint `94cf8e4855a54958b96f8dc5a304f2fd6a4a7336` passed all five
+  required protected contexts: `pr-scope`, `runner-policy`, `scan`,
+  `static-checks` and `typecheck`. The source/static/typecheck run is
+  `36595571934`; no baseline or required-context setting changed. The optional
+  GitHub-hosted production-build job remained skipped by its existing workflow
+  policy and is not a branch-protection context.
+- The mandatory pre-merge fetch then found that protected `main` had advanced
+  five commits through merge `01f5069a732a4879a453c918bca8a52864999401`
+  (PR `#502`, Workforce team-calendar overrides and evidence). Merge
+  `2d8425c4777a` integrates that snapshot before release; the branch is again
+  zero commits behind `origin/main`.
+- Incoming paths do not touch Support product, Support evidence, rollout or
+  deployment code. The only shared paths are AZ/RU/EN dictionaries and the
+  voice section guide; locale files merged automatically. Post-merge i18n
+  parity passes with 23,861 leaf keys in every locale, focused voice/navigation
+  plus Support Agent Calendar evidence contracts pass 23/23, and
+  `git diff --check` is clean. Resource preflight shows 15 GiB available RAM,
+  329 GiB free disk and zero active memory pressure.
+
+Result: the first fully green protected run is preserved as an immutable
+repair receipt, and the feature head now includes the latest protected main.
+Next: checkpoint/push this reconciliation and require a fresh complete 5/5
+protected-check set on the final exact SHA before merge.
