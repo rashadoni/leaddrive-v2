@@ -25538,7 +25538,7 @@
   },
   "workforceCalendarConfiguration": {
     "title": "Work calendar",
-    "subtitle": "Add named future holidays, closures and exception workdays. For the organization or one active team, you can also move one effective workday to an effective non-working day. Existing entries stay immutable.",
+    "subtitle": "Add named future holidays, closures and exception workdays. For the organization or one active team, move a workday or reverse a complete linked move after reviewing both dates.",
     "refresh": "Refresh calendar",
     "loading": "Loading future calendar…",
     "scope": "Calendar scope",
@@ -25640,7 +25640,20 @@
       "EXCEPTION_WORKDAY": "Exception workday",
       "MOVED_WORKDAY": "Moved workday",
       "MOVED_DAY_OFF": "Moved day off"
-    }
+    },
+    "reversalAction": "Reverse move",
+    "reversalActionLabel": "Reverse linked move: {name}",
+    "reversalReviewTitle": "Review linked move reversal",
+    "reversalDates": "Calendar dates: {source} ↔ {destination}",
+    "reversalReviewHint": "Both dates return to the currently inherited calendar for this scope. Its working/rest pattern may differ from the original one. If inherited Route eligibility changed, the pair is retained. Both entries are reversed together and the action is retained in audit.",
+    "reversalConfirm": "Reverse both linked entries",
+    "reversalCancel": "Close confirmation",
+    "reversalRecorded": "The linked move was reversed together and recorded in audit.",
+    "reversalAlreadyRecorded": "An exact reversal was already recorded for this linked pair. No new change was made.",
+    "reversalPairChanged": "This linked pair or its confirmed reversal is unavailable. Refresh the calendar before selecting another move.",
+    "reversalRouteChanged": "Inherited Route eligibility changed. Both moved-day entries were retained; review the parent calendar before retrying.",
+    "reversalBusy": "The calendar is busy. Retry this same confirmation.",
+    "reversalOutcomeUnknown": "The server result could not be confirmed. Retry this confirmation to check the outcome for the same linked pair. A new pair on these dates will remain untouched."
   },
   "workforceAccessManagement": {
     "title": "Workforce roles and access",

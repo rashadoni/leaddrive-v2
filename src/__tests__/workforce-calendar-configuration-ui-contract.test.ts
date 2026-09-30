@@ -5,6 +5,9 @@ import {
   beginLatestCalendarRequest,
   finishLatestCalendarRequest,
   isLatestCalendarRequest,
+  beginCalendarMutation,
+  isCurrentCalendarMutation,
+  finishCalendarMutation,
 } from "@/components/workforce/workforce-calendar-configuration"
 
 function source(path: string): string {
@@ -91,7 +94,7 @@ describe("Workforce calendar configuration UI contract", () => {
   })
 
   it("freezes every selection and draft control until a submitted mutation is reconciled", () => {
-    expect(component.match(/disabled=\{saving\}/g)).toHaveLength(10)
+    expect(component.match(/disabled=\{saving \|\| Boolean\(confirmation\)\}/g)).toHaveLength(10)
     for (const control of [
       "workforce-calendar-scope",
       "workforce-calendar-team",
@@ -105,8 +108,38 @@ describe("Workforce calendar configuration UI contract", () => {
       "workforce-calendar-name",
     ]) {
       const controlSource = component.slice(component.indexOf(`id=\"${control}\"`))
-      expect(controlSource.slice(0, 320), `${control} must be frozen while saving`).toContain("disabled={saving}")
+      expect(controlSource.slice(0, 320), `${control} must be frozen while saving or reviewing a pair`).toContain("disabled={saving || Boolean(confirmation)}")
     }
+  })
+
+  it("blocks same-tick double submit and fences stale tenant/target settlement", () => {
+    const state = { current: null as { contextKey: string; targetKey: string } | null }
+    const identity = { contextKey: "org-a/user-a", targetKey: "team-one" }
+    const first = beginCalendarMutation(state, identity)!
+    expect(beginCalendarMutation(state, identity)).toBeNull()
+    expect(isCurrentCalendarMutation(state, first, identity)).toBe(true)
+    expect(isCurrentCalendarMutation(state, first, { ...identity, contextKey: "org-b/user-b" })).toBe(false)
+    expect(isCurrentCalendarMutation(state, first, { ...identity, targetKey: "team-two" })).toBe(false)
+    state.current = null // committed context switch invalidates the old attempt
+    const second = beginCalendarMutation(state, { ...identity, contextKey: "org-b/user-b" })!
+    expect(finishCalendarMutation(state, first)).toBe(false)
+    expect(isCurrentCalendarMutation(state, second, { ...identity, contextKey: "org-b/user-b" })).toBe(true)
+    expect(finishCalendarMutation(state, second)).toBe(true)
+  })
+
+  it("keeps an exact reversal confirmation and guards before old reconciliation load", () => {
+    expect(component).toContain('operation: "REVERSE_MOVE_WORKDAY"')
+    expect(component).toContain('day.kind === "MOVED_DAY_OFF" && day.pairedDate && day.pairGenerationId')
+    expect(component).toContain('scope !== "AGENT"')
+    expect(component).toContain('pairGenerationId: day.pairGenerationId')
+    expect(component).toContain('clientContextKey: contextKey')
+    expect(component).toContain('calendar?.clientContextKey === contextKey')
+    const loadStart = component.indexOf('if (activeIdentity.current.contextKey !== contextKey) return')
+    expect(loadStart).toBeGreaterThan(0)
+    expect(loadStart).toBeLessThan(component.indexOf('const attempt = beginLatestCalendarRequest', loadStart))
+    expect(component).toContain('t("reversalOutcomeUnknown")')
+    expect(component).toContain('await load(submitted.selection)')
+    expect(component).toContain('if (finishCalendarMutation(mutation.current, attempt)) setSaving(false)')
   })
 
   it("uses named bounded target pickers and keeps PII, storage and Route fields out of the browser", () => {
@@ -230,6 +263,10 @@ describe("Workforce calendar configuration UI contract", () => {
       "accessRequired",
       "requestFailed",
       "outcomeUnknown",
+      "reversalAction", "reversalActionLabel", "reversalReviewTitle", "reversalDates",
+      "reversalReviewHint", "reversalConfirm", "reversalCancel", "reversalRecorded",
+      "reversalAlreadyRecorded", "reversalPairChanged", "reversalRouteChanged",
+      "reversalBusy", "reversalOutcomeUnknown",
     ]
     for (const locale of ["en", "ru", "az"]) {
       const localized = messages(locale)
@@ -250,6 +287,7 @@ describe("Workforce calendar configuration UI contract", () => {
         expect(statuses[status], `${locale}.agentStatuses.${status} is missing`).toEqual(expect.any(String))
       }
       expect(localized.outcomeUnknown).not.toBe(localized.requestFailed)
+      expect(localized.reversalOutcomeUnknown).not.toBe(localized.reversalPairChanged)
       for (const kind of [
         "WORKING_DAY",
         "WEEKEND",
