@@ -3117,3 +3117,32 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint these explicit paths, independently review the exact
   new head, push that head to #506, await all five PR gates, refetch main,
   merge normally, await deploy and verify the exact public artifact SHA.
+
+
+## 2026-09-30 — PR #506 exact reviewed head published; CI pending
+
+- Independent exact-head complete-diff review of clean
+  `23d1deb980b0a9b42e83081b21be0d3289865003` against main/merge-base
+  `07f8b823e4fef51d82787def19564510946cb08a` is GREEN: P0=P1=P2=P3=0.
+  Full identity: 23 paths / 192,363 bytes /
+  `8fe3aef4be5afd828c1c8865c35f243a78a0c90eeffda27306c7e815ec5aaf3d`;
+  non-doc: 19 / 121,643 /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- Pushed exactly that SHA to the existing #506 branch; the stale f1739b23 head
+  is superseded. The PR body now describes this exact reconciled candidate.
+  The older gh CLI's classic-project GraphQL error affected body editing only;
+  a successful REST PATCH applied the same prepared body. No gate changed.
+- Fresh-head runs: PR checks `36726718154`; runner policy `36726718250`;
+  secret scan `36726718248`. pr-scope, runner-policy and scan are GREEN;
+  static-checks/typecheck are pending. PR production build is intentionally
+  SKIPPED. A pending gate is not credited as passed.
+- This publishing receipt is deliberately uncommitted while the reviewed
+  remote SHA runs CI. No source or tracked branch commit changes after review;
+  release/successor receipts will checkpoint it without restarting these gates.
+- Current result: #506 open, exact reviewed replacement published, release
+  pending. Last action: push/read back exact head and start all required gates.
+  Precise stopping point: waiting static-checks/typecheck on 23d1deb98.
+  Next action: require all five GREEN, fresh-main check, normal merge,
+  deploy.yml completion and exact public artifact-SHA verification.
+- Progress unchanged: DONE 81/161, GATES 14/15, C8 36%, overall 59%,
+  80 non-DONE rows; WF-C8-007 remains PARTIAL.
