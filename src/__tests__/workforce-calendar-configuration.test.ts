@@ -8,12 +8,17 @@ vi.mock("@/lib/prisma", async () => {
 import { prisma } from "@/lib/prisma"
 import {
   WorkforceCalendarConfigurationError,
+  createWorkforceCalendarMovedDay,
   createWorkforceCalendarOverride,
   listWorkforceCalendarOverrides,
   searchWorkforceCalendarAgents,
   searchWorkforceCalendarTeams,
 } from "@/lib/workforce/calendar-configuration"
-import { WorkforceCalendarOverrideCreateSchema } from "@/lib/workforce/calendar-configuration-contract"
+import {
+  WorkforceCalendarConfigurationCreateSchema,
+  WorkforceCalendarMovedDayCreateSchema,
+  WorkforceCalendarOverrideCreateSchema,
+} from "@/lib/workforce/calendar-configuration-contract"
 
 const organizationId = "org-workforce"
 const createdByUserId = "scheduler-1"
@@ -26,8 +31,9 @@ const audit = {
 function persisted(input: {
   id?: string
   date?: string
-  kind?: "PUBLIC_HOLIDAY" | "COMPANY_HOLIDAY" | "EXCEPTION_WORKDAY"
+  kind?: "PUBLIC_HOLIDAY" | "COMPANY_HOLIDAY" | "EXCEPTION_WORKDAY" | "MOVED_WORKDAY" | "MOVED_DAY_OFF"
   name?: string
+  movedToDate?: string | null
   routePlanningAllowed?: boolean
   source?: string
   teamId?: string | null
@@ -40,7 +46,7 @@ function persisted(input: {
     name: input.name ?? "Company day",
     teamId: input.teamId ?? null,
     agentId: input.agentId ?? null,
-    movedToDate: null,
+    movedToDate: input.movedToDate ? new Date(`${input.movedToDate}T00:00:00.000Z`) : null,
     routePlanningAllowed: input.routePlanningAllowed ?? true,
     source: input.source ?? "ADMIN",
   }
@@ -120,8 +126,8 @@ describe("Workforce organization calendar configuration", () => {
       endExclusive: "2026-11-01",
       scope: "ORGANIZATION",
     })).resolves.toEqual([
-      { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Company day" },
-      { date: "2026-10-06", kind: "PUBLIC_HOLIDAY", name: "Public day" },
+      { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Company day", pairedDate: null },
+      { date: "2026-10-06", kind: "PUBLIC_HOLIDAY", name: "Public day", pairedDate: null },
     ])
 
     expect(prisma.mtmWorkCalendarDay.findMany).toHaveBeenCalledWith({
@@ -136,7 +142,7 @@ describe("Workforce organization calendar configuration", () => {
         deletedAt: null,
       },
       orderBy: [{ date: "asc" }, { id: "asc" }],
-      select: { date: true, kind: true, name: true },
+      select: { date: true, kind: true, name: true, movedToDate: true },
     })
   })
 
@@ -153,7 +159,7 @@ describe("Workforce organization calendar configuration", () => {
       scope: "TEAM",
       teamId: "team-north",
     })).resolves.toEqual([
-      { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "North team day" },
+      { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "North team day", pairedDate: null },
     ])
 
     expect(prisma.mtmWorkCalendarDay.findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -179,7 +185,7 @@ describe("Workforce organization calendar configuration", () => {
       scope: "AGENT",
       agentId: "agent-one",
     })).resolves.toEqual([
-      { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Personal schedule exception" },
+      { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Personal schedule exception", pairedDate: null },
     ])
 
     expect(prisma.mtmWorkCalendarDay.findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -219,7 +225,7 @@ describe("Workforce organization calendar configuration", () => {
       draft: { scope: "ORGANIZATION", date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Company day" },
       audit,
     })).resolves.toEqual({
-      day: { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Company day" },
+      day: { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Company day", pairedDate: null },
       team: null,
       agent: null,
       created: true,
@@ -655,7 +661,7 @@ describe("Workforce organization calendar configuration", () => {
       },
       audit,
     })).resolves.toEqual({
-      day: { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Personal schedule exception" },
+      day: { date: "2026-10-05", kind: "COMPANY_HOLIDAY", name: "Personal schedule exception", pairedDate: null },
       team: null,
       agent: {
         id: "agent-one",
@@ -790,5 +796,408 @@ describe("Workforce organization calendar configuration", () => {
     expect(prisma.mtmWorkCalendarDay.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+})
+
+describe("Workforce atomic moved-day configuration", () => {
+  const organizationDraft = {
+    operation: "MOVE_WORKDAY" as const,
+    scope: "ORGANIZATION" as const,
+    sourceDate: "2026-10-05",
+    destinationDate: "2026-10-10",
+    name: "Holiday workday move",
+  }
+
+  it("accepts only one strict organization/team operation with two distinct real dates", () => {
+    expect(WorkforceCalendarMovedDayCreateSchema.parse(organizationDraft)).toEqual(organizationDraft)
+    expect(WorkforceCalendarConfigurationCreateSchema.parse({
+      ...organizationDraft,
+      scope: "TEAM",
+      teamId: "team-north",
+    })).toMatchObject({ operation: "MOVE_WORKDAY", scope: "TEAM", teamId: "team-north" })
+    for (const invalid of [
+      { ...organizationDraft, scope: "AGENT", agentId: "agent-one" },
+      { ...organizationDraft, scope: "TEAM" },
+      { ...organizationDraft, teamId: "team-north" },
+      { ...organizationDraft, destinationDate: organizationDraft.sourceDate },
+      { ...organizationDraft, kind: "MOVED_DAY_OFF" },
+      { ...organizationDraft, movedToDate: organizationDraft.destinationDate },
+      { ...organizationDraft, routePlanningAllowed: false },
+    ]) {
+      expect(() => WorkforceCalendarConfigurationCreateSchema.parse(invalid)).toThrow()
+    }
+  })
+
+  it("rejects a runtime employee-scope draft before opening a transaction", async () => {
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: {
+        ...organizationDraft,
+        scope: "AGENT",
+        agentId: "agent-one",
+      } as never,
+      audit,
+    })).rejects.toMatchObject({ code: "WORKFORCE_CALENDAR_CONFIGURATION_SCOPE_INVALID" })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
+  it("returns reciprocal paired dates in the minimized future inventory", async () => {
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([
+      persisted({
+        date: organizationDraft.sourceDate,
+        kind: "MOVED_DAY_OFF",
+        movedToDate: organizationDraft.destinationDate,
+      }),
+      persisted({
+        id: "calendar-2",
+        date: organizationDraft.destinationDate,
+        kind: "MOVED_WORKDAY",
+        movedToDate: organizationDraft.sourceDate,
+      }),
+    ] as never)
+
+    await expect(listWorkforceCalendarOverrides({
+      organizationId,
+      currentDate: "2026-09-29",
+      start: "2026-10-01",
+      endExclusive: "2026-11-01",
+      scope: "ORGANIZATION",
+    })).resolves.toEqual([
+      {
+        date: organizationDraft.sourceDate,
+        kind: "MOVED_DAY_OFF",
+        name: "Company day",
+        pairedDate: organizationDraft.destinationDate,
+      },
+      {
+        date: organizationDraft.destinationDate,
+        kind: "MOVED_WORKDAY",
+        name: "Company day",
+        pairedDate: organizationDraft.sourceDate,
+      },
+    ])
+  })
+
+  it("locks both dates deterministically and creates one atomic organization pair plus audit", async () => {
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.create)
+      .mockResolvedValueOnce(persisted({
+        id: "moved-off",
+        date: organizationDraft.sourceDate,
+        kind: "MOVED_DAY_OFF",
+        name: organizationDraft.name,
+        movedToDate: organizationDraft.destinationDate,
+        routePlanningAllowed: true,
+      }) as never)
+      .mockResolvedValueOnce(persisted({
+        id: "moved-workday",
+        date: organizationDraft.destinationDate,
+        kind: "MOVED_WORKDAY",
+        name: organizationDraft.name,
+        movedToDate: organizationDraft.sourceDate,
+        routePlanningAllowed: false,
+      }) as never)
+
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: organizationDraft,
+      audit,
+    })).resolves.toEqual({
+      days: [
+        {
+          date: organizationDraft.sourceDate,
+          kind: "MOVED_DAY_OFF",
+          name: organizationDraft.name,
+          pairedDate: organizationDraft.destinationDate,
+        },
+        {
+          date: organizationDraft.destinationDate,
+          kind: "MOVED_WORKDAY",
+          name: organizationDraft.name,
+          pairedDate: organizationDraft.sourceDate,
+        },
+      ],
+      team: null,
+      created: true,
+    })
+
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
+    expect(prisma.$executeRaw.mock.calls.map((call) => call[1])).toEqual([
+      `workforce-calendar-configuration:${organizationId}:2026-10-05`,
+      `workforce-calendar-configuration:${organizationId}:2026-10-10`,
+    ])
+    expect(prisma.$executeRaw.mock.invocationCallOrder[1]).toBeLessThan(
+      prisma.mtmWorkCalendarDay.findMany.mock.invocationCallOrder[0],
+    )
+    expect(prisma.mtmWorkCalendarDay.create).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      data: expect.objectContaining({
+        organizationId,
+        date: new Date("2026-10-05T00:00:00.000Z"),
+        kind: "MOVED_DAY_OFF",
+        movedToDate: new Date("2026-10-10T00:00:00.000Z"),
+        routePlanningAllowed: true,
+        source: "ADMIN",
+      }),
+    }))
+    expect(prisma.mtmWorkCalendarDay.create).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      data: expect.objectContaining({
+        date: new Date("2026-10-10T00:00:00.000Z"),
+        kind: "MOVED_WORKDAY",
+        movedToDate: new Date("2026-10-05T00:00:00.000Z"),
+        routePlanningAllowed: false,
+      }),
+    }))
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "WORKFORCE_CALENDAR_MOVED_DAY_CREATED",
+        entity: "work_calendar_pair",
+        entityId: "moved-off",
+        newData: expect.objectContaining({
+          operation: "MOVE_WORKDAY",
+          sourceDate: "2026-10-05",
+          destinationDate: "2026-10-10",
+          sourceRoutePlanningBaseline: true,
+          destinationRoutePlanningBaseline: false,
+        }),
+      }),
+    })
+  })
+
+  it("row-locks an active tenant team and freezes each organization Route baseline independently", async () => {
+    const draft = { ...organizationDraft, scope: "TEAM" as const, teamId: "team-north" }
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{
+      id: "team-north",
+      name: "North team",
+      code: "NORTH",
+      isActive: true,
+    }] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([
+      persisted({
+        id: "organization-source",
+        date: draft.sourceDate,
+        kind: "EXCEPTION_WORKDAY",
+        routePlanningAllowed: false,
+      }),
+      persisted({
+        id: "organization-destination",
+        date: draft.destinationDate,
+        kind: "COMPANY_HOLIDAY",
+        routePlanningAllowed: true,
+      }),
+    ] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.create)
+      .mockResolvedValueOnce(persisted({
+        id: "team-moved-off",
+        teamId: "team-north",
+        date: draft.sourceDate,
+        kind: "MOVED_DAY_OFF",
+        name: draft.name,
+        movedToDate: draft.destinationDate,
+        routePlanningAllowed: false,
+      }) as never)
+      .mockResolvedValueOnce(persisted({
+        id: "team-moved-workday",
+        teamId: "team-north",
+        date: draft.destinationDate,
+        kind: "MOVED_WORKDAY",
+        name: draft.name,
+        movedToDate: draft.sourceDate,
+        routePlanningAllowed: true,
+      }) as never)
+
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft,
+      audit,
+    })).resolves.toMatchObject({ created: true, team: { id: "team-north" } })
+
+    const teamLock = prisma.$queryRaw.mock.calls[0]?.[0] as { strings?: readonly string[] }
+    expect(teamLock.strings?.join(" ")).toContain("FOR SHARE OF team")
+    expect(teamLock.strings?.join(" ")).toContain('team."organizationId"')
+    expect(prisma.$executeRaw.mock.invocationCallOrder[1]).toBeLessThan(prisma.$queryRaw.mock.invocationCallOrder[0])
+    expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.mtmWorkCalendarDay.findMany.mock.invocationCallOrder[0],
+    )
+    expect(prisma.mtmWorkCalendarDay.create).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      data: expect.objectContaining({ teamId: "team-north", routePlanningAllowed: false }),
+    }))
+    expect(prisma.mtmWorkCalendarDay.create).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      data: expect.objectContaining({ teamId: "team-north", routePlanningAllowed: true }),
+    }))
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        newData: expect.objectContaining({
+          scope: "TEAM",
+          teamId: "team-north",
+          teamName: "North team",
+          sourceRoutePlanningBaseline: false,
+          destinationRoutePlanningBaseline: true,
+        }),
+      }),
+    })
+  })
+
+  it("replays only an exact reciprocal ADMIN pair and rejects partial or foreign provenance", async () => {
+    const source = persisted({
+      id: "moved-off",
+      date: organizationDraft.sourceDate,
+      kind: "MOVED_DAY_OFF",
+      name: organizationDraft.name,
+      movedToDate: organizationDraft.destinationDate,
+    })
+    const destination = persisted({
+      id: "moved-workday",
+      date: organizationDraft.destinationDate,
+      kind: "MOVED_WORKDAY",
+      name: organizationDraft.name,
+      movedToDate: organizationDraft.sourceDate,
+      routePlanningAllowed: false,
+    })
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([source, destination] as never)
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: organizationDraft,
+      audit,
+    })).resolves.toMatchObject({ created: false })
+    expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([source] as never)
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: organizationDraft,
+      audit,
+    })).rejects.toMatchObject({ code: "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS" })
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([
+      { ...source, source: "WORKFORCE_CONFIG" },
+      destination,
+    ] as never)
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: organizationDraft,
+      audit,
+    })).rejects.toMatchObject({ code: "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS" })
+    expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([
+      { ...source, routePlanningAllowed: null },
+      destination,
+    ] as never)
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: organizationDraft,
+      audit,
+    })).rejects.toMatchObject({ code: "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS" })
+    expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
+  })
+
+  it("requires a working source and non-working destination before either row is written", async () => {
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([] as never)
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: {
+        ...organizationDraft,
+        sourceDate: "2026-10-04",
+        destinationDate: "2026-10-10",
+      },
+      audit,
+    })).rejects.toMatchObject({
+      code: "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_SOURCE_NOT_WORKING",
+    })
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([] as never)
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: {
+        ...organizationDraft,
+        sourceDate: "2026-10-05",
+        destinationDate: "2026-10-06",
+      },
+      audit,
+    })).rejects.toMatchObject({
+      code: "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DESTINATION_NOT_NON_WORKING",
+    })
+    expect(prisma.mtmWorkCalendarDay.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("fails before a transaction for invalid horizons and maps unique/audit failures atomically", async () => {
+    for (const draft of [
+      { ...organizationDraft, sourceDate: "2026-09-29" },
+      { ...organizationDraft, destinationDate: "2027-10-03" },
+      { ...organizationDraft, destinationDate: organizationDraft.sourceDate },
+    ]) {
+      await expect(createWorkforceCalendarMovedDay({
+        organizationId,
+        createdByUserId,
+        currentDate: "2026-09-29",
+        draft,
+        audit,
+      })).rejects.toMatchObject({ code: "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DATES_INVALID" })
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.create).mockRejectedValueOnce({ code: "P2002" })
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: organizationDraft,
+      audit,
+    })).rejects.toMatchObject({ code: "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS" })
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.create)
+      .mockResolvedValueOnce(persisted({
+        id: "moved-off",
+        date: organizationDraft.sourceDate,
+        kind: "MOVED_DAY_OFF",
+        name: organizationDraft.name,
+        movedToDate: organizationDraft.destinationDate,
+      }) as never)
+      .mockResolvedValueOnce(persisted({
+        id: "moved-workday",
+        date: organizationDraft.destinationDate,
+        kind: "MOVED_WORKDAY",
+        name: organizationDraft.name,
+        movedToDate: organizationDraft.sourceDate,
+        routePlanningAllowed: false,
+      }) as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockRejectedValueOnce(new Error("audit unavailable"))
+    await expect(createWorkforceCalendarMovedDay({
+      organizationId,
+      createdByUserId,
+      currentDate: "2026-09-29",
+      draft: organizationDraft,
+      audit,
+    })).rejects.toThrow("audit unavailable")
+    expect(prisma.mtmWorkCalendarDay.create).toHaveBeenCalledTimes(2)
   })
 })

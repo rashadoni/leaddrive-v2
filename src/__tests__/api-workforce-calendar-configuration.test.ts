@@ -12,6 +12,7 @@ vi.mock("@/lib/workforce/calendar-configuration", async () => {
   return {
     ...actual,
     listWorkforceCalendarOverrides: vi.fn(),
+    createWorkforceCalendarMovedDay: vi.fn(),
     createWorkforceCalendarOverride: vi.fn(),
     searchWorkforceCalendarAgents: vi.fn(),
     searchWorkforceCalendarTeams: vi.fn(),
@@ -24,6 +25,7 @@ import { addDateKeyDays, currentDateKey } from "@/lib/mtm/mobile-week"
 import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   WorkforceCalendarConfigurationError,
+  createWorkforceCalendarMovedDay,
   createWorkforceCalendarOverride,
   listWorkforceCalendarOverrides,
   searchWorkforceCalendarAgents,
@@ -49,6 +51,7 @@ function request(path: string, method: "GET" | "POST", body?: unknown): NextRequ
 beforeEach(() => {
   vi.mocked(getMtmSettings).mockReset()
   vi.mocked(listWorkforceCalendarOverrides).mockReset()
+  vi.mocked(createWorkforceCalendarMovedDay).mockReset()
   vi.mocked(createWorkforceCalendarOverride).mockReset()
   vi.mocked(searchWorkforceCalendarAgents).mockReset()
   vi.mocked(searchWorkforceCalendarTeams).mockReset()
@@ -89,7 +92,7 @@ describe("Workforce calendar configuration API", () => {
     const start = addDateKeyDays(today, 2)
     const endExclusive = addDateKeyDays(start, 20)
     vi.mocked(listWorkforceCalendarOverrides).mockResolvedValue([
-      { date: start, kind: "PUBLIC_HOLIDAY", name: "Public day" },
+      { date: start, kind: "PUBLIC_HOLIDAY", name: "Public day", pairedDate: null },
     ])
 
     const response = await callGet(request(
@@ -127,7 +130,7 @@ describe("Workforce calendar configuration API", () => {
           limit: 100,
           hasMore: false,
         },
-        days: [{ date: start, kind: "PUBLIC_HOLIDAY", name: "Public day" }],
+        days: [{ date: start, kind: "PUBLIC_HOLIDAY", name: "Public day", pairedDate: null }],
       },
     })
     expect(listWorkforceCalendarOverrides).toHaveBeenCalledWith({
@@ -139,7 +142,7 @@ describe("Workforce calendar configuration API", () => {
       teamId: undefined,
       agentId: undefined,
     })
-    expect(Object.keys(payload.data.days[0]).sort()).toEqual(["date", "kind", "name"])
+    expect(Object.keys(payload.data.days[0]).sort()).toEqual(["date", "kind", "name", "pairedDate"])
   })
 
   it("rejects unknown create fields before any writer call", async () => {
@@ -159,7 +162,7 @@ describe("Workforce calendar configuration API", () => {
     const today = currentDateKey(new Date(), "UTC")
     const date = addDateKeyDays(today, 3)
     vi.mocked(createWorkforceCalendarOverride).mockResolvedValue({
-      day: { date, kind: "EXCEPTION_WORKDAY", name: "Inventory day" },
+      day: { date, kind: "EXCEPTION_WORKDAY", name: "Inventory day", pairedDate: null },
       team: null,
       agent: null,
       created: true,
@@ -179,7 +182,7 @@ describe("Workforce calendar configuration API", () => {
       scope: "ORGANIZATION",
       team: null,
       agent: null,
-      day: { date, kind: "EXCEPTION_WORKDAY", name: "Inventory day" },
+      day: { date, kind: "EXCEPTION_WORKDAY", name: "Inventory day", pairedDate: null },
     })
     expect(createWorkforceCalendarOverride).toHaveBeenCalledWith(expect.objectContaining({
       organizationId: AUTH.orgId,
@@ -192,13 +195,13 @@ describe("Workforce calendar configuration API", () => {
         userAgent: "calendar-route-test",
       }),
     }))
-    expect(Object.keys(payload.data.day).sort()).toEqual(["date", "kind", "name"])
+    expect(Object.keys(payload.data.day).sort()).toEqual(["date", "kind", "name", "pairedDate"])
   })
 
   it("uses 200 for an exact state replay and maps bounded domain errors", async () => {
     const date = addDateKeyDays(currentDateKey(new Date(), "UTC"), 3)
     vi.mocked(createWorkforceCalendarOverride).mockResolvedValueOnce({
-      day: { date, kind: "COMPANY_HOLIDAY", name: "Company day" },
+      day: { date, kind: "COMPANY_HOLIDAY", name: "Company day", pairedDate: null },
       team: null,
       agent: null,
       created: false,
@@ -248,7 +251,7 @@ describe("Workforce calendar configuration API", () => {
       hasMore: true,
     })
     vi.mocked(listWorkforceCalendarOverrides).mockResolvedValue([
-      { date: start, kind: "EXCEPTION_WORKDAY", name: "North inventory" },
+      { date: start, kind: "EXCEPTION_WORKDAY", name: "North inventory", pairedDate: null },
     ])
 
     const response = await callGet(request(
@@ -262,7 +265,7 @@ describe("Workforce calendar configuration API", () => {
       scope: "TEAM",
       team,
       teamDirectory: { items: [team], query: "north", limit: 25, hasMore: true },
-      days: [{ date: start, kind: "EXCEPTION_WORKDAY", name: "North inventory" }],
+      days: [{ date: start, kind: "EXCEPTION_WORKDAY", name: "North inventory", pairedDate: null }],
     })
     expect(searchWorkforceCalendarTeams).toHaveBeenCalledWith({
       organizationId: AUTH.orgId,
@@ -306,7 +309,7 @@ describe("Workforce calendar configuration API", () => {
     const date = addDateKeyDays(today, 3)
     const team = { id: "team-north", name: "North team", code: "NORTH", isActive: true }
     vi.mocked(createWorkforceCalendarOverride).mockResolvedValue({
-      day: { date, kind: "COMPANY_HOLIDAY", name: "North team day" },
+      day: { date, kind: "COMPANY_HOLIDAY", name: "North team day", pairedDate: null },
       team,
       agent: null,
       created: true,
@@ -328,7 +331,7 @@ describe("Workforce calendar configuration API", () => {
       scope: "TEAM",
       team,
       agent: null,
-      day: { date, kind: "COMPANY_HOLIDAY", name: "North team day" },
+      day: { date, kind: "COMPANY_HOLIDAY", name: "North team day", pairedDate: null },
     })
     expect(createWorkforceCalendarOverride).toHaveBeenCalledWith(expect.objectContaining({
       organizationId: AUTH.orgId,
@@ -384,7 +387,7 @@ describe("Workforce calendar configuration API", () => {
       hasMore: true,
     })
     vi.mocked(listWorkforceCalendarOverrides).mockResolvedValue([
-      { date: start, kind: "COMPANY_HOLIDAY", name: "Personal schedule exception" },
+      { date: start, kind: "COMPANY_HOLIDAY", name: "Personal schedule exception", pairedDate: null },
     ])
 
     const response = await callGet(request(
@@ -399,7 +402,7 @@ describe("Workforce calendar configuration API", () => {
       team: null,
       agent,
       agentDirectory: { items: [], query: "employee", limit: 25, hasMore: true },
-      days: [{ date: start, kind: "COMPANY_HOLIDAY", name: "Personal schedule exception" }],
+      days: [{ date: start, kind: "COMPANY_HOLIDAY", name: "Personal schedule exception", pairedDate: null }],
     })
     expect(searchWorkforceCalendarAgents).toHaveBeenCalledWith({
       organizationId: AUTH.orgId,
@@ -456,7 +459,7 @@ describe("Workforce calendar configuration API", () => {
       currentTeam: { id: "team-north", name: "North team", code: "NORTH", isActive: true },
     }
     vi.mocked(createWorkforceCalendarOverride).mockResolvedValue({
-      day: { date, kind: "EXCEPTION_WORKDAY", name: "Personal inventory day" },
+      day: { date, kind: "EXCEPTION_WORKDAY", name: "Personal inventory day", pairedDate: null },
       team: null,
       agent,
       created: true,
@@ -478,7 +481,7 @@ describe("Workforce calendar configuration API", () => {
       scope: "AGENT",
       team: null,
       agent,
-      day: { date, kind: "EXCEPTION_WORKDAY", name: "Personal inventory day" },
+      day: { date, kind: "EXCEPTION_WORKDAY", name: "Personal inventory day", pairedDate: null },
     })
     expect(createWorkforceCalendarOverride).toHaveBeenCalledWith(expect.objectContaining({
       organizationId: AUTH.orgId,
@@ -522,6 +525,156 @@ describe("Workforce calendar configuration API", () => {
     expect(response.status).toBe(404)
     await expect(response.json()).resolves.toMatchObject({
       code: "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE",
+    })
+  })
+
+  it("creates one reciprocal organization moved-day pair without caller-owned kinds or Route fields", async () => {
+    const today = currentDateKey(new Date(), "UTC")
+    const sourceDate = addDateKeyDays(today, 3)
+    const destinationDate = addDateKeyDays(today, 4)
+    vi.mocked(createWorkforceCalendarMovedDay).mockResolvedValue({
+      days: [
+        { date: sourceDate, kind: "MOVED_DAY_OFF", name: "Holiday move", pairedDate: destinationDate },
+        { date: destinationDate, kind: "MOVED_WORKDAY", name: "Holiday move", pairedDate: sourceDate },
+      ],
+      team: null,
+      created: true,
+    })
+
+    const response = await callPost(request("/api/v1/workforce/configuration/calendar", "POST", {
+      operation: "MOVE_WORKDAY",
+      scope: "ORGANIZATION",
+      sourceDate,
+      destinationDate,
+      name: "Holiday move",
+    }), AUTH)
+    const payload = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(payload.data).toEqual({
+      timezone: "UTC",
+      currentDate: today,
+      operation: "MOVE_WORKDAY",
+      scope: "ORGANIZATION",
+      team: null,
+      agent: null,
+      days: [
+        { date: sourceDate, kind: "MOVED_DAY_OFF", name: "Holiday move", pairedDate: destinationDate },
+        { date: destinationDate, kind: "MOVED_WORKDAY", name: "Holiday move", pairedDate: sourceDate },
+      ],
+    })
+    expect(createWorkforceCalendarMovedDay).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: AUTH.orgId,
+      createdByUserId: AUTH.userId,
+      currentDate: today,
+      draft: {
+        operation: "MOVE_WORKDAY",
+        scope: "ORGANIZATION",
+        sourceDate,
+        destinationDate,
+        name: "Holiday move",
+      },
+      audit: expect.objectContaining({ actorUserId: AUTH.userId }),
+    }))
+    expect(createWorkforceCalendarOverride).not.toHaveBeenCalled()
+    for (const day of payload.data.days) {
+      expect(Object.keys(day).sort()).toEqual(["date", "kind", "name", "pairedDate"])
+    }
+  })
+
+  it("supports a named team moved-day pair but rejects AGENT and internal moved fields", async () => {
+    const today = currentDateKey(new Date(), "UTC")
+    const sourceDate = addDateKeyDays(today, 3)
+    const destinationDate = addDateKeyDays(today, 4)
+    const team = { id: "team-north", name: "North team", code: "NORTH", isActive: true }
+    vi.mocked(createWorkforceCalendarMovedDay).mockResolvedValue({
+      days: [
+        { date: sourceDate, kind: "MOVED_DAY_OFF", name: "Team move", pairedDate: destinationDate },
+        { date: destinationDate, kind: "MOVED_WORKDAY", name: "Team move", pairedDate: sourceDate },
+      ],
+      team,
+      created: true,
+    })
+
+    const teamResponse = await callPost(request("/api/v1/workforce/configuration/calendar", "POST", {
+      operation: "MOVE_WORKDAY",
+      scope: "TEAM",
+      teamId: "team-north",
+      sourceDate,
+      destinationDate,
+      name: "Team move",
+    }), AUTH)
+    expect(teamResponse.status).toBe(201)
+    await expect(teamResponse.json()).resolves.toMatchObject({ data: { scope: "TEAM", team } })
+
+    for (const invalid of [
+      {
+        operation: "MOVE_WORKDAY",
+        scope: "AGENT",
+        agentId: "agent-one",
+        sourceDate,
+        destinationDate,
+        name: "Personal move",
+      },
+      {
+        operation: "MOVE_WORKDAY",
+        scope: "ORGANIZATION",
+        sourceDate,
+        destinationDate,
+        name: "Internal fields",
+        kind: "MOVED_DAY_OFF",
+      },
+      {
+        operation: "MOVE_WORKDAY",
+        scope: "ORGANIZATION",
+        sourceDate,
+        destinationDate,
+        name: "Internal fields",
+        routePlanningAllowed: false,
+      },
+    ]) {
+      const invalidResponse = await callPost(request(
+        "/api/v1/workforce/configuration/calendar",
+        "POST",
+        invalid,
+      ), AUTH)
+      expect(invalidResponse.status).toBe(400)
+    }
+    expect(createWorkforceCalendarMovedDay).toHaveBeenCalledTimes(1)
+  })
+
+  it("uses 200 for exact moved-pair replay and maps baseline conflicts without another writer", async () => {
+    const today = currentDateKey(new Date(), "UTC")
+    const sourceDate = addDateKeyDays(today, 3)
+    const destinationDate = addDateKeyDays(today, 4)
+    const body = {
+      operation: "MOVE_WORKDAY",
+      scope: "ORGANIZATION",
+      sourceDate,
+      destinationDate,
+      name: "Holiday move",
+    }
+    vi.mocked(createWorkforceCalendarMovedDay).mockResolvedValueOnce({
+      days: [
+        { date: sourceDate, kind: "MOVED_DAY_OFF", name: body.name, pairedDate: destinationDate },
+        { date: destinationDate, kind: "MOVED_WORKDAY", name: body.name, pairedDate: sourceDate },
+      ],
+      team: null,
+      created: false,
+    })
+    const replay = await callPost(request("/api/v1/workforce/configuration/calendar", "POST", body), AUTH)
+    expect(replay.status).toBe(200)
+
+    vi.mocked(createWorkforceCalendarMovedDay).mockRejectedValueOnce(
+      new WorkforceCalendarConfigurationError(
+        "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_SOURCE_NOT_WORKING",
+        "Source is not working",
+      ),
+    )
+    const conflict = await callPost(request("/api/v1/workforce/configuration/calendar", "POST", body), AUTH)
+    expect(conflict.status).toBe(409)
+    await expect(conflict.json()).resolves.toMatchObject({
+      code: "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_SOURCE_NOT_WORKING",
     })
   })
 })

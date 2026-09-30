@@ -59,6 +59,7 @@ type ReadSelection = {
 }
 
 type ApiFailure = Error & { code?: string }
+type CalendarEditorOperation = "CREATE_OVERRIDE" | "MOVE_WORKDAY"
 
 type LatestCalendarRequestState = {
   sequence: number
@@ -117,6 +118,9 @@ function failureCode(failure: unknown): string {
 function localizedKnownFailure(t: ReturnType<typeof useTranslations>, code: string): string | null {
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_DATE_NOT_FUTURE") return t("dateNotFuture")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_DATE_RANGE_INVALID") return t("dateRangeInvalid")
+  if (code === "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DATES_INVALID") return t("moveDatesInvalid")
+  if (code === "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_SOURCE_NOT_WORKING") return t("moveSourceNotWorking")
+  if (code === "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DESTINATION_NOT_NON_WORKING") return t("moveDestinationNotNonWorking")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS") return t("overrideExists")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_UNAVAILABLE") return t("teamUnavailable")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_SEARCH_INVALID") return t("teamSearchInvalid")
@@ -163,7 +167,9 @@ export function WorkforceCalendarConfiguration() {
   const [teamQuery, setTeamQuery] = useState("")
   const [agentId, setAgentId] = useState("")
   const [agentQuery, setAgentQuery] = useState("")
+  const [operation, setOperation] = useState<CalendarEditorOperation>("CREATE_OVERRIDE")
   const [date, setDate] = useState("")
+  const [destinationDate, setDestinationDate] = useState("")
   const [kind, setKind] = useState<WorkforceCalendarCreateKind>("PUBLIC_HOLIDAY")
   const [name, setName] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -233,6 +239,9 @@ export function WorkforceCalendarConfiguration() {
       if (!isLatestCalendarRequest(latestLoad.current, attempt)) return
       setCalendar(result.data)
       setDate((current) => current > result.data.currentDate ? current : nextDateKey(result.data.currentDate))
+      setDestinationDate((current) => current > result.data.currentDate
+        ? current
+        : nextDateKey(nextDateKey(result.data.currentDate)))
       setError(null)
     } catch (failure) {
       if (!isLatestCalendarRequest(latestLoad.current, attempt)) return
@@ -253,6 +262,7 @@ export function WorkforceCalendarConfiguration() {
     setTeamQuery("")
     setAgentId("")
     setAgentQuery("")
+    setOperation("CREATE_OVERRIDE")
     void load({
       scope: "ORGANIZATION",
       teamId: "",
@@ -268,21 +278,30 @@ export function WorkforceCalendarConfiguration() {
     setError(null)
     setNotice(null)
     const submittedSelection: ReadSelection = { scope, teamId, teamQuery, agentId, agentQuery }
+    const submittedOperation = operation
     try {
-      const result = await request<Record<string, unknown>>("POST", {
+      const target = {
         scope: submittedSelection.scope,
         ...(submittedSelection.scope === "TEAM" ? { teamId: submittedSelection.teamId } : {}),
         ...(submittedSelection.scope === "AGENT" ? { agentId: submittedSelection.agentId } : {}),
-        date,
-        kind,
-        name,
-      })
+      }
+      const result = await request<Record<string, unknown>>("POST", submittedOperation === "MOVE_WORKDAY"
+        ? {
+            operation: "MOVE_WORKDAY",
+            ...target,
+            sourceDate: date,
+            destinationDate,
+            name,
+          }
+        : { ...target, date, kind, name })
       setNotice(result.status === 201
-        ? t(submittedSelection.scope === "TEAM"
-            ? "createdTeam"
-            : submittedSelection.scope === "AGENT"
-              ? "createdAgent"
-              : "createdOrganization")
+        ? t(submittedOperation === "MOVE_WORKDAY"
+            ? submittedSelection.scope === "TEAM" ? "movedTeam" : "movedOrganization"
+            : submittedSelection.scope === "TEAM"
+              ? "createdTeam"
+              : submittedSelection.scope === "AGENT"
+                ? "createdAgent"
+                : "createdOrganization")
         : t("alreadyRecorded"))
       setName("")
       await load(submittedSelection)
@@ -323,6 +342,11 @@ export function WorkforceCalendarConfiguration() {
       || selectedAgent?.status === "ACTIVE"
     )
     && date
+    && (operation === "CREATE_OVERRIDE" || (
+      scope !== "AGENT"
+      && destinationDate
+      && destinationDate !== date
+    ))
     && name.trim(),
   )
 
@@ -371,6 +395,7 @@ export function WorkforceCalendarConfiguration() {
             setTeamQuery("")
             setAgentId("")
             setAgentQuery("")
+            if (nextScope === "AGENT") setOperation("CREATE_OVERRIDE")
             setNotice(null)
             void load({
               scope: nextScope,
@@ -517,9 +542,27 @@ export function WorkforceCalendarConfiguration() {
       : null}
 
     {visibleCalendar ? <>
-      <form className="grid gap-5 px-5 py-6 sm:px-6 md:grid-cols-3" onSubmit={createOverride}>
+      <form className="grid gap-5 px-5 py-6 sm:px-6 md:grid-cols-4" onSubmit={createOverride}>
         <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="workforce-calendar-date">{t("date")}</label>
+          <label className="text-sm font-medium" htmlFor="workforce-calendar-operation">{t("operation")}</label>
+          <Select
+            id="workforce-calendar-operation"
+            className="min-h-11"
+            value={operation}
+            disabled={saving}
+            onChange={(event) => {
+              setOperation(event.target.value as CalendarEditorOperation)
+              setNotice(null)
+            }}
+          >
+            <option value="CREATE_OVERRIDE">{t("operations.CREATE_OVERRIDE")}</option>
+            {scope !== "AGENT" ? <option value="MOVE_WORKDAY">{t("operations.MOVE_WORKDAY")}</option> : null}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium" htmlFor="workforce-calendar-date">{
+            t(operation === "MOVE_WORKDAY" ? "moveSourceDate" : "date")
+          }</label>
           <Input
             id="workforce-calendar-date"
             type="date"
@@ -529,10 +572,15 @@ export function WorkforceCalendarConfiguration() {
             value={date}
             disabled={saving}
             onChange={(event) => { setDate(event.target.value); setNotice(null) }}
+            aria-describedby={operation === "MOVE_WORKDAY" ? "workforce-calendar-move-source-hint" : undefined}
             required
           />
+          {operation === "MOVE_WORKDAY" ? <p
+            id="workforce-calendar-move-source-hint"
+            className="text-xs leading-5 text-muted-foreground"
+          >{t("moveSourceHint")}</p> : null}
         </div>
-        <div className="space-y-2">
+        {operation === "CREATE_OVERRIDE" ? <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="workforce-calendar-kind">{t("kind")}</label>
           <Select
             id="workforce-calendar-kind"
@@ -543,10 +591,28 @@ export function WorkforceCalendarConfiguration() {
           >
             {WORKFORCE_CALENDAR_EDITOR_KINDS.map((value) => <option key={value} value={value}>{t(`kinds.${value}`)}</option>)}
           </Select>
-        </div>
+        </div> : <div className="space-y-2">
+          <label className="text-sm font-medium" htmlFor="workforce-calendar-destination-date">{t("moveDestinationDate")}</label>
+          <Input
+            id="workforce-calendar-destination-date"
+            type="date"
+            className="min-h-11"
+            min={minimumDate}
+            max={previousDateKey(visibleCalendar.endExclusive)}
+            value={destinationDate}
+            disabled={saving}
+            onChange={(event) => { setDestinationDate(event.target.value); setNotice(null) }}
+            aria-describedby="workforce-calendar-move-destination-hint"
+            required
+          />
+          <p
+            id="workforce-calendar-move-destination-hint"
+            className="text-xs leading-5 text-muted-foreground"
+          >{t("moveDestinationHint")}</p>
+        </div>}
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="workforce-calendar-name">{
-            t(scope === "AGENT" ? "agentName" : "name")
+            t(operation === "MOVE_WORKDAY" ? "moveName" : scope === "AGENT" ? "agentName" : "name")
           }</label>
           <Input
             id="workforce-calendar-name"
@@ -555,26 +621,37 @@ export function WorkforceCalendarConfiguration() {
             disabled={saving}
             onChange={(event) => { setName(event.target.value); setNotice(null) }}
             maxLength={160}
-            placeholder={t(scope === "AGENT" ? "agentNamePlaceholder" : "namePlaceholder")}
-            aria-describedby={scope === "AGENT" ? "workforce-calendar-agent-name-hint" : undefined}
+            placeholder={t(operation === "MOVE_WORKDAY"
+              ? "moveNamePlaceholder"
+              : scope === "AGENT" ? "agentNamePlaceholder" : "namePlaceholder")}
+            aria-describedby={operation === "MOVE_WORKDAY"
+              ? "workforce-calendar-move-name-hint"
+              : scope === "AGENT" ? "workforce-calendar-agent-name-hint" : undefined}
             required
           />
-          {scope === "AGENT" ? <p
+          {operation === "MOVE_WORKDAY" ? <p
+            id="workforce-calendar-move-name-hint"
+            className="text-xs leading-5 text-muted-foreground"
+          >{t("moveNameHint")}</p> : scope === "AGENT" ? <p
             id="workforce-calendar-agent-name-hint"
             className="text-xs leading-5 text-muted-foreground"
           >{t("agentNameHint")}</p> : null}
         </div>
-        <div className="md:col-span-3">
+        <div className="md:col-span-4">
           <p className="mb-4 text-sm leading-6 text-muted-foreground">{
-            scope === "TEAM" && selectedTeam
-              ? t("createHintTeam", { timezone: visibleCalendar.timezone, team: selectedTeam.name })
-              : scope === "AGENT" && selectedAgent
-                ? t("createHintAgent", { timezone: visibleCalendar.timezone, agent: selectedAgent.name })
-                : t("createHintOrganization", { timezone: visibleCalendar.timezone })
+            operation === "MOVE_WORKDAY"
+              ? scope === "TEAM" && selectedTeam
+                ? t("moveCreateHintTeam", { timezone: visibleCalendar.timezone, team: selectedTeam.name })
+                : t("moveCreateHintOrganization", { timezone: visibleCalendar.timezone })
+              : scope === "TEAM" && selectedTeam
+                ? t("createHintTeam", { timezone: visibleCalendar.timezone, team: selectedTeam.name })
+                : scope === "AGENT" && selectedAgent
+                  ? t("createHintAgent", { timezone: visibleCalendar.timezone, agent: selectedAgent.name })
+                  : t("createHintOrganization", { timezone: visibleCalendar.timezone })
           }</p>
           <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={saving || loading || !canCreate}>
             {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Plus />}
-            {t("create")}
+            {t(operation === "MOVE_WORKDAY" ? "moveCreate" : "create")}
           </Button>
         </div>
       </form>
@@ -601,6 +678,9 @@ export function WorkforceCalendarConfiguration() {
               <div>
                 <p className="font-medium">{day.name || t("unnamed")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{dateFormatter.format(new Date(`${day.date}T00:00:00.000Z`))}</p>
+                {day.pairedDate ? <p className="mt-1 text-xs text-muted-foreground">{t("pairedDate", {
+                  date: dateFormatter.format(new Date(`${day.pairedDate}T00:00:00.000Z`)),
+                })}</p> : null}
               </div>
               <Badge variant="secondary" className="w-fit">{t(`kinds.${day.kind}`)}</Badge>
             </li>)}
