@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
 import { useReducedMotion } from "framer-motion"
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, SkipForward, X } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, SkipForward, Volume2, VolumeX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { DemoStepPlacement } from "@/lib/demo-center/journey"
@@ -56,6 +56,8 @@ export interface DemoCoachMarkProps {
   /** Hides the card for this step; the step itself is untouched. */
   onClose: () => void
   onMissing: (missing: boolean) => void
+  /** The talking guide's switch — here, because on a phone this card is what is on screen. */
+  voice?: { on: boolean; onToggle: () => void }
   /** Step id whose `data-demo-target` control the arrow points at (action steps). */
   targetStepId?: string
   /** Words on the arrow, verb first. */
@@ -112,6 +114,7 @@ export function DemoCoachMark({
   onBack,
   onSkip,
   onClose,
+  voice,
   onMissing,
   targetStepId,
   targetLabel,
@@ -508,6 +511,19 @@ export function DemoCoachMark({
         </div>
         <p className="mt-1 text-sm font-semibold leading-tight">{title}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{instruction}</p>
+        {voice ? (
+          <Button
+            size="sm"
+            variant={voice.on ? "secondary" : "outline"}
+            className="mt-2 h-7 px-2.5 text-xs"
+            aria-pressed={voice.on}
+            data-testid="demo-coach-voice"
+            onClick={voice.onToggle}
+          >
+            {voice.on ? <VolumeX className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> : <Volume2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />}
+            {voice.on ? S.voiceOff : S.voiceOn}
+          </Button>
+        ) : null}
         {pointsAtControl ? (
           <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#c2410c] dark:text-orange-300">
             {side === "bottom" ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : side === "top" ? <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" /> : <ChevronRight className={cn("h-3.5 w-3.5", side === "right" && "rotate-180")} aria-hidden="true" />}
