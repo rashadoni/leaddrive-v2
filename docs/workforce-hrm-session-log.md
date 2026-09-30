@@ -3362,3 +3362,22 @@ corrections as new entries that explicitly supersede the earlier fact.
   verification. Precise stopping point: target clarification pending before
   successor. Next action: resolve release SHA constraint, then create successor
   in this worktree and implement atomic generation-bound007f reversal.
+
+
+## 2026-09-30 — accepted #506 descendant release; successor007f authorized
+
+- User continuation “начинай” resolves the pending release-target clarification:
+  accept verified current-main artifact77a5c480 containing#506 and begin007f.
+  Earlier pending-target entries remain historical and are superseded by this
+  explicit continuation. Original feature merge73a599923 and served artifact
+  77a5c480 remain separately attributed; no claim that73a599923 was served.
+- Resumed exact requested worktree from clean checkpointc977a46bb. Routing
+  context/origin/branch and fresh main77a5c480 reverified; canonical and other
+  worktrees untouched. Local RAM16.7GB available/disk342GB/memory pressure0.
+- Next phase: create codex/workforce-completion-part14 from verified main in
+  this same worktree, retain and carry forward append-only receipt checkpoints,
+  implement bounded generation-bound reversal and independent real PG proofs.
+- Current result:#506 release accepted;007f starts. Last action: routing/main
+  reconciliation. Precise stopping point: successor creation. Next action:
+  strict contract, locks/full CAS/versioned receipt, UI confirmation/tests.
+- Progress remains81/161,14/15,C8 36%,overall59%,80 non-DONE.
