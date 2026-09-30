@@ -381,3 +381,34 @@ green.
 - Next action: checkpoint these explicit paths, independently review the exact
   new head, push that head to #506, await all five PR gates, refetch main,
   merge normally, await deploy and verify the exact public artifact SHA.
+
+
+## 2026-09-30 — #506 five gates GREEN; fourth live-main reconciliation
+
+- Exact reviewed/published head `23d1deb980b0a9b42e83081b21be0d3289865003`
+  passed all five mandatory contexts. PR-checks run `36726718154` passed
+  pr-scope, static-checks (13m37s) and typecheck (19m00s); runner-policy passed
+  in `36726718250`, scan in `36726718248`. PR production build was SKIPPED
+  by policy. Static CI passed both calendar PostgreSQL proofs (2 tests) within
+  the shared-lock selection (3 files / 23 tests), plus the blocking baseline.
+- The mandatory fresh-main guard stopped merge when #509 advanced main to
+  `7583ebacf0dacc55ba9cc002e13bc25e07e2d5b9`. Its five demo-guide paths had
+  zero overlap with the Workforce diff. The pending publishing journal receipt
+  was checkpointed as `a3d2ee3b9`; integration then completed without manual
+  resolution at `6c6d953105572aaec8de395a458f124a9a8b11fe`.
+- Current integrated-tree PASS: canonical 11 files / 118 tests / 2 local PG
+  skips, scoped ESLint on 14 changed TS/TSX paths, i18n 23,905/0/0, event
+  assets 27/86/5, runner policy 38 workflows, whitespace. RAM/disk/pressure
+  inspection preceded the bounded single-worker local check phase.
+- Non-doc identity remains 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+  New-head real PostgreSQL/full typecheck are mandatory in replacement CI;
+  full local build/suite, browser/AT/device, Android/Gradle, load/chaos,
+  signed-device and pilot remain NOT RUN under the host contract.
+- WF-C8-007 remains PARTIAL. DONE 81/161, GATES 14/15, C8 36%, overall 59%,
+  80 non-DONE rows are unchanged. No gate/baseline is weakened.
+- Precise stopping point: #506 is still OPEN at the superseded published head;
+  fourth live-main integration and bounded checks are complete locally.
+- Next action: checkpoint this append-only receipt, obtain independent exact-
+  head GREEN, push the replacement, repeat all five gates and fresh-main check,
+  then normal merge/deploy/exact-SHA smoke before starting successor007f.
