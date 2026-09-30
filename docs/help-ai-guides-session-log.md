@@ -230,3 +230,136 @@ checkpoint boundary on the existing feature branch; production and completed
 workflows are untouched. Next action: no additional work in this scope; if
 requested separately, investigate the provenance and ancestry of live artifact
 `07f8b823e4fef51d82787def19564510946cb08a` without assuming a redeploy is needed.
+
+
+## 2026-09-30 — Revision discrepancy investigation authorized
+
+- The user replied `начни` to the reported discrepancy and proposed separate
+  provenance/ancestry investigation. Resumed at clean local checkpoint
+  `ef13a55682d62f0076a21ac8f0456d6f60411879` in the same worktree and branch.
+- Investigate observed public artifact
+  `07f8b823e4fef51d82787def19564510946cb08a` against the historical PR #505
+  merge/deploy SHA `13d13bcc58e8872ef676fd011e78a1adb954e210`: read GitHub
+  commit ancestry, existing release records, current endpoint evidence, and
+  intervening changes to the Help/AI guide files.
+- The preceding turn's full-SHA mismatch is evidence, not yet a production
+  regression diagnosis. Historical successes and the append-only journal
+  remain preserved. Prior prohibition on repeating CI, merge, and deployment
+  remains in force. No corrective production action is authorized by this
+  investigation.
+
+Current result/status: read-only revision investigation started. Last completed
+action: re-read the active journal and confirmed the unchanged repository and
+production route with `codex-project-context`. Precise stopping point: gather
+remote commit and existing workflow evidence. Next action: establish whether
+#505 is an ancestor of the observed artifact and identify its deployment.
+
+
+## 2026-09-30 — Provenance and guide preservation verified
+
+- The discrepancy is explained by a subsequent normal release, not evidence of
+  a failed #505 deployment: observed SHA
+  `07f8b823e4fef51d82787def19564510946cb08a` is the merge commit for PR #508,
+  `demo: гид говорит — озвучка шагов и готовых ответов`, committed at
+  `2026-09-29T22:31:24Z` (2026-09-30 00:31:24 Europe/Berlin):
+  `https://github.com/rashadoni/leaddrive-v2/commit/07f8b823e4fef51d82787def19564510946cb08a`.
+- GitHub's current `main` branch reports that same full SHA. The locally cached
+  `origin/main` still reports the earlier #505 SHA; no fetch/ref mutation was
+  needed to investigate using read-only GitHub APIs.
+- GitHub Compare proves #505 ancestry: `status: ahead`, `ahead_by: 4`,
+  `behind_by: 0`, with both base and merge-base equal to
+  `13d13bcc58e8872ef676fd011e78a1adb954e210`. Intervening work consists of
+  the demo prepared-answer change and merge #507, then the demo guide voice
+  change and merge #508:
+  `https://github.com/rashadoni/leaddrive-v2/compare/13d13bcc58e8872ef676fd011e78a1adb954e210...07f8b823e4fef51d82787def19564510946cb08a`.
+- A second Codex read-only check compared Git blob object IDs from the remote
+  observed revision against the local #505 merge for every one of the 11
+  Help/Da Vinci implementation and test files. All 11 match exactly: the
+  assistant panel, Help button and drawer, help registry, six AZ/EN/RU guide
+  articles, and the guide UI contract test. No intervening changes affect
+  these files; preservation at the reported artifact revision is VERIFIED.
+  This is source/blob evidence, not a new browser UI observation.
+- Existing Deploy to Production run `36640071681` was triggered by the push
+  of this exact SHA to `main`, and completed successfully at
+  `2026-09-29T22:53:42Z` (2026-09-30 00:53:42 Europe/Berlin):
+  `https://github.com/rashadoni/leaddrive-v2/actions/runs/36640071681`.
+  Read-only job metadata confirms successful production build/publication,
+  quality/security gates, atomic deployment, public ping, exact deployed
+  revision verification, and login/hashed-assets smoke. Recovery/manual-input
+  jobs were skipped; this was the normal push-to-main release path.
+- The existing retained artifact is
+  `leaddrive-prod-07f8b823e4fef51d82787def19564510946cb08a`, artifact ID
+  `11066797555`, attached to run `36640071681` and the same `main` SHA.
+  The artifact listing reports `expired: false` and digest
+  `sha256:1820b4a6062538ea09df473e13dd7fa33569037c482653a83da63cf232dffb1c`.
+  Metadata was read; the 443,786,792-byte artifact was not downloaded or built.
+- Existing post-merge checks run `36640071594` and secret scan `36640071598`
+  are completed/success for the same SHA. These are observations of existing
+  records, not rerun checks:
+  `https://github.com/rashadoni/leaddrive-v2/actions/runs/36640071594` and
+  `https://github.com/rashadoni/leaddrive-v2/actions/runs/36640071598`.
+
+Current live evidence, observed at `2026-09-30T16:05:52+02:00`
+(Europe/Berlin):
+
+- `/api/v1/ping`: HTTP 200, `{"ok":true}` — PASS.
+- `/api/v1/public/build-info`: HTTP 200,
+  `{"sha":"07f8b823e4fe","artifactSha":"07f8b823e4fef51d82787def19564510946cb08a","builtAt":"2026-09-29T22:37:17Z"}`.
+  Full `artifactSha` equals both current GitHub `main` and the verified
+  subsequent deployment SHA — PASS.
+- Both bounded HTTPS GETs exited with curl code 0, TLS verification result 0,
+  `application/json`, and unchanged effective URLs. No production SSH or
+  server mutation was necessary.
+
+The earlier literal comparison to the historical #505 SHA remains numerically
+unequal and its recorded output is preserved. The unresolved ancestry status
+and any assumption that production must still report #505's SHA are superseded
+by the evidence above: #505 is included, its guide files are unchanged, and
+production exactly matches a successful subsequent main release. No rollback,
+repair, new CI run, push, merge, or deployment is needed for this discrepancy.
+
+Current result/status: discrepancy resolved; production health and current
+release identity pass, and #505 guide preservation is verified. Last completed
+action: established the commit lineage, existing deployment/artifact provenance,
+unchanged guide blobs, and fresh public endpoint match. Precise stopping point:
+read-only investigation complete; journal documentation checkpoint remains.
+Next action: self-audit the append-only journal diff and commit only this journal
+on the existing task branch.
+
+
+## 2026-09-30 — Local evidence clarification and final investigation audit
+
+- Correction to the immediately preceding section: its sentence that the local
+  `origin/main` *still* reports #505 is superseded. Fresh local reads during
+  this phase report `07f8b823e4fef51d82787def19564510946cb08a`, and that
+  commit object is now present. Earlier captured missing-object output remains
+  valid for the earlier observation. This investigation did not run fetch or
+  mutate shared refs; the source of the intervening ref/object refresh was not
+  established and is not attributed to a particular process or session.
+- Independent local verification now also passes:
+  `git merge-base --is-ancestor 13d13bcc58e8872ef676fd011e78a1adb954e210 07f8b823e4fef51d82787def19564510946cb08a`
+  returned 0, and all 11 guide implementation/test Git blob IDs match between
+  those revisions. This corroborates the read-only GitHub Compare and remote
+  blob evidence without fetching or editing source files.
+- Self-audit: PASS. The entire previous checkpoint's journal content remains
+  a byte-for-byte prefix; only the active journal changed; no unrelated staged
+  or untracked paths were present. A second Codex read-only audit agreed with
+  the ancestry, blob preservation, live evidence, and existing workflow
+  provenance, and identified the local-ref wording corrected above.
+- `git diff --check`: PASS. Build, typecheck, browser E2E, and i18n checks:
+  NOT RUN because this investigation changes documentation only and verifies
+  existing commit/blob/release metadata. CI reruns, push, merge, and deployment:
+  NOT RUN, preserving the user's prohibition. No build artifact download,
+  production SSH, rollback, repair, or application change was performed.
+- Final local checkpoint subject:
+  `docs(help): resolve production revision discrepancy`; stage and commit only
+  `docs/help-ai-guides-session-log.md` on `codex/help-ai-guides`.
+
+Current result/status: investigation complete; the newer normal #508 release
+contains #505, all 11 Help/Da Vinci implementation/test files are unchanged,
+and live health plus exact current main/deployment identity pass. Last completed
+action: resolved the revision provenance and completed the independent local
+ancestry/blob verification and journal self-audit. Precise stopping point:
+final documentation checkpoint on the existing task branch, with no production
+changes. Next action: no remaining investigation or deployment work in this
+scope; preserve the local checkpoint and continue only with a new user task.
