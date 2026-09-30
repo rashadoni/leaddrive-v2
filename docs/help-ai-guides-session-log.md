@@ -138,3 +138,95 @@ only the optional independent two-endpoint live observation lacks captured
 output. Next action in the new session: read this journal and, if desired, run
 the two small live requests, append their output, self-audit the journal diff,
 and create the final post-deploy documentation checkpoint without redeploying.
+
+
+## 2026-09-30 — Independent live observation and documentation closeout
+
+- Resumed strictly from the preceding stopping point in
+  `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-help-ai-guides`,
+  branch `codex/help-ai-guides`, starting HEAD
+  `b77b3c7163ee5cbdc074c38bf56294d1423e66b9` (clean worktree).
+- The user limited this turn to the remaining independent `/api/v1/ping` and
+  public build-info observation, an append-only journal update, self-audit,
+  and a final documentation checkpoint. PR #505, successful main checks
+  `36631193616`, and successful deploy `36631193346` remain completed history;
+  none was repeated. The old Support UX journal remains reference-only.
+- `codex-project-context`, `AGENTS.md`, `clients/registry.json`, and
+  `docs/DEPLOYMENT.md` agree on origin
+  `https://github.com/rashadoni/leaddrive-v2.git`, registered production target
+  `13.140.132.245:/opt/leaddrive-v2`, public app
+  `https://app.leaddrivecrm.org`, and the main -> SHA-bound GitHub Actions
+  artifact release route. No production mutation was performed.
+- Before these small checks, host inspection showed 16,564 MiB available RAM,
+  342 GiB free disk, and memory pressure averages of 0.00. Only small sequential
+  checks were run; no install or build was started.
+
+Independent endpoint evidence (timestamps in Europe/Berlin, UTC+02:00):
+
+| Observation time | Endpoint | HTTP | Captured JSON response |
+| --- | --- | --- | --- |
+| `2026-09-30T15:50:40+02:00` | `https://app.leaddrivecrm.org/api/v1/ping` | 200 | `{"ok":true}` |
+| `2026-09-30T15:50:41+02:00` | `https://app.leaddrivecrm.org/api/v1/public/build-info` | 200 | `{"sha":"07f8b823e4fe","artifactSha":"07f8b823e4fef51d82787def19564510946cb08a","builtAt":"2026-09-29T22:37:17Z"}` |
+
+- Exactly one read-only GET was made to each endpoint, using bounded curl
+  requests (10-second connection limit, 20-second total limit), normal TLS
+  verification, and `Cache-Control: no-cache`. Both curl exit codes were 0,
+  both responses were `application/json`, TLS verification results were 0,
+  and effective URLs matched the requested HTTPS endpoints without redirects.
+- `/api/v1/ping`: PASS (HTTP 200 and `ok: true`).
+- Public build-info availability and response shape: PASS (HTTP 200, full
+  40-character artifact SHA, consistent 12-character short SHA, build timestamp).
+- Exact deployed revision comparison: FAIL. The observed `artifactSha`
+  `07f8b823e4fef51d82787def19564510946cb08a` does not equal the expected
+  PR #505 merge/deploy SHA `13d13bcc58e8872ef676fd011e78a1adb954e210`.
+  This records the current public response; it does not invalidate the earlier
+  successful workflow or prove that the Help/AI guides are absent.
+- Local Git confirms that the expected SHA is the merge commit for PR #505.
+  The observed SHA is absent from the local object database (`git show` and
+  `git merge-base --is-ancestor` returned 128), so its ancestry to #505 is
+  UNVERIFIED. No fetch, further network investigation, CI rerun, merge,
+  push, or deployment was performed in this closeout turn. A later revision
+  containing #505 cannot be claimed from the available evidence.
+- The prior section's independent-output gap is now closed by captured output
+  above. Its successful release history is preserved; the current live SHA
+  observation supersedes any assumption that the public endpoint still reports
+  the exact #505 merge SHA.
+
+Current result/status: the requested independent observation is recorded;
+production ping is healthy, while the exact expected live SHA comparison fails
+and ancestry remains unverified. Last completed action: captured and validated
+both endpoint responses and checked available local Git evidence. Precise
+stopping point: documentation closeout only; no implementation or deployment
+work is being resumed. Next action: self-audit this append-only diff and create
+the final local documentation checkpoint; any revision discrepancy investigation
+is separate follow-up work.
+
+
+## 2026-09-30 — Final self-audit and local documentation checkpoint
+
+- Self-audit: PASS. Confirmed that the entire pre-existing journal remains a
+  byte-for-byte prefix, only `docs/help-ai-guides-session-log.md` changed,
+  and no unrelated staged or untracked paths were present. Parsed the captured
+  response JSON and verified the short/full SHA consistency and the recorded
+  expected-SHA mismatch.
+- A second Codex read-only audit of the journal diff found no accuracy or scope
+  issues and independently passed `git diff --check`. It performed no endpoint
+  requests or mutations. There was no external review gate or handoff file.
+- Documentation gate `git diff --check`: PASS. Product build, typecheck,
+  browser E2E, i18n checks, CI reruns, merge, and deployment: NOT RUN because
+  this turn changes only the journal and the user explicitly limited the work
+  to independent observation and a documentation checkpoint. Existing green
+  runs `36631193616` and `36631193346` were neither rerun nor revalidated here.
+- Final checkpoint scope: this journal only, on `codex/help-ai-guides`, commit
+  subject `docs(help): record independent production observation`. The commit
+  is local; no push, new PR, merge, or deploy is part of this checkpoint.
+
+Current result/status: documentation closeout complete with healthy ping,
+build-info HTTP 200, and the exact expected live SHA comparison recorded as
+FAIL; ancestry of the observed artifact remains UNVERIFIED. Last completed
+action: completed the self-audit and prepared the audited append-only journal
+for its final local documentation checkpoint. Precise stopping point: the
+checkpoint boundary on the existing feature branch; production and completed
+workflows are untouched. Next action: no additional work in this scope; if
+requested separately, investigate the provenance and ancestry of live artifact
+`07f8b823e4fef51d82787def19564510946cb08a` without assuming a redeploy is needed.
