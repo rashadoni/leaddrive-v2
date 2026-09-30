@@ -319,7 +319,7 @@ export async function listWorkforceCalendarOverrides(input: {
 }): Promise<WorkforceCalendarOverrideSummary[]> {
   assertFutureRange(input)
   const target = targetForScope(input)
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   const rows = await db.mtmWorkCalendarDay.findMany({
     where: {
       organizationId: input.organizationId,
@@ -868,7 +868,7 @@ export async function reverseWorkforceCalendarMovedDay(input: {
     organizationId: input.organizationId, teamId,
     sourceDate: draft.sourceDate, destinationDate: draft.destinationDate,
   }
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   try {
     return await db.$transaction(async (tx) => {
       await tx.$executeRaw`SET LOCAL lock_timeout = '5s'`
