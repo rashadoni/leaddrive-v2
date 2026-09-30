@@ -798,7 +798,7 @@ export function WorkforceCalendarConfiguration() {
                     disabled={loading || saving || Boolean(confirmation)}
                     aria-label={t("reversalActionLabel", { name: day.name || t("unnamed") })}
                     onClick={() => {
-                      if (scope === "AGENT" || !day.pairedDate || !day.pairGenerationId) return
+                      if (!day.pairedDate || !day.pairGenerationId) return
                       setNotice(null)
                       setError(null)
                       setConfirmation({

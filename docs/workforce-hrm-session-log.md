@@ -3598,3 +3598,27 @@ corrections as new entries that explicitly supersede the earlier fact.
   deployment/public67 proof still pending. Next action: isolated follow-up in
   same worktree, scoped verification/review/CI, finish67 public proof, then
   normal protected follow-up release. Progress unchanged81/161,14/15,59%.
+
+
+## 2026-09-30 — minimal reversal UI type follow-up checkpoint
+
+- Same dedicated worktree, successor codex/workforce-completion-part15 from
+  fresh main67c72970. Part14 receipt checkpoints9c9bc66c/a7571422 preserved
+  and cherry-picked asd7ff115f6/40a0832aa; no canonical/unrelated changes.
+- Only runtime/source diff: remove redundant scope===AGENT from the click
+  handler already rendered solely under scope!==AGENT and ORG/activeTEAM.
+  Keep required pair date/generation guard and all mutation/context/confirmation
+  fences. This resolves the new nongated TS2367 without any baseline or gate
+  adjustment; no new user-visible behavior or API/domain/schema change.
+- Before targeted check RAM16.5GBavailable,disk342GB,memorypressure0.
+  Existing UI contract1file/12tests PASS1.54s; scoped UI ESLint and whitespace
+  PASS. Full local typecheck/build/browser/suite/Android/load NOT RUN under
+  host placement rules; complete required hosted gates and production build
+  will run for follow-up before release. No implementation-mirroring test added.
+- Original #511 normal deploy36752762555 exact67c72970 now building standalone;
+  public artifact proof still pending. Follow-up will merge only after exact
+  review/five gates and after original release has a separately recorded proof.
+- Current result: one-line advisory fix ready. Last action: targeted UI check.
+  Precise stopping point: follow-up checkpoint/review/PR. Next action: required
+  CI in parallel with original deployment, then protected release. Roadmap
+  unchanged81/161,14/15,C8 36%,overall59%,80 non-DONE.
