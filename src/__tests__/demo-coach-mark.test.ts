@@ -182,3 +182,75 @@ describe("a target cut off sideways", () => {
     expect(clippedSideways(rail(), box(200, 300))).toBe(false)
   })
 })
+
+describe("demo coach card height", () => {
+  // The numbers measured on prod on 2026-09-30: the first step's card held
+  // 211px of content and was capped at the 160px first guess, «İrəli» hidden.
+  const CONTENT = 211
+
+  let container: HTMLDivElement
+  let root: Root
+  const saved = {
+    scroll: Object.getOwnPropertyDescriptor(Element.prototype, "scrollHeight"),
+    client: Object.getOwnPropertyDescriptor(Element.prototype, "clientHeight"),
+    offset: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight"),
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }))
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0) as unknown as number)
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id))
+    vi.stubGlobal("innerWidth", 1280)
+    vi.stubGlobal("innerHeight", 900)
+    const anchor = document.createElement("div")
+    anchor.setAttribute("data-tour-id", "demo-sidebar")
+    anchor.getBoundingClientRect = () => ({ top: 120, left: 20, width: 40, height: 300, right: 60, bottom: 420, x: 20, y: 120, toJSON: () => ({}) }) as DOMRect
+    document.body.appendChild(anchor)
+    // jsdom lays nothing out; the card's inner box reports what a browser would.
+    const isCardInner = (element: Element) => element.parentElement?.getAttribute("data-testid") === "demo-coach-card"
+    Object.defineProperty(Element.prototype, "scrollHeight", { configurable: true, get() { return isCardInner(this) ? CONTENT : 0 } })
+    Object.defineProperty(Element.prototype, "clientHeight", { configurable: true, get() { return isCardInner(this) ? 158 : 0 } })
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get() { return isCardInner(this) ? 160 : 0 } })
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    document.body.innerHTML = ""
+    vi.unstubAllGlobals()
+    if (saved.scroll) Object.defineProperty(Element.prototype, "scrollHeight", saved.scroll)
+    if (saved.client) Object.defineProperty(Element.prototype, "clientHeight", saved.client)
+    if (saved.offset) Object.defineProperty(HTMLElement.prototype, "offsetHeight", saved.offset)
+  })
+
+  it("grows to its content, so the step's own buttons are never scrolled out of sight", async () => {
+    const onToggle = vi.fn()
+    await act(async () => {
+      root.render(createElement(DemoCoachMark, {
+        stepKey: "orientation:orientation-sidebar",
+        anchor: "demo-sidebar",
+        placement: "right",
+        title: "Bu demo üçün dörd bölmə",
+        instruction: "Bu demo üçün sizə dörd bölmə açılıb: Əsas, Satış, Kommunikasiya və Marketinq. Qalan modullar bilərəkdən gizlədilib ki, hekayəni itirməyəsiniz.",
+        counter: "Addım 1 / 3",
+        mode: "observe",
+        canBack: false,
+        canSkip: false,
+        onNext: vi.fn(), onBack: vi.fn(), onSkip: vi.fn(), onClose: vi.fn(), onMissing: vi.fn(),
+        voice: { on: false, onToggle },
+      }))
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    const card = document.querySelector<HTMLElement>('[data-testid="demo-coach-card"]')!
+    // Content plus the inner box's border: nothing left to scroll.
+    expect(parseFloat(card.style.maxHeight)).toBeGreaterThanOrEqual(CONTENT)
+
+    // And the voice switch on it works.
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-voice"]')!.click())
+    expect(onToggle).toHaveBeenCalledTimes(1)
+  })
+})

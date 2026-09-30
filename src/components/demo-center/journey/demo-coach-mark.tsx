@@ -277,12 +277,20 @@ export function DemoCoachMark({
     const node = popoverRef.current
     if (!node) return
     const box = node.getBoundingClientRect()
+    // The content's own height, not the card's box: the box is already capped
+    // at the previous measurement (maxHeight), so reading it could never grow
+    // past the first guess — a card taller than the 160px default stayed
+    // 160px with «İrəli» scrolled out of sight inside it (2026-09-30, when the
+    // voice switch made the first step's card 211px tall).
+    const inner = node.firstElementChild instanceof HTMLElement ? node.firstElementChild : null
+    const natural = inner ? inner.scrollHeight + (inner.offsetHeight - inner.clientHeight) : 0
+    const height = natural > 0 ? natural : box.height
     setSize((previous) =>
-      Math.abs(previous.width - box.width) < 1 && Math.abs(previous.height - box.height) < 1
+      Math.abs(previous.width - box.width) < 1 && Math.abs(previous.height - height) < 1
         ? previous
-        : { width: box.width, height: box.height },
+        : { width: box.width, height },
     )
-  }, [title, instruction, counter, mode, rect, targetRect, collapsed])
+  }, [title, instruction, counter, mode, rect, targetRect, collapsed, voice?.on])
 
   // Move focus to the card so screen readers announce the step; the control
   // itself stays reachable with Tab.
