@@ -3622,3 +3622,90 @@ corrections as new entries that explicitly supersede the earlier fact.
   Precise stopping point: follow-up checkpoint/review/PR. Next action: required
   CI in parallel with original deployment, then protected release. Roadmap
   unchanged81/161,14/15,C8 36%,overall59%,80 non-DONE.
+
+
+## 2026-09-30 — #512 exact-head publication and independent review GREEN
+
+- PR https://github.com/rashadoni/leaddrive-v2/pull/512 created and attached,
+  head `afacc868b7eea5e3d9ff15aac5085d705eda84e0`, base/main67c72970,
+  sameworktree branchcodex/workforce-completion-part15. New hosted PR run
+  36753819428; runner36753819435 and scan36753819417 PASS; full gates pending.
+- Independent exact clean afacc/base67 full-range review GREEN P0=P1=P2=P3=0.
+  Full4paths/23,482bytes/SHA256
+  `7a047fff58f4cd60d430284d9f5d2d83603446d40e834121028d428447e6fa39`;
+  non-doc1path/879bytes/SHA256
+  `34d4129c64e83b6b06652508ad735f3b468a77b7df01276d6565fe7d1cca5fdc`.
+  Generation/date/context/mutation guards retained; all other13 original
+  non-doc blobs unchanged. Advisory1191TOTAL correction explicitly supersedes
+  earlier wording; all3 receipt blocks identical and prefixes append-only.
+- No user-visible feature added or removed by follow-up. Original #511 normal
+  exact67 deploy36752762555 continues quality baseline/standalone build;
+  no production claim before actual successful run and independent smoke.
+- Current result: reviewed follow-up published, both pipeline phases pending.
+  Last action: exact-head independent review. Precise stopping point: await67
+  deployment and afacc five gates. Next action: public67proof, then fresh-main
+  protected512merge/deploy/exact publicSHA. Progress remains81/161,14/15,59%.
+
+
+## 2026-09-30 — #511 production release and independent exact-main public proof
+
+- Automatic push deploy https://github.com/rashadoni/leaddrive-v2/actions/runs/36752762555
+  COMPLETED/SUCCESS at exact merged main
+  `67c72970ca139591aee06c561960e3fedc2791ca`. Quality110015275546,
+  standalone immutable artifact build110015275932, atomic production deploy/
+  built-in smoke110021960013 and retention110024453857 all SUCCESS.
+- Independent public verification2026-09-30T18:08:57Z: registered host
+  13.140.132.245 /api/v1/ping HTTP200 {"ok":true}; /api/v1/public/build-info
+  HTTP200 artifactSha=67c72970ca139591aee06c561960e3fedc2791ca, builtAt
+  2026-09-30T17:43:35Z. Observed live GitHub main also exact67; no descendant
+  substitution for this release. Primary probe validates TLS with
+  app.leaddrivecrm.org pinned via --resolve to registeredIP; supplementary
+  literalIP probes return identical values with verification disabled solely
+  because certificate SAN does not cover the IP. No proxy used by probes.
+- Feature boundary smoke: unauthenticated calendar GET and empty-json POST
+  both HTTP307 to same-host /login with exact calendar callbackUrl, matching
+  src/proxy.ts existing authentication redirect. Initial helper incorrectly
+  expected handler401; expectation corrected after actual Location and proxy
+  inspection. This was a probe expectation error, not a production failure.
+  No authenticated pair reversal or production business data mutation tested.
+- Transient public receipt /tmp/workforce511-public-smoke.json. All14 original
+  reviewed source blobs already verified byte-identical f344/local9c/merged67;
+  hosted SQL12/12, five gates and exact-source review remain attributed above.
+- Bounded007f is now released: generation-bound atomic ORG/TEAM pair reversal,
+  one audit and original-only replay, Route guard, inline confirmation/exact
+  retry. Minimal type-only follow-up#512 afacc remains under hosted gates and
+  will be released separately; original67 proof is preserved independently.
+- Full local build/typecheck/suite/browser/AT/Android/load/chaos/device/pilot
+  NOT RUN under placement contract; hosted production build and PR regression
+  gates ran. Authenticated functional calendar/browser verification NOT RUN.
+  Progress stays81/161,14/15,C8 36%,overall59%,80non-DONE;007 remains PARTIAL.
+- Current result:#511 exact-main production release verified;512gate pending.
+  Last completed action: independent public ping/SHA/auth-redirect smoke.
+  Precise stopping point: await512 type gate. Next action:fresh-main protected
+  512merge/normaldeploy/exactSHA proof and final append-only receipts.
+
+
+## 2026-09-30 — #512 exact-head gates GREEN and protected merge
+
+- Exact published/reviewed afacc868b7eea5e3d9ff15aac5085d705eda84e0:
+  pr-scope110018859912,static110018988063,type110018987995 ofrun36753819428;
+  runner36753819435,scan36753819417 all SUCCESS, Actionsapp15368. PR build
+  110018861323 SKIPPED by existing policy. No protection/baseline edits.
+- Independent primary CI receipt: PG12/12 non-skipped1457ms,shared-lock33/33
+  14.08s; unitbaseline18/18 no new/stale entries. Both blockingtype gates PASS,
+  66/66gated pairs;1190TOTAL advisory diagnostics,tscexit2. Original reversal
+  UI TS2367 absent. Logs/tmp/workforce512static.log and/workforce512type.log;
+  synthetic merge4e25785 of exactafacc into67. No zero-advisory claim.
+- Fresh main re-fetched67c72970 immediately before merge; remotePRhead exact
+  afacc,MERGEABLE/CLEAN. Local uncommitted paths only append-only receipts.
+  Original67 production proof already recorded; follow-up PR body final facts
+  updated using structured JSON. No extra user-visible feature beyond007f.
+- PR https://github.com/rashadoni/leaddrive-v2/pull/512 MERGED normally with
+  exacthead match2026-09-30T18:12:42Z as
+  `5fa4a24e5a8fde32749598bbf4d1408c00860243`.
+- Now await automatic main deploy.yml exact5fa4a24e; no directserver mutation
+  or duplicate dispatch. Current result: bounded007f67 release verified and
+  minimal follow-up merged. Last action: protected512merge. Precise stopping
+  point: follow-up normal deploy/publicSHA pending. Next action: exact5fa
+  deployment/public ping/build proof, final append-only checkpoint and review.
+- Progress remains81/161,14/15,C8 36%,overall59%,80non-DONE.
