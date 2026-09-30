@@ -3056,3 +3056,49 @@ from this worktree.
   three-document handoff receipt is the only uncommitted change.
 - Next action: checkpoint and receipt-review the handoff, then in the new
   session push exact head, rerun all PR gates, fetch main and release #506.
+
+
+## 2026-09-30 — WF-C8-007e resumed; third live-main reconciliation
+
+- The owner explicitly authorized continuation, push, verified merge and the
+  GitHub production release in this session; the previous-session handoff
+  pause is superseded only for this active task. Recorded worktree and branch
+  are unchanged: `leaddrive-workforce-android-foundation-part3` and
+  `codex/workforce-completion-part13`.
+- Initial status was clean at exact saved HEAD
+  `9b54dbbc2091c7522b207d60f0f4f2dba69f354f`; origin is
+  `https://github.com/rashadoni/leaddrive-v2.git`. Both saved identities matched:
+  full 23 paths / 183,213 bytes /
+  `ae63007883a7309700cc1f8023e01be146d7ee2000cd3df3fbcbedc04a45b461`;
+  non-doc 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- Fresh fetch found main advanced from `13d13bcc58e8872ef676fd011e78a1adb954e210`
+  to `07f8b823e4fef51d82787def19564510946cb08a` through #507 and #508. Its 64
+  demo-guide source/test/audio/migration paths had no overlap with the 23
+  Workforce paths. Integration completed without manual resolution at
+  `d5634a78c1cf8bc9cab3faddb1e1a543d88559d1`. Against the new main/merge-base,
+  both full and non-doc identities remained exactly those above before this
+  append-only receipt.
+- Required six documents were read fully by the Codex team before integration;
+  journal and roadmap were read end to end in bounded chunks with every
+  truncated segment reread. Current repository/registry/deployment guidance
+  agrees on production `13.140.132.245:/opt/leaddrive-v2`, solely through
+  reviewed GitHub main and `.github/workflows/deploy.yml`.
+- Current integrated-tree PASS: the exact canonical 11-file selection named
+  in the moved-day evidence passed 118 tests and discovered two locally
+  skipped PostgreSQL cases; scoped ESLint on all 14 changed TS/TSX paths;
+  i18n EN 23,905 / RU/AZ missing 0 / extra 0; event assets 27/86/5; runner
+  policy across 38 workflows; full-range whitespace check. RAM/disk/pressure
+  were inspected before the single-worker bounded local selection.
+- NOT RUN locally: real PostgreSQL, full repository typecheck/build/suite,
+  browser/AT/contrast/zoom/device, Android/Gradle, load/chaos, signed-device and
+  pilot gates, under the Contabo workload-placement contract. Exact new-head
+  PR CI must run all five required contexts and the real PostgreSQL gate;
+  production build belongs to deploy CI. No baseline or check is weakened.
+- Progress is unchanged: `WF-C8-007 PARTIAL`, `DONE 81/161`, `GATES 14/15`,
+  C8 36%, overall 59%, 80 non-DONE rows. No completion credit is claimed.
+- Precise stopping point: live-main integration and bounded checks are complete;
+  this three-document reconciliation receipt is the only uncommitted change.
+- Next action: checkpoint these explicit paths, independently review the exact
+  new head, push that head to #506, await all five PR gates, refetch main,
+  merge normally, await deploy and verify the exact public artifact SHA.
