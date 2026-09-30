@@ -3228,3 +3228,62 @@ corrections as new entries that explicitly supersede the earlier fact.
   is exact merge SHA. Authorized/documented deploy.yml workflow_dispatch
   normal was invoked from main. Its explicit current-main admission and all
   checks/build/deploy gates remain unchanged; no server command/copy used.
+
+
+## 2026-09-30 — successor007f bounded design preparation during #506 deploy
+
+- No successor source authored before release. #506 normal dispatch run
+  `36733515137` targets merge73a599923. Delayed automatic push run
+  `36733480348` appeared immediately after dispatch; documented concurrency
+  cancelled its build. The normal run executes the same complete gates and
+  immutable SHA-bound build/deploy route; production has not yet been credited.
+- WF-C8-007f scope: exact REVERSE_MOVE_WORKDAY ORG/TEAM pair only, sorted
+  two-date advisory locks, explicit ReadCommitted plus bounded SHARE ROW
+  EXCLUSIVE calendar table lock to stabilize absent/inherited parents against
+  noncooperating legacy writers; TEAM FOR SHARE; complete-row CAS soft-delete
+  both originals with common timestamp/operator; one versioned audit; rollback
+  on either CAS or audit failure. No schema/general update/delete, break policy,
+  AGENT move, Route mutation or unrelated writer expansion.
+- Read-only adversarial review strengthened proposed opaque generation from
+  source-row cuid to SHA256 of canonical domain-separated JSON tuple binding
+  tenant, scope/team, both role-ordered row IDs and reciprocal dates. This also
+  rejects partial-destination ABA. Replay looks up exactly one strict reversal
+  receipt by generation, validates full before/after snapshots and original
+  actor, and reads originals by receipt IDs; never selects active replacements.
+  Missing/duplicate/forged receipts fail closed. Past/inactive write-free
+  replay may succeed without recomputing parents.
+- UI plan: source-only inline confirmation of label/both dates/scope, preserved
+  exact generation on unknown outcome, shared synchronous create/reverse token,
+  org-stamped inventory and guards before setters AND reconciliation load.
+- Real PG plan retains existing proofs, adds concurrent reversal, actual second
+  CAS zero-row and audit-insert failure rollback, whole/partial replacement ABA,
+  missing receipt, changed Route inheritance, both parent-writer lock orders,
+  restricted role/RLS. Fixtures get isolated search_path and TIMESTAMP(3).
+- Current result remains merged/release pending. Precise stopping point: normal
+  deploy36733515137 checks/build in progress. Next action: exact-SHA public
+  release verification, receipt checkpoint, then successor implementation.
+
+
+## 2026-09-30 — concurrent #510 main advancement; exact release target clarification
+
+- During #506 merge73a599923 normal build, main advanced to
+  `77a5c48080e4297c666bde00112fbba2fc071636` via #510. Only
+  demo-coach-mark.test.ts and demo-coach-mark.tsx changed; zero Workforce
+  overlap. Feature merge73a599923 is an ancestor of the new main.
+- Normal run36733515137 passed quality/security and production artifact
+  build, but deploy job109957991585 FAILED the documented current-main
+  recheck before production mutation. No check/baseline/protection bypass.
+- Automatic new-main push deploy run36735072200 is active for77a5c480.
+  Exact public #506 merge-SHA smoke remains NOT RUN:73a599923 has not
+  deployed. A descendant artifact must not be falsely called exact73a599923.
+- Async clarification sent: may #506 release use current merged main77a5c480
+  containing the feature with exact artifactSha77a5c480, or must the original
+  artifact73a599923 be shipped with coordinated release freeze. The question
+  comes from deploy.yml normal current-main admission and the user's exact-SHA
+  requirement; not hypothetical extra approval. No dependent successor source
+  work or release-complete claim before this target constraint is resolved.
+- Current result: #506 merged; exact requested artifact release pending.
+  Last action: observed current-main refusal and new-main automatic run.
+  Precise stopping point: waiting target clarification and deploy progress.
+  Next action: verify approved exact release SHA, append release receipts,
+  create successor in same worktree and implement bounded007f.
