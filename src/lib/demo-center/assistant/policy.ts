@@ -20,6 +20,13 @@
 
 /** Owner decision 2026-09-20: 50 questions per session, Sonnet. */
 export const DEMO_ASSISTANT_MAX_QUESTIONS = 50
+/**
+ * Prepared answers per session (prepared-answers.ts). They cost next to
+ * nothing, so the cap is not about money: the decision model's rate limit is
+ * shared with the social relevance judge, and one scripted session must not
+ * starve it. Far above what a person asks in a 30-minute story.
+ */
+export const DEMO_ASSISTANT_MAX_PREPARED = 150
 
 /** Model the demo asks. Priced in `src/lib/ai/budget.ts`. */
 export const DEMO_ASSISTANT_MODEL = "claude-sonnet-4-6"
