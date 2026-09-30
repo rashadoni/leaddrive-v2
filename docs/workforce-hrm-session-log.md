@@ -3177,3 +3177,54 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Next action: checkpoint this append-only receipt, obtain independent exact-
   head GREEN, push the replacement, repeat all five gates and fresh-main check,
   then normal merge/deploy/exact-SHA smoke before starting successor007f.
+
+
+## 2026-09-30 — #506 fourth reconciliation reviewed and republished
+
+- Independent exact clean-head full-range review of
+  `47a3553fef281786420bec630c73c871bdf40628` against main/merge-base
+  `7583ebacf0dacc55ba9cc002e13bc25e07e2d5b9` is GREEN: P0=P1=P2=P3=0.
+  Full 23 paths / 200,426 bytes /
+  `61144c4b57641e69077d59dfe760a8b0bc3c85dd3915fc78e5fe690f3fc14c26`;
+  non-doc 19 / 121,643 /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+  Prefixes and independent old-run attribution were verified.
+- Exact replacement was pushed and read back from both origin and #506.
+  Fresh PR-checks run `36730265107`, runner `36730264948`, scan `36730265042`.
+  pr-scope/runner/scan are GREEN, PR build intentionally SKIPPED, static and
+  typecheck pending. Old23d1 checks cannot satisfy this new SHA.
+- Only this journal receipt is uncommitted during CI; published reviewed HEAD
+  remains unchanged. Progress stays81/161,14/15,C8 36%,overall59%,80 non-DONE.
+- Current result: #506 still OPEN, replacement CI active. Last action: exact
+  push and remote-head/gate readback. Precise stopping point: waiting on
+  static/typecheck for47a3553fe. Next action: require all five GREEN and fresh
+  main, then normal merge/deploy/exact-SHA public smoke; successor007f follows.
+
+
+## 2026-09-30 — #506 exact-head five gates GREEN and normal merge
+
+- Published/reviewed HEAD `47a3553fef281786420bec630c73c871bdf40628`
+  passed all mandatory contexts: pr-scope 19s, static-checks 7m46s and
+  typecheck 19m44s in PR run `36730265107`; runner-policy 19s in
+  `36730264948`; scan 21s in `36730265042`. PR production build SKIPPED
+  as intended. No baseline/context/protection changed.
+- Static logs independently confirm calendar PG 2/2 (393ms), shared-lock
+  selection 3 files / 23 tests, and blocking unit baseline PASS with no
+  new failures and no stale baseline entries.
+- Immediately before merge, fetch confirmed live main/merge-base still
+  `7583ebacf0dacc55ba9cc002e13bc25e07e2d5b9`, exact local/remote candidate
+  remained47a3553fe, PR mergeable/clean; only append-only journal was dirty.
+- Normal protected merge used --match-head-commit, without admin bypass.
+  #506 merged at2026-09-30T14:57:19Z as
+  `73a599923633d7e7f906a4815719381e03489486`.
+- Current result: merged, deployment not yet verified. Last action: normal
+  merge plus GitHub/API/CI-log readback. Precise stopping point: waiting
+  deploy.yml for73a599923 and exact public artifact-SHA smoke. Next action:
+  complete release receipts, then successor007f in the same worktree.
+- Progress unchanged81/161,14/15,C8 36%,overall59%,80 non-DONE.
+
+- Deployment continuation at2026-09-30T15:01Z: no automatic run for merge
+  73a599923 appeared after several minutes; workflow remains active and main
+  is exact merge SHA. Authorized/documented deploy.yml workflow_dispatch
+  normal was invoked from main. Its explicit current-main admission and all
+  checks/build/deploy gates remain unchanged; no server command/copy used.
