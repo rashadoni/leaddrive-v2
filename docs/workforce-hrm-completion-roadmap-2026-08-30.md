@@ -3544,3 +3544,59 @@ from this worktree.
   point: follow-up normal deploy/publicSHA pending. Next action: exact5fa
   deployment/public ping/build proof, final append-only checkpoint and review.
 - Progress remains81/161,14/15,C8 36%,overall59%,80non-DONE.
+
+
+## 2026-09-30 — final bounded007f / #512 production release receipts
+
+- Automatic push deploy https://github.com/rashadoni/leaddrive-v2/actions/runs/36756941887
+  COMPLETED/SUCCESS (updated2026-09-30T18:36:27Z), exact mergedmain
+  `5fa4a24e5a8fde32749598bbf4d1408c00860243`. Quality110029480552,
+  SHA-bound standalone artifact build110029480692, atomic production deploy/
+  post-deploy smoke110036461607 and retention110038998291 all SUCCESS.
+- Independent public smoke2026-09-30T18:38:09Z: /api/v1/ping HTTP200
+  {"ok":true}; /api/v1/public/build-info HTTP200 artifactSha EXACTLY
+  `5fa4a24e5a8fde32749598bbf4d1408c00860243`, builtAt2026-09-30T18:19:48Z.
+  Live GitHub main and fresh origin/main fetch also exact5fa4a24e. Valid TLS
+  app.leaddrivecrm.org explicitly pinned to registered13.140.132.245 with
+  --resolve and no proxy is the primary receipt; literalIP supplementary
+  probes gave identical SHA/ping with verification disabled only for IP SAN.
+- Protected calendar GET/empty-json POST both307 to validated same-host/login
+  with exact calendar callbackUrl; existing proxy authentication boundary
+  retained. No authenticated production pair mutation or business-data test.
+  Primary public receipt/tmp/workforce512-public-smoke.json; prior original67
+  proof/tmp/workforce511-public-smoke.json remains separately attributed.
+- All requested bounded007f behavior released in #511, with the one-line
+  redundant UI comparison removed in #512. Both-ID opaque generation/ABA,
+  sorted dual locks, full exact two-row transactional CAS soft-delete, one
+  audit receipt, original-only audit-backed replay and real PostgreSQL race/
+  rollback/replacement/Route/RLS proofs are retained. General update/delete,
+  break policy, AGENT moves and Route mutation remain outside this slice.
+- Final exact source afacc review P0=P1=P2=P3=0; five required exact-afacc
+  checks GREEN, PG12/12 and shared-lock33/33 executed, unitbaseline18/18 with
+  no new/stale failures, both blocking type gates66/66.1190TOTAL advisory
+  diagnostics remain; fixed reversal UI diagnostic is absent. No zero-advisory
+  or full-unit-suite-zero-failure claim. No gate/baseline/protection weakened.
+- Primary type receipt exact path is /tmp/workforce512type.log (earlier second
+  log path abbreviated its /tmp prefix); static/tmp/workforce512static.log.
+  Local focused receipts148(original),72(type fix),12(UI follow-up),scoped
+  ESLint,i18n/whitespace remain attributed to their corresponding checkpoints.
+- Full local typecheck/build/suite/realPG/browser/AT/Android/load/chaos/device/
+  pilot: NOT RUN under Contabo placement contract. Hosted mandatory regression
+  gates, real PG proofs and both production builds/deploys actually ran.
+  Authenticated functional UI confirmation/retry/context-switch browser proof
+  remains NOT RUN because no approved browser worker was invoked.
+- Progress unchanged DONE81/161,GATES14/15,C8 36%,overall59%,80non-DONE/about41%
+  weighted remaining. WF-C8-007 remains PARTIAL; no whole-HRM completion claim.
+- Durable release receipts committed on task-owned part15; only append-only
+  docs exist after published/merged afacc. Closed PR head remains afacc for
+  exact-head evidence; receipt-only local checkpoints are not pushed to that
+  closed PR branch or main. Preserve part13/14/15 checkpoints and other trees.
+- Current result: bounded007f and type follow-up released and publicly verified
+  at exact current-main5fa4a24e. Last completed action: successful normal deploy
+  and independent public ping/SHA/auth-boundary proof. Precise stopping point:
+  clean codex/workforce-completion-part15 release-receipt checkpoint, final
+  receipt-integrity review next. Next action: on continuation first recheck
+  cwd/branch/status/HEAD/origin/main, carry the local receipt-only checkpoints
+  to a fresh successor from main, then obtain authenticated confirmation/exact
+  retry/context-switch browser evidence on CI or an approved worker. Preserve
+  current excluded mutation surfaces until a separate bounded scope is chosen.
