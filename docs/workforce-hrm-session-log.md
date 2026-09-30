@@ -3513,3 +3513,112 @@ corrections as new entries that explicitly supersede the earlier fact.
   type inference fix implemented and locally checked. Last action: diagnosis
   and annotation fix. Precise stopping point: replacement checkpoint/publish.
   Next action: independent complete exact-head review and protected CI rerun.
+
+
+## 2026-09-30 — replacement exact-head review and publication
+
+- Clean replacement `f3447658701bf82990f6bae0ad74a7e9aa604d20` pushed to
+  PR#511; origin/main re-fetched and remained77a5c480. New PR run36750072998;
+  runner36750072881 and scan36750072763 already PASS exactf344. No baseline,
+  workflows or protection changes; full static/type gates pending.
+- Independent full-range exact-f344 review GREEN P0=P1=P2=P3=0, base77a5c480.
+  Full18paths/189,397bytes/SHA256
+  `400c124cd569b6815d8f1b1d07309a0089f641ee8ede69c49df4da55405c7692`;
+  non-doc14paths/135,323bytes/SHA256
+  `a9b493c4ba75a44801dab6a09c3d519a2a50bdfb6b821589c8c91de43e9672fc`.
+  Both typed DB scopes, full CAS/audit/result shapes inspected; all other
+  implementation/proof bytes identical to3b. Four doc prefixes append-only.
+- Current result: reviewed/published replacement; gates pending. Last action:
+  independent review and push. Precise stopping point: ready CI36750072998.
+  Next action: exact-head five gates, fresh main, protected merge/deploy/SHA.
+
+
+## 2026-09-30 — replacement PostgreSQL/static gates GREEN
+
+- Replacement PR run36750072998 exactf344765: static110006239203 SUCCESS
+  completed2026-09-30T17:30:26Z. Checkout synthetic merge6d43f34 of exactf344
+  into unchanged77a5c480; independent primary-log review confirms provenance.
+- Calendar real PostgreSQL12/12 PASS, no skips,1486ms; entire shared-lock gate
+ 3files/33tests PASS14.07s. Blocking full-unit baseline18/18accepted failures,
+  no new failures and every baseline entry still fails (no stale entries).
+  Primary transient log /tmp/workforce511staticf344.log. No gate weakened.
+- pr-scope,runner-policy,scan and static-checks are GREEN for replacement;
+  typecheck remains pending. Merge/deploy not yet run. Next action: complete
+  exact-head type gate, fresh-main check, normal protected release.
+
+
+## 2026-09-30 — #511 exact-head gates GREEN and protected merge
+
+- Final reviewed/published source head
+  `f3447658701bf82990f6bae0ad74a7e9aa604d20`; all five check runs completed
+  SUCCESS, bound to Actions app15368 and exactf344: pr-scope110006119904,
+  static-checks110006239203, typecheck110006239159 (run36750072998),
+  runner-policy110006117684 (36750072881), scan110006116579 (36750072763).
+  PR production build110006121943 SKIPPED by existing policy.
+- Both blocking TypeScript gates PASS: no syntax/missing-module/undefined-name
+  errors; defect baseline66/66gated pairs, no new errors/stale entries.
+  Full advisory tsc exited2 with1191 existing diagnostics; no claim of a clean
+  zero-diagnostic compilation. Primary log /tmp/workforce511typef344.log.
+- Re-read remote main immediately before normal merge: exact
+  `77a5c48080e4297c666bde00112fbba2fc071636`; PRhead exactf344, MERGEABLE/CLEAN.
+  Local uncommitted differences were only append-only receipt documents;
+  reviewed source/tests unchanged. Final PR body records final implementation
+  and current validation. Existing autonomous authorization used, no admin
+  bypass, no protected status/protection/baseline edits or direct main push.
+- PR https://github.com/rashadoni/leaddrive-v2/pull/511 MERGED normally with
+  --merge --match-head-commit f344765 at2026-09-30T17:37:48Z; merge main SHA
+  `67c72970ca139591aee06c561960e3fedc2791ca`.
+- Normal main -> deploy.yml run is now awaited; no direct server deployment
+  or speculative duplicate workflow dispatch. Production artifact/ping proof
+  still pending. Current result: bounded007f merged, release pending. Last
+  action: protected merge after fresh-main/exact-head gates. Precise stopping
+  point: await automatic SHA-bound deploy67c72970. Next action: normal deploy
+  success, independent public ping/build-info exact SHA, release receipts.
+- Progress unchanged81/161,14/15,C8 36%,overall59%,80 non-DONE; broader007 row
+  remains PARTIAL. Browser/Android/load/device/pilot NOT RUN; real SQL and
+  hosted CI regression gates above actually ran.
+
+
+## 2026-09-30 — receipt wording correction and bounded type-only follow-up
+
+- Independent receipt-integrity review of clean9c9bc66c found P3=1 in wording,
+  P0=P1=P2=0. Earlier phrase “1191 existing diagnostics” is superseded: the
+  exactf344 primary log has1191 TOTAL advisory diagnostics, including newly
+  introduced nongated TS2367 at reversal UI:801. Both configured BLOCKING
+  gates genuinely passed66/66; their success does not prove absence of every
+  new advisory diagnostic. No zero-diagnostic compilation claim is made.
+- TS2367 is a redundant scope===AGENT guard inside a scope!==AGENT-rendered
+  button branch. It changes no runtime outcome. A minimal follow-up will
+  remove that redundant comparison while retaining the ORG/TEAM action fence,
+  generation/date guard, mutation/context protection and all existing gates.
+  No baseline adjustment, broad cleanup, general editing or scope expansion.
+- Reviewer verified all14 non-doc blobs identical across reviewedf344,
+  local9c and merged67; merged full diff identity exactly matches reviewedf344.
+  Source release#511 and deploy36752762555 remain separately attributed;
+  deployment/public67 proof still pending. Next action: isolated follow-up in
+  same worktree, scoped verification/review/CI, finish67 public proof, then
+  normal protected follow-up release. Progress unchanged81/161,14/15,59%.
+
+
+## 2026-09-30 — minimal reversal UI type follow-up checkpoint
+
+- Same dedicated worktree, successor codex/workforce-completion-part15 from
+  fresh main67c72970. Part14 receipt checkpoints9c9bc66c/a7571422 preserved
+  and cherry-picked asd7ff115f6/40a0832aa; no canonical/unrelated changes.
+- Only runtime/source diff: remove redundant scope===AGENT from the click
+  handler already rendered solely under scope!==AGENT and ORG/activeTEAM.
+  Keep required pair date/generation guard and all mutation/context/confirmation
+  fences. This resolves the new nongated TS2367 without any baseline or gate
+  adjustment; no new user-visible behavior or API/domain/schema change.
+- Before targeted check RAM16.5GBavailable,disk342GB,memorypressure0.
+  Existing UI contract1file/12tests PASS1.54s; scoped UI ESLint and whitespace
+  PASS. Full local typecheck/build/browser/suite/Android/load NOT RUN under
+  host placement rules; complete required hosted gates and production build
+  will run for follow-up before release. No implementation-mirroring test added.
+- Original #511 normal deploy36752762555 exact67c72970 now building standalone;
+  public artifact proof still pending. Follow-up will merge only after exact
+  review/five gates and after original release has a separately recorded proof.
+- Current result: one-line advisory fix ready. Last action: targeted UI check.
+  Precise stopping point: follow-up checkpoint/review/PR. Next action: required
+  CI in parallel with original deployment, then protected release. Roadmap
+  unchanged81/161,14/15,C8 36%,overall59%,80 non-DONE.
