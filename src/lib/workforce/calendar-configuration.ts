@@ -8,21 +8,26 @@ import {
   WORKFORCE_CALENDAR_AGENT_SEARCH_LIMIT,
   WORKFORCE_CALENDAR_TEAM_QUERY_MAX_LENGTH,
   WORKFORCE_CALENDAR_TEAM_SEARCH_LIMIT,
+  WorkforceCalendarMovedDayReverseSchema,
   type WorkforceCalendarAgentSummary,
   type WorkforceCalendarAgentStatus,
   type WorkforceCalendarConfigurationScope,
   type WorkforceCalendarMovedDayDraft,
+  type WorkforceCalendarMovedDayReverseDraft,
   type WorkforceCalendarOverrideDraft,
   type WorkforceCalendarOverrideSummary,
   type WorkforceCalendarTeamSummary,
 } from "@/lib/workforce/calendar-configuration-contract"
-
-const calendarSummarySelect = {
-  date: true,
-  kind: true,
-  name: true,
-  movedToDate: true,
-} satisfies Prisma.MtmWorkCalendarDaySelect
+import {
+  calendarPairGeneration,
+  calendarPairMatches,
+  calendarPairSelect,
+  calendarReversalReceiptSchema,
+  calendarReversalSelect,
+  calendarReversalSnapshot,
+  calendarRowFromSnapshot,
+  calendarSnapshotEquals,
+} from "@/lib/workforce/calendar-moved-day-pair"
 
 const calendarExistingSelect = {
   id: true,
@@ -60,6 +65,9 @@ export class WorkforceCalendarConfigurationError extends Error {
       | "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DATES_INVALID"
       | "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_SOURCE_NOT_WORKING"
       | "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DESTINATION_NOT_NON_WORKING"
+      | "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_PAIR_CHANGED"
+      | "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_ROUTE_CHANGED"
+      | "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_BUSY"
       | "WORKFORCE_CALENDAR_CONFIGURATION_SCOPE_INVALID"
       | "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE"
       | "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_SEARCH_INVALID"
@@ -311,7 +319,7 @@ export async function listWorkforceCalendarOverrides(input: {
 }): Promise<WorkforceCalendarOverrideSummary[]> {
   assertFutureRange(input)
   const target = targetForScope(input)
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   const rows = await db.mtmWorkCalendarDay.findMany({
     where: {
       organizationId: input.organizationId,
@@ -324,9 +332,34 @@ export async function listWorkforceCalendarOverrides(input: {
       deletedAt: null,
     },
     orderBy: [{ date: "asc" }, { id: "asc" }],
-    select: calendarSummarySelect,
+    select: calendarPairSelect,
   })
-  return rows.map(calendarSummary)
+  const maximumDate = addDateKeyDays(input.currentDate, 367)
+  const sources = input.scope === "AGENT" ? [] : rows.filter((row) => (
+    row.kind === "MOVED_DAY_OFF" && row.deletedAt === null && row.movedToDate
+    && dateKey(row.date) > input.currentDate && dateKey(row.date) <= maximumDate
+    && dateKey(row.movedToDate) > input.currentDate && dateKey(row.movedToDate) <= maximumDate
+  ))
+  // One bounded partner query, including a partner outside the selected read
+  // window. Internal IDs/provenance are never returned as calendar summaries.
+  const partnerDates = [...new Set(sources.map((row) => dateKey(row.movedToDate as Date)))]
+  const partners = partnerDates.length ? await db.mtmWorkCalendarDay.findMany({
+    where: {
+      organizationId: input.organizationId, teamId: target.teamId, agentId: null,
+      deletedAt: null, date: { in: partnerDates.map(asDatabaseDate) },
+    },
+    select: calendarPairSelect,
+  }) : []
+  return rows.map((row) => {
+    const summary = calendarSummary(row)
+    if (!sources.includes(row)) return summary
+    const destination = partners.find((partner) => dateKey(partner.date) === dateKey(row.movedToDate as Date))
+    if (destination && calendarPairMatches(row, destination, {
+      organizationId: input.organizationId, teamId: target.teamId,
+      sourceDate: dateKey(row.date), destinationDate: dateKey(destination.date),
+    })) summary.pairGenerationId = calendarPairGeneration(row, destination)
+    return summary
+  })
 }
 
 /**
@@ -787,6 +820,200 @@ export async function createWorkforceCalendarMovedDay(input: {
         "A concurrent calendar override already occupies one moved-day date",
       )
     }
+    throw error
+  }
+}
+
+function reversePairChanged(): WorkforceCalendarConfigurationError {
+  return new WorkforceCalendarConfigurationError(
+    "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_PAIR_CHANGED",
+    "The exact moved-day pair or its reversal receipt is unavailable",
+  )
+}
+
+/**
+ * Reverses only a complete future ADMIN pair. A generation binds both physical
+ * rows; replay reads audit originals by ID, never replacement rows by date.
+ *
+ * The table lock stabilizes inherited state, including an absent parent,
+ * against legacy writers that do not participate in the date-lock protocol.
+ * SHARE ROW EXCLUSIVE permits this transaction's own CAS without a lock
+ * upgrade and briefly serializes all calendar writers across tenants. Keep
+ * this rare administrative transaction short, bounded and free of network IO.
+ */
+export async function reverseWorkforceCalendarMovedDay(input: {
+  organizationId: string
+  updatedByUserId: string
+  currentDate: string
+  draft: WorkforceCalendarMovedDayReverseDraft
+  audit: WorkforceConfigurationAuditContext
+  db?: PrismaClient
+}): Promise<{
+  pairGenerationId: string
+  sourceDate: string
+  destinationDate: string
+  team: WorkforceCalendarTeamSummary | null
+  reversed: boolean
+}> {
+  const parsed = WorkforceCalendarMovedDayReverseSchema.safeParse(input.draft)
+  if (!parsed.success || !isDateKey(input.currentDate)) {
+    throw new WorkforceCalendarConfigurationError("WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DATES_INVALID")
+  }
+  if (!input.updatedByUserId || input.audit.actorUserId !== input.updatedByUserId) {
+    throw new WorkforceCalendarConfigurationError("WORKFORCE_CALENDAR_CONFIGURATION_SCOPE_INVALID")
+  }
+  const draft = parsed.data
+  const teamId = draft.scope === "TEAM" ? draft.teamId as string : null
+  const target = {
+    organizationId: input.organizationId, teamId,
+    sourceDate: draft.sourceDate, destinationDate: draft.destinationDate,
+  }
+  const db: PrismaClient = input.db ?? prisma
+  try {
+    return await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL lock_timeout = '5s'`
+      await lockWorkforceCalendarConfigurationDates({
+        db: tx, organizationId: input.organizationId, dates: [draft.sourceDate, draft.destinationDate],
+      })
+      await tx.$executeRaw`LOCK TABLE "mtm_work_calendar_days" IN SHARE ROW EXCLUSIVE MODE`
+      let team: WorkforceCalendarTeamSummary | null = null
+      if (teamId !== null) {
+        const [lockedTeam] = await tx.$queryRaw<Array<WorkforceCalendarTeamSummary>>(Prisma.sql`
+          SELECT team."id", team."name", team."code", team."isActive"
+          FROM "mtm_teams" AS team
+          WHERE team."organizationId" = ${input.organizationId} AND team."id" = ${teamId}
+          FOR SHARE OF team
+        `)
+        if (!lockedTeam) throw new WorkforceCalendarConfigurationError("WORKFORCE_CALENDAR_CONFIGURATION_TEAM_UNAVAILABLE")
+        team = lockedTeam
+      }
+      const receipts = await tx.mtmAuditLog.findMany({
+        where: {
+          organizationId: input.organizationId, action: "WORKFORCE_CALENDAR_MOVED_DAY_REVERSED",
+          entity: "work_calendar_pair", entityId: draft.pairGenerationId,
+          metadataKind: "workforce_calendar_configuration", agentId: null,
+        },
+        take: 2,
+        select: { actorUserId: true, oldData: true, newData: true },
+      })
+      const result = {
+        pairGenerationId: draft.pairGenerationId, sourceDate: draft.sourceDate,
+        destinationDate: draft.destinationDate, team,
+      }
+      if (receipts.length) {
+        if (receipts.length !== 1) throw reversePairChanged()
+        const before = calendarReversalReceiptSchema.safeParse(receipts[0].oldData)
+        const after = calendarReversalReceiptSchema.safeParse(receipts[0].newData)
+        if (!before.success || !after.success) throw reversePairChanged()
+        const old = before.data
+        const post = after.data
+        if (old.organizationId !== input.organizationId || old.scope !== draft.scope
+          || old.teamId !== teamId || old.sourceDate !== draft.sourceDate
+          || old.destinationDate !== draft.destinationDate || old.pairGenerationId !== draft.pairGenerationId
+          || old.actorUserId !== receipts[0].actorUserId
+          || JSON.stringify({ ...old, rows: post.rows }) !== JSON.stringify(post)) throw reversePairChanged()
+        const source = calendarRowFromSnapshot(old.rows[0])
+        const destination = calendarRowFromSnapshot(old.rows[1])
+        if (source.deletedAt !== null || destination.deletedAt !== null
+          || !calendarPairMatches(source, destination, target)
+          || calendarPairGeneration(source, destination) !== draft.pairGenerationId) throw reversePairChanged()
+        const reversedAt = new Date(post.reversedAt)
+        for (const [index, original] of [source, destination].entries()) {
+          if (!calendarSnapshotEquals({
+            ...original, deletedAt: reversedAt, updatedAt: reversedAt, updatedBy: post.actorUserId,
+          }, post.rows[index])) throw reversePairChanged()
+        }
+        // Do not inspect active same-date rows or recompute parents on replay.
+        // An exact receipt remains replay-safe after date/team availability changes.
+        const originals = await tx.mtmWorkCalendarDay.findMany({
+          where: {
+            organizationId: input.organizationId, teamId, agentId: null,
+            id: { in: [source.id, destination.id] },
+          },
+          select: calendarReversalSelect,
+        })
+        if (originals.length !== 2) throw reversePairChanged()
+        for (const snapshot of post.rows) {
+          const original = originals.find((row) => row.id === snapshot.id)
+          if (!original || !calendarSnapshotEquals(original, snapshot)) throw reversePairChanged()
+        }
+        return { ...result, reversed: false }
+      }
+      if (team && !team.isActive) throw new WorkforceCalendarConfigurationError("WORKFORCE_CALENDAR_CONFIGURATION_TEAM_UNAVAILABLE")
+      const maximumDate = addDateKeyDays(input.currentDate, 367)
+      if (draft.sourceDate <= input.currentDate || draft.destinationDate <= input.currentDate
+        || draft.sourceDate > maximumDate || draft.destinationDate > maximumDate) {
+        throw new WorkforceCalendarConfigurationError("WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DATES_INVALID")
+      }
+      const candidates = await tx.mtmWorkCalendarDay.findMany({
+        where: {
+          organizationId: input.organizationId, teamId, agentId: null, deletedAt: null,
+          date: { in: [asDatabaseDate(draft.sourceDate), asDatabaseDate(draft.destinationDate)] },
+        },
+        take: 3, select: calendarReversalSelect,
+      })
+      const source = candidates.find((row) => dateKey(row.date) === draft.sourceDate)
+      const destination = candidates.find((row) => dateKey(row.date) === draft.destinationDate)
+      if (candidates.length !== 2 || !source || !destination
+        || !calendarPairMatches(source, destination, target)
+        || calendarPairGeneration(source, destination) !== draft.pairGenerationId) throw reversePairChanged()
+      const inherited = teamId === null ? [] : await tx.mtmWorkCalendarDay.findMany({
+        where: {
+          organizationId: input.organizationId, teamId: null, agentId: null, deletedAt: null,
+          date: { in: [asDatabaseDate(draft.sourceDate), asDatabaseDate(draft.destinationDate)] },
+        },
+        select: calendarExistingSelect,
+      })
+      for (const row of [source, destination]) {
+        if (resolveWorkCalendarDay({ date: dateKey(row.date), overrides: inherited, teamId }).routePlanningAllowed
+          !== row.routePlanningAllowed) {
+          throw new WorkforceCalendarConfigurationError(
+            "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_ROUTE_CHANGED",
+            "Inherited Route eligibility changed; the calendar pair was retained",
+          )
+        }
+      }
+      const reversedAt = new Date()
+      const metadata = {
+        version: 1, operation: "REVERSE_MOVE_WORKDAY", pairGenerationId: draft.pairGenerationId,
+        organizationId: input.organizationId, scope: draft.scope, teamId,
+        sourceDate: draft.sourceDate, destinationDate: draft.destinationDate,
+        actorUserId: input.updatedByUserId, reversedAt: reversedAt.toISOString(),
+      }
+      const originals = [source, destination] as const
+      const oldData = calendarReversalReceiptSchema.parse({ ...metadata, rows: originals.map(calendarReversalSnapshot) })
+      const newData = calendarReversalReceiptSchema.parse({
+        ...metadata, rows: originals.map((row) => calendarReversalSnapshot({
+          ...row, deletedAt: reversedAt, updatedAt: reversedAt, updatedBy: input.updatedByUserId,
+        })),
+      })
+      for (const row of originals) {
+        // Every selected field is bound, including the old timestamps/actor.
+        // A zero-row update at either half aborts and rolls back the entire pair.
+        const changed = await tx.mtmWorkCalendarDay.updateMany({
+          where: { ...row, deletedAt: null },
+          data: { deletedAt: reversedAt, updatedAt: reversedAt, updatedBy: input.updatedByUserId },
+        })
+        if (changed.count !== 1) throw reversePairChanged()
+      }
+      await tx.mtmAuditLog.create({
+        data: {
+          organizationId: input.organizationId, agentId: null, actorUserId: input.audit.actorUserId,
+          action: "WORKFORCE_CALENDAR_MOVED_DAY_REVERSED", entity: "work_calendar_pair",
+          entityId: draft.pairGenerationId, metadataKind: "workforce_calendar_configuration",
+          oldData, newData, ipAddress: input.audit.ipAddress ?? null, userAgent: input.audit.userAgent ?? null,
+        },
+      })
+      return { ...result, reversed: true }
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 5_000, timeout: 10_000 })
+  } catch (error) {
+    if (error instanceof WorkforceCalendarConfigurationError) throw error
+    const sqlState = (error as { meta?: { code?: string } } | null)?.meta?.code
+    if (isPrismaCode(error, "P2034") || (isPrismaCode(error, "P2010") && ["55P03", "40P01"].includes(sqlState ?? ""))) {
+      throw new WorkforceCalendarConfigurationError("WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_BUSY")
+    }
+    // Generic transaction/commit/transport failures have an unknown outcome.
+    // Preserve them so the UI retains the exact generation for audit-backed retry.
     throw error
   }
 }

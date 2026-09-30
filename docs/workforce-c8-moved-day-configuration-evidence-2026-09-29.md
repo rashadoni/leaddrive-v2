@@ -412,3 +412,86 @@ green.
 - Next action: checkpoint this append-only receipt, obtain independent exact-
   head GREEN, push the replacement, repeat all five gates and fresh-main check,
   then normal merge/deploy/exact-SHA smoke before starting successor007f.
+
+
+## 2026-09-30 — #506 production descendant release receipts; exact merge-SHA constraint pending
+
+- Authorized #506 candidate was reviewed at exact clean
+  `47a3553fef281786420bec630c73c871bdf40628`, base/main
+  `7583ebacf0dacc55ba9cc002e13bc25e07e2d5b9`: independent full-range
+  GREEN P0=P1=P2=P3=0. Full23paths/200,426bytes/SHA256
+  `61144c4b57641e69077d59dfe760a8b0bc3c85dd3915fc78e5fe690f3fc14c26`;
+  non-doc19/121,643/
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- Exact-head five gates GREEN: PR checks36730265107 (pr-scope19s,
+  static7m46s,typecheck19m44s), runner36730264948 (19s),
+  scan36730265042 (21s). PR build SKIPPED by policy. Static CI proved
+  real calendar PG2/2 (393ms), shared-lock3files/23tests and blocking unit
+  baseline PASS (no new failure or stale entry). No gate/baseline weakened.
+- Fresh-main guard immediately before normal protected merge passed on7583.
+  #506 merged2026-09-30T14:57:19Z as
+  `73a599923633d7e7f906a4815719381e03489486` with exact head matching;
+  no admin bypass. PR:https://github.com/rashadoni/leaddrive-v2/pull/506.
+- Automatic push run was delayed; documented normal main dispatch
+  36733515137 was invoked. Delayed push36733480348 appeared alongside it
+  and its build was cancelled by documented concurrency. Normal36733515137
+  quality and SHA-bound artifact build passed. During build, #510 advanced
+  main to `77a5c48080e4297c666bde00112fbba2fc071636`; normal deploy
+  correctly refused stale-main target before any production mutation.
+- Independent descendant reconciliation GREEN P0=P1=P2=P3=0:73a599923
+  is ancestor77a5c480; only demo-coach-mark component/test differ. All19
+  Workforce non-doc blobs are identical between reviewed47a355, merge73a599
+  and current-main77a5c480; auth/schema/calendar/routing/workflows unchanged.
+  #510 five contexts also PASS (PR36732779403, runner36732779272,
+  scan36732779376). This review does not conflate original and descendant SHA.
+- Automatic current-main deploy:https://github.com/rashadoni/leaddrive-v2/actions/runs/36735072200
+  is COMPLETED/SUCCESS (updated2026-09-30T15:44:41Z), exact head77a5c480.
+  Quality/security, standalone build and atomic production deploy/post-deploy
+  smoke all SUCCESS. Only registered13.140.132.245 /opt/leaddrive-v2 and
+  GitHub main -> deploy.yml -> immutable SHA-bound artifact route used.
+- Independent public smoke2026-09-30T15:46:43Z:
+  /api/v1/ping HTTP200 {"ok":true}; /api/v1/public/build-info HTTP200,
+  artifactSha=`77a5c48080e4297c666bde00112fbba2fc071636`,
+  builtAt=`2026-09-30T15:27:44Z`. Exact match to successful deployed
+  current-main run77a5c480. Valid TLS used app.leaddrivecrm.org pinned via
+  --resolve to13.140.132.245. Literal IP endpoints independently gave same
+  responses with certificate verification disabled only for IP SAN mismatch;
+  validated-TLS pinned probe is the primary transport receipt.
+- Original #506 merge artifact73a599923 public deployment/smoke is NOT RUN:
+  it was never served; the new main descendant was served instead. The user's
+  exact original merge-SHA constraint has not been silently weakened. Async
+  clarification whether to accept current-main77a5c480 release containing#506
+  remains pending. No original-SHA release-complete claim or successor source
+  authoring until the precise target constraint is resolved.
+- Earlier local bounded118 tests/scoped ESLint/i18n/event-assets/runner/
+  whitespace receipts remain separately attributed. Full local typecheck,
+  build/suite/browser/AT/device, Android/Gradle, load/chaos, signed-device and
+  pilot: NOT RUN under Contabo placement contract; CI gates above were run
+  on hosted runners. Authenticated functional calendar browser smoke NOT RUN.
+- Progress remains DONE81/161, GATES14/15, C8 36%,overall59%,
+  80 non-DONE rows. WF-C8-007 PARTIAL;007f prepared, not implemented.
+- Current result: #506 merged and unchanged Workforce bytes present in
+  verified production descendant77a5c480; original exact-SHA acceptance open.
+  Last completed action: full deploy success and independent public ping/SHA
+  verification. Precise stopping point: target clarification pending before
+  successor. Next action: resolve release SHA constraint, then create successor
+  in this worktree and implement atomic generation-bound007f reversal.
+
+
+## 2026-09-30 — accepted #506 descendant release; successor007f authorized
+
+- User continuation “начинай” resolves the pending release-target clarification:
+  accept verified current-main artifact77a5c480 containing#506 and begin007f.
+  Earlier pending-target entries remain historical and are superseded by this
+  explicit continuation. Original feature merge73a599923 and served artifact
+  77a5c480 remain separately attributed; no claim that73a599923 was served.
+- Resumed exact requested worktree from clean checkpointc977a46bb. Routing
+  context/origin/branch and fresh main77a5c480 reverified; canonical and other
+  worktrees untouched. Local RAM16.7GB available/disk342GB/memory pressure0.
+- Next phase: create codex/workforce-completion-part14 from verified main in
+  this same worktree, retain and carry forward append-only receipt checkpoints,
+  implement bounded generation-bound reversal and independent real PG proofs.
+- Current result:#506 release accepted;007f starts. Last action: routing/main
+  reconciliation. Precise stopping point: successor creation. Next action:
+  strict contract, locks/full CAS/versioned receipt, UI confirmation/tests.
+- Progress remains81/161,14/15,C8 36%,overall59%,80 non-DONE.

@@ -14,12 +14,13 @@ vi.mock("@/lib/workforce/calendar-configuration", async () => {
     listWorkforceCalendarOverrides: vi.fn(),
     createWorkforceCalendarMovedDay: vi.fn(),
     createWorkforceCalendarOverride: vi.fn(),
+    reverseWorkforceCalendarMovedDay: vi.fn(),
     searchWorkforceCalendarAgents: vi.fn(),
     searchWorkforceCalendarTeams: vi.fn(),
   }
 })
 
-import { GET, POST } from "@/app/api/v1/workforce/configuration/calendar/route"
+import * as calendarRoute from "@/app/api/v1/workforce/configuration/calendar/route"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { addDateKeyDays, currentDateKey } from "@/lib/mtm/mobile-week"
 import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
@@ -28,10 +29,12 @@ import {
   createWorkforceCalendarMovedDay,
   createWorkforceCalendarOverride,
   listWorkforceCalendarOverrides,
+  reverseWorkforceCalendarMovedDay,
   searchWorkforceCalendarAgents,
   searchWorkforceCalendarTeams,
 } from "@/lib/workforce/calendar-configuration"
 
+const { GET, POST } = calendarRoute
 const AUTH = { orgId: "org-workforce", userId: "scheduler-1", role: "admin" }
 const callGet = GET as unknown as (request: NextRequest, auth: typeof AUTH) => Promise<Response>
 const callPost = POST as unknown as (request: NextRequest, auth: typeof AUTH) => Promise<Response>
@@ -53,6 +56,7 @@ beforeEach(() => {
   vi.mocked(listWorkforceCalendarOverrides).mockReset()
   vi.mocked(createWorkforceCalendarMovedDay).mockReset()
   vi.mocked(createWorkforceCalendarOverride).mockReset()
+  vi.mocked(reverseWorkforceCalendarMovedDay).mockReset()
   vi.mocked(searchWorkforceCalendarAgents).mockReset()
   vi.mocked(searchWorkforceCalendarTeams).mockReset()
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "UTC" } as never)
@@ -83,6 +87,7 @@ describe("Workforce calendar configuration API", () => {
   it("binds read and write to their exact accountable schedule permissions", () => {
     expect(GET).toBeTypeOf("function")
     expect(POST).toBeTypeOf("function")
+    expect(Object.keys(calendarRoute).sort()).toEqual(["GET", "POST"])
     expect(vi.mocked(withWorkforceSessionScheduleConfigurationAuth).mock.calls.map(([permission]) => permission))
       .toEqual(["SCHEDULE_READ", "SCHEDULE_WRITE"])
   })
@@ -676,5 +681,175 @@ describe("Workforce calendar configuration API", () => {
     await expect(conflict.json()).resolves.toMatchObject({
       code: "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_SOURCE_NOT_WORKING",
     })
+  })
+
+  it.each([true, false])("returns 200 and reversed=%s for an exact organization reversal using the server clock and actor", async (reversed) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-30T23:30:00.000Z"))
+    try {
+      vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
+      const body = {
+        operation: "REVERSE_MOVE_WORKDAY",
+        scope: "ORGANIZATION",
+        sourceDate: "2026-10-05",
+        destinationDate: "2026-10-10",
+        pairGenerationId: "a".repeat(64),
+      }
+      vi.mocked(reverseWorkforceCalendarMovedDay).mockResolvedValue({
+        pairGenerationId: body.pairGenerationId,
+        sourceDate: body.sourceDate,
+        destinationDate: body.destinationDate,
+        team: null,
+        reversed,
+      })
+
+      const response = await callPost(request("/api/v1/workforce/configuration/calendar", "POST", body), AUTH)
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({
+        success: true,
+        data: {
+          timezone: "Asia/Baku",
+          currentDate: "2026-10-01",
+          ...body,
+          team: null,
+          agent: null,
+          reversed,
+        },
+      })
+      expect(getMtmSettings).toHaveBeenCalledWith(AUTH.orgId)
+      expect(reverseWorkforceCalendarMovedDay).toHaveBeenCalledTimes(1)
+      expect(reverseWorkforceCalendarMovedDay).toHaveBeenCalledWith({
+        organizationId: AUTH.orgId,
+        updatedByUserId: AUTH.userId,
+        currentDate: "2026-10-01",
+        draft: body,
+        audit: {
+          actorUserId: AUTH.userId,
+          ipAddress: "203.0.113.25",
+          userAgent: "calendar-route-test",
+        },
+      })
+      expect(createWorkforceCalendarMovedDay).not.toHaveBeenCalled()
+      expect(createWorkforceCalendarOverride).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("dispatches a selected team reversal without employee scope or a create writer", async () => {
+    const today = currentDateKey(new Date(), "UTC")
+    const body = {
+      operation: "REVERSE_MOVE_WORKDAY",
+      scope: "TEAM",
+      teamId: "team-north",
+      sourceDate: addDateKeyDays(today, 3),
+      destinationDate: addDateKeyDays(today, 4),
+      pairGenerationId: "b".repeat(64),
+    }
+    const team = { id: "team-north", name: "North team", code: "NORTH", isActive: true }
+    vi.mocked(reverseWorkforceCalendarMovedDay).mockResolvedValue({
+      pairGenerationId: body.pairGenerationId,
+      sourceDate: body.sourceDate,
+      destinationDate: body.destinationDate,
+      team,
+      reversed: true,
+    })
+
+    const response = await callPost(request("/api/v1/workforce/configuration/calendar", "POST", body), AUTH)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: {
+        timezone: "UTC",
+        currentDate: today,
+        operation: body.operation,
+        scope: body.scope,
+        team,
+        agent: null,
+        pairGenerationId: body.pairGenerationId,
+        sourceDate: body.sourceDate,
+        destinationDate: body.destinationDate,
+        reversed: true,
+      },
+    })
+    expect(reverseWorkforceCalendarMovedDay).toHaveBeenCalledTimes(1)
+    expect(reverseWorkforceCalendarMovedDay).toHaveBeenCalledWith({
+      organizationId: AUTH.orgId,
+      updatedByUserId: AUTH.userId,
+      currentDate: today,
+      draft: body,
+      audit: {
+        actorUserId: AUTH.userId,
+        ipAddress: "203.0.113.25",
+        userAgent: "calendar-route-test",
+      },
+    })
+    expect(createWorkforceCalendarMovedDay).not.toHaveBeenCalled()
+    expect(createWorkforceCalendarOverride).not.toHaveBeenCalled()
+    expect(searchWorkforceCalendarAgents).not.toHaveBeenCalled()
+  })
+
+  it("rejects reversal scope, generation and caller-owned fields before settings or any writer", async () => {
+    const body = {
+      operation: "REVERSE_MOVE_WORKDAY",
+      scope: "ORGANIZATION",
+      sourceDate: "2026-10-05",
+      destinationDate: "2026-10-10",
+      pairGenerationId: "c".repeat(64),
+    }
+    const invalidBodies = [
+      { ...body, scope: "AGENT", agentId: "agent-one" },
+      { ...body, scope: undefined },
+      { ...body, scope: "TEAM" },
+      { ...body, teamId: "team-north" },
+      { ...body, organizationId: "another-organization" },
+      { ...body, actorUserId: "another-user" },
+      { ...body, currentDate: "2026-09-01" },
+      { ...body, kind: "MOVED_DAY_OFF" },
+      { ...body, sourceRowId: "internal-calendar-row" },
+      { ...body, routePlanningAllowed: false },
+      { ...body, name: "Change the existing label" },
+      { ...body, unexpected: true },
+      { ...body, pairGenerationId: undefined },
+      { ...body, pairGenerationId: "c".repeat(63) },
+      { ...body, pairGenerationId: "G".repeat(64) },
+      { ...body, destinationDate: body.sourceDate },
+    ]
+
+    for (const invalid of invalidBodies) {
+      const response = await callPost(request("/api/v1/workforce/configuration/calendar", "POST", invalid), AUTH)
+      expect(response.status).toBe(400)
+      await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_CALENDAR_CONFIGURATION_INVALID" })
+    }
+    expect(getMtmSettings).not.toHaveBeenCalled()
+    expect(reverseWorkforceCalendarMovedDay).not.toHaveBeenCalled()
+    expect(createWorkforceCalendarMovedDay).not.toHaveBeenCalled()
+    expect(createWorkforceCalendarOverride).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_PAIR_CHANGED",
+    "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_ROUTE_CHANGED",
+    "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_BUSY",
+  ] as const)("returns 409 for %s without falling through to a create writer", async (code) => {
+    const today = currentDateKey(new Date(), "UTC")
+    const body = {
+      operation: "REVERSE_MOVE_WORKDAY",
+      scope: "ORGANIZATION",
+      sourceDate: addDateKeyDays(today, 3),
+      destinationDate: addDateKeyDays(today, 4),
+      pairGenerationId: "d".repeat(64),
+    }
+    vi.mocked(reverseWorkforceCalendarMovedDay).mockRejectedValue(new WorkforceCalendarConfigurationError(code))
+
+    const response = await callPost(request("/api/v1/workforce/configuration/calendar", "POST", body), AUTH)
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({ error: code, code })
+    expect(reverseWorkforceCalendarMovedDay).toHaveBeenCalledTimes(1)
+    expect(createWorkforceCalendarMovedDay).not.toHaveBeenCalled()
+    expect(createWorkforceCalendarOverride).not.toHaveBeenCalled()
   })
 })

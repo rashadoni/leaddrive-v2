@@ -25534,7 +25534,7 @@
   },
   "workforceCalendarConfiguration": {
     "title": "İş təqvimi",
-    "subtitle": "Adlandırılmış gələcək bayramları, bağlanmaları və istisna iş günlərini əlavə edin. Təşkilat və ya bir aktiv komanda üçün bir faktiki iş gününü faktiki qeyri-iş gününə də köçürə bilərsiniz. Mövcud qeydlər dəyişməz qalır.",
+    "subtitle": "Gələcək bayram və istisna iş günlərini əlavə edin. Təşkilat və ya aktiv komanda üçün iş gününü köçürmək, yaxud hər iki tarixi yoxladıqdan sonra bütöv əlaqəli köçürməni ləğv etmək olar.",
     "refresh": "Təqvimi yenilə",
     "loading": "Gələcək təqvim yüklənir…",
     "scope": "Təqvim əhatəsi",
@@ -25636,7 +25636,20 @@
       "EXCEPTION_WORKDAY": "İstisna iş günü",
       "MOVED_WORKDAY": "Köçürülmüş iş günü",
       "MOVED_DAY_OFF": "Köçürülmüş istirahət günü"
-    }
+    },
+    "reversalAction": "Köçürməni ləğv et",
+    "reversalActionLabel": "Əlaqəli köçürməni ləğv et: {name}",
+    "reversalReviewTitle": "Əlaqəli köçürmənin ləğvini yoxlayın",
+    "reversalDates": "Təqvim tarixləri: {source} ↔ {destination}",
+    "reversalReviewHint": "Hər iki tarix seçilmiş əhatənin cari irsi təqviminə qayıdacaq. Onun iş və istirahət günləri ilkin vəziyyətdən fərqlənə bilər. İrsi Route uyğunluğu dəyişibsə, cüt saxlanılacaq. Hər iki qeyd birlikdə ləğv edilir və əməliyyat auditdə saxlanılır.",
+    "reversalConfirm": "Hər iki əlaqəli qeydi ləğv et",
+    "reversalCancel": "Təsdiqi bağla",
+    "reversalRecorded": "Əlaqəli köçürmə bütöv ləğv edildi və auditdə qeydə alındı.",
+    "reversalAlreadyRecorded": "Bu əlaqəli cütün dəqiq ləğvi artıq qeydə alınıb. Yeni dəyişiklik edilmədi.",
+    "reversalPairChanged": "Bu əlaqəli cüt və ya onun təsdiqlənmiş ləğv qeydi əlçatan deyil. Başqa köçürmə seçməzdən əvvəl təqvimi yeniləyin.",
+    "reversalRouteChanged": "İrsi Route uyğunluğu dəyişib. Köçürmənin hər iki qeydi saxlanıldı; təkrar cəhddən əvvəl ana təqvimi yoxlayın.",
+    "reversalBusy": "Təqvim məşğuldur. Eyni təsdiqi təkrarlayın.",
+    "reversalOutcomeUnknown": "Serverin nəticəsi təsdiqlənmədi. Eyni əlaqəli cütün nəticəsini yoxlamaq üçün bu təsdiqi təkrarlayın. Bu tarixlərdəki yeni cütə toxunulmayacaq."
   },
   "workforceAccessManagement": {
     "title": "Workforce rolları və giriş",

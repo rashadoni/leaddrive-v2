@@ -6,6 +6,7 @@ vi.mock("@/lib/prisma", async () => {
 })
 
 import { prisma } from "@/lib/prisma"
+import { calendarPairSelect } from "@/lib/workforce/calendar-moved-day-pair"
 import {
   WorkforceCalendarConfigurationError,
   createWorkforceCalendarMovedDay,
@@ -142,7 +143,7 @@ describe("Workforce organization calendar configuration", () => {
         deletedAt: null,
       },
       orderBy: [{ date: "asc" }, { id: "asc" }],
-      select: { date: true, kind: true, name: true, movedToDate: true },
+      select: calendarPairSelect,
     })
   })
 

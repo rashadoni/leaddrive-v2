@@ -1,7 +1,7 @@
 "use client"
 
 import type { FormEvent } from "react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CalendarDays, Loader2, Plus, RefreshCw, Search } from "lucide-react"
@@ -13,6 +13,7 @@ import type {
   WorkforceCalendarAgentSummary,
   WorkforceCalendarConfigurationScope,
   WorkforceCalendarCreateKind,
+  WorkforceCalendarMovedDayReverseDraft,
   WorkforceCalendarOverrideSummary,
   WorkforceCalendarTeamSummary,
 } from "@/lib/workforce/calendar-configuration-contract"
@@ -60,6 +61,34 @@ type ReadSelection = {
 
 type ApiFailure = Error & { code?: string }
 type CalendarEditorOperation = "CREATE_OVERRIDE" | "MOVE_WORKDAY"
+
+type CalendarMutationIdentity = { contextKey: string; targetKey: string }
+type CalendarMutationState = { current: CalendarMutationIdentity | null }
+type ReversalConfirmation = CalendarMutationIdentity & {
+  draft: WorkforceCalendarMovedDayReverseDraft
+  selection: ReadSelection
+  label: string
+  scopeLabel: string
+}
+
+export function beginCalendarMutation(state: CalendarMutationState, identity: CalendarMutationIdentity): CalendarMutationIdentity | null {
+  if (state.current) return null
+  const attempt = { ...identity }
+  state.current = attempt
+  return attempt
+}
+
+export function isCurrentCalendarMutation(
+  state: CalendarMutationState, attempt: CalendarMutationIdentity, identity: CalendarMutationIdentity,
+): boolean {
+  return state.current === attempt && attempt.contextKey === identity.contextKey && attempt.targetKey === identity.targetKey
+}
+
+export function finishCalendarMutation(state: CalendarMutationState, attempt: CalendarMutationIdentity): boolean {
+  if (state.current !== attempt) return false
+  state.current = null
+  return true
+}
 
 type LatestCalendarRequestState = {
   sequence: number
@@ -122,6 +151,9 @@ function localizedKnownFailure(t: ReturnType<typeof useTranslations>, code: stri
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_SOURCE_NOT_WORKING") return t("moveSourceNotWorking")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DESTINATION_NOT_NON_WORKING") return t("moveDestinationNotNonWorking")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS") return t("overrideExists")
+  if (code === "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_PAIR_CHANGED") return t("reversalPairChanged")
+  if (code === "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_ROUTE_CHANGED") return t("reversalRouteChanged")
+  if (code === "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_BUSY") return t("reversalBusy")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_UNAVAILABLE") return t("teamUnavailable")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_SEARCH_INVALID") return t("teamSearchInvalid")
   if (code === "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE") return t("agentUnavailable")
@@ -161,7 +193,8 @@ export function WorkforceCalendarConfiguration() {
   const { data: session } = useSession()
   const t = useTranslations("workforceCalendarConfiguration")
   const organizationId = session?.user?.organizationId ? String(session.user.organizationId) : ""
-  const [calendar, setCalendar] = useState<CalendarData | null>(null)
+  const contextKey = JSON.stringify([organizationId, session?.user?.id ?? ""])
+  const [calendar, setCalendar] = useState<(CalendarData & { clientContextKey: string }) | null>(null)
   const [scope, setScope] = useState<WorkforceCalendarConfigurationScope>("ORGANIZATION")
   const [teamId, setTeamId] = useState("")
   const [teamQuery, setTeamQuery] = useState("")
@@ -176,7 +209,22 @@ export function WorkforceCalendarConfiguration() {
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [confirmation, setConfirmation] = useState<ReversalConfirmation | null>(null)
+  const targetKey = JSON.stringify([scope, scope === "TEAM" ? teamId : null, scope === "AGENT" ? agentId : null])
+  const activeIdentity = useRef<CalendarMutationIdentity>({ contextKey, targetKey })
+  const mutation = useRef<CalendarMutationState>({ current: null })
   const latestLoad = useRef<LatestCalendarRequestState>({ sequence: 0, controller: null })
+  useLayoutEffect(() => {
+    if (activeIdentity.current.contextKey !== contextKey) {
+      mutation.current.current = null
+      setSaving(false)
+      setConfirmation(null)
+      setCalendar(null)
+      setError(null)
+      setNotice(null)
+    }
+    activeIdentity.current = { contextKey, targetKey }
+  }, [contextKey, targetKey])
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeZone: "UTC",
@@ -224,6 +272,8 @@ export function WorkforceCalendarConfiguration() {
   }, [organizationId])
 
   const load = useCallback(async (selection: ReadSelection) => {
+    // Fence before beginning: an old POST must not abort a new tenant's GET.
+    if (activeIdentity.current.contextKey !== contextKey) return
     const attempt = beginLatestCalendarRequest(latestLoad.current)
     if (!organizationId) {
       if (finishLatestCalendarRequest(latestLoad.current, attempt)) setLoading(false)
@@ -236,24 +286,25 @@ export function WorkforceCalendarConfiguration() {
         ? { ...selection, scope: "ORGANIZATION" as const }
         : selection
       const result = await request<CalendarData>("GET", undefined, requestSelection, attempt.controller.signal)
-      if (!isLatestCalendarRequest(latestLoad.current, attempt)) return
-      setCalendar(result.data)
+      if (activeIdentity.current.contextKey !== contextKey || !isLatestCalendarRequest(latestLoad.current, attempt)) return
+      setCalendar({ ...result.data, clientContextKey: contextKey })
       setDate((current) => current > result.data.currentDate ? current : nextDateKey(result.data.currentDate))
       setDestinationDate((current) => current > result.data.currentDate
         ? current
         : nextDateKey(nextDateKey(result.data.currentDate)))
       setError(null)
     } catch (failure) {
-      if (!isLatestCalendarRequest(latestLoad.current, attempt)) return
+      if (activeIdentity.current.contextKey !== contextKey || !isLatestCalendarRequest(latestLoad.current, attempt)) return
       setCalendar(null)
       setError(localizedReadFailure(t, failure))
     } finally {
       if (finishLatestCalendarRequest(latestLoad.current, attempt)) setLoading(false)
     }
-  }, [organizationId, request, t])
+  }, [contextKey, organizationId, request, t])
 
   useEffect(() => () => {
     latestLoad.current.controller?.abort()
+    mutation.current.current = null
   }, [])
 
   useEffect(() => {
@@ -274,6 +325,9 @@ export function WorkforceCalendarConfiguration() {
 
   async function createOverride(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (confirmation) return
+    const attempt = beginCalendarMutation(mutation.current, { contextKey, targetKey })
+    if (!attempt) return
     setSaving(true)
     setError(null)
     setNotice(null)
@@ -294,6 +348,7 @@ export function WorkforceCalendarConfiguration() {
             name,
           }
         : { ...target, date, kind, name })
+      if (!isCurrentCalendarMutation(mutation.current, attempt, activeIdentity.current)) return
       setNotice(result.status === 201
         ? t(submittedOperation === "MOVE_WORKDAY"
             ? submittedSelection.scope === "TEAM" ? "movedTeam" : "movedOrganization"
@@ -306,30 +361,60 @@ export function WorkforceCalendarConfiguration() {
       setName("")
       await load(submittedSelection)
     } catch (failure) {
-      setError(localizedMutationFailure(t, failure))
+      if (isCurrentCalendarMutation(mutation.current, attempt, activeIdentity.current)) setError(localizedMutationFailure(t, failure))
     } finally {
-      setSaving(false)
+      if (finishCalendarMutation(mutation.current, attempt)) setSaving(false)
+    }
+  }
+
+  async function reverseMovedDay() {
+    if (!confirmation || confirmation.contextKey !== contextKey || confirmation.targetKey !== targetKey) return
+    const submitted = confirmation
+    const attempt = beginCalendarMutation(mutation.current, { contextKey, targetKey })
+    if (!attempt) return
+    setSaving(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await request<{
+        pairGenerationId: string; sourceDate: string; destinationDate: string; reversed: boolean
+      }>("POST", submitted.draft)
+      if (!isCurrentCalendarMutation(mutation.current, attempt, activeIdentity.current)) return
+      if (result.data.pairGenerationId !== submitted.draft.pairGenerationId
+        || result.data.sourceDate !== submitted.draft.sourceDate
+        || result.data.destinationDate !== submitted.draft.destinationDate
+        || typeof result.data.reversed !== "boolean") throw new Error("unconfirmed-reversal")
+      setNotice(t(result.data.reversed ? "reversalRecorded" : "reversalAlreadyRecorded"))
+      setConfirmation(null)
+      await load(submitted.selection)
+    } catch (failure) {
+      if (isCurrentCalendarMutation(mutation.current, attempt, activeIdentity.current)) {
+        setError(localizedKnownFailure(t, failureCode(failure)) ?? t("reversalOutcomeUnknown"))
+      }
+    } finally {
+      if (finishCalendarMutation(mutation.current, attempt)) setSaving(false)
     }
   }
 
   if (!organizationId) return null
 
-  const teamOptions = [...(calendar?.teamDirectory.items ?? [])]
-  if (calendar?.team && !teamOptions.some((team) => team.id === calendar.team?.id)) {
-    teamOptions.unshift(calendar.team)
+  const contextCalendar = calendar?.clientContextKey === contextKey ? calendar : null
+  const teamOptions = [...(contextCalendar?.teamDirectory.items ?? [])]
+  if (contextCalendar?.team && !teamOptions.some((team) => team.id === contextCalendar.team?.id)) {
+    teamOptions.unshift(contextCalendar.team)
   }
-  const agentOptions = [...(calendar?.agentDirectory.items ?? [])]
-  if (calendar?.agent && !agentOptions.some((agent) => agent.id === calendar.agent?.id)) {
-    agentOptions.unshift(calendar.agent)
+  const agentOptions = [...(contextCalendar?.agentDirectory.items ?? [])]
+  if (contextCalendar?.agent && !agentOptions.some((agent) => agent.id === contextCalendar.agent?.id)) {
+    agentOptions.unshift(contextCalendar.agent)
   }
-  const visibleCalendar = calendar
-    && calendar.scope === scope
+  const visibleCalendar = contextCalendar
+    && contextCalendar.scope === scope
     && (
       scope === "ORGANIZATION"
-      || (scope === "TEAM" && calendar.team?.id === teamId)
-      || (scope === "AGENT" && calendar.agent?.id === agentId)
+      || (scope === "TEAM" && contextCalendar.team?.id === teamId)
+      || (scope === "AGENT" && contextCalendar.agent?.id === agentId)
     )
-    ? calendar
+    ? contextCalendar
     : null
   const minimumDate = visibleCalendar ? nextDateKey(visibleCalendar.currentDate) : undefined
   const selectedTeam = scope === "TEAM" && visibleCalendar ? visibleCalendar.team : null
@@ -370,7 +455,7 @@ export function WorkforceCalendarConfiguration() {
         variant="outline"
         className="min-h-11"
         onClick={() => void load({ scope, teamId, teamQuery, agentId, agentQuery })}
-        disabled={loading || saving}
+        disabled={loading || saving || Boolean(confirmation)}
       >
         {loading ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}
         {t("refresh")}
@@ -380,6 +465,29 @@ export function WorkforceCalendarConfiguration() {
     {error ? <p className="border-b border-red-200 bg-red-50 px-5 py-4 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200 sm:px-6" role="alert">{error}</p> : null}
     {notice ? <p className="border-b border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200 sm:px-6" role="status" aria-live="polite">{notice}</p> : null}
 
+    {confirmation && confirmation.contextKey === contextKey && confirmation.targetKey === targetKey ? <div
+      className="space-y-3 border-b border-amber-200 bg-amber-50 px-5 py-5 dark:border-amber-900 dark:bg-amber-950/20 sm:px-6"
+      aria-labelledby="workforce-calendar-reversal-title"
+    >
+      <h3 id="workforce-calendar-reversal-title" className="font-semibold">{t("reversalReviewTitle")}</h3>
+      <p className="text-sm font-medium">{confirmation.label} · {confirmation.scopeLabel}</p>
+      <p className="text-sm">{t("reversalDates", {
+        source: dateFormatter.format(new Date(`${confirmation.draft.sourceDate}T00:00:00.000Z`)),
+        destination: dateFormatter.format(new Date(`${confirmation.draft.destinationDate}T00:00:00.000Z`)),
+      })}</p>
+      <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("reversalReviewHint")}</p>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button type="button" className="min-h-11" onClick={() => void reverseMovedDay()} disabled={saving}>
+          {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : null}
+          {t("reversalConfirm")}
+        </Button>
+        <Button type="button" variant="outline" className="min-h-11" disabled={saving} onClick={() => {
+          setConfirmation(null)
+          setError(null)
+        }}>{t("reversalCancel")}</Button>
+      </div>
+    </div> : null}
+
     <div className="grid gap-5 border-b border-zinc-200 px-5 py-5 dark:border-zinc-800 sm:px-6 lg:grid-cols-2">
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="workforce-calendar-scope">{t("scope")}</label>
@@ -387,7 +495,7 @@ export function WorkforceCalendarConfiguration() {
           id="workforce-calendar-scope"
           className="min-h-11"
           value={scope}
-          disabled={saving}
+          disabled={saving || Boolean(confirmation)}
           onChange={(event) => {
             const nextScope = event.target.value as WorkforceCalendarConfigurationScope
             setScope(nextScope)
@@ -423,7 +531,7 @@ export function WorkforceCalendarConfiguration() {
           id="workforce-calendar-team"
           className="min-h-11"
           value={teamId}
-          disabled={saving}
+          disabled={saving || Boolean(confirmation)}
           onChange={(event) => {
             const nextTeamId = event.target.value
             setTeamId(nextTeamId)
@@ -452,7 +560,7 @@ export function WorkforceCalendarConfiguration() {
             id="workforce-calendar-team-search"
             className="min-h-11"
             value={teamQuery}
-            disabled={saving}
+            disabled={saving || Boolean(confirmation)}
             onChange={(event) => setTeamQuery(event.target.value)}
             maxLength={100}
             placeholder={t("teamSearchPlaceholder")}
@@ -462,13 +570,13 @@ export function WorkforceCalendarConfiguration() {
             variant="outline"
             className="min-h-11 sm:shrink-0"
             onClick={() => void load({ scope, teamId, teamQuery, agentId, agentQuery })}
-            disabled={loading || saving}
+            disabled={loading || saving || Boolean(confirmation)}
           >
             <Search aria-hidden="true" />
             {t("searchTeams")}
           </Button>
         </div>
-        {calendar?.teamDirectory.hasMore ? <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">{t("teamSearchNarrower")}</p> : null}
+        {contextCalendar?.teamDirectory.hasMore ? <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">{t("teamSearchNarrower")}</p> : null}
         {!loading && calendar && calendar.teamDirectory.items.length === 0 ? <p className="text-xs leading-5 text-muted-foreground">{t("noTeams")}</p> : null}
       </div> : null}
 
@@ -478,7 +586,7 @@ export function WorkforceCalendarConfiguration() {
           id="workforce-calendar-agent"
           className="min-h-11"
           value={agentId}
-          disabled={saving}
+          disabled={saving || Boolean(confirmation)}
           onChange={(event) => {
             const nextAgentId = event.target.value
             setAgentId(nextAgentId)
@@ -513,7 +621,7 @@ export function WorkforceCalendarConfiguration() {
             id="workforce-calendar-agent-search"
             className="min-h-11"
             value={agentQuery}
-            disabled={saving}
+            disabled={saving || Boolean(confirmation)}
             onChange={(event) => setAgentQuery(event.target.value)}
             maxLength={100}
             placeholder={t("agentSearchPlaceholder")}
@@ -523,13 +631,13 @@ export function WorkforceCalendarConfiguration() {
             variant="outline"
             className="min-h-11 sm:shrink-0"
             onClick={() => void load({ scope, teamId, teamQuery, agentId, agentQuery })}
-            disabled={loading || saving}
+            disabled={loading || saving || Boolean(confirmation)}
           >
             <Search aria-hidden="true" />
             {t("searchAgents")}
           </Button>
         </div>
-        {calendar?.agentDirectory.hasMore ? <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">{t("agentSearchNarrower")}</p> : null}
+        {contextCalendar?.agentDirectory.hasMore ? <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">{t("agentSearchNarrower")}</p> : null}
         {!loading && calendar && calendar.agentDirectory.items.length === 0 ? <p className="text-xs leading-5 text-muted-foreground">{t("noAgents")}</p> : null}
       </div> : null}
     </div>
@@ -549,7 +657,7 @@ export function WorkforceCalendarConfiguration() {
             id="workforce-calendar-operation"
             className="min-h-11"
             value={operation}
-            disabled={saving}
+            disabled={saving || Boolean(confirmation)}
             onChange={(event) => {
               setOperation(event.target.value as CalendarEditorOperation)
               setNotice(null)
@@ -570,7 +678,7 @@ export function WorkforceCalendarConfiguration() {
             min={minimumDate}
             max={previousDateKey(visibleCalendar.endExclusive)}
             value={date}
-            disabled={saving}
+            disabled={saving || Boolean(confirmation)}
             onChange={(event) => { setDate(event.target.value); setNotice(null) }}
             aria-describedby={operation === "MOVE_WORKDAY" ? "workforce-calendar-move-source-hint" : undefined}
             required
@@ -586,7 +694,7 @@ export function WorkforceCalendarConfiguration() {
             id="workforce-calendar-kind"
             className="min-h-11"
             value={kind}
-            disabled={saving}
+            disabled={saving || Boolean(confirmation)}
             onChange={(event) => { setKind(event.target.value as WorkforceCalendarCreateKind); setNotice(null) }}
           >
             {WORKFORCE_CALENDAR_EDITOR_KINDS.map((value) => <option key={value} value={value}>{t(`kinds.${value}`)}</option>)}
@@ -600,7 +708,7 @@ export function WorkforceCalendarConfiguration() {
             min={minimumDate}
             max={previousDateKey(visibleCalendar.endExclusive)}
             value={destinationDate}
-            disabled={saving}
+            disabled={saving || Boolean(confirmation)}
             onChange={(event) => { setDestinationDate(event.target.value); setNotice(null) }}
             aria-describedby="workforce-calendar-move-destination-hint"
             required
@@ -618,7 +726,7 @@ export function WorkforceCalendarConfiguration() {
             id="workforce-calendar-name"
             className="min-h-11"
             value={name}
-            disabled={saving}
+            disabled={saving || Boolean(confirmation)}
             onChange={(event) => { setName(event.target.value); setNotice(null) }}
             maxLength={160}
             placeholder={t(operation === "MOVE_WORKDAY"
@@ -649,7 +757,7 @@ export function WorkforceCalendarConfiguration() {
                   ? t("createHintAgent", { timezone: visibleCalendar.timezone, agent: selectedAgent.name })
                   : t("createHintOrganization", { timezone: visibleCalendar.timezone })
           }</p>
-          <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={saving || loading || !canCreate}>
+          <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={saving || loading || Boolean(confirmation) || !canCreate}>
             {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Plus />}
             {t(operation === "MOVE_WORKDAY" ? "moveCreate" : "create")}
           </Button>
@@ -682,7 +790,30 @@ export function WorkforceCalendarConfiguration() {
                   date: dateFormatter.format(new Date(`${day.pairedDate}T00:00:00.000Z`)),
                 })}</p> : null}
               </div>
-              <Badge variant="secondary" className="w-fit">{t(`kinds.${day.kind}`)}</Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="w-fit">{t(`kinds.${day.kind}`)}</Badge>
+                {scope !== "AGENT" && day.kind === "MOVED_DAY_OFF" && day.pairedDate && day.pairGenerationId
+                  && (scope === "ORGANIZATION" || selectedTeam?.isActive) ? <Button
+                    type="button" variant="outline" className="min-h-11"
+                    disabled={loading || saving || Boolean(confirmation)}
+                    aria-label={t("reversalActionLabel", { name: day.name || t("unnamed") })}
+                    onClick={() => {
+                      if (scope === "AGENT" || !day.pairedDate || !day.pairGenerationId) return
+                      setNotice(null)
+                      setError(null)
+                      setConfirmation({
+                        contextKey, targetKey, label: day.name || t("unnamed"),
+                        scopeLabel: scope === "TEAM" ? selectedTeam?.name ?? t("scopes.TEAM") : t("scopes.ORGANIZATION"),
+                        selection: { scope, teamId, teamQuery, agentId, agentQuery },
+                        draft: {
+                          operation: "REVERSE_MOVE_WORKDAY", scope,
+                          ...(scope === "TEAM" ? { teamId } : {}),
+                          sourceDate: day.date, destinationDate: day.pairedDate, pairGenerationId: day.pairGenerationId,
+                        },
+                      })
+                    }}
+                  >{t("reversalAction")}</Button> : null}
+              </div>
             </li>)}
           </ul>}
       </div>
