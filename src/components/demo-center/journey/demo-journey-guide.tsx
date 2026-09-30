@@ -148,7 +148,9 @@ export function DemoJourneyGuide({
         <h2 className="mt-1 text-base font-semibold leading-snug">{section.title}</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.summary}</p>
         {/* Words, not an icon: a bare speaker glyph was the kind of control
-            the owner found unreadable. */}
+            the owner found unreadable. While the coach card carries the step
+            it carries this switch too — one control on screen, not two. */}
+        {!stepIsOnScene && (
         <Button
           size="sm"
           variant={voice.on ? "secondary" : "outline"}
@@ -160,6 +162,7 @@ export function DemoJourneyGuide({
           {voice.on ? <VolumeX className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> : <Volume2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />}
           {voice.on ? S.voiceOff : S.voiceOn}
         </Button>
+        )}
       </div>
 
       <div>
