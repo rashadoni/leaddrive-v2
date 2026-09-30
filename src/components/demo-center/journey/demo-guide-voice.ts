@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useSyncExternalStore } from "react"
 
 /**
  * The talking guide's player: one audio element for the whole demo.
@@ -14,6 +14,9 @@ import { useCallback, useEffect, useRef, useSyncExternalStore } from "react"
  *
  * The choice is remembered in this browser only; storage that throws (a
  * private window) simply means it starts off again.
+ *
+ * The switch sits in two places — the coach card and the guide panel — and
+ * both drive this one module-level element, so there is never a second voice.
  */
 const PREF_KEY = "ld_demo_guide_voice"
 
@@ -21,6 +24,11 @@ const PREF_KEY = "ld_demo_guide_voice"
 // works for the page's lifetime.
 let remembered = false
 const listeners = new Set<() => void>()
+
+// One element for the page, whichever switch started it; paused when the
+// last component using it goes away.
+let sharedAudio: HTMLAudioElement | null = null
+let users = 0
 
 function readPref(): boolean {
   try {
@@ -60,19 +68,17 @@ export interface GuideVoice {
 export function useGuideVoice(): GuideVoice {
   // The server renders it off; the browser's remembered choice applies after hydration.
   const on = useSyncExternalStore(subscribe, readPref, () => false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const start = useCallback((url: string) => {
-    if (!audioRef.current) audioRef.current = new Audio()
-    const audio = audioRef.current
-    audio.pause()
-    audio.src = url
+    if (!sharedAudio) sharedAudio = new Audio()
+    sharedAudio.pause()
+    sharedAudio.src = url
     // A missing recording or a blocked autoplay leaves the guide silent, never broken.
-    void audio.play().catch(() => {})
+    void sharedAudio.play().catch(() => {})
   }, [])
 
   const stop = useCallback(() => {
-    audioRef.current?.pause()
+    sharedAudio?.pause()
   }, [])
 
   const play = useCallback((url: string) => {
@@ -86,7 +92,13 @@ export function useGuideVoice(): GuideVoice {
     if (!next) stop()
   }, [start, stop])
 
-  useEffect(() => () => audioRef.current?.pause(), [])
+  useEffect(() => {
+    users += 1
+    return () => {
+      users -= 1
+      if (users === 0) sharedAudio?.pause()
+    }
+  }, [])
 
   return { on, toggle, play, stop }
 }

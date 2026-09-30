@@ -351,8 +351,12 @@ describe("the talking guide", () => {
   it("is silent until asked, then reads each step as it opens, and stops for a clip", async () => {
     const played: string[] = []
     let pauses = 0
+    let players = 0
     class FakeAudio {
       src = ""
+      constructor() {
+        players += 1
+      }
       play() {
         played.push(this.src)
         return Promise.resolve()
@@ -368,16 +372,27 @@ describe("the talking guide", () => {
     const first = steps.get(frontier().stepId)!
     expect(played, "no sound before the prospect asks for it").toEqual([])
 
-    const toggle = container.querySelector<HTMLButtonElement>('[data-testid="demo-guide-voice"]')
+    // On a phone the coach card is what is on screen, so the switch is there —
+    // and only there: the panel does not repeat it while the card is up.
+    const panelSwitch = () => container.querySelector<HTMLButtonElement>('[data-testid="demo-guide-voice"]')
+    expect(panelSwitch()).toBeNull()
+    const toggle = document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-voice"]')
     expect(toggle?.textContent).toContain(S.voiceOn)
     await act(async () => toggle!.click())
     await settle()
     // The click itself starts the current step — the browser allows sound inside it.
     expect(played).toEqual([stepVoiceUrl(first)])
-    expect(toggle?.textContent).toContain(S.voiceOff)
+    expect(document.querySelector('[data-testid="demo-coach-voice"]')?.textContent).toContain(S.voiceOff)
+
+    // With the card put away the panel carries the same switch, already on.
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-close"]')!.click())
+    await settle()
+    expect(panelSwitch()?.textContent).toContain(S.voiceOff)
 
     await walkTo("source-stats")
     expect(played.at(-1)).toBe(stepVoiceUrl(steps.get("source-stats")!))
+    // Two switches, one voice: every recording went through the same player.
+    expect(players).toBe(1)
 
     const clip = container.querySelector<HTMLButtonElement>('[data-testid="demo-intro-clip-play"]')
     expect(clip, "the campaigns chapter offers its clip").not.toBeNull()

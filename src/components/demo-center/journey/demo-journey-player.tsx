@@ -38,6 +38,8 @@ import { DemoCoachMark } from "./demo-coach-mark"
 import { DemoJourneyGuide } from "./demo-journey-guide"
 import { createJourneyReporter, type JourneyReporter } from "./journey-reporter"
 import { DemoJourneySidebar } from "./demo-journey-sidebar"
+import { useGuideVoice } from "./demo-guide-voice"
+import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { BoardScene } from "./scenes/board-scene"
 import { CampaignScene } from "./scenes/campaign-scene"
 import { DealScene } from "./scenes/deal-scene"
@@ -225,6 +227,10 @@ export function DemoJourneyPlayer({
     const timer = setInterval(tick, 1_000)
     return () => clearInterval(timer)
   }, [sessionExpiresAt, idleDeadline, offset, onAccessLost])
+
+  // The talking guide's switch, for the coach card (the panel has its own
+  // view of the same switch; demo-guide-voice.ts keeps them one voice).
+  const voice = useGuideVoice()
 
   // One hint at a time, and none outliving its step: a hint about the step
   // just finished stayed up on the next one and covered the step counter.
@@ -482,6 +488,7 @@ export function DemoJourneyPlayer({
             onSkip={() => dispatch({ type: "skip-step", stepId: step.id })}
             onClose={() => setHiddenCoachKey(coachKey)}
             onMissing={setAnchorMissing}
+            voice={{ on: voice.on, onToggle: () => voice.toggle(stepVoiceUrl(step)) }}
           />
         )}
       </section>
