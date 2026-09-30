@@ -3577,3 +3577,24 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress unchanged81/161,14/15,C8 36%,overall59%,80 non-DONE; broader007 row
   remains PARTIAL. Browser/Android/load/device/pilot NOT RUN; real SQL and
   hosted CI regression gates above actually ran.
+
+
+## 2026-09-30 — receipt wording correction and bounded type-only follow-up
+
+- Independent receipt-integrity review of clean9c9bc66c found P3=1 in wording,
+  P0=P1=P2=0. Earlier phrase “1191 existing diagnostics” is superseded: the
+  exactf344 primary log has1191 TOTAL advisory diagnostics, including newly
+  introduced nongated TS2367 at reversal UI:801. Both configured BLOCKING
+  gates genuinely passed66/66; their success does not prove absence of every
+  new advisory diagnostic. No zero-diagnostic compilation claim is made.
+- TS2367 is a redundant scope===AGENT guard inside a scope!==AGENT-rendered
+  button branch. It changes no runtime outcome. A minimal follow-up will
+  remove that redundant comparison while retaining the ORG/TEAM action fence,
+  generation/date guard, mutation/context protection and all existing gates.
+  No baseline adjustment, broad cleanup, general editing or scope expansion.
+- Reviewer verified all14 non-doc blobs identical across reviewedf344,
+  local9c and merged67; merged full diff identity exactly matches reviewedf344.
+  Source release#511 and deploy36752762555 remain separately attributed;
+  deployment/public67 proof still pending. Next action: isolated follow-up in
+  same worktree, scoped verification/review/CI, finish67 public proof, then
+  normal protected follow-up release. Progress unchanged81/161,14/15,59%.
