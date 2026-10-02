@@ -501,3 +501,22 @@
 - New exact candidate/review/hosted gates required after checkpoint/push.
   Earlier3f review/CI belongs only to3f. Local browser/heavy checks NOT RUN;
   progress remains81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
+
+
+## 2026-10-02 — replacement browser candidate review GREEN
+
+- Published clean replacement9836872a4a9b48196b3c17ed3139d9f06e9e4a95,
+  independent complete exact-head/base88cd review GREEN P0=P1=P2=P3=0.
+  Full6paths/91,728bytes/SHA256
+  61db1fbafa2cb1c4b7025d9104b8a089046acc9ac62bfbc2f065a75ec86a2d3c;
+  non-doc3paths/34,439bytes/SHA256
+  0dc24f6b8d4c666445184ef4dd214101a48d1196db96761fb6b7b6ea928eba5a.
+- Reviewer independently verified first failure receipt zero UI cases and
+  exact localhost redirect mismatch; strict assertions/script/SQL unchanged,
+  six isolated URL settings fixed. Three document prefixes append-only.
+- Replacement browser37046965682 and mandatory PR37046965672 active;
+  runner37046965810 and scan37046965691 SUCCESS. Main re-observed exact88cd.
+  Current result: reviewed replacement under CI. Last action: new-head review.
+  Precise stopping point: awaiting actual browser/static/type gates. Next
+  action: inspect executed proofs, fresh-main protected release when GREEN.
+  Progress unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
