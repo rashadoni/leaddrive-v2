@@ -24,6 +24,8 @@ import {
   validateContactDictionaryAssignmentSet,
 } from "@/lib/mtm/contact-dictionary-assignment"
 import { contactCategoryWhere } from "@/lib/mtm/contact-categories"
+import { contactSpecialtyFilterValues } from "@/lib/mtm/contact-explorer"
+import { contactFieldFilters } from "@/lib/mtm/list-field-filters"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -50,7 +52,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const search = params.get("search")?.trim() ?? ""
   const type = params.get("type")
   const status = params.get("status")
-  const specialtyCode = params.get("specialtyCode")
+  // `specialtyCode` is the single-choice filter «specialty» replaced.
+  const specialties = contactSpecialtyFilterValues([
+    ...params.getAll("specialty"),
+    ...params.getAll("specialtyCode"),
+  ])
   const profile = params.get("profile")
   const qualificationCategory = params.get("qualificationCategory")
   const category = params.get("category")
@@ -123,18 +129,15 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       ? { objectType: objectType as "PHARMACY" | "CLINIC" | "STORE" | "OTHER" }
       : {}),
   }
-  if (customerId || Object.keys(workplaceCustomer).length > 0) {
-    and.push({
-      workplaces: {
-        some: {
-          ...(customerId ? { customerId } : {}),
-          deletedAt: null,
-          endedOn: null,
-          ...(Object.keys(workplaceCustomer).length > 0 ? { customer: workplaceCustomer } : {}),
-        },
-      },
-    })
-  }
+  and.push(...contactFieldFilters({
+    name: params.get("name"),
+    address: params.get("address"),
+    area: params.get("area"),
+    workplace: params.get("workplace"),
+    specialties,
+    customerId,
+    workplaceCustomer,
+  }))
 
   // `type` is the client category: the three built-in types, or any category
   // the tenant configured in MTM settings.
@@ -145,7 +148,6 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     organizationId: auth.orgId,
     deletedAt: null,
     ...(status && ["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"].includes(status) ? { status: status as "ACTIVE" | "INACTIVE" | "PROSPECT" | "DUPLICATE" | "MERGED" } : {}),
-    ...(specialtyCode ? { specialtyCode } : {}),
     ...(profile ? { profile } : {}),
     ...(qualificationCategory ? { qualificationCategory } : {}),
     ...(category && ["A", "B", "C", "D"].includes(category) ? { category: category as "A" | "B" | "C" | "D" } : {}),
@@ -400,7 +402,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
   const asOf = utcDate(currentDateKey(new Date(), timezone))
 
-  const missingRequiredFields = missingMtmContactRequiredFields(body, settings.contactRequiredFields)
+  const missingRequiredFields = missingMtmContactRequiredFields(body, settings.contactRequiredFields, settings.contactHiddenFields)
   if (missingRequiredFields.length > 0) {
     return NextResponse.json({
       error: "Required contact fields are missing",

@@ -94,6 +94,7 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
           const missingRequiredFields = missingMtmContactRequiredFields(
             mergedMtmContactState(current as unknown as Record<string, unknown>, payload),
             settings.contactRequiredFields,
+            settings.contactHiddenFields,
           )
           if (missingRequiredFields.length > 0) {
             throw new ContactChangeConflict(

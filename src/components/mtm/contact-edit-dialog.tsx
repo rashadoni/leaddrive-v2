@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { ContactSpecialtyInput } from "@/components/mtm/contact-specialty-input"
+import { contactFieldVisibility } from "@/lib/mtm/contact-field-visibility"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -249,6 +251,8 @@ export function MtmContactEditDialog({
   canManage,
   canRequestChanges,
   requiredFields,
+  specialties = [],
+  hiddenFields,
   assignedCategoryLabel,
   orgId,
   onSaved,
@@ -259,6 +263,10 @@ export function MtmContactEditDialog({
   canManage: boolean
   canRequestChanges: boolean
   requiredFields: readonly MtmContactRequiredField[]
+  /** The tenant's specialty list; empty means the specialty is typed freely. */
+  specialties?: readonly string[]
+  /** Fields the tenant switched off in MTM settings: not offered, not sent. */
+  hiddenFields?: readonly string[]
   /**
    * Set when the contact sits in a category from MTM settings. The category
    * then owns the contact's type, so it is changed on the Categories tab, not
@@ -280,6 +288,7 @@ export function MtmContactEditDialog({
     () => coerceMtmContactRequiredFields(requiredFields),
     [requiredFields],
   )
+  const shows = useMemo(() => contactFieldVisibility(hiddenFields), [hiddenFields])
   const requiredFieldSet = useMemo(() => new Set(configuredRequiredFields), [configuredRequiredFields])
   const isRequired = (field: MtmContactRequiredField) => requiredFieldSet.has(field)
   const requiredFieldLabel = (field: MtmContactRequiredField): string => {
@@ -432,18 +441,26 @@ export function MtmContactEditDialog({
             <Field id="contact-first-name" label={t("firstName")} required={isRequired("firstName")}>
               <Input id="contact-first-name" value={form.firstName} onChange={(event) => update("firstName", event.target.value)} maxLength={120} required />
             </Field>
-            <Field id="contact-middle-name" label={t("middleName")} required={isRequired("middleName")}>
-              <Input id="contact-middle-name" value={form.middleName} onChange={(event) => update("middleName", event.target.value)} maxLength={120} required={isRequired("middleName")} />
-            </Field>
-            <Field id="contact-external-code" label={t("externalCode")} required={isRequired("externalCode")}>
-              <Input id="contact-external-code" value={form.externalCode} onChange={(event) => update("externalCode", event.target.value)} maxLength={500} required={isRequired("externalCode")} />
-            </Field>
-            <Field id="contact-birth-date" label={t("birthDate")} required={isRequired("birthDate")}>
-              <Input id="contact-birth-date" type="date" value={form.birthDate} onChange={(event) => update("birthDate", event.target.value)} required={isRequired("birthDate")} />
-            </Field>
-            <Field id="contact-gender" label={t("gender")} required={isRequired("gender")}>
-              <Input id="contact-gender" value={form.gender} onChange={(event) => update("gender", event.target.value)} maxLength={50} required={isRequired("gender")} />
-            </Field>
+            {shows("middleName") ? (
+              <Field id="contact-middle-name" label={t("middleName")} required={isRequired("middleName")}>
+                <Input id="contact-middle-name" value={form.middleName} onChange={(event) => update("middleName", event.target.value)} maxLength={120} required={isRequired("middleName")} />
+              </Field>
+            ) : null}
+            {shows("externalCode") ? (
+              <Field id="contact-external-code" label={t("externalCode")} required={isRequired("externalCode")}>
+                <Input id="contact-external-code" value={form.externalCode} onChange={(event) => update("externalCode", event.target.value)} maxLength={500} required={isRequired("externalCode")} />
+              </Field>
+            ) : null}
+            {shows("birthDate") ? (
+              <Field id="contact-birth-date" label={t("birthDate")} required={isRequired("birthDate")}>
+                <Input id="contact-birth-date" type="date" value={form.birthDate} onChange={(event) => update("birthDate", event.target.value)} required={isRequired("birthDate")} />
+              </Field>
+            ) : null}
+            {shows("gender") ? (
+              <Field id="contact-gender" label={t("gender")} required={isRequired("gender")}>
+                <Input id="contact-gender" value={form.gender} onChange={(event) => update("gender", event.target.value)} maxLength={50} required={isRequired("gender")} />
+              </Field>
+            ) : null}
           </FormSection>
 
           <FormSection title={t("professionalTitle")} description={t("professionalDescription")}>
@@ -464,21 +481,31 @@ export function MtmContactEditDialog({
                 {["A", "B", "C", "D"].map((value) => <option key={value} value={value}>{value}</option>)}
               </Select>
             </Field>
-            <Field id="contact-specialty" label={t("specialty")} required={isRequired("specialtyName")}>
-              <Input id="contact-specialty" value={form.specialtyName} onChange={(event) => update("specialtyName", event.target.value)} maxLength={500} required={isRequired("specialtyName")} />
-            </Field>
-            <Field id="contact-specialty-code" label={t("specialtyCode")}>
-              <Input id="contact-specialty-code" value={form.specialtyCode} onChange={(event) => update("specialtyCode", event.target.value)} maxLength={500} />
-            </Field>
-            <Field id="contact-qualification" label={t("qualification")} required={isRequired("qualificationCategory")}>
-              <Input id="contact-qualification" value={form.qualificationCategory} onChange={(event) => update("qualificationCategory", event.target.value)} maxLength={500} required={isRequired("qualificationCategory")} />
-            </Field>
-            <Field id="contact-profile" label={t("profile")} required={isRequired("profile")}>
-              <Input id="contact-profile" value={form.profile} onChange={(event) => update("profile", event.target.value)} maxLength={500} required={isRequired("profile")} />
-            </Field>
-            <Field id="contact-product-category" label={t("productCategory")} required={isRequired("productCategory")}>
-              <Input id="contact-product-category" value={form.productCategory} onChange={(event) => update("productCategory", event.target.value)} maxLength={500} required={isRequired("productCategory")} />
-            </Field>
+            {shows("specialtyName") ? (
+              <Field id="contact-specialty" label={t("specialty")} required={isRequired("specialtyName")}>
+                <ContactSpecialtyInput id="contact-specialty" value={form.specialtyName} onChange={(value) => update("specialtyName", value)} specialties={specialties} chooseLabel={t("specialtyChoose")} required={isRequired("specialtyName")} />
+              </Field>
+            ) : null}
+            {shows("specialtyCode") ? (
+              <Field id="contact-specialty-code" label={t("specialtyCode")}>
+                <Input id="contact-specialty-code" value={form.specialtyCode} onChange={(event) => update("specialtyCode", event.target.value)} maxLength={500} />
+              </Field>
+            ) : null}
+            {shows("qualificationCategory") ? (
+              <Field id="contact-qualification" label={t("qualification")} required={isRequired("qualificationCategory")}>
+                <Input id="contact-qualification" value={form.qualificationCategory} onChange={(event) => update("qualificationCategory", event.target.value)} maxLength={500} required={isRequired("qualificationCategory")} />
+              </Field>
+            ) : null}
+            {shows("profile") ? (
+              <Field id="contact-profile" label={t("profile")} required={isRequired("profile")}>
+                <Input id="contact-profile" value={form.profile} onChange={(event) => update("profile", event.target.value)} maxLength={500} required={isRequired("profile")} />
+              </Field>
+            ) : null}
+            {shows("productCategory") ? (
+              <Field id="contact-product-category" label={t("productCategory")} required={isRequired("productCategory")}>
+                <Input id="contact-product-category" value={form.productCategory} onChange={(event) => update("productCategory", event.target.value)} maxLength={500} required={isRequired("productCategory")} />
+              </Field>
+            ) : null}
             <Field id="contact-status" label={t("status")}>
               <Select
                 id="contact-status"
@@ -494,55 +521,87 @@ export function MtmContactEditDialog({
             </Field>
           </FormSection>
 
-          <FormSection title={t("channelsTitle")} description={t("channelsDescription")}>
-            <Field id="contact-email" label={t("email")} required={isRequired("email")}>
-              <Input id="contact-email" type="email" value={form.email} onChange={(event) => update("email", event.target.value)} maxLength={200} required={isRequired("email")} />
-            </Field>
-            <Field id="contact-phone" label={t("phone")} required={isRequired("phone")}>
-              <Input id="contact-phone" type="tel" value={form.phone} onChange={(event) => update("phone", event.target.value)} maxLength={500} required={isRequired("phone")} />
-            </Field>
-            <Field id="contact-mobile-phone" label={t("mobilePhone")} required={isRequired("mobilePhone")}>
-              <Input id="contact-mobile-phone" type="tel" value={form.mobilePhone} onChange={(event) => update("mobilePhone", event.target.value)} maxLength={500} required={isRequired("mobilePhone")} />
-            </Field>
-            <Field id="contact-work-phone" label={t("workPhone")} required={isRequired("workPhone")}>
-              <Input id="contact-work-phone" type="tel" value={form.workPhone} onChange={(event) => update("workPhone", event.target.value)} maxLength={500} required={isRequired("workPhone")} />
-            </Field>
-            <Field id="contact-home-phone" label={t("homePhone")}>
-              <Input id="contact-home-phone" type="tel" value={form.homePhone} onChange={(event) => update("homePhone", event.target.value)} maxLength={500} />
-            </Field>
-            <Field id="contact-messenger-phone" label={t("messengerPhone")} required={isRequired("messengerPhone")}>
-              <Input id="contact-messenger-phone" type="tel" value={form.messengerPhone} onChange={(event) => update("messengerPhone", event.target.value)} maxLength={500} required={isRequired("messengerPhone")} />
-            </Field>
-            <Field id="contact-viber-phone" label="Viber">
-              <Input id="contact-viber-phone" type="tel" value={form.viberPhone} onChange={(event) => update("viberPhone", event.target.value)} maxLength={500} />
-            </Field>
-            <Field id="contact-whatsapp-phone" label="WhatsApp">
-              <Input id="contact-whatsapp-phone" type="tel" value={form.whatsappPhone} onChange={(event) => update("whatsappPhone", event.target.value)} maxLength={500} />
-            </Field>
-            <Field id="contact-telegram-phone" label="Telegram">
-              <Input id="contact-telegram-phone" type="tel" value={form.telegramPhone} onChange={(event) => update("telegramPhone", event.target.value)} maxLength={500} />
-            </Field>
-          </FormSection>
+          {shows("email") || shows("phone") || shows("mobilePhone") || shows("workPhone") || shows("homePhone") || shows("messengerPhone") || shows("viberPhone") || shows("whatsappPhone") || shows("telegramPhone") ? (
+            <FormSection title={t("channelsTitle")} description={t("channelsDescription")}>
+              {shows("email") ? (
+                <Field id="contact-email" label={t("email")} required={isRequired("email")}>
+                  <Input id="contact-email" type="email" value={form.email} onChange={(event) => update("email", event.target.value)} maxLength={200} required={isRequired("email")} />
+                </Field>
+              ) : null}
+              {shows("phone") ? (
+                <Field id="contact-phone" label={t("phone")} required={isRequired("phone")}>
+                  <Input id="contact-phone" type="tel" value={form.phone} onChange={(event) => update("phone", event.target.value)} maxLength={500} required={isRequired("phone")} />
+                </Field>
+              ) : null}
+              {shows("mobilePhone") ? (
+                <Field id="contact-mobile-phone" label={t("mobilePhone")} required={isRequired("mobilePhone")}>
+                  <Input id="contact-mobile-phone" type="tel" value={form.mobilePhone} onChange={(event) => update("mobilePhone", event.target.value)} maxLength={500} required={isRequired("mobilePhone")} />
+                </Field>
+              ) : null}
+              {shows("workPhone") ? (
+                <Field id="contact-work-phone" label={t("workPhone")} required={isRequired("workPhone")}>
+                  <Input id="contact-work-phone" type="tel" value={form.workPhone} onChange={(event) => update("workPhone", event.target.value)} maxLength={500} required={isRequired("workPhone")} />
+                </Field>
+              ) : null}
+              {shows("homePhone") ? (
+                <Field id="contact-home-phone" label={t("homePhone")}>
+                  <Input id="contact-home-phone" type="tel" value={form.homePhone} onChange={(event) => update("homePhone", event.target.value)} maxLength={500} />
+                </Field>
+              ) : null}
+              {shows("messengerPhone") ? (
+                <Field id="contact-messenger-phone" label={t("messengerPhone")} required={isRequired("messengerPhone")}>
+                  <Input id="contact-messenger-phone" type="tel" value={form.messengerPhone} onChange={(event) => update("messengerPhone", event.target.value)} maxLength={500} required={isRequired("messengerPhone")} />
+                </Field>
+              ) : null}
+              {shows("viberPhone") ? (
+                <Field id="contact-viber-phone" label="Viber">
+                  <Input id="contact-viber-phone" type="tel" value={form.viberPhone} onChange={(event) => update("viberPhone", event.target.value)} maxLength={500} />
+                </Field>
+              ) : null}
+              {shows("whatsappPhone") ? (
+                <Field id="contact-whatsapp-phone" label="WhatsApp">
+                  <Input id="contact-whatsapp-phone" type="tel" value={form.whatsappPhone} onChange={(event) => update("whatsappPhone", event.target.value)} maxLength={500} />
+                </Field>
+              ) : null}
+              {shows("telegramPhone") ? (
+                <Field id="contact-telegram-phone" label="Telegram">
+                  <Input id="contact-telegram-phone" type="tel" value={form.telegramPhone} onChange={(event) => update("telegramPhone", event.target.value)} maxLength={500} />
+                </Field>
+              ) : null}
+            </FormSection>
+          ) : null}
 
-          <FormSection title={t("addressTitle")} description={t("addressDescription")}>
-            <Field id="contact-postal-code" label={t("postalCode")} required={isRequired("postalCode")}>
-              <Input id="contact-postal-code" value={form.postalCode} onChange={(event) => update("postalCode", event.target.value)} maxLength={500} required={isRequired("postalCode")} />
-            </Field>
-            <Field id="contact-region" label={t("region")} required={isRequired("addressRegion")}>
-              <Input id="contact-region" value={form.addressRegion} onChange={(event) => update("addressRegion", event.target.value)} maxLength={500} required={isRequired("addressRegion")} />
-            </Field>
-            <Field id="contact-locality" label={t("locality")} required={isRequired("addressLocality")}>
-              <Input id="contact-locality" value={form.addressLocality} onChange={(event) => update("addressLocality", event.target.value)} maxLength={500} required={isRequired("addressLocality")} />
-            </Field>
-            <Field id="contact-district" label={t("district")} required={isRequired("addressDistrict")}>
-              <Input id="contact-district" value={form.addressDistrict} onChange={(event) => update("addressDistrict", event.target.value)} maxLength={500} required={isRequired("addressDistrict")} />
-            </Field>
-            <div className="md:col-span-2">
-              <Field id="contact-street" label={t("street")} required={isRequired("addressStreet")}>
-                <Input id="contact-street" value={form.addressStreet} onChange={(event) => update("addressStreet", event.target.value)} maxLength={500} required={isRequired("addressStreet")} />
-              </Field>
-            </div>
-          </FormSection>
+          {shows("postalCode") || shows("addressRegion") || shows("addressLocality") || shows("addressDistrict") || shows("addressStreet") ? (
+            <FormSection title={t("addressTitle")} description={t("addressDescription")}>
+              {shows("postalCode") ? (
+                <Field id="contact-postal-code" label={t("postalCode")} required={isRequired("postalCode")}>
+                  <Input id="contact-postal-code" value={form.postalCode} onChange={(event) => update("postalCode", event.target.value)} maxLength={500} required={isRequired("postalCode")} />
+                </Field>
+              ) : null}
+              {shows("addressRegion") ? (
+                <Field id="contact-region" label={t("region")} required={isRequired("addressRegion")}>
+                  <Input id="contact-region" value={form.addressRegion} onChange={(event) => update("addressRegion", event.target.value)} maxLength={500} required={isRequired("addressRegion")} />
+                </Field>
+              ) : null}
+              {shows("addressLocality") ? (
+                <Field id="contact-locality" label={t("locality")} required={isRequired("addressLocality")}>
+                  <Input id="contact-locality" value={form.addressLocality} onChange={(event) => update("addressLocality", event.target.value)} maxLength={500} required={isRequired("addressLocality")} />
+                </Field>
+              ) : null}
+              {shows("addressDistrict") ? (
+                <Field id="contact-district" label={t("district")} required={isRequired("addressDistrict")}>
+                  <Input id="contact-district" value={form.addressDistrict} onChange={(event) => update("addressDistrict", event.target.value)} maxLength={500} required={isRequired("addressDistrict")} />
+                </Field>
+              ) : null}
+              {shows("addressStreet") ? (
+                <div className="md:col-span-2">
+                  <Field id="contact-street" label={t("street")} required={isRequired("addressStreet")}>
+                    <Input id="contact-street" value={form.addressStreet} onChange={(event) => update("addressStreet", event.target.value)} maxLength={500} required={isRequired("addressStreet")} />
+                  </Field>
+                </div>
+              ) : null}
+            </FormSection>
+          ) : null}
 
           <FormSection title={t("governanceTitle")} description={t("governanceDescription")}>
             <Field id="contact-verification" label={t("verification")}>

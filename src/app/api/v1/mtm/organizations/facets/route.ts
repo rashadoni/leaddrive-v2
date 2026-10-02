@@ -7,6 +7,11 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { activeFieldAssignmentWindow, customerScopeForActor } from "@/lib/mtm/field-scope"
+import {
+  organizationAddressFilter,
+  organizationAreaFilter,
+  organizationNameFilter,
+} from "@/lib/mtm/list-field-filters"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -88,6 +93,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       ],
     })
   }
+  baseAnd.push(
+    ...organizationNameFilter(params.get("name")),
+    ...organizationAddressFilter(params.get("address")),
+    ...organizationAreaFilter(params.get("area")),
+  )
 
   const attributeSelection = (omit?: AttributeFacet) => ({
     ...(omit !== "medicalCategoryCode" && attributeValues.medicalCategoryCode

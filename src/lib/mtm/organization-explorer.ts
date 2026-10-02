@@ -53,7 +53,12 @@ export type OrganizationSort =
 
 export interface OrganizationExplorerFilters {
   scope: "" | "ALL" | "MINE"
+  /** One box over every field — kept for old links and saved views. */
   search: string
+  /** The typed fields of the filter: each narrows only what it names. */
+  name: string
+  address: string
+  area: string
   category: string
   status: string
   objectType: string
@@ -77,6 +82,9 @@ export interface OrganizationExplorerFilters {
 export const EMPTY_ORGANIZATION_FILTERS: OrganizationExplorerFilters = {
   scope: "",
   search: "",
+  name: "",
+  address: "",
+  area: "",
   category: "",
   status: "",
   objectType: "",

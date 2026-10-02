@@ -1,7 +1,13 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { Check, ShieldCheck } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import {
+  coerceMtmContactHiddenFields,
+  isMtmContactSwitchableField,
+  MTM_CONTACT_SWITCHABLE_FIELD_KEYS,
+  type MtmContactSwitchableField,
+} from "@/lib/mtm/contact-field-visibility"
 import {
   coerceMtmContactRequiredFields,
   MTM_CONTACT_REQUIRED_FIELD_KEYS,
@@ -9,99 +15,135 @@ import {
 } from "@/lib/mtm/contact-required-fields"
 import { cn } from "@/lib/utils"
 
-const LOCKED_FIELDS = new Set<MtmContactRequiredField>(["firstName", "lastName"])
+type ContactField = MtmContactRequiredField | MtmContactSwitchableField
+type FieldState = "hidden" | "shown" | "required"
 
-const FIELD_GROUPS: readonly { key: string; fields: readonly MtmContactRequiredField[] }[] = [
+const LOCKED_FIELDS = new Set<ContactField>(["firstName", "lastName"])
+const REQUIRABLE = new Set<string>(MTM_CONTACT_REQUIRED_FIELD_KEYS)
+
+const FIELD_GROUPS: readonly { key: string; fields: readonly ContactField[] }[] = [
   { key: "identity", fields: ["firstName", "lastName", "middleName", "externalCode", "birthDate", "gender"] },
-  { key: "professional", fields: ["specialtyName", "qualificationCategory", "profile", "productCategory"] },
-  { key: "communication", fields: ["email", "phone", "mobilePhone", "workPhone", "messengerPhone"] },
+  { key: "professional", fields: ["specialtyName", "specialtyCode", "qualificationCategory", "profile", "productCategory", "coverage"] },
+  { key: "communication", fields: ["email", "phone", "mobilePhone", "workPhone", "homePhone", "messengerPhone", "viberPhone", "whatsappPhone", "telegramPhone"] },
   { key: "address", fields: ["postalCode", "addressRegion", "addressLocality", "addressDistrict", "addressStreet"] },
 ]
 
-export function ContactRequiredFieldSettings({
+/**
+ * What a client card consists of in this tenant. Owner 2026-10-02: «чтобы
+ * завтра, если буду продавать другому профилю, была возможность отключать
+ * ненужные поля». A switch per field — on or off, the way a phone's settings
+ * do it — and a tick for «required» on the fields that are on.
+ */
+export function ContactFieldSettings({
   value,
   onChange,
+  hidden,
+  onHiddenChange,
 }: {
   value: unknown
   onChange: (value: MtmContactRequiredField[]) => void
+  hidden: unknown
+  onHiddenChange: (value: MtmContactSwitchableField[]) => void
 }) {
   const t = useTranslations("mtmContactFieldPolicy")
-  const selected = coerceMtmContactRequiredFields(value)
-  const selectedSet = new Set(selected)
+  const hiddenFields = coerceMtmContactHiddenFields(hidden)
+  const hiddenSet = new Set<string>(hiddenFields)
+  // A hidden field is never required, whatever the stored list says.
+  const required = coerceMtmContactRequiredFields(value)
+  const requiredSet = new Set<string>(required.filter((field) => !hiddenSet.has(field)))
 
-  const toggle = (field: MtmContactRequiredField) => {
-    if (LOCKED_FIELDS.has(field)) return
-    onChange(coerceMtmContactRequiredFields(
-      selectedSet.has(field)
-        ? selected.filter((candidate) => candidate !== field)
-        : [...selected, field],
-    ))
+  const stateOf = (field: ContactField): FieldState => (
+    hiddenSet.has(field) ? "hidden" : requiredSet.has(field) ? "required" : "shown"
+  )
+
+  const setState = (field: ContactField, state: FieldState) => {
+    if (LOCKED_FIELDS.has(field) || stateOf(field) === state) return
+    if (isMtmContactSwitchableField(field)) {
+      const nextHidden = state === "hidden"
+        ? [...hiddenFields, field]
+        : hiddenFields.filter((candidate) => candidate !== field)
+      if (nextHidden.length !== hiddenFields.length) onHiddenChange(coerceMtmContactHiddenFields(nextHidden))
+    }
+    if (REQUIRABLE.has(field)) {
+      const requirable = field as MtmContactRequiredField
+      const nextRequired = state === "required"
+        ? [...required, requirable]
+        : required.filter((candidate) => candidate !== requirable)
+      if (nextRequired.length !== required.length) onChange(coerceMtmContactRequiredFields(nextRequired))
+    }
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="grid max-w-3xl gap-1">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            {t("title")}
-          </h2>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-          {t("selectedCount", { count: selected.length })}
-        </span>
+    <div data-testid="mtm-contact-field-settings">
+      <p className="max-w-3xl text-sm text-muted-foreground">{t("description")}</p>
+      <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+        <span className="rounded-full bg-zinc-100 px-3 py-1 dark:bg-zinc-800">{t("selectedCount", { count: requiredSet.size })}</span>
+        {hiddenFields.length > 0 ? (
+          <span className="rounded-full bg-zinc-100 px-3 py-1 dark:bg-zinc-800">{t("hiddenCount", { count: hiddenFields.length })}</span>
+        ) : null}
       </div>
 
       <div className="mt-5 grid gap-x-8 gap-y-6 lg:grid-cols-2">
         {FIELD_GROUPS.map((group) => (
-          <fieldset key={group.key} className="grid gap-2">
+          <fieldset key={group.key} className="grid content-start">
             <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t(`groups.${group.key}`)}
             </legend>
-            {group.fields.map((field) => {
-              const checked = selectedSet.has(field)
-              const locked = LOCKED_FIELDS.has(field)
-              return (
-                <label
-                  key={field}
-                  className={cn(
-                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 transition-colors",
-                    checked
-                      ? "border-primary/35 bg-primary/5"
-                      : "border-zinc-200 hover:bg-muted/50 dark:border-zinc-700",
-                    locked && "cursor-default",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={checked}
-                    disabled={locked}
-                    onChange={() => toggle(field)}
-                  />
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "grid h-5 w-5 flex-none place-items-center rounded-md border",
-                      checked ? "border-primary bg-primary text-primary-foreground" : "border-zinc-300 dark:border-zinc-600",
-                    )}
+            <div className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+              {group.fields.map((field) => {
+                const state = stateOf(field)
+                const locked = LOCKED_FIELDS.has(field)
+                const label = t(`fields.${field}`)
+                return (
+                  <div
+                    key={field}
+                    data-field={field}
+                    data-state={locked ? "locked" : state}
+                    className={cn("flex min-h-12 items-center gap-3 px-3 py-1.5", state === "hidden" && "bg-muted/40")}
                   >
-                    {checked ? <Check className="h-3.5 w-3.5" /> : null}
-                  </span>
-                  <span className="min-w-0 flex-1 text-sm font-medium">{t(`fields.${field}`)}</span>
-                  {locked ? <span className="text-xs text-muted-foreground">{t("alwaysRequired")}</span> : null}
-                </label>
-              )
-            })}
+                    {locked ? (
+                      <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
+                    ) : (
+                      // The whole row toggles: the name is the switch's label.
+                      <label className="flex min-h-9 min-w-0 flex-1 cursor-pointer items-center gap-3">
+                        <Switch
+                          checked={state !== "hidden"}
+                          aria-label={`${label}: ${t("stateShown")}`}
+                          onCheckedChange={(on) => setState(field, on ? "shown" : "hidden")}
+                        />
+                        <span className={cn("min-w-0 text-sm font-medium", state === "hidden" && "text-muted-foreground")}>{label}</span>
+                        {state === "hidden" ? <span className="text-xs text-muted-foreground">· {t("stateHidden")}</span> : null}
+                      </label>
+                    )}
+                    {locked ? (
+                      <span className="text-xs text-muted-foreground">{t("alwaysRequired")}</span>
+                    ) : REQUIRABLE.has(field) && state !== "hidden" ? (
+                      <label className="flex min-h-9 shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-primary"
+                          checked={state === "required"}
+                          onChange={(event) => setState(field, event.target.checked ? "required" : "shown")}
+                        />
+                        <span className={cn(state === "required" && "font-semibold text-foreground")}>{t("stateRequired")}</span>
+                      </label>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
           </fieldset>
         ))}
       </div>
       <p className="mt-4 text-xs text-muted-foreground">{t("enforcementHint")}</p>
-    </section>
+    </div>
   )
 }
 
-if (FIELD_GROUPS.flatMap((group) => group.fields).length !== MTM_CONTACT_REQUIRED_FIELD_KEYS.length) {
-  throw new Error("Every MTM contact required field must be rendered in settings")
+const RENDERED = new Set<string>(FIELD_GROUPS.flatMap((group) => group.fields))
+if (
+  MTM_CONTACT_REQUIRED_FIELD_KEYS.some((field) => !RENDERED.has(field))
+  || MTM_CONTACT_SWITCHABLE_FIELD_KEYS.some((field) => !RENDERED.has(field))
+) {
+  throw new Error("Every MTM contact field that can be required or hidden must be rendered in settings")
 }

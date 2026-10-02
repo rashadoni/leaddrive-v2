@@ -1,3 +1,5 @@
+import { coerceMtmContactHiddenFields } from "@/lib/mtm/contact-field-visibility"
+
 export const MTM_CONTACT_REQUIRED_FIELD_KEYS = [
   "firstName",
   "lastName",
@@ -48,11 +50,25 @@ function hasRequiredValue(value: unknown): boolean {
   return true
 }
 
+/**
+ * What must be filled: the configured fields, minus the ones the tenant has
+ * switched off. A field nobody can see cannot be demanded — hiding wins, so a
+ * list saved with both never locks every card.
+ */
+export function effectiveMtmContactRequiredFields(
+  configuredFields: unknown,
+  hiddenFields?: unknown,
+): MtmContactRequiredField[] {
+  const hidden = new Set<string>(coerceMtmContactHiddenFields(hiddenFields))
+  return coerceMtmContactRequiredFields(configuredFields).filter((field) => !hidden.has(field))
+}
+
 export function missingMtmContactRequiredFields(
   contact: Record<string, unknown>,
   configuredFields: unknown,
+  hiddenFields?: unknown,
 ): MtmContactRequiredField[] {
-  return coerceMtmContactRequiredFields(configuredFields)
+  return effectiveMtmContactRequiredFields(configuredFields, hiddenFields)
     .filter((field) => !hasRequiredValue(contact[field]))
 }
 
