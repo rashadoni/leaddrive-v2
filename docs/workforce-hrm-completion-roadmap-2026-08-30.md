@@ -3855,3 +3855,24 @@ from this worktree.
   final candidate publication. Next action: exact review and hosted six cases
   with viewport evidence, required gates/fresh-main protected release.
   Progress remains81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
+
+
+## 2026-10-02 — final viewport candidate independent review GREEN
+
+- Exact published35c518f19ab219989df5340b6d56ee6e946e04ce/base88cd6fcc
+  independent complete review GREEN P0=0 P1=0 P2=0 P3=0. Full7paths/122,018
+  bytes/SHA25653a6812c630f7c9d76e6e7d6700298e98773db36d15a784b8906056026c1aa51;
+  non-doc4paths/38,560bytes/SHA256
+  63873569aed69ccb29108d0ef863515189516b15c69d30b2aae5803fd76bacf9.
+- Review confirms focus/scroll only on identity-matching review, unchanged
+  mutation/load guards, full main/window scrollport intersection, actual mtm
+  audit/RLS probes and correctly scoped historical six-case/source receipts.
+  All3 document prefixes append-only; final local12/12/942ms verified.
+- Exact browser37050043177 and mandatory PR37050043343 pending;
+  runner37050043218 and scan37050043286 SUCCESS. PR description rewritten
+  around final visible-confirmation fix plus real browser recovery evidence.
+  This append stays local after published35. No final-head browser PASS yet.
+- Last action: final full independent review. Precise stopping point: pending
+  hosted viewport/focus cases and static/type gates. Next action: inspect
+  primary results, fresh-main protected merge and normal deploy/public SHA
+  proof when all GREEN. Progress unchanged81/161,14/15,C8 36%,59%;007 PARTIAL.
