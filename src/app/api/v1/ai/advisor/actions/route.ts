@@ -14,7 +14,7 @@ export const POST = withRlsAuth("ai", "write", async (req, auth) => {
     return NextResponse.json({ error: "signal and action are required" }, { status: 400 })
   }
 
-  const payload = await getAdvisorPayload(auth.orgId, auth.role, auth.userId)
+  const payload = await getAdvisorPayload(auth.orgId, auth.role, auth.userId, { hiddenModules: auth.hiddenModules })
   const signal = payload.signals.find((item) => item.id === sourceSignalId)
   const action = signal?.recommendedActions.find((item) => item.actionType === requestedActionType)
 

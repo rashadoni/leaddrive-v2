@@ -173,7 +173,12 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       if (!nextHiddenModules) {
         return NextResponse.json({ error: "Unknown module in hiddenModules" }, { status: 400 })
       }
-      updateData.hiddenModules = nextHiddenModules
+      // The form re-sends the list on every save; an unchanged one is not a
+      // change and must not leave an audit entry saying it was.
+      const currentHiddenModules = normalizeHiddenModules(existing.hiddenModules)
+      if (nextHiddenModules.join() !== currentHiddenModules.join()) {
+        updateData.hiddenModules = nextHiddenModules
+      }
     } else if (
       nextRole !== existing.role
       && roleIgnoresModuleMask(nextRole)

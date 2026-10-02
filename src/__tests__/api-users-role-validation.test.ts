@@ -268,9 +268,21 @@ describe("module access (hiddenModules)", () => {
 
   it("never stores a list for an admin", async () => {
     state.user.role = "admin"
+    state.user.hiddenModules = ["finance"]
     const res = await PUT(putReq({ hiddenModules: ["sales"] }), params)
     expect(res.status).toBe(200)
     expect(state.lastUpdate.data.hiddenModules).toEqual([])
+  })
+
+  // The form re-sends the list on every save.
+  it("does not write or audit a list that did not change", async () => {
+    state.user.role = "sales"
+    state.user.hiddenModules = ["finance"]
+    const res = await PUT(putReq({ name: "Renamed", hiddenModules: ["finance"] }), params)
+    expect(res.status).toBe(200)
+    expect(state.lastUpdate.data).not.toHaveProperty("hiddenModules")
+    const audit = vi.mocked(logAudit).mock.calls[0][5] as { newValue: object }
+    expect(audit.newValue).not.toHaveProperty("hiddenModules")
   })
 
   it("clears the list on promotion to admin, so a later demotion does not revive it", async () => {

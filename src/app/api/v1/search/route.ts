@@ -4,7 +4,13 @@ import { PAGE_SIZE } from "@/lib/constants"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { withRls } from "@/lib/with-rls"
 
-export const GET = withRls(async (req, { orgId }) => {
+export const GET = withRls(async (req, { orgId, session }) => {
+  // Search answers out of two modules at once, so its path belongs to neither
+  // and no gate refuses it. A person from whom Sales (or CRM) was hidden must
+  // not find its records here instead.
+  const hidden = new Set(session?.hiddenModules ?? [])
+  const crm = !hidden.has("crm")
+  const sales = !hidden.has("sales")
 
   const q = req.nextUrl.searchParams.get("q")?.trim() || ""
   if (q.length < 2) return NextResponse.json({ success: true, data: [] })
@@ -14,27 +20,27 @@ export const GET = withRls(async (req, { orgId }) => {
 
   try {
     const [companies, contacts, deals, leads, tasks] = await Promise.all([
-      prisma.company.findMany({
+      !crm ? [] : prisma.company.findMany({
         where: { organizationId: orgId, name: { contains, mode } },
         select: { id: true, name: true, industry: true },
         take: PAGE_SIZE.SEARCH,
       }),
-      prisma.contact.findMany({
+      !crm ? [] : prisma.contact.findMany({
         where: { organizationId: orgId, fullName: { contains, mode } },
         select: { id: true, fullName: true, company: { select: { name: true } } },
         take: PAGE_SIZE.SEARCH,
       }),
-      prisma.deal.findMany({
+      !sales ? [] : prisma.deal.findMany({
         where: { organizationId: orgId, name: { contains, mode } },
         select: { id: true, name: true, valueAmount: true, currency: true },
         take: PAGE_SIZE.SEARCH,
       }),
-      prisma.lead.findMany({
+      !sales ? [] : prisma.lead.findMany({
         where: { organizationId: orgId, OR: [{ contactName: { contains, mode } }, { companyName: { contains, mode } }] },
         select: { id: true, contactName: true, companyName: true },
         take: PAGE_SIZE.SEARCH,
       }),
-      prisma.task.findMany({
+      !crm ? [] : prisma.task.findMany({
         where: { organizationId: orgId, title: { contains, mode } },
         select: { id: true, title: true, priority: true },
         take: PAGE_SIZE.SEARCH,

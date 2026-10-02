@@ -1,3 +1,4 @@
+import { applyUserModuleMask } from "@/lib/user-module-access"
 import { prisma } from "@/lib/prisma"
 import { getFieldPermissions } from "@/lib/field-filter"
 import { checkAiBudget } from "@/lib/ai/budget"
@@ -27,25 +28,35 @@ export interface AdvisorAuditScope {
   sources: AdvisorSourceRef[]
 }
 
-export async function getAdvisorOrgContext(organizationId: string): Promise<AdvisorOrgContext> {
+/**
+ * `hiddenModules` is the caller's own list (AuthResult.hiddenModules) when the
+ * advisor is answering one person: its domains are then built from the record
+ * that person's menu is built from. Crons and admin surfaces pass nothing and
+ * get the tenant's record.
+ */
+export async function getAdvisorOrgContext(
+  organizationId: string,
+  hiddenModules: readonly string[] = [],
+): Promise<AdvisorOrgContext> {
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: { plan: true, addons: true, modules: true, features: true },
   })
-  return {
+  const context = {
     plan: org?.plan || "starter",
     addons: org?.addons || [],
     modules: mergeAdvisorModuleMaps(featuresToModuleMap(org?.features), normalizeOrgModules(org?.modules)),
   }
+  return { ...context, modules: applyUserModuleMask(context, hiddenModules) }
 }
 
 export async function getAdvisorPayload(
   organizationId: string,
   role?: string,
   userId?: string,
-  options: { syncAlerts?: boolean } = {},
+  options: { syncAlerts?: boolean; hiddenModules?: readonly string[] } = {},
 ): Promise<AdvisorPayload> {
-  const org = await getAdvisorOrgContext(organizationId)
+  const org = await getAdvisorOrgContext(organizationId, options.hiddenModules)
   const capabilities = buildAdvisorCapabilities(org, role)
   const [collection, pendingActions] = await Promise.all([
     collectAdvisorSignalsWithHealth(organizationId, capabilities),
@@ -263,8 +274,11 @@ export async function answerAdvisorQuestion(input: {
   role: string
   question: string
   locale?: string
+  hiddenModules?: readonly string[]
 }): Promise<AdvisorAnswer> {
-  const payload = await getAdvisorPayload(input.organizationId, input.role, input.userId)
+  const payload = await getAdvisorPayload(input.organizationId, input.role, input.userId, {
+    hiddenModules: input.hiddenModules,
+  })
   const routing = inferAdvisorQueryRouting(input.question, payload.signals)
   const intent = routing.intent
   const routedSignals = filterSignalsForQueryRouting(payload.signals, routing)

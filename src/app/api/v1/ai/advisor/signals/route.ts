@@ -15,6 +15,6 @@ function applyFilters(payload: AdvisorPayload, req: NextRequest): AdvisorPayload
 }
 
 export const GET = withRlsAuth("ai", "read", async (req: NextRequest, auth) => {
-  const payload = await getAdvisorPayload(auth.orgId, auth.role, auth.userId)
+  const payload = await getAdvisorPayload(auth.orgId, auth.role, auth.userId, { hiddenModules: auth.hiddenModules })
   return NextResponse.json({ data: applyFilters(payload, req) })
 })

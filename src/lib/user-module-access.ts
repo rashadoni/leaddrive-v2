@@ -193,3 +193,26 @@ export function moduleContextForUser<T extends OrgModuleFields & { modules: Reco
   if (hidden.length === 0) return org
   return { ...org, modules: applyUserModuleMask(org, hidden) ?? org.modules }
 }
+
+/**
+ * API namespaces that the proxy's tenant module gate does not cover, mapped to
+ * the hideable entry that owns them. That gate only looks at `/api/v1/*` paths
+ * whose scope bridges to a group-module, which leaves out the finance APIs
+ * living outside `/api/v1` and the capability-gated Workforce namespace (most
+ * of whose routes authenticate through a session wrapper, not requireAuth).
+ * The per-user check has to name them, or "hidden" would mean "hidden from the
+ * menu" for these.
+ */
+const UNGATED_API_PREFIXES: ReadonlyArray<readonly [string, UserHideableId]> = [
+  ["/api/v1/workforce", WORKFORCE_HIDEABLE_ID],
+  ["/api/finance", "finance"],
+  ["/api/budgeting", "finance"],
+  ["/api/cost-model", "finance"],
+]
+
+export function hideableIdForUngatedApiPath(pathname: string): UserHideableId | null {
+  for (const [prefix, id] of UNGATED_API_PREFIXES) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return id
+  }
+  return null
+}

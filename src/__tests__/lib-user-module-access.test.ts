@@ -5,6 +5,7 @@ import { accessibleNavItems } from "@/lib/nav-items"
 import {
   applyUserModuleMask,
   effectiveHiddenModules,
+  hideableIdForUngatedApiPath,
   moduleContextForUser,
   normalizeHiddenModules,
   parseHiddenModulesInput,
@@ -168,5 +169,22 @@ describe("moduleContextForUser", () => {
     expect(hasModule(ctx, "sales")).toBe(false)
     expect(hasModule(ctx, "crm")).toBe(true)
     expect(hasModule(context, "sales")).toBe(true)
+  })
+})
+
+// The proxy's tenant gate skips these namespaces, so the per-user check has to
+// name them itself or a hidden module would stay readable by URL.
+describe("hideableIdForUngatedApiPath", () => {
+  it("maps the finance APIs outside /api/v1 and the Workforce namespace", () => {
+    expect(hideableIdForUngatedApiPath("/api/finance/receivables")).toBe("finance")
+    expect(hideableIdForUngatedApiPath("/api/budgeting/plans/1")).toBe("finance")
+    expect(hideableIdForUngatedApiPath("/api/cost-model")).toBe("finance")
+    expect(hideableIdForUngatedApiPath("/api/v1/workforce/timesheet")).toBe("workforce-hrm")
+  })
+
+  it("matches on a path-segment boundary only", () => {
+    expect(hideableIdForUngatedApiPath("/api/financelike")).toBeNull()
+    expect(hideableIdForUngatedApiPath("/api/v1/workforce-export")).toBeNull()
+    expect(hideableIdForUngatedApiPath("/api/v1/deals")).toBeNull()
   })
 })
