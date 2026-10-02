@@ -236,9 +236,10 @@ async function standard(principal, team, index, locale, viewport) {
   assert.equal(posts, 0, "Cancelling confirmation must not mutate")
   assert.equal((await state(principal, moved)).rows.every(row => row.deletedAt === null), true)
   await review(view, moved, team)
-  const responsePromise = view.page.waitForResponse(response => calendarRoute(new URL(response.url())) && response.request().method() === "POST")
-  await view.section.getByRole("button", { name: view.ui.reversalConfirm, exact: true }).click()
-  const response = await responsePromise
+  const [response] = await Promise.all([
+    view.page.waitForResponse(response => calendarRoute(new URL(response.url())) && response.request().method() === "POST"),
+    view.section.getByRole("button", { name: view.ui.reversalConfirm, exact: true }).click(),
+  ])
   assert.equal(response.status(), 200)
   assert.equal((await response.json()).data.reversed, true)
   await until(async () => (await view.section.innerText()).includes(view.ui.reversalRecorded), "reversal success notice")
@@ -378,19 +379,23 @@ async function switchContext(from, to, index, targetTeam, label) {
   await assertSession(view.context, to, `${label}-settled-context`)
   assert.equal((await view.section.innerText()).includes(view.ui.reversalRecorded), false)
   assert.equal(posts, 1)
-  const scopeResponse = view.page.waitForResponse(response => calendarRoute(new URL(response.url()))
-    && response.request().method() === "GET" && response.request().headers()["x-organization-id"] === to.organizationId
-    && new URL(response.url()).searchParams.get("scope") === "ORGANIZATION")
-  await view.section.locator("#workforce-calendar-scope").selectOption("TEAM")
-  await checkedContextRead(await scopeResponse, `${label}-scope-bootstrap-read`, targetTeam)
+  const [scopeResponse] = await Promise.all([
+    view.page.waitForResponse(response => calendarRoute(new URL(response.url()))
+      && response.request().method() === "GET" && response.request().headers()["x-organization-id"] === to.organizationId
+      && new URL(response.url()).searchParams.get("scope") === "ORGANIZATION"),
+    view.section.locator("#workforce-calendar-scope").selectOption("TEAM"),
+  ])
+  await checkedContextRead(scopeResponse, `${label}-scope-bootstrap-read`, targetTeam)
   await until(async () => await view.section.getAttribute("aria-busy") === "false", "scope bootstrap read settles before selecting its team")
   await view.section.locator(`#workforce-calendar-team option[value="${targetTeam.id}"]`).waitFor({ state: "attached" })
-  const teamResponse = view.page.waitForResponse(response => calendarRoute(new URL(response.url()))
-    && response.request().method() === "GET" && response.request().headers()["x-organization-id"] === to.organizationId
-    && new URL(response.url()).searchParams.get("scope") === "TEAM"
-    && new URL(response.url()).searchParams.get("teamId") === targetTeam.id)
-  await view.section.locator("#workforce-calendar-team").selectOption(targetTeam.id)
-  const selected = await checkedContextRead(await teamResponse, `${label}-selected-team-read`, targetTeam)
+  const [teamResponse] = await Promise.all([
+    view.page.waitForResponse(response => calendarRoute(new URL(response.url()))
+      && response.request().method() === "GET" && response.request().headers()["x-organization-id"] === to.organizationId
+      && new URL(response.url()).searchParams.get("scope") === "TEAM"
+      && new URL(response.url()).searchParams.get("teamId") === targetTeam.id),
+    view.section.locator("#workforce-calendar-team").selectOption(targetTeam.id),
+  ])
+  const selected = await checkedContextRead(teamResponse, `${label}-selected-team-read`, targetTeam)
   assert.equal(selected.team.id, targetTeam.id)
   await until(async () => await view.section.locator("#workforce-calendar-date").isVisible()
     && await view.section.getAttribute("aria-busy") === "false"

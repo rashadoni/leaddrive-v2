@@ -963,3 +963,32 @@
   review/publication. Next action: mark ready after GREEN static review, run
   all seven real cases/five required gates, fresh-main protected release/SHA
   proof. Progress81/161,14/15,C8 36%,59%;007 PARTIAL; pilot NOT RUN.
+
+
+## 2026-10-02 — response/action promise failure-path correction
+
+- Exacta2a02a9d19c07b524d544b1ed777006165d7f367/base390c4976 full independent
+  review P0=0 P1=0 P2=1 P3=0: three waitForResponse promises were not observed
+  while separately awaiting click/select, so an earlier timeout could escape
+  the safe top-level catch/finally. Other source/barrier/real-session/receipt
+  checks GREEN. Full11paths/203,175bytes/SHA256
+  851434237caee789c8202b71f75d31c9455bbfbb6fe559ce53913800a8060bb8;
+  non-doc4paths/44,273bytes/SHA256
+  a35f484920b1a4a9810dabd39c397e560f53037ded952f18266535658d8d8b94.
+- Bound each observer and its click/select with immediately awaited Promise.all,
+  keeping registration before the action, exact predicates and all actual
+  response/payload checks. Correction covers standard confirmation plus both
+  context navigation reads; no retry, cookie manipulation or gate weakening.
+- Actually executed final classifier/UI22/22 PASS2.15s, scoped script ESLint,
+  syntax/whitespace PASS; /tmp/workforce528-response-promise-targeted.log.
+  Heavy local checks NOT RUN. Replacement exact independent review and hosted
+  execution still required; a2 draft skips are not source acceptance.
+- Late primary historicaladaec type110998850713 SUCCESS19:56:00Z: no syntax,
+  missing module or undefined name errors;66/66baseline,1,194 advisory errors,
+  tsc exit2. /tmp/workforce528-ada-type.log. This supersedes its earlier pending
+  status only; integratedadaec browser FAIL/6 remains and is not waived.
+- Current result: async failure-path P2 correction implemented. Last action:
+  actual22/22/final lint. Precise stopping point: replacement full exact review
+  on draftPR528. Next action: ready_for_review hosted seven real cases/five
+  mandatory contexts, fresh-main merge and normal deploy/exact public SHA.
+  Progress81/161,14/15,C8 36%,59%,80non-DONE;007 PARTIAL/pilot NOT RUN.
