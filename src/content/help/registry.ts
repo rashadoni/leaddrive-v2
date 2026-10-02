@@ -1810,9 +1810,9 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
   roles: {
     title: { en: "Roles & Permissions", ru: "Роли и разрешения", az: "Rollar və icazələr" },
     subtitle: {
-      en: "Manage system and custom roles; set each role's module access in the permission matrix.",
-      ru: "Управляйте системными и пользовательскими ролями; задавайте доступ к модулям в матрице.",
-      az: "Sistem və özəl rolları idarə edin; hər rolun modul girişini matrisdə təyin edin.",
+      en: "See what each built-in role can do; module access for one employee is set in Users.",
+      ru: "Что может каждая встроенная роль; доступ к модулям для сотрудника задаётся в «Пользователях».",
+      az: "Hər daxili rol nə edə bilər; əməkdaş üçün modullara giriş «İstifadəçilər»də təyin olunur.",
     },
     content: {
       en: lazy(() => import("./roles/en")),
