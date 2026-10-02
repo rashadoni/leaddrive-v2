@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "candidateHead": "03b7eb03753cf8ca870722cf05c97661799e980f",
+  "checkedMergeSha": "d3bef2b47bd7992daa699b3eb85577080ae9e37b",
+  "startedAt": "2026-10-02T19:29:03.706Z",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF + credentials provider + session cookie; no auth mocks",
+  "cases": [
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-TEAM-ru",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-az",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-en",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-ru",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "late-committed-response-principal-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "posts": 1
+    },
+    {
+      "name": "late-committed-response-tenant-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "posts": 1
+    }
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "No production business data",
+    "No Android/AT/load/pilot evidence"
+  ],
+  "status": "PASS",
+  "databaseRole": {
+    "superuser": false,
+    "bypassRls": false,
+    "unscopedUsers": 0,
+    "unscopedTeams": 0,
+    "unscopedWorkforceAudits": 0,
+    "populatedAuditAndCalendarFailClosed": true
+  },
+  "completedAt": "2026-10-02T19:29:47.141Z"
+}

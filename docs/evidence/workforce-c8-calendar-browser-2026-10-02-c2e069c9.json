@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "candidateHead": "c2e069c9ffc2a5a8c4ba1d19ba35bf308e787b6f",
+  "checkedMergeSha": "c234a359af6ee8491410ee268aecb5dc34daf852",
+  "startedAt": "2026-10-02T20:37:35.687Z",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF + credentials provider + session cookie; no auth mocks",
+  "cases": [
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-TEAM-ru",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-az",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-en",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-ru",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "late-committed-response-principal-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "exactHeldRead": true,
+      "newContextRefreshHeld": true,
+      "heldReadLiveBeforeObsoleteResponse": true,
+      "obsoleteResponseDidNotCancelHeldRead": true,
+      "realSessionPreserved": true,
+      "teamNavigationCompleted": true,
+      "posts": 1
+    },
+    {
+      "name": "late-committed-response-tenant-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "exactHeldRead": true,
+      "newContextRefreshHeld": true,
+      "heldReadLiveBeforeObsoleteResponse": true,
+      "obsoleteResponseDidNotCancelHeldRead": true,
+      "realSessionPreserved": true,
+      "teamNavigationCompleted": true,
+      "posts": 1
+    }
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "No production business data",
+    "No Android/AT/load/pilot evidence"
+  ],
+  "status": "PASS",
+  "databaseRole": {
+    "superuser": false,
+    "bypassRls": false,
+    "unscopedUsers": 0,
+    "unscopedTeams": 0,
+    "unscopedWorkforceAudits": 0,
+    "populatedAuditAndCalendarFailClosed": true
+  },
+  "completedAt": "2026-10-02T20:38:30.620Z"
+}
