@@ -824,3 +824,35 @@
   stopping point: hosted required and seven-case gates. Next action: inspect
   primary results, fresh-main protected merge/deploy/public SHA proof.
   Progress81/161,14/15,C8 36%,59%;007 PARTIAL; pilot remains NOT RUN.
+
+
+## 2026-10-02 — fenced-factory exact browser execution GREEN
+
+- Browser https://github.com/rashadoni/leaddrive-v2/actions/runs/37053583689
+  /job110992670596 SUCCESS exact03b7eb03753cf8ca870722cf05c97661799e980f,
+  synthetic merged3bef2b47bd7992daa699b3eb85577080ae9e37b. Primary JSON
+  started2026-10-02T19:29:03.706Z/completed19:29:47.141Z:7/7 PASS43.435s.
+  Original bytes preserved at
+  docs/evidence/workforce-c8-calendar-browser-2026-10-02-03b7eb03.json:
+  2,274bytes/SHA256c1b4f14a764a4e8b9c6e320991ff2d44ecf5f751ae119d8884bad7e1c0a186c4.
+- Actual factory-created restricted role again proves no superuser/bypass,
+  unscoped users/teams/MTM audits hidden and populated calendar/audit fail-closed.
+  All real-auth confirmation/cancel/confirm, two-row/one-audit reversal,
+  desktop and RU390x844 committed-loss exact retry/[true,false]/zero replay
+  writes/double-submit, principal/tenant switches and new GET survival PASS.
+  Root inspected new EN/RU unknown-alert and RU TEAM confirmation screenshots:
+  full notices/panel visible beneath header; focus/main-window assertions PASS.
+- Primary pre-merge production baseline (strict TLS hostname pinned to
+ 13.140.132.245): ping200/oktrue, public artifactSha exactly
+  88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf/builtAt2026-10-02T18:17:33Z.
+  This is existing main availability, not a release of528. New-head hosted
+  development cases only; authenticated production/AT/Android/load/pilot NOT RUN.
+- Current required03 pr-scope110992667501, runner37053583148 and
+  scan37053583045 SUCCESS; static110992780179/type110992780109 pending.
+  PR production build110992669057 SKIPPED normally. Receipt-only local append
+  after published03; four non-doc source blobs unchanged. No merge yet.
+- Current result: corrected factory candidate browser GREEN7/7. Last action:
+  new primary JSON/screenshots preservation. Precise stopping point: remaining
+  static/type gates. Next action: primary logs/fresh-main protected merge,
+  normal deploy/public exact merged SHA. Progress81/161,14/15,C8 36%,59%;
+  80non-DONE;007 PARTIAL, physical pilot NOT RUN.
