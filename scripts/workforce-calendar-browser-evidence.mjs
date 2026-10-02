@@ -100,7 +100,7 @@ async function checkedContextRead(response, phase, targetTeam) {
   readDiagnostics.push(diagnostic)
   const payload = await response.json().catch(() => null)
   diagnostic.success = payload?.success === true
-  if (typeof payload?.code === "string" && /^[A-Z0-9_]{1,100}$/.test(payload.code)) diagnostic.code = payload.code
+  if (typeof payload?.code === "string" && /^[A-Za-z0-9_]{1,100}$/.test(payload.code)) diagnostic.code = payload.code
   assert.equal(response.status(), 200, `${phase}: actual calendar read must succeed`)
   assert.equal(payload?.success, true, `${phase}: actual calendar JSON must succeed`)
   assert.ok(payload.data.teamDirectory.items.some(team => team.id === targetTeam.id), `${phase}: new-context team must remain available`)
@@ -396,6 +396,7 @@ async function switchContext(from, to, index, targetTeam, label) {
     && await view.section.getAttribute("aria-busy") === "false"
     && await view.section.locator("#workforce-calendar-team").inputValue() === targetTeam.id, "selected-team read settles in the new context")
   await assertSession(view.context, to, `${label}-settled-team`)
+  assert.equal(posts, 1, "Settled new-context navigation must not send another POST")
   await view.page.screenshot({ path: `${outputDirectory}/context-${label}.png`, fullPage: true })
   receipts.cases.push({ name: `late-committed-response-${label}-switch`, status: "PASS", realSessionChanged: true, staleNotice: false, newReadCompleted: true, exactHeldRead: true, realSessionPreserved: true, teamNavigationCompleted: true, posts })
   await view.context.close()

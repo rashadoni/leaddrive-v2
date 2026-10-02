@@ -4360,3 +4360,22 @@ corrections as new entries that explicitly supersede the earlier fact.
   Next action: stronger real-session/read diagnostics and all required gates,
   fresh-main protected merge/deploy/SHA proof only after GREEN. Progress81/161,
   14/15,C8 36%,59%,80non-DONE;007 PARTIAL/pilot NOT RUN.
+
+
+## 2026-10-02 — context-barrier incremental review correction
+
+- Independent incremental read-barrier review confirmed preserved real cookies,
+  sessions, mutations and stale-response assertions. P0=0 P1=0 P2=0 P3=1:
+  safe diagnostic code regex omitted legitimate lowercase session_expired.
+- Corrected bounded ASCII regex to include lowercase; actual payloads/cookie
+  values remain excluded. Added posts===1 assertion again after final team
+  settlement, so no-extra-mutation is explicit at scenario completion.
+- Actual final targeted classifier/UI22/22 PASS1.78s, scoped script ESLint,
+  syntax/whitespace PASS; /tmp/workforce528-context-barrier-reviewed.log.
+  Heavy local/browser checks NOT RUN. New full exact review/hosted execution
+  still required; no new-head browser PASS or original-cause claim yet.
+- Current result: P3 diagnostic omission corrected, stronger harness complete.
+  Last action: final bounded22/22. Precise stopping point: draft candidate full
+  review/publication. Next action: mark ready after GREEN static review, run
+  all seven real cases/five required gates, fresh-main protected release/SHA
+  proof. Progress81/161,14/15,C8 36%,59%;007 PARTIAL; pilot NOT RUN.
