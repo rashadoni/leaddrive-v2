@@ -615,6 +615,11 @@ model User {
   /// Org-level entitlement (the `ai` module) and the role gate still apply on
   /// top — this only says WHICH of the eligible people were switched on.
   voiceEnabled      Boolean      @default(false)
+  /// Group-modules an admin hid from this one person. A DENY list that only
+  /// narrows what the tenant has enabled; empty = no restriction. Ignored for
+  /// admin/superadmin. Semantics and the reason it is not an allow list live in
+  /// `src/lib/user-module-access.ts`.
+  hiddenModules     String[]     @default([])
   avatar            String?
   phone             String?
   department        String?

@@ -24,6 +24,8 @@ declare module "next-auth" {
       organizationSlug: string
       organizationName: string
       plan: string
+      /** Group-modules an admin hid from this user; empty for admins. */
+      hiddenModules?: string[]
     }
   }
 }

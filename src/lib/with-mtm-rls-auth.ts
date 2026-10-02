@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import type { AuthResult } from "./api-auth"
 import { getMobileAuth, type MobileTenantCapabilities } from "./mobile-auth"
 import type { MtmMobileTenantModule } from "./mtm/mobile-capability-manifest"
@@ -7,6 +7,7 @@ import type { Action, Module } from "./permissions"
 import type { FieldTenantCapabilityId } from "./tenant-capabilities"
 import { requireTenantCapabilityAccessResponse } from "./tenant-capability-access"
 import { withMobileRls, type MobileEndpointCapability } from "./with-mobile-rls"
+import { hideableIdForFieldCapability } from "./user-module-access"
 import { withRlsAuth } from "./with-rls"
 
 export interface MtmRlsAuth {
@@ -51,6 +52,17 @@ function withMtmTenantCapabilityWebRlsAuth<C = unknown>(
   return withRlsAuth<C>("mtm", action, async (req, auth, ctx) => {
     const denied = await requireTenantCapabilityAccessResponse(auth.orgId, tenantCapability)
     if (denied) return denied
+    // requireAuth skipped its per-user module check along with the deferred
+    // tenant gate: only this wrapper knows which of the two capabilities the
+    // route belongs to, so the "hidden from this person" check is made here.
+    // (Same body as api-auth's userModuleHiddenResponse; api-auth stays a
+    // type-only import here so this wrapper does not load the Auth.js stack.)
+    if (auth.hiddenModules?.includes(hideableIdForFieldCapability(tenantCapability))) {
+      return NextResponse.json(
+        { error: "Forbidden", message: `Module "${tenantCapability}" is not available to your account.` },
+        { status: 403 },
+      )
+    }
     return handler(req, auth, ctx)
   }, { deferLegacyModuleGate: "mtm" })
 }

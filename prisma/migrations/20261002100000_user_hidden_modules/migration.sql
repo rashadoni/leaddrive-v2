@@ -1,0 +1,11 @@
+-- Per-user module visibility: the group-modules an admin hid from one person.
+--
+-- Default is the empty array, so the migration restricts nobody: every existing
+-- user keeps seeing exactly what the tenant has enabled until an admin unticks
+-- a module for them. It is a deny list for that reason — an allow list would
+-- have needed a backfill of every user with every module to avoid locking the
+-- whole install out on deploy.
+--
+-- No RLS work needed: "users" already carries the tenant policy, and this is a
+-- new column on an existing row, not a new table.
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "hiddenModules" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
