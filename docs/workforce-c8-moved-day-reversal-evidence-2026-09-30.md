@@ -1776,3 +1776,33 @@
   domain pinnedto13.140.132.245, appendrelease receipts, successorcheckpoint.
   Progress81/161,14/15,C8 36%,overall59%,80non-DONE,007PARTIAL unchanged;
   productionbusinessauth/wholepagekeyboard/zoom/AT/Android/load/pilot NOT RUN.
+
+
+## 2026-10-03 (Asia/Baku) — next bounded acceptance scope, source-only reconnaissance
+
+- Read-only root/independent reconnaissance identifies remaining320CSS-pixel
+  reflow proof beyond released-candidate9 desktop/390px cases. Smallest next
+  successor lane: one real hostedTEAM/RU320x844 case with a valid160-character
+  synthetic pairlabel including a long unbroken fragment; retain allcurrent9.
+  Fixture name extension only in harness, actualwriter validation/session/RLS.
+- Require nativeTab/Enter/Space cancel/reopen/committed-response-loss/exactretry,
+  Cancel POST0/fullpair+audit unchanged, realfirstcommit2tombstones/1audit,
+  byte-identicalretry[true,false]/0replaywrites, samegeneration/team/session,
+  final populatedRLSprobe. Controls and individualtext Range rectangles must
+  fit calendar/main horizontalbounds; document.scrollWidth alone cannot prove
+  absence of clipping behindexisting overflow-hidden. Longconfirmation may
+  scrollvertically; focusedheading/alert and eachkeyboardbutton must be visible
+  whenreached. Current9fullviewport assertions must notbeweakened fornewcase.
+- Source-only risk: sharedButton whitespace-nowrap and labelparagraphs lacking
+  longwordwrapping could clip at320. Actualdefect NOT PROVEN; no sourcefix yet.
+  First add honest hostedcase; ifactualfailure confirmsclipping, fix onlythe
+  calendarcomponent with narrowwrapping/sizing, notsharedButton/appshell/API.
+- This is320CSSreflow, notnative200%browserzoom. No provennativezoom method in
+  currentharness; zoom/AT/contrast/wholepage/physical/authenticatedproduction
+  remain NOT RUN. General update/delete,breakpolicy,AGENTmoves,Route mutation
+  excluded. No newcompletioncredit:81/161,14/15,C8 36%,overall59%,007PARTIAL.
+- Current status: nextbounded scope prepared while own467Mproductionbuild/QA
+  pending. Last action: read-only scope/testmethod reconnaissance. Precise
+  stopping point: currentrelease productionproof; nextcase notimplemented/run.
+  Next action: finish ownnormal deploy/exactSHAreceipts, createpart18 in same
+  worktree/preserveprivateappend-onlyreceipts, then implementthe320CSScase.
