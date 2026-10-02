@@ -13,7 +13,7 @@ export const HISTORICAL_LAYOUT_CONTROLS = Object.freeze({
   reducedMotion: "reduce", visionDeficiency: "standard", sampleCount: 3,
   dataProfile: "typical", fixtureKind: "support-historical-layout-v1", ticketCount: 50,
   metricDefinition: "first-matched-actionable-work-item-container-top-from-viewport-after-zero-scroll-v1",
-  blockDefinition: "visible-bordered-rounded-elements-within-main-v1",
+  blockDefinition: "rendered-bordered-rounded-elements-within-main-including-offscreen-v1",
   clockPolicy: "shared-future-utc-day-browser-server-anchor-with-monotonic-runtime-v1",
   fixtureTimestamps: "ui-significant-created-updated-dates-at-anchor-v1",
 })

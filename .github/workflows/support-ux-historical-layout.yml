@@ -4,6 +4,7 @@ name: Matched historical Support layout
 # credentials, deployment workflow, archived remote or historical workflow use.
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

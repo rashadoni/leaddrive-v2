@@ -266,8 +266,9 @@ describe("Matched historical Support layout admission", () => {
     expect(historicalFailureCode(new Error("TICKET_COHORT_MISMATCH"))).toBe("TICKET_COHORT_MISMATCH")
   })
 
-  it("retains a dispatch-only no-production controller with shared clock and exact public ancestry admission", () => {
+  it("retains a manually dispatched reusable no-production controller with exact public ancestry admission", () => {
     expect(workflow).toContain("workflow_dispatch:")
+    expect(workflow).toContain("workflow_call:")
     expect(workflow).not.toContain("pull_request:")
     expect(workflow).not.toContain("push:")
     expect(workflow).not.toContain("secrets.")

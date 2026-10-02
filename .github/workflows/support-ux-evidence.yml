@@ -3,6 +3,11 @@ name: Support UX evidence
 on:
   workflow_dispatch:
     inputs:
+      historical_layout:
+        description: Run the independent matched historical layout measurement instead of the regular capture
+        required: false
+        type: boolean
+        default: false
       target_mode:
         description: Use an isolated CI tenant or an explicitly configured non-production host
         required: true
@@ -90,7 +95,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  historical-layout:
+    if: ${{ inputs.historical_layout == true }}
+    uses: ./.github/workflows/support-ux-historical-layout.yml
+    permissions:
+      contents: read
+
   capture:
+    if: ${{ inputs.historical_layout != true }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     services:

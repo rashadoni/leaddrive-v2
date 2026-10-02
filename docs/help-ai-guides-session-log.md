@@ -870,3 +870,26 @@ and reopened the relevant acceptance row. Precise stopping point: checkpoint
 and reconcile current main before new exact-source CI. Next action: publish
 the reviewable candidate, collect corrected Calendar/historical artifacts and
 complete protected PR checks while awaiting the selected tenant record.
+
+
+### Current-main integration and dispatch registration reconciliation
+
+- Saved logical source/measurement checkpoint9cfef0ca2 and merged current
+  origin/main73e28b0ea locally as7643a44b2 without conflicts. Main had advanced
+  again with an independently released settings user-access change; it and MTM
+  translations remain incoming main history, not task-owned cleanup.
+- GitHub's metadata returns404 for the new historical workflow: it is not
+  registered on the default branch. No main merge/deploy is needed merely to
+  register a measurement. Added a reusable `workflow_call` entry and an opt-in
+  `historical_layout` boolean to the already registered Support evidence
+  dispatcher. Its default remains false; historical selection skips regular
+  capture and calls only the read-only isolated measurement without inherited
+  secrets. The branch's exact controller/runtime SHA remains the receipt key.
+  This resolves dispatch routing while preserving the original capture path.
+
+- After integrating current main,29/29 narrow Calendar API/historical behavior
+  cases and scoped ESLint PASS; runner policy39 and event-platform asset guard
+  PASS. Independent review confirmed the date filter and same-item selectors.
+  Clarified rendered rounded/bordered block counts explicitly include offscreen
+  descendants under main; they must not be called first-viewport visible blocks.
+  This clarification preserves the unchanged primary-distance35% gate.
