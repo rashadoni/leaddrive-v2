@@ -44,6 +44,14 @@ export function ContactCreateRequestQueue() {
     try {
       const response = await fetch("/api/v1/mtm/contact-create-requests", { headers: { Accept: "application/json" } })
       const body = await response.json().catch(() => null)
+      // The queue belongs to whoever may decide the requests. A field agent, or
+      // a login without an employee card, is refused it — which is not an error
+      // on their Clients screen: they simply have no queue. This used to raise a
+      // red "Forbidden" toast on every visit.
+      if (response.status === 403) {
+        setRows([])
+        return
+      }
       if (!response.ok || !body?.success) throw new Error(body?.error || copy.failed)
       setRows(Array.isArray(body.data?.requests) ? body.data.requests : [])
     } catch (error) {
