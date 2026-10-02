@@ -342,11 +342,51 @@ describe("MTM contacts and organizations", () => {
     })
   })
 
+  it("filters by a tenant-made client category and reports each contact's category", async () => {
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValue([
+      { id: "contact-nurse", type: "OTHER", agentAssignments: [], dictionaryAssignments: [{ entryCode: "TIBB_BACISI" }], workplaces: [], visits: [], routePoints: [] },
+      { id: "contact-legacy", type: "OTHER", agentAssignments: [], dictionaryAssignments: [], workplaces: [], visits: [], routePoints: [] },
+    ] as any)
+
+    const response = await getContacts(request("/api/v1/mtm/contacts?type=TIBB_BACISI"))
+    expect(response.status).toBe(200)
+    const args = vi.mocked(prisma.mtmContact.findMany).mock.calls[0][0] as any
+    expect(args.where).not.toHaveProperty("type")
+    expect(args.where.AND).toContainEqual({
+      OR: [{ dictionaryAssignments: { some: { kind: "CLIENT_TYPE", effectiveTo: null, entryCode: "TIBB_BACISI" } } }],
+    })
+    expect(args.include.dictionaryAssignments).toEqual({
+      where: { kind: "CLIENT_TYPE", effectiveTo: null },
+      orderBy: { effectiveFrom: "desc" },
+      take: 1,
+      select: { entryCode: true },
+    })
+    const contacts = (await response.json()).data.contacts
+    expect(contacts.map((contact: any) => [contact.id, contact.categoryCode])).toEqual([
+      ["contact-nurse", "TIBB_BACISI"],
+      ["contact-legacy", null],
+    ])
+    expect(contacts[0]).not.toHaveProperty("dictionaryAssignments")
+  })
+
+  it("keeps a built-in type filter returning the contacts that were never given a category", async () => {
+    const response = await getContacts(request("/api/v1/mtm/contacts?type=DOCTOR"))
+    expect(response.status).toBe(200)
+    const args = vi.mocked(prisma.mtmContact.findMany).mock.calls[0][0] as any
+    expect(args.where.AND).toContainEqual({
+      OR: [
+        { dictionaryAssignments: { some: { kind: "CLIENT_TYPE", effectiveTo: null, entryCode: "DOCTOR" } } },
+        { type: "DOCTOR", dictionaryAssignments: { none: { kind: "CLIENT_TYPE", effectiveTo: null } } },
+      ],
+    })
+  })
+
   it("projects doctor coverage only from a signed policy and complete frozen month", async () => {
     vi.mocked(prisma.mtmContact.findMany).mockResolvedValue([{
       id: "contact-coverage-1",
       type: "DOCTOR",
       agentAssignments: [{ role: "PRIMARY", agentId: "agent-1", agent: { id: "agent-1", name: "Aysel" } }],
+      dictionaryAssignments: [],
       workplaces: [],
       visits: [],
       routePoints: [],
@@ -445,6 +485,12 @@ describe("MTM contacts and organizations", () => {
         cityDistricts: ["North"],
         organizationKinds: ["Adult hospital"],
         objectTypes: ["CLINIC"],
+        // No categories configured: the filter still offers the built-in types.
+        categories: [
+          { code: "DOCTOR", labels: { ru: "Врач", az: "Həkim", en: "Doctor" } },
+          { code: "PHARMACIST", labels: { ru: "Фармацевт", az: "Əczaçı", en: "Pharmacist" } },
+          { code: "OTHER", labels: { ru: "Другой клиент", az: "Digər müştəri", en: "Other client" } },
+        ],
       },
     })
 

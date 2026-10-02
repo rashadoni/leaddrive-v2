@@ -48,7 +48,8 @@ export const EMPTY_CONTACT_FILTERS: ContactExplorerFilters = {
 }
 
 const FILTER_KEYS = Object.keys(EMPTY_CONTACT_FILTERS) as Array<keyof ContactExplorerFilters>
-const CONTACT_TYPES = new Set(["DOCTOR", "PHARMACIST", "OTHER"])
+// `type` holds a client category code: a built-in type or one the tenant made.
+const CONTACT_CATEGORY_CODE = /^[A-Z0-9][A-Z0-9_-]{0,79}$/
 const CONTACT_STATUSES = new Set(["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"])
 const CONTACT_CATEGORIES = new Set(["A", "B", "C", "D"])
 const ORGANIZATION_TYPES = new Set(["PHARMACY", "CLINIC", "STORE", "OTHER"])
@@ -60,7 +61,7 @@ export function contactFiltersFromSearchParams(params: URLSearchParams): Contact
   for (const key of FILTER_KEYS) {
     if (!params.has(key)) continue
     const value = params.get(key) ?? ""
-    if (key === "type" && value && !CONTACT_TYPES.has(value)) continue
+    if (key === "type" && value && !CONTACT_CATEGORY_CODE.test(value)) continue
     if (key === "status" && value && !CONTACT_STATUSES.has(value)) continue
     if (key === "category" && value && !CONTACT_CATEGORIES.has(value)) continue
     if (key === "objectType" && value && !ORGANIZATION_TYPES.has(value)) continue

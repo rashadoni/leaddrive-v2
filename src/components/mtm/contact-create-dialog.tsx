@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { legacyContactTypeForCategory } from "@/lib/mtm/contact-category-editor"
 
 type ContactType = "DOCTOR" | "PHARMACIST" | "OTHER"
 type Labels = { ru: string; az: string; en: string }
@@ -76,10 +77,6 @@ function organizationLabel(organization: OrganizationOption): string {
 
 function localized(labels: Labels, locale: string): string {
   return locale.startsWith("az") ? labels.az : locale.startsWith("ru") ? labels.ru : labels.en
-}
-
-function legacyContactType(code: string): ContactType {
-  return code === "DOCTOR" ? "DOCTOR" : code === "PHARMACIST" ? "PHARMACIST" : "OTHER"
 }
 
 export function MtmContactCreateDialog({
@@ -146,7 +143,7 @@ export function MtmContactCreateDialog({
       const first = [...(dictionary?.entries ?? [])].sort((left, right) => left.order - right.order)[0]
       setClientTypeCode(first?.code ?? "")
       setClientTypeValues({})
-      if (first) setForm((current) => ({ ...current, type: legacyContactType(first.code) }))
+      if (first) setForm((current) => ({ ...current, type: legacyContactTypeForCategory(first.code) }))
     } catch {
       setClientTypeDictionary(null)
     }
@@ -169,7 +166,7 @@ export function MtmContactCreateDialog({
   const selectClientType = (code: string) => {
     setClientTypeCode(code)
     setClientTypeValues({})
-    update("type", legacyContactType(code))
+    update("type", legacyContactTypeForCategory(code))
   }
 
   const submit = async (event: FormEvent) => {
@@ -272,7 +269,7 @@ export function MtmContactCreateDialog({
               <div className="space-y-1.5"><Label htmlFor="contact-create-first-name">{t("firstName")} *</Label><Input id="contact-create-first-name" value={form.firstName} onChange={(event) => update("firstName", event.target.value)} autoComplete="given-name" /></div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-middle-name">{t("middleName")}</Label><Input id="contact-create-middle-name" value={form.middleName} onChange={(event) => update("middleName", event.target.value)} autoComplete="additional-name" /></div>
               {form.type === "DOCTOR" && !selectedClientType?.fields?.some((field) => field.key === "specialty") ? <div className="space-y-1.5"><Label htmlFor="contact-create-specialty">{t("specialty")}</Label><Input id="contact-create-specialty" value={form.specialtyName} onChange={(event) => update("specialtyName", event.target.value)} placeholder={t("specialtyPlaceholder")} /></div> : null}
-              {(selectedClientType?.fields ?? []).sort((left, right) => left.order - right.order).map((field) => (
+              {[...(selectedClientType?.fields ?? [])].sort((left, right) => left.order - right.order).map((field) => (
                 <div key={field.key} className={field.type === "TEXTAREA" ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}>
                   <Label htmlFor={`contact-create-category-${field.key}`}>{localized(field.labels, locale)}{field.required ? " *" : ""}</Label>
                   {field.type === "SELECT" ? (

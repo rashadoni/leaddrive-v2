@@ -58,6 +58,12 @@ import {
   appendMtmRouteAssignmentHandoff,
   mtmRouteAssignmentHandoffFromSearchParams,
 } from "@/lib/mtm/route-links"
+import {
+  effectiveContactCategoryCode,
+  LEGACY_CONTACT_TYPES,
+  localizedContactCategoryLabel,
+  type ContactCategoryLabels,
+} from "@/lib/mtm/contact-category-editor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -105,6 +111,8 @@ type ContactRow = {
   qualificationCategory: string | null
   profile: string | null
   category: string
+  /** The assigned client category; null means "shown under the built-in type". */
+  categoryCode: string | null
   phone: string | null
   mobilePhone: string | null
   workPhone: string | null
@@ -178,6 +186,7 @@ type ContactFacets = {
   cityDistricts: string[]
   organizationKinds: string[]
   objectTypes: string[]
+  categories?: Array<{ code: string; labels: ContactCategoryLabels }>
   asOf: string
 }
 
@@ -306,6 +315,27 @@ export function MtmContactExplorer() {
     () => createDateFormatter(locale, { dateStyle: "medium", timeStyle: "short" }),
     [locale],
   )
+
+  // The tenant's own category names win; a code they no longer list (or the
+  // list not loaded yet) falls back to the built-in type name.
+  const categoryLabels = useMemo(
+    () => new Map((facets?.categories ?? []).map((category) => [
+      category.code,
+      localizedContactCategoryLabel(category.labels, locale),
+    ])),
+    [facets?.categories, locale],
+  )
+  const categoryLabel = useCallback((contact: Pick<ContactRow, "type" | "categoryCode">) => (
+    categoryLabels.get(effectiveContactCategoryCode(contact)) ?? t(`types.${contact.type}`)
+  ), [categoryLabels, t])
+  const categoryOptions = useMemo(() => (
+    facets?.categories?.length
+      ? facets.categories.map((category) => ({
+          value: category.code,
+          label: localizedContactCategoryLabel(category.labels, locale),
+        }))
+      : LEGACY_CONTACT_TYPES.map((type) => ({ value: type as string, label: t(`types.${type}`) }))
+  ), [facets?.categories, locale, t])
 
   const query = useMemo(() => contactQuery(filters, page, limit), [filters, page, limit])
   const queryString = query.toString()
@@ -709,7 +739,7 @@ export function MtmContactExplorer() {
           <MtmFilterSelect testId="mtm-contact-status" label={t("status")} value={filters.status} onChange={(value) => updateFilter("status", value)} allLabel={t("all")}
             options={["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"].map((status) => ({ value: status, label: t(`statuses.${status}`) }))} />
           <MtmFilterSelect testId="mtm-contact-type" label={t("type")} value={filters.type} onChange={(value) => updateFilter("type", value)} allLabel={t("all")}
-            options={["DOCTOR", "PHARMACIST", "OTHER"].map((type) => ({ value: type, label: t(`types.${type}`) }))} />
+            options={categoryOptions} />
           <MtmFilterSelect testId="mtm-contact-category" label={t("category")} value={filters.category} onChange={(value) => updateFilter("category", value)} allLabel={t("all")}
             options={["A", "B", "C", "D"].map((category) => ({ value: category, label: category }))} />
           <MtmFilterSelect testId="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)} allLabel={t("allAccessible")}
@@ -832,6 +862,7 @@ export function MtmContactExplorer() {
                 onCheckedChange={(checked) => toggleContact(contact.id, checked)}
                 visitDate={visitDate}
                 visitDateTime={visitDateTime}
+                categoryLabel={categoryLabel(contact)}
                 t={t}
               />
             ))}
@@ -883,7 +914,7 @@ export function MtmContactExplorer() {
                         </Link>
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           <Badge variant={statusVariant(contact.status)}>{t(`statuses.${contact.status}`)}</Badge>
-                          <Badge variant="outline">{t(`types.${contact.type}`)}</Badge>
+                          <Badge variant="outline">{categoryLabel(contact)}</Badge>
                           <Badge variant="outline">{t("categoryShort", { category: contact.category })}</Badge>
                         </div>
                         {contact.externalCode ? <p className="mt-1 text-xs text-muted-foreground">{contact.externalCode}</p> : null}
@@ -1082,6 +1113,7 @@ function ContactCard({
   onCheckedChange,
   visitDate,
   visitDateTime,
+  categoryLabel,
   t,
 }: {
   contact: ContactRow
@@ -1090,6 +1122,7 @@ function ContactCard({
   onCheckedChange: (checked: boolean) => void
   visitDate: DateFormatter
   visitDateTime: DateFormatter
+  categoryLabel: string
   t: ReturnType<typeof useTranslations>
 }) {
   const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
@@ -1115,7 +1148,7 @@ function ContactCard({
           </Link>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Badge variant={statusVariant(contact.status)}>{t(`statuses.${contact.status}`)}</Badge>
-            <Badge variant="outline">{t(`types.${contact.type}`)}</Badge>
+            <Badge variant="outline">{categoryLabel}</Badge>
             <Badge variant="outline">{t("categoryShort", { category: contact.category })}</Badge>
           </div>
         </div>

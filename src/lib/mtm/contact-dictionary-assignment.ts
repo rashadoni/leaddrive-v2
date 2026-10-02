@@ -6,6 +6,7 @@ import {
   contactDictionarySignatureIsCoherent,
   type ContactDictionaryEntry,
 } from "@/lib/mtm/contact-dictionary"
+import { legacyContactTypeForCategory } from "@/lib/mtm/contact-category-editor"
 import type { ContactDictionaryAssignmentSetSchema } from "@/lib/mtm-validators"
 import type { z } from "zod"
 
@@ -265,7 +266,13 @@ export async function applyContactDictionaryAssignmentSet(
 
   await client.mtmContact.updateMany({
     where: { organizationId: args.organizationId, id: args.contactId, deletedAt: null },
-    data: { categoryData: (args.input.clientType?.values ?? {}) as Prisma.InputJsonValue },
+    data: {
+      categoryData: (args.input.clientType?.values ?? {}) as Prisma.InputJsonValue,
+      // The category owns the built-in type, exactly as it does when a contact
+      // is created: moving a doctor to "Pharmacist" must also take them out of
+      // doctor scoring. Clearing the category leaves the type as it was.
+      ...(args.input.clientType ? { type: legacyContactTypeForCategory(args.input.clientType.code) } : {}),
+    },
   })
 
   const after = await readContactDictionaryAssignmentState(client, args.organizationId, args.contactId)

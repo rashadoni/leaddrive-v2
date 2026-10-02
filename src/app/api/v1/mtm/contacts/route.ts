@@ -23,6 +23,7 @@ import {
   ContactDictionaryAssignmentConflict,
   validateContactDictionaryAssignmentSet,
 } from "@/lib/mtm/contact-dictionary-assignment"
+import { contactCategoryWhere } from "@/lib/mtm/contact-categories"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -135,10 +136,14 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     })
   }
 
+  // `type` is the client category: the three built-in types, or any category
+  // the tenant configured in MTM settings.
+  const categoryWhere = contactCategoryWhere(type)
+  if (categoryWhere) and.push(categoryWhere)
+
   const where: Prisma.MtmContactWhereInput = {
     organizationId: auth.orgId,
     deletedAt: null,
-    ...(type && ["DOCTOR", "PHARMACIST", "OTHER"].includes(type) ? { type: type as "DOCTOR" | "PHARMACIST" | "OTHER" } : {}),
     ...(status && ["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"].includes(status) ? { status: status as "ACTIVE" | "INACTIVE" | "PROSPECT" | "DUPLICATE" | "MERGED" } : {}),
     ...(specialtyCode ? { specialtyCode } : {}),
     ...(profile ? { profile } : {}),
@@ -175,6 +180,12 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
           where: activeFieldAssignmentWindow(asOf),
           include: { agent: { select: { id: true, name: true, role: true } } },
           orderBy: [{ role: "asc" }, { effectiveFrom: "desc" }],
+        },
+        dictionaryAssignments: {
+          where: { kind: "CLIENT_TYPE", effectiveTo: null },
+          orderBy: { effectiveFrom: "desc" },
+          take: 1,
+          select: { entryCode: true },
         },
         visits: {
           where: {
@@ -339,7 +350,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   return NextResponse.json({
     success: true,
     data: {
-      contacts: contactsWithCoverage,
+      contacts: contactsWithCoverage.map(({ dictionaryAssignments, ...contact }) => ({
+        ...contact,
+        // The assigned category; null means "shown under its built-in type".
+        categoryCode: dictionaryAssignments[0]?.entryCode ?? null,
+      })),
       total,
       page,
       limit,
