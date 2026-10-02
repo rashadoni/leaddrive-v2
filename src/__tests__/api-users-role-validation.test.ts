@@ -237,3 +237,95 @@ describe("POST /api/v1/users — role validation", () => {
     expect(state.lastCreate).toBeNull()
   })
 })
+
+describe("module access (hiddenModules)", () => {
+  const newUser = { name: "Aysel", email: "aysel@zeytun.az", password: "Valid-Test-Pass-2026!" }
+
+  it("stores the modules an admin hid from an existing user and audits the change", async () => {
+    state.user.role = "sales"
+    state.user.hiddenModules = []
+    const res = await PUT(putReq({ hiddenModules: ["finance", "marketing"] }), params)
+
+    expect(res.status).toBe(200)
+    // Catalog order, not the order the form sent.
+    expect(state.lastUpdate.data.hiddenModules).toEqual(["marketing", "finance"])
+    expect(logAudit).toHaveBeenCalledWith(
+      "org_1", "user_updated", "user", "u1", "m@azmade.az",
+      expect.objectContaining({
+        oldValue: expect.objectContaining({ hiddenModules: [] }),
+        newValue: expect.objectContaining({ hiddenModules: ["marketing", "finance"] }),
+      }),
+    )
+  })
+
+  it("rejects an id that is not hideable instead of silently not applying it", async () => {
+    for (const bad of ["settings", "salez"]) {
+      const res = await PUT(putReq({ hiddenModules: ["sales", bad] }), params)
+      expect(res.status).toBe(400)
+    }
+    expect(state.lastUpdate).toBeNull()
+  })
+
+  it("never stores a list for an admin", async () => {
+    state.user.role = "admin"
+    state.user.hiddenModules = ["finance"]
+    const res = await PUT(putReq({ hiddenModules: ["sales"] }), params)
+    expect(res.status).toBe(200)
+    expect(state.lastUpdate.data.hiddenModules).toEqual([])
+  })
+
+  // The form re-sends the list on every save.
+  it("does not write or audit a list that did not change", async () => {
+    state.user.role = "sales"
+    state.user.hiddenModules = ["finance"]
+    const res = await PUT(putReq({ name: "Renamed", hiddenModules: ["finance"] }), params)
+    expect(res.status).toBe(200)
+    expect(state.lastUpdate.data).not.toHaveProperty("hiddenModules")
+    const audit = vi.mocked(logAudit).mock.calls[0][5] as { newValue: object }
+    expect(audit.newValue).not.toHaveProperty("hiddenModules")
+  })
+
+  it("clears the list on promotion to admin, so a later demotion does not revive it", async () => {
+    state.user.role = "sales"
+    state.user.hiddenModules = ["finance"]
+    const res = await PUT(putReq({ role: "admin" }), params)
+    expect(res.status).toBe(200)
+    expect(state.lastUpdate.data.hiddenModules).toEqual([])
+  })
+
+  it("keeps the list when the role changes between two ordinary roles", async () => {
+    state.user.role = "sales"
+    state.user.hiddenModules = ["finance"]
+    const res = await PUT(putReq({ role: "manager" }), params)
+    expect(res.status).toBe(200)
+    expect(state.lastUpdate.data).not.toHaveProperty("hiddenModules")
+  })
+
+  it("leaves the list alone on an edit that does not mention it", async () => {
+    state.user.hiddenModules = ["finance"]
+    const res = await PUT(putReq({ name: "Renamed" }), params)
+    expect(res.status).toBe(200)
+    expect(state.lastUpdate.data).not.toHaveProperty("hiddenModules")
+  })
+
+  it("creates a restricted user in one step", async () => {
+    state.user = null
+    const res = await POST(postReq({ ...newUser, role: "sales", hiddenModules: ["finance", "analytics"] }))
+    expect(res.status).toBe(201)
+    expect(state.lastCreate.hiddenModules).toEqual(["finance", "analytics"])
+  })
+
+  it("rejects an unknown module on create and creates nothing", async () => {
+    state.user = null
+    const res = await POST(postReq({ ...newUser, role: "sales", hiddenModules: ["nope"] }))
+    expect(res.status).toBe(400)
+    expect(state.lastCreate).toBeNull()
+  })
+
+  it("creates an admin unrestricted whatever the form sent", async () => {
+    state.user = null
+    const res = await POST(postReq({ ...newUser, role: "admin", hiddenModules: ["sales"] }))
+    expect(res.status).toBe(201)
+    expect(state.lastCreate).not.toHaveProperty("hiddenModules")
+  })
+})

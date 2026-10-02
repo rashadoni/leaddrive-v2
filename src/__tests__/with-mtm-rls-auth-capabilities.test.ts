@@ -13,7 +13,17 @@ vi.mock("@/lib/with-rls", () => ({
   withRlsAuth: vi.fn((_module, _action, handler) => handler),
 }))
 
-import { withMtmRlsAuth } from "@/lib/with-mtm-rls-auth"
+vi.mock("@/lib/tenant-capability-access", () => ({
+  // The tenant has both field capabilities in the web tests below; what is
+  // under test there is the per-user list, not the tenant entitlement.
+  requireTenantCapabilityAccessResponse: vi.fn(async () => null),
+}))
+
+import {
+  withMtmRlsAuth,
+  withRouteFieldWebRlsAuth,
+  withWorkforceHrmRlsAuth,
+} from "@/lib/with-mtm-rls-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 
 const WORKFORCE_ONLY_AUTH = {
@@ -63,5 +73,67 @@ describe("withMtmRlsAuth mobile capability boundary", () => {
 
     expect(response.status).toBe(200)
     expect(handler).toHaveBeenCalledTimes(1)
+  })
+})
+
+// requireAuth defers its per-user module check on these routes along with the
+// tenant gate (the `mtm` scope holds two capabilities), so the wrapper is the
+// only place a hidden Route & Field / Workforce HRM is refused for web callers.
+describe("withMtmRlsAuth web boundary: modules hidden from the caller", () => {
+  // `withRlsAuth` is mocked to hand back its handler, so the wrapped route is
+  // called the way withRlsAuth would call it: (req, auth, ctx).
+  type WebRoute = (req: NextRequest, auth: unknown, ctx?: unknown) => Promise<Response>
+  const webAuth = (hiddenModules?: string[]) => ({
+    orgId: "org-1", userId: "user-1", role: "manager", email: "m@example.test", name: "M",
+    principalType: "session", ...(hiddenModules ? { hiddenModules } : {}),
+  })
+  const webRequest = () => new NextRequest("http://localhost:3000/api/v1/mtm/routes")
+
+  it("refuses a Route & Field route to someone it was hidden from", async () => {
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    const route = withRouteFieldWebRlsAuth("read", handler) as unknown as WebRoute
+
+    const response = await route(webRequest(), webAuth(["mtm"]))
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ error: "Forbidden" })
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it("still serves Workforce HRM to that same person", async () => {
+    vi.mocked(getMobileAuth).mockReturnValue(null as never)
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    // The dual-principal wrapper routes a non-mobile request to its web branch,
+    // which the withRlsAuth mock exposes as (req, auth).
+    const route = withWorkforceHrmRlsAuth("read", handler) as unknown as WebRoute
+
+    const response = await route(webRequest(), webAuth(["mtm"]))
+
+    expect(response.status).toBe(200)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it("refuses Workforce HRM when that is what was hidden, and keeps the routes", async () => {
+    vi.mocked(getMobileAuth).mockReturnValue(null as never)
+    const hrm = vi.fn(async () => NextResponse.json({ success: true }))
+    const routes = vi.fn(async () => NextResponse.json({ success: true }))
+
+    const hrmResponse = await (withWorkforceHrmRlsAuth("read", hrm) as unknown as WebRoute)(
+      webRequest(), webAuth(["workforce-hrm"]),
+    )
+    const routesResponse = await (withRouteFieldWebRlsAuth("read", routes) as unknown as WebRoute)(
+      webRequest(), webAuth(["workforce-hrm"]),
+    )
+
+    expect(hrmResponse.status).toBe(403)
+    expect(hrm).not.toHaveBeenCalled()
+    expect(routesResponse.status).toBe(200)
+  })
+
+  it("changes nothing for an unrestricted caller", async () => {
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    const route = withRouteFieldWebRlsAuth("read", handler) as unknown as WebRoute
+
+    expect((await route(webRequest(), webAuth())).status).toBe(200)
   })
 })

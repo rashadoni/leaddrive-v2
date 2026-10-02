@@ -17,6 +17,7 @@ import {
 } from "./session-invalidation"
 import { requireAuthSecret } from "./auth-secret"
 import { moduleRecordFromOrgFields } from "./modules"
+import { applyUserModuleMask, effectiveHiddenModules } from "./user-module-access"
 import { readTenantLandingPath } from "./tenant-landing"
 import { applyVerifiedTwoFactorSessionUpdate } from "./two-factor-nonce"
 import { requiresTwoFactorSetup, resolveTwoFactorMethod } from "./two-factor-policy"
@@ -324,10 +325,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // from "JWT predates the column" (org.modules=undefined). Without
         // this, Clear All in /admin/tenants/<id>/edit would silently re-
         // enable every base module via the untouched-tenant fallback.
-        token.modules = moduleRecordFromOrgFields({
-          features: dbUser.organization?.features,
-          modules: dbUser.organization?.modules,
-        })
+        //
+        // Then narrowed by the modules an admin hid from this one person, so
+        // the sidebar, the page guard and the proxy's API gate — which all read
+        // this record — agree without knowing the mask exists.
+        token.hiddenModules = effectiveHiddenModules(dbUser.role, dbUser.hiddenModules)
+        token.modules = applyUserModuleMask({
+          plan: token.plan as string,
+          addons: token.addons as string[],
+          modules: moduleRecordFromOrgFields({
+            features: dbUser.organization?.features,
+            modules: dbUser.organization?.modules,
+          }),
+        }, token.hiddenModules as string[])
         // Стартовая страница тенанта: корень «/» ведёт сюда (см. proxy.ts).
         // Кладём в токен, чтобы Edge-прокси не ходил в БД ради редиректа.
         token.landingPath = readTenantLandingPath(dbUser.organization?.settings)
@@ -382,6 +392,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               // Part of the exact session fingerprint below; logout-all
               // advances it without changing the password hash.
               passwordChangedAt: true,
+              // Re-read on every resolution, like the role: an admin unticking
+              // a module must take effect on the person's next request, not at
+              // their next sign-in.
+              hiddenModules: true,
               organization: {
                 select: { isActive: true, slug: true, plan: true, addons: true, features: true, modules: true, settings: true },
               },
@@ -424,10 +438,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Re-materialise modules from features array — same logic as initial
           // sign-in. Always set (even when empty) so Clear All survives a
           // refresh.
-          token.modules = moduleRecordFromOrgFields({
-            features: freshUser.organization?.features,
-            modules: freshUser.organization?.modules,
-          })
+          token.hiddenModules = effectiveHiddenModules(freshUser.role, freshUser.hiddenModules)
+          token.modules = applyUserModuleMask({
+            plan: (token.plan as string) || "starter",
+            addons: (token.addons as string[]) || [],
+            modules: moduleRecordFromOrgFields({
+              features: freshUser.organization?.features,
+              modules: freshUser.organization?.modules,
+            }),
+          }, token.hiddenModules as string[])
           token.landingPath = readTenantLandingPath(freshUser.organization?.settings)
 
           // Re-arm setup (but not a factor challenge) when the fresh user row
@@ -501,6 +520,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           plan: token.plan as string,
           addons: (token.addons as string[]) || [],
           modules: (token.modules as Record<string, boolean>) || undefined,
+          hiddenModules: (token.hiddenModules as string[] | undefined) || [],
           landingPath: (token.landingPath as string | undefined) || undefined,
           needs2fa: token.needs2fa as boolean | undefined,
           twoFactorMethod: token.twoFactorMethod as "totp" | "sms" | undefined,

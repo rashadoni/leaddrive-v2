@@ -22,6 +22,13 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { PageHeader } from "@/components/page-header"
+import { navItems, orgFromSession } from "@/lib/nav-items"
+import {
+  roleIgnoresModuleMask,
+  tenantHideableModules,
+  USER_HIDEABLE_MODULE_IDS,
+  WORKFORCE_HIDEABLE_ID,
+} from "@/lib/user-module-access"
 
 interface User extends Record<string, unknown> {
   id: string
@@ -37,6 +44,7 @@ interface User extends Record<string, unknown> {
   totpEnabled: boolean
   require2fa: boolean
   voiceEnabled?: boolean
+  hiddenModules?: string[]
   smsAuthEnabled: boolean
   verifiedPhone: string | null
   skills: string[]
@@ -89,6 +97,7 @@ interface UserFormData {
   isActive: boolean
   maxTickets: number
   preferredLanguage: string
+  hiddenModules: string[]
 }
 
 type UserPayload = {
@@ -100,6 +109,7 @@ type UserPayload = {
   isActive: boolean
   maxTickets: number
   preferredLanguage: string | null
+  hiddenModules: string[]
   password?: string
 }
 
@@ -158,8 +168,26 @@ function UserFormDialog({
   const [form, setForm] = useState<UserFormData>({
     name: "", email: "", password: "", role: "viewer",
     phone: "", department: "", isActive: true,
-    maxTickets: 20, preferredLanguage: "",
+    maxTickets: 20, preferredLanguage: "", hiddenModules: [],
   })
+  // Modules the tenant has, as the sidebar names them. Read off the admin's own
+  // session: admins are never restricted, so theirs is the tenant's full set.
+  const { data: session } = useSession()
+  const tn = useTranslations("nav")
+  // Not memoized: the session object changes identity on every refetch, so a
+  // memo keyed on it would recompute anyway, and the list is a dozen entries.
+  const sessionUser = session?.user
+  const moduleOptions = (
+    sessionUser?.role === "superadmin"
+      ? USER_HIDEABLE_MODULE_IDS
+      : tenantHideableModules(orgFromSession(sessionUser))
+  ).map((id) => {
+    const group = navItems.find((item) =>
+      id === WORKFORCE_HIDEABLE_ID ? item.capability === id : item.module === id,
+    )?.group
+    return { id, label: group ? tn(`groups.${group}` as never) : id }
+  })
+  const moduleMaskIgnored = roleIgnoresModuleMask(form.role)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -175,6 +203,7 @@ function UserFormDialog({
         isActive: editUser?.isActive ?? true,
         maxTickets: editUser?.maxTickets || 20,
         preferredLanguage: editUser?.preferredLanguage || "",
+        hiddenModules: editUser?.hiddenModules || [],
       })
       setError("")
     }
@@ -204,6 +233,7 @@ function UserFormDialog({
         isActive: form.isActive,
         maxTickets: form.maxTickets,
         preferredLanguage: form.preferredLanguage || null,
+        hiddenModules: moduleMaskIgnored ? [] : form.hiddenModules,
       }
       if (!isEdit) {
         payload.password = form.password
@@ -318,6 +348,33 @@ function UserFormDialog({
               <p className="text-xs text-muted-foreground mt-1">{tu("hintPhone")}</p>
               {form.phone !== "" && !/^\+\d{7,15}$/.test(form.phone) && (
                 <p className="text-xs text-destructive mt-1">{tu("phoneFormatError")}</p>
+              )}
+            </div>
+            {/* Module access — which sidebar sections this person gets */}
+            <div className="border-t pt-3 mt-1">
+              <p className="text-sm font-medium">{tu("moduleAccessTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {moduleMaskIgnored ? tu("moduleAccessAdminNote") : tu("moduleAccessHint")}
+              </p>
+              {!moduleMaskIgnored && (
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-3">
+                  {moduleOptions.map((option) => (
+                    <label key={option.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!form.hiddenModules.includes(option.id)}
+                        onChange={(e) => setForm((f) => ({
+                          ...f,
+                          hiddenModules: e.target.checked
+                            ? f.hiddenModules.filter((id) => id !== option.id)
+                            : [...f.hiddenModules, option.id],
+                        }))}
+                        className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
               )}
             </div>
             {/* Briefing language preference */}

@@ -7,6 +7,7 @@ import { getAnthropicClient } from "@/lib/ai/anthropic-client"
 import { checkRateLimit, RATE_LIMIT_CONFIG } from "@/lib/rate-limit"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { getOrgModuleContext } from "@/lib/api-auth"
+import { moduleContextForUser } from "@/lib/user-module-access"
 import { canRead } from "@/lib/permissions"
 import { hasModule } from "@/lib/modules"
 import { applyRecordFilter } from "@/lib/sharing-rules"
@@ -64,7 +65,7 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
     return NextResponse.json({ error: "action and (companyId or leadId) required" }, { status: 400 })
   }
 
-  const orgCtx = await getOrgModuleContext(orgId)
+  const orgCtx = moduleContextForUser(await getOrgModuleContext(orgId), auth)
   const canReadLead = canRead(auth.role, "leads") && hasModule(orgCtx, "sales")
   const canReadCompany = canRead(auth.role, "companies")
     && canRead(auth.role, "contacts")

@@ -4,6 +4,6 @@ import { getAdvisorOrgContext } from "@/lib/ai/advisor/service"
 import { buildAdvisorCapabilities } from "@/lib/ai/advisor/capabilities"
 
 export const GET = withRlsAuth("ai", "read", async (_req, auth) => {
-  const org = await getAdvisorOrgContext(auth.orgId)
+  const org = await getAdvisorOrgContext(auth.orgId, auth.hiddenModules)
   return NextResponse.json({ data: buildAdvisorCapabilities(org, auth.role) })
 })

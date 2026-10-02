@@ -9,6 +9,7 @@ import { hasModule, MODULE_REGISTRY, type ModuleId } from "@/lib/modules"
 import { isMtmApiPath } from "@/lib/mtm/mobile-api-path"
 import { FIELD_TENANT_CAPABILITY_IDS, isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { resolveTenantLandingPath } from "@/lib/tenant-landing"
+import { effectiveHiddenModules, hideableIdForUngatedApiPath } from "@/lib/user-module-access"
 import { clientIp } from "@/lib/request-ip"
 import { isDemoRequestApiPath, withDemoRequestCors } from "@/lib/demo-request-cors"
 
@@ -891,6 +892,24 @@ const authMiddleware = auth(async (req) => {
         )
       }
     }
+  }
+
+  // The same question for ONE person, on the namespaces the gate above never
+  // looks at (see hideableIdForUngatedApiPath). Everything that gate does cover
+  // is already per-user: `session.user.modules` arrives masked. A caller with
+  // no session (API key, mobile JWT) has no list and is left to the route.
+  const userHiddenId = hideableIdForUngatedApiPath(pathname)
+  if (
+    userHiddenId
+    && effectiveHiddenModules(session?.user?.role, session?.user?.hiddenModules).includes(userHiddenId)
+  ) {
+    return withCspHeaders(
+      NextResponse.json(
+        { error: "Forbidden", message: `Module "${userHiddenId}" is not available to your account.` },
+        { status: 403 },
+      ),
+      nonce,
+    )
   }
 
   return withCspHeaders(

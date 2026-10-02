@@ -11,6 +11,7 @@ import { VOICE_SUMMARY_TOOLS, type VoiceToolName } from "@/lib/ai/voice/read-too
 import { voiceTools } from "@/lib/ai/voice/realtime-tool-contract"
 import { executeVoiceReadTool } from "@/lib/ai/voice/execute-read-tool"
 import { getOrgModuleContext } from "@/lib/api-auth"
+import { moduleContextForUser } from "@/lib/user-module-access"
 import { hasModule } from "@/lib/modules"
 import { executeTool } from "@/lib/ai/tool-executor"
 import { predictDealWin } from "@/lib/ai/predictive"
@@ -161,7 +162,7 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     // derive from the SAME cached org context (features + modules), so no extra
     // DB round-trip. `ai_smart_search` lives in Organization.features, which
     // loadOrgContext surfaces as modules["ai_smart_search"].
-    const orgCtx = await getOrgModuleContext(orgId)
+    const orgCtx = moduleContextForUser(await getOrgModuleContext(orgId), session)
     const smartSearchEnabled = orgCtx.modules["ai_smart_search"] === true
     let analyticsTimezone: string
     try {
@@ -421,7 +422,7 @@ ${CURRENT_STATE_GROUNDING_RULES}
           const out = await executeVoiceReadTool({
             toolName: toolBlock.name as VoiceToolName,
             filter: toolBlock.input,
-            auth: { orgId, userId, role: session.role },
+            auth: { orgId, userId, role: session.role, hiddenModules: session.hiddenModules },
           })
           if (stateForced && toolBlock.name === stateForced.tool) {
             // The read tools report a refused scope inside the payload rather

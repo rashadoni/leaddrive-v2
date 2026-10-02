@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
 import { getOrgModuleContext } from "@/lib/api-auth"
+import { moduleContextForUser } from "@/lib/user-module-access"
 import { isManagerOrAbove } from "@/lib/constants"
 import { hasModule } from "@/lib/modules"
 import { buildLateCallbackReport } from "@/lib/commitments/late-callbacks"
@@ -15,7 +16,7 @@ export const GET = withRlsAuth("reports", "read", async (req, auth) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const orgCtx = await getOrgModuleContext(auth.orgId)
+  const orgCtx = moduleContextForUser(await getOrgModuleContext(auth.orgId), auth)
   if (!hasModule(orgCtx, "analytics") || !hasModule(orgCtx, "sales")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }

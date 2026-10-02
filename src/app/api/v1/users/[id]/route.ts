@@ -10,6 +10,7 @@ import { buildUserAnonymizationData } from "@/lib/user-anonymization"
 import { handOverOpenWork } from "@/lib/user-work-handover"
 import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 import { moduleDisabledResponse, orgHasModule } from "@/lib/api-auth"
+import { normalizeHiddenModules, parseHiddenModulesInput, roleIgnoresModuleMask } from "@/lib/user-module-access"
 
 const updateUserSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
@@ -44,6 +45,10 @@ const updateUserSchema = z.object({
   maxTickets: z.number().int().min(1).max(100).optional(),
   isAvailable: z.boolean().optional(),
   preferredLanguage: z.enum(["ru", "en", "az"]).nullable().optional(),
+  // Modules hidden from this person. Admin-set for the same reason as
+  // voiceEnabled: a self-service list would let anyone un-hide what an admin
+  // hid. The ids are validated against the hideable catalog below.
+  hiddenModules: z.array(z.string().max(50)).max(50).optional(),
 })
 
 export const GET = withRlsSessionAuth(async (_req: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
@@ -159,6 +164,29 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       || (parsed.data.require2fa !== undefined && parsed.data.require2fa !== existing.require2fa)
     if (securityStateChanged) updateData.passwordChangedAt = new Date()
 
+    // Module visibility. A promotion to admin clears the list (admins are never
+    // restricted, and a stored list would come back to life on a later
+    // demotion); a change between two ordinary roles keeps what was set.
+    const nextRole = parsed.data.role ?? existing.role
+    if (parsed.data.hiddenModules !== undefined) {
+      const nextHiddenModules = parseHiddenModulesInput(nextRole, parsed.data.hiddenModules)
+      if (!nextHiddenModules) {
+        return NextResponse.json({ error: "Unknown module in hiddenModules" }, { status: 400 })
+      }
+      // The form re-sends the list on every save; an unchanged one is not a
+      // change and must not leave an audit entry saying it was.
+      const currentHiddenModules = normalizeHiddenModules(existing.hiddenModules)
+      if (nextHiddenModules.join() !== currentHiddenModules.join()) {
+        updateData.hiddenModules = nextHiddenModules
+      }
+    } else if (
+      nextRole !== existing.role
+      && roleIgnoresModuleMask(nextRole)
+      && normalizeHiddenModules(existing.hiddenModules).length > 0
+    ) {
+      updateData.hiddenModules = []
+    }
+
     // Voice control. Only ever set here, by a caller holding settings/write —
     // the gate re-checks the org entitlement and the role on every session, so
     // this flag says "switched on", not "allowed".
@@ -168,7 +196,7 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       where: { id },
       data: updateData,
       select: {
-        id: true, name: true, email: true, role: true, voiceEnabled: true,
+        id: true, name: true, email: true, role: true, voiceEnabled: true, hiddenModules: true,
         phone: true, department: true, isActive: true, totpEnabled: true, require2fa: true,
         smsAuthEnabled: true, verifiedPhone: true,
         skills: true, maxTickets: true, isAvailable: true, preferredLanguage: true, createdAt: true,
@@ -194,6 +222,10 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
     if (parsed.data.resetSms === true) {
       oldValue.smsAuthEnabled = existing.smsAuthEnabled
       newValue.smsAuthEnabled = false
+    }
+    if (updateData.hiddenModules !== undefined) {
+      oldValue.hiddenModules = existing.hiddenModules
+      newValue.hiddenModules = user.hiddenModules
     }
     if (securityStateChanged) newValue.sessionsInvalidated = true
 

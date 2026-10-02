@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
 import { predictDealWin } from "@/lib/ai/predictive"
 import { getOrgModuleContext } from "@/lib/api-auth"
+import { moduleContextForUser } from "@/lib/user-module-access"
 import { canRead } from "@/lib/permissions"
 import { hasModule } from "@/lib/modules"
 import { applyRecordFilter } from "@/lib/sharing-rules"
@@ -15,7 +16,7 @@ export const GET = withRlsAuth("deals", "read", async (req, auth) => {
     if (!canRead(auth.role, "deals")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
-    const orgCtx = await getOrgModuleContext(auth.orgId)
+    const orgCtx = moduleContextForUser(await getOrgModuleContext(auth.orgId), auth)
     if (!hasModule(orgCtx, "sales") || !hasModule(orgCtx, "analytics")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }

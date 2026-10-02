@@ -32,6 +32,7 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
     role: auth.role,
     question,
     locale,
+    hiddenModules: auth.hiddenModules,
   })
 
   return NextResponse.json({ data })
