@@ -4656,7 +4656,7 @@ Status reflects admitted implementation evidence and recorded release receipts.
 Historical browser runs prove their exact source/fixture matrix; they are not
 fresh production observations. A `DONE` entry does not extend an evidence
 claim to an untested viewport, inspection method or tenant-observation period.
-The three `IN_PROGRESS` rows preserve literal acceptance claims not established
+The four `IN_PROGRESS` rows preserve literal acceptance claims not established
 by the recorded evidence; they are distinct from the SUPUX checklist count.
 
 | Criterion | Planned implementation | Evidence required | Status |

@@ -906,3 +906,20 @@ complete protected PR checks while awaiting the selected tenant record.
   dispatcher candidate. This is not a repeated completed gate or production
   release. Independent historical and normal captures use separate isolated
   databases/runners; the historical before/after jobs remain sequential.
+
+- Published final dispatcher/source candidate
+  43440b2dda9c8f5bc403750296553399b111e0f4. Runner policy37061923430 and scan
+  37061923482 PASS; full PR checks37061923404 pending (not an executed pass).
+  Started independent historical run37061944771; its prepare is running.
+  Corrected two-cell Calendar capture37061949081 is pending behind active
+  vision37055624370. Previous never-executed pending37061842989 cancelled.
+  No main merge or production mutation occurred. The source candidate has an
+  independent self-audit with no remaining actionable code finding; actual
+  runtime/acceptance gates stay open until evidence exists.
+
+- Current-tree incoming translation check PASS:24,098 English leaf keys,
+  AZ/RU missing0/extra0. This dated count supersedes neither the historical
+  final-matrix count nor its exact-source receipt. Append-only journal and
+  scope audit PASS:191 unique tasks/190 checked, only ROL-006 unchecked; the
+  reference Support journal remains untouched. Actual full PR static/type
+  checks are running on43440b2dd and are not yet accepted.
