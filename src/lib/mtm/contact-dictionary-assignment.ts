@@ -45,7 +45,7 @@ type DictionaryRow = {
 }
 
 type AssignmentClient = Pick<Prisma.TransactionClient,
-  "mtmContactDictionaryAssignment" | "mtmContactDictionary" | "mtmContact" | "$queryRaw"
+  "mtmContactDictionaryAssignment" | "mtmContactDictionary" | "mtmContact" | "$executeRaw"
 >
 
 export class ContactDictionaryAssignmentConflict extends Error {
@@ -218,7 +218,9 @@ export async function applyContactDictionaryAssignmentSet(
   },
 ): Promise<{ ended: number; created: number; stateHash: string }> {
   const now = args.now ?? new Date()
-  await client.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-contact-dictionary-assignment:${args.organizationId}:${args.contactId}`}, 0))`
+  // `$executeRaw`: the lock function returns `void`, which `$queryRaw`
+  // cannot deserialize (P2010).
+  await client.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-contact-dictionary-assignment:${args.organizationId}:${args.contactId}`}, 0))`
   const current = await readContactDictionaryAssignmentState(client, args.organizationId, args.contactId)
   if (current.hash !== args.input.expectedStateHash) {
     throw new ContactDictionaryAssignmentConflict(
