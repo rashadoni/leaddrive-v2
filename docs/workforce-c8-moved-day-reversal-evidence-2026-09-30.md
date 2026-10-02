@@ -740,3 +740,34 @@
   complete review. Precise stopping point: hosted seven-case/static/type gates.
   Next action: inspect primary results, fresh-main protected merge and normal
   deploy/public exact SHA proof. Progress81/161,14/15,C8 36%,59%;007 PARTIAL.
+
+
+## 2026-10-02 — corrected late-alert browser execution GREEN
+
+- Primary browser https://github.com/rashadoni/leaddrive-v2/actions/runs/37051734627
+  /job110986519765 SUCCESS exact22723274fc81c3a0c1512e3420bcdb0a3f9a8538,
+  synthetic mergeabf868d53582923c3b0679cebac9873e92c15ad7. Original sanitized
+  JSON started2026-10-02T19:12:01.179Z/completed19:12:54.617Z: seven cases
+  PASS53.438s. Byte-preserved at
+  docs/evidence/workforce-c8-calendar-browser-2026-10-02-22723274.json:
+  2,274bytes/SHA256f89ea93c64b479a045187bd2a7a896b7cf70e1dd6c5452a314f17c130cb321ae.
+- Root inspected actual EN/RU unknown-outcome screenshots and RU TEAM review:
+  the full late alert is now visible beneath the dashboard header on desktop
+  and390x844; initial review heading/dates/scope/explanation/buttons visible.
+  Real focus plus both-axis main/window bounds assertions executed, including
+  the separate RU phone retry. This supplies new-head evidence closing the
+  previously found hidden late-alert P2; historical35 receipt stays unchanged.
+- Real credentials/session, cancel with zero POST, atomic2-tombstone/1mtm-audit
+  reversal, same-task double-submit fencing, committed response loss and exact
+  [true,false] replay/zero replay writes, both real-session context switches and
+  populated forced-RLS probes all executed. Development bundle only:
+  authenticated production mutation/AT/Android/load/physical pilot NOT RUN.
+- Required static110986656472 and type110986656342 still pending; current
+  pr-scope/runner/scan SUCCESS, PR production build110986539987 SKIPPED by
+  existing policy. No merge/release yet. Receipt-only local append after227;
+  reviewed/published application/workflow/script/fixture source unchanged.
+- Current result: all seven bounded hosted cases GREEN. Last action: primary
+  JSON and screenshot inspection/preservation. Precise stopping point:
+  mandatory static/type gates pending. Next action: exact primary gate logs,
+  fresh-main protected merge, normal deploy and public exact artifact SHA.
+  Progress81/161,14/15,C8 36%,59%,80non-DONE;007 PARTIAL.
