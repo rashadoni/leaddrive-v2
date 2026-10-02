@@ -24,7 +24,7 @@ vi.mock("@/lib/constants", () => ({
 }))
 
 import { prisma } from "@/lib/prisma"
-import { getOrgId, getSession } from "@/lib/api-auth"
+import { getOrgId, getSession, type AuthResult } from "@/lib/api-auth"
 import { GET, POST } from "@/app/api/v1/audit-log/route"
 
 function makeReq(url: string, opts?: ConstructorParameters<typeof NextRequest>[1]) {
@@ -140,6 +140,69 @@ describe("GET /api/v1/audit-log", () => {
     expect(prisma.auditLog.count).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ NOT: hiddenBoundary }),
     }))
+  })
+})
+
+// The journal narrates every module at once. A person an admin hid modules from
+// (User.hiddenModules) reading it unfiltered would see exactly what was hidden —
+// reported 2026-10-02 for a manager limited to Route & Field.
+describe("GET /api/v1/audit-log — a person with hidden modules", () => {
+  const manager = (hiddenModules?: string[]) =>
+    ({ orgId: "org-1", userId: "u-1", role: "manager", ...(hiddenModules ? { hiddenModules } : {}) }) as AuthResult
+  const restricted = (hiddenModules: string[]) => manager(hiddenModules)
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getOrgId).mockResolvedValue("org-1")
+    vi.mocked(prisma.auditLog.findMany).mockResolvedValue([])
+    vi.mocked(prisma.auditLog.count).mockResolvedValue(0)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([])
+  })
+
+  it("is refused the organization-wide journal, and nothing is read", async () => {
+    vi.mocked(getSession).mockResolvedValue(restricted(["crm", "sales", "finance"]))
+
+    const res = await GET(makeReq("http://localhost/api/v1/audit-log"))
+
+    expect(res.status).toBe(403)
+    expect(prisma.auditLog.findMany).not.toHaveBeenCalled()
+    expect(prisma.auditLog.count).not.toHaveBeenCalled()
+  })
+
+  it("is refused a record history whose module was hidden", async () => {
+    vi.mocked(getSession).mockResolvedValue(restricted(["sales"]))
+
+    const res = await GET(makeReq("http://localhost/api/v1/audit-log?entityType=deal&entityId=d-1"))
+
+    expect(res.status).toBe(403)
+    expect(prisma.auditLog.findMany).not.toHaveBeenCalled()
+  })
+
+  it("keeps the deal and invoice history while those modules stay visible", async () => {
+    vi.mocked(getSession).mockResolvedValue(restricted(["marketing"]))
+
+    const deal = await GET(makeReq("http://localhost/api/v1/audit-log?entityType=deal&entityId=d-1"))
+    const invoice = await GET(makeReq("http://localhost/api/v1/audit-log?entityType=invoice&entityId=i-1"))
+
+    expect([deal.status, invoice.status]).toEqual([200, 200])
+  })
+
+  it("is refused an entity type nobody mapped to a module, rather than guessed at", async () => {
+    vi.mocked(getSession).mockResolvedValue(restricted(["marketing"]))
+
+    const res = await GET(makeReq("http://localhost/api/v1/audit-log?entityType=user"))
+
+    expect(res.status).toBe(403)
+    expect(prisma.auditLog.findMany).not.toHaveBeenCalled()
+  })
+
+  it("changes nothing for a manager nobody restricted", async () => {
+    vi.mocked(getSession).mockResolvedValue(manager())
+
+    const res = await GET(makeReq("http://localhost/api/v1/audit-log"))
+
+    expect(res.status).toBe(200)
+    expect(prisma.auditLog.findMany).toHaveBeenCalledTimes(1)
   })
 })
 
