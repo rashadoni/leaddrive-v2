@@ -449,6 +449,20 @@ describe("saving the channel form on a Meta row keeps what the server wrote", ()
     expect(settingsOf(id)).toEqual(connected)
   })
 
+  it("describes an Instagram Login account as an Instagram account, not as a Facebook Page", async () => {
+    const id = await instagramLoginAccount()
+
+    await openForm(id)
+
+    // The person just signed in to Instagram and granted two Instagram permissions; a screen that then
+    // talks about Facebook and a Page describes a different connection from the one they made.
+    expect(connectionStateText()).toBe(
+      "Connected. LeadDrive holds an access token for Instagram account @acme.az; inbound messages reach Inbox.",
+    )
+    expect(container.textContent).toContain("sign in to Instagram and approve the two permissions")
+    expect(container.textContent).not.toContain("sign in to Facebook, pick the Page")
+  })
+
   it("keeps the AI reply policy the reply matrix set on the Page", async () => {
     // webhooks/facebook answers with AI only when settings.replyMode is "ai" (default "agent"): an erased policy
     // switched AI replies off on this Page, silently, from a screen that does not show the policy at all.

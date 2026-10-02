@@ -139,6 +139,67 @@ describe("getPinnedMetaApp", () => {
     expect(await getPinnedMetaApp("org_1", "", "facebook")).toBeNull()
     expect(findFirst).not.toHaveBeenCalled()
   })
+
+  /**
+   * The Connect button on a staged CONNECTION (the account a staged connect produced) can only name the
+   * row it sits on, and that row holds a token, not an app. Production, tenant `leaddrive`, 2026-10-03:
+   * the button on "@leaddrive.az (App Review)" answered 400 with a raw JSON body — on the very path the
+   * App Review instructions sent the reviewer down.
+   */
+  describe("named row is a staged connection, not an app", () => {
+    const connection = (over: Record<string, unknown> = {}) => ({
+      id: "conn_ig",
+      channelType: "instagram",
+      appId: null,
+      appSecret: null,
+      verifyToken: null,
+      settings: { igLogin: true, appReviewOnly: true, username: "leaddrive.az" },
+      ...over,
+    })
+    const stagedIgApp = row({ id: "app_ig", channelType: "instagram", appId: "782807994549098", settings: { igLogin: true, appReviewOnly: true } })
+    const stagedFbApp = row({ id: "app_fb" })
+
+    it("resolves to the staged app of the same surface, so the reconnect runs through it", async () => {
+      findFirst.mockResolvedValue(connection())
+      findMany.mockResolvedValue([stagedFbApp, stagedIgApp])
+      expect(await getPinnedMetaApp("org_1", "conn_ig", "instagram-login")).toMatchObject({
+        configId: "app_ig",
+        appId: "782807994549098",
+      })
+      expect(findMany.mock.calls[0][0].where.organizationId).toBe("org_1")
+    })
+
+    it("does the same for a staged Page on the Facebook surface", async () => {
+      findFirst.mockResolvedValue(connection({ id: "conn_page", channelType: "facebook", settings: { appReviewOnly: true } }))
+      findMany.mockResolvedValue([stagedFbApp, stagedIgApp])
+      expect(await getPinnedMetaApp("org_1", "conn_page", "facebook")).toMatchObject({ configId: "app_fb" })
+    })
+
+    it("never resolves to an ordinary tenant app — only to a staged one", async () => {
+      findFirst.mockResolvedValue(connection())
+      findMany.mockResolvedValue([row({ id: "live_ig", channelType: "instagram", settings: { igLogin: true } })])
+      expect(await getPinnedMetaApp("org_1", "conn_ig", "instagram-login")).toBeNull()
+    })
+
+    it("does not guess between two staged apps", async () => {
+      findFirst.mockResolvedValue(connection())
+      findMany.mockResolvedValue([stagedIgApp, { ...stagedIgApp, id: "app_ig_2" }])
+      expect(await getPinnedMetaApp("org_1", "conn_ig", "instagram-login")).toBeNull()
+    })
+
+    it("leaves an ordinary connection row unusable as a pin, without looking any further", async () => {
+      findFirst.mockResolvedValue(connection({ settings: { igLogin: true, username: "acme.az" } }))
+      expect(await getPinnedMetaApp("org_1", "conn_ig", "instagram-login")).toBeNull()
+      expect(findMany).not.toHaveBeenCalled()
+    })
+
+    it("treats a half-filled staged app row as broken, not as a connection", async () => {
+      findFirst.mockResolvedValue(row({ appSecret: null }))
+      findMany.mockResolvedValue([stagedFbApp])
+      expect(await getPinnedMetaApp("org_1", "cfg_1", "facebook")).toBeNull()
+      expect(findMany).not.toHaveBeenCalled()
+    })
+  })
 })
 
 describe("ensureInboxChannelForPage — staged connects leave live rows alone", () => {

@@ -156,6 +156,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaConnectInstagram: "Connect Instagram account →",
     metaOneClickTitle: "Connect with LeadDrive's Meta app",
     metaOneClickDesc: "One click: sign in to Facebook, pick the Page, and LeadDrive wires the inbox. No App ID, App Secret or Verify Token needed.",
+    metaOneClickDescIgLogin: "One click: sign in to Instagram and approve the two permissions LeadDrive asks for. Direct messages sent to that account then arrive in Inbox. No App ID, App Secret or Verify Token needed.",
     metaOneClickIgNote: "Instagram Direct arrives through the Facebook Page linked to the account.",
     metaOwnAppToggle: "I have my own Meta app (advanced)",
     metaOwnAppHint: "Fill all three fields together — App ID, App Secret and Verify Token. A partial set is ignored by LeadDrive's webhook and OAuth resolvers.",
@@ -163,6 +164,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaNeedsSetup: "One-click connect is not configured for this workspace. Use your own Meta app below.",
     metaSaveFirst: "You declared your own Meta app, but its App ID is not saved (or was edited and not saved). Save the channel first — OAuth resolves your app from the stored App ID, so connecting now would run against the old one.",
     metaStateConnected: "Connected. LeadDrive holds an access token for Page {page}; inbound messages reach Inbox.",
+    metaStateConnectedIgLogin: "Connected. LeadDrive holds an access token for Instagram account {account}; inbound messages reach Inbox.",
     metaStateDraft: metaConnectionReason("en", "draft"),
     metaStateNew: "Not connected yet. Saving this form only creates the channel; messages start arriving after Connect with Meta finishes.",
     metaStatePaused: metaConnectionReason("en", "paused"),
@@ -246,6 +248,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaConnectInstagram: "Подключить Instagram account →",
     metaOneClickTitle: "Подключение через приложение LeadDrive",
     metaOneClickDesc: "Один клик: вход в Facebook, выбор страницы — и LeadDrive сам подключает входящие. App ID, App Secret и Verify Token не нужны.",
+    metaOneClickDescIgLogin: "Один клик: войдите в Instagram и подтвердите два разрешения, которые запрашивает LeadDrive. После этого сообщения из Direct этого аккаунта приходят в Inbox. App ID, App Secret и Verify Token не нужны.",
     metaOneClickIgNote: "Instagram Direct приходит через связанную с аккаунтом Facebook-страницу.",
     metaOwnAppToggle: "У меня своё приложение Meta (для продвинутых)",
     metaOwnAppHint: "Заполняйте все три поля вместе — App ID, App Secret и Verify Token. Частичный набор игнорируется вебхуком и OAuth LeadDrive.",
@@ -253,6 +256,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaNeedsSetup: "Подключение в один клик не настроено для этого рабочего пространства. Используйте своё приложение Meta ниже.",
     metaSaveFirst: "Вы указали своё приложение Meta, но его App ID не сохранён (или изменён и не сохранён). Сначала сохраните канал — OAuth берёт ваше приложение по сохранённому App ID, иначе подключение уйдёт против старого.",
     metaStateConnected: "Подключено. LeadDrive хранит токен доступа для страницы {page}; входящие приходят в Inbox.",
+    metaStateConnectedIgLogin: "Подключено. LeadDrive хранит токен доступа для аккаунта Instagram {account}; входящие приходят в Inbox.",
     metaStateDraft: metaConnectionReason("ru", "draft"),
     metaStateNew: "Ещё не подключено. Сохранение формы только создаёт канал; сообщения пойдут после завершения «Подключить через Meta».",
     metaStatePaused: metaConnectionReason("ru", "paused"),
@@ -336,6 +340,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaConnectInstagram: "Instagram account qoş →",
     metaOneClickTitle: "LeadDrive-ın Meta tətbiqi ilə qoşulma",
     metaOneClickDesc: "Bir klik: Facebook-a daxil olun, səhifəni seçin — LeadDrive gələn mesajları özü qoşur. App ID, App Secret və Verify Token lazım deyil.",
+    metaOneClickDescIgLogin: "Bir klik: Instagram-a daxil olun və LeadDrive-ın istədiyi iki icazəni təsdiqləyin. Bundan sonra həmin hesabın Direct mesajları Inbox-a gəlir. App ID, App Secret və Verify Token lazım deyil.",
     metaOneClickIgNote: "Instagram Direct hesaba bağlı Facebook səhifəsi vasitəsilə gəlir.",
     metaOwnAppToggle: "Öz Meta tətbiqim var (təcrübəlilər üçün)",
     metaOwnAppHint: "Üç sahəni birlikdə doldurun — App ID, App Secret və Verify Token. Yarımçıq dəst LeadDrive-ın webhook və OAuth mexanizmləri tərəfindən nəzərə alınmır.",
@@ -343,6 +348,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaNeedsSetup: "Bu iş sahəsi üçün bir kliklə qoşulma konfiqurasiya edilməyib. Aşağıda öz Meta tətbiqinizi istifadə edin.",
     metaSaveFirst: "Öz Meta tətbiqinizi göstərmisiniz, amma onun App ID-si saxlanmayıb (və ya dəyişdirilib, saxlanmayıb). Əvvəl kanalı saxlayın — OAuth tətbiqinizi saxlanmış App ID ilə tapır, əks halda qoşulma köhnə ID ilə gedəcək.",
     metaStateConnected: "Qoşulub. LeadDrive {page} səhifəsi üçün giriş tokeni saxlayır; gələn mesajlar Inbox-a düşür.",
+    metaStateConnectedIgLogin: "Qoşulub. LeadDrive {account} Instagram hesabı üçün giriş tokeni saxlayır; gələn mesajlar Inbox-a düşür.",
     metaStateDraft: metaConnectionReason("az", "draft"),
     metaStateNew: "Hələ qoşulmayıb. Bu formanı saxlamaq yalnız kanalı yaradır; mesajlar «Meta ilə qoş» tamamlandıqdan sonra gəlməyə başlayır.",
     metaStatePaused: metaConnectionReason("az", "paused"),
@@ -397,6 +403,13 @@ function CopyableProviderValue({
       </code>
     </div>
   )
+}
+
+/** `settings.username` of an Instagram-Login row, as "@handle"; empty when the row has none. */
+function readInstagramHandle(settings: unknown): string {
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) return ""
+  const username = (settings as { username?: unknown }).username
+  return typeof username === "string" && username.trim() ? `@${username.trim().replace(/^@/, "")}` : ""
 }
 
 function setupStepKeysForChannel(channelType: string, smsProvider: SmsProvider, igLogin: boolean): string[] {
@@ -1089,8 +1102,13 @@ export function ChannelConfigForm({
   // unfinished OAuth, a channel someone switched off, a subscription Meta refused, a staged App Review
   // connect that never asked for one, and an account another workspace connected first all look
   // identical from the outside.
+  // An Instagram-Login row holds an Instagram account's own token, not a Page's: name the account, by
+  // the handle the callback stored, so the line matches what the person just signed in with.
+  const instagramLoginHandle = readInstagramHandle(initialData?.settings)
   const metaConnectionMessage = metaConnectionLive
-    ? c.metaStateConnected.replace("{page}", initialData?.pageId || "")
+    ? form.channelType === "instagram" && form.igLogin
+      ? c.metaStateConnectedIgLogin.replace("{account}", instagramLoginHandle || initialData?.pageId || "")
+      : c.metaStateConnected.replace("{page}", initialData?.pageId || "")
     : !isEdit
       ? c.metaStateNew
       : metaConnectionState === "paused"
@@ -2030,7 +2048,9 @@ export function ChannelConfigForm({
                     return the user to this channel card instead of Social Monitoring. */}
                 <div className="space-y-2 rounded-lg border border-orange-200 bg-orange-50 p-3">
                   <p className="text-xs font-medium text-orange-800">{c.metaOneClickTitle}</p>
-                  <p className="text-xs text-orange-700">{c.metaOneClickDesc}</p>
+                  <p className="text-xs text-orange-700">
+                    {form.channelType === "instagram" && form.igLogin ? c.metaOneClickDescIgLogin : c.metaOneClickDesc}
+                  </p>
                   {form.channelType === "instagram" && !form.igLogin && (
                     <p className="text-xs text-orange-700">{c.metaOneClickIgNote}</p>
                   )}
