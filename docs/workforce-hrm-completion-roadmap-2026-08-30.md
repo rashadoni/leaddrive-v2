@@ -4397,3 +4397,35 @@ from this worktree.
   public artifact SHA. Historical c2 GREEN receipts remain historical and do
   not substitute for integrated-head acceptance. Progress remains 81/161,
   14/15, C8 36%, overall 59%, 80 non-DONE; WF-C8-007 PARTIAL.
+
+
+## 2026-10-02 — integrated exact-head review GREEN and new ready event
+
+- Independent reconciliation of #531/current main 73e28b0e GREEN, P0-P3=0:
+  user-access-summary is a pure presentation helper used only by two settings
+  pages/test; its enforcement/nav/mask dependencies unchanged, no runtime
+  reverse edge into Workforce/auth/proxy/CI/calendar. All ten Workforce
+  namespaces deep-equal in EN/RU/AZ. No task-path intersection.
+- Complete independent review of clean c78a5aa8a184e7b0a34f1aa59210b94fcafe980d
+  / base 73e28b0ea8b7f8ac16f33b94e62339e2fe8587f6 GREEN P0=0 P1=0 P2=0 P3=0.
+  Full 13 paths / 255,580 bytes / SHA256
+  462c0ba02ff47ad3e90d2973f810423cfbac0bde1ee7ff358401a1a47995de96;
+  non-doc 4 paths / 46,283 bytes / SHA256
+  52c7a635988014ac9e2e646e2c9c6d7ca7e7ec82fff7a725fee5d78b84d3ad50.
+  Eight main-owned blobs and four task sources exact; three doc prefixes
+  append-only, six original JSONs unchanged. Actual 41/41 (5.31s), translation
+  parity 24,098 keys/0 missing/extra verified from primary logs.
+- Fresh fetched main still 73e28b0e. Published exact c78a5aa8, live PR head/base
+  confirmed c78/73, marked ready_for_review to execute all required checks
+  and seven real browser scenarios again. New-head acceptance remains pending;
+  historical c2 GREEN is not substituted. This later documentation-only append
+  stays local during CI and leaves the published source unchanged.
+- Read-only production baseline now serves exact main 73e28b0e after normal
+  deploy 37061436489 SUCCESS; strict-TLS public build-info artifactSha
+  73e28b0ea8b7f8ac16f33b94e62339e2fe8587f6, builtAt 2026-10-02T20:39:52Z.
+  This is a pre-#528 baseline, not this feature's release receipt.
+- Current status: integrated full exact review GREEN, fresh hosted checks pending.
+  Last action: exact push and ready event on main73. Precise stopping point:
+  new browser/five-gate execution. Next action: primary acceptance, fresh-main
+  protected merge, normal deploy/public exact merged SHA. Progress unchanged
+  81/161, 14/15, C8 36%, overall 59%, 80 non-DONE; WF-C8-007 PARTIAL.
