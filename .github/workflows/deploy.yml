@@ -367,6 +367,15 @@ jobs:
           DEMO_CENTER_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           DEMO_CENTER_DB_GATE: required
 
+      - name: MTM client categories database gate
+        # Same gate as in pr-checks: the real category save and the real
+        # contact-category assignment on a real Postgres (see the test's header
+        # — on 2026-10-02 neither could run on prod while unit tests were green).
+        run: npx vitest run src/__tests__/mtm-contact-categories-postgres.test.ts
+        env:
+          MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_CONTACT_CATEGORIES_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

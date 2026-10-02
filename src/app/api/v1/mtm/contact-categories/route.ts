@@ -89,8 +89,10 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth) => {
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Same lock as manual activation: the two ways of activating a
-      // dictionary must not interleave.
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-contact-dictionary-activation:${auth.orgId}`}, 0))`
+      // dictionary must not interleave. `$executeRaw`, not `$queryRaw`: the
+      // function returns PostgreSQL `void`, which `$queryRaw` tries to
+      // deserialize and fails on (P2010) — every save died here on prod.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-contact-dictionary-activation:${auth.orgId}`}, 0))`
       const actor = await requireCurrentContactDictionaryAdministrator(tx as typeof prisma, auth)
       const active = await tx.mtmContactDictionary.findFirst({
         where: { organizationId: auth.orgId, ...ACTIVE_CLIENT_TYPE },

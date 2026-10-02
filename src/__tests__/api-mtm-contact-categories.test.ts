@@ -180,6 +180,12 @@ describe("MTM client categories: saving", () => {
       type: "NUMBER",
     })
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledOnce()
+    // The advisory lock returns `void`; `$queryRaw` cannot read that and
+    // killed every save on prod. The real proof is the Postgres gate
+    // (mtm-contact-categories-postgres.test.ts); this keeps the reason next
+    // to the unit tests too.
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
+    expect(prisma.$queryRaw).not.toHaveBeenCalled()
   })
 
   it("retires the previous version before the new one becomes active", async () => {

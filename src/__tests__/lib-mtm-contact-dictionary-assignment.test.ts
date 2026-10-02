@@ -63,7 +63,7 @@ describe("SWM03 governed contact category assignments", () => {
       updatedAt: NOW,
     }
     const client = {
-      $queryRaw: vi.fn().mockResolvedValue([]),
+      $executeRaw: vi.fn().mockResolvedValue(1),
       mtmContact: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       mtmContactDictionary: { findMany: vi.fn().mockResolvedValue([dictionary()]) },
       mtmContactDictionaryAssignment: {
@@ -92,7 +92,7 @@ describe("SWM03 governed contact category assignments", () => {
     })
 
     expect(result).toMatchObject({ ended: 0, created: 1 })
-    expect(client.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(client.$executeRaw).toHaveBeenCalledTimes(1)
     expect(client.mtmContactDictionaryAssignment.createMany).toHaveBeenCalledWith({
       data: [expect.objectContaining({
         dictionaryId: dictionary().id,
@@ -128,7 +128,7 @@ describe("SWM03 governed contact category assignments", () => {
     })
     const emptyHash = contactDictionaryAssignmentStateHash([])
     const client = {
-      $queryRaw: vi.fn().mockResolvedValue([]),
+      $executeRaw: vi.fn().mockResolvedValue(1),
       mtmContact: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       mtmContactDictionary: { findMany: vi.fn().mockResolvedValue([clientTypeDictionary]) },
       mtmContactDictionaryAssignment: {
@@ -171,7 +171,7 @@ describe("SWM03 governed contact category assignments", () => {
     const emptyHash = contactDictionaryAssignmentStateHash([])
     const assign = async (code: string) => {
       const client = {
-        $queryRaw: vi.fn().mockResolvedValue([]),
+        $executeRaw: vi.fn().mockResolvedValue(1),
         mtmContact: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
         mtmContactDictionary: { findMany: vi.fn().mockResolvedValue([clientTypeDictionary]) },
         mtmContactDictionaryAssignment: {
@@ -202,7 +202,7 @@ describe("SWM03 governed contact category assignments", () => {
 
   it("fails closed when the state changed before save", async () => {
     const client = {
-      $queryRaw: vi.fn().mockResolvedValue([]),
+      $executeRaw: vi.fn().mockResolvedValue(1),
       mtmContactDictionary: { findMany: vi.fn() },
       mtmContactDictionaryAssignment: {
         findMany: vi.fn().mockResolvedValue([{
