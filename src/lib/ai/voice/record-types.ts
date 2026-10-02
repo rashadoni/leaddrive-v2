@@ -98,6 +98,9 @@ export const NOT_OPENABLE: Record<string, "internal" | "config" | "nested" | "pe
   "insurance/[id]": "pending",
   "energy/[id]": "pending",
   "media/[id]": "pending",
+  // An employee's own section (their clients). Like the other MTM cards, not
+  // registered for voice yet; nothing in it is read aloud until it is.
+  "mtm/agents/[id]": "pending",
   "mtm/contacts/[id]": "pending",
   "mtm/customers/[id]": "pending",
   "mtm/promotions/[id]": "pending",
