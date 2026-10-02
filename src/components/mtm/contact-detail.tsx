@@ -44,6 +44,7 @@ import {
   MtmContactWorkplaceEndDialog,
 } from "@/components/mtm/contact-workplace-dialog"
 import {
+  contactScoringBlockShown,
   MtmContactScoringPanel,
   type MtmBrandPotential,
   type MtmScoringAssessment,
@@ -55,6 +56,7 @@ import type {
 import { cn } from "@/lib/utils"
 import type { MtmContactRequiredField } from "@/lib/mtm/contact-required-fields"
 import {
+  contactCategoriesBlockShown,
   MtmContactDictionaryAssignmentPanel,
   type GovernedContactDictionary,
   type GovernedContactDictionaryAssignment,
@@ -699,6 +701,23 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
 
         <TabsContent value="categories" data-testid="mtm-contact-scoring-state">
           <div className="grid gap-5">
+            {/* Both blocks below show only what exists; say so rather than leave the tab blank. */}
+            {!contactCategoriesBlockShown({
+              dictionaries: payload.availableContactDictionaries,
+              assignments: contact.dictionaryAssignments,
+              changeRequests: contact.changeRequests,
+              canManage: capabilities.canManage,
+            }) && !contactScoringBlockShown({
+              contactType: contact.type,
+              assessments: contact.doctorAssessments,
+              potentials: contact.fieldPotentials,
+              canAssess: capabilities.canManage,
+              canRecordPotential: capabilities.canRecordBrandPotential,
+            }) ? (
+              <p data-testid="mtm-contact-categories-nothing" className="rounded-2xl border border-dashed border-zinc-300 p-5 text-center text-sm text-muted-foreground dark:border-zinc-700">
+                {t("categoriesNothing")}
+              </p>
+            ) : null}
             <MtmContactDictionaryAssignmentPanel
               contactId={contact.id}
               contactUpdatedAt={contact.updatedAt}

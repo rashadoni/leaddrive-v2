@@ -40,8 +40,25 @@ export const MTM_CONTACT_SWITCHABLE_FIELD_KEYS = [
 
 export type MtmContactSwitchableField = typeof MTM_CONTACT_SWITCHABLE_FIELD_KEYS[number]
 
-/** Nothing is hidden until the tenant says so: existing tenants see no change. */
-export const MTM_CONTACT_HIDDEN_FIELD_DEFAULTS: readonly MtmContactSwitchableField[] = []
+/**
+ * What a tenant that never opened «Карточка клиента» does not see. Each one is
+ * switched back on there; a tenant that saved its own list keeps it.
+ *
+ * Owner 2026-10-02, looking at the client form: «для чего два типа кода… клиент
+ * голову возьмёт руками и убежит», then «максимально надо упростить».
+ *
+ * - `specialtyCode` repeats the specialty chosen in the field next to it and
+ *   was typed by hand. Route planning used to filter doctors by it; it now
+ *   matches the specialty name as well (routes/candidates).
+ * - three of the eight phone fields. No client on production has a value in
+ *   any of them (read on 2026-10-02).
+ */
+export const MTM_CONTACT_HIDDEN_FIELD_DEFAULTS: readonly MtmContactSwitchableField[] = [
+  "specialtyCode",
+  "homePhone",
+  "messengerPhone",
+  "viberPhone",
+]
 
 const SWITCHABLE = new Set<string>(MTM_CONTACT_SWITCHABLE_FIELD_KEYS)
 
