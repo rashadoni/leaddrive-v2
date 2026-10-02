@@ -62,6 +62,48 @@ export async function sendInstagramLoginMessage(
   }
 }
 
+// The one webhook field webhooks/instagram consumes. Deliberately not the app's whole dashboard list:
+// `message_reactions` / `messaging_seen` events carry no `message`, and that handler would store each
+// of them as a "[media]" inbound message.
+const IG_DM_SUBSCRIBED_FIELDS = "messages"
+
+/**
+ * Turn on webhook delivery for ONE Instagram professional account connected through Instagram Login.
+ *
+ * Subscribing the app to `messages` in the dashboard is only half of it: Meta delivers nothing for an
+ * account until the app also enables the subscription with that account's own token
+ * (`POST /me/subscribed_apps`, "Enable Subscriptions" in the Instagram Platform webhook docs). The
+ * dashboard shows the result per account as "Webhooks subscription: on/off". Until 2026-10 nothing in
+ * this project made the call, so an account connected here authorized, showed "connected", could be
+ * replied from — and never received a single Direct message.
+ *
+ * This is NOT the Facebook-Login case described in lib/social/inbox-channel: there an Instagram
+ * account id has no subscription of its own and rides its linked Page. Here the token is an
+ * Instagram User token on graph.instagram.com and the account is the subscriber.
+ *
+ * The token travels in the Authorization header, never the URL. Fail-soft like
+ * `subscribePageToMessages`: returns { success, error? } and never throws; re-subscribing is idempotent.
+ */
+export async function subscribeInstagramLoginAccount(
+  igToken: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!igToken) return { success: false, error: "missing token" }
+  try {
+    const res = await fetch(`${IG_GRAPH}/me/subscribed_apps?subscribed_fields=${IG_DM_SUBSCRIBED_FIELDS}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${igToken}` },
+      signal: AbortSignal.timeout(10_000),
+    })
+    const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: { message?: string } }
+    if (!res.ok || data?.success === false) {
+      return { success: false, error: safeLogValue(data?.error?.message || `HTTP ${res.status}`) }
+    }
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: safeLogValue(e) }
+  }
+}
+
 /**
  * Refresh a long-lived Instagram-Login token (valid ~60 days). Call before expiry (settings
  * .tokenExpiresAt). Returns the new token + expiry, or null on failure (caller keeps the old token).

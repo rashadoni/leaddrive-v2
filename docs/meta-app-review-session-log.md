@@ -398,3 +398,62 @@ Nothing here changes the submission under review; it prepares the second round.
   access-codes field; the password he shared in chat is weak and exposed, and he
   was asked to replace it first. Nothing was stored anywhere.
 
+## 2026-10-03 — review result, and why the Instagram flow never delivered a message
+
+Meta answered submission `2418323735294304`. Approved: `pages_show_list`,
+`pages_manage_metadata`, `pages_messaging`, `public_profile`,
+`whatsapp_business_management`. Rejected: `instagram_business_basic` and
+`instagram_business_manage_messages`, both with the same finding (Developer
+Policy 1.6): the screencast does not show the complete use case described in the
+notes. The reviewer accepts the use case and asks for the Meta login from start
+to finish, the user granting the permission, the full use of each permission,
+and an English interface with captions. The "Publish" button is now active; the
+app is still unpublished.
+
+The rejected screencast for `instagram_business_manage_messages` was the
+connection recording used as a placeholder (see 2026-09-21). The description
+promised an inbound Direct message, a reply and a lead.
+
+What was verified on 2026-10-02/03, read-only unless stated:
+
+- **The flow belongs to the app under review.** Instagram API setup of
+  `2414060595720618` shows Instagram app "CRM-IG", ID `782807994549098`. The
+  production process carries the same ID in `INSTAGRAM_APP_ID`, its secret has
+  the same hash as the one stored on the staged row `cmuaws3n70000kp9k20thcsos`,
+  and `/api/v1/social/oauth/preflight` reports `source: env` for the `leaddrive`
+  tenant. The Connect button on the Instagram card calls
+  `/api/v1/social/oauth/instagram/start` with no `?app=`: `api.instagram.com`,
+  scopes `instagram_business_basic,instagram_business_manage_messages`, redirect
+  `https://app.leaddrivecrm.org/api/v1/social/oauth/instagram/callback` — the
+  one URI registered in the app's business login settings. The old Facebook app
+  `1276226757359622` is not on this path.
+- **The webhook endpoint and its signature check work.** Meta's dashboard test
+  for the `messages` field reached production: `POST
+  /api/v1/webhooks/instagram` → 200 at 2026-10-02 22:31:33 UTC (an invalid
+  signature answers 403). The sample carries placeholder ids, so nothing was
+  stored.
+- **No real message had ever arrived that way.** nginx holds fourteen days of
+  logs and they contain no other POST to that path. The two Instagram messages
+  of 2026-09-11 came through the Facebook-Login webhook of the old app.
+- **Cause, in our code:** the Instagram callback never enabled the account's
+  subscription (`POST /me/subscribed_apps` on `graph.instagram.com`). The app
+  dashboard listed `leaddrive.az` with "Webhooks subscription: off". Fixed in
+  PR #535 for an ordinary connect; a staged connect still asks for nothing.
+- **Cause, on Meta's side:** Instagram webhooks are delivered to published apps
+  only. This is in the Instagram Platform webhook documentation and on the app's
+  webhook settings page. Not changed here — publishing is the owner's call.
+- **Reviewer account** `meta-review@leaddrivecrm.org`: admin in `leaddrive`,
+  active, no second factor required, and the password in the root-only file on
+  production matches the stored hash (compared on the server, nothing printed).
+- **Test accounts are missing.** The only Instagram Tester of the app is
+  `leaddrive.az`, which is the live company profile claimed by `fanumsec`.
+  There is no sender account with a role at all.
+
+Not done, because it cannot be done truthfully yet: the screencast and the
+resubmission. They need the two test accounts and a published app; see
+"Instagram: what has to be true before a take" in the demo runbook.
+
+Noticed and left alone: in the Instagram business login settings the
+"Deauthorize callback URL" and "Data deletion request URL" are empty, and the
+application has no endpoint for either. The app-level data deletion
+instructions URL is set and was accepted in the first review.

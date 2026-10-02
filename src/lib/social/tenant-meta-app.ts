@@ -176,7 +176,8 @@ export type PinnedMetaApp = {
  *
  * The row must belong to `organizationId` (checked here as well as by RLS), carry the full
  * appId+appSecret+verifyToken triple, and match the requested surface — a Facebook-Login start must
- * not pick up an Instagram-Login app row, and vice versa.
+ * not pick up an Instagram-Login app row, and vice versa. The one row accepted without a triple is a
+ * staged CONNECTION, which resolves to the staged app that produced it (see the body).
  */
 export async function getPinnedMetaApp(
   organizationId: string,
@@ -189,26 +190,63 @@ export async function getPinnedMetaApp(
     select: { id: true, channelType: true, appId: true, appSecret: true, verifyToken: true, settings: true },
   })
   if (!cfg) return null
-  if (!cfg.appId || !cfg.appSecret) return null
+  if (!servesSurface(cfg, surface)) return null
   // The verify token is what the tenant registers in their own Meta app's webhook setup. Requiring it
   // keeps the pinned row the same shape as every other Model B app-config row, so a pinned connection
   // can actually receive webhooks rather than only completing an OAuth.
-  if (!cfg.verifyToken) return null
+  if (cfg.appId && cfg.appSecret && cfg.verifyToken) return toPinnedMetaApp(cfg)
 
-  const igLogin = isIgLogin(cfg.settings)
-  if (surface === "instagram-login") {
-    if (cfg.channelType !== "instagram" || !igLogin) return null
-  } else {
-    if (cfg.channelType !== "facebook" && cfg.channelType !== "instagram") return null
-    if (igLogin) return null
-  }
+  // The named row carries no app of its own. One such row is legitimate: the CONNECTION a staged
+  // connect produced (the Page or Instagram account, `appReviewOnly`, token only). Its card has a
+  // Connect button too, and that button can only name the row it sits on — which until 2026-10 landed
+  // here, returned null, and showed the person a raw JSON error instead of the Meta dialog. Reconnecting
+  // a staged connection means "through the staged app again", so resolve that app: the workspace's
+  // staged app row for the same surface, and only when there is exactly one. Still fails closed —
+  // never the env app, never an ordinary tenant app, never a guess between two staged apps. A row with
+  // SOME app fields is a half-filled app row, not a connection, and stays unusable as before.
+  if (cfg.appId || cfg.appSecret || cfg.verifyToken) return null
+  if (!isAppReviewOnly(cfg.settings)) return null
+  const rows = await prisma.channelConfig.findMany({
+    where: {
+      organizationId,
+      channelType: { in: ["facebook", "instagram"] },
+      appId: { not: null },
+      appSecret: { not: null },
+      verifyToken: { not: null },
+    },
+    select: { id: true, channelType: true, appId: true, appSecret: true, verifyToken: true, settings: true },
+    orderBy: { createdAt: "asc" },
+  })
+  const stagedApps = (Array.isArray(rows) ? rows : []).filter(
+    (row: PinnableRow) => isAppReviewOnly(row.settings) && servesSurface(row, surface),
+  )
+  return stagedApps.length === 1 ? toPinnedMetaApp(stagedApps[0]) : null
+}
 
+type PinnableRow = {
+  id: string
+  channelType: string
+  appId: string | null
+  appSecret: string | null
+  verifyToken: string | null
+  settings: unknown
+}
+
+/** A Facebook-Login start must not pick up an Instagram-Login row, and vice versa. */
+function servesSurface(row: { channelType: string; settings: unknown }, surface: MetaLoginSurface): boolean {
+  const igLogin = isIgLogin(row.settings)
+  if (surface === "instagram-login") return row.channelType === "instagram" && igLogin
+  return (row.channelType === "facebook" || row.channelType === "instagram") && !igLogin
+}
+
+function toPinnedMetaApp(row: PinnableRow): PinnedMetaApp | null {
+  if (!row.appId || !row.appSecret || !row.verifyToken) return null
   return {
-    configId: cfg.id,
-    appId: cfg.appId,
-    appSecret: cfg.appSecret,
+    configId: row.id,
+    appId: row.appId,
+    appSecret: row.appSecret,
     hasVerifyToken: true,
-    loginConfigId: readLoginConfigId(cfg.settings),
+    loginConfigId: readLoginConfigId(row.settings),
   }
 }
 
