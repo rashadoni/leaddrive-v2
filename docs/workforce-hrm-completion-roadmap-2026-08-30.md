@@ -4429,3 +4429,38 @@ from this worktree.
   new browser/five-gate execution. Next action: primary acceptance, fresh-main
   protected merge, normal deploy/public exact merged SHA. Progress unchanged
   81/161, 14/15, C8 36%, overall 59%, 80 non-DONE; WF-C8-007 PARTIAL.
+
+
+## 2026-10-02 — integrated main73 browser acceptance 7/7
+
+- Actual run 37064212917 / job 111027874650 SUCCESS for exact integrated
+  head c78a5aa8a184e7b0a34f1aa59210b94fcafe980d. Synthetic merge
+  c1f3dc1941d0f02611882ca39c2d5caead2891c0 has API-confirmed parents
+  [73e28b0ea8b7f8ac16f33b94e62339e2fe8587f6, c78a5aa8a184e7b0a34f1aa59210b94fcafe980d].
+  Seven real cases PASS, 21:06:44.339Z–21:07:39.633Z (55.294 seconds),
+  artifact 11251997440 / attempt 1. Original JSON copied byte-for-byte to
+  docs/evidence/workforce-c8-calendar-browser-2026-10-02-c78a5aa8.json,
+  2,760 bytes / SHA256
+  41fef24ba48ca393b8d80e3402efbecd93c9a1434a5822db207553db26a0ceb8.
+- Actual CSRF/credentials/cookie authentication, PostgreSQL mutations/audit,
+  byte-identical replay and EN/RU/AZ cancel/confirm verified again on main73.
+  Both principal/tenant replacements retain all six exact/live-Refresh/session/
+  TEAM flags, posts=1, no stale notice. Populated audit/calendar RLS probes
+  fail closed under the non-owner NOSUPERUSER/NOBYPASSRLS application role.
+- Independent actual artifact review GREEN P0=0 P1=0 P2=0 P3=0, five screenshots
+  individually verified. Root additionally viewed fresh RU unknown notice,
+  RU TEAM review and tenant TEAM screen: explanations fully in actual viewport,
+  fixture1/actor1-0/team1 and no stale calendar notice. Scope remains calendar/
+  session in a hosted development bundle. No production/Android/AT/load/pilot
+  evidence credited; historical FAIL causes remain NOT PROVEN.
+- Local clean bd4e4a59969c51cb3f3b658dd354cd2e08a8693e following c78 contained
+  only three append-only docs, 7,932 bytes / SHA256
+  f736a0c37dbb6311008a358ffde705c9b4887d1020dc5399df66f84f164e5804;
+  source unchanged. This new original JSON/receipt append is also local-only
+  while published exact c78 continues its required checks.
+- Current status: integrated-head browser acceptance GREEN 7/7. Last action:
+  original receipt preservation and actual screenshot verification. Precise
+  stopping point: required static/type jobs in 37064212844 still in progress.
+  Next action: their primary results, fresh-main protected merge, normal
+  deploy/public exact merged SHA. Progress remains 81/161, 14/15, C8 36%,
+  overall 59%, 80 non-DONE; WF-C8-007 PARTIAL; remaining unrun gates NOT RUN.
