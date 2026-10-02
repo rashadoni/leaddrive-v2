@@ -283,7 +283,7 @@ apply to each published candidate.
 PR#530 instruments category-list GET and category create/rename/delete handlers
 after successful base auth. It keeps authorization, RLS, transactions, response
 bodies/statuses and category behavior. Each completed handler emits one bounded
-structured event with compiled artifact SHA, UTC start, operation, observed
+structured event with compiled artifact SHA, UTC completion time, operation, observed
 database/browser/unverified mode, outcome/status and monotonic duration. Tenant
 association uses a domain-separated HMAC with the existing validated auth
 secret; no tenant/user ID, name, category content, body, query or raw error is

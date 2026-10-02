@@ -6,7 +6,7 @@ This contract is the release authority for the Support UX branch. PR #501 and
 its production deploy are complete. Recorded source comparison and pre-release
 canary gates remain accepted at their exact historical dimensions; the later
 tenant observation/flag-retirement gate is still open. The tracked checklist
-is 190/191, not 100%. Unverified literal acceptance measurements remain listed
+is 190/191, not 100%. Remaining representative production admission is listed
 in section 25 of the implementation plan.
 
 ## Performance measurement

@@ -1406,3 +1406,26 @@ telemetry integrity/security review. Precise stopping point: source candidate
 ready for checkpoint/publication and fresh required checks. Next action: require
 all fresh gates green; owner-selected tenant/activation and real seven full
 Asia/Baku days remain necessary for100%.
+
+
+## 2026-10-03 — Observation candidate published; exact synthetic scan exception verified
+
+- Checkpoint8b60c2c425a0cad23d9cbea704b3dd41c3158e0f published in PR#530.
+  Required PR37078259827 running; runner37078259828 SUCCESS. Secret scan
+  37078259881 FAIL at exactly two deterministic test-only literals, generic-api-key:
+  API observation test line30 and standalone collector test line10. These are
+  explicitly authored synthetic fixtures, not retrieved/deployed credentials.
+- Added the existing policy's narrow AND exception: exactly that synthetic
+  value and exactly the two anchored test paths. Upstream detector set retained;
+  no blanket test/generated-file exclusion or real-secret bypass. Independent
+  source review confirms no production/non-test occurrence of this value.
+  Gitleaks8.30.1 entire20-commit PR range PASS with this configuration. A separate
+  disposable Git fixture proves an altered value in an allowed test and the
+  same value outside either path still fail detection. No application/prod key.
+- Corrected protocol wording to UTC COMPLETION time, matching actual helper
+  event creation; duration remains monotonic handler time. No runtime change.
+  Current four measured UI pages and ticket/agent/term/calendar data APIs are
+  unchanged from admitted historical895. No repeated historical build/capture
+  needed for this scope; the final required exact-head contexts still apply.
+- New source/config checkpoint is needed to satisfy the failed secret gate.
+  Production tenant/activation/real baseline/full-day coverage remain pending.
