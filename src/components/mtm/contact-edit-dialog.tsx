@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { ContactSpecialtyInput } from "@/components/mtm/contact-specialty-input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -249,6 +250,7 @@ export function MtmContactEditDialog({
   canManage,
   canRequestChanges,
   requiredFields,
+  specialties = [],
   assignedCategoryLabel,
   orgId,
   onSaved,
@@ -259,6 +261,8 @@ export function MtmContactEditDialog({
   canManage: boolean
   canRequestChanges: boolean
   requiredFields: readonly MtmContactRequiredField[]
+  /** The tenant's specialty list; empty means the specialty is typed freely. */
+  specialties?: readonly string[]
   /**
    * Set when the contact sits in a category from MTM settings. The category
    * then owns the contact's type, so it is changed on the Categories tab, not
@@ -465,7 +469,7 @@ export function MtmContactEditDialog({
               </Select>
             </Field>
             <Field id="contact-specialty" label={t("specialty")} required={isRequired("specialtyName")}>
-              <Input id="contact-specialty" value={form.specialtyName} onChange={(event) => update("specialtyName", event.target.value)} maxLength={500} required={isRequired("specialtyName")} />
+              <ContactSpecialtyInput id="contact-specialty" value={form.specialtyName} onChange={(value) => update("specialtyName", value)} specialties={specialties} chooseLabel={t("specialtyChoose")} required={isRequired("specialtyName")} />
             </Field>
             <Field id="contact-specialty-code" label={t("specialtyCode")}>
               <Input id="contact-specialty-code" value={form.specialtyCode} onChange={(event) => update("specialtyCode", event.target.value)} maxLength={500} />

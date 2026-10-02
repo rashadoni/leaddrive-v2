@@ -11307,6 +11307,17 @@
     "colContacts": "Контакты"
   },
   "mtmContactExplorer": {
+    "filterSpecialties": "Специальность",
+    "filterSpecialtySearch": "Найти специальность",
+    "filterNothingFound": "Ничего не найдено",
+    "filterClientName": "Имя клиента",
+    "filterNamePlaceholder": "Имя или код",
+    "filterAddress": "Адрес",
+    "filterAddressPlaceholder": "Улица, дом",
+    "filterArea": "Город или район",
+    "filterAreaPlaceholder": "Например, Ясамал",
+    "filterWorkplace": "Учреждение",
+    "filterAnywhere": "Поиск по всем полям",
     "title": "Клиенты",
     "subtitle": "Персональный список, профессиональный профиль, место работы и ответственное назначение",
     "createClient": "Добавить клиента",
@@ -11620,6 +11631,13 @@
     "latitude": "Широта",
     "longitude": "Долгота",
     "explorer": {
+      "filterName": "Название",
+      "filterNamePlaceholder": "Название или код",
+      "filterAddress": "Адрес",
+      "filterAddressPlaceholder": "Улица, дом",
+      "filterArea": "Город или район",
+      "filterAreaPlaceholder": "Например, Ясамал",
+      "filterAnywhere": "Поиск по всем полям",
       "title": "Учреждения",
       "subtitle": "Общий каталог, классификация и назначение полевой команде",
       "clarityGuide": {
@@ -12285,6 +12303,7 @@
     "endWorkplace": "Завершить место работы"
   },
   "mtmContactEdit": {
+    "specialtyChoose": "Не указана",
     "categoryManagedHint": "Категория меняется в карточке клиента, на вкладке «Категории и оценки».",
     "editTitle": "Изменение контакта",
     "editDescription": "Изменения будут сохранены сразу и записаны в журнал аудита.",
@@ -15274,6 +15293,7 @@
     "title": "Аналитика"
   },
   "mtmFilters": {
+    "clear": "Очистить",
     "more": "Ещё фильтры",
     "reset": "Сбросить",
     "clearSearch": "Очистить поиск",
@@ -16354,6 +16374,16 @@
     }
   },
   "mtmSettingsPage": {
+    "specialtiesTitle": "Специальности клиентов",
+    "specialtiesHint": "Из этого списка выбирают специальность, когда добавляют клиента, и по нему работает фильтр в «Клиентах». Удаление из списка не меняет клиентов, у которых эта специальность уже указана.",
+    "specialtiesCount": "Всего: {count}",
+    "specialtiesAddLabel": "Новая специальность",
+    "specialtiesAddPlaceholder": "Название и Enter. Список из Excel можно вставить целиком",
+    "specialtiesAdd": "Добавить",
+    "specialtiesRemove": "Удалить «{name}»",
+    "specialtiesEmpty": "Список пуст — в карточке клиента специальность вводится вручную.",
+    "specialtiesDuplicate": "Такая специальность уже есть в списке.",
+    "specialtiesLimit": "В списке может быть не больше {count} специальностей.",
     "subtitle": "Настройки полевых операций — каждая опция здесь реально применяется",
     "save": "Сохранить",
     "saving": "Сохранение...",
@@ -25880,6 +25910,7 @@
     "objectTypes": {"PHARMACY": "Аптека", "CLINIC": "Клиника", "STORE": "Торговая точка"}
   },
   "mtmContactCreate": {
+    "specialtyChoose": "Не указана",
     "title": "Новый клиент",
     "description": "Создайте человека и сразу укажите его основное место работы.",
     "personSection": "Человек",

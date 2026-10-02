@@ -295,6 +295,8 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
       dictionaryAssignmentStateHash,
       contactPolicy: {
         requiredFields: coerceMtmContactRequiredFields(settings.contactRequiredFields),
+        // The tenant's list the card's specialty is chosen from.
+        specialties: settings.contactSpecialties,
       },
       asOf: asOf.toISOString().slice(0, 10),
       timezone,

@@ -11303,6 +11303,17 @@
     "colContacts": "Əlaqə"
   },
   "mtmContactExplorer": {
+    "filterSpecialties": "İxtisas",
+    "filterSpecialtySearch": "İxtisas axtar",
+    "filterNothingFound": "Heç nə tapılmadı",
+    "filterClientName": "Müştəri adı",
+    "filterNamePlaceholder": "Ad və ya kod",
+    "filterAddress": "Ünvan",
+    "filterAddressPlaceholder": "Küçə, bina",
+    "filterArea": "Şəhər və ya rayon",
+    "filterAreaPlaceholder": "Məsələn, Yasamal",
+    "filterWorkplace": "Müəssisə",
+    "filterAnywhere": "Bütün sahələr üzrə axtarış",
     "title": "Müştərilər",
     "subtitle": "Şəxsi siyahı, peşəkar profil, iş yeri və məsul təyinat",
     "createClient": "Müştəri əlavə et",
@@ -11616,6 +11627,13 @@
     "latitude": "Enlik",
     "longitude": "Uzunluq",
     "explorer": {
+      "filterName": "Ad",
+      "filterNamePlaceholder": "Ad və ya kod",
+      "filterAddress": "Ünvan",
+      "filterAddressPlaceholder": "Küçə, bina",
+      "filterArea": "Şəhər və ya rayon",
+      "filterAreaPlaceholder": "Məsələn, Yasamal",
+      "filterAnywhere": "Bütün sahələr üzrə axtarış",
       "title": "Müəssisələr",
       "subtitle": "Ümumi kataloq, təsnifat və sahə komandasına təyinat",
       "clarityGuide": {
@@ -12281,6 +12299,7 @@
     "endWorkplace": "İş yerini bitir"
   },
   "mtmContactEdit": {
+    "specialtyChoose": "Göstərilməyib",
     "categoryManagedHint": "Kateqoriya müştəri kartında, «Kateqoriyalar və qiymətləndirmə» bölməsində dəyişdirilir.",
     "editTitle": "Kontakta düzəliş et",
     "editDescription": "Dəyişikliklər dərhal saxlanılır və audit jurnalına yazılır.",
@@ -15270,6 +15289,7 @@
     "title": "Analitika"
   },
   "mtmFilters": {
+    "clear": "Təmizlə",
     "more": "Daha çox filtr",
     "reset": "Sıfırla",
     "clearSearch": "Axtarışı təmizlə",
@@ -16350,6 +16370,16 @@
     }
   },
   "mtmSettingsPage": {
+    "specialtiesTitle": "Müştəri ixtisasları",
+    "specialtiesHint": "Müştəri əlavə edilərkən ixtisas bu siyahıdan seçilir, «Müştərilər» bölməsindəki filtr də onunla işləyir. Siyahıdan silmək bu ixtisası artıq olan müştəriləri dəyişmir.",
+    "specialtiesCount": "Cəmi: {count}",
+    "specialtiesAddLabel": "Yeni ixtisas",
+    "specialtiesAddPlaceholder": "Adı yazın və Enter basın. Excel siyahısını bütöv yapışdırmaq olar",
+    "specialtiesAdd": "Əlavə et",
+    "specialtiesRemove": "«{name}» sil",
+    "specialtiesEmpty": "Siyahı boşdur — müştəri kartında ixtisas əl ilə yazılır.",
+    "specialtiesDuplicate": "Belə ixtisas artıq siyahıda var.",
+    "specialtiesLimit": "Siyahıda ən çoxu {count} ixtisas ola bilər.",
     "subtitle": "Sahə əməliyyatları ayarları — buradakı hər seçim real tətbiq olunur",
     "save": "Yadda saxla",
     "saving": "Saxlanılır...",
@@ -25876,6 +25906,7 @@
     "objectTypes": {"PHARMACY": "Aptek", "CLINIC": "Klinika", "STORE": "Satış nöqtəsi"}
   },
   "mtmContactCreate": {
+    "specialtyChoose": "Göstərilməyib",
     "title": "Yeni müştəri",
     "description": "Şəxsi yaradın və əsas iş yerini dərhal göstərin.",
     "personSection": "Şəxs",

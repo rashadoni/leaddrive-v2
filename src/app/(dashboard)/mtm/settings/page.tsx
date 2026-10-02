@@ -18,6 +18,7 @@ import { Select } from "@/components/ui/select"
 import { VisitPolicySettings } from "./visit-policy-settings"
 import { ScoringFormulaSettings } from "./scoring-formula-settings"
 import { ContactRequiredFieldSettings } from "./contact-required-field-settings"
+import { ContactSpecialtySettings } from "./contact-specialty-settings"
 import { ContactDictionarySettings } from "./contact-dictionary-settings"
 import { ContactCategorySettings } from "./contact-category-settings"
 import { OrganizationAttributePackageSettings } from "./organization-attribute-package-settings"
@@ -632,6 +633,12 @@ export default function MtmSettingsPage() {
         <ContactRequiredFieldSettings
           value={settings.contactRequiredFields}
           onChange={(value) => updateSetting("contactRequiredFields", value)}
+        />
+      ) : null}
+      {settings.fieldContactsEnabled !== false ? (
+        <ContactSpecialtySettings
+          value={settings.contactSpecialties}
+          onChange={(value) => updateSetting("contactSpecialties", value)}
         />
       ) : null}
 

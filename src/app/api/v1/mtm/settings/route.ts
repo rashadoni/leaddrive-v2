@@ -7,6 +7,7 @@ import { withRls, withRlsAuth } from "@/lib/with-rls"
 import { MTM_SETTING_DEFAULTS, getMtmSettings } from "@/lib/mtm-settings"
 import { isValidTimezone } from "@/lib/timezone"
 import { coerceMtmContactRequiredFields } from "@/lib/mtm/contact-required-fields"
+import { parseMtmContactSpecialties } from "@/lib/mtm/contact-specialties"
 import { parseMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
 import { mtmSettingValuesEqual, validateMtmSettingChanges } from "@/lib/mtm/settings-validation"
 
@@ -105,6 +106,13 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
         return NextResponse.json({ error: "Contact required fields must be an array" }, { status: 400 })
       }
       body.contactRequiredFields = coerceMtmContactRequiredFields(body.contactRequiredFields)
+    }
+    if (body.contactSpecialties !== undefined) {
+      const specialties = parseMtmContactSpecialties(body.contactSpecialties)
+      if (!specialties.success) {
+        return NextResponse.json({ error: specialties.error }, { status: 400 })
+      }
+      body.contactSpecialties = specialties.data
     }
     if (body.routeTargetTypes !== undefined) {
       const targetTypes = parseMtmRouteTargetTypes(body.routeTargetTypes)

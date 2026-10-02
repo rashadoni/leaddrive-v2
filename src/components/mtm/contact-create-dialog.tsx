@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ContactSpecialtyInput } from "@/components/mtm/contact-specialty-input"
 import { MtmOrganizationPicker, type MtmOrganizationOption } from "@/components/mtm/organization-picker"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -67,9 +68,12 @@ export function MtmContactCreateDialog({
   open,
   onOpenChange,
   onCreated,
+  specialties = [],
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** The tenant's specialty list; empty means the specialty is typed freely. */
+  specialties?: readonly string[]
   onCreated: () => Promise<void> | void
 }) {
   const t = useTranslations("mtmContactCreate")
@@ -225,7 +229,7 @@ export function MtmContactCreateDialog({
               <div className="space-y-1.5"><Label htmlFor="contact-create-last-name">{t("lastName")} *</Label><Input id="contact-create-last-name" value={form.lastName} onChange={(event) => update("lastName", event.target.value)} autoComplete="family-name" /></div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-first-name">{t("firstName")} *</Label><Input id="contact-create-first-name" value={form.firstName} onChange={(event) => update("firstName", event.target.value)} autoComplete="given-name" /></div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-middle-name">{t("middleName")}</Label><Input id="contact-create-middle-name" value={form.middleName} onChange={(event) => update("middleName", event.target.value)} autoComplete="additional-name" /></div>
-              {form.type === "DOCTOR" && !selectedClientType?.fields?.some((field) => field.key === "specialty") ? <div className="space-y-1.5"><Label htmlFor="contact-create-specialty">{t("specialty")}</Label><Input id="contact-create-specialty" value={form.specialtyName} onChange={(event) => update("specialtyName", event.target.value)} placeholder={t("specialtyPlaceholder")} /></div> : null}
+              {form.type === "DOCTOR" && !selectedClientType?.fields?.some((field) => field.key === "specialty") ? <div className="space-y-1.5"><Label htmlFor="contact-create-specialty">{t("specialty")}</Label><ContactSpecialtyInput id="contact-create-specialty" value={form.specialtyName} onChange={(value) => update("specialtyName", value)} specialties={specialties} chooseLabel={t("specialtyChoose")} placeholder={t("specialtyPlaceholder")} /></div> : null}
               {[...(selectedClientType?.fields ?? [])].sort((left, right) => left.order - right.order).map((field) => (
                 <div key={field.key} className={field.type === "TEXTAREA" ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}>
                   <Label htmlFor={`contact-create-category-${field.key}`}>{localized(field.labels, locale)}{field.required ? " *" : ""}</Label>

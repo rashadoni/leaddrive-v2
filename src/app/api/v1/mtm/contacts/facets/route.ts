@@ -8,6 +8,7 @@ import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { contactScopeForActor } from "@/lib/mtm/field-scope"
 import { contactCategoriesOrDefault, parseStoredContactCategories } from "@/lib/mtm/contact-categories"
+import { contactSpecialtyOptions } from "@/lib/mtm/contact-specialties"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -56,6 +57,7 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
     specialties,
     profiles,
     qualifications,
+    specialtyNames,
     regions,
     administrativeDistricts,
     localities,
@@ -83,6 +85,13 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
       distinct: ["qualificationCategory"],
       select: { qualificationCategory: true },
       orderBy: { qualificationCategory: "asc" },
+      take: 500,
+    }),
+    prisma.mtmContact.findMany({
+      where: { ...contactWhere, specialtyName: { not: null } },
+      distinct: ["specialtyName"],
+      select: { specialtyName: true },
+      orderBy: { specialtyName: "asc" },
       take: 500,
     }),
     prisma.mtmCustomer.findMany({
@@ -142,7 +151,15 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
     success: true,
     data: {
       specialtyCodes: strings(specialties, (row) => row.specialtyCode),
+      // The tenant's own list first, then whatever contacts carry beyond it —
+      // a specialty removed from the list stays filterable while it is in use.
+      specialties: contactSpecialtyOptions(
+        settings.contactSpecialties,
+        strings(specialtyNames, (row) => row.specialtyName),
+      ),
       profiles: strings(profiles, (row) => row.profile),
+      // The list alone: what the «new client» form offers.
+      configuredSpecialties: settings.contactSpecialties,
       qualificationCategories: strings(qualifications, (row) => row.qualificationCategory),
       regions: strings(regions, (row) => row.region),
       administrativeDistricts: strings(administrativeDistricts, (row) => row.administrativeDistrict),

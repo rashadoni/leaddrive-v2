@@ -192,6 +192,7 @@ type ApiPayload = {
     dictionaryAssignmentStateHash: string
     contactPolicy: {
       requiredFields: MtmContactRequiredField[]
+      specialties?: string[]
     }
     asOf: string
     timezone: string
@@ -801,6 +802,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
             canManage={capabilities.canManage}
             canRequestChanges={capabilities.canRequestChanges}
             requiredFields={payload.contactPolicy.requiredFields}
+            specialties={payload.contactPolicy.specialties}
             assignedCategoryLabel={assignedClientType ? clientCategoryLabel : null}
             orgId={orgId ? String(orgId) : undefined}
             onSaved={loadContact}
