@@ -121,8 +121,22 @@ export function settingsAccessOutcome(role: string, hiddenModules: readonly stri
 export const FIELD_CARD_ROLES = ["ADMIN", "MANAGER", "SUPERVISOR", "AGENT"] as const
 export type FieldCardRole = typeof FIELD_CARD_ROLES[number]
 
-/** The roles an admin hands out from the user card — the ones the Agents form offers. */
-export const ASSIGNABLE_FIELD_CARD_ROLES = ["AGENT", "SUPERVISOR", "MANAGER"] as const satisfies readonly FieldCardRole[]
+/**
+ * The roles an admin hands out from the user card: the three the Agents form
+ * offers, and ADMIN — "the whole organization" — which only this admin-only
+ * screen grants.
+ */
+export const ASSIGNABLE_FIELD_CARD_ROLES = ["ADMIN", "MANAGER", "SUPERVISOR", "AGENT"] as const satisfies readonly FieldCardRole[]
+
+/**
+ * The field role a new card is offered with. A CRM manager is given the whole
+ * organization (owner, 2026-10-03: "a manager must have the permission" — a
+ * manager who was handed Route & Field and then refused by every list is not
+ * what the admin meant); anyone else starts as an agent with their own work.
+ */
+export function defaultFieldCardRole(role: string): typeof ASSIGNABLE_FIELD_CARD_ROLES[number] {
+  return role === "manager" ? "ADMIN" : "AGENT"
+}
 
 export type FieldAccessOutcome =
   /** A web admin acts over the whole organization and needs no card. */
