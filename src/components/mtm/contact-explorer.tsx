@@ -78,6 +78,7 @@ import {
   type ContactCategoryLabels,
 } from "@/lib/mtm/contact-category-editor"
 import { contactFieldVisibility, type MtmContactSwitchableField } from "@/lib/mtm/contact-field-visibility"
+import { mtmApiErrorKey } from "@/lib/mtm/api-error-message"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -328,6 +329,13 @@ function scopeBaseFilters(scope: MtmContactExplorerAgentScope | undefined): Cont
 export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExplorerAgentScope } = {}) {
   const t = useTranslations("mtmContactExplorer")
   const tf = useTranslations("mtmFilters")
+  const tApi = useTranslations("mtmApiErrors")
+  // A refusal the API explains by `code` is shown in the reader's language; the
+  // server's English `error` ("Forbidden") is the fallback, not the message.
+  const refusalText = useCallback((status: number, body: { error?: string } | null, fallback: string) => {
+    const key = mtmApiErrorKey(body, status)
+    return key === "generic" ? body?.error || fallback : tApi(key)
+  }, [tApi])
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -432,7 +440,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
         error?: string
         data?: ContactPayload
       } | null
-      if (!response.ok || !body?.success || !body.data) throw new Error(body?.error || t("loadFailed"))
+      if (!response.ok || !body?.success || !body.data) throw new Error(refusalText(response.status, body, t("loadFailed")))
       setPayload(body.data)
       if (body.data.page !== page) setPage(body.data.page)
     } catch (loadError) {
@@ -441,7 +449,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     } finally {
       if (!signal?.aborted) setLoading(false)
     }
-  }, [page, queryString, t])
+  }, [page, queryString, refusalText, t])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -462,7 +470,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           error?: string
           data?: ContactFacets
         } | null
-        if (!response.ok || !body?.success || !body.data) throw new Error(body?.error || t("facetsLoadFailed"))
+        if (!response.ok || !body?.success || !body.data) throw new Error(refusalText(response.status, body, t("facetsLoadFailed")))
         setFacets(body.data)
       })
       .catch((facetsLoadError) => {
@@ -470,7 +478,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
         setFacetsError(facetsLoadError instanceof Error ? facetsLoadError.message : t("facetsLoadFailed"))
       })
     return () => controller.abort()
-  }, [refreshKey, t])
+  }, [refreshKey, refusalText, t])
 
   const applySavedView = useCallback((view: ContactSavedView) => {
     const restored = contactSavedViewState(view.filters)
@@ -889,7 +897,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
             </>
           ) : null}
         </MtmFilterGrid>
-        {facetsError ? <p className="text-xs text-amber-700 dark:text-amber-300">{facetsError}</p> : null}
+        {facetsError && facetsError !== error ? <p className="text-xs text-amber-700 dark:text-amber-300">{facetsError}</p> : null}
         <MtmFilterActions>
           <MtmFilterMore testId="mtm-contact-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={advancedFilterCount} label={tf("more")} />
           <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />

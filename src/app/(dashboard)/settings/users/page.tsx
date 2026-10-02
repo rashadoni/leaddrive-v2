@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,7 +32,13 @@ import {
   USER_HIDEABLE_MODULE_IDS,
   WORKFORCE_HIDEABLE_ID,
 } from "@/lib/user-module-access"
-import { moduleAccessOutcome, settingsAccessOutcome, type AccessLevel } from "@/lib/user-access-summary"
+import {
+  ASSIGNABLE_FIELD_CARD_ROLES,
+  fieldAccessOutcome,
+  moduleAccessOutcome,
+  settingsAccessOutcome,
+  type AccessLevel,
+} from "@/lib/user-access-summary"
 
 interface User extends Record<string, unknown> {
   id: string
@@ -118,6 +125,19 @@ type UserPayload = {
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
 
+/** An employee card as GET /api/v1/mtm/agents lists it — the fields the user card reads. */
+interface FieldCard {
+  id: string
+  name: string
+  role: string
+  status: string
+  userId: string | null
+  createdAt: string
+}
+const FIELD_CARD_NONE = "none"
+const FIELD_CARD_NEW = "new"
+type AssignableFieldRole = typeof ASSIGNABLE_FIELD_CARD_ROLES[number]
+
 // Colour only backs the words up: every outcome is spelled out in the badge.
 const ACCESS_OUTCOME_STYLE: Record<AccessLevel | "hidden" | "mixed", string> = {
   full: "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20",
@@ -201,6 +221,28 @@ function UserFormDialog({
     return { id, label: group ? tn(`groups.${group}` as never) : id }
   })
   const moduleMaskIgnored = roleIgnoresModuleMask(form.role)
+  // Route & Field has a third setting besides the role and the tick: the
+  // employee card linked to this login. Without one, a non-admin is refused by
+  // every list that shows a team's work — and until this control existed there
+  // was no screen where an admin could link the two.
+  const tenantHasField = moduleOptions.some((option) => option.id === "mtm")
+  const [fieldCards, setFieldCards] = useState<FieldCard[] | null>(null)
+  const [fieldCardsFailed, setFieldCardsFailed] = useState(false)
+  const [fieldCardChoice, setFieldCardChoice] = useState(FIELD_CARD_NONE)
+  const [newFieldRole, setNewFieldRole] = useState<AssignableFieldRole>("AGENT")
+  const editUserId = editUser?.id
+  // The card this login acts as today: its oldest ACTIVE one, as resolveMtmRouteActor picks.
+  const linkedFieldCard = (fieldCards ?? [])
+    .filter((card) => editUserId && card.userId === editUserId && card.status === "ACTIVE")
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0] ?? null
+  const fieldCardOptions = (fieldCards ?? []).filter((card) =>
+    card.status === "ACTIVE" && (card.userId === null || card.id === linkedFieldCard?.id))
+  const chosenFieldCard = fieldCardChoice === FIELD_CARD_NEW
+    ? { role: newFieldRole }
+    : fieldCardOptions.find((card) => card.id === fieldCardChoice) ?? null
+  const fieldAccess = fieldAccessOutcome(form.role, chosenFieldCard)
+  const fieldCardEditable = tenantHasField && fieldCards !== null && !fieldCardsFailed
+    && !form.hiddenModules.includes("mtm") && fieldAccess.kind !== "organization"
   // What the person ends up with — recomputed from the form, so the admin sees
   // the outcome of a role or a tick before saving it.
   const settingsAccess = settingsAccessOutcome(form.role, form.hiddenModules)
@@ -230,6 +272,65 @@ function UserFormDialog({
       setError("")
     }
   }, [open, editUser])
+
+  useEffect(() => {
+    if (!open || !tenantHasField) return
+    let cancelled = false
+    setFieldCards(null)
+    setFieldCardsFailed(false)
+    setFieldCardChoice(FIELD_CARD_NONE)
+    setNewFieldRole("AGENT")
+    fetch("/api/v1/mtm/agents?limit=200", {
+      headers: orgId ? { "x-organization-id": orgId } : undefined,
+    })
+      .then(async (res) => {
+        const json = await res.json().catch(() => null)
+        if (!res.ok || !Array.isArray(json?.data?.agents)) throw new Error("field cards")
+        return json.data.agents as FieldCard[]
+      })
+      .then((cards) => {
+        if (cancelled) return
+        setFieldCards(cards)
+        const linked = cards
+          .filter((card) => editUserId && card.userId === editUserId && card.status === "ACTIVE")
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]
+        setFieldCardChoice(linked?.id ?? FIELD_CARD_NONE)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setFieldCards([])
+        setFieldCardsFailed(true)
+      })
+    return () => { cancelled = true }
+  }, [open, editUserId, tenantHasField, orgId])
+
+  // Links, unlinks or creates the employee card after the user row is saved.
+  // The MTM API owns these writes (admin-only, audited); this only calls it.
+  const applyFieldCard = async (userId: string) => {
+    if (!fieldCardEditable) return
+    const initial = linkedFieldCard?.id ?? FIELD_CARD_NONE
+    if (fieldCardChoice === initial) return
+    const send = async (url: string, method: "POST" | "PUT", body: Record<string, unknown>) => {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...(orgId ? { "x-organization-id": orgId } : {} as Record<string, string>),
+        },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        throw new Error(json?.error || tc("errorUpdateFailed"))
+      }
+    }
+    if (initial !== FIELD_CARD_NONE) await send(`/api/v1/mtm/agents/${initial}`, "PUT", { userId: null })
+    if (fieldCardChoice === FIELD_CARD_NEW) {
+      await send("/api/v1/mtm/agents", "POST", { name: form.name, role: newFieldRole, userId })
+    } else if (fieldCardChoice !== FIELD_CARD_NONE) {
+      await send(`/api/v1/mtm/agents/${fieldCardChoice}`, "PUT", { userId })
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -272,6 +373,15 @@ function UserFormDialog({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || tc("errorUpdateFailed"))
+      const savedUserId: string | undefined = isEdit ? editUser!.id : json.data?.id
+      try {
+        if (savedUserId) await applyFieldCard(savedUserId)
+      } catch (cardError) {
+        // The user row is saved; say so, and keep the card open on the part that failed.
+        onSaved()
+        setError(tu("fieldCardSaveFailed", { reason: errorMessage(cardError) }))
+        return
+      }
       onSaved()
       onOpenChange(false)
     } catch (err) {
@@ -409,9 +519,15 @@ function UserFormDialog({
                               {option.label}
                             </label>
                           )}
-                          <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${ACCESS_OUTCOME_STYLE[access.outcome]}`}>
-                            {levelLabel(access.outcome)}
-                          </span>
+                          {option.id === "mtm" && fieldCardEditable && fieldAccess.kind === "missing" ? (
+                            <span className="shrink-0 rounded-md px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20">
+                              {tu("fieldAccessMissingBadge")}
+                            </span>
+                          ) : (
+                            <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${ACCESS_OUTCOME_STYLE[access.outcome]}`}>
+                              {levelLabel(access.outcome)}
+                            </span>
+                          )}
                         </div>
                         {access.outcome === "mixed" && (
                           <p className="mt-1 text-xs text-muted-foreground">
@@ -423,6 +539,53 @@ function UserFormDialog({
                         )}
                         {access.outcome === "none" && (
                           <p className="mt-1 text-xs text-muted-foreground">{tu("accessNoneNote")}</p>
+                        )}
+                        {option.id === "mtm" && access.outcome !== "hidden" && tenantHasField && (
+                          fieldAccess.kind === "organization" ? (
+                            <p className="mt-1 text-xs text-muted-foreground">{tu("fieldAccessAdminNote")}</p>
+                          ) : fieldCardsFailed ? (
+                            <p className="mt-1 text-xs text-red-500">{tu("fieldCardsLoadFailed")}</p>
+                          ) : fieldCards !== null && (
+                            <div className="mt-2 grid gap-2" data-testid="user-field-card">
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <div>
+                                  <Label htmlFor="fieldCard" className="text-xs">{tu("fieldCardLabel")}</Label>
+                                  <Select id="fieldCard" value={fieldCardChoice} onChange={(e) => setFieldCardChoice(e.target.value)}>
+                                    <option value={FIELD_CARD_NONE}>{tu("fieldCardNone")}</option>
+                                    {fieldCardOptions.map((card) => (
+                                      <option key={card.id} value={card.id}>
+                                        {tu("fieldCardOption", {
+                                          name: card.name,
+                                          role: tu.has(`fieldRoleShort_${card.role}`) ? tu(`fieldRoleShort_${card.role}` as never) : card.role,
+                                        })}
+                                      </option>
+                                    ))}
+                                    <option value={FIELD_CARD_NEW}>{tu("fieldCardNew")}</option>
+                                  </Select>
+                                </div>
+                                {fieldCardChoice === FIELD_CARD_NEW && (
+                                  <div>
+                                    <Label htmlFor="fieldRole" className="text-xs">{tu("fieldCardRoleLabel")}</Label>
+                                    <Select id="fieldRole" value={newFieldRole} onChange={(e) => setNewFieldRole(e.target.value as AssignableFieldRole)}>
+                                      {ASSIGNABLE_FIELD_CARD_ROLES.map((fieldRole) => (
+                                        <option key={fieldRole} value={fieldRole}>{tu(`fieldRoleShort_${fieldRole}` as never)}</option>
+                                      ))}
+                                    </Select>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {fieldAccess.kind === "missing"
+                                  ? tu("fieldAccessMissingNote")
+                                  : <>
+                                      {tu("fieldAccessCardNote", { role: tu(`fieldRole_${fieldAccess.role}` as never) })}
+                                      {fieldAccess.role !== "AGENT" && fieldAccess.role !== "ADMIN" && (
+                                        <> {tu("fieldAccessTeamNote")} <Link href="/mtm/agents" className="underline">{tu("fieldCardOpenAgents")}</Link></>
+                                      )}
+                                    </>}
+                              </p>
+                            </div>
+                          )
                         )}
                       </li>
                     )
