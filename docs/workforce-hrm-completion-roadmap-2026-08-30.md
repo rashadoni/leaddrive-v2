@@ -4232,3 +4232,56 @@ from this worktree.
   five actual required contexts. Next action: primary results, fresh-main
   protected merge/normal deploy/public exact artifact SHA. Progress81/161,
   14/15,C8 36%,59%,80non-DONE;007 PARTIAL/pilot NOT RUN.
+
+
+## 2026-10-02 — live refresh race barrier after identity bootstrap
+
+- Actual ready-event browser run 37058726725 / job 111009738379 FAILED:
+  exact head ded45c395951e37d54628ec452288d9da84d8411, synthetic merge
+  a800e8a57a5b38855adfc8677e691ad257b64c4c (parents current main 390c4976,
+  ded45c3). Only five complete PASS cases; principal switch timed out waiting
+  for the first held context GET to finish. No seven-case acceptance or
+  populated RLS completion is credited. Primary original receipt:
+  docs/evidence/workforce-c8-calendar-browser-2026-10-02-ded45c39-failed-attempt1.json,
+  2,276 bytes / SHA256
+  36f82492223c2376adee451920299f85b5d57060b35f05dd08444e05a0c1d252,
+  20:16:38.129Z–20:17:56.672Z, 78.543 seconds.
+- Independent primary-artifact/integrity review P0=0 P1=0 P2=0 P3=0 preserves
+  this FAIL. The failed screenshot shows the new actor and loaded calendar;
+  EN/RU unknown explanations and RU TEAM confirmation are fully visible.
+  A GET failed before the held-read 200/success diagnostic. Which request
+  failed was not recorded; the exact cancellation cause remains NOT PROVEN.
+- Read-only recon confirms the dashboard intentionally keys MotionPage by
+  organization/user/role, remounting on real identity changes. Calendar
+  cleanup aborts its pending read; development effect replay can cancel the
+  first mount GET. Replaced the incorrect first-automatic-GET assumption with
+  actual new-actor/session/UI bootstrap, then a native Refresh button GET.
+  The old committed POST remains held throughout. Capture that exact live
+  refresh Request, require actual 200/success/new-team payload, failure=null,
+  unfinished request and busy UI before releasing old POST. After its actual
+  completion/two frames require no stale notice, no cancellation and still
+  held refresh; then exact requestfinished, settled UI/session and existing
+  TEAM navigation/no-extra-POST checks. No cancellation exemption, session
+  mock, cookie stripping, application/auth change or weaker gate introduced.
+- Failure diagnostics now distinguish exact held Request, pre/post old-response
+  release and known net::ERR_ABORTED boolean only; no raw headers/cookie data.
+  Fresh hosted execution is required to validate the barrier. This revision
+  does not establish the unknown cause of either historical browser failure.
+- Actual final targeted classifier/UI 22/22 PASS, 1.79 seconds; scoped script
+  ESLint, node syntax and whitespace checks PASS. Primary local log:
+  /tmp/workforce528-live-refresh-targeted.log. Heavy checks on Contabo NOT RUN.
+  Historical ded static job 111009847057 SUCCESS: shared-lock PostgreSQL
+  33/33, calendar 12/12 (1,518 ms), 14.00 seconds overall, baseline 18/18 with
+  no new failures. Primary /tmp/workforce528-ded-static.log. Its type job
+  111009847034 is still pending at this checkpoint, not credited as PASS.
+- PR #528 returned to draft during this concrete harness correction. Production
+  read-only baseline currently serves exact main 390c4976d6097f1f3560ed8c9ccdf3abb215e51e
+  after deploy 37054157833 SUCCESS, public builtAt 2026-10-02T19:33:20Z.
+- Current status: live-refresh barrier implemented, browser acceptance pending.
+  Last completed action: bounded 22/22 and failure receipt preservation.
+  Precise stopping point: replacement exact-head review and hosted execution.
+  Next action: publish reviewed candidate, seven real cases/five mandatory
+  gates, fresh-main merge, normal deploy and public exact artifact SHA.
+  Progress remains DONE 81/161, GATES 14/15, C8 36%, overall 59%, 80 non-DONE;
+  WF-C8-007 PARTIAL. Production authenticated business/browser, Android,
+  accessibility, load and pilot checks NOT RUN.

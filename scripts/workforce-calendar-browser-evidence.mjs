@@ -320,7 +320,8 @@ async function switchContext(from, to, index, targetTeam, label) {
   let oldCommitted = false
   let oldDelivered = false
   let oldFinished = false
-  let contextSwitchStarted = false
+  let holdNewRead = false
+  let obsoleteResponseReleased = false
   let heldNewRead
   let newReadReady = false
   let newReadFinished = false
@@ -330,7 +331,11 @@ async function switchContext(from, to, index, targetTeam, label) {
     if (request === heldNewRead) newReadFinished = true
   })
   view.page.on("requestfailed", request => {
-    if (calendarRoute(new URL(request.url()))) readDiagnostics.push({ phase: `${label}-request-failed`, method: request.method(), requestFailed: true })
+    if (calendarRoute(new URL(request.url()))) readDiagnostics.push({
+      phase: `${label}-request-failed`, method: request.method(), requestFailed: true,
+      matchesHeldRead: request === heldNewRead, beforeObsoleteResponse: !obsoleteResponseReleased,
+      aborted: request.failure()?.errorText === "net::ERR_ABORTED",
+    })
   })
   await view.page.route(calendarRoute, handled(async route => {
     const request = route.request()
@@ -343,7 +348,7 @@ async function switchContext(from, to, index, targetTeam, label) {
       await delivery.promise
       await route.fulfill({ response })
       oldDelivered = true
-    } else if (request.headers()["x-organization-id"] === to.organizationId && oldCommitted && contextSwitchStarted && !heldNewRead) {
+    } else if (request.headers()["x-organization-id"] === to.organizationId && oldCommitted && holdNewRead && !heldNewRead) {
       heldNewRead = request
       const response = await route.fetch({ timeout: 120_000, maxRedirects: 0 })
       await checkedContextRead(response, `${label}-held-context-read`, targetTeam)
@@ -356,22 +361,41 @@ async function switchContext(from, to, index, targetTeam, label) {
   await until(() => oldCommitted, "old principal transaction commits", 120_000)
   reversed(await state(from, moved), from)
   await authenticate(view.context, to)
-  contextSwitchStarted = true
   // Auth.js' existing broadcast listener refetches its own real session; no
   // session payload is injected. Focus refetch is intentionally disabled here.
-  await view.page.evaluate(() => {
-    const channel = new BroadcastChannel("next-auth")
-    channel.postMessage({ event: "session", data: { trigger: "getSession" } })
-    channel.close()
-  })
+  const [bootstrapResponse] = await Promise.all([
+    view.page.waitForResponse(response => calendarRoute(new URL(response.url()))
+      && response.request().method() === "GET" && response.request().headers()["x-organization-id"] === to.organizationId
+      && new URL(response.url()).searchParams.get("scope") === "ORGANIZATION"),
+    view.page.evaluate(() => {
+      const channel = new BroadcastChannel("next-auth")
+      channel.postMessage({ event: "session", data: { trigger: "getSession" } })
+      channel.close()
+    }),
+  ])
+  await checkedContextRead(bootstrapResponse, `${label}-context-bootstrap-read`, targetTeam)
+  await until(async () => await view.page.getByText(to.name, { exact: true }).isVisible()
+    && await view.section.locator("#workforce-calendar-date").isVisible()
+    && await view.section.getAttribute("aria-busy") === "false", "real new-context bootstrap settles before holding its refresh")
+  await assertSession(view.context, to, `${label}-bootstrapped-context`)
+  // The dashboard remounts on identity changes. Let its development effect
+  // cleanup finish, then hold one real user refresh instead of a mount GET.
+  holdNewRead = true
+  await view.section.getByRole("button", { name: view.ui.refresh, exact: true }).click()
   await until(() => newReadReady, "specific new-context GET succeeds and is held", 120_000)
+  assert.equal(heldNewRead.failure(), null, "The exact held refresh must be live before releasing the obsolete POST")
+  assert.equal(newReadFinished, false, "The live refresh must still be held")
+  assert.equal(await view.section.getAttribute("aria-busy"), "true", "The new-context UI must be waiting for its held refresh")
   assert.equal(await view.section.locator('[aria-labelledby="workforce-calendar-reversal-title"]').count(), 0)
   assert.equal((await view.section.innerText()).includes(moved.name), false)
+  obsoleteResponseReleased = true
   delivery.release()
   await until(() => oldDelivered, "obsolete response delivery")
   await until(() => oldFinished, "obsolete POST finishes in the browser")
   await view.page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   assert.equal((await view.section.innerText()).includes(view.ui.reversalRecorded), false)
+  assert.equal(heldNewRead.failure(), null, "The obsolete POST must not cancel the exact live new-context refresh")
+  assert.equal(newReadFinished, false, "The exact new-context refresh must remain held after obsolete POST settlement")
   newReadDelivery.release()
   await until(() => newReadFinished, "new context GET survives obsolete POST settlement")
   await until(async () => await view.section.locator("#workforce-calendar-date").isVisible()
@@ -403,7 +427,7 @@ async function switchContext(from, to, index, targetTeam, label) {
   await assertSession(view.context, to, `${label}-settled-team`)
   assert.equal(posts, 1, "Settled new-context navigation must not send another POST")
   await view.page.screenshot({ path: `${outputDirectory}/context-${label}.png`, fullPage: true })
-  receipts.cases.push({ name: `late-committed-response-${label}-switch`, status: "PASS", realSessionChanged: true, staleNotice: false, newReadCompleted: true, exactHeldRead: true, realSessionPreserved: true, teamNavigationCompleted: true, posts })
+  receipts.cases.push({ name: `late-committed-response-${label}-switch`, status: "PASS", realSessionChanged: true, staleNotice: false, newReadCompleted: true, exactHeldRead: true, newContextRefreshHeld: true, heldReadLiveBeforeObsoleteResponse: true, obsoleteResponseDidNotCancelHeldRead: true, realSessionPreserved: true, teamNavigationCompleted: true, posts })
   await view.context.close()
 }
 
