@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { setTimeout as delay } from "node:timers/promises"
-import { PrismaClient } from "@prisma/client"
+import { makeRlsTestPrisma } from "./_rls.mjs"
 import bcrypt from "bcryptjs"
 import { chromium } from "playwright"
 
@@ -33,8 +33,8 @@ assert.equal(adminURL.host, appURL.host)
 
 const outputDirectory = process.env.WF_CALENDAR_BROWSER_OUTPUT_DIR || "artifacts/workforce-calendar-browser"
 await mkdir(outputDirectory, { recursive: true })
-const admin = new PrismaClient({ datasourceUrl: adminURL.toString() })
-const app = new PrismaClient({ datasourceUrl: appURL.toString() })
+const admin = makeRlsTestPrisma(adminURL.toString())
+const app = makeRlsTestPrisma(appURL.toString())
 const endpoint = "/api/v1/workforce/configuration/calendar"
 const calendarRoute = url => url.origin === origin.origin && url.pathname === endpoint
 const suffix = randomUUID().replaceAll("-", "").slice(0, 12)

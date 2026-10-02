@@ -84,6 +84,7 @@ jobs:
           echo "::add-mask::$WF_PII_SECRET"
           {
             echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_calendar_browser"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_calendar_browser"
             echo "DATABASE_URL=postgresql://wf_calendar_browser:${WF_DATABASE_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_calendar_browser"
             echo "WF_CALENDAR_BROWSER_DATABASE_PASSWORD=$WF_DATABASE_PASSWORD"
             echo "APP_PORT=$APP_PORT"

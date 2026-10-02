@@ -771,3 +771,34 @@
   mandatory static/type gates pending. Next action: exact primary gate logs,
   fresh-main protected merge, normal deploy and public exact artifact SHA.
   Progress81/161,14/15,C8 36%,59%,80non-DONE;007 PARTIAL.
+
+
+## 2026-10-02 — required RLS-classifier failure and factory correction
+
+- Exact227 PR37051734673: type110986656342 SUCCESS, static110986656472
+  FAILURE. Primary static log reports19 failing files/18 baseline: the new
+  standalone browser script's raw PrismaClient violated the existing RLS
+  totality classifier. Earlier independent/source/browser GREEN did not catch
+  this repository-wide integration failure;227 must not be merged.
+- Adapted both actual disposable admin/app clients to the existing
+  makeRlsTestPrisma factory from scripts/_rls.mjs. Workflow supplies its
+  EVENT_PLATFORM_TEST_DATABASE_URL fence identical to guarded disposable
+  ADMIN_DATABASE_URL. Factory deliberately leaves context unset, so populated
+  app-role fail-closed probes remain real; strict loopback/database/role/host
+  guards still precede client construction. No classifier/test allowlist,
+  baseline, factory, production schema or app runtime change.
+- Actually executed current RLS classifier10/10 plus UI contract12/12:
+  22/22 PASS3.68s; scoped script ESLint/syntax/whitespace PASS and runner policy
+  PASS39 workflows. Primary /tmp/workforce528-factory-targeted.log. Heavy local
+  checks NOT RUN; new published exact source/browser/all required gates needed.
+- Historical227 hosted PG race gate33/33 PASS13.76s, including calendar12/12;
+  type no syntax/module/undefined-name errors,66 gated pairs/66 baseline,
+  1,194 advisory errors total/tsc exit2, not zero-diagnostic compile. Primary
+  /tmp/workforce528-227-static.log and /tmp/workforce528-227-type.log. Final
+  seven-case JSON/screenshots independently GREEN P0-P3=0 and prior late-alert
+  P2 actually closed; these belong to227, not the pending factory candidate.
+- Current result: classifier integration corrected without weakening checks.
+  Last action: actual targeted22/22 and runner policy. Precise stopping point:
+  replacement candidate publication/full review/hosted gates. Next action:
+  new exact-head seven cases and required checks, fresh-main merge/deploy/SHA
+  proof only after GREEN. Progress81/161,14/15,C8 36%,59%;007 PARTIAL.
