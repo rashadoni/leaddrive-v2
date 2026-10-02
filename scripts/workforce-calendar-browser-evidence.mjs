@@ -46,6 +46,7 @@ const receipts = {
   startedAt: new Date().toISOString(),
   environment: "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
   authentication: "real CSRF + credentials provider + session cookie; no auth mocks",
+  authenticationDiagnostics: [],
   cases: [],
   limitations: ["Development bundle, not production build", "No production business data", "No Android/AT/load/pilot evidence", "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI", "No whole-page keyboard or zoom acceptance"],
   status: "RUNNING",
@@ -54,6 +55,7 @@ const contexts = []
 const barriers = []
 const handlerErrors = []
 const readDiagnostics = []
+const authenticationPostTimes = []
 let browser
 let activePage
 
@@ -107,15 +109,37 @@ async function checkedContextRead(response, phase, targetTeam) {
   return payload.data
 }
 async function authenticate(context, principal) {
+  const diagnostic = { ordinal: receipts.authenticationDiagnostics.length + 1, csrfStatus: null, callbackStatus: null, pacingWaitMs: 0 }
+  receipts.authenticationDiagnostics.push(diagnostic)
   const csrf = await context.request.get("/api/auth/csrf", { timeout: 120_000 })
+  diagnostic.csrfStatus = csrf.status()
   assert.equal(csrf.status(), 200)
   const { csrfToken } = await csrf.json()
   assert.equal(typeof csrfToken, "string")
+  // The unchanged proxy/principal policies allow 10 auth POSTs per 60s.
+  // Respect that real policy with at most eight fixture callbacks per 61s;
+  // never retry credentials, spoof an IP, or disable the production limiter.
+  const authenticationWindowMs = 61_000
+  const pruneAuthenticationPosts = () => {
+    const cutoff = Date.now() - authenticationWindowMs
+    while (authenticationPostTimes.length && authenticationPostTimes[0] <= cutoff) authenticationPostTimes.shift()
+  }
+  pruneAuthenticationPosts()
+  if (authenticationPostTimes.length >= 8) {
+    diagnostic.pacingWaitMs = Math.max(0, authenticationPostTimes[0] + authenticationWindowMs - Date.now()) + 25
+    assert.ok(diagnostic.pacingWaitMs <= 62_000, "Fixture authentication wait must remain bounded")
+    await delay(diagnostic.pacingWaitMs)
+    pruneAuthenticationPosts()
+  }
+  assert.ok(authenticationPostTimes.length < 8, "Fixture authentication must remain within its conservative budget")
+  authenticationPostTimes.push(Date.now())
+  diagnostic.callbackStartedAt = new Date().toISOString()
   const response = await context.request.post("/api/auth/callback/credentials", {
     timeout: 120_000,
     headers: { "X-Auth-Return-Redirect": "1" },
     form: { csrfToken, email: principal.email, password, organizationSlug: principal.slug, callbackUrl: `${baseURL}/workforce/calendar` },
   })
+  diagnostic.callbackStatus = response.status()
   assert.equal(response.status(), 200, "Real credentials callback must succeed")
   const redirect = new URL((await response.json()).url, baseURL)
   assert.equal(redirect.origin, origin.origin)

@@ -5008,3 +5008,41 @@ corrections as new entries that explicitly supersede the earlier fact.
   normal merge/deploy and own exact merged artifactSha. These receipt additions
   stay local during CI. Progress81/161,14/15,C8 36%,59%,80non-DONE,007 PARTIAL;
   authenticated-production,Android,AT,zoom,load,physical,pilot NOT RUN.
+
+
+## 2026-10-03 (Asia/Baku) — first keyboard browser receipt FAIL8, bounded auth pacing
+
+- Actual ready run37074037469/job111059795862 FAILURE,artifact11256059425,
+  attempt1. Syntheticb59640a658f096d9e24395e2f56487d76e626c77 has API-confirmed
+  parents[ba2326c2,7e703a53]. Originalreceipt5404bytes/SHA256
+  080e904728e8f06f365f3de98216610833874e92769f90b07ae8169529924855,
+  22:50:40.513Z–22:51:39.595Z, preserved byte-for-byte at
+  docs/evidence/workforce-c8-calendar-keyboard-2026-10-03-7e703a53-failed-attempt1.json.
+  Eight cases PASS: originalseven plus ORG keyboard,sourceTabs9,all cancel/reopen/
+  confirm/result/session flags true,posts1,tombstones2,audit1. Root and independent
+  reviewer individually viewed cancel-source/completed-ORG actual screenshots:
+  source action visibly focused afterCancel,result notice fully visible/focused
+  aftercommit,pair absent. No visual defect proven in those completed cases.
+- Final TEAM/RU case stopped at real credentials callback with AssertionError
+  Real credentials callback must succeed. HTTP callback status was not captured;
+  cause remains NOT PROVEN. TEAM unknown/replay screenshots and final populated
+  RLS probe were not reached. Nine-case acceptance is FAIL, not GREEN. Old7 and
+  ORG result do not replace missing TEAM proof. PR537 returned to draft.
+- Source inspection independently confirms existing proxy per-IP auth POST and
+  principal budgets10/60000ms; the expanded harness makes11 credential callbacks.
+  That is a plausible boundary, not proof of the historical callback status.
+  Added conservative fixture pacing <=8callbackPOSTs/61000ms, one bounded wait
+  <=62000ms, and ordinal/CSRF-status/callback-status/start/wait metadata only.
+  No credential retry,IP spoof,auth mocks,limiter bypass or policy change. Every
+  callback still must actually200 with real verified session. UI source unchanged
+  from the eight-case run; all nine scenario assertions remain strict.
+- Scoped syntax/lint/diff PASS after this harness change. Old type/static jobs
+  still executing; their eventual results are historical7e evidence only and
+  will not replace new-head required gates. Hosted nine replacement cases,
+  full type/build/PG/suite on Contabo,production-auth,Android,AT,zoom,load,pilot
+  NOT RUN. Progress81/161,14/15,C8 36%,overall59%,80non-DONE,007 PARTIAL unchanged.
+- Current status: original partial/FAIL preserved and bounded fixture pacing
+  implemented. Last action: primary failure inspection and exact source-policy
+  reconciliation. Precise stopping point: replacement checkpoint/review. Next
+  action: publish reviewed replacement, ready event, actual nine cases/five
+  mandatory gates, fresh-main normal merge/deploy and exact own public SHA.
