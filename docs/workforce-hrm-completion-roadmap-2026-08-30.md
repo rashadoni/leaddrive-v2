@@ -3700,3 +3700,21 @@ from this worktree.
   point: awaiting real browser and required gates. Next action: inspect primary
   results, fix failures without baseline edits, fresh-main guard/protected
   merge/normal deploy/exact public SHA proof after all required evidence GREEN.
+
+
+## 2026-10-02 — first hosted browser configuration mismatch corrected
+
+- Initial browser run37046020552 FAILED before any UI case: credentials
+  callback returned http://localhost:<isolatedPort>, while the harness's
+  strict origin assertion expected http://127.0.0.1:<isolatedPort>. Restricted
+  role/non-bypass and unscoped fail-closed probes executed, but no successful
+  session/UI/reversal browser acceptance is credited. Primary failure receipt
+  /tmp/workforce528-browser-first/*/receipt.json records zero completed cases.
+- Corrected only isolated workflow URL configuration to consistent localhost
+  (NEXTAUTH/AUTH/APP/public app/marketing/browser URLs); server remains bound
+  to127.0.0.1 on its random port. Script origin/session/cookie assertions remain
+  strict; no production/auth/runtime/baseline/check weakening. This was fixture
+  origin configuration, not evidence of a Workforce product defect.
+- New exact candidate/review/hosted gates required after checkpoint/push.
+  Earlier3f review/CI belongs only to3f. Local browser/heavy checks NOT RUN;
+  progress remains81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
