@@ -33,7 +33,16 @@ import {
   UsersRound,
 } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
-import { MtmFilterBar, MtmFilterMore, MtmFilterReset, MtmFilterSearch, MtmFilterSelect, MtmResultLine } from "@/components/mtm/filter-bar"
+import {
+  MtmFilterActions,
+  MtmFilterGrid,
+  MtmFilterMore,
+  MtmFilterReset,
+  MtmFilterSelect,
+  MtmFilterSelectField,
+  MtmFilterTextField,
+  MtmResultLine,
+} from "@/components/mtm/filter-bar"
 import { HelpButton } from "@/components/help/help-button"
 import { MtmCustomerForm } from "@/components/mtm/customer-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -528,6 +537,7 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   })
   const pageCount = Math.max(1, Math.ceil(total / limit))
   const activeAdvancedCount = [
+    filters.search,
     filters.region,
     filters.administrativeDistrict,
     filters.locality,
@@ -539,7 +549,6 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     filters.licenseStatus,
     filters.polygonCode,
     filters.managingManagerId,
-    filters.assignedAgentId,
   ].filter(Boolean).length
   const assignedOnPage = organizations.filter(
     (organization) => organization.agentAssignments.length > 0,
@@ -556,6 +565,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     ) => code ? attributeLabel(options?.find((item) => item.code === code)?.labels, locale, fallback) : ""
 
     add(tx("explorer.searchLabel"), filters.search)
+    add(tx("explorer.filterName"), filters.name)
+    add(tx("explorer.filterAddress"), filters.address)
+    add(tx("explorer.filterArea"), filters.area)
     add(tx("explorer.scopeTitle"), filters.scope === "ALL"
       ? tx("explorer.scopeAll")
       : filters.scope === "MINE" ? tx("explorer.scopeMine") : "")
@@ -1088,54 +1100,71 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         </section>
       ) : null}
 
-      {/* Owner 2026-09-27: «слишком много места занимает, не интерактивен, не
-          интуитивен». Four stat cells, a «Рабочая область» card, a saved-views
-          panel, a form with its own «Искать» button and a folded grid of
-          twelve selects stood between the page title and the first row. */}
-      <section data-testid="organization-filters" className="space-y-2">
-        <MtmFilterBar>
-          <MtmFilterSearch
-            testId="organization-search"
-            value={filters.search}
-            onChange={(value) => setFilter("search", value)}
-            placeholder={tx("explorer.searchPlaceholder")}
-            label={tx("explorer.searchLabel")}
-            clearLabel={tf("clearSearch")}
-          />
-          {data?.capabilities.actorAgentId ? (
-            <MtmFilterSelect testId="organization-scope" label={tx("explorer.scopeTitle")} value={effectiveScope} emptyValue="ALL" allLabel={tx("explorer.scopeAll")}
-              options={[{ value: "ALL", label: tx("explorer.scopeAll") }, { value: "MINE", label: tx("explorer.scopeMine") }]}
-              onChange={(value) => { if (value === "MINE") setExplorerScope("MINE"); else setExplorerScope("ALL") }} />
+      {/* Owner 2026-10-02, on the row of pills that stood here and in
+          «Клиенты»: «он не интуитивен и не юзер френдли» — he wants a named
+          field per thing you look by. Eight fields on the page; the rest
+          behind «Ещё фильтры», and a reference dropdown only where the
+          tenant's data gives it something to choose. */}
+      <section data-testid="organization-filters" className="space-y-3">
+        <MtmFilterGrid>
+          {(facets?.assignableAgents.length ?? 0) > 0 || filters.assignedAgentId ? (
+            <MtmFilterSelectField testId="organization-assignedAgentId" label={tx("explorer.owner")} value={filters.assignedAgentId} allLabel={tx("explorer.all")} options={(facets?.assignableAgents ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("assignedAgentId", value)} />
           ) : null}
-          <MtmFilterSelect testId="organization-category" label={tx("explorer.category")} value={filters.category} allLabel={tx("explorer.all")} options={categoryOptions} onChange={(value) => setFilter("category", value)} />
-          <MtmFilterSelect testId="organization-status" label={tx("explorer.status")} value={filters.status} allLabel={tx("explorer.all")}
-            options={["ACTIVE", "INACTIVE", "PROSPECT"].map((value) => ({ value, label: tx(`explorer.statuses.${value}`) }))}
-            onChange={(value) => setFilter("status", value)} />
-          <MtmFilterSelect testId="organization-assignment" label={tx("explorer.assignment")} value={filters.assignmentState} allLabel={tx("explorer.all")}
-            options={["ASSIGNED", "UNASSIGNED"].map((value) => ({ value, label: tx(`explorer.assignmentStates.${value}`) }))}
-            onChange={(value) => setFilter("assignmentState", value)} />
-          <MtmFilterSelect testId="organization-object-type" label={tx("explorer.objectType")} value={filters.objectType} allLabel={tx("explorer.all")}
+          <MtmFilterTextField testId="organization-name" label={tx("explorer.filterName")} placeholder={tx("explorer.filterNamePlaceholder")} value={filters.name} onChange={(value) => setFilter("name", value)} clearLabel={tf("clear")} />
+          <MtmFilterTextField testId="organization-address" label={tx("explorer.filterAddress")} placeholder={tx("explorer.filterAddressPlaceholder")} value={filters.address} onChange={(value) => setFilter("address", value)} clearLabel={tf("clear")} />
+          <MtmFilterTextField testId="organization-area" label={tx("explorer.filterArea")} placeholder={tx("explorer.filterAreaPlaceholder")} value={filters.area} onChange={(value) => setFilter("area", value)} clearLabel={tf("clear")} />
+          <MtmFilterSelectField testId="organization-object-type" label={tx("explorer.objectType")} value={filters.objectType} allLabel={tx("explorer.all")}
             options={["PHARMACY", "CLINIC", "STORE", "OTHER"].map((value) => ({ value, label: tx(`explorer.objectTypes.${value}`) }))}
             onChange={(value) => setFilter("objectType", value)} />
+          <MtmFilterSelectField testId="organization-category" label={tx("explorer.category")} value={filters.category} allLabel={tx("explorer.all")} options={categoryOptions} onChange={(value) => setFilter("category", value)} />
+          <MtmFilterSelectField testId="organization-status" label={tx("explorer.status")} value={filters.status} allLabel={tx("explorer.all")}
+            options={["ACTIVE", "INACTIVE", "PROSPECT"].map((value) => ({ value, label: tx(`explorer.statuses.${value}`) }))}
+            onChange={(value) => setFilter("status", value)} />
+          <MtmFilterSelectField testId="organization-assignment" label={tx("explorer.assignment")} value={filters.assignmentState} allLabel={tx("explorer.all")}
+            options={["ASSIGNED", "UNASSIGNED"].map((value) => ({ value, label: tx(`explorer.assignmentStates.${value}`) }))}
+            onChange={(value) => setFilter("assignmentState", value)} />
+          {advancedOpen ? (
+            <>
+              {data?.capabilities.actorAgentId ? (
+                <MtmFilterSelectField testId="organization-scope" label={tx("explorer.scopeTitle")} value={effectiveScope} emptyValue="ALL" allLabel={tx("explorer.scopeAll")}
+                  options={[{ value: "ALL", label: tx("explorer.scopeAll") }, { value: "MINE", label: tx("explorer.scopeMine") }]}
+                  onChange={(value) => { if (value === "MINE") setExplorerScope("MINE"); else setExplorerScope("ALL") }} />
+              ) : null}
+              <MtmFilterTextField testId="organization-search" label={tx("explorer.filterAnywhere")} placeholder={tx("explorer.searchLabel")} value={filters.search} onChange={(value) => setFilter("search", value)} clearLabel={tf("clear")} />
+              {([
+                ["region", "region", facets?.region],
+                ["administrativeDistrict", "administrativeDistrict", facets?.administrativeDistrict],
+                ["locality", "locality", facets?.locality],
+                ["cityDistrict", "cityDistrict", facets?.cityDistrict],
+                ["specialization", "specialization", facets?.specialization],
+                ["organizationKind", "organizationKind", facets?.organizationKind],
+                ["territoryCode", "territory", facets?.territoryCode],
+              ] as const).map(([key, labelKey, values]) => (
+                // A reference dropdown with nothing to choose is noise: it
+                // shows only where the tenant's data fills it, or it is set.
+                (values?.length ?? 0) > 0 || filters[key] ? (
+                  <MtmFilterSelectField key={key} testId={`organization-${key}`} label={tx(`explorer.${labelKey}`)} value={filters[key]} allLabel={tx("explorer.all")} options={(values ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter(key, value)} />
+                ) : null
+              ))}
+              {(facets?.medicalCategories.length ?? 0) > 0 || filters.medicalCategoryCode ? (
+                <MtmFilterSelectField testId="organization-medicalCategoryCode" label={tx("explorer.medicalCategory")} value={filters.medicalCategoryCode} allLabel={tx("explorer.all")} options={(facets?.medicalCategories ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, item.code) }))} onChange={(value) => setFilter("medicalCategoryCode", value)} />
+              ) : null}
+              {(facets?.licenseStatuses.length ?? 0) > 0 || filters.licenseStatus ? (
+                <MtmFilterSelectField testId="organization-licenseStatus" label={tx("explorer.license")} value={filters.licenseStatus} allLabel={tx("explorer.all")} options={(facets?.licenseStatuses ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, tx(`explorer.licenseStatuses.${item.code}`)) }))} onChange={(value) => setFilter("licenseStatus", value)} />
+              ) : null}
+              {(facets?.polygons.length ?? 0) > 0 || filters.polygonCode ? (
+                <MtmFilterSelectField testId="organization-polygonCode" label={tx("explorer.polygon")} value={filters.polygonCode} allLabel={tx("explorer.all")} options={(facets?.polygons ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, item.code) }))} onChange={(value) => setFilter("polygonCode", value)} />
+              ) : null}
+              {(facets?.managers.length ?? 0) > 0 || filters.managingManagerId ? (
+                <MtmFilterSelectField testId="organization-managingManagerId" label={tx("explorer.manager")} value={filters.managingManagerId} allLabel={tx("explorer.all")} options={(facets?.managers ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("managingManagerId", value)} />
+              ) : null}
+            </>
+          ) : null}
+        </MtmFilterGrid>
+        <MtmFilterActions>
           <MtmFilterMore testId="organization-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={activeAdvancedCount} label={tf("more")} />
           <MtmFilterReset testId="organization-clear-filters" show={activeFilterLabels.length > 0} onReset={clearFilters} label={tf("reset")} />
-        </MtmFilterBar>
-        {advancedOpen ? (
-          <MtmFilterBar testId="organization-advanced-filters">
-            <MtmFilterSelect testId="organization-region" label={tx("explorer.region")} value={filters.region} allLabel={tx("explorer.all")} options={(facets?.region ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("region", value)} />
-            <MtmFilterSelect testId="organization-administrativeDistrict" label={tx("explorer.administrativeDistrict")} value={filters.administrativeDistrict} allLabel={tx("explorer.all")} options={(facets?.administrativeDistrict ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("administrativeDistrict", value)} />
-            <MtmFilterSelect testId="organization-locality" label={tx("explorer.locality")} value={filters.locality} allLabel={tx("explorer.all")} options={(facets?.locality ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("locality", value)} />
-            <MtmFilterSelect testId="organization-cityDistrict" label={tx("explorer.cityDistrict")} value={filters.cityDistrict} allLabel={tx("explorer.all")} options={(facets?.cityDistrict ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("cityDistrict", value)} />
-            <MtmFilterSelect testId="organization-specialization" label={tx("explorer.specialization")} value={filters.specialization} allLabel={tx("explorer.all")} options={(facets?.specialization ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("specialization", value)} />
-            <MtmFilterSelect testId="organization-organizationKind" label={tx("explorer.organizationKind")} value={filters.organizationKind} allLabel={tx("explorer.all")} options={(facets?.organizationKind ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("organizationKind", value)} />
-            <MtmFilterSelect testId="organization-territoryCode" label={tx("explorer.territory")} value={filters.territoryCode} allLabel={tx("explorer.all")} options={(facets?.territoryCode ?? []).map((value) => ({ value, label: value }))} onChange={(value) => setFilter("territoryCode", value)} />
-            <MtmFilterSelect testId="organization-medicalCategoryCode" label={tx("explorer.medicalCategory")} value={filters.medicalCategoryCode} allLabel={tx("explorer.all")} options={(facets?.medicalCategories ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, item.code) }))} onChange={(value) => setFilter("medicalCategoryCode", value)} />
-            <MtmFilterSelect testId="organization-licenseStatus" label={tx("explorer.license")} value={filters.licenseStatus} allLabel={tx("explorer.all")} options={(facets?.licenseStatuses ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, tx(`explorer.licenseStatuses.${item.code}`)) }))} onChange={(value) => setFilter("licenseStatus", value)} />
-            <MtmFilterSelect testId="organization-polygonCode" label={tx("explorer.polygon")} value={filters.polygonCode} allLabel={tx("explorer.all")} options={(facets?.polygons ?? []).map((item) => ({ value: item.code, label: attributeLabel(item.labels, locale, item.code) }))} onChange={(value) => setFilter("polygonCode", value)} />
-            <MtmFilterSelect testId="organization-managingManagerId" label={tx("explorer.manager")} value={filters.managingManagerId} allLabel={tx("explorer.all")} options={(facets?.managers ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("managingManagerId", value)} />
-            <MtmFilterSelect testId="organization-assignedAgentId" label={tx("explorer.owner")} value={filters.assignedAgentId} allLabel={tx("explorer.all")} options={(facets?.assignableAgents ?? []).map((agent) => ({ value: agent.id, label: agent.name }))} onChange={(value) => setFilter("assignedAgentId", value)} />
-          </MtmFilterBar>
-        ) : null}
+        </MtmFilterActions>
         <MtmResultLine aside={`${tx("explorer.assignedOnPage")}: ${formatNumber.format(assignedOnPage)} · ${tx("explorer.unassignedOnPage")}: ${formatNumber.format(organizations.length - assignedOnPage)}`}>
           <span className="font-medium text-foreground">{tf("found", { count: formatNumber.format(total) })}</span>
         </MtmResultLine>

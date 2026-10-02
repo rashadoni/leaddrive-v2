@@ -203,6 +203,39 @@ describe("GAP-003 contact master-data review", () => {
     }))
   })
 
+  it("accepts a proposal when the only empty required field is one the tenant switched off", async () => {
+    vi.mocked(requireAuth).mockResolvedValue(AGENT_AUTH)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "contactRequiredFields", value: ["firstName", "lastName", "mobilePhone"] },
+      { key: "contactHiddenFields", value: ["mobilePhone"] },
+    ] as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID, role: "AGENT" } as never)
+    vi.mocked(prisma.mtmContactChangeRequest.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue({
+      id: CONTACT_ID,
+      firstName: "One",
+      lastName: "Doctor",
+      mobilePhone: null,
+      displayName: "Doctor One",
+      updatedAt: UPDATED_AT,
+    } as never)
+
+    const response = await submitChange(
+      jsonRequest(`/api/v1/mtm/contacts/${CONTACT_ID}/change-requests`, "POST", {
+        idempotencyKey: "hidden-field-proposal-123",
+        reason: "Reviewed during visit",
+        expectedContactUpdatedAt: UPDATED_AT.toISOString(),
+        kind: "CONTACT_UPDATE",
+        payload: { notes: "Reviewed" },
+      }),
+      { params: Promise.resolve({ id: CONTACT_ID }) },
+    )
+
+    // Nobody can fill a field they cannot see: it must not block the card.
+    expect(response.status).not.toBe(422)
+    expect(prisma.mtmContactChangeRequest.create).toHaveBeenCalled()
+  })
+
   it("rejects an Agent proposal that leaves a tenant-required field empty", async () => {
     vi.mocked(requireAuth).mockResolvedValue(AGENT_AUTH)
     vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([

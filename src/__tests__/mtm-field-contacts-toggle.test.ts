@@ -138,7 +138,8 @@ describe("field contacts organization switch", () => {
     expect(week).toContain("(fieldContactsEnabled ? `/mtm/contacts/${encodeURIComponent(row.subjectId)}` : null)")
 
     const settings = source("src/app/(dashboard)/mtm/settings/page.tsx")
-    expect(settings).toMatch(/settings\.fieldContactsEnabled !== false \? \(\s*<ContactRequiredFieldSettings/)
+    // The whole client-card block (categories, fields, specialties) goes with contacts.
+    expect(settings).toMatch(/settings\.fieldContactsEnabled !== false \? \(\s*<ContactCardSettings/)
   })
 
   it("renders the switch on /mtm/settings for administrators only", () => {

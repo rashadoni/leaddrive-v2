@@ -33,6 +33,7 @@ import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 import { prisma } from "@/lib/prisma"
 import { coveragePolicyHash } from "@/lib/mtm/coverage-policy"
 import { contactDictionaryHash } from "@/lib/mtm/contact-dictionary"
+import { MTM_CONTACT_SPECIALTY_DEFAULTS } from "@/lib/mtm/contact-specialties"
 
 const ORG = "org-1"
 const ADMIN_AUTH: AuthResult = {
@@ -342,6 +343,44 @@ describe("MTM contacts and organizations", () => {
     })
   })
 
+  it("narrows by the typed fields and by any of several specialties", async () => {
+    const response = await getContacts(request(
+      "/api/v1/mtm/contacts?name=Aysel&workplace=Medical%20Clinic&area=Yasamal"
+      + "&specialty=Pediatr&specialty=Kardioloq",
+    ))
+    expect(response.status).toBe(200)
+    const args = vi.mocked(prisma.mtmContact.findMany).mock.calls[0][0] as any
+    const insensitive = (word: string) => ({ contains: word, mode: "insensitive" })
+    expect(args.where.AND).toContainEqual({
+      OR: [{ displayName: insensitive("Aysel") }, { externalCode: insensitive("Aysel") }],
+    })
+    expect(args.where.AND).toContainEqual({
+      OR: [
+        { specialtyName: { equals: "Pediatr", mode: "insensitive" } },
+        { specialtyCode: { equals: "Pediatr", mode: "insensitive" } },
+        { specialtyName: { equals: "Kardioloq", mode: "insensitive" } },
+        { specialtyCode: { equals: "Kardioloq", mode: "insensitive" } },
+      ],
+    })
+    // Institution name and district are asked of ONE current workplace.
+    const place = args.where.AND.find((item: any) => item.workplaces)
+    expect(place.workplaces.some).toMatchObject({ deletedAt: null, endedOn: null })
+    expect(place.workplaces.some.customer.AND).toHaveLength(3)
+    // No single-value specialty column filter any more.
+    expect(args.where.specialtyCode).toBeUndefined()
+  })
+
+  it("still honours a link made with the old single specialty filter", async () => {
+    await getContacts(request("/api/v1/mtm/contacts?specialtyCode=PE"))
+    const args = vi.mocked(prisma.mtmContact.findMany).mock.calls[0][0] as any
+    expect(args.where.AND).toContainEqual({
+      OR: [
+        { specialtyName: { equals: "PE", mode: "insensitive" } },
+        { specialtyCode: { equals: "PE", mode: "insensitive" } },
+      ],
+    })
+  })
+
   it("filters by a tenant-made client category and reports each contact's category", async () => {
     vi.mocked(prisma.mtmContact.findMany).mockResolvedValue([
       { id: "contact-nurse", type: "OTHER", agentAssignments: [], dictionaryAssignments: [{ entryCode: "TIBB_BACISI" }], workplaces: [], visits: [], routePoints: [] },
@@ -464,6 +503,7 @@ describe("MTM contacts and organizations", () => {
       .mockResolvedValueOnce([{ specialtyCode: "PE" }] as any)
       .mockResolvedValueOnce([{ profile: "Hospital" }] as any)
       .mockResolvedValueOnce([{ qualificationCategory: "Senior" }] as any)
+      .mockResolvedValueOnce([{ specialtyName: "Cardiology" }, { specialtyName: "pediatr" }] as any)
     vi.mocked(prisma.mtmCustomer.findMany)
       .mockResolvedValueOnce([{ region: "Baku" }] as any)
       .mockResolvedValueOnce([{ administrativeDistrict: "Nasimi" }] as any)
@@ -477,6 +517,11 @@ describe("MTM contacts and organizations", () => {
     expect(await response.json()).toMatchObject({
       data: {
         specialtyCodes: ["PE"],
+        // The tenant's list (the default one here), then what the visible
+        // contacts carry beyond it. «pediatr» is the listed «Pediatr»: one
+        // choice, not two.
+        configuredSpecialties: [...MTM_CONTACT_SPECIALTY_DEFAULTS],
+        specialties: [...MTM_CONTACT_SPECIALTY_DEFAULTS, "Cardiology"],
         profiles: ["Hospital"],
         qualificationCategories: ["Senior"],
         regions: ["Baku"],

@@ -11323,6 +11323,17 @@
     "colContacts": "Contacts"
   },
   "mtmContactExplorer": {
+    "filterSpecialties": "Specialty",
+    "filterSpecialtySearch": "Find a specialty",
+    "filterNothingFound": "Nothing found",
+    "filterClientName": "Client name",
+    "filterNamePlaceholder": "Name or code",
+    "filterAddress": "Address",
+    "filterAddressPlaceholder": "Street, building",
+    "filterArea": "City or district",
+    "filterAreaPlaceholder": "For example, Yasamal",
+    "filterWorkplace": "Institution",
+    "filterAnywhere": "Search all fields",
     "agentScope": {
       "assignTo": "Attach to {name}",
       "unassignFrom": "Detach from {name}",
@@ -11647,6 +11658,13 @@
     "latitude": "Latitude",
     "longitude": "Longitude",
     "explorer": {
+      "filterName": "Name",
+      "filterNamePlaceholder": "Name or code",
+      "filterAddress": "Address",
+      "filterAddressPlaceholder": "Street, building",
+      "filterArea": "City or district",
+      "filterAreaPlaceholder": "For example, Yasamal",
+      "filterAnywhere": "Search all fields",
       "title": "Institutions",
       "subtitle": "Shared directory, classification, and field-team ownership",
       "clarityGuide": {
@@ -12312,6 +12330,7 @@
     "endWorkplace": "End workplace"
   },
   "mtmContactEdit": {
+    "specialtyChoose": "Not set",
     "categoryManagedHint": "The category is changed on the client card, on the “Categories and scoring” tab.",
     "editTitle": "Edit contact",
     "editDescription": "Changes are saved immediately and recorded in the audit log.",
@@ -15301,6 +15320,7 @@
     "title": "Analytics"
   },
   "mtmFilters": {
+    "clear": "Clear",
     "more": "More filters",
     "reset": "Reset",
     "clearSearch": "Clear search",
@@ -16381,6 +16401,15 @@
     }
   },
   "mtmSettingsPage": {
+    "specialtiesHint": "A client's specialty is picked from this list, and the filter in Clients works by it. Removing a specialty from the list does not change clients who already have it.",
+    "specialtiesCount": "Total: {count}",
+    "specialtiesAddLabel": "New specialty",
+    "specialtiesAddPlaceholder": "Type a name and press Enter. A list from Excel can be pasted whole",
+    "specialtiesAdd": "Add",
+    "specialtiesRemove": "Remove “{name}”",
+    "specialtiesEmpty": "The list is empty — the client card takes the specialty as free text.",
+    "specialtiesDuplicate": "This specialty is already in the list.",
+    "specialtiesLimit": "The list can hold at most {count} specialties.",
     "subtitle": "Field-operations settings — every option here is actually enforced",
     "save": "Save",
     "saving": "Saving...",
@@ -16665,8 +16694,12 @@
     }
   },
   "mtmContactFieldPolicy": {
-    "title": "Required contact fields",
-    "description": "Choose the minimum data a contact must contain. The same rule is enforced for creation, direct edits, agent proposals, and manager approval.",
+    "hiddenCount": "{count} hidden",
+    "stateHidden": "Hidden",
+    "stateShown": "Shown",
+    "stateRequired": "Required",
+    "title": "Client fields",
+    "description": "Mark the fields your company needs. A hidden field leaves the client form, the card, the list and the filter — its data is not deleted and returns when the field is shown again. A required field must be filled on create, edit and approval.",
     "selectedCount": "{count} required",
     "alwaysRequired": "Always",
     "enforcementHint": "Existing incomplete cards remain visible. Their next edit must complete every required field before it can be saved or approved.",
@@ -16677,6 +16710,12 @@
       "address": "Home address"
     },
     "fields": {
+      "specialtyCode": "Specialty code",
+      "homePhone": "Home phone",
+      "viberPhone": "Viber",
+      "whatsappPhone": "WhatsApp",
+      "telegramPhone": "Telegram",
+      "coverage": "Doctor coverage",
       "firstName": "First name",
       "lastName": "Last name",
       "middleName": "Middle name",
@@ -16699,7 +16738,28 @@
       "addressStreet": "Street and building"
     }
   },
+  "mtmContactCard": {
+    "title": "Client card",
+    "description": "What your company keeps about a client: categories, the fields of the card and the list of specialties. Each tab has its own Save button.",
+    "tabs": {
+      "categories": "Categories",
+      "fields": "Fields",
+      "fieldsHidden": "Fields · {count} hidden",
+      "specialties": "Specialties · {count}"
+    },
+    "specialtyNote": "The specialty is picked from a list — it has {count}.",
+    "openSpecialties": "Open the list",
+    "dirty": "There are unsaved changes",
+    "noChanges": "No changes",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveFailed": "Could not save. Please try again.",
+    "saveForbidden": "An administrator or a manager can change these settings."
+  },
   "mtmContactCategories": {
+    "adminOnly": "Client categories are set up by an administrator.",
     "title": "Client categories and their fields",
     "description": "Decide which client categories your company uses and what extra information to collect for each one. For example, “Number of patients” for doctors. The fields appear in the new-client form and on the client card.",
     "addCategory": "Add category",
@@ -25907,6 +25967,7 @@
     "objectTypes": {"PHARMACY": "Pharmacy", "CLINIC": "Clinic", "STORE": "Retail outlet"}
   },
   "mtmContactCreate": {
+    "specialtyChoose": "Not set",
     "title": "New client",
     "description": "Create a person and assign their primary workplace in one step.",
     "personSection": "Person",

@@ -11319,6 +11319,17 @@
     "colContacts": "Əlaqə"
   },
   "mtmContactExplorer": {
+    "filterSpecialties": "İxtisas",
+    "filterSpecialtySearch": "İxtisas axtar",
+    "filterNothingFound": "Heç nə tapılmadı",
+    "filterClientName": "Müştəri adı",
+    "filterNamePlaceholder": "Ad və ya kod",
+    "filterAddress": "Ünvan",
+    "filterAddressPlaceholder": "Küçə, bina",
+    "filterArea": "Şəhər və ya rayon",
+    "filterAreaPlaceholder": "Məsələn, Yasamal",
+    "filterWorkplace": "Müəssisə",
+    "filterAnywhere": "Bütün sahələr üzrə axtarış",
     "agentScope": {
       "assignTo": "Təyin et: {name}",
       "unassignFrom": "Ayır: {name}",
@@ -11643,6 +11654,13 @@
     "latitude": "Enlik",
     "longitude": "Uzunluq",
     "explorer": {
+      "filterName": "Ad",
+      "filterNamePlaceholder": "Ad və ya kod",
+      "filterAddress": "Ünvan",
+      "filterAddressPlaceholder": "Küçə, bina",
+      "filterArea": "Şəhər və ya rayon",
+      "filterAreaPlaceholder": "Məsələn, Yasamal",
+      "filterAnywhere": "Bütün sahələr üzrə axtarış",
       "title": "Müəssisələr",
       "subtitle": "Ümumi kataloq, təsnifat və sahə komandasına təyinat",
       "clarityGuide": {
@@ -12308,6 +12326,7 @@
     "endWorkplace": "İş yerini bitir"
   },
   "mtmContactEdit": {
+    "specialtyChoose": "Göstərilməyib",
     "categoryManagedHint": "Kateqoriya müştəri kartında, «Kateqoriyalar və qiymətləndirmə» bölməsində dəyişdirilir.",
     "editTitle": "Kontakta düzəliş et",
     "editDescription": "Dəyişikliklər dərhal saxlanılır və audit jurnalına yazılır.",
@@ -15297,6 +15316,7 @@
     "title": "Analitika"
   },
   "mtmFilters": {
+    "clear": "Təmizlə",
     "more": "Daha çox filtr",
     "reset": "Sıfırla",
     "clearSearch": "Axtarışı təmizlə",
@@ -16377,6 +16397,15 @@
     }
   },
   "mtmSettingsPage": {
+    "specialtiesHint": "Müştəri əlavə edilərkən ixtisas bu siyahıdan seçilir, «Müştərilər» bölməsindəki filtr də onunla işləyir. Siyahıdan silmək bu ixtisası artıq olan müştəriləri dəyişmir.",
+    "specialtiesCount": "Cəmi: {count}",
+    "specialtiesAddLabel": "Yeni ixtisas",
+    "specialtiesAddPlaceholder": "Adı yazın və Enter basın. Excel siyahısını bütöv yapışdırmaq olar",
+    "specialtiesAdd": "Əlavə et",
+    "specialtiesRemove": "«{name}» sil",
+    "specialtiesEmpty": "Siyahı boşdur — müştəri kartında ixtisas əl ilə yazılır.",
+    "specialtiesDuplicate": "Belə ixtisas artıq siyahıda var.",
+    "specialtiesLimit": "Siyahıda ən çoxu {count} ixtisas ola bilər.",
     "subtitle": "Sahə əməliyyatları ayarları — buradakı hər seçim real tətbiq olunur",
     "save": "Yadda saxla",
     "saving": "Saxlanılır...",
@@ -16661,8 +16690,12 @@
     }
   },
   "mtmContactFieldPolicy": {
-    "title": "Kontaktın məcburi sahələri",
-    "description": "Kontakt üçün minimum məlumat dəstini seçin. Eyni qayda yaratma, birbaşa dəyişiklik, agent təklifi və menecer təsdiqi zamanı tətbiq edilir.",
+    "hiddenCount": "{count} gizli",
+    "stateHidden": "Gizli",
+    "stateShown": "Göstər",
+    "stateRequired": "Məcburi",
+    "title": "Müştəri sahələri",
+    "description": "Şirkətinizə lazım olan sahələri qeyd edin. Gizlədilmiş sahə müştəri formasından, kartından, siyahıdan və filtrdən çıxır — məlumat silinmir və sahə yenidən açılanda geri qayıdır. Məcburi sahə yaratma, dəyişiklik və təsdiq zamanı doldurulmalıdır.",
     "selectedCount": "{count} məcburi",
     "alwaysRequired": "Həmişə",
     "enforcementHint": "Mövcud natamam kartlar görünməyə davam edir. Növbəti dəyişiklik yadda saxlanmadan və ya təsdiqlənmədən əvvəl bütün məcburi sahələr doldurulmalıdır.",
@@ -16673,6 +16706,12 @@
       "address": "Ev ünvanı"
     },
     "fields": {
+      "specialtyCode": "İxtisas kodu",
+      "homePhone": "Ev telefonu",
+      "viberPhone": "Viber",
+      "whatsappPhone": "WhatsApp",
+      "telegramPhone": "Telegram",
+      "coverage": "Həkim əhatəsi",
       "firstName": "Ad",
       "lastName": "Soyad",
       "middleName": "Ata adı",
@@ -16695,7 +16734,28 @@
       "addressStreet": "Küçə və bina"
     }
   },
+  "mtmContactCard": {
+    "title": "Müştəri kartı",
+    "description": "Şirkətinizin müştəri haqqında saxladığı məlumat: kateqoriyalar, kartın sahələri və ixtisas siyahısı. Hər bölmənin öz «Yadda saxla» düyməsi var.",
+    "tabs": {
+      "categories": "Kateqoriyalar",
+      "fields": "Sahələr",
+      "fieldsHidden": "Sahələr · {count} gizli",
+      "specialties": "İxtisaslar · {count}"
+    },
+    "specialtyNote": "İxtisas siyahıdan seçilir — siyahıda {count} ixtisas var.",
+    "openSpecialties": "Siyahını aç",
+    "dirty": "Yadda saxlanmamış dəyişikliklər var",
+    "noChanges": "Dəyişiklik yoxdur",
+    "cancel": "Ləğv et",
+    "save": "Yadda saxla",
+    "saving": "Yadda saxlanılır…",
+    "saved": "Yadda saxlanıldı",
+    "saveFailed": "Yadda saxlamaq alınmadı. Yenidən cəhd edin.",
+    "saveForbidden": "Bu parametrləri administrator və ya rəhbər dəyişə bilər."
+  },
   "mtmContactCategories": {
+    "adminOnly": "Müştəri kateqoriyalarını administrator tənzimləyir.",
     "title": "Müştəri kateqoriyaları və sahələri",
     "description": "Şirkətinizdə hansı müştəri kateqoriyalarının olduğunu və hər biri üzrə hansı əlavə məlumatın toplanacağını burada müəyyən edirsiniz. Məsələn, həkimlər üçün «Xəstə sayı». Sahələr yeni müştəri formasında və müştəri kartında görünəcək.",
     "addCategory": "Kateqoriya əlavə et",
@@ -25903,6 +25963,7 @@
     "objectTypes": {"PHARMACY": "Aptek", "CLINIC": "Klinika", "STORE": "Satış nöqtəsi"}
   },
   "mtmContactCreate": {
+    "specialtyChoose": "Göstərilməyib",
     "title": "Yeni müştəri",
     "description": "Şəxsi yaradın və əsas iş yerini dərhal göstərin.",
     "personSection": "Şəxs",

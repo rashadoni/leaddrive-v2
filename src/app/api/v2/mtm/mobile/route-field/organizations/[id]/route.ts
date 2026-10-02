@@ -25,6 +25,9 @@ const routeFieldOrganizationSelect = (agentId: string) => ({
   city: true,
   district: true,
   phone: true,
+  // The person at the organization itself. Agents visit it and must know whom
+  // to ask for; they still cannot change it (owner, 2026-10-02).
+  contactPerson: true,
   contactWorkplaces: {
     where: { deletedAt: null, endedOn: null, contact: { deletedAt: null, status: "ACTIVE" } },
     orderBy: [{ isPrimary: "desc" }, { startedOn: "desc" }, { id: "asc" }],
@@ -79,6 +82,7 @@ function projectRouteFieldOrganization(source: RouteFieldOrganizationSource) {
     city: source.city,
     district: source.district,
     phone: source.phone,
+    contactPerson: source.contactPerson,
     contacts: source.contactWorkplaces.map((workplace) => ({
       id: workplace.contact.id,
       name: workplace.contact.displayName,

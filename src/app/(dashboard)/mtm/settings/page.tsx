@@ -17,9 +17,8 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { VisitPolicySettings } from "./visit-policy-settings"
 import { ScoringFormulaSettings } from "./scoring-formula-settings"
-import { ContactRequiredFieldSettings } from "./contact-required-field-settings"
+import { ContactCardSettings } from "./contact-card-settings"
 import { ContactDictionarySettings } from "./contact-dictionary-settings"
-import { ContactCategorySettings } from "./contact-category-settings"
 import { OrganizationAttributePackageSettings } from "./organization-attribute-package-settings"
 import { RouteTargetTypeSettings } from "./route-target-type-settings"
 import { COMMON_TIMEZONES } from "@/lib/timezone"
@@ -240,6 +239,14 @@ export default function MtmSettingsPage() {
 
   const updateSetting = (key: string, value: SettingValue) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  // A block that saves itself (the client card) reports what is now stored:
+  // both copies take it, so this page's «unsaved» bar does not light up.
+  const applySavedSettings = (changes: Record<string, unknown>) => {
+    const saved = changes as SettingsMap
+    setLoaded((prev) => ({ ...prev, ...saved }))
+    setSettings((prev) => ({ ...prev, ...saved }))
   }
 
   const clearFieldError = (key: string) => {
@@ -626,15 +633,6 @@ export default function MtmSettingsPage() {
         </div>
       </details>
 
-      {/* Hidden with field contacts; the stored value stays in `settings` and
-          is never sent unless changed, so turning contacts on restores it. */}
-      {settings.fieldContactsEnabled !== false ? (
-        <ContactRequiredFieldSettings
-          value={settings.contactRequiredFields}
-          onChange={(value) => updateSetting("contactRequiredFields", value)}
-        />
-      ) : null}
-
       {/* Sticky save bar for everything above; the sections below save themselves. */}
       <div
         data-testid="mtm-settings-save-bar"
@@ -653,9 +651,19 @@ export default function MtmSettingsPage() {
         </div>
       </div>
 
-      {/* Same switch as the required-fields block: categories describe field
-          contacts, and mean nothing while those are turned off. */}
-      {settings.fieldContactsEnabled !== false ? <ContactCategorySettings /> : null}
+      {/* Everything about the client card — categories, fields, specialties —
+          in one block with its own save buttons. It describes field contacts
+          and means nothing while those are turned off; the stored values stay
+          and return when contacts are switched back on. It works from what the
+          server holds (`loaded`), not from this page's unsaved draft. */}
+      {settings.fieldContactsEnabled !== false ? (
+        <ContactCardSettings
+          requiredFields={loaded.contactRequiredFields}
+          hiddenFields={loaded.contactHiddenFields}
+          specialties={loaded.contactSpecialties}
+          onSaved={applySavedSettings}
+        />
+      ) : null}
       <ContactDictionarySettings />
       <OrganizationAttributePackageSettings />
       <CoveragePolicyAdmin />
