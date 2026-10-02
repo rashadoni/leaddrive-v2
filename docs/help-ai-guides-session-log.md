@@ -1085,3 +1085,27 @@ selected production tenant, activation evidence and real telemetry remain pendin
   prevents an after build when the before capture fails. Independent review
   verified no browserSoftphone/external registration or MTM outbox drain from
   the ancillary grants; sidebar width is unchanged by module grants.
+
+
+## 2026-10-03 — Current-main candidate admitted to new hosted diagnostics
+
+- Checkpoint657eb44e8 preserves the shared browser/module/receipt correction.
+  Local merge722833c44 integrates current origin/main
+  420e5be1285a68954d45653d9f0740f212f6adea, without publishing to main or
+  production. Incoming MTM/user-settings changes do not alter the four Support
+  pages or corrected Calendar API. Prior exact capture evidence remains scoped
+  to its recorded sources; byte identity of Calendar page/API to43440b2dd PASS.
+- Combined current-tree historical/RLS/Calendar46/46 PASS; translation parity
+  PASS:24,121 English leaf keys, AZ/RU missing0/extra0. YAML2/2 valid, runner
+  policy39 workflows PASS, diff check PASS. No full build/TS/browser on Contabo.
+- Failed historical37064741882 is now completed/cancelled, not an admitted
+  comparison. Publish the new exact candidate and run only its necessary
+  historical diagnostic/required PR gates. Accepted viewport, color vision,
+  corrected Calendar, original release CI and original deployment are retained.
+
+Current result/status: tracked190/191; exact historical comparison and real
+production observation remain open. Last completed action: integrated current
+main and passed bounded source checks. Precise stopping point: publish this
+checkpoint and dispatch the corrected isolated historical diagnostic.
+Next action: inspect its endpoint metadata/actual geometry and required gates;
+owner-selected tenant/activation/telemetry remain required for the final week.
