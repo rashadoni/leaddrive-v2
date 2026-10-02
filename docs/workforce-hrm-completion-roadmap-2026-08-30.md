@@ -4019,3 +4019,25 @@ from this worktree.
   replacement candidate publication/full review/hosted gates. Next action:
   new exact-head seven cases and required checks, fresh-main merge/deploy/SHA
   proof only after GREEN. Progress81/161,14/15,C8 36%,59%;007 PARTIAL.
+
+
+## 2026-10-02 — fenced-factory exact candidate review GREEN
+
+- Exact published03b7eb03753cf8ca870722cf05c97661799e980f/base88cd6fcc
+  independent full-range review GREEN P0=0 P1=0 P2=0 P3=0. Full9paths/
+  162,251bytes/SHA256f85340187507da325ea811d22a3446a268b4391284725bc18903fc4aa0ea33d6;
+  non-doc4paths/40,814bytes/SHA256
+  29cd51b49b7494b1635ece04e3b30125ce07017ebce433bfc401be950c7ad096.
+- Both clients actually use unchanged fenced makeRlsTestPrisma with no tenant
+  or bypass setting; workflow target agrees with guarded disposable admin
+  URL. Actual restricted-role probes remain unscoped. Classifier/allowlist/
+  baseline unchanged; UI/SQL unchanged from227. Historical35/227 original
+  JSONs byte-identical; all3 document prefixes preserved. Local22/22/3.68s
+  verified. Historical227 static FAILURE, type/PG/browser PASS correctly scoped.
+- New exact browser37053583689 and required PR37053582977 pending; scan
+ 37053583045 SUCCESS. No new-head heavy/browser PASS credited. This local
+  receipt-only append follows published03; source unchanged. Current result:
+  static exact review GREEN. Last action: independent full review. Precise
+  stopping point: hosted required and seven-case gates. Next action: inspect
+  primary results, fresh-main protected merge/deploy/public SHA proof.
+  Progress81/161,14/15,C8 36%,59%;007 PARTIAL; pilot remains NOT RUN.
