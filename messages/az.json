@@ -12417,6 +12417,7 @@
     }
   },
   "mtmContactDictionaryAssignments": {
+    "reasonOptional": "Dəyişikliyin səbəbi (istəyə görə)",
     "title": "Kontaktın idarə olunan kateqoriyaları",
     "description": "Müştəri növü və onun sahələri, psixotip, məhsul və brend kateqoriyaları təsdiqlənmiş lüğətin dəqiq versiyasına bağlanır. Tarixçə yenidən yazılmır.",
     "edit": "Kateqoriyaları dəyiş",

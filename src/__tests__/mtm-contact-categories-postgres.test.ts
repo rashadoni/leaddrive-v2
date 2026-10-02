@@ -226,7 +226,7 @@ pgDescribe("client categories on a real Postgres", () => {
 
     const response = await PUT(put(`/api/v1/mtm/contacts/${contact.id}/dictionary-assignments`, {
       expectedStateHash: contactDictionaryAssignmentStateHash([]),
-      reason: "Xəstə sayı əlavə edildi",
+      // No reason: this is what the card sends when a manager just fills it in.
       clientType: { dictionaryId: active.id, code: "DOCTOR", values: { xeste_sayi: 120 } },
       psychotype: null,
       productCategories: null,

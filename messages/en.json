@@ -12421,6 +12421,7 @@
     }
   },
   "mtmContactDictionaryAssignments": {
+    "reasonOptional": "Reason for the change (optional)",
     "title": "Governed contact categories",
     "description": "Client type and its fields, psychotype, product categories, and brand categories are bound to an exact signed dictionary version. History is never overwritten.",
     "edit": "Edit categories",
