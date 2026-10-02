@@ -4887,3 +4887,31 @@ corrections as new entries that explicitly supersede the earlier fact.
   review before publishing successor. Next action: publish the reviewed clean
   checkpoint, then scope remaining bounded calendar/keyboard/zoom acceptance
   in hosted CI while keeping AT/physical/production-auth gates NOT RUN until run.
+
+
+## 2026-10-02 — part17 release-receipt integrity and publication
+
+- Independent complete receipt review of clean
+  dd247c3b3f0695e493b5fed9745cd6ed30713fca against baseba2326c2 GREEN:
+  P0=0,P1=0,P2=0,P3=0. Full11paths/62,868bytes/SHA256
+  fe2fcf61d83d46e831133fd1f47dad53ecd13925c59b9d4742120c088899aabd;
+  non-doc0paths/0bytes/SHA256
+  e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.
+  Three docs append-only; eight browser and seven release JSONs byte-exact
+  primary originals, reviewed source4 equal releasedM, all25 later main-owned
+  paths preserved. Public exactM proof, normal workflowSUCCESS, TLS/502 caveats,
+  baseline66/66 with1195diagnostics/exit2, progress and NOT RUN are consistent.
+- Published exactdd247c3b to origin/codex/workforce-completion-part17 and verified
+  remote SHA matches. Original closed part16/PR528 head was not pushed again.
+  This final continuity append is evidence-only and will receive a bounded
+  independent delta check before its checkpoint is published on the same branch.
+- Current result: PR528 normal release and exact-SHA public smoke complete;
+  reviewed successor receipt checkpoint published. Last completed action:
+  independent integrity GREEN and verified successor push. Precise stopping
+  point: part17 receipt-only continuity checkpoint; no next application change
+  has started. Next bounded action: real hosted keyboard acceptance for existing
+  moved-day pair confirmation, cancellation and exact retry. Zoom/AT/physical/
+  authenticated-production/load/pilot acceptance remains NOT RUN until executed;
+  general update/delete, break policy, AGENT moves and Route mutation stay
+  excluded. Progress unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;
+  WF-C8-007 PARTIAL. No full Contabo build/typecheck/suite/browser was run.
