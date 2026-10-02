@@ -1,22 +1,21 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import {
   Shield, ShieldCheck, UserCheck, Eye, Briefcase, Megaphone, Wallet, Headphones,
-  Check, X, Pencil, EyeIcon, Save, RotateCcw, Loader2, Lock, Plus, Trash2, Tag,
+  Check, X, Pencil, EyeIcon, Lock, Trash2, Tag, Users, ArrowRight,
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { HelpButton } from "@/components/help/help-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
+import { checkPermission, type Role } from "@/lib/permissions"
 
 type AccessLevel = "full" | "edit" | "view" | "none"
 
@@ -27,21 +26,18 @@ interface RoleConfig {
   isSystem: boolean
 }
 
-type ApiErrorResponse = {
-  error?: string
-}
-
-// Grouped module list — each module maps to a permission key in permissions.ts
-// Keep aligned with MODULES constant in src/lib/permissions.ts
+// Grouped module list — each module is a permission scope in permissions.ts,
+// and the matrix below is read straight from that file's role table.
 const MODULE_GROUPS: { label: string; modules: string[] }[] = [
   { label: "crm",       modules: ["companies", "contacts", "deals", "leads", "tasks"] },
   { label: "sales",     modules: ["contracts", "offers", "pricing"] },
   { label: "marketing", modules: ["campaigns", "journeys", "segments", "events"] },
   { label: "loyalty",   modules: ["loyalty"] },
-  { label: "comm",      modules: ["inbox", "voip"] },
+  { label: "comm",      modules: ["inbox", "voip", "social"] },
   { label: "support",   modules: ["tickets", "kb"] },
   { label: "finance",   modules: ["invoices", "budgeting", "profitability"] },
   { label: "erp",       modules: ["projects"] },
+  { label: "field",     modules: ["mtm", "workforce"] },
   { label: "ai",        modules: ["ai"] },
   { label: "analytics", modules: ["reports"] },
   { label: "admin",     modules: ["settings", "users", "audit"] },
@@ -52,7 +48,23 @@ const MODULE_HINT_KEYS: Partial<Record<string, string>> = {
   loyalty: "moduleHint_loyalty",
 }
 
-const ACCESS_CYCLE: AccessLevel[] = ["full", "edit", "view", "none"]
+/**
+ * What the server actually lets a role do in a module, as one of the four
+ * levels the matrix shows. Asked of `checkPermission` — the function every API
+ * route is gated by — so this table cannot say something enforcement does not.
+ *
+ * It used to render `Organization.settings.permissions`, an editable copy that
+ * nothing reads at enforcement time: an admin could set Sales → Deals to "None",
+ * save, and Sales kept full access. A role the engine does not know (a custom
+ * one) is denied everything, which is what "None" in every row says.
+ */
+function enforcedLevel(roleId: string, module: string): AccessLevel {
+  const can = (action: "read" | "write" | "delete") => checkPermission(roleId as Role, module, action)
+  if (can("delete")) return "full"
+  if (can("write")) return "edit"
+  if (can("read")) return "view"
+  return "none"
+}
 
 const COLOR_OPTIONS = [
   { id: "red", label: "Red", bg: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300" },
@@ -84,42 +96,23 @@ function getRoleIcon(roleId: string) {
 }
 
 const ACCESS_STYLES: Record<AccessLevel, { icon: typeof Check; className: string }> = {
-  full: { icon: Check,   className: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40" },
-  edit: { icon: Pencil,  className: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40" },
-  view: { icon: EyeIcon, className: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40" },
-  none: { icon: X,       className: "text-muted-foreground bg-muted hover:bg-muted/80" },
+  full: { icon: Check,   className: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20" },
+  edit: { icon: Pencil,  className: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" },
+  view: { icon: EyeIcon, className: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20" },
+  none: { icon: X,       className: "text-muted-foreground bg-muted" },
 }
-
-type PermissionMatrix = Record<string, Record<string, AccessLevel>>
 
 export default function RolesSettingsPage() {
   const { data: session } = useSession()
   const t = useTranslations("settings")
   const tc = useTranslations("common")
   useAutoTour("roles")
-  const COLOR_LABELS: Record<string, string> = {
-    red: t("colorRed"), blue: t("colorBlue"), purple: t("colorPurple"),
-    gray: t("colorGray"), emerald: t("colorGreen"), pink: t("colorPink"),
-    amber: t("colorAmber"), cyan: t("colorCyan"), indigo: t("colorIndigo"),
-    teal: t("colorTeal"), orange: t("colorOrange"), slate: t("colorSlate"),
-  }
   const [roles, setRoles] = useState<RoleConfig[]>([])
-  const [permissions, setPermissions] = useState<PermissionMatrix>({})
-  const [savedPermissions, setSavedPermissions] = useState<PermissionMatrix>({})
   const [userCounts, setUserCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [saveSuccess, setSaveSuccess] = useState(false)
-  const [error, setError] = useState("")
-  const [showAddRole, setShowAddRole] = useState(false)
-  const [newRoleName, setNewRoleName] = useState("")
-  const [newRoleColor, setNewRoleColor] = useState("slate")
-  const [addingRole, setAddingRole] = useState(false)
   const [deleteRoleId, setDeleteRoleId] = useState<string | null>(null)
   const [deleteRoleName, setDeleteRoleName] = useState("")
   const orgId = session?.user?.organizationId
-
-  const hasChanges = JSON.stringify(permissions) !== JSON.stringify(savedPermissions)
 
   const fetchData = useCallback(async () => {
     if (!orgId) return
@@ -141,88 +134,12 @@ export default function RolesSettingsPage() {
 
       if (rolesRes.ok) {
         const result = await rolesRes.json()
-        if (result.data) {
-          setRoles(result.data.roles)
-          setPermissions(result.data.permissions)
-          setSavedPermissions(result.data.permissions)
-        }
+        if (result.data) setRoles(result.data.roles)
       }
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }, [orgId])
 
   useEffect(() => { fetchData() }, [fetchData])
-
-  const cycleAccess = (roleId: string, module: string) => {
-    if (roleId === "admin" && module === "settings") return
-    setPermissions(prev => {
-      const current = (prev[roleId]?.[module] || "none") as AccessLevel
-      const idx = ACCESS_CYCLE.indexOf(current)
-      const next = ACCESS_CYCLE[(idx + 1) % ACCESS_CYCLE.length]
-      return { ...prev, [roleId]: { ...prev[roleId], [module]: next } }
-    })
-    setSaveSuccess(false)
-  }
-
-  const handleSave = async () => {
-    setSaving(true)
-    setError("")
-    setSaveSuccess(false)
-    try {
-      const res = await fetch("/api/v1/settings/roles", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
-        },
-        body: JSON.stringify({ roles, permissions }),
-      })
-      if (!res.ok) {
-        const json = await res.json().catch((): ApiErrorResponse => ({}))
-        throw new Error(json.error || tc("errorUpdateFailed"))
-      }
-      setSavedPermissions(JSON.parse(JSON.stringify(permissions)))
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 3000)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : tc("errorUpdateFailed"))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleReset = () => {
-    setPermissions(JSON.parse(JSON.stringify(savedPermissions)))
-    setError("")
-    setSaveSuccess(false)
-  }
-
-  const handleAddRole = async () => {
-    if (!newRoleName.trim()) return
-    setAddingRole(true)
-    setError("")
-    try {
-      const res = await fetch("/api/v1/settings/roles", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
-        },
-        body: JSON.stringify({ name: newRoleName.trim(), color: newRoleColor }),
-      })
-      if (!res.ok) {
-        const json = await res.json().catch((): ApiErrorResponse => ({}))
-        throw new Error(json.error || tc("errorCreateFailed"))
-      }
-      setShowAddRole(false)
-      setNewRoleName("")
-      setNewRoleColor("slate")
-      await fetchData()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : tc("errorCreateFailed"))
-    } finally {
-      setAddingRole(false)
-    }
-  }
 
   const handleDeleteRole = async () => {
     if (!deleteRoleId) return
@@ -267,29 +184,25 @@ export default function RolesSettingsPage() {
           <p className="text-muted-foreground">{t("rolesPageSubtitle")}</p>
           <p className="text-sm text-muted-foreground mt-1">{t("hintRoles")}</p>
         </div>
-        <div className="flex items-center gap-2" data-tour-id="roles-save">
-          <TourReplayButton tourId="roles" />
-          {hasChanges && (
-            <Button variant="outline" size="sm" onClick={handleReset}>
-              <RotateCcw className="h-4 w-4 mr-1" />
-              {t("cancelChanges")}
-            </Button>
-          )}
-          <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges}>
-            {saving ? (
-              <><Loader2 className="h-4 w-4 animate-spin mr-1" />{t("saving")}</>
-            ) : saveSuccess ? (
-              <><Check className="h-4 w-4 mr-1" />{t("saved")}</>
-            ) : (
-              <><Save className="h-4 w-4 mr-1" />{t("savePermissions")}</>
-            )}
-          </Button>
-        </div>
+        <TourReplayButton tourId="roles" />
       </div>
 
-      {error && (
-        <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">{error}</div>
-      )}
+      {/* Where module access for one person is actually set */}
+      <Card data-tour-id="roles-user-access" className="border-primary/40">
+        <CardContent className="pt-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="max-w-2xl">
+            <h3 className="font-semibold">{t("rolesUserAccessTitle")}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{t("rolesUserAccessBody")}</p>
+          </div>
+          <Button asChild>
+            <Link href="/settings/users">
+              <Users className="h-4 w-4 mr-1" />
+              {t("rolesUserAccessCta")}
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Roles cards */}
       <Card data-tour-id="roles-list">
@@ -299,9 +212,6 @@ export default function RolesSettingsPage() {
               <h3 className="font-semibold">{t("availableRoles")}</h3>
               <p className="mt-1 text-xs text-muted-foreground">{t("availableRolesHint")}</p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => setShowAddRole(true)}>
-              <Plus className="h-4 w-4 mr-1" /> {t("addRole")}
-            </Button>
           </div>
           <div className="flex flex-wrap gap-3">
             {roles.map(role => {
@@ -337,8 +247,8 @@ export default function RolesSettingsPage() {
       {/* Permission Matrix */}
       <Card data-tour-id="roles-matrix">
         <CardContent className="pt-6 overflow-x-auto">
-          <p className="text-xs text-muted-foreground mb-4">{t("clickToChange")}</p>
-          <p className="-mt-3 mb-4 text-xs text-muted-foreground">{t("permissionMatrixHint")}</p>
+          <h3 className="font-semibold">{t("rolesMatrixTitle")}</h3>
+          <p className="mt-1 mb-4 text-xs text-muted-foreground">{t("rolesMatrixReadOnlyHint")}</p>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
@@ -373,23 +283,16 @@ export default function RolesSettingsPage() {
                     )}
                   </td>
                   {roles.map(role => {
-                    const level = (permissions[role.id]?.[mod] || "none") as AccessLevel
+                    const level = enforcedLevel(role.id, mod)
                     const style = ACCESS_STYLES[level]
                     const IconEl = style.icon
-                    const isLocked = role.id === "admin" && mod === "settings"
                     return (
                       <td key={role.id} className="py-2.5 px-2">
                         <div className="flex justify-center">
-                          <button
-                            type="button"
-                            onClick={() => cycleAccess(role.id, mod)}
-                            disabled={isLocked}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${style.className} ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                            title={isLocked ? t("adminSettingsLocked") : t("clickToChange")}
-                          >
-                            {isLocked ? <Lock className="h-3 w-3" /> : <IconEl className="h-3 w-3" />}
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${style.className}`}>
+                            <IconEl className="h-3 w-3" />
                             {accessLabel(level)}
-                          </button>
+                          </span>
                         </div>
                       </td>
                     )
@@ -400,49 +303,6 @@ export default function RolesSettingsPage() {
           </table>
         </CardContent>
       </Card>
-
-      {/* Add Role Dialog */}
-      <Dialog open={showAddRole} onOpenChange={setShowAddRole}>
-        <DialogHeader>
-          <DialogTitle>{t("addRole")}</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
-          <div className="grid gap-4">
-            <div>
-              <Label>{t("roleName")}</Label>
-              <Input
-                value={newRoleName}
-                onChange={e => setNewRoleName(e.target.value)}
-                placeholder={t("rolePlaceholder")}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">{t("roleNameHint")}</p>
-            </div>
-            <div>
-              <Label>{t("roleColor")}</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {COLOR_OPTIONS.map(c => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setNewRoleColor(c.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${c.bg} ${newRoleColor === c.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                  >
-                    {COLOR_LABELS[c.id] ?? c.label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">{t("roleColorHint")}</p>
-            </div>
-          </div>
-        </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowAddRole(false)}>{t("cancelChanges")}</Button>
-          <Button onClick={handleAddRole} disabled={addingRole || !newRoleName.trim()}>
-            {addingRole ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-            {t("addRole")}
-          </Button>
-        </DialogFooter>
-      </Dialog>
 
       {/* Delete Role Dialog */}
       <DeleteConfirmDialog

@@ -320,7 +320,7 @@ export const TOUR_DEFINITIONS: Record<string, TourDef> = {
     { targetId: "roles-header", titleKey: "headerTitle", descKey: "headerDesc" },
     { targetId: "roles-list", titleKey: "listTitle", descKey: "listDesc" },
     { targetId: "roles-matrix", titleKey: "matrixTitle", descKey: "matrixDesc" },
-    { targetId: "roles-save", titleKey: "saveTitle", descKey: "saveDesc" },
+    { targetId: "roles-user-access", titleKey: "saveTitle", descKey: "saveDesc" },
   ]},
   notificationsSettings: { steps: [
     { targetId: "notifications-header", titleKey: "headerTitle", descKey: "headerDesc" },
