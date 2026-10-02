@@ -323,6 +323,10 @@ describe("an employee's own section", () => {
     const asked = listCalls().find((params) => params.get("assignmentState") === "UNASSIGNED")
     expect(asked?.get("ownerAgentId")).toBeNull()
     expect(tableRows(container)[0]).toContain("Nigar Səfərova")
+    // The hint tells the manager to change the assignment state to take a client
+    // over from someone else: that field must be in sight, not behind «more».
+    expect(container.querySelector("[data-testid='mtm-contact-assignment-state']")).not.toBeNull()
+    expect(container.querySelector("[data-testid='mtm-contact-owner']")).not.toBeNull()
     await until(() => container.querySelector("[data-testid='mtm-agent-tab-assigned']")?.textContent === fill(section.tabAssignedCount, { count: 2 }), "the employee's client count")
 
     await tick(container, "c-nigar")
@@ -400,6 +404,9 @@ describe("the Clients page after the explorer learned about sections", () => {
     await until(() => tableRows(container).length === 4, "every client")
 
     expect(container.querySelector("[data-testid='mtm-contact-owner']")).not.toBeNull()
+    // There the assignment state is one of the «more filters», closed on a fresh page.
+    expect(container.querySelector("[data-testid='mtm-contact-assignment-state']")).toBeNull()
+    await click(container.querySelector("[data-testid='mtm-contact-more-filters']"))
     expect(container.querySelector("[data-testid='mtm-contact-assignment-state']")).not.toBeNull()
     expect(calls.some((call) => call.url.startsWith("/api/v1/mtm/contacts/views"))).toBe(true)
     expect(listCalls()[0].get("ownerAgentId")).toBeNull()
