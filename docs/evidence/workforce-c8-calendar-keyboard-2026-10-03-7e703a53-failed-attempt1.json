@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "candidateHead": "7e703a536cbee5fbf415a9986881414568551dab",
+  "checkedMergeSha": "b59640a658f096d9e24395e2f56487d76e626c77",
+  "startedAt": "2026-10-02T22:50:40.513Z",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF + credentials provider + session cookie; no auth mocks",
+  "cases": [
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-TEAM-ru",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-az",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-en",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-ru",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "late-committed-response-principal-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "exactHeldRead": true,
+      "newContextRefreshHeld": true,
+      "heldReadLiveBeforeObsoleteResponse": true,
+      "obsoleteResponseDidNotCancelHeldRead": true,
+      "realSessionPreserved": true,
+      "teamNavigationCompleted": true,
+      "posts": 1
+    },
+    {
+      "name": "late-committed-response-tenant-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "exactHeldRead": true,
+      "newContextRefreshHeld": true,
+      "heldReadLiveBeforeObsoleteResponse": true,
+      "obsoleteResponseDidNotCancelHeldRead": true,
+      "realSessionPreserved": true,
+      "teamNavigationCompleted": true,
+      "posts": 1
+    },
+    {
+      "name": "keyboard-cancel-reopen-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "nativeTabNavigation": true,
+      "sourceTabs": 9,
+      "openedWithEnter": true,
+      "confirmationTabOrder": true,
+      "shiftTabReturnsToConfirm": true,
+      "cancelledWithSpace": true,
+      "cancelWrites": 0,
+      "cancelStateUnchanged": true,
+      "cancelRestoresSourceFocus": true,
+      "reopenedWithEnter": true,
+      "confirmedWithEnter": true,
+      "resultFocusedAndVisible": true,
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1,
+      "realSessionPreserved": true
+    }
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "No production business data",
+    "No Android/AT/load/pilot evidence",
+    "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI",
+    "No whole-page keyboard or zoom acceptance"
+  ],
+  "status": "FAIL",
+  "databaseRole": {
+    "superuser": false,
+    "bypassRls": false,
+    "unscopedUsers": 0,
+    "unscopedTeams": 0,
+    "unscopedWorkforceAudits": 0
+  },
+  "failure": {
+    "name": "AssertionError",
+    "message": "Real credentials callback must succeed"
+  },
+  "readDiagnostics": [
+    {
+      "phase": "principal-request-failed",
+      "method": "GET",
+      "requestFailed": true,
+      "matchesHeldRead": false,
+      "beforeObsoleteResponse": true,
+      "aborted": true
+    },
+    {
+      "phase": "principal-context-bootstrap-read",
+      "scope": "ORGANIZATION",
+      "status": 200,
+      "sessionCookieHeaderPresent": true,
+      "success": true
+    },
+    {
+      "phase": "principal-held-context-read",
+      "scope": "ORGANIZATION",
+      "status": 200,
+      "sessionCookieHeaderPresent": true,
+      "success": true
+    },
+    {
+      "phase": "principal-scope-bootstrap-read",
+      "scope": "ORGANIZATION",
+      "status": 200,
+      "sessionCookieHeaderPresent": true,
+      "success": true
+    },
+    {
+      "phase": "principal-selected-team-read",
+      "scope": "TEAM",
+      "status": 200,
+      "sessionCookieHeaderPresent": true,
+      "success": true
+    },
+    {
+      "phase": "tenant-request-failed",
+      "method": "GET",
+      "requestFailed": true,
+      "matchesHeldRead": false,
+      "beforeObsoleteResponse": true,
+      "aborted": true
+    },
+    {
+      "phase": "tenant-context-bootstrap-read",
+      "scope": "ORGANIZATION",
+      "status": 200,
+      "sessionCookieHeaderPresent": true,
+      "success": true
+    },
+    {
+      "phase": "tenant-held-context-read",
+      "scope": "ORGANIZATION",
+      "status": 200,
+      "sessionCookieHeaderPresent": true,
+      "success": true
+    },
+    {
+      "phase": "tenant-scope-bootstrap-read",
+      "scope": "ORGANIZATION",
+      "status": 200,
+      "sessionCookieHeaderPresent": true,
+      "success": true
+    },
+    {
+      "phase": "tenant-selected-team-read",
+      "scope": "TEAM",
+      "status": 200,
+      "sessionCookieHeaderPresent": true,
+      "success": true
+    }
+  ],
+  "interceptedFailureCount": 0,
+  "completedAt": "2026-10-02T22:51:39.595Z"
+}

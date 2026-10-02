@@ -1,0 +1,71 @@
+{
+  "recordedAt": "2026-10-02T22:07:46.676851+00:00",
+  "exactMergedSha": "bb314679b786cc3294a39927141bfdc15e1cc4b4",
+  "normalRunSuccess": true,
+  "workflowRun": {
+    "databaseId": 37068227458,
+    "headSha": "bb314679b786cc3294a39927141bfdc15e1cc4b4",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37068227458",
+    "updatedAt": "2026-10-02T22:03:53Z"
+  },
+  "successfulJobs": [
+    {
+      "databaseId": 111041230111,
+      "name": "Production build & publish artifact",
+      "completedAt": "2026-10-02T21:54:28Z",
+      "conclusion": "success"
+    },
+    {
+      "databaseId": 111041230148,
+      "name": "Quality & security gates",
+      "completedAt": "2026-10-02T21:50:32Z",
+      "conclusion": "success"
+    },
+    {
+      "databaseId": 111045497497,
+      "name": "Deploy to production & post-deploy smoke",
+      "completedAt": "2026-10-02T22:03:45Z",
+      "conclusion": "success"
+    },
+    {
+      "databaseId": 111048297579,
+      "name": "Cap retained deploy artifacts",
+      "completedAt": "2026-10-02T22:03:52Z",
+      "conclusion": "success"
+    }
+  ],
+  "publicExactShaCaptured": true,
+  "publicOriginalMetadataFile": "public-proof.json",
+  "builtAt": "2026-10-02T21:46:25Z",
+  "originalFiles": {
+    "build-info-first.json": {
+      "bytes": 112,
+      "sha256": "ea035e97901cf7efea972aaeb31a21ea1d1ed04f7efe392e905f5d243d5a0466"
+    },
+    "ping.json": {
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+    },
+    "build-info-confirm.json": {
+      "bytes": 112,
+      "sha256": "ea035e97901cf7efea972aaeb31a21ea1d1ed04f7efe392e905f5d243d5a0466"
+    },
+    "public-proof.json": {
+      "bytes": 1662,
+      "sha256": "f2647072b3a603e2b9f80d679beafdd3d7b8fc8c8b36c4422e4445406249917f"
+    },
+    "deploy-run-37068227458-success.json": {
+      "bytes": 9989,
+      "sha256": "5f642f07eeeff98c6628a2630e6885253ea078133b5514da7a01456bbbdc6ca3"
+    }
+  },
+  "notes": [
+    "Original public-proof.json preserved; it records capture before final run status was checked.",
+    "Two exact-SHA public build-info responses bracket HTTP 200 ping on strict TLS domain pinned to production IP.",
+    "One transient HTTP 502 was observed before the successful capture; exact failure timestamp and duration were not captured.",
+    "No descendant SHA was substituted."
+  ]
+}

@@ -1289,3 +1289,378 @@
   HEAD, seven real scenarios/five gates again, final fresh-main check, protected
   merge and normal deploy/public exact artifact SHA. Progress remains81/161,
   14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL; no acceptance inflation.
+
+
+## 2026-10-02 — main420 exact review GREEN and publication
+
+- Complete independent review of clean fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b
+  / base420e5be1285a68954d45653d9f0740f212f6adea GREEN P0=0 P1=0 P2=0 P3=0.
+  Full14paths/281,071bytes/SHA256
+  007504b37cac3c5dac5fbeb1f1e683c8f9bdbcd557f20982b8d4ad262c4b8426;
+  non-doc4paths/46,283bytes/SHA256
+  52c7a635988014ac9e2e646e2c9c6d7ca7e7ec82fff7a725fee5d78b84d3ad50.
+  Ordinary integration, fourteen main-owned blobs, source4 equality, all ten
+  Workforce namespaces and configuration selfAgentId:null boundary verified.
+  Three docs append-only and all seven original historical JSONs exact.
+  Actual86/86 (5.11s), calendar API24/24 (2.44s), i18n24121/0 missing/extra
+  confirmed from primary logs. No source change after the reviewed c2 code.
+- Fresh fetch before publication still420e5be1; published exactfd02801c to
+  PR528 and confirmed live head/basefd/420. Marked ready_for_review for new
+  actual browser/five-gate execution. Earlier draft skips/historical GREENs
+  are not current-head acceptance. This receipt append remains local during CI.
+- Current status: exact integrated review GREEN, hosted execution pending.
+  Last completed action: exact push and ready event on main420. Precise stopping
+  point: seven real browser cases and five required contexts. Next action:
+  original primary results, final fresh-main protected merge, normal deploy
+  and public exact merged artifact SHA. Progress remains81/161,14/15,C8 36%,
+  overall59%,80non-DONE;007 PARTIAL, remaining unrun product gates NOT RUN.
+
+
+## 2026-10-02 — integrated main420 browser acceptance 7/7
+
+- Actual run37066398649/job111035118850 SUCCESS for exact integrated head
+  fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b. Synthetic merge
+  9ab5f7161e5892930e60ade05ad03096eea31dd2 has API-confirmed parents
+  [420e5be1285a68954d45653d9f0740f212f6adea,fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b].
+  Seven real cases PASS,21:27:03.123Z–21:27:47.055Z (43.932seconds),
+  artifact11252568118/attempt1. Original JSON copied byte-for-byte to
+  docs/evidence/workforce-c8-calendar-browser-2026-10-02-fd02801c.json,
+  2,760bytes/SHA256
+  4088bb9782db847350ec6b4ddf42fb2490a485519a6c530ce7322b0a19cabacd.
+- Real authentication/mutations/audit, EN/RU/AZ cancel/confirm and EN/RU
+  byte-identical retry/replay PASS again. Both identity replacements have
+  all six exact/live-Refresh/session/TEAM flags true,posts1,no stale notice;
+  populated audit/calendar RLS fail-closed=true under the restricted app role.
+- Independent actual artifact review GREEN P0=0 P1=0 P2=0 P3=0, five individual
+  screenshots verified. Root viewed fresh RU unknown notice and tenant TEAM
+  screen: explanation fully visible, current fixture1/actor1-0/team1 and no
+  stale calendar notice. Development calendar/session evidence only;
+  production/Android/AT/load/pilot NOT RUN. Historical FAIL causes NOT PROVEN.
+- Currentlocal5855f4b75eea393662a22e117a0f8bd6ab2197a6 afterfd contained only
+  three append-only docs,6,420bytes/SHA256
+  899678e0571a5352e7d6ed055d7d47a98f0d0102ab01569eb2f6d9a7313f9019;
+  source4 exact. This new original JSON/receipt append also stays local while
+  publishedfd runs its mandatory checks. Interim main still420e5be1;
+  final fresh fetch remains required immediately before protected merge.
+- Current status: integrated browser7/7 GREEN. Last action: primary receipt
+  preservation and screenshot verification. Precise stopping point: required
+  static/type jobs111035228462/111035228458 in37066398689 still executing.
+  Next action: their actual primary results, final fresh-main merge and normal
+  deploy/public exact merged SHA. Progress81/161,14/15,C8 36%,overall59%,
+  80non-DONE,007 PARTIAL; no whole-module completion claim.
+
+
+## 2026-10-02 — PR528 protected merge and exact deployment pending
+
+- Published exactfd02801cbe38d3a8cac5fc693b8ae18f3a993c1b completed all five
+  required GitHub Actions app15368 contexts SUCCESS: pr-scope111035118081,
+  static111035228462,type111035228458 in37066398689; runner-policy37066362302/
+  111034994723,scan37066362461/111034995239. Required set/strict=false unchanged;
+  no bypass/baseline weakening, draft skips excluded. Primary static log
+  /tmp/workforce528-fd-static.log: PostgreSQL33/33 in14.55s,calendar12/12 in1576ms,
+  unitbaseline18/18. Type /tmp/workforce528-fd-type.log: no syntax/missing-module/
+  undefined-name errors,66/66baseline,1195advisory diagnostics,tsc exit2.
+  Actual browser37066398649 seven cases PASS; source/artifact reviews GREEN.
+- Receipt-only cleana2981621ff341b31c01bdd096dcc25fa4f94a2d7 vs publishedfd
+  independently GREEN P0=0 P1=0 P2=0 P3=0:4paths/16,248bytes/SHA256
+  ca6217bb7dd3747136a5996cd0a7263bc037e14cf810efb8a4b0e2dfb1ffc5d0.
+  Source4/seven historical JSONs exact; eighth original2760/4088bb97 exact;
+  docs append-only with no premature release claim.
+- Final fresh fetch/main and live PR base both420e5be1, exactheadfd,draftfalse,
+  clean mergeable state. Visible release list stated: focus/scroll confirmation
+  and late exact-retry explanation. Existing explicit autonomous release
+  authorization applies; no repeat permission requested. Normal protected
+  gh pr merge --merge --match-head-commit fd02801c used, no --admin/force/delete.
+- PR528 MERGED at2026-10-02T21:40:29Z as
+  bb314679b786cc3294a39927141bfdc15e1cc4b4. Fetch verified parents
+  [420e5be1285a68954d45653d9f0740f212f6adea,fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b]
+  and entire merged tree byte-identical to the reviewed/CI head. No task source
+  change during release. Subsequent main71b0d3d06c42dc4ff05a49ff3db195f1a577dd75
+  arrived after this merge; its deployment is not substituted for our receipt.
+- Normal push/main deploy.yml run37068227458 for exactbb314679 started21:40:31Z,
+  in_progress. Subsequent run37068280448 for71b0 initiallypending. Production
+  remains only13.140.132.245,/opt/leaddrive-v2, immutable workflow artifact route;
+  no manual copy/build/server deploy, Azure or retired host used. Exact own
+  merged SHA must be captured from public build-info before release completion.
+- Current status: PR528 merged after five GREEN gates and final fresh-main.
+  Last action: normal merge and verified parents/tree. Precise stopping point:
+  normal exactbb314679 production build/deployment/public proof pending.
+  Next action: wait37068227458, verify ping/build-info artifactSha exactlybb314679,
+  append release receipts and preserve clean successor checkpoint. Progress
+  remains81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL. Authenticated
+  production business/browser,Android,AT,load,pilot NOT RUN; PR build SKIPPED,
+  production build CI pending.
+
+
+## 2026-10-02 — PR528 exact production release and part17 successor
+
+- [PR #528](https://github.com/rashadoni/leaddrive-v2/pull/528) is released as
+  bb314679b786cc3294a39927141bfdc15e1cc4b4. Its merged tree equals reviewed
+  fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b; protected merge followed all five
+  exact-head required contexts, independent GREEN reviews and final main420
+  reconciliation. This release reveals the existing pair confirmation and
+  unknown-outcome explanation through guarded focus/scroll and preserves exact
+  retry/session/target fences. Atomic generation-bound reversal was already
+  delivered in #511/#512; #528 adds real hosted acceptance and focus fixes.
+- Normal push/main [deploy37068227458](https://github.com/rashadoni/leaddrive-v2/actions/runs/37068227458)
+  completed SUCCESS at22:03:53Z: build111041230111 SUCCESS21:54:28Z,
+  quality111041230148 SUCCESS21:50:32Z, atomic deploy/post-deploy smoke
+  111045497497 SUCCESS22:03:45Z, retention111048297579 SUCCESS22:03:52Z.
+  All scheduler, tenant-isolation, public DB-path ping, exact revision and
+  login/hashed-asset smoke steps succeeded. Manual/recovery jobs were normally
+  SKIPPED. Primary QA log confirms PostgreSQL33/33 and no new unit-baseline
+  failures; existing accepted failing baseline remains. No gate was weakened.
+- GitHub artifact11253424909, leaddrive-prod-bb314679b786cc3294a39927141bfdc15e1cc4b4,
+  created21:54:25Z,443790998bytes; GitHub archive digest SHA256
+  39dc9e0ff4a3758cf5667078debb3f29548a08f8d59005f66b795d672d4ad7d4.
+  Only13.140.132.245,/opt/leaddrive-v2 and the normal immutable workflow route
+  were used. No artifact was downloaded/built on the remote-alt development host
+  or copied manually to production.
+- Independent strict-TLS, no-cache domain reads pinned to13.140.132.245 at
+  22:03:07.291Z–22:03:16.924Z bracketed ping200/ok:true between two build-info200
+  reads, both artifactSha exactlybb314679b786cc3294a39927141bfdc15e1cc4b4.
+  builtAt2026-10-02T21:46:25Z, remoteIp13.140.132.245,TLS verification0.
+  One transient502 was observed before the successful sequence; its exact
+  first time/duration was not recorded and is NOT PROVEN. Recovery is verified.
+- Root repeated strict-TLS pinned-domain ping/build-info at22:04:24.638Z–
+  22:04:24.774Z: both200,ok:true,exact same full artifactSha and builtAt.
+  Requested literal-IP URLs also returned200 and the same bodies at22:04:24.774Z–
+  22:04:24.943Z with curl --insecure as supplementary transport only. Strict
+  literal-IP TLS earlier failed curl60/SAN mismatch; verified domain-to-IP TLS
+  supplies primary transport evidence. No claim of strict literal-IP TLS PASS.
+- Original112byte build-info SHA256
+  ea035e97901cf7efea972aaeb31a21ea1d1ed04f7efe392e905f5d243d5a0466;
+  original11byte ping SHA256
+  4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93.
+  Six native JSON originals are preserved under docs/evidence with prefix
+  workforce-c8-calendar-release-2026-10-02-bb314679: build-info,ping,public,
+  workflow,artifacts,independent-public. Independent capture metadata retains
+  normalRunSuccessStillRequired:true from its pre-completion capture; the later
+  original workflow SUCCESS and this receipt supersede that historical flag.
+  The additional independent-release.json preserves final post-success proof,
+  2435bytes/SHA256
+  1056bd145efc562f38c55adaac189e14d25cfaf14acda8df3838e57699f4bc60.
+  Subsequent main71/ba are not substituted for this exact own-merge proof.
+- Hosted browser37066398649 remains7/7 for fd/420, actual PostgreSQL app-role
+  mutations/audit and real authentication, exact retry, principal/tenant
+  replacement and all six live-held-Refresh/session/TEAM flags. Browser original
+  fd JSON2760bytes/4088bb9782db847350ec6b4ddf42fb2490a485519a6c530ce7322b0a19cabacd
+  and all earlier PASS/FAIL receipts are preserved byte-for-byte. This is
+  development-browser evidence; authenticated production mutation/browser,
+  Android, AT, load, physical-device and pilot checks remain NOT RUN: production
+  credentials and physical/AT devices were not supplied; Android/load/pilot
+  execution is outside this bounded web release.
+  Heavy Contabo build/typecheck/full suite/browser/PostgreSQL checks NOT RUN;
+  hosted CI supplies the build/gate/browser evidence recorded above.
+- Same-worktree successor codex/workforce-completion-part17 is based on fresh
+  ba2326c270b138b025dc2975b370e90725c69483. Later main#533/#534 changes are
+  preserved; source4 and task docs had no intersection. Receipt commits5855,
+  a298,846 were cherry-picked as c4ed4db8f,a0d56ef9e,d07a0e7ff without conflicts;
+  original part16 checkpoint846 remains. Successor changes contain evidence
+  only, with source4 byte-identical to releasedM and all main-owned code intact.
+- This supersedes earlier pending release status and the historical task-row
+  assertion that bounded moved-day reversal and its browser proof are open.
+  WF-C8-007 remains PARTIAL: general update/delete governance, break-policy
+  authoring, remaining calendar acceptance and real AT evidence are still open.
+  General update/delete, break policy, AGENT moves and Route mutation remain
+  outside this authorized reversal slice. Progress stays DONE81/161,GATES14/15,
+  C8 36%,overall59%,80non-DONE/about41% weighted remaining; no completion credit.
+- Current status: exact PR528 release verified and receipts preserved on part17.
+  Last completed action: public exact-SHA proof and successor receipt transfer.
+  Precise stopping point: receipt-only checkpoint and independent integrity
+  review before publishing successor. Next action: publish the reviewed clean
+  checkpoint, then scope remaining bounded calendar/keyboard/zoom acceptance
+  in hosted CI while keeping AT/physical/production-auth gates NOT RUN until run.
+
+
+## 2026-10-02 — part17 release-receipt integrity and publication
+
+- Independent complete receipt review of clean
+  dd247c3b3f0695e493b5fed9745cd6ed30713fca against baseba2326c2 GREEN:
+  P0=0,P1=0,P2=0,P3=0. Full11paths/62,868bytes/SHA256
+  fe2fcf61d83d46e831133fd1f47dad53ecd13925c59b9d4742120c088899aabd;
+  non-doc0paths/0bytes/SHA256
+  e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.
+  Three docs append-only; eight browser and seven release JSONs byte-exact
+  primary originals, reviewed source4 equal releasedM, all25 later main-owned
+  paths preserved. Public exactM proof, normal workflowSUCCESS, TLS/502 caveats,
+  baseline66/66 with1195diagnostics/exit2, progress and NOT RUN are consistent.
+- Published exactdd247c3b to origin/codex/workforce-completion-part17 and verified
+  remote SHA matches. Original closed part16/PR528 head was not pushed again.
+  This final continuity append is evidence-only and will receive a bounded
+  independent delta check before its checkpoint is published on the same branch.
+- Current result: PR528 normal release and exact-SHA public smoke complete;
+  reviewed successor receipt checkpoint published. Last completed action:
+  independent integrity GREEN and verified successor push. Precise stopping
+  point: part17 receipt-only continuity checkpoint; no next application change
+  has started. Next bounded action: real hosted keyboard acceptance for existing
+  moved-day pair confirmation, cancellation and exact retry. Zoom/AT/physical/
+  authenticated-production/load/pilot acceptance remains NOT RUN until executed;
+  general update/delete, break policy, AGENT moves and Route mutation stay
+  excluded. Progress unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;
+  WF-C8-007 PARTIAL. No full Contabo build/typecheck/suite/browser was run.
+
+
+## 2026-10-03 (Asia/Baku) — bounded reversal keyboard acceptance resumed
+
+- User says begin; autonomous implementation/push/normal merge/deploy authority
+  persists. Resumed exact clean local/remotea5b23cb93a82fe648a2b1e64d97bd5412bdc2006,
+  codex/workforce-completion-part17, same dedicated worktree. Context/origin and
+  registry/deployment route reconfirmed; fresh main remainsba2326c270b138b025dc2975b370e90725c69483.
+  Production only13.140.132.245,/opt/leaddrive-v2, reviewed main/deploy.yml.
+- Short safety plan: preserve seven real browser cases and add two bounded
+  native keyboard cases: ORG/EN desktop cancel/reopen/confirm; TEAM/RU narrow
+  committed-response-loss/exact retry. Real Tab navigation and native Enter/Space
+  activation only; fixture setup may use existing real UI selects/refresh.
+  No programmatic browser focus injection and no claim of whole-page/AT/zoom.
+- Independent source/design reconnaissance identifies missing explicit focus
+  restoration when Cancel removes its focused button and no stable product
+  focus target after successful reversal. These are source findings, not yet
+  hosted browser outcomes. Add guarded source focus restoration after cancel
+  and result-notice focus after success/replay, then verify real behavior in CI.
+  Calendar mutation/API/schema/auth/Route behavior remains outside this change.
+- Checks/results for this new candidate NOT RUN yet. Full Contabo build,
+  typecheck,suite,browser,PostgreSQL,Android,AT,load and production-auth checks
+  NOT RUN; only small sequential checks here, heavy hosted CI. Progress remains
+  81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL. General update/delete,
+  break policy,AGENT moves and Route mutation remain excluded.
+- Current status: scope and fresh-main context verified. Last action: independent
+  keyboard design reconnaissance. Precise stopping point: implementation starts
+  from cleana5b23cb9. Next action: bounded UI/harness changes, targeted checks,
+  checkpoint/exact-head review, draft PR, actual nine hosted cases/five gates,
+  fresh-main normal merge/deploy/exact public SHA and append-only receipts.
+
+
+## 2026-10-03 (Asia/Baku) — keyboard candidate implementation and bounded checks
+
+- Added UI-only pending focus intent scoped by existing contextKey/targetKey:
+  cancellation restores the original still-connected source button after it is
+  enabled; successful reversal/replay focuses the existing result notice after
+  saving and inventory refresh settle. Identity changes clear the intent/source;
+  obsolete responses retain the original mutation guards before any focus intent.
+  No API/schema/authorization/locking/persistence/copy/workflow/baseline change.
+- Existing seven hosted cases retain their assertions and pointer behavior.
+  Added ORG/EN desktop Tab/Shift+Tab/Space-cancel/Enter-reopen-confirm and TEAM/RU
+  390x844 Space-confirm/committed-response-loss/Tab/Enter-exact-retry. Assertions
+  cover no cancel writes, full pair/reversal-receipt state equality, source focus
+  restoration, two common-stamp tombstones/one audit, disabled pending buttons,
+  focused visible unknown/result notices, byte-identical drafts/[true,false],
+  zero replay writes and preserved real session. Native Tab helper is capped80
+  and never injects browser focus. Screenshots/receipt fields are sanitized.
+- Resource inspection: approx15GB RAM available,338GB disk free,memory PSI0.
+  Actual targeted UI/reversal/API suites57/57 PASS in3.34s with one worker,
+  /tmp/workforce-keyboard-part17-targeted.log. Script syntax/scoped ESLint/diff
+  check PASS after removing an unused destructure (initial lint had one warning,
+  zero errors). New real keyboard/browser cases and exact-head CI NOT RUN yet.
+  Full Contabo build/typecheck/suite/browser/PG/Android/AT/load NOT RUN; hosted CI
+  supplies heavy verification. Production-auth,zoom,AT,physical,pilot NOT RUN.
+- Current result: bounded source/harness candidate and local checks ready.
+  Last action: actual57-test check and clean scoped lint. Precise stopping point:
+  checkpoint/full independent exact-head review before draft publication and
+  ready event. Next action: actual nine hosted cases/five required gates, inspect
+  original receipts/screenshots, final fresh-main normal merge/deploy/public SHA.
+  Progress81/161,14/15,C8 36%,overall59%,80non-DONE,007 PARTIAL unchanged;
+  general update/delete,break policy,AGENT moves and Route mutation excluded.
+
+
+## 2026-10-03 (Asia/Baku) — exact keyboard review GREEN and PR537 ready
+
+- Complete independent exact-head review of clean
+  7e703a536cbee5fbf415a9986881414568551dab / baseba2326c270b138b025dc2975b370e90725c69483
+  GREEN P0=0,P1=0,P2=0,P3=0. Full13paths/100564bytes/SHA256
+  9d25f1d19463afb8c7d77a9ef1b808227899bdb3accd1e9f0eae599182c3e260;
+  non-doc2paths/18679bytes/SHA256
+  bce77985189f3fe64b30d57a5b1df6fe03b7bf3066af416c53870c0f17d25d93.
+  Entire changed component/harness, full delta and transitive API/auth/RLS
+  reviewed. Three docs append-only;15historical JSON originals exact. Native
+  keyboard assertions and all previous seven cases retained; no focus injection,
+  auth mocks,cookie stripping,baseline/gate weakening or broader mutation.
+- Actual tests repeated at exact7e after final harness assertions:57/57 PASS,
+  2.66s,/tmp/workforce-keyboard-part17-final-targeted.log. Earlier57/3.34 receipt
+  remains historical and unchanged. Scoped syntax/lint/diff PASS; hosted9cases
+  and five required contexts remain pending, not yet credited.
+- Fresh fetch before publication stillba2326c2. Exact7e pushed; opened draft
+  [PR #537](https://github.com/rashadoni/leaddrive-v2/pull/537) and attached to
+  task, then ready_for_review after complete source review/local checks.
+  Existing protection is exactly pr-scope,static-checks,typecheck,runner-policy,
+  scan from GitHub Actions app15368,strict=false,enforce_admins=true,force/deletion
+  disabled. No agent-review status, new mandatory context or bypass introduced.
+- Current result: frozen reviewed candidate published; real hosted execution
+  pending. Last action: exact push/draft/ready event. Precise stopping point:
+  nine real Chromium cases and five mandatory gates for PR537. Next action:
+  inspect primary JSON/screenshots/logs, fix any actual failure, final fresh-main
+  normal merge/deploy and own exact merged artifactSha. These receipt additions
+  stay local during CI. Progress81/161,14/15,C8 36%,59%,80non-DONE,007 PARTIAL;
+  authenticated-production,Android,AT,zoom,load,physical,pilot NOT RUN.
+
+
+## 2026-10-03 (Asia/Baku) — first keyboard browser receipt FAIL8, bounded auth pacing
+
+- Actual ready run37074037469/job111059795862 FAILURE,artifact11256059425,
+  attempt1. Syntheticb59640a658f096d9e24395e2f56487d76e626c77 has API-confirmed
+  parents[ba2326c2,7e703a53]. Originalreceipt5404bytes/SHA256
+  080e904728e8f06f365f3de98216610833874e92769f90b07ae8169529924855,
+  22:50:40.513Z–22:51:39.595Z, preserved byte-for-byte at
+  docs/evidence/workforce-c8-calendar-keyboard-2026-10-03-7e703a53-failed-attempt1.json.
+  Eight cases PASS: originalseven plus ORG keyboard,sourceTabs9,all cancel/reopen/
+  confirm/result/session flags true,posts1,tombstones2,audit1. Root and independent
+  reviewer individually viewed cancel-source/completed-ORG actual screenshots:
+  source action visibly focused afterCancel,result notice fully visible/focused
+  aftercommit,pair absent. No visual defect proven in those completed cases.
+- Final TEAM/RU case stopped at real credentials callback with AssertionError
+  Real credentials callback must succeed. HTTP callback status was not captured;
+  cause remains NOT PROVEN. TEAM unknown/replay screenshots and final populated
+  RLS probe were not reached. Nine-case acceptance is FAIL, not GREEN. Old7 and
+  ORG result do not replace missing TEAM proof. PR537 returned to draft.
+- Source inspection independently confirms existing proxy per-IP auth POST and
+  principal budgets10/60000ms; the expanded harness makes11 credential callbacks.
+  That is a plausible boundary, not proof of the historical callback status.
+  Added conservative fixture pacing <=8callbackPOSTs/61000ms, one bounded wait
+  <=62000ms, and ordinal/CSRF-status/callback-status/start/wait metadata only.
+  No credential retry,IP spoof,auth mocks,limiter bypass or policy change. Every
+  callback still must actually200 with real verified session. UI source unchanged
+  from the eight-case run; all nine scenario assertions remain strict.
+- Scoped syntax/lint/diff PASS after this harness change. Old type/static jobs
+  still executing; their eventual results are historical7e evidence only and
+  will not replace new-head required gates. Hosted nine replacement cases,
+  full type/build/PG/suite on Contabo,production-auth,Android,AT,zoom,load,pilot
+  NOT RUN. Progress81/161,14/15,C8 36%,overall59%,80non-DONE,007 PARTIAL unchanged.
+- Current status: original partial/FAIL preserved and bounded fixture pacing
+  implemented. Last action: primary failure inspection and exact source-policy
+  reconciliation. Precise stopping point: replacement checkpoint/review. Next
+  action: publish reviewed replacement, ready event, actual nine cases/five
+  mandatory gates, fresh-main normal merge/deploy and exact own public SHA.
+
+
+## 2026-10-03 (Asia/Baku) — paced candidate GREEN, fresh-main integration before publication
+
+- Independent clean exact192ed6fa223e8e5e578cc334e39925a3e625c48f review
+  GREEN P0=0,P1=0,P2=0,P3=0 againstba2326c2. Full14paths/123609bytes/
+  SHA25633b8fc1b1ef139e7f3f32175d3f88961361d2ae8bfb010d1c3c18dc353d4e4ff;
+  non-doc2paths/21129bytes/SHA25649b823628a5762e5022df21eedeac76f270a1bec3743f7d12632e6b1c0151ed7.
+  Actual current192 targeted suites57/57 PASS2.50s. Sixteen original JSONs exact;
+  first browser FAIL8 remains historical and cause NOT PROVEN. Replacement
+  browser9 remains NOT RUN; this review does not replace actual acceptance.
+- Fresh fetch found main advanced toe2c473d50272205e42d17af014909a1b2de4e7f0
+  through #535/#536,12Instagram/Meta/channel paths,no task overlap. Ordinary
+  merge56e31e54c2f0c9a91932efc3cf75a2c35606348d completed without conflicts.
+  All12incoming paths equal main; task UI/harness equal reviewed192 byte-for-byte.
+  No foreign cleanup,auth policy/workflow/baseline change or broader mutation.
+- Post-integration node syntax, scoped ESLint and diff checks PASS; real three
+  targeted suites57/57 PASS2.81s with maxWorkers1, primary log
+  /tmp/workforce-keyboard-part17-integrated-targeted.log. Initial invocation with
+  obsolete minWorkers option stopped before any tests; corrected bounded command
+  actually ran. No heavy verification performed on Contabo.
+- Historical7e five mandatory contexts all SUCCESS. Actual typecheck primary
+  job111059878281 ended23:03:00Z; baseline66/66gated pairs,1195advisory errors,
+  no new defect-shaped errors. Static primary33Workforce PG tests PASS and
+  18baseline failures unchanged. These are historical7e receipts, not new-head
+  gates. Existing first-browser FAIL and missing TEAM/RLS proof remain unchanged.
+- Current status: integrated candidate awaiting complete exact-head review.
+  Last action: fresh-main merge and actual bounded57tests. Precise stopping point:
+  review/checkpoint before replacement publish/ready. Next action: actual nine
+  hosted cases and five fresh gates, normal fresh-main merge/deploy, own exact
+  public artifactSha and append-only release receipts. Progress81/161,14/15,
+  C8 36%,overall59%,80non-DONE,007 PARTIAL; zoom,AT,authenticated production,
+  physical Android,load and pilot NOT RUN. General update/delete,break policy,
+  AGENT moves and Route mutation excluded.

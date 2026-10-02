@@ -46,14 +46,16 @@ const receipts = {
   startedAt: new Date().toISOString(),
   environment: "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
   authentication: "real CSRF + credentials provider + session cookie; no auth mocks",
+  authenticationDiagnostics: [],
   cases: [],
-  limitations: ["Development bundle, not production build", "No production business data", "No Android/AT/load/pilot evidence"],
+  limitations: ["Development bundle, not production build", "No production business data", "No Android/AT/load/pilot evidence", "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI", "No whole-page keyboard or zoom acceptance"],
   status: "RUNNING",
 }
 const contexts = []
 const barriers = []
 const handlerErrors = []
 const readDiagnostics = []
+const authenticationPostTimes = []
 let browser
 let activePage
 
@@ -107,15 +109,37 @@ async function checkedContextRead(response, phase, targetTeam) {
   return payload.data
 }
 async function authenticate(context, principal) {
+  const diagnostic = { ordinal: receipts.authenticationDiagnostics.length + 1, csrfStatus: null, callbackStatus: null, pacingWaitMs: 0 }
+  receipts.authenticationDiagnostics.push(diagnostic)
   const csrf = await context.request.get("/api/auth/csrf", { timeout: 120_000 })
+  diagnostic.csrfStatus = csrf.status()
   assert.equal(csrf.status(), 200)
   const { csrfToken } = await csrf.json()
   assert.equal(typeof csrfToken, "string")
+  // The unchanged proxy/principal policies allow 10 auth POSTs per 60s.
+  // Respect that real policy with at most eight fixture callbacks per 61s;
+  // never retry credentials, spoof an IP, or disable the production limiter.
+  const authenticationWindowMs = 61_000
+  const pruneAuthenticationPosts = () => {
+    const cutoff = Date.now() - authenticationWindowMs
+    while (authenticationPostTimes.length && authenticationPostTimes[0] <= cutoff) authenticationPostTimes.shift()
+  }
+  pruneAuthenticationPosts()
+  if (authenticationPostTimes.length >= 8) {
+    diagnostic.pacingWaitMs = Math.max(0, authenticationPostTimes[0] + authenticationWindowMs - Date.now()) + 25
+    assert.ok(diagnostic.pacingWaitMs <= 62_000, "Fixture authentication wait must remain bounded")
+    await delay(diagnostic.pacingWaitMs)
+    pruneAuthenticationPosts()
+  }
+  assert.ok(authenticationPostTimes.length < 8, "Fixture authentication must remain within its conservative budget")
+  authenticationPostTimes.push(Date.now())
+  diagnostic.callbackStartedAt = new Date().toISOString()
   const response = await context.request.post("/api/auth/callback/credentials", {
     timeout: 120_000,
     headers: { "X-Auth-Return-Redirect": "1" },
     form: { csrfToken, email: principal.email, password, organizationSlug: principal.slug, callbackUrl: `${baseURL}/workforce/calendar` },
   })
+  diagnostic.callbackStatus = response.status()
   assert.equal(response.status(), 200, "Real credentials callback must succeed")
   const redirect = new URL((await response.json()).url, baseURL)
   assert.equal(redirect.origin, origin.origin)
@@ -166,8 +190,34 @@ async function pair(context, principal, index, teamId) {
   assert.equal(typeof row?.pairGenerationId, "string")
   return { ...draft, pairGenerationId: row.pairGenerationId }
 }
-async function review(view, moved, team) {
-  const { page, section, ui } = view
+async function tabToButton(page, button) {
+  await button.waitFor()
+  assert.equal(await button.isDisabled(), false)
+  for (let tabs = 0; tabs <= 80; tabs++) {
+    if (await button.evaluate(element => document.activeElement === element && element.matches(":focus-visible"))) return tabs
+    if (tabs < 80) await page.keyboard.press("Tab")
+  }
+  throw new Error("Native Tab did not reach the named reversal action")
+}
+async function focusedInViewport(locator, description) {
+  await until(async () => locator.evaluate(element => {
+    const bounds = element.getBoundingClientRect()
+    const container = element.closest("main")?.getBoundingClientRect()
+    return document.activeElement === element
+      && bounds.top >= Math.max(0, container?.top ?? 0)
+      && bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight)
+      && bounds.left >= Math.max(0, container?.left ?? 0)
+      && bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth)
+  }), description)
+}
+async function tabToNext(page, button, key = "Tab") {
+  await page.keyboard.press(key)
+  assert.equal(await button.evaluate(element => document.activeElement === element && element.matches(":focus-visible")), true,
+    "Native keyboard navigation must focus the expected button")
+  await focusedInViewport(button, "keyboard button is fully inside the viewport")
+}
+async function review(view, moved, team, activate) {
+  const { section, ui } = view
   if (team) {
     await section.locator("#workforce-calendar-scope").selectOption("TEAM")
     await section.locator(`#workforce-calendar-team option[value="${team.id}"]`).waitFor({ state: "attached" })
@@ -178,7 +228,12 @@ async function review(view, moved, team) {
   const action = section.getByRole("button", { name: ui.reversalActionLabel.replace("{name}", moved.name), exact: true })
   await action.waitFor()
   assert.equal(await section.getByRole("button", { name: ui.reversalAction, exact: true }).count(), 0, "Action must name the specific pair")
-  await action.click()
+  if (activate) await activate(action)
+  else await action.click()
+  return reviewedConfirmation(view, moved, team)
+}
+async function reviewedConfirmation(view, moved, team) {
+  const { page, section, ui } = view
   await section.getByRole("heading", { name: ui.reversalReviewTitle, exact: true }).waitFor()
   const confirmation = section.locator('[aria-labelledby="workforce-calendar-reversal-title"]')
   await until(async () => confirmation.evaluate(element => {
@@ -309,6 +364,117 @@ async function lostResponse(principal, index = 3, locale = "en", viewport = { wi
   await until(async () => !(await view.section.innerText()).includes(moved.name)
     && await view.section.getAttribute("aria-busy") === "false", "post-replay inventory finishes refreshing")
   receipts.cases.push({ name: `committed-response-loss-exact-retry-same-task-double-submit-${locale}`, status: "PASS", posts: 2, reversedResponses: responses, byteIdenticalRetry: true, replayWrites: 0, unknownNoticeVisibleAndFocused: true })
+  await view.context.close()
+}
+async function keyboardCancelConfirm(principal) {
+  const view = await open(principal)
+  const moved = await pair(view.context, principal, 7)
+  const before = await state(principal, moved)
+  let posts = 0
+  let sourceTabs = 0
+  view.page.on("request", request => { if (calendarRoute(new URL(request.url())) && request.method() === "POST") posts++ })
+  const confirmation = await review(view, moved, null, async action => {
+    sourceTabs = await tabToButton(view.page, action)
+    assert.ok(sourceTabs > 0, "Initial source action must be reached with native Tab")
+    await view.page.keyboard.press("Enter")
+  })
+  const confirm = confirmation.getByRole("button", { name: view.ui.reversalConfirm, exact: true })
+  const cancel = confirmation.getByRole("button", { name: view.ui.reversalCancel, exact: true })
+  await tabToNext(view.page, confirm)
+  await tabToNext(view.page, cancel)
+  await tabToNext(view.page, confirm, "Shift+Tab")
+  await tabToNext(view.page, cancel)
+  assert.equal(posts, 0, "Keyboard review and Tab navigation must not mutate")
+  await view.page.keyboard.press("Space")
+  await until(async () => await view.section.locator('[aria-labelledby="workforce-calendar-reversal-title"]').count() === 0, "keyboard cancel removes the review")
+  const sourceAction = view.section.getByRole("button", { name: view.ui.reversalActionLabel.replace("{name}", moved.name), exact: true })
+  await focusedInViewport(sourceAction, "cancel restores the original source action focus and visibility")
+  assert.equal(await sourceAction.isDisabled(), false)
+  assert.equal(posts, 0)
+  assert.deepEqual(await state(principal, moved), before, "Keyboard cancel must preserve the complete rows and audit state")
+  await view.page.screenshot({ path: `${outputDirectory}/keyboard-cancel-source-ORGANIZATION-en.png`, fullPage: true })
+  await view.page.keyboard.press("Enter")
+  await reviewedConfirmation(view, moved)
+  await tabToNext(view.page, confirm)
+  const [response] = await Promise.all([
+    view.page.waitForResponse(response => calendarRoute(new URL(response.url())) && response.request().method() === "POST"),
+    view.page.keyboard.press("Enter"),
+  ])
+  assert.equal(response.status(), 200)
+  assert.equal((await response.json()).data.reversed, true)
+  await until(async () => !(await view.section.innerText()).includes(moved.name)
+    && await view.section.getAttribute("aria-busy") === "false", "keyboard reversal inventory settles")
+  const result = view.section.getByRole("status")
+  assert.ok((await result.innerText()).includes(view.ui.reversalRecorded))
+  await focusedInViewport(result, "completed reversal notice receives stable focus")
+  assert.equal(posts, 1)
+  reversed(await state(principal, moved), principal)
+  await assertSession(view.context, principal, "keyboard-cancel-confirm")
+  await view.page.screenshot({ path: `${outputDirectory}/keyboard-completed-ORGANIZATION-en.png`, fullPage: true })
+  receipts.cases.push({ name: "keyboard-cancel-reopen-confirm-ORGANIZATION-en", status: "PASS", nativeTabNavigation: true, sourceTabs, openedWithEnter: true, confirmationTabOrder: true, shiftTabReturnsToConfirm: true, cancelledWithSpace: true, cancelWrites: 0, cancelStateUnchanged: true, cancelRestoresSourceFocus: true, reopenedWithEnter: true, confirmedWithEnter: true, resultFocusedAndVisible: true, posts, tombstones: 2, audits: 1, realSessionPreserved: true })
+  await view.context.close()
+}
+async function keyboardLostResponse(principal, team) {
+  const view = await open(principal, "ru", { width: 390, height: 844 })
+  const moved = await pair(view.context, principal, 8, team.id)
+  let sourceTabs = 0
+  const confirmation = await review(view, moved, team, async action => {
+    sourceTabs = await tabToButton(view.page, action)
+    assert.ok(sourceTabs > 0, "Initial TEAM source action must be reached with native Tab")
+    await view.page.keyboard.press("Enter")
+  })
+  const delivery = barrier()
+  const bodies = []
+  const responses = []
+  await view.page.route(calendarRoute, handled(async route => {
+    if (route.request().method() !== "POST") return route.continue()
+    bodies.push(route.request().postData())
+    const response = await route.fetch({ timeout: 120_000, maxRedirects: 0 })
+    assert.equal(response.status(), 200)
+    const payload = await response.json()
+    responses.push(payload.data.reversed)
+    if (bodies.length === 1) {
+      assert.equal(payload.data.reversed, true)
+      await delivery.promise
+      await route.abort("connectionreset")
+    } else {
+      assert.equal(payload.data.reversed, false)
+      await route.fulfill({ response })
+    }
+  }))
+  const confirm = confirmation.getByRole("button", { name: view.ui.reversalConfirm, exact: true })
+  const cancel = confirmation.getByRole("button", { name: view.ui.reversalCancel, exact: true })
+  await tabToNext(view.page, confirm)
+  await view.page.keyboard.press("Space")
+  await until(() => responses.length === 1, "keyboard confirmation commits before response loss", 120_000)
+  const beforeRetry = await state(principal, moved)
+  reversed(beforeRetry, principal)
+  assert.equal(bodies.length, 1)
+  assert.equal(await confirm.isDisabled(), true)
+  assert.equal(await cancel.isDisabled(), true)
+  delivery.release()
+  const alert = view.section.getByRole("alert")
+  await until(async () => (await alert.innerText()).includes(view.ui.reversalOutcomeUnknown), "keyboard unknown-outcome explanation")
+  await focusedInViewport(alert, "unknown-outcome explanation is focused and fully visible for keyboard retry")
+  await until(async () => !(await confirm.isDisabled()), "exact retry becomes available")
+  assert.equal(await view.section.locator("#workforce-calendar-scope").isDisabled(), true)
+  assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
+  await view.page.screenshot({ path: `${outputDirectory}/keyboard-exact-retry-unknown-TEAM-ru.png`, fullPage: true })
+  await tabToNext(view.page, confirm)
+  await view.page.keyboard.press("Enter")
+  await until(async () => (await view.section.innerText()).includes(view.ui.reversalAlreadyRecorded)
+    && !(await view.section.innerText()).includes(moved.name)
+    && await view.section.getAttribute("aria-busy") === "false", "keyboard audit-backed replay inventory settles")
+  assert.equal(bodies.length, 2)
+  assert.equal(bodies[0], bodies[1], "Keyboard retry must preserve the exact serialized generation-bound TEAM draft")
+  assert.deepEqual(responses, [true, false])
+  assert.deepEqual(await state(principal, moved), beforeRetry, "Keyboard replay must not change either tombstone or audit")
+  const result = view.section.getByRole("status")
+  assert.ok((await result.innerText()).includes(view.ui.reversalAlreadyRecorded))
+  await focusedInViewport(result, "audit-backed replay result receives stable keyboard focus")
+  await assertSession(view.context, principal, "keyboard-team-replay")
+  await view.page.screenshot({ path: `${outputDirectory}/keyboard-replay-TEAM-ru.png`, fullPage: true })
+  receipts.cases.push({ name: "keyboard-committed-response-loss-exact-retry-TEAM-ru", status: "PASS", nativeTabNavigation: true, sourceTabs, openedWithEnter: true, confirmedWithSpace: true, pendingButtonsDisabled: true, unknownNoticeVisibleAndFocused: true, alertTabReachesExactConfirm: true, retriedWithEnter: true, posts: 2, reversedResponses: responses, byteIdenticalRetry: true, replayWrites: 0, resultFocusedAndVisible: true, realSessionPreserved: true })
   await view.context.close()
 }
 async function switchContext(from, to, index, targetTeam, label) {
@@ -465,6 +631,8 @@ try {
   await lostResponse(principals[0], 6, "ru", { width: 390, height: 844 })
   await switchContext(principals[0], principals[1], 4, teams[0], "principal")
   await switchContext(principals[0], principals[2], 5, teams[1], "tenant")
+  await keyboardCancelConfirm(principals[0])
+  await keyboardLostResponse(principals[0], teams[0])
   assert.equal(await app.mtmAuditLog.count(), 0, "Existing Workforce audit receipts must be hidden without tenant context")
   assert.equal(await app.mtmWorkCalendarDay.count(), 0, "Existing calendar tombstones must be hidden without tenant context")
   receipts.databaseRole.populatedAuditAndCalendarFailClosed = true
