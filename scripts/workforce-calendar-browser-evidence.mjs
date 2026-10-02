@@ -176,7 +176,7 @@ async function state(principal, moved) {
   const rows = await admin.mtmWorkCalendarDay.findMany({
     where: { organizationId: principal.organizationId, name: moved.name }, orderBy: { date: "asc" },
   })
-  const audits = await admin.auditLog.findMany({
+  const audits = await admin.mtmAuditLog.findMany({
     where: { organizationId: principal.organizationId, action: "WORKFORCE_CALENDAR_MOVED_DAY_REVERSED", entityId: moved.pairGenerationId }, orderBy: { id: "asc" },
   })
   return JSON.parse(JSON.stringify({ rows, audits }))
@@ -189,8 +189,10 @@ function reversed(persisted, principal) {
     assert.equal(row.updatedBy, principal.id)
     assert.equal(row.updatedAt, row.deletedAt)
   }
-  assert.equal(persisted.audits.length, 1)
-  assert.equal(persisted.audits[0].userId, principal.id)
+  assert.equal(persisted.audits.length, 1, "The Workforce mtm audit receipt must exist exactly once")
+  assert.equal(persisted.audits[0].actorUserId, principal.id)
+  assert.equal(persisted.audits[0].entity, "work_calendar_pair")
+  assert.equal(persisted.audits[0].metadataKind, "workforce_calendar_configuration")
 }
 async function standard(principal, team, index, locale, viewport) {
   const view = await open(principal, locale, viewport)
@@ -212,6 +214,8 @@ async function standard(principal, team, index, locale, viewport) {
   await until(async () => (await view.section.innerText()).includes(view.ui.reversalRecorded), "reversal success notice")
   await until(async () => await view.section.locator('[aria-labelledby="workforce-calendar-reversal-title"]').count() === 0, "confirmation clears")
   assert.equal(posts, 1)
+  await until(async () => !(await view.section.innerText()).includes(moved.name)
+    && await view.section.getAttribute("aria-busy") === "false", "post-reversal inventory finishes refreshing")
   reversed(await state(principal, moved), principal)
   receipts.cases.push({ name: `confirmation-cancel-confirm-${moved.scope}-${locale}`, status: "PASS", posts, tombstones: 2, audits: 1 })
   await view.context.close()
@@ -262,6 +266,8 @@ async function lostResponse(principal) {
   assert.equal(bodies[0], bodies[1], "Retry must preserve the exact serialized generation-bound draft")
   assert.deepEqual(responses, [true, false])
   assert.deepEqual(await state(principal, moved), beforeRetry, "Replay must not alter either tombstone or audit")
+  await until(async () => !(await view.section.innerText()).includes(moved.name)
+    && await view.section.getAttribute("aria-busy") === "false", "post-replay inventory finishes refreshing")
   receipts.cases.push({ name: "committed-response-loss-exact-retry-same-task-double-submit", status: "PASS", posts: 2, reversedResponses: responses, byteIdenticalRetry: true, replayWrites: 0 })
   await view.context.close()
 }
@@ -359,7 +365,8 @@ try {
   // Relevant tables really fail closed for the non-owner application role.
   assert.equal(await app.user.count(), 0)
   assert.equal(await app.mtmTeam.count(), 0)
-  receipts.databaseRole = { superuser: false, bypassRls: false, unscopedUsers: 0, unscopedTeams: 0 }
+  assert.equal(await app.mtmAuditLog.count(), 0)
+  receipts.databaseRole = { superuser: false, bypassRls: false, unscopedUsers: 0, unscopedTeams: 0, unscopedWorkforceAudits: 0 }
   browser = await chromium.launch({ headless: true })
   await standard(principals[0], null, 0, "en", { width: 1440, height: 1000 })
   await standard(principals[0], teams[0], 1, "ru", { width: 390, height: 844 })
@@ -367,6 +374,9 @@ try {
   await lostResponse(principals[0])
   await switchContext(principals[0], principals[1], 4, teams[0], "principal")
   await switchContext(principals[0], principals[2], 5, teams[1], "tenant")
+  assert.equal(await app.mtmAuditLog.count(), 0, "Existing Workforce audit receipts must be hidden without tenant context")
+  assert.equal(await app.mtmWorkCalendarDay.count(), 0, "Existing calendar tombstones must be hidden without tenant context")
+  receipts.databaseRole.populatedAuditAndCalendarFailClosed = true
   assert.equal(handlerErrors.length, 0)
   receipts.status = "PASS"
   console.log(`Workforce calendar browser evidence: ${receipts.cases.length} cases PASS`)

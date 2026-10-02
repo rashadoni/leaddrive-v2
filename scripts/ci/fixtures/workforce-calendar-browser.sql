@@ -33,7 +33,7 @@ DECLARE
   table_name text;
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
-    'users', 'mtm_teams', 'mtm_agents', 'mtm_work_calendar_days', 'audit_logs'
+    'users', 'mtm_teams', 'mtm_agents', 'mtm_work_calendar_days', 'mtm_audit_logs'
   ] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', table_name);
     EXECUTE format('ALTER TABLE public.%I FORCE ROW LEVEL SECURITY', table_name);
@@ -77,7 +77,7 @@ BEGIN
     SELECT count(*) FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public'
-      AND c.relname IN ('users', 'mtm_teams', 'mtm_agents', 'mtm_work_calendar_days', 'audit_logs')
+      AND c.relname IN ('users', 'mtm_teams', 'mtm_agents', 'mtm_work_calendar_days', 'mtm_audit_logs')
       AND c.relrowsecurity AND c.relforcerowsecurity
   ) <> 5 THEN
     RAISE EXCEPTION 'Calendar browser fixture requires five forced-RLS tables';

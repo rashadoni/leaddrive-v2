@@ -3737,3 +3737,29 @@ from this worktree.
   Precise stopping point: awaiting actual browser/static/type gates. Next
   action: inspect executed proofs, fresh-main protected release when GREEN.
   Progress unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
+
+
+## 2026-10-02 — actual Workforce audit probe/fixture correction
+
+- Replacement browser37046965682 FAILED on the first confirmation case after
+  actual authentication, cancellation and successful real reversal response/
+  rendered success notice. Zero complete cases are credited. Screenshot and
+  receipt in/tmp/workforce528-browser-second preserve the observed partial
+  execution, not a complete acceptance PASS.
+- Root authored the state probe against the wrong delegate auditLog (general
+  CRM audit_logs), while calendar reversal writes mtmAuditLog/mtm_audit_logs
+  with actorUserId. The 0-versus1 audit assertion correctly stopped the run.
+  Earlier static GREEN reviews did not detect this probe/fixture mismatch and
+  are superseded for that audit-coverage conclusion; historical reviews remain.
+- Corrected probe to the actual mtmAuditLog actor/entity/metadataKind and
+  changed the fixture's fifth forced-RLS table to mtm_audit_logs. Strict one
+  receipt and common tombstone assertions remain. Added populated unscoped
+  audit/calendar fail-closed probes and waits for finished inventory refresh
+  after real reversal/replay. No application/auth/baseline/gate change.
+- RAM15.9GBavailable,disk339GB,pressure0 before scoped syntax/ESLint/policy/
+  whitespace checks; PASS. Browser/PG/full local checks remain NOT RUN. New
+  exact-head independent full review and hosted gates required before release.
+- Progress unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
+  Last action: primary artifact/source reconciliation and probe correction.
+  Precise stopping point: replacement checkpoint/review/CI. Next action:
+  execute the corrected six browser cases and real audit/RLS evidence in CI.
