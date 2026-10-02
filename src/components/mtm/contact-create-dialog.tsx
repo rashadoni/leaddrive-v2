@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { BriefcaseBusiness, CircleAlert, Loader2, Search, UserRoundPlus } from "lucide-react"
+import { BriefcaseBusiness, CircleAlert, Loader2, UserRoundPlus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,8 +15,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ContactSpecialtyInput } from "@/components/mtm/contact-specialty-input"
+import { MtmOrganizationPicker, type MtmOrganizationOption } from "@/components/mtm/organization-picker"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { legacyContactTypeForCategory } from "@/lib/mtm/contact-category-editor"
+import { contactFieldVisibility } from "@/lib/mtm/contact-field-visibility"
 
 type ContactType = "DOCTOR" | "PHARMACIST" | "OTHER"
 type Labels = { ru: string; az: string; en: string }
@@ -35,16 +39,6 @@ type ClientTypeDictionary = {
   entries: Array<{ code: string; order: number; labels: Labels; fields?: ClientTypeField[] }>
 }
 
-type OrganizationOption = {
-  id: string
-  code: string | null
-  name: string
-  objectType: string
-  address: string | null
-  city: string | null
-  district: string | null
-}
-
 type FormState = {
   type: ContactType
   lastName: string
@@ -52,7 +46,6 @@ type FormState = {
   middleName: string
   specialtyName: string
   phone: string
-  customerId: string
   jobTitle: string
   notes: string
 }
@@ -64,31 +57,27 @@ const EMPTY_FORM: FormState = {
   middleName: "",
   specialtyName: "",
   phone: "",
-  customerId: "",
   jobTitle: "",
   notes: "",
-}
-
-function organizationLabel(organization: OrganizationOption): string {
-  const place = [organization.city, organization.district].filter(Boolean).join(", ")
-  return [organization.name, place].filter(Boolean).join(" · ")
 }
 
 function localized(labels: Labels, locale: string): string {
   return locale.startsWith("az") ? labels.az : locale.startsWith("ru") ? labels.ru : labels.en
 }
 
-function legacyContactType(code: string): ContactType {
-  return code === "DOCTOR" ? "DOCTOR" : code === "PHARMACIST" ? "PHARMACIST" : "OTHER"
-}
-
 export function MtmContactCreateDialog({
   open,
   onOpenChange,
   onCreated,
+  specialties = [],
+  hiddenFields,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** The tenant's specialty list; empty means the specialty is typed freely. */
+  specialties?: readonly string[]
+  /** Fields the tenant switched off in MTM settings: not offered, not sent. */
+  hiddenFields?: readonly string[]
   onCreated: () => Promise<void> | void
 }) {
   const t = useTranslations("mtmContactCreate")
@@ -97,41 +86,16 @@ export function MtmContactCreateDialog({
   const [clientTypeDictionary, setClientTypeDictionary] = useState<ClientTypeDictionary | null>(null)
   const [clientTypeCode, setClientTypeCode] = useState("")
   const [clientTypeValues, setClientTypeValues] = useState<Record<string, string>>({})
-  const [organizations, setOrganizations] = useState<OrganizationOption[]>([])
-  const [organizationSearch, setOrganizationSearch] = useState("")
-  const [searching, setSearching] = useState(false)
+  const [organization, setOrganization] = useState<MtmOrganizationOption | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
-  const selectedOrganization = useMemo(
-    () => organizations.find((organization) => organization.id === form.customerId),
-    [form.customerId, organizations],
-  )
+  const shows = useMemo(() => contactFieldVisibility(hiddenFields), [hiddenFields])
+
   const selectedClientType = useMemo(
     () => clientTypeDictionary?.entries.find((entry) => entry.code === clientTypeCode) ?? null,
     [clientTypeCode, clientTypeDictionary],
   )
-
-  const loadOrganizations = useCallback(async (query: string) => {
-    setSearching(true)
-    setError("")
-    try {
-      const params = new URLSearchParams({ page: "1", limit: "50", sort: "name", direction: "asc" })
-      if (query.trim()) params.set("search", query.trim())
-      const response = await fetch(`/api/v1/mtm/organizations?${params}`)
-      const result = await response.json().catch(() => null) as {
-        success?: boolean
-        error?: string
-        data?: { organizations?: OrganizationOption[] }
-      } | null
-      if (!response.ok || !result?.success) throw new Error(result?.error || t("organizationSearchError"))
-      setOrganizations(result.data?.organizations ?? [])
-    } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : t("organizationSearchError"))
-    } finally {
-      setSearching(false)
-    }
-  }, [t])
 
   const loadClientTypes = useCallback(async () => {
     try {
@@ -146,7 +110,7 @@ export function MtmContactCreateDialog({
       const first = [...(dictionary?.entries ?? [])].sort((left, right) => left.order - right.order)[0]
       setClientTypeCode(first?.code ?? "")
       setClientTypeValues({})
-      if (first) setForm((current) => ({ ...current, type: legacyContactType(first.code) }))
+      if (first) setForm((current) => ({ ...current, type: legacyContactTypeForCategory(first.code) }))
     } catch {
       setClientTypeDictionary(null)
     }
@@ -155,11 +119,11 @@ export function MtmContactCreateDialog({
   useEffect(() => {
     if (!open) return
     setForm(EMPTY_FORM)
-    setOrganizationSearch("")
+    setOrganization(null)
     setError("")
     setSaving(false)
-    void Promise.all([loadOrganizations(""), loadClientTypes()])
-  }, [loadClientTypes, loadOrganizations, open])
+    void loadClientTypes()
+  }, [loadClientTypes, open])
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -169,7 +133,7 @@ export function MtmContactCreateDialog({
   const selectClientType = (code: string) => {
     setClientTypeCode(code)
     setClientTypeValues({})
-    update("type", legacyContactType(code))
+    update("type", legacyContactTypeForCategory(code))
   }
 
   const submit = async (event: FormEvent) => {
@@ -178,7 +142,7 @@ export function MtmContactCreateDialog({
       setError(t("nameRequired"))
       return
     }
-    if (!form.customerId) {
+    if (!organization) {
       setError(t("workplaceRequired"))
       return
     }
@@ -198,9 +162,9 @@ export function MtmContactCreateDialog({
           type: form.type,
           lastName: form.lastName.trim(),
           firstName: form.firstName.trim(),
-          middleName: form.middleName.trim() || null,
-          specialtyName: form.type === "DOCTOR" ? form.specialtyName.trim() || null : null,
-          phone: form.phone.trim() || null,
+          middleName: shows("middleName") ? form.middleName.trim() || null : null,
+          specialtyName: form.type === "DOCTOR" && shows("specialtyName") ? form.specialtyName.trim() || null : null,
+          phone: shows("phone") ? form.phone.trim() || null : null,
           notes: form.notes.trim() || null,
           ...(clientTypeDictionary && selectedClientType ? {
             clientType: {
@@ -212,9 +176,9 @@ export function MtmContactCreateDialog({
             },
           } : {}),
           primaryWorkplace: {
-            customerId: form.customerId,
+            customerId: organization.id,
             jobTitle: form.jobTitle.trim() || null,
-            phone: form.phone.trim() || null,
+            phone: shows("phone") ? form.phone.trim() || null : null,
           },
         }),
       })
@@ -270,9 +234,9 @@ export function MtmContactCreateDialog({
               </div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-last-name">{t("lastName")} *</Label><Input id="contact-create-last-name" value={form.lastName} onChange={(event) => update("lastName", event.target.value)} autoComplete="family-name" /></div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-first-name">{t("firstName")} *</Label><Input id="contact-create-first-name" value={form.firstName} onChange={(event) => update("firstName", event.target.value)} autoComplete="given-name" /></div>
-              <div className="space-y-1.5"><Label htmlFor="contact-create-middle-name">{t("middleName")}</Label><Input id="contact-create-middle-name" value={form.middleName} onChange={(event) => update("middleName", event.target.value)} autoComplete="additional-name" /></div>
-              {form.type === "DOCTOR" && !selectedClientType?.fields?.some((field) => field.key === "specialty") ? <div className="space-y-1.5"><Label htmlFor="contact-create-specialty">{t("specialty")}</Label><Input id="contact-create-specialty" value={form.specialtyName} onChange={(event) => update("specialtyName", event.target.value)} placeholder={t("specialtyPlaceholder")} /></div> : null}
-              {(selectedClientType?.fields ?? []).sort((left, right) => left.order - right.order).map((field) => (
+              {shows("middleName") ? <div className="space-y-1.5"><Label htmlFor="contact-create-middle-name">{t("middleName")}</Label><Input id="contact-create-middle-name" value={form.middleName} onChange={(event) => update("middleName", event.target.value)} autoComplete="additional-name" /></div> : null}
+              {form.type === "DOCTOR" && shows("specialtyName") && !selectedClientType?.fields?.some((field) => field.key === "specialty") ? <div className="space-y-1.5"><Label htmlFor="contact-create-specialty">{t("specialty")}</Label><ContactSpecialtyInput id="contact-create-specialty" value={form.specialtyName} onChange={(value) => update("specialtyName", value)} specialties={specialties} chooseLabel={t("specialtyChoose")} placeholder={t("specialtyPlaceholder")} /></div> : null}
+              {[...(selectedClientType?.fields ?? [])].sort((left, right) => left.order - right.order).map((field) => (
                 <div key={field.key} className={field.type === "TEXTAREA" ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}>
                   <Label htmlFor={`contact-create-category-${field.key}`}>{localized(field.labels, locale)}{field.required ? " *" : ""}</Label>
                   {field.type === "SELECT" ? (
@@ -295,21 +259,13 @@ export function MtmContactCreateDialog({
               <BriefcaseBusiness className="mt-0.5 h-4 w-4 text-primary" />
               <div><h3 id="contact-create-workplace" className="text-sm font-semibold">{t("workplaceSection")}</h3><p className="mt-1 text-xs text-muted-foreground">{t("workplaceHint")}</p></div>
             </div>
-            <div className="flex gap-2">
-              <Input value={organizationSearch} onChange={(event) => setOrganizationSearch(event.target.value)} placeholder={t("organizationSearchPlaceholder")} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void loadOrganizations(organizationSearch) } }} />
-              <Button type="button" variant="outline" className="min-h-11 min-w-11" aria-label={t("search")} disabled={searching} onClick={() => void loadOrganizations(organizationSearch)}>{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</Button>
-            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="contact-create-workplace-select">{t("workplace")} *</Label>
-                <Select id="contact-create-workplace-select" value={form.customerId} onChange={(event) => update("customerId", event.target.value)} disabled={searching}>
-                  <option value="">{t("workplacePlaceholder")}</option>
-                  {organizations.map((organization) => <option key={organization.id} value={organization.id}>{organizationLabel(organization)}</option>)}
-                </Select>
-                {selectedOrganization ? <p className="text-xs text-muted-foreground">{[selectedOrganization.objectType, selectedOrganization.address].filter(Boolean).join(" · ") || t("addressMissing")}</p> : null}
+                <Label id="contact-create-workplace-label" htmlFor="contact-create-workplace-search">{t("workplace")} *</Label>
+                <MtmOrganizationPicker id="contact-create-workplace-search" labelId="contact-create-workplace-label" value={organization} onChange={(next) => { setOrganization(next); setError("") }} disabled={saving} />
               </div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-job-title">{t("jobTitle")}</Label><Input id="contact-create-job-title" value={form.jobTitle} onChange={(event) => update("jobTitle", event.target.value)} placeholder={t(`jobTitlePlaceholder.${form.type}`)} /></div>
-              <div className="space-y-1.5"><Label htmlFor="contact-create-phone">{t("phone")}</Label><Input id="contact-create-phone" value={form.phone} onChange={(event) => update("phone", event.target.value)} inputMode="tel" autoComplete="tel" placeholder="+994 50 000 00 00" /></div>
+              {shows("phone") ? <div className="space-y-1.5"><Label htmlFor="contact-create-phone">{t("phone")}</Label><Input id="contact-create-phone" value={form.phone} onChange={(event) => update("phone", event.target.value)} inputMode="tel" autoComplete="tel" placeholder="+994 50 000 00 00" /></div> : null}
             </div>
           </section>
 

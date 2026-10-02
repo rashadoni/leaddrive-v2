@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
 import { generateNextBestActions } from "@/lib/ai/next-best-action"
 import { getOrgModuleContext } from "@/lib/api-auth"
+import { moduleContextForUser } from "@/lib/user-module-access"
 import { canRead } from "@/lib/permissions"
 import { hasModule } from "@/lib/modules"
 
@@ -9,7 +10,7 @@ export const GET = withRlsAuth("ai", "read", async (req, auth) => {
   const limit = parseInt(req.nextUrl.searchParams.get("limit") || "10")
 
   try {
-    const orgCtx = await getOrgModuleContext(auth.orgId)
+    const orgCtx = moduleContextForUser(await getOrgModuleContext(auth.orgId), auth)
     const actions = await generateNextBestActions(auth.orgId, auth.userId, limit, {
       role: auth.role,
       deals: canRead(auth.role, "deals") && hasModule(orgCtx, "sales"),

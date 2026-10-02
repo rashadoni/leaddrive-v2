@@ -20,12 +20,39 @@ const createAuditLogSchema = z.object({
   userAgent: z.string().optional(),
 })
 
-export const GET = withRls(async (req, { orgId }) => {
+/**
+ * The journal narrates every module at once, so a person an admin hid modules
+ * from (`User.hiddenModules`) does not get it: unfiltered, it lists exactly the
+ * records that were hidden from them — a field manager limited to Route & Field
+ * could read who changed which deal and which invoice.
+ *
+ * They keep the per-record history the visible pages draw — the deal timeline
+ * and the invoice history — while that record's module is one they still have.
+ * Every other entity type is refused rather than guessed at: `entityType` is an
+ * open-ended string written by a few hundred call sites, and a module this map
+ * does not know cannot be shown to be visible.
+ */
+const RECORD_HISTORY_MODULE: Record<string, string> = { deal: "sales", invoice: "finance" }
+
+function maskedJournalDenial(hiddenModules: readonly string[] | undefined, entityType: string): NextResponse | null {
+  if (!hiddenModules || hiddenModules.length === 0) return null
+  const owner = RECORD_HISTORY_MODULE[entityType]
+  if (owner && !hiddenModules.includes(owner)) return null
+  return NextResponse.json(
+    { error: "Forbidden", message: "The audit journal is not available to your account." },
+    { status: 403 },
+  )
+}
+
+export const GET = withRls(async (req, { orgId, session }) => {
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get("page") || "1")
   const limit = parseInt(searchParams.get("limit") || "50")
   const entityType = searchParams.get("entityType") || ""
   const entityId = searchParams.get("entityId") || ""
+
+  const denial = maskedJournalDenial(session?.hiddenModules, entityType)
+  if (denial) return denial
 
   try {
     const where = {

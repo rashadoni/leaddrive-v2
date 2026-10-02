@@ -14,6 +14,7 @@
 import { hasModule } from "@/lib/modules"
 import type { Role } from "@/lib/permissions"
 import { getOrgModuleContext } from "@/lib/api-auth"
+import { moduleContextForUser } from "@/lib/user-module-access"
 import { executeReadTool } from "@/lib/ai/read-tool-executor"
 import {
   VOICE_TOOL_MODULE,
@@ -71,7 +72,7 @@ export type VoiceReadOutcome = { status?: number; body: Record<string, unknown> 
 export async function executeVoiceReadTool(params: {
   toolName: VoiceToolName
   filter: unknown
-  auth: { orgId: string; userId: string; role: string }
+  auth: { orgId: string; userId: string; role: string; hiddenModules?: string[] }
   logTurn?: (entry: { outcome: string; keys: string[] }) => void
 }): Promise<VoiceReadOutcome> {
   const { toolName, filter, auth, logTurn } = params
@@ -80,7 +81,7 @@ export async function executeVoiceReadTool(params: {
   const moduleId = VOICE_TOOL_MODULE[toolName]
   let orgCtx: VoiceOrgModuleContext
   try {
-    orgCtx = await getOrgModuleContext(auth.orgId)
+    orgCtx = moduleContextForUser(await getOrgModuleContext(auth.orgId), auth)
     if (!hasModule(orgCtx, moduleId)) {
       // A module the tenant never bought is a fact about the account, not an
       // outage — and every sibling denial in this file already says so at 200

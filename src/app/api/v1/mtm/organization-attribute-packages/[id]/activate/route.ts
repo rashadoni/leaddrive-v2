@@ -37,7 +37,7 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-organization-attribute-activation:${auth.orgId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-organization-attribute-activation:${auth.orgId}`}, 0))`
       const actor = await requireCurrentOrganizationAttributeAdministrator(tx as typeof prisma, auth)
       const current = await tx.mtmOrganizationAttributePackage.findFirst({
         where: { id, organizationId: auth.orgId },

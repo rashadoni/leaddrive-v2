@@ -5,6 +5,9 @@ import {
   beginLatestCalendarRequest,
   finishLatestCalendarRequest,
   isLatestCalendarRequest,
+  beginCalendarMutation,
+  isCurrentCalendarMutation,
+  finishCalendarMutation,
 } from "@/components/workforce/workforce-calendar-configuration"
 
 function source(path: string): string {
@@ -27,7 +30,7 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(navigation).toContain('{ href: "/workforce/calendar", icon: CalendarDays, tKey: "workforceCalendar", group: "HRM", capability: "workforce-hrm" }')
     expect(navigation).toContain("legacy CRM permissionScope")
     expect(component).toContain('request<CalendarData>("GET", undefined, requestSelection, attempt.controller.signal)')
-    expect(component).toContain('request<Record<string, unknown>>("POST", {')
+    expect(component).toContain('request<Record<string, unknown>>("POST", submittedOperation === "MOVE_WORKDAY"')
     expect(component).toContain('/api/v1/workforce/configuration/calendar')
     expect(component).not.toContain("/api/v1/mtm/work-calendar")
     expect(component).not.toContain("isAdministrator")
@@ -54,7 +57,7 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(state.controller).toBeNull()
   })
 
-  it("offers only the three released additive organization/team/employee override kinds", () => {
+  it("keeps internal moved kinds hidden and exposes one explicit reciprocal move operation", () => {
     expect(WORKFORCE_CALENDAR_EDITOR_KINDS).toEqual([
       "PUBLIC_HOLIDAY",
       "COMPANY_HOLIDAY",
@@ -63,6 +66,12 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(component).not.toContain('value="MOVED_WORKDAY"')
     expect(component).not.toContain('value="MOVED_DAY_OFF"')
     expect(component).not.toContain('value="WORKING_DAY"')
+    expect(component).toContain('<option value="MOVE_WORKDAY">')
+    expect(component).toContain('operation: "MOVE_WORKDAY"')
+    expect(component).toContain('sourceDate: date')
+    expect(component).toContain("destinationDate")
+    expect(component).toContain('scope !== "AGENT"')
+    expect(component).toContain('if (nextScope === "AGENT") setOperation("CREATE_OVERRIDE")')
   })
 
   it("uses named inputs, inline feedback, touch targets and responsive divider rhythm", () => {
@@ -71,11 +80,13 @@ describe("Workforce calendar configuration UI contract", () => {
     expect(component).toContain('id="workforce-calendar-team-search"')
     expect(component).toContain('id="workforce-calendar-agent"')
     expect(component).toContain('id="workforce-calendar-agent-search"')
+    expect(component).toContain('id="workforce-calendar-operation"')
     expect(component).toContain('id="workforce-calendar-date"')
+    expect(component).toContain('id="workforce-calendar-destination-date"')
     expect(component).toContain('id="workforce-calendar-kind"')
     expect(component).toContain('id="workforce-calendar-name"')
     expect(component).toContain('className="min-h-11"')
-    expect(component).toContain("md:grid-cols-3")
+    expect(component).toContain("md:grid-cols-4")
     expect(component).toContain('role="alert"')
     expect(component).toContain('role="status" aria-live="polite"')
     expect(component).toContain("divide-y divide-zinc-200")
@@ -83,20 +94,52 @@ describe("Workforce calendar configuration UI contract", () => {
   })
 
   it("freezes every selection and draft control until a submitted mutation is reconciled", () => {
-    expect(component.match(/disabled=\{saving\}/g)).toHaveLength(8)
+    expect(component.match(/disabled=\{saving \|\| Boolean\(confirmation\)\}/g)).toHaveLength(10)
     for (const control of [
       "workforce-calendar-scope",
       "workforce-calendar-team",
       "workforce-calendar-team-search",
       "workforce-calendar-agent",
       "workforce-calendar-agent-search",
+      "workforce-calendar-operation",
       "workforce-calendar-date",
+      "workforce-calendar-destination-date",
       "workforce-calendar-kind",
       "workforce-calendar-name",
     ]) {
       const controlSource = component.slice(component.indexOf(`id=\"${control}\"`))
-      expect(controlSource.slice(0, 320), `${control} must be frozen while saving`).toContain("disabled={saving}")
+      expect(controlSource.slice(0, 320), `${control} must be frozen while saving or reviewing a pair`).toContain("disabled={saving || Boolean(confirmation)}")
     }
+  })
+
+  it("blocks same-tick double submit and fences stale tenant/target settlement", () => {
+    const state = { current: null as { contextKey: string; targetKey: string } | null }
+    const identity = { contextKey: "org-a/user-a", targetKey: "team-one" }
+    const first = beginCalendarMutation(state, identity)!
+    expect(beginCalendarMutation(state, identity)).toBeNull()
+    expect(isCurrentCalendarMutation(state, first, identity)).toBe(true)
+    expect(isCurrentCalendarMutation(state, first, { ...identity, contextKey: "org-b/user-b" })).toBe(false)
+    expect(isCurrentCalendarMutation(state, first, { ...identity, targetKey: "team-two" })).toBe(false)
+    state.current = null // committed context switch invalidates the old attempt
+    const second = beginCalendarMutation(state, { ...identity, contextKey: "org-b/user-b" })!
+    expect(finishCalendarMutation(state, first)).toBe(false)
+    expect(isCurrentCalendarMutation(state, second, { ...identity, contextKey: "org-b/user-b" })).toBe(true)
+    expect(finishCalendarMutation(state, second)).toBe(true)
+  })
+
+  it("keeps an exact reversal confirmation and guards before old reconciliation load", () => {
+    expect(component).toContain('operation: "REVERSE_MOVE_WORKDAY"')
+    expect(component).toContain('day.kind === "MOVED_DAY_OFF" && day.pairedDate && day.pairGenerationId')
+    expect(component).toContain('scope !== "AGENT"')
+    expect(component).toContain('pairGenerationId: day.pairGenerationId')
+    expect(component).toContain('clientContextKey: contextKey')
+    expect(component).toContain('calendar?.clientContextKey === contextKey')
+    const loadStart = component.indexOf('if (activeIdentity.current.contextKey !== contextKey) return')
+    expect(loadStart).toBeGreaterThan(0)
+    expect(loadStart).toBeLessThan(component.indexOf('const attempt = beginLatestCalendarRequest', loadStart))
+    expect(component).toContain('t("reversalOutcomeUnknown")')
+    expect(component).toContain('await load(submitted.selection)')
+    expect(component).toContain('if (finishCalendarMutation(mutation.current, attempt)) setSaving(false)')
   })
 
   it("uses named bounded target pickers and keeps PII, storage and Route fields out of the browser", () => {
@@ -118,13 +161,23 @@ describe("Workforce calendar configuration UI contract", () => {
   })
 
   it("uses a non-sensitive employee display-label contract instead of inviting HR reasons", () => {
-    expect(component).toContain('t(scope === "AGENT" ? "agentName" : "name")')
-    expect(component).toContain('t(scope === "AGENT" ? "agentNamePlaceholder" : "namePlaceholder")')
-    expect(component).toContain('aria-describedby={scope === "AGENT" ? "workforce-calendar-agent-name-hint" : undefined}')
+    expect(component).toContain('t(operation === "MOVE_WORKDAY" ? "moveName" : scope === "AGENT" ? "agentName" : "name")')
+    expect(component).toContain(': scope === "AGENT" ? "agentNamePlaceholder" : "namePlaceholder")')
+    expect(component).toContain(': scope === "AGENT" ? "workforce-calendar-agent-name-hint" : undefined}')
     expect(component).toContain('id="workforce-calendar-agent-name-hint"')
     expect(messages("en").agentName).toBe("Non-sensitive display label")
     expect(messages("en").agentNameHint).toContain("Do not enter leave, absence, medical")
     expect(messages("en").createHintAgent).toContain("visible to schedule readers and retained in audit")
+  })
+
+  it("describes both moved dates, discloses the shared label and renders reciprocal inventory links", () => {
+    expect(component).toContain('aria-describedby={operation === "MOVE_WORKDAY" ? "workforce-calendar-move-source-hint" : undefined}')
+    expect(component).toContain('aria-describedby="workforce-calendar-move-destination-hint"')
+    expect(component).toContain('id="workforce-calendar-move-name-hint"')
+    expect(component).toContain("day.pairedDate")
+    expect(messages("en").moveSourceHint).toContain("Route planning keeps")
+    expect(messages("en").moveDestinationHint).toContain("Route planning keeps")
+    expect(messages("en").moveNameHint).toContain("visible to schedule readers and retained in audit")
   })
 
   it("has complete non-empty EN, RU and AZ copy including every readable kind", () => {
@@ -161,17 +214,30 @@ describe("Workforce calendar configuration UI contract", () => {
       "agentName",
       "agentNamePlaceholder",
       "agentNameHint",
+      "operation",
       "date",
+      "moveSourceDate",
+      "moveSourceHint",
+      "moveDestinationDate",
+      "moveDestinationHint",
       "kind",
       "name",
       "namePlaceholder",
+      "moveName",
+      "moveNamePlaceholder",
+      "moveNameHint",
       "createHintOrganization",
       "createHintTeam",
       "createHintAgent",
+      "moveCreateHintOrganization",
+      "moveCreateHintTeam",
       "create",
+      "moveCreate",
       "createdOrganization",
       "createdTeam",
       "createdAgent",
+      "movedOrganization",
+      "movedTeam",
       "alreadyRecorded",
       "upcomingTitleOrganization",
       "upcomingTitleTeam",
@@ -181,8 +247,12 @@ describe("Workforce calendar configuration UI contract", () => {
       "emptyTeam",
       "emptyAgent",
       "unnamed",
+      "pairedDate",
       "dateNotFuture",
       "dateRangeInvalid",
+      "moveDatesInvalid",
+      "moveSourceNotWorking",
+      "moveDestinationNotNonWorking",
       "overrideExists",
       "teamUnavailable",
       "teamSearchInvalid",
@@ -193,6 +263,10 @@ describe("Workforce calendar configuration UI contract", () => {
       "accessRequired",
       "requestFailed",
       "outcomeUnknown",
+      "reversalAction", "reversalActionLabel", "reversalReviewTitle", "reversalDates",
+      "reversalReviewHint", "reversalConfirm", "reversalCancel", "reversalRecorded",
+      "reversalAlreadyRecorded", "reversalPairChanged", "reversalRouteChanged",
+      "reversalBusy", "reversalOutcomeUnknown",
     ]
     for (const locale of ["en", "ru", "az"]) {
       const localized = messages(locale)
@@ -202,6 +276,9 @@ describe("Workforce calendar configuration UI contract", () => {
       }
       const kinds = localized.kinds as Record<string, unknown>
       const scopes = localized.scopes as Record<string, unknown>
+      const operations = localized.operations as Record<string, unknown>
+      expect(operations.CREATE_OVERRIDE).toEqual(expect.any(String))
+      expect(operations.MOVE_WORKDAY).toEqual(expect.any(String))
       expect(scopes.ORGANIZATION).toEqual(expect.any(String))
       expect(scopes.TEAM).toEqual(expect.any(String))
       expect(scopes.AGENT).toEqual(expect.any(String))
@@ -210,6 +287,7 @@ describe("Workforce calendar configuration UI contract", () => {
         expect(statuses[status], `${locale}.agentStatuses.${status} is missing`).toEqual(expect.any(String))
       }
       expect(localized.outcomeUnknown).not.toBe(localized.requestFailed)
+      expect(localized.reversalOutcomeUnknown).not.toBe(localized.reversalPairChanged)
       for (const kind of [
         "WORKING_DAY",
         "WEEKEND",

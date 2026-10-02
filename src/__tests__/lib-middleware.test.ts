@@ -101,6 +101,66 @@ describe("middleware", async () => {
     expect(res.headers.get("location")).toContain("/login")
   })
 
+  // 2026-10-02: an administrator reset their own password, which closed the
+  // session the page was running on. The next reset was redirected to /login,
+  // fetch() followed it, and the dialog showed `Unexpected token '<',
+  // "<!DOCTYPE "... is not valid JSON` — the login page handed to JSON.parse.
+  it("answers a session-less API call with JSON instead of the login page", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/api/v1/users/cmuqufzve60afkp19wzxmizn7/reset-password",
+      method: "POST",
+      auth: null,
+      headers: { "sec-fetch-mode": "cors", "sec-fetch-dest": "empty" },
+    }))
+
+    expect(res.status).toBe(401)
+    expect(res.headers.get("location")).toBeNull()
+    expect(res.headers.get("content-type")).toContain("application/json")
+    expect(await res.json()).toEqual({ error: "Unauthorized", code: "session_expired" })
+  })
+
+  it("answers a session-less fetch GET with JSON too", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/api/v1/users",
+      auth: null,
+      headers: { "sec-fetch-mode": "cors" },
+    }))
+
+    expect(res.status).toBe(401)
+    expect((await res.json()).code).toBe("session_expired")
+  })
+
+  it("leaves a caller that is not a browser on the redirect it always had", async () => {
+    // No Sec-Fetch-Mode: a PBX, a webhook source, curl. Nothing changes for them.
+    const res = await authMiddleware(makeReq({ pathname: "/api/v1/users", method: "POST", auth: null }))
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/login")
+  })
+
+  it("still sends a session-less navigation to an API URL through login", async () => {
+    // An export or download link opened in a tab: a login page is the one
+    // answer a person can act on, and callbackUrl brings them back.
+    const res = await authMiddleware(makeReq({
+      pathname: "/api/v1/invoices/inv-1/pdf",
+      auth: null,
+      headers: { "sec-fetch-mode": "navigate", "sec-fetch-dest": "document" },
+    }))
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("callbackUrl=%2Fapi%2Fv1%2Finvoices%2Finv-1%2Fpdf")
+  })
+
+  it("never answers a page request with the API's JSON", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/settings/users",
+      auth: null,
+      headers: { "sec-fetch-mode": "cors" },
+    }))
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/login")
+  })
+
   // ─── Public paths ─────────────────────────────────────────
 
   it("allows /login without authentication", async () => {

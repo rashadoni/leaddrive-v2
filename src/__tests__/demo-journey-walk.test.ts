@@ -37,6 +37,7 @@ vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => crea
 
 import { DemoJourneyPlayer } from "@/components/demo-center/journey/demo-journey-player"
 import { findDemoTarget } from "@/components/demo-center/journey/demo-target"
+import { stepVoiceUrl } from "@/lib/demo-center/guide-voice"
 import { DEMO_JOURNEY_STRINGS as S } from "@/components/demo-center/journey/strings"
 import { DEMO_LIVE_CALL_STEP_ID, PROSPECT_TO_CLOSED_WON, withLiveCall, type DemoJourneyStep } from "@/lib/demo-center/journey"
 
@@ -344,4 +345,60 @@ describe("the arrow's controls", () => {
       expect(marked, `${step.id}: no control marks demoTarget("${step.id}")`).toBe(true)
     }
   })
+})
+
+describe("the talking guide", () => {
+  it("is silent until asked, then reads each step as it opens, and stops for a clip", async () => {
+    const played: string[] = []
+    let pauses = 0
+    let players = 0
+    class FakeAudio {
+      src = ""
+      constructor() {
+        players += 1
+      }
+      play() {
+        played.push(this.src)
+        return Promise.resolve()
+      }
+      pause() {
+        pauses += 1
+      }
+    }
+    vi.stubGlobal("Audio", FakeAudio)
+    window.localStorage.removeItem("ld_demo_guide_voice")
+
+    await renderPlayer()
+    const first = steps.get(frontier().stepId)!
+    expect(played, "no sound before the prospect asks for it").toEqual([])
+
+    // On a phone the coach card is what is on screen, so the switch is there —
+    // and only there: the panel does not repeat it while the card is up.
+    const panelSwitch = () => container.querySelector<HTMLButtonElement>('[data-testid="demo-guide-voice"]')
+    expect(panelSwitch()).toBeNull()
+    const toggle = document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-voice"]')
+    expect(toggle?.textContent).toContain(S.voiceOn)
+    await act(async () => toggle!.click())
+    await settle()
+    // The click itself starts the current step — the browser allows sound inside it.
+    expect(played).toEqual([stepVoiceUrl(first)])
+    expect(document.querySelector('[data-testid="demo-coach-voice"]')?.textContent).toContain(S.voiceOff)
+
+    // With the card put away the panel carries the same switch, already on.
+    await act(async () => document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-close"]')!.click())
+    await settle()
+    expect(panelSwitch()?.textContent).toContain(S.voiceOff)
+
+    await walkTo("source-stats")
+    expect(played.at(-1)).toBe(stepVoiceUrl(steps.get("source-stats")!))
+    // Two switches, one voice: every recording went through the same player.
+    expect(players).toBe(1)
+
+    const clip = container.querySelector<HTMLButtonElement>('[data-testid="demo-intro-clip-play"]')
+    expect(clip, "the campaigns chapter offers its clip").not.toBeNull()
+    const before = pauses
+    await act(async () => clip!.click())
+    await settle()
+    expect(pauses, "a clip has its own voiceover; the guide falls silent").toBeGreaterThan(before)
+  }, 60_000)
 })

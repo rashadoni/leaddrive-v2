@@ -125,11 +125,11 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
 
   try {
     const outcome = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-bulk-review:${auth.orgId}:${body.operationId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-bulk-review:${auth.orgId}:${body.operationId}`}, 0))`
       // Use the same lock namespace as single review and acquire IDs in stable
       // order so single and bulk decisions cannot interleave or deadlock.
       for (const executionId of executionIds) {
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-review:${auth.orgId}:${executionId}`}, 0))`
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-review:${auth.orgId}:${executionId}`}, 0))`
       }
 
       const currentActor = await resolveMtmRouteActor(tx as typeof prisma, {
@@ -217,7 +217,7 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
         for (const beneficiaryAgentId of beneficiaryAgentIds) {
           // The ledger guard acquires this same lock. Taking all beneficiary
           // locks up front in canonical order prevents cross-batch deadlocks.
-          await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-ledger:${auth.orgId}:${beneficiaryAgentId}`}, 0))`
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-ledger:${auth.orgId}:${beneficiaryAgentId}`}, 0))`
         }
       }
 

@@ -1087,55 +1087,26 @@ describe("subject relevance", () => {
         expect(decision?.matches[0]?.contextSignals).not.toHaveProperty("heldByJudge")
       })
 
-      // А приговор судьи, который ЗНАЕТ географию объекта, — считается
-      // (2026-09-29). Условие возврата записано было прямо в коде: география в
-      // промпте и замер на выборке с тёзками. Замер: из 20 зарубежных тёзок,
-      // которые держались на слове старого судьи, новый не подтвердил ни
-      // одного; из 55 местных подтвердил 5.
-      it("приговор судьи с географией второй сигнал даёт", async () => {
+      // Приговор судьи С ГЕОГРАФИЕЙ второго сигнала тоже не даёт — откат
+      // 2026-09-29, в день включения. Первая же возвращённая на проде запись
+      // оказалась рекламой индийского магазина одежды «GrandMart Clothing»
+      // («Pick any 3 shirts @ 999/-»), попавшей в ленту азербайджанского
+      // «Grandmart»: бренд назван в имени автора, а в тексте нет ни языка
+      // объекта, ни географии — и уверенность 0.9 этого не ловит.
+      it("приговор судьи с географией второго сигнала тоже не даёт", async () => {
         findMany.mockResolvedValue([ambiguous()])
         const decision = await evaluateSubjectRelevance({
-          ...input("LeadDrive-də kassir kobud davrandı", undefined, withLanguage("en")),
+          ...input("Pick any 3 shirts @ 999/- LeadDrive", undefined, withLanguage("en")),
           aiRelevanceJudge: {
             version: "jev_relevance_judge_v1",
             verdicts: { "subject-1": "about_subject" },
           },
         })
-        expect(decision).toMatchObject({ status: "ACCEPTED" })
-        expect(decision?.matches[0]).toMatchObject({ status: "MATCHED" })
-        // Видно, на чём находка держится.
-        expect(decision?.matches[0]?.contextSignals).toMatchObject({
-          heldByJudge: "jev_relevance_judge_v1",
-        })
-      })
-
-      it.each(["not_about_subject", "unsure"])("вердикт %s вторым сигналом не бывает", async (verdict) => {
-        findMany.mockResolvedValue([ambiguous()])
-        await expect(evaluateSubjectRelevance({
-          ...input("LeadDrive 👍", undefined, withLanguage("en")),
-          aiRelevanceJudge: {
-            version: "jev_relevance_judge_v1",
-            verdicts: { "subject-1": verdict as "unsure" },
-          },
-        })).resolves.toMatchObject({
+        expect(decision).toMatchObject({
           status: "REJECTED",
           reason: "ambiguous_alias_requires_second_signal",
         })
-      })
-
-      // Приговор адресный: он про тот объект, по которому судья отвечал.
-      it("приговор по другому объекту этот не подтверждает", async () => {
-        findMany.mockResolvedValue([ambiguous()])
-        await expect(evaluateSubjectRelevance({
-          ...input("LeadDrive on 41", undefined, withLanguage("en")),
-          aiRelevanceJudge: {
-            version: "jev_relevance_judge_v1",
-            verdicts: { "subject-99": "about_subject" },
-          },
-        })).resolves.toMatchObject({
-          status: "REJECTED",
-          reason: "ambiguous_alias_requires_second_signal",
-        })
+        expect(decision?.matches[0]?.contextSignals).not.toHaveProperty("heldByJudge")
       })
 
       // Ключевая асимметрия: отсутствие метки ничего не подтверждает. Иначе

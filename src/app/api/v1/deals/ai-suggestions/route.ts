@@ -7,6 +7,7 @@ import { getAnthropicClient } from "@/lib/ai/anthropic-client"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { getOrgModuleContext } from "@/lib/api-auth"
+import { moduleContextForUser } from "@/lib/user-module-access"
 import { canRead } from "@/lib/permissions"
 import { hasModule } from "@/lib/modules"
 import { applyRecordFilter } from "@/lib/sharing-rules"
@@ -28,7 +29,7 @@ export const GET = withRlsAuth("deals", "read", async (req, auth) => {
   if (!canRead(auth.role, "deals")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
-  const orgCtx = await getOrgModuleContext(orgId)
+  const orgCtx = moduleContextForUser(await getOrgModuleContext(orgId), auth)
   if (!hasModule(orgCtx, "sales")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }

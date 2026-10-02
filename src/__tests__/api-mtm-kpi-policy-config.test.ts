@@ -96,7 +96,7 @@ describe("SWM-13 KPI policy configuration", () => {
     }), { params: Promise.resolve({ id: "policy-1" }) })
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ success: true, data: { idempotent: false } })
-    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledOnce()
   })
 

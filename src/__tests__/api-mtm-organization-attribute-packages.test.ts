@@ -103,7 +103,7 @@ describe("SWM-07 organization attribute package API", () => {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ expectedRowsHash: draft.rowsHash, approvalReference: "SwissMed SWM-07 approval" }),
     }), { params: Promise.resolve({ id: "package-1" }) })
     expect(response.status).toBe(200)
-    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
     expect(prisma.mtmOrganizationAttributePackage.updateMany).toHaveBeenNthCalledWith(1, expect.objectContaining({ where: expect.objectContaining({ status: "ACTIVE", id: { not: "package-1" } }) }))
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledOnce()
   })

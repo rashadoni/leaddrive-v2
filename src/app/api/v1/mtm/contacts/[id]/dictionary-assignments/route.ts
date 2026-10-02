@@ -79,7 +79,7 @@ export const PUT = withRouteFieldRlsAuth<RouteContext>("write", async (req, auth
       entityId: contactId,
       metadataKind: "contact_dictionary_assignments",
       oldData: { stateHash: before.hash, assignments: before.rows },
-      newData: { ...result, reason: body.reason },
+      newData: { ...result, reason: body.reason || null },
       req,
     }).catch((error) => console.warn("[MTM/contact dictionary assignments PUT] audit failed", error))
 

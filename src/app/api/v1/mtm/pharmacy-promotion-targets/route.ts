@@ -136,8 +136,8 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-target:${auth.orgId}:${body.operationId}`}, 0))`
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-version:${auth.orgId}:${body.promotionVersionId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-target:${auth.orgId}:${body.operationId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-version:${auth.orgId}:${body.promotionVersionId}`}, 0))`
       const currentActor = await actorFor(tx as typeof prisma, auth)
       if (!currentActor || !canManageFieldMasterData(currentActor)) throw new Error("MTM_PHARMACY_TARGET_PLAN_DENIED")
       if (!isAgentInRouteScope(currentActor, body.assignedAgentId)) throw new Error("MTM_PHARMACY_TARGET_SCOPE_DENIED")

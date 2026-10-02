@@ -34,11 +34,18 @@ const ROUTE_COPY = [
   },
 ] as const
 
-export function ModuleDisabled() {
+/**
+ * `reason="role"` is the other refusal: the tenant has the section, this person
+ * may not open it (see isNavPathRoleBlocked). It must not say "module not
+ * enabled" — that sends the reader to billing for something no plan changes —
+ * and it must not link back to Settings, which is the place being refused.
+ */
+export function ModuleDisabled({ reason = "module" }: { reason?: "module" | "role" }) {
   const t = useTranslations("nav")
   const pathname = usePathname()
-  const routeCopy = ROUTE_COPY.find((item) => pathname?.startsWith(item.match))
-  const copyKey = routeCopy?.key ?? "default"
+  const roleDenied = reason === "role"
+  const routeCopy = roleDenied ? undefined : ROUTE_COPY.find((item) => pathname?.startsWith(item.match))
+  const copyKey = roleDenied ? "roleDenied" : routeCopy?.key ?? "default"
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
@@ -57,7 +64,9 @@ export function ModuleDisabled() {
           </Button>
         )}
         <Button variant={routeCopy ? "outline" : "default"} asChild>
-          <Link href="/settings">{t("moduleDisabled.backToSettings")}</Link>
+          {roleDenied
+            ? <Link href="/">{t("moduleDisabled.goHome")}</Link>
+            : <Link href="/settings">{t("moduleDisabled.backToSettings")}</Link>}
         </Button>
       </div>
       <p className="mt-4 max-w-md text-xs leading-5 text-muted-foreground">{t(`moduleDisabled.${copyKey}.ownerHint`)}</p>

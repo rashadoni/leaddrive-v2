@@ -6,6 +6,7 @@ import {
   contactDictionarySignatureIsCoherent,
   type ContactDictionaryEntry,
 } from "@/lib/mtm/contact-dictionary"
+import { legacyContactTypeForCategory } from "@/lib/mtm/contact-category-editor"
 import type { ContactDictionaryAssignmentSetSchema } from "@/lib/mtm-validators"
 import type { z } from "zod"
 
@@ -17,7 +18,10 @@ export const CONTACT_MASTER_DICTIONARY_KINDS = [
 ] as const
 
 export type ContactMasterDictionaryKind = typeof CONTACT_MASTER_DICTIONARY_KINDS[number]
-export type ContactDictionaryAssignmentSet = z.infer<typeof ContactDictionaryAssignmentSetSchema>
+/** What is validated and applied; the reason travels with the request or audit, not here. */
+export type ContactDictionaryAssignmentSet = Omit<z.infer<typeof ContactDictionaryAssignmentSetSchema>, "reason"> & {
+  reason?: string
+}
 
 type AssignmentRow = {
   id: string
@@ -44,7 +48,7 @@ type DictionaryRow = {
 }
 
 type AssignmentClient = Pick<Prisma.TransactionClient,
-  "mtmContactDictionaryAssignment" | "mtmContactDictionary" | "mtmContact" | "$queryRaw"
+  "mtmContactDictionaryAssignment" | "mtmContactDictionary" | "mtmContact" | "$executeRaw"
 >
 
 export class ContactDictionaryAssignmentConflict extends Error {
@@ -217,7 +221,9 @@ export async function applyContactDictionaryAssignmentSet(
   },
 ): Promise<{ ended: number; created: number; stateHash: string }> {
   const now = args.now ?? new Date()
-  await client.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-contact-dictionary-assignment:${args.organizationId}:${args.contactId}`}, 0))`
+  // `$executeRaw`: the lock function returns `void`, which `$queryRaw`
+  // cannot deserialize (P2010).
+  await client.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-contact-dictionary-assignment:${args.organizationId}:${args.contactId}`}, 0))`
   const current = await readContactDictionaryAssignmentState(client, args.organizationId, args.contactId)
   if (current.hash !== args.input.expectedStateHash) {
     throw new ContactDictionaryAssignmentConflict(
@@ -265,7 +271,13 @@ export async function applyContactDictionaryAssignmentSet(
 
   await client.mtmContact.updateMany({
     where: { organizationId: args.organizationId, id: args.contactId, deletedAt: null },
-    data: { categoryData: (args.input.clientType?.values ?? {}) as Prisma.InputJsonValue },
+    data: {
+      categoryData: (args.input.clientType?.values ?? {}) as Prisma.InputJsonValue,
+      // The category owns the built-in type, exactly as it does when a contact
+      // is created: moving a doctor to "Pharmacist" must also take them out of
+      // doctor scoring. Clearing the category leaves the type as it was.
+      ...(args.input.clientType ? { type: legacyContactTypeForCategory(args.input.clientType.code) } : {}),
+    },
   })
 
   const after = await readContactDictionaryAssignmentState(client, args.organizationId, args.contactId)

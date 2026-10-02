@@ -269,7 +269,9 @@ describe("legacy mobile task manager mutation hardening", () => {
         evidence: expect.objectContaining({ actorAgentId: "manager-1", expectedVersion: 3 }),
       }),
     }))
-    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2)
+    // The advisory lock, then the idempotency lookup.
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
   })
 
   it("replays the same duplicate but refuses a deleted idempotency tombstone", async () => {
@@ -291,9 +293,7 @@ describe("legacy mobile task manager mutation hardening", () => {
       priority: "HIGH",
       version: 1,
     }
-    vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([existing] as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([existing] as never)
 
     const replay = await duplicateTask(request("/api/v1/mtm/mobile/tasks/task-1/duplicate", "POST", duplicateBody), routeContext())
     expect(replay.status).toBe(200)
@@ -305,7 +305,6 @@ describe("legacy mobile task manager mutation hardening", () => {
     vi.mocked(resolveAgentScope).mockResolvedValue({ agentIds: ["agent-1", "agent-2"] } as never)
     vi.mocked(prisma.mtmTask.findFirst).mockResolvedValue(editableTask() as never)
     vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([] as never)
       .mockResolvedValueOnce([{ ...existing, deletedAt: new Date("2026-08-06T13:00:00.000Z") }] as never)
 
     const tombstone = await duplicateTask(request("/api/v1/mtm/mobile/tasks/task-1/duplicate", "POST", duplicateBody), routeContext())

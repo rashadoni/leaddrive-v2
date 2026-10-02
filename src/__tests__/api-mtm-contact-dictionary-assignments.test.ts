@@ -115,6 +115,52 @@ describe("SWM03 contact dictionary assignment API", () => {
     })
   })
 
+  it("saves a manager's own edit without asking why, and audits the missing reason as missing", async () => {
+    vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue({ id: CONTACT_ID, updatedAt: UPDATED_AT } as never)
+    vi.mocked(prisma.mtmContactDictionaryAssignment.findMany).mockResolvedValue([])
+    vi.mocked(prisma.mtmContactDictionary.findMany).mockResolvedValue([dictionary()] as never)
+    vi.mocked(prisma.mtmContactDictionaryAssignment.createMany).mockResolvedValue({ count: 1 } as never)
+    const withoutReason = { ...payload(), reason: undefined }
+
+    const response = await replaceAssignments(
+      request(`/api/v1/mtm/contacts/${CONTACT_ID}/dictionary-assignments`, "PUT", withoutReason),
+      { params: Promise.resolve({ id: CONTACT_ID }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(prisma.mtmContactDictionaryAssignment.createMany).toHaveBeenCalledOnce()
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "CONTACT_DICTIONARY_ASSIGNMENTS_UPDATE",
+        newData: expect.objectContaining({ reason: null }),
+      }),
+    }))
+  })
+
+  it("still requires an agent to say why when proposing a category change", async () => {
+    vi.mocked(requireAuth).mockResolvedValue(AGENT_AUTH)
+    // Not `Once`: the request is refused before every lookup runs, and an
+    // unconsumed queued answer would leak into the next test.
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID, role: "AGENT", name: "Field Agent", managerId: MANAGER_ID } as never)
+    vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue({ id: CONTACT_ID, displayName: "Doctor One", updatedAt: UPDATED_AT } as never)
+    const withoutReason = { ...payload(), reason: undefined }
+
+    const response = await submitChange(
+      request(`/api/v1/mtm/contacts/${CONTACT_ID}/change-requests`, "POST", {
+        idempotencyKey: "contact-dictionary-op-0002",
+        reason: "Confirmed against the approved directory",
+        expectedContactUpdatedAt: UPDATED_AT.toISOString(),
+        kind: "DICTIONARY_ASSIGNMENTS",
+        payload: withoutReason,
+      }),
+      { params: Promise.resolve({ id: CONTACT_ID }) },
+    )
+
+    expect(response.status).toBe(400)
+    expect(prisma.mtmContactChangeRequest.create).not.toHaveBeenCalled()
+    vi.mocked(prisma.mtmAgent.findFirst).mockReset()
+  })
+
   it("keeps an agent proposal pending and does not write assignment facts", async () => {
     vi.mocked(requireAuth).mockResolvedValue(AGENT_AUTH)
     vi.mocked(prisma.mtmAgent.findFirst)

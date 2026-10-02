@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
-import { Archive, CircleAlert, Loader2, Search, Send, Save } from "lucide-react"
+import { Archive, CircleAlert, Loader2, Send, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import { MtmOrganizationPicker, type MtmOrganizationOption } from "@/components/mtm/organization-picker"
 import { Textarea } from "@/components/ui/textarea"
 
 export type EditableMtmWorkplace = {
@@ -38,17 +38,7 @@ export type EditableMtmWorkplace = {
   }
 }
 
-type OrganizationOption = {
-  id: string
-  code: string | null
-  name: string
-  address: string | null
-  city: string | null
-  district: string | null
-}
-
 type FormState = {
-  customerId: string
   jobTitle: string
   department: string
   room: string
@@ -64,7 +54,6 @@ function dateValue(value: string | null | undefined): string {
 
 function formFromWorkplace(workplace: EditableMtmWorkplace | null): FormState {
   return {
-    customerId: workplace?.customer.id ?? "",
     jobTitle: workplace?.jobTitle ?? "",
     department: workplace?.department ?? "",
     room: workplace?.room ?? "",
@@ -79,11 +68,6 @@ function operationKey(prefix: string): string {
   const cryptoApi = globalThis.crypto
   if (typeof cryptoApi?.randomUUID === "function") return `${prefix}-${cryptoApi.randomUUID()}`
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
-function organizationLabel(organization: OrganizationOption): string {
-  const place = [organization.city, organization.district].filter(Boolean).join(", ")
-  return [organization.name, organization.code, place].filter(Boolean).join(" · ")
 }
 
 export function MtmContactWorkplaceDialog({
@@ -111,9 +95,7 @@ export function MtmContactWorkplaceDialog({
   const initialForm = useMemo(() => formFromWorkplace(workplace), [workplace])
   const [form, setForm] = useState<FormState>(initialForm)
   const [reason, setReason] = useState("")
-  const [search, setSearch] = useState("")
-  const [organizations, setOrganizations] = useState<OrganizationOption[]>([])
-  const [searching, setSearching] = useState(false)
+  const [organization, setOrganization] = useState<MtmOrganizationOption | null>(workplace?.customer ?? null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const submission = useRef<{ body: string; key: string } | null>(null)
@@ -124,41 +106,15 @@ export function MtmContactWorkplaceDialog({
     [orgId],
   )
 
-  const loadOrganizations = useCallback(async (query: string) => {
-    setSearching(true)
-    setError("")
-    try {
-      const params = new URLSearchParams({ page: "1", limit: "50", sort: "name", direction: "asc" })
-      if (query.trim()) params.set("search", query.trim())
-      const response = await fetch(`/api/v1/mtm/organizations?${params}`, { headers })
-      const result = await response.json() as {
-        success?: boolean
-        error?: string
-        data?: { organizations?: OrganizationOption[] }
-      }
-      if (!response.ok || !result.success) throw new Error(result.error || t("organizationSearchError"))
-      const found = result.data?.organizations ?? []
-      const current = workplace?.customer
-      setOrganizations(current && !found.some((item) => item.id === current.id)
-        ? [current, ...found]
-        : found)
-    } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : t("organizationSearchError"))
-    } finally {
-      setSearching(false)
-    }
-  }, [headers, t, workplace?.customer])
-
   useEffect(() => {
     if (!open) return
     setForm(initialForm)
+    setOrganization(workplace?.customer ?? null)
     setReason("")
-    setSearch("")
     setError("")
     setSaving(false)
     submission.current = null
-    void loadOrganizations("")
-  }, [initialForm, loadOrganizations, open])
+  }, [initialForm, open, workplace])
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -167,7 +123,7 @@ export function MtmContactWorkplaceDialog({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!form.customerId) {
+    if (!organization) {
       setError(t("organizationRequired"))
       return
     }
@@ -182,7 +138,7 @@ export function MtmContactWorkplaceDialog({
 
     const payload = {
       ...(workplace ? { id: workplace.id, expectedUpdatedAt: workplace.updatedAt } : {}),
-      customerId: form.customerId,
+      customerId: organization.id,
       jobTitle: form.jobTitle.trim() || null,
       department: form.department.trim() || null,
       room: form.room.trim() || null,
@@ -242,8 +198,6 @@ export function MtmContactWorkplaceDialog({
     }
   }
 
-  const selectedOrganization = organizations.find((item) => item.id === form.customerId)
-
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next) }} widthClassName="max-w-3xl" maxHeightClassName="max-h-[92vh]">
       <DialogHeader>
@@ -259,40 +213,9 @@ export function MtmContactWorkplaceDialog({
             </div>
           ) : null}
 
-          <section className="grid gap-3">
-            <div className="grid gap-1">
-              <Label htmlFor="workplace-organization-search">{t("organizationSearch")}</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="workplace-organization-search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={t("organizationSearchPlaceholder")}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault()
-                      void loadOrganizations(search)
-                    }
-                  }}
-                />
-                <Button type="button" variant="outline" className="min-h-11" disabled={searching} onClick={() => void loadOrganizations(search)}>
-                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                  <span className="hidden sm:inline">{t("search")}</span>
-                </Button>
-              </div>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="workplace-organization">{t("organization")} <span className="text-destructive" aria-hidden="true">*</span></Label>
-              <Select id="workplace-organization" value={form.customerId} onChange={(event) => update("customerId", event.target.value)} required>
-                <option value="">{searching ? t("searching") : t("chooseOrganization")}</option>
-                {organizations.map((organization) => (
-                  <option key={organization.id} value={organization.id}>{organizationLabel(organization)}</option>
-                ))}
-              </Select>
-              {selectedOrganization ? (
-                <p className="text-xs text-muted-foreground">{selectedOrganization.address || t("organizationAddressMissing")}</p>
-              ) : null}
-            </div>
+          <section className="grid gap-1.5">
+            <Label id="workplace-organization-label" htmlFor="workplace-organization">{t("organization")} <span className="text-destructive" aria-hidden="true">*</span></Label>
+            <MtmOrganizationPicker id="workplace-organization" labelId="workplace-organization-label" value={organization} onChange={(next) => { setOrganization(next); setError("") }} orgId={orgId} disabled={saving} />
           </section>
 
           <section className="grid gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700 sm:grid-cols-2">

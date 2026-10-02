@@ -63,7 +63,7 @@ describe("SWM03 governed contact category assignments", () => {
       updatedAt: NOW,
     }
     const client = {
-      $queryRaw: vi.fn().mockResolvedValue([]),
+      $executeRaw: vi.fn().mockResolvedValue(1),
       mtmContact: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       mtmContactDictionary: { findMany: vi.fn().mockResolvedValue([dictionary()]) },
       mtmContactDictionaryAssignment: {
@@ -81,6 +81,7 @@ describe("SWM03 governed contact category assignments", () => {
       input: {
         expectedStateHash: emptyHash,
         reason: "Verified by manager",
+        clientType: null,
         psychotype: { dictionaryId: dictionary().id, code: "CALM" },
         productCategories: null,
         brandCategories: null,
@@ -92,7 +93,7 @@ describe("SWM03 governed contact category assignments", () => {
     })
 
     expect(result).toMatchObject({ ended: 0, created: 1 })
-    expect(client.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(client.$executeRaw).toHaveBeenCalledTimes(1)
     expect(client.mtmContactDictionaryAssignment.createMany).toHaveBeenCalledWith({
       data: [expect.objectContaining({
         dictionaryId: dictionary().id,
@@ -128,7 +129,7 @@ describe("SWM03 governed contact category assignments", () => {
     })
     const emptyHash = contactDictionaryAssignmentStateHash([])
     const client = {
-      $queryRaw: vi.fn().mockResolvedValue([]),
+      $executeRaw: vi.fn().mockResolvedValue(1),
       mtmContact: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       mtmContactDictionary: { findMany: vi.fn().mockResolvedValue([clientTypeDictionary]) },
       mtmContactDictionaryAssignment: {
@@ -153,13 +154,56 @@ describe("SWM03 governed contact category assignments", () => {
     })
 
     expect(client.mtmContact.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: { categoryData: { specialty: "Cardiology" } },
+      data: { categoryData: { specialty: "Cardiology" }, type: "DOCTOR" },
     }))
+  })
+
+  it("moves the built-in type with the category, and treats a tenant-made category as OTHER", async () => {
+    const entries: ContactDictionaryEntry[] = [
+      { code: "PHARMACIST", order: 1, labels: { ru: "Фармацевт", az: "Əczaçı", en: "Pharmacist" }, fields: [] },
+      { code: "TIBB_BACISI", order: 2, labels: { ru: "Медсестра", az: "Tibb bacısı", en: "Nurse" }, fields: [] },
+    ]
+    const clientTypeDictionary = dictionary({
+      id: "cm000000000000000000203",
+      kind: "CLIENT_TYPE",
+      entries,
+      entriesHash: contactDictionaryHash(entries),
+    })
+    const emptyHash = contactDictionaryAssignmentStateHash([])
+    const assign = async (code: string) => {
+      const client = {
+        $executeRaw: vi.fn().mockResolvedValue(1),
+        mtmContact: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        mtmContactDictionary: { findMany: vi.fn().mockResolvedValue([clientTypeDictionary]) },
+        mtmContactDictionaryAssignment: {
+          findMany: vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
+          updateMany: vi.fn(),
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+      }
+      await applyContactDictionaryAssignmentSet(client as never, {
+        organizationId: "org-1",
+        contactId: "cm000000000000000000001",
+        input: {
+          expectedStateHash: emptyHash,
+          reason: "Change category",
+          clientType: { dictionaryId: clientTypeDictionary.id, code, values: {} },
+          psychotype: null,
+          productCategories: null,
+          brandCategories: null,
+        },
+        source: "ADMIN",
+      })
+      return client.mtmContact.updateMany.mock.calls[0][0].data
+    }
+
+    expect(await assign("PHARMACIST")).toEqual({ categoryData: {}, type: "PHARMACIST" })
+    expect(await assign("TIBB_BACISI")).toEqual({ categoryData: {}, type: "OTHER" })
   })
 
   it("fails closed when the state changed before save", async () => {
     const client = {
-      $queryRaw: vi.fn().mockResolvedValue([]),
+      $executeRaw: vi.fn().mockResolvedValue(1),
       mtmContactDictionary: { findMany: vi.fn() },
       mtmContactDictionaryAssignment: {
         findMany: vi.fn().mockResolvedValue([{
@@ -180,6 +224,7 @@ describe("SWM03 governed contact category assignments", () => {
       input: {
         expectedStateHash: contactDictionaryAssignmentStateHash([]),
         reason: "Outdated form",
+        clientType: null,
         psychotype: null,
         productCategories: null,
         brandCategories: null,

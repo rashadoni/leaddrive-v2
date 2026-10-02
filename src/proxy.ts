@@ -9,8 +9,10 @@ import { hasModule, MODULE_REGISTRY, type ModuleId } from "@/lib/modules"
 import { isMtmApiPath } from "@/lib/mtm/mobile-api-path"
 import { FIELD_TENANT_CAPABILITY_IDS, isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { resolveTenantLandingPath } from "@/lib/tenant-landing"
+import { effectiveHiddenModules, hideableIdForUngatedApiPath } from "@/lib/user-module-access"
 import { clientIp } from "@/lib/request-ip"
 import { isDemoRequestApiPath, withDemoRequestCors } from "@/lib/demo-request-cors"
+import { SESSION_EXPIRED_CODE } from "@/lib/session-expired"
 
 type SessionModuleGateUser = {
   role?: string
@@ -313,6 +315,20 @@ function trustedRequestHeaders(req: NextRequest, tenantSlug: string | null): Hea
   headers.set("x-request-pathname", req.nextUrl.pathname)
   if (tenantSlug) headers.set("x-tenant-slug", tenantSlug)
   return headers
+}
+
+/**
+ * Whether a session-less API request came from a script in a browser — a
+ * `fetch()` or XHR, which can parse an answer but can never show a login page.
+ *
+ * Browsers label every request with `Sec-Fetch-Mode`; a navigation (address
+ * bar, link, `window.open`, download) says `navigate`. A caller that sends no
+ * such header — a PBX, a webhook source, curl — is deliberately left on the
+ * redirect it has always received: this is about the browser, not about them.
+ */
+function isBrowserScriptRequest(req: NextRequest): boolean {
+  const mode = req.headers.get("sec-fetch-mode")
+  return !!mode && mode !== "navigate"
 }
 
 /** Forward sanitized headers to the route, never reflect them to the client. */
@@ -795,6 +811,17 @@ const authMiddleware = auth(async (req) => {
 
   // Check authentication — unauthenticated users go to login
   if (!req.auth) {
+    // …except a script. fetch() follows the redirect below and receives the
+    // login page with a 200, so the caller's `response.json()` dies on
+    // "Unexpected token '<'" — which is what an admin saw on 2026-10-02 after
+    // resetting their own password killed the session the page was running on.
+    // An API call gets an answer it can parse; a navigation keeps the redirect.
+    if (pathname.startsWith("/api/") && isBrowserScriptRequest(req)) {
+      return withCspHeaders(
+        NextResponse.json({ error: "Unauthorized", code: SESSION_EXPIRED_CODE }, { status: 401 }),
+        nonce,
+      )
+    }
     // For tenant subdomains, build redirect URL from Host header (not req.url which NextAuth
     // overrides with NEXTAUTH_URL). This keeps users on zeytunpharm.leaddrivecrm.org/login
     // instead of redirecting to app.leaddrivecrm.org/login.
@@ -834,6 +861,9 @@ const authMiddleware = auth(async (req) => {
       addons: (req.auth as any)?.user?.addons || [],
       modules: (req.auth as any)?.user?.modules,
       role: (req.auth as any)?.user?.role,
+      // The menu withholds org-wide pages from a person with hidden modules;
+      // without the list here, the landing could be a page the layout refuses.
+      hiddenModules: (req.auth as any)?.user?.hiddenModules,
       landingPath: (req.auth as any)?.user?.landingPath,
     })
     return withCspHeaders(NextResponse.redirect(new URL(landing, baseUrl)), nonce)
@@ -891,6 +921,24 @@ const authMiddleware = auth(async (req) => {
         )
       }
     }
+  }
+
+  // The same question for ONE person, on the namespaces the gate above never
+  // looks at (see hideableIdForUngatedApiPath). Everything that gate does cover
+  // is already per-user: `session.user.modules` arrives masked. A caller with
+  // no session (API key, mobile JWT) has no list and is left to the route.
+  const userHiddenId = hideableIdForUngatedApiPath(pathname)
+  if (
+    userHiddenId
+    && effectiveHiddenModules(session?.user?.role, session?.user?.hiddenModules).includes(userHiddenId)
+  ) {
+    return withCspHeaders(
+      NextResponse.json(
+        { error: "Forbidden", message: `Module "${userHiddenId}" is not available to your account.` },
+        { status: 403 },
+      ),
+      nonce,
+    )
   }
 
   return withCspHeaders(

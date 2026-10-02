@@ -5,6 +5,8 @@ import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { ChevronRight, CreditCard, Users, Zap, LayoutDashboard, Lock, FileText, Plug, Keyboard, BellRing, Globe2, Building2, Bot, Sparkles } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import { useSession } from "next-auth/react"
+import { accessibleNavItems, orgFromSession } from "@/lib/nav-items"
 import { InfoHint } from "@/components/info-hint"
 import { PageDescription } from "@/components/page-description"
 import { DidYouKnow } from "@/components/did-you-know"
@@ -16,6 +18,7 @@ export default function SettingsPage() {
   const router = useRouter()
   const t = useTranslations("settings")
   const locale = useLocale()
+  const { data: session } = useSession()
   useAutoTour("settingsHub")
 
   // Overview grid for the org-level settings. Since every page below also has
@@ -37,6 +40,11 @@ export default function SettingsPage() {
     { icon: Globe2, title: t("customDomainsTitle"), description: t("customDomainsDesc"), href: "/settings/custom-domains", hint: t("hintCustomDomains") },
     { icon: Bot, title: t("aiAutomationTitle"), description: t("aiAutomationDesc"), href: "/settings/ai-automation", hint: t("aiAutomationHint") },
   ]
+  // A card is a second door to a page the sidebar already gates, so it follows
+  // the sidebar's answer: a manager used to get all thirteen here, most of them
+  // leading to a page their role cannot use.
+  const openable = new Set(accessibleNavItems(orgFromSession(session?.user)).map((item) => item.href))
+  const visibleSections = SETTINGS_SECTIONS.filter((section) => openable.has(section.href))
 
   return (
     <div className="space-y-6">
@@ -48,7 +56,7 @@ export default function SettingsPage() {
       <DidYouKnow page="settings" className="mb-4" />
 
       <div data-tour-id="settings-grid" className="grid gap-4 md:grid-cols-2">
-        {SETTINGS_SECTIONS.map((section) => {
+        {visibleSections.map((section) => {
           const IconComponent = section.icon
           return (
             <Card

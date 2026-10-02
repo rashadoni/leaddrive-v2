@@ -101,6 +101,48 @@ describe("Workforce calendar semantics", () => {
     });
   });
 
+  it("maps moved days to attendance semantics independently of Route eligibility", () => {
+    expect(resolveWorkforceCalendarDay({
+      date: DATE,
+      overrides: [{
+        id: "moved-off",
+        date: DATE,
+        kind: "MOVED_DAY_OFF",
+        name: "Moved to Saturday",
+        teamId: null,
+        agentId: null,
+        movedToDate: "2026-09-05",
+        routePlanningAllowed: true,
+        source: "ADMIN",
+      }],
+    })).toMatchObject({
+      calendarKind: "MOVED_DAY_OFF",
+      state: "NON_WORKING",
+      attendanceExpected: false,
+      noShowEligible: false,
+    });
+
+    expect(resolveWorkforceCalendarDay({
+      date: "2026-09-05",
+      overrides: [{
+        id: "moved-workday",
+        date: "2026-09-05",
+        kind: "MOVED_WORKDAY",
+        name: "Moved from Tuesday",
+        teamId: null,
+        agentId: null,
+        movedToDate: DATE,
+        routePlanningAllowed: false,
+        source: "ADMIN",
+      }],
+    })).toMatchObject({
+      calendarKind: "MOVED_WORKDAY",
+      state: "SCHEDULED",
+      attendanceExpected: true,
+      noShowEligible: true,
+    });
+  });
+
   it("loads only the employee, team and organization candidates before resolving precedence", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
       id: "agent-1",

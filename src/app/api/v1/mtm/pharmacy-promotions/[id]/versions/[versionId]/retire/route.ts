@@ -54,8 +54,8 @@ export const POST = withMtmRlsAuth<RouteContext>("mtm", "write", async (req, aut
       // The campaign lock serializes publish/retire, and the version lock is
       // shared with target planning so no target can be created after the
       // retirement CAS has committed.
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-promotion:${auth.orgId}:${promotionId}`}, 0))`
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-version:${auth.orgId}:${versionId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-promotion:${auth.orgId}:${promotionId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-version:${auth.orgId}:${versionId}`}, 0))`
       const actor = await requireCurrentPharmacyPromotionAdministrator(tx, auth)
 
       const version = await tx.mtmPharmacyPromotionVersion.findFirst({

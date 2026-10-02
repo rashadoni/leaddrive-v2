@@ -731,7 +731,7 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
 
   try {
     const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-execution:${auth.orgId}:${actor.agentId}:${body.clientExecutionId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-execution:${auth.orgId}:${actor.agentId}:${body.clientExecutionId}`}, 0))`
       const currentActor = await resolveMtmRouteActor(tx as typeof prisma, {
         organizationId: auth.orgId,
         userId: auth.userId,
@@ -768,9 +768,9 @@ export const POST = withMtmRlsAuth("mtm", "write", async (req, auth) => {
       // Serialize with campaign retirement. Already-planned targets and
       // corrections may drain a RETIRED version, while target planning itself
       // remains PUBLISHED-only.
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-version:${auth.orgId}:${target.promotionVersionId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-version:${auth.orgId}:${target.promotionVersionId}`}, 0))`
       if (body.supersedesExecutionId) {
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-correction:${auth.orgId}:${body.supersedesExecutionId}`}, 0))`
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-correction:${auth.orgId}:${body.supersedesExecutionId}`}, 0))`
       }
       const currentVersion = await tx.mtmPharmacyPromotionVersion.findFirst({
         where: {

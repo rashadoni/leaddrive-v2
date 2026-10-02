@@ -4,6 +4,12 @@ import { withWorkforceHrmRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 
+function isMovedCalendarState(value: { kind: string; movedToDate?: unknown }): boolean {
+  return value.kind === "MOVED_WORKDAY"
+    || value.kind === "MOVED_DAY_OFF"
+    || value.movedToDate != null
+}
+
 export const DELETE = withWorkforceHrmRlsAuth("write", async (
   req,
   auth,
@@ -27,6 +33,12 @@ export const DELETE = withWorkforceHrmRlsAuth("write", async (
     where: { id, organizationId: auth.orgId, deletedAt: null },
   })
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (isMovedCalendarState(existing)) {
+    return NextResponse.json({
+      error: "Moved workdays must use the atomic Workforce calendar workflow",
+      code: "MTM_CALENDAR_MOVED_PAIR_REQUIRED",
+    }, { status: 409 })
+  }
 
   const deletedAt = new Date()
   const result = await prisma.mtmWorkCalendarDay.updateMany({

@@ -69,7 +69,7 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
   const out = await executeVoiceReadTool({
     toolName,
     filter,
-    auth: { orgId: auth.orgId, userId: auth.userId, role: auth.role },
+    auth: { orgId: auth.orgId, userId: auth.userId, role: auth.role, hiddenModules: auth.hiddenModules },
     logTurn: (entry) => {
       void prisma.voiceSessionTurn
         .create({

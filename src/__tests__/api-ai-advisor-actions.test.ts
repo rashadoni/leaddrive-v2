@@ -150,7 +150,9 @@ describe("POST /api/v1/ai/advisor/actions", () => {
         }),
       }),
     })
-    expect(getAdvisorPayload).toHaveBeenCalledWith("org-1", "manager", "manager-1")
+    // The fourth argument carries the caller's hidden modules; this manager
+    // has none, so the advisor is built from the tenant's own record.
+    expect(getAdvisorPayload).toHaveBeenCalledWith("org-1", "manager", "manager-1", { hiddenModules: undefined })
   })
 
   it("returns the existing pending Advisor action instead of creating duplicates", async () => {

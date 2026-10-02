@@ -305,6 +305,48 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(visitWhere.createdAt.gte.getTime()).toBeLessThanOrEqual(routeWhere.date.gte.getTime() + 24 * 60 * 60 * 1000)
   })
 
+  it("counts each card's clients the way the employee's own section lists them", async () => {
+    // Owner 2026-10-02: a manager opens an employee to see and change their
+    // clients. The card says how many there are; the number must be today's
+    // PRIMARY assignments of active clients, not every row ever written.
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "a1", name: "Anar" },
+      { id: "a2", name: "Leyla" },
+    ] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(2)
+    vi.mocked(prisma.mtmContactAgentAssignment.groupBy).mockResolvedValueOnce([{ agentId: "a1", _count: { _all: 42 } }] as any)
+
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+    const json = await res.json()
+
+    expect(json.data.agents.map((agent: any) => agent.clients)).toEqual([42, 0])
+    const where = (vi.mocked(prisma.mtmContactAgentAssignment.groupBy).mock.calls[0][0] as any).where
+    expect(where).toMatchObject({
+      organizationId: ORG,
+      agentId: { in: ["a1", "a2"] },
+      role: "PRIMARY",
+      deletedAt: null,
+      contact: { deletedAt: null, status: "ACTIVE" },
+    })
+    // Current assignments only: started by today and not ended before tomorrow.
+    expect(where.effectiveFrom.lte).toBeInstanceOf(Date)
+    expect(where.OR).toEqual([{ effectiveTo: null }, { effectiveTo: { gt: where.effectiveFrom.lte } }])
+  })
+
+  it("still lists people when the client counts cannot be computed", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+    vi.mocked(prisma.mtmContactAgentAssignment.groupBy).mockRejectedValueOnce(new Error("db down"))
+
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+
+    expect(res.status).toBe(200)
+    // Unknown is not zero: the card then shows the word without a number.
+    expect((await res.json()).data.agents[0].clients).toBeNull()
+  })
+
   it("still lists people when the activity figures cannot be computed", async () => {
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as any)

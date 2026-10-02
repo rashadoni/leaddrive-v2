@@ -37,7 +37,9 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-contact-dictionary-activation:${auth.orgId}`}, 0))`
+      // `$executeRaw`: the lock function returns `void`, which `$queryRaw`
+      // cannot deserialize (P2010).
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-contact-dictionary-activation:${auth.orgId}`}, 0))`
       const actor = await requireCurrentContactDictionaryAdministrator(tx as typeof prisma, auth)
       const current = await tx.mtmContactDictionary.findFirst({ where: { id, organizationId: auth.orgId } })
       if (!current) return { kind: "NOT_FOUND" as const }

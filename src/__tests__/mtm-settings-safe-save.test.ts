@@ -97,6 +97,42 @@ describe("settings validation ranges", () => {
   })
 })
 
+describe("PUT /api/v1/mtm/settings — client fields and specialties", () => {
+  const stored = (key: string) => vi.mocked(prisma.mtmSetting.upsert).mock.calls
+    .map((call) => call[0] as { create: { key: string; value: unknown } })
+    .find((call) => call.create.key === key)?.create.value
+
+  it("stores the fields a tenant switches off, in one order whatever order they came in", async () => {
+    const res = await UpdateSettings(put({ contactHiddenFields: ["coverage", "specialtyName", "coverage"] }))
+    expect(res.status).toBe(200)
+    expect(stored("contactHiddenFields")).toEqual(["specialtyName", "coverage"])
+  })
+
+  it("refuses to hide the name or an unknown field, and writes nothing", async () => {
+    for (const bad of [["firstName"], ["lastName"], ["nope"], "specialtyName"]) {
+      const res = await UpdateSettings(put({ contactHiddenFields: bad }))
+      expect(res.status).toBe(400)
+    }
+    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
+  })
+
+  it("stores the specialty list trimmed and without repeats; an emptied list stays empty", async () => {
+    expect((await UpdateSettings(put({ contactSpecialties: [" Pediatr ", "pediatr", "Cərrah ümumi"] }))).status).toBe(200)
+    expect(stored("contactSpecialties")).toEqual(["Pediatr", "Cərrah ümumi"])
+
+    vi.mocked(prisma.mtmSetting.upsert).mockClear()
+    expect((await UpdateSettings(put({ contactSpecialties: [] }))).status).toBe(200)
+    expect(stored("contactSpecialties")).toEqual([])
+  })
+
+  it("refuses a specialty list that is not a list of names", async () => {
+    for (const bad of ["Pediatr", [7], ["x".repeat(81)]]) {
+      expect((await UpdateSettings(put({ contactSpecialties: bad }))).status).toBe(400)
+    }
+    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
+  })
+})
+
 describe("PUT /api/v1/mtm/settings — safe save", () => {
   it("writes only the keys it receives", async () => {
     const res = await UpdateSettings(put({ geofenceRadius: 150 }))

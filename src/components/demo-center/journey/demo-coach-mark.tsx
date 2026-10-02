@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
 import { useReducedMotion } from "framer-motion"
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, SkipForward, X } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, SkipForward, Volume2, VolumeX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { DemoStepPlacement } from "@/lib/demo-center/journey"
@@ -56,6 +56,8 @@ export interface DemoCoachMarkProps {
   /** Hides the card for this step; the step itself is untouched. */
   onClose: () => void
   onMissing: (missing: boolean) => void
+  /** The talking guide's switch — here, because on a phone this card is what is on screen. */
+  voice?: { on: boolean; onToggle: () => void }
   /** Step id whose `data-demo-target` control the arrow points at (action steps). */
   targetStepId?: string
   /** Words on the arrow, verb first. */
@@ -112,6 +114,7 @@ export function DemoCoachMark({
   onBack,
   onSkip,
   onClose,
+  voice,
   onMissing,
   targetStepId,
   targetLabel,
@@ -274,12 +277,20 @@ export function DemoCoachMark({
     const node = popoverRef.current
     if (!node) return
     const box = node.getBoundingClientRect()
+    // The content's own height, not the card's box: the box is already capped
+    // at the previous measurement (maxHeight), so reading it could never grow
+    // past the first guess — a card taller than the 160px default stayed
+    // 160px with «İrəli» scrolled out of sight inside it (2026-09-30, when the
+    // voice switch made the first step's card 211px tall).
+    const inner = node.firstElementChild instanceof HTMLElement ? node.firstElementChild : null
+    const natural = inner ? inner.scrollHeight + (inner.offsetHeight - inner.clientHeight) : 0
+    const height = natural > 0 ? natural : box.height
     setSize((previous) =>
-      Math.abs(previous.width - box.width) < 1 && Math.abs(previous.height - box.height) < 1
+      Math.abs(previous.width - box.width) < 1 && Math.abs(previous.height - height) < 1
         ? previous
-        : { width: box.width, height: box.height },
+        : { width: box.width, height },
     )
-  }, [title, instruction, counter, mode, rect, targetRect, collapsed])
+  }, [title, instruction, counter, mode, rect, targetRect, collapsed, voice?.on])
 
   // Move focus to the card so screen readers announce the step; the control
   // itself stays reachable with Tab.
@@ -508,6 +519,19 @@ export function DemoCoachMark({
         </div>
         <p className="mt-1 text-sm font-semibold leading-tight">{title}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{instruction}</p>
+        {voice ? (
+          <Button
+            size="sm"
+            variant={voice.on ? "secondary" : "outline"}
+            className="mt-2 h-7 px-2.5 text-xs"
+            aria-pressed={voice.on}
+            data-testid="demo-coach-voice"
+            onClick={voice.onToggle}
+          >
+            {voice.on ? <VolumeX className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> : <Volume2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />}
+            {voice.on ? S.voiceOff : S.voiceOn}
+          </Button>
+        ) : null}
         {pointsAtControl ? (
           <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#c2410c] dark:text-orange-300">
             {side === "bottom" ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : side === "top" ? <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" /> : <ChevronRight className={cn("h-3.5 w-3.5", side === "right" && "rotate-180")} aria-hidden="true" />}

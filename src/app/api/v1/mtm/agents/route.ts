@@ -22,6 +22,7 @@ import {
   serializeMtmWorkdayPauses,
 } from "@/lib/mtm/workday-pauses"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { activeFieldAssignmentWindow } from "@/lib/mtm/field-scope"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import type { RlsAuth } from "@/lib/with-rls"
@@ -271,6 +272,36 @@ export const GET = withRls(async (req, auth) => {
       }
     }
 
+    // How many clients each card holds today — the rows the employee's own
+    // section lists (active clients with a current PRIMARY assignment). An
+    // enrichment like the two above: a failure costs the figure, not the list.
+    const clientsByAgent = new Map<string, number>()
+    let clientsAvailable = false
+    if (agents.length) {
+      try {
+        const clientSettings = await getMtmSettings(orgId)
+        const clientTimezone = isValidTimezone(clientSettings.timezone) ? clientSettings.timezone : "UTC"
+        const asOf = new Date(`${currentDateKey(new Date(), clientTimezone)}T00:00:00.000Z`)
+        const clientRows = await prisma.mtmContactAgentAssignment.groupBy({
+          by: ["agentId"],
+          where: {
+            organizationId: orgId,
+            agentId: { in: agents.map((agent) => agent.id) },
+            role: "PRIMARY",
+            ...activeFieldAssignmentWindow(asOf),
+            contact: { deletedAt: null, status: "ACTIVE" },
+          },
+          _count: { _all: true },
+        })
+        for (const row of clientRows as Array<{ agentId: string; _count?: { _all?: number } }>) {
+          clientsByAgent.set(row.agentId, row._count?._all ?? 0)
+        }
+        clientsAvailable = true
+      } catch (clientsError) {
+        console.error("[MTM/agents GET] client counts unavailable", clientsError)
+      }
+    }
+
     const showTimes = await mayReadWorkdayTimes(auth)
     const now = new Date()
 
@@ -287,6 +318,7 @@ export const GET = withRls(async (req, auth) => {
             presence: showTimes ? presence : withoutTimes(presence),
             breaks: showTimes ? (breaksByAgent.get(agent.id) ?? []) : [],
             activity: activityAvailable ? mtmAgentCardActivity(activityByAgent.get(agent.id) ?? {}) : null,
+            clients: clientsAvailable ? (clientsByAgent.get(agent.id) ?? 0) : null,
             app: mtmAgentAppActivity({
               lastLocationAt: latestLocation?.receivedAt ?? null,
               lastSeenAt: agent.lastSeenAt ?? null,

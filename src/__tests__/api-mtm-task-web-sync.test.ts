@@ -102,7 +102,7 @@ describe("web offline task execution sync", () => {
       version: 2,
     })
     expect(vi.mocked(prisma.mtmTask.updateMany).mock.calls[0][0].data).toMatchObject({ progress: 100 })
-    expect(vi.mocked(prisma.$queryRaw).mock.invocationCallOrder[0]).toBeLessThan(
+    expect(vi.mocked(prisma.$executeRaw).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(prisma.mtmTask.updateMany).mock.invocationCallOrder[0],
     )
     expect(prisma.mtmTaskEvent.create).toHaveBeenCalledWith(expect.objectContaining({

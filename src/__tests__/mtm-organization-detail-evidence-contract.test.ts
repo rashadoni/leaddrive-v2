@@ -6,21 +6,20 @@ const route = readFileSync("src/app/api/v1/mtm/organizations/[id]/route.ts", "ut
 const migration = readFileSync("prisma/migrations/20260809200000_mtm_organization_detail_evidence/migration.sql", "utf8")
 
 describe("SWM-06 organization detail evidence contract", () => {
-  it("loads all seven reference sections without unavailable-domain placeholders", () => {
+  // The API serves all seven reference sections. The card shows four of them:
+  // on 2026-10-02 the owner took departments, promotions and files off it —
+  // no tenant on production had a single row in any of the three.
+  it("serves all seven reference sections without unavailable-domain placeholders", () => {
     expect(route).toContain('"departments", "staff", "promotions", "files"')
     expect(route).toContain("pharmacyPromotionTargets")
     expect(route).toContain("sourceImportJob")
-    expect(component).toContain('value="departments"')
-    expect(component).toContain('value="promotions"')
-    expect(component).toContain('value="files"')
+    expect(component).toContain('type DetailSection = "details" | "contacts" | "visits" | "staff"')
     expect(component).not.toContain("const unavailableSections")
   })
 
-  it("keeps source attribution visible for departments, files, coordinates, and commercial totals", () => {
-    expect(component).toContain('t("detail.sourceLine"')
+  it("keeps source attribution visible for coordinates and commercial totals", () => {
     expect(component).toContain("coordinateVerification")
     expect(component).toContain("commercial.latestSource")
-    expect(component).toContain("documentSource")
   })
 
   it("enforces composite tenant keys, coordinate checks, and RLS", () => {

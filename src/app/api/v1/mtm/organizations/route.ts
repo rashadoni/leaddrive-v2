@@ -14,6 +14,11 @@ import {
   customerScopeForActor,
 } from "@/lib/mtm/field-scope"
 import { writeMtmAudit } from "@/lib/mtm-audit"
+import {
+  organizationAddressFilter,
+  organizationAreaFilter,
+  organizationNameFilter,
+} from "@/lib/mtm/list-field-filters"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -124,6 +129,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       ],
     })
   }
+  and.push(
+    ...organizationNameFilter(params.get("name")),
+    ...organizationAddressFilter(params.get("address")),
+    ...organizationAreaFilter(params.get("area")),
+  )
 
   const where: Prisma.MtmCustomerWhereInput = {
     organizationId: auth.orgId,

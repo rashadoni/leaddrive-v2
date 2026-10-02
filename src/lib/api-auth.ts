@@ -6,6 +6,7 @@ import { isMtmApiPath } from "./mtm/mobile-api-path"
 import { isMtmWebOnlyPath } from "./mtm-web-only"
 import { checkPermission, resolveModuleFromPath, methodToAction, PERMISSION_MODULE_TO_MODULE_ID, type Role, type Module, type Action } from "./permissions"
 import { hasModule, moduleRecordFromOrgFields, type ModuleId, MODULE_REGISTRY } from "./modules"
+import { effectiveHiddenModules, hideableIdForGateModule } from "./user-module-access"
 import { getMobileAuth, resolveMobileAuth } from "./mobile-auth"
 import crypto from "crypto"
 
@@ -108,6 +109,18 @@ export async function getOrgModuleContext(orgId: string): Promise<{ plan: string
   return { plan, addons, modules }
 }
 
+/**
+ * 403 for a module the tenant has but an admin hid from the caller. Worded
+ * apart from `moduleDisabledResponse` so support can tell "not bought" from
+ * "not granted to you" in a bug report.
+ */
+function userModuleHiddenResponse(moduleId: string): NextResponse {
+  return NextResponse.json(
+    { error: "Forbidden", message: `Module "${moduleId}" is not available to your account.` },
+    { status: 403 }
+  )
+}
+
 /** Standard 403 for a disabled module (shared by getOrgId-based route guards). */
 export function moduleDisabledResponse(moduleId: string): NextResponse {
   return NextResponse.json(
@@ -166,6 +179,20 @@ export interface AuthResult {
    * exact value and therefore fail closed when older fixtures omit it.
    */
   principalType?: "session" | "api_key"
+  /**
+   * Modules an admin hid from this person (see user-module-access.ts). Set for
+   * browser sessions only, already empty for admin/superadmin, and re-read from
+   * the user row on every request by auth(). An API key is the organization's
+   * credential, not a person's, so it never carries one. Absent, not empty,
+   * for an unrestricted person — the result of everyone nobody has restricted
+   * is exactly what it was before this field existed.
+   */
+  hiddenModules?: string[]
+}
+
+function sessionHiddenModules(role: Role, stored: unknown): { hiddenModules?: string[] } {
+  const hiddenModules = effectiveHiddenModules(role, stored)
+  return hiddenModules.length > 0 ? { hiddenModules } : {}
 }
 
 /**
@@ -207,13 +234,15 @@ async function resolveCookieSession(): Promise<CookieSessionResolution> {
       return { denial: "2fa" }
     }
 
+    const sessionRole = (rawSession.user.role || "viewer") as Role
     const session: AuthResult = {
       orgId: rawSession.user.organizationId || "",
       userId: rawSession.user.id || "",
-      role: (rawSession.user.role || "viewer") as Role,
+      role: sessionRole,
       email: rawSession.user.email || "",
       name: rawSession.user.name || "",
       principalType: "session",
+      ...sessionHiddenModules(sessionRole, rawSession.user.hiddenModules),
     }
     if (!session.orgId || !session.userId) {
       return { denial: "unauthenticated" }
@@ -482,13 +511,15 @@ export async function requireAuth(
     return NextResponse.json({ error: "2FA verification required" }, { status: 403 })
   }
 
+  const sessionRole = (rawSession.user.role || "viewer") as Role
   const session: AuthResult = {
     orgId: rawSession.user.organizationId || "",
     userId: rawSession.user.id || "",
-    role: (rawSession.user.role || "viewer") as Role,
+    role: sessionRole,
     email: rawSession.user.email || "",
     name: rawSession.user.name || "",
     principalType: "session",
+    ...sessionHiddenModules(sessionRole, rawSession.user.hiddenModules),
   }
 
   // SECURITY: Cross-tenant binding check (defense-in-depth; middleware enforces
@@ -565,6 +596,19 @@ export async function requireAuth(
           { status: 403 }
         )
       }
+    }
+
+    // The tenant has the module; has an admin hidden it from this person? The
+    // proxy already refuses these by URL from the masked JWT record, but a route
+    // can name a module its path does not resolve to, and `orgContext` above is
+    // read fresh from the organization row — it knows nothing about the user.
+    //
+    // The MTM deferral applies here too, for the same reason it exists: the
+    // `mtm` scope is a container for two capabilities, and only the wrapper
+    // that asked for the deferral knows which one this route belongs to. It
+    // makes the per-user check itself, off `session.hiddenModules`.
+    if (!deferLegacyMtmGate && session.hiddenModules?.includes(hideableIdForGateModule(gateModule))) {
+      return userModuleHiddenResponse(gateModule)
     }
   }
 

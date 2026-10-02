@@ -18,6 +18,11 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { createDateFormatter } from "@/lib/format-date"
+import {
+  CONTACT_CATEGORY_APPROVAL_REFERENCE,
+  contactCategoryFieldDisplayValue,
+  resolveContactCategory,
+} from "@/lib/mtm/contact-category-editor"
 
 type Labels = { ru: string; az: string; en: string }
 type ClientTypeField = {
@@ -106,6 +111,7 @@ export function MtmContactDictionaryAssignmentPanel({
   contactId,
   contactUpdatedAt,
   categoryData,
+  contactType,
   stateHash,
   dictionaries,
   assignments,
@@ -118,6 +124,8 @@ export function MtmContactDictionaryAssignmentPanel({
   contactId: string
   contactUpdatedAt: string
   categoryData: Record<string, unknown>
+  /** The contact's built-in type: its category until one is assigned. */
+  contactType: string
   stateHash: string
   dictionaries: GovernedContactDictionary[]
   assignments: GovernedContactDictionaryAssignment[]
@@ -150,6 +158,16 @@ export function MtmContactDictionaryAssignmentPanel({
   const productDictionary = dictionaryByKind.get("PRODUCT_CATEGORY")
   const brandDictionary = dictionaryByKind.get("BRAND_CATEGORY")
   const currentByKind = (kind: string) => current.filter((assignment) => assignment.kind === kind)
+  const assignedClientType = currentByKind("CLIENT_TYPE")[0]
+  // Read with the tenant's current definition of the category, so a field
+  // added in settings shows on contacts assigned before it existed.
+  const clientCategory = resolveContactCategory({
+    type: contactType,
+    assignedCode: assignedClientType?.entryCode,
+    assignedEntry: assignedClientType?.entry,
+    activeEntries: clientTypeDictionary?.entries,
+  })
+  const clientCategoryFields = [...(clientCategory.entry?.fields ?? [])].sort((left, right) => left.order - right.order)
   const pendingRequests = changeRequests.filter((request) => (
     request.kind === "DICTIONARY_ASSIGNMENTS"
     && ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"].includes(request.status)
@@ -179,8 +197,9 @@ export function MtmContactDictionaryAssignmentPanel({
   }
 
   const openEditor = () => {
-    const clientType = currentByKind("CLIENT_TYPE").find((assignment) => assignment.dictionaryId === clientTypeDictionary?.id && assignment.valid)
-    setClientTypeCode(clientType?.entryCode ?? "")
+    // Preselect by code, not by dictionary version: editing the categories in
+    // settings makes a new version, and the contact is still in "its" category.
+    setClientTypeCode(clientTypeDictionary?.entries.some((entry) => entry.code === clientCategory.code) ? clientCategory.code : "")
     setClientTypeValues(Object.fromEntries(Object.entries(categoryData ?? {}).map(([key, value]) => [key, value == null ? "" : String(value)])))
     const psychotype = currentByKind("PSYCHOTYPE").find((assignment) => assignment.dictionaryId === psychotypeDictionary?.id && assignment.valid)
     setPsychotypeCode(psychotype?.entryCode ?? "")
@@ -201,7 +220,7 @@ export function MtmContactDictionaryAssignmentPanel({
 
   const assignmentPayload = () => ({
     expectedStateHash: stateHash,
-    reason: reason.trim(),
+    ...(reason.trim() ? { reason: reason.trim() } : {}),
     clientType: clientTypeDictionary && clientTypeCode
       ? {
           dictionaryId: clientTypeDictionary.id,
@@ -224,7 +243,9 @@ export function MtmContactDictionaryAssignmentPanel({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (reason.trim().length < 3) {
+    // Only a request to someone else has to explain itself; a manager's own
+    // edit is saved as is.
+    if (!canManage && reason.trim().length < 3) {
       setError(t("reasonError"))
       return
     }
@@ -326,8 +347,25 @@ export function MtmContactDictionaryAssignmentPanel({
                 <span className="text-xs font-medium text-amber-700 dark:text-amber-300">{t("dictionaryMissing")}</span>
               )}
             </div>
-            {renderAssignmentGroup(kind)}
-            {dictionaryByKind.get(kind)?.approvalReference ? (
+            {kind === "CLIENT_TYPE" && !assignedClientType && clientCategory.entry ? (
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex min-w-0 items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
+                  <span className="truncate">{localized(clientCategory.entry.labels, locale)}</span>
+                </span>
+              </div>
+            ) : renderAssignmentGroup(kind)}
+            {kind === "CLIENT_TYPE" && clientCategoryFields.length > 0 ? (
+              <dl data-testid="mtm-contact-category-values" className="grid gap-1.5 text-sm">
+                {clientCategoryFields.map((field) => (
+                  <div key={field.key} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <dt className="text-xs text-muted-foreground">{localized(field.labels, locale)}</dt>
+                    <dd className="min-w-0 break-words font-medium">{contactCategoryFieldDisplayValue(field, categoryData?.[field.key], locale) ?? "—"}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+            {dictionaryByKind.get(kind)?.approvalReference
+              && dictionaryByKind.get(kind)?.approvalReference !== CONTACT_CATEGORY_APPROVAL_REFERENCE ? (
               <span className="text-xs text-muted-foreground">{t("approval", { value: dictionaryByKind.get(kind)!.approvalReference! })}</span>
             ) : null}
           </div>
@@ -449,8 +487,8 @@ export function MtmContactDictionaryAssignmentPanel({
             ))}
 
             <div className="grid gap-2">
-              <Label htmlFor="contact-category-reason">{t("reason")}</Label>
-              <Textarea id="contact-category-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} required />
+              <Label htmlFor="contact-category-reason">{canManage ? t("reasonOptional") : t("reason")}</Label>
+              <Textarea id="contact-category-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} required={!canManage} />
             </div>
             {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
             <DialogFooter>

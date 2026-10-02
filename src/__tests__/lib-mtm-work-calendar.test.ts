@@ -92,6 +92,74 @@ describe("MTM work calendar", () => {
     expect(day.routePlanningAllowed).toBe(true)
   })
 
+  it("resolves reciprocal moved kinds with normal agent-team-organization precedence", () => {
+    const movedOverrides: WorkCalendarOverride[] = [
+      {
+        id: "org-moved-off",
+        date: "2026-07-18",
+        kind: "MOVED_DAY_OFF",
+        name: "Organization move",
+        teamId: null,
+        agentId: null,
+        movedToDate: "2026-07-20",
+        routePlanningAllowed: true,
+      },
+      {
+        id: "team-moved-workday",
+        date: "2026-07-18",
+        kind: "MOVED_WORKDAY",
+        name: "Team move",
+        teamId: "team-1",
+        agentId: null,
+        movedToDate: "2026-07-17",
+        routePlanningAllowed: false,
+      },
+      {
+        id: "agent-day-off",
+        date: "2026-07-18",
+        kind: "COMPANY_HOLIDAY",
+        name: "Personal exception",
+        teamId: null,
+        agentId: "agent-1",
+        movedToDate: null,
+        routePlanningAllowed: true,
+      },
+    ]
+
+    expect(resolveWorkCalendarDay({
+      date: "2026-07-18",
+      overrides: movedOverrides,
+    })).toMatchObject({
+      overrideId: "org-moved-off",
+      kind: "MOVED_DAY_OFF",
+      isWorkingDay: false,
+      routePlanningAllowed: true,
+      movedToDate: "2026-07-20",
+    })
+    expect(resolveWorkCalendarDay({
+      date: "2026-07-18",
+      overrides: movedOverrides,
+      teamId: "team-1",
+    })).toMatchObject({
+      overrideId: "team-moved-workday",
+      kind: "MOVED_WORKDAY",
+      source: "TEAM_OVERRIDE",
+      isWorkingDay: true,
+      routePlanningAllowed: false,
+      movedToDate: "2026-07-17",
+    })
+    expect(resolveWorkCalendarDay({
+      date: "2026-07-18",
+      overrides: movedOverrides,
+      teamId: "team-1",
+      agentId: "agent-1",
+    })).toMatchObject({
+      overrideId: "agent-day-off",
+      source: "AGENT_OVERRIDE",
+      kind: "COMPANY_HOLIDAY",
+    })
+  })
+
   it("classifies every work-producing kind consistently", () => {
     expect(isWorkingCalendarKind("WORKING_DAY")).toBe(true)
     expect(isWorkingCalendarKind("EXCEPTION_WORKDAY")).toBe(true)

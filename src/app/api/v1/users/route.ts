@@ -10,6 +10,7 @@ import { moduleDisabledResponse, orgHasModule } from "@/lib/api-auth"
 import { passwordPolicyError } from "@/lib/password-policy"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { USER_ADMIN_SELECT, USER_ROSTER_SELECT } from "@/lib/user-directory-projection"
+import { parseHiddenModulesInput } from "@/lib/user-module-access"
 
 const MAX_CREATE_USER_BODY_SIZE = 32 * 1024
 
@@ -32,6 +33,9 @@ const createUserSchema = z.object({
   skills: z.array(z.string().trim().min(1).max(100)).max(100).optional(),
   maxTickets: z.number().int().min(1).max(100).optional(),
   preferredLanguage: z.enum(["ru", "en", "az"]).nullable().optional(),
+  // Modules hidden from this person; the ids are validated against the hideable
+  // catalog below (see user-module-access.ts).
+  hiddenModules: z.array(z.string().max(50)).max(50).optional(),
 }).strict()
 
 // Reading the team roster is `users:read`, not `settings:read`. The two are
@@ -111,6 +115,7 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
       skills,
       maxTickets,
       preferredLanguage,
+      hiddenModules,
     } = parsed.data
 
     const passwordError = passwordPolicyError(password)
@@ -147,6 +152,11 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
       resolvedRole = role
     }
 
+    const resolvedHiddenModules = parseHiddenModulesInput(resolvedRole, hiddenModules ?? [])
+    if (!resolvedHiddenModules) {
+      return NextResponse.json({ error: "Unknown module in hiddenModules" }, { status: 400 })
+    }
+
     const passwordHash = await bcrypt.hash(password, 12)
 
     const user = await prisma.user.create({
@@ -162,9 +172,10 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
         skills: skills || [],
         maxTickets: maxTickets || 10,
         preferredLanguage: preferredLanguage || null,
+        ...(resolvedHiddenModules.length > 0 ? { hiddenModules: resolvedHiddenModules } : {}),
       },
       select: {
-        id: true, name: true, email: true, role: true,
+        id: true, name: true, email: true, role: true, hiddenModules: true,
         phone: true, department: true, isActive: true, createdAt: true,
       },
     })
@@ -176,6 +187,7 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        hiddenModules: user.hiddenModules,
       },
     })
 

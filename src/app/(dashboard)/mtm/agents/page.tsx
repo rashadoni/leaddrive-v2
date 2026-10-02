@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, type ReactNode } from "react"
+import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
@@ -8,6 +9,7 @@ import { formatDateTime, formatTime } from "@/lib/format-date"
 import { mtmWorkdayBreakSummary } from "@/lib/mtm/workday-break-summary"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
+import { useMtmFeature } from "@/hooks/use-mtm-org-settings"
 import { MTM_AGENT_APP_ACTIVE_WINDOW_MS } from "@/lib/mtm/agent-card-activity"
 import { buildMtmAgentHierarchy, flattenMtmAgentTeam, isMtmLeaderRole, mtmAgentMatchesSearch, type MtmAgentTeam } from "@/lib/mtm/agent-hierarchy"
 import { PageDescription } from "@/components/page-description"
@@ -17,7 +19,7 @@ import { MtmAgentForm } from "@/components/mtm/agent-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List } from "lucide-react"
+import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Users, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle, LayoutGrid, List, UsersRound, ChevronRight } from "lucide-react"
 
 const roleColors: Record<string, string> = {
   ADMIN: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
@@ -75,6 +77,14 @@ export default function MtmAgentsPage() {
     try { window.localStorage.setItem(VIEW_STORAGE_KEY, next) } catch { /* not remembered, still switched */ }
   }
   const orgId = session?.user?.organizationId
+  // The employee's own section is a list of their clients, so it is offered
+  // only where the organization keeps field contacts switched on.
+  const clientSections = useMtmFeature(session?.user, "fieldContactsEnabled").enabled
+  // Opening an employee leads to their section; without it, to their GPS history as before.
+  const agentHref = (agent: { id: string }) => clientSections
+    ? `/mtm/agents/${encodeURIComponent(agent.id)}`
+    : `/mtm/map?mode=history&agentId=${encodeURIComponent(agent.id)}`
+  const agentHrefTitle = clientSections ? t("openSection") : t("actionHistory")
 
   const fetchAgents = async () => {
     try {
@@ -279,7 +289,6 @@ export default function MtmAgentsPage() {
     const breaks = mtmWorkdayBreakSummary(agent?.breaks, new Date())
     const activity = agent.activity as { periodDays: number; visits: number; planFulfillment: number | null } | null | undefined
     const app = agent.app as { state: "active" | "quiet" | "never"; lastSignalAt: string | null; notificationsConnected: boolean } | undefined
-    const historyHref = `/mtm/map?mode=history&agentId=${encodeURIComponent(agent.id)}`
     const leads = !!team && team.leader?.id === agent.id
     return (
       <div
@@ -293,7 +302,7 @@ export default function MtmAgentsPage() {
             {presenceDot(agent, presence)}
           </div>
           <div className="flex-1 min-w-0">
-            <a href={historyHref} title={t("actionHistory")} className={`text-sm truncate hover:underline block ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</a>
+            <Link href={agentHref(agent)} title={agentHrefTitle} data-testid="mtm-agent-open" className={`text-sm truncate hover:underline block ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</Link>
             {breaks.count > 0 ? (
               // The segments, not just the state: two twenty-minute breaks and
               // one two-hour break read the same as "on a break" and are very
@@ -332,6 +341,14 @@ export default function MtmAgentsPage() {
             </span>
           ) : null}
         </div>
+
+        {/* The way into the employee's section, in words: their clients, with the count when the server gave one. */}
+        {clientSections ? (
+          <Link href={agentHref(agent)} data-testid="mtm-agent-clients-link" className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 text-sm font-medium hover:bg-muted dark:border-zinc-700">
+            <span className="inline-flex min-w-0 items-center gap-1.5"><UsersRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="truncate">{typeof agent.clients === "number" ? t("clientsCount", { count: agent.clients }) : t("clients")}</span></span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </Link>
+        ) : null}
 
         {/* Contact + quick actions — a fixed-height footer at the bottom */}
         <div className="mt-auto flex h-8 items-center justify-between gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-2">
@@ -394,7 +411,7 @@ export default function MtmAgentsPage() {
           <div className="flex items-center gap-2 min-w-0">
             <div className="relative h-8 w-8 shrink-0">{avatar(agent, "sm")}{presenceDot(agent, presence)}</div>
             <div className="min-w-0">
-              <a href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agent.id)}`} className={`block truncate hover:underline ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</a>
+              <Link href={agentHref(agent)} title={agentHrefTitle} className={`block truncate hover:underline ${leads ? "font-semibold" : "font-medium"}`}>{agent.name}</Link>
               <div className="flex flex-wrap items-center gap-1">
                 <span className={`text-[10px] px-1.5 rounded-full ${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
                 {leads && team ? <span className="text-[10px] text-muted-foreground">{t("teamSize", { count: team.size - 1 })}</span> : null}
@@ -406,6 +423,11 @@ export default function MtmAgentsPage() {
         <td className={`py-2 pr-2 text-xs ${presence.tone === "working" ? "text-green-600 dark:text-green-400" : presence.tone === "paused" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{presence.text}</td>
         <td className="hidden md:table-cell py-2 pr-2 text-xs tabular-nums">{activity ? activity.visits : "—"}</td>
         <td className="hidden md:table-cell py-2 pr-2 text-xs tabular-nums">{activity ? (activity.planFulfillment === null ? <span className="text-muted-foreground">{t("planNone")}</span> : `${activity.planFulfillment}%`) : "—"}</td>
+        {clientSections ? (
+          <td className="hidden md:table-cell py-2 pr-2 text-xs tabular-nums">
+            <Link href={agentHref(agent)} className="inline-flex min-h-9 items-center font-medium text-primary hover:underline" aria-label={typeof agent.clients === "number" ? t("clientsCount", { count: agent.clients }) : undefined}>{typeof agent.clients === "number" ? agent.clients : t("clients")}</Link>
+          </td>
+        ) : null}
         <td className="hidden xl:table-cell py-2 pr-2">{appBadge(app)}</td>
         <td className="hidden sm:table-cell py-2 pr-2">
           <div className="flex items-center gap-1 min-w-0">
@@ -419,7 +441,7 @@ export default function MtmAgentsPage() {
   }
   const groupRow = (key: string, label: string, count: number, hint?: string) => (
     <tr key={`group-${key}`} className="border-t border-zinc-200 dark:border-zinc-700 bg-muted/40">
-      <td colSpan={8} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <td colSpan={clientSections ? 9 : 8} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label} <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] font-normal">{count}</span>
         {hint ? <span className="ml-2 text-[10px] font-normal normal-case">{hint}</span> : null}
       </td>
@@ -438,6 +460,7 @@ export default function MtmAgentsPage() {
             <th className="py-2 pr-2 font-medium">{t("colToday")}</th>
             <th className="hidden md:table-cell py-2 pr-2 font-medium">{t("colVisits7d")}</th>
             <th className="hidden md:table-cell py-2 pr-2 font-medium">{t("colPlan")}</th>
+            {clientSections ? <th className="hidden md:table-cell py-2 pr-2 font-medium">{t("clients")}</th> : null}
             <th className="hidden xl:table-cell py-2 pr-2 font-medium">{t("colApp")}</th>
             <th className="hidden sm:table-cell py-2 pr-2 font-medium">{t("colContacts")}</th>
             <th className="py-2 pr-2 w-20"><span className="sr-only">{t("moreActions")}</span></th>

@@ -5,16 +5,21 @@ import { isValidTimezone } from "@/lib/timezone"
 import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   WorkforceCalendarConfigurationError,
+  createWorkforceCalendarMovedDay,
   createWorkforceCalendarOverride,
   listWorkforceCalendarOverrides,
+  reverseWorkforceCalendarMovedDay,
   searchWorkforceCalendarAgents,
   searchWorkforceCalendarTeams,
 } from "@/lib/workforce/calendar-configuration"
 import {
   WORKFORCE_CALENDAR_AGENT_SEARCH_LIMIT,
   WORKFORCE_CALENDAR_TEAM_SEARCH_LIMIT,
-  WorkforceCalendarOverrideCreateSchema,
+  WorkforceCalendarConfigurationCreateSchema,
   WorkforceCalendarScopeSelectionSchema,
+  type WorkforceCalendarConfigurationDraft,
+  type WorkforceCalendarMovedDayDraft,
+  type WorkforceCalendarMovedDayReverseDraft,
 } from "@/lib/workforce/calendar-configuration-contract"
 import { workforceConfigurationRequestAuditContext } from "@/lib/workforce/configuration-route"
 
@@ -25,12 +30,27 @@ function organizationCalendarClock(timezone: string): { timezone: string; curren
 
 function configurationError(error: WorkforceCalendarConfigurationError): Response {
   const status = error.code === "WORKFORCE_CALENDAR_CONFIGURATION_OVERRIDE_EXISTS"
+    || error.code === "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_SOURCE_NOT_WORKING"
+    || error.code === "WORKFORCE_CALENDAR_CONFIGURATION_MOVE_DESTINATION_NOT_NON_WORKING"
+    || error.code === "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_PAIR_CHANGED"
+    || error.code === "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_ROUTE_CHANGED"
+    || error.code === "WORKFORCE_CALENDAR_CONFIGURATION_REVERSE_BUSY"
     ? 409
     : error.code === "WORKFORCE_CALENDAR_CONFIGURATION_TEAM_UNAVAILABLE"
       || error.code === "WORKFORCE_CALENDAR_CONFIGURATION_AGENT_UNAVAILABLE"
       ? 404
       : 400
   return NextResponse.json({ error: error.message, code: error.code }, { status })
+}
+
+function isMovedDayDraft(
+  draft: WorkforceCalendarConfigurationDraft,
+): draft is WorkforceCalendarMovedDayDraft {
+  return "operation" in draft && draft.operation === "MOVE_WORKDAY"
+}
+
+function isReversedDayDraft(draft: WorkforceCalendarConfigurationDraft): draft is WorkforceCalendarMovedDayReverseDraft {
+  return "operation" in draft && draft.operation === "REVERSE_MOVE_WORKDAY"
 }
 
 export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ", async (req: NextRequest, auth) => {
@@ -127,7 +147,7 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
 })
 
 export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRITE", async (req: NextRequest, auth) => {
-  const parsed = WorkforceCalendarOverrideCreateSchema.safeParse(await req.json().catch(() => ({})))
+  const parsed = WorkforceCalendarConfigurationCreateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({
       error: parsed.error.issues[0]?.message ?? "Invalid Workforce calendar override",
@@ -137,6 +157,45 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRIT
   try {
     const settings = await getMtmSettings(auth.orgId)
     const clock = organizationCalendarClock(settings.timezone)
+    if (isReversedDayDraft(parsed.data)) {
+      const draft: WorkforceCalendarMovedDayReverseDraft = parsed.data
+      const result = await reverseWorkforceCalendarMovedDay({
+        organizationId: auth.orgId,
+        updatedByUserId: auth.userId,
+        currentDate: clock.currentDate,
+        draft,
+        audit: workforceConfigurationRequestAuditContext(req, auth.userId),
+      })
+      return NextResponse.json({
+        success: true,
+        data: {
+          ...clock, operation: draft.operation, scope: draft.scope, team: result.team,
+          agent: null, pairGenerationId: result.pairGenerationId,
+          sourceDate: result.sourceDate, destinationDate: result.destinationDate,
+          reversed: result.reversed,
+        },
+      }, { status: 200 })
+    }
+    if (isMovedDayDraft(parsed.data)) {
+      const result = await createWorkforceCalendarMovedDay({
+        organizationId: auth.orgId,
+        createdByUserId: auth.userId,
+        currentDate: clock.currentDate,
+        draft: parsed.data,
+        audit: workforceConfigurationRequestAuditContext(req, auth.userId),
+      })
+      return NextResponse.json({
+        success: true,
+        data: {
+          ...clock,
+          operation: parsed.data.operation,
+          scope: parsed.data.scope,
+          team: result.team,
+          agent: null,
+          days: result.days,
+        },
+      }, { status: result.created ? 201 : 200 })
+    }
     const result = await createWorkforceCalendarOverride({
       organizationId: auth.orgId,
       createdByUserId: auth.userId,

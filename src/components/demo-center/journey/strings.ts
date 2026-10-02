@@ -40,6 +40,8 @@ export const DEMO_JOURNEY_STRINGS = {
   stepOnScene: "Bu addım ekranda göstərilir",
   coachClose: "İpucunu bağla",
   coachShow: "İpucunu ekranda göstər",
+  voiceOn: "Bələdçini səsləndir",
+  voiceOff: "Səsi söndür",
   coachArrowFallback: "Buraya basın",
   coachLook: (title: string) => `Baxın: ${title}`,
   coachChipBelow: (label: string) => `Aşağıda: ${label}`,

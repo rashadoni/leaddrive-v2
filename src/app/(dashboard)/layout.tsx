@@ -12,7 +12,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { CommandSearch } from "@/components/command-search"
 import { AppLauncher } from "@/components/app-launcher"
 import { LauncherPrefsProvider } from "@/contexts/launcher-prefs-context"
-import { isNavItemEnabled, matchNavItem } from "@/lib/nav-items"
+import { isNavItemEnabled, isNavPathRoleBlocked, matchNavItem } from "@/lib/nav-items"
 import { useNavOrgContext } from "@/hooks/use-mtm-org-settings"
 import { ModuleDisabled } from "@/components/module-disabled"
 import { AiAssistantPanel } from "@/components/ai-assistant-panel"
@@ -120,6 +120,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     !!navItem &&
     !navItem.pageUngated && // page whose access is enforced server-side by its API (e.g. channels) — don't hard-block
     !isNavItemEnabled(org, navItem)
+  // The same guard for ROLE: an organization-settings page this person's role
+  // cannot use. Without it a manager who reached /settings/users got the whole
+  // page — colleagues listed, Edit / Reset password / Delete drawn — built on
+  // requests the API was refusing.
+  const roleBlocked = !!session && !moduleBlocked && isNavPathRoleBlocked(org, pathname)
+  const pageBlocked = moduleBlocked || roleBlocked
 
   // Page-fetch race fix (44 pages): child pages do raw `fetch()` in
   // `useEffect([session])`. If a page mounts BEFORE the session is authenticated,
@@ -137,7 +143,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   } = dashboardAssistantVisibility({
     pathname,
     childrenReady,
-    moduleBlocked,
+    moduleBlocked: pageBlocked,
     hideContentSearch,
     heroCommandVisible: isDashboardHome && heroCommandVisible,
   })
@@ -175,8 +181,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <div className="flex h-full items-center justify-center" aria-busy="true">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary motion-reduce:animate-none" aria-hidden="true" />
                   </div>
-                ) : moduleBlocked ? (
-                  <ModuleDisabled />
+                ) : pageBlocked ? (
+                  <ModuleDisabled reason={roleBlocked ? "role" : "module"} />
                 ) : (
                   <>
                     <SupportMobileNavigation org={org} pathname={pathname} />

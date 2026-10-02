@@ -974,7 +974,7 @@ from Route & Field.
 | WF-C8-004 | P1 | DONE | Web | Complete timesheet: plan/fact/evidence status/exceptions/approval/correction revisions | [`Complete timesheet review evidence`](./workforce-c8-complete-timesheet-evidence-2026-09-29.md): query-bounded, calculation-version-aware linked and schedule-only exceptions plus hash-verified v1/v2 approval/correction history join deterministic plan/fact; missing snapshots and unresolved exceptions remain non-approvable, successful writes refresh exact history, and PR #489 passed independent review, exact-head gates, release and exact-SHA production verification. |
 | WF-C8-005 | P1 | PARTIAL | Web | Add exception workbench and employee response/appeal context | [`Scoped acknowledgement UI`](./workforce-c6-exception-acknowledgement-ui-evidence-2026-09-27.md) and [`correction-request UI`](./workforce-c6-exception-correction-request-ui-evidence-2026-09-27.md): the queue shows scoped risk/age/evidence/response context and records one exact server-offered non-terminal acknowledgement or correction-review request through a two-step localized UI; employee response/appeal surfaces, terminal lifecycle and real browser evidence remain open, so C6 acceptance is not yet met |
 | WF-C8-006 | P1 | DONE | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | [`workforce-c8-sites-geofences-evidence-2026-08-30.md`](./workforce-c8-sites-geofences-evidence-2026-08-30.md): administrator-only named sites, future calibrated circles, assignment-only impact preview and immutable revision history; no browser location collection or physical-presence claim |
-| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md), [`organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md), [`team calendar evidence`](./workforce-c8-team-calendar-configuration-evidence-2026-09-29.md) and [`employee calendar evidence`](./workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments and strict future organization/team/employee holiday/closure/exception create/list are source-complete; moved-day workflow, update/delete governance, break-policy authoring and real browser/AT evidence remain open |
+| WF-C8-007 | P1 | PARTIAL | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | [`ordered segment editor evidence`](./workforce-c8-shift-segment-editor-evidence-2026-09-29.md), [`organization calendar evidence`](./workforce-c8-calendar-configuration-evidence-2026-09-29.md), [`team calendar evidence`](./workforce-c8-team-calendar-configuration-evidence-2026-09-29.md), [`employee calendar evidence`](./workforce-c8-agent-calendar-configuration-evidence-2026-09-29.md) and [`atomic moved-day evidence`](./workforce-c8-moved-day-configuration-evidence-2026-09-29.md): named ACTIVE sites, ordered released segments, strict future organization/team/employee holiday/closure/exception create/list and atomic organization/team moved-day create/list are source-complete; moved-day reversal/delete, general update/delete governance, break-policy authoring and real browser/AT evidence remain open |
 | WF-C8-008 | P1 | PARTIAL | Web | Add proof-policy, QR station and trusted-device administration separated by permission | [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): named-site/effective-circle QR station creation plus device/QR lifecycle UI are administrator-only; proof-policy UI and granular separation-of-duties await C7/C5 gates |
 | WF-C8-009 | P1 | PARTIAL | Web | Add restricted evidence timeline and access audit; normal view shows verdict instead of exact coordinates | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md): a visible named-employee web timeline now returns only bounded localized verdict/reason records after exact grant, explicit context and successful access audit; raw-investigation policy/UI and real-browser acceptance remain open |
 | WF-C8-010 | P1 | PARTIAL | Web/I18n | Complete AZ/RU/EN, keyboard, focus, contrast, 200% zoom, responsive tablet/phone and error/empty states | [`derived evidence timeline evidence`](./workforce-c10-derived-evidence-timeline-evidence-2026-09-13.md) and [`bulk preview evidence`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): AZ/RU/EN, concise announcements, focus transfer, bounded named search, responsive source and error/empty states exist; real browser/AT/contrast/200%-zoom/mobile evidence remains open |
@@ -2804,3 +2804,656 @@ from this worktree.
   this three-document GREEN receipt is uncommitted.
 - Next action: commit the receipt, verify non-doc identity is byte-identical,
   obtain receipt-integrity GREEN, then push/open the bounded PR.
+
+## 2026-09-29 — WF-C8-007d PR #503 production release receipt
+
+- Receipt-integrity review on final head
+  `9b0cf7f7a46ca2d55cad635c9346b05612b2ce58` was GREEN with
+  `P0=P1=P2=P3=0`; the reviewed non-doc fingerprint remained exactly 11 paths
+  / 103,986 bytes /
+  `0891d37e861491d2a94acd056e1088651d28ce4f0a902923222e6893ab332d83`.
+- PR #503 was 15 paths / 140,801 bytes, `CLEAN` and `MERGEABLE`. Required
+  `pr-scope`, `static-checks`, `typecheck`, `runner-policy` and `scan` passed,
+  and it merged normally as main
+  `5e1a8ffcbbe8fb0fcce592e9755ecabff5072706` without bypass.
+- Deploy run `36610432747` succeeded through full quality/security, SHA-bound
+  production build/artifact, atomic deploy, built-in smoke and retention.
+  Independent no-cache TLS probes pinned to `13.140.132.245` returned HTTP 200
+  from `/api/v1/ping` and exact
+  `artifactSha=5e1a8ffcbbe8fb0fcce592e9755ecabff5072706` from
+  `/api/v1/public/build-info` (`builtAt=2026-09-29T18:20:33Z`).
+- Release routing was exclusively GitHub `main -> deploy.yml ->
+  13.140.132.245:/opt/leaddrive-v2`; no direct deploy or retired route was
+  used.
+- `WF-C8-007` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows. Remaining acceptance
+  is moved-day, update/delete governance, break-policy and real browser/AT.
+- Precise stopping point: employee future-calendar create/list is reviewed,
+  merged, deployed and exact-SHA production-verified; successor branch
+  `codex/workforce-completion-part13` is based on that merge.
+- Next action: implement bounded `WF-C8-007e` atomic organization/team
+  moved-day pair create/list, explicitly excluding AGENT, update/delete,
+  repair/backfill, bulk authoring and Route mutation.
+
+## 2026-09-29 — WF-C8-007e atomic moved-day working checkpoint
+
+- Implemented strict forward-only `MOVE_WORKDAY` creation for organization and
+  named active-team scope on the released Workforce calendar surface. Two
+  future dates become one reciprocal `MOVED_DAY_OFF` / `MOVED_WORKDAY` pair in
+  one transaction with one audit; inventory exposes only the paired date in
+  addition to its existing minimized fields.
+- Dual tenant/date advisory locks are de-duplicated and sorted. The source must
+  be an effective HR working day and the destination an effective HR
+  non-working day. Each row independently retains the pre-move Route baseline;
+  this slice does not mutate Route behavior.
+- Exact replay requires a complete reciprocal `ADMIN` pair and two non-null
+  server-owned Route baselines. Partial, mismatched, foreign-provenance and
+  occupied state fails closed. The exported domain writer independently
+  rejects runtime employee scope.
+- Legacy MTM PUT/DELETE cannot create, convert or independently remove moved
+  rows. The UI exposes one explicit operation rather than internal moved kinds,
+  describes both dates and freezes all mutable controls through reconciliation.
+- Added a mandatory real-PostgreSQL CI/deploy gate. Its barrier proves reversed
+  date input cannot deadlock after deterministic sorting; its real Prisma
+  writer proof requires concurrent retries to leave exactly two reciprocal
+  rows and one audit.
+- Author PASS: 116 focused tests across 11 files, scoped ESLint, i18n EN
+  23,905 with RU/AZ 0 missing/0 extra, event-platform workflow assets, runner
+  policy and whitespace. The two PostgreSQL cases were discovered but are
+  `SKIPPED` locally because the CI-only database URL is absent.
+- Full local typecheck/build/suite, real PostgreSQL, browser/AT/device,
+  Android/Gradle, load/chaos, signed-device and pilot remain `NOT RUN` under
+  host policy. Exact-head CI and fresh author-independent frozen review remain
+  mandatory.
+- Evidence:
+  [`WF-C8-007e moved-day evidence`](./workforce-c8-moved-day-configuration-evidence-2026-09-29.md).
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows. No provisional
+  task or gate credit is added.
+- Precise stopping point: implementation, test, workflow, i18n and evidence
+  changes are complete in the working tree; no checkpoint commit or frozen
+  independent review has been recorded for this slice.
+- Next action: run final bounded checks, checkpoint only explicit task paths,
+  reconcile against live main, compute exact identities and require a fresh
+  author-independent full-range GREEN before opening the bounded PR.
+
+## 2026-09-29 — WF-C8-007e reconciled with live main
+
+- The implementation checkpoint `b11798b93` was merged with live
+  `origin/main` `8c8ca4360285dec692caf7784d805936c276ae1e`. Main contributed only five
+  Social Monitoring paths; no calendar/runtime/workflow/locale/test/evidence
+  path overlapped and no manual conflict resolution was needed.
+- Post-merge PASS: 116 focused tests, scoped ESLint, i18n EN 23,905 with RU/AZ
+  0/0, event-platform workflow assets, runner policy and whitespace. The two
+  real-PostgreSQL cases remain locally `SKIPPED` without the CI-only database
+  URL; full typecheck/build/suite and physical/browser/heavy gates remain
+  `NOT RUN` under host policy.
+- `WF-C8-007` stays `PARTIAL`; progress remains `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: live main is integrated and bounded checks are green;
+  only this reconciliation receipt is uncommitted.
+- Next action: checkpoint the receipt, compute exact full/non-doc identities
+  against `8c8ca4360` and require a fresh author-independent full-range GREEN.
+
+## 2026-09-29 — WF-C8-007e first frozen review P3 corrected
+
+- Independent review of exact head
+  `55b3562ef8e3ee3e3650e20a42e341c53c8d818e` returned RED with
+  `P0=0`, `P1=0`, `P2=0`, `P3=1`. Full identity was 23 paths / 151,576 bytes /
+  `f0417914a5fd76788b7efc89370b8bc2442e147e2900c0a81c5dd6646aceb98c`;
+  non-doc identity was 19 paths / 120,990 bytes /
+  `649cc46ccc979f90e7438b4d62860f6d43f8a60dfb0db219a6da7ec5ecb98eed`.
+- The sole P3 was evidence ambiguity, not a code finding. The earlier appended
+  116-test statements used an alternate selection containing an unrelated
+  lead-qualification copy test and are superseded by this receipt. The
+  canonical 11-file calendar/API/UI/auth/RLS/voice selection explicitly uses
+  `mtm-rls-coverage` and passes 118 tests, with two real-PostgreSQL tests
+  separately discovered and skipped locally.
+- Canonical evidence now enumerates all 11 files and reports exact 118 pass /
+  2 skip results. No non-doc byte changed. Reviewer found no tenant/auth/RLS,
+  atomicity, locking, baseline, replay/audit, legacy-fence, PG-CI, API/UI,
+  accessibility or i18n issue.
+- Full local typecheck/build/suite, real PostgreSQL, browser/AT/device,
+  Android/Gradle, load/chaos and pilot remain `NOT RUN` under host policy.
+- Progress remains unchanged: `WF-C8-007 PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: the evidence-only P3 is repaired in the working tree;
+  the rejected head is ineligible and no replacement review has run.
+- Next action: checkpoint only the three corrected evidence/continuity docs,
+  prove the non-doc identity unchanged and require a fresh exact-head
+  author-independent full-range GREEN.
+
+## 2026-09-29 — WF-C8-007e replacement frozen review GREEN
+
+- Fresh author-independent full-range review returned GREEN
+  (`P0=P1=P2=P3=0`) on clean exact head
+  `4f75afff6884b616376085da11e508a8461a607a` against live main/merge-base
+  `8c8ca4360285dec692caf7784d805936c276ae1e`.
+- Full identity matched 23 paths / 157,139 bytes /
+  `77f4ed3599f5291afa0c611d3c6e15c3de6226096e046fe01a091c93156dbe45`;
+  non-doc identity stayed exactly 19 paths / 120,990 bytes /
+  `649cc46ccc979f90e7438b4d62860f6d43f8a60dfb0db219a6da7ec5ecb98eed`.
+- The evidence P3 is closed. Reviewer reran the enumerated relevant selection
+  at 118 pass / 2 PostgreSQL skipped and found no runtime/auth/RLS, atomicity,
+  locking, baseline, replay/audit, legacy-fence, PG-CI, API/UI/accessibility,
+  i18n or append-only-integrity issue.
+- Reviewer checks also passed RLS scan 553/847/0, event assets 27/86/5,
+  runner policy 38 workflows, scoped ESLint, i18n 23,905/0/0, JSON and
+  whitespace. Heavy/physical/local PostgreSQL gates remain `NOT RUN`; exact-
+  head CI is mandatory.
+- No task/gate credit changes: `WF-C8-007 PARTIAL`, `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, 80 non-DONE rows.
+- Precise stopping point: runtime/test/i18n/workflow bytes are independently
+  frozen; only this GREEN receipt is uncommitted.
+- Next action: commit the three docs, prove non-doc fingerprint integrity,
+  obtain receipt-only GREEN, then push/open the ≤400 KB PR.
+
+## 2026-09-29 — WF-C8-007e PR #506 typecheck remediation
+
+- PR #506 exact head `618d4c7ba6520d06ab69ac628f6c5acb37369761`
+  passed `pr-scope`, `runner-policy`, `scan` and full `static-checks`, including
+  the mandatory real-PostgreSQL lock-order and concurrent-writer gate. Its
+  PR-only production build skipped as intended.
+- `typecheck` blocked merge with one new defect-shaped pair over baseline:
+  `TS2322` at `configuration/calendar/route.ts:167`. The parsed Zod union was
+  not narrowed out of its moved-day member before the ordinary override call.
+- The route now uses a schema-typed `isMovedDayDraft` predicate. Scoped ESLint
+  passes and the calendar API/domain selection passes 44/44 tests. Full local
+  typecheck remains `NOT RUN` by host policy and must pass in updated exact-
+  head CI.
+- The code change invalidates the earlier frozen-head GREEN; a fresh complete-
+  diff author-independent review is mandatory before the branch is pushed
+  again. No check is weakened and no baseline is changed.
+- `WF-C8-007` remains `PARTIAL`; progress is unchanged at `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: the isolated type-narrowing repair and bounded local
+  verification are complete but uncommitted.
+- Next action: checkpoint the repair/evidence, reconcile live main, fingerprint
+  the replacement head and obtain a fresh full-range independent GREEN.
+
+## 2026-09-29 — WF-C8-007e post-fix frozen review GREEN
+
+- Fresh author-independent full-range review returned GREEN
+  (`P0=P1=P2=P3=0`) on exact clean head
+  `b42330c0b56ffaa469825675223e466983c0dd08` against unchanged live main and
+  merge-base `8c8ca4360285dec692caf7784d805936c276ae1e`.
+- Full identity matched 23 paths / 166,907 bytes /
+  `7c6d257daeb7834478100d6f0a3dc8b85d9ac2c1df1c6ab182492958352f1d5c`;
+  non-doc identity matched 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- The reviewer confirmed the new type predicate safely closes the exact CI
+  finding with unchanged runtime/auth/tenant behavior and found no issue in
+  the complete diff. PASS included 118 tests / 2 local PostgreSQL skips,
+  scoped ESLint, i18n 23,905/0/0, RLS 553/847/0, event assets 27/86/5,
+  runner policy 38, JSON, whitespace and append-only integrity.
+- New-head full typecheck and real PostgreSQL remain mandatory in exact-head
+  CI; other heavy/physical gates remain `NOT RUN` under policy.
+- Progress remains `WF-C8-007 PARTIAL`, `DONE 81/161`, `GATES 14/15`, C8
+  36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: independently reviewed code is frozen; only this
+  three-document GREEN receipt is uncommitted.
+- Next action: commit the receipt, prove non-doc identity unchanged, obtain
+  receipt-integrity GREEN, push exact head and rerun every PR gate.
+
+## 2026-09-29 — WF-C8-007e replacement CI GREEN and second reconciliation
+
+- PR #506 replacement head `f1739b23a633c55b9c036e85eaf86a0176ec3018`
+  passed all required contexts: `pr-scope`, `static-checks`, `typecheck`,
+  `runner-policy` and `scan`. Run `36630565484` passed real PostgreSQL and the
+  unit baseline in 13m34s; typecheck passed in 16m07s. PR production build
+  skipped as designed.
+- A fresh pre-merge fetch found main advanced through PR #505 to
+  `13d13bcc58e8872ef676fd011e78a1adb954e210`. Its 12 Help/Da Vinci guide paths
+  do not overlap this slice. Integration completed without manual resolution
+  at `73e08829b39f9e78f02515ea30bcb5cc6ede3175`.
+- Relative to new live main/merge-base, the task diff remains byte-identical:
+  full 23 paths / 171,486 bytes /
+  `4800c046ba480546981fcbd07eecde12144177ca28c628db77c6519278c693e2`;
+  non-doc 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- `WF-C8-007` remains `PARTIAL`; progress stays `DONE 81/161`,
+  `GATES 14/15`, C8 36%, overall 59%, with 80 non-DONE rows.
+- Precise stopping point: live main is integrated and the previously reviewed
+  task bytes are unchanged; this reconciliation receipt is uncommitted.
+- Next action: checkpoint the receipt, repeat bounded verification and obtain
+  exact-head independent integrity GREEN before repush/repeated CI.
+
+## 2026-09-29 — WF-C8-007e CI attribution P3 corrected
+
+- Independent review of exact head `4f2933dee7099a89f58bfb4e2ddd5efc4c76952f`
+  returned RED only for one evidence P3: the preceding receipt grouped
+  `runner-policy` and `scan` under PR-checks run `36630565484`.
+- Correct attribution is PR-checks `36630565484` for `pr-scope`,
+  `static-checks`, `typecheck` and skipped PR build; runner-policy
+  `36630565514`; scan `36630565512`. All required contexts did pass.
+- The reviewer confirmed no runtime/security/concurrency/UI/workflow finding,
+  exact identities 23/175,723/`164cb3f4...2f19` and unchanged non-doc
+  19/121,643/`aaa72844...2c22`, disjoint clean main integration, 118/2 tests,
+  scoped ESLint, i18n 23,905/0/0 and append-only integrity.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` stays `PARTIAL`.
+- Precise stopping point: the evidence attribution is corrected append-only but
+  uncommitted; the rejected head is ineligible.
+- Next action: checkpoint the three corrections and obtain a fresh exact-head
+  author-independent integrity GREEN before push.
+
+## 2026-09-29 — WF-C8-007e corrected review GREEN; Sol 6.1 handoff
+
+- Fresh replacement review returned GREEN (`P0=P1=P2=P3=0`) on exact clean
+  head `c88bc144a53164a2b00dc8a9f0be365a0992b585` against live main/merge-base
+  `13d13bcc58e8872ef676fd011e78a1adb954e210`.
+- Full identity matched 23 paths / 178,684 bytes /
+  `9f04d5de318a004e6579a8d2eb316c0d8f169b6ac239b6031566c52711ba3c96`;
+  non-doc remained 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+  Corrected receipts are append-only and no runtime finding remains.
+- The user requested transfer to a new Sol 6.1 session before publication.
+  Remote PR #506 remains at `f1739b23a`; the reconciled replacement is local
+  only and must not be merged from the stale remote head.
+- Progress remains `DONE 81/161`, `GATES 14/15`, C8 36%, overall 59%, with 80
+  non-DONE rows; `WF-C8-007` remains `PARTIAL`.
+- Precise stopping point: corrected full-range review is GREEN; this final
+  three-document handoff receipt is the only uncommitted change.
+- Next action: checkpoint and receipt-review the handoff, then in the new
+  session push exact head, rerun all PR gates, fetch main and release #506.
+
+
+## 2026-09-30 — WF-C8-007e resumed; third live-main reconciliation
+
+- The owner explicitly authorized continuation, push, verified merge and the
+  GitHub production release in this session; the previous-session handoff
+  pause is superseded only for this active task. Recorded worktree and branch
+  are unchanged: `leaddrive-workforce-android-foundation-part3` and
+  `codex/workforce-completion-part13`.
+- Initial status was clean at exact saved HEAD
+  `9b54dbbc2091c7522b207d60f0f4f2dba69f354f`; origin is
+  `https://github.com/rashadoni/leaddrive-v2.git`. Both saved identities matched:
+  full 23 paths / 183,213 bytes /
+  `ae63007883a7309700cc1f8023e01be146d7ee2000cd3df3fbcbedc04a45b461`;
+  non-doc 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- Fresh fetch found main advanced from `13d13bcc58e8872ef676fd011e78a1adb954e210`
+  to `07f8b823e4fef51d82787def19564510946cb08a` through #507 and #508. Its 64
+  demo-guide source/test/audio/migration paths had no overlap with the 23
+  Workforce paths. Integration completed without manual resolution at
+  `d5634a78c1cf8bc9cab3faddb1e1a543d88559d1`. Against the new main/merge-base,
+  both full and non-doc identities remained exactly those above before this
+  append-only receipt.
+- Required six documents were read fully by the Codex team before integration;
+  journal and roadmap were read end to end in bounded chunks with every
+  truncated segment reread. Current repository/registry/deployment guidance
+  agrees on production `13.140.132.245:/opt/leaddrive-v2`, solely through
+  reviewed GitHub main and `.github/workflows/deploy.yml`.
+- Current integrated-tree PASS: the exact canonical 11-file selection named
+  in the moved-day evidence passed 118 tests and discovered two locally
+  skipped PostgreSQL cases; scoped ESLint on all 14 changed TS/TSX paths;
+  i18n EN 23,905 / RU/AZ missing 0 / extra 0; event assets 27/86/5; runner
+  policy across 38 workflows; full-range whitespace check. RAM/disk/pressure
+  were inspected before the single-worker bounded local selection.
+- NOT RUN locally: real PostgreSQL, full repository typecheck/build/suite,
+  browser/AT/contrast/zoom/device, Android/Gradle, load/chaos, signed-device and
+  pilot gates, under the Contabo workload-placement contract. Exact new-head
+  PR CI must run all five required contexts and the real PostgreSQL gate;
+  production build belongs to deploy CI. No baseline or check is weakened.
+- Progress is unchanged: `WF-C8-007 PARTIAL`, `DONE 81/161`, `GATES 14/15`,
+  C8 36%, overall 59%, 80 non-DONE rows. No completion credit is claimed.
+- Precise stopping point: live-main integration and bounded checks are complete;
+  this three-document reconciliation receipt is the only uncommitted change.
+- Next action: checkpoint these explicit paths, independently review the exact
+  new head, push that head to #506, await all five PR gates, refetch main,
+  merge normally, await deploy and verify the exact public artifact SHA.
+
+
+## 2026-09-30 — #506 five gates GREEN; fourth live-main reconciliation
+
+- Exact reviewed/published head `23d1deb980b0a9b42e83081b21be0d3289865003`
+  passed all five mandatory contexts. PR-checks run `36726718154` passed
+  pr-scope, static-checks (13m37s) and typecheck (19m00s); runner-policy passed
+  in `36726718250`, scan in `36726718248`. PR production build was SKIPPED
+  by policy. Static CI passed both calendar PostgreSQL proofs (2 tests) within
+  the shared-lock selection (3 files / 23 tests), plus the blocking baseline.
+- The mandatory fresh-main guard stopped merge when #509 advanced main to
+  `7583ebacf0dacc55ba9cc002e13bc25e07e2d5b9`. Its five demo-guide paths had
+  zero overlap with the Workforce diff. The pending publishing journal receipt
+  was checkpointed as `a3d2ee3b9`; integration then completed without manual
+  resolution at `6c6d953105572aaec8de395a458f124a9a8b11fe`.
+- Current integrated-tree PASS: canonical 11 files / 118 tests / 2 local PG
+  skips, scoped ESLint on 14 changed TS/TSX paths, i18n 23,905/0/0, event
+  assets 27/86/5, runner policy 38 workflows, whitespace. RAM/disk/pressure
+  inspection preceded the bounded single-worker local check phase.
+- Non-doc identity remains 19 paths / 121,643 bytes /
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+  New-head real PostgreSQL/full typecheck are mandatory in replacement CI;
+  full local build/suite, browser/AT/device, Android/Gradle, load/chaos,
+  signed-device and pilot remain NOT RUN under the host contract.
+- WF-C8-007 remains PARTIAL. DONE 81/161, GATES 14/15, C8 36%, overall 59%,
+  80 non-DONE rows are unchanged. No gate/baseline is weakened.
+- Precise stopping point: #506 is still OPEN at the superseded published head;
+  fourth live-main integration and bounded checks are complete locally.
+- Next action: checkpoint this append-only receipt, obtain independent exact-
+  head GREEN, push the replacement, repeat all five gates and fresh-main check,
+  then normal merge/deploy/exact-SHA smoke before starting successor007f.
+
+
+## 2026-09-30 — #506 production descendant release receipts; exact merge-SHA constraint pending
+
+- Authorized #506 candidate was reviewed at exact clean
+  `47a3553fef281786420bec630c73c871bdf40628`, base/main
+  `7583ebacf0dacc55ba9cc002e13bc25e07e2d5b9`: independent full-range
+  GREEN P0=P1=P2=P3=0. Full23paths/200,426bytes/SHA256
+  `61144c4b57641e69077d59dfe760a8b0bc3c85dd3915fc78e5fe690f3fc14c26`;
+  non-doc19/121,643/
+  `aaa7284416a780a59beff4d7b1602ca5aa6a8936c189e926f7e9f2b9e5a52c22`.
+- Exact-head five gates GREEN: PR checks36730265107 (pr-scope19s,
+  static7m46s,typecheck19m44s), runner36730264948 (19s),
+  scan36730265042 (21s). PR build SKIPPED by policy. Static CI proved
+  real calendar PG2/2 (393ms), shared-lock3files/23tests and blocking unit
+  baseline PASS (no new failure or stale entry). No gate/baseline weakened.
+- Fresh-main guard immediately before normal protected merge passed on7583.
+  #506 merged2026-09-30T14:57:19Z as
+  `73a599923633d7e7f906a4815719381e03489486` with exact head matching;
+  no admin bypass. PR:https://github.com/rashadoni/leaddrive-v2/pull/506.
+- Automatic push run was delayed; documented normal main dispatch
+  36733515137 was invoked. Delayed push36733480348 appeared alongside it
+  and its build was cancelled by documented concurrency. Normal36733515137
+  quality and SHA-bound artifact build passed. During build, #510 advanced
+  main to `77a5c48080e4297c666bde00112fbba2fc071636`; normal deploy
+  correctly refused stale-main target before any production mutation.
+- Independent descendant reconciliation GREEN P0=P1=P2=P3=0:73a599923
+  is ancestor77a5c480; only demo-coach-mark component/test differ. All19
+  Workforce non-doc blobs are identical between reviewed47a355, merge73a599
+  and current-main77a5c480; auth/schema/calendar/routing/workflows unchanged.
+  #510 five contexts also PASS (PR36732779403, runner36732779272,
+  scan36732779376). This review does not conflate original and descendant SHA.
+- Automatic current-main deploy:https://github.com/rashadoni/leaddrive-v2/actions/runs/36735072200
+  is COMPLETED/SUCCESS (updated2026-09-30T15:44:41Z), exact head77a5c480.
+  Quality/security, standalone build and atomic production deploy/post-deploy
+  smoke all SUCCESS. Only registered13.140.132.245 /opt/leaddrive-v2 and
+  GitHub main -> deploy.yml -> immutable SHA-bound artifact route used.
+- Independent public smoke2026-09-30T15:46:43Z:
+  /api/v1/ping HTTP200 {"ok":true}; /api/v1/public/build-info HTTP200,
+  artifactSha=`77a5c48080e4297c666bde00112fbba2fc071636`,
+  builtAt=`2026-09-30T15:27:44Z`. Exact match to successful deployed
+  current-main run77a5c480. Valid TLS used app.leaddrivecrm.org pinned via
+  --resolve to13.140.132.245. Literal IP endpoints independently gave same
+  responses with certificate verification disabled only for IP SAN mismatch;
+  validated-TLS pinned probe is the primary transport receipt.
+- Original #506 merge artifact73a599923 public deployment/smoke is NOT RUN:
+  it was never served; the new main descendant was served instead. The user's
+  exact original merge-SHA constraint has not been silently weakened. Async
+  clarification whether to accept current-main77a5c480 release containing#506
+  remains pending. No original-SHA release-complete claim or successor source
+  authoring until the precise target constraint is resolved.
+- Earlier local bounded118 tests/scoped ESLint/i18n/event-assets/runner/
+  whitespace receipts remain separately attributed. Full local typecheck,
+  build/suite/browser/AT/device, Android/Gradle, load/chaos, signed-device and
+  pilot: NOT RUN under Contabo placement contract; CI gates above were run
+  on hosted runners. Authenticated functional calendar browser smoke NOT RUN.
+- Progress remains DONE81/161, GATES14/15, C8 36%,overall59%,
+  80 non-DONE rows. WF-C8-007 PARTIAL;007f prepared, not implemented.
+- Current result: #506 merged and unchanged Workforce bytes present in
+  verified production descendant77a5c480; original exact-SHA acceptance open.
+  Last completed action: full deploy success and independent public ping/SHA
+  verification. Precise stopping point: target clarification pending before
+  successor. Next action: resolve release SHA constraint, then create successor
+  in this worktree and implement atomic generation-bound007f reversal.
+
+
+## 2026-09-30 — accepted #506 descendant release; successor007f authorized
+
+- User continuation “начинай” resolves the pending release-target clarification:
+  accept verified current-main artifact77a5c480 containing#506 and begin007f.
+  Earlier pending-target entries remain historical and are superseded by this
+  explicit continuation. Original feature merge73a599923 and served artifact
+  77a5c480 remain separately attributed; no claim that73a599923 was served.
+- Resumed exact requested worktree from clean checkpointc977a46bb. Routing
+  context/origin/branch and fresh main77a5c480 reverified; canonical and other
+  worktrees untouched. Local RAM16.7GB available/disk342GB/memory pressure0.
+- Next phase: create codex/workforce-completion-part14 from verified main in
+  this same worktree, retain and carry forward append-only receipt checkpoints,
+  implement bounded generation-bound reversal and independent real PG proofs.
+- Current result:#506 release accepted;007f starts. Last action: routing/main
+  reconciliation. Precise stopping point: successor creation. Next action:
+  strict contract, locks/full CAS/versioned receipt, UI confirmation/tests.
+- Progress remains81/161,14/15,C8 36%,overall59%,80 non-DONE.
+
+
+## 2026-09-30 — WF-C8-007f implementation checkpoint on part14
+
+- Successor created in the same dedicated worktree from verified main
+  `77a5c48080e4297c666bde00112fbba2fc071636`; branch
+  `codex/workforce-completion-part14`. Four append-only receipt checkpoints
+  carried forward; canonical checkout and unrelated worktrees untouched.
+- Added strict ORGANIZATION/TEAM `REVERSE_MOVE_WORKDAY` POST. Inventory exposes
+  an opaque SHA-256 generation bound to both physical row IDs, tenant, scope
+  and reciprocal dates, only for complete writer-owned future ADMIN pairs.
+  Whole-pair and one-half replacement invalidate the old generation.
+- Transaction uses sorted dual date advisory locks, a bounded short calendar
+  table SHARE ROW EXCLUSIVE lock, TEAM FOR SHARE, explicit ReadCommitted and
+  5s lock / 10s transaction bounds. The table lock also stabilizes absent
+  organization parents against legacy writers without advisory cooperation.
+  It serializes calendar writes briefly across tenants; no external IO occurs
+  under locks. Exact full-row CAS soft-deletes both originals with one common
+  timestamp/actor, then one audit receipt; any second-CAS/audit failure rolls
+  the first change back. No schema or existing writer changes.
+- TEAM reversal rejects a revealed Route baseline that differs from either
+  frozen pair row. Route mutation, AGENT moves, general update/delete and
+  break policy remain excluded. Legacy/malformed pairs fail closed.
+- Versioned strict old/new audit receipts bind full original snapshots, both
+  IDs, tenant/scope/dates/generation and original reversal actor. Replay checks
+  only those original rows and exact tombstone/provenance snapshots; missing,
+  duplicate or altered receipts are rejected. A later authorized actor may
+  acknowledge a completed reversal after dates pass or TEAM becomes inactive;
+  current replacements are neither read as the replay target nor changed.
+- Existing calendar sections retained. Source-only inline confirmation reviews
+  scope and both dates. A synchronous shared mutation token blocks same-tick
+  double submit; tenant/principal/target fences discard obsolete responses.
+  Unknown transport/commit outcomes retain the exact generation-bound retry.
+  RU/EN/AZ copy and existing voice guide updated without generated narration.
+- Current-tree bounded Vitest: 11 files / 148 tests PASS in 8.48s; real-PG file
+  12 tests SKIPPED locally because DB URL was explicitly removed. Scoped ESLint,
+  i18n parity (23,918 keys; RU/AZ missing=0 extra=0) and diff whitespace PASS.
+- Real PostgreSQL proof suite now contains 12 cases (2 retained + 10 new):
+  actual lock waits, concurrent reversal, second-CAS and audit-insert rollback,
+  whole/half replacement ABA, missing receipt, changed/inserting parent Route
+  state and restricted UPDATE-privileged tenant-RLS role. Tests use real SQL,
+  deterministic bounded barriers, pg_stat_activity/pg_locks wait evidence and
+  full persisted-state comparisons. Required existing static-checks CI runs
+  this file with PostgreSQL16; no CI/baseline/protection changes.
+- Real PG, full typecheck, production build, full suite, browser/AT/device,
+  Android/load/chaos: NOT RUN locally under Contabo placement contract. CI,
+  independent exact-head review, publication, required gates and release are
+  pending; implementation is not yet production evidence.
+- Progress remains DONE81/161, GATES14/15, C8 36%, overall59%, 80 non-DONE.
+  WF-C8-007 remains PARTIAL; broader calendar editing is outside this slice.
+- Current result: bounded007f source and proofs implemented, local targeted
+  checks GREEN. Last action: tests/lint/translations. Precise stopping point:
+  implementation checkpoint before independent exact-head review. Next action:
+  review, fix any findings, publish successor PR and run protected CI/release.
+
+
+## 2026-09-30 — #511 published; exact-head independent review GREEN
+
+- Published successor PR https://github.com/rashadoni/leaddrive-v2/pull/511
+  from `codex/workforce-completion-part14`, exact source/checkpoint HEAD
+  `3b82742562086c7039e5131aed708ba4db4eb834`; fresh main remained
+  `77a5c48080e4297c666bde00112fbba2fc071636` before publication. Attached
+  PR to the current Codex task. Draft converted ready to trigger full gates.
+- Independent read-only full-range review of exact clean3b827425/base77a5c480
+  GREEN P0=0 P1=0 P2=0 P3=0. All18 paths inspected; reviewer independently
+  recomputed full18paths/173,267bytes/SHA256
+  `fa2c55f5894b51cc4e922f16f5de88e47f047f2387d9881dc6113e48f8d08eb3`
+  and non-doc14paths/134,914bytes/SHA256
+  `27a4efa51d1cb178d13a7f3933c00dec15ea68dd3718020524ab5099b3cfc4b9`.
+  All4 durable document prefixes append-only. No GitHub review context created.
+- Review covered both-ID generation/ABA, exact two-row CAS and one audit,
+  strict original-row receipt replay, changed/absent parent Route state,
+  bounded table/date locks, restricted tenant-RLS SQL proof fixtures and UI
+  exact retry/context fencing. API-test author reviewed independently authored
+  service/helper/UI/SQL proofs; current148PASS/12localSKIP receipt reconciled.
+- Required branch-protection contexts re-read: exactly pr-scope/static-checks/
+  typecheck/runner-policy/scan, all bound to GitHub Actions app15368. Existing
+  policy unchanged. Ready PR run36747573309 pending; draft skipped heavy gates
+  are not credited. Runner36747473558 and scan36747473372 PASS exact3b.
+- Visible release feature list shown: ORG/TEAM atomic pair cancellation,
+  source-only confirmation of both dates/scope and exact unknown-outcome retry.
+  Existing autonomous release authorization and user continuation remain active.
+- Current result: independent exact-source review GREEN; PR/CI in progress.
+  Last action: publication and review. Precise stopping point: pending full
+  static/type gates, including real PG12cases. Next action: inspect gate results,
+  fix any defects without baseline changes, fresh-main guard, protected merge
+  and normal deploy/public SHA verification. Progress remains81/161,14/15,
+  C8 36%,overall59%,80 non-DONE. This append is local release-receipt work and
+  does not alter the published/reviewed source HEAD.
+
+
+## 2026-09-30 — #511 real PostgreSQL and static gate receipts
+
+- Primary static-checks job109997700289 of PR run36747573309 SUCCESS,
+  completed2026-09-30T17:06:59Z. Exact PR head3b827425; CI checked synthetic
+  merge3d9ec36 into unchanged main77a5c480. No other source candidate credited.
+- Real calendar PostgreSQL12/12 PASS, no skips,2060ms; full Workforce
+  shared-lock gate3files/33tests PASS11.80s. This supersedes local NOT RUN only
+  for these CI SQL cases; local host still did not run PostgreSQL tests.
+- Real concurrency, first-CAS and both-CAS/audit rollback, whole/half ABA,
+  original receipt replay, noncooperating parent Route writers and restricted
+  UPDATE-only/NOBYPASSRLS tenant behavior now have executed CI evidence.
+- Blocking full unit baseline18failing files/18accepted: no new failures and
+  every baseline entry still fails (no stale entries). Existing baseline was
+  not edited. Event-platform assets/migrations/concurrency, Demo DB constraints,
+  legacy-client rollback and PII guard also succeeded in this static job.
+- Independent read-only primary-job-log verification agrees; transient receipt
+  /tmp/workforce-511-static-109997700289.log. Typecheck remains pending and is
+  not implied by this static receipt. Next action: blocking TypeScript results,
+  fresh-main check, protected merge and deploy/public SHA proof.
+
+
+## 2026-09-30 — #511 blocking TypeScript failure corrected; new exact head required
+
+- Initial run36747573309 typecheck109997700539 FAIL on one new gated TS2345
+  in calendar-configuration.ts partnerDates.map(asDatabaseDate). Syntax/missing
+  module/undefined-name gate passed, but defect baseline correctly blocked:
+  67gated pairs vs66accepted,1201advisory diagnostics. No merge occurred.
+- Root cause: global Prisma export is untyped; input.db ?? prisma lost the
+  generated client types, allowing the new Set/date list to infer unknown[].
+  Added explicit PrismaClient annotations only to the inventory and reversal
+  DB variables. The new transaction now checks selected fields/audit/CAS with
+  generated types as well. No runtime behavior or baseline/workflow changes.
+- Before bounded checks: RAM16.8GBavailable,disk342GB,memorypressure0.
+  Three affected domain/API files72tests PASS2.65s; scoped service ESLint and
+  whitespace PASS. Full typecheck remains NOT RUN locally; new exact-head
+  review and all required CI contexts must pass for the replacement candidate.
+- Earlier review/SQL/static receipts remain valid only at their recorded3b
+  source HEAD. They do not substitute for new-head CI/review. Current result:
+  type inference fix implemented and locally checked. Last action: diagnosis
+  and annotation fix. Precise stopping point: replacement checkpoint/publish.
+  Next action: independent complete exact-head review and protected CI rerun.
+
+
+## 2026-09-30 — replacement exact-head review and publication
+
+- Clean replacement `f3447658701bf82990f6bae0ad74a7e9aa604d20` pushed to
+  PR#511; origin/main re-fetched and remained77a5c480. New PR run36750072998;
+  runner36750072881 and scan36750072763 already PASS exactf344. No baseline,
+  workflows or protection changes; full static/type gates pending.
+- Independent full-range exact-f344 review GREEN P0=P1=P2=P3=0, base77a5c480.
+  Full18paths/189,397bytes/SHA256
+  `400c124cd569b6815d8f1b1d07309a0089f641ee8ede69c49df4da55405c7692`;
+  non-doc14paths/135,323bytes/SHA256
+  `a9b493c4ba75a44801dab6a09c3d519a2a50bdfb6b821589c8c91de43e9672fc`.
+  Both typed DB scopes, full CAS/audit/result shapes inspected; all other
+  implementation/proof bytes identical to3b. Four doc prefixes append-only.
+- Current result: reviewed/published replacement; gates pending. Last action:
+  independent review and push. Precise stopping point: ready CI36750072998.
+  Next action: exact-head five gates, fresh main, protected merge/deploy/SHA.
+
+
+## 2026-09-30 — replacement PostgreSQL/static gates GREEN
+
+- Replacement PR run36750072998 exactf344765: static110006239203 SUCCESS
+  completed2026-09-30T17:30:26Z. Checkout synthetic merge6d43f34 of exactf344
+  into unchanged77a5c480; independent primary-log review confirms provenance.
+- Calendar real PostgreSQL12/12 PASS, no skips,1486ms; entire shared-lock gate
+ 3files/33tests PASS14.07s. Blocking full-unit baseline18/18accepted failures,
+  no new failures and every baseline entry still fails (no stale entries).
+  Primary transient log /tmp/workforce511staticf344.log. No gate weakened.
+- pr-scope,runner-policy,scan and static-checks are GREEN for replacement;
+  typecheck remains pending. Merge/deploy not yet run. Next action: complete
+  exact-head type gate, fresh-main check, normal protected release.
+
+
+## 2026-09-30 — #511 exact-head gates GREEN and protected merge
+
+- Final reviewed/published source head
+  `f3447658701bf82990f6bae0ad74a7e9aa604d20`; all five check runs completed
+  SUCCESS, bound to Actions app15368 and exactf344: pr-scope110006119904,
+  static-checks110006239203, typecheck110006239159 (run36750072998),
+  runner-policy110006117684 (36750072881), scan110006116579 (36750072763).
+  PR production build110006121943 SKIPPED by existing policy.
+- Both blocking TypeScript gates PASS: no syntax/missing-module/undefined-name
+  errors; defect baseline66/66gated pairs, no new errors/stale entries.
+  Full advisory tsc exited2 with1191 existing diagnostics; no claim of a clean
+  zero-diagnostic compilation. Primary log /tmp/workforce511typef344.log.
+- Re-read remote main immediately before normal merge: exact
+  `77a5c48080e4297c666bde00112fbba2fc071636`; PRhead exactf344, MERGEABLE/CLEAN.
+  Local uncommitted differences were only append-only receipt documents;
+  reviewed source/tests unchanged. Final PR body records final implementation
+  and current validation. Existing autonomous authorization used, no admin
+  bypass, no protected status/protection/baseline edits or direct main push.
+- PR https://github.com/rashadoni/leaddrive-v2/pull/511 MERGED normally with
+  --merge --match-head-commit f344765 at2026-09-30T17:37:48Z; merge main SHA
+  `67c72970ca139591aee06c561960e3fedc2791ca`.
+- Normal main -> deploy.yml run is now awaited; no direct server deployment
+  or speculative duplicate workflow dispatch. Production artifact/ping proof
+  still pending. Current result: bounded007f merged, release pending. Last
+  action: protected merge after fresh-main/exact-head gates. Precise stopping
+  point: await automatic SHA-bound deploy67c72970. Next action: normal deploy
+  success, independent public ping/build-info exact SHA, release receipts.
+- Progress unchanged81/161,14/15,C8 36%,overall59%,80 non-DONE; broader007 row
+  remains PARTIAL. Browser/Android/load/device/pilot NOT RUN; real SQL and
+  hosted CI regression gates above actually ran.
+
+
+## 2026-09-30 — receipt wording correction and bounded type-only follow-up
+
+- Independent receipt-integrity review of clean9c9bc66c found P3=1 in wording,
+  P0=P1=P2=0. Earlier phrase “1191 existing diagnostics” is superseded: the
+  exactf344 primary log has1191 TOTAL advisory diagnostics, including newly
+  introduced nongated TS2367 at reversal UI:801. Both configured BLOCKING
+  gates genuinely passed66/66; their success does not prove absence of every
+  new advisory diagnostic. No zero-diagnostic compilation claim is made.
+- TS2367 is a redundant scope===AGENT guard inside a scope!==AGENT-rendered
+  button branch. It changes no runtime outcome. A minimal follow-up will
+  remove that redundant comparison while retaining the ORG/TEAM action fence,
+  generation/date guard, mutation/context protection and all existing gates.
+  No baseline adjustment, broad cleanup, general editing or scope expansion.
+- Reviewer verified all14 non-doc blobs identical across reviewedf344,
+  local9c and merged67; merged full diff identity exactly matches reviewedf344.
+  Source release#511 and deploy36752762555 remain separately attributed;
+  deployment/public67 proof still pending. Next action: isolated follow-up in
+  same worktree, scoped verification/review/CI, finish67 public proof, then
+  normal protected follow-up release. Progress unchanged81/161,14/15,59%.
+
+
+## 2026-09-30 — minimal reversal UI type follow-up checkpoint
+
+- Same dedicated worktree, successor codex/workforce-completion-part15 from
+  fresh main67c72970. Part14 receipt checkpoints9c9bc66c/a7571422 preserved
+  and cherry-picked asd7ff115f6/40a0832aa; no canonical/unrelated changes.
+- Only runtime/source diff: remove redundant scope===AGENT from the click
+  handler already rendered solely under scope!==AGENT and ORG/activeTEAM.
+  Keep required pair date/generation guard and all mutation/context/confirmation
+  fences. This resolves the new nongated TS2367 without any baseline or gate
+  adjustment; no new user-visible behavior or API/domain/schema change.
+- Before targeted check RAM16.5GBavailable,disk342GB,memorypressure0.
+  Existing UI contract1file/12tests PASS1.54s; scoped UI ESLint and whitespace
+  PASS. Full local typecheck/build/browser/suite/Android/load NOT RUN under
+  host placement rules; complete required hosted gates and production build
+  will run for follow-up before release. No implementation-mirroring test added.
+- Original #511 normal deploy36752762555 exact67c72970 now building standalone;
+  public artifact proof still pending. Follow-up will merge only after exact
+  review/five gates and after original release has a separately recorded proof.
+- Current result: one-line advisory fix ready. Last action: targeted UI check.
+  Precise stopping point: follow-up checkpoint/review/PR. Next action: required
+  CI in parallel with original deployment, then protected release. Roadmap
+  unchanged81/161,14/15,C8 36%,overall59%,80 non-DONE.

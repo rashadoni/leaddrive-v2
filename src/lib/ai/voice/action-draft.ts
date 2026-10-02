@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import type { AuthResult } from "@/lib/api-auth"
 import { getOrgModuleContext } from "@/lib/api-auth"
+import { moduleContextForUser } from "@/lib/user-module-access"
 import { prisma, logAudit } from "@/lib/prisma"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { checkPermission } from "@/lib/permissions"
@@ -324,7 +325,7 @@ async function assertActionAccess(
   payload: JsonObject,
 ): Promise<void> {
   const definition = getAiVoiceActionDefinition(actionType)
-  const org = await getOrgModuleContext(auth.orgId)
+  const org = moduleContextForUser(await getOrgModuleContext(auth.orgId), auth)
   for (const permission of definition.permissions) {
     if (
       !checkPermission(auth.role, permission.module, permission.action)

@@ -551,6 +551,74 @@ describe("requireAuth", () => {
     expect(json.message || json.error).toContain("not enabled")
   })
 
+  describe("modules an admin hid from the caller", () => {
+    const restricted = (role: string, hiddenModules: unknown) => ({
+      user: { ...validSession.user, role, hiddenModules },
+    })
+    // The tenant has the module and the role may read it: only the per-user
+    // list can refuse. `energy-utilities` is the permission scope, `energy` is
+    // the group-module it bridges to — and the id an admin unticks.
+    const scope = (resolved: string) => {
+      vi.mocked(resolveModuleFromPath).mockReturnValue(resolved as any)
+      vi.mocked(methodToAction).mockReturnValue("read" as any)
+      vi.mocked(checkPermission).mockReturnValue(true)
+      vi.mocked(hasModule).mockReturnValue(true)
+    }
+    const energyRequest = () => requireAuth(makeRequest("/api/v1/energy-utilities/meters"))
+
+    it("returns 403 though the tenant has the module and the role may read it", async () => {
+      vi.mocked(auth).mockResolvedValue(restricted("sales", ["energy"]) as any)
+      scope("energy-utilities")
+      const result = await energyRequest()
+      expect(result).toBeInstanceOf(NextResponse)
+      expect((result as NextResponse).status).toBe(403)
+      // Worded apart from the tenant-level refusal.
+      expect((await (result as NextResponse).json()).message).toContain("not available to your account")
+    })
+
+    it("hides Workforce HRM through its capability-gated scope", async () => {
+      vi.mocked(auth).mockResolvedValue(restricted("manager", ["workforce-hrm"]) as any)
+      scope("workforce")
+      const result = await requireAuth(makeRequest("/api/v1/workforce/timesheet"))
+      expect((result as NextResponse).status).toBe(403)
+    })
+
+    it("lets the same person into a module that was not hidden, carrying the list", async () => {
+      vi.mocked(auth).mockResolvedValue(restricted("sales", ["finance"]) as any)
+      scope("energy-utilities")
+      const result = await energyRequest()
+      expect(result).toMatchObject({ userId: "user-1", role: "sales", hiddenModules: ["finance"] })
+    })
+
+    it("never restricts an admin", async () => {
+      vi.mocked(auth).mockResolvedValue(restricted("admin", ["energy"]) as any)
+      scope("energy-utilities")
+      const result = await energyRequest()
+      expect(result).not.toBeInstanceOf(NextResponse)
+      expect(result).not.toHaveProperty("hiddenModules")
+    })
+
+    it("ignores a malformed list rather than failing the request", async () => {
+      vi.mocked(auth).mockResolvedValue(restricted("sales", "energy") as any)
+      scope("energy-utilities")
+      expect(await energyRequest()).not.toBeInstanceOf(NextResponse)
+    })
+
+    // The `mtm` scope holds two capabilities; only the wrapper that asked for
+    // the deferral knows which one the route is, so requireAuth must not refuse
+    // an HRM route because Route & Field was hidden.
+    it("leaves the decision to the MTM wrapper when the legacy gate is deferred", async () => {
+      vi.mocked(auth).mockResolvedValue(restricted("manager", ["mtm"]) as any)
+      scope("mtm")
+      const deferred = await requireAuth(
+        makeRequest("/api/v1/mtm/attendance"), "mtm" as any, "read" as any, { deferLegacyModuleGate: "mtm" },
+      )
+      expect(deferred).toMatchObject({ hiddenModules: ["mtm"] })
+      const direct = await requireAuth(makeRequest("/api/v1/mtm/routes"), "mtm" as any, "read" as any)
+      expect((direct as NextResponse).status).toBe(403)
+    })
+  })
+
   it("bridges a permissions-name module to its ModuleId and gates it (energy-utilities → energy)", async () => {
     // resolveModuleFromPath returns the permissions vocabulary "energy-utilities"
     // which is NOT a ModuleId; the bridge maps it to "energy" so the gate runs
