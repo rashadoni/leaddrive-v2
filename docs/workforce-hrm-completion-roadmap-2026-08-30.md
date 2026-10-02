@@ -4565,3 +4565,45 @@ from this worktree.
   Next action: their actual primary results, final fresh-main merge and normal
   deploy/public exact merged SHA. Progress81/161,14/15,C8 36%,overall59%,
   80non-DONE,007 PARTIAL; no whole-module completion claim.
+
+
+## 2026-10-02 — PR528 protected merge and exact deployment pending
+
+- Published exactfd02801cbe38d3a8cac5fc693b8ae18f3a993c1b completed all five
+  required GitHub Actions app15368 contexts SUCCESS: pr-scope111035118081,
+  static111035228462,type111035228458 in37066398689; runner-policy37066362302/
+  111034994723,scan37066362461/111034995239. Required set/strict=false unchanged;
+  no bypass/baseline weakening, draft skips excluded. Primary static log
+  /tmp/workforce528-fd-static.log: PostgreSQL33/33 in14.55s,calendar12/12 in1576ms,
+  unitbaseline18/18. Type /tmp/workforce528-fd-type.log: no syntax/missing-module/
+  undefined-name errors,66/66baseline,1195advisory diagnostics,tsc exit2.
+  Actual browser37066398649 seven cases PASS; source/artifact reviews GREEN.
+- Receipt-only cleana2981621ff341b31c01bdd096dcc25fa4f94a2d7 vs publishedfd
+  independently GREEN P0=0 P1=0 P2=0 P3=0:4paths/16,248bytes/SHA256
+  ca6217bb7dd3747136a5996cd0a7263bc037e14cf810efb8a4b0e2dfb1ffc5d0.
+  Source4/seven historical JSONs exact; eighth original2760/4088bb97 exact;
+  docs append-only with no premature release claim.
+- Final fresh fetch/main and live PR base both420e5be1, exactheadfd,draftfalse,
+  clean mergeable state. Visible release list stated: focus/scroll confirmation
+  and late exact-retry explanation. Existing explicit autonomous release
+  authorization applies; no repeat permission requested. Normal protected
+  gh pr merge --merge --match-head-commit fd02801c used, no --admin/force/delete.
+- PR528 MERGED at2026-10-02T21:40:29Z as
+  bb314679b786cc3294a39927141bfdc15e1cc4b4. Fetch verified parents
+  [420e5be1285a68954d45653d9f0740f212f6adea,fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b]
+  and entire merged tree byte-identical to the reviewed/CI head. No task source
+  change during release. Subsequent main71b0d3d06c42dc4ff05a49ff3db195f1a577dd75
+  arrived after this merge; its deployment is not substituted for our receipt.
+- Normal push/main deploy.yml run37068227458 for exactbb314679 started21:40:31Z,
+  in_progress. Subsequent run37068280448 for71b0 initiallypending. Production
+  remains only13.140.132.245,/opt/leaddrive-v2, immutable workflow artifact route;
+  no manual copy/build/server deploy, Azure or retired host used. Exact own
+  merged SHA must be captured from public build-info before release completion.
+- Current status: PR528 merged after five GREEN gates and final fresh-main.
+  Last action: normal merge and verified parents/tree. Precise stopping point:
+  normal exactbb314679 production build/deployment/public proof pending.
+  Next action: wait37068227458, verify ping/build-info artifactSha exactlybb314679,
+  append release receipts and preserve clean successor checkpoint. Progress
+  remains81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL. Authenticated
+  production business/browser,Android,AT,load,pilot NOT RUN; PR build SKIPPED,
+  production build CI pending.
