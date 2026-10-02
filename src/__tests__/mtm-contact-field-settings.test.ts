@@ -168,7 +168,8 @@ describe("MTM settings: the client card in one block", () => {
     await open()
     expect([...container.querySelectorAll('[role="tab"]')].map((item) => item.textContent)).toEqual([
       "Kateqoriyalar",
-      "Sahələr",
+      // Four fields are off until a tenant asks for them (see below).
+      "Sahələr · 4 gizli",
       "İxtisaslar · 34",
     ])
     expect(panel("categories").hidden).toBe(false)
@@ -205,14 +206,14 @@ describe("MTM settings: client fields", () => {
     await toggle("specialtyName")
     await toggle("coverage")
     expect(row("specialtyName").dataset.state).toBe("hidden")
-    expect(tab("fields").textContent).toContain("Sahələr · 2 gizli")
+    expect(tab("fields").textContent).toContain("Sahələr · 6 gizli")
     expect(panel("fields").textContent).toContain("Yadda saxlanmamış dəyişikliklər var")
     expect(storedValue("contactHiddenFields")).toBeUndefined()
 
     await save("fields")
     expect(toast.success).toHaveBeenCalledWith("Yadda saxlanıldı")
-    expect(storedValue("contactHiddenFields")).toEqual(["specialtyName", "coverage"])
-    expect((await getMtmSettings(ORG)).contactHiddenFields).toEqual(["specialtyName", "coverage"])
+    expect(storedValue("contactHiddenFields")).toEqual(["specialtyName", "specialtyCode", "coverage", "homePhone", "messengerPhone", "viberPhone"])
+    expect((await getMtmSettings(ORG)).contactHiddenFields).toEqual(["specialtyName", "specialtyCode", "coverage", "homePhone", "messengerPhone", "viberPhone"])
     expect(panel("fields").textContent).toContain("Dəyişiklik yoxdur")
     // Doctors no longer have a specialty, so their category stops saying so.
     expect(container.querySelector('[data-testid="mtm-contact-category-specialty-note"]')).toBeNull()
@@ -220,7 +221,26 @@ describe("MTM settings: client fields", () => {
     // And back on.
     await toggle("specialtyName")
     await save("fields")
-    expect(storedValue("contactHiddenFields")).toEqual(["coverage"])
+    expect(storedValue("contactHiddenFields")).toEqual(["specialtyCode", "coverage", "homePhone", "messengerPhone", "viberPhone"])
+  })
+
+  it("keeps the specialty code and three spare phones off until a tenant switches them on", async () => {
+    // Owner, 2026-10-02, on the client form: «для чего два типа кода… клиент
+    // голову возьмёт руками и убежит». The code repeats the specialty next to
+    // it; nobody on production had filled the three phones.
+    expect((await getMtmSettings(ORG)).contactHiddenFields).toEqual(["specialtyCode", "homePhone", "messengerPhone", "viberPhone"])
+    await open()
+    await click(tab("fields"))
+    expect(row("specialtyCode").dataset.state).toBe("hidden")
+    expect(row("specialtyName").dataset.state).toBe("shown")
+    expect(row("mobilePhone").dataset.state).toBe("shown")
+
+    // One switch brings the code back, and only the code.
+    await toggle("specialtyCode")
+    expect(row("specialtyCode").dataset.state).toBe("shown")
+    await save("fields")
+    expect(storedValue("contactHiddenFields")).toEqual(["homePhone", "messengerPhone", "viberPhone"])
+    expect((await getMtmSettings(ORG)).contactHiddenFields).toEqual(["homePhone", "messengerPhone", "viberPhone"])
   })
 
   it("stops requiring a field when it is switched off", async () => {
@@ -232,13 +252,13 @@ describe("MTM settings: client fields", () => {
     await toggle("mobilePhone")
     expect(row("mobilePhone").querySelector('input[type="checkbox"]')).toBeNull()
     await save("fields")
-    expect(storedValue("contactHiddenFields")).toEqual(["mobilePhone"])
+    expect(storedValue("contactHiddenFields")).toEqual(["specialtyCode", "mobilePhone", "homePhone", "messengerPhone", "viberPhone"])
     expect(storedValue("contactRequiredFields")).toEqual(["firstName", "lastName"])
 
     await toggle("mobilePhone")
     await tickRequired("mobilePhone")
     await save("fields")
-    expect(storedValue("contactHiddenFields")).toEqual([])
+    expect(storedValue("contactHiddenFields")).toEqual(["specialtyCode", "homePhone", "messengerPhone", "viberPhone"])
     expect(storedValue("contactRequiredFields")).toEqual(["firstName", "lastName", "mobilePhone"])
   })
 

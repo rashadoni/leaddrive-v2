@@ -1,8 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { BadgeCheck, CircleAlert, History, Pencil, ShieldCheck } from "lucide-react"
+import { BadgeCheck, CircleAlert, History, Pencil, Settings2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,7 +20,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { createDateFormatter } from "@/lib/format-date"
 import {
-  CONTACT_CATEGORY_APPROVAL_REFERENCE,
   contactCategoryFieldDisplayValue,
   resolveContactCategory,
 } from "@/lib/mtm/contact-category-editor"
@@ -82,6 +82,28 @@ type DictionaryChangeRequest = {
 }
 
 type ReviewTarget = { id: string; decision: "APPROVED" | "REJECTED" }
+
+const PENDING_REQUEST_STATUSES = ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"]
+
+function isPendingCategoryRequest(request: { kind: string; status: string }): boolean {
+  return request.kind === "DICTIONARY_ASSIGNMENTS" && PENDING_REQUEST_STATUSES.includes(request.status)
+}
+
+/**
+ * Whether the categories block has anything to show this viewer. The card
+ * asks too, so a tab with nothing in it can say so instead of standing blank.
+ */
+export function contactCategoriesBlockShown(input: {
+  dictionaries: readonly unknown[]
+  assignments: readonly unknown[]
+  changeRequests: ReadonlyArray<{ kind: string; status: string }>
+  canManage: boolean
+}): boolean {
+  return input.canManage
+    || input.dictionaries.length > 0
+    || input.assignments.length > 0
+    || input.changeRequests.some(isPendingCategoryRequest)
+}
 
 function localized(labels: Labels, locale: string): string {
   return locale.startsWith("az") ? labels.az : locale.startsWith("ru") ? labels.ru : labels.en
@@ -168,10 +190,17 @@ export function MtmContactDictionaryAssignmentPanel({
     activeEntries: clientTypeDictionary?.entries,
   })
   const clientCategoryFields = [...(clientCategory.entry?.fields ?? [])].sort((left, right) => left.order - right.order)
-  const pendingRequests = changeRequests.filter((request) => (
-    request.kind === "DICTIONARY_ASSIGNMENTS"
-    && ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"].includes(request.status)
-  ))
+  // A kind of category is on the card once the tenant has a list for it or
+  // the client already carries a value from one. A tenant with no lists at
+  // all saw four columns of «нет подписанного справочника / не назначено»
+  // (owner, 2026-10-02: «тут чёрт голову сломает»).
+  const groups = ([
+    ["CLIENT_TYPE", "clientType"],
+    ["PSYCHOTYPE", "psychotype"],
+    ["PRODUCT_CATEGORY", "productCategories"],
+    ["BRAND_CATEGORY", "brandCategories"],
+  ] as const).filter(([kind]) => dictionaryByKind.has(kind) || currentByKind(kind).length > 0)
+  const pendingRequests = changeRequests.filter(isPendingCategoryRequest)
   const requestedValues = (payload: unknown): string => {
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) return t("proposalUnavailable")
     const value = payload as Record<string, unknown>
@@ -220,7 +249,7 @@ export function MtmContactDictionaryAssignmentPanel({
 
   const assignmentPayload = () => ({
     expectedStateHash: stateHash,
-    ...(reason.trim() ? { reason: reason.trim() } : {}),
+    ...(!canManage && reason.trim() ? { reason: reason.trim() } : {}),
     clientType: clientTypeDictionary && clientTypeCode
       ? {
           dictionaryId: clientTypeDictionary.id,
@@ -313,40 +342,47 @@ export function MtmContactDictionaryAssignmentPanel({
     ) : <span className="text-sm text-muted-foreground">{t("empty")}</span>
   }
 
+  if (!contactCategoriesBlockShown({ dictionaries, assignments, changeRequests, canManage })) return null
+  if (groups.length === 0 && pendingRequests.length === 0 && historical.length === 0) {
+    // Nothing to choose from yet, and only the person who can create the
+    // lists gets this far: tell them where.
+    return (
+      <section data-testid="mtm-contact-categories-empty" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+        <div className="grid gap-1">
+          <h2 className="text-base font-semibold">{t("title")}</h2>
+          <p className="text-sm text-muted-foreground">{t("noLists")}</p>
+        </div>
+        <Button asChild variant="outline" className="min-h-11">
+          <Link href="/mtm/settings"><Settings2 className="h-4 w-4" />{t("openSettings")}</Link>
+        </Button>
+      </section>
+    )
+  }
+
   return (
     <section className="rounded-2xl border border-zinc-200 bg-card dark:border-zinc-700">
-      <div className="flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="rounded-xl bg-primary/10 p-2 text-primary"><ShieldCheck className="h-5 w-5" /></div>
-          <div className="grid gap-1">
-            <h2 className="text-base font-semibold">{t("title")}</h2>
-            <p className="max-w-3xl text-sm text-muted-foreground">{t("description")}</p>
-          </div>
+          <h2 className="text-base font-semibold">{t("title")}</h2>
         </div>
-        {(canManage || canRequestChanges) ? (
-          <Button type="button" variant="outline" className="min-h-11" onClick={openEditor} disabled={!dictionaries.length && !current.length}>
+        {(canManage || canRequestChanges) && dictionaries.length ? (
+          <Button type="button" variant="outline" className="min-h-11" onClick={openEditor}>
             <Pencil className="h-4 w-4" />
             {canManage ? t("edit") : t("suggest")}
           </Button>
         ) : null}
       </div>
 
-      <div className="grid border-t border-zinc-200 dark:border-zinc-700 md:grid-cols-2 xl:grid-cols-4 md:divide-x md:divide-zinc-200 md:dark:divide-zinc-700">
-        {([
-          ["CLIENT_TYPE", "clientType"],
-          ["PSYCHOTYPE", "psychotype"],
-          ["PRODUCT_CATEGORY", "productCategories"],
-          ["BRAND_CATEGORY", "brandCategories"],
-        ] as const).map(([kind, label]) => (
-          <div key={kind} className="grid content-start gap-3 border-b border-zinc-200 p-4 last:border-b-0 dark:border-zinc-700 lg:border-b-0 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold">{t(label)}</h3>
-              {dictionaryByKind.has(kind) ? (
-                <span className="text-xs text-muted-foreground">v{dictionaryByKind.get(kind)?.version}</span>
-              ) : (
-                <span className="text-xs font-medium text-amber-700 dark:text-amber-300">{t("dictionaryMissing")}</span>
-              )}
-            </div>
+      {groups.length ? <div className={cn(
+        "grid border-t border-zinc-200 dark:border-zinc-700 md:divide-x md:divide-zinc-200 md:dark:divide-zinc-700",
+        groups.length === 2 && "md:grid-cols-2",
+        groups.length === 3 && "md:grid-cols-3",
+        groups.length === 4 && "md:grid-cols-2 xl:grid-cols-4",
+      )}>
+        {groups.map(([kind, label]) => (
+          <div key={kind} data-testid={`mtm-contact-category-group-${kind}`} className="grid content-start gap-3 border-b border-zinc-200 p-4 last:border-b-0 dark:border-zinc-700 lg:border-b-0 sm:p-5">
+            <h3 className="text-sm font-semibold">{t(label)}</h3>
             {kind === "CLIENT_TYPE" && !assignedClientType && clientCategory.entry ? (
               <div className="flex flex-wrap gap-2">
                 <span className="inline-flex min-w-0 items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
@@ -364,13 +400,9 @@ export function MtmContactDictionaryAssignmentPanel({
                 ))}
               </dl>
             ) : null}
-            {dictionaryByKind.get(kind)?.approvalReference
-              && dictionaryByKind.get(kind)?.approvalReference !== CONTACT_CATEGORY_APPROVAL_REFERENCE ? (
-              <span className="text-xs text-muted-foreground">{t("approval", { value: dictionaryByKind.get(kind)!.approvalReference! })}</span>
-            ) : null}
           </div>
         ))}
-      </div>
+      </div> : null}
 
       {pendingRequests.length ? (
         <div className="grid gap-3 border-t border-zinc-200 bg-amber-50/60 p-4 dark:border-zinc-700 dark:bg-amber-950/10 sm:p-5">
@@ -403,7 +435,7 @@ export function MtmContactDictionaryAssignmentPanel({
               <div key={assignment.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                 <AssignmentBadge assignment={assignment} locale={locale} />
                 <span className="text-xs text-muted-foreground">
-                  {dateFormatter.format(new Date(assignment.effectiveFrom))} — {dateFormatter.format(new Date(assignment.effectiveTo!))} · v{assignment.dictionary.version}
+                  {dateFormatter.format(new Date(assignment.effectiveFrom))} — {dateFormatter.format(new Date(assignment.effectiveTo!))}
                 </span>
               </div>
             ))}
@@ -419,10 +451,9 @@ export function MtmContactDictionaryAssignmentPanel({
               <DialogDescription>{t("editDescription")}</DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+            {clientTypeDictionary ? <div className="grid gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
               <div className="grid gap-2">
                 <Label htmlFor="contact-client-type">{t("clientType")}</Label>
-                {clientTypeDictionary ? (
                   <Select id="contact-client-type" className="min-h-11" value={clientTypeCode || "__none__"} onChange={(event) => {
                     setClientTypeCode(event.target.value === "__none__" ? "" : event.target.value)
                     setClientTypeValues({})
@@ -430,9 +461,8 @@ export function MtmContactDictionaryAssignmentPanel({
                     <option value="__none__">{t("none")}</option>
                     {clientTypeDictionary.entries.map((entry) => <option key={entry.code} value={entry.code}>{localized(entry.labels, locale)}</option>)}
                   </Select>
-                ) : <p className="text-sm text-amber-700 dark:text-amber-300">{t("dictionaryMissingHelp")}</p>}
               </div>
-              {(clientTypeDictionary?.entries.find((entry) => entry.code === clientTypeCode)?.fields ?? [])
+              {(clientTypeDictionary.entries.find((entry) => entry.code === clientTypeCode)?.fields ?? [])
                 .slice().sort((left, right) => left.order - right.order)
                 .map((field) => {
                   const label = localized(field.labels, locale)
@@ -445,27 +475,24 @@ export function MtmContactDictionaryAssignmentPanel({
                   const inputType = field.type === "PHONE" ? "tel" : field.type === "EMAIL" ? "email" : field.type === "NUMBER" ? "number" : field.type === "DATE" ? "date" : "text"
                   return <div key={field.key} className="grid gap-2"><Label htmlFor={`client-type-${field.key}`}>{label}{field.required ? " *" : ""}</Label><Input id={`client-type-${field.key}`} type={inputType} value={clientTypeValues[field.key] ?? ""} onChange={(event) => setClientTypeValues((currentValues) => ({ ...currentValues, [field.key]: event.target.value }))} required={field.required} /></div>
                 })}
-            </div>
+            </div> : null}
 
-            <div className="grid gap-2">
+            {psychotypeDictionary ? <div className="grid gap-2">
               <Label htmlFor="contact-psychotype">{t("psychotype")}</Label>
-              {psychotypeDictionary ? (
                 <Select id="contact-psychotype" className="min-h-11" value={psychotypeCode || "__none__"} onChange={(event) => setPsychotypeCode(event.target.value === "__none__" ? "" : event.target.value)}>
                   <option value="__none__">{t("none")}</option>
                   {psychotypeDictionary.entries.map((entry) => (
                     <option key={entry.code} value={entry.code}>{localized(entry.labels, locale)}</option>
                   ))}
                 </Select>
-              ) : <p className="text-sm text-amber-700 dark:text-amber-300">{t("dictionaryMissingHelp")}</p>}
-            </div>
+            </div> : null}
 
             {([
               [productDictionary, productCodes, setProductCodes, "productCategories"],
               [brandDictionary, brandCodes, setBrandCodes, "brandCategories"],
-            ] as const).map(([dictionary, values, update, label]) => (
+            ] as const).map(([dictionary, values, update, label]) => (dictionary ? (
               <fieldset key={label} className="grid gap-3">
                 <legend className="text-sm font-medium">{t(label)}</legend>
-                {dictionary ? (
                   <div className="grid gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-2">
                     {dictionary.entries.map((entry) => (
                       <label key={entry.code} className="flex min-h-10 cursor-pointer items-start gap-2 rounded-lg px-2 py-2 hover:bg-muted/60">
@@ -475,21 +502,18 @@ export function MtmContactDictionaryAssignmentPanel({
                           onChange={() => toggleCode(entry.code, [...values], update)}
                           className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-zinc-600"
                         />
-                        <span className="grid gap-0.5 text-sm">
-                          <span>{localized(entry.labels, locale)}</span>
-                          <span className="text-xs text-muted-foreground">{entry.code}</span>
-                        </span>
+                        <span className="text-sm">{localized(entry.labels, locale)}</span>
                       </label>
                     ))}
                   </div>
-                ) : <p className="text-sm text-amber-700 dark:text-amber-300">{t("dictionaryMissingHelp")}</p>}
               </fieldset>
-            ))}
+            ) : null))}
 
-            <div className="grid gap-2">
-              <Label htmlFor="contact-category-reason">{canManage ? t("reasonOptional") : t("reason")}</Label>
-              <Textarea id="contact-category-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} required={!canManage} />
-            </div>
+            {/* A request to a manager explains itself; the manager's own edit does not. */}
+            {!canManage ? <div className="grid gap-2">
+              <Label htmlFor="contact-category-reason">{t("reason")}</Label>
+              <Textarea id="contact-category-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} required />
+            </div> : null}
             {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>{t("cancel")}</Button>

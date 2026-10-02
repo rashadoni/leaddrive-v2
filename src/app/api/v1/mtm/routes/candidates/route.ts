@@ -548,6 +548,17 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         ],
       })
     }
+    if (specialtyCode) {
+      // The parameter is still called `specialtyCode`, and a saved planner
+      // filter may hold a code. But the code field is off by default now, so a
+      // doctor entered without one must be found by the specialty itself.
+      contactAnd.push({
+        OR: [
+          { specialtyName: { equals: specialtyCode, mode: "insensitive" } },
+          { specialtyCode: { equals: specialtyCode, mode: "insensitive" } },
+        ],
+      })
+    }
     if (Object.keys(workplaceCustomerFilter).length > 3) {
       contactAnd.push({
         workplaces: {
@@ -571,7 +582,6 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       deletedAt: null,
       type: "DOCTOR",
       status: "ACTIVE",
-      ...(specialtyCode ? { specialtyCode } : {}),
       ...(psychotype ? {
         doctorAssessments: { some: { status: "VERIFIED", psychotype } },
       } : {}),
@@ -829,7 +839,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
             id: candidate.customer.id,
             name: candidate.customer.name,
           }))),
-          specialtyCode: strings(candidates.map((candidate) => candidate.specialtyCode)),
+          // The filter keeps its wire name; it offers the specialty a person
+          // reads, and the code only for a doctor who has nothing else.
+          specialtyCode: strings(candidates.map((candidate) => candidate.specialtyName ?? candidate.specialtyCode)),
           psychotype: strings(candidates.map((candidate) => candidate.psychotype)),
         },
         coverage: candidateCoverage.preview,
