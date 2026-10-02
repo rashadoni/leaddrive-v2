@@ -1390,3 +1390,84 @@
   remains81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL. Authenticated
   production business/browser,Android,AT,load,pilot NOT RUN; PR build SKIPPED,
   production build CI pending.
+
+
+## 2026-10-02 — PR528 exact production release and part17 successor
+
+- [PR #528](https://github.com/rashadoni/leaddrive-v2/pull/528) is released as
+  bb314679b786cc3294a39927141bfdc15e1cc4b4. Its merged tree equals reviewed
+  fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b; protected merge followed all five
+  exact-head required contexts, independent GREEN reviews and final main420
+  reconciliation. This release reveals the existing pair confirmation and
+  unknown-outcome explanation through guarded focus/scroll and preserves exact
+  retry/session/target fences. Atomic generation-bound reversal was already
+  delivered in #511/#512; #528 adds real hosted acceptance and focus fixes.
+- Normal push/main [deploy37068227458](https://github.com/rashadoni/leaddrive-v2/actions/runs/37068227458)
+  completed SUCCESS at22:03:53Z: build111041230111 SUCCESS21:54:28Z,
+  quality111041230148 SUCCESS21:50:32Z, atomic deploy/post-deploy smoke
+  111045497497 SUCCESS22:03:45Z, retention111048297579 SUCCESS22:03:52Z.
+  All scheduler, tenant-isolation, public DB-path ping, exact revision and
+  login/hashed-asset smoke steps succeeded. Manual/recovery jobs were normally
+  SKIPPED. Primary QA log confirms PostgreSQL33/33 and no new unit-baseline
+  failures; existing accepted failing baseline remains. No gate was weakened.
+- GitHub artifact11253424909, leaddrive-prod-bb314679b786cc3294a39927141bfdc15e1cc4b4,
+  created21:54:25Z,443790998bytes; GitHub archive digest SHA256
+  39dc9e0ff4a3758cf5667078debb3f29548a08f8d59005f66b795d672d4ad7d4.
+  Only13.140.132.245,/opt/leaddrive-v2 and the normal immutable workflow route
+  were used. No artifact was downloaded/built on the remote-alt development host
+  or copied manually to production.
+- Independent strict-TLS, no-cache domain reads pinned to13.140.132.245 at
+  22:03:07.291Z–22:03:16.924Z bracketed ping200/ok:true between two build-info200
+  reads, both artifactSha exactlybb314679b786cc3294a39927141bfdc15e1cc4b4.
+  builtAt2026-10-02T21:46:25Z, remoteIp13.140.132.245,TLS verification0.
+  One transient502 was observed before the successful sequence; its exact
+  first time/duration was not recorded and is NOT PROVEN. Recovery is verified.
+- Root repeated strict-TLS pinned-domain ping/build-info at22:04:24.638Z–
+  22:04:24.774Z: both200,ok:true,exact same full artifactSha and builtAt.
+  Requested literal-IP URLs also returned200 and the same bodies at22:04:24.774Z–
+  22:04:24.943Z with curl --insecure as supplementary transport only. Strict
+  literal-IP TLS earlier failed curl60/SAN mismatch; verified domain-to-IP TLS
+  supplies primary transport evidence. No claim of strict literal-IP TLS PASS.
+- Original112byte build-info SHA256
+  ea035e97901cf7efea972aaeb31a21ea1d1ed04f7efe392e905f5d243d5a0466;
+  original11byte ping SHA256
+  4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93.
+  Six native JSON originals are preserved under docs/evidence with prefix
+  workforce-c8-calendar-release-2026-10-02-bb314679: build-info,ping,public,
+  workflow,artifacts,independent-public. Independent capture metadata retains
+  normalRunSuccessStillRequired:true from its pre-completion capture; the later
+  original workflow SUCCESS and this receipt supersede that historical flag.
+  The additional independent-release.json preserves final post-success proof,
+  2435bytes/SHA256
+  1056bd145efc562f38c55adaac189e14d25cfaf14acda8df3838e57699f4bc60.
+  Subsequent main71/ba are not substituted for this exact own-merge proof.
+- Hosted browser37066398649 remains7/7 for fd/420, actual PostgreSQL app-role
+  mutations/audit and real authentication, exact retry, principal/tenant
+  replacement and all six live-held-Refresh/session/TEAM flags. Browser original
+  fd JSON2760bytes/4088bb9782db847350ec6b4ddf42fb2490a485519a6c530ce7322b0a19cabacd
+  and all earlier PASS/FAIL receipts are preserved byte-for-byte. This is
+  development-browser evidence; authenticated production mutation/browser,
+  Android, AT, load, physical-device and pilot checks remain NOT RUN: production
+  credentials and physical/AT devices were not supplied; Android/load/pilot
+  execution is outside this bounded web release.
+  Heavy Contabo build/typecheck/full suite/browser/PostgreSQL checks NOT RUN;
+  hosted CI supplies the build/gate/browser evidence recorded above.
+- Same-worktree successor codex/workforce-completion-part17 is based on fresh
+  ba2326c270b138b025dc2975b370e90725c69483. Later main#533/#534 changes are
+  preserved; source4 and task docs had no intersection. Receipt commits5855,
+  a298,846 were cherry-picked as c4ed4db8f,a0d56ef9e,d07a0e7ff without conflicts;
+  original part16 checkpoint846 remains. Successor changes contain evidence
+  only, with source4 byte-identical to releasedM and all main-owned code intact.
+- This supersedes earlier pending release status and the historical task-row
+  assertion that bounded moved-day reversal and its browser proof are open.
+  WF-C8-007 remains PARTIAL: general update/delete governance, break-policy
+  authoring, remaining calendar acceptance and real AT evidence are still open.
+  General update/delete, break policy, AGENT moves and Route mutation remain
+  outside this authorized reversal slice. Progress stays DONE81/161,GATES14/15,
+  C8 36%,overall59%,80non-DONE/about41% weighted remaining; no completion credit.
+- Current status: exact PR528 release verified and receipts preserved on part17.
+  Last completed action: public exact-SHA proof and successor receipt transfer.
+  Precise stopping point: receipt-only checkpoint and independent integrity
+  review before publishing successor. Next action: publish the reviewed clean
+  checkpoint, then scope remaining bounded calendar/keyboard/zoom acceptance
+  in hosted CI while keeping AT/physical/production-auth gates NOT RUN until run.

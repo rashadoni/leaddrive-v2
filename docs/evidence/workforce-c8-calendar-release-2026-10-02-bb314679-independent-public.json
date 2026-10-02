@@ -1,0 +1,45 @@
+{
+  "expectedMergedSha": "bb314679b786cc3294a39927141bfdc15e1cc4b4",
+  "runId": 37068227458,
+  "deployJobId": 111045497497,
+  "productionHost": "13.140.132.245",
+  "tlsHostname": "app.leaddrivecrm.org",
+  "artifactSha": "bb314679b786cc3294a39927141bfdc15e1cc4b4",
+  "builtAt": "2026-10-02T21:46:25Z",
+  "requests": {
+    "build-info-first": {
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "startedAt": "2026-10-02T22:03:07.291380+00:00",
+      "completedAt": "2026-10-02T22:03:10.063665+00:00",
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": 0,
+      "cacheControl": "no-cache",
+      "sha256": "ea035e97901cf7efea972aaeb31a21ea1d1ed04f7efe392e905f5d243d5a0466",
+      "bytes": 112
+    },
+    "ping": {
+      "url": "https://app.leaddrivecrm.org/api/v1/ping",
+      "startedAt": "2026-10-02T22:03:10.063790+00:00",
+      "completedAt": "2026-10-02T22:03:16.555827+00:00",
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": 0,
+      "cacheControl": "no-cache",
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "bytes": 11
+    },
+    "build-info-confirm": {
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "startedAt": "2026-10-02T22:03:16.555946+00:00",
+      "completedAt": "2026-10-02T22:03:16.924398+00:00",
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": 0,
+      "cacheControl": "no-cache",
+      "sha256": "ea035e97901cf7efea972aaeb31a21ea1d1ed04f7efe392e905f5d243d5a0466",
+      "bytes": 112
+    }
+  },
+  "normalRunSuccessStillRequired": true
+}
