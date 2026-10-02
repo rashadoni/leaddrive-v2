@@ -4272,3 +4272,33 @@ corrections as new entries that explicitly supersede the earlier fact.
   static/type gates. Next action: primary logs/fresh-main protected merge,
   normal deploy/public exact merged SHA. Progress81/161,14/15,C8 36%,59%;
   80non-DONE;007 PARTIAL, physical pilot NOT RUN.
+
+
+## 2026-10-02 — fresh main390 reconciliation before release
+
+- Fresh origin/main advanced88cd6fcc to390c4976d6097f1f3560ed8c9ccdf3abb215e51e
+  (#529 MTM contact-card/categories/field visibility,11files). No task-source
+  path overlap except shared EN/RU/AZ message files used by the browser gate;
+  all3 workforceCalendarConfiguration objects byte-semantically unchanged.
+- Integrated390 into clean local533 using ordinary merge, no conflicts:
+  mergebe366d74ef10c46041ce9da03e9b290643d63bf9. Four task non-doc source
+  blobs unchanged from reviewed/published03; main-owned changes preserved.
+- Actually reran bounded classifier10+UI12=22/22 PASS1.78s, scoped component/
+  script ESLint/syntax/whitespace PASS, runner policy39 PASS, i18n parity
+  PASS24,081EN leaf keys/RU-AZ missing0 extra0. Primary local
+  /tmp/workforce528-freshmain-targeted.log and /tmp/workforce528-freshmain-i18n.log.
+  Local full/heavy checks NOT RUN. New integrated exact-head review/browser/
+  required checks mandatory; old-head checks are historical only.
+- Historical03 static110992780179 SUCCESS: shared-lock PG33/33 PASS10.77s
+  including calendar12/12; test baseline18 failing/18 accepted, no new failures.
+  Primary /tmp/workforce528-03-static.log. Type110992780109 still pending at
+  reconciliation; no type GREEN attributed to03 or integrated replacement.
+  Historical03 browser7/7/43.435s and byte-preserved receipt independently
+  GREEN P0-P3=0;03..533 receipt-only4paths/14,836bytes/SHA256
+  1d24cb712783bf9339fc2dffab7bdfa7f394cffcba11cdd6a34291f6b29cf8c9.
+- Current result: fresh main integrated and bounded regressions GREEN. Last
+  action: actual22/22/i18n/policy verification. Precise stopping point:
+  replacement integrated publication/review/CI. Next action: new exact-head
+  browser/all mandatory gates, another fresh-main check before protected
+  merge, normal deploy/public exact SHA proof. Progress81/161,14/15,C8 36%,
+  59%,80non-DONE;007 PARTIAL; physical pilot/production mutation NOT RUN.
