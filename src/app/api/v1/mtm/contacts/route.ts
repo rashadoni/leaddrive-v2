@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { mtmFieldScopeRequiredResponse } from "@/lib/mtm/field-access"
 import { ContactCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { missingMtmContactRequiredFields } from "@/lib/mtm/contact-required-fields"
@@ -42,7 +43,10 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     webRole: auth.role,
     agentId: auth.agentId,
   })
-  if (!actor) return forbidden()
+  // Not "Forbidden": the caller may read this module, they have no employee
+  // card to read it AS. The code is what the screen turns into "ask an
+  // administrator to link a card" instead of a bare refusal.
+  if (!actor) return mtmFieldScopeRequiredResponse()
 
   const settings = await getMtmSettings(auth.orgId)
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"

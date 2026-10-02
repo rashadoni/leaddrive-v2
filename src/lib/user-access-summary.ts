@@ -116,3 +116,32 @@ export function settingsAccessOutcome(role: string, hiddenModules: readonly stri
     .map((item) => item.tKey)
   return { outcome: "personal", pages }
 }
+
+/** The roles an employee card can carry — mirrors VALID_MTM_AGENT_ROLES. */
+export const FIELD_CARD_ROLES = ["ADMIN", "MANAGER", "SUPERVISOR", "AGENT"] as const
+export type FieldCardRole = typeof FIELD_CARD_ROLES[number]
+
+/** The roles an admin hands out from the user card — the ones the Agents form offers. */
+export const ASSIGNABLE_FIELD_CARD_ROLES = ["AGENT", "SUPERVISOR", "MANAGER"] as const satisfies readonly FieldCardRole[]
+
+export type FieldAccessOutcome =
+  /** A web admin acts over the whole organization and needs no card. */
+  | { kind: "organization" }
+  /** Whose clients, routes and visits the person sees comes from this card. */
+  | { kind: "card"; role: FieldCardRole }
+  /** No active card: the lists that show a team's work answer 403. */
+  | { kind: "missing" }
+
+/**
+ * Route & Field has a third setting the role and the tick do not show: the
+ * employee card. `resolveMtmRouteActor` gives a web admin the whole
+ * organization; everyone else acts as the ACTIVE card linked to their login,
+ * and without one about half of the module's API refuses them — a manager who
+ * was given "Route & Field" opened Clients and read "Forbidden" (2026-10-03).
+ * This says, for the card being edited, which of the three it will be.
+ */
+export function fieldAccessOutcome(role: string, card: { role: string } | null): FieldAccessOutcome {
+  if (role === "admin" || role === "superadmin") return { kind: "organization" }
+  const cardRole = FIELD_CARD_ROLES.find((candidate) => candidate === card?.role)
+  return cardRole ? { kind: "card", role: cardRole } : { kind: "missing" }
+}

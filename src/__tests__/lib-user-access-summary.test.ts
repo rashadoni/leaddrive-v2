@@ -3,8 +3,11 @@ import { readFileSync } from "node:fs"
 import { accessibleNavItems, navItems, orgFromSession } from "@/lib/nav-items"
 import { PERMISSION_MODULE_TO_MODULE_ID } from "@/lib/permissions"
 import {
-  HIDEABLE_MODULE_SCOPES, moduleAccessOutcome, settingsAccessOutcome,
+  ASSIGNABLE_FIELD_CARD_ROLES, FIELD_CARD_ROLES, HIDEABLE_MODULE_SCOPES,
+  fieldAccessOutcome, moduleAccessOutcome, settingsAccessOutcome,
 } from "@/lib/user-access-summary"
+import { VALID_MTM_AGENT_ROLES } from "@/lib/mtm/territory-scope"
+import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import {
   USER_HIDEABLE_MODULE_IDS, applyUserModuleMask, effectiveHiddenModules, hideableIdForGateModule,
   type UserHideableId,
@@ -102,6 +105,53 @@ describe("what one person gets — Settings", () => {
   })
 })
 
+describe("what one person gets — Route & Field needs an employee card", () => {
+  it("a web admin acts over the whole organization without one", () => {
+    expect(fieldAccessOutcome("admin", null)).toEqual({ kind: "organization" })
+    expect(fieldAccessOutcome("superadmin", { role: "AGENT" })).toEqual({ kind: "organization" })
+  })
+
+  it("everyone else acts as their card, and without one is refused", () => {
+    expect(fieldAccessOutcome("manager", null)).toEqual({ kind: "missing" })
+    expect(fieldAccessOutcome("manager", { role: "MANAGER" })).toEqual({ kind: "card", role: "MANAGER" })
+    expect(fieldAccessOutcome("sales", { role: "AGENT" })).toEqual({ kind: "card", role: "AGENT" })
+    // A card whose role the engine does not know resolves to no actor at all.
+    expect(fieldAccessOutcome("manager", { role: "OWNER" })).toEqual({ kind: "missing" })
+  })
+
+  it("agrees with the resolver every field route uses", async () => {
+    const actorFor = async (webRole: string, card: { role: string } | null) => resolveMtmRouteActor(
+      {
+        mtmAgent: {
+          findFirst: async () => (card ? { id: "card-1", role: card.role, canPlanOwnRoutes: true, canSelfPublishRoutes: false } : null),
+          findUnique: async () => null,
+          findMany: async () => [],
+          count: async () => 1,
+        },
+        mtmTeam: { findFirst: async () => null, findMany: async () => [] },
+      } as unknown as Parameters<typeof resolveMtmRouteActor>[0],
+      { organizationId: "org-1", userId: "u-1", webRole },
+    )
+    const disagreements: string[] = []
+    for (const webRole of ["admin", "manager", "sales", "viewer"]) {
+      for (const card of [null, { role: "AGENT" }, { role: "MANAGER" }, { role: "OWNER" }]) {
+        const actor = await actorFor(webRole, card)
+        const outcome = fieldAccessOutcome(webRole, card)
+        const expected = actor === null ? "missing" : actor.agentId === null ? "organization" : "card"
+        if (outcome.kind !== expected) disagreements.push(`${webRole}/${card?.role ?? "none"}: ${outcome.kind} vs ${expected}`)
+      }
+    }
+    expect(disagreements).toEqual([])
+  })
+
+  it("knows exactly the roles the field engine knows, and hands out the ones the Agents form does", () => {
+    expect([...FIELD_CARD_ROLES].sort()).toEqual([...VALID_MTM_AGENT_ROLES].sort())
+    const form = readFileSync("src/components/mtm/agent-form.tsx", "utf8")
+    const offered = [...form.matchAll(/<option value="(AGENT|SUPERVISOR|MANAGER|ADMIN)">/g)].map((match) => match[1])
+    expect([...ASSIGNABLE_FIELD_CARD_ROLES].sort()).toEqual([...new Set(offered)].sort())
+  })
+})
+
 describe("the card's rows cannot drift from enforcement or from the copy", () => {
   it("covers every hideable module", () => {
     expect(Object.keys(HIDEABLE_MODULE_SCOPES).sort()).toEqual([...USER_HIDEABLE_MODULE_IDS].sort())
@@ -142,6 +192,14 @@ describe("the card's rows cannot drift from enforcement or from the copy", () =>
     }
     for (const hint of ["moduleHint_settings", "moduleHint_users"]) {
       if (!messages.settings[hint]) missing.push(`settings.${hint}`)
+    }
+    for (const role of FIELD_CARD_ROLES) {
+      for (const key of [`fieldRole_${role}`, `fieldRoleShort_${role}`]) {
+        if (!messages.settingsUsers[key]) missing.push(`settingsUsers.${key}`)
+      }
+    }
+    for (const key of ["fieldScopeNoticeTitle", "fieldScopeNoticeBody", "fieldScopeRequired"]) {
+      if (!messages.mtmApiErrors[key]) missing.push(`mtmApiErrors.${key}`)
     }
     expect(missing).toEqual([])
   })
