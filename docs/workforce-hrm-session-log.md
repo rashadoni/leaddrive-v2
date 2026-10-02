@@ -3985,3 +3985,38 @@ corrections as new entries that explicitly supersede the earlier fact.
   Next action: inspect primary artifacts/logs, fix actual failures, then
   fresh-main protected merge/normal deploy/public exact-SHA proof. Progress
   unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
+
+
+## 2026-10-02 — first executed six-case browser proof and viewport fix
+
+- Hosted browser37048246167/job110974907925 SUCCESS at exact2438f185,
+  synthetic merge52eeed4f3419613931057bc78b7db3b29e0148c4. Primary JSON
+  started2026-10-02T18:41:05.838Z/completed18:41:59.920Z; six complete cases
+  PASS: EN ORG, RU phone TEAM, AZ ORG confirmation/cancel/confirm; real
+  commit/response loss, same-task duplicate submit and byte-identical replay;
+  late original POST across principal and tenant switch/new GET.
+- Each reversal has2 common actor/timestamp tombstones and1 actual mtm audit;
+  actual retry returns[true,false] with byte-identical body and zero persisted
+  state changes. Both context-switch GETs completed without stale notice or
+  duplicate POST. Populated audit/calendar unscoped reads fail closed with
+  NOSUPER/NOBYPASS application role. This supersedes NOT RUN for those bounded
+  CI development-bundle scenarios only, not production/browser/Android/AT/pilot.
+- Primary artifacts downloaded/tmp/workforce528-browser-green; root inspected
+  actual RU phone and unknown-outcome screenshots. Found P2 usability issue
+  outside the previous harness assertions: opening review from the low list
+  leaves the review above the current phone scroll position. The six PASS
+  functional cases did not prove the entire confirmation visible in viewport.
+- Added focusable review heading, effect that focuses and instantly scrolls
+  only a new identity-matching confirmation, retaining exact retry/context
+  guards and all existing UI sections. Browser now requires actual heading
+  focus and the whole confirmation panel inside viewport before screenshot.
+  Fresh exact-head review and all hosted gates must pass for this UI follow-up.
+- RAM15.6GBavailable,disk339GB,pressure0. Scoped script/component ESLint, syntax
+  and whitespace PASS; existing UI contract12/12 PASS (bounded single worker).
+  Local browser/full typecheck/build/suite/PG/Android/load/AT remain NOT RUN.
+  No production mutation or feature release claimed before protected pipeline.
+- Progress unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
+  Current result: real browser functional proof plus visible-review fix. Last
+  action: primary artifact inspection and focused UI regression check. Precise
+  stopping point: new candidate checkpoint/review/hosted viewport verification.
+  Next action: publish, execute stricter six cases and protected release.

@@ -161,6 +161,11 @@ async function review(view, moved, team) {
   await action.click()
   await section.getByRole("heading", { name: ui.reversalReviewTitle, exact: true }).waitFor()
   const confirmation = section.locator('[aria-labelledby="workforce-calendar-reversal-title"]')
+  await until(async () => confirmation.evaluate(element => {
+    const title = element.querySelector("h3")
+    const bounds = element.getBoundingClientRect()
+    return document.activeElement === title && bounds.top >= 0 && bounds.bottom <= window.innerHeight
+  }), "confirmation is focused and fully inside the viewport")
   const text = await confirmation.innerText()
   const formatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" })
   assert.ok(text.includes(formatter.format(new Date(`${moved.sourceDate}T00:00:00Z`))))
