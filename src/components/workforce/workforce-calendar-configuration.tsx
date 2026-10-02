@@ -228,7 +228,7 @@ export function WorkforceCalendarConfiguration() {
   }, [contextKey, targetKey])
   useEffect(() => {
     if (!confirmation || confirmation.contextKey !== contextKey || confirmation.targetKey !== targetKey) return
-    // The source action may be far below this review, especially on a phone.
+    // The source action may be far below this review in a narrow viewport.
     // Move keyboard focus and the scroll position to the newly opened review.
     confirmationTitle.current?.focus({ preventScroll: true })
     confirmationTitle.current?.scrollIntoView({ block: "start", behavior: "instant" })

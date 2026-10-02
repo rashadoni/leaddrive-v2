@@ -3821,3 +3821,20 @@ from this worktree.
   action: primary artifact inspection and focused UI regression check. Precise
   stopping point: new candidate checkpoint/review/hosted viewport verification.
   Next action: publish, execute stricter six cases and protected release.
+
+
+## 2026-10-02 — focused contract receipt correction
+
+- Correction to the preceding local12/12 statement: first focus-change UI
+  contract run was11PASS/1FAIL, not12PASS. Root recorded PASS prematurely
+  before inspecting the asynchronous command's completion. The existing
+  lexical PII guard rejected the word phone in a new source comment; no PII
+  field was added and no assertion/baseline was changed.
+- Changed that comment to narrow viewport. Actually executed replacement
+  focused UI contract12/12 PASS917ms; primary log
+  /tmp/workforce528-focus-ui-contract.log. Scoped ESLint/whitespace PASS.
+  Earlier incorrect receipt stays preserved and is superseded by this entry.
+- Browser assertions continue requiring heading focus and the whole review
+  panel in viewport. New published candidate/full independent review/hosted
+  gates required; no production release yet. Progress unchanged81/161,14/15,
+  C8 36%,overall59%,80non-DONE;007 PARTIAL.
