@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { mtmFieldScopeRequiredResponse } from "@/lib/mtm/field-access"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
@@ -31,7 +32,7 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
     }),
     getMtmSettings(auth.orgId),
   ])
-  if (!actor) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (!actor) return mtmFieldScopeRequiredResponse()
 
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
   const asOf = utcDate(currentDateKey(new Date(), timezone))

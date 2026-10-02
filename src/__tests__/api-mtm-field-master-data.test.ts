@@ -234,6 +234,22 @@ describe("MTM contacts and organizations", () => {
     })
   })
 
+  // Reported 2026-10-03: a manager who had just been given Route & Field opened
+  // Clients and read "Forbidden" twice. She may read the module; she has no
+  // employee card to read it as, and the refusal has to say that — by code.
+  it("tells a web user without an employee card that a card is what is missing", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ ...AGENT_AUTH, userId: "manager-user", role: "manager" })
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null)
+
+    const list = await getContacts(request("/api/v1/mtm/contacts?status=ACTIVE"))
+    const facets = await getContactFacets(request("/api/v1/mtm/contacts/facets"))
+
+    expect([list.status, facets.status]).toEqual([403, 403])
+    expect([(await list.json()).code, (await facets.json()).code])
+      .toEqual(["MTM_FIELD_SCOPE_REQUIRED", "MTM_FIELD_SCOPE_REQUIRED"])
+    expect(prisma.mtmContact.findMany).not.toHaveBeenCalled()
+  })
+
   it("scopes an agent contact list instead of returning every tenant contact", async () => {
     vi.mocked(requireAuth).mockResolvedValue(AGENT_AUTH)
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", role: "AGENT" } as any)

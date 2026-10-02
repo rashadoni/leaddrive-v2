@@ -8,6 +8,11 @@
  * read "full access to Deals" in the role table and saw no Deals. The page is
  * rendered for real, with the real Russian copy, the real role matrix and the
  * real mask; only the network and the session are stubbed.
+ *
+ * Route & Field has a third setting the other two do not show — the employee
+ * card. The next day the same manager opened Clients and read "Forbidden":
+ * she had the module and the role, and no card, and no screen let an admin
+ * link one. The row now says so and carries the control.
  */
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -66,6 +71,14 @@ const person = {
 const roles = ["admin", "manager", "sales", "support", "ticketing", "viewer"]
   .map((id) => ({ id, name: id, color: "blue", isSystem: true, assignable: true }))
 
+type Card = { id: string; name: string; role: string; status: string; userId: string | null; createdAt: string }
+const spareCard: Card = { id: "card-spare", name: "Seymur", role: "AGENT", status: "ACTIVE", userId: null, createdAt: "2026-09-01T00:00:00Z" }
+const takenCard: Card = { id: "card-taken", name: "Togrul", role: "MANAGER", status: "ACTIVE", userId: "u-admin", createdAt: "2026-08-01T00:00:00Z" }
+const ownCard: Card = { id: "card-own", name: "Field Manager", role: "SUPERVISOR", status: "ACTIVE", userId: "u-1", createdAt: "2026-09-10T00:00:00Z" }
+let cards: Card[] = []
+let writes: { url: string; method: string; body: unknown }[] = []
+let cardWriteStatus = 200
+
 let root: Root
 let container: HTMLDivElement
 
@@ -77,26 +90,55 @@ const block = () => document.querySelector('[data-testid="user-access-outcome"]'
 const rows = () => Object.fromEntries([...block().querySelectorAll("li")].map((row) => {
   const tick = row.querySelector<HTMLInputElement>('input[type="checkbox"]')
   const [label, badge] = [...row.querySelectorAll(":scope > div > *")].map((cell) => cell.textContent?.trim() ?? "")
-  return [label, [tick ? tick.checked : null, badge, row.querySelector("p")?.textContent ?? null]]
+  return [label, [tick ? tick.checked : null, badge, row.querySelector("p")?.textContent?.trim() ?? null]]
 }))
 
 beforeEach(async () => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    const body = String(url).includes("/settings/roles") ? { success: true, data: { roles, permissions: {} } }
-      : String(url).includes("/voice-budget") ? { success: true, data: {} }
-      : { success: true, data: [person] }
-    return { ok: true, status: 200, headers: new Headers(), json: async () => body }
+  writes = []
+  cardWriteStatus = 200
+  vi.stubGlobal("fetch", vi.fn(async (input: string, init?: { method?: string; body?: string }) => {
+    const url = String(input)
+    const method = init?.method ?? "GET"
+    const reply = (status: number, body: unknown) =>
+      ({ ok: status < 400, status, headers: new Headers(), json: async () => body })
+    if (method !== "GET") {
+      writes.push({ url, method, body: init?.body ? JSON.parse(init.body) : null })
+      if (url.includes("/mtm/agents") && cardWriteStatus !== 200) return reply(cardWriteStatus, { error: "Seat limit reached" })
+      return reply(200, { success: true, data: { id: "u-1" } })
+    }
+    if (url.includes("/mtm/agents")) return reply(200, { success: true, data: { agents: cards, total: cards.length } })
+    if (url.includes("/settings/roles")) return reply(200, { success: true, data: { roles, permissions: {} } })
+    if (url.includes("/voice-budget")) return reply(200, { success: true, data: {} })
+    return reply(200, { success: true, data: [person] })
   }))
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
+})
+
+async function openCard(withCards: Card[] = []) {
+  cards = withCards
   await act(async () => { root.render(createElement(TooltipProvider, null, createElement(UsersPage))) })
   await settle()
   const edit = [...document.querySelectorAll("button")].find((button) => button.textContent?.includes("Изменить"))
   await act(async () => { edit?.click() })
   await settle()
-})
+}
+
+const choose = async (select: HTMLSelectElement | null | undefined, value: string) => {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(select, value)
+    select?.dispatchEvent(new Event("change", { bubbles: true }))
+  })
+}
+const fieldCard = () => document.querySelector<HTMLSelectElement>("#fieldCard")
+const save = async () => {
+  const submit = [...document.querySelectorAll("button")].find((button) => button.textContent?.includes("Обновить"))
+  await act(async () => { submit?.click() })
+  await settle()
+}
+const cardWrites = () => writes.filter((write) => write.url.includes("/mtm/agents"))
 
 afterEach(async () => {
   await act(async () => { root.unmount() })
@@ -105,19 +147,26 @@ afterEach(async () => {
 })
 
 describe("user card — what this person gets", () => {
-  it("a manager left with Route & Field alone: one module, full; the rest hidden; Settings personal", () => {
+  it("a manager left with Route & Field alone, no employee card: the row says the lists will refuse her", async () => {
+    await openCard([spareCard, takenCard])
+
     expect(block().textContent).toContain("Что получит этот человек")
     expect(rows()).toEqual({
       "Основная": [false, "Скрыт", null],
       "Продажи": [false, "Скрыт", null],
       "Финансы": [false, "Скрыт", null],
-      "Маршруты и поле": [true, "Всё, включая удаление", null],
+      "Маршруты и поле": [
+        true,
+        "Нужна карточка сотрудника",
+        "Без карточки сотрудника списки клиентов, маршрутов и визитов ответят отказом: чьи данные видит человек, решает она. Выберите карточку или создайте новую.",
+      ],
       "Кадры": [false, "Скрыт", null],
       "Настройки": [null, "Только свои уведомления", "У «Настроек» галочки нет: доступ к ним даёт только роль."],
     })
   })
 
   it("ticking a module back shows at once what the role allows in it", async () => {
+    await openCard()
     const sales = [...block().querySelectorAll("li")].find((row) => row.textContent?.includes("Продажи"))
     await act(async () => { sales?.querySelector<HTMLInputElement>("input")?.click() })
 
@@ -126,22 +175,98 @@ describe("user card — what this person gets", () => {
     ])
   })
 
-  it("changing the role re-reads every row, and an admin loses the ticks", async () => {
+  it("changing the role re-reads every row; an admin loses the ticks and needs no card", async () => {
+    await openCard([ownCard])
     const role = [...document.querySelectorAll("select")].find((select) => select.value === "manager")
-    const choose = async (value: string) => {
-      await act(async () => {
-        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(role, value)
-        role?.dispatchEvent(new Event("change", { bubbles: true }))
-      })
-    }
 
-    await choose("sales")
-    expect(rows()["Маршруты и поле"]).toEqual([true, "Просмотр и правка", null])
+    await choose(role, "sales")
+    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Просмотр и правка"])
 
-    await choose("admin")
+    await choose(role, "admin")
     const admin = rows()
     expect([...new Set(Object.values(admin).map(([tick]) => tick))]).toEqual([null])
     expect(admin["Продажи"]).toEqual([null, "Всё, включая удаление", null])
+    expect(admin["Маршруты и поле"]).toEqual([
+      null, "Всё, включая удаление", "Администратор видит всё поле без карточки сотрудника.",
+    ])
+    expect(fieldCard()).toBeNull()
     expect(admin["Настройки"]).toEqual([null, "Все настройки организации", null])
+  })
+})
+
+describe("user card — the employee card behind Route & Field", () => {
+  it("offers this person's own card and the unlinked ones, never a colleague's", async () => {
+    await openCard([spareCard, takenCard, ownCard])
+
+    expect(fieldCard()?.value).toBe("card-own")
+    expect([...(fieldCard()?.options ?? [])].map((option) => option.textContent)).toEqual([
+      "Нет карточки", "Seymur — Агент", "Field Manager — Супервайзер", "Создать новую карточку",
+    ])
+    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
+    expect(document.querySelector('[data-testid="user-field-card"]')?.textContent)
+      .toContain("В поле — Супервайзер: своя команда.")
+  })
+
+  it("saving without touching the card writes nothing to the field module", async () => {
+    await openCard([ownCard])
+    await save()
+
+    expect(writes.map((write) => write.url)).toEqual(["/api/v1/users/u-1"])
+  })
+
+  it("creates a card with the chosen field role and links it to the login", async () => {
+    await openCard([takenCard])
+    await choose(fieldCard(), "new")
+    await choose(document.querySelector<HTMLSelectElement>("#fieldRole"), "MANAGER")
+
+    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
+    await save()
+
+    expect(cardWrites()).toEqual([
+      { url: "/api/v1/mtm/agents", method: "POST", body: { name: "Field Manager", role: "MANAGER", userId: "u-1" } },
+    ])
+  })
+
+  it("links an existing unlinked card instead of creating a duplicate", async () => {
+    await openCard([spareCard])
+    await choose(fieldCard(), "card-spare")
+    await save()
+
+    expect(cardWrites()).toEqual([
+      { url: "/api/v1/mtm/agents/card-spare", method: "PUT", body: { userId: "u-1" } },
+    ])
+  })
+
+  it("moving to another card releases the old one first; choosing none only releases", async () => {
+    await openCard([spareCard, ownCard])
+    await choose(fieldCard(), "card-spare")
+    await save()
+
+    expect(cardWrites()).toEqual([
+      { url: "/api/v1/mtm/agents/card-own", method: "PUT", body: { userId: null } },
+      { url: "/api/v1/mtm/agents/card-spare", method: "PUT", body: { userId: "u-1" } },
+    ])
+  })
+
+  it("says the user was saved and the card was not, when the field module refuses", async () => {
+    await openCard([])
+    cardWriteStatus = 403
+    await choose(fieldCard(), "new")
+    await save()
+
+    expect(document.body.textContent).toContain(
+      "Пользователь сохранён, но карточку сотрудника привязать не удалось: Seat limit reached",
+    )
+    expect(block()).not.toBeNull()
+  })
+
+  it("leaves the card alone while the module is hidden from the person", async () => {
+    await openCard([ownCard])
+    const field = [...block().querySelectorAll("li")].find((row) => row.textContent?.includes("Маршруты и поле"))
+    await act(async () => { field?.querySelector<HTMLInputElement>("input")?.click() })
+
+    expect(fieldCard()).toBeNull()
+    await save()
+    expect(cardWrites()).toEqual([])
   })
 })
