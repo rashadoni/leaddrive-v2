@@ -11889,6 +11889,10 @@
         "files": "Fayllar"
       },
       "coreDetails": "Əsas məlumatlar",
+      "contactDetails": "Əlaqə məlumatları",
+      "contactPerson": "Əlaqə şəxsi",
+      "phone": "Telefon",
+      "additionalDetails": "Əlavə məlumatlar",
       "organizationType": "Müəssisə növü",
       "specialization": "İxtisaslaşma",
       "category": "Kateqoriya",

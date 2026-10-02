@@ -11893,6 +11893,10 @@
         "files": "Files"
       },
       "coreDetails": "Core details",
+      "contactDetails": "Contact details",
+      "contactPerson": "Contact person",
+      "phone": "Phone",
+      "additionalDetails": "Additional details",
       "organizationType": "Institution type",
       "specialization": "Specialization",
       "category": "Category",

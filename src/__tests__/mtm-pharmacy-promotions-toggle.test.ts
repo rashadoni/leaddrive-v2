@@ -88,12 +88,13 @@ describe("pharmacy promotions organization switch", () => {
       .toBe("Söndürüldükdə menyudan və agent tətbiqindən gizlədilir; məlumatlar silinmir.")
   })
 
-  it("hides the promotions tab on the customer card without touching data", () => {
+  it("leaves nothing to hide on the customer card: its promotions tab is gone", () => {
+    // Removed for every tenant on 2026-10-02 (owner decision), so the switch
+    // no longer has a tab to take away there. If the tab ever returns, it has
+    // to come back behind useMtmPharmacyPromotions.
     const detail = source("src/components/mtm/organization-detail.tsx")
-    expect(detail).toContain("useMtmPharmacyPromotions(session?.user)")
-    expect(detail).toContain('(pharmacyPromotionsEnabled || section !== "promotions")')
-    expect(detail).toContain('{pharmacyPromotionsEnabled ? <TabsContent value="promotions">')
-    expect(detail).toContain('(!pharmacyPromotionsEnabled && activeSection === "promotions") ? "details"')
+    expect(detail).not.toContain('value="promotions"')
+    expect(detail).not.toContain('"promotions"')
   })
 
   it("renders the switch next to field contacts in the Modullar card, admin-only", () => {

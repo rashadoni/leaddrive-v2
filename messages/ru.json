@@ -11893,6 +11893,10 @@
         "files": "Файлы"
       },
       "coreDetails": "Основные данные",
+      "contactDetails": "Контактные данные",
+      "contactPerson": "Контактное лицо",
+      "phone": "Телефон",
+      "additionalDetails": "Дополнительные данные",
       "organizationType": "Тип учреждения",
       "specialization": "Специализация",
       "category": "Категория",
