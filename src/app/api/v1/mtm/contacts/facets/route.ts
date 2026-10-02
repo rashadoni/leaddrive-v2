@@ -158,6 +158,8 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
         strings(specialtyNames, (row) => row.specialtyName),
       ),
       profiles: strings(profiles, (row) => row.profile),
+      // Client fields this tenant switched off in MTM settings.
+      hiddenFields: settings.contactHiddenFields,
       // The list alone: what the «new client» form offers.
       configuredSpecialties: settings.contactSpecialties,
       qualificationCategories: strings(qualifications, (row) => row.qualificationCategory),

@@ -20,6 +20,7 @@ import { MtmOrganizationPicker, type MtmOrganizationOption } from "@/components/
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { legacyContactTypeForCategory } from "@/lib/mtm/contact-category-editor"
+import { contactFieldVisibility } from "@/lib/mtm/contact-field-visibility"
 
 type ContactType = "DOCTOR" | "PHARMACIST" | "OTHER"
 type Labels = { ru: string; az: string; en: string }
@@ -69,11 +70,14 @@ export function MtmContactCreateDialog({
   onOpenChange,
   onCreated,
   specialties = [],
+  hiddenFields,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** The tenant's specialty list; empty means the specialty is typed freely. */
   specialties?: readonly string[]
+  /** Fields the tenant switched off in MTM settings: not offered, not sent. */
+  hiddenFields?: readonly string[]
   onCreated: () => Promise<void> | void
 }) {
   const t = useTranslations("mtmContactCreate")
@@ -85,6 +89,8 @@ export function MtmContactCreateDialog({
   const [organization, setOrganization] = useState<MtmOrganizationOption | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+
+  const shows = useMemo(() => contactFieldVisibility(hiddenFields), [hiddenFields])
 
   const selectedClientType = useMemo(
     () => clientTypeDictionary?.entries.find((entry) => entry.code === clientTypeCode) ?? null,
@@ -156,9 +162,9 @@ export function MtmContactCreateDialog({
           type: form.type,
           lastName: form.lastName.trim(),
           firstName: form.firstName.trim(),
-          middleName: form.middleName.trim() || null,
-          specialtyName: form.type === "DOCTOR" ? form.specialtyName.trim() || null : null,
-          phone: form.phone.trim() || null,
+          middleName: shows("middleName") ? form.middleName.trim() || null : null,
+          specialtyName: form.type === "DOCTOR" && shows("specialtyName") ? form.specialtyName.trim() || null : null,
+          phone: shows("phone") ? form.phone.trim() || null : null,
           notes: form.notes.trim() || null,
           ...(clientTypeDictionary && selectedClientType ? {
             clientType: {
@@ -172,7 +178,7 @@ export function MtmContactCreateDialog({
           primaryWorkplace: {
             customerId: organization.id,
             jobTitle: form.jobTitle.trim() || null,
-            phone: form.phone.trim() || null,
+            phone: shows("phone") ? form.phone.trim() || null : null,
           },
         }),
       })
@@ -228,8 +234,8 @@ export function MtmContactCreateDialog({
               </div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-last-name">{t("lastName")} *</Label><Input id="contact-create-last-name" value={form.lastName} onChange={(event) => update("lastName", event.target.value)} autoComplete="family-name" /></div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-first-name">{t("firstName")} *</Label><Input id="contact-create-first-name" value={form.firstName} onChange={(event) => update("firstName", event.target.value)} autoComplete="given-name" /></div>
-              <div className="space-y-1.5"><Label htmlFor="contact-create-middle-name">{t("middleName")}</Label><Input id="contact-create-middle-name" value={form.middleName} onChange={(event) => update("middleName", event.target.value)} autoComplete="additional-name" /></div>
-              {form.type === "DOCTOR" && !selectedClientType?.fields?.some((field) => field.key === "specialty") ? <div className="space-y-1.5"><Label htmlFor="contact-create-specialty">{t("specialty")}</Label><ContactSpecialtyInput id="contact-create-specialty" value={form.specialtyName} onChange={(value) => update("specialtyName", value)} specialties={specialties} chooseLabel={t("specialtyChoose")} placeholder={t("specialtyPlaceholder")} /></div> : null}
+              {shows("middleName") ? <div className="space-y-1.5"><Label htmlFor="contact-create-middle-name">{t("middleName")}</Label><Input id="contact-create-middle-name" value={form.middleName} onChange={(event) => update("middleName", event.target.value)} autoComplete="additional-name" /></div> : null}
+              {form.type === "DOCTOR" && shows("specialtyName") && !selectedClientType?.fields?.some((field) => field.key === "specialty") ? <div className="space-y-1.5"><Label htmlFor="contact-create-specialty">{t("specialty")}</Label><ContactSpecialtyInput id="contact-create-specialty" value={form.specialtyName} onChange={(value) => update("specialtyName", value)} specialties={specialties} chooseLabel={t("specialtyChoose")} placeholder={t("specialtyPlaceholder")} /></div> : null}
               {[...(selectedClientType?.fields ?? [])].sort((left, right) => left.order - right.order).map((field) => (
                 <div key={field.key} className={field.type === "TEXTAREA" ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}>
                   <Label htmlFor={`contact-create-category-${field.key}`}>{localized(field.labels, locale)}{field.required ? " *" : ""}</Label>
@@ -259,7 +265,7 @@ export function MtmContactCreateDialog({
                 <MtmOrganizationPicker id="contact-create-workplace-search" labelId="contact-create-workplace-label" value={organization} onChange={(next) => { setOrganization(next); setError("") }} disabled={saving} />
               </div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-job-title">{t("jobTitle")}</Label><Input id="contact-create-job-title" value={form.jobTitle} onChange={(event) => update("jobTitle", event.target.value)} placeholder={t(`jobTitlePlaceholder.${form.type}`)} /></div>
-              <div className="space-y-1.5"><Label htmlFor="contact-create-phone">{t("phone")}</Label><Input id="contact-create-phone" value={form.phone} onChange={(event) => update("phone", event.target.value)} inputMode="tel" autoComplete="tel" placeholder="+994 50 000 00 00" /></div>
+              {shows("phone") ? <div className="space-y-1.5"><Label htmlFor="contact-create-phone">{t("phone")}</Label><Input id="contact-create-phone" value={form.phone} onChange={(event) => update("phone", event.target.value)} inputMode="tel" autoComplete="tel" placeholder="+994 50 000 00 00" /></div> : null}
             </div>
           </section>
 

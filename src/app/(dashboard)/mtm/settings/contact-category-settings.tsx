@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { ArrowDown, ArrowUp, CircleAlert, Loader2, Plus, RotateCcw, Save, Tags, Trash2 } from "lucide-react"
 import { toast } from "sonner"
@@ -68,7 +68,15 @@ function move<T>(items: T[], index: number, direction: -1 | 1): T[] {
   return next
 }
 
-export function ContactCategorySettings() {
+export function ContactCategorySettings({
+  embedded = false,
+  standardNote,
+}: {
+  /** Inside «Карточка клиента»: the tab carries the title and the frame. */
+  embedded?: boolean
+  /** What a category has besides its own fields (e.g. doctors: the specialty list). */
+  standardNote?: (category: { code: string }) => ReactNode
+} = {}) {
   const t = useTranslations("mtmContactCategories")
   const locale = contactCategoryLocale(useLocale())
   const [loaded, setLoaded] = useState<LoadedState | null>(null)
@@ -264,16 +272,20 @@ export function ContactCategorySettings() {
   }
   // Only an MTM administrator configures categories; everyone else meets them
   // in the contact form and has nothing to do here.
-  if (!canConfigure) return null
+  if (!canConfigure) {
+    return embedded ? <p className="text-sm text-muted-foreground">{t("adminOnly")}</p> : null
+  }
 
   return (
-    <section data-testid="mtm-contact-category-settings" className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5" aria-labelledby="contact-category-settings-title">
+    <section data-testid="mtm-contact-category-settings" className={embedded ? undefined : "rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5"} aria-labelledby={embedded ? undefined : "contact-category-settings-title"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid max-w-3xl gap-1">
-          <h2 id="contact-category-settings-title" className="flex items-center gap-2 text-base font-semibold">
-            <Tags className="h-4 w-4 text-primary" aria-hidden="true" />
-            {t("title")}
-          </h2>
+          {embedded ? null : (
+            <h2 id="contact-category-settings-title" className="flex items-center gap-2 text-base font-semibold">
+              <Tags className="h-4 w-4 text-primary" aria-hidden="true" />
+              {t("title")}
+            </h2>
+          )}
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={addCategory} disabled={categories.length >= CONTACT_CATEGORY_LIMITS.categories}>
@@ -321,6 +333,8 @@ export function ContactCategorySettings() {
                   </Button>
                 </div>
               </div>
+
+              {category.code && standardNote?.(category)}
 
               <div className="mt-4 grid gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("fieldsTitle")}</p>

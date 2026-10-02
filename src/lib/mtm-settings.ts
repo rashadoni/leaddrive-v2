@@ -5,6 +5,10 @@ import {
   MTM_CONTACT_REQUIRED_FIELD_DEFAULTS,
 } from "@/lib/mtm/contact-required-fields"
 import {
+  coerceMtmContactHiddenFields,
+  MTM_CONTACT_HIDDEN_FIELD_DEFAULTS,
+} from "@/lib/mtm/contact-field-visibility"
+import {
   coerceMtmContactSpecialties,
   MTM_CONTACT_SPECIALTY_DEFAULTS,
 } from "@/lib/mtm/contact-specialties"
@@ -102,6 +106,11 @@ export const MTM_SETTING_DEFAULTS = {
   // Tenant data-quality policy for the canonical contact card. First and last
   // name remain mandatory even if an old/stale client omits them here.
   contactRequiredFields: MTM_CONTACT_REQUIRED_FIELD_DEFAULTS,
+  // Client fields this tenant does not use (a tenant that does not visit
+  // doctors has no use for «specialty»). Hidden from the form, the card, the
+  // list and the filter; the stored values are untouched. A hidden field is
+  // never required, whatever `contactRequiredFields` says.
+  contactHiddenFields: MTM_CONTACT_HIDDEN_FIELD_DEFAULTS,
   // The specialties a client can have: the choices in the client form and in
   // the «Клиенты» filter. The tenant adds and removes them in MTM settings; a
   // contact keeps its specialty as text, so removing one rewrites nobody.
@@ -166,6 +175,9 @@ function coerce<K extends keyof MtmSettingsShape>(
     }
     if (key === "routeTargetTypes") {
       return coerceMtmRouteTargetTypes(raw) as MtmSettingsShape[K]
+    }
+    if (key === "contactHiddenFields") {
+      return coerceMtmContactHiddenFields(raw) as MtmSettingsShape[K]
     }
     if (key === "contactSpecialties") {
       return coerceMtmContactSpecialties(raw) as MtmSettingsShape[K]

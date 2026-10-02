@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { Plus, Stethoscope, X } from "lucide-react"
+import { Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -15,8 +15,8 @@ import {
 
 /**
  * The tenant's list of client specialties: what the client form offers and
- * what the «Клиенты» filter lists. Saved with the page's «Сохранить», like the
- * settings above it.
+ * what the «Клиенты» filter lists. A tab of «Карточка клиента»
+ * (contact-card-settings.tsx), which holds the draft and saves it.
  */
 export function ContactSpecialtySettings({
   value,
@@ -55,19 +55,8 @@ export function ContactSpecialtySettings({
   }
 
   return (
-    <section data-testid="mtm-contact-specialty-settings" className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5" aria-labelledby="mtm-contact-specialties-title">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="grid max-w-3xl gap-1">
-          <h2 id="mtm-contact-specialties-title" className="flex items-center gap-2 text-base font-semibold">
-            <Stethoscope className="h-4 w-4 text-primary" />
-            {t("specialtiesTitle")}
-          </h2>
-          <p className="text-sm text-muted-foreground">{t("specialtiesHint")}</p>
-        </div>
-        <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-          {t("specialtiesCount", { count: specialties.length })}
-        </span>
-      </div>
+    <div data-testid="mtm-contact-specialty-settings">
+      <p className="max-w-3xl text-sm text-muted-foreground">{t("specialtiesHint")}</p>
 
       <form
         className="mt-4 flex flex-wrap items-end gap-2"
@@ -99,11 +88,12 @@ export function ContactSpecialtySettings({
         </Button>
       </form>
       {notice ? <p role="status" className="mt-2 text-xs text-amber-700 dark:text-amber-300">{notice}</p> : null}
+      <p className="mt-4 text-xs font-semibold text-muted-foreground">{t("specialtiesCount", { count: specialties.length })}</p>
 
       {specialties.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">{t("specialtiesEmpty")}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{t("specialtiesEmpty")}</p>
       ) : (
-        <ul className="mt-4 flex flex-wrap gap-2">
+        <ul className="mt-2 flex flex-wrap gap-2">
           {specialties.map((name) => (
             <li key={name} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-zinc-200 bg-background pl-3 pr-1 text-sm dark:border-zinc-700">
               <span>{name}</span>
@@ -120,6 +110,6 @@ export function ContactSpecialtySettings({
           ))}
         </ul>
       )}
-    </section>
+    </div>
   )
 }

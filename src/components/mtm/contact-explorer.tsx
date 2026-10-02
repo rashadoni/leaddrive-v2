@@ -77,6 +77,7 @@ import {
   localizedContactCategoryLabel,
   type ContactCategoryLabels,
 } from "@/lib/mtm/contact-category-editor"
+import { contactFieldVisibility, type MtmContactSwitchableField } from "@/lib/mtm/contact-field-visibility"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -194,6 +195,8 @@ type ContactFacets = {
   /** The tenant's specialty list, then specialties contacts carry beyond it. */
   specialties?: string[]
   configuredSpecialties?: string[]
+  /** Client fields this tenant switched off in MTM settings. */
+  hiddenFields?: string[]
   profiles: string[]
   qualificationCategories: string[]
   regions: string[]
@@ -277,6 +280,22 @@ function FieldCheckbox({
   )
 }
 
+type FieldVisibility = (field: MtmContactSwitchableField) => boolean
+
+/** The first phone the tenant still shows: mobile, main, then work. */
+function visiblePhone(contact: Pick<ContactRow, "mobilePhone" | "phone" | "workPhone">, shows: FieldVisibility): string | null {
+  return (shows("mobilePhone") && contact.mobilePhone)
+    || (shows("phone") && contact.phone)
+    || (shows("workPhone") && contact.workPhone)
+    || null
+}
+
+function specialtyLine(contact: Pick<ContactRow, "specialtyName" | "specialtyCode">, shows: FieldVisibility): string | null {
+  return (shows("specialtyName") && contact.specialtyName)
+    || (shows("specialtyCode") && contact.specialtyCode)
+    || null
+}
+
 function statusVariant(status: string): "success" | "warning" | "outline" {
   if (status === "ACTIVE") return "success"
   if (status === "PROSPECT") return "warning"
@@ -355,6 +374,10 @@ export function MtmContactExplorer() {
         }))
       : LEGACY_CONTACT_TYPES.map((type) => ({ value: type as string, label: t(`types.${type}`) }))
   ), [facets?.categories, locale, t])
+
+  // Fields the tenant switched off are not columns, card lines or filters here.
+  const shows = useMemo(() => contactFieldVisibility(facets?.hiddenFields), [facets?.hiddenFields])
+  const showsProfession = shows("specialtyName") || shows("qualificationCategory") || shows("profile")
 
   const query = useMemo(() => contactQuery(filters, page, limit), [filters, page, limit])
   const queryString = query.toString()
@@ -758,9 +781,11 @@ export function MtmContactExplorer() {
         <MtmFilterGrid>
           <MtmFilterSelectField testId="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)} allLabel={t("allAccessible")}
             options={(payload?.availableAgents ?? []).map((agent) => ({ value: agent.id, label: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }))} />
-          <MtmFilterMultiField testId="mtm-contact-specialties" label={t("filterSpecialties")} values={filters.specialties} onChange={updateSpecialties} allLabel={t("all")}
-            searchPlaceholder={t("filterSpecialtySearch")} emptyLabel={t("filterNothingFound")} clearLabel={tf("clear")}
-            options={(facets?.specialties ?? []).map((value) => ({ value, label: value }))} />
+          {shows("specialtyName") || filters.specialties.length > 0 ? (
+            <MtmFilterMultiField testId="mtm-contact-specialties" label={t("filterSpecialties")} values={filters.specialties} onChange={updateSpecialties} allLabel={t("all")}
+              searchPlaceholder={t("filterSpecialtySearch")} emptyLabel={t("filterNothingFound")} clearLabel={tf("clear")}
+              options={(facets?.specialties ?? []).map((value) => ({ value, label: value }))} />
+          ) : null}
           <MtmFilterTextField testId="mtm-contact-name" label={t("filterClientName")} placeholder={t("filterNamePlaceholder")} value={filters.name} onChange={(value) => updateFilter("name", value)} clearLabel={tf("clear")} />
           <MtmFilterTextField testId="mtm-contact-address" label={t("filterAddress")} placeholder={t("filterAddressPlaceholder")} value={filters.address} onChange={(value) => updateFilter("address", value)} clearLabel={tf("clear")} />
           <MtmFilterTextField testId="mtm-contact-area" label={t("filterArea")} placeholder={t("filterAreaPlaceholder")} value={filters.area} onChange={(value) => updateFilter("area", value)} clearLabel={tf("clear")} />
@@ -784,17 +809,24 @@ export function MtmContactExplorer() {
                 ["locality", "locality", facets?.localities],
                 ["cityDistrict", "cityDistrict", facets?.cityDistricts],
                 ["organizationKind", "organizationKind", facets?.organizationKinds],
-              ] as const).map(([key, labelKey, values]) => (
+              ] as const).map(([key, labelKey, values]) => {
                 // A reference dropdown with nothing to choose is noise: it
-                // shows only where the tenant's data fills it, or it is set.
-                (values?.length ?? 0) > 0 || filters[key] ? (
+                // shows only where the tenant's data fills it — and not for a
+                // field the tenant switched off — or while it is set.
+                const offered = (values?.length ?? 0) > 0
+                  && (key === "profile" || key === "qualificationCategory" ? shows(key) : true)
+                return offered || filters[key] ? (
                   <MtmFilterSelectField key={key} testId={`mtm-contact-${key}`} label={t(labelKey)} value={filters[key]} onChange={(value) => updateFilter(key, value)} allLabel={t("all")}
                     options={(values ?? []).map((value) => ({ value, label: value }))} />
                 ) : null
-              ))}
-              <MtmFilterSelectField testId="mtm-contact-object-type" label={t("organizationType")} value={filters.objectType} onChange={(value) => updateFilter("objectType", value)} allLabel={t("all")}
-                options={(facets?.objectTypes ?? []).map((value) => ({ value, label: t(`objectTypes.${value}`) }))} />
-              <MtmFilterDateField testId="mtm-contact-coverage-period" type="month" label={t("coveragePeriod")} active={Boolean(filters.coveragePeriod)} value={filters.coveragePeriod || payload?.coveragePeriod.key || ""} onChange={(value) => updateFilter("coveragePeriod", value)} />
+              })}
+              {(facets?.objectTypes.length ?? 0) > 0 || filters.objectType ? (
+                <MtmFilterSelectField testId="mtm-contact-object-type" label={t("organizationType")} value={filters.objectType} onChange={(value) => updateFilter("objectType", value)} allLabel={t("all")}
+                  options={(facets?.objectTypes ?? []).map((value) => ({ value, label: t(`objectTypes.${value}`) }))} />
+              ) : null}
+              {shows("coverage") || filters.coveragePeriod ? (
+                <MtmFilterDateField testId="mtm-contact-coverage-period" type="month" label={t("coveragePeriod")} active={Boolean(filters.coveragePeriod)} value={filters.coveragePeriod || payload?.coveragePeriod.key || ""} onChange={(value) => updateFilter("coveragePeriod", value)} />
+              ) : null}
             </>
           ) : null}
         </MtmFilterGrid>
@@ -896,6 +928,7 @@ export function MtmContactExplorer() {
                 visitDate={visitDate}
                 visitDateTime={visitDateTime}
                 categoryLabel={categoryLabel(contact)}
+                shows={shows}
                 t={t}
               />
             ))}
@@ -913,8 +946,8 @@ export function MtmContactExplorer() {
                     />
                   </th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("contact")}</th>
-                  <th scope="col" className="px-3 py-3 font-medium">{t("professional")}</th>
-                  <th scope="col" className="px-3 py-3 font-medium">{t("coverage")}</th>
+                  {showsProfession ? <th scope="col" className="px-3 py-3 font-medium">{t("professional")}</th> : null}
+                  {shows("coverage") ? <th scope="col" className="px-3 py-3 font-medium">{t("coverage")}</th> : null}
                   <th scope="col" className="px-3 py-3 font-medium">{t("workplace")}</th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("visitContext")}</th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("communication")}</th>
@@ -925,7 +958,8 @@ export function MtmContactExplorer() {
                 {contacts.map((contact) => {
                   const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
                   const owner = contact.agentAssignments.find((assignment) => assignment.role === "PRIMARY")?.agent
-                  const phone = contact.mobilePhone || contact.phone || contact.workPhone
+                  const phone = visiblePhone(contact, shows)
+                  const email = shows("email") ? contact.email : null
                   const lastVisit = contact.visits[0]
                   const nextPoint = contact.routePoints[0]
                   return (
@@ -950,17 +984,21 @@ export function MtmContactExplorer() {
                           <Badge variant="outline">{categoryLabel(contact)}</Badge>
                           <Badge variant="outline">{t("categoryShort", { category: contact.category })}</Badge>
                         </div>
-                        {contact.externalCode ? <p className="mt-1 text-xs text-muted-foreground">{contact.externalCode}</p> : null}
+                        {contact.externalCode && shows("externalCode") ? <p className="mt-1 text-xs text-muted-foreground">{contact.externalCode}</p> : null}
                       </td>
-                      <td className="px-3 py-3">
-                        <p className="font-medium">{contact.specialtyName || contact.specialtyCode || "—"}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {[contact.profile, contact.qualificationCategory].filter(Boolean).join(" · ") || "—"}
-                        </p>
-                      </td>
-                      <td className="px-3 py-3">
-                        <ContactCoverageCell coverage={contact.coverage} t={t} />
-                      </td>
+                      {showsProfession ? (
+                        <td className="px-3 py-3">
+                          <p className="font-medium">{specialtyLine(contact, shows) || "—"}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {[shows("profile") && contact.profile, shows("qualificationCategory") && contact.qualificationCategory].filter(Boolean).join(" · ") || "—"}
+                          </p>
+                        </td>
+                      ) : null}
+                      {shows("coverage") ? (
+                        <td className="px-3 py-3">
+                          <ContactCoverageCell coverage={contact.coverage} t={t} />
+                        </td>
+                      ) : null}
                       <td className="px-3 py-3">
                         {workplace ? (
                           <>
@@ -1000,8 +1038,8 @@ export function MtmContactExplorer() {
                       </td>
                       <td className="px-3 py-3">
                         {phone ? <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-1.5 hover:text-primary"><Phone className="h-3.5 w-3.5" />{phone}</a> : null}
-                        {contact.email ? <a href={`mailto:${contact.email}`} className="mt-1 flex items-center gap-1.5 hover:text-primary"><Mail className="h-3.5 w-3.5" />{contact.email}</a> : null}
-                        {!phone && !contact.email ? <span className="text-muted-foreground">—</span> : null}
+                        {email ? <a href={`mailto:${email}`} className="mt-1 flex items-center gap-1.5 hover:text-primary"><Mail className="h-3.5 w-3.5" />{email}</a> : null}
+                        {!phone && !email ? <span className="text-muted-foreground">—</span> : null}
                       </td>
                       <td className="px-3 py-3">
                         {owner ? (
@@ -1086,6 +1124,7 @@ export function MtmContactExplorer() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         specialties={facets?.configuredSpecialties}
+        hiddenFields={facets?.hiddenFields}
         onCreated={() => {
           setPage(1)
           refresh()
@@ -1148,6 +1187,7 @@ function ContactCard({
   visitDate,
   visitDateTime,
   categoryLabel,
+  shows,
   t,
 }: {
   contact: ContactRow
@@ -1157,11 +1197,13 @@ function ContactCard({
   visitDate: DateFormatter
   visitDateTime: DateFormatter
   categoryLabel: string
+  shows: FieldVisibility
   t: ReturnType<typeof useTranslations>
 }) {
   const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
   const owner = contact.agentAssignments.find((assignment) => assignment.role === "PRIMARY")?.agent
-  const phone = contact.mobilePhone || contact.phone || contact.workPhone
+  const phone = visiblePhone(contact, shows)
+  const email = shows("email") ? contact.email : null
   const lastVisit = contact.visits[0]
   const nextPoint = contact.routePoints[0]
   return (
@@ -1188,18 +1230,22 @@ function ContactCard({
         </div>
       </div>
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-xs text-muted-foreground">{t("professional")}</dt>
-          <dd className="mt-1">{contact.specialtyName || contact.specialtyCode || "—"}</dd>
-        </div>
+        {shows("specialtyName") || shows("specialtyCode") ? (
+          <div>
+            <dt className="text-xs text-muted-foreground">{t("professional")}</dt>
+            <dd className="mt-1">{specialtyLine(contact, shows) || "—"}</dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-xs text-muted-foreground">{t("owner")}</dt>
           <dd className="mt-1">{owner?.name || t("unassigned")}</dd>
         </div>
-        <div className="sm:col-span-2">
-          <dt className="text-xs text-muted-foreground">{t("coverage")}</dt>
-          <dd className="mt-1"><ContactCoverageCell coverage={contact.coverage} t={t} /></dd>
-        </div>
+        {shows("coverage") ? (
+          <div className="sm:col-span-2">
+            <dt className="text-xs text-muted-foreground">{t("coverage")}</dt>
+            <dd className="mt-1"><ContactCoverageCell coverage={contact.coverage} t={t} /></dd>
+          </div>
+        ) : null}
         <div className="sm:col-span-2">
           <dt className="text-xs text-muted-foreground">{t("workplace")}</dt>
           <dd className="mt-1">
@@ -1233,10 +1279,10 @@ function ContactCard({
           </dd>
         </div>
       </dl>
-      {(phone || contact.email) ? (
+      {(phone || email) ? (
         <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
           {phone ? <Button asChild variant="outline" size="sm"><a href={`tel:${phone.replace(/[^\d+]/g, "")}`}><Phone className="mr-1 h-4 w-4" />{t("call")}</a></Button> : null}
-          {contact.email ? <Button asChild variant="outline" size="sm"><a href={`mailto:${contact.email}`}><Mail className="mr-1 h-4 w-4" />{t("email")}</a></Button> : null}
+          {email ? <Button asChild variant="outline" size="sm"><a href={`mailto:${email}`}><Mail className="mr-1 h-4 w-4" />{t("email")}</a></Button> : null}
         </div>
       ) : null}
     </article>

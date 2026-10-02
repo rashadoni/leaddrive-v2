@@ -37,7 +37,7 @@ describe("the shared MTM filter row", () => {
 describe("the labelled filter fields", () => {
   it("puts a name over every field and tints the ones that are set", () => {
     expect(bar).toContain("export function MtmFilterGrid(")
-    expect(bar).toContain('className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"')
+    expect(bar).toContain('className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4"')
     expect(bar).toContain("<MtmFilterFieldLabel htmlFor={id}>{label}</MtmFilterFieldLabel>")
     expect(bar).toContain("${value ? FIELD_SET : FIELD_IDLE}")
   })
@@ -79,7 +79,7 @@ describe("«Клиенты» filters", () => {
     expect(explorer).toContain('updateFilter("objectType", value)')
     expect(explorer).toContain('updateFilter("search", value)')
     // A reference dropdown appears only where there is something to choose.
-    expect(explorer).toContain("(values?.length ?? 0) > 0 || filters[key] ? (")
+    expect(explorer).toContain("return offered || filters[key] ? (")
   })
 })
 

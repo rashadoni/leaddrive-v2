@@ -327,4 +327,28 @@ describe("«Müştərilər»: the filter as named fields", () => {
     await typeInto("mtm-contact-search", "Tbilisi")
     expect(listed()).toEqual(["Elvin Quliyev", "Nigar Hüseynova", "Rəşad Əliyev"])
   })
+
+  it("drops the fields a tenant switched off: no specialty filter, no profession or coverage column", async () => {
+    // Column names; the first cell is the «select page» checkbox.
+    const headers = () => [...container.querySelectorAll("thead th")].slice(1).map((cell) => cell.textContent?.trim())
+    expect(headers()).toEqual(["Kontakt", "Peşəkar profil", "Əhatə", "İş yeri", "Ziyarətlər", "Əlaqə", "Məsul əməkdaş"])
+
+    // A tenant that does not visit doctors, reopening the same screen.
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "contactHiddenFields", value: ["specialtyName", "specialtyCode", "qualificationCategory", "profile", "coverage"] },
+    ] as never)
+    await act(async () => { root.unmount() })
+    root = createRoot(container)
+    await act(async () => { root.render(createElement(MtmContactExplorer)) })
+    await settle()
+
+    expect(labels()).toEqual(["Məsul əməkdaş", "Müştəri adı", "Ünvan", "Şəhər və ya rayon", "Müəssisə", "Kontakt növü", "Status"])
+    expect(field("mtm-contact-specialties")).toBeNull()
+    expect(headers()).toEqual(["Kontakt", "İş yeri", "Ziyarətlər", "Əlaqə", "Məsul əməkdaş"])
+    expect(container.querySelector("tbody")?.textContent).not.toContain("Pediatr")
+    await click(field("mtm-contact-more-filters"))
+    expect(field("mtm-contact-coverage-period")).toBeNull()
+    // The clients themselves are all still there.
+    expect(listed()).toHaveLength(4)
+  })
 })

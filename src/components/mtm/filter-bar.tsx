@@ -228,11 +228,12 @@ export function MtmResultLine({ children, aside }: { children: ReactNode; aside?
  * page, the rest sit behind «Ещё фильтры» in the same grid.
  *
  * A field that is set is tinted, so what narrows the list is visible at a
- * glance without reading every box.
+ * glance without reading every box. Two columns even on a phone: eight fields
+ * one under another would push the list off the first screen.
  */
 export function MtmFilterGrid({ children, testId }: { children: ReactNode; testId?: string }) {
   return (
-    <div role="search" data-testid={testId} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div role="search" data-testid={testId} className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
       {children}
     </div>
   )
@@ -449,7 +450,7 @@ export function MtmFilterMultiField({
             </button>
           ) : null}
         </div>
-        <PopoverContent align="start" className="w-[max(var(--radix-popover-trigger-width),16rem)] max-w-[calc(100vw-2rem)] p-0">
+        <PopoverContent align="start" collisionPadding={8} className="w-[max(var(--radix-popover-trigger-width),16rem)] max-w-[calc(100vw-2rem)] p-0">
           {allOptions.length > 8 ? (
             <label className="flex items-center gap-2 border-b border-zinc-200 px-3 dark:border-zinc-700">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />

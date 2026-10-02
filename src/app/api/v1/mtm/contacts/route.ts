@@ -402,7 +402,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
   const asOf = utcDate(currentDateKey(new Date(), timezone))
 
-  const missingRequiredFields = missingMtmContactRequiredFields(body, settings.contactRequiredFields)
+  const missingRequiredFields = missingMtmContactRequiredFields(body, settings.contactRequiredFields, settings.contactHiddenFields)
   if (missingRequiredFields.length > 0) {
     return NextResponse.json({
       error: "Required contact fields are missing",

@@ -14,7 +14,7 @@ import {
 } from "@/lib/mtm/field-scope"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import {
-  coerceMtmContactRequiredFields,
+  effectiveMtmContactRequiredFields,
   mergedMtmContactState,
   missingMtmContactRequiredFields,
 } from "@/lib/mtm/contact-required-fields"
@@ -294,7 +294,9 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
       availableContactDictionaries,
       dictionaryAssignmentStateHash,
       contactPolicy: {
-        requiredFields: coerceMtmContactRequiredFields(settings.contactRequiredFields),
+        // Minus the fields the tenant switched off: a hidden field is never required.
+        requiredFields: effectiveMtmContactRequiredFields(settings.contactRequiredFields, settings.contactHiddenFields),
+        hiddenFields: settings.contactHiddenFields,
         // The tenant's list the card's specialty is chosen from.
         specialties: settings.contactSpecialties,
       },
@@ -343,6 +345,7 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
   const missingRequiredFields = missingMtmContactRequiredFields(
     mergedMtmContactState(before as unknown as Record<string, unknown>, body),
     settings.contactRequiredFields,
+    settings.contactHiddenFields,
   )
   if (missingRequiredFields.length > 0) {
     return NextResponse.json({

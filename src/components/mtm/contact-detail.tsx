@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MtmContactEditDialog } from "@/components/mtm/contact-edit-dialog"
+import { contactFieldVisibility } from "@/lib/mtm/contact-field-visibility"
 import {
   contactCategoryFieldDisplayValue,
   localizedContactCategoryLabel,
@@ -193,6 +194,7 @@ type ApiPayload = {
     contactPolicy: {
       requiredFields: MtmContactRequiredField[]
       specialties?: string[]
+      hiddenFields?: string[]
     }
     asOf: string
     timezone: string
@@ -372,17 +374,21 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
   }
 
   const { contact, activeAssignments, capabilities, history } = payload
+  // Fields the tenant switched off in MTM settings are not part of its card.
+  const shows = contactFieldVisibility(payload.contactPolicy.hiddenFields)
+  const showsProfession = shows("specialtyName") || shows("qualificationCategory") || shows("profile")
+  const showsHomeAddress = shows("postalCode") || shows("addressRegion") || shows("addressLocality") || shows("addressDistrict") || shows("addressStreet")
   const currentWorkplaces = contact.workplaces.filter((workplace) => !workplace.endedOn)
   const historicalWorkplaces = contact.workplaces.filter((workplace) => Boolean(workplace.endedOn))
   const primaryWorkplace = currentWorkplaces.find((workplace) => workplace.isPrimary) ?? currentWorkplaces[0] ?? null
   const preferredPhone = contact.mobilePhone || contact.phone || contact.workPhone || primaryWorkplace?.phone || null
   const preferredMessenger = contact.whatsappPhone || contact.messengerPhone || contact.mobilePhone || null
   const address = [
-    contact.postalCode,
-    contact.addressRegion,
-    contact.addressLocality,
-    contact.addressDistrict,
-    contact.addressStreet,
+    shows("postalCode") && contact.postalCode,
+    shows("addressRegion") && contact.addressRegion,
+    shows("addressLocality") && contact.addressLocality,
+    shows("addressDistrict") && contact.addressDistrict,
+    shows("addressStreet") && contact.addressStreet,
   ].filter(Boolean).join(", ")
   const organizationReturn = primaryWorkplace
     ? `/mtm/customers/${primaryWorkplace.customer.id}?returnTo=${encodeURIComponent("/mtm/customers")}`
@@ -438,10 +444,12 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
             </div>
             <div className="grid gap-2">
               <h1 className="max-w-4xl text-2xl font-semibold tracking-tight md:text-3xl">{contact.displayName}</h1>
-              <p className="flex items-start gap-2 text-sm text-muted-foreground">
-                <Stethoscope className="mt-0.5 h-4 w-4 flex-none" />
-                <span>{[contact.specialtyName, contact.qualificationCategory, contact.profile].filter(Boolean).join(" · ") || t("professionalMissing")}</span>
-              </p>
+              {showsProfession ? (
+                <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <Stethoscope className="mt-0.5 h-4 w-4 flex-none" />
+                  <span>{[shows("specialtyName") && contact.specialtyName, shows("qualificationCategory") && contact.qualificationCategory, shows("profile") && contact.profile].filter(Boolean).join(" · ") || t("professionalMissing")}</span>
+                </p>
+              ) : null}
               <p className="flex items-start gap-2 text-sm text-muted-foreground">
                 <BriefcaseBusiness className="mt-0.5 h-4 w-4 flex-none" />
                 <span>{primaryWorkplace
@@ -527,12 +535,12 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
           <div className="grid gap-5 xl:grid-cols-2">
             <SectionCard title={t("identityTitle")} description={t("identityDescription")}>
               <dl>
-                <DefinitionRow label={t("externalCode")} value={contact.externalCode} />
+                {shows("externalCode") ? <DefinitionRow label={t("externalCode")} value={contact.externalCode} /> : null}
                 <DefinitionRow label={t("lastName")} value={contact.lastName} />
                 <DefinitionRow label={t("firstName")} value={contact.firstName} />
-                <DefinitionRow label={t("middleName")} value={contact.middleName} />
-                <DefinitionRow label={t("birthDate")} value={contact.birthDate ? dateFormatter.format(new Date(contact.birthDate)) : null} />
-                <DefinitionRow label={t("gender")} value={contact.gender} />
+                {shows("middleName") ? <DefinitionRow label={t("middleName")} value={contact.middleName} /> : null}
+                {shows("birthDate") ? <DefinitionRow label={t("birthDate")} value={contact.birthDate ? dateFormatter.format(new Date(contact.birthDate)) : null} /> : null}
+                {shows("gender") ? <DefinitionRow label={t("gender")} value={contact.gender} /> : null}
                 <DefinitionRow label={t("notes")} value={contact.notes} />
               </dl>
             </SectionCard>
@@ -551,10 +559,10 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                     />
                   )
                 })}
-                <DefinitionRow label={t("specialty")} value={contact.specialtyName} />
-                <DefinitionRow label={t("specialtyCode")} value={contact.specialtyCode} />
-                <DefinitionRow label={t("qualification")} value={contact.qualificationCategory} />
-                <DefinitionRow label={t("profile")} value={contact.profile} />
+                {shows("specialtyName") ? <DefinitionRow label={t("specialty")} value={contact.specialtyName} /> : null}
+                {shows("specialtyCode") ? <DefinitionRow label={t("specialtyCode")} value={contact.specialtyCode} /> : null}
+                {shows("qualificationCategory") ? <DefinitionRow label={t("qualification")} value={contact.qualificationCategory} /> : null}
+                {shows("profile") ? <DefinitionRow label={t("profile")} value={contact.profile} /> : null}
                 <DefinitionRow label={t("masterCategory")} value={contact.category} />
                 <DefinitionRow label={t("source")} value={contact.source} />
               </dl>
@@ -660,30 +668,32 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
           <div className="grid gap-5 xl:grid-cols-2">
             <SectionCard title={t("channelsTitle")} description={t("channelsDescription")}>
               <dl>
-                <DefinitionRow label={t("email")} value={contact.email ? <a className="text-primary hover:underline" href={`mailto:${contact.email}`}>{contact.email}</a> : null} />
-                <DefinitionRow label={t("phone")} value={contact.phone ? <a className="text-primary hover:underline" href={phoneHref(contact.phone)}>{contact.phone}</a> : null} />
-                <DefinitionRow label={t("mobilePhone")} value={contact.mobilePhone ? <a className="text-primary hover:underline" href={phoneHref(contact.mobilePhone)}>{contact.mobilePhone}</a> : null} />
-                <DefinitionRow label={t("workPhone")} value={contact.workPhone ? <a className="text-primary hover:underline" href={phoneHref(contact.workPhone)}>{contact.workPhone}</a> : null} />
-                <DefinitionRow label={t("homePhone")} value={contact.homePhone ? <a className="text-primary hover:underline" href={phoneHref(contact.homePhone)}>{contact.homePhone}</a> : null} />
-                <DefinitionRow label={t("messengerPhone")} value={contact.messengerPhone} />
-                <DefinitionRow label="Viber" value={contact.viberPhone} />
-                <DefinitionRow label="WhatsApp" value={contact.whatsappPhone ? <a className="text-primary hover:underline" href={whatsappHref(contact.whatsappPhone)} target="_blank" rel="noreferrer">{contact.whatsappPhone}</a> : null} />
-                <DefinitionRow label="Telegram" value={contact.telegramPhone} />
+                {shows("email") ? <DefinitionRow label={t("email")} value={contact.email ? <a className="text-primary hover:underline" href={`mailto:${contact.email}`}>{contact.email}</a> : null} /> : null}
+                {shows("phone") ? <DefinitionRow label={t("phone")} value={contact.phone ? <a className="text-primary hover:underline" href={phoneHref(contact.phone)}>{contact.phone}</a> : null} /> : null}
+                {shows("mobilePhone") ? <DefinitionRow label={t("mobilePhone")} value={contact.mobilePhone ? <a className="text-primary hover:underline" href={phoneHref(contact.mobilePhone)}>{contact.mobilePhone}</a> : null} /> : null}
+                {shows("workPhone") ? <DefinitionRow label={t("workPhone")} value={contact.workPhone ? <a className="text-primary hover:underline" href={phoneHref(contact.workPhone)}>{contact.workPhone}</a> : null} /> : null}
+                {shows("homePhone") ? <DefinitionRow label={t("homePhone")} value={contact.homePhone ? <a className="text-primary hover:underline" href={phoneHref(contact.homePhone)}>{contact.homePhone}</a> : null} /> : null}
+                {shows("messengerPhone") ? <DefinitionRow label={t("messengerPhone")} value={contact.messengerPhone} /> : null}
+                {shows("viberPhone") ? <DefinitionRow label="Viber" value={contact.viberPhone} /> : null}
+                {shows("whatsappPhone") ? <DefinitionRow label="WhatsApp" value={contact.whatsappPhone ? <a className="text-primary hover:underline" href={whatsappHref(contact.whatsappPhone)} target="_blank" rel="noreferrer">{contact.whatsappPhone}</a> : null} /> : null}
+                {shows("telegramPhone") ? <DefinitionRow label="Telegram" value={contact.telegramPhone} /> : null}
               </dl>
             </SectionCard>
-            <SectionCard title={t("homeAddressTitle")} description={t("homeAddressDescription")}>
-              <div className="mb-3 flex items-start gap-2 rounded-xl bg-muted/50 p-3 text-sm">
-                <MapPin className="mt-0.5 h-4 w-4 flex-none text-muted-foreground" />
-                <span>{address || t("addressMissing")}</span>
-              </div>
-              <dl>
-                <DefinitionRow label={t("postalCode")} value={contact.postalCode} />
-                <DefinitionRow label={t("region")} value={contact.addressRegion} />
-                <DefinitionRow label={t("locality")} value={contact.addressLocality} />
-                <DefinitionRow label={t("district")} value={contact.addressDistrict} />
-                <DefinitionRow label={t("street")} value={contact.addressStreet} />
-              </dl>
-            </SectionCard>
+            {showsHomeAddress ? (
+              <SectionCard title={t("homeAddressTitle")} description={t("homeAddressDescription")}>
+                <div className="mb-3 flex items-start gap-2 rounded-xl bg-muted/50 p-3 text-sm">
+                  <MapPin className="mt-0.5 h-4 w-4 flex-none text-muted-foreground" />
+                  <span>{address || t("addressMissing")}</span>
+                </div>
+                <dl>
+                  {shows("postalCode") ? <DefinitionRow label={t("postalCode")} value={contact.postalCode} /> : null}
+                  {shows("addressRegion") ? <DefinitionRow label={t("region")} value={contact.addressRegion} /> : null}
+                  {shows("addressLocality") ? <DefinitionRow label={t("locality")} value={contact.addressLocality} /> : null}
+                  {shows("addressDistrict") ? <DefinitionRow label={t("district")} value={contact.addressDistrict} /> : null}
+                  {shows("addressStreet") ? <DefinitionRow label={t("street")} value={contact.addressStreet} /> : null}
+                </dl>
+              </SectionCard>
+            ) : null}
           </div>
         </TabsContent>
 
@@ -803,6 +813,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
             canRequestChanges={capabilities.canRequestChanges}
             requiredFields={payload.contactPolicy.requiredFields}
             specialties={payload.contactPolicy.specialties}
+            hiddenFields={payload.contactPolicy.hiddenFields}
             assignedCategoryLabel={assignedClientType ? clientCategoryLabel : null}
             orgId={orgId ? String(orgId) : undefined}
             onSaved={loadContact}
