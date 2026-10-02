@@ -418,3 +418,40 @@
   these3receipt checkpoints, then obtain authenticated confirmation/exact-retry/
   context-switch browser evidence only on CI or an approved worker. No new
   mutation scope selected; existing007f exclusions and host limits persist.
+
+
+## 2026-10-02 — bounded hosted browser evidence candidate
+
+- Added optional path-scoped, cancelable ubuntu24.04 browser workflow. It uses
+  a disposable loopback pgvector/PostgreSQL16 database and real Next dev app,
+  distinct masked generated secrets, normal CSRF/credentials/session login,
+  and no production access. Existing five required gates/baselines unchanged.
+- Candidate-schema db push is supplemented with the calendar single-scope
+  constraint/three partial unique indexes and five forced-RLS tables. Runtime
+  application role is non-owner, NOSUPERUSER/NOBYPASSRLS with SELECT/INSERT/
+  UPDATE, no DELETE/TRUNCATE/DDL. Separate service admin seeds/inspects only
+  synthetic tenants. This is a bounded browser fixture, not a full production
+  migration or RLS audit; prior real PostgreSQL proofs remain separate.
+- Six planned real browser cases: EN organization, RU phone/team and AZ
+  organization confirmation/cancel/confirm; same-task duplicate submit with
+  real committed-response loss and byte-identical audit-backed retry; late
+  committed response after real same-tenant principal switch and tenant switch.
+  Context cases hold the new GET while delivering the old POST, verifying the
+  old result does not abort the new load or publish its notice. Session change
+  uses Auth.js' existing broadcast/refetch, not a mocked session payload.
+- Harness checks persisted two-row common tombstones/actor, exactly one audit,
+  and byte-identical state after real replay. Screenshots/JSON receipts contain
+  only synthetic fixture data; raw cookies/passwords/app logs are not uploaded.
+- Current Contabo parse/ESLint/runner-policy/YAML/whitespace checks PASS. RAM
+  15GB available,disk339GB,memorypressure0 before small sequential checks.
+  Actual browser/Postgres/full typecheck/build/suite: NOT RUN locally; hosted
+  browser candidate has not run and is not yet acceptance evidence.
+- Fresh main advanced again to88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf
+  (#527 settings role gate). Calendar service/UI unchanged; auth/proxy/schema
+  changes accounted for by real admin login/current candidate schema. Integrate
+  fresh main before exact-head review/publication. No application mutation
+  behavior or existing UI section changed in this continuation.
+- Progress unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
+  Current result: reviewable browser CI candidate. Last action: scoped static
+  checks. Precise stopping point: checkpoint/fresh-main integration/review.
+  Next action: publish draft, then full required gates plus actual browser job.
