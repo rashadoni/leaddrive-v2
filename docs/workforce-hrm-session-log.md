@@ -4075,3 +4075,34 @@ corrections as new entries that explicitly supersede the earlier fact.
   hosted viewport/focus cases and static/type gates. Next action: inspect
   primary results, fresh-main protected merge and normal deploy/public SHA
   proof when all GREEN. Progress unchanged81/161,14/15,C8 36%,59%;007 PARTIAL.
+
+
+## 2026-10-02 — final exact-head viewport/browser execution GREEN
+
+- Browser https://github.com/rashadoni/leaddrive-v2/actions/runs/37050043177
+  /job110981187439 SUCCESS at exact35c518f19ab219989df5340b6d56ee6e946e04ce,
+  synthetic merge2061c95cb945702681c0e763c96729e04b1a447c. Primary JSON
+  started2026-10-02T18:54:15.366Z/completed18:54:54.959Z: six cases PASS39.593s.
+  Original sanitized CI JSON preserved byte-for-byte at
+  docs/evidence/workforce-c8-calendar-browser-2026-10-02-35c518f1.json.
+- Actual full-panel main/window viewport and heading focus assertions passed
+  for EN/ORG, RU phone/TEAM, AZ/ORG, unknown-outcome/retry and both contexts.
+  Root inspected final RU phone screenshot: review heading, both dates/scope,
+  explanation and confirm/cancel buttons all visible beneath dashboard header.
+  Earlier offscreen phone screenshot remains historical; this is new-head
+  evidence of the focused visible-review fix.
+- Real auth, actual2-row/1mtm-audit reversal, same-task double-submit guard,
+  committed-response loss/[true,false] byte-identical replay/zero replay writes,
+  principal/tenant switch with new GET survival and populated forced-RLS
+  fail-closed probes all executed again. This supersedes final-head NOT RUN
+  only for these hosted development-bundle cases; production authenticated
+  operations/AT/Android/load/device/pilot remain NOT RUN.
+- Mandatory pr-scope110981253450, runner37050043218 and scan37050043286
+  SUCCESS; static110981362105 and type110981362364 still pending. PR build
+ 110981255281 SKIPPED by existing policy. No merge before both gates GREEN.
+- Receipt-only local append after published35; source candidate unchanged.
+  Current result: final UI focus/viewport/browser proof GREEN. Last action:
+  primary JSON/screenshots inspection and durable original receipt. Precise
+  stopping point: mandatory static/type gates pending. Next action: collect
+  exact-head primary logs, fresh-main protected merge/normal deploy/SHA smoke.
+  Progress unchanged81/161,14/15,C8 36%,59%,80non-DONE;007 PARTIAL.
