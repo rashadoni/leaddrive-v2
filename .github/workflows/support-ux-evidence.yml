@@ -707,6 +707,7 @@ jobs:
             src/app/api/v1/calendar/agent/route.ts \
             src/components/ui/sheet.tsx \
             src/lib/support-calendar/presentation.ts \
+            src/__tests__/support-calendar-agent-api.test.ts \
             src/__tests__/api-calendar-integrations.test.ts \
             src/__tests__/no-session-object-in-effect-deps.test.ts \
             src/__tests__/support-calendar-presentation.test.ts \
@@ -719,6 +720,7 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts
           npx vitest run \
+            src/__tests__/support-calendar-agent-api.test.ts \
             src/__tests__/api-calendar-integrations.test.ts \
             src/__tests__/no-session-object-in-effect-deps.test.ts \
             src/__tests__/support-calendar-presentation.test.ts \

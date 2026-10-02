@@ -4,7 +4,7 @@
 > closed; representative production observation and flag retirement remain open.
 > Exact unverified acceptance claims are identified in section 25.
 > **Original date:** 2026-08-31
-> **Last reviewed:** 2026-10-02
+> **Last reviewed:** 2026-10-03 (Asia/Baku)
 > **Code baseline:** `rashadoni/leaddrive-v2` `main` at
 > `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf` for release reconciliation;
 > historical browser receipts retain their own exact source SHAs.
@@ -4656,14 +4656,14 @@ Status reflects admitted implementation evidence and recorded release receipts.
 Historical browser runs prove their exact source/fixture matrix; they are not
 fresh production observations. A `DONE` entry does not extend an evidence
 claim to an untested viewport, inspection method or tenant-observation period.
-The four `IN_PROGRESS` rows preserve literal acceptance claims not established
+The three `IN_PROGRESS` rows preserve literal acceptance claims not established
 by the recorded evidence; they are distinct from the SUPUX checklist count.
 
 | Criterion | Planned implementation | Evidence required | Status |
 | --- | --- | --- | --- |
-| Daily work visible in first viewport | Compact shell, max three indicators, sticky toolbar | Foundation `36542434997` passes primary-work gates at canonical 1440/1024/768/375 widths; exact 1366 x 768 receipt remains absent | IN_PROGRESS — accepted canonical coverage; exact legacy dimension unverified |
+| Daily work visible in first viewport | Compact shell, max three indicators, sticky toolbar | Foundation canonical coverage plus additive exact-1366 run `37055428421`, artifact `11249886749`, 66/66 pass and eight representative screenshots inspected; see observation receipt | DONE — recorded exact-source 1366 x 768 mouse/keyboard evidence |
 | Support navigation is understandable | Three permission-aware groups | Navigation flows `36512893404` and 72-cell matrix `36514758825` | DONE — admitted source evidence |
-| No misleading metrics | Agent/VoIP aggregate contracts | AGT-001/002 and VoIP same-scope contracts; recorded role/high-profile API/UI receipts | DONE — admitted source/API/UI evidence |
+| No misleading metrics | Agent/VoIP aggregates and Calendar date-range counts | Agent/VoIP receipts remain valid; new screenshot audit found Calendar including SLA dates outside the requested week. Narrow API fix and regression tests pass locally; corrected exact-source browser receipt pending | IN_PROGRESS — Calendar correction requires CI/browser admission |
 | No page-level mobile overflow | Responsive cards/agenda/master-detail | Foundation `36542434997`, zero overflow failures including 375 px | DONE — admitted browser matrix |
 | Keyboard access | Semantic tables, rows, menus, switches, calendar events | Operational aggregate `36521929861`, recovery `36539937236`, and navigation flows | DONE — recorded representative journeys |
 | Touch target safety | Shared control sizing and row menus | Full matrix zero touch failures plus hit-tested operational mobile flows | DONE — admitted mobile evidence |
@@ -4709,9 +4709,10 @@ primary-work position and same-source visual/performance stability. They do not
 establish a matched pre-redesign before/after reduction for Service Desk, Agent
 Desktop, Entitlements and Calendar. Record compatible before/after source,
 fixture, role and viewport measurements before reporting a percentage; this
-target remains UNVERIFIED. The exact viewport, separate color-blind inspection
-and comparative measures in section 25 remain explicit follow-up acceptance
-work and are not waived by completing the tracked rollout checklist.
+target remains UNVERIFIED. Exact 1366 x 768 evidence is now accepted separately;
+color-blind inspection and comparative measures in section 25 remain explicit
+follow-up acceptance work and are not waived by completing the tracked rollout
+checklist.
 
 ## 27. Risks and Mitigations
 

@@ -1,0 +1,236 @@
+name: Matched historical Support layout
+
+# Independent synthetic measurements only. No push/PR trigger, production
+# credentials, deployment workflow, archived remote or historical workflow use.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: support-ux-historical-layout-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      after_sha: ${{ steps.identity.outputs.after_sha }}
+      main_sha: ${{ steps.identity.outputs.main_sha }}
+      anchor: ${{ steps.identity.outputs.anchor }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Admit exact public source identities and shared clock
+        id: identity
+        env:
+          AFTER_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          [ "$REPOSITORY" = "rashadoni/leaddrive-v2" ] || { echo 'Unapproved repository'; exit 1; }
+          [[ "$AFTER_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo 'Invalid exact candidate'; exit 1; }
+          BEFORE_SHA=76994875a251e0956b56f8d300625b97eb098661
+          MAIN_SHA="$(git rev-parse refs/remotes/origin/main)"
+          git merge-base --is-ancestor "$BEFORE_SHA" "$MAIN_SHA"
+          git merge-base --is-ancestor "$MAIN_SHA" "$AFTER_SHA"
+          [ "$AFTER_SHA" != "$BEFORE_SHA" ]
+          node --input-type=module <<'JS'
+          import { execFileSync } from "node:child_process"
+          import { HISTORICAL_LAYOUT_BEFORE_SHA, HISTORICAL_LAYOUT_ROUTES } from "./scripts/support-ux-historical-layout-contract.mjs"
+          for (const route of HISTORICAL_LAYOUT_ROUTES) {
+            const blob = execFileSync("git", ["rev-parse", HISTORICAL_LAYOUT_BEFORE_SHA + ":" + route.file], { encoding: "utf8" }).trim()
+            if (blob !== route.beforeBlob) throw new Error("Approved historical page identity changed")
+          }
+          JS
+          ANCHOR="$(node --input-type=module -e 'import { chooseHistoricalAnchor } from "./scripts/support-ux-historical-layout-contract.mjs"; console.log(chooseHistoricalAnchor())')"
+          printf 'after_sha=%s\nmain_sha=%s\nanchor=%s\n' "$AFTER_SHA" "$MAIN_SHA" "$ANCHOR" >> "$GITHUB_OUTPUT"
+      - name: Install controller check dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify bounded historical measurement controls
+        run: |
+          npx eslint scripts/support-ux-historical-layout-*.mjs scripts/support-ux-historical-layout-clock.cjs src/__tests__/support-ux-historical-layout.test.ts
+          npx vitest run src/__tests__/support-ux-historical-layout.test.ts
+
+  capture:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        stage: [before, after]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ephemeral-only
+          POSTGRES_DB: support_ux_historical_layout
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d support_ux_historical_layout"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://postgres:ephemeral-only@127.0.0.1:5432/support_ux_historical_layout
+      ADMIN_DATABASE_URL: postgresql://postgres:ephemeral-only@127.0.0.1:5432/support_ux_historical_layout
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      APP_URL: http://127.0.0.1:3000
+      AUTH_TRUST_HOST: "true"
+      TZ: UTC
+      NEXT_TELEMETRY_DISABLED: "1"
+      SUPPORT_HISTORICAL_BASE_URL: http://127.0.0.1:3000
+      SUPPORT_HISTORICAL_STAGE: ${{ matrix.stage }}
+      SUPPORT_HISTORICAL_SOURCE_SHA: ${{ matrix.stage == 'before' && '76994875a251e0956b56f8d300625b97eb098661' || needs.prepare.outputs.after_sha }}
+      SUPPORT_HISTORICAL_CONTROL_SHA: ${{ needs.prepare.outputs.after_sha }}
+      SUPPORT_HISTORICAL_MAIN_SHA: ${{ needs.prepare.outputs.main_sha }}
+      SUPPORT_HISTORICAL_ANCHOR: ${{ needs.prepare.outputs.anchor }}
+    steps:
+      - name: Checkout trusted current controller
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.after_sha }}
+          path: controller
+          persist-credentials: false
+      - name: Checkout exact approved runtime source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SUPPORT_HISTORICAL_SOURCE_SHA }}
+          path: runtime
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Prepare bounded hosted build memory
+        run: bash controller/scripts/ci/prepare-hosted-build-runner.sh
+      - name: Install exact runtime dependencies
+        working-directory: runtime
+        run: npm ci
+      - name: Copy measurement tools without changing application sources
+        run: |
+          mkdir runtime/.support-ux-historical-control
+          cp controller/scripts/support-ux-historical-layout-*.mjs runtime/.support-ux-historical-control/
+          cp controller/scripts/support-ux-historical-layout-clock.cjs runtime/.support-ux-historical-control/
+      - name: Generate masked ephemeral credentials
+        run: |
+          ADMIN_PASSWORD="$(openssl rand -hex 32)Aa1!"
+          AUTH_SECRET="$(openssl rand -hex 32)Aa1!"
+          PII_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$ADMIN_PASSWORD"
+          echo "::add-mask::$AUTH_SECRET"
+          echo "::add-mask::$PII_KEY"
+          printf 'SUPPORT_HISTORICAL_ADMIN_PASSWORD=%s\nNEXTAUTH_SECRET=%s\nTENANT_PII_MASTER_KEY=%s\n' "$ADMIN_PASSWORD" "$AUTH_SECRET" "$PII_KEY" >> "$GITHUB_ENV"
+      - name: Provision matched minimal fixture in dedicated empty database
+        working-directory: runtime
+        env:
+          NODE_ENV: test
+          SUPPORT_HISTORICAL_SEED_CONFIRM: ephemeral-support-historical-layout-v1
+        run: |
+          docker exec "${{ job.services.postgres.id }}" psql -U postgres -d support_ux_historical_layout -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          npx prisma db push --skip-generate
+          npx prisma generate
+          node .support-ux-historical-control/support-ux-historical-layout-fixture.mjs
+      - name: Install isolated Chromium
+        working-directory: runtime
+        run: npx playwright install --with-deps chromium
+      - name: Build exact runtime in production mode
+        working-directory: runtime
+        env:
+          NODE_ENV: production
+          NODE_OPTIONS: --max-old-space-size=8192
+          NEXT_BUILD_CPUS: "1"
+          NEXT_WEBPACK_PARALLELISM: "1"
+          LEADDRIVE_COLD_PRODUCTION_BUILD: "1"
+          LEADDRIVE_DISABLE_SERVICE_WORKER: "1"
+        run: |
+          ulimit -c 0
+          npx next build --webpack
+          mkdir -p .next/standalone/.next
+          cp -R .next/static .next/standalone/.next/static
+          cp -R public .next/standalone/public
+          git diff --exit-code -- src prisma package.json package-lock.json next.config.ts
+      - name: Capture four matched exact-runtime layouts
+        working-directory: runtime
+        env:
+          LEADDRIVE_RUNTIME_DIR: ${{ runner.temp }}/support-historical-runtime-${{ matrix.stage }}
+          LEADDRIVE_LOG_DIR: ${{ runner.temp }}/support-historical-logs-${{ matrix.stage }}
+        run: |
+          set -euo pipefail
+          APP_PID=""
+          cleanup() {
+            if [ -n "$APP_PID" ]; then
+              kill "$APP_PID" 2>/dev/null || true
+              wait "$APP_PID" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+          CLOCK_PRELOAD="$PWD/.support-ux-historical-control/support-ux-historical-layout-clock.cjs"
+          export SUPPORT_HISTORICAL_CLOCK_PROOF="$RUNNER_TEMP/support-historical-clock-$SUPPORT_HISTORICAL_STAGE.json"
+          HOSTNAME=127.0.0.1 PORT=3000 NODE_ENV=production NODE_OPTIONS="--require=$CLOCK_PRELOAD" node .next/standalone/server.js > "$RUNNER_TEMP/support-historical-app.log" 2>&1 &
+          APP_PID=$!
+          for ATTEMPT in $(seq 1 90); do
+            if curl -fsS --max-time 5 http://127.0.0.1:3000/api/v1/ping >/dev/null; then break; fi
+            kill -0 "$APP_PID" 2>/dev/null || { echo 'Exact runtime failed to start; raw logs withheld'; exit 1; }
+            [ "$ATTEMPT" -lt 90 ] || { echo 'Exact runtime readiness expired; raw logs withheld'; exit 1; }
+            sleep 1
+          done
+          node .support-ux-historical-control/support-ux-historical-layout-capture.mjs
+      - name: Upload bounded non-secret capture receipts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-historical-layout-${{ matrix.stage }}-${{ needs.prepare.outputs.after_sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            runtime/artifacts/support-ux-historical-layout/${{ matrix.stage }}/evidence.json
+            runtime/artifacts/support-ux-historical-layout/${{ matrix.stage }}/evidence.md
+            runtime/artifacts/support-ux-historical-layout/${{ matrix.stage }}/*.png
+      - name: Clean bounded hosted build memory
+        if: ${{ always() }}
+        run: bash controller/scripts/ci/prepare-hosted-build-runner.sh cleanup
+
+  compare:
+    needs: [prepare, capture]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.after_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: support-historical-layout-before-${{ needs.prepare.outputs.after_sha }}
+          path: artifacts/before
+      - uses: actions/download-artifact@v4
+        with:
+          name: support-historical-layout-after-${{ needs.prepare.outputs.after_sha }}
+          path: artifacts/after
+      - name: Require the unchanged 35 percent target on all four surfaces
+        env:
+          AFTER_SHA: ${{ needs.prepare.outputs.after_sha }}
+        run: node scripts/support-ux-historical-layout-compare.mjs artifacts/before/evidence.json artifacts/after/evidence.json "$AFTER_SHA" artifacts/comparison
+      - name: Upload comparison even when a surface misses the target
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-historical-layout-comparison-${{ needs.prepare.outputs.after_sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: artifacts/comparison/

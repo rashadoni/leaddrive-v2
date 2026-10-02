@@ -80,7 +80,7 @@ tenant authorization or expose request content to make observation easier.
 
 | Claim | Existing evidence | Remaining bounded work |
 | --- | --- | --- |
-| First viewport at exactly 1366 x 768 | Canonical 1440/1024/768/375 matrices and accepted primary-work position | Opt-in additional desktop viewport; capture only the representative daily-work scenarios, preserve mouse/keyboard modality, and inspect primary work/overflow |
+| First viewport at exactly 1366 x 768 | DONE: additive `37055428421`, artifact `11249886749`, 66/66 pass at measured 1366 x 768 with zero touch, plus eight actual representative screenshot reviews | Exact-source admission completed below; preserve the canonical matrix and all thresholds |
 | Color-blind inspection | Semantic labels/icons, paired themes and Axe receipts | Opt-in protanopia/deuteranopia/tritanopia simulation, identified in report/screenshot/baseline dimensions; manually inspect labels and status distinctions. Simulation is not a human-user study or a new WCAG certification |
 | Old/new block and vertical-distance comparison | Current structural metrics and same-source stability comparison | Establish legitimate pre-redesign source/fixture baselines and matched current captures for Service Desk, Agent Desktop, Entitlements and Calendar; record before/after numbers, formula and source identities |
 | At least 35% distance reduction | Target only; no matched quantitative proof recorded | Calculate only from the matched captures above. If the actual improvement is smaller, correct the layout and recapture the affected scenario; do not lower the requirement or invent a percentage |
@@ -101,14 +101,58 @@ read-only; selecting them with a mutating journey is rejected before building.
 
 | Prepared capture | Exact subset | Size / evidence boundary |
 | --- | --- | --- |
-| First-viewport inspection | `service-desk,agent-desktop,support-entitlements,agent-calendar`; `agent,manager,admin`; AZ/RU/EN; light/dark; `desktop-1366`; typical fixture; standard vision; canary enabled | 66 permitted cells, three samples each; real 1366 x 768 mouse/keyboard capture. [37055428421](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055428421) running on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; result PENDING |
-| Color-blind inspection | All scenarios; `admin,customer`; EN; light/dark; desktop/mobile; typical fixture; protanopia/deuteranopia/tritanopia; canary enabled | 336 permitted cells, one sample each; inspect actual screenshots and status labels after capture. [37055624370](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370) queued on the same exact source; result and actual inspection PENDING |
+| First-viewport inspection | `service-desk,agent-desktop,support-entitlements,agent-calendar`; `agent,manager,admin`; AZ/RU/EN; light/dark; `desktop-1366`; typical fixture; standard vision; canary enabled | 66 permitted cells, three samples each; real 1366 x 768 mouse/keyboard capture. [37055428421](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055428421) completed on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; 66/66 PASS; eight screenshots inspected |
+| Color-blind inspection | All scenarios; `admin,customer`; EN; light/dark; desktop/mobile; typical fixture; protanopia/deuteranopia/tritanopia; canary enabled | 336 permitted cells, one sample each; inspect actual screenshots and status labels after capture. [37055624370](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370) capturing on the same exact source; result and actual inspection PENDING |
 | Historical quantitative comparison | Four daily-work surfaces; matched fixture/role/locale/theme/viewport/data and old/current source identities | Public pre-redesign source candidate `76994875a251e0956b56f8d300625b97eb098661` has byte-identical original page blobs; exact-runtime compatibility and a separate measurement adapter still need verification. Existing same-source comparison cannot substitute for a pre-redesign baseline |
 
 These runs are additive evidence for previously untested dimensions. Record
 the dispatched branch SHA, Actions run, retained artifact and actual result
 before changing an acceptance status. The full completed 1296-cell matrix,
 original release workflows and original deploy are not repeated.
+
+## Exact 1366 x 768 receipt — accepted 2026-10-03 (Asia/Baku)
+
+[Run 37055428421](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055428421)
+completed successfully on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`. Retained
+artifact `11249886749`, 7,627,722 bytes, digest
+`sha256:708f1693b401391cc41007010b84172b88c6aa84091e22799dfb24f96f58a09e`.
+Its JSON contains exactly 66 passed cells, production-mode isolated typical
+fixture, enabled canary, standard vision and three samples per cell. Every
+cell reports/measures 1366 x 768 and zero touch points. All primary work areas
+are visible; page overflow, runtime errors, environment mismatch, Axe
+violations and local accessibility issues are zero. This is source/fixture
+browser evidence, not authenticated production-tenant observation.
+
+| Daily-work scenario | Cells | Primary work top from viewport |
+| --- | --- | --- |
+| Service Desk | 18 | 488 px |
+| Agent Desktop | 18 | 183 px |
+| Support Entitlements | 12 | 453–473 px |
+| Agent Calendar | 18 | 341 px |
+
+Actual screenshot inspection covered two cells per surface: Service Desk
+agent/RU/light and admin/EN/dark; Agent Desktop agent/EN/dark and
+manager/AZ/light; Entitlements admin/EN/light and manager/RU/dark; Calendar
+manager/AZ/dark and agent/EN/light. In these images the main work surface and
+controls appear within the viewport. Tables/calendar retain their owned
+containment and longer labels can truncate; this review does not assert that
+every label or every record is fully visible at once. The exact first-viewport
+criterion is DONE; separate color-blind and quantitative before/after criteria
+remain open.
+
+### Calendar semantic correction discovered during screenshot audit
+
+The dimensions receipt does not prove every business count. The Calendar
+header counted 50 tickets while the selected week contained 13: the API admitted
+all open tickets when today was in the requested range, even if an individual
+SLA date was outside it. Conversely it hid SLA-dated work in a future week when
+today was outside that week. The correction filters by the actual emitted date
+(`slaDueAt`, or today for undated open tickets), preserving organization fences
+and resolved/closed-date behavior. Four route regression cases pass locally;
+two failed against the preceding implementation. The no-misleading-metrics
+criterion is reopened until corrected source passes CI/browser admission.
+The original viewport evidence remains valid for its recorded source; no
+production deployment of this correction has occurred.
 
 ## Final flag-retirement release
 

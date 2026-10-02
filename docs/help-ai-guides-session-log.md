@@ -786,3 +786,87 @@ because #530 is a draft. They are NOT RUN, not passed. After final candidate
 preparation, `ready_for_review` starts the complete gate on the exact candidate;
 no merge can rely on these draft skips. The independent additive evidence run
 continues its real section/type/build/capture steps.
+
+
+## 2026-10-03 — Exact 1366 x 768 acceptance gap closed (Asia/Baku)
+
+- New additive run `37055428421` completed successfully on exact candidate
+  `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`. Scoped selected-section checks,
+  isolated fixture and real production-mode build/capture passed in GitHub;
+  no heavy work ran on Contabo and no deployment occurred.
+- Downloaded and read retained artifact `11249886749` (7,627,722 bytes), digest
+  `sha256:708f1693b401391cc41007010b84172b88c6aa84091e22799dfb24f96f58a09e`.
+  Actual evidence JSON has exactly 66/66 passed cells, three samples, measured
+  1366 x 768 in every cell, zero touch points, all primary work visible, zero
+  page overflow, runtime errors, environment mismatch and accessibility/Axe
+  violations. Primary-work tops: Service Desk488px, Agent Desktop183px,
+  Entitlements453–473px, Calendar341px. These are absolute source/fixture
+  positions, not a historical reduction percentage or production latency.
+- Viewed eight actual retained screenshots (two per page), covering AZ/RU/EN,
+  agent/manager/admin and light/dark across the set. Main work and controls are
+  present within the viewport; no whole-page overflow appears. Owned table/
+  calendar containment and truncated longer labels are preserved, so this does
+  not claim every label/record is fully visible at once.
+- Marked the exact first-viewport acceptance row DONE with that bounded receipt.
+  The separate acceptance summary now has 14 DONE /3 IN_PROGRESS; tracked task
+  count remains190/191. Color-blind inspection, matched old/new improvement
+  (including35%) and representative production observation stay open.
+- Vision run `37055624370` has started automatically under existing serialized
+  branch concurrency. No accepted standard-vision1296 matrix was repeated.
+- New historical comparison scaffold is separately preparing exact public root
+  before/current after runtime. It uses an identical synthetic50-ticket cohort,
+  one support entitlement/two milestones, deterministic timestamps and shared
+  clock. Source review identified an eight-hour auth-cookie boundary for a
+  frozen past08:00 clock; the prepared common clock uses next UTC day08:00 with
+  explicit normalized proof, applies only to isolated runtimes, and preserves
+  all application source blobs. Runtime/target measurements remain NOT RUN.
+
+Current result/status: exact1366 acceptance is verified; tracked plan190/191,
+three separate acceptance rows still in progress, production window unverified.
+Last completed action: read66-cell artifact, inspecteight actual screenshots
+and close the exact first-viewport criterion. Precise stopping point: vision
+capture running; historical scaffold completing narrow source/behavior checks.
+Next action: review vision artifacts and run the independent matched historical
+measurement on its verified candidate; exact tenant/activation still pending.
+
+
+## 2026-10-03 — Screenshot self-audit found and corrected Calendar range bug
+
+- Actual Calendar images in the 1366 receipt show a 50-ticket header for a
+  selected week containing 13 tickets. Independent source review confirmed
+  the API used today's inclusion to admit every open ticket, then emitted an
+  unrelated SLA date. It also hid future-week SLA tickets when today was outside
+  the range. This is a real business-count defect; the dimensions receipt is
+  retained without treating it as proof of calendar semantics.
+- Applied the narrow API correction: test the actual emitted SLA date, or
+  today's date for undated open work, against the requested range. Existing
+  tenant fences, closed/resolved dates, source limits and partial-source failure
+  behavior remain covered. Added four meaningful route regression cases and
+  wired them into Calendar's selected-section lint/test workflow.
+- Demonstrated regression before the fix: two cases FAIL /two PASS. After the
+  fix, 21/21 cases across the new API, presentation, Calendar UX and Calendar
+  evidence-contract files PASS; scoped API/test ESLint PASS. Resource preflight
+  showed 15,745 MiB available RAM, 338 GiB free disk and zero memory pressure.
+  No heavy build/typecheck/browser ran on Contabo; corrected browser evidence
+  remains NOT RUN and must run on an exact new candidate in GitHub.
+- Reopened the separate no-misleading-metrics acceptance row. The earlier
+  14 DONE /3 IN_PROGRESS snapshot is superseded by 13 DONE /4 IN_PROGRESS until
+  Calendar admission. Tracked checklist still190/191; ROL-006 is not complete.
+- Historical scaffold narrow checks:25/25 behavior tests, scoped ESLint,
+  five script syntax checks, dispatch/YAML controls,39-workflow runner policy
+  and diff check PASS. Actual before/after runtimes and35% remain NOT RUN.
+  The controller uses exact public original source, identical minimal fixture,
+  shared future clock and per-page same-item geometry; no production access.
+- Current main advanced independently to390c4976d6097f1f3560ed8c9ccdf3abb215e51e.
+  Its three commits affect MTM sources/tests and AZ/EN/RU messages, not these
+  Support files. Checkpoint task-owned work before locally integrating current
+  main for the historical ancestry guard. This does not merge a feature PR or
+  trigger deployment.
+
+Current result/status: real Calendar correction is locally verified;
+viewport gap closed; vision capture running; production observation unverified.
+Last completed action: reproduced/fixed the date-range defect, passed21 cases
+and reopened the relevant acceptance row. Precise stopping point: checkpoint
+and reconcile current main before new exact-source CI. Next action: publish
+the reviewable candidate, collect corrected Calendar/historical artifacts and
+complete protected PR checks while awaiting the selected tenant record.
