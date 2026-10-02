@@ -1831,3 +1831,48 @@
   and final independentreleaseproof, then fresh-main successorpart18 checkpoint.
   Progress59%,007PARTIAL; authenticatedproductionbusiness/zoom/AT/Android/load/
   physical/pilot NOT RUN, current ninecase evidence is developmentChromium only.
+
+
+## 2026-10-03 (Asia/Baku) — PR537 production release GREEN, exact own SHA proved
+
+- Own mergedmain46739dbe0c158e9f48455398463e401e42b927e2 released via normal
+  deploy.yml mainpush run37077538032 COMPLETE SUCCESS updated23:52:46Z UTC,
+  attempt1. Build111070660966 SUCCESS23:42:27Z,QA111070660981 SUCCESS23:38:37Z,
+  deploy/smoke111074659271 SUCCESS23:52:37Z,retention111076999118 SUCCESS23:52:45Z.
+  Immutable11257403434/443905745bytes/archiveSHAfbfe221c136737086bf530c88334997d2e5a585ee46c7e23703f42a98341e99e
+  boundexact467M. Required PRfive/actualbrowser9/source review GREEN retained.
+  Allnormalpath scheduler checks,tenant-isolation/mobile-retention and public
+  ping/revision/login+hashedassets smoke steps SUCCESS. No manualdeploy/copy.
+- Root independently captured strictTLS app.leaddrivecrm.org pinnedto
+  13.140.132.245 at23:53:21.553951Z–23:53:21.933852Z UTC: build->ping->build
+  all200,exactartifactSha467M,builtAt23:31:29Z. LiteralIPping/build200with-k
+  supplement. ActualstrictliteralIPcurl60/http000/certificateSANmismatch remains
+  recorded honestly; supplement is not strictTLS proof. Strictpinneddomain is
+  primaryTLSverified route. Ping11bytes/SHA4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93;
+  build112bytes/SHAf4c5ad601699272a5f106c5ffa20a956d2025ce83f2ade2d1c28d3ec7bf25b1c.
+- Independent exact-M bracket23:54:24.971332Z–23:54:25.211420Z UTC: three200,
+  curl0/TLSverify0/actualremote13.140.132.245,nocache,exactM andsamebodyhashes.
+  Independently matched wholeownnormalrun/artifact/mergeparents/publicproof;
+  final release review GREEN P0=0,P1=0,P2=0,P3=0. Recorded11precedinge2responses
+  23:44:02.753Z–23:50:48.388Z all200/predeploymentstate; no observedHTTP/transport
+  errors in those bounded samples, not a claim of zero downtime overall.
+- Seven immutable original release JSONs preserved under
+  docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-:
+  artifacts,build-info,ping,public,workflow,independent-public,independent-release.
+  Rootpublic4569bytes/SHA1f13c2e93c468fca2def2c2a69606ec7b3d45f900952e6b7a11a781f3cc9504d;
+  workflow10001bytes/SHA6681f0211491e52a92daf32e40062d9f8126805289d5328cc3a43f1f71fccc19;
+  independentpublic2056bytes/SHA41849f3ae8be89faa3a1705d9535934cac707933ab0864ca1dd41341d6845a51;
+  independentrelease5285bytes/SHAc4dae2a702f95f5d91ed039f070486440a6d20e735ad4b3c9ba5aa061ae1cc22.
+  Originalindependentpublic normalRunSuccessStillRequired=true remains historical
+  pendingverification flag; finalindependentrelease/workflow andthisappend
+  explicitly supersede it with ownnormalrunSUCCESS. No originalrewriting.
+- Current result: bounded reversalkeyboard implementation/acceptance RELEASED.
+  Last action: ownnormaldeploySUCCESS and two independent exact-Mpublic proofs.
+  Precise stopping point: releasecheckpoint before fresh-main successorcreation.
+  Next action: createcodex/workforce-completion-part18 in thesameallowedworktree,
+  carryprivateappend-onlyreceipts, exactreceipt-integrityreview/publishcheckpoint,
+  then prepared320CSSreflow case. Authenticatedproductioncalendarbusiness,
+  wholepagekeyboard,zoom,AT,contrast,Android,physical,load andpilot NOT RUN.
+  ProgressDONE81/161,GATES14/15,C8 36%,overall59%,80non-DONE/about41%weighted
+  remaining; WF-C8-007 PARTIAL. No generalupdate/delete/breakpolicy/AGENTmoves/
+  Routemutation or baselineweakening; no100%/newcompletioncredit.

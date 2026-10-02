@@ -1,0 +1,56 @@
+{
+  "expectedMergedSha": "46739dbe0c158e9f48455398463e401e42b927e2",
+  "runId": 37077538032,
+  "deployJobId": 111074659271,
+  "productionHost": "13.140.132.245",
+  "tlsHostname": "app.leaddrivecrm.org",
+  "artifactSha": "46739dbe0c158e9f48455398463e401e42b927e2",
+  "builtAt": "2026-10-02T23:31:29Z",
+  "requests": {
+    "build-info-first": {
+      "label": "build-info-first",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "startedAt": "2026-10-02T23:54:24.971332+00:00",
+      "completedAt": "2026-10-02T23:54:25.075518+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControl": "no-cache",
+      "bytes": 112,
+      "sha256": "f4c5ad601699272a5f106c5ffa20a956d2025ce83f2ade2d1c28d3ec7bf25b1c",
+      "artifactSha": "46739dbe0c158e9f48455398463e401e42b927e2",
+      "builtAt": "2026-10-02T23:31:29Z"
+    },
+    "ping": {
+      "label": "ping",
+      "url": "https://app.leaddrivecrm.org/api/v1/ping",
+      "startedAt": "2026-10-02T23:54:25.075871+00:00",
+      "completedAt": "2026-10-02T23:54:25.146807+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControl": "no-cache",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "ok": true
+    },
+    "build-info-confirm": {
+      "label": "build-info-confirm",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "startedAt": "2026-10-02T23:54:25.147140+00:00",
+      "completedAt": "2026-10-02T23:54:25.211420+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControl": "no-cache",
+      "bytes": 112,
+      "sha256": "f4c5ad601699272a5f106c5ffa20a956d2025ce83f2ade2d1c28d3ec7bf25b1c",
+      "artifactSha": "46739dbe0c158e9f48455398463e401e42b927e2",
+      "builtAt": "2026-10-02T23:31:29Z"
+    }
+  },
+  "normalRunSuccessStillRequired": true
+}
