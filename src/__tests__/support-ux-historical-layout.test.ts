@@ -9,7 +9,7 @@ import {
   chooseHistoricalAnchor, compareHistoricalLayouts, historicalFailureCode, historicalFixture, historicalFixtureDigest,
   historicalMedian, historicalTicketIdentity, validateHistoricalEvidence,
 } from "../../scripts/support-ux-historical-layout-contract.mjs"
-import { authenticateHistorical, historicalDataPath, historicalRequestDisposition } from "../../scripts/support-ux-historical-layout-capture.mjs"
+import { authenticateHistorical, finalizeHistoricalLayoutReport, historicalConsoleDiagnostic, historicalDataPath, historicalNetworkDiagnostic, historicalRequestDisposition, initializeHistoricalBrowserState } from "../../scripts/support-ux-historical-layout-capture.mjs"
 import { seedHistoricalLayout } from "../../scripts/support-ux-historical-layout-fixture.mjs"
 
 vi.mock("bcryptjs", () => ({ default: { hash: vi.fn().mockResolvedValue("synthetic-test-hash") } }))
@@ -30,8 +30,9 @@ function evidence(stage: "before" | "after", top = stage === "before" ? 600 : 36
     results: HISTORICAL_LAYOUT_ROUTES.map((route: { id: string; path: string; beforeBlob: string; beforeRepresentation: string; afterRepresentation: string }) => ({
       id: route.id, path: route.path, sourcePageBlob: stage === "before" ? route.beforeBlob : "c".repeat(40),
       representation: stage === "before" ? route.beforeRepresentation : route.afterRepresentation,
+      failures: { external: 0, write: 0, page: 0, console: 0, response: 0 },
       status: "captured", semanticFixture: true, viewportWidth: 1366, viewportHeight: 768,
-      maxTouchPoints: 0, documentLang: "en", darkTheme: false, reducedMotion: true,
+      maxTouchPoints: 0, serviceWorkerAvailable: false, serviceWorkerCount: 0, documentLang: "en", darkTheme: false, reducedMotion: true,
       scrollTop: 0, documentScrollTop: 0, primaryWorkTop: top, primaryWorkTopSamples: [top, top, top],
       primaryLabelTop: top + 12, primaryLabelTopSamples: [top + 12, top + 12, top + 12],
       borderedRoundedBlocks: stage === "before" ? 30 : 20, majorChildren: 1, screenshot: route.id + ".png",
@@ -54,6 +55,50 @@ function calendarBody() {
 }
 
 describe("Matched historical Support layout admission", () => {
+  it("retains an incomplete artifact after a late screenshot/close error or invalid final environment", () => {
+    const late = evidence("after")
+    late.results[0].failures.console = 1
+    const report = finalizeHistoricalLayoutReport(late, "after", afterSha)
+    expect(report.status).toBe("incomplete")
+    expect(report.results[0].code).toBe("RUNTIME_FAILURE")
+    const invalid = evidence("after")
+    invalid.results[0].documentLang = "ru"
+    expect(finalizeHistoricalLayoutReport(invalid, "after", afterSha)).toMatchObject({ status: "incomplete", validationFailureCode: "CAPTURE_ENVIRONMENT_INVALID" })
+  })
+
+  it("records only allowlisted network metadata and fixed error classes, never query, identity, body or message", () => {
+    expect(historicalNetworkDiagnostic("http://localhost:3000/api/v1/public/csp-report?token=SECRET", "POST", 403, "http://localhost:3000")).toBe("/api/v1/public/csp-report|POST|403")
+    expect(historicalNetworkDiagnostic("http://localhost:3000/private/SECRET?token=SECRET", "GET", 500, "http://localhost:3000")).toBe("OTHER_SAME_ORIGIN|GET|500")
+    expect(historicalNetworkDiagnostic("https://SECRET.invalid/token/SECRET", "SECRET", 900, "http://localhost:3000")).toBe("EXTERNAL|OTHER_METHOD|0")
+    expect(historicalConsoleDiagnostic("password=SECRET cookie=SECRET")).toBe("OTHER_CONSOLE_ERROR")
+    expect(historicalConsoleDiagnostic("Evaluating a string as JavaScript violates unsafe-eval SECRET")).toBe("CSP_EVAL")
+  })
+
+  it("removes the capability gate before either runtime can register a worker and fails closed when immutable", () => {
+    const configure = Function("Navigator", "navigator", "localStorage", "return (" + initializeHistoricalBrowserState.toString() + ")")
+    const writes = { setItem: vi.fn() }
+    class SyntheticNavigator {}
+    Object.defineProperty(SyntheticNavigator.prototype, "serviceWorker", { configurable: true, value: {} })
+    const navigator = new SyntheticNavigator()
+    configure(SyntheticNavigator, navigator, writes)({ adminId: fixture.admin.id })
+    expect("serviceWorker" in navigator).toBe(false)
+    expect(writes.setItem).toHaveBeenCalledWith("theme", "light")
+    Object.defineProperty(SyntheticNavigator.prototype, "serviceWorker", { configurable: false, value: {} })
+    expect(() => configure(SyntheticNavigator, navigator, writes)({ adminId: fixture.admin.id })).toThrow("CAPTURE_ENVIRONMENT_INVALID")
+  })
+
+  it("rejects a worker-capable document even with valid matched geometry", () => {
+    const after = evidence("after")
+    after.results[0].serviceWorkerAvailable = true
+    expect(() => compareHistoricalLayouts(evidence("before"), after, afterSha)).toThrow("CAPTURE_ENVIRONMENT_INVALID")
+  })
+
+  it("rejects a successful geometry label that conceals an application or blocked-write failure", () => {
+    const after = evidence("after")
+    after.results[0].failures.write = 1
+    expect(() => compareHistoricalLayouts(evidence("before"), after, afterSha)).toThrow("RUNTIME_FAILURE")
+  })
+
   it("rejects a different item representation even with attractive geometry", () => {
     const after = evidence("after")
     after.results[0].representation = "enclosing-page-wrapper"
@@ -187,6 +232,8 @@ describe("Matched historical Support layout admission", () => {
       expect(model.create.mock.calls[0][0].data.createdAt.toISOString()).toBe(anchor)
     }
     expect(tx.entitlement.create.mock.calls[0][0].data.updatedAt.toISOString()).toBe(anchor)
+    expect(tx.organization.create.mock.calls[0][0].data.features).toEqual(fixture.enabledModules)
+    expect(tx.organization.create.mock.calls[0][0].data.modules).toEqual({ crm: true, support: true, settings: true, analytics: true, voip: true, omnichannel: true, mtm: true })
     expect(tx.entitlementMilestoneDefinition.createMany.mock.calls[0][0].data.every((row: { createdAt: Date; updatedAt: Date }) => row.createdAt.toISOString() === anchor && row.updatedAt.toISOString() === anchor)).toBe(true)
   })
 

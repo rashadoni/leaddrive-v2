@@ -16,6 +16,9 @@ export const HISTORICAL_LAYOUT_CONTROLS = Object.freeze({
   blockDefinition: "rendered-bordered-rounded-elements-within-main-including-offscreen-v1",
   clockPolicy: "shared-future-utc-day-browser-server-anchor-with-monotonic-runtime-v1",
   fixtureTimestamps: "ui-significant-created-updated-dates-at-anchor-v1",
+  serviceWorkerPolicy: "unsupported-browser-capability-with-context-block-v1",
+  enabledModules: Object.freeze(["crm", "support", "settings", "analytics", "voip", "omnichannel", "mtm"]),
+  postReadyObservationMs: 1600,
 })
 const failureCodes = new Set([
   "SOURCE_IDENTITY_INVALID", "STAGE_INVALID", "FIXTURE_CLOCK_INVALID", "FIXTURE_IDENTITY_INVALID",
@@ -67,6 +70,7 @@ export function historicalFixture(anchor) {
     entitlement: { id: "clhistentitle0000000000001", status: "active", supportLevel: "premium" },
     ticket: { id: "clhistticket00000000000001", number: "HIST-0001", subject: "Resolve the synthetic sign-in incident", priority: "critical", status: "open", dueAt: new Date(Date.parse(anchor) + 60 * 60 * 1000).toISOString() },
     ticketCount: HISTORICAL_LAYOUT_CONTROLS.ticketCount,
+    enabledModules: HISTORICAL_LAYOUT_CONTROLS.enabledModules,
     synthetic: true,
   }
 }
@@ -163,8 +167,9 @@ export function validateHistoricalEvidence(report, stage, afterSha) {
     const route = HISTORICAL_LAYOUT_ROUTES.find((item) => item.id === result.id)
     if (!route || seen.has(result.id) || result.path !== route.path || result.status !== "captured" || result.semanticFixture !== true) throw new Error("ROUTE_COVERAGE_INVALID")
     if (result.representation !== (stage === "before" ? route.beforeRepresentation : route.afterRepresentation)) throw new Error("GEOMETRY_INVALID")
+    if (!result.failures || Object.keys(result.failures).sort().join(",") !== "console,external,page,response,write" || Object.values(result.failures).some((value) => value !== 0)) throw new Error("RUNTIME_FAILURE")
     seen.add(result.id)
-    if (result.viewportWidth !== 1366 || result.viewportHeight !== 768 || result.maxTouchPoints !== 0 || result.documentLang !== "en" || result.darkTheme !== false || result.reducedMotion !== true || result.scrollTop !== 0 || result.documentScrollTop !== 0) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
+    if (result.viewportWidth !== 1366 || result.viewportHeight !== 768 || result.maxTouchPoints !== 0 || result.serviceWorkerAvailable !== false || result.serviceWorkerCount !== 0 || result.documentLang !== "en" || result.darkTheme !== false || result.reducedMotion !== true || result.scrollTop !== 0 || result.documentScrollTop !== 0) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
     if (result.primaryWorkTop !== historicalMedian(result.primaryWorkTopSamples) || result.primaryLabelTop !== historicalMedian(result.primaryLabelTopSamples)) throw new Error("GEOMETRY_INVALID")
     if (!Number.isInteger(result.borderedRoundedBlocks) || result.borderedRoundedBlocks < 1 || result.borderedRoundedBlocks > 10000 || !Number.isInteger(result.majorChildren) || result.majorChildren < 1 || result.majorChildren > 10000) throw new Error("GEOMETRY_INVALID")
     if (!/^[a-f0-9]{40}$/.test(result.sourcePageBlob) || (stage === "before" && result.sourcePageBlob !== route.beforeBlob) || result.screenshot !== route.id + ".png") throw new Error("SOURCE_IDENTITY_INVALID")

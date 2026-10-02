@@ -1027,3 +1027,61 @@ source-bound metrics admission. Precise stopping point: repaired historical
 measurement and required full PR checks running on5fd8e047e.
 Next action: collect actual results, complete source admission, then resolve
 the selected tenant/activation/telemetry before the seven-full-day gate.
+
+
+## 2026-10-03 — Exact historical failure diagnosed without weakening gates
+
+- Required PR run37064746393 on5fd8e047e completed SUCCESS: pr-scope,
+  static-checks and typecheck PASS; runner-policy37064746482 and scan37064746391
+  PASS. The optional separate production-build job was SKIPPED by scope; the
+  admitted Calendar capture already built its exact source in production mode.
+- Historical run37064741882 original runtime built SUCCESS and authenticated
+  the expected tenant/admin. Its four captures FAIL with RUNTIME_FAILURE:
+  each route reports3 blocked writes/3 page errors,19–20 console errors and
+  16–17 HTTP errors across3 samples; zero external requests. Artifact11251964987
+  is1,502 bytes, digest
+  sha256:faa19c3f48f8355f396ef544ca58db8548dbb0f35bba872291036526da4f44f3.
+  No successful geometry or screenshot exists. Cancelled the after job before
+  its build; no percentage can be admitted from this run.
+- Independent actual-library bounded probe confirmed Serwist9.5.12 dereferences
+  Playwright1.58.2's blocked registration result, causing an artificial
+  TypeError. Shared controller now removes the serviceWorker capability before
+  application code in BOTH runtimes, retains the context block, and requires
+  unsupported capability/zero registered workers at every measured sample.
+  This explicitly excludes PWA functionality; sources and geometry remain
+  untouched, and all runtime/network failure counters remain strict.
+- Original dashboard shell always fetches VoIP, Omnichannel and MTM endpoints,
+  although the initial synthetic organization enabled none of them. Match
+  those3 modules in both fixtures and record the complete module list in
+  immutable controls/fixture digest. This corrects source-proven fixture403
+  gaps without changing Support tickets, actor, semantic cohort or selectors.
+- The actual blocked-write endpoint is still UNCONFIRMED: original source has
+  both automatic launcher-preference PUT and browser CSP-report POST. Introduce
+  bounded diagnostic tuples with allowlisted paths/methods/status and fixed
+  error classes, never queries, bodies, hosts, tokens, messages or stacks.
+  No write exception, CSP bypass, console filter or lowered35% threshold was
+  introduced. Success receipts explicitly require all five failure counters0.
+-45/45 targeted historical/RLS/Calendar behavior cases PASS; scoped historical
+  ESLint PASS. Resource preflight:14,319MiB available,338GiB disk; full build,
+  browser and full TypeScript NOT RUN on Contabo by workload policy. Hosted
+  historical work remains the next verification. Preserve admitted viewport,
+  vision and Calendar receipts; their completed captures are not replayed.
+
+Current result/status: tracked plan190/191, two separate criteria open;
+all prior candidate required gates green, historical measurement still incomplete.
+Last completed action: read the actual failed receipt, correct shared worker/
+module controls and pass45 narrow cases. Precise stopping point: checkpoint
+controller correction and integrate current main before the new hosted capture.
+Next action: collect the safe endpoint diagnosis and actual historical geometry;
+selected production tenant, activation evidence and real telemetry remain pending.
+
+- Independent review additionally found that a late screenshot/page-close
+  error could make final validation throw before diagnostic artifact writing.
+  Finalize after context/browser closure, downgrade late failures and retain
+  an incomplete receipt on every admission error. Add1,600ms shared post-ready
+  observation to cover the original1,500ms launcher debounce; keep500ms geometry
+  settling and all counters strict.46 narrow cases PASS, scoped ESLint PASS;
+  final combined check follows current-main integration. Matrix fail-fast now
+  prevents an after build when the before capture fails. Independent review
+  verified no browserSoftphone/external registration or MTM outbox drain from
+  the ancillary grants; sidebar width is unchanged by module grants.

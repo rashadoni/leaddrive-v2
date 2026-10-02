@@ -12,8 +12,8 @@ export async function seedHistoricalLayout(prisma, fixture, password) {
   const passwordHash = await bcrypt.hash(password, 12)
   await prisma.$transaction(async (tx) => {
     await tx.organization.create({ data: {
-      ...fixture.organization, plan: "enterprise", features: ["crm", "support", "settings", "analytics"],
-      modules: { crm: true, support: true, settings: true, analytics: true },
+      ...fixture.organization, plan: "enterprise", features: fixture.enabledModules,
+      modules: Object.fromEntries(fixture.enabledModules.map((module) => [module, true])),
       settings: { defaultLocale: "en", landingPath: "/tickets" }, maxUsers: 5, maxContacts: 100,
       provisionedAt: date(0), provisionedBy: "support-historical-layout-ci",
       createdAt: date(0), updatedAt: date(0),

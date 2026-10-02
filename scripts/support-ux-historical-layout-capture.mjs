@@ -22,6 +22,66 @@ export function historicalRequestDisposition(url, method, baseUrl) {
   return new Set(["GET", "HEAD"]).has(method) ? "read" : "write"
 }
 
+// Both exact runtimes use the same explicitly unsupported service-worker
+// capability. Playwright's registration shim resolves undefined, which older
+// Serwist dereferences; leaving that artificial exception would invalidate
+// layout measurement. The context-level block remains a fail-safe.
+export function initializeHistoricalBrowserState({ adminId }) {
+  if (!Reflect.deleteProperty(Navigator.prototype, "serviceWorker") || "serviceWorker" in navigator) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
+  localStorage.setItem("theme", "light")
+  for (const user of [adminId, "anonymous"]) localStorage.setItem("leaddrive_tours_" + user, JSON.stringify(["tickets"]))
+}
+
+const diagnosticPaths = new Set([
+  ...HISTORICAL_LAYOUT_ROUTES.map((route) => route.path),
+  "/api/auth/session", "/api/v1/tickets", "/api/v1/support/agent-desktop", "/api/v1/entitlements", "/api/v1/calendar/agent",
+  "/api/v1/calls/active", "/api/v1/voip/capabilities", "/api/v1/web-chat/sessions/unread-count",
+  "/api/v1/mtm/pharmacy-promotion-executions/sync-context", "/api/v1/public/csp-report",
+  "/api/v1/users/me", "/api/v1/users/me/preferences", "/api/v1/users/me/notification-preferences", "/api/v1/notifications",
+  "/favicon.ico", "/manifest.json", "/manifest.webmanifest",
+])
+
+export function historicalNetworkDiagnostic(url, method, status, baseUrl) {
+  const target = new URL(url)
+  const endpoint = target.origin !== baseUrl ? "EXTERNAL" : diagnosticPaths.has(target.pathname) ? target.pathname : "OTHER_SAME_ORIGIN"
+  const verb = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]).has(method) ? method : "OTHER_METHOD"
+  const code = Number.isInteger(status) && status >= 400 && status <= 599 ? status : 0
+  return endpoint + "|" + verb + "|" + code
+}
+
+export function historicalConsoleDiagnostic(message) {
+  if (/unsafe-eval|Evaluating a string as JavaScript/.test(message)) return "CSP_EVAL"
+  if (message.startsWith("Failed to load resource:")) return "RESOURCE_FAILURE"
+  return "OTHER_CONSOLE_ERROR"
+}
+
+function incrementDiagnostic(diagnostics, key) {
+  if (Object.hasOwn(diagnostics, key)) diagnostics[key] += 1
+  else if (Object.keys(diagnostics).length < 24) diagnostics[key] = 1
+  else diagnostics.DIAGNOSTIC_LIMIT = (diagnostics.DIAGNOSTIC_LIMIT ?? 0) + 1
+}
+
+export function finalizeHistoricalLayoutReport(report, stage, controlSha) {
+  // Failure counters remain live through screenshot and page/context closure.
+  // Preserve an incomplete receipt even when a late event or admission check
+  // fails; never lose diagnosis by throwing before writing the artifact.
+  report.status = "incomplete"
+  for (const result of report.results) {
+    if (result.status === "captured" && Object.values(result.failures).some((value) => value > 0)) {
+      result.status = "failed"
+      result.code = "RUNTIME_FAILURE"
+    }
+  }
+  if (report.results.length === HISTORICAL_LAYOUT_ROUTES.length && report.results.every((result) => result.status === "captured")) {
+    report.status = "captured"
+    try { validateHistoricalEvidence(report, stage, controlSha) } catch (error) {
+      report.status = "incomplete"
+      report.validationFailureCode = historicalFailureCode(error)
+    }
+  }
+  return report
+}
+
 export function historicalPrimaryLocator(page, id, stage, fixture) {
   const title = id === "support-entitlements" ? fixture.company.name : fixture.ticket.subject
   let primary
@@ -100,7 +160,8 @@ async function measureGeometry(page, primary, label) {
     }).length
     return {
       viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
-      maxTouchPoints: navigator.maxTouchPoints, documentLang: document.documentElement.lang,
+      maxTouchPoints: navigator.maxTouchPoints, serviceWorkerAvailable: "serviceWorker" in navigator,
+      documentLang: document.documentElement.lang,
       darkTheme: document.documentElement.classList.contains("dark") || matchMedia("(prefers-color-scheme: dark)").matches,
       reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
       scrollTop: main.scrollTop, documentScrollTop: document.scrollingElement?.scrollTop ?? 0,
@@ -143,25 +204,38 @@ export async function captureHistoricalLayout(env = process.env) {
   try {
     await authenticateHistorical(context, env.SUPPORT_HISTORICAL_BASE_URL, fixture, env.SUPPORT_HISTORICAL_ADMIN_PASSWORD)
     await context.addCookies([{ name: "NEXT_LOCALE", value: "en", url: env.SUPPORT_HISTORICAL_BASE_URL }])
-    await context.addInitScript(({ adminId }) => {
-      localStorage.setItem("theme", "light")
-      for (const user of [adminId, "anonymous"]) localStorage.setItem("leaddrive_tours_" + user, JSON.stringify(["tickets"]))
-    }, { adminId: fixture.admin.id })
+    await context.addInitScript(initializeHistoricalBrowserState, { adminId: fixture.admin.id })
     for (const route of HISTORICAL_LAYOUT_ROUTES) {
       const failures = { external: 0, write: 0, page: 0, console: 0, response: 0 }
+      const diagnostics = {}
       const page = await context.newPage()
       try {
         await page.clock.install({ time: new Date(fixture.anchor) })
         await page.route("**/*", async (requestRoute) => {
           const request = requestRoute.request()
           const disposition = historicalRequestDisposition(request.url(), request.method(), env.SUPPORT_HISTORICAL_BASE_URL)
-          if (disposition !== "read") { failures[disposition] += 1; await requestRoute.abort(); return }
+          if (disposition !== "read") {
+            failures[disposition] += 1
+            incrementDiagnostic(diagnostics, historicalNetworkDiagnostic(request.url(), request.method(), 0, env.SUPPORT_HISTORICAL_BASE_URL))
+            await requestRoute.abort(); return
+          }
           await requestRoute.continue()
         })
-        page.on("pageerror", () => { failures.page += 1 })
-        page.on("console", (message) => { if (message.type() === "error") failures.console += 1 })
+        page.on("pageerror", (error) => {
+          failures.page += 1
+          incrementDiagnostic(diagnostics, "PAGE_" + (new Set(["Error", "TypeError", "DOMException", "ReferenceError", "SyntaxError"]).has(error.name) ? error.name : "OTHER_ERROR"))
+        })
+        page.on("console", (message) => {
+          if (message.type() === "error") {
+            failures.console += 1
+            incrementDiagnostic(diagnostics, historicalConsoleDiagnostic(message.text()))
+          }
+        })
         page.on("response", (response) => {
-          if (new URL(response.url()).origin === env.SUPPORT_HISTORICAL_BASE_URL && response.status() >= 400) failures.response += 1
+          if (new URL(response.url()).origin === env.SUPPORT_HISTORICAL_BASE_URL && response.status() >= 400) {
+            failures.response += 1
+            incrementDiagnostic(diagnostics, historicalNetworkDiagnostic(response.url(), response.request().method(), response.status(), env.SUPPORT_HISTORICAL_BASE_URL))
+          }
         })
         const samples = []
         for (let sample = 0; sample < HISTORICAL_LAYOUT_CONTROLS.sampleCount; sample += 1) {
@@ -177,7 +251,11 @@ export async function captureHistoricalLayout(env = process.env) {
           await page.waitForFunction((name) => document.body.innerText.includes(name), fixture.organization.name, { timeout: 30000 })
           const tour = page.getByTestId("tour-overlay")
           if (await tour.isVisible()) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
-          samples.push(await measureGeometry(page, primary, label))
+          await page.waitForTimeout(HISTORICAL_LAYOUT_CONTROLS.postReadyObservationMs)
+          const geometry = await measureGeometry(page, primary, label)
+          const serviceWorkerCount = context.serviceWorkers().length
+          if (geometry.serviceWorkerAvailable !== false || serviceWorkerCount !== 0) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
+          samples.push({ ...geometry, serviceWorkerCount })
         }
         if (Object.values(failures).some((value) => value > 0)) throw new Error("RUNTIME_FAILURE")
         const last = samples.at(-1)
@@ -185,6 +263,7 @@ export async function captureHistoricalLayout(env = process.env) {
         report.results.push({
           id: route.id, path: route.path, status: "captured", semanticFixture: true,
           representation: stage === "before" ? route.beforeRepresentation : route.afterRepresentation,
+          failures, diagnostics,
           ...last, primaryWorkTop: historicalMedian(samples.map((sample) => sample.primaryWorkTop)),
           primaryWorkTopSamples: samples.map((sample) => sample.primaryWorkTop),
           primaryLabelTop: historicalMedian(samples.map((sample) => sample.primaryLabelTop)),
@@ -193,7 +272,7 @@ export async function captureHistoricalLayout(env = process.env) {
           screenshot: route.id + ".png",
         })
       } catch (error) {
-        report.results.push({ id: route.id, path: route.path, status: "failed", code: historicalFailureCode(error), failures })
+        report.results.push({ id: route.id, path: route.path, status: "failed", code: historicalFailureCode(error), failures, diagnostics })
       } finally {
         await page.close()
       }
@@ -204,8 +283,7 @@ export async function captureHistoricalLayout(env = process.env) {
     await context.close()
     await browser.close()
   }
-  if (report.results.length === HISTORICAL_LAYOUT_ROUTES.length && report.results.every((result) => result.status === "captured")) report.status = "captured"
-  if (report.status === "captured") validateHistoricalEvidence(report, stage, controlSha)
+  finalizeHistoricalLayoutReport(report, stage, controlSha)
   await writeFile(path.join(output, "evidence.json"), JSON.stringify(report, null, 2) + "\n")
   await writeFile(path.join(output, "evidence.md"), [
     "# Historical Support layout capture", "", "Collection status: " + report.status,
