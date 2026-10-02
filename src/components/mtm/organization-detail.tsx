@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useMtmFieldContacts, useMtmPharmacyPromotions } from "@/hooks/use-mtm-org-settings"
+import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
 import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowLeft,
@@ -13,20 +13,13 @@ import {
   CheckCircle2,
   CircleAlert,
   Clock3,
-  Download,
   ExternalLink,
-  FileText,
-  FolderOpen,
   MapPin,
-  Megaphone,
   Pencil,
   Phone,
-  Plus,
   RefreshCw,
   ShieldCheck,
   Stethoscope,
-  Trash2,
-  Upload,
   UserRound,
   UserMinus,
   UserPlus,
@@ -203,73 +196,9 @@ type StaffSection = {
   fieldPotentials: FieldPotential[]
 }
 
-type Department = {
-  id: string
-  code: string | null
-  name: string
-  kind: string | null
-  phone: string | null
-  email: string | null
-  address: string | null
-  contactPerson: string | null
-  sourceSystem: string
-  sourceReference: string | null
-  sourceObservedAt: string
-  createdAt: string
-}
-
-type PromotionTarget = {
-  id: string
-  status: string
-  eligibilityStatus: string
-  planQuantity: string | number
-  unit: string
-  sourceSystem: string
-  sourceReference: string | null
-  sourceObservedAt: string
-  connectedAt: string | null
-  closedAt: string | null
-  assignedAgent: { id: string; name: string }
-  promotionVersion: {
-    id: string
-    revision: number
-    nameRu: string
-    nameAz: string
-    nameEn: string
-    startsOn: string
-    endsOn: string
-    status: string
-    promotion: { code: string }
-    type: { code: string; nameRu: string; nameAz: string; nameEn: string }
-  }
-  executions: Array<{
-    id: string
-    status: string
-    actualQuantity: string | number
-    factPointsPreview: string | number | null
-    rewardPointsPreview: string | number | null
-    differencePointsPreview: string | number | null
-    l1State: string
-    l2State: string
-    submittedAt: string | null
-    closedAt: string | null
-  }>
-}
-
-type OrganizationDocument = {
-  id: string
-  title: string | null
-  fileName: string
-  mimeType: string
-  sizeBytes: number
-  checksumSha256: string | null
-  sourceSystem: string | null
-  sourceReference: string | null
-  sourceObservedAt: string | null
-  createdAt: string
-}
-
-type DetailSection = "details" | "contacts" | "visits" | "departments" | "staff" | "promotions" | "files"
+// The owner took departments, pharmacy promotions and files off the card on
+// 2026-10-02: no tenant had a row in any of them. The section API still answers.
+type DetailSection = "details" | "contacts" | "visits" | "staff"
 type LoadableSection = Exclude<DetailSection, "details">
 
 type ApiPayload<T> = {
@@ -342,8 +271,6 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   // Organization switch: when field contacts are off the tab, its count and
   // links to contact cards disappear. Data and the section API are untouched.
   const { enabled: fieldContactsEnabled } = useMtmFieldContacts(session?.user)
-  // Same for pharmacy promotions: the tab goes, the section API stays.
-  const { enabled: pharmacyPromotionsEnabled } = useMtmPharmacyPromotions(session?.user)
   const [summary, setSummary] = useState<OrganizationSummary | null>(null)
   const [commercial, setCommercial] = useState<CommercialSummary | null>(null)
   const [coordinateVerification, setCoordinateVerification] = useState<CoordinateVerification | null>(null)
@@ -351,9 +278,6 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   const [contacts, setContacts] = useState<Workplace[] | null>(null)
   const [visits, setVisits] = useState<Visit[] | null>(null)
   const [staff, setStaff] = useState<StaffSection | null>(null)
-  const [departments, setDepartments] = useState<Department[] | null>(null)
-  const [promotions, setPromotions] = useState<PromotionTarget[] | null>(null)
-  const [documents, setDocuments] = useState<OrganizationDocument[] | null>(null)
   const [activeSection, setActiveSection] = useState<DetailSection>("details")
   const [loadingSummary, setLoadingSummary] = useState(true)
   const [sectionLoading, setSectionLoading] = useState<LoadableSection | null>(null)
@@ -361,11 +285,8 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   const [sectionError, setSectionError] = useState("")
   const [editOpen, setEditOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
-  const [departmentDraft, setDepartmentDraft] = useState({ name: "", code: "", sourceSystem: "", sourceReference: "" })
   const [coordinateSource, setCoordinateSource] = useState("")
   const [coordinateReference, setCoordinateReference] = useState("")
-  const [documentSource, setDocumentSource] = useState("")
-  const [documentReference, setDocumentReference] = useState("")
 
   const requestHeaders = useMemo<Record<string, string>>(
     () => orgId ? { "x-organization-id": String(orgId) } : {},
@@ -421,9 +342,6 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
       (section === "contacts" && contacts !== null)
       || (section === "visits" && visits !== null)
       || (section === "staff" && staff !== null)
-      || (section === "departments" && departments !== null)
-      || (section === "promotions" && promotions !== null)
-      || (section === "files" && documents !== null)
     )) return
 
     setSectionLoading(section)
@@ -435,25 +353,16 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
       } else if (section === "visits") {
         const payload = await fetchSection<{ visits: Visit[] }>("visits")
         setVisits(payload.data.organization.visits)
-      } else if (section === "staff") {
+      } else {
         const payload = await fetchSection<StaffSection>("staff")
         setStaff(payload.data.organization)
-      } else if (section === "departments") {
-        const payload = await fetchSection<{ departments: Department[] }>("departments")
-        setDepartments(payload.data.organization.departments)
-      } else if (section === "promotions") {
-        const payload = await fetchSection<{ pharmacyPromotionTargets: PromotionTarget[] }>("promotions")
-        setPromotions(payload.data.organization.pharmacyPromotionTargets)
-      } else {
-        const payload = await fetchSection<{ documents: OrganizationDocument[] }>("files")
-        setDocuments(payload.data.organization.documents)
       }
     } catch (loadError) {
       setSectionError(loadError instanceof Error ? loadError.message : t("detail.sectionLoadError"))
     } finally {
       setSectionLoading(null)
     }
-  }, [contacts, departments, documents, fetchSection, promotions, staff, t, visits])
+  }, [contacts, fetchSection, staff, t, visits])
 
   function selectSection(value: string) {
     const section = value as DetailSection
@@ -461,52 +370,6 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
     setSectionError("")
     if (section !== "details") {
       void loadDetailSection(section)
-    }
-  }
-
-  async function createDepartment(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!departmentDraft.name.trim() || !departmentDraft.sourceSystem.trim()) return
-    setActionLoading(true)
-    try {
-      const response = await fetch(`/api/v1/mtm/organizations/${organizationId}/departments`, {
-        method: "POST",
-        headers: { ...requestHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: departmentDraft.name,
-          code: departmentDraft.code || null,
-          sourceSystem: departmentDraft.sourceSystem,
-          sourceReference: departmentDraft.sourceReference || null,
-          sourceObservedAt: new Date().toISOString(),
-        }),
-      })
-      const payload = await response.json() as { success?: boolean; error?: string }
-      if (!response.ok || !payload.success) throw new Error(payload.error || t("detail.actionFailed"))
-      setDepartmentDraft({ name: "", code: "", sourceSystem: "", sourceReference: "" })
-      await loadDetailSection("departments", true)
-      toast.success(t("detail.departmentAdded"))
-    } catch (actionError) {
-      toast.error(actionError instanceof Error ? actionError.message : t("detail.actionFailed"))
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  async function archiveDepartment(departmentId: string) {
-    setActionLoading(true)
-    try {
-      const response = await fetch(`/api/v1/mtm/organizations/${organizationId}/departments/${departmentId}`, {
-        method: "DELETE",
-        headers: requestHeaders,
-      })
-      const payload = await response.json() as { success?: boolean; error?: string }
-      if (!response.ok || !payload.success) throw new Error(payload.error || t("detail.actionFailed"))
-      setDepartments((current) => current?.filter((item) => item.id !== departmentId) ?? null)
-      toast.success(t("detail.departmentArchived"))
-    } catch (actionError) {
-      toast.error(actionError instanceof Error ? actionError.message : t("detail.actionFailed"))
-    } finally {
-      setActionLoading(false)
     }
   }
 
@@ -530,36 +393,6 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
       setCoordinateSource("")
       setCoordinateReference("")
       toast.success(t("detail.coordinatesVerified"))
-    } catch (actionError) {
-      toast.error(actionError instanceof Error ? actionError.message : t("detail.actionFailed"))
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  async function uploadDocument(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = event.currentTarget
-    const input = form.elements.namedItem("organizationDocument") as HTMLInputElement | null
-    const file = input?.files?.[0]
-    if (!file || !documentSource.trim()) return
-    setActionLoading(true)
-    try {
-      const data = new FormData()
-      data.set("file", file)
-      data.set("clientDocumentId", crypto.randomUUID())
-      data.set("title", file.name)
-      data.set("sourceSystem", documentSource)
-      data.set("sourceReference", documentReference)
-      data.set("sourceObservedAt", new Date().toISOString())
-      const response = await fetch(`/api/v1/mtm/organizations/${organizationId}/documents`, { method: "POST", headers: requestHeaders, body: data })
-      const payload = await response.json() as { success?: boolean; error?: string }
-      if (!response.ok || !payload.success) throw new Error(payload.error || t("detail.actionFailed"))
-      form.reset()
-      setDocumentSource("")
-      setDocumentReference("")
-      await loadDetailSection("files", true)
-      toast.success(t("detail.fileUploaded"))
     } catch (actionError) {
       toast.error(actionError instanceof Error ? actionError.message : t("detail.actionFailed"))
     } finally {
@@ -610,9 +443,6 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
     summary.region,
   ].filter(Boolean).join(", ")
   const organizationType = summary.organizationKind || explorer(`objectTypes.${summary.objectType}`)
-  const localizedPromotionName = (promotion: PromotionTarget["promotionVersion"]) => (
-    locale.startsWith("az") ? promotion.nameAz : locale.startsWith("en") ? promotion.nameEn : promotion.nameRu
-  )
   const formatTotals = (totals: Array<{ currency: string; amount: string }>) => (
     totals.length
       ? totals.map((row) => `${numberFormatter.format(Number(row.amount))} ${row.currency}`).join(" · ")
@@ -701,18 +531,15 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         </div>
       </header>
 
-      <Tabs value={(!fieldContactsEnabled && activeSection === "contacts") || (!pharmacyPromotionsEnabled && activeSection === "promotions") ? "details" : activeSection} onValueChange={selectSection}>
+      <Tabs value={!fieldContactsEnabled && activeSection === "contacts" ? "details" : activeSection} onValueChange={selectSection}>
         <div className="overflow-x-auto pb-1">
           <TabsList className="h-auto min-w-max justify-start p-1">
             {([
               ["details", Building2],
               ["contacts", Stethoscope],
               ["visits", CalendarDays],
-              ["departments", FolderOpen],
               ["staff", UsersRound],
-              ["promotions", Megaphone],
-              ["files", FileText],
-            ] as const).filter(([section]) => (fieldContactsEnabled || section !== "contacts") && (pharmacyPromotionsEnabled || section !== "promotions")).map(([section, Icon]) => (
+            ] as const).filter(([section]) => (fieldContactsEnabled || section !== "contacts")).map(([section, Icon]) => (
               <TabsTrigger key={section} value={section} className="min-h-10 gap-2 px-3">
                 <Icon className="h-4 w-4" />
                 {t(`detail.tabs.${section}`)}
@@ -946,106 +773,6 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               </SectionState>
             </SectionFrame>
           </div>
-        </TabsContent>
-
-        <TabsContent value="departments">
-          <SectionFrame title={t("detail.departmentsTitle")} description={t("detail.departmentsDescription")}>
-            <SectionState loading={sectionLoading === "departments"} error={sectionError} retry={() => void loadDetailSection("departments", true)} t={t}>
-              <div className="grid gap-5">
-                {canManage ? (
-                  <form onSubmit={createDepartment} className="grid gap-2 rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700 md:grid-cols-2 xl:grid-cols-5">
-                    <input required value={departmentDraft.name} onChange={(event) => setDepartmentDraft((current) => ({ ...current, name: event.target.value }))} placeholder={t("detail.departmentName")} maxLength={200} className="min-h-11 rounded-md border border-input bg-background px-3 text-sm" />
-                    <input value={departmentDraft.code} onChange={(event) => setDepartmentDraft((current) => ({ ...current, code: event.target.value }))} placeholder={t("detail.departmentCode")} maxLength={128} className="min-h-11 rounded-md border border-input bg-background px-3 text-sm" />
-                    <input required value={departmentDraft.sourceSystem} onChange={(event) => setDepartmentDraft((current) => ({ ...current, sourceSystem: event.target.value }))} placeholder={t("detail.sourceSystem")} maxLength={200} className="min-h-11 rounded-md border border-input bg-background px-3 text-sm" />
-                    <input value={departmentDraft.sourceReference} onChange={(event) => setDepartmentDraft((current) => ({ ...current, sourceReference: event.target.value }))} placeholder={t("detail.sourceReference")} maxLength={500} className="min-h-11 rounded-md border border-input bg-background px-3 text-sm" />
-                    <Button type="submit" disabled={actionLoading || !departmentDraft.name.trim() || !departmentDraft.sourceSystem.trim()}><Plus className="h-4 w-4" />{t("detail.addDepartment")}</Button>
-                  </form>
-                ) : null}
-                {departments?.length ? (
-                  <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    {departments.map((department) => (
-                      <article key={department.id} className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(0,1fr)_auto]">
-                        <div className="grid gap-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-semibold">{department.name}</h3>
-                            {department.code ? <StateBadge>{department.code}</StateBadge> : null}
-                            {department.kind ? <StateBadge>{department.kind}</StateBadge> : null}
-                          </div>
-                          <p className="text-sm text-muted-foreground">{[department.address, department.contactPerson, department.phone].filter(Boolean).join(" · ") || t("detail.departmentDetailsMissing")}</p>
-                          <p className="text-xs text-muted-foreground">{t("detail.sourceLine", { source: department.sourceSystem, date: dateFormatter.format(new Date(department.sourceObservedAt)) })}</p>
-                        </div>
-                        {canManage ? <Button type="button" size="icon" variant="ghost" disabled={actionLoading} aria-label={t("detail.archiveDepartment")} onClick={() => void archiveDepartment(department.id)}><Trash2 className="h-4 w-4" /></Button> : null}
-                      </article>
-                    ))}
-                  </div>
-                ) : <EmptySection icon={FolderOpen} title={t("detail.noDepartments")} description={t("detail.noDepartmentsDescription")} />}
-              </div>
-            </SectionState>
-          </SectionFrame>
-        </TabsContent>
-
-        {pharmacyPromotionsEnabled ? <TabsContent value="promotions">
-          <SectionFrame title={t("detail.promotionsTitle")} description={t("detail.promotionsDescription")}>
-            <SectionState loading={sectionLoading === "promotions"} error={sectionError} retry={() => void loadDetailSection("promotions", true)} t={t}>
-              {promotions?.length ? (
-                <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                  {promotions.map((target) => {
-                    const execution = target.executions[0]
-                    return (
-                      <article key={target.id} className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]">
-                        <div className="grid gap-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-semibold">{localizedPromotionName(target.promotionVersion)}</h3>
-                            <StateBadge>{target.promotionVersion.promotion.code}</StateBadge>
-                            <StateBadge tone={target.status === "COMPLETED" ? "positive" : "neutral"}>{target.status}</StateBadge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{t("detail.promotionPlan", { quantity: numberFormatter.format(Number(target.planQuantity)), unit: target.unit, agent: target.assignedAgent.name })}</p>
-                          <p className="text-xs text-muted-foreground">{t("detail.sourceLine", { source: target.sourceSystem, date: dateFormatter.format(new Date(target.sourceObservedAt)) })}</p>
-                        </div>
-                        <dl className="grid grid-cols-2 gap-2 text-sm">
-                          <div><dt className="text-xs text-muted-foreground">{t("detail.fact")}</dt><dd className="font-semibold">{execution ? numberFormatter.format(Number(execution.actualQuantity)) : "—"}</dd></div>
-                          <div><dt className="text-xs text-muted-foreground">{t("detail.points")}</dt><dd className="font-semibold">{execution?.factPointsPreview === null || execution?.factPointsPreview === undefined ? "—" : numberFormatter.format(Number(execution.factPointsPreview))}</dd></div>
-                          <div><dt className="text-xs text-muted-foreground">L1</dt><dd>{execution?.l1State || "—"}</dd></div>
-                          <div><dt className="text-xs text-muted-foreground">L2</dt><dd>{execution?.l2State || "—"}</dd></div>
-                        </dl>
-                      </article>
-                    )
-                  })}
-                </div>
-              ) : <EmptySection icon={Megaphone} title={t("detail.noPromotions")} description={t("detail.noPromotionsDescription")} />}
-            </SectionState>
-          </SectionFrame>
-        </TabsContent> : null}
-
-        <TabsContent value="files">
-          <SectionFrame title={t("detail.filesTitle")} description={t("detail.filesDescription")}>
-            <SectionState loading={sectionLoading === "files"} error={sectionError} retry={() => void loadDetailSection("files", true)} t={t}>
-              <div className="grid gap-5">
-                {canManage ? (
-                  <form onSubmit={uploadDocument} className="grid gap-2 rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700 md:grid-cols-2 xl:grid-cols-4">
-                    <input required name="organizationDocument" type="file" className="min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm" />
-                    <input required value={documentSource} onChange={(event) => setDocumentSource(event.target.value)} placeholder={t("detail.sourceSystem")} maxLength={200} className="min-h-11 rounded-md border border-input bg-background px-3 text-sm" />
-                    <input value={documentReference} onChange={(event) => setDocumentReference(event.target.value)} placeholder={t("detail.sourceReference")} maxLength={500} className="min-h-11 rounded-md border border-input bg-background px-3 text-sm" />
-                    <Button type="submit" disabled={actionLoading || !documentSource.trim()}><Upload className="h-4 w-4" />{t("detail.uploadFile")}</Button>
-                  </form>
-                ) : null}
-                {documents?.length ? (
-                  <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    {documents.map((document) => (
-                      <article key={document.id} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
-                        <div className="min-w-0">
-                          <h3 className="truncate font-semibold">{document.title || document.fileName}</h3>
-                          <p className="text-sm text-muted-foreground">{document.fileName} · {t("detail.fileSize", { size: numberFormatter.format(document.sizeBytes / 1024) })}</p>
-                          <p className="text-xs text-muted-foreground">{t("detail.sourceLine", { source: document.sourceSystem || t("detail.unknownSource"), date: dateFormatter.format(new Date(document.sourceObservedAt || document.createdAt)) })}</p>
-                        </div>
-                        <Button asChild variant="outline"><a href={`/api/v1/mtm/organizations/${organizationId}/documents/${document.id}/download`}><Download className="h-4 w-4" />{t("detail.download")}</a></Button>
-                      </article>
-                    ))}
-                  </div>
-                ) : <EmptySection icon={FileText} title={t("detail.noFiles")} description={t("detail.noFilesDescription")} />}
-              </div>
-            </SectionState>
-          </SectionFrame>
         </TabsContent>
       </Tabs>
 

@@ -15,6 +15,11 @@
  * no reference attributes, no shipments, no coordinate receipt). The last one
  * has everything, so the cleanup cannot quietly take master data away from a
  * tenant that imports it.
+ *
+ * Same day, same card: departments, pharmacy promotions and files came off the
+ * tab bar — no tenant on production had a row in any of them. What stays is
+ * what a field visit to a pharmacy uses: details, the people there, visits and
+ * the agents assigned to it.
  */
 import { readFileSync } from "node:fs"
 import { act, createElement } from "react"
@@ -57,9 +62,9 @@ vi.mock("next/link", () => ({
 vi.mock("next-auth/react", () => ({
   useSession: () => ({ data: { user: { organizationId: "org-1", role: "admin" } } }),
 }))
+const orgSwitches = vi.hoisted(() => ({ fieldContacts: true }))
 vi.mock("@/hooks/use-mtm-org-settings", () => ({
-  useMtmFieldContacts: () => ({ enabled: true, ready: true }),
-  useMtmPharmacyPromotions: () => ({ enabled: true, ready: true }),
+  useMtmFieldContacts: () => ({ enabled: orgSwitches.fieldContacts, ready: true }),
 }))
 vi.mock("@/components/mtm/customer-form", () => ({ MtmCustomerForm: () => null }))
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
@@ -130,7 +135,12 @@ function rowValue(label: string): string | null {
   return term?.nextElementSibling?.textContent ?? null
 }
 
+function tabs(): string[] {
+  return [...container.querySelectorAll('[role="tab"]')].map((node) => node.textContent ?? "")
+}
+
 beforeEach(() => {
+  orgSwitches.fieldContacts = true
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -225,6 +235,20 @@ describe("organization card, Details tab", () => {
     expect(rowValue("detail.coordinateSource")).toBe("Field audit")
     expect(text).toContain("detail.commercialTitle")
     expect(rowValue("detail.latestCommercialDocument")).toBe("INV-88")
+  })
+})
+
+describe("organization card, tab bar", () => {
+  it("offers details, contacts, visits and staff — and nothing else", async () => {
+    await renderCard({ organization: handTyped })
+    expect(tabs()).toEqual(["detail.tabs.details", "detail.tabs.contacts", "detail.tabs.visits", "detail.tabs.staff"])
+  })
+
+  it("still drops contacts for a tenant that switched field contacts off", async () => {
+    orgSwitches.fieldContacts = false
+    const text = await renderCard({ organization: handTyped })
+    expect(tabs()).toEqual(["detail.tabs.details", "detail.tabs.visits", "detail.tabs.staff"])
+    expect(text).not.toContain("detail.contacts")
   })
 })
 
