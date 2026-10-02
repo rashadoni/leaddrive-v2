@@ -1289,3 +1289,28 @@
   HEAD, seven real scenarios/five gates again, final fresh-main check, protected
   merge and normal deploy/public exact artifact SHA. Progress remains81/161,
   14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL; no acceptance inflation.
+
+
+## 2026-10-02 — main420 exact review GREEN and publication
+
+- Complete independent review of clean fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b
+  / base420e5be1285a68954d45653d9f0740f212f6adea GREEN P0=0 P1=0 P2=0 P3=0.
+  Full14paths/281,071bytes/SHA256
+  007504b37cac3c5dac5fbeb1f1e683c8f9bdbcd557f20982b8d4ad262c4b8426;
+  non-doc4paths/46,283bytes/SHA256
+  52c7a635988014ac9e2e646e2c9c6d7ca7e7ec82fff7a725fee5d78b84d3ad50.
+  Ordinary integration, fourteen main-owned blobs, source4 equality, all ten
+  Workforce namespaces and configuration selfAgentId:null boundary verified.
+  Three docs append-only and all seven original historical JSONs exact.
+  Actual86/86 (5.11s), calendar API24/24 (2.44s), i18n24121/0 missing/extra
+  confirmed from primary logs. No source change after the reviewed c2 code.
+- Fresh fetch before publication still420e5be1; published exactfd02801c to
+  PR528 and confirmed live head/basefd/420. Marked ready_for_review for new
+  actual browser/five-gate execution. Earlier draft skips/historical GREENs
+  are not current-head acceptance. This receipt append remains local during CI.
+- Current status: exact integrated review GREEN, hosted execution pending.
+  Last completed action: exact push and ready event on main420. Precise stopping
+  point: seven real browser cases and five required contexts. Next action:
+  original primary results, final fresh-main protected merge, normal deploy
+  and public exact merged artifact SHA. Progress remains81/161,14/15,C8 36%,
+  overall59%,80non-DONE;007 PARTIAL, remaining unrun product gates NOT RUN.
