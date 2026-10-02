@@ -4408,3 +4408,26 @@ corrections as new entries that explicitly supersede the earlier fact.
   on draftPR528. Next action: ready_for_review hosted seven real cases/five
   mandatory contexts, fresh-main merge and normal deploy/exact public SHA.
   Progress81/161,14/15,C8 36%,59%,80non-DONE;007 PARTIAL/pilot NOT RUN.
+
+
+## 2026-10-02 — final observed-response candidate review GREEN
+
+- Exact publishedded45c395951e37d54628ec452288d9da84d8411/base390c4976
+  independent complete review GREEN P0=0 P1=0 P2=0 P3=0. Full11paths/
+  209,004bytes/SHA256a25ba10d7f24c7a939e11c4384d42a43f1019481b1bb2c74fd8ebc50fa7998ec;
+  non-doc4paths/44,315bytes/SHA256
+  aa3c744348279bf9df0c734192c288716ec6e142e35680d9041915fafece595e.
+- All3 observer/action sequences now immediately awaited together; exact
+  predicates, actual response/payload/session, stale guards, audit/replay/RLS
+  and real cookies remain. Eleven main-owned blobs and Workforce translations
+  preserved, all3 doc prefixes append-only,4 original historical JSONs exact.
+  Current local22/22/2.15s verified; no new hosted PASS credited.
+- Fresh fetched main and live PR base remain390c4976; remote head exactlyded.
+  PR528 marked ready_for_review after GREEN static review. Earlier draft skips
+  are not heavy/browser acceptance; actual new ready-event executions pending.
+  This local receipt-only append follows ded without changing its source.
+- Current result: final complete review GREEN. Last action: ready event after
+  fresh-main check. Precise stopping point: seven real hosted scenarios and
+  five actual required contexts. Next action: primary results, fresh-main
+  protected merge/normal deploy/public exact artifact SHA. Progress81/161,
+  14/15,C8 36%,59%,80non-DONE;007 PARTIAL/pilot NOT RUN.
