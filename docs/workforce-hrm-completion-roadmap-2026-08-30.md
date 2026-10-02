@@ -4716,3 +4716,65 @@ from this worktree.
   general update/delete, break policy, AGENT moves and Route mutation stay
   excluded. Progress unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;
   WF-C8-007 PARTIAL. No full Contabo build/typecheck/suite/browser was run.
+
+
+## 2026-10-03 (Asia/Baku) — bounded reversal keyboard acceptance resumed
+
+- User says begin; autonomous implementation/push/normal merge/deploy authority
+  persists. Resumed exact clean local/remotea5b23cb93a82fe648a2b1e64d97bd5412bdc2006,
+  codex/workforce-completion-part17, same dedicated worktree. Context/origin and
+  registry/deployment route reconfirmed; fresh main remainsba2326c270b138b025dc2975b370e90725c69483.
+  Production only13.140.132.245,/opt/leaddrive-v2, reviewed main/deploy.yml.
+- Short safety plan: preserve seven real browser cases and add two bounded
+  native keyboard cases: ORG/EN desktop cancel/reopen/confirm; TEAM/RU narrow
+  committed-response-loss/exact retry. Real Tab navigation and native Enter/Space
+  activation only; fixture setup may use existing real UI selects/refresh.
+  No programmatic browser focus injection and no claim of whole-page/AT/zoom.
+- Independent source/design reconnaissance identifies missing explicit focus
+  restoration when Cancel removes its focused button and no stable product
+  focus target after successful reversal. These are source findings, not yet
+  hosted browser outcomes. Add guarded source focus restoration after cancel
+  and result-notice focus after success/replay, then verify real behavior in CI.
+  Calendar mutation/API/schema/auth/Route behavior remains outside this change.
+- Checks/results for this new candidate NOT RUN yet. Full Contabo build,
+  typecheck,suite,browser,PostgreSQL,Android,AT,load and production-auth checks
+  NOT RUN; only small sequential checks here, heavy hosted CI. Progress remains
+  81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL. General update/delete,
+  break policy,AGENT moves and Route mutation remain excluded.
+- Current status: scope and fresh-main context verified. Last action: independent
+  keyboard design reconnaissance. Precise stopping point: implementation starts
+  from cleana5b23cb9. Next action: bounded UI/harness changes, targeted checks,
+  checkpoint/exact-head review, draft PR, actual nine hosted cases/five gates,
+  fresh-main normal merge/deploy/exact public SHA and append-only receipts.
+
+
+## 2026-10-03 (Asia/Baku) — keyboard candidate implementation and bounded checks
+
+- Added UI-only pending focus intent scoped by existing contextKey/targetKey:
+  cancellation restores the original still-connected source button after it is
+  enabled; successful reversal/replay focuses the existing result notice after
+  saving and inventory refresh settle. Identity changes clear the intent/source;
+  obsolete responses retain the original mutation guards before any focus intent.
+  No API/schema/authorization/locking/persistence/copy/workflow/baseline change.
+- Existing seven hosted cases retain their assertions and pointer behavior.
+  Added ORG/EN desktop Tab/Shift+Tab/Space-cancel/Enter-reopen-confirm and TEAM/RU
+  390x844 Space-confirm/committed-response-loss/Tab/Enter-exact-retry. Assertions
+  cover no cancel writes, full pair/reversal-receipt state equality, source focus
+  restoration, two common-stamp tombstones/one audit, disabled pending buttons,
+  focused visible unknown/result notices, byte-identical drafts/[true,false],
+  zero replay writes and preserved real session. Native Tab helper is capped80
+  and never injects browser focus. Screenshots/receipt fields are sanitized.
+- Resource inspection: approx15GB RAM available,338GB disk free,memory PSI0.
+  Actual targeted UI/reversal/API suites57/57 PASS in3.34s with one worker,
+  /tmp/workforce-keyboard-part17-targeted.log. Script syntax/scoped ESLint/diff
+  check PASS after removing an unused destructure (initial lint had one warning,
+  zero errors). New real keyboard/browser cases and exact-head CI NOT RUN yet.
+  Full Contabo build/typecheck/suite/browser/PG/Android/AT/load NOT RUN; hosted CI
+  supplies heavy verification. Production-auth,zoom,AT,physical,pilot NOT RUN.
+- Current result: bounded source/harness candidate and local checks ready.
+  Last action: actual57-test check and clean scoped lint. Precise stopping point:
+  checkpoint/full independent exact-head review before draft publication and
+  ready event. Next action: actual nine hosted cases/five required gates, inspect
+  original receipts/screenshots, final fresh-main normal merge/deploy/public SHA.
+  Progress81/161,14/15,C8 36%,overall59%,80non-DONE,007 PARTIAL unchanged;
+  general update/delete,break policy,AGENT moves and Route mutation excluded.
