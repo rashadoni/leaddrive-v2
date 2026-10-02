@@ -11222,7 +11222,23 @@
     "fileMissing": "Presentation file unavailable",
     "openedCount": "{count, plural, one {Opened # time} other {Opened # times}}"
   },
+  "mtmAgentSection": {
+    "back": "All field agents",
+    "notFound": "This employee was not found or is outside your access.",
+    "manager": "Manager: {name}",
+    "tabs": "Employee's clients",
+    "tabAssigned": "Assigned clients",
+    "tabAssignedCount": "Assigned clients ({count})",
+    "tabAttach": "Attach clients",
+    "assignedHint": "Tick clients to detach them from this employee or hand them over to another one.",
+    "attachHint": "Tick clients and press “Attach to {name}”. Clients without a responsible employee are shown first; to take a client over from someone else, change the “Assignment state” filter.",
+    "attachUnavailableTitle": "Clients cannot be attached to this employee",
+    "attachUnavailableBody": "Clients are attached only to an active field agent. {name} has the role “{role}” and the status “{status}”."
+  },
   "mtmAgents": {
+    "clients": "Clients",
+    "clientsCount": "Clients: {count}",
+    "openSection": "Open the employee's section",
     "title": "Field Agents",
     "subtitle": "Manage field agents and teams",
     "add": "Add Agent",
@@ -11307,6 +11323,17 @@
     "colContacts": "Contacts"
   },
   "mtmContactExplorer": {
+    "agentScope": {
+      "assignTo": "Attach to {name}",
+      "unassignFrom": "Detach from {name}",
+      "transferToOther": "Hand over to another employee",
+      "assignReason": "Attached in {name}'s section",
+      "unassignReason": "Detached in {name}'s section",
+      "assignedEmptyTitle": "{name} has no assigned clients yet",
+      "assignedEmptyDescription": "Open “Attach clients” above to assign clients to this employee.",
+      "candidatesEmptyTitle": "No clients without a responsible employee",
+      "candidatesEmptyDescription": "To take a client over from another employee, change the “Assignment state” filter."
+    },
     "title": "Clients",
     "subtitle": "Personal list, professional profile, workplace, and accountable assignment",
     "createClient": "Add client",

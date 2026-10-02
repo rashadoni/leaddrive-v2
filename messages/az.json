@@ -11218,7 +11218,23 @@
     "fileMissing": "Təqdimat faylı əlçatan deyil",
     "openedCount": "{count, plural, one {# dəfə açılıb} other {# dəfə açılıb}}"
   },
+  "mtmAgentSection": {
+    "back": "Bütün sahə agentləri",
+    "notFound": "Əməkdaş tapılmadı və ya sizə əlçatan deyil.",
+    "manager": "Rəhbər: {name}",
+    "tabs": "Əməkdaşın müştəriləri",
+    "tabAssigned": "Təyin edilmiş müştərilər",
+    "tabAssignedCount": "Təyin edilmiş müştərilər ({count})",
+    "tabAttach": "Müştəri təyin et",
+    "assignedHint": "Müştəriləri əməkdaşdan ayırmaq və ya başqasına ötürmək üçün onları işarələyin.",
+    "attachHint": "Müştəriləri işarələyin və «Təyin et: {name}» düyməsini basın. Əvvəlcə məsul əməkdaşı olmayan müştərilər göstərilir; müştərini başqa əməkdaşdan götürmək üçün «Təyinat vəziyyəti» filtrini dəyişin.",
+    "attachUnavailableTitle": "Bu əməkdaşa müştəri təyin etmək olmur",
+    "attachUnavailableBody": "Müştərilər yalnız aktiv sahə əməkdaşına təyin edilir. {name}: rol «{role}», status «{status}»."
+  },
   "mtmAgents": {
+    "clients": "Müştərilər",
+    "clientsCount": "Müştərilər: {count}",
+    "openSection": "Əməkdaşın bölməsini aç",
     "title": "Sahə agentləri",
     "subtitle": "Agentləri və komandaları idarə edin",
     "add": "Agent əlavə et",
@@ -11303,6 +11319,17 @@
     "colContacts": "Əlaqə"
   },
   "mtmContactExplorer": {
+    "agentScope": {
+      "assignTo": "Təyin et: {name}",
+      "unassignFrom": "Ayır: {name}",
+      "transferToOther": "Başqa əməkdaşa ötür",
+      "assignReason": "{name} əməkdaşının bölməsində təyinat",
+      "unassignReason": "{name} əməkdaşının bölməsində ayrılma",
+      "assignedEmptyTitle": "{name}: hələ təyin edilmiş müştəri yoxdur",
+      "assignedEmptyDescription": "Müştəri təyin etmək üçün yuxarıdakı «Müştəri təyin et» bölməsini açın.",
+      "candidatesEmptyTitle": "Məsul əməkdaşı olmayan müştəri yoxdur",
+      "candidatesEmptyDescription": "Müştərini başqa əməkdaşdan götürmək üçün «Təyinat vəziyyəti» filtrini dəyişin."
+    },
     "title": "Müştərilər",
     "subtitle": "Şəxsi siyahı, peşəkar profil, iş yeri və məsul təyinat",
     "createClient": "Müştəri əlavə et",

@@ -264,17 +264,49 @@ function statusVariant(status: string): "success" | "warning" | "outline" {
   return "outline"
 }
 
-export function MtmContactExplorer() {
+/**
+ * The explorer inside one employee's own section (/mtm/agents/[id]).
+ * "assigned" lists that employee's clients and offers to detach or hand them
+ * over; "candidates" lists everyone else so clients can be attached to them.
+ * Saved views, the URL state and the route hand-off belong to the Clients
+ * page and are switched off here.
+ */
+export type MtmContactExplorerAgentScope = {
+  agent: ContactTransferAgent
+  view: "assigned" | "candidates"
+  /** Where a client or organization card opened from here returns to. */
+  returnHref: string
+  onTotal?: (total: number) => void
+  onChanged?: () => void
+}
+
+function scopeBaseFilters(scope: MtmContactExplorerAgentScope | undefined): ContactExplorerFilters {
+  if (!scope) return EMPTY_CONTACT_FILTERS
+  return scope.view === "assigned"
+    ? { ...EMPTY_CONTACT_FILTERS, ownerAgentId: scope.agent.id }
+    : { ...EMPTY_CONTACT_FILTERS, assignmentState: "UNASSIGNED" }
+}
+
+export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExplorerAgentScope } = {}) {
   const t = useTranslations("mtmContactExplorer")
   const tf = useTranslations("mtmFilters")
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const initial = useMemo(() => contactExplorerStateFromSearchParams(new URLSearchParams(searchParams.toString())), []) // eslint-disable-line react-hooks/exhaustive-deps
+  const scoped = Boolean(agentScope)
+  const scopeAgentId = agentScope?.agent.id
+  const scopeView = agentScope?.view
+  const baseFilters = useMemo(() => scopeBaseFilters(agentScope), [scopeAgentId, scopeView]) // eslint-disable-line react-hooks/exhaustive-deps
+  // In an employee's own list every row has the same owner — the column would
+  // only push the phone number out of a 1440 px screen.
+  const showOwner = scopeView !== "assigned"
+  const initial = useMemo(() => (agentScope
+    ? { filters: baseFilters, page: 1, limit: 50 }
+    : contactExplorerStateFromSearchParams(new URLSearchParams(searchParams.toString()))), []) // eslint-disable-line react-hooks/exhaustive-deps
   const routeAssignmentHandoff = useMemo(
-    () => mtmRouteAssignmentHandoffFromSearchParams(searchParams),
-    [searchParams],
+    () => (scoped ? null : mtmRouteAssignmentHandoffFromSearchParams(searchParams)),
+    [scoped, searchParams],
   )
   const isRouteDoctorFlow = routeAssignmentHandoff?.direction === "DOCTOR"
   const [filters, setFilters] = useState<ContactExplorerFilters>(initial.filters)
@@ -343,7 +375,7 @@ export function MtmContactExplorer() {
     () => appendMtmRouteAssignmentHandoff(new URLSearchParams(queryString), routeAssignmentHandoff).toString(),
     [queryString, routeAssignmentHandoff],
   )
-  const returnHref = `${pathname}?${routeAwareQueryString}`
+  const returnHref = agentScope?.returnHref ?? `${pathname}?${routeAwareQueryString}`
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
@@ -430,17 +462,19 @@ export function MtmContactExplorer() {
   }, [applySavedView, t])
 
   useEffect(() => {
+    if (scoped) return
     const controller = new AbortController()
     void loadSavedViews(controller.signal).catch((savedViewError) => {
       if (savedViewError instanceof DOMException && savedViewError.name === "AbortError") return
       toast.error(savedViewError instanceof Error ? savedViewError.message : t("savedViewsLoadFailed"))
     })
     return () => controller.abort()
-  }, [loadSavedViews])
+  }, [loadSavedViews, scoped])
 
   useEffect(() => {
+    if (scoped) return
     router.replace(`${pathname}?${routeAwareQueryString}`, { scroll: false })
-  }, [pathname, routeAwareQueryString, router])
+  }, [pathname, routeAwareQueryString, router, scoped])
 
   const transferScopeKey = payload?.transferSyncScopeKey ?? ""
 
@@ -523,7 +557,13 @@ export function MtmContactExplorer() {
         : t("selection.custom")
   const advancedFilterCount = ADVANCED_FILTER_KEYS.filter((key) => Boolean(filters[key])).length
   const hasActiveFilters = (Object.keys(EMPTY_CONTACT_FILTERS) as (keyof ContactExplorerFilters)[])
-    .some((key) => filters[key] !== EMPTY_CONTACT_FILTERS[key])
+    .some((key) => filters[key] !== baseFilters[key])
+  const loadedTotal = payload?.total
+  const reportTotal = agentScope?.onTotal
+  useEffect(() => {
+    // The section's tab counts the employee's clients, not a filtered subset.
+    if (reportTotal && loadedTotal !== undefined && !hasActiveFilters) reportTotal(loadedTotal)
+  }, [hasActiveFilters, loadedTotal, reportTotal])
   const routeAssignmentAgent = (payload?.availableAgents ?? []).find((agent) => agent.id === routeAssignmentHandoff?.agentId)
 
   const updateFilter = (key: keyof ContactExplorerFilters, value: string) => {
@@ -534,7 +574,7 @@ export function MtmContactExplorer() {
   }
 
   const clearFilters = () => {
-    setFilters(EMPTY_CONTACT_FILTERS)
+    setFilters(baseFilters)
     setPage(1)
     setSelected(new Set())
     setActiveSavedViewId("")
@@ -666,6 +706,7 @@ export function MtmContactExplorer() {
 
   return (
     <div data-testid="mtm-contact-explorer" aria-busy={loading} className="space-y-4">
+      {scoped ? null : (
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <PageDescription icon={UsersRound} title={t("title")} />
@@ -704,7 +745,7 @@ export function MtmContactExplorer() {
           </Button>
         </div>
       </div>
-
+      )}
 
       {isRouteDoctorFlow && routeAssignmentHandoff ? (
         <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -742,10 +783,15 @@ export function MtmContactExplorer() {
             options={categoryOptions} />
           <MtmFilterSelect testId="mtm-contact-category" label={t("category")} value={filters.category} onChange={(value) => updateFilter("category", value)} allLabel={t("all")}
             options={["A", "B", "C", "D"].map((category) => ({ value: category, label: category }))} />
-          <MtmFilterSelect testId="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)} allLabel={t("allAccessible")}
-            options={(payload?.availableAgents ?? []).map((agent) => ({ value: agent.id, label: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }))} />
-          <MtmFilterSelect testId="mtm-contact-assignment-state" label={t("assignmentState")} value={filters.assignmentState} onChange={(value) => updateFilter("assignmentState", value)} allLabel={t("all")}
-            options={[{ value: "ASSIGNED", label: t("assigned") }, { value: "UNASSIGNED", label: t("unassigned") }]} />
+          {/* In an employee's own list the owner is that employee: nothing to choose. */}
+          {scopeView === "assigned" ? null : (
+            <>
+              <MtmFilterSelect testId="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)} allLabel={t("allAccessible")}
+                options={(payload?.availableAgents ?? []).filter((agent) => agent.id !== (scopeView === "candidates" ? scopeAgentId : undefined)).map((agent) => ({ value: agent.id, label: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }))} />
+              <MtmFilterSelect testId="mtm-contact-assignment-state" label={t("assignmentState")} value={filters.assignmentState} onChange={(value) => updateFilter("assignmentState", value)} allLabel={t("all")}
+                options={[{ value: "ASSIGNED", label: t("assigned") }, { value: "UNASSIGNED", label: t("unassigned") }]} />
+            </>
+          )}
           <MtmFilterMore testId="mtm-contact-more-filters" open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)} count={advancedFilterCount} label={tf("more")} />
           <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />
         </MtmFilterBar>
@@ -815,6 +861,22 @@ export function MtmContactExplorer() {
                 <UserPlus className="mr-1 h-4 w-4" />
                 {t("routeFlowAssignAndReturn")}
               </Button>
+            ) : payload?.capabilities.canTransfer && agentScope?.view === "candidates" ? (
+              <Button data-testid="mtm-agent-scope-assign" type="button" size="sm" className="min-h-11" onClick={() => openAssignment("ASSIGN")}>
+                <UserPlus className="mr-1 h-4 w-4" />
+                {t("agentScope.assignTo", { name: agentScope.agent.name })}
+              </Button>
+            ) : payload?.capabilities.canTransfer && agentScope ? (
+              <>
+                <Button data-testid="mtm-agent-scope-transfer" type="button" variant="outline" size="sm" className="min-h-11" onClick={openTransfer}>
+                  <ArrowRightLeft className="mr-1 h-4 w-4" />
+                  {t("agentScope.transferToOther")}
+                </Button>
+                <Button data-testid="mtm-agent-scope-unassign" type="button" size="sm" className="min-h-11" onClick={() => openAssignment("UNASSIGN")}>
+                  <UserMinus className="mr-1 h-4 w-4" />
+                  {t("agentScope.unassignFrom", { name: agentScope.agent.name })}
+                </Button>
+              </>
             ) : payload?.capabilities.canTransfer ? (
               <>
                 <Button type="button" variant="outline" size="sm" onClick={() => openAssignment("UNASSIGN")}>
@@ -847,8 +909,8 @@ export function MtmContactExplorer() {
       ) : contacts.length === 0 ? (
         <section className="rounded-xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
           <UsersRound className="mx-auto h-7 w-7 text-muted-foreground" />
-          <h2 className="mt-3 text-sm font-semibold">{t("emptyTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("emptyDescription")}</p>
+          <h2 className="mt-3 text-sm font-semibold">{agentScope && !hasActiveFilters ? t(`agentScope.${agentScope.view}EmptyTitle`, { name: agentScope.agent.name }) : t("emptyTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{agentScope && !hasActiveFilters ? t(`agentScope.${agentScope.view}EmptyDescription`) : t("emptyDescription")}</p>
         </section>
       ) : (
         <>
@@ -863,12 +925,13 @@ export function MtmContactExplorer() {
                 visitDate={visitDate}
                 visitDateTime={visitDateTime}
                 categoryLabel={categoryLabel(contact)}
+                showOwner={showOwner}
                 t={t}
               />
             ))}
           </div>
           <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 lg:block">
-            <table className="min-w-[1320px] w-full text-sm">
+            <table className={`${showOwner ? "min-w-[1320px]" : "min-w-[1100px]"} w-full text-sm`}>
               <thead className="bg-muted/60 text-left text-xs text-muted-foreground">
                 <tr>
                   <th scope="col" className="w-12">
@@ -885,7 +948,7 @@ export function MtmContactExplorer() {
                   <th scope="col" className="px-3 py-3 font-medium">{t("workplace")}</th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("visitContext")}</th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("communication")}</th>
-                  <th scope="col" className="px-3 py-3 font-medium">{t("owner")}</th>
+                  {showOwner ? <th scope="col" className="px-3 py-3 font-medium">{t("owner")}</th> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -970,14 +1033,16 @@ export function MtmContactExplorer() {
                         {contact.email ? <a href={`mailto:${contact.email}`} className="mt-1 flex items-center gap-1.5 hover:text-primary"><Mail className="h-3.5 w-3.5" />{contact.email}</a> : null}
                         {!phone && !contact.email ? <span className="text-muted-foreground">—</span> : null}
                       </td>
-                      <td className="px-3 py-3">
-                        {owner ? (
-                          <>
-                            <p className="font-medium">{owner.name}</p>
-                            {owner.status !== "ACTIVE" ? <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{t("agentInactive")}</p> : null}
-                          </>
-                        ) : <span className="text-muted-foreground">{t("unassigned")}</span>}
-                      </td>
+                      {showOwner ? (
+                        <td className="px-3 py-3">
+                          {owner ? (
+                            <>
+                              <p className="font-medium">{owner.name}</p>
+                              {owner.status !== "ACTIVE" ? <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{t("agentInactive")}</p> : null}
+                            </>
+                          ) : <span className="text-muted-foreground">{t("unassigned")}</span>}
+                        </td>
+                      ) : null}
                     </tr>
                   )
                 })}
@@ -1029,6 +1094,7 @@ export function MtmContactExplorer() {
           if (!storedOnDevice) toast.warning(t("transferReceipt.storageFailed"))
           setSelected(new Set())
           refresh()
+          agentScope?.onChanged?.()
         }}
       />
       <ContactAssignmentDialog
@@ -1038,11 +1104,15 @@ export function MtmContactExplorer() {
         contactIds={[...selected]}
         agents={payload?.availableAgents ?? []}
         asOf={payload?.asOf ?? ""}
-        initialTargetAgentId={isRouteDoctorFlow ? routeAssignmentHandoff?.agentId : undefined}
-        defaultReason={isRouteDoctorFlow ? t("routeFlowAssignmentReason") : undefined}
+        initialTargetAgentId={agentScope?.view === "candidates" ? agentScope.agent.id : isRouteDoctorFlow ? routeAssignmentHandoff?.agentId : undefined}
+        lockTargetAgent={agentScope?.view === "candidates"}
+        defaultReason={agentScope
+          ? t(assignmentMode === "ASSIGN" ? "agentScope.assignReason" : "agentScope.unassignReason", { name: agentScope.agent.name })
+          : isRouteDoctorFlow ? t("routeFlowAssignmentReason") : undefined}
         onCompleted={(result) => {
           setSelected(new Set())
           refresh()
+          agentScope?.onChanged?.()
           if (isRouteDoctorFlow && assignmentMode === "ASSIGN" && result.summary.changed > 0 && routeAssignmentHandoff) {
             toast.success(t("routeFlowReturningToRoute", { count: result.summary.changed }))
             router.push(routeAssignmentHandoff.returnTo)
@@ -1114,6 +1184,7 @@ function ContactCard({
   visitDate,
   visitDateTime,
   categoryLabel,
+  showOwner,
   t,
 }: {
   contact: ContactRow
@@ -1123,6 +1194,7 @@ function ContactCard({
   visitDate: DateFormatter
   visitDateTime: DateFormatter
   categoryLabel: string
+  showOwner: boolean
   t: ReturnType<typeof useTranslations>
 }) {
   const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
@@ -1158,10 +1230,12 @@ function ContactCard({
           <dt className="text-xs text-muted-foreground">{t("professional")}</dt>
           <dd className="mt-1">{contact.specialtyName || contact.specialtyCode || "—"}</dd>
         </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">{t("owner")}</dt>
-          <dd className="mt-1">{owner?.name || t("unassigned")}</dd>
-        </div>
+        {showOwner ? (
+          <div>
+            <dt className="text-xs text-muted-foreground">{t("owner")}</dt>
+            <dd className="mt-1">{owner?.name || t("unassigned")}</dd>
+          </div>
+        ) : null}
         <div className="sm:col-span-2">
           <dt className="text-xs text-muted-foreground">{t("coverage")}</dt>
           <dd className="mt-1"><ContactCoverageCell coverage={contact.coverage} t={t} /></dd>
