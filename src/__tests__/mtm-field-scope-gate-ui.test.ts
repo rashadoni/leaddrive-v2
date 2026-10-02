@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Route & Field tells a person without an employee card why its lists refuse
- * them — once, above the page — instead of each screen printing "Forbidden".
+ * Route & Field shows a login without an employee card ONE explanation in
+ * place of the page — not a page whose every list prints "Forbidden" its own
+ * way (owner's screenshots of Clients and Routes, 2026-10-03).
  */
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -16,22 +17,31 @@ vi.mock("next-intl", () => ({
 const session = { data: { user: { id: "u-1", role: "manager" } }, status: "authenticated" }
 vi.mock("next-auth/react", () => ({ useSession: () => session }))
 
-import { MtmFieldScopeNotice } from "@/components/mtm/field-scope-notice"
+import { MtmFieldScopeGate } from "@/components/mtm/field-scope-gate"
 
 let root: Root
 let container: HTMLDivElement
 const fetchMock = vi.fn()
+/** Stands for a field page: it counts as mounted the moment it would start fetching. */
+let pageMounts = 0
+const Page = () => {
+  pageMounts += 1
+  return createElement("div", { "data-testid": "page" }, "clients list")
+}
+const notice = () => document.querySelector('[data-testid="mtm-field-scope-notice"]')
+const page = () => document.querySelector('[data-testid="page"]')
 
-async function render(role: string, status: number, body: unknown) {
+async function open(role: string, answer: { status: number; body: unknown } | "network-error") {
   session.data.user.role = role
-  fetchMock.mockResolvedValue({ status, ok: status < 400, json: async () => body })
-  await act(async () => { root.render(createElement(MtmFieldScopeNotice)) })
+  if (answer === "network-error") fetchMock.mockRejectedValue(new Error("offline"))
+  else fetchMock.mockResolvedValue({ status: answer.status, ok: answer.status < 400, json: async () => answer.body })
+  await act(async () => { root.render(createElement(MtmFieldScopeGate, null, createElement(Page))) })
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)) })
-  return document.querySelector('[data-testid="mtm-field-scope-notice"]')
 }
 
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+  pageMounts = 0
   fetchMock.mockReset()
   vi.stubGlobal("fetch", fetchMock)
   container = document.createElement("div")
@@ -45,24 +55,45 @@ afterEach(async () => {
   vi.unstubAllGlobals()
 })
 
-describe("Route & Field — notice for a login without an employee card", () => {
-  it("explains what is missing and where an administrator sets it", async () => {
-    const notice = await render("manager", 403, { error: "…", code: "MTM_FIELD_SCOPE_REQUIRED" })
+describe("Route & Field — a login without an employee card", () => {
+  it("gets the explanation and where an administrator fixes it, and the page never mounts", async () => {
+    await open("manager", { status: 403, body: { error: "…", code: "MTM_FIELD_SCOPE_REQUIRED" } })
 
-    expect(notice?.textContent).toContain("К вашей учётной записи не привязана карточка сотрудника")
-    expect(notice?.textContent).toContain("«Настройки» → «Пользователи»")
+    expect(notice()?.textContent).toContain("К вашей учётной записи не привязана карточка сотрудника")
+    expect(notice()?.textContent).toContain("«Настройки» → «Пользователи»")
+    expect(page()).toBeNull()
+    expect(pageMounts).toBe(0)
   })
 
-  it("stays silent for a person who has a card", async () => {
-    expect(await render("manager", 200, { success: true, data: { agents: [] } })).toBeNull()
+  it("does not let the page start fetching before the answer is known", async () => {
+    session.data.user.role = "sales"
+    fetchMock.mockReturnValue(new Promise(() => undefined))
+    await act(async () => { root.render(createElement(MtmFieldScopeGate, null, createElement(Page))) })
+
+    expect(pageMounts).toBe(0)
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull()
+  })
+})
+
+describe("Route & Field — everyone else sees the page", () => {
+  it("a person who has a card", async () => {
+    await open("manager", { status: 200, body: { success: true, data: { agents: [] } } })
+    expect([notice(), page()?.textContent]).toEqual([null, "clients list"])
   })
 
-  it("does not mistake another refusal for a missing card", async () => {
-    expect(await render("sales", 403, { error: "Forbidden" })).toBeNull()
+  it("a refusal that is not about a missing card is left to the page", async () => {
+    await open("sales", { status: 403, body: { error: "Forbidden" } })
+    expect([notice(), page()?.textContent]).toEqual([null, "clients list"])
   })
 
-  it("does not ask at all for an admin, who needs no card", async () => {
-    expect(await render("admin", 403, { code: "MTM_FIELD_SCOPE_REQUIRED" })).toBeNull()
+  it("a failed probe never hides the module", async () => {
+    await open("manager", "network-error")
+    expect([notice(), page()?.textContent]).toEqual([null, "clients list"])
+  })
+
+  it("an admin, who needs no card and is not asked", async () => {
+    await open("admin", { status: 403, body: { code: "MTM_FIELD_SCOPE_REQUIRED" } })
+    expect([notice(), page()?.textContent]).toEqual([null, "clients list"])
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

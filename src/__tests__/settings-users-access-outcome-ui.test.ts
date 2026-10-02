@@ -147,7 +147,7 @@ afterEach(async () => {
 })
 
 describe("user card — what this person gets", () => {
-  it("a manager left with Route & Field alone, no employee card: the row says the lists will refuse her", async () => {
+  it("a manager left with Route & Field alone and no employee card is offered the whole organization", async () => {
     await openCard([spareCard, takenCard])
 
     expect(block().textContent).toContain("Что получит этот человек")
@@ -155,11 +155,7 @@ describe("user card — what this person gets", () => {
       "Основная": [false, "Скрыт", null],
       "Продажи": [false, "Скрыт", null],
       "Финансы": [false, "Скрыт", null],
-      "Маршруты и поле": [
-        true,
-        "Нужна карточка сотрудника",
-        "Без карточки сотрудника списки клиентов, маршрутов и визитов ответят отказом: чьи данные видит человек, решает она. Выберите карточку или создайте новую.",
-      ],
+      "Маршруты и поле": [true, "Всё, включая удаление", "В поле — Вся организация."],
       "Кадры": [false, "Скрыт", null],
       "Настройки": [null, "Только свои уведомления", "У «Настроек» галочки нет: доступ к ним даёт только роль."],
     })
@@ -195,6 +191,40 @@ describe("user card — what this person gets", () => {
 })
 
 describe("user card — the employee card behind Route & Field", () => {
+  // Owner, 2026-10-03: "a manager must have the permission". A manager handed
+  // the module and then refused by every list is not what the admin meant.
+  it("a manager without a card gets one over the whole organization on save, unless the admin chooses otherwise", async () => {
+    await openCard([spareCard, takenCard])
+
+    expect([fieldCard()?.value, document.querySelector<HTMLSelectElement>("#fieldRole")?.value]).toEqual(["new", "ADMIN"])
+    await save()
+
+    expect(cardWrites()).toEqual([
+      { url: "/api/v1/mtm/agents", method: "POST", body: { name: "Field Manager", role: "ADMIN", userId: "u-1" } },
+    ])
+  })
+
+  it("says the lists will refuse the person when the admin leaves them without a card", async () => {
+    await openCard([spareCard])
+    await choose(fieldCard(), "none")
+
+    expect(rows()["Маршруты и поле"]).toEqual([
+      true,
+      "Нужна карточка сотрудника",
+      "Без карточки сотрудника списки клиентов, маршрутов и визитов ответят отказом: чьи данные видит человек, решает она. Выберите карточку или создайте новую.",
+    ])
+    await save()
+    expect(cardWrites()).toEqual([])
+  })
+
+  it("does not hand a card to other roles by default", async () => {
+    await openCard([spareCard])
+    await choose([...document.querySelectorAll("select")].find((select) => select.value === "manager"), "sales")
+
+    expect(fieldCard()?.value).toBe("none")
+    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Нужна карточка сотрудника"])
+  })
+
   it("offers this person's own card and the unlinked ones, never a colleague's", async () => {
     await openCard([spareCard, takenCard, ownCard])
 
