@@ -5046,3 +5046,37 @@ corrections as new entries that explicitly supersede the earlier fact.
   reconciliation. Precise stopping point: replacement checkpoint/review. Next
   action: publish reviewed replacement, ready event, actual nine cases/five
   mandatory gates, fresh-main normal merge/deploy and exact own public SHA.
+
+
+## 2026-10-03 (Asia/Baku) — paced candidate GREEN, fresh-main integration before publication
+
+- Independent clean exact192ed6fa223e8e5e578cc334e39925a3e625c48f review
+  GREEN P0=0,P1=0,P2=0,P3=0 againstba2326c2. Full14paths/123609bytes/
+  SHA25633b8fc1b1ef139e7f3f32175d3f88961361d2ae8bfb010d1c3c18dc353d4e4ff;
+  non-doc2paths/21129bytes/SHA25649b823628a5762e5022df21eedeac76f270a1bec3743f7d12632e6b1c0151ed7.
+  Actual current192 targeted suites57/57 PASS2.50s. Sixteen original JSONs exact;
+  first browser FAIL8 remains historical and cause NOT PROVEN. Replacement
+  browser9 remains NOT RUN; this review does not replace actual acceptance.
+- Fresh fetch found main advanced toe2c473d50272205e42d17af014909a1b2de4e7f0
+  through #535/#536,12Instagram/Meta/channel paths,no task overlap. Ordinary
+  merge56e31e54c2f0c9a91932efc3cf75a2c35606348d completed without conflicts.
+  All12incoming paths equal main; task UI/harness equal reviewed192 byte-for-byte.
+  No foreign cleanup,auth policy/workflow/baseline change or broader mutation.
+- Post-integration node syntax, scoped ESLint and diff checks PASS; real three
+  targeted suites57/57 PASS2.81s with maxWorkers1, primary log
+  /tmp/workforce-keyboard-part17-integrated-targeted.log. Initial invocation with
+  obsolete minWorkers option stopped before any tests; corrected bounded command
+  actually ran. No heavy verification performed on Contabo.
+- Historical7e five mandatory contexts all SUCCESS. Actual typecheck primary
+  job111059878281 ended23:03:00Z; baseline66/66gated pairs,1195advisory errors,
+  no new defect-shaped errors. Static primary33Workforce PG tests PASS and
+  18baseline failures unchanged. These are historical7e receipts, not new-head
+  gates. Existing first-browser FAIL and missing TEAM/RLS proof remain unchanged.
+- Current status: integrated candidate awaiting complete exact-head review.
+  Last action: fresh-main merge and actual bounded57tests. Precise stopping point:
+  review/checkpoint before replacement publish/ready. Next action: actual nine
+  hosted cases and five fresh gates, normal fresh-main merge/deploy, own exact
+  public artifactSha and append-only release receipts. Progress81/161,14/15,
+  C8 36%,overall59%,80non-DONE,007 PARTIAL; zoom,AT,authenticated production,
+  physical Android,load and pilot NOT RUN. General update/delete,break policy,
+  AGENT moves and Route mutation excluded.
