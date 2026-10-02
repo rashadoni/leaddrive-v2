@@ -12244,14 +12244,7 @@
     "requestEditTitle": "İş yeri dəyişikliyi təklif et",
     "manageDescription": "İş dövrü dərhal saxlanılacaq və audit jurnalına yazılacaq.",
     "requestDescription": "Menecer təklifi yoxlayanadək kontakt kartı dəyişməyəcək.",
-    "organizationSearch": "Təşkilatı tap",
-    "organizationSearchPlaceholder": "Ad, kod, şəhər və ya ünvan",
-    "search": "Axtar",
-    "searching": "Axtarılır…",
     "organization": "Təşkilat",
-    "chooseOrganization": "Təşkilat seçin",
-    "organizationAddressMissing": "Təşkilat ünvanı qeyd edilməyib.",
-    "organizationSearchError": "Təşkilatları yükləmək mümkün olmadı.",
     "organizationRequired": "Təşkilat seçin.",
     "jobTitle": "Vəzifə",
     "department": "Şöbə",
@@ -25802,6 +25795,18 @@
     "deviceApproveFailed": "Bu cihazı təsdiqləmək mümkün olmadı.",
     "deviceRevokeFailed": "Bu cihazı ləğv etmək mümkün olmadı."
   },
+  "mtmOrganizationPicker": {
+    "placeholder": "Ad, ünvan və ya kod",
+    "searching": "Axtarılır…",
+    "empty": "Heç nə tapılmadı. Başqa ad, ünvan və ya kod yoxlayın.",
+    "emptyCatalog": "Seçmək üçün hələ təşkilat yoxdur.",
+    "more": "İlk {shown} təşkilat göstərilir, cəmi {total}. Lazım olanı tapmaq üçün ad, ünvan və ya kod yazın.",
+    "error": "Təşkilatları yükləmək mümkün olmadı.",
+    "retry": "Yenidən cəhd et",
+    "change": "Dəyiş",
+    "addressMissing": "Ünvan qeyd edilməyib",
+    "objectTypes": {"PHARMACY": "Aptek", "CLINIC": "Klinika", "STORE": "Satış nöqtəsi"}
+  },
   "mtmContactCreate": {
     "title": "Yeni müştəri",
     "description": "Şəxsi yaradın və əsas iş yerini dərhal göstərin.",
@@ -25818,11 +25823,7 @@
     "categoryFieldRequired": "«{field}» məcburi sahəsini doldurun.",
     "workplaceSection": "Əsas iş yeri",
     "workplaceHint": "Klinika, aptek və ya digər təşkilat ayrıca saxlanılır. Sonra başqa iş yerləri də əlavə etmək olar.",
-    "organizationSearchPlaceholder": "Klinika və ya aptek tapın",
-    "search": "Axtar",
     "workplace": "Təşkilat",
-    "workplacePlaceholder": "İş yerini seçin",
-    "addressMissing": "Ünvan qeyd edilməyib",
     "jobTitle": "Vəzifə",
     "jobTitlePlaceholder": { "DOCTOR": "Məsələn, kardioloq", "PHARMACIST": "Məsələn, əczaçı", "OTHER": "Təşkilatdakı rolu" },
     "phone": "Telefon",
@@ -25837,7 +25838,6 @@
     "workplaceRequired": "Əsas iş yerini seçin.",
     "workplaceInvalid": "Bu iş yeri artıq əlçatan deyil. Başqasını seçin.",
     "requiredFieldsError": "Şirkət üçün təyin edilmiş məcburi sahələri doldurun.",
-    "organizationSearchError": "Təşkilatları yükləmək mümkün olmadı.",
     "saveError": "Müştərini yaratmaq mümkün olmadı."
   },
   "mtmFieldContactsDisabled": {

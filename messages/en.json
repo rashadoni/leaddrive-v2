@@ -12248,14 +12248,7 @@
     "requestEditTitle": "Suggest a workplace change",
     "manageDescription": "The workplace period is saved immediately and recorded in the audit log.",
     "requestDescription": "The contact stays unchanged until a manager reviews the proposal.",
-    "organizationSearch": "Find organization",
-    "organizationSearchPlaceholder": "Name, code, city, or address",
-    "search": "Search",
-    "searching": "Searching…",
     "organization": "Organization",
-    "chooseOrganization": "Choose an organization",
-    "organizationAddressMissing": "Organization address is not recorded.",
-    "organizationSearchError": "Organizations could not be loaded.",
     "organizationRequired": "Choose an organization.",
     "jobTitle": "Job title",
     "department": "Department",
@@ -25806,6 +25799,18 @@
     "deviceApproveFailed": "Could not approve this device.",
     "deviceRevokeFailed": "Could not revoke this device."
   },
+  "mtmOrganizationPicker": {
+    "placeholder": "Name, address, or code",
+    "searching": "Searching…",
+    "empty": "Nothing found. Try a different name, address, or code.",
+    "emptyCatalog": "There are no organizations to choose from yet.",
+    "more": "Showing the first {shown} of {total}. Type a name, address, or code to find the one you need.",
+    "error": "Organizations could not be loaded.",
+    "retry": "Try again",
+    "change": "Change",
+    "addressMissing": "Address is not recorded",
+    "objectTypes": {"PHARMACY": "Pharmacy", "CLINIC": "Clinic", "STORE": "Retail outlet"}
+  },
   "mtmContactCreate": {
     "title": "New client",
     "description": "Create a person and assign their primary workplace in one step.",
@@ -25822,11 +25827,7 @@
     "categoryFieldRequired": "Complete the required “{field}” field.",
     "workplaceSection": "Primary workplace",
     "workplaceHint": "The clinic, pharmacy, or other organization is stored separately. More workplaces can be added later.",
-    "organizationSearchPlaceholder": "Find a clinic or pharmacy",
-    "search": "Search",
     "workplace": "Organization",
-    "workplacePlaceholder": "Choose a workplace",
-    "addressMissing": "Address is not recorded",
     "jobTitle": "Job title",
     "jobTitlePlaceholder": { "DOCTOR": "For example, cardiologist", "PHARMACIST": "For example, pharmacist", "OTHER": "Role in the organization" },
     "phone": "Phone",
@@ -25841,7 +25842,6 @@
     "workplaceRequired": "Choose the primary workplace.",
     "workplaceInvalid": "This workplace is no longer available. Choose another one.",
     "requiredFieldsError": "Complete the required fields configured for this company.",
-    "organizationSearchError": "Organizations could not be loaded.",
     "saveError": "The client could not be created."
   },
   "mtmFieldContactsDisabled": {
