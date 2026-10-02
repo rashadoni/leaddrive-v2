@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -174,18 +174,19 @@ function UserFormDialog({
   // session: admins are never restricted, so theirs is the tenant's full set.
   const { data: session } = useSession()
   const tn = useTranslations("nav")
-  const moduleOptions = useMemo(() => {
-    const sessionUser = session?.user
-    const ids = sessionUser?.role === "superadmin"
+  // Not memoized: the session object changes identity on every refetch, so a
+  // memo keyed on it would recompute anyway, and the list is a dozen entries.
+  const sessionUser = session?.user
+  const moduleOptions = (
+    sessionUser?.role === "superadmin"
       ? USER_HIDEABLE_MODULE_IDS
       : tenantHideableModules(orgFromSession(sessionUser))
-    return ids.map((id) => {
-      const group = navItems.find((item) =>
-        id === WORKFORCE_HIDEABLE_ID ? item.capability === id : item.module === id,
-      )?.group
-      return { id, label: group ? tn(`groups.${group}` as never) : id }
-    })
-  }, [session, tn])
+  ).map((id) => {
+    const group = navItems.find((item) =>
+      id === WORKFORCE_HIDEABLE_ID ? item.capability === id : item.module === id,
+    )?.group
+    return { id, label: group ? tn(`groups.${group}` as never) : id }
+  })
   const moduleMaskIgnored = roleIgnoresModuleMask(form.role)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
