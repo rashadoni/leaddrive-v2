@@ -4730,3 +4730,37 @@ corrections as new entries that explicitly supersede the earlier fact.
   original primary results, final fresh-main protected merge, normal deploy
   and public exact merged artifact SHA. Progress remains81/161,14/15,C8 36%,
   overall59%,80non-DONE;007 PARTIAL, remaining unrun product gates NOT RUN.
+
+
+## 2026-10-02 — integrated main420 browser acceptance 7/7
+
+- Actual run37066398649/job111035118850 SUCCESS for exact integrated head
+  fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b. Synthetic merge
+  9ab5f7161e5892930e60ade05ad03096eea31dd2 has API-confirmed parents
+  [420e5be1285a68954d45653d9f0740f212f6adea,fd02801cbe38d3a8cac5fc693b8ae18f3a993c1b].
+  Seven real cases PASS,21:27:03.123Z–21:27:47.055Z (43.932seconds),
+  artifact11252568118/attempt1. Original JSON copied byte-for-byte to
+  docs/evidence/workforce-c8-calendar-browser-2026-10-02-fd02801c.json,
+  2,760bytes/SHA256
+  4088bb9782db847350ec6b4ddf42fb2490a485519a6c530ce7322b0a19cabacd.
+- Real authentication/mutations/audit, EN/RU/AZ cancel/confirm and EN/RU
+  byte-identical retry/replay PASS again. Both identity replacements have
+  all six exact/live-Refresh/session/TEAM flags true,posts1,no stale notice;
+  populated audit/calendar RLS fail-closed=true under the restricted app role.
+- Independent actual artifact review GREEN P0=0 P1=0 P2=0 P3=0, five individual
+  screenshots verified. Root viewed fresh RU unknown notice and tenant TEAM
+  screen: explanation fully visible, current fixture1/actor1-0/team1 and no
+  stale calendar notice. Development calendar/session evidence only;
+  production/Android/AT/load/pilot NOT RUN. Historical FAIL causes NOT PROVEN.
+- Currentlocal5855f4b75eea393662a22e117a0f8bd6ab2197a6 afterfd contained only
+  three append-only docs,6,420bytes/SHA256
+  899678e0571a5352e7d6ed055d7d47a98f0d0102ab01569eb2f6d9a7313f9019;
+  source4 exact. This new original JSON/receipt append also stays local while
+  publishedfd runs its mandatory checks. Interim main still420e5be1;
+  final fresh fetch remains required immediately before protected merge.
+- Current status: integrated browser7/7 GREEN. Last action: primary receipt
+  preservation and screenshot verification. Precise stopping point: required
+  static/type jobs111035228462/111035228458 in37066398689 still executing.
+  Next action: their actual primary results, final fresh-main merge and normal
+  deploy/public exact merged SHA. Progress81/161,14/15,C8 36%,overall59%,
+  80non-DONE,007 PARTIAL; no whole-module completion claim.
