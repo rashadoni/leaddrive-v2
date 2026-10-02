@@ -4323,3 +4323,40 @@ corrections as new entries that explicitly supersede the earlier fact.
   stopping point: new hosted seven-case/all-required gates. Next action:
   inspect primary results/fresh-main protected merge/deploy/public SHA proof.
   Progress81/161,14/15,C8 36%,59%,80non-DONE;007 PARTIAL.
+
+
+## 2026-10-02 — integrated browser failure and exact read barriers
+
+- Integratedadaec browser37055283396/job110998350427 FAILED after6 complete
+  PASS cases, during the final tenant-switch TEAM navigation: calendar read
+  failed, date input absent, locator timeout. Primary receipt preserves FAIL,
+  not7/7 acceptance, at
+  docs/evidence/workforce-c8-calendar-browser-2026-10-02-adaec943-failed-attempt1.json:
+  2,289bytes/SHA256bdfd7b58101049dd4b8334eeae35bdb862b553f70b6fbdaa98e50739ba5dc4b9.
+  Existing diagnostic did not capture the failing HTTP status, so the exact
+  read/cookie cause is NOT PROVEN; no auth/rate-policy conclusion is claimed.
+- Independent recon found concrete harness weaknesses: newReadFinished matched
+  any new-org GET, later GETs remained intercepted, TEAM selection could begin
+  before its scope load settled, and a direct locator wait omitted handler
+  errors. Updated only harness: exact first held GET object/server200 response,
+  precise request completion, settled UI, real session identity before/after
+  serial actual ORG-bootstrap and TEAM reads/200/success/expected team. Original
+  old POST/new GET race, stale-notice suppression, audit/replay/RLS/no-extra-POST
+  assertions retained. No cookie stripping, auth mocks or application changes.
+- Added bounded failure status/scope/success/code, request-failure flag and
+  cookie-header-present boolean only; no cookie values/raw transport call logs.
+  Intercepted errors retain safe type; top-level failure prints first line.
+  New execution required; stronger barriers do not prove the unknown old cause.
+- Actual final current classifier/UI22/22 PASS2.07s, scoped script ESLint,
+  syntax/whitespace PASS; primary /tmp/workforce528-context-barrier-final.log.
+  Fresh origin/main unchanged390c4976. Heavy local checks NOT RUN. Historical
+  adaec static110998850796 SUCCESS:PG33 including calendar12/1916ms and
+  baseline18 failing/18 accepted/no new; primary /tmp/workforce528-ada-static.log.
+  Type110998850713 pending at this checkpoint; no type PASS credited.
+- PR528 returned to draft while this concrete harness revision is reviewed.
+  Current result: observed read-barrier correction implemented; unresolved
+  original read cause explicitly recorded. Last action: actual bounded22/22.
+  Precise stopping point: replacement exact review/publication/hosted execution.
+  Next action: stronger real-session/read diagnostics and all required gates,
+  fresh-main protected merge/deploy/SHA proof only after GREEN. Progress81/161,
+  14/15,C8 36%,59%,80non-DONE;007 PARTIAL/pilot NOT RUN.

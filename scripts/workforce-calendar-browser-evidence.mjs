@@ -53,6 +53,7 @@ const receipts = {
 const contexts = []
 const barriers = []
 const handlerErrors = []
+const readDiagnostics = []
 let browser
 let activePage
 
@@ -74,13 +75,36 @@ async function until(check, description, timeout = 30_000) {
 function handled(handler) {
   return async route => {
     try { await handler(route) } catch (error) {
-      handlerErrors.push(error)
+      handlerErrors.push(new Error(`Intercepted calendar request failed (${error.name})`))
       await route.abort().catch(() => {})
     }
   }
 }
 async function copy(locale) {
   return JSON.parse(await readFile(new URL(`../messages/${locale}.json`, import.meta.url), "utf8")).workforceCalendarConfiguration
+}
+async function assertSession(context, principal, phase = "credentials-session") {
+  const response = await context.request.get("/api/auth/session", { timeout: 120_000 })
+  assert.equal(response.status(), 200)
+  const session = await response.json()
+  assert.equal(session.user.id, principal.id, `${phase}: real session principal must remain current`)
+  assert.equal(session.user.organizationId, principal.organizationId, `${phase}: real session organization must remain current`)
+}
+async function checkedContextRead(response, phase, targetTeam) {
+  const diagnostic = {
+    phase,
+    scope: new URL(response.url()).searchParams.get("scope") || "ORGANIZATION",
+    status: response.status(),
+    sessionCookieHeaderPresent: (await response.headersArray()).some(header => header.name.toLowerCase() === "set-cookie" && header.value.includes("authjs.session-token")),
+  }
+  readDiagnostics.push(diagnostic)
+  const payload = await response.json().catch(() => null)
+  diagnostic.success = payload?.success === true
+  if (typeof payload?.code === "string" && /^[A-Z0-9_]{1,100}$/.test(payload.code)) diagnostic.code = payload.code
+  assert.equal(response.status(), 200, `${phase}: actual calendar read must succeed`)
+  assert.equal(payload?.success, true, `${phase}: actual calendar JSON must succeed`)
+  assert.ok(payload.data.teamDirectory.items.some(team => team.id === targetTeam.id), `${phase}: new-context team must remain available`)
+  return payload.data
 }
 async function authenticate(context, principal) {
   const csrf = await context.request.get("/api/auth/csrf", { timeout: 120_000 })
@@ -97,11 +121,7 @@ async function authenticate(context, principal) {
   assert.equal(redirect.origin, origin.origin)
   assert.equal(redirect.searchParams.get("error"), null)
   assert.ok((await context.cookies()).some(cookie => cookie.name.endsWith("authjs.session-token")))
-  const sessionResponse = await context.request.get("/api/auth/session", { timeout: 120_000 })
-  assert.equal(sessionResponse.status(), 200)
-  const session = await sessionResponse.json()
-  assert.equal(session.user.id, principal.id)
-  assert.equal(session.user.organizationId, principal.organizationId)
+  await assertSession(context, principal)
 }
 async function open(principal, locale = "en", viewport = { width: 1440, height: 1000 }) {
   const context = await browser.newContext({ baseURL, locale: "en-US", viewport, serviceWorkers: "block" })
@@ -299,12 +319,17 @@ async function switchContext(from, to, index, targetTeam, label) {
   let oldCommitted = false
   let oldDelivered = false
   let oldFinished = false
-  let newReadSeen = false
+  let contextSwitchStarted = false
+  let heldNewRead
+  let newReadReady = false
   let newReadFinished = false
   let posts = 0
   view.page.on("requestfinished", request => {
     if (calendarRoute(new URL(request.url())) && request.method() === "POST") oldFinished = true
-    if (calendarRoute(new URL(request.url())) && request.method() === "GET" && request.headers()["x-organization-id"] === to.organizationId) newReadFinished = true
+    if (request === heldNewRead) newReadFinished = true
+  })
+  view.page.on("requestfailed", request => {
+    if (calendarRoute(new URL(request.url()))) readDiagnostics.push({ phase: `${label}-request-failed`, method: request.method(), requestFailed: true })
   })
   await view.page.route(calendarRoute, handled(async route => {
     const request = route.request()
@@ -317,12 +342,11 @@ async function switchContext(from, to, index, targetTeam, label) {
       await delivery.promise
       await route.fulfill({ response })
       oldDelivered = true
-    } else if (request.headers()["x-organization-id"] === to.organizationId && oldCommitted) {
-      newReadSeen = true
+    } else if (request.headers()["x-organization-id"] === to.organizationId && oldCommitted && contextSwitchStarted && !heldNewRead) {
+      heldNewRead = request
       const response = await route.fetch({ timeout: 120_000, maxRedirects: 0 })
-      assert.equal(response.status(), 200)
-      const data = (await response.json()).data
-      assert.ok(data.teamDirectory.items.some(team => team.id === targetTeam.id))
+      await checkedContextRead(response, `${label}-held-context-read`, targetTeam)
+      newReadReady = true
       await newReadDelivery.promise
       await route.fulfill({ response })
     } else await route.continue()
@@ -331,6 +355,7 @@ async function switchContext(from, to, index, targetTeam, label) {
   await until(() => oldCommitted, "old principal transaction commits", 120_000)
   reversed(await state(from, moved), from)
   await authenticate(view.context, to)
+  contextSwitchStarted = true
   // Auth.js' existing broadcast listener refetches its own real session; no
   // session payload is injected. Focus refetch is intentionally disabled here.
   await view.page.evaluate(() => {
@@ -338,7 +363,7 @@ async function switchContext(from, to, index, targetTeam, label) {
     channel.postMessage({ event: "session", data: { trigger: "getSession" } })
     channel.close()
   })
-  await until(() => newReadSeen, "new real session mounts its calendar", 120_000)
+  await until(() => newReadReady, "specific new-context GET succeeds and is held", 120_000)
   assert.equal(await view.section.locator('[aria-labelledby="workforce-calendar-reversal-title"]').count(), 0)
   assert.equal((await view.section.innerText()).includes(moved.name), false)
   delivery.release()
@@ -348,15 +373,31 @@ async function switchContext(from, to, index, targetTeam, label) {
   assert.equal((await view.section.innerText()).includes(view.ui.reversalRecorded), false)
   newReadDelivery.release()
   await until(() => newReadFinished, "new context GET survives obsolete POST settlement")
-  await view.section.locator("#workforce-calendar-date").waitFor()
+  await until(async () => await view.section.locator("#workforce-calendar-date").isVisible()
+    && await view.section.getAttribute("aria-busy") === "false", "held new-context read settles in the UI")
+  await assertSession(view.context, to, `${label}-settled-context`)
   assert.equal((await view.section.innerText()).includes(view.ui.reversalRecorded), false)
   assert.equal(posts, 1)
+  const scopeResponse = view.page.waitForResponse(response => calendarRoute(new URL(response.url()))
+    && response.request().method() === "GET" && response.request().headers()["x-organization-id"] === to.organizationId
+    && new URL(response.url()).searchParams.get("scope") === "ORGANIZATION")
   await view.section.locator("#workforce-calendar-scope").selectOption("TEAM")
+  await checkedContextRead(await scopeResponse, `${label}-scope-bootstrap-read`, targetTeam)
+  await until(async () => await view.section.getAttribute("aria-busy") === "false", "scope bootstrap read settles before selecting its team")
   await view.section.locator(`#workforce-calendar-team option[value="${targetTeam.id}"]`).waitFor({ state: "attached" })
+  const teamResponse = view.page.waitForResponse(response => calendarRoute(new URL(response.url()))
+    && response.request().method() === "GET" && response.request().headers()["x-organization-id"] === to.organizationId
+    && new URL(response.url()).searchParams.get("scope") === "TEAM"
+    && new URL(response.url()).searchParams.get("teamId") === targetTeam.id)
   await view.section.locator("#workforce-calendar-team").selectOption(targetTeam.id)
-  await view.section.locator("#workforce-calendar-date").waitFor()
+  const selected = await checkedContextRead(await teamResponse, `${label}-selected-team-read`, targetTeam)
+  assert.equal(selected.team.id, targetTeam.id)
+  await until(async () => await view.section.locator("#workforce-calendar-date").isVisible()
+    && await view.section.getAttribute("aria-busy") === "false"
+    && await view.section.locator("#workforce-calendar-team").inputValue() === targetTeam.id, "selected-team read settles in the new context")
+  await assertSession(view.context, to, `${label}-settled-team`)
   await view.page.screenshot({ path: `${outputDirectory}/context-${label}.png`, fullPage: true })
-  receipts.cases.push({ name: `late-committed-response-${label}-switch`, status: "PASS", realSessionChanged: true, staleNotice: false, newReadCompleted: true, posts })
+  receipts.cases.push({ name: `late-committed-response-${label}-switch`, status: "PASS", realSessionChanged: true, staleNotice: false, newReadCompleted: true, exactHeldRead: true, realSessionPreserved: true, teamNavigationCompleted: true, posts })
   await view.context.close()
 }
 
@@ -402,10 +443,14 @@ try {
   console.log(`Workforce calendar browser evidence: ${receipts.cases.length} cases PASS`)
 } catch (error) {
   receipts.status = "FAIL"
-  receipts.failure = { name: error.name, message: error.message }
+  // Playwright transport call logs can include authentication headers/body.
+  const failureMessage = error.message.split("\n", 1)[0]
+  receipts.failure = { name: error.name, message: failureMessage }
+  receipts.readDiagnostics = readDiagnostics
+  receipts.interceptedFailureCount = handlerErrors.length
   if (activePage && !activePage.isClosed()) await activePage.screenshot({ path: `${outputDirectory}/failure.png`, fullPage: true }).catch(() => {})
   process.exitCode = 1
-  console.error(`Workforce calendar browser evidence failed: ${error.message}`)
+  console.error(`Workforce calendar browser evidence failed: ${failureMessage}`)
 } finally {
   for (const release of barriers) release()
   await Promise.allSettled(contexts.map(context => context.close()))
