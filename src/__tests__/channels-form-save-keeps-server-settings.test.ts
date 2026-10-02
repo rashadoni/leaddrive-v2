@@ -240,6 +240,7 @@ async function instagramLoginAccount() {
       return new Response(JSON.stringify({ access_token: "IG_LONG", expires_in: 5184000 }), { status: 200 })
     }
     if (url.includes("/me?fields=")) return new Response(JSON.stringify({ user_id: "IG_1", username: "acme.az" }), { status: 200 })
+    if (url.includes("/me/subscribed_apps")) return new Response(JSON.stringify({ success: true }), { status: 200 })
     return new Response("not found", { status: 404 })
   }))
   const secret = process.env.NEXTAUTH_SECRET || "ld-social-oauth"
@@ -492,7 +493,7 @@ describe("saving the channel form on a Meta row keeps what the server wrote", ()
     await click(field("#appReviewOnly"))
     await typeInto("#loginConfigId", "")
     await save()
-    expect(settingsOf(id)).toEqual({ tokenExpiresAt: connected.tokenExpiresAt, username: "acme.az" })
+    expect(settingsOf(id)).toEqual({ inboxSubscribed: true, tokenExpiresAt: connected.tokenExpiresAt, username: "acme.az" })
   })
 
   it("does not let un-ticking App Review turn a never-subscribed Page into a live one", async () => {

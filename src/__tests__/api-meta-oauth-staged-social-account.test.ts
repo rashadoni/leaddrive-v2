@@ -318,4 +318,13 @@ describe("instagram callback, pinned to the app under review", () => {
     const staged = mem.db.channelConfig.filter((r) => r.pageId === "IG_LD" && r.settings?.appReviewOnly === true)
     expect(staged.map((r) => r.apiKey)).toEqual(["REVIEW_IG_LOGIN_TOKEN"])
   })
+
+  it("does not switch on message delivery for the account — that is not a staging run's to decide", async () => {
+    stubInstagramGraph("IG_LD", "leaddrive.az")
+
+    const url = landing(await igCallback(callbackReq("instagram", signState({ app: "cfg_review_ig", ret: "channels-instagram" }))))
+
+    expect(url.searchParams.get("connected")).toBe("instagram")
+    expect(graphCalls.filter((u) => u.includes("/subscribed_apps"))).toEqual([])
+  })
 })
