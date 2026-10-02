@@ -1068,3 +1068,30 @@
   Progress remains DONE 81/161, GATES 14/15, C8 36%, overall 59%, 80 non-DONE;
   WF-C8-007 PARTIAL. Production authenticated business/browser, Android,
   accessibility, load and pilot checks NOT RUN.
+
+
+## 2026-10-02 — exact live-refresh candidate review and publication
+
+- Independent complete review of c2e069c9ffc2a5a8c4ba1d19ba35bf308e787b6f,
+  base 390c4976d6097f1f3560ed8c9ccdf3abb215e51e: GREEN, P0=0 P1=0 P2=0 P3=0.
+  Full diff 12 paths / 229,279 bytes / SHA256
+  1e424a3d7593fe7b47da0a227640568df098f25580fa237bd00cc270940b1c61;
+  non-doc 4 paths / 46,283 bytes / SHA256
+  52c7a635988014ac9e2e646e2c9c6d7ca7e7ec82fff7a725fee5d78b84d3ad50.
+- Actual native Refresh barrier retains the old-POST/new-live-GET race and all
+  exact request/session/payload/TEAM/audit/replay assertions. Eleven main-owned
+  blobs, Workforce translations, append-only doc prefixes and all five original
+  JSON receipts verified. Current 22/22 PASS / 1.79 seconds confirmed.
+- Published exact c2e069c9 as PR #528 head; live base still 390c4976. Marked
+  ready_for_review for actual new hosted executions. Draft skips are excluded.
+  This receipt append changes documentation only and is not pushed during CI.
+- Historical ded ready PR checks 37058726719 also completed SUCCESS. Type job
+  111009847034: no syntax/missing-module/undefined-name errors, baseline 66/66,
+  1,194 advisory errors, tsc exit 2; primary /tmp/workforce528-ded-type.log.
+  This supersedes its prior pending status only. Ded browser FAIL/5 remains
+  preserved; no old-head result substitutes for new c2 execution.
+- Current status: exact review GREEN, new browser/five-gate execution pending.
+  Last action: exact-head push and ready event. Precise stopping point: actual
+  hosted acceptance on c2e069c9. Next action: inspect primary receipts, all gates,
+  fresh-main merge and normal deploy/public exact artifact SHA. Progress remains
+  81/161, 14/15, C8 36%, overall 59%, 80 non-DONE; WF-C8-007 PARTIAL.
