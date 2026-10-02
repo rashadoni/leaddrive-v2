@@ -153,8 +153,51 @@ describe("SWM03 governed contact category assignments", () => {
     })
 
     expect(client.mtmContact.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: { categoryData: { specialty: "Cardiology" } },
+      data: { categoryData: { specialty: "Cardiology" }, type: "DOCTOR" },
     }))
+  })
+
+  it("moves the built-in type with the category, and treats a tenant-made category as OTHER", async () => {
+    const entries: ContactDictionaryEntry[] = [
+      { code: "PHARMACIST", order: 1, labels: { ru: "Фармацевт", az: "Əczaçı", en: "Pharmacist" }, fields: [] },
+      { code: "TIBB_BACISI", order: 2, labels: { ru: "Медсестра", az: "Tibb bacısı", en: "Nurse" }, fields: [] },
+    ]
+    const clientTypeDictionary = dictionary({
+      id: "cm000000000000000000203",
+      kind: "CLIENT_TYPE",
+      entries,
+      entriesHash: contactDictionaryHash(entries),
+    })
+    const emptyHash = contactDictionaryAssignmentStateHash([])
+    const assign = async (code: string) => {
+      const client = {
+        $queryRaw: vi.fn().mockResolvedValue([]),
+        mtmContact: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        mtmContactDictionary: { findMany: vi.fn().mockResolvedValue([clientTypeDictionary]) },
+        mtmContactDictionaryAssignment: {
+          findMany: vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
+          updateMany: vi.fn(),
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+      }
+      await applyContactDictionaryAssignmentSet(client as never, {
+        organizationId: "org-1",
+        contactId: "cm000000000000000000001",
+        input: {
+          expectedStateHash: emptyHash,
+          reason: "Change category",
+          clientType: { dictionaryId: clientTypeDictionary.id, code, values: {} },
+          psychotype: null,
+          productCategories: null,
+          brandCategories: null,
+        },
+        source: "ADMIN",
+      })
+      return client.mtmContact.updateMany.mock.calls[0][0].data
+    }
+
+    expect(await assign("PHARMACIST")).toEqual({ categoryData: {}, type: "PHARMACIST" })
+    expect(await assign("TIBB_BACISI")).toEqual({ categoryData: {}, type: "OTHER" })
   })
 
   it("fails closed when the state changed before save", async () => {

@@ -7,6 +7,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { contactScopeForActor } from "@/lib/mtm/field-scope"
+import { contactCategoriesOrDefault, parseStoredContactCategories } from "@/lib/mtm/contact-categories"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -61,6 +62,7 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
     cityDistricts,
     organizationKinds,
     objectTypes,
+    categoryDictionary,
   ] = await Promise.all([
     prisma.mtmContact.findMany({
       where: { ...contactWhere, specialtyCode: { not: null } },
@@ -125,7 +127,16 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
       orderBy: { objectType: "asc" },
       take: 500,
     }),
+    prisma.mtmContactDictionary.findFirst({
+      where: { organizationId: auth.orgId, kind: "CLIENT_TYPE", status: "ACTIVE" },
+      select: { entries: true },
+    }),
   ])
+  // Categories are tenant configuration, not contact data, so they are not
+  // narrowed by the actor's scope: an agent may file a contact under any.
+  const categories = contactCategoriesOrDefault(
+    categoryDictionary ? parseStoredContactCategories(categoryDictionary.entries) : null,
+  )
 
   return NextResponse.json({
     success: true,
@@ -139,6 +150,9 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
       cityDistricts: strings(cityDistricts, (row) => row.cityDistrict),
       organizationKinds: strings(organizationKinds, (row) => row.organizationKind),
       objectTypes: strings(objectTypes, (row) => row.objectType),
+      categories: [...categories]
+        .sort((left, right) => left.order - right.order)
+        .map((category) => ({ code: category.code, labels: category.labels })),
       asOf: asOf.toISOString().slice(0, 10),
     },
   })

@@ -249,6 +249,7 @@ export function MtmContactEditDialog({
   canManage,
   canRequestChanges,
   requiredFields,
+  assignedCategoryLabel,
   orgId,
   onSaved,
 }: {
@@ -258,6 +259,12 @@ export function MtmContactEditDialog({
   canManage: boolean
   canRequestChanges: boolean
   requiredFields: readonly MtmContactRequiredField[]
+  /**
+   * Set when the contact sits in a category from MTM settings. The category
+   * then owns the contact's type, so it is changed on the Categories tab, not
+   * through the built-in three-way choice here.
+   */
+  assignedCategoryLabel?: string | null
   orgId?: string
   onSaved: () => Promise<void> | void
 }) {
@@ -441,9 +448,16 @@ export function MtmContactEditDialog({
 
           <FormSection title={t("professionalTitle")} description={t("professionalDescription")}>
             <Field id="contact-type" label={t("contactType")}>
-              <Select id="contact-type" value={form.type} onChange={(event) => update("type", event.target.value)}>
-                {["DOCTOR", "PHARMACIST", "OTHER"].map((value) => <option key={value} value={value}>{t(`types.${value}`)}</option>)}
-              </Select>
+              {assignedCategoryLabel ? (
+                <div id="contact-type" className="grid gap-1">
+                  <span className="text-sm font-medium">{assignedCategoryLabel}</span>
+                  <span className="text-xs text-muted-foreground">{t("categoryManagedHint")}</span>
+                </div>
+              ) : (
+                <Select id="contact-type" value={form.type} onChange={(event) => update("type", event.target.value)}>
+                  {["DOCTOR", "PHARMACIST", "OTHER"].map((value) => <option key={value} value={value}>{t(`types.${value}`)}</option>)}
+                </Select>
+              )}
             </Field>
             <Field id="contact-category" label={t("category")}>
               <Select id="contact-category" value={form.category} onChange={(event) => update("category", event.target.value)}>

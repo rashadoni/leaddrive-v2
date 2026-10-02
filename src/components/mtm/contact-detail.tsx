@@ -29,6 +29,11 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MtmContactEditDialog } from "@/components/mtm/contact-edit-dialog"
 import {
+  contactCategoryFieldDisplayValue,
+  localizedContactCategoryLabel,
+  resolveContactCategory,
+} from "@/lib/mtm/contact-category-editor"
+import {
   MtmContactDuplicateDecisionDialog,
   MtmContactDuplicateReportDialog,
   type DuplicateChangeRequest,
@@ -386,6 +391,18 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
   const activeDuplicateRequest = contact.changeRequests.find((request) => (
     request.kind === "DUPLICATE_REPORT" && ["SUBMITTED", "IN_REVIEW"].includes(request.status)
   ))
+  const assignedClientType = contact.dictionaryAssignments
+    .find((assignment) => assignment.effectiveTo === null && assignment.kind === "CLIENT_TYPE")
+  const clientCategory = resolveContactCategory({
+    type: contact.type,
+    assignedCode: assignedClientType?.entryCode,
+    assignedEntry: assignedClientType?.entry,
+    activeEntries: payload.availableContactDictionaries.find((dictionary) => dictionary.kind === "CLIENT_TYPE")?.entries,
+  })
+  const clientCategoryLabel = clientCategory.entry
+    ? localizedContactCategoryLabel(clientCategory.entry.labels, locale)
+    : t(`types.${contact.type}`)
+  const clientCategoryFields = [...(clientCategory.entry?.fields ?? [])].sort((left, right) => left.order - right.order)
   const governedProductCategory = contact.dictionaryAssignments
     .filter((assignment) => assignment.effectiveTo === null && assignment.kind === "PRODUCT_CATEGORY" && assignment.valid && assignment.entry)
     .map((assignment) => locale.startsWith("az")
@@ -414,7 +431,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
           <div className="grid min-w-0 gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <StateBadge tone={statusTone}>{t(`statuses.${contact.status}`)}</StateBadge>
-              <StateBadge>{t(`types.${contact.type}`)}</StateBadge>
+              <StateBadge>{clientCategoryLabel}</StateBadge>
               <StateBadge>{t("category", { value: contact.category })}</StateBadge>
               <StateBadge tone={verificationTone}>{t(`verificationStatuses.${contact.verificationStatus}`)}</StateBadge>
             </div>
@@ -521,7 +538,18 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
 
             <SectionCard title={t("professionalTitle")} description={t("professionalDescription")}>
               <dl>
-                <DefinitionRow label={t("contactType")} value={t(`types.${contact.type}`)} />
+                <DefinitionRow label={t("contactType")} value={clientCategoryLabel} />
+                {clientCategoryFields.map((field) => {
+                  const value = contactCategoryFieldDisplayValue(field, contact.categoryData?.[field.key], locale)
+                  const date = field.type === "DATE" && value ? new Date(value) : null
+                  return (
+                    <DefinitionRow
+                      key={field.key}
+                      label={localizedContactCategoryLabel(field.labels, locale)}
+                      value={date && !Number.isNaN(date.getTime()) ? dateFormatter.format(date) : value}
+                    />
+                  )
+                })}
                 <DefinitionRow label={t("specialty")} value={contact.specialtyName} />
                 <DefinitionRow label={t("specialtyCode")} value={contact.specialtyCode} />
                 <DefinitionRow label={t("qualification")} value={contact.qualificationCategory} />
@@ -664,6 +692,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
               contactId={contact.id}
               contactUpdatedAt={contact.updatedAt}
               categoryData={contact.categoryData ?? {}}
+              contactType={contact.type}
               stateHash={payload.dictionaryAssignmentStateHash}
               dictionaries={payload.availableContactDictionaries}
               assignments={contact.dictionaryAssignments}
@@ -772,6 +801,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
             canManage={capabilities.canManage}
             canRequestChanges={capabilities.canRequestChanges}
             requiredFields={payload.contactPolicy.requiredFields}
+            assignedCategoryLabel={assignedClientType ? clientCategoryLabel : null}
             orgId={orgId ? String(orgId) : undefined}
             onSaved={loadContact}
           />

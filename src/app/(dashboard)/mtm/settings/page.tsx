@@ -19,6 +19,7 @@ import { VisitPolicySettings } from "./visit-policy-settings"
 import { ScoringFormulaSettings } from "./scoring-formula-settings"
 import { ContactRequiredFieldSettings } from "./contact-required-field-settings"
 import { ContactDictionarySettings } from "./contact-dictionary-settings"
+import { ContactCategorySettings } from "./contact-category-settings"
 import { OrganizationAttributePackageSettings } from "./organization-attribute-package-settings"
 import { RouteTargetTypeSettings } from "./route-target-type-settings"
 import { COMMON_TIMEZONES } from "@/lib/timezone"
@@ -652,6 +653,9 @@ export default function MtmSettingsPage() {
         </div>
       </div>
 
+      {/* Same switch as the required-fields block: categories describe field
+          contacts, and mean nothing while those are turned off. */}
+      {settings.fieldContactsEnabled !== false ? <ContactCategorySettings /> : null}
       <ContactDictionarySettings />
       <OrganizationAttributePackageSettings />
       <CoveragePolicyAdmin />

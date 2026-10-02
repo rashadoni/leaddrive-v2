@@ -37,9 +37,16 @@ describe("MTM contact explorer", () => {
 
   it("rejects unsupported enum values restored from a URL", () => {
     const state = contactExplorerStateFromSearchParams(
-      new URLSearchParams("type=DROP&status=UNKNOWN&category=Z&objectType=DOCTOR&assignmentState=ANY&coveragePeriod=2026-13"),
+      new URLSearchParams("type=drop%20it&status=UNKNOWN&category=Z&objectType=DOCTOR&assignmentState=ANY&coveragePeriod=2026-13"),
     )
     expect(state.filters).toEqual(EMPTY_CONTACT_FILTERS)
+  })
+
+  it("restores a tenant-made client category from a URL, like a built-in type", () => {
+    const state = contactExplorerStateFromSearchParams(new URLSearchParams("type=TIBB_BACISI"))
+    expect(state.filters.type).toBe("TIBB_BACISI")
+    expect(contactQuery(state.filters, 1, 50).get("type")).toBe("TIBB_BACISI")
+    expect(contactExplorerStateFromSearchParams(new URLSearchParams("type=DOCTOR")).filters.type).toBe("DOCTOR")
   })
 
   it("restores a valid governed coverage month from the URL", () => {
