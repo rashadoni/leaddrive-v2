@@ -164,7 +164,12 @@ async function review(view, moved, team) {
   await until(async () => confirmation.evaluate(element => {
     const title = element.querySelector("h3")
     const bounds = element.getBoundingClientRect()
-    return document.activeElement === title && bounds.top >= 0 && bounds.bottom <= window.innerHeight
+    const container = element.closest("main")?.getBoundingClientRect()
+    return document.activeElement === title
+      && bounds.top >= Math.max(0, container?.top ?? 0)
+      && bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight)
+      && bounds.left >= Math.max(0, container?.left ?? 0)
+      && bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth)
   }), "confirmation is focused and fully inside the viewport")
   const text = await confirmation.innerText()
   const formatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" })

@@ -4037,3 +4037,20 @@ corrections as new entries that explicitly supersede the earlier fact.
   panel in viewport. New published candidate/full independent review/hosted
   gates required; no production release yet. Progress unchanged81/161,14/15,
   C8 36%,overall59%,80non-DONE;007 PARTIAL.
+
+
+## 2026-10-02 — confirmation scrollport verification tightened
+
+- Scroll the review panel (heading's parent), preserving heading focus, so
+  dashboard-header clipping cannot hide the panel's top padding. Browser
+  assertion intersects actual closest-main scrollport with window bounds in
+  both axes; document-level visibility alone is not acceptance.
+- Current focused UI contract12/12 PASS942ms, scoped component/script ESLint,
+  script syntax and whitespace PASS. Primary local log
+  /tmp/workforce528-focus-ui-contract-final.log. Browser/full/heavy local
+  checks NOT RUN. New exact published viewport candidate/CI/review next.
+- Current result: visible-review focus/scroll implementation complete. Last
+  action: scrollport assertion and bounded regressions. Precise stopping point:
+  final candidate publication. Next action: exact review and hosted six cases
+  with viewport evidence, required gates/fresh-main protected release.
+  Progress remains81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.

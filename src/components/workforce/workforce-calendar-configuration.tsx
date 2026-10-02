@@ -231,7 +231,7 @@ export function WorkforceCalendarConfiguration() {
     // The source action may be far below this review in a narrow viewport.
     // Move keyboard focus and the scroll position to the newly opened review.
     confirmationTitle.current?.focus({ preventScroll: true })
-    confirmationTitle.current?.scrollIntoView({ block: "start", behavior: "instant" })
+    confirmationTitle.current?.parentElement?.scrollIntoView({ block: "start", behavior: "instant" })
   }, [confirmation, contextKey, targetKey])
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
