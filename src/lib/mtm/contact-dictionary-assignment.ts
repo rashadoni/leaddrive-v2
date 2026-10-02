@@ -18,7 +18,10 @@ export const CONTACT_MASTER_DICTIONARY_KINDS = [
 ] as const
 
 export type ContactMasterDictionaryKind = typeof CONTACT_MASTER_DICTIONARY_KINDS[number]
-export type ContactDictionaryAssignmentSet = z.infer<typeof ContactDictionaryAssignmentSetSchema>
+/** What is validated and applied; the reason travels with the request or audit, not here. */
+export type ContactDictionaryAssignmentSet = Omit<z.infer<typeof ContactDictionaryAssignmentSetSchema>, "reason"> & {
+  reason?: string
+}
 
 type AssignmentRow = {
   id: string

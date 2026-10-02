@@ -299,7 +299,12 @@ export const ContactDictionaryAssignmentSetSchema = z.object({
   brandCategories: ContactDictionaryMultiSelectionSchema,
 }).strict()
 
+// A manager or administrator changing categories directly is not asked why:
+// editing any other contact field directly asks for no reason either, and the
+// audit log records who changed what regardless. An agent's change REQUEST
+// still has to say why (ContactDictionaryAssignmentSetSchema above).
 export const ContactDictionaryAssignmentDirectSchema = ContactDictionaryAssignmentSetSchema.extend({
+  reason: z.string().trim().max(1000).optional(),
   expectedContactUpdatedAt: z.string().datetime({ offset: true }).optional(),
 })
 

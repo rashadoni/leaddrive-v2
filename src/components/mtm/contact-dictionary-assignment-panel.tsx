@@ -220,7 +220,7 @@ export function MtmContactDictionaryAssignmentPanel({
 
   const assignmentPayload = () => ({
     expectedStateHash: stateHash,
-    reason: reason.trim(),
+    ...(reason.trim() ? { reason: reason.trim() } : {}),
     clientType: clientTypeDictionary && clientTypeCode
       ? {
           dictionaryId: clientTypeDictionary.id,
@@ -243,7 +243,9 @@ export function MtmContactDictionaryAssignmentPanel({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (reason.trim().length < 3) {
+    // Only a request to someone else has to explain itself; a manager's own
+    // edit is saved as is.
+    if (!canManage && reason.trim().length < 3) {
       setError(t("reasonError"))
       return
     }
@@ -485,8 +487,8 @@ export function MtmContactDictionaryAssignmentPanel({
             ))}
 
             <div className="grid gap-2">
-              <Label htmlFor="contact-category-reason">{t("reason")}</Label>
-              <Textarea id="contact-category-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} required />
+              <Label htmlFor="contact-category-reason">{canManage ? t("reasonOptional") : t("reason")}</Label>
+              <Textarea id="contact-category-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} required={!canManage} />
             </div>
             {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
             <DialogFooter>

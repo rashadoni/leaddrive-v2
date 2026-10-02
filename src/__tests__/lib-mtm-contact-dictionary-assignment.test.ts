@@ -81,6 +81,7 @@ describe("SWM03 governed contact category assignments", () => {
       input: {
         expectedStateHash: emptyHash,
         reason: "Verified by manager",
+        clientType: null,
         psychotype: { dictionaryId: dictionary().id, code: "CALM" },
         productCategories: null,
         brandCategories: null,
@@ -223,6 +224,7 @@ describe("SWM03 governed contact category assignments", () => {
       input: {
         expectedStateHash: contactDictionaryAssignmentStateHash([]),
         reason: "Outdated form",
+        clientType: null,
         psychotype: null,
         productCategories: null,
         brandCategories: null,
