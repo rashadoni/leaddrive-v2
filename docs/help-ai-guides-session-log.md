@@ -363,3 +363,122 @@ ancestry/blob verification and journal self-audit. Precise stopping point:
 final documentation checkpoint on the existing task branch, with no production
 changes. Next action: no remaining investigation or deployment work in this
 scope; preserve the local checkpoint and continue only with a new user task.
+
+
+## 2026-10-02 — Scoped final verification resumed
+
+- The user explicitly requested only an independent `/api/v1/ping` and public
+  build-info check, an append-only journal update, self-audit, and a final local
+  documentation checkpoint. CI, merge, and deployment must not be repeated.
+- Resumed in the recorded worktree
+  `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-help-ai-guides`,
+  branch `codex/help-ai-guides`, clean HEAD
+  `9536b4c23e6466594e2a14c6284eca369eff7149`.
+- Read the complete active journal. Its actual latest stopping point already
+  closes the earlier observation and revision investigation: the subsequent
+  normal #508 release includes #505, with all 11 guide/test blobs unchanged.
+  This request authorizes a fresh two-endpoint observation; that completed
+  investigation will not be repeated. The older Support UX journal remains
+  reference-only and is not used as the continuation point.
+- `codex-project-context`, the worktree's `AGENTS.md`, `clients/registry.json`,
+  and `docs/DEPLOYMENT.md` agree on origin
+  `https://github.com/rashadoni/leaddrive-v2.git`, public app
+  `https://app.leaddrivecrm.org`, production target
+  `13.140.132.245:/opt/leaddrive-v2`, and reviewed main -> GitHub Actions ->
+  immutable SHA-bound artifact release route. No production mutation is needed.
+- PR #505, merge/deploy SHA `13d13bcc58e8872ef676fd011e78a1adb954e210`,
+  green main checks `36631193616`, and green deploy `36631193346` are preserved
+  as completed history, not current-turn verification. The journal's later
+  #508 provenance evidence supersedes the assumption that live production must
+  still report the historical #505 SHA.
+- Before the small sequential checks, at `2026-10-02T22:00:53+04:00`
+  (Asia/Baku), host inspection found 15,292 MiB available RAM, 339 GiB free
+  disk, and memory pressure averages of 0.00. No install or build was started.
+
+Current result/status: scoped final verification started from the latest saved
+checkpoint. Last completed action: read the active journal and reconciled the
+repository/production route and completed release history. Precise stopping
+point: only the fresh two-endpoint observation and documentation closeout are
+pending. Next action: capture the two bounded HTTPS GET results, audit the
+append-only journal diff, and commit only this journal locally.
+
+
+## 2026-10-02 — Fresh independent endpoint evidence
+
+Exactly one sequential read-only HTTPS GET was made to each endpoint. Times
+below are Asia/Baku (UTC+04:00); both requests started and completed within the
+recorded second.
+
+| Observation time | Endpoint | HTTP | Captured JSON response |
+| --- | --- | --- | --- |
+| `2026-10-02T22:01:56+04:00` | `https://app.leaddrivecrm.org/api/v1/ping` | 200 | `{"ok":true}` |
+| `2026-10-02T22:01:56+04:00` | `https://app.leaddrivecrm.org/api/v1/public/build-info` | 200 | `{"sha":"24a3e30fad64","artifactSha":"24a3e30fad6431579cd702b65c0435ffeb999c79","builtAt":"2026-10-02T15:40:08Z"}` |
+
+- Both requests used curl with a 10-second connection limit, 20-second total
+  limit, 16 KiB response limit, HTTPS-only protocol, normal TLS verification,
+  and `Cache-Control: no-cache`. No retry or redirect-following was requested.
+- Both curl exit codes were 0, both responses were `application/json`, both
+  TLS verification results were 0, effective URLs equalled the requested
+  endpoints, redirect counts were 0, and stderr was empty. Elapsed request
+  times were 0.192169 seconds for ping and 0.110089 seconds for build-info.
+- `/api/v1/ping`: PASS (HTTP 200, parseable JSON, `ok: true`).
+- Public build-info availability and response shape: PASS (HTTP 200, parseable
+  JSON, full 40-character hexadecimal `artifactSha`, consistent 12-character
+  `sha` prefix, and valid build timestamp).
+- Current observed artifact identity is
+  `24a3e30fad6431579cd702b65c0435ffeb999c79`. It equals neither historical
+  #505 SHA `13d13bcc58e8872ef676fd011e78a1adb954e210` nor previously verified
+  #508 SHA `07f8b823e4fef51d82787def19564510946cb08a`. Literal equality to
+  those historical SHAs is false; this alone does not diagnose a regression
+  or invalidate their completed release evidence.
+- The September 30 live-identity observation remains valid at its recorded
+  time; it is superseded only as a statement of what is serving now by the
+  captured response above. The existing #508 ancestry/blob verification remains
+  historical evidence and is not extended to this newly observed artifact.
+- Provenance, ancestry to #505/#508, guide preservation, and equality to current
+  GitHub main or an existing deployment for the new observed SHA are UNVERIFIED
+  in this turn. The user restricted this work to the two endpoint checks and
+  documentation closeout, so no further investigation or production action
+  was performed. No browser/UI observation is claimed from these GETs.
+
+Current result/status: fresh ping and build-info availability/shape checks pass;
+the current public artifact SHA is captured, with its provenance outside this
+turn's scope. Last completed action: captured and validated both bounded GET
+responses. Precise stopping point: independent observation complete; only the
+journal self-audit and local documentation checkpoint remain. Next action:
+audit the append-only journal diff and commit only this journal locally.
+
+
+## 2026-10-02 — Final self-audit and documentation checkpoint
+
+- Self-audit: PASS. The previous checkpoint's entire 22,614-byte journal is a
+  byte-for-byte prefix. Only `docs/help-ai-guides-session-log.md` changed;
+  no unrelated staged or untracked paths were present. Parsed the captured
+  JSON from the appended evidence table and confirmed ping `ok: true`, full
+  artifact SHA, short-SHA consistency, valid timestamps, and the recorded
+  numeric inequality to both historical SHAs.
+- A second Codex agent performed a read-only audit of this documentation diff:
+  PASS, no findings. It checked prefix preservation, path scope, response
+  accuracy, and the distinction between historical release evidence and the
+  newly observed artifact. It made no endpoint or GitHub requests, performed
+  no mutations, and independently passed `git diff --check`. No external
+  review gate or handoff file was created.
+- Documentation gate `git diff --check`: PASS. Build, typecheck, browser E2E,
+  and i18n checks: NOT RUN because only the journal changed. CI reruns, push,
+  new PR, merge, and deployment: NOT RUN because the user explicitly limited
+  this turn to independent endpoint observation and a local documentation
+  checkpoint. Completed runs `36631193616` and `36631193346` were neither
+  rerun nor revalidated. No production SSH, source edit, artifact download,
+  rollout, rollback, or corrective production action was performed.
+- Final local documentation checkpoint scope: this journal only, on the
+  existing `codex/help-ai-guides` branch, subject
+  `docs(help): checkpoint final independent endpoint verification`.
+
+Current result/status: requested verification and documentation closeout are
+complete; ping and build-info availability/shape pass, with live artifact
+`24a3e30fad6431579cd702b65c0435ffeb999c79` recorded without an unverified
+release-provenance claim. Last completed action: recorded the fresh responses
+and completed the journal self-audit. Precise stopping point: the final local
+journal-only checkpoint on the existing task branch; production and completed
+workflows are untouched. Next action: no remaining work in this scope; any
+investigation of the newly observed artifact requires a separate user request.
