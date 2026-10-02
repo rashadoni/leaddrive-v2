@@ -226,15 +226,25 @@ describe("GET /api/v1/mtm/routes/candidates", () => {
       reason: "UNSIGNED_COVERAGE_POLICY",
     })
     expect(body.data.facets.organization).toEqual([{ id: "clinic-1", name: "Central Clinic" }])
+    // Offered by the name a planner reads, not by the hand-typed code.
+    expect(body.data.facets.specialtyCode).toEqual(["Pediatrics"])
 
     const contactQuery = vi.mocked(prisma.mtmContact.findMany).mock.calls[0][0] as any
     expect(contactQuery.where).toEqual(expect.objectContaining({
       organizationId: ORG,
       type: "DOCTOR",
       status: "ACTIVE",
-      specialtyCode: "PE",
       doctorAssessments: { some: { status: "VERIFIED", psychotype: "Analytical" } },
     }))
+    // The specialty filter finds a doctor by the specialty itself as well as
+    // by its code: the code field is off by default, so new doctors have none.
+    expect(contactQuery.where.specialtyCode).toBeUndefined()
+    expect(contactQuery.where.AND).toContainEqual({
+      OR: [
+        { specialtyName: { equals: "PE", mode: "insensitive" } },
+        { specialtyCode: { equals: "PE", mode: "insensitive" } },
+      ],
+    })
     expect(JSON.stringify(contactQuery.where)).toContain('"agentId":"agent-1"')
     expect(JSON.stringify(contactQuery.where)).toContain('"id":"clinic-1"')
   })
