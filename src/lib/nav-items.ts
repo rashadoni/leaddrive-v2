@@ -89,6 +89,13 @@ export interface NavItem {
    */
   allowedRoles?: readonly Role[]
   /**
+   * The page reads across every module at once (today: the audit journal, which
+   * narrates changes to deals, invoices, routes and settings alike). It is not
+   * offered to a person an admin hid modules from — `User.hiddenModules`, see
+   * user-module-access.ts — because it would show them exactly what was hidden.
+   */
+  orgWide?: boolean
+  /**
    * Organization-level visibility switch (MTM settings). Unlike `module` it
    * is not an entitlement: the page stays reachable by URL and explains the
    * switch, so `isNavItemEnabled` (the page guard) ignores it and only
@@ -115,6 +122,13 @@ export interface OrgNavContext {
   modules?: Record<string, boolean>
   role?: string
   /**
+   * Modules an admin hid from this person, as the session carries them (already
+   * empty for admins). `modules` above arrives masked, so module-gated items
+   * need nothing more; this is only for `orgWide` items, which no single module
+   * owns.
+   */
+  hiddenModules?: readonly string[]
+  /**
    * Organization switches read after login. Absent while loading or when the
    * tenant has no MTM — every switch then counts as ON, the historical menu.
    */
@@ -127,14 +141,20 @@ export interface OrgNavContext {
  * the default plan/role fallbacks (which would silently diverge the gating).
  */
 export function orgFromSession(user: unknown): OrgNavContext {
-  const u = user as { plan?: string; addons?: string[]; modules?: Record<string, boolean>; role?: string } | undefined
+  const u = user as {
+    plan?: string; addons?: string[]; modules?: Record<string, boolean>; role?: string; hiddenModules?: string[]
+  } | undefined
   return {
     plan: u?.plan || "enterprise",
     addons: u?.addons || [],
     modules: u?.modules || undefined,
     role: u?.role || "viewer",
+    hiddenModules: u?.hiddenModules || [],
   }
 }
+
+/** Pages only an administrator can use: every request they make is admin-only. */
+const ADMIN_ROLES: readonly Role[] = ["admin", "superadmin"]
 
 export const navItems: NavItem[] = [
   { module: "crm", href: "/dashboard", icon: LayoutDashboard, tKey: "dashboard", group: "CRM" },
@@ -380,31 +400,49 @@ export const navItems: NavItem[] = [
   // hub a mandatory second stop — the owner's words: "не нужно чтоб были в
   // bütün parametrlər". They are listed here first, in the hub's original card
   // order, so the org-level pages read as a block before the module setup ones.
-  { module: "settings", href: "/settings/organization", icon: Building2, tKey: "organizationSettings", group: "Settings" },
-  { module: "settings", href: "/settings/billing", icon: CreditCard, tKey: "billingSettings", group: "Settings" },
-  { module: "settings", href: "/settings/roles", icon: UserCog, tKey: "rolesSettings", group: "Settings" },
-  { module: "settings", href: "/settings/security", icon: Lock, tKey: "securitySettings", group: "Settings" },
-  { module: "settings", href: "/settings/audit-log", icon: FileText, tKey: "auditLogSettings", group: "Settings" },
-  { module: "settings", href: "/settings/custom-fields", icon: Sparkles, tKey: "customFieldsSettings", group: "Settings" },
+  //
+  // Every item here names the ROLE it is for, because the `settings` module
+  // only says the tenant has organization settings — and every tenant does. A
+  // manager's matrix row is `settings: []`: until 2026-10-02 they were shown the
+  // whole block anyway, opened /settings/users and saw Edit / Reset password /
+  // Delete on their colleagues (each of which then answered 403). The scope on
+  // an item is the one its page's API asks for, so the menu offers a page
+  // exactly when the server would serve it:
+  //   - `settings`  — organization configuration (admins; viewer reads it all);
+  //   - `audit`     — the audit journal, which managers do read;
+  //   - ADMIN_ROLES — pages whose every request is admin-only (the proxy
+  //     already bounces roles/security/billing, the APIs behind API keys and
+  //     the telephony provider check `isAdmin` / `voip:admin`);
+  //   - nothing     — /settings/notifications is the person's OWN preferences.
+  // The dashboard layout refuses the same pages by URL (isNavPathRoleBlocked).
+  { module: "settings", href: "/settings/organization", icon: Building2, tKey: "organizationSettings", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/billing", icon: CreditCard, tKey: "billingSettings", group: "Settings", allowedRoles: ADMIN_ROLES },
+  { module: "settings", href: "/settings/roles", icon: UserCog, tKey: "rolesSettings", group: "Settings", allowedRoles: ADMIN_ROLES },
+  { module: "settings", href: "/settings/security", icon: Lock, tKey: "securitySettings", group: "Settings", allowedRoles: ADMIN_ROLES },
+  { module: "settings", href: "/settings/audit-log", icon: FileText, tKey: "auditLogSettings", group: "Settings", permissionScope: "audit", orgWide: true },
+  { module: "settings", href: "/settings/custom-fields", icon: Sparkles, tKey: "customFieldsSettings", group: "Settings", permissionScope: "settings" },
   { module: "settings", href: "/settings/notifications", icon: BellRing, tKey: "notificationSettings", group: "Settings" },
-  { module: "settings", href: "/settings/custom-domains", icon: Globe2, tKey: "customDomainsSettings", group: "Settings" },
-  { module: "settings", href: "/settings/dashboard", icon: LayoutDashboard, tKey: "dashboardSettings", group: "Settings" },
-  { module: "settings", href: "/settings/workflows", icon: Zap, tKey: "workflows", group: "Settings" },
-  { module: "settings", href: "/settings/workflows/templates", icon: Sparkles, tKey: "workflowTemplates", group: "Settings" },
-  { module: "settings", href: "/settings/users", icon: Users, tKey: "users", group: "Settings" },
-  { module: "settings", href: "/settings/smtp-settings", icon: Server, tKey: "smtp", group: "Settings" },
-  { module: "settings", href: "/settings/integrations", icon: Plug, tKey: "integrations", group: "Settings" },
+  { module: "settings", href: "/settings/custom-domains", icon: Globe2, tKey: "customDomainsSettings", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/dashboard", icon: LayoutDashboard, tKey: "dashboardSettings", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/workflows", icon: Zap, tKey: "workflows", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/workflows/templates", icon: Sparkles, tKey: "workflowTemplates", group: "Settings", permissionScope: "settings" },
+  // Not `users`: that scope is the team roster a manager reads to hand work to
+  // a colleague. This page is account administration, and all of it writes
+  // through `settings`.
+  { module: "settings", href: "/settings/users", icon: Users, tKey: "users", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/smtp-settings", icon: Server, tKey: "smtp", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/integrations", icon: Plug, tKey: "integrations", group: "Settings", permissionScope: "settings" },
   // Telephony provider setup. Lives under Settings (not Support) because that is
   // where owners look for it — the page configures a provider connection, not a
   // support workflow. Still addon-gated: the VoIP add-on covers this page plus
   // the call log and call insights.
-  { module: "settings", href: "/settings/voip", icon: Phone, tKey: "voip", group: "Settings", addon: "voip" },
-  { module: "settings", href: "/marketplace", icon: Package, tKey: "marketplace", group: "Settings" },
-  { module: "settings", href: "/settings/api-keys", icon: Key, tKey: "apiKeys", group: "Settings" },
-  { module: "settings", href: "/settings/field-permissions", icon: Shield, tKey: "fieldPermissions", group: "Settings" },
-  { module: "settings", href: "/settings/leaderboard", icon: Gauge, tKey: "kpiArenaConfig", group: "Settings" },
-  { module: "settings", href: "/settings/call-tasks", icon: ClipboardList, tKey: "callTaskSettings", group: "Settings" },
-  { module: "settings", href: "/settings/ai-automation", icon: Bot, tKey: "aiAutomation", group: "Settings", addon: "ai" },
+  { module: "settings", href: "/settings/voip", icon: Phone, tKey: "voip", group: "Settings", addon: "voip", allowedRoles: ADMIN_ROLES },
+  { module: "settings", href: "/marketplace", icon: Package, tKey: "marketplace", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/api-keys", icon: Key, tKey: "apiKeys", group: "Settings", allowedRoles: ADMIN_ROLES },
+  { module: "settings", href: "/settings/field-permissions", icon: Shield, tKey: "fieldPermissions", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/leaderboard", icon: Gauge, tKey: "kpiArenaConfig", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/call-tasks", icon: ClipboardList, tKey: "callTaskSettings", group: "Settings", permissionScope: "settings" },
+  { module: "settings", href: "/settings/ai-automation", icon: Bot, tKey: "aiAutomation", group: "Settings", addon: "ai", permissionScope: "settings" },
 ]
 
 /**
@@ -497,16 +535,26 @@ export function isNavItemOrgSettingEnabled(org: OrgNavContext, item: NavItem): b
   return !item.orgSetting || org.orgSettings?.[item.orgSetting] !== false
 }
 
+/**
+ * Роль-гейт для поверхностей с более строгой границей, чем у модуля: модуль
+ * отвечает «купил ли это тенант», это — «можно ли этому человеку сюда».
+ * Superadmin проходит по wildcard внутри checkPermission, так что отдельная
+ * ветка не нужна.
+ */
+export function isNavItemRoleAllowed(org: OrgNavContext, item: NavItem): boolean {
+  const role = (org.role as Role) || "viewer"
+  if (item.permissionScope && !checkPermission(role, item.permissionScope, "read")) return false
+  if (item.allowedRoles && !item.allowedRoles.includes(role)) return false
+  if (item.orgWide && (org.hiddenModules?.length ?? 0) > 0) return false
+  return true
+}
+
 export function accessibleNavItems(org: OrgNavContext): NavItem[] {
   const showAll = org.role === "superadmin"
-  // Роль-гейт для под-поверхностей с более строгой границей, чем у модуля
-  // (сейчас — юридический стол соцмониторинга). Superadmin проходит по wildcard
-  // внутри checkPermission, так что отдельная ветка не нужна.
-  const roleAllowed = (i: NavItem) =>
-    (!i.permissionScope || checkPermission((org.role as Role) || "viewer", i.permissionScope, "read"))
-    && (!i.allowedRoles || i.allowedRoles.includes((org.role as Role) || "viewer"))
   return navItems.filter((item) =>
-    isNavItemEnabled(org, item, { ignoreModuleGate: showAll }) && roleAllowed(item) && isNavItemOrgSettingEnabled(org, item)
+    isNavItemEnabled(org, item, { ignoreModuleGate: showAll })
+    && isNavItemRoleAllowed(org, item)
+    && isNavItemOrgSettingEnabled(org, item)
   )
 }
 
@@ -580,4 +628,22 @@ export function matchNavItem(pathname: string): NavItem | undefined {
     }
   }
   return best
+}
+
+/**
+ * Whether the dashboard layout must refuse this URL to this person on ROLE
+ * grounds — the page guard's second question, after "does the tenant have the
+ * module".
+ *
+ * Only the organization-administration block (the Settings group) is refused
+ * by URL. Elsewhere the role rule hides the menu entry and nothing more, on
+ * purpose: Workforce admits people through per-person grants the role matrix
+ * knows nothing about, so a page its menu does not offer may still be theirs to
+ * open. Settings has no such grants — what the menu withholds there, the API
+ * answers 403 to, and a page built out of 403s still draws its buttons.
+ */
+export function isNavPathRoleBlocked(org: OrgNavContext, pathname: string): boolean {
+  const item = matchNavItem(pathname)
+  if (!item || item.group !== "Settings") return false
+  return !isNavItemRoleAllowed(org, item)
 }

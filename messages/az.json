@@ -439,9 +439,15 @@
         "body": "Ödəniş və faktura bildirişləri bu iş sahəsində Finance modulu aktiv olduqdan sonra əlçatan olur.",
         "ownerHint": "Tenant planını Billing bölməsində yoxlayın və ya administratordan maliyyə bildirişlərini aktiv etməyi xahiş edin."
       },
+      "roleDenied": {
+        "title": "Bölmə əlçatan deyil",
+        "body": "Bu parametrlər bölməsi hesabınız üçün əlçatan deyil.",
+        "ownerHint": "Giriş lazımdırsa, təşkilatınızın administratoruna müraciət edin."
+      },
       "openChannels": "Kanalları aç",
       "openBilling": "Billing-i aç",
-      "backToSettings": "Parametrlərə qayıt"
+      "backToSettings": "Parametrlərə qayıt",
+      "goHome": "Əsas səhifəyə"
     },
     "dashboard": "İdarə paneli",
     "companies": "Şirkətlər",
