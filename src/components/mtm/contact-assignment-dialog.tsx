@@ -72,6 +72,7 @@ export function ContactAssignmentDialog({
   agents,
   asOf,
   initialTargetAgentId,
+  lockTargetAgent = false,
   defaultReason,
   onCompleted,
 }: {
@@ -82,6 +83,8 @@ export function ContactAssignmentDialog({
   agents: ContactTransferAgent[]
   asOf: string
   initialTargetAgentId?: string
+  /** The employee's own section assigns to that employee only: show the name, not a list to choose from. */
+  lockTargetAgent?: boolean
   defaultReason?: string
   onCompleted: (result: ContactAssignmentResult) => void
 }) {
@@ -244,17 +247,23 @@ export function ContactAssignmentDialog({
               {mode === "ASSIGN" ? (
                 <div>
                   <Label htmlFor="contact-assignment-target">{t("targetAgent")}</Label>
-                  <Select
-                    id="contact-assignment-target"
-                    value={targetAgentId}
-                    onChange={(event) => setTargetAgentId(event.target.value)}
-                    className="mt-1.5 min-h-11"
-                  >
-                    <option value="">{t("chooseTarget")}</option>
-                    {targetAgents.map((agent) => (
-                      <option key={agent.id} value={agent.id}>{agent.name}</option>
-                    ))}
-                  </Select>
+                  {lockTargetAgent && initialTargetAgentId ? (
+                    <p id="contact-assignment-target" data-testid="contact-assignment-target-locked" className="mt-1.5 flex min-h-11 items-center rounded-lg border border-zinc-200 bg-muted/35 px-3 text-sm font-medium dark:border-zinc-700">
+                      {agents.find((agent) => agent.id === initialTargetAgentId)?.name ?? "—"}
+                    </p>
+                  ) : (
+                    <Select
+                      id="contact-assignment-target"
+                      value={targetAgentId}
+                      onChange={(event) => setTargetAgentId(event.target.value)}
+                      className="mt-1.5 min-h-11"
+                    >
+                      <option value="">{t("chooseTarget")}</option>
+                      {targetAgents.map((agent) => (
+                        <option key={agent.id} value={agent.id}>{agent.name}</option>
+                      ))}
+                    </Select>
+                  )}
                 </div>
               ) : null}
               <div>

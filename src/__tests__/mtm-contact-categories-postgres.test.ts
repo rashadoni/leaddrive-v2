@@ -19,7 +19,7 @@
  * the action working: behind it sits raw SQL that had never met a database.
  *
  * Set MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL to an admin connection, e.g.
- *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 pgvector/pgvector:pg16
+ *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 postgres:16
  *   MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55499/postgres
  * Without it the suite is skipped. CI runs it in `static-checks` and again in
  * the deploy («MTM client categories database gate»), where
@@ -28,7 +28,8 @@
  */
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { readFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
@@ -100,6 +101,23 @@ function dictionaryConstraints(): string[] {
 }
 
 /**
+ * The schema as `db push` can build it on any Postgres. Two knowledge-base
+ * tables carry a pgvector column; the deploy's database service is plain
+ * `postgres:16` without that extension (the pull-request one has it), and the
+ * first version of this gate stopped every deploy by asking for it. Nothing
+ * here reads those columns, so they are left out of the scratch schema.
+ */
+function schemaWithoutEmbeddings(): string {
+  const schema = readFileSync(path.join(ROOT, "prisma/schema.prisma"), "utf8")
+  const stripped = schema.split("\n").filter((line) => !/Unsupported\("vector/.test(line)).join("\n")
+  if (stripped === schema) throw new Error("no pgvector column found — this workaround can be deleted")
+  const directory = mkdtempSync(path.join(tmpdir(), "mtm-contact-categories-schema-"))
+  const file = path.join(directory, "schema.prisma")
+  writeFileSync(file, stripped)
+  return file
+}
+
+/**
  * One task per idempotency key is a partial unique index; schema.prisma only
  * declares the plain one.
  */
@@ -139,10 +157,8 @@ pgDescribe("client categories on a real Postgres", () => {
   beforeAll(async () => {
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE)`)
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `CREATE DATABASE "${scratch!.name}"`)
-    // The schema has embedding columns; their type comes from an extension.
-    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, "CREATE EXTENSION IF NOT EXISTS vector")
     prismaCli(
-      ["db", "push", "--schema", path.join(ROOT, "prisma/schema.prisma"), "--skip-generate", "--accept-data-loss"],
+      ["db", "push", "--schema", schemaWithoutEmbeddings(), "--skip-generate", "--accept-data-loss"],
       { ...process.env, DATABASE_URL: scratch!.url },
     )
     for (const statement of [...dictionaryConstraints(), taskSourceKeyIndex()]) {
