@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
-  BadgeCheck,
   CalendarClock,
   CircleAlert,
   ClipboardCheck,
@@ -14,7 +13,6 @@ import {
   Scale,
   ShieldCheck,
   SquarePen,
-  Stethoscope,
   Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -168,12 +166,10 @@ function DataTile({
 
 function PanelSection({
   title,
-  description,
   icon: Icon,
   children,
 }: {
   title: string
-  description: string
   icon: React.ComponentType<{ className?: string }>
   children: React.ReactNode
 }) {
@@ -183,10 +179,7 @@ function PanelSection({
         <div className="rounded-xl bg-primary/10 p-2 text-primary">
           <Icon className="h-5 w-5" />
         </div>
-        <div className="grid gap-1">
-          <h2 className="text-base font-semibold">{title}</h2>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
+        <h2 className="self-center text-base font-semibold">{title}</h2>
       </div>
       <div className="mt-4">{children}</div>
     </section>
@@ -232,6 +225,21 @@ function professionalGlossaryTerms(
       ? [{ code, label, definition: termDefinition }]
       : []
   })
+}
+
+/**
+ * Whether the assessment block has anything to show this viewer: it is about
+ * doctors, and it needs either a record or someone allowed to add the first.
+ */
+export function contactScoringBlockShown(input: {
+  contactType: string
+  assessments: readonly unknown[]
+  potentials: readonly unknown[]
+  canAssess: boolean
+  canRecordPotential: boolean
+}): boolean {
+  return input.contactType === "DOCTOR"
+    && (input.assessments.length > 0 || input.potentials.length > 0 || input.canAssess || input.canRecordPotential)
 }
 
 export function MtmContactScoringPanel({
@@ -309,6 +317,10 @@ export function MtmContactScoringPanel({
     && (!potential.periodStart || potential.periodStart <= asOf)
     && (!potential.periodEnd || potential.periodEnd >= asOf)
   ))
+  const pastPotentials = potentials.filter((potential) => !activePotentials.includes(potential))
+  // A section exists only for what has been recorded. Until then the tab says
+  // so in one line instead of six empty frames (owner, 2026-10-02).
+  const nothingRecorded = assessments.length === 0 && potentials.length === 0
 
   const openReview = (target: ReviewTarget) => {
     setReviewTarget(target)
@@ -347,13 +359,7 @@ export function MtmContactScoringPanel({
     }
   }
 
-  if (contactType !== "DOCTOR") {
-    return (
-      <PanelSection title={t("notDoctorTitle")} description={t("notDoctorDescription")} icon={Stethoscope}>
-        <DataTile label={t("productCategory")} value={productCategory} />
-      </PanelSection>
-    )
-  }
+  if (!contactScoringBlockShown({ contactType, assessments, potentials, canAssess, canRecordPotential })) return null
 
   return (
     <div className="grid gap-5">
@@ -361,7 +367,7 @@ export function MtmContactScoringPanel({
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
           <div className="grid gap-1">
             <h2 className="font-semibold">{t("lifecycleActionsTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("lifecycleActionsDescription")}</p>
+            {nothingRecorded ? <p className="text-sm text-muted-foreground">{t("nothingRecorded")}</p> : null}
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             {canAssess ? (
@@ -380,44 +386,36 @@ export function MtmContactScoringPanel({
         </div>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
-        <PanelSection title={t("currentAssessmentTitle")} description={t("currentAssessmentDescription")} icon={ShieldCheck}>
-          {effectiveAssessment ? (
+      {effectiveAssessment ? <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
+        <PanelSection title={t("currentAssessmentTitle")} icon={ShieldCheck}>
             <AssessmentCard
               assessment={effectiveAssessment}
               current={activeAssessment?.id === effectiveAssessment.id}
               canReview={canReviewAssessment}
               t={t}
               dateFormatter={dateFormatter}
-              dateTimeFormatter={dateTimeFormatter}
               numberFormatter={numberFormatter}
               locale={locale}
               onReview={openReview}
             />
-          ) : (
-            <EmptyState title={t("noVerifiedAssessment")} description={t("noVerifiedAssessmentHint")} />
-          )}
         </PanelSection>
 
-        <PanelSection title={t("profileFactorsTitle")} description={t("profileFactorsDescription")} icon={Users}>
-          {effectiveAssessment ? (
+        <PanelSection title={t("profileFactorsTitle")} icon={Users}>
             <div className="grid grid-cols-2 gap-3">
               <DataTile label={t("office")} value={effectiveAssessment.office} />
               <DataTile label={t("patientsPerMonth")} value={effectiveAssessment.patientsPerMonth === null ? null : numberFormatter.format(effectiveAssessment.patientsPerMonth)} />
               <DataTile label={t("bedCount")} value={effectiveAssessment.bedCount === null ? null : numberFormatter.format(effectiveAssessment.bedCount)} />
               <DataTile label={t("kol")} value={effectiveAssessment.isKol ? t("yes") : t("no")} hint={effectiveAssessment.kolLevel} />
               <DataTile label={t("profile")} value={effectiveAssessment.profile} />
-              <DataTile label={t("psychotype")} value={effectiveAssessment.psychotype} hint={t("psychotypeSnapshot")} />
+              <DataTile label={t("psychotype")} value={effectiveAssessment.psychotype} />
               <DataTile label={t("granularCategory")} value={effectiveAssessment.granularCategory} />
               <DataTile label={t("qualificationCategory")} value={qualificationCategory} />
               <DataTile label={t("productCategory")} value={productCategory} />
             </div>
-          ) : <EmptyState title={t("profileFactorsEmpty")} description={t("profileFactorsEmptyHint")} />}
         </PanelSection>
-      </div>
+      </div> : null}
 
-      <PanelSection title={t("assessmentHistoryTitle")} description={t("assessmentHistoryDescription")} icon={History}>
-        {assessmentHistory.length ? (
+      {assessmentHistory.length ? <PanelSection title={t("assessmentHistoryTitle")} icon={History}>
           <div className="grid gap-4">
             {assessmentHistory.map((assessment) => (
               <AssessmentCard
@@ -426,28 +424,15 @@ export function MtmContactScoringPanel({
                 canReview={canReviewAssessment}
                 t={t}
                 dateFormatter={dateFormatter}
-                dateTimeFormatter={dateTimeFormatter}
                 numberFormatter={numberFormatter}
                 locale={locale}
                 onReview={openReview}
               />
             ))}
           </div>
-        ) : <p className="text-sm text-muted-foreground">{t("assessmentHistoryEmpty")}</p>}
-      </PanelSection>
+      </PanelSection> : null}
 
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">
-        <div className="flex items-start gap-3">
-          <CircleAlert className="mt-0.5 h-5 w-5 flex-none" />
-          <div className="grid gap-1">
-            <strong>{t("brandCategoryBoundaryTitle")}</strong>
-            <p>{t("brandCategoryBoundaryDescription")}</p>
-          </div>
-        </div>
-      </div>
-
-      <PanelSection title={t("activePotentialsTitle")} description={t("activePotentialsDescription")} icon={Scale}>
-        {activePotentials.length ? (
+      {activePotentials.length ? <PanelSection title={t("activePotentialsTitle")} icon={Scale}>
           <div className="grid gap-4 xl:grid-cols-2">
             {activePotentials.map((potential) => (
               <PotentialCard
@@ -468,17 +453,14 @@ export function MtmContactScoringPanel({
               />
             ))}
           </div>
-        ) : <EmptyState title={t("activePotentialsEmpty")} description={t("activePotentialsEmptyHint")} />}
-      </PanelSection>
+      </PanelSection> : null}
 
-      <PanelSection title={t("potentialHistoryTitle")} description={t("potentialHistoryDescription")} icon={FlaskConical}>
-        {potentials.length ? (
+      {pastPotentials.length ? <PanelSection title={t("potentialHistoryTitle")} icon={FlaskConical}>
           <div className="grid gap-4 xl:grid-cols-2">
-            {potentials.map((potential) => (
+            {pastPotentials.map((potential) => (
               <PotentialCard
                 key={potential.id}
                 potential={potential}
-                current={activePotentials.some((item) => item.id === potential.id)}
                 canReview={canReviewPotential}
                 t={t}
                 dateFormatter={dateFormatter}
@@ -493,8 +475,7 @@ export function MtmContactScoringPanel({
               />
             ))}
           </div>
-        ) : <p className="text-sm text-muted-foreground">{t("potentialHistoryEmpty")}</p>}
-      </PanelSection>
+      </PanelSection> : null}
 
       <Dialog open={Boolean(reviewTarget)} onOpenChange={(open) => !open && !reviewing && setReviewTarget(null)}>
         <DialogHeader>
@@ -563,22 +544,12 @@ export function MtmContactScoringPanel({
   )
 }
 
-function EmptyState({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="grid gap-1 rounded-xl border border-dashed border-zinc-300 p-5 text-center dark:border-zinc-700">
-      <span className="text-sm font-medium">{title}</span>
-      <span className="text-xs text-muted-foreground">{description}</span>
-    </div>
-  )
-}
-
 function AssessmentCard({
   assessment,
   current = false,
   canReview,
   t,
   dateFormatter,
-  dateTimeFormatter,
   numberFormatter,
   locale,
   onReview,
@@ -588,7 +559,6 @@ function AssessmentCard({
   canReview: boolean
   t: ReturnType<typeof useTranslations>
   dateFormatter: DateFormatter
-  dateTimeFormatter: DateFormatter
   numberFormatter: Intl.NumberFormat
   locale: string
   onReview: (target: ReviewTarget) => void
@@ -629,16 +599,11 @@ function AssessmentCard({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <DataTile label={t("actualScore")} value={actual === null ? null : numberFormatter.format(actual)} />
         <DataTile label={t("targetScore")} value={target === null ? null : numberFormatter.format(target)} />
-        <DataTile
-          label={t("scoreDifference")}
-          value={delta === null ? null : numberFormatter.format(delta)}
-          hint={t("scoreDifferenceHint")}
-        />
+        <DataTile label={t("scoreDifference")} value={delta === null ? null : numberFormatter.format(delta)} />
         <DataTile label={t("granularCategory")} value={assessment.granularCategory} />
       </div>
 
       <div className="grid gap-2 rounded-xl bg-muted/40 p-3 text-xs sm:grid-cols-2">
-        <span><BadgeCheck className="mr-1.5 inline h-4 w-4 text-muted-foreground" />{t("formulaSignature")}: {assessment.formula.signedAt ? dateTimeFormatter.format(new Date(assessment.formula.signedAt)) : t("signatureMissing")}</span>
         <span><CalendarClock className="mr-1.5 inline h-4 w-4 text-muted-foreground" />{t("source")}: {assessment.source}</span>
         <span>{t("enteredBy")}: {assessment.enteredByAgent?.name || t("systemActor")}</span>
         <span>{t("reviewedBy")}: {assessment.reviewedByAgent?.name || "—"}</span>
@@ -669,11 +634,7 @@ function AssessmentCard({
             ) : null}
           </div>
         </details>
-      ) : (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
-          {t("legacyGlossaryWarning")}
-        </p>
-      )}
+      ) : null}
 
       {assessment.reviewComment ? <p className="rounded-xl border-l-4 border-primary/40 bg-muted/30 p-3 text-sm">{assessment.reviewComment}</p> : null}
       {provenance.length ? <ProvenanceRows rows={provenance} t={t} /> : null}
@@ -709,7 +670,6 @@ function PotentialCard({
   const difference = potentialValue - coverageValue
   const title = [potential.brandName, potential.productName].filter(Boolean).join(" · ") || t("unnamedPotential")
   const provenance = primitiveProvenance(potential.provenance)
-  const glossarySnapshot = professionalGlossarySnapshot(potential.provenance)
 
   return (
     <article className={cn(
@@ -752,30 +712,17 @@ function PotentialCard({
       <div className="grid grid-cols-2 gap-3">
         <DataTile label={t("potentialValue")} value={numberFormatter.format(potentialValue)} />
         <DataTile label={t("coverageValue")} value={numberFormatter.format(coverageValue)} />
-        <DataTile label={t("uncoveredDifference")} value={numberFormatter.format(difference)} hint={t("uncoveredDifferenceHint")} />
-        <DataTile label={t("measurementCategory")} value={potential.categoryLabel || potential.category} hint={t("measurementCategoryHint")} />
+        <DataTile label={t("uncoveredDifference")} value={numberFormatter.format(difference)} />
+        <DataTile label={t("measurementCategory")} value={potential.categoryLabel || potential.category} />
       </div>
 
       <div className="grid gap-2 rounded-xl bg-muted/40 p-3 text-xs sm:grid-cols-2">
         <span>{t("source")}: {potential.source}</span>
-        <span>{t("formulaVersion")}: {potential.formulaVersion || "—"}</span>
         <span>{t("owner")}: {potential.agent?.name || t("sharedDimension")}</span>
         <span>{t("enteredBy")}: {potential.enteredByAgent?.name || t("systemActor")}</span>
         <span>{t("reviewedBy")}: {potential.reviewedByAgent?.name || "—"}</span>
         <span>{t("reviewedAt")}: {potential.reviewedAt ? dateTimeFormatter.format(new Date(potential.reviewedAt)) : "—"}</span>
       </div>
-
-      {glossarySnapshot ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 text-xs text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/10 dark:text-emerald-100">
-          <p className="font-semibold"><ShieldCheck className="mr-1.5 inline h-4 w-4" />{t("governedGlossaryTitle")}</p>
-          <p className="mt-1 break-all">{t("glossaryHash")}: <code>{String(glossarySnapshot.definitionHash ?? "—")}</code></p>
-          <p className="mt-1">{t("approvalReference")}: {String(glossarySnapshot.approvalReference ?? "—")}</p>
-        </div>
-      ) : (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
-          {t("legacyGlossaryWarning")}
-        </p>
-      )}
 
       {potential.evidenceVisits.length ? (
         <div className="grid gap-2">
@@ -789,7 +736,7 @@ function PotentialCard({
             ))}
           </div>
         </div>
-      ) : <span className="text-xs text-muted-foreground">{t("evidenceMissing")}</span>}
+      ) : null}
 
       {potential.reviewComment ? <p className="rounded-xl border-l-4 border-primary/40 bg-muted/30 p-3 text-sm">{potential.reviewComment}</p> : null}
       {provenance.length ? <ProvenanceRows rows={provenance} t={t} /> : null}
