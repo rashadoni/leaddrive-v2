@@ -15,7 +15,7 @@ evidence; this protocol does not require repeating them.
 | --- | --- |
 | Representative authorized production tenant | Exact slug requested from owner; PENDING. Do not select an arbitrary paying tenant or count an isolated CI fixture |
 | Current production route | `rashadoni/leaddrive-v2`, protected `main`, GitHub Actions, `13.140.132.245:/opt/leaddrive-v2`; public app `https://app.leaddrivecrm.org` |
-| Current release identity | Live `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf` matched current main and successful existing deploy `37045608290` at `2026-10-02T22:54:27+04:00` |
+| Last verified production snapshot | `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf` matched main and successful existing deploy `37045608290` at `2026-10-02T22:54:27+04:00`. Current live/main identity has not been rechecked; retain this as a dated receipt |
 | Authenticated flag state | UNVERIFIED. Read the selected tenant's authenticated no-store `/api/v1/support/ux-rollout`; only explicit `enabled: true` proves client admission. Public ping/build-info cannot prove this |
 | Audited activation | UNVERIFIED. Require tenant slug, owner/actor, exact source/artifact SHA, before/after state and activation UTC/Asia-Baku timestamp; use an already approved record if it exists |
 | Safe operator path | Registered local SSH alias currently rejects its key. Existing protected logs-only diagnostic works but cannot query/change the tenant flag. A bounded read-only `support-ux-rollout` view is prepared for the existing protected diagnostic workflow; it requires reviewed main admission before dispatch. It reports anonymous aggregate counts or one exact selected tenant's flag/count metadata and cannot activate a flag |
@@ -103,7 +103,11 @@ request and unexpected-write counters remain strict. Source-confirmed CSP
 reporting and self-navigation preferences are separately counted: exact bounded
 same-origin payloads, at most one each per sample, completed real204/200
 responses and read-only DB ownership/cohort proof. All other writes are
-blocked; no console filter or CSP/security-header bypass is admitted. This measurement does not validate PWA/offline functionality.
+blocked; an empty navigation list is permitted by the unchanged API and still
+requires the actual self-owned DB row. Both stages wait65 seconds between
+closed route pages so the original's unchanged public rate limit expires
+naturally. No console filter, rate-limit reset or CSP/security-header bypass
+is admitted. This measurement does not validate PWA/offline functionality.
 
 Heavy capture/build work runs in GitHub CI or the authorized ephemeral worker.
 Additive dimensions must preserve the original default matrix and every
@@ -123,7 +127,7 @@ read-only; selecting them with a mutating journey is rejected before building.
 | --- | --- | --- |
 | First-viewport inspection | `service-desk,agent-desktop,support-entitlements,agent-calendar`; `agent,manager,admin`; AZ/RU/EN; light/dark; `desktop-1366`; typical fixture; standard vision; canary enabled | 66 permitted cells, three samples each; real 1366 x 768 mouse/keyboard capture. [37055428421](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055428421) completed on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; 66/66 PASS; eight screenshots inspected |
 | Color-blind inspection | All scenarios; `admin,customer`; EN; light/dark; desktop/mobile; typical fixture; protanopia/deuteranopia/tritanopia; canary enabled | [37055624370](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370) completed on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; actual 336/336 PASS, one sample per cell; 12 representative screenshots inspected |
-| Historical quantitative comparison | Four daily-work surfaces; matched fixture/role/locale/theme/viewport/data and old/current source identities | Public original `76994875a251e0956b56f8d300625b97eb098661` has four page blobs matching the originals. Runs `37061944771` and `37064741882` did not produce valid capture geometry; after jobs cancelled before building. Shared worker/module controls, safe endpoint diagnostics and immutable common-main-base admission corrected. New run `37068754890` on `bdbe01b3a45046caa64b0884d895c29eac431d25` is running; actual runtime/35% results PENDING. Same-source comparison cannot substitute for this baseline |
+| Historical quantitative comparison | Four daily-work surfaces; matched fixture/role/locale/theme/viewport/data and old/current source identities | Public original `76994875a251e0956b56f8d300625b97eb098661` has four page blobs matching the originals. Runs `37061944771` and `37064741882` did not produce valid capture geometry; after jobs cancelled before building. Shared worker/module controls, safe endpoint diagnostics and immutable common-main-base admission corrected. Runs `37068754890` and `37072272911` retained safe failed-request diagnostics. The latter confirms real CSP204 responses and zero page/AI403 errors; preferences validation and natural public-limit pacing corrected before the next exact-source candidate. Actual runtime/35% comparison remains PENDING. Same-source comparison cannot substitute for this baseline |
 | Corrected Calendar semantic receipt | `agent-calendar`; admin/EN; both themes; desktop-1366; typical fixture; standard vision; three samples | New bounded run `37061949081` completed on43440b2dd, two permitted cells PASS; actual report and both screenshots inspected. Header12 equals the selected week day total12; no full matrix replay |
 
 These runs are additive evidence for previously untested dimensions. Record

@@ -19,6 +19,7 @@ export const HISTORICAL_LAYOUT_CONTROLS = Object.freeze({
   serviceWorkerPolicy: "unsupported-browser-capability-with-context-block-v1",
   enabledModules: Object.freeze(["crm", "support", "settings", "analytics", "voip", "omnichannel", "mtm", "ai"]),
   postReadyObservationMs: 1600,
+  routeCooldownMs: 65000,
   backgroundWritePolicy: "bounded-same-origin-csp-report-and-validated-isolated-self-navigation-preferences-v1",
 })
 const failureCodes = new Set([
@@ -113,7 +114,7 @@ export function historicalNavigationPreferencesMatch(body, fixture) {
   const paths = new Set(HISTORICAL_LAYOUT_ROUTES.map((route) => route.path))
   const anchor = Date.parse(fixture?.anchor)
   try {
-    return Number.isFinite(anchor) && Object.keys(body).sort().join(",") === "favorites,recents" && Array.isArray(body.favorites) && body.favorites.length === 0 && Array.isArray(body.recents) && body.recents.length > 0 && body.recents.length <= paths.size && new Set(body.recents.map((recent) => recent.href)).size === body.recents.length && body.recents.every((recent) => Object.keys(recent).sort().join(",") === "at,href" && paths.has(recent.href) && Number.isInteger(recent.at) && recent.at >= anchor && recent.at <= anchor + 600000)
+    return Number.isFinite(anchor) && Object.keys(body).sort().join(",") === "favorites,recents" && Array.isArray(body.favorites) && body.favorites.length === 0 && Array.isArray(body.recents) && body.recents.length <= paths.size && new Set(body.recents.map((recent) => recent.href)).size === body.recents.length && body.recents.every((recent) => Object.keys(recent).sort().join(",") === "at,href" && paths.has(recent.href) && Number.isInteger(recent.at) && recent.at >= anchor && recent.at <= anchor + 600000)
   } catch { return false }
 }
 

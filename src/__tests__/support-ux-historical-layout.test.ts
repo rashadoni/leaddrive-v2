@@ -9,8 +9,9 @@ import {
   chooseHistoricalAnchor, compareHistoricalLayouts, historicalFailureCode, historicalFixture, historicalFixtureDigest,
   historicalMedian, historicalTicketIdentity, validateHistoricalEvidence,
 } from "../../scripts/support-ux-historical-layout-contract.mjs"
-import { authenticateHistorical, completeHistoricalBackgroundRequest, finalizeHistoricalLayoutReport, historicalConsoleDiagnostic, historicalDataPath, historicalNetworkDiagnostic, historicalRequestDisposition, initializeHistoricalBrowserState, verifyHistoricalBackgroundPersistence } from "../../scripts/support-ux-historical-layout-capture.mjs"
+import { authenticateHistorical, completeHistoricalBackgroundRequest, finalizeHistoricalLayoutReport, historicalConsoleDiagnostic, historicalDataPath, historicalNetworkDiagnostic, historicalRequestDisposition, initializeHistoricalBrowserState, verifyHistoricalBackgroundPersistence, waitHistoricalRouteCooldown } from "../../scripts/support-ux-historical-layout-capture.mjs"
 import { seedHistoricalLayout } from "../../scripts/support-ux-historical-layout-fixture.mjs"
+import { checkRateLimit, RATE_LIMIT_CONFIG, resetRateLimit } from "../lib/rate-limit"
 
 vi.mock("bcryptjs", () => ({ default: { hash: vi.fn().mockResolvedValue("synthetic-test-hash") } }))
 
@@ -59,6 +60,24 @@ function calendarBody() {
 }
 
 describe("Matched historical Support layout admission", () => {
+  it("paces four three-sample routes through the unchanged historical ten-per-minute public bucket", async () => {
+    const key = "historical-layout-unit-test"
+    let now = Date.parse(anchor)
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now)
+    try {
+      resetRateLimit(key)
+      for (let sample = 0; sample < 10; sample += 1) expect(checkRateLimit(key, RATE_LIMIT_CONFIG.public)).toBe(true)
+      expect(checkRateLimit(key, RATE_LIMIT_CONFIG.public)).toBe(false)
+      resetRateLimit(key)
+      for (let routeIndex = 0; routeIndex < 4; routeIndex += 1) {
+        await waitHistoricalRouteCooldown(routeIndex, async (duration: number) => { now += duration })
+        for (let sample = 0; sample < 3; sample += 1) expect(checkRateLimit(key, RATE_LIMIT_CONFIG.public)).toBe(true)
+      }
+      expect(now - Date.parse(anchor)).toBe(195000)
+      await expect(waitHistoricalRouteCooldown(4)).rejects.toThrow("ROUTE_INVALID")
+    } finally { resetRateLimit(key); clock.mockRestore() }
+  })
+
   it("requires endpoint-specific successful responses and completed bodies for every accepted background request", async () => {
     const request = (status: number, error: Error | null) => ({ response: async () => ({ status: () => status, finished: async () => error }) })
     await expect(completeHistoricalBackgroundRequest(request(204, null), "cspReport")).resolves.toBe(true)
@@ -77,6 +96,8 @@ describe("Matched historical Support layout admission", () => {
     const csp = { "csp-report": { "document-uri": base + "/tickets", "blocked-uri": "eval" } }
     expect(historicalRequestDisposition(base + "/api/v1/public/csp-report", "POST", base, JSON.stringify(csp), fixture)).toBe("cspReport")
     expect(historicalRequestDisposition(base + "/api/v1/users/me/preferences", "PUT", base, JSON.stringify(prefs), fixture)).toBe("navigationPreferences")
+    // The real shell may persist its empty state after initial hydration.
+    expect(historicalRequestDisposition(base + "/api/v1/users/me/preferences", "PUT", base, JSON.stringify({ favorites: [], recents: [] }), fixture)).toBe("navigationPreferences")
     for (const body of [{ ...prefs, userId: "another-actor" }, { ...prefs, favorites: ["/tickets"] }, { ...prefs, recents: [{ href: "/settings", at: Date.parse(anchor) }] }, { ...prefs, recents: [{ href: "/tickets", at: Date.parse(anchor) + 600001 }] }, { ...prefs, recents: [prefs.recents[0], prefs.recents[0]] }]) {
       expect(historicalRequestDisposition(base + "/api/v1/users/me/preferences", "PUT", base, JSON.stringify(body), fixture)).toBe("write")
     }
@@ -95,6 +116,8 @@ describe("Matched historical Support layout admission", () => {
     expect(tx.$executeRaw.mock.calls[0][0][0]).toBe("SET TRANSACTION READ ONLY")
     tx.userPreference.findUnique.mockResolvedValue({ ...pref, organizationId: "another-tenant" })
     await expect(verifyHistoricalBackgroundPersistence(prisma, fixture)).rejects.toThrow("BACKGROUND_PERSISTENCE_MISMATCH")
+    tx.userPreference.findUnique.mockResolvedValue({ ...pref, recents: [] })
+    await expect(verifyHistoricalBackgroundPersistence(prisma, fixture)).resolves.toMatchObject({ status: "verified", userPreferenceRows: 1, validPreferences: true })
     tx.userPreference.findUnique.mockResolvedValue(pref)
     tx.ticket.count.mockResolvedValue(49)
     await expect(verifyHistoricalBackgroundPersistence(prisma, fixture)).rejects.toThrow("BACKGROUND_PERSISTENCE_MISMATCH")

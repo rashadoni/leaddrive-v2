@@ -1236,3 +1236,70 @@ background responses; selected tenant/activation/telemetry are still pending.
   or payload export. Current historical-only36/36 cases PASS after final
   cleanup-failure admission guard; combined set50/50 PASS. Calendar page/API
   and all four Support page blobs remain unchanged in these controller edits.
+
+
+## 2026-10-03 — Source-compatible candidate published; hosted gates running
+
+- Checkpointb932a741b3d69e5062ea47f354e142ec805b1173 published in PR#530.
+  New needed historical run37072272911 and full PR37072226930 are running on
+  exactb932a741b. Runner-policy37072226896 and scan37072226954 PASS.
+  Results remain PENDING; no comparison35% admission or new production action.
+- Completed viewport/vision/Calendar gates, original releases/deployments and
+  previous exact-SHA green gates were not replayed. The new source-compatible
+  background policy is explicitly limited to the isolated historical fixture;
+  it neither changes application APIs nor permits production writes.
+
+
+## 2026-10-03 — Current exact candidate required gates green; dated production wording audited
+
+- Exactb932a741b3d69e5062ea47f354e142ec805b1173 required PR checks PASS:
+  run37072226930 pr-scope/static-checks/typecheck SUCCESS,
+  runner-policy37072226896 SUCCESS and scan37072226954 SUCCESS. The optional
+  separate hosted build was SKIPPED by scope; exact original runtime production
+  build still runs in historical37072272911. Comparison remains PENDING.
+- Independent read-only documentation audit confirms191 unique/190 checked,
+  onlyROL-006 open, and17 literal rows=15 DONE/2 IN_PROGRESS. Original active
+  journal prefix30,183 bytes and the full reference journal are preserved.
+  Observation, canonical plan and performance ledger now explicitly label
+  88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf as the last verified production
+  snapshot at2026-10-02T22:54:27+04:00, not an assertion about current live/main.
+- Real tenant, audited activation, telemetry, seven complete Baku days and
+  baseline review by2026-10-08 remain required. No production tenant selected,
+  flag mutation, merge or new deployment was performed.
+
+
+## 2026-10-03 — Retained real responses confirm remaining shell-control mismatch
+
+- Historical37072272911 FAIL; exact original production build SUCCESS and
+  after build cancelled before execution. Artifact11256057868,1,940 bytes,
+  digestsha256:e6ca03f8c2af3744914fd3bfa48e6579794be10ed7148b143833778e9230270e
+  retains safe source-bound diagnosis atb932a741b. First three routes each
+  show CSP3 attempted/3 completed real204, preferences3 blocked, console3
+  RESOURCE_FAILURE, and zero page/external/HTTP errors. Calendar confirms the
+  second report returns429 after the cumulative eleventh CSP request. No
+  screenshot/geometry or comparison percentage is admitted.
+- Original proxy applies both dedicated100/min and generic10/min buckets to
+  the same CSP POST; current proxy excludes it from the latter. Use the same
+  native65s wait between closed route pages in BOTH exact runtimes. Limiter
+  state, IP, headers, API source and security headers are unchanged. Monotonic
+  runtime clock naturally expires the60s window; no429 exception is accepted.
+- Source-compatible preferences contract now allows0..4 recents. The real API
+  permits an empty list. Source review explains how child RouteTracker runs
+  before parent hydration, whose empty local/server state can replace the
+  initial visit and schedule a real empty PUT. This is source inference; no
+  actual body is exported or claimed. Exact keys, zero favorites, route-only
+  paths, integer clock bounds, one completed200/sample and actual exactly-one
+  self/org-owned DB-row/cohort proof remain required. Empty persistence is not
+  evidence of recorded visits. No genuine-error counter/filter is weakened.
+- Narrow current historical37/37 plus Calendar4/4 PASS. The pacing regression
+  uses the real unchanged10/min limiter: the unpaced eleventh request fails,
+  all four groups of three pass with the matched native cooldown. Small-check
+  preflight14,757MiB available/338GiB disk/zero memory PSI; no full build/TS/
+  browser on Contabo. All five prior exactb932 PR checks remain green.
+
+Current result/status:190/191 and15/17 accepted; real historical comparison
+and production observation remain open. Last completed action: validate actual
+response diagnosis and source-compatible empty-persistence/natural pacing.
+Precise stopping point: publish the corrected controller and collect its new
+hosted exact-source receipts. Next action: require valid geometry and all fresh
+candidate gates; production tenant/activation/telemetry still await owner input.

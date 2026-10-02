@@ -3,6 +3,7 @@ import { Buffer } from "node:buffer"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
+import { setTimeout as waitForNativeTime } from "node:timers/promises"
 import {
   HISTORICAL_LAYOUT_CONTROLS, HISTORICAL_LAYOUT_ROUTES,
   assertHistoricalCaptureEnvironment, assertHistoricalDatabaseEnvironment, assertHistoricalSemanticData,
@@ -82,6 +83,14 @@ export async function completeHistoricalBackgroundRequest(request, kind) {
     const response = await request.response()
     return response?.status() === (kind === "cspReport" ? 204 : 200) && await response.finished() === null
   } catch { return false }
+}
+
+export async function waitHistoricalRouteCooldown(routeIndex, wait = waitForNativeTime) {
+  if (!Number.isInteger(routeIndex) || routeIndex < 0 || routeIndex >= HISTORICAL_LAYOUT_ROUTES.length) throw new Error("ROUTE_INVALID")
+  // The approved original also applies its 10/min public POST bucket to CSP.
+  // Let that unchanged limit expire naturally in both exact runtimes. Node
+  // timers remain monotonic; do not change IPs, headers or limiter state.
+  if (routeIndex > 0) await wait(HISTORICAL_LAYOUT_CONTROLS.routeCooldownMs)
 }
 
 async function waitHistoricalBackgroundRequests(completions) {
@@ -253,7 +262,8 @@ export async function captureHistoricalLayout(env = process.env) {
     await authenticateHistorical(context, env.SUPPORT_HISTORICAL_BASE_URL, fixture, env.SUPPORT_HISTORICAL_ADMIN_PASSWORD)
     await context.addCookies([{ name: "NEXT_LOCALE", value: "en", url: env.SUPPORT_HISTORICAL_BASE_URL }])
     await context.addInitScript(initializeHistoricalBrowserState, { adminId: fixture.admin.id })
-    for (const route of HISTORICAL_LAYOUT_ROUTES) {
+    for (const [routeIndex, route] of HISTORICAL_LAYOUT_ROUTES.entries()) {
+      await waitHistoricalRouteCooldown(routeIndex)
       const failures = { external: 0, write: 0, page: 0, console: 0, response: 0 }
       const backgroundWrites = { cspReport: 0, navigationPreferences: 0 }
       const backgroundWriteSamples = []

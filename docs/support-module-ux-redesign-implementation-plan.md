@@ -35,8 +35,9 @@ browser/accessibility/performance acceptance at their recorded dimensions and
 the production-release ledger are complete. PR [#501](https://github.com/rashadoni/leaddrive-v2/pull/501)
 merged as `bd83c5d41182fca0003282e2241e5ad9ae35c04b`; its existing production
 run [36600569942](https://github.com/rashadoni/leaddrive-v2/actions/runs/36600569942)
-is green. Current live artifact matches the later successful main release
-`88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf`. See the
+is green. The last verified live snapshot matched the later successful main
+release `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf` at
+`2026-10-02T22:54:27+04:00`; current live identity has not been rechecked. See the
 [release ledger](support-ux-performance-and-rollout.md#release-ledger) for dated
 production snapshots and the
 [observation protocol](support-ux-production-observation.md) for the remaining
