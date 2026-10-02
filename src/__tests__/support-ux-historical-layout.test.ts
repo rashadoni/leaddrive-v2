@@ -9,7 +9,7 @@ import {
   chooseHistoricalAnchor, compareHistoricalLayouts, historicalFailureCode, historicalFixture, historicalFixtureDigest,
   historicalMedian, historicalTicketIdentity, validateHistoricalEvidence,
 } from "../../scripts/support-ux-historical-layout-contract.mjs"
-import { historicalDataPath, historicalRequestDisposition } from "../../scripts/support-ux-historical-layout-capture.mjs"
+import { authenticateHistorical, historicalDataPath, historicalRequestDisposition } from "../../scripts/support-ux-historical-layout-capture.mjs"
 import { seedHistoricalLayout } from "../../scripts/support-ux-historical-layout-fixture.mjs"
 
 vi.mock("bcryptjs", () => ({ default: { hash: vi.fn().mockResolvedValue("synthetic-test-hash") } }))
@@ -27,8 +27,9 @@ function evidence(stage: "before" | "after", top = stage === "before" ? 600 : 36
     controlSha: afterSha, mainSha, anchor, fixtureDigest: historicalFixtureDigest(fixture),
     controls: { ...HISTORICAL_LAYOUT_CONTROLS }, status: "captured",
     serverClockProof: { schemaVersion: 1, clockPolicy: HISTORICAL_LAYOUT_CONTROLS.clockPolicy, anchor, dateNow: Date.parse(anchor) },
-    results: HISTORICAL_LAYOUT_ROUTES.map((route: { id: string; path: string; beforeBlob: string }) => ({
+    results: HISTORICAL_LAYOUT_ROUTES.map((route: { id: string; path: string; beforeBlob: string; beforeRepresentation: string; afterRepresentation: string }) => ({
       id: route.id, path: route.path, sourcePageBlob: stage === "before" ? route.beforeBlob : "c".repeat(40),
+      representation: stage === "before" ? route.beforeRepresentation : route.afterRepresentation,
       status: "captured", semanticFixture: true, viewportWidth: 1366, viewportHeight: 768,
       maxTouchPoints: 0, documentLang: "en", darkTheme: false, reducedMotion: true,
       scrollTop: 0, documentScrollTop: 0, primaryWorkTop: top, primaryWorkTopSamples: [top, top, top],
@@ -53,6 +54,24 @@ function calendarBody() {
 }
 
 describe("Matched historical Support layout admission", () => {
+  it("rejects a different item representation even with attractive geometry", () => {
+    const after = evidence("after")
+    after.results[0].representation = "enclosing-page-wrapper"
+    expect(() => compareHistoricalLayouts(evidence("before"), after, afterSha)).toThrow("GEOMETRY_INVALID")
+  })
+
+  it("establishes the exact tenant/admin session using the Secure-cookie-compatible loopback hostname", async () => {
+    const responses = [
+      { ok: () => true, json: async () => ({ csrfToken: "synthetic-csrf" }) },
+      { ok: () => true, json: async () => ({ user: { id: fixture.admin.id, organizationId: fixture.organization.id, role: "admin" } }) },
+    ]
+    const context = { request: { get: vi.fn().mockImplementation(async () => responses.shift()), post: vi.fn().mockResolvedValue({ ok: () => true }) } }
+    await expect(authenticateHistorical(context, "http://localhost:3000", fixture, "synthetic-test-password-".repeat(3))).resolves.toBeUndefined()
+    expect(context.request.get.mock.calls.map((call) => call[0])).toEqual(["http://localhost:3000/api/auth/csrf", "http://localhost:3000/api/auth/session"])
+    responses.push({ ok: () => true, json: async () => ({ csrfToken: "synthetic-csrf" }) }, { ok: () => true, json: async () => ({ user: { id: "other-actor", organizationId: "other-tenant", role: "admin" } }) })
+    await expect(authenticateHistorical(context, "http://localhost:3000", fixture, "synthetic-test-password-".repeat(3))).rejects.toThrow("AUTH_SESSION_MISMATCH")
+  })
+
   it("passes four independent reductions with matched immutable sources and controls", () => {
     const result = compareHistoricalLayouts(evidence("before"), evidence("after"), afterSha)
     expect(result.status).toBe("passed")
@@ -117,9 +136,9 @@ describe("Matched historical Support layout admission", () => {
   })
 
   it("admits only the pinned public before source and exact controller after source on hosted localhost", () => {
-    const env = { CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted", SUPPORT_HISTORICAL_BASE_URL: "http://127.0.0.1:3000", SUPPORT_HISTORICAL_STAGE: "after", SUPPORT_HISTORICAL_SOURCE_SHA: afterSha, SUPPORT_HISTORICAL_CONTROL_SHA: afterSha, SUPPORT_HISTORICAL_MAIN_SHA: mainSha }
+    const env = { CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted", SUPPORT_HISTORICAL_BASE_URL: "http://localhost:3000", SUPPORT_HISTORICAL_STAGE: "after", SUPPORT_HISTORICAL_SOURCE_SHA: afterSha, SUPPORT_HISTORICAL_CONTROL_SHA: afterSha, SUPPORT_HISTORICAL_MAIN_SHA: mainSha }
     expect(assertHistoricalCaptureEnvironment(env).sourceSha).toBe(afterSha)
-    for (const change of [{ SUPPORT_HISTORICAL_BASE_URL: "https://app.leaddrivecrm.org" }, { RUNNER_ENVIRONMENT: "self-hosted" }, { CI: "false" }, { SUPPORT_HISTORICAL_SOURCE_SHA: mainSha }]) {
+    for (const change of [{ SUPPORT_HISTORICAL_BASE_URL: "https://app.leaddrivecrm.org" }, { SUPPORT_HISTORICAL_BASE_URL: "http://127.0.0.1:3000" }, { RUNNER_ENVIRONMENT: "self-hosted" }, { CI: "false" }, { SUPPORT_HISTORICAL_SOURCE_SHA: mainSha }]) {
       expect(() => assertHistoricalCaptureEnvironment({ ...env, ...change })).toThrow()
     }
     expect(() => assertHistoricalCaptureEnvironment({ ...env, SUPPORT_HISTORICAL_STAGE: "before" })).toThrow("SOURCE_IDENTITY_INVALID")
@@ -195,7 +214,7 @@ describe("Matched historical Support layout admission", () => {
     const clock = chooseHistoricalAnchor()
     try {
       const output = execFileSync(process.execPath, ["-e", 'const started = performance.now(); const nativeTimeout = setTimeout; require("./scripts/support-ux-historical-layout-clock.cjs"); setTimeout(() => console.log(JSON.stringify({ now: Date.now(), iso: new Date().toISOString(), explicit: new Date("2000-01-01T00:00:00Z").toISOString(), multi: new Date(2000, 0, 1).getFullYear(), utc: Date.UTC(2000,0,1), parsed: Date.parse("2000-01-01T00:00:00Z"), callable: typeof Date(), instance: new Date() instanceof Date, nativeTimeout: nativeTimeout === setTimeout, elapsed: performance.now() - started })), 20)'], {
-        env: { ...process.env, CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted", SUPPORT_HISTORICAL_BASE_URL: "http://127.0.0.1:3000", SUPPORT_HISTORICAL_ANCHOR: clock, RUNNER_TEMP: directory, SUPPORT_HISTORICAL_CLOCK_PROOF: path.join(directory, "support-historical-clock-before.json") }, encoding: "utf8",
+        env: { ...process.env, CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted", SUPPORT_HISTORICAL_BASE_URL: "http://localhost:3000", SUPPORT_HISTORICAL_ANCHOR: clock, RUNNER_TEMP: directory, SUPPORT_HISTORICAL_CLOCK_PROOF: path.join(directory, "support-historical-clock-before.json") }, encoding: "utf8",
       })
       const value = JSON.parse(output)
       expect(value.now).toBeGreaterThanOrEqual(Date.parse(clock))
@@ -230,7 +249,7 @@ describe("Matched historical Support layout admission", () => {
   it("refuses a malformed or expired server-clock anchor before bootstrap", () => {
     for (const clock of ["not-an-anchor", "2026-02-30T08:00:00.000Z", "2000-01-01T08:00:00.000Z"]) {
       const result = spawnSync(process.execPath, ["-e", 'require("./scripts/support-ux-historical-layout-clock.cjs")'], {
-        env: { ...process.env, CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted", SUPPORT_HISTORICAL_BASE_URL: "http://127.0.0.1:3000", SUPPORT_HISTORICAL_ANCHOR: clock }, encoding: "utf8",
+        env: { ...process.env, CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted", SUPPORT_HISTORICAL_BASE_URL: "http://localhost:3000", SUPPORT_HISTORICAL_ANCHOR: clock }, encoding: "utf8",
       })
       expect(result.status).toBe(1)
       expect(result.stderr).toMatch(/EPHEMERAL_(CLOCK_REQUIRED|COOKIE_CLOCK_EXPIRED)/)
@@ -253,9 +272,9 @@ describe("Matched historical Support layout admission", () => {
   })
 
   it("blocks production/external routing and writes after synthetic authentication", () => {
-    expect(historicalRequestDisposition("http://127.0.0.1:3000/api/v1/tickets", "GET", "http://127.0.0.1:3000")).toBe("read")
-    expect(historicalRequestDisposition("https://app.leaddrivecrm.org/api/v1/tickets", "GET", "http://127.0.0.1:3000")).toBe("external")
-    expect(historicalRequestDisposition("http://127.0.0.1:3000/api/v1/tickets", "POST", "http://127.0.0.1:3000")).toBe("write")
+    expect(historicalRequestDisposition("http://localhost:3000/api/v1/tickets", "GET", "http://localhost:3000")).toBe("read")
+    expect(historicalRequestDisposition("https://app.leaddrivecrm.org/api/v1/tickets", "GET", "http://localhost:3000")).toBe("external")
+    expect(historicalRequestDisposition("http://localhost:3000/api/v1/tickets", "POST", "http://localhost:3000")).toBe("write")
     expect(historicalDataPath("agent-desktop", "before")).toBe("/api/v1/tickets")
     expect(historicalDataPath("agent-desktop", "after")).toBe("/api/v1/support/agent-desktop")
   })

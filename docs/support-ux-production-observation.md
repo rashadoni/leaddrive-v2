@@ -85,6 +85,17 @@ tenant authorization or expose request content to make observation easier.
 | Old/new block and vertical-distance comparison | Current structural metrics and same-source stability comparison | Establish legitimate pre-redesign source/fixture baselines and matched current captures for Service Desk, Agent Desktop, Entitlements and Calendar; record before/after numbers, formula and source identities |
 | At least 35% distance reduction | Target only; no matched quantitative proof recorded | Calculate only from the matched captures above. If the actual improvement is smaller, correct the layout and recapture the affected scenario; do not lower the requirement or invent a percentage |
 
+The frozen historical distance metric uses the first specific actionable
+representation of the same fixture work item: Service Desk row -> priority
+action strip; Agent Desktop open-case row -> next-case panel; Entitlements card
+-> row; Calendar timed node -> next-item button. Generic summaries, filters,
+enclosing page wrappers and later duplicate representations are ineligible.
+These mappings were reviewed before any position/percentage was captured.
+Record representation identity and label geometry alongside container position;
+the35% target applies independently to all four surfaces. This synthetic
+first-item metric is separate from canonical table/grid position and production
+task-time measurements.
+
 Heavy capture/build work runs in GitHub CI or the authorized ephemeral worker.
 Additive dimensions must preserve the original default matrix and every
 existing threshold. Do not repeat the completed 1296-cell matrix to capture a

@@ -8,7 +8,7 @@ const fs = require("node:fs")
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require("node:path")
 const anchor = process.env.SUPPORT_HISTORICAL_ANCHOR
-if (process.env.CI !== "true" || process.env.GITHUB_ACTIONS !== "true" || process.env.RUNNER_ENVIRONMENT !== "github-hosted" || process.env.SUPPORT_HISTORICAL_BASE_URL !== "http://127.0.0.1:3000" || !/^\d{4}-\d{2}-\d{2}T08:00:00\.000Z$/.test(anchor || "") || !Number.isFinite(NativeDate.parse(anchor)) || new NativeDate(anchor).toISOString() !== anchor) {
+if (process.env.CI !== "true" || process.env.GITHUB_ACTIONS !== "true" || process.env.RUNNER_ENVIRONMENT !== "github-hosted" || process.env.SUPPORT_HISTORICAL_BASE_URL !== "http://localhost:3000" || !/^\d{4}-\d{2}-\d{2}T08:00:00\.000Z$/.test(anchor || "") || !Number.isFinite(NativeDate.parse(anchor)) || new NativeDate(anchor).toISOString() !== anchor) {
   throw new Error("EPHEMERAL_CLOCK_REQUIRED")
 }
 const anchorMs = NativeDate.parse(anchor)

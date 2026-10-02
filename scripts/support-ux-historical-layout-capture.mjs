@@ -25,8 +25,15 @@ export function historicalRequestDisposition(url, method, baseUrl) {
 export function historicalPrimaryLocator(page, id, stage, fixture) {
   const title = id === "support-entitlements" ? fixture.company.name : fixture.ticket.subject
   let primary
+  let label
   if (id === "service-desk") {
-    primary = page.locator("main table tbody tr:visible, main article[role='link']:visible").filter({ hasText: title })
+    if (stage === "before") {
+      primary = page.locator("main table tbody tr:visible").filter({ hasText: title })
+    } else {
+      const text = fixture.ticket.number + " · " + title
+      primary = page.locator("main [data-tour-id='tickets-list'] > div").filter({ has: page.getByText(text, { exact: true }) })
+      label = primary.getByText(text, { exact: true })
+    }
   } else if (id === "agent-desktop") {
     primary = stage === "before"
       ? page.locator("main table").first().locator("tbody tr:visible").filter({ hasText: title })
@@ -38,23 +45,24 @@ export function historicalPrimaryLocator(page, id, stage, fixture) {
   } else if (id === "agent-calendar") {
     primary = stage === "before"
       ? page.locator("main [class~='min-w-[800px]'] div.cursor-pointer").filter({ has: page.getByText(title, { exact: true }) })
-      : page.locator("main [data-testid='support-calendar-item'][data-item-id='ticket-" + fixture.ticket.id + "']:visible")
+      : page.getByTestId("support-calendar-next-item").filter({ hasText: title })
+    if (stage === "after") label = primary.locator("span.block.truncate").filter({ hasText: title })
   } else {
     throw new Error("ROUTE_INVALID")
   }
-  return { primary, label: primary.getByText(title, { exact: true }).first() }
+  return { primary, label: label ?? primary.getByText(title, { exact: true }).first() }
 }
 
-async function authenticate(context, baseUrl, fixture, password) {
+export async function authenticateHistorical(context, baseUrl, fixture, password) {
   if (typeof password !== "string" || password.length < 32) throw new Error("EPHEMERAL_PASSWORD_REQUIRED")
   const csrfResponse = await context.request.get(baseUrl + "/api/auth/csrf")
-  if (!csrfResponse.ok()) throw new Error("AUTH_SESSION_MISMATCH")
+  if (!csrfResponse.ok()) throw new Error("AUTH_CSRF_UNAVAILABLE")
   const csrf = await csrfResponse.json()
   const login = await context.request.post(baseUrl + "/api/auth/callback/credentials", { form: {
     csrfToken: csrf.csrfToken, email: fixture.admin.email, password,
     organizationSlug: fixture.organization.slug, callbackUrl: baseUrl + "/tickets", json: "true",
   } })
-  if (!login.ok()) throw new Error("AUTH_SESSION_MISMATCH")
+  if (!login.ok()) throw new Error("AUTH_LOGIN_REJECTED")
   const response = await context.request.get(baseUrl + "/api/auth/session")
   const session = response.ok() ? await response.json() : null
   if (session?.user?.id !== fixture.admin.id || session?.user?.organizationId !== fixture.organization.id || session?.user?.role !== "admin") throw new Error("AUTH_SESSION_MISMATCH")
@@ -133,7 +141,7 @@ export async function captureHistoricalLayout(env = process.env) {
     colorScheme: "light", reducedMotion: "reduce", serviceWorkers: "block",
   })
   try {
-    await authenticate(context, env.SUPPORT_HISTORICAL_BASE_URL, fixture, env.SUPPORT_HISTORICAL_ADMIN_PASSWORD)
+    await authenticateHistorical(context, env.SUPPORT_HISTORICAL_BASE_URL, fixture, env.SUPPORT_HISTORICAL_ADMIN_PASSWORD)
     await context.addCookies([{ name: "NEXT_LOCALE", value: "en", url: env.SUPPORT_HISTORICAL_BASE_URL }])
     await context.addInitScript(({ adminId }) => {
       localStorage.setItem("theme", "light")
@@ -176,6 +184,7 @@ export async function captureHistoricalLayout(env = process.env) {
         await page.screenshot({ path: path.join(output, route.id + ".png"), fullPage: false, animations: "disabled" })
         report.results.push({
           id: route.id, path: route.path, status: "captured", semanticFixture: true,
+          representation: stage === "before" ? route.beforeRepresentation : route.afterRepresentation,
           ...last, primaryWorkTop: historicalMedian(samples.map((sample) => sample.primaryWorkTop)),
           primaryWorkTopSamples: samples.map((sample) => sample.primaryWorkTop),
           primaryLabelTop: historicalMedian(samples.map((sample) => sample.primaryLabelTop)),
@@ -189,11 +198,13 @@ export async function captureHistoricalLayout(env = process.env) {
         await page.close()
       }
     }
+  } catch (error) {
+    report.bootstrapFailureCode = historicalFailureCode(error)
   } finally {
     await context.close()
     await browser.close()
   }
-  if (report.results.every((result) => result.status === "captured")) report.status = "captured"
+  if (report.results.length === HISTORICAL_LAYOUT_ROUTES.length && report.results.every((result) => result.status === "captured")) report.status = "captured"
   if (report.status === "captured") validateHistoricalEvidence(report, stage, controlSha)
   await writeFile(path.join(output, "evidence.json"), JSON.stringify(report, null, 2) + "\n")
   await writeFile(path.join(output, "evidence.md"), [
@@ -210,5 +221,5 @@ export async function captureHistoricalLayout(env = process.env) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  captureHistoricalLayout().catch(() => { console.error("Historical layout capture failed; inspect the bounded collection receipt"); process.exitCode = 1 })
+  captureHistoricalLayout().catch((error) => { console.error("Historical layout capture failed: " + historicalFailureCode(error)); process.exitCode = 1 })
 }

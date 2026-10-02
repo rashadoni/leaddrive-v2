@@ -86,13 +86,13 @@ jobs:
       CI: "true"
       DATABASE_URL: postgresql://postgres:ephemeral-only@127.0.0.1:5432/support_ux_historical_layout
       ADMIN_DATABASE_URL: postgresql://postgres:ephemeral-only@127.0.0.1:5432/support_ux_historical_layout
-      NEXTAUTH_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
-      APP_URL: http://127.0.0.1:3000
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      APP_URL: http://localhost:3000
       AUTH_TRUST_HOST: "true"
       TZ: UTC
       NEXT_TELEMETRY_DISABLED: "1"
-      SUPPORT_HISTORICAL_BASE_URL: http://127.0.0.1:3000
+      SUPPORT_HISTORICAL_BASE_URL: http://localhost:3000
       SUPPORT_HISTORICAL_STAGE: ${{ matrix.stage }}
       SUPPORT_HISTORICAL_SOURCE_SHA: ${{ matrix.stage == 'before' && '76994875a251e0956b56f8d300625b97eb098661' || needs.prepare.outputs.after_sha }}
       SUPPORT_HISTORICAL_CONTROL_SHA: ${{ needs.prepare.outputs.after_sha }}

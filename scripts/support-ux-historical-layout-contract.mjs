@@ -2,10 +2,10 @@ import { createHash } from "node:crypto"
 
 export const HISTORICAL_LAYOUT_BEFORE_SHA = "76994875a251e0956b56f8d300625b97eb098661"
 export const HISTORICAL_LAYOUT_ROUTES = Object.freeze([
-  { id: "service-desk", path: "/tickets", file: "src/app/(dashboard)/tickets/page.tsx", beforeBlob: "530f6feb66b4fae8e112fffc6159e5de58da5d2a" },
-  { id: "agent-desktop", path: "/support/agent-desktop", file: "src/app/(dashboard)/support/agent-desktop/page.tsx", beforeBlob: "bb5fd8d85e7e7b8ae6c56145e009e6609db3b884" },
-  { id: "support-entitlements", path: "/support/entitlements", file: "src/app/(dashboard)/support/entitlements/page.tsx", beforeBlob: "9d9fd0d53abf28e2cd963c951063684a2c1fc61f" },
-  { id: "agent-calendar", path: "/support/calendar", file: "src/app/(dashboard)/support/calendar/page.tsx", beforeBlob: "186ca992c82cb3b3fa79871072d28a005d69293f" },
+  { id: "service-desk", path: "/tickets", file: "src/app/(dashboard)/tickets/page.tsx", beforeBlob: "530f6feb66b4fae8e112fffc6159e5de58da5d2a", beforeRepresentation: "matched-ticket-row", afterRepresentation: "matched-ticket-priority-action-strip" },
+  { id: "agent-desktop", path: "/support/agent-desktop", file: "src/app/(dashboard)/support/agent-desktop/page.tsx", beforeBlob: "bb5fd8d85e7e7b8ae6c56145e009e6609db3b884", beforeRepresentation: "matched-open-case-row", afterRepresentation: "matched-next-case-action-panel" },
+  { id: "support-entitlements", path: "/support/entitlements", file: "src/app/(dashboard)/support/entitlements/page.tsx", beforeBlob: "9d9fd0d53abf28e2cd963c951063684a2c1fc61f", beforeRepresentation: "matched-support-term-card", afterRepresentation: "matched-entitlement-row" },
+  { id: "agent-calendar", path: "/support/calendar", file: "src/app/(dashboard)/support/calendar/page.tsx", beforeBlob: "186ca992c82cb3b3fa79871072d28a005d69293f", beforeRepresentation: "matched-timed-ticket-node", afterRepresentation: "matched-next-item-action-button" },
 ])
 export const HISTORICAL_LAYOUT_CONTROLS = Object.freeze({
   role: "admin", locale: "en", theme: "light", timezone: "UTC",
@@ -24,7 +24,7 @@ const failureCodes = new Set([
   "ENTITLEMENT_FIXTURE_MISMATCH", "CALENDAR_FIXTURE_MISMATCH", "ROUTE_INVALID", "GEOMETRY_INVALID",
   "MATCHED_CONTROLS_INVALID", "ROUTE_COVERAGE_INVALID", "CAPTURE_ENVIRONMENT_INVALID",
   "PRIMARY_ITEM_AMBIGUOUS", "PRIMARY_ITEM_MISSING", "EPHEMERAL_PASSWORD_REQUIRED", "EMPTY_DATABASE_REQUIRED",
-  "AUTH_SESSION_MISMATCH", "PAGE_UNAVAILABLE", "DATA_UNAVAILABLE", "RUNTIME_FAILURE", "CAPTURE_INCOMPLETE",
+  "AUTH_CSRF_UNAVAILABLE", "AUTH_LOGIN_REJECTED", "AUTH_SESSION_MISMATCH", "PAGE_UNAVAILABLE", "DATA_UNAVAILABLE", "RUNTIME_FAILURE", "CAPTURE_INCOMPLETE",
 ])
 
 export function historicalFailureCode(error) {
@@ -99,7 +99,7 @@ export function assertHistoricalSeedEnvironment(env) {
 }
 
 export function assertHistoricalCaptureEnvironment(env) {
-  if (env.CI !== "true" || env.GITHUB_ACTIONS !== "true" || env.RUNNER_ENVIRONMENT !== "github-hosted" || env.SUPPORT_HISTORICAL_BASE_URL !== "http://127.0.0.1:3000") {
+  if (env.CI !== "true" || env.GITHUB_ACTIONS !== "true" || env.RUNNER_ENVIRONMENT !== "github-hosted" || env.SUPPORT_HISTORICAL_BASE_URL !== "http://localhost:3000") {
     throw new Error("EPHEMERAL_CAPTURE_REQUIRED")
   }
   const stage = requireHistoricalStage(env.SUPPORT_HISTORICAL_STAGE)
@@ -162,6 +162,7 @@ export function validateHistoricalEvidence(report, stage, afterSha) {
   for (const result of report.results) {
     const route = HISTORICAL_LAYOUT_ROUTES.find((item) => item.id === result.id)
     if (!route || seen.has(result.id) || result.path !== route.path || result.status !== "captured" || result.semanticFixture !== true) throw new Error("ROUTE_COVERAGE_INVALID")
+    if (result.representation !== (stage === "before" ? route.beforeRepresentation : route.afterRepresentation)) throw new Error("GEOMETRY_INVALID")
     seen.add(result.id)
     if (result.viewportWidth !== 1366 || result.viewportHeight !== 768 || result.maxTouchPoints !== 0 || result.documentLang !== "en" || result.darkTheme !== false || result.reducedMotion !== true || result.scrollTop !== 0 || result.documentScrollTop !== 0) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
     if (result.primaryWorkTop !== historicalMedian(result.primaryWorkTopSamples) || result.primaryLabelTop !== historicalMedian(result.primaryLabelTopSamples)) throw new Error("GEOMETRY_INVALID")

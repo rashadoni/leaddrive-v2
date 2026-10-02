@@ -60,12 +60,9 @@ export async function seedHistoricalLayout(prisma, fixture, password) {
 async function main() {
   assertHistoricalSeedEnvironment(process.env)
   const fixture = historicalFixture(process.env.SUPPORT_HISTORICAL_ANCHOR)
-  const url = new URL(process.env.DATABASE_URL)
-  url.searchParams.set("connection_limit", "1")
-  const { PrismaClient } = await import("@prisma/client")
-  const prisma = new PrismaClient({ datasourceUrl: url.toString() })
+  const { makeScriptPrisma } = await import("../scripts/_rls.mjs")
+  const prisma = await makeScriptPrisma()
   try {
-    await prisma.$executeRaw`SELECT set_config('app.rls_bypass', 'on', false)`
     await seedHistoricalLayout(prisma, fixture, process.env.SUPPORT_HISTORICAL_ADMIN_PASSWORD)
     await writeFile(".support-ux-historical-control/fixture.json", JSON.stringify(fixture) + "\n", { mode: 0o600 })
     console.log("Matched synthetic historical layout fixture created: 50 assigned tickets, one entitlement")

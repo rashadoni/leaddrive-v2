@@ -954,3 +954,49 @@ bounded vision receipt. Precise stopping point: corrected Calendar and exact
 historical runtime builds plus protected PR gates are running in GitHub.
 Next action: inspect their real artifacts/results; selected tenant, activation
 and real telemetry remain necessary before counting seven full local days.
+
+
+## 2026-10-03 — Protected gate and measurement-controller corrections
+
+- Exact43440b2dd PR run37061923404: typecheck PASS (both existing blocking
+  guards), static-checks FAIL. Its one newly failing file is the RLS bypass
+  classifier: the new isolated fixture directly created PrismaClient. Replaced
+  that with the runtime's existing scripts/_rls.mjs factory; unchanged test
+  baseline, authorization and database fence.41/41 narrow cases across the
+  historical/controller, RLS classifier and Calendar API now PASS; scoped
+  historical ESLint PASS. Full protected checks must run on the corrected SHA.
+- Historical run37061944771's original exact runtime build SUCCESS, but its
+  capture failed before report/artifact creation. Cancelled the not-yet-built
+  after job to avoid wasted work on the incomplete controller. The old fixed
+  error message cannot retrospectively identify the exception phase. Independent
+  investigation proved a concrete transport flaw: exact Playwright1.58.2
+  suppresses production Secure-cookie on HTTP127.0.0.1 but permits localhost.
+  A tiny pure-cookie utility probe confirms0 versus1 admitted cookie. Use
+  localhost coherently for browser/auth/App URLs and capture/clock guards;
+  server/DB binding remains127.0.0.1. No auth source, Secure-cookie or TTL
+  weakening. Add allowlisted bootstrap/auth failure codes and a bounded
+  incomplete receipt so an early failure cannot silently erase diagnosis.
+- Before ANY historical position/percentage was captured, independent semantic
+  audit found the after locators excluded earlier actionable representations of
+  the same fixture ticket. Align them with the already frozen first-matched-item
+  metric: Service Desk original row -> priority action strip; Calendar original
+  timed node -> next-item button; Agent Desktop original row -> next-case panel;
+  Entitlements original card -> row. Require matching specific identity and
+  unique container/label, record representation and reject a generic wrapper.
+  Generic summaries/filters and later duplicate row/grid copies are ineligible.
+  Old locators, fixture, source identities, clock and35% per-page target stay
+  fixed. No result-driven threshold or metric-definition change occurred.
+- Corrected Calendar run37061949081 completed SUCCESS on43440b2dd; retained
+  artifact11252200158,181,526 bytes,digest
+  sha256:7ff175128f5b06fab1245bf2c9335889351053d938dc86edcb89217a0aae0553.
+  Actual two-cell report and screenshots still require inspection. New
+  controller changes do not alter the Calendar page/API source; preserve that
+  valid exact-source receipt rather than replaying a completed capture.
+
+Current result/status: viewport/vision accepted; Calendar capture green;
+historical comparison unmeasured, production observation unverified.
+Last completed action: corrected the real RLS/transport/selector defects and
+passed41 narrow cases without weakening any gate. Precise stopping point:
+checkpoint/publish the corrected controller, inspect Calendar's actual artifact.
+Next action: new exact-source protected checks and repaired historical capture;
+retain the pending authorized tenant/activation/telemetry requirement.
