@@ -546,3 +546,26 @@
   Last action: primary artifact/source reconciliation and probe correction.
   Precise stopping point: replacement checkpoint/review/CI. Next action:
   execute the corrected six browser cases and real audit/RLS evidence in CI.
+
+
+## 2026-10-02 — corrected data-plane exact-head review GREEN
+
+- Independent complete review exact2438f1851acc1200fc967fd9f3044714ac2770e6
+  /base88cd6fcc GREEN P0=0 P1=0 P2=0 P3=0. Reviewer explicitly acknowledged
+  the earlier delegate miss and directly reconciled corrected probes/SQL with
+  actual reversal writer/replay and Prisma MtmAuditLog; no prior audit-coverage
+  conclusion carried forward. Runtime source remains unchanged.
+- Full6paths/101,270bytes/SHA256
+  d1c76a0cc9b360958c15a51fcce16a1d4594a9f1d9e4370dae1ddd13120a6b83;
+  non-doc3paths/35,452bytes/SHA256
+  f784f17e4ced52d62ca464b1d884e8ca7943fbcbfe13bf28e65c04111a90cbe0.
+  Three document prefixes append-only; historical failure/superseding records
+  retained. Current role/RLS, populated fail-closed probes, exact audit/state
+  comparison and finished-refresh waits verified independently.
+- New exact browser37048246167 and mandatory PR37048246131 pending;
+  runner37048246115 SUCCESS. No actual browser case PASS credited yet.
+  This append is local after published2438. Last action: corrected complete
+  review. Precise stopping point: hosted browser and mandatory gate execution.
+  Next action: inspect primary artifacts/logs, fix actual failures, then
+  fresh-main protected merge/normal deploy/public exact-SHA proof. Progress
+  unchanged81/161,14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL.
