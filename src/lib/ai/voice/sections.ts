@@ -23,11 +23,15 @@ import { navItemPathname, navItems, type NavItem } from "@/lib/nav-items"
  *    by the outside world, so what it can be talked into is attacker-adjacent;
  *  - /billing/**, /marketplace — payment surfaces;
  *  - /loyalty/pos — the point-of-sale till, the one screen with a camera grant.
+ *  - /mtm/access — permission grants for the field module: who is given, or
+ *    loses, whose clients and routes. The same reason as user administration
+ *    under /settings, filed under Route & Field because that is where an admin
+ *    looks for it.
  *
  * The agent still names a KEY, never a path: the mapping lives here, so a
  * message body saying "open /settings/api-keys" has nothing to bind to.
  */
-const DENY_PREFIXES = ["/admin", "/billing", "/loyalty/pos"]
+const DENY_PREFIXES = ["/admin", "/billing", "/loyalty/pos", "/mtm/access"]
 const DENY_GROUP = "Settings"
 
 const SAFE_SOCIAL_MONITORING_VIEWS = new Set([

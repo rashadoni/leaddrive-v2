@@ -28,6 +28,7 @@ import {
   // Phase 7 Industry Cloud icons
   HeartPulse, Umbrella, Landmark, Tv2, Flame,
   ClipboardPlus, FileBadge, FileCheck, Radio, PackageOpen,
+  KeyRound,
 } from "lucide-react"
 
 export interface NavItem {
@@ -332,6 +333,10 @@ export const navItems: NavItem[] = [
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/leaderboard", icon: Trophy, tKey: "mtmLeaderboard", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/activity", icon: Activity, tKey: "mtmActivity", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/reports", icon: FileBarChart, tKey: "mtmReports", group: "Route & Field" },
+  // Who works in the module and as what: the employee card behind each login.
+  // Admin-only like the endpoints it calls — linking a card to a login is how a
+  // person is given (or takes) a field scope.
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/access", icon: KeyRound, tKey: "mtmAccess", group: "Route & Field", allowedRoles: ADMIN_ROLES },
   { module: "mtm", href: "/mtm/settings", icon: Settings, tKey: "mtmSettings", group: "Route & Field" },
   // Workforce is a first-class capability, not a Route & Field child. It has
   // no `module` on purpose: a tenant can run timekeeping with no routes.

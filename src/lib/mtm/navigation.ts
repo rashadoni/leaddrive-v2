@@ -11,6 +11,7 @@ import {
   ClipboardList,
   FileBarChart,
   FileBadge,
+  KeyRound,
   MapPin,
   PackageOpen,
   Radio,
@@ -42,6 +43,8 @@ export interface MtmToolNavigationItem {
   navKey: string
   /** Organization switch that hides this tool when explicitly false. */
   orgSetting?: NavOrgSettingKey
+  /** Offered to a CRM administrator only — the page's API refuses anyone else. */
+  adminOnly?: boolean
 }
 
 export interface MtmToolNavigationGroup {
@@ -105,6 +108,7 @@ export const MTM_TOOL_GROUPS = [
   {
     key: "administration",
     items: [
+      { href: "/mtm/access", icon: KeyRound, navKey: "mtmAccess", adminOnly: true },
       { href: "/mtm/settings", icon: Settings, navKey: "mtmSettings" },
     ],
   },
@@ -116,11 +120,14 @@ export const MTM_TOOL_GROUPS = [
  */
 export function visibleMtmToolGroups(
   orgSettings: Partial<Record<NavOrgSettingKey, boolean>> = {},
+  role?: string | null,
 ): MtmToolNavigationGroup[] {
+  const admin = role === "admin" || role === "superadmin"
   return MTM_TOOL_GROUPS
     .map((group) => ({
       key: group.key,
-      items: (group.items as readonly MtmToolNavigationItem[]).filter((item) => !item.orgSetting || orgSettings[item.orgSetting] !== false),
+      items: (group.items as readonly MtmToolNavigationItem[]).filter((item) =>
+        (!item.orgSetting || orgSettings[item.orgSetting] !== false) && (!item.adminOnly || admin)),
     }))
     .filter((group) => group.items.length > 0)
 }
