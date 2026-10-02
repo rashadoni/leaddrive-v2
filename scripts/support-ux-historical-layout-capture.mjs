@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process"
+import { Buffer } from "node:buffer"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import {
   HISTORICAL_LAYOUT_CONTROLS, HISTORICAL_LAYOUT_ROUTES,
-  assertHistoricalCaptureEnvironment, assertHistoricalSemanticData,
-  historicalFailureCode, historicalFixtureDigest, historicalMedian, validateHistoricalEvidence,
+  assertHistoricalCaptureEnvironment, assertHistoricalDatabaseEnvironment, assertHistoricalSemanticData,
+  historicalFailureCode, historicalFixtureDigest, historicalMedian, historicalNavigationPreferencesMatch, validateHistoricalEvidence,
 } from "./support-ux-historical-layout-contract.mjs"
 
 export function historicalDataPath(id, stage) {
@@ -16,10 +17,24 @@ export function historicalDataPath(id, stage) {
   throw new Error("ROUTE_INVALID")
 }
 
-export function historicalRequestDisposition(url, method, baseUrl) {
+export function historicalRequestDisposition(url, method, baseUrl, postData, fixture) {
   const target = new URL(url)
-  if (target.origin !== baseUrl) return "external"
-  return new Set(["GET", "HEAD"]).has(method) ? "read" : "write"
+  if (target.origin !== baseUrl || target.username || target.password) return "external"
+  if (new Set(["GET", "HEAD"]).has(method)) return "read"
+  if (target.search || target.hash || typeof postData !== "string") return "write"
+  const paths = new Set(HISTORICAL_LAYOUT_ROUTES.map((route) => route.path))
+  try {
+    if (method === "POST" && target.pathname === "/api/v1/public/csp-report" && Buffer.byteLength(postData, "utf8") <= 16384) {
+      const body = JSON.parse(postData)
+      const document = new URL(body?.["csp-report"]?.["document-uri"])
+      if (document.origin === baseUrl && !document.username && !document.password && !document.search && !document.hash && paths.has(document.pathname)) return "cspReport"
+    }
+    if (method === "PUT" && target.pathname === "/api/v1/users/me/preferences" && Buffer.byteLength(postData, "utf8") <= 2048 && fixture) {
+      const body = JSON.parse(postData)
+      if (historicalNavigationPreferencesMatch(body, fixture)) return "navigationPreferences"
+    }
+  } catch { /* Malformed/unknown bodies retain the strict write block. */ }
+  return "write"
 }
 
 // Both exact runtimes use the same explicitly unsupported service-worker
@@ -38,6 +53,7 @@ const diagnosticPaths = new Set([
   "/api/v1/calls/active", "/api/v1/voip/capabilities", "/api/v1/web-chat/sessions/unread-count",
   "/api/v1/mtm/pharmacy-promotion-executions/sync-context", "/api/v1/public/csp-report",
   "/api/v1/users/me", "/api/v1/users/me/preferences", "/api/v1/users/me/notification-preferences", "/api/v1/notifications",
+  "/api/v1/ai/voice/access",
   "/favicon.ico", "/manifest.json", "/manifest.webmanifest",
 ])
 
@@ -59,6 +75,36 @@ function incrementDiagnostic(diagnostics, key) {
   if (Object.hasOwn(diagnostics, key)) diagnostics[key] += 1
   else if (Object.keys(diagnostics).length < 24) diagnostics[key] = 1
   else diagnostics.DIAGNOSTIC_LIMIT = (diagnostics.DIAGNOSTIC_LIMIT ?? 0) + 1
+}
+
+export async function completeHistoricalBackgroundRequest(request, kind) {
+  try {
+    const response = await request.response()
+    return response?.status() === (kind === "cspReport" ? 204 : 200) && await response.finished() === null
+  } catch { return false }
+}
+
+async function waitHistoricalBackgroundRequests(completions) {
+  let timeout
+  try {
+    return await Promise.race([
+      Promise.all(completions).then((results) => results.every(Boolean)),
+      new Promise((resolve) => { timeout = setTimeout(() => resolve(false), 5000) }),
+    ])
+  } finally { clearTimeout(timeout) }
+}
+
+export async function verifyHistoricalBackgroundPersistence(prisma, fixture) {
+  historicalFixtureDigest(fixture)
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SET TRANSACTION READ ONLY`
+    const userPreferenceRows = await tx.userPreference.count()
+    const pref = await tx.userPreference.findUnique({ where: { userId: fixture.admin.id }, select: { userId: true, organizationId: true, favorites: true, recents: true } })
+    const ticketCount = await tx.ticket.count({ where: { organizationId: fixture.organization.id, assignedTo: fixture.admin.id } })
+    const entitlementCount = await tx.entitlement.count({ where: { organizationId: fixture.organization.id } })
+    if (userPreferenceRows !== 1 || pref?.userId !== fixture.admin.id || pref?.organizationId !== fixture.organization.id || !historicalNavigationPreferencesMatch({ favorites: pref?.favorites, recents: pref?.recents }, fixture) || ticketCount !== fixture.ticketCount || entitlementCount !== 1) throw new Error("BACKGROUND_PERSISTENCE_MISMATCH")
+    return { status: "verified", userPreferenceRows, selfOwned: true, validPreferences: true, ticketCount, entitlementCount }
+  }, { timeout: 5000 })
 }
 
 export function finalizeHistoricalLayoutReport(report, stage, controlSha) {
@@ -174,6 +220,7 @@ async function measureGeometry(page, primary, label) {
 
 export async function captureHistoricalLayout(env = process.env) {
   const { stage, sourceSha, controlSha } = assertHistoricalCaptureEnvironment(env)
+  assertHistoricalDatabaseEnvironment(env)
   const fixture = JSON.parse(await readFile(".support-ux-historical-control/fixture.json", "utf8"))
   const fixtureDigest = historicalFixtureDigest(fixture)
   if (fixture.anchor !== env.SUPPORT_HISTORICAL_ANCHOR) throw new Error("FIXTURE_CLOCK_INVALID")
@@ -208,15 +255,33 @@ export async function captureHistoricalLayout(env = process.env) {
     await context.addInitScript(initializeHistoricalBrowserState, { adminId: fixture.admin.id })
     for (const route of HISTORICAL_LAYOUT_ROUTES) {
       const failures = { external: 0, write: 0, page: 0, console: 0, response: 0 }
+      const backgroundWrites = { cspReport: 0, navigationPreferences: 0 }
+      const backgroundWriteSamples = []
+      const backgroundResponseSamples = []
+      const backgroundCompletions = []
+      let sampleBackgroundWrites
+      let sampleBackgroundResponses
       const diagnostics = {}
       const page = await context.newPage()
       try {
         await page.clock.install({ time: new Date(fixture.anchor) })
         await page.route("**/*", async (requestRoute) => {
           const request = requestRoute.request()
-          const disposition = historicalRequestDisposition(request.url(), request.method(), env.SUPPORT_HISTORICAL_BASE_URL)
+          const disposition = historicalRequestDisposition(request.url(), request.method(), env.SUPPORT_HISTORICAL_BASE_URL, request.postData(), fixture)
+          if (Object.hasOwn(backgroundWrites, disposition)) {
+            backgroundWrites[disposition] += 1
+            if (sampleBackgroundWrites) sampleBackgroundWrites[disposition] += 1
+            if (sampleBackgroundWrites?.[disposition] === 1 && backgroundWrites[disposition] <= HISTORICAL_LAYOUT_CONTROLS.sampleCount) {
+              const responseSample = sampleBackgroundResponses
+              backgroundCompletions.push(completeHistoricalBackgroundRequest(request, disposition).then((complete) => {
+                if (complete) responseSample[disposition] += 1
+                return complete
+              }))
+              await requestRoute.continue(); return
+            }
+          }
           if (disposition !== "read") {
-            failures[disposition] += 1
+            failures[disposition === "external" ? "external" : "write"] += 1
             incrementDiagnostic(diagnostics, historicalNetworkDiagnostic(request.url(), request.method(), 0, env.SUPPORT_HISTORICAL_BASE_URL))
             await requestRoute.abort(); return
           }
@@ -240,6 +305,10 @@ export async function captureHistoricalLayout(env = process.env) {
         })
         const samples = []
         for (let sample = 0; sample < HISTORICAL_LAYOUT_CONTROLS.sampleCount; sample += 1) {
+          sampleBackgroundWrites = { cspReport: 0, navigationPreferences: 0 }
+          sampleBackgroundResponses = { cspReport: 0, navigationPreferences: 0 }
+          backgroundWriteSamples.push(sampleBackgroundWrites)
+          backgroundResponseSamples.push(sampleBackgroundResponses)
           const dataPromise = page.waitForResponse((response) => new URL(response.url()).pathname === historicalDataPath(route.id, stage) && response.request().method() === "GET", { timeout: 30000 }).catch(() => null)
           const navigation = await page.goto(route.path, { waitUntil: "domcontentloaded", timeout: 60000 })
           if (!navigation?.ok()) throw new Error("PAGE_UNAVAILABLE")
@@ -257,6 +326,7 @@ export async function captureHistoricalLayout(env = process.env) {
           const serviceWorkerCount = context.serviceWorkers().length
           if (geometry.serviceWorkerAvailable !== false || serviceWorkerCount !== 0) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
           samples.push({ ...geometry, serviceWorkerCount })
+          if (!await waitHistoricalBackgroundRequests(backgroundCompletions)) throw new Error("BACKGROUND_REQUEST_INCOMPLETE")
         }
         if (Object.values(failures).some((value) => value > 0)) throw new Error("RUNTIME_FAILURE")
         const last = samples.at(-1)
@@ -264,7 +334,7 @@ export async function captureHistoricalLayout(env = process.env) {
         report.results.push({
           id: route.id, path: route.path, status: "captured", semanticFixture: true,
           representation: stage === "before" ? route.beforeRepresentation : route.afterRepresentation,
-          failures, diagnostics,
+          failures, backgroundWrites, backgroundWriteSamples, backgroundResponseSamples, diagnostics,
           ...last, primaryWorkTop: historicalMedian(samples.map((sample) => sample.primaryWorkTop)),
           primaryWorkTopSamples: samples.map((sample) => sample.primaryWorkTop),
           primaryLabelTop: historicalMedian(samples.map((sample) => sample.primaryLabelTop)),
@@ -273,7 +343,7 @@ export async function captureHistoricalLayout(env = process.env) {
           screenshot: route.id + ".png",
         })
       } catch (error) {
-        report.results.push({ id: route.id, path: route.path, status: "failed", code: historicalFailureCode(error), failures, diagnostics })
+        report.results.push({ id: route.id, path: route.path, status: "failed", code: historicalFailureCode(error), failures, backgroundWrites, backgroundWriteSamples, backgroundResponseSamples, diagnostics })
       } finally {
         await page.close()
       }
@@ -283,6 +353,20 @@ export async function captureHistoricalLayout(env = process.env) {
   } finally {
     await context.close()
     await browser.close()
+  }
+  if (report.results.length === HISTORICAL_LAYOUT_ROUTES.length && report.results.every((result) => result.status === "captured" && Object.values(result.failures).every((value) => value === 0))) {
+    let prisma
+    try {
+      assertHistoricalDatabaseEnvironment(process.env)
+      if (env.DATABASE_URL !== process.env.DATABASE_URL) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
+      const { makeScriptPrisma } = await import("../scripts/_rls.mjs")
+      prisma = await makeScriptPrisma()
+      report.backgroundPersistenceProof = await verifyHistoricalBackgroundPersistence(prisma, fixture)
+    } catch (error) {
+      report.backgroundPersistenceFailureCode = historicalFailureCode(error)
+    } finally {
+      try { await prisma?.$disconnect() } catch { report.backgroundPersistenceFailureCode = "BACKGROUND_PERSISTENCE_MISMATCH" }
+    }
   }
   finalizeHistoricalLayoutReport(report, stage, controlSha)
   await writeFile(path.join(output, "evidence.json"), JSON.stringify(report, null, 2) + "\n")

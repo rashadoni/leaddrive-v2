@@ -1138,3 +1138,101 @@ ancestry race and verify bounded source admission. Precise stopping point:
 checkpoint/publish its fix and dispatch the new exact-source measurement.
 Next action: inspect actual bounded endpoint diagnosis and measurements;
 production tenant/activation/telemetry are still pending, no new release done.
+
+
+## 2026-10-03 — Corrected source-bound measurement underway
+
+- Publishedbdbe01b3a45046caa64b0884d895c29eac431d25 to existing PR#530.
+  Independent review found no blocking issue in the shared-base provenance
+  guard or retained late-failure receipt; production guards remain unchanged.
+- New necessary historical dispatch37068754890 and full PR37068706500 are
+  running on that exact SHA. Runner-policy37068706517 and secret scan37068706487
+  completed PASS. No exact historical measurement or remaining PR conclusion
+  is yet admitted; no completed dimension/Calendar capture was repeated.
+- Current task remains190/191 and15 DONE/2 IN_PROGRESS in the literal matrix.
+  Requested production-tenant/activation/telemetry clarification is still
+  unanswered. No tenant was guessed, flag activated, week invented, main
+  merge or new production deployment performed by this task.
+
+- Independent documentation self-audit PASS:191 unique/190 checked; only
+  ROL-006 open;17 acceptance rows=15 DONE/2 IN_PROGRESS. Original active-journal
+  prefix fromc3e90d86f5dba30ac0729fcd72bc87cdc411f6b5 remains byte-identical
+  (30,183 bytes); the reference Support journal is entirely unchanged.
+- Reviewer independently read retained JSON66/66 viewport,336/336 vision and
+  2/2 corrected Calendar receipts, opened both Calendar PNGs, and verified
+  current Calendar page/API blob identity. No unsupported production100% claim.
+  Three superseded status passages now point to acceptedOct3 evidence; the
+  performance contract explicitly distinguishes one-sample coverage from p75.
+  Tenant/activation/telemetry/seven full days and2026-10-08 baseline review
+  remain required. These final documentation corrections stay local while
+  exactbdbe01b3a hosted measurement/required gates run.
+
+
+## 2026-10-03 — Current candidate required checks complete
+
+- Exactbdbe01b3a45046caa64b0884d895c29eac431d25 required PR gates PASS:
+  run37068706500 pr-scope/static-checks/typecheck SUCCESS,
+  runner-policy37068706517 SUCCESS and scan37068706487 SUCCESS. Both existing
+  blocking TypeScript guards and the unchanged test baseline passed. Optional
+  separate hosted production-build job was SKIPPED by scope; original exact
+  historical runtime production build remains running in37068754890.
+- No merge/deploy or production flag mutation occurred. Historical comparison
+  remains PENDING and the seven-full-day/tenant/telemetry gate remains open.
+  Final documentation corrections are local, preserving exact hosted candidate
+  identity and avoiding a docs-only replay of required checks.
+
+
+## 2026-10-03 — Actual background requests confirmed; bounded source-compatible policy
+
+- Historical37068754890's exact original production build SUCCESS; capture
+  FAIL with retained artifact11253972679,1,743 bytes,digest
+  sha256:c3b4ceb698b2e72cda64444c2c216974d1d238eeb8d1867f9192046b385f6120.
+  Actual four-route receipts each show zero page/external errors;3 CSP-report
+  POST and3 preferences PUT were blocked, plus3 unknown-path GET403;9 console
+  errors are all RESOURCE_FAILURE. No CSP_EVAL error, geometry or accepted
+  screenshot exists. After build was automatically cancelled by fail-fast.
+- Worker compatibility correction therefore removed all page errors and the
+  ancillary module correction removed4 of5 repeated HTTP errors. Independent
+  original-source diagnosis attributes the remaining403 to VoiceOrb's shared
+  GET /api/v1/ai/voice/access: central proxy requires ai before its handler's
+  intended200 allowed:false. Add ai identically to both fixture/control module
+  sets and the diagnostic allowlist. Actual failing pathname remains inferred
+  from source until a retained endpoint receipt; voice pilot org is unset and
+  synthetic actor.voiceEnabled defaults false, so no external voice admission.
+- CSP sink, launcher provider and preferences API are byte-identical in
+  approved original/current runtimes. The strict all-writes-blocked controller
+  manufactured failures for normal shell bookkeeping. Supersede that control
+  with one explicit matched policy before ANY geometry/percentage is admitted:
+  exact same-origin CSP POST<=16KiB UTF-8 with fixed-route document URI and
+  preferences PUT<=2048 bytes with favorites[], <=4 unique fixture-route
+  recents, integer anchor..anchor+600000 timestamps, no identity/extra fields.
+  No user-info/query/hash; max1 of each/sample and3 each/route. All other writes
+  remain blocked. No mocked200/204, console filter, CSP bypass or weakened35%.
+- Separately record accepted bookkeeping and completed response counts. Require
+  actual CSP204/preferences200 plus fully completed responses within a bounded
+  wait before page closure; a cancelled/pending request is not success. Read
+  back the actual isolated DB through the existing RLS-aware factory in a
+  five-second READ ONLY transaction: exactly1 self/org-owned UserPreference
+  with allowed preferences and unchanged50 assigned tickets/1 entitlement.
+  Failed proof/import/disconnect retains an incomplete fixed-code receipt.
+  Validate actual process.env DATABASE_URL immediately before factory use.
+- Independent review identified the completion/UTF-8/actual-env boundaries;
+  corrected them.50 narrow historical/RLS/Calendar cases PASS; scoped ESLint
+  PASS. Preflight15,006MiB available/338GiB disk/zero PSI. No full build/TS/
+  browser on Contabo. All five prior exactbdbe01b3a PR gates remain green;
+  a new necessary candidate must receive its own required gates/capture.
+
+Current result/status:190/191 and15/17 accepted; historical measurement
+remains incomplete, production observation unverified. Last completed action:
+read actual safe diagnosis and verify the matched, bounded bookkeeping policy.
+Precise stopping point: checkpoint/publish corrected controller and collect
+its real hosted runtime receipts. Next action: require real geometry/successful
+background responses; selected tenant/activation/telemetry are still pending.
+
+- Final independent policy re-review found no remaining blocker: endpoint
+  completion helper matches actual installed Playwright semantics, per-sample
+  completed-response counts must equal attempted admitted writes, UTF-8 caps
+  and actual process.env database fence are enforced. No genuine-error filter
+  or payload export. Current historical-only36/36 cases PASS after final
+  cleanup-failure admission guard; combined set50/50 PASS. Calendar page/API
+  and all four Support page blobs remain unchanged in these controller edits.

@@ -17,8 +17,9 @@ export const HISTORICAL_LAYOUT_CONTROLS = Object.freeze({
   clockPolicy: "shared-future-utc-day-browser-server-anchor-with-monotonic-runtime-v1",
   fixtureTimestamps: "ui-significant-created-updated-dates-at-anchor-v1",
   serviceWorkerPolicy: "unsupported-browser-capability-with-context-block-v1",
-  enabledModules: Object.freeze(["crm", "support", "settings", "analytics", "voip", "omnichannel", "mtm"]),
+  enabledModules: Object.freeze(["crm", "support", "settings", "analytics", "voip", "omnichannel", "mtm", "ai"]),
   postReadyObservationMs: 1600,
+  backgroundWritePolicy: "bounded-same-origin-csp-report-and-validated-isolated-self-navigation-preferences-v1",
 })
 const failureCodes = new Set([
   "SOURCE_IDENTITY_INVALID", "STAGE_INVALID", "FIXTURE_CLOCK_INVALID", "FIXTURE_IDENTITY_INVALID",
@@ -28,6 +29,8 @@ const failureCodes = new Set([
   "MATCHED_CONTROLS_INVALID", "ROUTE_COVERAGE_INVALID", "CAPTURE_ENVIRONMENT_INVALID",
   "PRIMARY_ITEM_AMBIGUOUS", "PRIMARY_ITEM_MISSING", "EPHEMERAL_PASSWORD_REQUIRED", "EMPTY_DATABASE_REQUIRED",
   "AUTH_CSRF_UNAVAILABLE", "AUTH_LOGIN_REJECTED", "AUTH_SESSION_MISMATCH", "PAGE_UNAVAILABLE", "DATA_UNAVAILABLE", "RUNTIME_FAILURE", "CAPTURE_INCOMPLETE",
+  "BACKGROUND_PERSISTENCE_MISMATCH",
+  "BACKGROUND_REQUEST_INCOMPLETE",
 ])
 
 export function historicalFailureCode(error) {
@@ -95,11 +98,23 @@ export function assertHistoricalSeedEnvironment(env) {
   if (env.CI !== "true" || env.GITHUB_ACTIONS !== "true" || env.RUNNER_ENVIRONMENT !== "github-hosted" || env.NODE_ENV !== "test" || env.SUPPORT_HISTORICAL_SEED_CONFIRM !== "ephemeral-support-historical-layout-v1") {
     throw new Error("EPHEMERAL_SEED_REQUIRED")
   }
+  assertHistoricalDatabaseEnvironment(env)
+}
+
+export function assertHistoricalDatabaseEnvironment(env) {
   let url
   try { url = new URL(env.DATABASE_URL) } catch { throw new Error("EPHEMERAL_DATABASE_REQUIRED") }
   if (url.protocol !== "postgresql:" || url.hostname !== "127.0.0.1" || url.port !== "5432" || url.pathname !== "/support_ux_historical_layout" || url.search || url.hash) {
     throw new Error("EPHEMERAL_DATABASE_REQUIRED")
   }
+}
+
+export function historicalNavigationPreferencesMatch(body, fixture) {
+  const paths = new Set(HISTORICAL_LAYOUT_ROUTES.map((route) => route.path))
+  const anchor = Date.parse(fixture?.anchor)
+  try {
+    return Number.isFinite(anchor) && Object.keys(body).sort().join(",") === "favorites,recents" && Array.isArray(body.favorites) && body.favorites.length === 0 && Array.isArray(body.recents) && body.recents.length > 0 && body.recents.length <= paths.size && new Set(body.recents.map((recent) => recent.href)).size === body.recents.length && body.recents.every((recent) => Object.keys(recent).sort().join(",") === "at,href" && paths.has(recent.href) && Number.isInteger(recent.at) && recent.at >= anchor && recent.at <= anchor + 600000)
+  } catch { return false }
 }
 
 export function assertHistoricalCaptureEnvironment(env) {
@@ -160,6 +175,7 @@ export function validateHistoricalEvidence(report, stage, afterSha) {
   if (report?.schemaVersion !== 1 || report?.comparisonKind !== "exact-source-runtime" || report?.stage !== stage || report?.sourceSha !== (stage === "before" ? HISTORICAL_LAYOUT_BEFORE_SHA : afterSha) || report?.controlSha !== afterSha || report?.status !== "captured") throw new Error("SOURCE_IDENTITY_INVALID")
   requireHistoricalSha(report.mainSha)
   requireHistoricalSha(report.mainSnapshotSha)
+  if (report.backgroundPersistenceFailureCode !== undefined || report.backgroundPersistenceProof?.status !== "verified" || report.backgroundPersistenceProof?.userPreferenceRows !== 1 || report.backgroundPersistenceProof?.selfOwned !== true || report.backgroundPersistenceProof?.validPreferences !== true || report.backgroundPersistenceProof?.ticketCount !== 50 || report.backgroundPersistenceProof?.entitlementCount !== 1) throw new Error("BACKGROUND_PERSISTENCE_MISMATCH")
   const fixture = historicalFixture(report.anchor)
   if (report.fixtureDigest !== historicalFixtureDigest(fixture) || JSON.stringify(report.controls) !== JSON.stringify(HISTORICAL_LAYOUT_CONTROLS)) throw new Error("MATCHED_CONTROLS_INVALID")
   if (report.serverClockProof?.schemaVersion !== 1 || report.serverClockProof?.clockPolicy !== HISTORICAL_LAYOUT_CONTROLS.clockPolicy || report.serverClockProof?.anchor !== report.anchor || !Number.isFinite(report.serverClockProof?.dateNow) || report.serverClockProof.dateNow < Date.parse(report.anchor) || report.serverClockProof.dateNow > Date.parse(report.anchor) + 1000) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
@@ -170,6 +186,9 @@ export function validateHistoricalEvidence(report, stage, afterSha) {
     if (!route || seen.has(result.id) || result.path !== route.path || result.status !== "captured" || result.semanticFixture !== true) throw new Error("ROUTE_COVERAGE_INVALID")
     if (result.representation !== (stage === "before" ? route.beforeRepresentation : route.afterRepresentation)) throw new Error("GEOMETRY_INVALID")
     if (!result.failures || Object.keys(result.failures).sort().join(",") !== "console,external,page,response,write" || Object.values(result.failures).some((value) => value !== 0)) throw new Error("RUNTIME_FAILURE")
+    if (!result.backgroundWrites || Object.keys(result.backgroundWrites).sort().join(",") !== "cspReport,navigationPreferences" || Object.values(result.backgroundWrites).some((value) => !Number.isInteger(value) || value < 0 || value > HISTORICAL_LAYOUT_CONTROLS.sampleCount)) throw new Error("RUNTIME_FAILURE")
+    if (!Array.isArray(result.backgroundWriteSamples) || result.backgroundWriteSamples.length !== HISTORICAL_LAYOUT_CONTROLS.sampleCount || result.backgroundWriteSamples.some((sample) => !sample || Object.keys(sample).sort().join(",") !== "cspReport,navigationPreferences" || Object.values(sample).some((value) => !Number.isInteger(value) || value < 0 || value > 1)) || Object.keys(result.backgroundWrites).some((key) => result.backgroundWriteSamples.reduce((sum, sample) => sum + sample[key], 0) !== result.backgroundWrites[key])) throw new Error("RUNTIME_FAILURE")
+    if (JSON.stringify(result.backgroundResponseSamples) !== JSON.stringify(result.backgroundWriteSamples)) throw new Error("BACKGROUND_REQUEST_INCOMPLETE")
     seen.add(result.id)
     if (result.viewportWidth !== 1366 || result.viewportHeight !== 768 || result.maxTouchPoints !== 0 || result.serviceWorkerAvailable !== false || result.serviceWorkerCount !== 0 || result.documentLang !== "en" || result.darkTheme !== false || result.reducedMotion !== true || result.scrollTop !== 0 || result.documentScrollTop !== 0) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
     if (result.primaryWorkTop !== historicalMedian(result.primaryWorkTopSamples) || result.primaryLabelTop !== historicalMedian(result.primaryLabelTopSamples)) throw new Error("GEOMETRY_INVALID")

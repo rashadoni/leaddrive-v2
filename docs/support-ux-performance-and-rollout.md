@@ -18,7 +18,8 @@ browser matrices run in the isolated GitHub fixture environment.
 Every evidence result records the exact commit, application mode, tenant canary
 state, data profile, scenario, role, locale, theme and viewport together with:
 
-- three or seven load samples and their p50/p75;
+- one sample for bounded coverage, or three/seven load samples with their
+  recorded p50/p75; single-sample coverage does not establish p75;
 - filter feedback p50/p75, Event Timing p75 and cumulative layout shift;
 - primary-work top, immediately visible actions, rendered rows/cards, top-level
   and bordered-container counts, document size and horizontal overflow;

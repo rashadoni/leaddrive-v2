@@ -96,10 +96,14 @@ the35% target applies independently to all four surfaces. This synthetic
 first-item metric is separate from canonical table/grid position and production
 task-time measurements. Both stages use an explicitly unsupported service-worker
 capability plus context-level blocking and verify no registered workers. The
-synthetic organization enables the same seven modules, including VoIP,
-Omnichannel and MTM required by the shared shell. All application, HTTP, external
-request and unexpected-write counters remain strict; no console/CSP exemption
-was admitted. This measurement does not validate PWA/offline functionality.
+synthetic organization enables the same eight modules, including VoIP,
+Omnichannel, MTM and AI required by shared-shell probes; no voice pilot or
+provider is enabled. All application, HTTP, external
+request and unexpected-write counters remain strict. Source-confirmed CSP
+reporting and self-navigation preferences are separately counted: exact bounded
+same-origin payloads, at most one each per sample, completed real204/200
+responses and read-only DB ownership/cohort proof. All other writes are
+blocked; no console filter or CSP/security-header bypass is admitted. This measurement does not validate PWA/offline functionality.
 
 Heavy capture/build work runs in GitHub CI or the authorized ephemeral worker.
 Additive dimensions must preserve the original default matrix and every
@@ -119,7 +123,7 @@ read-only; selecting them with a mutating journey is rejected before building.
 | --- | --- | --- |
 | First-viewport inspection | `service-desk,agent-desktop,support-entitlements,agent-calendar`; `agent,manager,admin`; AZ/RU/EN; light/dark; `desktop-1366`; typical fixture; standard vision; canary enabled | 66 permitted cells, three samples each; real 1366 x 768 mouse/keyboard capture. [37055428421](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055428421) completed on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; 66/66 PASS; eight screenshots inspected |
 | Color-blind inspection | All scenarios; `admin,customer`; EN; light/dark; desktop/mobile; typical fixture; protanopia/deuteranopia/tritanopia; canary enabled | [37055624370](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370) completed on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; actual 336/336 PASS, one sample per cell; 12 representative screenshots inspected |
-| Historical quantitative comparison | Four daily-work surfaces; matched fixture/role/locale/theme/viewport/data and old/current source identities | Public original `76994875a251e0956b56f8d300625b97eb098661` has four page blobs matching the originals. Runs `37061944771` and `37064741882` did not produce valid capture geometry; after jobs cancelled before building. Shared worker/module controls and safe endpoint diagnostics corrected; next actual runtime/35% results PENDING. Same-source comparison cannot substitute for this baseline |
+| Historical quantitative comparison | Four daily-work surfaces; matched fixture/role/locale/theme/viewport/data and old/current source identities | Public original `76994875a251e0956b56f8d300625b97eb098661` has four page blobs matching the originals. Runs `37061944771` and `37064741882` did not produce valid capture geometry; after jobs cancelled before building. Shared worker/module controls, safe endpoint diagnostics and immutable common-main-base admission corrected. New run `37068754890` on `bdbe01b3a45046caa64b0884d895c29eac431d25` is running; actual runtime/35% results PENDING. Same-source comparison cannot substitute for this baseline |
 | Corrected Calendar semantic receipt | `agent-calendar`; admin/EN; both themes; desktop-1366; typical fixture; standard vision; three samples | New bounded run `37061949081` completed on43440b2dd, two permitted cells PASS; actual report and both screenshots inspected. Header12 equals the selected week day total12; no full matrix replay |
 
 These runs are additive evidence for previously untested dimensions. Record
@@ -154,8 +158,8 @@ manager/AZ/dark and agent/EN/light. In these images the main work surface and
 controls appear within the viewport. Tables/calendar retain their owned
 containment and longer labels can truncate; this review does not assert that
 every label or every record is fully visible at once. The exact first-viewport
-criterion is DONE; separate color-blind and quantitative before/after criteria
-remain open.
+criterion is DONE; the color-vision receipt below closes its separate
+criterion. Quantitative before/after improvement remains open.
 
 ### Calendar semantic correction discovered during screenshot audit
 
@@ -167,7 +171,8 @@ today was outside that week. The correction filters by the actual emitted date
 (`slaDueAt`, or today for undated open tickets), preserving organization fences
 and resolved/closed-date behavior. Four route regression cases pass locally;
 two failed against the preceding implementation. The no-misleading-metrics
-criterion is reopened until corrected source passes CI/browser admission.
+criterion was reopened at discovery; the corrected candidate receipt below
+subsequently closes source/API/UI admission. Production correction is pending.
 The original viewport evidence remains valid for its recorded source; no
 production deployment of this correction has occurred.
 

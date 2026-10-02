@@ -4709,10 +4709,11 @@ primary-work position and same-source visual/performance stability. They do not
 establish a matched pre-redesign before/after reduction for Service Desk, Agent
 Desktop, Entitlements and Calendar. Record compatible before/after source,
 fixture, role and viewport measurements before reporting a percentage; this
-target remains UNVERIFIED. Exact 1366 x 768 evidence is now accepted separately;
-color-blind inspection and comparative measures in section 25 remain explicit
-follow-up acceptance work and are not waived by completing the tracked rollout
-checklist.
+target remains UNVERIFIED. Exact 1366 x 768 evidence is accepted separately.
+Update (2026-10-03): explicit color-vision inspection is accepted by the recorded
+336-cell receipt and 12 inspected images in section 25. Comparative improvement
+and representative production observation remain explicit follow-up acceptance
+work; completing the tracked checklist cannot waive either requirement.
 
 ## 27. Risks and Mitigations
 

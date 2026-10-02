@@ -9,7 +9,7 @@ import {
   chooseHistoricalAnchor, compareHistoricalLayouts, historicalFailureCode, historicalFixture, historicalFixtureDigest,
   historicalMedian, historicalTicketIdentity, validateHistoricalEvidence,
 } from "../../scripts/support-ux-historical-layout-contract.mjs"
-import { authenticateHistorical, finalizeHistoricalLayoutReport, historicalConsoleDiagnostic, historicalDataPath, historicalNetworkDiagnostic, historicalRequestDisposition, initializeHistoricalBrowserState } from "../../scripts/support-ux-historical-layout-capture.mjs"
+import { authenticateHistorical, completeHistoricalBackgroundRequest, finalizeHistoricalLayoutReport, historicalConsoleDiagnostic, historicalDataPath, historicalNetworkDiagnostic, historicalRequestDisposition, initializeHistoricalBrowserState, verifyHistoricalBackgroundPersistence } from "../../scripts/support-ux-historical-layout-capture.mjs"
 import { seedHistoricalLayout } from "../../scripts/support-ux-historical-layout-fixture.mjs"
 
 vi.mock("bcryptjs", () => ({ default: { hash: vi.fn().mockResolvedValue("synthetic-test-hash") } }))
@@ -27,10 +27,14 @@ function evidence(stage: "before" | "after", top = stage === "before" ? 600 : 36
     controlSha: afterSha, mainSha, mainSnapshotSha: mainSha, anchor, fixtureDigest: historicalFixtureDigest(fixture),
     controls: { ...HISTORICAL_LAYOUT_CONTROLS }, status: "captured",
     serverClockProof: { schemaVersion: 1, clockPolicy: HISTORICAL_LAYOUT_CONTROLS.clockPolicy, anchor, dateNow: Date.parse(anchor) },
+    backgroundPersistenceProof: { status: "verified", userPreferenceRows: 1, selfOwned: true, validPreferences: true, ticketCount: 50, entitlementCount: 1 },
     results: HISTORICAL_LAYOUT_ROUTES.map((route: { id: string; path: string; beforeBlob: string; beforeRepresentation: string; afterRepresentation: string }) => ({
       id: route.id, path: route.path, sourcePageBlob: stage === "before" ? route.beforeBlob : "c".repeat(40),
       representation: stage === "before" ? route.beforeRepresentation : route.afterRepresentation,
       failures: { external: 0, write: 0, page: 0, console: 0, response: 0 },
+      backgroundWrites: { cspReport: 3, navigationPreferences: 3 },
+      backgroundWriteSamples: Array.from({ length: 3 }, () => ({ cspReport: 1, navigationPreferences: 1 })),
+      backgroundResponseSamples: Array.from({ length: 3 }, () => ({ cspReport: 1, navigationPreferences: 1 })),
       status: "captured", semanticFixture: true, viewportWidth: 1366, viewportHeight: 768,
       maxTouchPoints: 0, serviceWorkerAvailable: false, serviceWorkerCount: 0, documentLang: "en", darkTheme: false, reducedMotion: true,
       scrollTop: 0, documentScrollTop: 0, primaryWorkTop: top, primaryWorkTopSamples: [top, top, top],
@@ -55,6 +59,58 @@ function calendarBody() {
 }
 
 describe("Matched historical Support layout admission", () => {
+  it("requires endpoint-specific successful responses and completed bodies for every accepted background request", async () => {
+    const request = (status: number, error: Error | null) => ({ response: async () => ({ status: () => status, finished: async () => error }) })
+    await expect(completeHistoricalBackgroundRequest(request(204, null), "cspReport")).resolves.toBe(true)
+    await expect(completeHistoricalBackgroundRequest(request(200, null), "navigationPreferences")).resolves.toBe(true)
+    await expect(completeHistoricalBackgroundRequest(request(200, null), "cspReport")).resolves.toBe(false)
+    await expect(completeHistoricalBackgroundRequest(request(500, null), "navigationPreferences")).resolves.toBe(false)
+    await expect(completeHistoricalBackgroundRequest(request(200, new Error("cancelled")), "navigationPreferences")).resolves.toBe(false)
+    const after = evidence("after")
+    after.results[0].backgroundResponseSamples[0].navigationPreferences = 0
+    expect(() => compareHistoricalLayouts(evidence("before"), after, afterSha)).toThrow("BACKGROUND_REQUEST_INCOMPLETE")
+  })
+
+  it("admits only source-confirmed CSP telemetry and bounded self-navigation writes in the isolated fixture", () => {
+    const base = "http://localhost:3000"
+    const prefs = { favorites: [], recents: [{ href: "/tickets", at: Date.parse(anchor) + 2000 }] }
+    const csp = { "csp-report": { "document-uri": base + "/tickets", "blocked-uri": "eval" } }
+    expect(historicalRequestDisposition(base + "/api/v1/public/csp-report", "POST", base, JSON.stringify(csp), fixture)).toBe("cspReport")
+    expect(historicalRequestDisposition(base + "/api/v1/users/me/preferences", "PUT", base, JSON.stringify(prefs), fixture)).toBe("navigationPreferences")
+    for (const body of [{ ...prefs, userId: "another-actor" }, { ...prefs, favorites: ["/tickets"] }, { ...prefs, recents: [{ href: "/settings", at: Date.parse(anchor) }] }, { ...prefs, recents: [{ href: "/tickets", at: Date.parse(anchor) + 600001 }] }, { ...prefs, recents: [prefs.recents[0], prefs.recents[0]] }]) {
+      expect(historicalRequestDisposition(base + "/api/v1/users/me/preferences", "PUT", base, JSON.stringify(body), fixture)).toBe("write")
+    }
+    expect(historicalRequestDisposition(base + "/api/v1/users/me/preferences?token=SECRET", "PUT", base, JSON.stringify(prefs), fixture)).toBe("write")
+    expect(historicalRequestDisposition(base + "/api/v1/public/csp-report", "POST", base, "x".repeat(16385), fixture)).toBe("write")
+    expect(historicalRequestDisposition(base + "/api/v1/public/csp-report", "POST", base, JSON.stringify({ "csp-report": { "document-uri": base + "/tickets", sample: "я".repeat(8200) } }), fixture)).toBe("write")
+    expect(historicalRequestDisposition(base + "/api/v1/tickets", "PUT", base, JSON.stringify(prefs), fixture)).toBe("write")
+    expect(historicalRequestDisposition("http://SECRET:SECRET@localhost:3000/api/v1/tickets", "GET", base)).toBe("external")
+  })
+
+  it("requires actual single-row self-owned navigation persistence and unchanged business cohort through a read-only transaction", async () => {
+    const pref = { userId: fixture.admin.id, organizationId: fixture.organization.id, favorites: [], recents: [{ href: "/tickets", at: Date.parse(anchor) }] }
+    const tx = { $executeRaw: vi.fn(), userPreference: { count: vi.fn().mockResolvedValue(1), findUnique: vi.fn().mockResolvedValue(pref) }, ticket: { count: vi.fn().mockResolvedValue(50) }, entitlement: { count: vi.fn().mockResolvedValue(1) } }
+    const prisma = { $transaction: vi.fn(async (callback: (value: typeof tx) => Promise<unknown>) => callback(tx)) }
+    await expect(verifyHistoricalBackgroundPersistence(prisma, fixture)).resolves.toMatchObject({ status: "verified", selfOwned: true, ticketCount: 50 })
+    expect(tx.$executeRaw.mock.calls[0][0][0]).toBe("SET TRANSACTION READ ONLY")
+    tx.userPreference.findUnique.mockResolvedValue({ ...pref, organizationId: "another-tenant" })
+    await expect(verifyHistoricalBackgroundPersistence(prisma, fixture)).rejects.toThrow("BACKGROUND_PERSISTENCE_MISMATCH")
+    tx.userPreference.findUnique.mockResolvedValue(pref)
+    tx.ticket.count.mockResolvedValue(49)
+    await expect(verifyHistoricalBackgroundPersistence(prisma, fixture)).rejects.toThrow("BACKGROUND_PERSISTENCE_MISMATCH")
+  })
+
+  it("rejects missing persistence proof or excessive bookkeeping even when geometry and all error counters pass", () => {
+    const absent = evidence("after")
+    absent.backgroundPersistenceProof.selfOwned = false
+    expect(() => compareHistoricalLayouts(evidence("before"), absent, afterSha)).toThrow("BACKGROUND_PERSISTENCE_MISMATCH")
+    const failedCleanup = Object.assign(evidence("after"), { backgroundPersistenceFailureCode: "BACKGROUND_PERSISTENCE_MISMATCH" })
+    expect(() => compareHistoricalLayouts(evidence("before"), failedCleanup, afterSha)).toThrow("BACKGROUND_PERSISTENCE_MISMATCH")
+    const excess = evidence("after")
+    excess.results[0].backgroundWriteSamples[0].cspReport = 2
+    expect(() => compareHistoricalLayouts(evidence("before"), excess, afterSha)).toThrow("RUNTIME_FAILURE")
+  })
+
   it("retains an incomplete artifact after a late screenshot/close error or invalid final environment", () => {
     const late = evidence("after")
     late.results[0].failures.console = 1
@@ -233,7 +289,7 @@ describe("Matched historical Support layout admission", () => {
     }
     expect(tx.entitlement.create.mock.calls[0][0].data.updatedAt.toISOString()).toBe(anchor)
     expect(tx.organization.create.mock.calls[0][0].data.features).toEqual(fixture.enabledModules)
-    expect(tx.organization.create.mock.calls[0][0].data.modules).toEqual({ crm: true, support: true, settings: true, analytics: true, voip: true, omnichannel: true, mtm: true })
+    expect(tx.organization.create.mock.calls[0][0].data.modules).toEqual({ crm: true, support: true, settings: true, analytics: true, voip: true, omnichannel: true, mtm: true, ai: true })
     expect(tx.entitlementMilestoneDefinition.createMany.mock.calls[0][0].data.every((row: { createdAt: Date; updatedAt: Date }) => row.createdAt.toISOString() === anchor && row.updatedAt.toISOString() === anchor)).toBe(true)
   })
 
