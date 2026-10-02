@@ -1,6 +1,6 @@
 # Support Module UX Redesign — Implementation Plan
 
-> **Status:** IMPLEMENTATION AND RELEASE COMPLETE — 190/191 tracked tasks
+> **Status:** RECORDED RELEASES COMPLETE; FINAL ACCEPTANCE IN PROGRESS — 190/191 tracked tasks
 > closed; representative production observation and flag retirement remain open.
 > Exact unverified acceptance claims are identified in section 25.
 > **Original date:** 2026-08-31
@@ -4657,7 +4657,7 @@ Status reflects admitted implementation evidence and recorded release receipts.
 Historical browser runs prove their exact source/fixture matrix; they are not
 fresh production observations. A `DONE` entry does not extend an evidence
 claim to an untested viewport, inspection method or tenant-observation period.
-The two `IN_PROGRESS` rows preserve literal acceptance claims not established
+The remaining `IN_PROGRESS` row preserves the production acceptance claim not established
 by the recorded evidence; they are distinct from the SUPUX checklist count.
 
 | Criterion | Planned implementation | Evidence required | Status |
@@ -4672,7 +4672,7 @@ by the recorded evidence; they are distinct from the SUPUX checklist count.
 | Trustworthy operations | Shared loading/error/success/rollback patterns | Operational/recovery aggregates `36521929861` and `36539937236` plus section receipts | DONE — admitted operational flows |
 | Draft-loss prevention | Template guard and form preservation | Ticket Detail, Templates and portal source/flow receipts, including corrected mobile journeys | DONE — recorded draft/context contracts |
 | Localization parity | Shared dictionaries and no raw enums | Recorded final-branch 23,861-key parity and full 1296-cell AZ/RU/EN matrix; historical counts retain their dates | DONE — recorded source/browser evidence |
-| Reduced cognitive load | Progressive disclosure and task-first layout | Current block/primary-work measurements accepted; matched old/new improvement not established | IN_PROGRESS — implementation accepted; comparative improvement unverified |
+| Reduced cognitive load | Progressive disclosure and task-first layout | Matched original/current production-mode run `37074506981`, comparison artifact `11256639823`: Service Desk67.00%, Agent Desktop60.26%, Entitlements48.34%, Calendar52.99% distance reduction; all four exceed35%; eight before/after images inspected. Block counts are reported separately; no human task-time claim | DONE — exact-source matched layout comparison accepted |
 | No generic AI-dashboard patterns | Remove rainbow KPI/card nesting/side stripes | Deterministic scans and documented representative Foundation/final-comparison manual inspection | DONE — documented source/manual evidence |
 | Distinctive operational hooks | One decision-supporting hook per surface | Section-specific operational journeys and representative screenshot reviews; no user-study claim | DONE — documented operational validation |
 | Complete operational scope | Fifteen destinations plus nested case/portal flows | 28 scenarios, full 1296/1296 matrix and 17 operational reports | DONE — admitted scope coverage |
@@ -4704,7 +4704,7 @@ Before implementation, establish a baseline and then verify:
 Quantitative task-time goals should be added only after baseline usability
 measurements with representative users; do not invent improvement percentages.
 
-Measurement clarification (2026-10-02): the 35% reduction remains a measurable
+Historical clarification (2026-10-02; superseded by the accepted comparison below): the 35% reduction remained a measurable
 target, not a demonstrated result. Accepted captures establish current
 primary-work position and same-source visual/performance stability. They do not
 establish a matched pre-redesign before/after reduction for Service Desk, Agent
@@ -4712,9 +4712,13 @@ Desktop, Entitlements and Calendar. Record compatible before/after source,
 fixture, role and viewport measurements before reporting a percentage; this
 target remains UNVERIFIED. Exact 1366 x 768 evidence is accepted separately.
 Update (2026-10-03): explicit color-vision inspection is accepted by the recorded
-336-cell receipt and 12 inspected images in section 25. Comparative improvement
-and representative production observation remain explicit follow-up acceptance
-work; completing the tracked checklist cannot waive either requirement.
+336-cell receipt and 12 inspected images in section 25. Matched original/current
+run `37074506981` now passes the unchanged35% gate independently on all four
+surfaces, using the pre-reviewed first-actionable-work-item mapping and three
+samples per surface/stage. The [observation protocol](support-ux-production-observation.md#matched-originalcurrent-receipt--accepted-2026-10-03-asiabaku)
+records the formula, geometry, block counts, identities and limits. Literal
+acceptance is now16 DONE /1 IN_PROGRESS. Representative production observation
+and flag retirement remain required; tracked completion stays190/191.
 
 ## 27. Risks and Mitigations
 

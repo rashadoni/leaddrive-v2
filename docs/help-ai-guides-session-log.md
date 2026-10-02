@@ -1303,3 +1303,106 @@ response diagnosis and source-compatible empty-persistence/natural pacing.
 Precise stopping point: publish the corrected controller and collect its new
 hosted exact-source receipts. Next action: require valid geometry and all fresh
 candidate gates; production tenant/activation/telemetry still await owner input.
+
+
+## 2026-10-03 — Natural-pacing candidate published for real historical acceptance
+
+- Independent review found no blocker in the closed-page native cooldown,
+  unchanged public limiter or bounded empty-preferences admission/proof.
+  Checkpoint89576dc676e2bdced2b6a0d231ccdf08e155880a published in existing PR#530.
+  Current41 narrow cases, scoped ESLint and diff check PASS.
+- Fresh required PR37074492841, runner-policy37074492828, scan37074492839 and
+  isolated historical37074506981 are running on that exact candidate. Actual
+  results remain PENDING. No earlier accepted matrix/deployment is rerun.
+  PR description now describes the final current candidate and proof limits.
+
+
+## 2026-10-03 — Real original/current production-mode comparison accepted
+
+- Exact run37074506981 completed SUCCESS on controller/current
+  89576dc676e2bdced2b6a0d231ccdf08e155880a: original76994875 production build,
+  original capture, current production build/capture and unchanged comparison.
+  Shared anchor2026-10-03T08:00:00.000Z, fixture digest
+  c912f206b8a34fa434a678231b2cf8b98b68ffecf4959a87744c41d959ea5401,
+  immutable common-main base420e5be1285a68954d45653d9f0740f212f6adea,
+  main snapshotba2326c270b138b025dc2975b370e90725c69483. No app overlays.
+- Retained before artifact11256806428,606697 bytes, SHA256
+  3760dae4ab15453f8bedf6671e6e4e4fa40b189f57f0d7b40042b5eaa8a193e0;
+  after11257401916,434363 bytes, SHA256
+  7401efd80df3c802454b3357bd56296612c732340f402ead076083a999af4f70;
+  comparison11256639823,2053 bytes, SHA256
+  f86734612222b7304014e410202e479d121353afd5b43a7651171a458393eb8a.
+  Actual files inspected under/tmp/leaddrive-support-historical-37074506981.
+- Frozen first matched actionable-item container distance at zero scroll:
+  Service Desk757.625→250px=67.0021448606%; Agent Desktop460.5→183=60.2605863192%;
+  Entitlements876→452.5=48.3447488584%; Calendar585→275=52.9914529915%.
+  All four independently exceed unchanged35%, three identical samples each.
+  Label tops original/current769.125/269,470.5/220,897/461,589/312.
+  Rendered bordered/rounded blocks37/32,12/17,34/10,112/18 respectively;
+  blocks include offscreen descendants. Agent Desktop increases12→17; no
+  universal block reduction, human task-time or user-study claim.
+- All external/unexpected-write/page/console/HTTP counters0 in both stages;
+  all twelve per-stage samples completed real CSP204/preferences200. Both
+  read-only DB proofs verify1valid self/org-owned preference,50tickets,1term.
+  Root actually opened all eight PNGs. Independent reviewer checked identities,
+  controls, fixture, all page blobs, exact arithmetic and all four current PNGs.
+  Original ServiceDesk label and Entitlements card are below the viewport;
+  their identity/geometry is DOM/API proof, not visible-screenshot testimony.
+- Screenshot semantic review confirms AgentDesktop first-response deadline
+ 07:30 differs legitimately from Calendar resolution deadline09:00. The
+  Entitlements summary reads0 active companies UNCOVERED, consistent with its
+  one active term. No source/fixture contradiction was established.
+- Current matrix is now16 DONE /1 IN_PROGRESS, checklist190/191 unchanged;
+  only representative production observation/flag retirement remains open.
+  Existing viewport/vision/Calendar matrices and completed releases were reused.
+
+## 2026-10-03 — Minimal observation collection prepared; fresh required gates needed
+
+- Existing production sources provide no complete category attempt denominator
+  or handler latency: category errors only, macro apply cumulative usage,
+  sampled Sentry and bounded PM2 tails cannot prove the seven-day criterion.
+  Prepared unsampled server observations for category GET/create/rename/delete
+  after successful base auth. Compiled artifact SHA, UTC/monotonic duration,
+  operation/mode/outcome and HMAC tenant key only; no request/category content,
+  user/tenant IDs or raw exceptions in the new event. Original response,
+  auth/RLS, serializable mutations and tenant fences preserved. Sink failures
+  do not change business behavior. Base-auth/proxy/browser/apply outside scope.
+- Prepared standalone read-only daily collector and support-ux-observation
+  view of the existing exact-main protected diagnostic. Literal env reads,
+  selected active-tenant read-only SQL, fixed root-owned no-follow PM2 paths,
+  limits/timeouts/decompression caps and bounded sanitized schemas. Password
+  is child env only, never a command argument/output. No production dispatch.
+  Source grouping preserves artifact/operation/mode; actual logged attempts,
+  separate4xx/5xx/thrown counters, nearest-rank p50/p75 and actual sample count.
+  Every output coverage UNVERIFIED, observationAdmitted:false. Missing traffic
+  cannot be assumed zero; retained unavailable events are not day/tenant scoped.
+- Independent review fixes: reject malformed unavailable schemas/string
+  coercion, cap all scanned events, guard combined counters and whole-source
+  metadata across all reads to reject copytruncate/rotation duplicate races.
+  Current final security review found no blocker in the checked scope.
+  Effective INFO logging, whole-day retention, no losses/restarts/key rotation,
+  real baseline/source/flag chronology and incident review remain required.
+- Current targeted tests PASS: helper54, real API-wrapper behavior10, related
+  rollout/presentation contracts26 (combined90/90); standalone collector14/14
+  including actual copytruncate temp-file race and impossible counter sums;
+  historical37/37 after type-only correction. Scoped ESLint PASS; final changed
+  collector/test ESLint PASS; workflow YAML parses and runner policy39 PASS.
+  Preflight14750MiB available/338GiB disk/zero current memory and IO PSI.
+  Full TypeScript/build/browser NOT RUN on Contabo under workload contract.
+- Exact895 required PR37074492841 failed only new test TS2345: injected plain
+  duration waiter incompatible with generic timers/promises setTimeout type.
+  Default wrapper/JSDoc now makes the same65s runtime wait concrete;37 local
+  historical cases pass. Runner37074492828 and scan37074492839 SUCCESS.
+  Historical production-mode after build/capture on895 independently SUCCESS;
+  this does not turn its failed required type context green. Fresh exact-head
+  required PR checks will verify the corrected/new telemetry candidate.
+- Recorded release snapshot remains dated, not current-main/live assertion.
+  No tenant selected, flag activation, new merge/deploy, production collection,
+  prior matrix/green release replay or rewrite of the reference journal.
+
+Current result/status:190/191 tracked;16/17 literal acceptance criteria admitted.
+Last completed action: actual matched historical admission and independent
+telemetry integrity/security review. Precise stopping point: source candidate
+ready for checkpoint/publication and fresh required checks. Next action: require
+all fresh gates green; owner-selected tenant/activation and real seven full
+Asia/Baku days remain necessary for100%.

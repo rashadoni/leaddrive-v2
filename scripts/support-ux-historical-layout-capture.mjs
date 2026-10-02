@@ -85,7 +85,8 @@ export async function completeHistoricalBackgroundRequest(request, kind) {
   } catch { return false }
 }
 
-export async function waitHistoricalRouteCooldown(routeIndex, wait = waitForNativeTime) {
+/** @param {number} routeIndex @param {(duration: number) => Promise<void>} [wait] */
+export async function waitHistoricalRouteCooldown(routeIndex, wait = (duration) => waitForNativeTime(duration)) {
   if (!Number.isInteger(routeIndex) || routeIndex < 0 || routeIndex >= HISTORICAL_LAYOUT_ROUTES.length) throw new Error("ROUTE_INVALID")
   // The approved original also applies its 10/min public POST bucket to CSP.
   // Let that unchanged limit expire naturally in both exact runtimes. Node
