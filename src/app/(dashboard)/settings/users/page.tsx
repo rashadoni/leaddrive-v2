@@ -31,6 +31,7 @@ import {
   USER_HIDEABLE_MODULE_IDS,
   WORKFORCE_HIDEABLE_ID,
 } from "@/lib/user-module-access"
+import { moduleAccessOutcome, settingsAccessOutcome, type AccessLevel } from "@/lib/user-access-summary"
 
 interface User extends Record<string, unknown> {
   id: string
@@ -117,6 +118,16 @@ type UserPayload = {
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
 
+// Colour only backs the words up: every outcome is spelled out in the badge.
+const ACCESS_OUTCOME_STYLE: Record<AccessLevel | "hidden" | "mixed", string> = {
+  full: "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20",
+  edit: "text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20",
+  view: "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20",
+  mixed: "text-foreground bg-muted",
+  none: "text-muted-foreground bg-muted",
+  hidden: "text-muted-foreground bg-muted",
+}
+
 type Loc = "en" | "ru" | "az"
 const USER_FORM_COPY: Record<Loc, Record<string, string>> = {
   en: {
@@ -190,6 +201,15 @@ function UserFormDialog({
     return { id, label: group ? tn(`groups.${group}` as never) : id }
   })
   const moduleMaskIgnored = roleIgnoresModuleMask(form.role)
+  // What the person ends up with — recomputed from the form, so the admin sees
+  // the outcome of a role or a tick before saving it.
+  const settingsAccess = settingsAccessOutcome(form.role, form.hiddenModules)
+  const levelLabel = (level: AccessLevel | "hidden" | "mixed") => tu(`accessLevel_${level}` as never)
+  const settingsAccessLabel = settingsAccess.outcome !== "personal"
+    ? tu(`accessSettings_${settingsAccess.outcome}` as never)
+    : settingsAccess.pages.length === 0
+      ? tu("accessSettings_personal")
+      : tu("accessSettings_personalPlus", { pages: settingsAccess.pages.map((key) => tn(key as never)).join(", ") })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -352,32 +372,74 @@ function UserFormDialog({
                 <p className="text-xs text-destructive mt-1">{tu("phoneFormatError")}</p>
               )}
             </div>
-            {/* Module access — which sidebar sections this person gets */}
+            {/* Module access — which sidebar sections this person gets, and
+                what the role lets them do in each: one row per module, the
+                tick on the left, the outcome on the right. */}
             <div className="border-t pt-3 mt-1">
               <p className="text-sm font-medium">{tu("moduleAccessTitle")}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {moduleMaskIgnored ? tu("moduleAccessAdminNote") : tu("moduleAccessHint")}
               </p>
-              {!moduleMaskIgnored && (
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-3">
-                  {moduleOptions.map((option) => (
-                    <label key={option.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={!form.hiddenModules.includes(option.id)}
-                        onChange={(e) => setForm((f) => ({
-                          ...f,
-                          hiddenModules: e.target.checked
-                            ? f.hiddenModules.filter((id) => id !== option.id)
-                            : [...f.hiddenModules, option.id],
-                        }))}
-                        className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
-                      />
-                      {option.label}
-                    </label>
-                  ))}
+              <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700" data-testid="user-access-outcome">
+                <div className="border-b border-zinc-200 px-3 py-2 dark:border-zinc-700">
+                  <p className="text-sm font-medium">{tu("accessResultTitle")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{tu("accessResultHint")}</p>
                 </div>
-              )}
+                <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                  {moduleOptions.map((option) => {
+                    const access = moduleAccessOutcome(form.role, form.hiddenModules, option.id)
+                    return (
+                      <li key={option.id} className="px-3 py-2">
+                        <div className="flex items-center justify-between gap-3">
+                          {moduleMaskIgnored ? (
+                            <span className="text-sm">{option.label}</span>
+                          ) : (
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={!form.hiddenModules.includes(option.id)}
+                                onChange={(e) => setForm((f) => ({
+                                  ...f,
+                                  hiddenModules: e.target.checked
+                                    ? f.hiddenModules.filter((id) => id !== option.id)
+                                    : [...f.hiddenModules, option.id],
+                                }))}
+                                className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                              />
+                              {option.label}
+                            </label>
+                          )}
+                          <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${ACCESS_OUTCOME_STYLE[access.outcome]}`}>
+                            {levelLabel(access.outcome)}
+                          </span>
+                        </div>
+                        {access.outcome === "mixed" && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {access.parts.map((part) => tu("accessPart", {
+                              scopes: part.scopes.map((scope) => ts(`module_${scope}` as never)).join(", "),
+                              level: levelLabel(part.level).toLocaleLowerCase(locale),
+                            })).join(" · ")}
+                          </p>
+                        )}
+                        {access.outcome === "none" && (
+                          <p className="mt-1 text-xs text-muted-foreground">{tu("accessNoneNote")}</p>
+                        )}
+                      </li>
+                    )
+                  })}
+                  <li className="px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm">{tn("groups.Settings" as never)}</span>
+                      <span className={`shrink-0 rounded-md px-2 py-0.5 text-right text-xs font-medium ${ACCESS_OUTCOME_STYLE[settingsAccess.outcome === "personal" ? "none" : settingsAccess.outcome]}`}>
+                        {settingsAccessLabel}
+                      </span>
+                    </div>
+                    {!moduleMaskIgnored && (
+                      <p className="mt-1 text-xs text-muted-foreground">{tu("accessSettingsNote")}</p>
+                    )}
+                  </li>
+                </ul>
+              </div>
             </div>
             {/* Briefing language preference */}
             {isEdit && (

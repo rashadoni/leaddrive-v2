@@ -15,9 +15,8 @@ import { useTranslations } from "next-intl"
 import { HelpButton } from "@/components/help/help-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
-import { checkPermission, type Role } from "@/lib/permissions"
+import { enforcedAccessLevel, type AccessLevel } from "@/lib/user-access-summary"
 
-type AccessLevel = "full" | "edit" | "view" | "none"
 
 interface RoleConfig {
   id: string
@@ -46,25 +45,19 @@ const MODULE_GROUPS: { label: string; modules: string[] }[] = [
 const MODULES: string[] = MODULE_GROUPS.flatMap(g => g.modules)
 const MODULE_HINT_KEYS: Partial<Record<string, string>> = {
   loyalty: "moduleHint_loyalty",
+  // A manager reads `users` and has no `settings`: without these two lines the
+  // table says "Users — View" about a page the manager cannot open.
+  settings: "moduleHint_settings",
+  users: "moduleHint_users",
 }
 
-/**
- * What the server actually lets a role do in a module, as one of the four
- * levels the matrix shows. Asked of `checkPermission` — the function every API
- * route is gated by — so this table cannot say something enforcement does not.
- *
- * It used to render `Organization.settings.permissions`, an editable copy that
- * nothing reads at enforcement time: an admin could set Sales → Deals to "None",
- * save, and Sales kept full access. A role the engine does not know (a custom
- * one) is denied everything, which is what "None" in every row says.
- */
-function enforcedLevel(roleId: string, module: string): AccessLevel {
-  const can = (action: "read" | "write" | "delete") => checkPermission(roleId as Role, module, action)
-  if (can("delete")) return "full"
-  if (can("write")) return "edit"
-  if (can("read")) return "view"
-  return "none"
-}
+// The matrix asks `enforcedAccessLevel` — `checkPermission` underneath, the
+// function every API route is gated by — so this table cannot say something
+// enforcement does not. It used to render `Organization.settings.permissions`,
+// an editable copy that nothing reads at enforcement time: an admin could set
+// Sales → Deals to "None", save, and Sales kept full access. The user card
+// reads the same function for its "what this person gets" rows.
+const enforcedLevel = enforcedAccessLevel
 
 const COLOR_OPTIONS = [
   { id: "red", label: "Red", bg: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300" },
