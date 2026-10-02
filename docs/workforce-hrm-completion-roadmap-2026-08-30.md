@@ -4464,3 +4464,45 @@ from this worktree.
   Next action: their primary results, fresh-main protected merge, normal
   deploy/public exact merged SHA. Progress remains 81/161, 14/15, C8 36%,
   overall 59%, 80 non-DONE; WF-C8-007 PARTIAL; remaining unrun gates NOT RUN.
+
+
+## 2026-10-02 — fresh main420 integration and shared-data contract checks
+
+- An interim main read while c78 checks were running discovered
+  420e5be1285a68954d45653d9f0740f212f6adea, merge #532. No stale-base merge
+  performed. Ordinary merge into this same part16 worktree completed without
+  conflicts as 0477845ff95787a175d63d78915824e91cf19ed9. All fourteen changed
+  main-owned blobs preserved exactly; four task source blobs equal c78;
+  all ten Workforce namespaces unchanged in EN/RU/AZ.
+- Independent reconciliation GREEN P0=0 P1=0 P2=0 P3=0. Fourteen paths cover
+  MTM contacts notices, settings employee-card linking, presentation helper,
+  translations and tests. Contact/facet actor/scope/403 guards unchanged;
+  new notice mounts only under /mtm. Auth/proxy/CI/calendar source unchanged.
+  Employee-link UI legitimately writes shared mtm_agents.userId through existing
+  guarded APIs; ORG/TEAM reversal retains the same configuration authorization
+  boundary (selfAgentId:null), and browser fixture admins do not use that UI.
+  This shared data surface prompted an extra focused calendar API check.
+- After resource inspection, actual six-suite bounded checks 86/86 PASS,
+  5.11s, /tmp/workforce528-main420-targeted.log; additional calendar API
+  24/24 PASS, 2.44s, /tmp/workforce528-main420-calendar-api.log. Translation
+  parity 24,121 keys, RU/AZ missing=0 extra=0, /tmp/workforce528-main420-i18n.log.
+  Scoped script ESLint, node syntax and whitespace PASS. Heavy build/typecheck/
+  full suite/browser/PostgreSQL/Android/load on Contabo NOT RUN; hosted CI only.
+- Historical c78 ready checks 37064212844 subsequently completed SUCCESS:
+  static 111027975652: PostgreSQL 33/33 (14.09s), calendar12/12 (1,700ms),
+  baseline18/18; /tmp/workforce528-c78-static.log. Type111027975617: no syntax/
+  missing-module/undefined-name errors, baseline66/66, 1,195 advisory diagnostics,
+  tsc exit2; /tmp/workforce528-c78-type.log. This supersedes its prior pending
+  status only. Browser7/7 remains historical c78 evidence. No old result
+  substitutes for the newly integrated head's required gates/browser.
+- Receipt-only clean423943f8b88cdecd20106ce17a2dcd1f7374bf59 vs publishedc78
+  independently GREEN P0-P3=0:4paths/18,108bytes/SHA256
+  e4aadaa00f6af431ca2841b545c27036be8642fb1c57ebc8e8bbd3dae36c1d71.
+  Source4 and six historical JSONs unchanged; seventh original2760/41fef24b
+  exact and three docs append-only. PR528 returned to draft for main420 review.
+- Current status: main420 integrated, bounded86+24 and translations GREEN.
+  Last action: additional calendar API contract checks. Precise stopping point:
+  replacement full independent exact-head review. Next action: publish reviewed
+  HEAD, seven real scenarios/five gates again, final fresh-main check, protected
+  merge and normal deploy/public exact artifact SHA. Progress remains81/161,
+  14/15,C8 36%,overall59%,80non-DONE;007 PARTIAL; no acceptance inflation.
