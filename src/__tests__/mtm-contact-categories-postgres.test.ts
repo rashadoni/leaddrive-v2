@@ -13,6 +13,11 @@
  * schema, with the dictionary table's CHECK and one-active-version index taken
  * from its migration. Only the session and the tenant's plan are stubbed.
  *
+ * The task handlers at the bottom took their lock the same way (some thirty
+ * call sites did; `advisory-lock-uses-execute-raw.test.ts` keeps the pattern
+ * from returning). They are here because fixing the lock is not the same as
+ * the action working: behind it sits raw SQL that had never met a database.
+ *
  * Set MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 pgvector/pgvector:pg16
  *   MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55499/postgres
@@ -94,6 +99,28 @@ function dictionaryConstraints(): string[] {
   return [oneActive[0], signature[0]]
 }
 
+/**
+ * One task per idempotency key is a partial unique index; schema.prisma only
+ * declares the plain one.
+ */
+function taskSourceKeyIndex(): string {
+  const sql = readFileSync(
+    path.join(ROOT, "prisma/migrations/20260713170000_mtm_visit_next_action_idempotency/migration.sql"),
+    "utf8",
+  )
+  const index = sql.match(/CREATE UNIQUE INDEX "mtm_tasks_org_source_key_unique"[\s\S]*?;/)
+  if (!index) throw new Error("task sourceKey index not found in its migration")
+  return index[0]
+}
+
+function send(method: "POST" | "PUT", url: string, body: unknown): NextRequest {
+  return new NextRequest(`http://localhost:3000${url}`, {
+    method,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
 function put(url: string, body: unknown): NextRequest {
   return new NextRequest(`http://localhost:3000${url}`, {
     method: "PUT",
@@ -118,7 +145,7 @@ pgDescribe("client categories on a real Postgres", () => {
       ["db", "push", "--schema", path.join(ROOT, "prisma/schema.prisma"), "--skip-generate", "--accept-data-loss"],
       { ...process.env, DATABASE_URL: scratch!.url },
     )
-    for (const statement of dictionaryConstraints()) {
+    for (const statement of [...dictionaryConstraints(), taskSourceKeyIndex()]) {
       prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, statement)
     }
     prisma = (await import("@/lib/prisma")).prisma
@@ -199,6 +226,126 @@ pgDescribe("client categories on a real Postgres", () => {
       type: "DOCTOR",
       categoryData: { xeste_sayi: 120 },
       dictionaryAssignments: [{ kind: "CLIENT_TYPE", entryCode: "DOCTOR", effectiveTo: null }],
+    })
+  })
+
+  describe("task actions behind the same lock", () => {
+    const AGENT_USER = "field-user"
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+    let agentId!: string
+
+    /** The next request is made by the field employee, not by the administrator. */
+    async function asAssignee() {
+      const { requireAuth } = await import("@/lib/api-auth")
+      vi.mocked(requireAuth).mockResolvedValueOnce({
+        orgId: ORG,
+        userId: AGENT_USER,
+        role: "member",
+        email: "anar@example.com",
+        name: "Anar",
+      } as never)
+    }
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        await prisma.user.create({
+          data: { id: AGENT_USER, organizationId: ORG, email: "anar@example.com", name: "Anar", passwordHash: "-", role: "member" },
+        })
+        agentId = (await prisma.mtmAgent.create({
+          data: { organizationId: ORG, name: "Anar", userId: AGENT_USER },
+          select: { id: true },
+        })).id
+      })
+    })
+
+    it("duplicates a task to another date, and a repeated request returns the same copy", async () => {
+      const { POST } = await import("@/app/api/v1/mtm/tasks/[id]/duplicate/route")
+      const source = await bypass(() => prisma.mtmTask.create({
+        data: { organizationId: ORG, agentId, title: "Həkimə zəng", dueDate: new Date("2026-10-05T09:00:00.000Z") },
+        select: { id: true },
+      }))
+      const body = { targetDueDate: "2026-10-12T09:00:00.000Z", idempotencyKey: "duplicate-to-next-week", expectedVersion: 1 }
+
+      const first = await POST(send("POST", `/api/v1/mtm/tasks/${source.id}/duplicate`, body), params(source.id))
+      const firstBody = await first.json()
+      expect(firstBody).toMatchObject({ success: true, data: { title: "Həkimə zəng", status: "PENDING", idempotent: false } })
+      expect(first.status).toBe(201)
+
+      const again = await POST(send("POST", `/api/v1/mtm/tasks/${source.id}/duplicate`, body), params(source.id))
+      expect(await again.json()).toMatchObject({ success: true, data: { id: firstBody.data.id, idempotent: true } })
+
+      const copies = await bypass(() => prisma.mtmTask.findMany({
+        where: { organizationId: ORG, copiedFromId: source.id },
+        select: { id: true, dueDate: true, events: { select: { type: true } } },
+      }))
+      expect(copies).toEqual([
+        { id: firstBody.data.id, dueDate: new Date("2026-10-12T09:00:00.000Z"), events: [{ type: "COPIED" }] },
+      ])
+    })
+
+    it("adds a comment to a task", async () => {
+      const { POST } = await import("@/app/api/v1/mtm/tasks/[id]/events/route")
+      const task = await bypass(() => prisma.mtmTask.create({
+        data: { organizationId: ORG, agentId, title: "Aptekə baş çək" },
+        select: { id: true },
+      }))
+
+      const response = await POST(
+        send("POST", `/api/v1/mtm/tasks/${task.id}/events`, { clientEventId: "comment-0001", comment: "Sabah 10:00-da" }),
+        params(task.id),
+      )
+      expect(await response.json()).toMatchObject({ success: true, data: { type: "COMMENTED", comment: "Sabah 10:00-da", idempotent: false } })
+      expect(response.status).toBe(201)
+
+      const stored = await bypass(() => prisma.mtmTaskEvent.findMany({
+        where: { organizationId: ORG, taskId: task.id },
+        select: { type: true, comment: true, clientEventId: true },
+      }))
+      expect(stored).toEqual([{ type: "COMMENTED", comment: "Sabah 10:00-da", clientEventId: "comment-0001" }])
+    })
+
+    it("creates the next occurrence when a repeating task is completed, twice in a row", async () => {
+      const { PUT } = await import("@/app/api/v1/mtm/tasks/[id]/route")
+      const root = await bypass(() => prisma.mtmTask.create({
+        data: {
+          organizationId: ORG,
+          agentId,
+          title: "Həftəlik hesabat",
+          dueDate: new Date("2026-10-05T09:00:00.000Z"),
+          recurrenceRule: "WEEKLY",
+          recurrenceInterval: 1,
+          recurrenceTimezone: "Asia/Baku",
+        },
+        select: { id: true },
+      }))
+
+      await asAssignee()
+      const first = await PUT(
+        send("PUT", `/api/v1/mtm/tasks/${root.id}`, { status: "COMPLETED", result: "Göndərildi", expectedVersion: 1 }),
+        params(root.id),
+      )
+      expect(await first.json()).toMatchObject({ success: true })
+      expect(first.status).toBe(200)
+
+      const series = () => bypass(() => prisma.mtmTask.findMany({
+        where: { organizationId: ORG, recurrenceParentId: root.id },
+        orderBy: { dueDate: "asc" },
+        select: { id: true, status: true, dueDate: true, version: true },
+      }))
+      const afterFirst = await series()
+      expect(afterFirst.map((task: { status: string; dueDate: Date }) => [task.status, task.dueDate.toISOString()]))
+        .toEqual([["PENDING", "2026-10-12T09:00:00.000Z"]])
+
+      // The second completion starts from a generated task, so the series root
+      // is read back with raw SQL before the next date is computed.
+      await asAssignee()
+      const second = await PUT(
+        send("PUT", `/api/v1/mtm/tasks/${afterFirst[0].id}`, { status: "COMPLETED", result: "Göndərildi", expectedVersion: afterFirst[0].version }),
+        params(afterFirst[0].id),
+      )
+      expect(await second.json()).toMatchObject({ success: true })
+      expect((await series()).map((task: { status: string; dueDate: Date }) => [task.status, task.dueDate.toISOString()]))
+        .toEqual([["COMPLETED", "2026-10-12T09:00:00.000Z"], ["PENDING", "2026-10-19T09:00:00.000Z"]])
     })
   })
 })

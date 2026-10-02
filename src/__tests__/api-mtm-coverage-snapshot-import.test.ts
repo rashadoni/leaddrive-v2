@@ -154,7 +154,7 @@ describe("POST /api/v1/mtm/coverage-snapshots", () => {
     const response = await POST(request())
     expect(response.status).toBe(201)
     expect(await response.json()).toMatchObject({ success: true, idempotent: false, data: { id: "snapshot-1", status: "FROZEN" } })
-    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
     expect(prisma.mtmCoverageSnapshotRow.createMany).toHaveBeenCalledWith({
       data: [expect.objectContaining({
         organizationId: "org-1",

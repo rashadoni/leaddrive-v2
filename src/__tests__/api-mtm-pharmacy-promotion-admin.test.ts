@@ -147,7 +147,7 @@ describe("SWM-09 campaign version retirement", () => {
     })
     expect(prisma.mtmPharmacyPromotionTarget.updateMany).not.toHaveBeenCalled()
     expect(prisma.mtmPharmacyPromotionExecution.updateMany).not.toHaveBeenCalled()
-    expect(vi.mocked(prisma.$queryRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
       `mtm-pharmacy-promotion:${ORG}:${PROMOTION}`,
       `mtm-pharmacy-version:${ORG}:${VERSION}`,
     ])
@@ -299,7 +299,7 @@ describe("SWM-09 target planning race and permission containment", () => {
     expect(response.status).toBe(403)
     expect(await response.json()).toMatchObject({ code: "MTM_PHARMACY_TARGET_PLAN_DENIED" })
     expect(prisma.mtmPharmacyPromotionOperation.findFirst).not.toHaveBeenCalled()
-    expect(vi.mocked(prisma.$queryRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
       `mtm-pharmacy-target:${ORG}:${targetBody.operationId}`,
       `mtm-pharmacy-version:${ORG}:${VERSION}`,
     ])

@@ -62,7 +62,7 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
 
     const occurredAt = new Date()
     const event = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-task-comment:${auth.orgId}:${body.clientEventId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-task-comment:${auth.orgId}:${body.clientEventId}`}, 0))`
       const existing = await tx.mtmTaskEvent.findFirst({
         where: { organizationId: auth.orgId, clientEventId: body.clientEventId },
         select: { id: true, taskId: true, type: true, occurredAt: true, comment: true, evidence: true },

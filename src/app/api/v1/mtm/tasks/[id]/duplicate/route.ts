@@ -97,7 +97,7 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
 
     const occurredAt = new Date()
     const created = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-task-duplicate:${auth.orgId}:${sourceKey}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-task-duplicate:${auth.orgId}:${sourceKey}`}, 0))`
       // Intentionally bypass the normal soft-delete filter: a deleted
       // idempotent duplicate is a tombstone and must never be resurrected.
       const existingRows = await tx.$queryRaw<RawDuplicate[]>`

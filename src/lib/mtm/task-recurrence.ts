@@ -480,7 +480,7 @@ export async function lockMtmTaskRecurrenceSeriesInTransaction(
   if (!input.organizationId || !input.rootTaskId) {
     throw new RangeError("organizationId and rootTaskId are required")
   }
-  await tx.$queryRaw`
+  await tx.$executeRaw`
     SELECT pg_advisory_xact_lock(
       hashtextextended(${`mtm-task-recurrence:${input.organizationId}:${input.rootTaskId}`}, 0)
     )

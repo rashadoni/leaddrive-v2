@@ -27,7 +27,7 @@ export const POST = withRouteFieldRlsAuth<Context>("write", async (req, auth, { 
   const { id } = await params
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-kpi-policy-activation:${auth.orgId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-kpi-policy-activation:${auth.orgId}`}, 0))`
       const actor = await requireCurrentKpiPolicyAdministrator(tx as typeof prisma, auth)
       const current = await tx.mtmKpiPolicy.findFirst({ where: { id, organizationId: auth.orgId } })
       if (!current) return { kind: "NOT_FOUND" as const }

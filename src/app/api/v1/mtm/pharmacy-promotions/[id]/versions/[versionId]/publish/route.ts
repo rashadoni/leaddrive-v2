@@ -47,13 +47,13 @@ export const POST = withMtmRlsAuth<RouteContext>("mtm", "write", async (req, aut
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-promotion:${auth.orgId}:${promotionId}`}, 0))`
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-version:${auth.orgId}:${versionId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-promotion:${auth.orgId}:${promotionId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-version:${auth.orgId}:${versionId}`}, 0))`
       // Configuration activation uses the same org-wide locks. Holding them
       // while validating and publishing prevents a signed formula or policy
       // from being retired between the readiness check and the version CAS.
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-formula-activation:${auth.orgId}`}, 0))`
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-policy-activation:${auth.orgId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-formula-activation:${auth.orgId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-policy-activation:${auth.orgId}`}, 0))`
       const actor = await requireCurrentPharmacyPromotionAdministrator(tx, auth)
       const version = await tx.mtmPharmacyPromotionVersion.findFirst({
         where: { id: versionId, organizationId: auth.orgId, promotionId },

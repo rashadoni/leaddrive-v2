@@ -9,6 +9,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
+    $executeRaw: vi.fn(),
     activity: { findMany: vi.fn(), create: vi.fn() },
     user: { findMany: vi.fn() },
     apiKey: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
@@ -308,7 +309,7 @@ describe("Channels", () => {
     expect(res.status).toBe(409)
     expect(json.existingChannelId).toBe("tiktok-existing")
     expect(prisma.$transaction).toHaveBeenCalledTimes(1)
-    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
     expect(prisma.channelConfig.create).not.toHaveBeenCalled()
   })
 
