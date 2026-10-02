@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { createDateFormatter } from "@/lib/format-date"
+import { hasCommercialFacts, organizationReferenceRows } from "@/lib/mtm/organization-card"
 
 type Agent = {
   id: string
@@ -595,7 +596,10 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   }
 
   const owners = summary.agentAssignments.filter((item) => item.role === "PRIMARY")
-  const attributeFact = summary.attributeFacts[0] ?? null
+  // Master-data attributes, the coordinate receipt and shipments belong to the
+  // few organizations that carry them; everyone else gets contact data only.
+  const referenceRows = organizationReferenceRows(summary)
+  const showCommercial = hasCommercialFacts(commercial)
   const hasCoordinates = summary.latitude !== null && summary.longitude !== null
   const mapHref = hasCoordinates
     ? `https://www.openstreetmap.org/?mlat=${summary.latitude}&mlon=${summary.longitude}#map=18/${summary.latitude}/${summary.longitude}`
@@ -684,7 +688,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         </div>
         <div className="grid divide-y border-t border-zinc-200 bg-muted/25 dark:border-zinc-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
           {[
-            [t("detail.etalonId"), summary.code || "—"],
+            ...(summary.code ? [[t("detail.etalonId"), summary.code]] : []),
             ...(fieldContactsEnabled ? [[t("detail.contacts"), numberFormatter.format(summary._count.contactWorkplaces)]] : []),
             [t("detail.visits"), numberFormatter.format(summary._count.visits)],
             [t("detail.gps"), hasCoordinates ? t("detail.coordinatesRecorded") : t("detail.coordinatesMissing")],
@@ -718,37 +722,33 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         </div>
 
         <TabsContent value="details">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
+          <div className={cn("grid gap-5", referenceRows.length || coordinateVerification ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]" : null)}>
             <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
-              <h2 className="text-base font-semibold">{t("detail.coreDetails")}</h2>
+              <h2 className="text-base font-semibold">{t("detail.contactDetails")}</h2>
               <dl className="mt-2">
-                <DefinitionRow label={t("detail.etalonId")} value={summary.code} />
-                <DefinitionRow label={t("detail.organizationType")} value={organizationType} />
-                <DefinitionRow label={t("detail.specialization")} value={summary.specialization} />
-                <DefinitionRow label={t("detail.category")} value={attributeFact?.medicalCategoryCode || explorer("categoryShort", { category: summary.category })} />
-                <DefinitionRow label={t("detail.createdAt")} value={dateFormatter.format(new Date(summary.createdAt))} />
-                <DefinitionRow label={t("detail.okpo")} value={<span className="text-muted-foreground">{t("detail.notModeled")}</span>} />
-                <DefinitionRow label={t("detail.license")} value={attributeFact?.licenseStatus || <span className="text-muted-foreground">{t("detail.noSignedAttribute")}</span>} />
-                <DefinitionRow label={t("detail.attributeSource")} value={attributeFact ? `${attributeFact.package.sourceSystem} · v${attributeFact.package.version}` : null} />
-                <DefinitionRow label={t("detail.notes")} value={summary.notes} />
+                <DefinitionRow label={t("detail.contactPerson")} value={summary.contactPerson} />
+                <DefinitionRow
+                  label={t("detail.phone")}
+                  value={summary.phone ? <a className="underline-offset-4 hover:underline" href={`tel:${summary.phone}`}>{summary.phone}</a> : null}
+                />
+                <DefinitionRow label={t("detail.address")} value={summary.address} />
+                <DefinitionRow label={t("detail.locality")} value={summary.locality || summary.city} />
+                <DefinitionRow label={t("detail.cityDistrict")} value={summary.cityDistrict || summary.district} />
+                {summary.notes ? <DefinitionRow label={t("detail.notes")} value={summary.notes} /> : null}
               </dl>
             </section>
 
-            <div className="grid content-start gap-5">
-              <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
-                <h2 className="text-base font-semibold">{t("detail.location")}</h2>
+            {referenceRows.length || coordinateVerification ? <div className="grid content-start gap-5">
+              {referenceRows.length ? <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+                <h2 className="text-base font-semibold">{t("detail.additionalDetails")}</h2>
                 <dl className="mt-2">
-                  <DefinitionRow label={t("detail.address")} value={summary.address} />
-                  <DefinitionRow label={t("detail.region")} value={summary.region} />
-                  <DefinitionRow label={t("detail.administrativeDistrict")} value={summary.administrativeDistrict} />
-                  <DefinitionRow label={t("detail.locality")} value={summary.locality || summary.city} />
-                  <DefinitionRow label={t("detail.cityDistrict")} value={summary.cityDistrict || summary.district} />
-                  <DefinitionRow label={t("detail.territory")} value={summary.territoryCode} />
-                  <DefinitionRow label={t("detail.polygon")} value={summary.polygon ? t("detail.polygonConfigured") : t("detail.polygonMissing")} />
+                  {referenceRows.map((row) => (
+                    <DefinitionRow key={row.key} label={t(`detail.${row.key}`)} value={row.value ?? t("detail.polygonConfigured")} />
+                  ))}
                 </dl>
-              </section>
+              </section> : null}
 
-              <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+              {coordinateVerification ? <section className="rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-base font-semibold">{t("detail.coordinateQuality")}</h2>
@@ -801,10 +801,10 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
                     </Button>
                   </div>
                 ) : null}
-              </section>
-            </div>
+              </section> : null}
+            </div> : null}
           </div>
-          <section className="mt-5 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
+          {showCommercial ? <section className="mt-5 rounded-2xl border border-zinc-200 bg-card p-4 dark:border-zinc-700 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold">{t("detail.commercialTitle")}</h2>
@@ -820,7 +820,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               <DefinitionRow label={t("detail.sourceFile")} value={commercial?.latestSource?.sourceImportJob?.originalFileName} />
               <DefinitionRow label={t("detail.sourceStatus")} value={commercial?.latestSource?.sourceImportJob?.status || commercial?.latestSource?.status} />
             </dl>
-          </section>
+          </section> : null}
         </TabsContent>
 
         {fieldContactsEnabled ? <TabsContent value="contacts">
