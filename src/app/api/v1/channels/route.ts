@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
         const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           // Serialize TikTok/Chatwoot creation per tenant. A plain find-then-create check
           // still races when the setup form is submitted twice at the same time.
-          await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`channel:tiktok:dm:chatwoot:${orgId}`}, 0))`
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`channel:tiktok:dm:chatwoot:${orgId}`}, 0))`
 
           const candidates = await tx.channelConfig.findMany({
             where: { organizationId: orgId, channelType: "chatwoot" },

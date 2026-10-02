@@ -50,6 +50,8 @@ function recurrenceSource(overrides: Partial<MtmTaskRecurrenceSource> = {}): Mtm
 
 function transactionMock() {
   return {
+    // The advisory lock: `$executeRaw`, which reads no result row.
+    $executeRaw: vi.fn().mockResolvedValue(0),
     $queryRaw: vi.fn(),
     mtmTask: {
       create: vi.fn().mockResolvedValue({ id: "task-next" }),
@@ -202,9 +204,7 @@ describe("MTM tenant-local task recurrence", () => {
 describe("MTM exact-once recurrence spawn", () => {
   it("locks, checks raw tombstones, then creates the task and immutable event", async () => {
     const tx = transactionMock()
-    tx.$queryRaw
-      .mockResolvedValueOnce([]) // advisory lock SELECT
-      .mockResolvedValueOnce([]) // sourceKey lookup
+    tx.$queryRaw.mockResolvedValueOnce([]) // sourceKey lookup
     const occurredAt = new Date("2026-02-01T10:00:00.000Z")
 
     const result = await spawnNextMtmTaskRecurrenceInTransaction(
@@ -222,17 +222,20 @@ describe("MTM exact-once recurrence spawn", () => {
       taskId: "task-next",
       sourceKey: "task-recurrence:task-root:2026-02-28T09:00:00.000Z",
     })
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(2)
-    const lockCall = tx.$queryRaw.mock.calls[0]
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1)
+    const lockCall = tx.$executeRaw.mock.calls[0]
     expect(sqlText(lockCall)).toContain("pg_advisory_xact_lock")
     expect(sqlText(lockCall)).toContain("hashtextextended")
     expect(lockCall[1]).toBe("mtm-task-recurrence:org-1:task-root")
-    expect(sqlText(tx.$queryRaw.mock.calls[1])).toContain('"id"')
-    expect(sqlText(tx.$queryRaw.mock.calls[1])).toContain('"deletedAt"')
-    expect(sqlText(tx.$queryRaw.mock.calls[1])).toContain('"sourceKey" IN (?, ?)')
-    expect(sqlText(tx.$queryRaw.mock.calls[1])).toContain('"recurrenceParentId" = ?')
-    expect(sqlText(tx.$queryRaw.mock.calls[1]).match(/IS NOT DISTINCT FROM/g)).toHaveLength(2)
-    expect(sqlText(tx.$queryRaw.mock.calls[1])).not.toMatch(/"deletedAt"\s+IS\s+NULL/)
+    expect(sqlText(tx.$queryRaw.mock.calls[0])).toContain('"id"')
+    expect(sqlText(tx.$queryRaw.mock.calls[0])).toContain('"deletedAt"')
+    expect(sqlText(tx.$queryRaw.mock.calls[0])).toContain('"sourceKey" IN (?, ?)')
+    expect(sqlText(tx.$queryRaw.mock.calls[0])).toContain('"recurrenceParentId" = ?')
+    expect(sqlText(tx.$queryRaw.mock.calls[0]).match(/IS NOT DISTINCT FROM/g)).toHaveLength(2)
+    expect(sqlText(tx.$queryRaw.mock.calls[0])).not.toMatch(/"deletedAt"\s+IS\s+NULL/)
+    expect(tx.$executeRaw.mock.invocationCallOrder[0])
+      .toBeLessThan(tx.$queryRaw.mock.invocationCallOrder[0])
     expect(tx.$queryRaw.mock.invocationCallOrder[0])
       .toBeLessThan(tx.mtmTask.create.mock.invocationCallOrder[0])
     expect(tx.mtmTask.create).toHaveBeenCalledWith({
@@ -271,9 +274,7 @@ describe("MTM exact-once recurrence spawn", () => {
 
   it("advances a monthly legacy root from its immutable cursor after a THIS-only exception", async () => {
     const tx = transactionMock()
-    tx.$queryRaw
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
+    tx.$queryRaw.mockResolvedValueOnce([])
 
     const result = await spawnNextMtmTaskRecurrenceInTransaction(
       tx as unknown as Prisma.TransactionClient,
@@ -312,7 +313,6 @@ describe("MTM exact-once recurrence spawn", () => {
   ] as const)("returns %s without recreating a matching raw sourceKey row", async (status, deletedAt) => {
     const tx = transactionMock()
     tx.$queryRaw
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{
         id: "task-prior",
         deletedAt,
@@ -343,7 +343,6 @@ describe("MTM exact-once recurrence spawn", () => {
   ] as const)("returns a rescheduled sourceKey alias as %s using immutable occurrence facts", async (status, deletedAt) => {
     const tx = transactionMock()
     tx.$queryRaw
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{
         id: "task-rescheduled-child",
         deletedAt,
@@ -368,7 +367,7 @@ describe("MTM exact-once recurrence spawn", () => {
       taskId: "task-rescheduled-child",
       sourceKey: "task-recurrence:task-root:2026-02-28T09:00:00.000Z",
     })
-    const lookupCall = tx.$queryRaw.mock.calls[1]
+    const lookupCall = tx.$queryRaw.mock.calls[0]
     expect(sqlText(lookupCall)).toContain('"sourceKey" IN (?, ?)')
     expect(sqlText(lookupCall)).toContain('"recurrenceParentId" = ?')
     expect(sqlText(lookupCall)).toContain('WHEN "recurrenceCursorScheduledStartAt" IS NOT NULL')
@@ -389,7 +388,6 @@ describe("MTM exact-once recurrence spawn", () => {
     const canonical = "task-recurrence:task-root:2026-02-28T09:00:00.000Z"
     const alias = `${canonical}:from:task-root`
     tx.$queryRaw
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{
         id: "task-stale-key-owner",
         deletedAt: null,
@@ -418,7 +416,6 @@ describe("MTM exact-once recurrence spawn", () => {
   it("rejects ambiguous rows instead of confusing distinct recurrence facts", async () => {
     const tx = transactionMock()
     tx.$queryRaw
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           id: "task-by-key",
@@ -455,7 +452,6 @@ describe("MTM exact-once recurrence spawn", () => {
   it("uses the raw root anchor so a February child returns to day 31", async () => {
     const tx = transactionMock()
     tx.$queryRaw
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{
         id: "task-root",
         scheduledStartAt: null,
@@ -493,7 +489,6 @@ describe("MTM exact-once recurrence spawn", () => {
   it("honors and propagates an explicit edit-future anchor instead of reverting to the root", async () => {
     const tx = transactionMock()
     tx.$queryRaw
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{
         id: "task-root",
         scheduledStartAt: new Date("2026-01-31T08:00:00.000Z"),
@@ -535,9 +530,7 @@ describe("MTM exact-once recurrence spawn", () => {
 
   it("refuses a recurrence root that is absent from the tenant-scoped raw lookup", async () => {
     const tx = transactionMock()
-    tx.$queryRaw
-      .mockResolvedValueOnce([]) // advisory lock SELECT
-      .mockResolvedValueOnce([]) // scoped root lookup
+    tx.$queryRaw.mockResolvedValueOnce([]) // scoped root lookup
 
     await expect(spawnNextMtmTaskRecurrenceInTransaction(
       tx as unknown as Prisma.TransactionClient,
@@ -550,8 +543,8 @@ describe("MTM exact-once recurrence spawn", () => {
         tenantTimezone: "UTC",
       },
     )).rejects.toThrow("Recurrence root is not available in the organization scope")
-    expect(sqlText(tx.$queryRaw.mock.calls[1])).toContain('WHERE "organizationId" = ?')
-    expect(tx.$queryRaw.mock.calls[1][1]).toBe("org-1")
+    expect(sqlText(tx.$queryRaw.mock.calls[0])).toContain('WHERE "organizationId" = ?')
+    expect(tx.$queryRaw.mock.calls[0][1]).toBe("org-1")
     expect(tx.mtmTask.create).not.toHaveBeenCalled()
     expect(tx.mtmTaskEvent.create).not.toHaveBeenCalled()
   })

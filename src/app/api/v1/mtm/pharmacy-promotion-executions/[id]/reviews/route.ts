@@ -118,7 +118,7 @@ export const POST = withMtmRlsAuth<RouteContext>("mtm", "write", async (req, aut
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-review:${auth.orgId}:${id}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-pharmacy-review:${auth.orgId}:${id}`}, 0))`
       const currentActor = await resolveMtmRouteActor(tx as typeof prisma, {
         organizationId: auth.orgId,
         userId: auth.userId,

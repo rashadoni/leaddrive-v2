@@ -496,7 +496,7 @@ describe("SWM-09 signed activation", () => {
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ success: true, idempotent: false })
-    const lockCall = vi.mocked(prisma.$queryRaw).mock.calls[0]
+    const lockCall = vi.mocked(prisma.$executeRaw).mock.calls[0]
     expect((lockCall[0] as unknown as readonly string[]).join("?")).toContain("pg_advisory_xact_lock")
     expect(prisma.mtmPharmacyPointsFormula.updateMany).toHaveBeenNthCalledWith(2, {
       where: expect.objectContaining({

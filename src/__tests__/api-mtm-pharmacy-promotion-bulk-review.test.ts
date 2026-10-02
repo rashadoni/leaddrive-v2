@@ -333,7 +333,7 @@ describe("SWM-09 explicit-ID bulk review apply", () => {
       maxWait: 5_000,
       timeout: 30_000,
     })
-    expect(vi.mocked(prisma.$queryRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
       `mtm-pharmacy-bulk-review:${ORG}:${body.operationId}`,
       `mtm-pharmacy-review:${ORG}:execution-a`,
       `mtm-pharmacy-review:${ORG}:execution-b`,
@@ -412,7 +412,7 @@ describe("SWM-09 explicit-ID bulk review apply", () => {
     const response = await applyBulkReview(request(body))
 
     expect(response.status).toBe(201)
-    expect(vi.mocked(prisma.$queryRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])).toEqual([
       `mtm-pharmacy-bulk-review:${ORG}:${body.operationId}`,
       `mtm-pharmacy-review:${ORG}:execution-a`,
       `mtm-pharmacy-review:${ORG}:execution-b`,

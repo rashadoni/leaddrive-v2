@@ -156,7 +156,7 @@ describe("MTM coverage policy configuration", () => {
     }), { params: Promise.resolve({ id: "policy-1" }) })
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ success: true, idempotent: false })
-    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
     expect(prisma.mtmCoveragePolicy.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         status: "ACTIVE",

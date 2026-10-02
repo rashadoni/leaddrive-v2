@@ -2382,7 +2382,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       recurrenceCursorScheduledStartAt: true,
       recurrenceCursorDueDate: true,
     })
-    expect(vi.mocked(prisma.$queryRaw).mock.invocationCallOrder[0]).toBeLessThan(
+    expect(vi.mocked(prisma.$executeRaw).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(prisma.mtmTask.updateMany).mock.invocationCallOrder[0],
     )
   })

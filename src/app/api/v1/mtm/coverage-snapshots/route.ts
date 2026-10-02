@@ -52,7 +52,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-coverage-snapshot:${auth.orgId}:${parsed.data.agentId}:${parsed.data.periodStart}:${parsed.data.periodEnd}:${parsed.data.policyId}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-coverage-snapshot:${auth.orgId}:${parsed.data.agentId}:${parsed.data.periodStart}:${parsed.data.periodEnd}:${parsed.data.policyId}`}, 0))`
       const currentActor = await requireCurrentCoveragePolicyAdministrator(tx as typeof prisma, auth)
       const policy = await tx.mtmCoveragePolicy.findFirst({
         where: {

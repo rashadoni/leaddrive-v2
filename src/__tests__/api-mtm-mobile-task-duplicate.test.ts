@@ -114,7 +114,6 @@ describe("POST /api/v1/mtm/mobile/tasks/[id]/duplicate", () => {
 
   it("does not replay a duplicate that was reassigned outside current scope", async () => {
     vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([] as never)
       .mockResolvedValueOnce([{
         id: "task-copy",
         agentId: "agent-2",

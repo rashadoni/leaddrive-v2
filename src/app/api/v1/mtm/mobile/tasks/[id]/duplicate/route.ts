@@ -78,7 +78,7 @@ export const POST = withMobileRls<RouteContext>(async (req, auth, { params }) =>
   const occurredAt = new Date()
   try {
     const created = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-task-duplicate:${auth.orgId}:${sourceKey}`}, 0))`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-task-duplicate:${auth.orgId}:${sourceKey}`}, 0))`
 
       // Raw SQL intentionally bypasses any soft-delete extension. A deleted
       // idempotent result is a permanent tombstone for this operation key.
