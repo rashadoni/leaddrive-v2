@@ -861,6 +861,9 @@ const authMiddleware = auth(async (req) => {
       addons: (req.auth as any)?.user?.addons || [],
       modules: (req.auth as any)?.user?.modules,
       role: (req.auth as any)?.user?.role,
+      // The menu withholds org-wide pages from a person with hidden modules;
+      // without the list here, the landing could be a page the layout refuses.
+      hiddenModules: (req.auth as any)?.user?.hiddenModules,
       landingPath: (req.auth as any)?.user?.landingPath,
     })
     return withCspHeaders(NextResponse.redirect(new URL(landing, baseUrl)), nonce)

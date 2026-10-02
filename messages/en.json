@@ -439,9 +439,15 @@
         "body": "Payment and invoice alerts are available after the Finance module is active for this workspace.",
         "ownerHint": "Check the tenant's plan in Billing or ask an administrator to enable Finance notifications."
       },
+      "roleDenied": {
+        "title": "This section is not available",
+        "body": "This settings section is not available to your account.",
+        "ownerHint": "If you need access, ask your organization's administrator."
+      },
       "openChannels": "Open Channels",
       "openBilling": "Open Billing",
-      "backToSettings": "Back to Settings"
+      "backToSettings": "Back to Settings",
+      "goHome": "Go to home"
     },
     "dashboard": "Dashboard",
     "companies": "Companies",
