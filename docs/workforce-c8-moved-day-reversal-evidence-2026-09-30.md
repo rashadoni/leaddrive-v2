@@ -1095,3 +1095,46 @@
   hosted acceptance on c2e069c9. Next action: inspect primary receipts, all gates,
   fresh-main merge and normal deploy/public exact artifact SHA. Progress remains
   81/161, 14/15, C8 36%, overall 59%, 80 non-DONE; WF-C8-007 PARTIAL.
+
+
+## 2026-10-02 — real live-refresh browser acceptance 7/7
+
+- Actual hosted browser run 37060968155 / job 111017247427 SUCCESS for exact
+  PR head c2e069c9ffc2a5a8c4ba1d19ba35bf308e787b6f. Checked synthetic merge
+  c234a359af6ee8491410ee268aecb5dc34daf852 has API-verified parents
+  [390c4976d6097f1f3560ed8c9ccdf3abb215e51e, c2e069c9ffc2a5a8c4ba1d19ba35bf308e787b6f].
+  Seven real cases PASS, 20:37:35.687Z–20:38:30.620Z (54.933 seconds),
+  artifact 11250877180, attempt 1. Original JSON copied byte-for-byte to
+  docs/evidence/workforce-c8-calendar-browser-2026-10-02-c2e069c9.json:
+  2,760 bytes / SHA256
+  a12d9511cf4b0340b317b214cda8ba81070bad3b147da8bf20a50f288106644e.
+- Real CSRF/credentials/session authentication, actual UI/API and disposable
+  PostgreSQL16 verified under a non-owner NOSUPERUSER/NOBYPASSRLS app role.
+  EN/RU/AZ confirmation cancel/confirm, EN/RU committed-response loss with
+  byte-identical generation-bound retry and zero replay writes, and both
+  principal/tenant replacement cases PASS. Each replacement sends one POST,
+  captures a live native Refresh GET before obsolete POST delivery, requires
+  it remain unfailed/held through old settlement, then finishes that exact
+  Request with real session and TEAM navigation intact. All six exact-request/
+  live-refresh/session/navigation flags are true for both cases. Populated
+  audit and calendar tables remain hidden without tenant context.
+- Independent actual primary-artifact/browser review GREEN P0=0 P1=0 P2=0
+  P3=0; parents, JSON, role probes and five screenshots verified. Root also
+  viewed RU unknown explanation, RU TEAM confirmation and tenant TEAM screen;
+  both explanations fit the actual viewport and calendar state is current.
+  Evidence is scoped to the calendar/session scenarios, not all dashboard UI.
+- Historical adaec FAIL/6 and ded FAIL/5 receipts remain unchanged. New live
+  refresh acceptance establishes the corrected scenario; the exact causes of
+  historical failures remain NOT PROVEN. No blind CI rerun or gate weakening.
+- PR checks 37060968124 still executing baseline/type diagnostics at this
+  checkpoint. Only pr-scope, runner-policy and scan are already GREEN; no
+  early merge. These documentation/JSON receipts are local-only while exact
+  c2 remains the published candidate. Browser uses a development bundle;
+  production build/deploy acceptance remains pending through normal main CI.
+- Current status: actual seven-case hosted browser acceptance GREEN. Last
+  action: preserved original JSON and reviewed actual screenshots. Precise
+  stopping point: remaining required static/type gates. Next action: primary
+  gate logs, fresh-main protected merge, normal deploy and public exact SHA.
+  Progress unchanged 81/161, 14/15, C8 36%, overall 59%, 80 non-DONE;
+  WF-C8-007 PARTIAL. Authenticated production business/browser, Android,
+  accessibility, load and pilot checks NOT RUN.
