@@ -1686,3 +1686,22 @@
   Next action: fix any actual failures without weakening tests, then allfive
   GREEN/fresh-main normalmerge and deploy/public own SHA. These local receipt
   commits stay behind publishedhead during CI; progress59%,007PARTIAL unchanged.
+
+
+## 2026-10-03 (Asia/Baku) — replacement ready-event reconciliation
+
+- Initial immediate ready event retained old7e while synchronizeeb8 was draft;
+  browser37076024544 SKIPPED and draft PRchecks37076024503 static/type SKIPPED
+  are not acceptance. After REST confirmed settled exacteb8/basee2, toggled
+  draft/ready normally without modifying source. Real ready runs created
+  23:08:36Z (UTC): browser37076132550/job111066347164 and
+  PRchecks37076132505; pr-scope111066347064 SUCCESS,
+  static111066406548/type111066406591 executing. Runner37076024359 and
+  scan37076024467 SUCCESS on exacteb8. PR production build111066348159 SKIPPED
+  normally. No ready/draft skip is credited as static/type/browser PASS.
+- Current result: real replacement execution underway; merge remains blocked
+  by pending gates and nine-case acceptance. Last action: actual event/head
+  reconciliation. Precise stopping point: hosted execution/artifact inspection.
+  Next action: primary real nine-case results and allfive mandatory GREEN,
+  final freshmain,normal merge/deploy,own exact public SHA. Progress59%,007PARTIAL;
+  remaining authenticated production/AT/zoom/physical/load/pilot NOT RUN.
