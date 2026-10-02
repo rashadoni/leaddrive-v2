@@ -5222,3 +5222,28 @@ corrections as new entries that explicitly supersede the earlier fact.
   stopping point: currentrelease productionproof; nextcase notimplemented/run.
   Next action: finish ownnormal deploy/exactSHAreceipts, createpart18 in same
   worktree/preserveprivateappend-onlyreceipts, then implementthe320CSScase.
+
+
+## 2026-10-03 (Asia/Baku) — own production build/QA GREEN, deployment executing
+
+- Own normal push run37077538032/exact46739dbe0c158e9f48455398463e401e42b927e2:
+  QA111070660981 SUCCESS23:38:37Z UTC; primary33/33 Workforce PostgreSQL tests,
+  baseline18/18/no new failures,/tmp/workforce537-467-deploy-quality.log.
+  Productionbuild111070660966 SUCCESS23:42:27Z UTC. Immutableartifact11257403434,
+  nameleaddrive-prod-46739dbe0c158e9f48455398463e401e42b927e2,
+  443905745bytes,created23:42:24Z UTC,archiveSHA256
+  fbfe221c136737086bf530c88334997d2e5a585ee46c7e23703f42a98341e99e.
+  Only small metadata snapshot preserved byteexact in
+  docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-artifacts.json;
+  archive itself NOT DOWNLOADED on Contabo. No manualbuild/deploy/servercopy.
+- Own protected deploy111074659271 nowexecuting; productionrelease stillPENDING.
+  Independent reviewer will capture earliest exact467M strictTLS domain pinned
+  toregistered13.140.132.245; rootwillindependently repeat public/literalIPproof.
+  No previous/descendant SHA is accepted as ownrelease; whole normalrun success
+  and postdeploysmoke/retention stillrequired.
+- Current status: fullhostedproductionbuild/QA GREEN, deployment pending. Last
+  action: immutableartifact metadata preservation. Precise stopping point:
+  own deploysmoke/retention and public exactSHA. Next action: original receipts
+  and final independentreleaseproof, then fresh-main successorpart18 checkpoint.
+  Progress59%,007PARTIAL; authenticatedproductionbusiness/zoom/AT/Android/load/
+  physical/pilot NOT RUN, current ninecase evidence is developmentChromium only.
