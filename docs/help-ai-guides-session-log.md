@@ -482,3 +482,151 @@ and completed the journal self-audit. Precise stopping point: the final local
 journal-only checkpoint on the existing task branch; production and completed
 workflows are untouched. Next action: no remaining work in this scope; any
 investigation of the newly observed artifact requires a separate user request.
+
+
+## 2026-10-02 — Support plan completion to 100% requested
+
+- After asking whether Support was fully complete, the user instructed:
+  `тогда подними план и иди к цели 100%` (raise the plan and work toward 100%).
+  This expands the work from the completed two-endpoint documentation closeout
+  to resolving the remaining Support plan and rollout criteria.
+- Resumed from clean local checkpoint
+  `c3e90d86f5dba30ac0729fcd72bc87cdc411f6b5`, in the same recorded worktree and
+  `codex/help-ai-guides` branch. This remains the active append-only journal;
+  the old Support session journal remains reference-only.
+- Local plan review identifies unchecked `SUPUX-ROL-005` (production revision,
+  smoke, observed metrics, owner, rollback ledger) and `SUPUX-ROL-006` (flag
+  removal only after the agreed representative-tenant observation). The
+  rollout document requires at least seven complete calendar days, no
+  unresolved P0/P1 regression, stable error/latency evidence, repeated
+  permission/isolation checks, and a separate green flag-removal release.
+- Old plan headers and release-ledger placeholders predate completed releases.
+  Reconcile them against current main and immutable existing release records;
+  do not infer production state from stale placeholders or mark elapsed
+  observation without evidence. Completed CI/merge/deploy runs must not be
+  repeated merely to repair documentation.
+- Routing is unchanged and reconciled: origin
+  `https://github.com/rashadoni/leaddrive-v2.git`, registered production
+  `13.140.132.245:/opt/leaddrive-v2`, PR-reviewed main -> GitHub Actions ->
+  immutable SHA-bound artifact. New necessary work follows the same route;
+  no direct server deploy, feature-worktree copy, or gate bypass is allowed.
+- Safety-lane plan: audit all plan completion criteria and actual release
+  provenance; inspect existing rollout state and observation evidence;
+  close verified documentation gaps; implement/execute the remaining governed
+  rollout steps without inventing a seven-day observation or enabling an
+  arbitrary production tenant. Preserve checkpoint commits and explicit
+  evidence for any criterion that cannot yet be completed.
+- Before small targeted work, at `2026-10-02T22:49:25+04:00` (Asia/Baku), host
+  inspection found 15,542 MiB available RAM, 339 GiB free disk, and memory
+  pressure averages of 0.00. Heavy builds/browser E2E remain off this host.
+
+Current result/status: 100% Support-plan completion is the active objective;
+production ledger and governed observation/removal criteria need reconciliation.
+Last completed action: reopened the plan and verified the continuation point,
+remaining local checklist items, and unchanged routing. Precise stopping point:
+gather current-main release and actual rollout/observation evidence. Next
+action: establish what is already satisfied, close verified gaps, and advance
+the remaining rollout criteria with documented evidence.
+
+
+## 2026-10-02 — Current release lineage and remaining gates reconciled
+
+- Independent plan audit found 191 unique SUPUX tasks: 189 checked and 2 open
+  (98.95%). All implementation/evidence/performance tasks are checked; the
+  remaining tasks are `SUPUX-ROL-005` and `SUPUX-ROL-006`. Stale plan headers,
+  release placeholders, and the 17-row acceptance summary need reconciliation
+  against their actual per-workstream evidence rather than mechanical closure.
+- Existing PR #501 is merged at `2026-09-29T16:49:44Z`, merge SHA
+  `bd83c5d41182fca0003282e2241e5ad9ae35c04b`:
+  `https://github.com/rashadoni/leaddrive-v2/pull/501`.
+  Existing main checks `36600569920`, runner policy `36600569922`, and scan
+  `36600569981` are green. Existing production run `36600569942` is green:
+  `https://github.com/rashadoni/leaddrive-v2/actions/runs/36600569942`.
+  Its job/step metadata proves successful quality/security gates, production
+  build/artifact publication, atomic deploy, tenant-isolation coverage, public
+  ping, exact revision check, and login/hashed-assets smoke. These completed
+  workflows were read, not rerun.
+- The earlier live SHA `24a3e30fad6431579cd702b65c0435ffeb999c79` also has a
+  successful existing deploy `37027696056` and main checks `37027696494`.
+  Current protected main has since advanced to
+  `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf`; its existing production deploy
+  `37045608290`, main checks `37045608605`, and scan `37045608454` are green.
+  The deploy's public ping, exact revision, login/assets smoke and tenant
+  isolation steps all pass. No new deployment was requested or performed.
+- A bounded `git fetch --no-tags origin main` refreshed routing/source evidence.
+  Current main and this task's baseline have identical Support plan, performance
+  contract and rollout-helper source. Main's active journal lacks this task's
+  local continuation entries; preserve those entries on the task branch.
+- Local ancestry checks returned 0 for both #501 and #505 against the earlier
+  live `24a3e30...` revision. That later revision has no changes to the Support
+  rollout helper, Support API directory, Macros APIs/page, plan or performance
+  contract relative to #501. This is source evidence, not rendered UI evidence.
+- Fresh sequential public observations:
+  - `2026-10-02T22:54:26+04:00` (Asia/Baku), `/api/v1/ping`: HTTP 200,
+    `{"ok":true}`, curl 0, TLS verification 0, `application/json`, 0.097967 s.
+  - `2026-10-02T22:54:27+04:00`, `/api/v1/public/build-info`: HTTP 200,
+    `{"sha":"88cd6fcc41b7","artifactSha":"88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf","builtAt":"2026-10-02T18:17:33Z"}`,
+    curl 0, TLS verification 0, `application/json`, 0.107489 s.
+  The full live artifact SHA equals the current protected main and successful
+  existing deploy. These timings measure only public endpoint requests; they
+  are not tenant Support latency baselines or seven-day canary metrics.
+- Direct read-only inspection through the registered `leaddrive-prod` alias
+  failed with `Permission denied (publickey)`. Its resolved hostname remains
+  the registered `13.140.132.245`. No other project's key, host, or retired
+  target was attempted. The existing protected main-bound `Inspect production
+  safely` workflow provides a governed read-only diagnostic path, so a new
+  bounded logs-only diagnostic was dispatched with 200 lines and expected main
+  SHA `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf`. It is not a CI rerun or deploy;
+  capture its run/result before drawing any runtime conclusion.
+- Asked the user asynchronously for the exact representative production tenant
+  slug and any existing audited activation record. Until that target/evidence
+  is supplied, no arbitrary production tenant will be enabled and the
+  observation start remains UNVERIFIED. The gate is specifically for Macros
+  category persistence; disabling its tenant flag is a rollback to browser
+  mode, not the later code-level flag-removal release.
+- The seven-day policy cannot be waived to reach a checkbox count. Existing
+  source ceilings expire/review on 2026-10-08; a newly started observation will
+  require a baseline review before final admission. The 35% distance-reduction
+  target and separate color-blind inspection are not evidenced by same-source
+  comparison or paired-theme receipts and must not be claimed measured.
+
+Current result/status: original Support release and current public production
+identity are verified; plan completion remains 189/191 pending governed rollout
+evidence. Last completed action: reconciled existing release records, source
+lineage and live build-info, and dispatched a bounded read-only runtime
+diagnostic. Precise stopping point: awaiting that diagnostic and the selected
+representative tenant/activation record while preparing documentation fixes.
+Next action: record diagnostic evidence, update stale plan/ledger summaries,
+and prepare the auditable observation path without inventing elapsed days.
+
+
+## 2026-10-02 — Bounded production diagnostic completed
+
+- Existing `Inspect production safely` workflow's new logs-only run
+  `37050620842` completed successfully on exact current main
+  `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf`:
+  `https://github.com/rashadoni/leaddrive-v2/actions/runs/37050620842`.
+  It used the existing protected production environment, pinned SSH action,
+  exact-main admission and shared production concurrency boundary. No
+  application build, deployment, tenant change or key replacement was involved.
+- Sanitized metadata from its bounded output: `leaddrive-v2` is `online`,
+  cumulative restarts for the current process are 0, and process uptime starts
+  at `2026-10-02T18:37:33.302Z`. The requested 200-line error-log tail has
+  zero `[ticket-macros/categories POST|PATCH|DELETE]` tag occurrences and zero
+  Support rollout error-tag occurrences. These are bounded sample counts,
+  not a whole-history zero-error claim or P0/P1 incident classification.
+- Raw log contents were not printed into the chat or copied into documentation.
+  The diagnostic does not establish tenant flag state, activation date,
+  authenticated category use, tenant-level latency, or seven-day coverage.
+- Release-ledger reconciliation can record actual merge/deploy/smoke identities,
+  the public-health timings, this current runtime snapshot, accountable owner
+  and retained rollback decision. Longitudinal representative-tenant error/
+  latency and permission/isolation admission belong to the pending observation
+  gate and will remain explicitly unverified until collected.
+
+Current result/status: release/health/runtime receipt is available; no production
+configuration was changed. Last completed action: read and sanitized successful
+diagnostic `37050620842`. Precise stopping point: checkpoint this evidence and
+integrate current main into the continuing task branch before plan edits.
+Next action: update plan/ledger from that reconciled baseline and prepare the
+representative-tenant observation protocol while awaiting the user's slug.
