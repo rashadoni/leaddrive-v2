@@ -63,6 +63,8 @@ beforeEach(() => {
     city: "Baku",
     district: "North",
     phone: "+994 12 000 00 00",
+    contactPerson: "Leyla Aliyeva",
+    notes: "must never serialize",
     managingManager: { name: "must never serialize" },
     agentAssignments: [{ agentId: "other-agent" }],
     fieldPotentials: [{ potentialValue: "100" }],
@@ -148,6 +150,21 @@ describe("GET /api/v2/mtm/mobile/route-field/organizations/:id", () => {
     ]) {
       expect(serialized).not.toContain(forbidden)
     }
+  })
+
+  it("opens the organization's own contact data to the agent who visits it", async () => {
+    // The web card leads with contact person and phone; the phone card showed
+    // the phone only, because the allowlist had never carried the person.
+    const payload = await (await detail()).json()
+    const args = vi.mocked(prisma.mtmCustomer.findFirst).mock.calls[0][0] as { select: Record<string, unknown> }
+
+    expect(args.select.contactPerson).toBe(true)
+    expect(args.select.notes).toBeUndefined()
+    expect(payload.data.organization).toMatchObject({
+      phone: "+994 12 000 00 00",
+      contactPerson: "Leyla Aliyeva",
+      address: "Baku",
+    })
   })
 
   it("rejects a disabled Route Field tenant before it queries field data", async () => {
