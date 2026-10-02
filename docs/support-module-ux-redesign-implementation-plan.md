@@ -4656,7 +4656,7 @@ Status reflects admitted implementation evidence and recorded release receipts.
 Historical browser runs prove their exact source/fixture matrix; they are not
 fresh production observations. A `DONE` entry does not extend an evidence
 claim to an untested viewport, inspection method or tenant-observation period.
-The four `IN_PROGRESS` rows preserve literal acceptance claims not established
+The three `IN_PROGRESS` rows preserve literal acceptance claims not established
 by the recorded evidence; they are distinct from the SUPUX checklist count.
 
 | Criterion | Planned implementation | Evidence required | Status |
@@ -4667,7 +4667,7 @@ by the recorded evidence; they are distinct from the SUPUX checklist count.
 | No page-level mobile overflow | Responsive cards/agenda/master-detail | Foundation `36542434997`, zero overflow failures including 375 px | DONE — admitted browser matrix |
 | Keyboard access | Semantic tables, rows, menus, switches, calendar events | Operational aggregate `36521929861`, recovery `36539937236`, and navigation flows | DONE — recorded representative journeys |
 | Touch target safety | Shared control sizing and row menus | Full matrix zero touch failures plus hit-tested operational mobile flows | DONE — admitted mobile evidence |
-| Non-color status communication | Text/icon labels across all states | Semantic labels/icons and light/dark/Axe receipts; separate color-blind inspection not recorded | IN_PROGRESS — implementation/themes accepted; explicit inspection unverified |
+| Non-color status communication | Text/icon labels across all states | Existing semantic contracts plus new vision run `37055624370`, artifact `11251457434`, 336/336 pass and 12 actual representative screenshots inspected; bounded EN/typical/admin/customer coverage, not a human study | DONE — recorded source and explicit vision inspection |
 | Trustworthy operations | Shared loading/error/success/rollback patterns | Operational/recovery aggregates `36521929861` and `36539937236` plus section receipts | DONE — admitted operational flows |
 | Draft-loss prevention | Template guard and form preservation | Ticket Detail, Templates and portal source/flow receipts, including corrected mobile journeys | DONE — recorded draft/context contracts |
 | Localization parity | Shared dictionaries and no raw enums | Recorded final-branch 23,861-key parity and full 1296-cell AZ/RU/EN matrix; historical counts retain their dates | DONE — recorded source/browser evidence |

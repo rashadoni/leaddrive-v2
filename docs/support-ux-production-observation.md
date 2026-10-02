@@ -81,7 +81,7 @@ tenant authorization or expose request content to make observation easier.
 | Claim | Existing evidence | Remaining bounded work |
 | --- | --- | --- |
 | First viewport at exactly 1366 x 768 | DONE: additive `37055428421`, artifact `11249886749`, 66/66 pass at measured 1366 x 768 with zero touch, plus eight actual representative screenshot reviews | Exact-source admission completed below; preserve the canonical matrix and all thresholds |
-| Color-blind inspection | Semantic labels/icons, paired themes and Axe receipts | Opt-in protanopia/deuteranopia/tritanopia simulation, identified in report/screenshot/baseline dimensions; manually inspect labels and status distinctions. Simulation is not a human-user study or a new WCAG certification |
+| Color-blind inspection | DONE: run `37055624370`, artifact `11251457434`, 336/336 pass plus 12 actual representative screenshots | Bounded receipt below covers three named simulations, EN/typical/admin/customer and paired themes/device modes. Simulation is not a human-user study or a new WCAG certification |
 | Old/new block and vertical-distance comparison | Current structural metrics and same-source stability comparison | Establish legitimate pre-redesign source/fixture baselines and matched current captures for Service Desk, Agent Desktop, Entitlements and Calendar; record before/after numbers, formula and source identities |
 | At least 35% distance reduction | Target only; no matched quantitative proof recorded | Calculate only from the matched captures above. If the actual improvement is smaller, correct the layout and recapture the affected scenario; do not lower the requirement or invent a percentage |
 
@@ -102,7 +102,7 @@ read-only; selecting them with a mutating journey is rejected before building.
 | Prepared capture | Exact subset | Size / evidence boundary |
 | --- | --- | --- |
 | First-viewport inspection | `service-desk,agent-desktop,support-entitlements,agent-calendar`; `agent,manager,admin`; AZ/RU/EN; light/dark; `desktop-1366`; typical fixture; standard vision; canary enabled | 66 permitted cells, three samples each; real 1366 x 768 mouse/keyboard capture. [37055428421](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055428421) completed on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; 66/66 PASS; eight screenshots inspected |
-| Color-blind inspection | All scenarios; `admin,customer`; EN; light/dark; desktop/mobile; typical fixture; protanopia/deuteranopia/tritanopia; canary enabled | 336 permitted cells, one sample each; inspect actual screenshots and status labels after capture. [37055624370](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370) capturing on the same exact source; result and actual inspection PENDING |
+| Color-blind inspection | All scenarios; `admin,customer`; EN; light/dark; desktop/mobile; typical fixture; protanopia/deuteranopia/tritanopia; canary enabled | [37055624370](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370) completed on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; actual 336/336 PASS, one sample per cell; 12 representative screenshots inspected |
 | Historical quantitative comparison | Four daily-work surfaces; matched fixture/role/locale/theme/viewport/data and old/current source identities | New isolated run `37061944771` on `43440b2dda9c8f5bc403750296553399b111e0f4` admits public original `76994875a251e0956b56f8d300625b97eb098661`, whose four page blobs match the originals. Actual runtime/35% results PENDING; same-source comparison cannot substitute for this baseline |
 | Corrected Calendar semantic receipt | `agent-calendar`; admin/EN; both themes; desktop-1366; typical fixture; standard vision; three samples | New bounded run `37061949081` on the same corrected source queued behind vision capture. Two permitted cells; no full matrix replay. Count/date semantics require actual artifact and screenshot inspection |
 
@@ -154,6 +154,38 @@ two failed against the preceding implementation. The no-misleading-metrics
 criterion is reopened until corrected source passes CI/browser admission.
 The original viewport evidence remains valid for its recorded source; no
 production deployment of this correction has occurred.
+
+## Explicit color-vision receipt — accepted 2026-10-03 (Asia/Baku)
+
+[Run 37055624370](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370)
+completed successfully on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`.
+Artifact `11251457434`,29,623,662 bytes, digest
+`sha256:b61cfe57aca8db3200692f205e114c609799f39250b3562c9951ff367879874d`.
+Actual JSON contains336/336 passed cells:112 each for protanopia,
+deuteranopia and tritanopia;276 admin/60 customer;168 desktop1440 x900
+with zero touch points and168 mobile375 x812 with one touch point.
+All28 scenarios appear. Reported runtime/Axe/accessibility/touch/environment
+and whole-page horizontal-overflow failures are zero. One load per cell is
+coverage evidence, not comparable p75 performance.
+
+Twelve retained screenshots were actually opened: Service Desk, Agent Desktop,
+Calendar, Entitlements, Macros, SLA Policies, portal tickets/detail/chat, VoIP,
+Escalation Rules and Knowledge Base. Across the set all three simulations,
+both themes, both device modes and both roles are represented. Ticket status,
+priority and SLA warnings use text and icons; entitlement states, published
+articles, active rules and call direction/completion remain labeled. Portal
+statuses and manual-support mode also retain text/icon meaning.
+
+The Agent Desktop admin fixture has an empty assigned queue, so that image
+proves the empty state and actions rather than populated assigned-case states.
+The old Calendar screenshot retains its known count/date defect and is not a
+corrected semantic receipt. Long labels, previews and calendar content can
+truncate within owned containers. The review covers static visible regions;
+it does not claim an inspection of every row after scrolling, keyboard
+interaction, a representative human-user study or a new WCAG certification.
+Existing keyboard/source receipts keep their original scope. No new blocking
+color-dependence issue was found in the inspected states. The explicit
+color-vision criterion is DONE at these recorded dimensions.
 
 ## Final flag-retirement release
 

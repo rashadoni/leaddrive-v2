@@ -923,3 +923,34 @@ complete protected PR checks while awaiting the selected tenant record.
   scope audit PASS:191 unique tasks/190 checked, only ROL-006 unchecked; the
   reference Support journal remains untouched. Actual full PR static/type
   checks are running on43440b2dd and are not yet accepted.
+
+
+## 2026-10-03 — Explicit color-vision inspection accepted
+
+- New additive vision run37055624370 completed SUCCESS on exact988163b83.
+  Downloaded artifact11251457434,29,623,662 bytes, digest
+  sha256:b61cfe57aca8db3200692f205e114c609799f39250b3562c9951ff367879874d.
+  Read actual JSON:336/336 PASS,112 per named simulation,276 admin/60 customer,
+  all28 scenarios,168 desktop1440x900 mouse/168 mobile375x812 touch. Reported
+  runtime/Axe/accessibility/touch/overflow/environment failures all zero.
+- Root and independent reviewer opened12 retained PNGs, covering Service Desk,
+  Agent Desktop, Calendar, Entitlements, Macros, SLA, portal tickets/detail/chat,
+  VoIP, Escalation and Knowledge Base; all3 simulations, both themes/device
+  modes/roles represented. Inspected states retain text/icon status meaning;
+  no new blocking color-only distinction found. The admin Agent Desktop frame
+  is empty, Calendar's known old count bug remains, and long text may truncate
+  inside owned containers. No claim of scrolling every row, keyboard retest,
+  human-user study, comparable p75 or a new WCAG certification is made.
+- Accepted explicit color-vision row; separate acceptance status now14 DONE /
+  3 IN_PROGRESS: corrected Calendar metrics, matched comparative improvement,
+  representative rollout. Tracked tasks remain190/191 with ROL-006 open.
+  Calendar/historical captures and full PR checks continue on43440b2dd; no
+  new production release or mutation occurred.
+
+Current result/status: exact viewport and explicit vision criteria verified;
+tracked plan190/191, three separate acceptance criteria still open.
+Last completed action: inspect336-cell report and12 actual images, accept the
+bounded vision receipt. Precise stopping point: corrected Calendar and exact
+historical runtime builds plus protected PR gates are running in GitHub.
+Next action: inspect their real artifacts/results; selected tenant, activation
+and real telemetry remain necessary before counting seven full local days.
