@@ -442,7 +442,7 @@ export default function InvoiceDetailPage() {
     setChainError("")
     try {
       const res = await fetch(`/api/v1/invoices/${invoiceId}/chain`, { headers })
-      if (res.redirected || res.url.includes("/login")) {
+      if (res.status === 401 || res.redirected || res.url.includes("/login")) {
         window.location.href = "/login"
         return
       }
@@ -525,7 +525,7 @@ export default function InvoiceDetailPage() {
         headers,
         body: JSON.stringify({ action: "setup" }),
       })
-      if (res.redirected || res.url.includes("/login")) {
+      if (res.status === 401 || res.redirected || res.url.includes("/login")) {
         window.location.href = "/login"
         return
       }
@@ -574,7 +574,7 @@ export default function InvoiceDetailPage() {
         headers,
         body: JSON.stringify({ action: "start" }),
       })
-      if (res.redirected || res.url.includes("/login")) {
+      if (res.status === 401 || res.redirected || res.url.includes("/login")) {
         window.location.href = "/login"
         return
       }

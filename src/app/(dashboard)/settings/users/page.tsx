@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { useSession } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,8 @@ import {
 import { useLocale, useTranslations } from "next-intl"
 import { formatDate } from "@/lib/format-date"
 import { toast } from "sonner"
+import { isSessionExpiredResponse } from "@/lib/session-expired"
+import { signOutCallbackUrl } from "@/lib/tenant-domain"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
@@ -442,12 +444,14 @@ function ResetPasswordDialog({
   onSaved,
   user,
   orgId,
+  currentUserId,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSaved: () => void
   user?: User
   orgId?: string
+  currentUserId?: string
 }) {
   const tu = useTranslations("settingsUsers")
   const [password, setPassword] = useState("")
@@ -471,6 +475,14 @@ function ResetPasswordDialog({
 
   if (!user) return null
 
+  // A reset closes every session of the account it targets. When that account
+  // is the administrator's own, the session being closed is the one this page
+  // runs on — say so before the click, and leave for the login page after it.
+  const isSelf = !!currentUserId && user.id === currentUserId
+  const leaveForLogin = () => {
+    setTimeout(() => signOut({ callbackUrl: signOutCallbackUrl() }), 1500)
+  }
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError("")
@@ -493,16 +505,28 @@ function ResetPasswordDialog({
         },
         body: JSON.stringify({ password, confirmPassword }),
       })
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.error || tu("passwordResetFailed"))
+      if (isSessionExpiredResponse(response)) {
+        // Nothing was changed, and nothing else on this page will answer
+        // either. `saving` stays set so the form cannot be resubmitted.
+        setError(tu("sessionExpired"))
+        leaveForLogin()
+        return
+      }
+      const result = await response.json().catch(() => null)
+      if (!response.ok || !result) {
+        throw new Error(result?.error || tu("passwordResetFailed"))
+      }
+      if (isSelf) {
+        toast.success(tu("passwordResetSelfSuccess"))
+        leaveForLogin()
+        return
       }
       toast.success(tu("passwordResetSuccess", { name: user.name }))
       onSaved()
       onOpenChange(false)
+      setSaving(false)
     } catch (resetError) {
       setError(errorMessage(resetError))
-    } finally {
       setSaving(false)
     }
   }
@@ -524,6 +548,16 @@ function ResetPasswordDialog({
           {error && (
             <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {error}
+            </div>
+          )}
+
+          {isSelf && (
+            <div className="mb-4 flex gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">{tu("passwordResetSelfWarningTitle")}</p>
+                <p className="mt-1">{tu("passwordResetSelfWarningDescription")}</p>
+              </div>
             </div>
           )}
 
@@ -597,7 +631,7 @@ function ResetPasswordDialog({
                 onChange={(event) => setConfirmed(event.target.checked)}
                 className="mt-0.5 h-4 w-4 rounded"
               />
-              <span>{tu("passwordResetConfirmation")}</span>
+              <span>{tu(isSelf ? "passwordResetSelfConfirmation" : "passwordResetConfirmation")}</span>
             </label>
           </div>
         </DialogContent>
@@ -1151,6 +1185,7 @@ export default function UsersSettingsPage() {
         onSaved={fetchUsers}
         user={passwordResetUser}
         orgId={orgId}
+        currentUserId={session?.user?.id}
       />
 
       <DeleteConfirmDialog
