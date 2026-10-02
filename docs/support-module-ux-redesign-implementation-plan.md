@@ -1,11 +1,13 @@
 # Support Module UX Redesign — Implementation Plan
 
-> **Status:** IN PROGRESS — Service Desk and Ticket Detail are deployed;
-> Complaint Registry is evidence-complete and awaiting PR/release
+> **Status:** IMPLEMENTATION AND RELEASE COMPLETE — 190/191 tracked tasks
+> closed; representative production observation and flag retirement remain open.
+> Exact unverified acceptance claims are identified in section 25.
 > **Original date:** 2026-08-31
-> **Last reviewed:** 2026-09-13
+> **Last reviewed:** 2026-10-02
 > **Code baseline:** `rashadoni/leaddrive-v2` `main` at
-> `86d6411189ab221a8b5363176d25bf6a3552319e`
+> `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf` for release reconciliation;
+> historical browser receipts retain their own exact source SHAs.
 > **Scope:** 15 potentially visible Support destinations (14 base destinations
 > plus role/add-on-gated Support AI Settings), their nested operational flows,
 > and customer-portal dependencies
@@ -27,7 +29,22 @@ continues from a clean current-main worktree on a dedicated `codex/*` branch.
 
 Status legend: `TODO` · `IN_PROGRESS` · `DONE` · `BLOCKED` · `DEFERRED`
 
-Execution checkpoint (2026-09-13): the plan contains 191 tracked SUPUX tasks.
+Current completion checkpoint (2026-10-02): 191 unique tracked SUPUX tasks;
+190 checked (99.48%) and only `SUPUX-ROL-006` open. Implementation, isolated
+browser/accessibility/performance acceptance at their recorded dimensions and
+the production-release ledger are complete. PR [#501](https://github.com/rashadoni/leaddrive-v2/pull/501)
+merged as `bd83c5d41182fca0003282e2241e5ad9ae35c04b`; its existing production
+run [36600569942](https://github.com/rashadoni/leaddrive-v2/actions/runs/36600569942)
+is green. Current live artifact matches the later successful main release
+`88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf`. See the
+[release ledger](support-ux-performance-and-rollout.md#release-ledger) for dated
+production snapshots and the
+[observation protocol](support-ux-production-observation.md) for the remaining
+seven-full-calendar-day gate. No observation start or tenant flag state has yet
+been verified; 100% completion is not claimed.
+
+Historical execution checkpoint (2026-09-13, superseded by the checkpoint above):
+the plan contains 191 tracked SUPUX tasks.
 All 19 Service Desk and Ticket Detail tasks are evidence-complete and deployed;
 all 11 Complaint Registry tasks are evidence-complete and awaiting the normal
 PR/release path. The remaining 161 tasks stay open until their own
@@ -4061,10 +4078,15 @@ Customer Support Portal is **DONE**.
 
 ## 21C. Evidence, Performance, and Rollout Track
 
-**Status: EVIDENCE/PERFORMANCE DONE — complete 1296-cell high-profile evidence,
+**Status: EVIDENCE/PERFORMANCE AND RELEASE LEDGER DONE — complete 1296-cell high-profile evidence,
 exact-SHA Macros canary-on/canary-off mutation proof, measured 0/5/50/500
 profiles and the final seven-sample visual/performance comparison are green;
-protected release admission remains pending and rollout stays prohibited**
+protected release admission and production receipt passed with PR #501;
+representative production observation and flag retirement remain pending**
+
+The dated receipts below preserve their original pre-release state. Statements
+that admission was pending or the branch was not ready describe those historical
+checkpoints; the current release ledger above supersedes them for release status.
 
 ### Evidence tasks
 
@@ -4105,10 +4127,20 @@ protected release admission remains pending and rollout stays prohibited**
   before any API or persisted preference change.
 - [x] **SUPUX-ROL-004** Run permission, tenant-isolation, feature/add-on, and
   direct-route regression before enabling each canary.
-- [ ] **SUPUX-ROL-005** Record production revision, smoke evidence, observed
+- [x] **SUPUX-ROL-005** Record production revision, smoke evidence, observed
   metrics, owner, and rollback decision for every released slice.
 - [ ] **SUPUX-ROL-006** Remove a flag only after representative tenants pass the
   agreed observation window with no unresolved P0/P1 regression.
+
+Release-ledger closure (2026-10-02): the
+[canonical receipt](support-ux-performance-and-rollout.md#release-ledger)
+maps the earlier slices and final integrated PR #501 to their release evidence,
+records the exact successful immutable deploy, current public SHA and health,
+bounded PM2/error-log observations, accepted synthetic source metrics, owner
+`@rashadoni`, and the decision to retain the flag boundary. These are dated
+release/runtime snapshots. Representative-tenant stable error/latency evidence,
+the seven-full-calendar-day window and the later flag-retirement release remain
+in `SUPUX-ROL-006`; none is inferred from public endpoint latency or a log tail.
 
 Final canary evidence (2026-09-29):
 
@@ -4620,25 +4652,32 @@ Browser acceptance scenarios:
 
 ## 25. Acceptance Matrix
 
+Status reflects admitted implementation evidence and recorded release receipts.
+Historical browser runs prove their exact source/fixture matrix; they are not
+fresh production observations. A `DONE` entry does not extend an evidence
+claim to an untested viewport, inspection method or tenant-observation period.
+The four `IN_PROGRESS` rows preserve literal acceptance claims not established
+by the recorded evidence; they are distinct from the SUPUX checklist count.
+
 | Criterion | Planned implementation | Evidence required | Status |
 | --- | --- | --- | --- |
-| Daily work visible in first viewport | Compact shell, max three indicators, sticky toolbar | 1366 x 768 screenshots with representative data | TODO |
-| Support navigation is understandable | Three permission-aware groups | Agent/manager/admin navigation smoke | TODO |
-| No misleading metrics | Agent/VoIP aggregate contracts | API tests plus UI comparison to response | TODO |
-| No page-level mobile overflow | Responsive cards/agenda/master-detail | 375 px `scrollWidth === clientWidth` | TODO |
-| Keyboard access | Semantic tables, rows, menus, switches, calendar events | Keyboard-only scenario recording | TODO |
-| Touch target safety | Shared control sizing and row menus | 375 px inspection and automated audit | TODO |
-| Non-color status communication | Text/icon labels across all states | Light/dark/color-blind inspection | TODO |
-| Trustworthy operations | Shared loading/error/success/rollback patterns | Forced fetch/mutation failure tests | TODO |
-| Draft-loss prevention | Template guard and form preservation | Navigation/context-switch tests | TODO |
-| Localization parity | Shared dictionaries and no raw enums | i18n check plus AZ/RU/EN smoke | TODO |
-| Reduced cognitive load | Progressive disclosure and task-first layout | Before/after block count and scroll comparison | TODO |
-| No generic AI-dashboard patterns | Remove rainbow KPI/card nesting/side stripes | Final manual design review | TODO |
-| Distinctive operational hooks | One decision-supporting hook per surface | Prototype review plus task-use evidence | TODO |
-| Complete operational scope | Fifteen destinations plus nested case/portal flows | Route inventory and scenario coverage | TODO |
-| Correct role/add-on visibility | Explicit feature, add-on, role, page/API matrix | Navigation and direct-route regression | TODO |
-| Canonical traceability | Epic, slice issues, PRs, evidence and release status | Linked issue/backlog audit | TODO |
-| Safe incremental rollout | Independent canary and rollback per high-risk slice | Production revision and rollback evidence | TODO |
+| Daily work visible in first viewport | Compact shell, max three indicators, sticky toolbar | Foundation `36542434997` passes primary-work gates at canonical 1440/1024/768/375 widths; exact 1366 x 768 receipt remains absent | IN_PROGRESS — accepted canonical coverage; exact legacy dimension unverified |
+| Support navigation is understandable | Three permission-aware groups | Navigation flows `36512893404` and 72-cell matrix `36514758825` | DONE — admitted source evidence |
+| No misleading metrics | Agent/VoIP aggregate contracts | AGT-001/002 and VoIP same-scope contracts; recorded role/high-profile API/UI receipts | DONE — admitted source/API/UI evidence |
+| No page-level mobile overflow | Responsive cards/agenda/master-detail | Foundation `36542434997`, zero overflow failures including 375 px | DONE — admitted browser matrix |
+| Keyboard access | Semantic tables, rows, menus, switches, calendar events | Operational aggregate `36521929861`, recovery `36539937236`, and navigation flows | DONE — recorded representative journeys |
+| Touch target safety | Shared control sizing and row menus | Full matrix zero touch failures plus hit-tested operational mobile flows | DONE — admitted mobile evidence |
+| Non-color status communication | Text/icon labels across all states | Semantic labels/icons and light/dark/Axe receipts; separate color-blind inspection not recorded | IN_PROGRESS — implementation/themes accepted; explicit inspection unverified |
+| Trustworthy operations | Shared loading/error/success/rollback patterns | Operational/recovery aggregates `36521929861` and `36539937236` plus section receipts | DONE — admitted operational flows |
+| Draft-loss prevention | Template guard and form preservation | Ticket Detail, Templates and portal source/flow receipts, including corrected mobile journeys | DONE — recorded draft/context contracts |
+| Localization parity | Shared dictionaries and no raw enums | Recorded final-branch 23,861-key parity and full 1296-cell AZ/RU/EN matrix; historical counts retain their dates | DONE — recorded source/browser evidence |
+| Reduced cognitive load | Progressive disclosure and task-first layout | Current block/primary-work measurements accepted; matched old/new improvement not established | IN_PROGRESS — implementation accepted; comparative improvement unverified |
+| No generic AI-dashboard patterns | Remove rainbow KPI/card nesting/side stripes | Deterministic scans and documented representative Foundation/final-comparison manual inspection | DONE — documented source/manual evidence |
+| Distinctive operational hooks | One decision-supporting hook per surface | Section-specific operational journeys and representative screenshot reviews; no user-study claim | DONE — documented operational validation |
+| Complete operational scope | Fifteen destinations plus nested case/portal flows | 28 scenarios, full 1296/1296 matrix and 17 operational reports | DONE — admitted scope coverage |
+| Correct role/add-on visibility | Explicit feature, add-on, role, page/API matrix | Navigation/security flows, Support AI boundaries and direct-route/tenant API contracts | DONE — admitted source/security evidence |
+| Canonical traceability | Epic, slice issues, PRs, evidence and release status | Epic #496, gates #492–495, named owner, section checkpoints/artifacts and verified PR #501 release receipt; no claim that tracker issues are closed | DONE — linked traceability |
+| Safe incremental rollout | Independent canary and rollback per high-risk slice | Documented rollback boundaries, same-source flag-off/on receipts and PR #501 release; representative production observation pending | IN_PROGRESS — release/rollback accepted; observation incomplete |
 
 ## 26. Success Metrics
 
@@ -4663,6 +4702,16 @@ Before implementation, establish a baseline and then verify:
 
 Quantitative task-time goals should be added only after baseline usability
 measurements with representative users; do not invent improvement percentages.
+
+Measurement clarification (2026-10-02): the 35% reduction remains a measurable
+target, not a demonstrated result. Accepted captures establish current
+primary-work position and same-source visual/performance stability. They do not
+establish a matched pre-redesign before/after reduction for Service Desk, Agent
+Desktop, Entitlements and Calendar. Record compatible before/after source,
+fixture, role and viewport measurements before reporting a percentage; this
+target remains UNVERIFIED. The exact viewport, separate color-blind inspection
+and comparative measures in section 25 remain explicit follow-up acceptance
+work and are not waived by completing the tracked rollout checklist.
 
 ## 27. Risks and Mitigations
 

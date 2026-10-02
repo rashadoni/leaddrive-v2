@@ -1,9 +1,13 @@
 # Support UX performance and rollout contract
 
-Status: **EVIDENCE/PERFORMANCE COMPLETE; RELEASE PENDING**. This contract is the
-release authority for the Support UX branch. The comparison and pre-release
-canary gates are satisfied; protected merge, deployment, smoke and the later
-tenant observation/flag-removal gates remain independent requirements.
+Status: **IMPLEMENTATION, EVIDENCE AND PRODUCTION RELEASE RECEIPT COMPLETE;
+REPRESENTATIVE OBSERVATION AND FLAG RETIREMENT PENDING** (reconciled 2026-10-02).
+This contract is the release authority for the Support UX branch. PR #501 and
+its production deploy are complete. Recorded source comparison and pre-release
+canary gates remain accepted at their exact historical dimensions; the later
+tenant observation/flag-retirement gate is still open. The tracked checklist
+is 190/191, not 100%. Unverified literal acceptance measurements remain listed
+in section 25 of the implementation plan.
 
 ## Performance measurement
 
@@ -202,19 +206,43 @@ intentionally deferred until all conditions hold:
 
 ## Release ledger
 
+Reconciled 2026-10-02 from immutable existing GitHub records, fresh public
+endpoint observations and a protected bounded runtime diagnostic. This updates
+pre-release placeholders; it does not rerun completed checks, merge or deploy.
+The earlier per-slice release receipts remain in the canonical plan (Service
+Desk/Ticket Detail #82 with subsequent RLS recovery #100; Complaint Registry
+#141; Agent Desktop #175). Final integrated release #501 carries the remaining
+Support slices and preserves those earlier delivered surfaces.
+
 | Field | Value |
 | --- | --- |
-| Slice / PR / merge SHA | Pending final PR and protected merge |
-| Production artifact SHA | Pending GitHub Actions deploy |
-| Canary tenant and flag | No production tenant enabled; `support_ux_v2_canary` defaults off |
+| Slice / PR / merge SHA | [PR #501](https://github.com/rashadoni/leaddrive-v2/pull/501), head `8ef809a7b9c2e4cd3401b280092391be10cf3916`, merged `2026-09-29T16:49:44Z` as `bd83c5d41182fca0003282e2241e5ad9ae35c04b` |
+| Protected PR admission | Existing `pr-scope`, `static-checks`, `typecheck` [36598285873](https://github.com/rashadoni/leaddrive-v2/actions/runs/36598285873); `runner-policy` [36598285850](https://github.com/rashadoni/leaddrive-v2/actions/runs/36598285850); `scan` [36598285885](https://github.com/rashadoni/leaddrive-v2/actions/runs/36598285885): all green on that exact head |
+| Original production artifact / deploy | `bd83c5d41182fca0003282e2241e5ad9ae35c04b`, existing successful [36600569942](https://github.com/rashadoni/leaddrive-v2/actions/runs/36600569942), completed `2026-09-29T17:18:59Z`; original main checks [36600569920](https://github.com/rashadoni/leaddrive-v2/actions/runs/36600569920) green |
+| Later current main / live artifact | `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf`; existing successful deploy [37045608290](https://github.com/rashadoni/leaddrive-v2/actions/runs/37045608290), main checks [37045608605](https://github.com/rashadoni/leaddrive-v2/actions/runs/37045608605) and scan [37045608454](https://github.com/rashadoni/leaddrive-v2/actions/runs/37045608454); live full-SHA equality observed `2026-10-02T22:54:27+04:00` |
+| Canary tenant and flag | Current production flag state UNVERIFIED; representative tenant selection/activation evidence requested. The prior pre-release ledger recorded none enabled and the source defaults off; that historical entry is not a current DB read |
 | Evidence artifacts | Full 1296/1296 run `36542434997`, artifact `11024298303`; canary off `36551225927`/`11025885144`; canary on `36552953697`/`11027281153`; profiles 0/5/50/500 runs `36554107100`, `36555323681`, `36557478393`, `36559389503` |
 | Roles / profiles | Agent, manager, admin, customer; high and measured 0/5/50/500 accepted |
 | Baseline / compare | Accepted aggregate: `36575013443`/`11038557440`, `36580638589`/`11041830573`, `36585806513`/`11041654133`, `36588009933`/`11043736737` |
-| Production smoke | Pending deploy |
-| Observation | Not started; removal gate deferred by policy above |
-| P0/P1 incidents | None recorded before release |
-| Owner | Repository owner `rashadoni` |
-| Rollback | Remove tenant flag first; revert affected checkpoint through reviewed `main`; preserve DB state |
+| Production smoke | Original deploy and later deploy job metadata report successful public ping, exact revision, login/hashed-assets smoke and tenant-isolation coverage. Independent current public GETs recorded below; no fresh authenticated Support UI observation is claimed |
+| Observed production health metrics | At `2026-10-02T22:54:26+04:00`, ping HTTP 200 and `ok:true`, endpoint RTT 0.097967 s; build-info HTTP 200, full SHA above, RTT 0.107489 s. Curl 0, TLS verification 0 and JSON for both. These are endpoint request timings, not Support page latency |
+| Observed runtime snapshot | Protected read-only diagnostic [37050620842](https://github.com/rashadoni/leaddrive-v2/actions/runs/37050620842) on current main: `leaddrive-v2` online, 0 cumulative restarts for current process, uptime since `2026-10-02T18:37:33.302Z`; requested 200-line error tail has 0 Macros-category and 0 Support-rollout error-tag occurrences. No complete time/tenant/incident coverage is inferred |
+| Admitted source metrics | Synthetic 0/5/50/500 profile p75 and CLS measurements above, and matched seven-sample 56-cell comparison receipt below; source/fixture evidence, not representative production telemetry |
+| Observation | Start and seven-full-calendar-day coverage UNVERIFIED; pending `SUPUX-ROL-006`. See [production observation protocol](support-ux-production-observation.md) |
+| P0/P1 incidents | None recorded in pre-release evidence. Current incident classification/history UNVERIFIED; zero tag hits in a short log tail cannot establish zero production incidents |
+| Owner | Repository/release owner `@rashadoni` |
+| Rollback decision | Retain the existing flag boundary; no rollback triggered by available release/public-health evidence. On confirmed regression, disable the selected tenant flag first and return to browser category mode while preserving DB state; revert affected source through a new reviewed main release if needed. Retiring the code-level flag is a later governed release |
+
+`SUPUX-ROL-005` is closed by the release identities, smoke receipts, explicitly
+bounded observed production snapshots, admitted source metrics and owner/
+rollback decision above. It does not certify longitudinal tenant-level
+stability. `SUPUX-ROL-006` stays open until all observation conditions in this
+contract pass and the later flag-retirement release is separately verified.
+
+The current protected diagnostic path works through GitHub Actions. Direct
+inspection via `leaddrive-prod` was rejected with `Permission denied (publickey)`;
+no alternate target/key was used. That access failure does not justify
+substituting a retired production host or a direct server deployment.
 
 ### Final visual/performance comparison receipt
 

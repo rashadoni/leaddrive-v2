@@ -630,3 +630,99 @@ diagnostic `37050620842`. Precise stopping point: checkpoint this evidence and
 integrate current main into the continuing task branch before plan edits.
 Next action: update plan/ledger from that reconciled baseline and prepare the
 representative-tenant observation protocol while awaiting the user's slug.
+
+
+## 2026-10-02 — Plan reconciled and remaining execution paths prepared
+
+- Checkpointed the preceding release/runtime evidence as `4df35a291`, then
+  integrated the already released current `origin/main` locally into the
+  continuing `codex/help-ai-guides` worktree at merge checkpoint
+  `1324333d6497f63b135c048c1182324be99c020e`. This is local source synchronization,
+  not a repeated production PR merge or deployment. The task diff against main
+  remains path-scoped; incoming already-main code is not part of this change.
+- Reconciled the stale plan header, acceptance summary and release contract.
+  `SUPUX-ROL-005` now has real immutable release/smoke identities, bounded live
+  health/runtime observations, named owner and retain/rollback decision.
+  Checklist status is 190/191 (99.48%); `SUPUX-ROL-006` remains open.
+- The acceptance summary separately keeps four literal requirements in progress:
+  exact 1366 x 768 first viewport, explicit color-blind inspection, matched
+  old/new cognitive-load improvement, and representative production observation.
+  The 35% distance-reduction target remains UNVERIFIED. A checked implementation
+  task does not waive an unmeasured product acceptance target.
+- Created `docs/support-ux-production-observation.md` as the execution protocol
+  for the remaining gate: exact owner-authorized tenant and audited activation,
+  seven full Asia/Baku calendar days, actual category-use/error/latency coverage,
+  incident/permission/isolation review, baseline expiry review and a later
+  protected flag-retirement release. The exact tenant question remains pending;
+  no activation, actual observation start, elapsed days or final admission is
+  invented. Partial activation days do not count.
+- Prepared an additive 1366 x 768 mouse/keyboard capture and identified vision
+  simulations as separate report/screenshot/baseline dimensions. Original
+  four-viewport/standard-vision defaults and all thresholds remain unchanged.
+  Mutating journeys reject optional dimensions before a build. New screenshots
+  still require actual human-style inspection by the agent after capture; the
+  presence of simulation is not a user study or certification.
+- Prepared a bounded read-only `support-ux-rollout` view in the existing protected
+  production diagnostic workflow. It requires exact reviewed main admission,
+  existing protected production environment and pinned SSH, and runs its helper
+  via stdin. The helper accepts anonymous aggregate counts or one validated
+  exact tenant slug; it cannot activate or modify a flag. Static root-owned
+  config parsing, credential-safe PG environment, explicit public schema,
+  transaction read-only fences/timeouts and strict sanitized output are tested.
+  No raw features/settings/category names/customer payloads or credentials are
+  printed; failures emit fixed codes. Encoded feature-array parsing matches the
+  application's fail-closed JSON behavior, including NaN/Infinity rejection.
+- Small sequential Python verification after schema fencing: 16 behavioral/
+  security tests PASS in the current tree (`python3 -I`, bytecode disabled).
+  Latest host preflight: 15,296 MiB available RAM, 339 GiB free disk, memory PSI
+  0.00. Previously completed local event-platform asset guard and runner policy
+  passed; additive capture tests/final self-audit are still being completed.
+- Heavy build/browser/full-typecheck gates remain NOT RUN on Contabo by host
+  policy. New additive capture work belongs to GitHub CI; completed historical
+  checks/matrices/deploys are not rerun. The new production diagnostic is only
+  prepared and has not been shipped or dispatched. Merging it would trigger
+  the repository's main-push deploy route; do not do that incidentally under
+  the user's explicit no-repeat-deploy instruction.
+
+Current result/status: verified checklist 190/191, with four exact acceptance
+claims still in progress; operator and additive capture paths are prepared.
+Last completed action: reconciled the plan/ledger and passed the read-only helper
+security/behavior tests. Precise stopping point: finish narrow capture checks
+and self-audit, checkpoint the candidate, then collect only missing evidence.
+Next action: new branch-bound CI capture and representative-tenant selection/
+activation evidence; no previously completed deploy will be repeated.
+
+
+## 2026-10-02 — Prepared acceptance/operator candidate self-audit
+
+- Final integrated narrow evidence batch in this exact tree: 5 Vitest files,
+  57/57 tests PASS after all baseline/modality edits. Read-only production
+  helper: 16/16 Python behavioral/security tests PASS after schema/JSON fixes.
+  Scoped ESLint, both JS syntax checks, both workflow YAML/default/preflight
+  checks, runner policy (38 workflows) and event-platform asset guard PASS.
+- Self-audit corrected two baseline edge cases: new optional dimensions require
+  explicit metadata even on an old viewport name; an image-only legacy baseline
+  without evidence metadata cannot admit a new dimension. Original four
+  viewport + standard-vision compatibility remains intact. Capture rejects
+  both missing touch on touch fixtures and unexpected touch on mouse fixtures.
+- Root/self-audit and the independent subagent source review found no remaining
+  actionable issue in the prepared bounded helper/capture changes. Automated
+  journal audit PASS: all 191 task IDs unique, exactly 190 checked, only
+  `SUPUX-ROL-006` unchecked; all previous active-journal bytes preserved and the
+  old Support journal untouched. `git diff --check` PASS.
+- Local full build, full browser/E2E and full TypeScript graphs: NOT RUN under
+  Contabo workload rules. Actual optional CDP/screenshot rendering and protected
+  PR admission: NOT RUN yet; they belong to the new exact-candidate GitHub work.
+  The prepared production diagnostic: NOT RUN because it is not admitted on
+  reviewed main. No task PR has been merged and no new deploy has been started.
+- Next bounded evidence is the 66-cell exact-1366 first-viewport slice and the
+  336-cell separate vision-inspection slice on the candidate branch. They cover
+  newly missing dimensions; the accepted 1296-cell matrix is not repeated.
+  The seven-day gate and tenant telemetry cannot be satisfied by these fixtures.
+
+Current result/status: locally verified, self-audited acceptance/operator
+candidate; checklist remains 190/191 with exact acceptance gaps explicit.
+Last completed action: passed final narrow checks and append-only/scope audit.
+Precise stopping point: checkpoint and publish a reviewable draft candidate
+without main merge/deploy. Next action: new exact-SHA protected PR checks and
+additive GitHub browser captures while awaiting the authorized tenant record.

@@ -36,9 +36,13 @@ on:
         required: true
         default: light,dark
       viewports:
-        description: Comma-separated viewport set
+        description: Comma-separated viewport set (desktop-1366 is opt-in, 1366 x 768)
         required: true
         default: desktop,tablet,narrow-tablet,mobile
+      vision_deficiencies:
+        description: Comma-separated capture states (standard,protanopia,deuteranopia,tritanopia); simulated screenshots require manual inspection
+        required: true
+        default: standard
       data_profile:
         description: Fixture profile label (empty, typical, high, 0, 5, 50, 500)
         required: true
@@ -117,6 +121,7 @@ jobs:
       SUPPORT_EVIDENCE_LOCALES: ${{ inputs.locales }}
       SUPPORT_EVIDENCE_THEMES: ${{ inputs.themes }}
       SUPPORT_EVIDENCE_VIEWPORTS: ${{ inputs.viewports }}
+      SUPPORT_EVIDENCE_VISION_DEFICIENCIES: ${{ inputs.vision_deficiencies }}
       SUPPORT_EVIDENCE_DATA_PROFILE: ${{ inputs.data_profile }}
       SUPPORT_EVIDENCE_SUPPORT_UX_CANARY: ${{ inputs.support_ux_canary }}
       SUPPORT_EVIDENCE_SAMPLE_COUNT: ${{ inputs.sample_count }}
@@ -156,6 +161,13 @@ jobs:
         run: bash scripts/ci/prepare-hosted-build-runner.sh
 
       - run: npm ci
+
+      - name: Validate optional capture dimensions
+        run: |
+          node --check scripts/support-ux-evidence-dimensions.mjs
+          node --input-type=module -e 'import { supportEvidenceViewports, supportEvidenceVisionDeficiencies, validateSupportEvidenceInteractionDimensions } from "./scripts/support-ux-evidence-dimensions.mjs"; validateSupportEvidenceInteractionDimensions(process.env.SUPPORT_EVIDENCE_INTERACTION_MODE, supportEvidenceViewports(process.env.SUPPORT_EVIDENCE_VIEWPORTS || undefined), supportEvidenceVisionDeficiencies(process.env.SUPPORT_EVIDENCE_VISION_DEFICIENCIES || undefined))'
+          npx eslint scripts/support-ux-evidence-dimensions.mjs src/__tests__/support-ux-evidence-dimensions.test.ts
+          npx vitest run src/__tests__/support-ux-evidence-dimensions.test.ts
 
       - name: Validate visual comparison inputs
         if: ${{ inputs.visual_mode == 'compare' }}
@@ -1474,7 +1486,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.support_ux_canary }}-${{ inputs.visual_mode }}
+          name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.support_ux_canary }}-${{ inputs.visual_mode }}${{ inputs.vision_deficiencies != '' && inputs.vision_deficiencies != 'standard' && format('-vision-{0}', inputs.vision_deficiencies) || '' }}
           path: artifacts/support-ux/${{ github.sha }}
           if-no-files-found: error
           retention-days: 30
