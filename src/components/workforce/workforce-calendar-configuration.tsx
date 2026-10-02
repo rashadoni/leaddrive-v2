@@ -211,6 +211,7 @@ export function WorkforceCalendarConfiguration() {
   const [saving, setSaving] = useState(false)
   const [confirmation, setConfirmation] = useState<ReversalConfirmation | null>(null)
   const confirmationTitle = useRef<HTMLHeadingElement | null>(null)
+  const reversalError = useRef<HTMLParagraphElement | null>(null)
   const targetKey = JSON.stringify([scope, scope === "TEAM" ? teamId : null, scope === "AGENT" ? agentId : null])
   const activeIdentity = useRef<CalendarMutationIdentity>({ contextKey, targetKey })
   const mutation = useRef<CalendarMutationState>({ current: null })
@@ -233,6 +234,12 @@ export function WorkforceCalendarConfiguration() {
     confirmationTitle.current?.focus({ preventScroll: true })
     confirmationTitle.current?.parentElement?.scrollIntoView({ block: "start", behavior: "instant" })
   }, [confirmation, contextKey, targetKey])
+  useEffect(() => {
+    if (!error || !confirmation || confirmation.contextKey !== contextKey || confirmation.targetKey !== targetKey) return
+    // A late failure can insert the retry explanation above the review.
+    reversalError.current?.focus({ preventScroll: true })
+    reversalError.current?.scrollIntoView({ block: "start", behavior: "instant" })
+  }, [error, confirmation, contextKey, targetKey])
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeZone: "UTC",
@@ -470,7 +477,7 @@ export function WorkforceCalendarConfiguration() {
       </Button>
     </div>
 
-    {error ? <p className="border-b border-red-200 bg-red-50 px-5 py-4 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200 sm:px-6" role="alert">{error}</p> : null}
+    {error ? <p ref={reversalError} tabIndex={-1} className="border-b border-red-200 bg-red-50 px-5 py-4 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200 sm:px-6" role="alert">{error}</p> : null}
     {notice ? <p className="border-b border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200 sm:px-6" role="status" aria-live="polite">{notice}</p> : null}
 
     {confirmation && confirmation.contextKey === contextKey && confirmation.targetKey === targetKey ? <div

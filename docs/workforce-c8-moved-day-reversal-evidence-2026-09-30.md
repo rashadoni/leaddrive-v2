@@ -690,3 +690,30 @@
   stopping point: mandatory static/type gates pending. Next action: collect
   exact-head primary logs, fresh-main protected merge/normal deploy/SHA smoke.
   Progress unchanged81/161,14/15,C8 36%,59%,80non-DONE;007 PARTIAL.
+
+
+## 2026-10-02 — late unknown-outcome notice viewport correction
+
+- Independent receipt/screenshot review of local889b0f2c and published35c518f1
+  found P0=0 P1=0 P2=1 P3=0: the unknown-outcome alert was entirely above the
+  main viewport after the committed response was lost. Historical six cases
+  really passed, but their review-panel assertions did not prove visibility
+  of the subsequently inserted error. Earlier final UI/browser GREEN wording
+  is superseded for this visibility limitation; no merge/release occurred.
+- Added focus and scroll to the existing reversal error only while its
+  confirmation matches the current principal/tenant and target. Existing
+  confirmation, mutation and stale-response guards remain. Hosted harness now
+  asserts full main/window alert visibility and focus and adds a separate RU
+  390x844 exact-retry case: seven scenarios planned, new execution pending.
+- Actually executed current targeted UI contract12/12 PASS1.50s (245ms tests),
+  scoped component/script ESLint, script syntax and whitespace PASS. Primary
+  /tmp/workforce528-unknown-ui-contract.log. Local full build/typecheck/suite,
+  browser/Android/load/PG NOT RUN under Contabo placement policy. Hosted
+  candidate checks and fresh-main review still required, with no baseline or
+  gate weakening. Source35 receipts remain byte-preserved historical evidence.
+- Current result: P2 correction implemented and bounded regressions GREEN.
+  Last action: completed current local checks. Precise stopping point: new
+  exact-head publication/review and hosted seven-case run. Next action: all
+  required gates, primary screenshot inspection, fresh-main protected merge
+  and deploy/public SHA proof. Progress81/161,14/15,C8 36%,overall59%,
+  80non-DONE;007 PARTIAL. Production authenticated/device/pilot NOT RUN.

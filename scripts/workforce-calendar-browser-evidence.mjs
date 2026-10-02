@@ -230,9 +230,9 @@ async function standard(principal, team, index, locale, viewport) {
   receipts.cases.push({ name: `confirmation-cancel-confirm-${moved.scope}-${locale}`, status: "PASS", posts, tombstones: 2, audits: 1 })
   await view.context.close()
 }
-async function lostResponse(principal) {
-  const view = await open(principal)
-  const moved = await pair(view.context, principal, 3)
+async function lostResponse(principal, index = 3, locale = "en", viewport = { width: 1440, height: 1000 }) {
+  const view = await open(principal, locale, viewport)
+  const moved = await pair(view.context, principal, index)
   await review(view, moved)
   const committed = barrier()
   const delivery = barrier()
@@ -267,9 +267,18 @@ async function lostResponse(principal) {
   assert.equal(await view.section.getByRole("button", { name: view.ui.reversalConfirm, exact: true }).isDisabled(), true)
   delivery.release()
   await until(async () => (await view.section.getByRole("alert").innerText()).includes(view.ui.reversalOutcomeUnknown), "unknown outcome after committed response loss")
+  await until(async () => view.section.getByRole("alert").evaluate(element => {
+    const bounds = element.getBoundingClientRect()
+    const container = element.closest("main")?.getBoundingClientRect()
+    return document.activeElement === element
+      && bounds.top >= Math.max(0, container?.top ?? 0)
+      && bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight)
+      && bounds.left >= Math.max(0, container?.left ?? 0)
+      && bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth)
+  }), "unknown-outcome explanation is focused and fully visible")
   assert.equal(await view.section.locator('[aria-labelledby="workforce-calendar-reversal-title"]').count(), 1)
   assert.equal(await view.section.locator("#workforce-calendar-scope").isDisabled(), true)
-  await view.page.screenshot({ path: `${outputDirectory}/exact-retry-unknown.png`, fullPage: true })
+  await view.page.screenshot({ path: `${outputDirectory}/exact-retry-unknown-${locale}.png`, fullPage: true })
   await view.section.getByRole("button", { name: view.ui.reversalConfirm, exact: true }).click()
   await until(async () => (await view.section.innerText()).includes(view.ui.reversalAlreadyRecorded), "actual audit-backed replay notice")
   assert.equal(bodies.length, 2)
@@ -278,7 +287,7 @@ async function lostResponse(principal) {
   assert.deepEqual(await state(principal, moved), beforeRetry, "Replay must not alter either tombstone or audit")
   await until(async () => !(await view.section.innerText()).includes(moved.name)
     && await view.section.getAttribute("aria-busy") === "false", "post-replay inventory finishes refreshing")
-  receipts.cases.push({ name: "committed-response-loss-exact-retry-same-task-double-submit", status: "PASS", posts: 2, reversedResponses: responses, byteIdenticalRetry: true, replayWrites: 0 })
+  receipts.cases.push({ name: `committed-response-loss-exact-retry-same-task-double-submit-${locale}`, status: "PASS", posts: 2, reversedResponses: responses, byteIdenticalRetry: true, replayWrites: 0, unknownNoticeVisibleAndFocused: true })
   await view.context.close()
 }
 async function switchContext(from, to, index, targetTeam, label) {
@@ -382,6 +391,7 @@ try {
   await standard(principals[0], teams[0], 1, "ru", { width: 390, height: 844 })
   await standard(principals[0], null, 2, "az", { width: 1440, height: 1000 })
   await lostResponse(principals[0])
+  await lostResponse(principals[0], 6, "ru", { width: 390, height: 844 })
   await switchContext(principals[0], principals[1], 4, teams[0], "principal")
   await switchContext(principals[0], principals[2], 5, teams[1], "tenant")
   assert.equal(await app.mtmAuditLog.count(), 0, "Existing Workforce audit receipts must be hidden without tenant context")
