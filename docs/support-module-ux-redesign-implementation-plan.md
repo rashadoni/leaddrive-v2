@@ -4656,14 +4656,14 @@ Status reflects admitted implementation evidence and recorded release receipts.
 Historical browser runs prove their exact source/fixture matrix; they are not
 fresh production observations. A `DONE` entry does not extend an evidence
 claim to an untested viewport, inspection method or tenant-observation period.
-The three `IN_PROGRESS` rows preserve literal acceptance claims not established
+The two `IN_PROGRESS` rows preserve literal acceptance claims not established
 by the recorded evidence; they are distinct from the SUPUX checklist count.
 
 | Criterion | Planned implementation | Evidence required | Status |
 | --- | --- | --- | --- |
 | Daily work visible in first viewport | Compact shell, max three indicators, sticky toolbar | Foundation canonical coverage plus additive exact-1366 run `37055428421`, artifact `11249886749`, 66/66 pass and eight representative screenshots inspected; see observation receipt | DONE — recorded exact-source 1366 x 768 mouse/keyboard evidence |
 | Support navigation is understandable | Three permission-aware groups | Navigation flows `36512893404` and 72-cell matrix `36514758825` | DONE — admitted source evidence |
-| No misleading metrics | Agent/VoIP aggregates and Calendar date-range counts | Agent/VoIP receipts remain valid; new screenshot audit found Calendar including SLA dates outside the requested week. Narrow API fix and regression tests pass locally; corrected exact-source browser receipt pending | IN_PROGRESS — Calendar correction requires CI/browser admission |
+| No misleading metrics | Agent/VoIP aggregates and Calendar date-range counts | Agent/VoIP receipts plus Calendar route regressions and corrected `37061949081`/artifact `11252200158`, two actual screenshots with header/day count12; see bounded candidate receipt | DONE — corrected candidate source/API/UI evidence; new production release still pending |
 | No page-level mobile overflow | Responsive cards/agenda/master-detail | Foundation `36542434997`, zero overflow failures including 375 px | DONE — admitted browser matrix |
 | Keyboard access | Semantic tables, rows, menus, switches, calendar events | Operational aggregate `36521929861`, recovery `36539937236`, and navigation flows | DONE — recorded representative journeys |
 | Touch target safety | Shared control sizing and row menus | Full matrix zero touch failures plus hit-tested operational mobile flows | DONE — admitted mobile evidence |

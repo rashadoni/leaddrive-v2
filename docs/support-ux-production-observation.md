@@ -115,7 +115,7 @@ read-only; selecting them with a mutating journey is rejected before building.
 | First-viewport inspection | `service-desk,agent-desktop,support-entitlements,agent-calendar`; `agent,manager,admin`; AZ/RU/EN; light/dark; `desktop-1366`; typical fixture; standard vision; canary enabled | 66 permitted cells, three samples each; real 1366 x 768 mouse/keyboard capture. [37055428421](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055428421) completed on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; 66/66 PASS; eight screenshots inspected |
 | Color-blind inspection | All scenarios; `admin,customer`; EN; light/dark; desktop/mobile; typical fixture; protanopia/deuteranopia/tritanopia; canary enabled | [37055624370](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370) completed on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; actual 336/336 PASS, one sample per cell; 12 representative screenshots inspected |
 | Historical quantitative comparison | Four daily-work surfaces; matched fixture/role/locale/theme/viewport/data and old/current source identities | New isolated run `37061944771` on `43440b2dda9c8f5bc403750296553399b111e0f4` admits public original `76994875a251e0956b56f8d300625b97eb098661`, whose four page blobs match the originals. Actual runtime/35% results PENDING; same-source comparison cannot substitute for this baseline |
-| Corrected Calendar semantic receipt | `agent-calendar`; admin/EN; both themes; desktop-1366; typical fixture; standard vision; three samples | New bounded run `37061949081` on the same corrected source queued behind vision capture. Two permitted cells; no full matrix replay. Count/date semantics require actual artifact and screenshot inspection |
+| Corrected Calendar semantic receipt | `agent-calendar`; admin/EN; both themes; desktop-1366; typical fixture; standard vision; three samples | New bounded run `37061949081` completed on43440b2dd, two permitted cells PASS; actual report and both screenshots inspected. Header12 equals the selected week day total12; no full matrix replay |
 
 These runs are additive evidence for previously untested dimensions. Record
 the dispatched branch SHA, Actions run, retained artifact and actual result
@@ -165,6 +165,23 @@ two failed against the preceding implementation. The no-misleading-metrics
 criterion is reopened until corrected source passes CI/browser admission.
 The original viewport evidence remains valid for its recorded source; no
 production deployment of this correction has occurred.
+
+### Corrected candidate Calendar receipt — accepted 2026-10-03 (Asia/Baku)
+
+[Run37061949081](https://github.com/rashadoni/leaddrive-v2/actions/runs/37061949081)
+completed on43440b2dda9c8f5bc403750296553399b111e0f4. Artifact11252200158,
+181,526 bytes,digest
+`sha256:7ff175128f5b06fab1245bf2c9335889351053d938dc86edcb89217a0aae0553`.
+Both admin/EN/light-and-dark1366x768 cells PASS with three samples, primary top
+341px and zero runtime/Axe/accessibility/overflow failures. Both actual PNGs
+show header12 tickets and Friday12, with the other six days0. The corrected
+summary is consistent with the selected week. Fresh seed time differs from the
+earlier66-cell fixture, so this is not a claim that the old13 must be preserved
+or a matched timing comparison. Current/future-week route cases passed; source
+and tenant fences retain their recorded tests. Later controller-only edits
+leave this Calendar page/API source unchanged. The candidate metrics criterion
+is accepted; PR#530's protected release admission and production update remain
+separate unfinished steps.
 
 ## Explicit color-vision receipt — accepted 2026-10-03 (Asia/Baku)
 

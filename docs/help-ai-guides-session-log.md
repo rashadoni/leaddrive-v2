@@ -1000,3 +1000,30 @@ passed41 narrow cases without weakening any gate. Precise stopping point:
 checkpoint/publish the corrected controller, inspect Calendar's actual artifact.
 Next action: new exact-source protected checks and repaired historical capture;
 retain the pending authorized tenant/activation/telemetry requirement.
+
+
+## 2026-10-03 — Corrected Calendar artifact inspected; next candidate running
+
+- Read both cells of artifact11252200158 and opened both actual1366x768 PNGs.
+  Light/dark admin/EN cells PASS; primary top341px, three samples, zero reported
+  runtime/Axe/accessibility/overflow failures. Header12 equals Friday12 with
+  six other days0. The fresh fixture timestamp differs from the preceding
+  66-cell capture; do not manufacture a matched13-to12 comparison. Actual
+  source semantics are consistent; current/future-week regression cases pass.
+- Accepted the corrected candidate metrics row: separate matrix now15 DONE /
+  2 IN_PROGRESS (historical comparative improvement and production rollout).
+  This does not claim the live API was updated. No new deployment occurred.
+- Published corrected controller5fd8e047eacc53187fd7b93bcc71ec4a9135938c.
+  New required PR run37064746393 is running; runner policy37064746482 and
+  scan37064746391 PASS. New repaired historical run37064741882 running.
+  Its valid original/source35% measurements remain PENDING. No completed
+  Calendar or vision gate was rerun. Calendar page/API are byte-identical to
+  admitted43440b2dd; controller fixes apply only to isolated measurement.
+
+Current result/status: viewport, explicit vision and corrected candidate counts
+verified; plan190/191, two separate criteria open, production correction pending.
+Last completed action: inspect both corrected Calendar images and record
+source-bound metrics admission. Precise stopping point: repaired historical
+measurement and required full PR checks running on5fd8e047e.
+Next action: collect actual results, complete source admission, then resolve
+the selected tenant/activation/telemetry before the seven-full-day gate.
