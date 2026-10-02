@@ -4922,3 +4922,41 @@ from this worktree.
   Next action: primary real nine-case results and allfive mandatory GREEN,
   final freshmain,normal merge/deploy,own exact public SHA. Progress59%,007PARTIAL;
   remaining authenticated production/AT/zoom/physical/load/pilot NOT RUN.
+
+
+## 2026-10-03 (Asia/Baku) — actual nine-case keyboard browser acceptance GREEN
+
+- Real ready browser37076132550/job111066347164 SUCCESS, attempt1,
+  artifact11256443497/1911794bytes/archiveSHA256
+  d7afd26a067f638ec33037ab41c3cc2ea1ad67e70ea47dcca084327794c5433b.
+  Candidateexacteb8e31cceadbeafff4a463fa2e71ae69f663bd91;
+  syntheticb571acb1b9e308679da1a5a84df3bb9a3c80ba6a APIparents[e2c473d5,eb8e31cc].
+  Original5981-byte JSON/SHA256adaeb7c4da4a746f2ee65314b113d5e965d4091245940e3ed07ea4fb2378280d
+  copied byte-for-byte to docs/evidence/workforce-c8-calendar-keyboard-2026-10-03-eb8e31cc.json.
+  UTC23:14:55.986Z–23:16:32.552Z,96.566s. All9cases PASS; old7assertions retained,
+  both principal/tenant exact-held-refresh/session/navigation fences true.
+- Eleven real CSRF/credential callbacks200, no retries/auth bypass/mocks.
+  Actual bounded pacing waits13433ms atordinal9 and21870ms at10, others0;
+  calls9/10/11 at least61024/61042/61918ms after the corresponding prior8.
+  Historical7e missing callbackstatus/cause remains NOT PROVEN, unchangedFAIL8.
+- ORGkeyboard sourceTabs9, nativeEnter/Space/Tab/ShiftTab review/cancel/reopen/
+  confirm alltrue; Cancel fullpair/audit state unchanged,writes0,sourcefocused;
+  completedposts1,tombstones2,audit1,resultfullyvisible/focused,real session.
+  TEAMRU390x844 sourceTabs22, nativeSpace commit disabledbothbuttons, actual
+  committed-response loss focusesunknownalert; nativeTab reachesexactConfirm,
+  Enterretry posts2,byte-identicalbodies,responses[true,false],replaywrites0,
+  completednoticefullyvisible/focused,same team/realsessionpreserved. Restricted
+  role superuserfalse,bypassRlsfalse; populatedAuditAndCalendarFailClosedtrue.
+- Root independently readfullJSON/parents and actually viewed all4newkeyboard
+  PNGs. Independent reviewer also individually viewed all4 plusprincipal/tenant
+  screenshots; actual artifact review GREEN P0=0,P1=0,P2=0,P3=0. Cancel original
+  action visiblyfocused; ORG resultfocused/pairabsent; TEAM unknowntext/confirm
+  fullyvisible; TEAM replayresultfocused/same selectedteam. No focus defect
+  proven. Visible Next dev issuebadge is not production/causal evidence.
+- Current status: bounded real keyboard acceptance GREEN; static/type pending,
+  no merge/deploy claim yet. Last action: original receipt/screens inspection
+  and byteexact preservation. Precise stopping point: mandatory fresh gates.
+  Next action: allfive GREEN, final freshmain check/normal exacthead merge,
+  deploy.yml and own exact merged public artifactSha. Development-only reversal
+  action evidence; wholepagekeyboard/zoom/AT/productionauth/Android/load/pilot
+  NOT RUN. Progress81/161,14/15,C8 36%,59%,80non-DONE,007PARTIAL unchanged.
