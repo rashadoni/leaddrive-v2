@@ -4554,3 +4554,45 @@ corrections as new entries that explicitly supersede the earlier fact.
   Progress unchanged 81/161, 14/15, C8 36%, overall 59%, 80 non-DONE;
   WF-C8-007 PARTIAL. Authenticated production business/browser, Android,
   accessibility, load and pilot checks NOT RUN.
+
+
+## 2026-10-02 — fresh main 73e28b0e integrated before merge
+
+- Exact c2 candidate completed all five actual required contexts SUCCESS:
+  pr-scope job 111017241232, static-checks 111017341775 and typecheck
+  111017341808 in run 37060968124; runner-policy run 37060920793 /
+  job 111017088318, scan run 37060920861 / job 111017088545. All bind to
+  GitHub Actions app 15368; strict=false, required context set unchanged.
+  Draft skips are not credited. Static primary /tmp/workforce528-c2-static.log:
+  PostgreSQL 33/33 in 14.48s, calendar 12/12 (1,602ms), unit baseline 18/18.
+  Type primary /tmp/workforce528-c2-type.log: no syntax/missing-module/
+  undefined-name errors, 66/66 baseline pairs, 1,194 advisory diagnostics,
+  tsc exit 2; required type gate SUCCESS. PR production build normally SKIPPED.
+- Receipt-only clean 65b3486902696f1e139444e8e7f2b9cc15c8e8f2 relative to c2
+  independently GREEN P0=0 P1=0 P2=0 P3=0: 4 paths / 18,927 bytes / SHA256
+  eb375878b54aae2613807abe7aba514ab6f38ba3bd339aac6999ba6372f380a3.
+  All four source blobs and five historical JSONs unchanged; new 7/7 JSON
+  exact, three document prefixes append-only and pending statements accurate.
+- Final fresh fetch discovered main advanced from 390c4976 to
+  73e28b0ea8b7f8ac16f33b94e62339e2fe8587f6, merge #531 user-card effective
+  access. No stale-base merge performed. Eight changed paths: EN/RU/AZ messages,
+  two settings pages, two tests and user-access-summary library. No direct
+  intersection with the four task source paths. Workforce translation namespace
+  deep-equal in all three languages. Ordinary merge into this same part16
+  worktree completed cleanly as 48b5c2d719ea1bad80fd6d7618c2073418c24e54;
+  all eight main-owned blobs preserved exactly, four reviewed task source
+  blobs byte-identical to c2. No canonical checkout or unrelated branch touched.
+- PR #528 returned to draft for renewed exact-head review/CI. After resource
+  inspection, actual bounded task classifier/UI plus both new-main targeted
+  suites 41/41 PASS, 5.31s; /tmp/workforce528-main73-targeted.log. Translation
+  parity 24,098 keys, RU/AZ missing=0 extra=0; /tmp/workforce528-main73-i18n.log.
+  Scoped script ESLint, node syntax and whitespace PASS. Heavy local build,
+  typecheck, full suite, browser, PostgreSQL, Android and load NOT RUN; CI only.
+- Current status: fresh main integrated, task source unchanged, bounded checks
+  GREEN. Last action: ordinary main merge and 41 targeted tests/i18n checks.
+  Precise stopping point: replacement complete independent exact-head review.
+  Next action: publish reviewed integrated HEAD, seven real browser scenarios
+  and all five mandatory gates again, fresh-main protected release and exact
+  public artifact SHA. Historical c2 GREEN receipts remain historical and do
+  not substitute for integrated-head acceptance. Progress remains 81/161,
+  14/15, C8 36%, overall 59%, 80 non-DONE; WF-C8-007 PARTIAL.
