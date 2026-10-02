@@ -101,9 +101,9 @@ read-only; selecting them with a mutating journey is rejected before building.
 
 | Prepared capture | Exact subset | Size / evidence boundary |
 | --- | --- | --- |
-| First-viewport inspection | `service-desk,agent-desktop,support-entitlements,agent-calendar`; `agent,manager,admin`; AZ/RU/EN; light/dark; `desktop-1366`; typical fixture; standard vision; canary enabled | 66 permitted cells, three samples each; real 1366 x 768 mouse/keyboard capture. NOT RUN until exact candidate branch admission/capture |
-| Color-blind inspection | All scenarios; `admin,customer`; EN; light/dark; desktop/mobile; typical fixture; protanopia/deuteranopia/tritanopia; canary enabled | 336 permitted cells, one sample each; inspect actual screenshots and status labels after capture. NOT RUN; simulation alone does not close inspection |
-| Historical quantitative comparison | Four daily-work surfaces; matched fixture/role/locale/theme/viewport/data and old/current source identities | Baseline source and compatibility adapter need verification. Existing same-source comparison cannot substitute for a pre-redesign baseline |
+| First-viewport inspection | `service-desk,agent-desktop,support-entitlements,agent-calendar`; `agent,manager,admin`; AZ/RU/EN; light/dark; `desktop-1366`; typical fixture; standard vision; canary enabled | 66 permitted cells, three samples each; real 1366 x 768 mouse/keyboard capture. [37055428421](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055428421) running on `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`; result PENDING |
+| Color-blind inspection | All scenarios; `admin,customer`; EN; light/dark; desktop/mobile; typical fixture; protanopia/deuteranopia/tritanopia; canary enabled | 336 permitted cells, one sample each; inspect actual screenshots and status labels after capture. [37055624370](https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370) queued on the same exact source; result and actual inspection PENDING |
+| Historical quantitative comparison | Four daily-work surfaces; matched fixture/role/locale/theme/viewport/data and old/current source identities | Public pre-redesign source candidate `76994875a251e0956b56f8d300625b97eb098661` has byte-identical original page blobs; exact-runtime compatibility and a separate measurement adapter still need verification. Existing same-source comparison cannot substitute for a pre-redesign baseline |
 
 These runs are additive evidence for previously untested dimensions. Record
 the dispatched branch SHA, Actions run, retained artifact and actual result

@@ -726,3 +726,63 @@ Last completed action: passed final narrow checks and append-only/scope audit.
 Precise stopping point: checkpoint and publish a reviewable draft candidate
 without main merge/deploy. Next action: new exact-SHA protected PR checks and
 additive GitHub browser captures while awaiting the authorized tenant record.
+
+
+## 2026-10-02 — Draft candidate published; additive CI started
+
+- Saved source/operator/docs candidate checkpoint
+  `988163b8370daa5a464ccff9a7ad3ba6b1216ee6`, pushed the existing task branch and
+  opened draft PR #530:
+  `https://github.com/rashadoni/leaddrive-v2/pull/530`. Attached it to this chat.
+  No main merge or deploy occurred. The earlier completed release workflows
+  and 1296-cell matrix were not repeated.
+- New exact-head PR checks: run `37055389075` completed successfully; `pr-scope`
+  passed, while `static-checks` and `typecheck` were SKIPPED by the existing
+  scope classifier (not executed passes). Runner policy `37055389086` and
+  secret scan `37055389082` passed on this exact head. The separate additive
+  evidence pipeline performs scoped source/type/build gates before capture.
+- Started exact-head ephemeral first-viewport capture `37055428421`:
+  `https://github.com/rashadoni/leaddrive-v2/actions/runs/37055428421`.
+  Requested only 4 daily-work scenarios, agent/manager/admin, AZ/RU/EN, both
+  themes, desktop-1366, typical fixture, standard vision, 3 samples, read-only.
+  Expected 66 permitted cells. Actual result remains PENDING.
+- Queued exact-head ephemeral vision capture `37055624370`:
+  `https://github.com/rashadoni/leaddrive-v2/actions/runs/37055624370`.
+  Requested admin/customer, all scenarios, EN, both themes, desktop/mobile,
+  protanopia/deuteranopia/tritanopia, typical fixture, 1 sample, read-only.
+  Expected 336 permitted cells. Existing branch concurrency serializes the two
+  runs; no production target or configuration mutation is involved. Result and
+  actual screenshot inspection remain PENDING.
+- Historical source investigation found the tempting `67e7bd977...` baseline
+  already includes the Service Desk redesign `67d6a2126...` and cannot prove
+  its original before state. The true earlier parent is `70547399ce...`, but
+  publishing archived/retired history is unnecessary: the sanitized public root
+  `76994875a251e0956b56f8d300625b97eb098661` has byte-identical original page
+  blobs for all four measurement surfaces. Public-root source is the preferred
+  before candidate; exact original whole-runtime compatibility still needs
+  verification before any quantitative claim. Never use old production routes
+  or run old deployment workflows for this comparison.
+- A separate narrow current-trusted ephemeral measurement scaffold is being
+  prepared for exact public before/current after source, matched fixture,
+  admin/EN/light/1366 x 768, semantic data readiness and shared geometry. The
+  35% criterion stays unverified until compatible captures actually pass.
+
+Current result/status: draft #530 published with new narrow checks/captures;
+tracked completion remains 190/191 and no observation start is verified.
+Last completed action: pushed the tested candidate, attached the draft PR and
+queued additive exact-SHA GitHub evidence. Precise stopping point: first CI
+capture is running, vision capture queued, historical measurement scaffold
+under preparation. Next action: inspect actual artifacts/failures and complete
+matched historical measurement while awaiting the authorized tenant record.
+
+
+### Correction — exact reason for draft PR skipped gates
+
+The earlier note attributing `static-checks`/`typecheck` skips to the scope
+classifier is superseded. Inspection of the existing PR job conditions and
+`pr-scope` output confirms it correctly classified this as code (first path
+`.github/scripts/inspect_support_ux_rollout.py`). The two heavy jobs are skipped
+because #530 is a draft. They are NOT RUN, not passed. After final candidate
+preparation, `ready_for_review` starts the complete gate on the exact candidate;
+no merge can rely on these draft skips. The independent additive evidence run
+continues its real section/type/build/capture steps.
