@@ -893,3 +893,16 @@ complete protected PR checks while awaiting the selected tenant record.
   Clarified rendered rounded/bordered block counts explicitly include offscreen
   descendants under main; they must not be called first-viewport visible blocks.
   This clarification preserves the unchanged primary-distance35% gate.
+
+- Published2f695cb77283a5141cf37281b2b01919b618d426; updated #530's concrete
+  scope and marked ready for review to start required full PR checks. The old
+  gh CLI's classic-project query failed during title/body update; structured
+  REST patch and minimal GraphQL ready mutation succeeded instead.
+- First historical dispatch37061837877 was cancelled before execution when a
+  second Calendar dispatch occupied GitHub's single pending slot in the same
+  concurrency group. Corrected routing by adding a historical-only group suffix
+  while preserving the original regular-capture group. The pending Calendar
+  run will be superseded before execution so both new captures use the final
+  dispatcher candidate. This is not a repeated completed gate or production
+  release. Independent historical and normal captures use separate isolated
+  databases/runners; the historical before/after jobs remain sequential.

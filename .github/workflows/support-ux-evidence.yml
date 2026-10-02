@@ -91,7 +91,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: support-ux-evidence-${{ github.ref }}
+  group: support-ux-evidence-${{ github.ref }}${{ inputs.historical_layout == true && '-historical' || '' }}
   cancel-in-progress: false
 
 jobs:
