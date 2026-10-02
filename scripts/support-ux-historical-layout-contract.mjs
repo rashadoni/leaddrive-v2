@@ -110,6 +110,7 @@ export function assertHistoricalCaptureEnvironment(env) {
   const sourceSha = requireHistoricalSha(env.SUPPORT_HISTORICAL_SOURCE_SHA)
   const controlSha = requireHistoricalSha(env.SUPPORT_HISTORICAL_CONTROL_SHA)
   requireHistoricalSha(env.SUPPORT_HISTORICAL_MAIN_SHA)
+  requireHistoricalSha(env.SUPPORT_HISTORICAL_MAIN_SNAPSHOT_SHA)
   if ((stage === "before" && sourceSha !== HISTORICAL_LAYOUT_BEFORE_SHA) || (stage === "after" && sourceSha !== controlSha)) throw new Error("SOURCE_IDENTITY_INVALID")
   return { stage, sourceSha, controlSha }
 }
@@ -158,6 +159,7 @@ export function validateHistoricalEvidence(report, stage, afterSha) {
   requireHistoricalSha(afterSha)
   if (report?.schemaVersion !== 1 || report?.comparisonKind !== "exact-source-runtime" || report?.stage !== stage || report?.sourceSha !== (stage === "before" ? HISTORICAL_LAYOUT_BEFORE_SHA : afterSha) || report?.controlSha !== afterSha || report?.status !== "captured") throw new Error("SOURCE_IDENTITY_INVALID")
   requireHistoricalSha(report.mainSha)
+  requireHistoricalSha(report.mainSnapshotSha)
   const fixture = historicalFixture(report.anchor)
   if (report.fixtureDigest !== historicalFixtureDigest(fixture) || JSON.stringify(report.controls) !== JSON.stringify(HISTORICAL_LAYOUT_CONTROLS)) throw new Error("MATCHED_CONTROLS_INVALID")
   if (report.serverClockProof?.schemaVersion !== 1 || report.serverClockProof?.clockPolicy !== HISTORICAL_LAYOUT_CONTROLS.clockPolicy || report.serverClockProof?.anchor !== report.anchor || !Number.isFinite(report.serverClockProof?.dateNow) || report.serverClockProof.dateNow < Date.parse(report.anchor) || report.serverClockProof.dateNow > Date.parse(report.anchor) + 1000) throw new Error("CAPTURE_ENVIRONMENT_INVALID")
@@ -180,7 +182,7 @@ export function validateHistoricalEvidence(report, stage, afterSha) {
 export function compareHistoricalLayouts(before, after, afterSha) {
   validateHistoricalEvidence(before, "before", afterSha)
   validateHistoricalEvidence(after, "after", afterSha)
-  if (before.anchor !== after.anchor || before.fixtureDigest !== after.fixtureDigest || before.mainSha !== after.mainSha) throw new Error("MATCHED_CONTROLS_INVALID")
+  if (before.anchor !== after.anchor || before.fixtureDigest !== after.fixtureDigest || before.mainSha !== after.mainSha || before.mainSnapshotSha !== after.mainSnapshotSha) throw new Error("MATCHED_CONTROLS_INVALID")
   const results = HISTORICAL_LAYOUT_ROUTES.map((route) => {
     const old = before.results.find((item) => item.id === route.id)
     const current = after.results.find((item) => item.id === route.id)
@@ -196,7 +198,8 @@ export function compareHistoricalLayouts(before, after, afterSha) {
   return {
     schemaVersion: 1, status: results.every((result) => result.status === "passed") ? "passed" : "failed",
     comparisonKind: "exact-source-runtime", beforeSha: HISTORICAL_LAYOUT_BEFORE_SHA,
-    afterSha, mainSha: after.mainSha, anchor: after.anchor, fixtureDigest: after.fixtureDigest,
+    afterSha, mainSha: after.mainSha, mainSnapshotSha: after.mainSnapshotSha,
+    anchor: after.anchor, fixtureDigest: after.fixtureDigest,
     controls: HISTORICAL_LAYOUT_CONTROLS, formula: "(beforeTop-afterTop)/beforeTop*100", results,
   }
 }

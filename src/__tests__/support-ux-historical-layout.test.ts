@@ -24,7 +24,7 @@ function evidence(stage: "before" | "after", top = stage === "before" ? 600 : 36
   return {
     schemaVersion: 1, comparisonKind: "exact-source-runtime", stage,
     sourceSha: stage === "before" ? HISTORICAL_LAYOUT_BEFORE_SHA : afterSha,
-    controlSha: afterSha, mainSha, anchor, fixtureDigest: historicalFixtureDigest(fixture),
+    controlSha: afterSha, mainSha, mainSnapshotSha: mainSha, anchor, fixtureDigest: historicalFixtureDigest(fixture),
     controls: { ...HISTORICAL_LAYOUT_CONTROLS }, status: "captured",
     serverClockProof: { schemaVersion: 1, clockPolicy: HISTORICAL_LAYOUT_CONTROLS.clockPolicy, anchor, dateNow: Date.parse(anchor) },
     results: HISTORICAL_LAYOUT_ROUTES.map((route: { id: string; path: string; beforeBlob: string; beforeRepresentation: string; afterRepresentation: string }) => ({
@@ -181,7 +181,7 @@ describe("Matched historical Support layout admission", () => {
   })
 
   it("admits only the pinned public before source and exact controller after source on hosted localhost", () => {
-    const env = { CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted", SUPPORT_HISTORICAL_BASE_URL: "http://localhost:3000", SUPPORT_HISTORICAL_STAGE: "after", SUPPORT_HISTORICAL_SOURCE_SHA: afterSha, SUPPORT_HISTORICAL_CONTROL_SHA: afterSha, SUPPORT_HISTORICAL_MAIN_SHA: mainSha }
+    const env = { CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted", SUPPORT_HISTORICAL_BASE_URL: "http://localhost:3000", SUPPORT_HISTORICAL_STAGE: "after", SUPPORT_HISTORICAL_SOURCE_SHA: afterSha, SUPPORT_HISTORICAL_CONTROL_SHA: afterSha, SUPPORT_HISTORICAL_MAIN_SHA: mainSha, SUPPORT_HISTORICAL_MAIN_SNAPSHOT_SHA: mainSha }
     expect(assertHistoricalCaptureEnvironment(env).sourceSha).toBe(afterSha)
     for (const change of [{ SUPPORT_HISTORICAL_BASE_URL: "https://app.leaddrivecrm.org" }, { SUPPORT_HISTORICAL_BASE_URL: "http://127.0.0.1:3000" }, { RUNNER_ENVIRONMENT: "self-hosted" }, { CI: "false" }, { SUPPORT_HISTORICAL_SOURCE_SHA: mainSha }]) {
       expect(() => assertHistoricalCaptureEnvironment({ ...env, ...change })).toThrow()
@@ -340,6 +340,8 @@ describe("Matched historical Support layout admission", () => {
     expect(workflow).not.toContain("secrets.")
     expect(workflow).toContain('git merge-base --is-ancestor "$BEFORE_SHA" "$MAIN_SHA"')
     expect(workflow).toContain('git merge-base --is-ancestor "$MAIN_SHA" "$AFTER_SHA"')
+    expect(workflow).toContain('git merge-base --all "$MAIN_SNAPSHOT_SHA" "$AFTER_SHA"')
+    expect(workflow).toContain('git merge-base --is-ancestor "$MAIN_SHA" "$MAIN_SNAPSHOT_SHA"')
     expect(workflow).toContain("SUPPORT_HISTORICAL_ANCHOR: ${{ needs.prepare.outputs.anchor }}")
     expect(workflow).toContain("max-parallel: 1")
     expect(workflow).toContain("if-no-files-found: warn")

@@ -191,7 +191,8 @@ export async function captureHistoricalLayout(env = process.env) {
   await mkdir(output, { recursive: true })
   const report = {
     schemaVersion: 1, comparisonKind: "exact-source-runtime", stage, sourceSha, controlSha,
-    mainSha: env.SUPPORT_HISTORICAL_MAIN_SHA, anchor: fixture.anchor, fixtureDigest,
+    mainSha: env.SUPPORT_HISTORICAL_MAIN_SHA, mainSnapshotSha: env.SUPPORT_HISTORICAL_MAIN_SNAPSHOT_SHA,
+    anchor: fixture.anchor, fixtureDigest,
     controls: HISTORICAL_LAYOUT_CONTROLS, serverClockProof, status: "incomplete", results: [],
   }
   const { chromium } = await import("playwright")

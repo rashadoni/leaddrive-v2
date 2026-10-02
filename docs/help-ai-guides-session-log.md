@@ -1109,3 +1109,32 @@ main and passed bounded source checks. Precise stopping point: publish this
 checkpoint and dispatch the corrected isolated historical diagnostic.
 Next action: inspect its endpoint metadata/actual geometry and required gates;
 owner-selected tenant/activation/telemetry remain required for the final week.
+
+
+## 2026-10-03 — Concurrent-main race fixed before historical build
+
+- Candidate564b26e167ca21b5d636bab91e22cebbba00c1c0 published in PR#530.
+  Historical dispatch37068253259 FAIL in source preparation only: protected
+  main advanced from420e5be12 to71b0d3d06 while dispatch was being prepared.
+  Neither runtime install/build/capture ran. The prior latest-main->candidate
+  ancestor requirement correctly failed, but unnecessarily rejects independent
+  source-bound measurement when another session merges unrelated work.
+- For this isolated evidence controller only, admit ONE40-hex common base of
+  observed protected main and exact dispatch candidate. Require the approved
+  original to precede that base, and the base to precede both candidate and
+  observed main. Record both main-line base and observed main snapshot in both
+  runtime receipts and require equality at comparison. Pinned before blobs,
+  exact after==controller, contents-read/no production secrets and35% remain
+  unchanged. Production, PR merge and deployment guards are untouched.
+- Actual local lineage probe finds unique shared base420e5be12 and passes all
+  three ancestry checks despite main71b0d3d06.32 historical cases PASS, scoped
+  ESLint PASS, YAML2/2 valid, diff check PASS. Cancel obsolete running PR
+  checks37068237405 before publishing the corrected controller; completed
+  runner/scan checks are not replayed. No capture/deploy is rerun on old SHAs.
+
+Current result/status:190/191 and15/17 literal criteria accepted; historical
+geometry still unmeasured. Last completed action: diagnose the preparation
+ancestry race and verify bounded source admission. Precise stopping point:
+checkpoint/publish its fix and dispatch the new exact-source measurement.
+Next action: inspect actual bounded endpoint diagnosis and measurements;
+production tenant/activation/telemetry are still pending, no new release done.

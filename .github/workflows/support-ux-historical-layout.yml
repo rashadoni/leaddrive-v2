@@ -20,6 +20,7 @@ jobs:
     outputs:
       after_sha: ${{ steps.identity.outputs.after_sha }}
       main_sha: ${{ steps.identity.outputs.main_sha }}
+      main_snapshot_sha: ${{ steps.identity.outputs.main_snapshot_sha }}
       anchor: ${{ steps.identity.outputs.anchor }}
     steps:
       - uses: actions/checkout@v4
@@ -40,9 +41,14 @@ jobs:
           [ "$REPOSITORY" = "rashadoni/leaddrive-v2" ] || { echo 'Unapproved repository'; exit 1; }
           [[ "$AFTER_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo 'Invalid exact candidate'; exit 1; }
           BEFORE_SHA=76994875a251e0956b56f8d300625b97eb098661
-          MAIN_SHA="$(git rev-parse refs/remotes/origin/main)"
+          MAIN_SNAPSHOT_SHA="$(git rev-parse refs/remotes/origin/main)"
+          # A concurrent main merge must not invalidate an exact candidate.
+          # Admit one verified shared main-line base, not an unrelated lineage.
+          MAIN_SHA="$(git merge-base --all "$MAIN_SNAPSHOT_SHA" "$AFTER_SHA")"
+          [[ "$MAIN_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo 'Unique shared main base required'; exit 1; }
           git merge-base --is-ancestor "$BEFORE_SHA" "$MAIN_SHA"
           git merge-base --is-ancestor "$MAIN_SHA" "$AFTER_SHA"
+          git merge-base --is-ancestor "$MAIN_SHA" "$MAIN_SNAPSHOT_SHA"
           [ "$AFTER_SHA" != "$BEFORE_SHA" ]
           node --input-type=module <<'JS'
           import { execFileSync } from "node:child_process"
@@ -53,7 +59,7 @@ jobs:
           }
           JS
           ANCHOR="$(node --input-type=module -e 'import { chooseHistoricalAnchor } from "./scripts/support-ux-historical-layout-contract.mjs"; console.log(chooseHistoricalAnchor())')"
-          printf 'after_sha=%s\nmain_sha=%s\nanchor=%s\n' "$AFTER_SHA" "$MAIN_SHA" "$ANCHOR" >> "$GITHUB_OUTPUT"
+          printf 'after_sha=%s\nmain_sha=%s\nmain_snapshot_sha=%s\nanchor=%s\n' "$AFTER_SHA" "$MAIN_SHA" "$MAIN_SNAPSHOT_SHA" "$ANCHOR" >> "$GITHUB_OUTPUT"
       - name: Install controller check dependencies
         run: npm ci --ignore-scripts
       - name: Verify bounded historical measurement controls
@@ -97,6 +103,7 @@ jobs:
       SUPPORT_HISTORICAL_SOURCE_SHA: ${{ matrix.stage == 'before' && '76994875a251e0956b56f8d300625b97eb098661' || needs.prepare.outputs.after_sha }}
       SUPPORT_HISTORICAL_CONTROL_SHA: ${{ needs.prepare.outputs.after_sha }}
       SUPPORT_HISTORICAL_MAIN_SHA: ${{ needs.prepare.outputs.main_sha }}
+      SUPPORT_HISTORICAL_MAIN_SNAPSHOT_SHA: ${{ needs.prepare.outputs.main_snapshot_sha }}
       SUPPORT_HISTORICAL_ANCHOR: ${{ needs.prepare.outputs.anchor }}
     steps:
       - name: Checkout trusted current controller
