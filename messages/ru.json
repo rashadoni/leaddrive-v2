@@ -12244,14 +12244,7 @@
     "requestEditTitle": "Предложить изменение места работы",
     "manageDescription": "Период работы сохранится сразу и попадёт в журнал аудита.",
     "requestDescription": "Карточка не изменится, пока менеджер не проверит предложение.",
-    "organizationSearch": "Найти организацию",
-    "organizationSearchPlaceholder": "Название, код, город или адрес",
-    "search": "Найти",
-    "searching": "Ищем…",
     "organization": "Организация",
-    "chooseOrganization": "Выберите организацию",
-    "organizationAddressMissing": "Адрес организации не указан.",
-    "organizationSearchError": "Не удалось загрузить организации.",
     "organizationRequired": "Выберите организацию.",
     "jobTitle": "Должность",
     "department": "Отделение",
@@ -25799,6 +25792,18 @@
     "deviceApproveFailed": "Не удалось подтвердить это устройство.",
     "deviceRevokeFailed": "Не удалось отозвать это устройство."
   },
+  "mtmOrganizationPicker": {
+    "placeholder": "Название, адрес или код",
+    "searching": "Ищем…",
+    "empty": "Ничего не найдено. Попробуйте другое название, адрес или код.",
+    "emptyCatalog": "Организаций для выбора пока нет.",
+    "more": "Показаны первые {shown} из {total}. Введите название, адрес или код, чтобы найти нужную.",
+    "error": "Не удалось загрузить организации.",
+    "retry": "Повторить",
+    "change": "Изменить",
+    "addressMissing": "Адрес не указан",
+    "objectTypes": {"PHARMACY": "Аптека", "CLINIC": "Клиника", "STORE": "Торговая точка"}
+  },
   "mtmContactCreate": {
     "title": "Новый клиент",
     "description": "Создайте человека и сразу укажите его основное место работы.",
@@ -25815,11 +25820,7 @@
     "categoryFieldRequired": "Заполните обязательное поле «{field}».",
     "workplaceSection": "Основное место работы",
     "workplaceHint": "Клиника, аптека или другая организация хранится отдельно. Позже можно добавить ещё места работы.",
-    "organizationSearchPlaceholder": "Найти клинику или аптеку",
-    "search": "Найти",
     "workplace": "Организация",
-    "workplacePlaceholder": "Выберите место работы",
-    "addressMissing": "Адрес не указан",
     "jobTitle": "Должность",
     "jobTitlePlaceholder": { "DOCTOR": "Например, врач-кардиолог", "PHARMACIST": "Например, провизор", "OTHER": "Роль в организации" },
     "phone": "Телефон",
@@ -25834,7 +25835,6 @@
     "workplaceRequired": "Выберите основное место работы.",
     "workplaceInvalid": "Место работы больше недоступно. Выберите другое.",
     "requiredFieldsError": "Заполните обязательные поля, настроенные для этой компании.",
-    "organizationSearchError": "Не удалось загрузить организации.",
     "saveError": "Не удалось создать клиента."
   },
   "mtmFieldContactsDisabled": {
