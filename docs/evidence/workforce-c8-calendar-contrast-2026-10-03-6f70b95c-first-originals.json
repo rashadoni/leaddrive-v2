@@ -1,0 +1,41 @@
+{
+  "kind": "lossless original first hosted NOT_PROVEN preservation before collector repair",
+  "runId": 37128500360,
+  "sourceHead": "6f70b95c1d9065f0f42299c5b4e04762687c551c",
+  "artifactId": 11276301279,
+  "status": "FAIL",
+  "contrastVerdict": "NOT_PROVEN",
+  "functionalCasesPassed": 12,
+  "contrastTargets": 36,
+  "passedTargets": 0,
+  "notProvenTargets": 36,
+  "reasons": "Collector neutral shadow marker contains substring inset; no measured UI defect credited",
+  "storageReason": "537539-byte original receipt alone exceeds400KB review limit; lossless gzip preserves every original byte without relaxing scope/checks",
+  "originals": [
+    {
+      "kind": "receipt",
+      "sourcePath": "/tmp/workforce546-contrast-preliminary-6f70b95c/extracted/receipt.json",
+      "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-6f70b95c-first-receipt.json.gz",
+      "rawBytes": 537539,
+      "rawSha256": "ceba095909f52ee14dad59a9113076a56bb76f0f9d39402525e28b43c34e57bc",
+      "gzipBytes": 15777,
+      "gzipSha256": "6ae83f107b76b0f91b3dbcf26e06790d0b7e3dbb1fc10dcd39a321c613179d6c",
+      "decompressedByteIdentity": "PASS"
+    },
+    {
+      "kind": "provenance",
+      "sourcePath": "/tmp/workforce546-contrast-preliminary-6f70b95c/original-provenance.json",
+      "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-6f70b95c-first-provenance.json.gz",
+      "rawBytes": 9679,
+      "rawSha256": "c8a45c171b13bdd89943e32ded656414b0e83c8735b27fc4bf9be6f9b5a46f17",
+      "gzipBytes": 3109,
+      "gzipSha256": "1982132dfed3cda2223f05e19d8f54d6c34556e6e073fe2d684099680ca58def",
+      "decompressedByteIdentity": "PASS"
+    }
+  ],
+  "rawSecretScan": {
+    "tool": "gitleaks8.30.1 stdin unchanged config",
+    "findings": 0,
+    "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  }
+}
