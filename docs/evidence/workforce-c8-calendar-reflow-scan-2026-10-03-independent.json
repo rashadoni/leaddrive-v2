@@ -1,0 +1,134 @@
+{
+  "reviewedAtUtc": "2026-10-03T10:19:09.785812+00:00",
+  "reviewKind": "Independent read-only assessment of a specific public-identifier false-positive exception, not final CI acceptance",
+  "head": "9a754dae99a6115312c9ed2de9207bfd86ee1e95",
+  "base": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+  "branch": "codex/workforce-completion-part19",
+  "clean": true,
+  "findings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "decision": "GREEN for applying this narrowly scoped exception and proceeding to exact-head review and required CI; current GitHub scan remains RED until a new actual gate passes",
+  "finding": {
+    "rule": "generic-api-key",
+    "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-github.json",
+    "line": 11,
+    "commit": "fa5b37db4bc61c125fbc4095197795c6391b5914",
+    "field": "currentPrApiBaseSha",
+    "classification": "Public Git commit identifier independently equal to original PR base SHA and merged commit first parent; not a credential",
+    "receiptBytes": 4352,
+    "receiptSha256": "c426b4fdebaed69b8dd817194bf9955d2f0a560646134f4b5a43f778eba7ab6c",
+    "matchedValueOmitted": true
+  },
+  "candidateConfiguration": {
+    "path": "/tmp/workforce542-gitleaks-exact-public-sha.toml",
+    "bytes": 2923,
+    "sha256": "f2c83316fa50e9f8a7b52dacb30236bc3dc88c9984ab1159cc8dc5ac724ff809",
+    "originalConfigurationPreservedBytePrefix": true,
+    "upstreamExtendUnchanged": true,
+    "allPriorAllowlistEntriesUnchanged": true,
+    "oneAdditionalEntry": true,
+    "condition": "AND",
+    "regexTarget": "line",
+    "exactAnchoredPath": true,
+    "exactFieldAndFixedPublicIdentifier": true,
+    "whitespaceAndOptionalTrailingCommaOnly": true,
+    "additionalTextRejected": true,
+    "changedValueOrFieldOrPathRejected": true,
+    "noGenericShaFieldFileFingerprintWaiver": true
+  },
+  "actualPrimaryChecksReviewed": {
+    "rootExecutedControlsNotRerunByReviewer": true,
+    "binaryVersion": "8.30.1",
+    "pinnedArchive": {
+      "path": "/tmp/workforce542-gitleaks-8.30.1/archive.tar.gz",
+      "bytes": 8230402,
+      "sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    },
+    "archiveMatchesUnchangedWorkflowPin": true,
+    "controls": {
+      "path": "/tmp/workforce542-gitleaks-controls-proof.json",
+      "bytes": 1403,
+      "sha256": "98a77ef3b37b90c504a5f918932e913fdd758352d7bada5a69108c73c2e5fef7"
+    },
+    "exactRange": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00..9a754dae99a6115312c9ed2de9207bfd86ee1e95",
+    "exactRangeExit": 0,
+    "exactRangeFindings": 0,
+    "controlsResults": [
+      {
+        "case": "known-public-receipt",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "findings": 0,
+        "rules": []
+      },
+      {
+        "case": "changed-value",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "findings": 1,
+        "rules": [
+          "generic-api-key"
+        ]
+      },
+      {
+        "case": "different-key",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "findings": 1,
+        "rules": [
+          "generic-api-key"
+        ]
+      },
+      {
+        "case": "different-path",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "findings": 1,
+        "rules": [
+          "generic-api-key"
+        ]
+      },
+      {
+        "case": "other-value-in-same-file",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "findings": 1,
+        "rules": [
+          "generic-api-key"
+        ]
+      }
+    ],
+    "rangeOriginal": {
+      "path": "/tmp/workforce542-gitleaks-exact-public-sha-result.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    "configurationSelfScanOriginal": {
+      "path": "/tmp/workforce542-gitleaks-config-self-scan.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    "originalRedactedFinding": {
+      "path": "/tmp/workforce542-gitleaks-redacted.json",
+      "bytes": 1100,
+      "sha256": "c236f0cd8274e0077b9f37b953213a99601555dbe7220e03ca2dab01f1b8be9a"
+    }
+  },
+  "projectPolicy": "Current .gitleaks.toml permits narrowly scoped exact path/commit/marker false-positive suppression; upstream detector and all pre-existing exceptions remain intact",
+  "integrity": {
+    "projectConfigurationNotAppliedAtReview": true,
+    "originalReceiptAndHistoryUntouched": true,
+    "noProjectOrGitMutation": true,
+    "noHeavyChecksOrProductionRequests": true
+  },
+  "remainingRequired": [
+    "Apply only reviewed additional entry; append truthful superseding history while retaining earlier allowlist-unchanged statements",
+    "Independent exact-head review of resulting commit and receipt integrity",
+    "Fresh required GitHub gates including scan, and final actual hosted twelve-case acceptance on resulting candidate",
+    "Fresh-main verification and normal release only after all required evidence is GREEN"
+  ]
+}

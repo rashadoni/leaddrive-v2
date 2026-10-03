@@ -1,0 +1,57 @@
+{
+  "observedAt": "2026-10-03T10:12:21.698210+00:00",
+  "binaryVersion": "8.30.1",
+  "archiveDigest": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+  "scratchConfigurationDigest": "f2c83316fa50e9f8a7b52dacb30236bc3dc88c9984ab1159cc8dc5ac724ff809",
+  "exactCiRange": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00..9a754dae99a6115312c9ed2de9207bfd86ee1e95",
+  "exactCiRangeExit": 0,
+  "exactCiRangeFindings": 0,
+  "negativeControls": [
+    {
+      "case": "known-public-receipt",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "findings": 0,
+      "rules": []
+    },
+    {
+      "case": "changed-value",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "findings": 1,
+      "rules": [
+        "generic-api-key"
+      ]
+    },
+    {
+      "case": "different-key",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "findings": 1,
+      "rules": [
+        "generic-api-key"
+      ]
+    },
+    {
+      "case": "different-path",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "findings": 1,
+      "rules": [
+        "generic-api-key"
+      ]
+    },
+    {
+      "case": "other-value-in-same-file",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "findings": 1,
+      "rules": [
+        "generic-api-key"
+      ]
+    }
+  ],
+  "baselineAndWorkflowUnchanged": true,
+  "worktreeConfigurationApplied": false,
+  "controlsContainOnlyKnownPublicCommitIdentifiers": true
+}

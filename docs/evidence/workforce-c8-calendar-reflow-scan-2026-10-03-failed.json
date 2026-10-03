@@ -1,0 +1,22 @@
+{
+  "runId": 37115223243,
+  "jobId": 111180639084,
+  "sourceHead": "9a754dae99a6115312c9ed2de9207bfd86ee1e95",
+  "base": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+  "actualScanConclusion": "failure",
+  "actualFindingCount": 1,
+  "finding": {
+    "RuleID": "generic-api-key",
+    "File": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-github.json",
+    "StartLine": 11,
+    "EndLine": 11,
+    "Commit": "fa5b37db4bc61c125fbc4095197795c6391b5914",
+    "Fingerprint": "fa5b37db4bc61c125fbc4095197795c6391b5914:docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-github.json:generic-api-key:11",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations."
+  },
+  "matchedValueClassification": "Verified immutable repository commit identifier, not a credential",
+  "verifiedPublicCommit": "f62ab3a609a0461cbd14c264306df2d28325628f",
+  "originalReceiptRetainedByteExact": true,
+  "detectorAndMandatoryGateRemainEnabled": true,
+  "newGitHubScanStillRequired": true
+}

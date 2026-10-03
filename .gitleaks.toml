@@ -68,3 +68,11 @@ condition = "AND"
 paths = ['''^src/__tests__/api-agent-desktop\.test\.ts$''']
 regexTarget = "secret"
 regexes = ['''^rolling_30_days$''']
+
+
+[[allowlists]]
+description = "Verified immutable public Git commit SHA in the original PR540 release receipt"
+condition = "AND"
+paths = ['''^docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-github\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"currentPrApiBaseSha":\s*"f62ab3a609a0461cbd14c264306df2d28325628f",?\s*$''']

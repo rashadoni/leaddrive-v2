@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "reviewedAt": "2026-10-03T10:04:29.631287+00:00",
+  "independentReadOnly": true,
+  "head": "9a754dae99a6115312c9ed2de9207bfd86ee1e95",
+  "base": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+  "branch": "codex/workforce-completion-part19",
+  "clean": true,
+  "freshRemoteMain": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+  "freshMainSatisfied": true,
+  "verdict": "GREEN SOURCE AND RECEIPT REVIEW; HOSTED TWELVE NOT RUN",
+  "findings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "fullDiff": {
+    "paths": 26,
+    "bytes": 198016,
+    "sha256": "9d385fc42afeb251aa8dfcaf5c3391d4022b85de75abb230812b55d01e0213ee",
+    "algorithm": "raw git diff --binary base head, SHA256 of exact output bytes"
+  },
+  "nonDocDiff": {
+    "paths": 1,
+    "bytes": 8187,
+    "sha256": "8b6cc824a523a9b183c402928d65f72784c1b5ea93e4f846c98fe17362c36afa"
+  },
+  "source": {
+    "harnessByteExactPriorGreen1a7": true,
+    "priorGreenReport": {
+      "path": "/tmp/workforce-part19-1a7cb47f-preintegration-review.json",
+      "bytes": 5117,
+      "sha256": "efff5f00ba00aef2919bbabd4fb5bdcc5ee59720d2a7eadef2f34621c824b76e"
+    },
+    "all26HelpersAndOldTenOrderingRetained": true,
+    "ruDefaultsIndex9LabelPhaseAndFunctionalRetained": true,
+    "azEnNamespacedNinePhasesAndCaseIdentity": true,
+    "nativeFocusRealCommitLossExactReplayStateAuditSessionRlsAndAuthPacingGuardsRetained": true,
+    "ownApplicationComponentApiSchemaRouteSharedAuthWorkflowBaselineDeltaZero": true
+  },
+  "integration": {
+    "merge": "f95d3870cce1e88b72babfce95481e70a101ce9f",
+    "incomingPaths": [
+      ".github/workflows/set-social-app-secrets.yml",
+      "src/__tests__/api-whatsapp-webhook-embedded-signup.test.ts",
+      "src/__tests__/channel-settings-credential-sweep.test.ts",
+      "src/__tests__/channels-form-save-keeps-server-settings-other-types.test.ts",
+      "src/__tests__/lib-whatsapp-config-validation.test.ts",
+      "src/__tests__/lib-whatsapp-embedded-signup.test.ts",
+      "src/app/api/v1/channels/whatsapp/embedded-signup/route.ts",
+      "src/app/api/v1/webhooks/whatsapp/route.ts",
+      "src/components/channel-config-form.tsx",
+      "src/components/channels/whatsapp-embedded-signup.tsx",
+      "src/lib/channels/public-channel-config.ts",
+      "src/lib/channels/server-owned-settings.ts",
+      "src/lib/channels/whatsapp-config-validation.ts",
+      "src/lib/csp.ts",
+      "src/lib/whatsapp-embedded-signup.ts"
+    ],
+    "all15IncomingBlobsByteExactMain": true,
+    "transitiveCspRead": "Incoming approved main adds four explicit Meta SDK origins only to connect-src/frame-src; nonce/strict-dynamic/self/auth defaults retained. No direct Workforce overlap or task-authored CSP/operator workflow changes.",
+    "actualCurrentCspReceipt": "/tmp/workforce-part19-csp-integrated.log",
+    "actualCurrentCspTestsPassed": 21,
+    "actualCurrentCspDurationSeconds": 1.35,
+    "reviewerChecksRerun": false
+  },
+  "receiptIntegrity": {
+    "originalJsonCount": 48,
+    "previous47ByteExact1a7": true,
+    "new48thByteExactTmpPreintegrationReview": true,
+    "appendOnlyDocs": [
+      {
+        "path": "docs/workforce-c8-moved-day-reversal-evidence-2026-09-30.md",
+        "priorAndMainPrefixesPreserved": true,
+        "append": {
+          "bytes": 2593,
+          "sha256": "1041cd14bee67b4d7442902ebac3038cd20be32dfb87492c75dc75d0a38e7e6c"
+        }
+      },
+      {
+        "path": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "priorAndMainPrefixesPreserved": true,
+        "append": {
+          "bytes": 2593,
+          "sha256": "1041cd14bee67b4d7442902ebac3038cd20be32dfb87492c75dc75d0a38e7e6c"
+        }
+      },
+      {
+        "path": "docs/workforce-hrm-session-log.md",
+        "priorAndMainPrefixesPreserved": true,
+        "append": {
+          "bytes": 2593,
+          "sha256": "1041cd14bee67b4d7442902ebac3038cd20be32dfb87492c75dc75d0a38e7e6c"
+        }
+      }
+    ],
+    "priorFreshMainFalseReceiptPreservedAndSuperseded": true,
+    "own540ReleaseFlagsLimitsAndHelperGuardHistoryUnchanged": true
+  },
+  "acceptanceAndProgress": {
+    "hostedTwelve": "NOT RUN",
+    "sourceGreenDoesNotProveHostedAcceptance": true,
+    "done": 81,
+    "total": 161,
+    "gatesDone": 14,
+    "gatesTotal": 15,
+    "c8Percent": 36,
+    "overallPercent": 59,
+    "nonDoneRows": 80,
+    "wfC8_007": "PARTIAL",
+    "broaderNotRunLimitsAndMutationExclusionsPreserved": true
+  },
+  "reviewerActions": {
+    "projectOrRefsEdited": false,
+    "statusPublished": false,
+    "checksRerun": false,
+    "productionRequests": false,
+    "largeArtifactDownload": false
+  }
+}
