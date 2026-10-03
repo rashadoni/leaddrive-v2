@@ -182,7 +182,8 @@ async function seed() {
       name: `PRIVATE REPORT EMPLOYEE ${key.toUpperCase()}`, role: "AGENT", status: "ACTIVE",
     } })
     const workday = await admin.mtmAgentWorkday.create({ data: {
-      organizationId: organization.id, agentId: employee.id, workDate: new Date("2025-01-01T00:00:00Z"), status: "COMPLETED", totalPausedSeconds: 0,
+      organizationId: organization.id, agentId: employee.id, workDate: new Date("2025-01-01T00:00:00Z"), status: "COMPLETED",
+      startedAt: new Date("2025-01-01T08:00:00Z"), completedAt: new Date("2025-01-01T17:00:00Z"), totalPausedSeconds: 0,
     } })
     privateMarkers.push(employee.id, employee.name, workday.id)
     const specifications = key === "a"
