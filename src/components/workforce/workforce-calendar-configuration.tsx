@@ -497,7 +497,7 @@ export function WorkforceCalendarConfiguration() {
       <Button
         type="button"
         variant="outline"
-        className="min-h-11"
+        className="h-auto min-h-11 max-w-full whitespace-normal"
         onClick={() => void load({ scope, teamId, teamQuery, agentId, agentQuery })}
         disabled={loading || saving || Boolean(confirmation)}
       >
@@ -514,14 +514,14 @@ export function WorkforceCalendarConfiguration() {
       aria-labelledby="workforce-calendar-reversal-title"
     >
       <h3 ref={confirmationTitle} tabIndex={-1} id="workforce-calendar-reversal-title" className="font-semibold">{t("reversalReviewTitle")}</h3>
-      <p className="text-sm font-medium">{confirmation.label} · {confirmation.scopeLabel}</p>
+      <p className="text-sm font-medium [overflow-wrap:anywhere]">{confirmation.label} · {confirmation.scopeLabel}</p>
       <p className="text-sm">{t("reversalDates", {
         source: dateFormatter.format(new Date(`${confirmation.draft.sourceDate}T00:00:00.000Z`)),
         destination: dateFormatter.format(new Date(`${confirmation.draft.destinationDate}T00:00:00.000Z`)),
       })}</p>
       <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("reversalReviewHint")}</p>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="button" className="min-h-11" onClick={() => void reverseMovedDay()} disabled={saving}>
+        <Button type="button" className="h-auto min-h-11 max-w-full whitespace-normal" onClick={() => void reverseMovedDay()} disabled={saving}>
           {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : null}
           {t("reversalConfirm")}
         </Button>
@@ -691,7 +691,7 @@ export function WorkforceCalendarConfiguration() {
       : null}
 
     {visibleCalendar ? <>
-      <form className="grid gap-5 px-5 py-6 sm:px-6 md:grid-cols-4" onSubmit={createOverride}>
+      <form className="grid grid-cols-1 gap-5 px-5 py-6 sm:px-6 md:grid-cols-4" onSubmit={createOverride}>
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="workforce-calendar-operation">{t("operation")}</label>
           <Select
@@ -798,7 +798,7 @@ export function WorkforceCalendarConfiguration() {
                   ? t("createHintAgent", { timezone: visibleCalendar.timezone, agent: selectedAgent.name })
                   : t("createHintOrganization", { timezone: visibleCalendar.timezone })
           }</p>
-          <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={saving || loading || Boolean(confirmation) || !canCreate}>
+          <Button type="submit" className="h-auto min-h-11 w-full max-w-full whitespace-normal sm:w-auto" disabled={saving || loading || Boolean(confirmation) || !canCreate}>
             {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Plus />}
             {t(operation === "MOVE_WORKDAY" ? "moveCreate" : "create")}
           </Button>
@@ -824,8 +824,8 @@ export function WorkforceCalendarConfiguration() {
                 : "emptyOrganization")}</p>
           : <ul className="divide-y divide-zinc-200 border-t border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
             {visibleCalendar.days.map((day) => <li key={`${day.date}:${day.kind}`} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div>
-                <p className="font-medium">{day.name || t("unnamed")}</p>
+              <div className="min-w-0">
+                <p className="font-medium [overflow-wrap:anywhere]">{day.name || t("unnamed")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{dateFormatter.format(new Date(`${day.date}T00:00:00.000Z`))}</p>
                 {day.pairedDate ? <p className="mt-1 text-xs text-muted-foreground">{t("pairedDate", {
                   date: dateFormatter.format(new Date(`${day.pairedDate}T00:00:00.000Z`)),
