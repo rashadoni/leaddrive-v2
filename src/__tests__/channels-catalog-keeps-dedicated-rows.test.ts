@@ -509,8 +509,9 @@ describe("rows that belong to Social Monitoring and Integrations stay theirs", (
 
     await openCatalog()
 
-    // The Telegram card shows one bot; the second bot is still listed where a row no card shows goes.
-    expect(container.querySelector('[data-testid="channel-card-telegram"]')?.textContent).toContain("Support bot")
+    // The Telegram tile counts both bots, and each is listed among the connected channels.
+    expect(container.querySelector('[data-testid="channel-card-telegram"]')?.textContent).toContain("2 connected")
+    expect([...container.querySelectorAll('[data-testid^="channel-row-"]')].map((row) => row.textContent).join(" ")).toContain("Support bot")
     expect(catalogRow(nightBot)?.textContent).toContain("Night shift bot")
     for (const id of [...internal.map((row) => row.id), slack]) expect(catalogRow(id)).toBeNull()
     const text = container.textContent || ""

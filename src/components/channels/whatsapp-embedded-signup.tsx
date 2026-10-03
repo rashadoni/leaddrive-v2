@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 /**
  * "Connect WhatsApp with Meta" — Meta's Embedded Signup dialog (lib/whatsapp-embedded-signup).
@@ -29,7 +29,7 @@ type FacebookSdk = {
   login: (callback: (response: SdkLoginResponse) => void, options: Record<string, unknown>) => void
 }
 type SignupSession = { wabaId: string; phoneNumberId: string; businessId: string | null }
-type Status =
+export type WhatsAppEmbeddedSignupStatus =
   | { kind: "idle" }
   | { kind: "working" }
   | { kind: "connected"; number: string }
@@ -91,25 +91,23 @@ export function readSignupMessage(origin: string, raw: unknown): SignupSession |
   return { wabaId, phoneNumberId, businessId }
 }
 
-export function WhatsAppEmbeddedSignup({
-  labels,
+/**
+ * Meta's Embedded Signup as a hook, so any element can start it — the channel catalog's WhatsApp tile
+ * is the button itself. `availability` is "unavailable" when the server has no Embedded Signup
+ * configuration (WHATSAPP_EMBEDDED_SIGNUP_*): the caller then offers manual setup instead.
+ */
+export function useWhatsAppEmbeddedSignup({
+  cancelledMessage,
+  failedMessage,
   onConnected,
-  variant = "panel",
-  fallback = null,
 }: {
-  labels: WhatsAppEmbeddedSignupLabels
-  onConnected?: (channelId: string) => void
-  /**
-   * "panel" — the block inside the channel form (title, description, button).
-   * "button" — just the button and its outcome, for the one-click tile in the channel catalog.
-   */
-  variant?: "panel" | "button"
-  /** Shown instead once the server says Embedded Signup is not configured (e.g. a link to manual setup). */
-  fallback?: ReactNode
+  cancelledMessage: string
+  failedMessage: string
+  onConnected?: (channelId: string, number: string) => void
 }) {
   // undefined: still asking the server; null: not configured here.
   const [config, setConfig] = useState<{ appId: string; configId: string } | null | undefined>(undefined)
-  const [status, setStatus] = useState<Status>({ kind: "idle" })
+  const [status, setStatus] = useState<WhatsAppEmbeddedSignupStatus>({ kind: "idle" })
   const session = useRef<SignupSession | null>(null)
 
   useEffect(() => {
@@ -131,34 +129,19 @@ export function WhatsAppEmbeddedSignup({
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       const result = readSignupMessage(event.origin, event.data)
-      if (result === "cancel") setStatus({ kind: "error", message: labels.cancelled })
+      if (result === "cancel") setStatus({ kind: "error", message: cancelledMessage })
       else if (result) session.current = result
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [labels.cancelled])
-
-  if (config === null) return <>{fallback}</>
-  if (config === undefined) {
-    // Still asking the server: hold the tile's place instead of flashing the fallback first.
-    return variant === "button" ? (
-      <button
-        type="button"
-        disabled
-        className="flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-md bg-orange-500/70 px-3 text-sm font-medium text-white"
-      >
-        <Loader2 className="h-4 w-4 animate-spin" />
-        {labels.button}
-      </button>
-    ) : null
-  }
+  }, [cancelledMessage])
 
   const finish = async (code: string) => {
     // Meta posts the session message around the same time as the login callback; give it a moment.
     for (let i = 0; i < 20 && !session.current; i += 1) await new Promise((r) => setTimeout(r, 250))
     const picked = session.current
     if (!picked) {
-      setStatus({ kind: "error", message: labels.failed })
+      setStatus({ kind: "error", message: failedMessage })
       return
     }
     try {
@@ -169,17 +152,19 @@ export function WhatsAppEmbeddedSignup({
       })
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; channelId?: string; displayPhoneNumber?: string | null; error?: string }
       if (!res.ok || !json.ok || !json.channelId) {
-        setStatus({ kind: "error", message: json.error || labels.failed })
+        setStatus({ kind: "error", message: json.error || failedMessage })
         return
       }
-      setStatus({ kind: "connected", number: json.displayPhoneNumber || picked.phoneNumberId })
-      onConnected?.(json.channelId)
+      const number = json.displayPhoneNumber || picked.phoneNumberId
+      setStatus({ kind: "connected", number })
+      onConnected?.(json.channelId, number)
     } catch {
-      setStatus({ kind: "error", message: labels.failed })
+      setStatus({ kind: "error", message: failedMessage })
     }
   }
 
   const start = async () => {
+    if (!config || status.kind === "working") return
     session.current = null
     setStatus({ kind: "working" })
     try {
@@ -189,7 +174,7 @@ export function WhatsAppEmbeddedSignup({
         (response) => {
           const code = response?.authResponse?.code
           if (code) void finish(code)
-          else setStatus({ kind: "error", message: labels.cancelled })
+          else setStatus({ kind: "error", message: cancelledMessage })
         },
         {
           config_id: config.configId,
@@ -199,30 +184,32 @@ export function WhatsAppEmbeddedSignup({
         },
       )
     } catch {
-      setStatus({ kind: "error", message: labels.failed })
+      setStatus({ kind: "error", message: failedMessage })
     }
   }
 
-  if (variant === "button") {
-    return (
-      <div className="min-w-0 flex-1 space-y-1" data-testid="whatsapp-embedded-signup-button">
-        {status.kind === "connected" ? (
-          <p className="text-xs font-medium text-emerald-700">{labels.connected.replace("{number}", status.number)}</p>
-        ) : (
-          <button
-            type="button"
-            onClick={() => void start()}
-            disabled={status.kind === "working"}
-            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-orange-500 px-3 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-70"
-          >
-            {status.kind === "working" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            {status.kind === "working" ? labels.working : labels.button}
-          </button>
-        )}
-        {status.kind === "error" && <p className="text-xs text-red-700">{status.message}</p>}
-      </div>
-    )
-  }
+  const availability: "loading" | "ready" | "unavailable" = config === undefined ? "loading" : config ? "ready" : "unavailable"
+  return { availability, status, start }
+}
+
+export function WhatsAppEmbeddedSignup({
+  labels,
+  onConnected,
+  fallback = null,
+}: {
+  labels: WhatsAppEmbeddedSignupLabels
+  onConnected?: (channelId: string) => void
+  /** Shown instead once the server says Embedded Signup is not configured. */
+  fallback?: ReactNode
+}) {
+  const { availability, status, start } = useWhatsAppEmbeddedSignup({
+    cancelledMessage: labels.cancelled,
+    failedMessage: labels.failed,
+    onConnected: (channelId) => onConnected?.(channelId),
+  })
+
+  if (availability === "unavailable") return <>{fallback}</>
+  if (availability === "loading") return null
 
   return (
     <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3" data-testid="whatsapp-embedded-signup">
