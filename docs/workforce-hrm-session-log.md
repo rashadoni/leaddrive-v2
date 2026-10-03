@@ -6001,3 +6001,19 @@ A private successor `codex/workforce-completion-part25` was created in the same 
 - Originals: docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-session-key.json. Three new report-browser preparation files remain uncommitted, no browser/PG/browser-fixture execution on Contabo.
 - Own560 wholedeploy/public remains pending; own main quality new9/9 and all42/42 and build actual SUCCESS separately observed by independent reviewer.
 - Progress unchanged: 81/161DONE,14/15GATES,C836%,overall59% unchanged. Next: independent exact corrected/UI+browser source review, actual hosted browser and own560 whole release/public proof.
+
+
+### 2026-10-03T22:21:04.795563+00:00 — bounded report-browser source prepared; no runtime credit
+
+- New bounded hosted report workflow/harness/SQL extension + environment refusal tests; existing Today workflow/harness/SQL unchanged.
+- Actual narrow checks:9/9 harness environment refusal tests; newharness/test ESLint exit0; node syntax check exit0; PyYAML actualparse/assertions PASS; runner-policy42workflowPASS. Optional Node yaml verifier unavailable, no dependency installed; actual PyYAML used.
+- Browser workflow/harness/SQL fixture NOT RUN locally (Contabo contract). Preparation permits no browser/PG acceptance credit; independent exact source review and actual hosted scenarios still required.
+- Owner imports historical selected Prisma-schema case/decision/response/request/ledger rows; not terminal/approval/workday-correction writer acceptance. Current selected Today case/grant checks remain. No triggers disabled.
+- Business facts SELECT-only app; narrowly audited GET needs tenant-scoped append-only audit INSERT, user authentication metadata UPDATE remains existing grant. No production privileges changed.
+- Real Auth.js CSRF/credentials and session, real GET/rate limiter development fallback; no mock/intercept/bypass. No production distributed Redis proof.
+- BOTH populatedtenants FIVE forcedRLS reporttables positive/unscoped/foreign controls;22businessfact fingerprints; permitted audit deltas metadata whitelist separate.
+- Browser captures RU320/AZ768/EN1440, empty/unresolved/no-sample/zero/integrity/TEAM/no-grant denial/foreign controls; scope9scenarios only, browser NOT RUN at preparation.
+- No physical AT/Android/device/zoom/whole-pagea11y/load/pilot/DONE credit.
+- Originals: docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-browser-prepared.json. Existing Today files and required gates/baselines unchanged.
+- Own#560 whole4jobs SUCCESS; root strict pinned production22:19:40Z full7ef5ef98c73354766f7536181d3c66218da202b9/ping200/TLS0; independent secondbracket pending at this observation.
+- Progress unchanged DONE81/161,GATES14/15,C836%,overall59%. Next: preserve own560 independent release receipts, integrate fresh main/current intersections, independent successor source review, publish successor and run actual hosted reportbrowser/native gates.
