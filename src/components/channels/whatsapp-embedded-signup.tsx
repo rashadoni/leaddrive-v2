@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { Loader2 } from "lucide-react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
+import { Loader2, Plus } from "lucide-react"
 
 /**
  * "Connect WhatsApp with Meta" — Meta's Embedded Signup dialog (lib/whatsapp-embedded-signup).
@@ -94,11 +94,21 @@ export function readSignupMessage(origin: string, raw: unknown): SignupSession |
 export function WhatsAppEmbeddedSignup({
   labels,
   onConnected,
+  variant = "panel",
+  fallback = null,
 }: {
   labels: WhatsAppEmbeddedSignupLabels
   onConnected?: (channelId: string) => void
+  /**
+   * "panel" — the block inside the channel form (title, description, button).
+   * "button" — just the button and its outcome, for the one-click tile in the channel catalog.
+   */
+  variant?: "panel" | "button"
+  /** Shown instead once the server says Embedded Signup is not configured (e.g. a link to manual setup). */
+  fallback?: ReactNode
 }) {
-  const [config, setConfig] = useState<{ appId: string; configId: string } | null>(null)
+  // undefined: still asking the server; null: not configured here.
+  const [config, setConfig] = useState<{ appId: string; configId: string } | null | undefined>(undefined)
   const [status, setStatus] = useState<Status>({ kind: "idle" })
   const session = useRef<SignupSession | null>(null)
 
@@ -107,9 +117,12 @@ export function WhatsAppEmbeddedSignup({
     fetch("/api/v1/channels/whatsapp/embedded-signup")
       .then((res) => (res.ok ? res.json() : null))
       .then((json: { configured?: boolean; appId?: string; configId?: string } | null) => {
-        if (alive && json?.configured && json.appId && json.configId) setConfig({ appId: json.appId, configId: json.configId })
+        if (!alive) return
+        setConfig(json?.configured && json.appId && json.configId ? { appId: json.appId, configId: json.configId } : null)
       })
-      .catch(() => {})
+      .catch(() => {
+        if (alive) setConfig(null)
+      })
     return () => {
       alive = false
     }
@@ -125,7 +138,20 @@ export function WhatsAppEmbeddedSignup({
     return () => window.removeEventListener("message", onMessage)
   }, [labels.cancelled])
 
-  if (!config) return null
+  if (config === null) return <>{fallback}</>
+  if (config === undefined) {
+    // Still asking the server: hold the tile's place instead of flashing the fallback first.
+    return variant === "button" ? (
+      <button
+        type="button"
+        disabled
+        className="flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-md bg-orange-500/70 px-3 text-sm font-medium text-white"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" />
+        {labels.button}
+      </button>
+    ) : null
+  }
 
   const finish = async (code: string) => {
     // Meta posts the session message around the same time as the login callback; give it a moment.
@@ -175,6 +201,27 @@ export function WhatsAppEmbeddedSignup({
     } catch {
       setStatus({ kind: "error", message: labels.failed })
     }
+  }
+
+  if (variant === "button") {
+    return (
+      <div className="min-w-0 flex-1 space-y-1" data-testid="whatsapp-embedded-signup-button">
+        {status.kind === "connected" ? (
+          <p className="text-xs font-medium text-emerald-700">{labels.connected.replace("{number}", status.number)}</p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void start()}
+            disabled={status.kind === "working"}
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-orange-500 px-3 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-70"
+          >
+            {status.kind === "working" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {status.kind === "working" ? labels.working : labels.button}
+          </button>
+        )}
+        {status.kind === "error" && <p className="text-xs text-red-700">{status.message}</p>}
+      </div>
+    )
   }
 
   return (
