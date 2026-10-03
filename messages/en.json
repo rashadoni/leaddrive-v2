@@ -25323,6 +25323,24 @@
     }
   },
   "workforceExceptionReport": {
+    "recordedOutcomes": {
+      "title": "Recorded links and first-resolution time",
+      "cohortHint": "Cases are grouped by the date they were recorded. These aggregates describe the recorded ledgers available when this report was read.",
+      "linkedCorrection": "Cases linked to an approved correction",
+      "noCases": "No cases in this range",
+      "linkedCount": "{linked} of {cases} recorded cases",
+      "linkedHint": "Counts distinct cases with a recorded link to an approved time-correction request. A ledger link does not confirm that a correction is currently applied to the workday.",
+      "firstResolution": "Average time to first recorded resolution",
+      "noSamples": "No valid resolution samples",
+      "unavailable": "Unavailable",
+      "durationRange": "Shortest: {min} · Longest: {max}",
+      "resolutionHint": "Elapsed time from case registration to its first recorded resolution, including nights and weekends. Reopening a case does not restart this measurement.",
+      "samples": "Valid resolved cases",
+      "unresolved": "Unresolved cases",
+      "integrityExcluded": "Excluded for data integrity",
+      "sampleHint": "Unresolved cases and inconsistent decision histories are excluded from the duration sample. Durations use elapsed units, rounded to at most three decimal places; they are not business-hour or SLA measurements.",
+      "classificationUnavailable": "False-positive and appeal-overturn rates are unavailable: an approved outcome classification has not been defined."
+    },
     "title": "Attendance exception report",
     "subtitle": "Review bounded aggregate counts from persisted attendance cases without exposing employee, case, location, QR, device or reason data.",
     "adminOnly": "This aggregate exception report requires an effective Workforce HR-review role.",

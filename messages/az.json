@@ -25319,6 +25319,24 @@
     }
   },
   "workforceExceptionReport": {
+    "recordedOutcomes": {
+      "title": "Qeydə alınmış əlaqələr və ilk həllədək vaxt",
+      "cohortHint": "Hallar qeydiyyat tarixinə görə qruplaşdırılır. Xülasə hesabat oxunan anda mövcud olan jurnal qeydlərini əks etdirir.",
+      "linkedCorrection": "Təsdiqlənmiş düzəlişlə əlaqəli hallar",
+      "noCases": "Bu dövrdə hal yoxdur",
+      "linkedCount": "{cases} qeydə alınmış haldan {linked}",
+      "linkedHint": "Təsdiqlənmiş vaxt düzəlişi sorğusu ilə qeydə alınmış əlaqəsi olan fərqli hallar sayılır. Jurnaldakı əlaqə düzəlişin hazırda iş gününə tətbiq olunduğunu təsdiqləmir.",
+      "firstResolution": "İlk qeydə alınmış həllədək orta vaxt",
+      "noSamples": "Etibarlı həll vaxtı nümunəsi yoxdur",
+      "unavailable": "Mövcud deyil",
+      "durationRange": "Ən qısa: {min} · Ən uzun: {max}",
+      "resolutionHint": "Halın qeydiyyatından ilk qeydə alınmış həllinə qədər keçən vaxt, gecələr və həftəsonları daxil olmaqla. Halın yenidən açılması bu ölçməni sıfırlamır.",
+      "samples": "Nümunədə həll edilmiş hallar",
+      "unresolved": "Həll edilməmiş hallar",
+      "integrityExcluded": "Məlumat bütövlüyünə görə çıxarılanlar",
+      "sampleHint": "Həll edilməmiş hallar və ziddiyyətli qərar tarixçələri vaxt nümunəsindən çıxarılır. Müddətlər ən çox üç onluq rəqəmə yuvarlaqlaşdırılır; bunlar iş saatı və ya SLA ölçmələri deyil.",
+      "classificationUnavailable": "Yanlış siqnal və apellyasiyada qərarın ləğvi göstəriciləri mövcud deyil: nəticə təsnifatı hələ təsdiqlənməyib."
+    },
     "title": "İştirak istisnaları hesabatı",
     "subtitle": "İşçi, hal, geolokasiya, QR, cihaz və ya səbəb məlumatlarını açıqlamadan saxlanılmış iştirak hallarının məhdud ümumi saylarını yoxlayın.",
     "adminOnly": "Bu ümumi istisna hesabatı qüvvədə olan Workforce HR yoxlama rolunu tələb edir.",

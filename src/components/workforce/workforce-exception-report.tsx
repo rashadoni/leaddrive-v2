@@ -3,14 +3,17 @@
 import Link from "next/link"
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import { useSession } from "next-auth/react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { BarChart3, ChevronLeft, Loader2, RefreshCw, ShieldAlert } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { workforceExceptionQueueLabelKey } from "@/lib/workforce/exception-queue-labels"
+import type { WorkforceExceptionRecordedOutcomes } from "@/lib/workforce/exception-case-report-recorded-outcomes"
+import { WorkforceExceptionRecordedOutcomesSummary } from "@/components/workforce/workforce-exception-recorded-outcomes"
 
 type ExceptionReport = {
+  recordedOutcomes?: WorkforceExceptionRecordedOutcomes
   summary: {
     employees: number
     cases: number
@@ -42,22 +45,28 @@ type ReportResponse = {
 }
 
 export function WorkforceExceptionReport() {
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
+  const locale = useLocale()
   const t = useTranslations("workforceExceptionReport")
   const tQueue = useTranslations("workforceExceptionQueue")
-  const [data, setData] = useState<ReportResponse | null>(null)
+  const [result, setResult] = useState<{ requestKey: string; data: ReportResponse } | null>(null)
   const [draftRange, setDraftRange] = useState({ start: "", end: "" })
   const [requestedRange, setRequestedRange] = useState<{ start: string; end: string } | null>(null)
   const [accessDeniedRequestKey, setAccessDeniedRequestKey] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<{ requestKey: string; message: string } | null>(null)
+  const [completedRequestKey, setCompletedRequestKey] = useState<string | null>(null)
   const [retry, setRetry] = useState(0)
   const organizationId = session?.user?.organizationId ? String(session.user.organizationId) : ""
-  const requestKey = `${organizationId}:${retry}`
+  const userId = session?.user?.id ?? ""
+  const requestKey = JSON.stringify([sessionStatus, userId, organizationId, requestedRange?.start, requestedRange?.end, retry])
   const accessDenied = accessDeniedRequestKey === requestKey
-  const number = useMemo(() => new Intl.NumberFormat(), [])
+  const loading = completedRequestKey !== requestKey
+  const data = result?.requestKey === requestKey ? result.data : null
+  const currentError = error?.requestKey === requestKey ? error.message : null
+  const number = useMemo(() => new Intl.NumberFormat(locale), [locale])
 
   useEffect(() => {
+    if (sessionStatus !== "authenticated" || !userId || !organizationId) return
     const controller = new AbortController()
     const parameters = new URLSearchParams()
     if (requestedRange) {
@@ -71,44 +80,44 @@ export function WorkforceExceptionReport() {
     })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}))
+        if (controller.signal.aborted) return
         // The matching queue route accepts a scoped Workforce grant after
         // rollout. Do not pre-empt that server decision with a stale CRM role
         // in the browser.
         if (response.status === 403) {
-          setData(null)
+          setResult(null)
           setAccessDeniedRequestKey(requestKey)
           return
         }
         if (!response.ok || !body.success) throw new Error("WORKFORCE_EXCEPTION_REPORT_LOAD_FAILED")
         const next = body.data as ReportResponse
-        setData(next)
+        setResult({ requestKey, data: next })
         if (!requestedRange) setDraftRange({ start: next.start, end: next.end })
       })
-      .catch((cause: unknown) => {
-        if (cause instanceof Error && cause.name !== "AbortError") {
-          setData(null)
-          setError(t("loadFailed"))
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setResult(null)
+          setError({ requestKey, message: t("loadFailed") })
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
+        if (!controller.signal.aborted) setCompletedRequestKey(requestKey)
       })
     return () => controller.abort()
-  }, [organizationId, requestKey, requestedRange, t])
+  }, [organizationId, userId, sessionStatus, requestKey, requestedRange, t])
 
   function applyRange(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!draftRange.start || !draftRange.end) {
-      setError(t("rangeRequired"))
+      setError({ requestKey, message: t("rangeRequired") })
       return
     }
-    setLoading(true)
     setError(null)
     setRequestedRange({ ...draftRange })
+    setRetry((value) => value + 1)
   }
 
   function refresh() {
-    setLoading(true)
     setError(null)
     setRetry((value) => value + 1)
   }
@@ -131,10 +140,11 @@ export function WorkforceExceptionReport() {
       </form>
       <div className="flex gap-2"><Button asChild type="button" variant="outline" className="min-h-10"><Link href="/workforce/exceptions"><ChevronLeft className="mr-2 size-4" />{t("backToQueue")}</Link></Button><Button type="button" variant="outline" className="min-h-10" onClick={refresh} disabled={loading}>{loading ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : <RefreshCw className="mr-2 size-4" />}{t("refresh")}</Button></div>
     </div>
-    {error ? <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div> : null}
+    {currentError ? <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{currentError}</div> : null}
     {loading ? <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("loading")}</div> : null}
     {data && report && !loading ? <>
       <section aria-labelledby="workforce-exception-report-summary" className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700"><div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"><div><h2 id="workforce-exception-report-summary" className="font-semibold">{t("summaryTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("periodHint", { start: data.start, end: data.end, timezone: data.timezone })}</p></div><Badge variant="outline">{t("recordedCaseDate")}</Badge></div><dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric label={t("metrics.cases")} value={report.summary.cases} number={number} /><Metric label={t("metrics.employees")} value={report.summary.employees} number={number} /><Metric label={tQueue("stages.OPEN")} value={report.summary.open} number={number} /><Metric label={tQueue("stages.AWAITING_EMPLOYEE_RESPONSE")} value={report.summary.awaitingEmployeeResponse} number={number} /><Metric label={tQueue("stages.HR_REVIEW")} value={report.summary.hrReview} number={number} /><Metric label={tQueue("stages.RESOLVED")} value={report.summary.resolved} number={number} /><Metric label={tQueue("stages.DATA_INTEGRITY_REVIEW")} value={report.summary.dataIntegrityReview} number={number} /><Metric label={t("metrics.employeeResponsesReceived")} value={report.summary.employeeResponsesReceived} number={number} /></dl></section>
+      {report.recordedOutcomes ? <WorkforceExceptionRecordedOutcomesSummary outcomes={report.recordedOutcomes} /> : null}
       <section aria-labelledby="workforce-exception-report-types" className="rounded-lg border border-zinc-200 dark:border-zinc-700"><div className="border-b border-zinc-200 p-4 dark:border-zinc-700"><h2 id="workforce-exception-report-types" className="font-semibold">{t("typesTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("typesHint")}</p></div><div className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" role="region" tabIndex={0} aria-label={t("typesTitle")}><table className="min-w-[840px] text-left text-sm"><thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-muted-foreground dark:border-zinc-700"><tr><th className="px-4 py-3 font-medium">{tQueue("type")}</th><th className="px-4 py-3 text-right font-medium">{t("metrics.cases")}</th><th className="px-4 py-3 text-right font-medium">{tQueue("stages.OPEN")}</th><th className="px-4 py-3 text-right font-medium">{tQueue("stages.AWAITING_EMPLOYEE_RESPONSE")}</th><th className="px-4 py-3 text-right font-medium">{tQueue("stages.HR_REVIEW")}</th><th className="px-4 py-3 text-right font-medium">{tQueue("stages.RESOLVED")}</th><th className="px-4 py-3 text-right font-medium">{tQueue("stages.DATA_INTEGRITY_REVIEW")}</th></tr></thead><tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">{report.byType.map((item) => <tr key={item.type}><td className="px-4 py-3"><Badge variant={item.triageSeverity === "ATTENTION_REVIEW" ? "secondary" : "outline"}>{tQueue(workforceExceptionQueueLabelKey("types", item.type))}</Badge></td><td className="px-4 py-3 text-right tabular-nums">{number.format(item.cases)}</td><td className="px-4 py-3 text-right tabular-nums">{number.format(item.open)}</td><td className="px-4 py-3 text-right tabular-nums">{number.format(item.awaitingEmployeeResponse)}</td><td className="px-4 py-3 text-right tabular-nums">{number.format(item.hrReview)}</td><td className="px-4 py-3 text-right tabular-nums">{number.format(item.resolved)}</td><td className="px-4 py-3 text-right tabular-nums">{number.format(item.dataIntegrityReview)}</td></tr>)}{report.byType.length === 0 ? <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">{t("empty")}</td></tr> : null}</tbody></table></div></section>
     </> : null}
   </section>
