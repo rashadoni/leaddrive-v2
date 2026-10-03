@@ -7,3 +7,12 @@ Own552 has separately completed its real six-case final hosted acceptance, curre
 The full accumulated private packet exceeds the unchanged400,000-byte reviewcap. This historical phase and nextsource/release-receipt phase keep reviews bounded without deleting originals, rewriting history, raisingcap or weakeningchecks. PreparedC6-010source remains in/tmp, uninstalled/NOTRUN; install on the nextownedcode branch after this confirmed552release. Doc-only PR follows repository nativechecks semantics; skippedchecks earnno code/runtime verification.
 
 Current status: own552 released; first bounded receipt publication awaiting exactreview/normalPRgates. Last action: copied63historical docs exactly, retaining alloldprefixes. Current point: clean-source docscandidate checkpoint. Nextaction: independentdocsreview/normalpublication while actualC6-010successorimplementation proceeds. Overall59%,DONE81/161,GATES14/15,C8 36%,80non-DONE unchanged; human/productionToday/device/pilot/heavyContabo acceptance NOTRUN and originalgeneralupdate/delete/breakpolicy/AGENTmoves/Route exclusions retained.
+
+
+## 2026-10-03 — bounded archive extended with two existing final CI originals
+
+Historical exact64a73f2f docs review remains GREEN for that earlier head only. Successor C6 source was actually installed on ownedpart23/4ee2bfed:85 targetedtests PASS; PGsource installed9cases, actualPG NOTRUN pending hostedCI. These later facts supersede the earlier prepared/uninstalled stopping point above without rewriting it.
+
+The next source/release packet measured406,300binarydiffbytes before new review receipts, above unchanged400,000cap. This docs-only extension copies the exact existing own552 e8caf9e5 typecheck/static-checks gzip blobs from private4ee2bfed into phase1; raw/gzip/tmp sizes and SHA256 all independently recomputed equal before copy. New distribution manifest binds sourcehead/current552 native jobIDs/completion timestamps and honest1196 advisorydiagnostics/66baseline-pairs/18 unchanged failing-suite-file semantics. No diagnostics suppressed, baseline changed, cleanfullsuite/typecheck credit or new runtime result. Other later final/production originals remain deferred on the retained successor. All earlier phase1/main receipt blobs and all three publicdoc prefixes remain byte-exact.
+
+Current point: extended docs-only candidate awaiting new exacthead review/currentnativegates/normalrelease; C6actual85PASS/PG9NOTRUN on ownedpart23 continues autonomously. Overall59%,DONE81/161,GATES14/15,C8 36%,80non-DONE unchanged.
