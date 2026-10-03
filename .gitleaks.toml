@@ -46,6 +46,16 @@ regexTarget = "secret"
 regexes = ['''^rolling_30_days$''']
 
 [[allowlists]]
+description = "Deterministic synthetic observation key used only by the API and collector tests"
+condition = "AND"
+paths = [
+  '''^src/__tests__/support-ux-observation-api\.test\.ts$''',
+  '''^\.github/scripts/test-inspect-support-ux-observation\.mjs$''',
+]
+regexTarget = "secret"
+regexes = ['''^synthetic-observation-secret-0123456789$''']
+
+[[allowlists]]
 description = "Public rolling period identifier in the Support agent desktop UI contract"
 condition = "AND"
 paths = ['''^src/app/\(dashboard\)/support/agent-desktop/page\.tsx$''']

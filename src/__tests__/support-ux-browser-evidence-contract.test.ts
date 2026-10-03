@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const runner = readFileSync("scripts/support-ux-browser-evidence.mjs", "utf8");
+const dimensionsHelper = readFileSync("scripts/support-ux-evidence-dimensions.mjs", "utf8");
 const serviceDeskFlow = readFileSync(
   "scripts/support-ux-service-desk-flow-evidence.mjs",
   "utf8",
@@ -102,16 +103,34 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain('"customer", email:');
     expect(runner).toContain('"az,ru,en"');
     expect(runner).toContain('"light,dark"');
-    expect(runner).toContain("desktop: { width: 1440");
-    expect(runner).toContain("tablet: { width: 1024");
-    expect(runner).toContain('"narrow-tablet": { width: 768');
-    expect(runner).toContain("mobile: { width: 375");
+    expect(dimensionsHelper).toContain("desktop: { width: 1440");
+    expect(dimensionsHelper).toContain("tablet: { width: 1024");
+    expect(dimensionsHelper).toContain('"narrow-tablet": { width: 768');
+    expect(dimensionsHelper).toContain("mobile: { width: 375");
     expect(runner).toContain("SUPPORT_EVIDENCE_SCENARIOS");
     expect(runner).toContain("selectedScenarioIds.has(item.id)");
     expect(workflow).toContain("scenarios:");
     expect(workflow).toContain(
       "default: service-desk,service-desk-kanban,service-desk-reports,ticket-detail",
     );
+  });
+
+  it("keeps optional viewport and vision captures distinct without bypassing existing gates", () => {
+    expect(dimensionsHelper).toContain('"desktop-1366": { width: 1366, height: 768, hasTouch: false }');
+    expect(runner).toContain("supportEvidenceDimensionsMatch(common, result)");
+    expect(runner).toContain("baselineComparison(fileName, screenshotPath, common)");
+    expect(runner).toContain("!baselineEvidence && !supportEvidenceSupportsLegacyBaseline(common)");
+    expect(runner).toContain('visual.status === "baseline_matrix_mismatch"');
+    expect(runner.indexOf("await applySupportVisionDeficiency(page, visionDeficiency)")).toBeLessThan(runner.indexOf("const openScenario = async () =>"));
+    expect(runner).toContain("metrics.viewportWidth !== viewport.width");
+    expect(runner).toContain("metrics.viewportHeight !== viewport.height");
+    expect(runner).toContain("(metrics.environment.maxTouchPoints > 0) !== expectsTouch");
+    expect(runner).toContain("visionDeficiencies: [...selectedVisions]");
+    expect(workflow).toContain("vision_deficiencies:");
+    expect(workflow).toContain("default: standard");
+    expect(workflow).toContain("SUPPORT_EVIDENCE_VISION_DEFICIENCIES: ${{ inputs.vision_deficiencies }}");
+    expect(workflow).toContain("validateSupportEvidenceInteractionDimensions(process.env.SUPPORT_EVIDENCE_INTERACTION_MODE");
+    expect(workflow).toContain("npx vitest run src/__tests__/support-ux-evidence-dimensions.test.ts");
   });
 
   it("reuses one authenticated session per role across the evidence matrix", () => {

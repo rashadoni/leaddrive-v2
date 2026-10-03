@@ -3,6 +3,11 @@ name: Support UX evidence
 on:
   workflow_dispatch:
     inputs:
+      historical_layout:
+        description: Run the independent matched historical layout measurement instead of the regular capture
+        required: false
+        type: boolean
+        default: false
       target_mode:
         description: Use an isolated CI tenant or an explicitly configured non-production host
         required: true
@@ -36,9 +41,13 @@ on:
         required: true
         default: light,dark
       viewports:
-        description: Comma-separated viewport set
+        description: Comma-separated viewport set (desktop-1366 is opt-in, 1366 x 768)
         required: true
         default: desktop,tablet,narrow-tablet,mobile
+      vision_deficiencies:
+        description: Comma-separated capture states (standard,protanopia,deuteranopia,tritanopia); simulated screenshots require manual inspection
+        required: true
+        default: standard
       data_profile:
         description: Fixture profile label (empty, typical, high, 0, 5, 50, 500)
         required: true
@@ -82,11 +91,18 @@ permissions:
   contents: read
 
 concurrency:
-  group: support-ux-evidence-${{ github.ref }}
+  group: support-ux-evidence-${{ github.ref }}${{ inputs.historical_layout == true && '-historical' || '' }}
   cancel-in-progress: false
 
 jobs:
+  historical-layout:
+    if: ${{ inputs.historical_layout == true }}
+    uses: ./.github/workflows/support-ux-historical-layout.yml
+    permissions:
+      contents: read
+
   capture:
+    if: ${{ inputs.historical_layout != true }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     services:
@@ -117,6 +133,7 @@ jobs:
       SUPPORT_EVIDENCE_LOCALES: ${{ inputs.locales }}
       SUPPORT_EVIDENCE_THEMES: ${{ inputs.themes }}
       SUPPORT_EVIDENCE_VIEWPORTS: ${{ inputs.viewports }}
+      SUPPORT_EVIDENCE_VISION_DEFICIENCIES: ${{ inputs.vision_deficiencies }}
       SUPPORT_EVIDENCE_DATA_PROFILE: ${{ inputs.data_profile }}
       SUPPORT_EVIDENCE_SUPPORT_UX_CANARY: ${{ inputs.support_ux_canary }}
       SUPPORT_EVIDENCE_SAMPLE_COUNT: ${{ inputs.sample_count }}
@@ -156,6 +173,13 @@ jobs:
         run: bash scripts/ci/prepare-hosted-build-runner.sh
 
       - run: npm ci
+
+      - name: Validate optional capture dimensions
+        run: |
+          node --check scripts/support-ux-evidence-dimensions.mjs
+          node --input-type=module -e 'import { supportEvidenceViewports, supportEvidenceVisionDeficiencies, validateSupportEvidenceInteractionDimensions } from "./scripts/support-ux-evidence-dimensions.mjs"; validateSupportEvidenceInteractionDimensions(process.env.SUPPORT_EVIDENCE_INTERACTION_MODE, supportEvidenceViewports(process.env.SUPPORT_EVIDENCE_VIEWPORTS || undefined), supportEvidenceVisionDeficiencies(process.env.SUPPORT_EVIDENCE_VISION_DEFICIENCIES || undefined))'
+          npx eslint scripts/support-ux-evidence-dimensions.mjs src/__tests__/support-ux-evidence-dimensions.test.ts
+          npx vitest run src/__tests__/support-ux-evidence-dimensions.test.ts
 
       - name: Validate visual comparison inputs
         if: ${{ inputs.visual_mode == 'compare' }}
@@ -695,6 +719,7 @@ jobs:
             src/app/api/v1/calendar/agent/route.ts \
             src/components/ui/sheet.tsx \
             src/lib/support-calendar/presentation.ts \
+            src/__tests__/support-calendar-agent-api.test.ts \
             src/__tests__/api-calendar-integrations.test.ts \
             src/__tests__/no-session-object-in-effect-deps.test.ts \
             src/__tests__/support-calendar-presentation.test.ts \
@@ -707,6 +732,7 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts
           npx vitest run \
+            src/__tests__/support-calendar-agent-api.test.ts \
             src/__tests__/api-calendar-integrations.test.ts \
             src/__tests__/no-session-object-in-effect-deps.test.ts \
             src/__tests__/support-calendar-presentation.test.ts \
@@ -1474,7 +1500,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.support_ux_canary }}-${{ inputs.visual_mode }}
+          name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.support_ux_canary }}-${{ inputs.visual_mode }}${{ inputs.vision_deficiencies != '' && inputs.vision_deficiencies != 'standard' && format('-vision-{0}', inputs.vision_deficiencies) || '' }}
           path: artifacts/support-ux/${{ github.sha }}
           if-no-files-found: error
           retention-days: 30
