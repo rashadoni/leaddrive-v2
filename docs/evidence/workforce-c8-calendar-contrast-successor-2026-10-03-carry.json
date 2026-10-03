@@ -1,0 +1,48 @@
+{
+  "oldPrivateHead": "0177fa0d8b3ae45db0bda5710da9329a479fb4b7",
+  "oldClosedRemoteHead": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+  "releasedMergedSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+  "freshSuccessorBase": "2f7f56ff6b8731c14c1f9483d977a9f80a57333f",
+  "branch": "codex/workforce-completion-part20",
+  "carryHead": "bef341b77b37339ceb6c2eee9af0dbc92958c5ac",
+  "carriedCommits": [
+    {
+      "old": "ce2747ac35d7f52f8922613f7ed10d2be9be1d9a",
+      "new": "96b213bfcea6224893f154de8fda7816106a1c1f"
+    },
+    {
+      "old": "3c0156edcfd2106d8ad22361228811ec8988d0bb",
+      "new": "7cf92a831fa4b94f50e887d7802214df9749a17e"
+    },
+    {
+      "old": "41282c43cafcc2d37c123f8568c8f2313ce9ba03",
+      "new": "3890dcc758cfbce844edb5eb40096919edfbe8fb"
+    },
+    {
+      "old": "ef26007d64fd332e6f6fddd850a48762a1aedbb9",
+      "new": "bcef749971706884b4d82209c4a736466efa698f"
+    },
+    {
+      "old": "39c714eb7bdafce0102cae3d5e60bdc6e4b06fda",
+      "new": "723b3ae8c06d096b0d8ecf8d2f44b9f10f74d45f"
+    },
+    {
+      "old": "e5c2fc266e9c449e761dc85d10874386472c2b3a",
+      "new": "f5c901dedb5a96a9096d4386de2e7e7f4eee3584"
+    },
+    {
+      "old": "0177fa0d8b3ae45db0bda5710da9329a479fb4b7",
+      "new": "bef341b77b37339ceb6c2eee9af0dbc92958c5ac"
+    }
+  ],
+  "incomingPaths": [
+    "src/__tests__/api-whatsapp-webhook-embedded-signup.test.ts",
+    "src/__tests__/lib-whatsapp-embedded-signup.test.ts",
+    "src/app/api/v1/webhooks/whatsapp/route.ts",
+    "src/lib/whatsapp-embedded-signup.ts"
+  ],
+  "incomingBlobsPreserved": true,
+  "oldAllOwnedDocBlobsPreserved": true,
+  "treeDeltaFromOldExactlyIncomingFourPaths": true,
+  "carryHasNoNonDocDeltaFromFreshBase": true
+}
