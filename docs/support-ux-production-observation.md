@@ -15,7 +15,7 @@ evidence; this protocol does not require repeating them.
 | --- | --- |
 | Representative authorized production tenant | Exact slug requested from owner; PENDING. Do not select an arbitrary paying tenant or count an isolated CI fixture |
 | Current production route | `rashadoni/leaddrive-v2`, protected `main`, GitHub Actions, `13.140.132.245:/opt/leaddrive-v2`; public app `https://app.leaddrivecrm.org` |
-| Last verified production snapshot | PR #544 merge `3294093a4364be8be35d8a03c1b9fde57c3dd3b9`, new automatic deploy `37124821392` and post-merge checks SUCCESS; independent ping/exact full-SHA receipt at `2026-10-03 17:27:00–01` (Asia/Baku). Earlier PR #530/f62 and 88 snapshots remain dated in the release ledger |
+| Last verified production snapshot | Current runtime `cb6d01ce1c0a7af315c94fe43972b56f735c9700`, independently observed after another task's automatic deploy `37132067233` SUCCESS; ping200/oktrue and build-info200/exact full SHA at `2026-10-03 19:35:48` (Asia/Baku). Eighteen scoped Support/operator/telemetry/runtime blobs match released PR #544/329. This task did not dispatch or repeat that deploy. PR #544's `37124821392` release and earlier snapshots remain dated evidence |
 | Authenticated flag state | UNVERIFIED. Read the selected tenant's authenticated no-store `/api/v1/support/ux-rollout`; only explicit `enabled: true` proves client admission. Public ping/build-info cannot prove this |
 | Audited activation | UNVERIFIED. Require tenant slug, owner/actor, exact source/artifact SHA, before/after state and activation UTC/Asia-Baku timestamp; use an already approved record if it exists |
 | Safe operator path | PR #544 delivered the fixed-flag atomic superadmin operator described below, with protected/PG/release/public-SHA admission complete. PR #530's protected read-only `support-ux-rollout` view can report anonymous aggregate counts or exact selected-tenant metadata; it cannot activate a flag. Direct SSH was rejected at its dated check. Selected-tenant execution remains NOT RUN |
@@ -460,3 +460,37 @@ seven complete production days and later flag retirement remain pending.
 Next action: obtain the exact authorized tenant slug and selected-tenant auth
 context, verify flag/audit/collection admission, establish actual baseline and
 coverage, then start the evidenced calendar window. No tenant action has run.
+
+
+## 2026-10-03 — Admission preparation resumed after PR544
+
+The owner requested continuation. Exact representative production organization
+name/slug was requested once and remains pending; no tenant has been selected
+or activated, and no daily collection or observation day is admitted.
+
+Fresh protected metadata-only inventory
+[37133442555](https://github.com/rashadoni/leaddrive-v2/actions/runs/37133442555)
+completed successfully from reviewed current main
+`cb6d01ce1c0a7af315c94fe43972b56f735c9700`. It waited in the existing production
+concurrency group until another task's deploy completed. At15:33:49UTC it
+reported PM2 stdout `/var/lib/leaddrive-v2-logs/out.log`, regular0644,16854344B,
+and stderr `error.log`, regular0644,904211B. The directory is2750; masked
+ownership remains masked. The stdout size is within the collector's67108864B
+cap at this snapshot. This does not prove parseability, actual handler samples,
+effective INFO, whole-day coverage, historical retention or incident absence.
+No log body, application environment or customer payload was collected.
+
+Independent no-auth/no-cookie, verified-TLS public reads at15:35:48UTC
+(19:35:48Asia/Baku) returned ping200/oktrue and build-info200/exact fullcb6 SHA;
+both no-store. BuiltAt15:12:19UTC. Eighteen named Support/operator/audit/rollout/
+category/telemetry/collector/logrotate/PM2/RLS/auth blobs were independently
+compared with329 and are identical; this is scoped source compatibility, not
+whole-tree equality or selected-tenant admission. Completed source CI, merge,
+deploy and browser matrices were not rerun by this phase.
+
+Durable evidence: `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-readiness-37133442555`,
+seven hashed receipts12289B plus manifest, including the source identity pairs,
+diagnostic job/result and dated public runtime receipt. Next required input is
+the exact authorized production organization; its normal approved auth context
+is then needed for selected-tenant reads and audited activation. The partial
+activation day will not count toward seven complete Asia/Baku days.

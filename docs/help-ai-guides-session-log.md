@@ -2342,3 +2342,116 @@ flag-retirement source/PR/release. No arbitrary tenant or invented start date.
 проверить flag/audit/реальный baseline/INFO/retention/continuity, собрать семь
 полных дней Asia/Baku, затем подготовить и выпустить отдельно допущенное
 снятие флага.
+
+
+## 2026-10-03 — Resumed selected-tenant admission preparation
+
+- User said “начинай” after the e6208dd documentation checkpoint. Resumed
+  SUPUX-ROL-006 at its saved boundary; authorization to continue work persists.
+  Asked once for the exact production organization name/slug as a missing scope
+  parameter, not for repeated work approval. No reply/tenant selection yet.
+- Recorded worktree/branch/origin reconfirmed with codex-project-context:
+  leaddrive-help-ai-guides, codex/help-ai-guides, rashadoni/leaddrive-v2.
+  Read current-main deployment/registry/pinned-SSH sources: accepted target
+  remains13.140.132.245:/opt/leaddrive-v2 through protected GitHub Actions.
+- Current main is cb6d01ce1c0a7af315c94fe43972b56f735c9700. Other tasks have
+  advanced production since the dated PR544/329 receipt. Existing automatic
+  deploy37132067233 is in progress (observed15:26UTC); this task did not start,
+  rerun, cancel or modify it. Wait for a stable boundary before the new
+  metadata-only readiness inventory. Main identity is not serving identity.
+- Independent source audit identifies existing backup-log-inventory as the
+  bounded tenant-independent readiness view. It reports PM2 log paths and file
+  metadata, not log bodies, secrets, effective LOG_LEVEL, full-day retention or
+  accepted observation days. Source defaultINFO and rotate14 do not prove live
+  INFO or fourteen calendar days. No new code gap is established by this audit.
+- No production tenant request/activation or observation collection has run in
+  this phase. Full local build/compiler/browser/PG NOT RUN: no source changes
+  and Contabo workload policy. Completed releases/CI/matrices are retained.
+
+
+## 2026-10-03 — Fresh admission-readiness snapshot completed
+
+- Dispatched only the reviewed metadata diagnostic37133442555 from exactmain
+  cb6d01ce1c0a7af315c94fe43972b56f735c9700. It queued behind the already running
+  unrelated deploy37132067233, which completedSUCCESS without this task
+  starting/rerunning/cancelling it. Diagnostic job111233021061 ran15:33:27–52UTC
+  and completedSUCCESS; bounded inventory emitted15:33:49UTC.
+- PM2 stdout remains/var/lib/leaddrive-v2-logs/out.log, regular0644,16854344B;
+  stderr904211B; parent2750 with masked owner preserved. Stdout is within the
+  collector67108864B cap at this instant. No log bodies/customer payloads/env
+  were collected. INFO, real samples, parseability, full-day coverage, retention
+  and source/key/flag/process continuity remainUNVERIFIED. No count of files
+  or bytes is treated as seven days of observation.
+- Fresh no-auth/cookie/redirect verified-TLS GETs at15:35:48UTC/19:35:48Baku
+  returned ping200/oktrue and build-info200/exactfullcb6; bothno-store.
+  BuiltAt15:12:19UTC. This updates runtime identity after intervening releases;
+  dated PR544/329 and prior receipts remain valid for their original scope.
+  This phase did not rerun source CI, browser matrices, merge or deployment.
+- Root and independent agent compared18unique named Support/operator/audit/
+  rollout/category/telemetry/collector/logrotate/PM2/RLS/auth blobs329→cb6:
+  all18identical. Scoped compatibility does not prove whole-tree equality,
+  runtime environment or authenticated tenant behavior.
+- Durable archive support-ux-readiness-37133442555 under the established
+  codex-alt-data root contains7hashed receipts/12289B plusmanifest. Actual
+  diagnostic metadata and public two-request result retained with scoped
+  source identity; no secrets or raw operational logs stored.
+- Updated only active observation record and appended this journal. Existing
+  plan remains190/191trackedIDs andSUPUX-ROL-006open. Exact tenant question
+  has no answer yet; no arbitrary paying/demo tenant selected, no flag write,
+  no authenticated tenant request, no daily collector execution, no automation
+  and no invented activation/startdate. Ordinary work authorization remains.
+- Preflight15585MiB availableRAM/347618MiB freedisk/zero memoryPSI. Full local
+  compiler/build/browser/PG NOT RUN: docs/read-only phase and Contabo policy.
+  Finishing scoped docs diff-check/history/receipt audit and documentation
+  checkpoint; no docs push or deploy.
+
+
+## 2026-10-03 — Screenshot question and final readiness checkpoint
+
+- User asked why telephony is not in the3CX section and supplied a Channels
+  screenshot. Screenshot shows Asterisk marked connected and3CX showingOpen.
+  Reviewed actual currentcb6 catalog via immutable git show because that file
+  changed since this task's worktree:3CX/Asterisk/Twilio/CustomSIP cards all link
+  to/settings/voip without a provider selector. Unchanged VoIP page loads the
+  saved provider; card identity follows channel.settings.provider. This explains
+  shared navigation and the displayed Asterisk card; it does not independently
+  establish the correct real PBX configuration or call health. Explained the
+  navigation shortcoming to the user; no provider/settings/credentials changed.
+  Screenshot organization label is not treated as a Support canary selection
+  or a usable authenticated session. Existing exact-organization question stays
+  pending.
+- Root self-audit PASS: complete e620journal prefix155748B preserved; legacy
+  journal218460B/checksum unchanged; exact7receiptfiles/12289B and complete
+  manifest match; only two task-owned docs changed. Scoped git diff --check
+  PASS. No application implementation was changed in this phase.
+- Preparing explicit-path documentation checkpoint only. New diagnostic and
+  fresh dated runtime checks are complete; exact production organization/auth
+  and seven-day admission remain open. No new deploy is requested or needed
+  for this checkpoint.
+
+Текущий результат/статус: подготовка наблюдения проверена; источник логов
+доступен, текущий productioncb6 подтверждён; SUPUX-ROL-006 остаётся открыт.
+Последнее завершённое действие: metadata inventory37133442555SUCCESS,
+независимые ping/build-info и проверка сохранности журнала/семи receipts.
+Точная точка остановки: до выбора, авторизованной проверки и активации
+production-организации; ответ с точным названием/slug пока не получен.
+Следующее действие: по указанной организации проверить выбранный tenant/auth,
+flag/audit и метрики, выполнить допущенную активацию и собирать семь полных
+дней Asia/Baku; объяснение навигации3CX не меняет этот допуск.
+
+
+## 2026-10-03 — User correction and completed self-audit
+
+- User clarified the telephony screenshot was intended for another task:
+  “ой это не тебе не отвлекайся”, then stated telephony belongs in its own
+  section. This supersedes treating that question as work for this task.
+  Acknowledged and returned exclusively to Support admission; no telephony
+  edit, provider switch, migration, PR or deployment is part of this task.
+- Independent final read-only audit PASS: both task-owned docs, complete
+  e620journal prefix, unchanged legacy bytes/hash, exact7receipt/12289B
+  manifest,18sourceblob pairs, dated diagnostic/public identity and all
+  non-admitted tenant/coverage limits verified. Root scoped diff-check PASS.
+- Final documentation checkpoint subject:
+  docs: record Support observation readiness and pending tenant selection.
+  Exact stopping point remains before selected-tenant auth/flag/activation;
+  pending question asks for organization name/slug, not renewed work permission.
