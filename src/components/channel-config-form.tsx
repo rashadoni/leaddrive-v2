@@ -14,6 +14,7 @@ import { emailIntakeRoutesFromSettings } from "@/lib/ticketing/email-intake"
 import { buildChannelPayload, type ChannelConfigFormData, type ChannelFormType, type SmsProvider } from "@/lib/channels/channel-config-payload"
 import { channelConnectionState } from "@/lib/channels/live-connection"
 import { metaConnectionReason } from "@/lib/channels/connection-reason"
+import { WhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
 
 type Loc = "en" | "ru" | "az"
 
@@ -85,6 +86,15 @@ const localCopy: Record<Loc, Record<string, string>> = {
   en: {
     copyValue: "Copy",
     copiedValue: "Copied",
+    whatsappEsTitle: "Connect with Meta (recommended)",
+    whatsappEsDescription: "Sign in with Facebook, choose or create your WhatsApp Business Account and pick the phone number. LeadDrive sets up the webhook and registers the number for you — nothing to copy.",
+    whatsappEsButton: "Connect WhatsApp with Meta",
+    whatsappEsWorking: "Finishing the connection…",
+    whatsappEsConnected: "Connected: {number}. Messages to this number now arrive in Inbox.",
+    whatsappEsPaymentHint: "To start conversations, add a payment method for the account in",
+    whatsappEsCancelled: "The Meta window was closed before the signup finished.",
+    whatsappEsFailed: "The connection did not finish. Try again, or enter the credentials below.",
+    whatsappEsManaged: "Connected through Meta: {number}. LeadDrive manages the webhook and the number's registration, so there is no Verify Token or App Secret to enter. To switch the account or number, connect again with Meta.",
     whatsappMessagingOnly: "This connects WhatsApp Business messaging: inbound inbox messages, approved templates, and notifications. WhatsApp Business Calling is prepared separately from the Channels readiness guide; use Settings -> VoIP only for regular phone providers and call logs.",
     whatsappWebhookTitle: "Meta webhook callback on the test domain",
     whatsappWebhookHint: "Paste this Callback URL in Meta -> WhatsApp -> Configuration -> Webhook and use the same Verify Token you enter below. For our tests, use app.leaddrivecrm.org even if you opened a tenant subdomain.",
@@ -177,6 +187,15 @@ const localCopy: Record<Loc, Record<string, string>> = {
   ru: {
     copyValue: "Копировать",
     copiedValue: "Скопировано",
+    whatsappEsTitle: "Подключение через Meta (рекомендуем)",
+    whatsappEsDescription: "Войдите через Facebook, выберите или создайте WhatsApp Business Account и выберите номер. LeadDrive сам настроит вебхук и зарегистрирует номер — ничего копировать не нужно.",
+    whatsappEsButton: "Подключить WhatsApp через Meta",
+    whatsappEsWorking: "Завершаем подключение…",
+    whatsappEsConnected: "Подключено: {number}. Сообщения на этот номер теперь приходят в Inbox.",
+    whatsappEsPaymentHint: "Чтобы начинать переписку первыми, добавьте способ оплаты для аккаунта в",
+    whatsappEsCancelled: "Окно Meta закрыли до завершения подключения.",
+    whatsappEsFailed: "Подключение не завершилось. Попробуйте ещё раз или введите данные вручную ниже.",
+    whatsappEsManaged: "Подключено через Meta: {number}. Вебхуком и регистрацией номера управляет LeadDrive, поэтому Verify Token и App Secret вводить не нужно. Чтобы сменить аккаунт или номер, подключитесь через Meta ещё раз.",
     whatsappMessagingOnly: "Здесь подключается WhatsApp Business messaging: входящие сообщения в inbox, одобренные шаблоны и уведомления. WhatsApp Business Calling готовится отдельно через чеклист в Каналах; Настройки -> VoIP используйте только для обычной телефонии и журнала звонков.",
     whatsappWebhookTitle: "Meta webhook callback на тестовом домене",
     whatsappWebhookHint: "Вставьте этот Callback URL в Meta -> WhatsApp -> Configuration -> Webhook и задайте тот же Verify Token, который укажете ниже. Для наших тестов используйте app.leaddrivecrm.org, даже если экран открыт на субдомене тенанта.",
@@ -269,6 +288,15 @@ const localCopy: Record<Loc, Record<string, string>> = {
   az: {
     copyValue: "Kopyala",
     copiedValue: "Kopyalandı",
+    whatsappEsTitle: "Meta ilə qoşulma (tövsiyə olunur)",
+    whatsappEsDescription: "Facebook ilə daxil olun, WhatsApp Business Account seçin və ya yaradın və nömrəni seçin. LeadDrive webhook-u özü qurur və nömrəni qeydiyyatdan keçirir — heç nə köçürmək lazım deyil.",
+    whatsappEsButton: "WhatsApp-ı Meta ilə qoş",
+    whatsappEsWorking: "Qoşulma tamamlanır…",
+    whatsappEsConnected: "Qoşuldu: {number}. Bu nömrəyə yazılan mesajlar artıq Inbox-a gəlir.",
+    whatsappEsPaymentHint: "Yazışmanı ilk siz başlamaq üçün hesaba ödəniş üsulu əlavə edin:",
+    whatsappEsCancelled: "Meta pəncərəsi qoşulma bitmədən bağlandı.",
+    whatsappEsFailed: "Qoşulma tamamlanmadı. Yenidən cəhd edin və ya məlumatları aşağıda əl ilə daxil edin.",
+    whatsappEsManaged: "Meta ilə qoşulub: {number}. Webhook-u və nömrənin qeydiyyatını LeadDrive idarə edir, ona görə Verify Token və App Secret daxil etmək lazım deyil. Hesabı və ya nömrəni dəyişmək üçün Meta ilə yenidən qoşulun.",
     whatsappMessagingOnly: "Burada WhatsApp Business messaging qoşulur: inbox-a gələn mesajlar, təsdiqlənmiş şablonlar və bildirişlər. WhatsApp Business Calling Kanallardakı checklist ilə ayrıca hazırlanır; Tənzimləmələr -> VoIP yalnız adi telefon provayderləri və zəng jurnalı üçündür.",
     whatsappWebhookTitle: "Test domenində Meta webhook callback",
     whatsappWebhookHint: "Bu Callback URL-i Meta -> WhatsApp -> Configuration -> Webhook bölməsinə yazın və aşağıda daxil etdiyiniz Verify Token-i istifadə edin. Testlər üçün ekran tenant subdomain-də açılsa belə app.leaddrivecrm.org istifadə edin.",
@@ -410,6 +438,18 @@ function readInstagramHandle(settings: unknown): string {
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) return ""
   const username = (settings as { username?: unknown }).username
   return typeof username === "string" && username.trim() ? `@${username.trim().replace(/^@/, "")}` : ""
+}
+
+/**
+ * The number of a WhatsApp row connected through Embedded Signup (lib/whatsapp-embedded-signup), or null for a row
+ * set up by hand. Such a row has no Verify Token or App Secret of its own: the shared app's secret verifies its
+ * webhooks, so the form neither asks for them nor shows the manual webhook instructions.
+ */
+function readEmbeddedSignupNumber(settings: unknown): string | null {
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) return null
+  const s = settings as { embeddedSignup?: unknown; displayPhoneNumber?: unknown }
+  if (s.embeddedSignup !== true) return null
+  return typeof s.displayPhoneNumber === "string" ? s.displayPhoneNumber : ""
 }
 
 function setupStepKeysForChannel(channelType: string, smsProvider: SmsProvider, igLogin: boolean): string[] {
@@ -999,8 +1039,8 @@ export function ChannelConfigForm({
         (!hasStoredWhatsAppAccessToken && !form.apiKey.trim()) ||
         (!hasStoredWhatsAppPhoneNumberId && !form.phoneNumber.trim()) ||
         (!hasStoredWhatsAppBusinessAccountId && !form.webhookUrl.trim()) ||
-        (!hasStoredWhatsAppVerifyToken && !form.verifyToken.trim()) ||
-        (!hasStoredWhatsAppAppSecret && !form.appSecret.trim())
+        (whatsappEmbeddedNumber === null && !hasStoredWhatsAppVerifyToken && !form.verifyToken.trim()) ||
+        (whatsappEmbeddedNumber === null && !hasStoredWhatsAppAppSecret && !form.appSecret.trim())
       ) {
         setError(c.whatsappRequiredError)
         return
@@ -1063,6 +1103,7 @@ export function ChannelConfigForm({
   const hasStoredWhatsAppBusinessAccountId = form.channelType === "whatsapp" && isEdit && initialData?.hasBusinessAccountId
   const hasStoredWhatsAppVerifyToken = form.channelType === "whatsapp" && isEdit && initialData?.hasVerifyToken
   const hasStoredWhatsAppAppSecret = form.channelType === "whatsapp" && isEdit && initialData?.hasAppSecret
+  const whatsappEmbeddedNumber = form.channelType === "whatsapp" && isEdit ? readEmbeddedSignupNumber(initialData?.settings) : null
   const hasStoredMetaVerifyToken = (form.channelType === "facebook" || form.channelType === "instagram") && isEdit && initialData?.hasVerifyToken
   const hasStoredMetaAppSecret = (form.channelType === "facebook" || form.channelType === "instagram") && isEdit && initialData?.hasAppSecret
   const isMetaChannel = form.channelType === "facebook" || form.channelType === "instagram"
@@ -1653,6 +1694,25 @@ export function ChannelConfigForm({
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                   {c.whatsappMessagingOnly}
                 </div>
+                <WhatsAppEmbeddedSignup
+                  labels={{
+                    title: c.whatsappEsTitle,
+                    description: c.whatsappEsDescription,
+                    button: c.whatsappEsButton,
+                    working: c.whatsappEsWorking,
+                    connected: c.whatsappEsConnected,
+                    paymentHint: c.whatsappEsPaymentHint,
+                    cancelled: c.whatsappEsCancelled,
+                    failed: c.whatsappEsFailed,
+                  }}
+                  onConnected={() => onSaved()}
+                />
+                {whatsappEmbeddedNumber !== null && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800" data-testid="whatsapp-embedded-managed">
+                    {c.whatsappEsManaged.replace("{number}", whatsappEmbeddedNumber || initialData?.configName || "")}
+                  </div>
+                )}
+                {whatsappEmbeddedNumber === null && (
                 <div className="space-y-2 rounded-lg border border-orange-200 bg-orange-50 p-3">
                   <p className="text-xs font-medium text-orange-800">{c.whatsappWebhookTitle}</p>
                   <CopyableProviderValue
@@ -1664,6 +1724,7 @@ export function ChannelConfigForm({
                   <p className="text-xs leading-5 text-orange-700">{c.whatsappWebhookHint}</p>
                   <p className="text-xs leading-5 text-orange-700">{c.whatsappCallingNote}</p>
                 </div>
+                )}
                 <div>
                   <Label htmlFor="apiKey" className="text-sm font-medium">{tf("whatsappAccessToken")} *</Label>
                   <Input
@@ -1720,6 +1781,7 @@ export function ChannelConfigForm({
                     )}
                   </div>
                 </div>
+                {whatsappEmbeddedNumber === null && (
                 <div className="grid gap-3">
                   <div>
                     <Label htmlFor="verifyToken" className="text-sm font-medium">Webhook Verify Token *</Label>
@@ -1757,6 +1819,7 @@ export function ChannelConfigForm({
                     )}
                   </div>
                 </div>
+                )}
                 <div>
                   <Label htmlFor="displayName" className="text-sm font-medium">{c.displayNameLabel}</Label>
                   <Input
