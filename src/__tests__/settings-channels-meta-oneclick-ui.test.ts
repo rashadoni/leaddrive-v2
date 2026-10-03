@@ -212,6 +212,9 @@ describe("Channel catalog — what the screen claims about a Meta channel", () =
     card(id)?.querySelector<HTMLAnchorElement>('a[href^="/api/v1/social/oauth/"]') || null
   const activeCount = () =>
     container.querySelector<HTMLElement>('[data-testid="channels-active-count"]')?.textContent || ""
+  /** The connected-list row of a channel: where its full explanation and its actions live. */
+  const row = (id: string) =>
+    container.querySelector<HTMLElement>(`[data-testid="channel-row-${id}"]`)
 
   it("calls a fully wired page connected", async () => {
     await renderCatalog([wiredFacebookPage])
@@ -253,11 +256,16 @@ describe("Channel catalog — what the screen claims about a Meta channel", () =
     await renderCatalog([stagedFacebookPage])
     expect(connectedBadge("facebook")).toBeNull()
     expect(brokenBadge("facebook")?.textContent).toContain("App Review only")
-    const text = card("facebook")?.textContent || ""
+    // The tile says what is wrong in one line; the connected list says it in full.
+    const tile = card("facebook")?.textContent || ""
+    expect(tile).toContain("Connected for App Review — message subscription not requested yet")
+    const text = row("fb-staged")?.textContent || ""
     expect(text).toContain("Connected for App Review — message subscription not requested yet")
     expect(text).toContain(appReviewPendingSentence)
-    expect(text).not.toContain("Reconnect needed")
-    expect(text).not.toContain("Meta refused")
+    for (const shown of [tile, text]) {
+      expect(shown).not.toContain("Reconnect needed")
+      expect(shown).not.toContain("Meta refused")
+    }
     // Not a working connection, so the header counter does not count it either.
     expect(activeCount()).toContain("0 active")
   })
@@ -324,7 +332,8 @@ describe("Channel catalog — what the screen claims about a Meta channel", () =
     expect(connectedBadge("facebook")).toBeNull()
     expect(brokenBadge("facebook")?.textContent).toContain("channelClaimedElsewhere.badge")
     expect(card("facebook")?.textContent).toContain("channelClaimedElsewhere.status")
-    expect(card("facebook")?.textContent).toContain("channelClaimedElsewhere.hint")
+    expect(row("fb-page")?.textContent).toContain("channelClaimedElsewhere.status")
+    expect(row("fb-page")?.textContent).toContain("channelClaimedElsewhere.hint")
     expect(activeCount()).toContain("0 active")
   })
 

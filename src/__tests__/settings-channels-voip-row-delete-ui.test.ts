@@ -451,9 +451,9 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     if (!element) throw new Error(`no card ${id}`)
     return element
   }
-  /** The card or the "Other connected channels" row that shows this channel. */
+  /** The connected-list row that shows this channel — where its Edit and Delete live. */
   const tileShowing = (configName: string) => {
-    const tile = [...container.querySelectorAll<HTMLElement>('article[data-testid^="channel-"]')]
+    const tile = [...container.querySelectorAll<HTMLElement>('article[data-testid^="channel-row-"]')]
       .find((candidate) => candidate.textContent?.includes(configName))
     if (!tile) throw new Error(`nothing shows ${configName}`)
     return tile
@@ -471,10 +471,11 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
 
     await openCatalog()
 
-    const asterisk = card("asterisk")
-    // The card still shows the connection the VoIP screen saved.
-    expect(asterisk.textContent).toContain("Asterisk VoIP")
-    expect(asterisk.querySelector('[data-testid="channel-card-connected-badge"]')?.textContent).toBe("Connected")
+    // The tile still shows the connection the VoIP screen saved, and leads to that screen.
+    expect(card("asterisk").textContent).toContain("Asterisk VoIP")
+    expect(card("asterisk").querySelector('[data-testid="channel-card-connected-badge"]')?.textContent).toContain("Connected")
+    expect(card("asterisk").querySelector('a[href="/settings/voip"]')).not.toBeNull()
+    const asterisk = tileShowing("Asterisk VoIP")
     // No trash, and no Edit into the channel form: the channels API refuses both for a VoIP row.
     expect(trashIn(asterisk)).toBeNull()
     expect(asterisk.textContent).not.toContain("Edit setup")
@@ -482,8 +483,8 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     const link = asterisk.querySelector<HTMLAnchorElement>('a[href="/settings/voip"]')
     expect(link?.textContent).toBe("Open VoIP settings")
     expect(asterisk.textContent).toContain("Managed in VoIP settings.")
-    // The Telegram card beside it keeps its trash: only a row with its own screen lost it.
-    expect(trashIn(card("telegram"))).not.toBeNull()
+    // The Telegram bot beside it keeps its trash: only a row with its own screen lost it.
+    expect(trashIn(tileShowing("Support bot"))).not.toBeNull()
 
     expect(deletes).toEqual([])
     expect(await voipSettingsRow()).toMatchObject({ id: voip, configName: "Asterisk VoIP", isActive: true })
@@ -494,8 +495,9 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
 
     await openCatalog()
 
-    const asterisk = card("asterisk")
-    expect(asterisk.querySelector('[data-testid="channel-card-broken-badge"]')?.textContent).toContain("Switched off")
+    expect(card("asterisk").querySelector('[data-testid="channel-card-broken-badge"]')?.textContent).toContain("Switched off")
+    const asterisk = tileShowing("Asterisk VoIP")
+    expect(asterisk.querySelector('[data-testid="channel-row-broken-badge"]')?.textContent).toContain("Switched off")
     expect(trashIn(asterisk)).toBeNull()
     expect(asterisk.querySelector('a[href="/settings/voip"]')?.textContent).toBe("Open VoIP settings")
     // The generic switched-off hint ends "Turn it back on in Edit setup."
