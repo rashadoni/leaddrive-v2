@@ -45,6 +45,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input"
 import { ChannelConfigForm } from "@/components/channel-config-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { WhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
 import { HelpButton } from "@/components/help/help-button"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
@@ -124,6 +125,9 @@ interface TutorialScene {
 
 const LEADDRIVE_APP_ORIGIN = "https://app.leaddrivecrm.org"
 
+/** The cards shown in the one-click block at the top of the catalog, in this order. */
+const META_QUICK_CARD_IDS = ["whatsapp-business", "facebook", "instagram"] as const
+
 function whatsappWebhookUrl(orgSlug?: string | null) {
   const slug = orgSlug ? encodeURIComponent(orgSlug) : "<tenant-slug>"
   return `${LEADDRIVE_APP_ORIGIN}/api/v1/webhooks/whatsapp?t=${slug}`
@@ -151,6 +155,13 @@ const copy = {
     available: "available",
     guidedSetup: "Guided setup",
     oauthConnect: "Connect with Meta",
+    metaQuickTitle: "WhatsApp, Facebook and Instagram — connect in one click",
+    metaQuickHint: "Sign in with Meta and pick your number, Page or account. LeadDrive sets up the keys and webhooks — nothing to copy.",
+    manualSetupLink: "Manual setup",
+    esWorking: "Finishing the connection…",
+    esConnected: "Connected: {number}",
+    esCancelled: "The Meta window was closed before the connection finished.",
+    esFailed: "The connection did not finish. Try again, or use manual setup.",
     cardStatus: "Status",
     cardNextStep: "Next step",
     cardVerify: "Verify",
@@ -322,6 +333,13 @@ const copy = {
     available: "доступно",
     guidedSetup: "Пошаговая настройка",
     oauthConnect: "Подключить через Meta",
+    metaQuickTitle: "WhatsApp, Facebook и Instagram — подключение в один клик",
+    metaQuickHint: "Войдите через Meta и выберите номер, страницу или аккаунт. Ключи и вебхуки LeadDrive настроит сам — ничего копировать не нужно.",
+    manualSetupLink: "Ручная настройка",
+    esWorking: "Завершаем подключение…",
+    esConnected: "Подключено: {number}",
+    esCancelled: "Окно Meta закрыли до завершения подключения.",
+    esFailed: "Подключение не завершилось. Попробуйте ещё раз или используйте ручную настройку.",
     cardStatus: "Статус",
     cardNextStep: "Следующий шаг",
     cardVerify: "Проверка",
@@ -491,6 +509,13 @@ const copy = {
     available: "mövcud",
     guidedSetup: "Addım-addım quraşdırma",
     oauthConnect: "Meta ilə qoş",
+    metaQuickTitle: "WhatsApp, Facebook və Instagram — bir kliklə qoşulma",
+    metaQuickHint: "Meta ilə daxil olun və nömrəni, səhifəni və ya hesabı seçin. Açarları və webhook-ları LeadDrive özü qurur — heç nə köçürmək lazım deyil.",
+    manualSetupLink: "Əl ilə quraşdırma",
+    esWorking: "Qoşulma tamamlanır…",
+    esConnected: "Qoşuldu: {number}",
+    esCancelled: "Meta pəncərəsi qoşulma bitmədən bağlandı.",
+    esFailed: "Qoşulma tamamlanmadı. Yenidən cəhd edin və ya əl ilə quraşdırmadan istifadə edin.",
     cardStatus: "Status",
     cardNextStep: "Növbəti addım",
     cardVerify: "Yoxlama",
@@ -1709,7 +1734,12 @@ function ChannelsPageInner() {
   }
 
   const q = search.trim().toLowerCase()
+  const metaQuickCards = META_QUICK_CARD_IDS
+    .map((id) => cards.find((card) => card.id === id))
+    .filter((card): card is CatalogCard => Boolean(card))
   const visibleCards = cards.filter((card) => {
+    // Drawn once, in the one-click block above the catalog.
+    if ((META_QUICK_CARD_IDS as readonly string[]).includes(card.id)) return false
     if (activeTab !== "all" && card.tab !== activeTab) return false
     if (!q) return true
     return [
@@ -1793,6 +1823,338 @@ function ChannelsPageInner() {
     }, 2600)
     return () => window.clearInterval(timer)
   }, [reducedTutorialMotion, tutorialOpen, tutorialPlaying, tutorialSteps.length])
+
+  // One catalog card. The three Meta cards are drawn by this same function in the one-click block at the
+  // top (compact), so a card says the same thing about a connection wherever it stands.
+  const renderCatalogCard = (card: CatalogCard, compact = false) => {
+    const connected = connectedForCard(card)
+    // "Row exists" was never the same thing as "the channel delivers". The state
+    // comes from lib/channels/live-connection, which reads the same three facts the
+    // inbound resolver reads, so the badge cannot drift away from reality. A row in
+    // any non-live state stays editable and deletable, must not wear the "Connected"
+    // badge, and must not hide the OAuth button.
+    const connectionState = connected ? channelConnectionState(connected) : null
+    const connectionLive = connectionState === "live"
+    const connectionBroken = Boolean(connected) && !connectionLive
+    const brokenBadge = connectionState ? cardBrokenBadge(c, connectionState, claimedCopy) : null
+    const brokenStatus = connectionState ? cardBrokenStatus(c, connectionState, claimedCopy) : null
+    const brokenHint = connectionState ? cardBrokenHint(c, connectionState, claimedCopy) : null
+    const guideHref = guideHrefForCard(card)
+    // A row whose type has its own screen (lib/channels/dedicated-channel-types) is changed and switched
+    // off there: the channels API refuses to edit or delete it. Of those rows only VoIP's reach a card —
+    // the catalog lists the others nowhere — and every VoIP card links to /settings/voip, hence the VoIP
+    // copy. The card used to offer Edit, which opened the channel form whose save is refused, and a trash
+    // whose DELETE always came back 403.
+    const ownScreenHref =
+      connected && isDedicatedChannelType(connected.channelType) && card.action.type === "link"
+        ? card.action.href
+        : null
+    const Icon = card.icon
+    return (
+      <article
+        key={card.id}
+        data-testid={`channel-card-${card.id}`}
+        className={cn(
+          "group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-[0_14px_42px_rgba(15,23,42,0.09)]",
+          compact ? "min-h-0" : "min-h-[280px]",
+          card.accent
+        )}
+      >
+        <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br opacity-60", card.accent)} />
+
+        <div className="relative flex flex-1 flex-col p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {!compact && (
+                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
+                    {c.groups[card.tab]}
+                  </span>
+                )}
+              {card.badge && !compact && (
+                <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">
+                  <BadgeCheck className="mr-1 h-3 w-3" />
+                  {card.badge}
+                </Badge>
+              )}
+              {connectionLive && (
+                <Badge
+                  data-testid="channel-card-connected-badge"
+                  className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50"
+                >
+                  {c.connected}
+                </Badge>
+              )}
+              {connectionBroken && brokenBadge && (
+                <Badge
+                  data-testid="channel-card-broken-badge"
+                  className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50"
+                >
+                  <Clock3 className="mr-1 h-3 w-3" />
+                  {brokenBadge}
+                </Badge>
+              )}
+              {!connected && guideHref && card.action.type !== "disabled" && !compact && (
+                <Badge className="border-zinc-200 bg-white text-zinc-700 hover:bg-white">
+                  <BookOpen className="mr-1 h-3 w-3" />
+                  {c.guidedSetup}
+                </Badge>
+              )}
+              {card.action.type === "disabled" && (
+                <Badge className="border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-100">
+                  <Clock3 className="mr-1 h-3 w-3" />
+                  {c.comingSoon}
+                </Badge>
+              )}
+            </div>
+              <h3 className="text-xl font-semibold leading-tight text-zinc-950">
+              {card.title}
+            </h3>
+          </div>
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-orange-200 bg-orange-50 text-xl font-black text-orange-600">
+            {card.logo}
+            </div>
+          </div>
+
+          {!compact && (
+            <p className="mt-4 line-clamp-3 text-sm leading-6 text-zinc-600">
+              {card.description}
+            </p>
+          )}
+
+          <div className="mt-5 grid gap-3 rounded-xl border border-zinc-200 bg-white/82 p-3">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-600">
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{c.cardStatus}</p>
+          {connected ? (
+                  <div className="mt-1 min-w-0 space-y-1">
+                    <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-700">
+                      <span className={cn(
+                        "h-2 w-2 rounded-full",
+                        connectionBroken ? "bg-amber-400" : connected.isActive ? "bg-orange-400" : "bg-zinc-500"
+                      )} />
+                      <span className="min-w-0 break-words">{connected.configName}</span>
+                    </div>
+                    {connectionBroken && brokenStatus && (
+                      <p className="text-xs font-medium text-amber-700">{brokenStatus}</p>
+                    )}
+                  </div>
+          ) : (
+                  <p className="mt-1 text-sm text-zinc-700">{card.typeLabel || card.channelType || "custom"}</p>
+          )}
+              </div>
+            </div>
+            {(!compact || (connectionBroken && brokenHint)) && (
+            <div className="rounded-lg bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-600">
+              <span className="font-semibold text-zinc-800">{connectionLive ? c.cardVerify : c.cardNextStep}: </span>
+              {ownScreenHref
+                ? c.cardVoipSettingsHint
+                : connectionLive
+                  ? c.cardConnectedHint
+                  : connectionBroken && brokenHint
+                    ? brokenHint
+                    : card.action.type === "disabled"
+                      ? c.cardRoadmapHint
+                      : c.cardNewHint}
+            </div>
+            )}
+          </div>
+
+          <div className="mt-auto flex items-center justify-between gap-2 border-t border-zinc-200 pt-4">
+            {ownScreenHref ? (
+              <Button
+                asChild
+                size="sm"
+                variant="secondary"
+                className="h-9 flex-1 justify-center gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+              >
+                <Link href={ownScreenHref} aria-label={`${c.openVoipSettings}: ${card.title}`}>
+                  <Workflow className="h-4 w-4" />
+                  {c.openVoipSettings}
+                </Link>
+              </Button>
+            ) : connected && (connectionLive || !card.oauthStart) ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-9 flex-1 justify-center gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                  onClick={() => editExistingChannel(connected)}
+                >
+                  <Pencil className="h-4 w-4" />
+                  {c.configureConnected}
+                </Button>
+                {connected.channelType === "whatsapp" && connected.isActive && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 w-9 p-0 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                    onClick={() => {
+                      setTestChannelId(connected.id)
+                      setTestPhone("")
+                      setTestTemplateName("hello_world")
+                      setTestLanguageCode("en_US")
+                      setTestResult(null)
+                    }}
+                    title={c.testAction}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 w-9 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                  onClick={() => {
+                    setDeleteId(connected.id)
+                    setDeleteName(connected.configName)
+                  }}
+                  title={c.delete}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            ) : card.oauthStart ? (
+              <>
+                {/* Plain same-origin navigation, exactly like the Social Monitoring
+                    connect tiles: the session cookie rides along, so no fetch or
+                    client state is needed to start the Meta dialog.
+                    Order matters: this branch now sits ABOVE the generic ones and
+                    the branch above it only claims LIVE connections, so a draft row
+                    (saved, but Meta never returned a Page) lands here and the way
+                    back into OAuth never disappears from the card. */}
+                <Button
+                  asChild
+                  size="sm"
+                  className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
+                >
+                  <a href={card.oauthStart} aria-label={`${c.oauthConnect}: ${card.title}`}>
+                    <Plus className="h-4 w-4" />
+                    {c.oauthConnect}
+                  </a>
+                </Button>
+                {connected ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0 text-zinc-600 hover:bg-zinc-50"
+                      onClick={() => editExistingChannel(connected)}
+                      title={c.configureConnected}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                      onClick={() => {
+                        setDeleteId(connected.id)
+                        setDeleteName(connected.configName)
+                      }}
+                      title={c.delete}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <Button asChild size="sm" variant="ghost" className="h-9 shrink-0 px-2 text-xs text-zinc-600 hover:bg-zinc-50">
+                    <Link href={`/settings/channels/connect/${card.id}?mode=new&stage=connect`}>{c.manualSetupLink}</Link>
+                  </Button>
+                )}
+              </>
+            ) : card.action.type === "link" ? (
+              <Button
+                asChild
+                size="sm"
+                className="h-9 gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+              >
+                <Link
+                  href={guideHref || card.action.href}
+                  aria-label={guideHref ? `${c.notConnected}: ${card.title}` : `${c.configure}: ${card.title}`}
+                >
+                  {guideHref ? (
+                    <Plus className="h-4 w-4" />
+                  ) : (
+                    <Workflow className="h-4 w-4" />
+                  )}
+                  {guideHref ? c.notConnected : c.configure}
+                </Link>
+              </Button>
+            ) : card.action.type === "disabled" ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled
+                className="h-9 border border-zinc-200 bg-zinc-100 text-zinc-400"
+              >
+                {c.comingSoon}
+              </Button>
+            ) : card.action.type === "guide" ? (
+              <Button
+                asChild
+                size="sm"
+                className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
+              >
+                <Link href={`/settings/channels/connect/${card.id}`} aria-label={`${c.notConnected}: ${card.title}`}>
+                  <Plus className="h-4 w-4" />
+                  {c.notConnected}
+                </Link>
+              </Button>
+            ) : card.id === "whatsapp-business" ? (
+              <>
+                {/* Meta's Embedded Signup straight from the card, like Connect with Meta on Facebook and
+                    Instagram. A server without it configured gets today's way in instead: the form. */}
+                <WhatsAppEmbeddedSignup
+                  variant="button"
+                  labels={{
+                    title: card.title,
+                    description: "",
+                    button: c.oauthConnect,
+                    working: c.esWorking,
+                    connected: c.esConnected,
+                    paymentHint: "",
+                    cancelled: c.esCancelled,
+                    failed: c.esFailed,
+                  }}
+                  onConnected={() => void fetchChannels()}
+                  fallback={
+                    <Button
+                      asChild
+                      size="sm"
+                      className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
+                    >
+                      <Link href={`/settings/channels/connect/${card.id}?mode=new&stage=connect`} aria-label={`${c.notConnected}: ${card.title}`}>
+                        <Plus className="h-4 w-4" />
+                        {c.notConnected}
+                      </Link>
+                    </Button>
+                  }
+                />
+                <Button asChild size="sm" variant="ghost" className="h-9 shrink-0 px-2 text-xs text-zinc-600 hover:bg-zinc-50">
+                  <Link href={`/settings/channels/connect/${card.id}?mode=new&stage=connect`}>{c.manualSetupLink}</Link>
+                </Button>
+              </>
+            ) : (
+              <Button
+                asChild
+                size="sm"
+                className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
+              >
+                <Link href={`/settings/channels/connect/${card.id}`} aria-label={`${c.notConnected}: ${card.title}`}>
+                  <Plus className="h-4 w-4" />
+                  {c.notConnected}
+                </Link>
+              </Button>
+            )}
+          </div>
+        </div>
+      </article>
+    )
+  }
 
   return (
     <div className="force-light overflow-hidden rounded-[28px] border border-zinc-200 bg-[#f8fafc] text-zinc-950 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
@@ -2215,34 +2577,25 @@ function ChannelsPageInner() {
         </div>
       </div>
 
-      <div className="border-b border-zinc-200 bg-zinc-50/70 px-6 py-4">
-        <div className="rounded-2xl border border-orange-100 bg-white p-3 shadow-sm">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="grid h-8 w-8 place-items-center rounded-xl bg-orange-50 text-orange-600">
-                <Workflow className="h-4 w-4" />
-              </div>
-              <p className="text-sm font-semibold text-zinc-950">{c.catalogFlowTitle}</p>
-            </div>
-            <p className="max-w-3xl text-xs leading-5 text-zinc-500">{c.tabGuides[activeTab]}</p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {c.catalogFlow.map((step, index) => (
-              <div key={step.title} className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5">
-                <div className="flex items-start gap-2.5">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-orange-500 text-xs font-semibold text-white">
-                    {index + 1}
-                  </span>
-                  <span>
-                    <span className="block text-sm font-semibold text-zinc-900">{step.title}</span>
-                    <span className="mt-0.5 block text-xs leading-5 text-zinc-500">{step.desc}</span>
-                  </span>
-                </div>
-              </div>
+      {/* The Meta messengers first, one click each — the way Social Monitoring connects accounts. The same
+          cards as before (renderCatalogCard), so their connection state reads exactly as it did in the grid. */}
+      <section data-testid="channels-meta-quick" className="border-b border-zinc-200 bg-zinc-50/70 px-6 py-5">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-zinc-950">{c.metaQuickTitle}</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-500">{c.metaQuickHint}</p>
+        </div>
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-40 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-100" />
             ))}
           </div>
-        </div>
-      </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-3">
+            {metaQuickCards.map((card) => renderCatalogCard(card, true))}
+          </div>
+        )}
+      </section>
 
       <div className="border-b border-zinc-200 bg-white px-6 py-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -2307,294 +2660,7 @@ function ChannelsPageInner() {
                     </div>
                   )}
                   <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-4">
-                    {groupCards.map((card) => {
-                      const connected = connectedForCard(card)
-                      // "Row exists" was never the same thing as "the channel delivers". The state
-                      // comes from lib/channels/live-connection, which reads the same three facts the
-                      // inbound resolver reads, so the badge cannot drift away from reality. A row in
-                      // any non-live state stays editable and deletable, must not wear the "Connected"
-                      // badge, and must not hide the OAuth button.
-                      const connectionState = connected ? channelConnectionState(connected) : null
-                      const connectionLive = connectionState === "live"
-                      const connectionBroken = Boolean(connected) && !connectionLive
-                      const brokenBadge = connectionState ? cardBrokenBadge(c, connectionState, claimedCopy) : null
-                      const brokenStatus = connectionState ? cardBrokenStatus(c, connectionState, claimedCopy) : null
-                      const brokenHint = connectionState ? cardBrokenHint(c, connectionState, claimedCopy) : null
-                      const guideHref = guideHrefForCard(card)
-                      // A row whose type has its own screen (lib/channels/dedicated-channel-types) is changed and switched
-                      // off there: the channels API refuses to edit or delete it. Of those rows only VoIP's reach a card —
-                      // the catalog lists the others nowhere — and every VoIP card links to /settings/voip, hence the VoIP
-                      // copy. The card used to offer Edit, which opened the channel form whose save is refused, and a trash
-                      // whose DELETE always came back 403.
-                      const ownScreenHref =
-                        connected && isDedicatedChannelType(connected.channelType) && card.action.type === "link"
-                          ? card.action.href
-                          : null
-                      const Icon = card.icon
-                      return (
-                        <article
-                          key={card.id}
-                          data-testid={`channel-card-${card.id}`}
-                          className={cn(
-                            "group relative flex min-h-[280px] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-[0_14px_42px_rgba(15,23,42,0.09)]",
-                            card.accent
-                          )}
-                        >
-                          <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br opacity-60", card.accent)} />
-
-                          <div className="relative flex flex-1 flex-col p-5">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <div className="mb-3 flex flex-wrap items-center gap-2">
-                                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
-                                    {c.groups[card.tab]}
-                                  </span>
-                                {card.badge && (
-                                  <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">
-                                    <BadgeCheck className="mr-1 h-3 w-3" />
-                                    {card.badge}
-                                  </Badge>
-                                )}
-                                {connectionLive && (
-                                  <Badge
-                                    data-testid="channel-card-connected-badge"
-                                    className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50"
-                                  >
-                                    {c.connected}
-                                  </Badge>
-                                )}
-                                {connectionBroken && brokenBadge && (
-                                  <Badge
-                                    data-testid="channel-card-broken-badge"
-                                    className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50"
-                                  >
-                                    <Clock3 className="mr-1 h-3 w-3" />
-                                    {brokenBadge}
-                                  </Badge>
-                                )}
-                                {!connected && guideHref && card.action.type !== "disabled" && (
-                                  <Badge className="border-zinc-200 bg-white text-zinc-700 hover:bg-white">
-                                    <BookOpen className="mr-1 h-3 w-3" />
-                                    {c.guidedSetup}
-                                  </Badge>
-                                )}
-                                {card.action.type === "disabled" && (
-                                  <Badge className="border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-100">
-                                    <Clock3 className="mr-1 h-3 w-3" />
-                                    {c.comingSoon}
-                                  </Badge>
-                                )}
-                              </div>
-                                <h3 className="text-xl font-semibold leading-tight text-zinc-950">
-                                {card.title}
-                              </h3>
-                            </div>
-                              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-orange-200 bg-orange-50 text-xl font-black text-orange-600">
-                              {card.logo}
-                              </div>
-                            </div>
-
-                            <p className="mt-4 line-clamp-3 text-sm leading-6 text-zinc-600">
-                            {card.description}
-                          </p>
-
-                            <div className="mt-5 grid gap-3 rounded-xl border border-zinc-200 bg-white/82 p-3">
-                              <div className="flex items-start gap-3">
-                                <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-600">
-                                  <Icon className="h-3.5 w-3.5" />
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{c.cardStatus}</p>
-                            {connected ? (
-                                    <div className="mt-1 min-w-0 space-y-1">
-                                      <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-700">
-                                        <span className={cn(
-                                          "h-2 w-2 rounded-full",
-                                          connectionBroken ? "bg-amber-400" : connected.isActive ? "bg-orange-400" : "bg-zinc-500"
-                                        )} />
-                                        <span className="min-w-0 break-words">{connected.configName}</span>
-                                      </div>
-                                      {connectionBroken && brokenStatus && (
-                                        <p className="text-xs font-medium text-amber-700">{brokenStatus}</p>
-                                      )}
-                                    </div>
-                            ) : (
-                                    <p className="mt-1 text-sm text-zinc-700">{card.typeLabel || card.channelType || "custom"}</p>
-                            )}
-                                </div>
-                              </div>
-                              <div className="rounded-lg bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-600">
-                                <span className="font-semibold text-zinc-800">{connectionLive ? c.cardVerify : c.cardNextStep}: </span>
-                                {ownScreenHref
-                                  ? c.cardVoipSettingsHint
-                                  : connectionLive
-                                    ? c.cardConnectedHint
-                                    : connectionBroken && brokenHint
-                                      ? brokenHint
-                                      : card.action.type === "disabled"
-                                        ? c.cardRoadmapHint
-                                        : c.cardNewHint}
-                              </div>
-                            </div>
-
-                            <div className="mt-auto flex items-center justify-between gap-2 border-t border-zinc-200 pt-4">
-                              {ownScreenHref ? (
-                                <Button
-                                  asChild
-                                  size="sm"
-                                  variant="secondary"
-                                  className="h-9 flex-1 justify-center gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                                >
-                                  <Link href={ownScreenHref} aria-label={`${c.openVoipSettings}: ${card.title}`}>
-                                    <Workflow className="h-4 w-4" />
-                                    {c.openVoipSettings}
-                                  </Link>
-                                </Button>
-                              ) : connected && (connectionLive || !card.oauthStart) ? (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    className="h-9 flex-1 justify-center gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                                    onClick={() => editExistingChannel(connected)}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                    {c.configureConnected}
-                                  </Button>
-                                  {connected.channelType === "whatsapp" && connected.isActive && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-9 w-9 p-0 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                                      onClick={() => {
-                                        setTestChannelId(connected.id)
-                                        setTestPhone("")
-                                        setTestTemplateName("hello_world")
-                                        setTestLanguageCode("en_US")
-                                        setTestResult(null)
-                                      }}
-                                      title={c.testAction}
-                                    >
-                                      <Send className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-9 w-9 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
-                                    onClick={() => {
-                                      setDeleteId(connected.id)
-                                      setDeleteName(connected.configName)
-                                    }}
-                                    title={c.delete}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              ) : card.oauthStart ? (
-                                <>
-                                  {/* Plain same-origin navigation, exactly like the Social Monitoring
-                                      connect tiles: the session cookie rides along, so no fetch or
-                                      client state is needed to start the Meta dialog.
-                                      Order matters: this branch now sits ABOVE the generic ones and
-                                      the branch above it only claims LIVE connections, so a draft row
-                                      (saved, but Meta never returned a Page) lands here and the way
-                                      back into OAuth never disappears from the card. */}
-                                  <Button
-                                    asChild
-                                    size="sm"
-                                    className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
-                                  >
-                                    <a href={card.oauthStart} aria-label={`${c.oauthConnect}: ${card.title}`}>
-                                      <Plus className="h-4 w-4" />
-                                      {c.oauthConnect}
-                                    </a>
-                                  </Button>
-                                  {connected ? (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-9 w-9 p-0 text-zinc-600 hover:bg-zinc-50"
-                                        onClick={() => editExistingChannel(connected)}
-                                        title={c.configureConnected}
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-9 w-9 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
-                                        onClick={() => {
-                                          setDeleteId(connected.id)
-                                          setDeleteName(connected.configName)
-                                        }}
-                                        title={c.delete}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <Button asChild size="sm" variant="ghost" className="h-9 shrink-0 px-2 text-xs text-zinc-600 hover:bg-zinc-50">
-                                      <Link href={`/settings/channels/connect/${card.id}`}>{c.guidedSetup}</Link>
-                                    </Button>
-                                  )}
-                                </>
-                              ) : card.action.type === "link" ? (
-                                <Button
-                                  asChild
-                                  size="sm"
-                                  className="h-9 gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                                >
-                                  <Link
-                                    href={guideHref || card.action.href}
-                                    aria-label={guideHref ? `${c.notConnected}: ${card.title}` : `${c.configure}: ${card.title}`}
-                                  >
-                                    {guideHref ? (
-                                      <Plus className="h-4 w-4" />
-                                    ) : (
-                                      <Workflow className="h-4 w-4" />
-                                    )}
-                                    {guideHref ? c.notConnected : c.configure}
-                                  </Link>
-                                </Button>
-                              ) : card.action.type === "disabled" ? (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  disabled
-                                  className="h-9 border border-zinc-200 bg-zinc-100 text-zinc-400"
-                                >
-                                  {c.comingSoon}
-                                </Button>
-                              ) : card.action.type === "guide" ? (
-                                <Button
-                                  asChild
-                                  size="sm"
-                                  className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
-                                >
-                                  <Link href={`/settings/channels/connect/${card.id}`} aria-label={`${c.notConnected}: ${card.title}`}>
-                                    <Plus className="h-4 w-4" />
-                                    {c.notConnected}
-                                  </Link>
-                                </Button>
-                              ) : (
-                                <Button
-                                  asChild
-                                  size="sm"
-                                  className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
-                                >
-                                  <Link href={`/settings/channels/connect/${card.id}`} aria-label={`${c.notConnected}: ${card.title}`}>
-                                    <Plus className="h-4 w-4" />
-                                    {c.notConnected}
-                                  </Link>
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </article>
-                      )
-                    })}
+                    {groupCards.map((card) => renderCatalogCard(card))}
                   </div>
                 </section>
               )
