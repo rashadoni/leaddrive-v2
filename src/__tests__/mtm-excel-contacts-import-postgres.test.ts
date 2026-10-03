@@ -205,7 +205,7 @@ pgDescribe("client import from Excel on a real Postgres", () => {
     // `db push` built the scratch enum from schema.prisma, so the migration
     // file itself would otherwise never meet a database. Here it runs, as
     // written, against the enum as the original migration left it.
-    const migration = readFileSync(path.join(ROOT, "prisma/migrations/20261003120000_mtm_import_type_contacts/migration.sql"), "utf8")
+    const migration = readFileSync(path.join(ROOT, "prisma/migrations/20261004120000_mtm_import_type_contacts/migration.sql"), "utf8")
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, [
       `CREATE SCHEMA migration_probe;`,
       `CREATE TYPE migration_probe."MtmImportType" AS ENUM ('CUSTOMERS', 'ROUTES', 'SALES_FACTS', 'VISIT_RESULTS', 'PLAN_FACT');`,
