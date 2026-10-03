@@ -1,0 +1,37 @@
+{
+  "observedAt": "2026-10-03T17:25:26.963086+00:00",
+  "candidateHead": "5c07decf80f91cf616cea6b88235051421dd69fe",
+  "baseSha": "7c0e136f1529b9df9e96a2273d798d48718c1d80",
+  "pr": 552,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/552",
+  "draft": false,
+  "checkedSyntheticMergeExpected": "b84370c929cf4d69041647b40a3aca12a95d892c",
+  "browserRun": 37140152774,
+  "prChecksRun": 37140152744,
+  "actualBrowserVerdict": "PENDING",
+  "requiredCodeGates": "PENDING",
+  "docs551Deploy": "PENDING37139473017",
+  "checksAtExactCandidate": {
+    "guards": "PASS12/12,7.94s,oneworker",
+    "scopedEslint": "PASS",
+    "syntax": "PASS",
+    "runnerPolicy": "PASS41",
+    "diff": "PASS",
+    "gitleaks": "PASS2commits/~99060bytes/285ms0findings unchanged config"
+  },
+  "originalGuardLog": {
+    "rawBytes": 279,
+    "rawSha256": "d50059129b99d9799418dfed949127dfccff13975257541443d942f0bb737374",
+    "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-5c07decf-guard-tests.log.gz",
+    "gzipBytes": 226,
+    "gzipSha256": "90c85636cf6edb04e311b3c1ff0354476af1ba22e586ad71d5e2696858937c45",
+    "losslessDecompressionVerified": true
+  },
+  "progress": {
+    "done": 81,
+    "total": 161,
+    "gates": "14/15",
+    "c8Percent": 36,
+    "overallPercent": 59
+  }
+}

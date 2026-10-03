@@ -1,0 +1,79 @@
+{
+  "schema": "workforce-part21-manager-today-independent-exact-source-review-v1",
+  "reviewedAtUtc": "2026-10-03T17:17:07.421221+00:00",
+  "head": "5c07decf80f91cf616cea6b88235051421dd69fe",
+  "base": "7c0e136f1529b9df9e96a2273d798d48718c1d80",
+  "sourceAuthoredAndCheckedHead": "a49065bd9ca995df19648505ec4b07af4ef5d441",
+  "ordinaryMainIntegration": "394068d4aba96d6b49077271e2aa73cd9404378e",
+  "independentReadOnly": true,
+  "verdict": "GREEN frozen bounded source and receipt integrity; real hosted browser/PostgreSQL acceptance NOT RUN",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "fullDiff": {
+    "paths": 13,
+    "bytes": 111491,
+    "sha256": "b471df48524af7a803fc827dbbc4f5bfb905974a8caa5062783b6788077683c6"
+  },
+  "nonDocDiff": {
+    "paths": 4,
+    "bytes": 84039,
+    "sha256": "9a09e747b98656550428e3c724f34cba76b280d51084861f8ce464eeff56646a"
+  },
+  "scope": "Only hosted evidence workflow, disposable fixture SQL, real-auth manager Today browser harness, twelve preconnection guard tests and append-only receipts. Existing product/UI/auth/RLS/permissions/schema/migrations/deploy/baselines unchanged; no general update/delete, break policy, AGENT moves or Route mutation.",
+  "sourceBlobs": [
+    {
+      "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "bytes": 9033,
+      "sha256": "884280dc4d1f730848fd4fbf9cb24c76c4fce0a430506b5f289bdb5326439634"
+    },
+    {
+      "path": "scripts/workforce-manager-today-browser-evidence.mjs",
+      "bytes": 34810,
+      "sha256": "fa3f53369b7b39abb90734dd9ea433fc65dc18373946b52e1a251b926760229a"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "path": "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts",
+      "bytes": 3980,
+      "sha256": "e370358c6ca3d15ecde5c567af9ed2846aecae1a9a966aaaf4f979192d9fd639"
+    }
+  ],
+  "reviewed": {
+    "workflow": "All210 lines read: restricted hosted Ubuntu24/PostgreSQL16 routing, normal PR merge checkout with distinct candidate/CI SHAs, draft skip, path/concurrency/time bounds, random masked fixture-only secrets/ports, no production URL, transient raw app log excluded from artifacts, readiness fails closed and direct Next PID cleanup trap, artifact attempt binding/14-day retention. New lane first requires normal READY PR; draft/dispatch assumptions earn no acceptance.",
+    "harness": "All514 lines and all assertions read. Hosted/CI/opt-in/not-production/loopback/exact database roles/admin-fence/full SHAs guard before output/clients. Real CSRF credentials cookie and user/tenant session checks; conservative auth budget without spoof/mocks/retry. Random synthetic two-tenant seed uses actual definition hash and canonical NO_SHOW draft, exact real UTC with midnight refusal. Six non-vacuous required cases: RU320/AZ768/EN1440 manager, RU attendance-only approver, no-grant403, forged tenant headers remain session-bound200. Exact authorized ordered25 plus cursor1/26 unique rows, localized states, previous open, leave/holiday/unavailable, persisted-only NO_SHOW and exceptions:null without authority. Native Tab/focus-visible/Enter drives actual pagination; page26 positive/untruncated viewport name and badge geometry. No Workforce write requests and19 fixed-table bounded count/hash facts byte-equal before/after; legitimate user login metadata excluded.",
+    "transitive": "Pinned existing page/workbench/manager UI/Badge, today route/read scopes, existing auth redirect/login metadata, Workforce session capability wrapper, proxy tenant binding and RLS test factory inspected. Current selectors match actual Badge DIV and article structure, API paging/order/sensitive headers and historical calendar/schedule contexts. Full absolute callback URL contains //workforce but stays same-origin in existing auth redirect; response URL is checked and not followed, then actual page.goto(/workforce) plus real session evidence is independent. No functional or security finding from that harmless redundant path slash.",
+    "sql": "All688 lines read. Dedicated database guard in transaction, NOSUPERUSER/NOBYPASSRLS/NOCREATEDB/NOCREATEROLE/NOREPLICATION/NOINHERIT non-owner role; SELECT only for business facts and exactly users.lastLogin/loginCount/updatedAt UPDATE.20 forced-RLS tables/role ownership+membership+privilege checks; populated core sentinels and unscoped zero-row assertions before/after.42 CHECK expressions,7 partial indexes,13 copied trigger functions and13 triggers normalized exactly against their named candidate migrations; shift-assignment exclusion also matched. Production snapshot insertion/immutability/default/decision/notification guards explicitly excluded where tables remain empty/read-only: this is not full migrations or positive immutable snapshot acceptance.",
+    "guardTests": "All61 lines read. Twelve subprocess cases independently require their specific refusal, nonzero exit, no Prisma/browser connection diagnostic, no stdout/output directory; sanitized environment and bounded subprocess output/time prevent ambient credentials or real service access. Lossless original actual12/12 PASS/10.62s log and all source hashes independently reconciled. These are preconnection guard checks only.",
+    "failureAndCleanup": "Sanitized allowlisted stage/check/error name/primitive types/source position; raw payload/URL/assertion stack/credentials omitted. Only synthetic UI screenshots uploaded. Cases/final PASS emitted after assertions, facts/RLS/date/cleanup; receipt created wx, cleanup failure is FAIL. Historical results not substituted for upcoming native acceptance."
+  },
+  "receipts": {
+    "all165OlderMainWorkforceEvidenceBlobsUnchanged": true,
+    "allThreeMainDocPrefixesPreserved": true,
+    "sourceFourBlobsUnchangedFromActualA490Checks": true,
+    "integrationTreeExactA490": true,
+    "docs551MergedParents": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5 e584cca75df69c52dd0f26832ef881bd0e6acf8a",
+    "docs551MergedTree": "c598f59aa15a1ad72d2d09e6ee64ff56c2341c9b",
+    "e584OriginalIndependentReviewVerbatim": true,
+    "docs551NativeContextOriginalVerbatimAndOriginalApiFieldsMatch": true,
+    "docs551Full35788ByteOriginalChecksGzipHashesAndTmpExact": true,
+    "docs551StaticTypeActuallySkippedCorrectlyDistinguished": true,
+    "ownDocs551Deploy37139473017PendingAtDatedCheckpointNoReleaseGreen": true,
+    "todaySourceCheckReceiptAndGuardLogExact": true,
+    "prior49RawGzipReleaseOriginalsPreservedViaByteExactReviewedE584Lineage": true
+  },
+  "checks": "Root retained actual a49012 guards/scoped lint/syntax/41 runner-policy/diff PASS; reviewer checked exact unchanged source/hash/log/prefix/migration relationships with read-only lightweight scripts, did not rerun heavy checks or claim current hosted acceptance.",
+  "progress": "DONE81/161;GATES14/15;C8 36%;overall59%;80non-DONE;WF-C8-002 remains PARTIAL.",
+  "limits": [
+    "Frozen exact5c07 versus7c0 only; fresh-main/current own mandatory gates and actual hosted browser/PostgreSQL originals still required before normal source release.",
+    "No current PNG/runtime proof, no production Manager Today acceptance, no overallWCAG/dark/hover/AT/nativezoom/wholepage keyboard/Android/physical/load/pilot acceptance. Full local typecheck/build/suite/browser/PG NOT RUN per host contract.",
+    "No repository/Git/status/network/production mutations by reviewer; docs551 own deploy release acceptance remains separate pending until actual whole deploy/public proof."
+  ]
+}
