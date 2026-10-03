@@ -1,0 +1,232 @@
+{
+  "atUtc": "2026-10-03T20:07:41.324435+00:00",
+  "ownPr": 555,
+  "candidateHead": "4040b4f5a70b1557f51cce7df69f948ad4994539",
+  "reviewedBase": "1b7f4da6391e134bdf4cb326a80ab7ea06dab96e",
+  "actualBase": "2130ae2f43838731633a4c65a1379cf940a26903",
+  "mergedSha": "ff86a51bc55a2962fdbb7a9cf44bfbb89fb8ad20",
+  "mergedAt": "2026-10-03T20:02:08Z",
+  "preMergeFreshBaseGuardPassed": false,
+  "incident": "First20:01:10 snapshot had fresh1b/clean/exact404/nativecontexts satisfied; root English-marker assertion rejected actual Russian docs-only scope output. Retry20:02:04 showed main213 advanced by foreign553 and asserted/rejected expected1b. Missing shell errexit let following own normalghmerge execute. No successful fresh-main retry or accepted premerge summary existed. All original observations retained. Root disclosed mistake to user; subsequent mutation shells use errexit and Python guarded sequencing.",
+  "actualPostMergeRootIntegrity": {
+    "contributionPaths": 67,
+    "bytes": 326012,
+    "sha256": "69e2102aab2bc2d3d753fb1ed33e6c5c22ec752f60c689d433ec843583c6cba6",
+    "nonDocPaths": 0,
+    "foreignIntersections": 0,
+    "allOwnMergedDocBlobsEqualCandidate": true,
+    "actualTreeEqualsComputedMergeTree": true
+  },
+  "newIndependentActualMergeReview": "ACTIVE",
+  "native404Contexts": {
+    "pr-scope": {
+      "job": 111281352203,
+      "conclusion": "SUCCESS"
+    },
+    "static-checks": {
+      "job": 111281446417,
+      "conclusion": "SKIPPED"
+    },
+    "typecheck": {
+      "job": 111281446736,
+      "conclusion": "SKIPPED"
+    },
+    "runner-policy": {
+      "job": 111281307601,
+      "conclusion": "SUCCESS"
+    },
+    "scan": {
+      "job": 111281308166,
+      "conclusion": "SUCCESS"
+    },
+    "meaning": "Documentation-only native semantics. Skipped checks earn no code/runtime acceptance. Draft CANCELLED observations retained; not acceptance."
+  },
+  "ownDeploy": {
+    "run": 37150068263,
+    "status": "ACTIVE",
+    "wholeRunSuccess": false,
+    "publicAcceptance": "NOT RUN"
+  },
+  "C6SourceReview": {
+    "head": "1907fd823f6024e6a356b6acf4c5da6eccaae261",
+    "status": "ACTIVE",
+    "actual85Targeted": "PASS",
+    "hosted9Pg": "NOT RUN"
+  },
+  "originals": [
+    {
+      "source": "/tmp/workforce-part22-extended-independent.json",
+      "bytes": 8063,
+      "sha256": "6227f984d9b6c7e663c1d86d87527faa9ab3bc72ec72016b36b5325994b876ac",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-00.gz",
+      "gzipBytes": 3478,
+      "gzipSha256": "f35e0354f48592cbcb3ef8f3641355f3d61b1c54a5212eb5e409edcf7f371456",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-draft-pr-original.json",
+      "bytes": 16798,
+      "sha256": "b6fd206c3d74a20156740bad11e1f1c352011c982cd34e303f6ee29e99a48927",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-01.gz",
+      "gzipBytes": 2473,
+      "gzipSha256": "dde24ffe5c0a2e3d9adfabfb39ab78d97a6125b7c33af5e012e43af8e840158b",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-checks-20261003T2000-original.json",
+      "bytes": 28496,
+      "sha256": "ce1338f341816abe5ecfd8dc9258492d3295feb9f1442d8e21e7ae99dca05ced",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-02.gz",
+      "gzipBytes": 2062,
+      "gzipSha256": "486cbec9bb1a681b70ad8405af08d5b5f5aa4640431c278780d2bd79387021cb",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-checks-20261003T200037675399Z-original.json",
+      "bytes": 35628,
+      "sha256": "0b489bcb37d6d717913de3d0b6ce78ac0bd11614c34ea46dc2145b767e3683a3",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-03.gz",
+      "gzipBytes": 2224,
+      "gzipSha256": "d790434f5b67dd2d0ac8ca071f62bfb7399de3f9185170f77cdb7788338290a0",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-merged-pr-original.json",
+      "bytes": 17771,
+      "sha256": "5c66a5bc80100ebd42ccadbe8c7753cf6d157cae69f3dee76eed0d20e90f534f",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-04.gz",
+      "gzipBytes": 2493,
+      "gzipSha256": "75ed8df5d447b1b52db3fd934d1a1fddc44bdf5a733b6205fe56476f7c9fc712",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-merged-commit-original.json",
+      "bytes": 2743,
+      "sha256": "33bfbd0e6a3e7a346f8350a944442f8d0172e6e166591a2833ddf63eface516e",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-05.gz",
+      "gzipBytes": 1325,
+      "gzipSha256": "3348d66b915748192431ea2184b4f512ad9cd137d4fe6e7e50c083f51e7a02ef",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-actual-merge-root-integrity.json",
+      "bytes": 1977,
+      "sha256": "c4463d4d856f15ebb0ae112bf5d3b8af4e6fadd20b734ea5f39831d021d110de",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-06.gz",
+      "gzipBytes": 897,
+      "gzipSha256": "a722e53ee043839c254eba9f6763b88ad0a168de59e35c390f958775eea58ff5",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-4040-release-proof-helper.py",
+      "bytes": 11560,
+      "sha256": "dea4fdf02ca84d4f4631b4b085f44c6bdcf0b898771853bdbed520a2f7c5e86f",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-07.gz",
+      "gzipBytes": 4224,
+      "gzipSha256": "e951d69ae96a968d18e81b9ba1756f44cedaef570bd7167d9eebeca1afde06e8",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-actual-base-release-proof-helper.py",
+      "bytes": 12503,
+      "sha256": "2cf1484883f2c6e4bc10068c1d987cfb329acb4f7ada774f2630f4d2bb4319cd",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-08.gz",
+      "gzipBytes": 4517,
+      "gzipSha256": "456646f36eeb04b06e51a983c5a9255b12589e18e25dd596f42e72143a026e74",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-premerge-20261003T200110213618Z/checks.json",
+      "bytes": 35628,
+      "sha256": "0b489bcb37d6d717913de3d0b6ce78ac0bd11614c34ea46dc2145b767e3683a3",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-03.gz",
+      "gzipBytes": 2224,
+      "gzipSha256": "d790434f5b67dd2d0ac8ca071f62bfb7399de3f9185170f77cdb7788338290a0",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-premerge-20261003T200110213618Z/main.json",
+      "bytes": 342,
+      "sha256": "a9adae95820a2c6f7b468091625b6581f00f99493090542726fed37b1923ec29",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-09.gz",
+      "gzipBytes": 214,
+      "gzipSha256": "4df691138c5d6da1aee67e02ea5265a3d60c177fa02d93f735ee8ceca2cbc0c0",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-premerge-20261003T200110213618Z/pr-scope.log",
+      "bytes": 95030,
+      "sha256": "d57d4a5d0092f1dcbf80246e364d10132263f6575b3272a8c8b539f922308180",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-10.gz",
+      "gzipBytes": 13583,
+      "gzipSha256": "da60c8723cd66fcae40ff4614cce7b5aba1e8a18ca80ec4a905d95fc6703ab94",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-premerge-20261003T200110213618Z/pr.json",
+      "bytes": 16797,
+      "sha256": "65071a70728da168addefe8a649b3956c2b0403b0d59619ca1058779e97d8873",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-11.gz",
+      "gzipBytes": 2477,
+      "gzipSha256": "4e06b2ff3171f2b31fa6053e64c9ebd8ad94cca834085d8324d4ea3a2a61b95e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-premerge-20261003T200110213618Z/protection.json",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-12.gz",
+      "gzipBytes": 422,
+      "gzipSha256": "bdaec664bbb0d3971e4bfc06d28c73b1abd217b91596b0a79f6c473ce0005a37",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-premerge-20261003T200204459788Z/checks.json",
+      "bytes": 35628,
+      "sha256": "0b489bcb37d6d717913de3d0b6ce78ac0bd11614c34ea46dc2145b767e3683a3",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-03.gz",
+      "gzipBytes": 2224,
+      "gzipSha256": "d790434f5b67dd2d0ac8ca071f62bfb7399de3f9185170f77cdb7788338290a0",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-premerge-20261003T200204459788Z/main.json",
+      "bytes": 342,
+      "sha256": "17402e684fa0eb83f5e2ce5cd8bf1a2732c1c2bbd9e3723f068cfe6da498eb8c",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-13.gz",
+      "gzipBytes": 215,
+      "gzipSha256": "5207495315efc8236ab559116a4ec7a27618d6828fe7cc13965dc536deb5ec19",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-premerge-20261003T200204459788Z/pr.json",
+      "bytes": 16799,
+      "sha256": "338c14a023342dfdddeb2509789698fe84032bce282bdefda46aefdc29fa8e93",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-14.gz",
+      "gzipBytes": 2483,
+      "gzipSha256": "331c6319c759e16f52ce9c5b7de63534f8187f865fde5d631ab6cb8fd46f2b19",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-premerge-20261003T200204459788Z/protection.json",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-12.gz",
+      "gzipBytes": 422,
+      "gzipSha256": "bdaec664bbb0d3971e4bfc06d28c73b1abd217b91596b0a79f6c473ce0005a37",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce555-publication-incident-scan.log",
+      "bytes": 147,
+      "sha256": "1c1dcf55d9904c7714ca6dc1f60dee2c53b763e85859ad62a2a11153b5d26c97",
+      "preserved": "docs/evidence/workforce-manager-today-2026-10-03-publication-original-15.gz",
+      "gzipBytes": 127,
+      "gzipSha256": "51f41013a9adda9af1fed8f3ca86d57692ad73fdfdb9447e14c28723a503535a",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "uniqueGzipPayloads": 16,
+  "rawScanBytes": 339081,
+  "rawScanExit": 0
+}
