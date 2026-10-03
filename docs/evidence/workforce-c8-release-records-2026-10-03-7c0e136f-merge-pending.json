@@ -1,0 +1,32 @@
+{
+  "observedAt": "2026-10-03T17:13:06.839847+00:00",
+  "pr": 551,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/551",
+  "head": "e584cca75df69c52dd0f26832ef881bd0e6acf8a",
+  "preMergeBase": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+  "mergedSha": "7c0e136f1529b9df9e96a2273d798d48718c1d80",
+  "mergedAt": "2026-10-03T17:09:27Z",
+  "treeEqualsReviewedDocsHead": true,
+  "normalMerge": true,
+  "docsOnly": true,
+  "requiredStaticType": "SKIPPED per unchanged repository docs-only semantics; not actual success",
+  "deploy": {
+    "run": 37139473017,
+    "status": "IN_PROGRESS",
+    "releaseGreen": false,
+    "exactProductionSha": "PENDING"
+  },
+  "originalChecks": {
+    "rawBytes": 35788,
+    "rawSha256": "9dda912477046b4a13034b0531ae3cfa7b42ccf49a936b1615d69961a5ade091",
+    "preserved": "docs/evidence/workforce-c8-release-records-2026-10-03-e584cca7-original-checks.json.gz",
+    "gzipBytes": 2234,
+    "gzipSha256": "ef646ea904ca2b8e7c5237a74aab55c4164d37e28173627b924c3e8da44bacc8",
+    "losslessDecompressionVerified": true
+  },
+  "codeIntegration": {
+    "head": "394068d4aba96d6b49077271e2aa73cd9404378e",
+    "treeEqualsVerifiedA490": true,
+    "sourceChanges": false
+  }
+}
