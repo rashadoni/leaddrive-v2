@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 // Exercise refusal before clients, SQL, app navigation or Chromium launch.
 // All supplied URLs are unreachable loopback fixtures, never production.
-const environment = {
+const environment: NodeJS.ProcessEnv = {
   ...process.env,
   GITHUB_ACTIONS: "true", CI: "true", NODE_ENV: "development", WF_EXCEPTION_REPORT_BROWSER: "1",
   WF_EXCEPTION_REPORT_BROWSER_BASE_URL: "http://127.0.0.1:9/",
