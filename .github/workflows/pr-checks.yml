@@ -138,6 +138,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev
 
+      - name: Support UX read-only readiness diagnostic tests
+        run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
+
       - name: Generate Prisma client
         run: npx prisma generate --schema prisma/schema.prisma
 

@@ -5,6 +5,8 @@ name: Inspect production safely
 # anonymized PostgreSQL TLS metadata, or list bounded log-source metadata
 # without reading any log contents, or report bounded Support rollout counts
 # without exposing organization features, settings, credentials or category names.
+# The Support readiness view exports only process/log metadata and aggregate
+# matching INFO evidence from a bounded sample; it never exports raw logs.
 # Dispatch-only: editing this workflow must not create an implicit production
 # connection.
 
@@ -23,6 +25,7 @@ on:
           - postgres-tls-metadata
           - postgres-san-scratch-audit
           - support-ux-rollout
+          - support-ux-readiness
           - support-ux-observation
       support_tenant:
         description: "Optional exact tenant slug for Support rollout metadata; empty returns anonymous aggregate counts"
@@ -105,12 +108,34 @@ jobs:
       - name: Verify Support observation diagnostic before production access
         if: ${{ inputs.view == 'support-ux-observation' }}
         run: node --test .github/scripts/test-inspect-support-ux-observation.mjs
+      - name: Verify Support readiness diagnostic before production access
+        if: ${{ inputs.view == 'support-ux-readiness' }}
+        run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
       - name: Setup pinned production SSH
         uses: ./.github/actions/setup-production-ssh
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           server-host: ${{ secrets.SERVER_HOST }}
           known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Inspect bounded Support logging readiness without selecting a tenant
+        if: ${{ inputs.view == 'support-ux-readiness' }}
+        run: |
+          set -euo pipefail
+          set +e
+          DIAGNOSTIC_OUTPUT="$(
+            ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              'NODE_NO_WARNINGS=1 node --input-type=module -' \
+              < .github/scripts/inspect-support-ux-readiness.mjs 2>/dev/null
+          )"
+          DIAGNOSTIC_STATUS=$?
+          set -e
+          printf '%s' "$DIAGNOSTIC_OUTPUT" \
+            | node .github/scripts/inspect-support-ux-readiness.mjs --validate-output
+          [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
+            echo "::error::Read-only Support readiness inspection failed"
+            exit "$DIAGNOSTIC_STATUS"
+          }
       - name: Inspect bounded Support rollout metadata
         if: ${{ inputs.view == 'support-ux-rollout' }}
         env:

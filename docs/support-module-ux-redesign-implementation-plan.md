@@ -4168,6 +4168,10 @@ task, not new SUPUX IDs or percentage weights):
   quantile/PNG review. Existing ceilings and2026-10-08 review boundary remain;
   original34241690941/34247698584 artifact lookups returned404, and the original
   96-cell scope is not replaced or extended. Real handler baseline stays pending.
+- Independent runtime-readiness diagnostic: PREPARED, production execution PENDING. Existing metadata
+  inventory proves paths/instantaneous size only. The new bounded read-only
+  process/logging/rotation probe passes 16 targeted behavioral tests without tenant access, while keeping actual
+  effective INFO and longitudinal coverage unverified unless supported by evidence.
 - Selected tenant and activation: PENDING exact authorized slug and audit record;
   confirm authenticated flag state after any separately admitted operator action.
 - Real handler baseline and coverage: PENDING matched activity/error/duration

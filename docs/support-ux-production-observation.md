@@ -494,3 +494,37 @@ diagnostic job/result and dated public runtime receipt. Next required input is
 the exact authorized production organization; its normal approved auth context
 is then needed for selected-tenant reads and audited activation. The partial
 activation day will not count toward seven complete Asia/Baku days.
+
+
+## 2026-10-03 — Independent readiness diagnostic preparation
+
+The next bounded source step closes a verification-path gap: existing
+inventory cannot report process identity or
+whether the current process has emitted Support INFO telemetry. Preparation
+of the protected `support-ux-readiness` view is complete with 16 targeted
+behavioral tests passing. Protected PR/release and production execution remain
+PENDING; no runtime result is claimed from the fixtures.
+
+The proposed view requires no tenant input or database access. It reads fixed
+app process metadata, the compiled revision through local public build-info,
+a bounded current stdout sample and reviewed logrotate authorities. It reports
+only allowlisted metadata and aggregate matching INFO evidence. It does not
+invoke a PM2 command that can launch a daemon or open app.env. The bounded
+process startup environment is consumed privately; credentials and environment
+contents are never exported, and only allowlisted routing/LOG_LEVEL facts survive.
+The workflow tests it before SSH and validates its output before publication.
+
+A matching INFO event is evidence of an emission at that time; an empty sample
+is not proof that INFO is disabled or traffic is absent. Startup LOG_LEVEL is
+not the live Pino level. Stable process/files during one read do not prove
+continuous seven-day operation, and matching rotation policy does not prove
+historical retention. Observation admission stays false; the selected-tenant
+flag/audit, matched baseline, coverage and incident requirements remain open.
+
+The process start is a kernel-derived estimate. `infoNotBeforeUtc` excludes its
+first estimated second to avoid admitting stale records around PID reuse. The
+probe rejects changes in PID/start, startup environment, clock mapping, source
+files or compiled revision between its reads. The 16 behavioral tests include
+real temporary-file symlink/inode/write races and mocked fixed-localhost HTTP
+limits/aborts; they do not access production. Local runner policy, workflow
+guard wiring and production asset guards also pass.

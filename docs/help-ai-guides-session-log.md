@@ -2490,3 +2490,65 @@ flag/audit и метрики, выполнить допущенную актив
 - Preflight16119MiB availableRAM/347546MiB freedisk/zeroPSI; journal diff-check
   PASS and entire163545B7eb prefix preserved; legacy hash unchanged.
   Checkpoint this resume before syncing reviewed main and implementing probe.
+
+
+## 2026-10-03 — Independent logging-readiness probe implementation
+
+- Checkpointbb0e15b01 preserved the resume and explicit verification gap.
+  Fetched reviewed origin/main022c4a453e80f58e13d71e5808354d12daeb65aa and
+  merged it normally as03afe70be in this worktree; no conflicts, reset or
+  unrelated branch edits. All prior checkpoint/history commits retained.
+- Implementing only the narrow protected support-ux-readiness diagnostic: fixed
+  runtime build-info, process identity, bounded current INFO sample and live
+  logrotate/artifact comparison. Source/current-process facts must not assert
+  effective Pino level, historical retention or complete observation admission.
+  No tenant query/flag action is required for this independent preparation.
+- Rejected pm2 CLI approach during design: jlist can auto-start a missing daemon
+  after a precheck race. Probe instead reads bounded fixed app PID/proc metadata
+  and validates identity without invoking PM2 or touching process state. Unknown
+  startup/env facts remain unknown; credentials and raw logs never leave the
+  host. No application configuration or running process is changed.
+- Added opt-in workflow view with its node:test gate before production SSH and
+  strict local output validation after collection. Added targeted tests to the
+  existing PR static-checks job; all existing required gates remain unchanged.
+  Implementation/tests are in progress; no new PASS/runtime result claimed yet.
+
+- Initial source review checked strict fixed paths, private bounded process
+  environment consumption, output allowlist and source/process race rejection.
+  Root identified /proc btime precision and HTTP partial-body deadline issues;
+  implementation now excludes the first estimated process second from INFO
+  evidence, includes the clock mapping in stability checks, and explicitly
+  rejects aborted/incomplete HTTP responses with a whole-body deadline.
+  Meaningful tests cover these boundaries, stale PID/source, secret redaction
+  and real inode/symlink/write-during-read behavior. Targeted execution pending.
+- Workflow YAML/guard wiring check PASS after16070MiB RAMavailable/347544MiB
+  diskfree/zeroPSI: opt-in view, required environment, unchanged production lock,
+  pre-SSH tests, bounded output validator and always-cleanup retained. No full
+  local compiler/build/browser/dependency check; hosted source gates pending.
+
+
+## 2026-10-03 — Readiness probe prepared and targeted verification passed
+
+- Standalone read-only probe and behavioral suite completed in two task-owned
+  .github/scripts files. No PM2 invocation/RPC, app import, app.env read, DB query,
+  flag mutation or raw secret/log export. Bounded private startup-environment
+  bytes are reduced to allowlisted routing/level facts; secret hashes remain
+  internal to stability checks and are not exported.
+- Actual node:test16/16 PASS,0skips,~0.42s in current tree after15949MiB
+  RAMavailable/347539MiBdiskfree/zeroPSI. Cases cover fixed HTTP/bodydeadline/
+  redirects/aborts, zero-size proc reads, conservative PID/time boundary,
+  changed PID/start/cwd/environment/clock/source, redaction, unknown-output
+  rejection and real temp-file symlink/inode/write races. No production call
+  or heavyweight local check was part of these tests.
+- Root review of both files and workflow integration completed. Root sequential
+  runner-policy check PASS40workflows; production/event-platform asset guards
+  PASS27domains/86topics/5schemas after15807MiB RAMavailable/zeroPSI. Existing
+  gates/runner restrictions/main-only/pinnedSSH/environment/lock unchanged.
+  No proof is claimed for current runtime INFO/coverage from synthetic tests.
+- Source hashes at review: probe84195a051317d08803df7536f258a94a523b2c610ad94307871044bc29091511;
+  tests22cb8b97cea8f9af8f1cc2d6f264f17997cd21022feea9cd1323c2c07bd2d454.
+  Protected exact-source PR gates remainPENDING. Full compiler/build/browser
+  NOT RUN on Contabo under workload policy; required hosted gates follow.
+- Preparing explicit task-path source checkpoint and new internal diagnostic
+  PR under standing active-task authorization. No user-visible UI change, no
+  tenant selection and no replay of completed PR505/530/544 gates/deploys.
