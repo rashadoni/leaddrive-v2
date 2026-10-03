@@ -615,12 +615,21 @@ async function reviewedReflowConfirmation(view, moved, team, phase) {
   await focusedInViewport(title, "reading probes preserve the product-focused review title")
   return confirmation
 }
-async function reflow320(principal, team) {
-  const view = await open(principal, "ru", { width: 320, height: 844 })
-  const name = (`Проверка переноса ${suffix} ` + "Ж".repeat(160)).slice(0, 160)
+async function reflow320(principal, team, locale = "ru", index = 9) {
+  const labels = {
+    ru: ["Проверка переноса", "Ж"],
+    az: ["Köçürmənin yoxlanması", "Ş"],
+    en: ["Moved-day reflow", "W"],
+  }
+  assert.ok(Object.hasOwn(labels, locale), "Reflow evidence requires one supported locale")
+  const [prefix, repeatedCharacter] = labels[locale]
+  const view = await open(principal, locale, { width: 320, height: 844 })
+  const name = (`${prefix} ${suffix} ` + repeatedCharacter.repeat(160)).slice(0, 160)
+  // Keep existing RU phase identities; additional locales have distinct receipts/PNGs.
+  const phase = value => locale === "ru" ? value : `${locale}-${value}`
   assert.equal(name.length, 160)
   assert.ok(/\S{80}/u.test(name), "The valid maximum-length fixture includes a long unbroken fragment")
-  const moved = await pair(view.context, principal, 9, team.id, name)
+  const moved = await pair(view.context, principal, index, team.id, name)
   const before = await state(principal, moved)
   let posts = 0
   view.page.on("request", request => { if (calendarRoute(new URL(request.url())) && request.method() === "POST") posts++ })
@@ -631,19 +640,19 @@ async function reflow320(principal, team) {
   const sourceTabs = await tabToButton(view.page, source)
   assert.ok(sourceTabs > 0)
   await focusedInViewport(source, "320 CSS source action is visibly reached by native Tab")
-  await reflowGeometry(view, "inventory")
+  await reflowGeometry(view, phase("inventory"))
   assert.equal(await view.section.getByText(name, { exact: true }).count(), 2, "Both original pair labels must be present")
-  await readReflowText(view, view.section.getByText(name, { exact: true }), "inventory-label")
+  await readReflowText(view, view.section.getByText(name, { exact: true }), phase("inventory-label"))
   await source.scrollIntoViewIfNeeded()
   await focusedInViewport(source, "reading long inventory labels preserves native source focus")
   await view.page.keyboard.press("Enter")
-  const confirmation = await reviewedReflowConfirmation(view, moved, team, "review")
+  const confirmation = await reviewedReflowConfirmation(view, moved, team, phase("review"))
   const confirm = confirmation.getByRole("button", { name: view.ui.reversalConfirm, exact: true })
   const cancel = confirmation.getByRole("button", { name: view.ui.reversalCancel, exact: true })
   await tabToNext(view.page, confirm)
-  await reflowGeometry(view, "confirm")
+  await reflowGeometry(view, phase("confirm"))
   await tabToNext(view.page, cancel)
-  await reflowGeometry(view, "cancel")
+  await reflowGeometry(view, phase("cancel"))
   assert.equal(posts, 0)
   await view.page.keyboard.press("Space")
   await until(async () => await confirmation.count() === 0, "320 CSS cancel removes the review")
@@ -651,9 +660,9 @@ async function reflow320(principal, team) {
   assert.equal(await source.isDisabled(), false)
   assert.equal(posts, 0)
   assert.deepEqual(await state(principal, moved), before)
-  await reflowGeometry(view, "cancel-source")
+  await reflowGeometry(view, phase("cancel-source"))
   await view.page.keyboard.press("Enter")
-  await reviewedReflowConfirmation(view, moved, team, "reopened-review")
+  await reviewedReflowConfirmation(view, moved, team, phase("reopened-review"))
   const delivery = barrier()
   const bodies = []
   const responses = []
@@ -690,13 +699,13 @@ async function reflow320(principal, team) {
   const alert = view.section.getByRole("alert")
   await until(async () => (await alert.innerText()).includes(view.ui.reversalOutcomeUnknown), "320 CSS unknown outcome")
   await focusedInViewport(alert, "320 CSS unknown explanation receives fully visible product focus")
-  await reflowGeometry(view, "unknown")
-  await readReflowText(view, alert, "unknown")
+  await reflowGeometry(view, phase("unknown"))
+  await readReflowText(view, alert, phase("unknown"))
   await until(async () => !(await confirm.isDisabled()), "320 CSS exact retry becomes available")
   assert.equal(await view.section.locator("#workforce-calendar-scope").isDisabled(), true)
   assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
   await tabToNext(view.page, confirm)
-  await reflowGeometry(view, "retry-confirm")
+  await reflowGeometry(view, phase("retry-confirm"))
   await view.page.keyboard.press("Enter")
   await until(async () => (await view.section.innerText()).includes(view.ui.reversalAlreadyRecorded)
     && !(await view.section.innerText()).includes(name)
@@ -709,14 +718,15 @@ async function reflow320(principal, team) {
   const result = view.section.getByRole("status")
   assert.ok((await result.innerText()).includes(view.ui.reversalAlreadyRecorded))
   await focusedInViewport(result, "320 CSS replay result receives stable visible focus")
-  await reflowGeometry(view, "replay")
-  await readReflowText(view, result, "replay")
+  await reflowGeometry(view, phase("replay"))
+  await readReflowText(view, result, phase("replay"))
   assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
   await assertSession(view.context, principal, "320-css-team-replay")
-  receipts.reflowFunctional = { cancelWrites: 0, cancelStateUnchanged: true, posts, tombstones: 2, audits: 1, byteIdenticalRetry: true, reversedResponses: responses, replayWrites: 0, realSessionPreserved: true }
+  const functional = { cancelWrites: 0, cancelStateUnchanged: true, posts, tombstones: 2, audits: 1, byteIdenticalRetry: true, reversedResponses: responses, replayWrites: 0, realSessionPreserved: true }
+  if (locale === "ru") receipts.reflowFunctional = functional
   assert.equal(receipts.reflowDiagnostics.reduce((count, phase) => count + phase.failures.length, 0), 0,
     "320 CSS controls and every text fragment must fit their visible horizontal bounds")
-  receipts.cases.push({ name: "320-css-reflow-keyboard-cancel-exact-retry-TEAM-ru", status: "PASS", viewport: { width: 320, height: 844 }, labelLength: 160, sourceTabs, nativeKeyboard: true, verticalReadingScrollOnly: true, horizontalContainment: true, focusedTargetsVisible: true, ...receipts.reflowFunctional })
+  receipts.cases.push({ name: `320-css-reflow-keyboard-cancel-exact-retry-TEAM-${locale}`, status: "PASS", viewport: { width: 320, height: 844 }, labelLength: 160, sourceTabs, nativeKeyboard: true, verticalReadingScrollOnly: true, horizontalContainment: true, focusedTargetsVisible: true, ...functional })
   await view.context.close()
 }
 async function switchContext(from, to, index, targetTeam, label) {
@@ -878,6 +888,11 @@ try {
   assert.equal(receipts.cases.length, 9, "All nine existing scenarios must complete before the new reflow case")
   await reflow320(principals[0], teams[0])
   assert.equal(receipts.cases.length, 10)
+  await reflow320(principals[0], teams[0], "az", 10)
+  await reflow320(principals[0], teams[0], "en", 11)
+  assert.equal(receipts.cases.length, 12)
+  assert.equal(new Set(receipts.reflowDiagnostics.map(({ phase }) => phase)).size, receipts.reflowDiagnostics.length,
+    "Each localized reflow phase must retain a distinct receipt and screenshot identity")
   assert.equal(await app.mtmAuditLog.count(), 0, "Existing Workforce audit receipts must be hidden without tenant context")
   assert.equal(await app.mtmWorkCalendarDay.count(), 0, "Existing calendar tombstones must be hidden without tenant context")
   receipts.databaseRole.populatedAuditAndCalendarFailClosed = true
