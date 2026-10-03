@@ -1585,3 +1585,137 @@ baseline by2026-10-08 and only then prepare governed flag retirement for100%.
   37110761933 release/gates, then public exact identity/feasible feature smoke.
   Next action: complete release verification; selected tenant still required
   before flag/observation actions or any seven-day completion claim.
+
+
+## 2026-10-03 12:50 Asia/Baku — Read-only log-source metadata captured
+
+- Independent release-scope reviewer confirms no routing/transport/auth/RLS/
+  activation change or blocker. Main779 package/lock/Prisma/Next/server-deploy
+  matches approvedb9. Narrow postrelease cookie-free GETs may verify401 with
+  Sec-Fetch-Mode:cors and fixedcode session_expired; ordinary non-browser API
+  requests can redirect307 to login. These cannot establish authenticated
+  Calendar/category operation, telemetry coverage or the production week.
+- Protected exact-main read-only diagnostic37110998886 SUCCESS onf62ab3a609,
+  viewbackup-log-inventory. No log contents/DB query/data mutation; only bounded
+  source metadata. At2026-10-03T08:50:08Z PM2outauthority is
+  /var/lib/leaddrive-v2-logs/out.log, errorauthority same-directory/error.log.
+  Directorymode2750/group leaddrive-backup; outputfile regular/mode0644/
+  16687827bytes; errorfile900676bytes. No stdout rotation archive appears in
+  this snapshot. Owner/group fields are GitHub-masked, so numeric root UID is
+  not established by the exported receipt; collector still enforces it locally.
+- Current out.log footprint fits the reviewed64MiB collector ceiling. This is
+  only a dated size/path/mode snapshot, not future volume,14-day retention,
+  effective INFO level, daily completeness, any tenant event or seven-day proof.
+  Actual selected-tenant collection remains NOT RUN: no authorized slug supplied.
+- New exact main runner37110761810 and scan37110761817 SUCCESS. Automatic
+  release37110761933 and post-merge type context37110761818 still running;
+  no new deploy dispatch/re-run or production flag change.
+
+
+## 2026-10-03 13:04 Asia/Baku — New main build and post-merge gates passed
+
+- Post-merge PRchecks37110761818 SUCCESS on exact merge
+  f62ab3a609a0461cbd14c264306df2d28325628f. Blocking syntax/module/name and
+  defect-shaped baseline checks passed; existing advisory compiler diagnostics
+  retain their governed scope. Runner37110761810 and scan37110761817 SUCCESS.
+- Automatic release37110761933 quality/security gates SUCCESS; production
+  standalone build, verification and immutable artifact publication SUCCESS.
+  GitHub artifact11269788634, name
+  leaddrive-prod-f62ab3a609a0461cbd14c264306df2d28325628f,443892431bytes,
+  API archive digestsha256:e8ceb671c61001b0c5ed9ee02269e9b1bb24d25a24ad4e0df0e748dbb0563db7.
+  Archive digest is GitHub metadata, not an independent download/rehash claim.
+- Protected production job started09:03:55UTC; target admission, safety
+  preflight and downloaded artifact verification passed. Immutable staging/
+  atomic installation and post-deploy smoke still running at this phase.
+  No independent public full-SHA success claimed before release completion.
+- Prepared bounded cookie-free public DB/revision/API-guard check; no browser,
+  tenant authentication or writes. Lightweight check preflight: about14.6GiB
+  available RAM,338GiB disk free, memory PSI avg10/60 zero. No local full build,
+  full compiler or browser gate attempted.
+
+
+## 2026-10-03 13:13 Asia/Baku — Approved new release and independent smoke verified
+
+- New automatic deploy37110761933 SUCCESS on exact merge
+  f62ab3a609a0461cbd14c264306df2d28325628f; production job completed
+  2026-10-03T09:12:22Z. Hosted build/quality/security, immutable staging,
+  artifact verification, atomic installation, scheduler/tenant-isolation
+  checks and public ping/revision/login/hashed-assets smoke all SUCCESS.
+  Post-merge37110761818, runner37110761810 and scan37110761817 SUCCESS.
+  Original #501/#505 releases/checks were not repeated. No deploy dispatch,
+  manual production deployment or tenant flag mutation.
+- Independent system-trust TLS public GETs without cookies/Authorization:
+  ping200/ok:true/no-store at09:13:22.958988UTC (13:13:22.958988Baku),
+  request RTT0.373999s; build-info200/no-store at09:13:23.333122UTC,
+  artifactSha exactlyf62ab3a609a0461cbd14c264306df2d28325628f,
+  builtAt2026-10-03T08:53:06Z, request RTT0.092568s. Timings include bounded
+  response-body reads; they are not server-handler/page latency or a baseline.
+- Calendar, Macros and rollout API GETs, using Sec-Fetch-Mode:cors and no
+  session, each returned401/code session_expired at09:13:23.425974–.570390UTC.
+  This proves unauthenticated rejection only. Authenticated Calendar/Macros/
+  rollout behavior, selected-tenant state and actual daily collection NOT RUN:
+  no authorized representative tenant slug/auth/activation record supplied.
+  Observation start, baseline, whole-day coverage and seven days not admitted.
+- Later maina27681fcf8768e8f2163edd2c5a509d9d950e5e6 (Workforce PR#540)
+  directly includes f62. Root verified all14 recorded Support page/data/API/
+  helper/collector/diagnostic blobs match approvedb9→f62→a276. Independent
+  reviewer verified25 relevant source/contract files and Workforce-only diff.
+  This is Git identity, not a claim about the successor's deployment/live SHA.
+  Dated independent public f62 receipt remains accurate at its own timestamps;
+  no unrelated next release is replayed or claimed complete here.
+- Permanent safe release archive:
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-release-37110761933.
+  Eleven hashed files/30483bytes plus provenance.json retain actual PR/workflow/
+  artifact metadata, public smoke JSON/script, source identities and metadata-
+  only runtime snapshot. Root verified source equality and completed-SUCCESS
+  identities; independent reviewer verified every extracted file hash/size and
+  receipt agreement. Artifact ZIP digest remains GitHub API metadata; no ZIP
+  download/rehash claim. No secrets, auth cookies or raw production log contents.
+- Plan/observation/release ledger now record the delivered Calendar correction,
+  telemetry readiness, exact new release/public receipt and later-main boundary.
+  Old88 and #501/#505 dated receipts remain preserved. Checklist remains190/191
+  and literal acceptance16DONE/1IN_PROGRESS. Service Desk baseline review due
+  2026-10-08 remains required; no threshold/coverage/elapsed-day waiver.
+
+Current result/status: new PR530 release and independent public/401-guard smoke
+verified;190/191 and16/17, representative production admission incomplete.
+Last completed action: exact release/public/source/archive verification and
+documentation reconciliation. Precise stopping point: final documentation
+self-audit/checkpoint; no required PR530 CI or release is left running.
+Next action: obtain exact authorized tenant/activation evidence, verify scoped
+flag and collection admission, establish baseline/coverage, observe seven full
+Asia/Baku days, then prepare the separately governed flag-retirement release.
+
+
+## 2026-10-03 — Release closeout self-audit and final documentation checkpoint
+
+- Final independent read-only review of all four task-owned documentation
+  changes PASS: approved PR530/deploy/source/artifact/public receipts agree;
+  dated livef62 is separate from later maina276; no current release-pending
+  statement remains and no representative observation/completion overclaim.
+- Root verification confirms191unique tracked tasks/190checked/onlyROL-006
+  open;17literal rows/16DONE/1IN_PROGRESS. Corrected Calendar page/API blobs
+  are identical43440→approvedb9→releasedf62. All11 release-archive file hashes
+  and byte sizes were independently verified against provenance.json.
+- Active journal original30183byte prefix remains preserved; the complete
+  legacy reference journal218460bytes remains unchanged. Journal additions
+  retain earlier decisions/receipts and explicitly supersede pending states.
+- Scoped documentation git diff --check PASS. Current closeout paths only:
+  docs/help-ai-guides-session-log.md,
+  docs/support-module-ux-redesign-implementation-plan.md,
+  docs/support-ux-production-observation.md,
+  docs/support-ux-performance-and-rollout.md.
+  These form the final local documentation-only checkpoint; prior47665784
+  andd1960c083 checkpoints remain preserved. No docs push/new deployment is
+  required. Full local build/compiler/browser gates NOT RUN under host workload
+  rules; completed hosted release gates are reused rather than replayed.
+
+Current result/status: approved PR530 delivered and independently smoke-verified;
+190/191 (99.48%),16/17;100% still requires representative production admission.
+Last completed action: release receipts archived, plan/journal reconciled,
+independent self-audit and scoped documentation verification completed.
+Precise stopping point: final local documentation checkpoint; PR530 checks/deploy
+are complete; selected-tenant observation has not started or been admitted.
+Next action: owner supplies exact authorized production tenant slug/activation
+record; verify flag/operator/collection admission, establish real baseline and
+complete seven evidenced Asia/Baku days, then review the flag-retirement release.
