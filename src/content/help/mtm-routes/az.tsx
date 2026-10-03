@@ -217,9 +217,15 @@ export default function MtmroutesHelpAz() {
       <HelpSection title="Marşrut və məlumatlar üçün Excel mübadiləsi">
         <p>
           Administratorlar və icazəli menecerlər <HelpKey>Excel mübadiləsi</HelpKey> bölməsini açıb
-          müştərilər, marşrutlar, satış faktları və ya planı seçə, interfeys dilində şablon yükləyə bilərlər.
-          Fayl yükləndikdə məlumat yazılmadan əvvəl yaradılacaq, yenilənəcək, dəyişməyəcək və səhv sətirlər
-          ayrıca göstərilir.
+          müəssisələr, müştərilər, marşrutlar, satış faktları və ya planı seçə, interfeys dilində şablon yükləyə
+          bilərlər. Fayl yükləndikdə məlumat yazılmadan əvvəl yaradılacaq, yenilənəcək, dəyişməyəcək və səhv
+          sətirlər ayrıca göstərilir.
+        </p>
+        <p>
+          Müştəri faylını (həkimlər, əczaçılar) müştərini əl ilə əlavə edə bilən hər kəs yükləyə bilər; eyni
+          pəncərə «Müştərilər» səhifəsindəki <HelpKey>Excel-dən yüklə</HelpKey> düyməsi ilə açılır. Fayl yalnız
+          əlavə edir: kodu artıq mövcud olan müştəri xəta kimi göstərilir, üzərinə yazılmır. Bazada hələ
+          olmayan müəssisə adına görə yaradılır, müştərini isə elə həmin faylda sahə əməkdaşına təhkim etmək olar.
         </p>
         <HelpCallout kind="tip">
           Sətir və sütunu göstərən səhv faylını yükləyib düzəliş edin. Marşrutun xarici ID-si, agent və

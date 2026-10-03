@@ -11,8 +11,9 @@ import { Select } from "@/components/ui/select"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { formatDate } from "@/lib/format-date"
 
-type ImportType = "CUSTOMERS" | "ROUTES" | "SALES_FACTS" | "PLAN_FACT"
-type ExportType = ImportType | "VISIT_RESULTS" | "CUSTOMER_REQUESTS"
+export type MtmExcelPanelImportType = "CUSTOMERS" | "CONTACTS" | "ROUTES" | "SALES_FACTS" | "PLAN_FACT"
+type ImportType = MtmExcelPanelImportType
+type ExportType = "CUSTOMERS" | "ROUTES" | "SALES_FACTS" | "PLAN_FACT" | "VISIT_RESULTS" | "CUSTOMER_REQUESTS"
 
 interface ImportSummary {
   totalRows: number
@@ -23,6 +24,14 @@ interface ImportSummary {
   errorRows: number
   warningRows: number
   requiresConflictOverride: boolean
+  createInstitutions?: number
+  assignRows?: number
+}
+
+interface ImportWarning {
+  rowNumber: number
+  code: string
+  message: string
 }
 
 interface ImportResult {
@@ -30,6 +39,8 @@ interface ImportResult {
   summary: ImportSummary
   preview: Array<Record<string, unknown>>
   errors: Array<{ rowNumber: number; columnName: string | null; errorCode: string; message: string }>
+  warnings?: ImportWarning[]
+  warningCount?: number
 }
 
 interface HistoryJob {
@@ -49,20 +60,23 @@ interface Props {
   onClose: () => void
   orgId?: string
   onApplied?: () => void
+  /** The type the dialog opens on; the page it is opened from knows what the person came to load. */
+  initialType?: ImportType
 }
 
-const IMPORT_TYPES: ImportType[] = ["CUSTOMERS", "ROUTES", "SALES_FACTS", "PLAN_FACT"]
+const IMPORT_TYPES: ImportType[] = ["CUSTOMERS", "CONTACTS", "ROUTES", "SALES_FACTS", "PLAN_FACT"]
+const WARNINGS_SHOWN = 8
 const EXPORT_TYPES: ExportType[] = ["CUSTOMERS", "ROUTES", "SALES_FACTS", "VISIT_RESULTS", "PLAN_FACT", "CUSTOMER_REQUESTS"]
 
-export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props) {
+export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied, initialType = "CUSTOMERS" }: Props) {
   const t = useTranslations("mtmExcel")
   const statusT = useTranslations("mtmStatus")
   const locale = useLocale()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [type, setType] = useState<ImportType>("CUSTOMERS")
+  const [type, setType] = useState<ImportType>(initialType)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [history, setHistory] = useState<HistoryJob[]>([])
-  const [canImport, setCanImport] = useState(false)
+  const [importableTypes, setImportableTypes] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [applying, setApplying] = useState(false)
   const [allowConflicts, setAllowConflicts] = useState(false)
@@ -73,7 +87,12 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error || t("historyFailed"))
     setHistory(payload.data.jobs ?? [])
-    setCanImport(payload.data.capabilities?.canImport === true)
+    // Who may load a file depends on what the file is: a manager who may add
+    // clients by hand may load them, without the opt-in the other types need.
+    const capabilities = payload.data.capabilities
+    setImportableTypes(Array.isArray(capabilities?.importableTypes)
+      ? capabilities.importableTypes
+      : capabilities?.canImport === true ? IMPORT_TYPES : [])
   }, [headers, t])
 
   useEffect(() => {
@@ -93,6 +112,7 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
     try {
       const form = new FormData()
       form.append("type", type)
+      form.append("locale", locale)
       form.append("file", file)
       const response = await fetch("/api/v1/mtm/excel/imports", { method: "POST", headers, body: form })
       const payload = await response.json()
@@ -106,6 +126,8 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
           summary: detail.data.job.validationSummary,
           preview: detail.data.job.previewData ?? [],
           errors: detail.data.job.rowErrors ?? [],
+          warnings: detail.data.warnings ?? [],
+          warningCount: detail.data.warningCount ?? 0,
         })
         toast.info(t("sameFile"))
       } else {
@@ -148,7 +170,14 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
   }
 
   const summary = result?.summary
+  const canImport = importableTypes.includes(type)
   const canApply = Boolean(summary && summary.errorRows === 0 && canImport)
+  // Shown for client files only: their warnings are written for the person
+  // fixing the spreadsheet. The other types' warnings are still internal text.
+  const warnings = type === "CONTACTS" ? result?.warnings ?? [] : []
+  const warningCount = type === "CONTACTS" ? result?.warningCount ?? warnings.length : 0
+  const previewKeys = result && result.preview.length > 0 ? Object.keys(result.preview[0]).slice(0, 6) : []
+  const previewLabel = (key: string) => t.has(`previewColumns.${key}`) ? t(`previewColumns.${key}`) : key
 
   if (typeof document === "undefined") return null
 
@@ -199,11 +228,25 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
                       <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => download(`/api/v1/mtm/excel/imports/${result.job.id}/errors?locale=${locale}`, `mtm-import-errors.xlsx`)}><Download className="mr-2 h-4 w-4" />{t("downloadErrors")}</Button>
                     </div>
                   ) : <div className="flex items-center gap-2 text-sm text-emerald-700"><CheckCircle2 className="h-4 w-4" />{t("validationPassed")}</div>}
+                  {warnings.length > 0 ? (
+                    <div data-testid="mtm-excel-warnings" className="border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+                      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-200"><AlertTriangle className="h-4 w-4" />{t("warningsTitle", { count: warningCount })}</div>
+                      <div className="space-y-1 text-xs">
+                        {warnings.slice(0, WARNINGS_SHOWN).map((warning, index) => <p key={`${warning.rowNumber}-${warning.code}-${index}`}>{t("warningAt", { row: warning.rowNumber, message: warning.message })}</p>)}
+                        {warningCount > WARNINGS_SHOWN ? <p className="text-muted-foreground">{t("moreWarnings", { count: warningCount - WARNINGS_SHOWN })}</p> : null}
+                      </div>
+                    </div>
+                  ) : null}
+                  {summary && (summary.createInstitutions || summary.assignRows) ? (
+                    <p data-testid="mtm-excel-contacts-extras" className="text-sm text-muted-foreground">
+                      {t("contactsExtras", { institutions: summary.createInstitutions ?? 0, assigned: summary.assignRows ?? 0 })}
+                    </p>
+                  ) : null}
                   {result.preview.length > 0 ? (
                     <div className="overflow-x-auto border">
                       <table className="w-full min-w-[640px] text-left text-xs">
-                        <thead className="bg-muted"><tr>{Object.keys(result.preview[0]).slice(0, 6).map((key) => <th key={key} className="px-3 py-2 font-medium">{key}</th>)}</tr></thead>
-                        <tbody>{result.preview.slice(0, 5).map((row, index) => <tr key={index} className="border-t">{Object.keys(result.preview[0]).slice(0, 6).map((key) => <td key={key} className="max-w-48 truncate px-3 py-2">{String(row[key] ?? "")}</td>)}</tr>)}</tbody>
+                        <thead className="bg-muted"><tr>{previewKeys.map((key) => <th key={key} className="px-3 py-2 font-medium">{previewLabel(key)}</th>)}</tr></thead>
+                        <tbody>{result.preview.slice(0, 5).map((row, index) => <tr key={index} className="border-t">{previewKeys.map((key) => <td key={key} className="max-w-48 truncate px-3 py-2">{String(row[key] ?? "")}</td>)}</tr>)}</tbody>
                       </table>
                     </div>
                   ) : null}

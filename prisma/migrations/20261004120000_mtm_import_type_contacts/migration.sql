@@ -1,0 +1,17 @@
+-- Excel import of field clients (MtmContact: doctors, pharmacists, others).
+--
+-- Until now the Excel exchange could load institutions only; a tenant's doctor
+-- base had to be created one API call at a time. The import job row records
+-- which kind of file it holds, so the new kind needs its enum value.
+--
+-- AlterEnum only, deliberately alone in its migration: PostgreSQL forbids
+-- using an enum value inside the transaction that added it. No row is
+-- rewritten and no table is locked beyond the catalog update. IF NOT EXISTS
+-- keeps a re-apply a no-op.
+--
+-- Rollback: never drop this value. Code from before this change cannot read a
+-- CONTACTS job: its Prisma client throws on the unknown enum value, so the
+-- import history of a tenant that has uploaded a client file would fail to
+-- load until the newer code is back. The contacts, institutions and
+-- assignments an applied import created are ordinary rows and stay readable.
+ALTER TYPE "MtmImportType" ADD VALUE IF NOT EXISTS 'CONTACTS';
