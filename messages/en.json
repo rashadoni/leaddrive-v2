@@ -11390,6 +11390,7 @@
     "title": "Clients",
     "subtitle": "Personal list, professional profile, workplace, and accountable assignment",
     "createClient": "Add client",
+    "importFromExcel": "Import from Excel",
     "clarityGuide": {
       "title": "What is this section for?",
       "description": "Use it to find doctors, pharmacists, and other field contacts; check their workplace, accountable employee, and visit history; then prepare them for the team or a route."
@@ -13506,8 +13507,21 @@
     "applyFailed": "Could not apply the import.",
     "queued": "Large import queued for background processing.",
     "applied": "Import applied successfully.",
+    "warningsTitle": "{count, plural, one {# thing to check before applying} other {# things to check before applying}}",
+    "warningAt": "Row {row}: {message}",
+    "moreWarnings": "…and {count} more.",
+    "contactsExtras": "The import will also add {institutions, plural, =0 {no new institutions} one {# new institution} other {# new institutions}} and assign {assigned, plural, =0 {no clients} one {# client} other {# clients}} to field agents.",
+    "previewColumns": {
+      "rowNumber": "Row",
+      "externalCode": "Code",
+      "displayName": "Client",
+      "specialty": "Specialty",
+      "institution": "Institution",
+      "agent": "Assigned to"
+    },
     "types": {
-      "CUSTOMERS": "Customers",
+      "CUSTOMERS": "Institutions (pharmacies, clinics)",
+      "CONTACTS": "Clients (doctors, pharmacists)",
       "ROUTES": "Route plans",
       "SALES_FACTS": "External orders and sales",
       "VISIT_RESULTS": "Visit results and actions",

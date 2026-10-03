@@ -6,13 +6,11 @@ import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permi
 import { canManageFieldMasterData } from "@/lib/mtm/field-scope"
 import { ContactBulkAssignmentExecuteSchema, parseBody } from "@/lib/mtm-validators"
 import {
-  buildContactAssignmentPreview,
+  CONTACT_ASSIGNMENT_NOTHING_TO_ASSIGN,
+  CONTACT_ASSIGNMENT_STALE_PREVIEW,
   contactAssignmentRequestHash,
+  executeContactAssignment,
 } from "@/lib/mtm/contact-bulk-assignment"
-
-function utcDate(value: string): Date {
-  return new Date(`${value}T00:00:00.000Z`)
-}
 
 function replay(operation: { requestHash: string; status: string; result: unknown }, requestHash: string) {
   if (operation.requestHash !== requestHash) {
@@ -62,134 +60,26 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
   if (prior) return replay(prior, requestHash)
 
   try {
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const effectiveFrom = utcDate(body.effectiveFrom)
-      await tx.mtmContactAssignmentOperation.create({
-        data: {
-          organizationId: auth.orgId,
-          idempotencyKey: body.idempotencyKey,
-          requestHash,
-          actorUserId: auth.userId || null,
-          actorAgentId: actor.agentId,
-          targetAgentId: body.targetAgentId ?? null,
-          effectiveFrom,
-          reason: body.reason,
-          mode: body.mode,
-          request: body as unknown as Prisma.InputJsonValue,
-        },
-      })
-      const preview = await buildContactAssignmentPreview(tx, {
-        organizationId: auth.orgId,
-        contactIds: body.contactIds,
-        mode: body.mode,
-        targetAgentId: body.targetAgentId,
-        effectiveFrom,
-        actor,
-      })
-      if (preview.previewToken !== body.previewToken) throw new Error("STALE_PREVIEW")
-      const eligible = preview.rows.filter((row) => row.assignable)
-      if (eligible.length === 0) throw new Error("NOTHING_TO_ASSIGN")
-
-      const changed: Array<{
-        contactId: string
-        endedAssignmentIds: string[]
-        assignmentId: string | null
-      }> = []
-      for (const row of eligible) {
-        const endedAssignmentIds: string[] = []
-        for (const currentAssignmentId of row.currentAssignmentIds) {
-          const ended = await tx.mtmContactAgentAssignment.updateMany({
-            where: {
-              id: currentAssignmentId,
-              organizationId: auth.orgId,
-              contactId: row.contactId,
-              role: "PRIMARY",
-              deletedAt: null,
-              effectiveFrom: { lte: effectiveFrom },
-              OR: [{ effectiveTo: null }, { effectiveTo: { gt: effectiveFrom } }],
-            },
-            data: { effectiveTo: effectiveFrom, reason: body.reason },
-          })
-          if (ended.count !== 1) throw new Error("STALE_PREVIEW")
-          endedAssignmentIds.push(currentAssignmentId)
-        }
-        let assignmentId: string | null = null
-        if (body.mode === "ASSIGN" && body.targetAgentId) {
-          const assignment = await tx.mtmContactAgentAssignment.create({
-            data: {
-              organizationId: auth.orgId,
-              contactId: row.contactId,
-              agentId: body.targetAgentId,
-              role: "PRIMARY",
-              effectiveFrom,
-              source: "BULK_ASSIGNMENT",
-              assignedBy: auth.userId || null,
-              reason: body.reason,
-            },
-            select: { id: true },
-          })
-          assignmentId = assignment.id
-        }
-        changed.push({ contactId: row.contactId, endedAssignmentIds, assignmentId })
-      }
-
-      const response = {
-        operationId: body.idempotencyKey,
-        mode: body.mode,
-        effectiveFrom: body.effectiveFrom,
-        targetAgent: preview.targetAgent,
-        summary: { ...preview.summary, changed: changed.length },
-        changed,
-        excluded: preview.rows.filter((row) => !row.assignable),
-      }
-      await tx.mtmContactAssignmentOperation.update({
-        where: {
-          organizationId_idempotencyKey: {
-            organizationId: auth.orgId,
-            idempotencyKey: body.idempotencyKey,
-          },
-        },
-        data: {
-          status: "COMPLETED",
-          result: response as unknown as Prisma.InputJsonValue,
-          completedAt: new Date(),
-        },
-      })
-      await tx.mtmAuditLog.create({
-        data: {
-          organizationId: auth.orgId,
-          agentId: actor.agentId,
-          action: body.mode === "ASSIGN" ? "CONTACT_BULK_ASSIGN" : "CONTACT_BULK_UNASSIGN",
-          entity: "contact_assignment_batch",
-          entityId: body.idempotencyKey,
-          metadataKind: "contact_bulk_assignment",
-          oldData: { selected: preview.summary.selected } as Prisma.InputJsonValue,
-          newData: {
-            mode: body.mode,
-            targetAgentId: body.targetAgentId ?? null,
-            effectiveFrom: body.effectiveFrom,
-            reason: body.reason,
-            changed: changed.length,
-            excluded: preview.summary.excluded,
-            contactIds: changed.map((item) => item.contactId),
-          } as Prisma.InputJsonValue,
-          ipAddress: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-            || req.headers.get("x-real-ip")
-            || null,
-          userAgent: req.headers.get("user-agent") || null,
-        },
-      })
-      return response
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    const result = await prisma.$transaction((tx: Prisma.TransactionClient) => executeContactAssignment(tx, {
+      organizationId: auth.orgId,
+      actor,
+      actorUserId: auth.userId || null,
+      request: body,
+      requestHash,
+      ipAddress: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+        || req.headers.get("x-real-ip")
+        || null,
+      userAgent: req.headers.get("user-agent") || null,
+    }), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
     return NextResponse.json({ success: true, data: result })
   } catch (error) {
-    if (error instanceof Error && error.message === "STALE_PREVIEW") {
+    if (error instanceof Error && error.message === CONTACT_ASSIGNMENT_STALE_PREVIEW) {
       return NextResponse.json({
         error: "The preview is stale; review the latest conflicts",
         code: "MTM_CONTACT_ASSIGNMENT_STALE_PREVIEW",
       }, { status: 409 })
     }
-    if (error instanceof Error && error.message === "NOTHING_TO_ASSIGN") {
+    if (error instanceof Error && error.message === CONTACT_ASSIGNMENT_NOTHING_TO_ASSIGN) {
       return NextResponse.json({
         error: "No selected contacts can be changed",
         code: "MTM_CONTACT_ASSIGNMENT_EMPTY",

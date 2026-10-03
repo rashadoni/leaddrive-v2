@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
-import { resolveMtmExcelAccess } from "@/lib/mtm/excel-permissions"
+import { canImportMtmExcelType, resolveMtmExcelAccess } from "@/lib/mtm/excel-permissions"
 import { applyMtmExcelImportJob, isMtmValidatedExcelSnapshot } from "@/lib/mtm/excel-import"
 import { getQueue } from "@/lib/queue/queues"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
+import { isValidTimezone } from "@/lib/timezone"
 
 type RouteContext = { params: Promise<{ id: string }> }
 const INLINE_ROW_LIMIT = 5_000
 
 export const POST = withRouteFieldWebRlsAuth("write", async (req, auth, context: RouteContext) => {
   const access = await resolveMtmExcelAccess(prisma, auth)
-  if (!access.actor || !access.canImport) return NextResponse.json({ error: "Excel import is not permitted" }, { status: 403 })
+  if (!access.actor || (!access.canImport && !access.canImportContacts)) return NextResponse.json({ error: "Excel import is not permitted" }, { status: 403 })
   const { id } = await context.params
   const body = await req.json().catch(() => ({})) as { allowConflictOverride?: boolean }
   const allowConflictOverride = body.allowConflictOverride === true
@@ -19,6 +22,7 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth, context:
   }
   const job = await prisma.mtmImportJob.findFirst({ where: { id, organizationId: auth.orgId } })
   if (!job) return NextResponse.json({ error: "Import job not found" }, { status: 404 })
+  if (!canImportMtmExcelType(access, job.type)) return NextResponse.json({ error: "Excel import is not permitted" }, { status: 403 })
   const snapshot = job.validatedSnapshot
   if (!isMtmValidatedExcelSnapshot(snapshot)) return NextResponse.json({ error: "Validated snapshot is unavailable" }, { status: 409 })
 
@@ -35,18 +39,27 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth, context:
       organizationId: auth.orgId,
       jobId: id,
       requestedBy: auth.userId,
+      requestedByRole: auth.role,
       allowConflictOverride,
     }, { jobId: `mtm-import-${id}` })
     return NextResponse.json({ success: true, data: { jobId: id, queued: true } }, { status: 202 })
   }
 
   try {
+    // A client's owner counts from "today", and today is the tenant's day.
+    let effectiveFrom: string | undefined
+    if (job.type === "CONTACTS") {
+      const settings = await getMtmSettings(auth.orgId)
+      effectiveFrom = currentDateKey(new Date(), isValidTimezone(settings.timezone) ? settings.timezone : "UTC")
+    }
     const result = await applyMtmExcelImportJob({
       db: prisma,
       organizationId: auth.orgId,
       jobId: id,
       requestedBy: auth.userId,
       allowConflictOverride,
+      actor: access.actor,
+      effectiveFrom,
     })
     return NextResponse.json({ success: true, data: { jobId: id, queued: false, ...result } })
   } catch (error) {
