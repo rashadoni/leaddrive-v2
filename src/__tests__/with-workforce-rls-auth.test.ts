@@ -523,6 +523,29 @@ describe("withWorkforceSessionExceptionQueueAuth", () => {
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE" })
     expect(handler).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ["HR_ADMIN", "TEAM"], ["HR_ADMIN", "SITE"],
+    ["TEAM_MANAGER", "TEAM"], ["TEAM_MANAGER", "SITE"],
+    ["TENANT_ADMIN", "ORGANIZATION"],
+  ])("does not expand %s %s grant into the organization-wide exception report", async (role, scopeKind) => {
+    entitled(["workforce-hrm", "workforce-granular-access-v1"])
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant_scoped_exception", organizationId: "org-1", principalUserId: "user-1",
+      role, scopeKind,
+      scopeTeamId: scopeKind === "TEAM" ? "team-1" : null,
+      scopeSiteId: scopeKind === "SITE" ? "site-1" : null,
+      scopeAgentId: null,
+      effectiveFrom: new Date("2026-08-01T00:00:00Z"), effectiveUntil: null, revocation: null,
+    }] as never)
+    sessionRole.value = "admin"
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    const response = await withWorkforceSessionExceptionQueueAuth(handler)(request())
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_GRANULAR_ACCESS_REQUIRED" })
+    expect(handler).not.toHaveBeenCalled()
+  })
+
 })
 
 describe("withWorkforceSessionExceptionDecisionAuth", () => {

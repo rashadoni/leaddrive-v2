@@ -1,0 +1,84 @@
+{
+  "at": "2026-10-03T19:46:21.270783+00:00",
+  "targetedTests": "85/85PASS5files1worker5.643s",
+  "eslint": "PASS7touchedsourcefilesbeforefallbackURLnarrowreplacement;changedPGlintrepeatrequired",
+  "runnerPolicy": "41PASS",
+  "hostedPg": "NOTRUN;9declaredcases",
+  "localFullBuildTypeSuiteBrowserAndroidLoad": "NOTRUN;hostcontractCIonly",
+  "originals": [
+    {
+      "source": "/tmp/workforce-part23-initial-source-install.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-initial-original-00.gz",
+      "bytes": 1834,
+      "sha256": "cce1d9c2bfd04a50656dbb93875eb1dfcb5d14dca337d11e65ccadca133168fa",
+      "gzipBytes": 651,
+      "gzipSha256": "56f970cc1227391d7508e42ee5c2c96b65268240df195210657a206186d5f931",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-pg-source-install.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-initial-original-01.gz",
+      "bytes": 538,
+      "sha256": "0cc2b131271204c12e2b17c56eec87ce0e3f61fc7056ea9dd4db32069be822a1",
+      "gzipBytes": 346,
+      "gzipSha256": "e0442ad1e702efd6c120a2b320b0204a5ec5bef2c671bf0ef4d0c21464dde776",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-initial-targeted.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-initial-original-02.gz",
+      "bytes": 4012,
+      "sha256": "2b8ec0bde8c4204d89ee6d1ba48aa80e5ee33104cc11fee93495065115adba13",
+      "gzipBytes": 662,
+      "gzipSha256": "8a348646f5afac73e7f2e9ad987f6dec3b028129cbb51ab71a2537df7e2ea8f1",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-initial-targeted-result.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-initial-original-03.gz",
+      "bytes": 490,
+      "sha256": "e952c0092a03d50ed427fbe9136b5118cdaf1a43dc984fb94c678437d1576e39",
+      "gzipBytes": 243,
+      "gzipSha256": "0a2e5386385f5b94120330bcb0968b4eddfb5c08db45d10cc3c082621266a636",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-initial-eslint.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-initial-original-04.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-initial-runner-policy.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-initial-original-05.gz",
+      "bytes": 44,
+      "sha256": "73576c5e5c928d8da7eec52b821fcceb9a1096a935209271300b906b27db852d",
+      "gzipBytes": 64,
+      "gzipSha256": "943293d11a1b12908c1bd6c15e762f061284c273d3db37b7471c741e3556bc90",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part22-exception-report-postgres-contract.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-initial-original-06.gz",
+      "bytes": 14874,
+      "sha256": "57e20d26980737c304a34c3420eb9a7553e2da0ccdb414421934f154cd20be46",
+      "gzipBytes": 5469,
+      "gzipSha256": "fbb2880141f59a85e0cf9a5b3893c33fce50931148c2feaf2ca236619e5e86d5",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-initial-originals-gitleaks.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-initial-original-07.gz",
+      "bytes": 143,
+      "sha256": "ef44d6fe4bdfe2f0934c2ad5ea6949ea085502ca4249dc8e550a0e132f4ce860",
+      "gzipBytes": 126,
+      "gzipSha256": "45fae7bd8cf13dc6e2669ed8797ce69171354cefc80b61c503d360eda093e844",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "actualPgSourceChangesFromPrepared": "Comment+throw-ifnoURL removes unreachable synthetic fallback; no acceptedPG result",
+  "rawScanBytes": 21798
+}
