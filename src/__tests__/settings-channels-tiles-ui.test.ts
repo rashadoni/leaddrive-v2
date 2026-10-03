@@ -12,19 +12,20 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
- * The channel catalog opens with WhatsApp, Facebook and Instagram — one click each, the way Social
- * Monitoring connects accounts (owner, 2026-10-03: "подключения такая каша").
+ * The channel catalog is a grid of platform tiles, the way Social Monitoring connects accounts
+ * (owner, 2026-10-03: «человек нажимает на иконку платформы и всё»).
  *
- * The cards in that block are the catalog's own cards (their connection state is held by
- * settings-channels-meta-oneclick-ui.test.ts); what is checked here is the block itself: each Meta card
- * appears there and nowhere else, WhatsApp connects through Meta's Embedded Signup straight from its
- * card, a server without Embedded Signup still offers the setup form, and "manual setup" opens the
- * form directly instead of the intro and the readiness questions.
+ * What each tile does is the contract checked here: WhatsApp starts Meta's Embedded Signup from the
+ * tile itself (or opens its form when the server has no Embedded Signup); Facebook and Instagram are
+ * links into Meta's login; a platform that needs a key opens its form in a window over the catalog; VoIP
+ * and integrations go to their own screens. No tile walks the user through the setup wizard's pages,
+ * and Edit on a connected channel opens the same window.
  */
 
+const pushes = vi.hoisted(() => [] as string[])
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: vi.fn((href: string) => { pushes.push(href) }),
     replace: vi.fn(),
     refresh: vi.fn(),
     prefetch: vi.fn(),
@@ -134,12 +135,13 @@ async function flushMicrotasks(rounds = 16): Promise<void> {
   })
 }
 
-describe("Channel catalog — the one-click block for the Meta messengers", () => {
+describe("Channel catalog — one tile per platform", () => {
   let container: HTMLDivElement
   let root: Root
 
   beforeEach(() => {
     stubMatchMedia()
+    pushes.length = 0
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -168,59 +170,78 @@ describe("Channel catalog — the one-click block for the Meta messengers", () =
     await flushMicrotasks()
   }
 
-  const quick = () => container.querySelector<HTMLElement>('[data-testid="channels-meta-quick"]')
-  const quickCard = (id: string) => quick()?.querySelector<HTMLElement>(`[data-testid="channel-card-${id}"]`) || null
-  const linksIn = (el: HTMLElement | null) => [...(el?.querySelectorAll<HTMLAnchorElement>("a") || [])].map((a) => a.getAttribute("href"))
+  const tile = (id: string) => container.querySelector<HTMLElement>(`[data-testid="channel-card-${id}"]`)
+  /** The one thing a tile does: its single link or button. */
+  const action = (id: string) => {
+    const element = tile(id)
+    const controls = element ? [...element.querySelectorAll<HTMLElement>("a, button")] : []
+    expect(controls).toHaveLength(1)
+    return controls[0]
+  }
+  const formOpen = () => Boolean(container.querySelector("form"))
+  async function click(element: HTMLElement) {
+    await act(async () => {
+      element.click()
+    })
+    await flushMicrotasks()
+  }
 
-  it("shows WhatsApp, Facebook and Instagram in the block, once each", async () => {
+  it("starts Meta's Embedded Signup from the WhatsApp tile itself", async () => {
     await renderCatalog([], true)
-    for (const id of ["whatsapp-business", "facebook", "instagram"]) {
-      expect(quickCard(id)).not.toBeNull()
-      expect(container.querySelectorAll(`[data-testid="channel-card-${id}"]`)).toHaveLength(1)
-    }
-    // The rest of the catalog is still there below it.
-    expect(container.querySelector('[data-testid="channel-card-telegram"]')).not.toBeNull()
-    expect(quick()?.querySelector('[data-testid="channel-card-telegram"]')).toBeNull()
+    const whatsapp = action("whatsapp-business")
+    expect(whatsapp.tagName).toBe("BUTTON")
+    expect(whatsapp.getAttribute("aria-label")).toBe("Connect with Meta: WhatsApp Business Platform (API)")
+    expect(whatsapp.hasAttribute("disabled")).toBe(false)
   })
 
-  it("connects WhatsApp through Meta straight from its card", async () => {
-    await renderCatalog([], true)
-    const button = quickCard("whatsapp-business")?.querySelector<HTMLElement>('[data-testid="whatsapp-embedded-signup-button"] button')
-    expect(button?.textContent).toContain("Connect with Meta")
-    expect(button?.hasAttribute("disabled")).toBe(false)
-    // Manual setup opens the form itself, not the intro and the readiness questions.
-    expect(linksIn(quickCard("whatsapp-business"))).toEqual(["/settings/channels/connect/whatsapp-business?mode=new&stage=connect"])
-  })
-
-  it("still offers the setup form when the server has no Embedded Signup", async () => {
+  it("opens WhatsApp's form instead when the server has no Embedded Signup", async () => {
     await renderCatalog([], false)
-    const card = quickCard("whatsapp-business")
-    expect(card?.querySelector('[data-testid="whatsapp-embedded-signup-button"]')).toBeNull()
-    expect(linksIn(card)).toEqual([
-      "/settings/channels/connect/whatsapp-business?mode=new&stage=connect",
-      "/settings/channels/connect/whatsapp-business?mode=new&stage=connect",
-    ])
-    expect(card?.textContent).toContain("Open setup")
+    expect(tile("whatsapp-business")?.textContent).toContain("Meta sign-in is not set up on this server")
+    await click(action("whatsapp-business"))
+    expect(formOpen()).toBe(true)
+    expect(container.querySelector("#apiKey")).not.toBeNull()
+    expect(pushes).toEqual([])
   })
 
-  it("keeps Facebook and Instagram on their one-click Meta login, with manual setup going straight to the form", async () => {
+  it("links Facebook and Instagram straight into Meta's login", async () => {
     await renderCatalog([], true)
-    expect(linksIn(quickCard("facebook"))).toEqual([
-      "/api/v1/social/oauth/facebook/start?from=channels-facebook",
-      "/settings/channels/connect/facebook?mode=new&stage=connect",
-    ])
+    expect(action("facebook").getAttribute("href")).toBe("/api/v1/social/oauth/facebook/start?from=channels-facebook")
     // The Instagram path Meta's reviewer follows: Settings -> Channels -> Instagram -> Instagram Login.
-    expect(linksIn(quickCard("instagram"))).toEqual([
-      "/api/v1/social/oauth/instagram/start?from=channels-instagram",
-      "/settings/channels/connect/instagram?mode=new&stage=connect",
-    ])
+    expect(action("instagram").getAttribute("href")).toBe("/api/v1/social/oauth/instagram/start?from=channels-instagram")
   })
 
-  it("shows a connected WhatsApp number on its card instead of the connect button", async () => {
-    await renderCatalog([{ id: "wa-1", channelType: "whatsapp", configName: "Acme WhatsApp", isActive: true, hasAccessToken: true }], true)
-    const card = quickCard("whatsapp-business")
-    expect(card?.querySelector('[data-testid="channel-card-connected-badge"]')?.textContent).toContain("Connected")
-    expect(card?.textContent).toContain("Acme WhatsApp")
-    expect(card?.querySelector('[data-testid="whatsapp-embedded-signup-button"]')).toBeNull()
+  it("opens the form in a window for a platform that needs a key, without leaving the catalog", async () => {
+    await renderCatalog([], true)
+    expect(formOpen()).toBe(false)
+    await click(action("telegram"))
+    expect(formOpen()).toBe(true)
+    expect(container.querySelector("#botToken")).not.toBeNull()
+    expect(pushes).toEqual([])
+  })
+
+  it("sends VoIP and integrations to their own screens", async () => {
+    await renderCatalog([], true)
+    expect(action("asterisk").getAttribute("href")).toBe("/settings/voip")
+    expect(action("website-chat").getAttribute("href")).toBe("/settings/web-chat")
+  })
+
+  it("never walks a platform through the setup wizard's pages, except the WhatsApp Calling guide", async () => {
+    await renderCatalog([], true)
+    const wizardLinks = [...container.querySelectorAll<HTMLAnchorElement>('a[href^="/settings/channels/connect/"]')]
+      .map((link) => link.getAttribute("href"))
+    expect(wizardLinks).toEqual(["/settings/channels/connect/whatsapp-business-calls"])
+  })
+
+  it("lists a connected channel with Edit opening the same window, and shows it on its tile", async () => {
+    await renderCatalog([{ id: "tg-1", channelType: "telegram", configName: "Support bot", isActive: true }], true)
+    expect(tile("telegram")?.querySelector('[data-testid="channel-card-connected-badge"]')).not.toBeNull()
+    expect(tile("telegram")?.textContent).toContain("Support bot")
+    const row = container.querySelector<HTMLElement>('[data-testid="channel-row-tg-1"]')
+    expect(row?.textContent).toContain("Support bot")
+    const edit = [...(row?.querySelectorAll("button") || [])].find((button) => button.textContent?.includes("Edit"))
+    expect(edit).toBeDefined()
+    await click(edit as HTMLElement)
+    expect(formOpen()).toBe(true)
+    expect(pushes).toEqual([])
   })
 })

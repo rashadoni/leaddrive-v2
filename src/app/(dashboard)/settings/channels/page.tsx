@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
@@ -26,17 +26,13 @@ import {
   Pencil,
   PhoneCall,
   PlayCircle,
-  Plus,
   Radio,
   RotateCcw,
-  Search,
   Send,
-  Settings,
   Smartphone,
   Sparkles,
   Trash2,
   Webhook,
-  Workflow,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -45,7 +41,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input"
 import { ChannelConfigForm } from "@/components/channel-config-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
-import { WhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
+import { useWhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
 import { HelpButton } from "@/components/help/help-button"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
@@ -125,8 +121,57 @@ interface TutorialScene {
 
 const LEADDRIVE_APP_ORIGIN = "https://app.leaddrivecrm.org"
 
-/** The cards shown in the one-click block at the top of the catalog, in this order. */
-const META_QUICK_CARD_IDS = ["whatsapp-business", "facebook", "instagram"] as const
+/**
+ * How each platform looks on its tile — the brand colour and mark, as on Social Monitoring's connect
+ * tiles. A card with no entry gets the neutral one.
+ */
+type TileVisual = { bg: string; icon: ReactNode }
+const glyph = (path: ReactNode) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="h-[18px] w-[18px]" aria-hidden="true">{path}</svg>
+)
+const lucideGlyph = (Icon: ComponentType<{ className?: string }>) => <Icon className="h-[18px] w-[18px]" />
+const WHATSAPP_GLYPH = glyph(
+  <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-2-1.3 7.4 7.4 0 0 1-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.5.2-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.3-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.5 3.9 1.6.7 2.3.7 3.1.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z" />,
+)
+const TILE_VISUALS: Record<string, TileVisual> = {
+  "whatsapp-business": { bg: "#25D366", icon: WHATSAPP_GLYPH },
+  facebook: {
+    bg: "#1877f2",
+    icon: glyph(<path d="M14 9h3l.4-3H14V4.3c0-.9.3-1.5 1.6-1.5H17V.1C16.7.1 15.7 0 14.5 0 12 0 10.3 1.5 10.3 4.2V6H7.5v3h2.8v9H14z" />),
+  },
+  instagram: {
+    bg: "radial-gradient(120% 120% at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 70%, #285AEB 100%)",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-[18px] w-[18px]" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="5" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
+  telegram: {
+    bg: "#229ED9",
+    icon: glyph(<path d="M21.9 4.3 18.7 19.4c-.2 1-.9 1.3-1.7.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.9 8.9-8c.4-.3-.1-.5-.6-.2L6.6 13.3l-4.7-1.5c-1-.3-1-1 .2-1.5L20.6 3.2c.9-.3 1.6.2 1.3 1.1Z" />),
+  },
+  tiktok: {
+    bg: "#10131a",
+    icon: glyph(<path d="M16 3c.3 2 1.5 3.4 3.5 3.7V9c-1.3 0-2.5-.4-3.5-1v5.8c0 3-2.2 5.2-5 5.2S6 16.8 6 13.9s2.4-5 5.2-4.7v2.4c-1.4-.3-2.7.6-2.7 2.1 0 1.3 1 2.3 2.3 2.3 1.4 0 2.4-1 2.4-2.6V3z" />),
+  },
+  vkontakte: { bg: "#0077FF", icon: <span className="text-[11px] font-black tracking-tight">VK</span> },
+  "whatsapp-business-calls": { bg: "#25D366", icon: lucideGlyph(PhoneCall) },
+  "twilio-calls": { bg: "#F22F46", icon: lucideGlyph(PhoneCall) },
+  threecx: { bg: "#0b67d4", icon: lucideGlyph(Headphones) },
+  asterisk: { bg: "#f68f1e", icon: lucideGlyph(Network) },
+  "custom-sip": { bg: "#52525b", icon: lucideGlyph(PhoneCall) },
+  "atl-sms": { bg: "#f97316", icon: lucideGlyph(Smartphone) },
+  "twilio-sms": { bg: "#F22F46", icon: lucideGlyph(Smartphone) },
+  "vonage-sms": { bg: "#111827", icon: lucideGlyph(Smartphone) },
+  "google-workspace": { bg: "#4285F4", icon: lucideGlyph(Mail) },
+  gmail: { bg: "#EA4335", icon: lucideGlyph(Mail) },
+  "other-email": { bg: "#52525b", icon: lucideGlyph(Mail) },
+  "website-chat": { bg: "#f97316", icon: lucideGlyph(MessageCircle) },
+}
+const NEUTRAL_TILE_VISUAL: TileVisual = { bg: "#71717a", icon: lucideGlyph(Webhook) }
 
 function whatsappWebhookUrl(orgSlug?: string | null) {
   const slug = orgSlug ? encodeURIComponent(orgSlug) : "<tenant-slug>"
@@ -158,6 +203,12 @@ const copy = {
     metaQuickTitle: "WhatsApp, Facebook and Instagram — connect in one click",
     metaQuickHint: "Sign in with Meta and pick your number, Page or account. LeadDrive sets up the keys and webhooks — nothing to copy.",
     manualSetupLink: "Manual setup",
+    tilesHint: "Click a platform to connect it. WhatsApp, Facebook and Instagram open Meta's window; the others ask only for their key.",
+    tileConnect: "Connect",
+    tileOpen: "Open",
+    tileConnectedCount: "{count} connected",
+    connectedListTitle: "Connected channels",
+    tileWhatsAppManual: "Meta sign-in is not set up on this server — enter the keys instead.",
     esWorking: "Finishing the connection…",
     esConnected: "Connected: {number}",
     esCancelled: "The Meta window was closed before the connection finished.",
@@ -336,6 +387,12 @@ const copy = {
     metaQuickTitle: "WhatsApp, Facebook и Instagram — подключение в один клик",
     metaQuickHint: "Войдите через Meta и выберите номер, страницу или аккаунт. Ключи и вебхуки LeadDrive настроит сам — ничего копировать не нужно.",
     manualSetupLink: "Ручная настройка",
+    tilesHint: "Нажмите на платформу, чтобы подключить. WhatsApp, Facebook и Instagram открывают окно Meta, остальным нужен только их ключ.",
+    tileConnect: "Подключить",
+    tileOpen: "Открыть",
+    tileConnectedCount: "Подключено: {count}",
+    connectedListTitle: "Подключённые каналы",
+    tileWhatsAppManual: "Вход через Meta на этом сервере не настроен — введите ключи вручную.",
     esWorking: "Завершаем подключение…",
     esConnected: "Подключено: {number}",
     esCancelled: "Окно Meta закрыли до завершения подключения.",
@@ -512,6 +569,12 @@ const copy = {
     metaQuickTitle: "WhatsApp, Facebook və Instagram — bir kliklə qoşulma",
     metaQuickHint: "Meta ilə daxil olun və nömrəni, səhifəni və ya hesabı seçin. Açarları və webhook-ları LeadDrive özü qurur — heç nə köçürmək lazım deyil.",
     manualSetupLink: "Əl ilə quraşdırma",
+    tilesHint: "Qoşmaq üçün platformaya klikləyin. WhatsApp, Facebook və Instagram Meta pəncərəsini açır, digərlərinə yalnız öz açarı lazımdır.",
+    tileConnect: "Qoş",
+    tileOpen: "Aç",
+    tileConnectedCount: "Qoşulub: {count}",
+    connectedListTitle: "Qoşulmuş kanallar",
+    tileWhatsAppManual: "Bu serverdə Meta ilə giriş qurulmayıb — açarları əl ilə daxil edin.",
     esWorking: "Qoşulma tamamlanır…",
     esConnected: "Qoşuldu: {number}",
     esCancelled: "Meta pəncərəsi qoşulma bitmədən bağlandı.",
@@ -905,8 +968,6 @@ const catalogCards = (c: (typeof copy)[LocaleKey]): CatalogCard[] => [
     action: { type: "link", href: "/settings/integrations" },
   },
 ]
-
-const tabs: CatalogTab[] = ["all", "business", "calls", "sms", "email", "live"]
 
 const catalogConnectAliases: Record<string, string> = {
   whatsapp: "whatsapp-business",
@@ -1567,8 +1628,6 @@ function ChannelsPageInner() {
   const [editData, setEditData] = useState<(Partial<ChannelConfig> & { settings?: Record<string, unknown> }) | undefined>()
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteName, setDeleteName] = useState("")
-  const [search, setSearch] = useState("")
-  const [activeTab, setActiveTab] = useState<CatalogTab>("all")
   const [testPhone, setTestPhone] = useState("")
   const [testTemplateName, setTestTemplateName] = useState("hello_world")
   const [testLanguageCode, setTestLanguageCode] = useState("en_US")
@@ -1599,6 +1658,13 @@ function ChannelsPageInner() {
   }, [orgId])
 
   useEffect(() => { fetchChannels() }, [fetchChannels])
+
+  // The WhatsApp tile starts Meta's Embedded Signup itself (components/channels/whatsapp-embedded-signup).
+  const whatsappSignup = useWhatsAppEmbeddedSignup({
+    cancelledMessage: c.esCancelled,
+    failedMessage: c.esFailed,
+    onConnected: () => void fetchChannels(),
+  })
 
   useEffect(() => {
     const connectId = searchParams.get("connect")
@@ -1722,59 +1788,30 @@ function ChannelsPageInner() {
   const whatsappCallingCredentialsReady =
     whatsappCallingCredentialChecks.length > 0
     && whatsappCallingCredentialChecks.every((check) => check.ready)
+  // Edit opens the channel's form in a small window over the catalog — the form already says whether the
+  // channel delivers and why not (lib/channels/live-connection), so the old detour through the setup
+  // wizard's pages added nothing but clicks.
   const editExistingChannel = (channel: ChannelConfig) => {
-    const card = cards.find((item) => channelMatchesCard(item, channel))
-    if (card) {
-      router.push(`/settings/channels/connect/${card.id}?mode=existing&stage=connect&channelId=${encodeURIComponent(channel.id)}`)
-      return
-    }
     setEditData({ ...channel, settings: channel.settings || undefined })
     setLockFormChannelType(true)
     setShowForm(true)
   }
 
-  const q = search.trim().toLowerCase()
-  const metaQuickCards = META_QUICK_CARD_IDS
-    .map((id) => cards.find((card) => card.id === id))
-    .filter((card): card is CatalogCard => Boolean(card))
-  const visibleCards = cards.filter((card) => {
-    // Drawn once, in the one-click block above the catalog.
-    if ((META_QUICK_CARD_IDS as readonly string[]).includes(card.id)) return false
-    if (activeTab !== "all" && card.tab !== activeTab) return false
-    if (!q) return true
-    return [
-      card.title,
-      card.description,
-      card.tab,
-      card.provider || "",
-      card.channelType || "",
-    ].join(" ").toLowerCase().includes(q)
-  })
+  const tileGroups = (["business", "calls", "sms", "email", "live"] as const)
+    .map((group) => ({ group, cards: cards.filter((card) => card.tab === group && card.action.type !== "disabled") }))
+    .filter((entry) => entry.cards.length > 0)
   // A row that belongs to its own screen (lib/channels/dedicated-channel-types) is listed only where a card shows it —
   // VoIP's. Social Monitoring's settings rows and the Slack/Teams notification hooks have no card and are not channels:
   // "Other connected channels" used to offer them the channel form's Edit and a Delete, and the "active" count below
   // counted them. They are managed on their own screens, and the channels API refuses to edit or delete them.
   const listedChannels = channels.filter((channel) =>
     connectedByCard.primaryIds.has(channel.id) || !isDedicatedChannelType(channel.channelType))
-  const unmatchedChannels = listedChannels.filter((channel) => {
-    if (activeTab !== "all") return false
-    if (connectedByCard.primaryIds.has(channel.id)) return false
-    if (!q) return true
-    return [
-      channel.configName,
-      channel.channelType,
-      channelProvider(channel) || "",
-      channel.phoneNumber || "",
-    ].join(" ").toLowerCase().includes(q)
-  })
-  const hasVisibleChannels = visibleCards.length > 0 || unmatchedChannels.length > 0
 
   // "N active" sits next to a green check, so it has to mean "N channels that actually work". An
   // empty Meta row is created with isActive=true, so counting isActive alone counted drafts as wins.
   // The isActive term is now implied by the predicate for every type; it stays as a cheap guard for
   // callers that hand us a row with the column unselected.
   const activeCount = listedChannels.filter((cn) => cn.isActive && channelIsLiveConnection(cn)).length
-  const availableCount = cards.filter(card => card.action.type !== "disabled").length
   const ConnectIcon = connectCard?.icon
   const connectTutorial = useMemo(
     () => (connectCard ? tutorialForCard(connectCard, locale) : null),
@@ -1824,333 +1861,252 @@ function ChannelsPageInner() {
     return () => window.clearInterval(timer)
   }, [reducedTutorialMotion, tutorialOpen, tutorialPlaying, tutorialSteps.length])
 
-  // One catalog card. The three Meta cards are drawn by this same function in the one-click block at the
-  // top (compact), so a card says the same thing about a connection wherever it stands.
-  const renderCatalogCard = (card: CatalogCard, compact = false) => {
+  const openNewChannelForm = (card: CatalogCard) => {
+    if (card.action.type !== "form") return
+    setEditData({
+      channelType: card.action.channelType,
+      configName: card.action.presetName,
+      settings: card.action.settings,
+      isActive: true,
+    })
+    setLockFormChannelType(true)
+    setShowForm(true)
+  }
+
+  // One platform tile, as Social Monitoring draws them: the mark, the name, one status line — and the
+  // whole tile is the button. WhatsApp opens Meta's Embedded Signup, Facebook and Instagram Meta's
+  // login; the platforms that need a key open the channel form in a small window; VoIP and the
+  // integrations go to their own screens. Editing and deleting live in the connected list below.
+  const renderChannelTile = (card: CatalogCard) => {
     const connected = connectedForCard(card)
-    // "Row exists" was never the same thing as "the channel delivers". The state
-    // comes from lib/channels/live-connection, which reads the same three facts the
-    // inbound resolver reads, so the badge cannot drift away from reality. A row in
-    // any non-live state stays editable and deletable, must not wear the "Connected"
-    // badge, and must not hide the OAuth button.
+    // The tile reads the same state as every other place (lib/channels/live-connection): a saved row is
+    // not a connection, and a row Meta does not deliver for never wears "Connected".
     const connectionState = connected ? channelConnectionState(connected) : null
     const connectionLive = connectionState === "live"
     const connectionBroken = Boolean(connected) && !connectionLive
     const brokenBadge = connectionState ? cardBrokenBadge(c, connectionState, claimedCopy) : null
     const brokenStatus = connectionState ? cardBrokenStatus(c, connectionState, claimedCopy) : null
-    const brokenHint = connectionState ? cardBrokenHint(c, connectionState, claimedCopy) : null
-    const guideHref = guideHrefForCard(card)
-    // A row whose type has its own screen (lib/channels/dedicated-channel-types) is changed and switched
-    // off there: the channels API refuses to edit or delete it. Of those rows only VoIP's reach a card —
-    // the catalog lists the others nowhere — and every VoIP card links to /settings/voip, hence the VoIP
-    // copy. The card used to offer Edit, which opened the channel form whose save is refused, and a trash
-    // whose DELETE always came back 403.
-    const ownScreenHref =
-      connected && isDedicatedChannelType(connected.channelType) && card.action.type === "link"
-        ? card.action.href
-        : null
-    const Icon = card.icon
+    const liveCount = channels.filter((channel) => channelMatchesCard(card, channel) && channelIsLiveConnection(channel)).length
+    const visual = TILE_VISUALS[card.id] || NEUTRAL_TILE_VISUAL
+    const isWhatsApp = card.id === "whatsapp-business"
+    const whatsappManual = isWhatsApp && whatsappSignup.availability === "unavailable"
+    const whatsappWorking = isWhatsApp && whatsappSignup.status.kind === "working"
+    const whatsappError = isWhatsApp && whatsappSignup.status.kind === "error" ? whatsappSignup.status.message : null
+    const actionLabel = card.oauthStart || (isWhatsApp && !whatsappManual)
+      ? c.oauthConnect
+      : card.action.type === "link"
+        ? c.tileOpen
+        : card.action.type === "guide"
+          ? c.notConnected
+          : c.tileConnect
+    const subtitle = whatsappWorking
+      ? c.esWorking
+      : connectionLive
+        ? liveCount > 1 ? c.tileConnectedCount.replace("{count}", String(liveCount)) : connected?.configName
+        : connectionBroken
+          ? brokenStatus || brokenBadge
+          : whatsappManual
+            ? c.tileWhatsAppManual
+            : actionLabel
+
+    const inner = (
+      <>
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ring-1 ring-black/5"
+            style={{ background: visual.bg }}
+            aria-hidden="true"
+          >
+            {visual.icon}
+          </span>
+          {connectionLive ? (
+            <span
+              data-testid="channel-card-connected-badge"
+              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+            >
+              <CheckCircle2 className="h-3 w-3" />
+              {c.connected}
+            </span>
+          ) : connectionBroken && brokenBadge ? (
+            <span
+              data-testid="channel-card-broken-badge"
+              className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+            >
+              <Clock3 className="h-3 w-3" />
+              {brokenBadge}
+            </span>
+          ) : (
+            <span className="rounded-full border border-orange-200 px-2 py-0.5 text-[10px] font-semibold text-orange-600">
+              {actionLabel}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-zinc-950">{card.title}</div>
+          <div className={cn("line-clamp-2 text-[11px] leading-4", connectionBroken ? "text-amber-700" : "text-zinc-500")}>
+            {subtitle}
+          </div>
+          {whatsappError && <div className="mt-1 text-[11px] leading-4 text-red-600">{whatsappError}</div>}
+        </div>
+      </>
+    )
+    const actionClass =
+      "flex h-full w-full flex-col gap-2.5 rounded-xl p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:cursor-wait"
+    const ariaLabel = `${actionLabel}: ${card.title}`
+
+    let action: ReactNode
+    if (card.oauthStart) {
+      // A plain same-origin navigation, like Social Monitoring's tiles: the session cookie rides along.
+      // It stays a way back into Meta's login for a draft or refused row too.
+      action = <a href={card.oauthStart} aria-label={ariaLabel} className={actionClass}>{inner}</a>
+    } else if (isWhatsApp && !whatsappManual) {
+      action = (
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          className={actionClass}
+          disabled={whatsappSignup.availability === "loading" || whatsappWorking}
+          onClick={() => void whatsappSignup.start()}
+        >
+          {inner}
+        </button>
+      )
+    } else if (card.action.type === "link") {
+      action = <Link href={card.action.href} aria-label={ariaLabel} className={actionClass}>{inner}</Link>
+    } else if (card.action.type === "guide") {
+      action = <Link href={`/settings/channels/connect/${card.id}`} aria-label={ariaLabel} className={actionClass}>{inner}</Link>
+    } else {
+      action = (
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          className={actionClass}
+          // A platform that already has a channel opens that channel; a fresh one opens an empty form.
+          onClick={() => (connected ? editExistingChannel(connected) : openNewChannelForm(card))}
+        >
+          {inner}
+        </button>
+      )
+    }
+
     return (
       <article
         key={card.id}
         data-testid={`channel-card-${card.id}`}
         className={cn(
-          "group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-[0_14px_42px_rgba(15,23,42,0.09)]",
-          compact ? "min-h-0" : "min-h-[280px]",
-          card.accent
+          "rounded-xl border bg-white transition hover:-translate-y-0.5 hover:shadow-sm",
+          connectionBroken ? "border-amber-200" : "border-zinc-200 hover:border-zinc-300",
         )}
       >
-        <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br opacity-60", card.accent)} />
+        {action}
+      </article>
+    )
+  }
 
-        <div className="relative flex flex-1 flex-col p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                {!compact && (
-                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
-                    {c.groups[card.tab]}
-                  </span>
-                )}
-              {card.badge && !compact && (
-                <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">
-                  <BadgeCheck className="mr-1 h-3 w-3" />
-                  {card.badge}
-                </Badge>
-              )}
-              {connectionLive && (
-                <Badge
-                  data-testid="channel-card-connected-badge"
-                  className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50"
+  // One connected channel: what it is, whether it delivers, and what can be done with it here. A row whose
+  // type has its own screen (VoIP — lib/channels/dedicated-channel-types) is changed there: the channels
+  // API refuses to edit or delete it, so it gets the way to that screen instead of an Edit and a trash.
+  const renderConnectedRow = (channel: ChannelConfig) => {
+    const card = cards.find((item) => channelMatchesCard(item, channel))
+    const visual = (card && TILE_VISUALS[card.id]) || NEUTRAL_TILE_VISUAL
+    const rowState = channelConnectionState(channel)
+    const rowBrokenBadge = cardBrokenBadge(c, rowState, claimedCopy)
+    const rowBrokenStatus = cardBrokenStatus(c, rowState, claimedCopy)
+    const rowBrokenHint = cardBrokenHint(c, rowState, claimedCopy)
+    const ownScreenHref =
+      isDedicatedChannelType(channel.channelType) && card && card.action.type === "link" ? card.action.href : null
+    return (
+      <article
+        key={channel.id}
+        data-testid={`channel-row-${channel.id}`}
+        className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 sm:flex-row sm:items-center"
+      >
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ring-1 ring-black/5"
+            style={{ background: visual.bg }}
+            aria-hidden="true"
+          >
+            {visual.icon}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="min-w-0 break-words text-sm font-semibold text-zinc-950">{channel.configName}</span>
+              {rowBrokenBadge ? (
+                <span
+                  data-testid="channel-row-broken-badge"
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
                 >
+                  <Clock3 className="h-3 w-3" />
+                  {rowBrokenBadge}
+                </span>
+              ) : (
+                <span
+                  data-testid="channel-row-connected-badge"
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                >
+                  <CheckCircle2 className="h-3 w-3" />
                   {c.connected}
-                </Badge>
-              )}
-              {connectionBroken && brokenBadge && (
-                <Badge
-                  data-testid="channel-card-broken-badge"
-                  className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50"
-                >
-                  <Clock3 className="mr-1 h-3 w-3" />
-                  {brokenBadge}
-                </Badge>
-              )}
-              {!connected && guideHref && card.action.type !== "disabled" && !compact && (
-                <Badge className="border-zinc-200 bg-white text-zinc-700 hover:bg-white">
-                  <BookOpen className="mr-1 h-3 w-3" />
-                  {c.guidedSetup}
-                </Badge>
-              )}
-              {card.action.type === "disabled" && (
-                <Badge className="border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-100">
-                  <Clock3 className="mr-1 h-3 w-3" />
-                  {c.comingSoon}
-                </Badge>
+                </span>
               )}
             </div>
-              <h3 className="text-xl font-semibold leading-tight text-zinc-950">
-              {card.title}
-            </h3>
-          </div>
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-orange-200 bg-orange-50 text-xl font-black text-orange-600">
-            {card.logo}
-            </div>
-          </div>
-
-          {!compact && (
-            <p className="mt-4 line-clamp-3 text-sm leading-6 text-zinc-600">
-              {card.description}
-            </p>
-          )}
-
-          <div className="mt-5 grid gap-3 rounded-xl border border-zinc-200 bg-white/82 p-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-600">
-                <Icon className="h-3.5 w-3.5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{c.cardStatus}</p>
-          {connected ? (
-                  <div className="mt-1 min-w-0 space-y-1">
-                    <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-700">
-                      <span className={cn(
-                        "h-2 w-2 rounded-full",
-                        connectionBroken ? "bg-amber-400" : connected.isActive ? "bg-orange-400" : "bg-zinc-500"
-                      )} />
-                      <span className="min-w-0 break-words">{connected.configName}</span>
-                    </div>
-                    {connectionBroken && brokenStatus && (
-                      <p className="text-xs font-medium text-amber-700">{brokenStatus}</p>
-                    )}
-                  </div>
-          ) : (
-                  <p className="mt-1 text-sm text-zinc-700">{card.typeLabel || card.channelType || "custom"}</p>
-          )}
-              </div>
-            </div>
-            {(!compact || (connectionBroken && brokenHint)) && (
-            <div className="rounded-lg bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-600">
-              <span className="font-semibold text-zinc-800">{connectionLive ? c.cardVerify : c.cardNextStep}: </span>
-              {ownScreenHref
-                ? c.cardVoipSettingsHint
-                : connectionLive
-                  ? c.cardConnectedHint
-                  : connectionBroken && brokenHint
-                    ? brokenHint
-                    : card.action.type === "disabled"
-                      ? c.cardRoadmapHint
-                      : c.cardNewHint}
-            </div>
-            )}
-          </div>
-
-          <div className="mt-auto flex items-center justify-between gap-2 border-t border-zinc-200 pt-4">
+            <div className="text-xs text-zinc-500">{card?.title || channel.channelType} · {channelLabel(channel)}</div>
             {ownScreenHref ? (
+              <p className="mt-1 text-xs text-zinc-500">{c.cardVoipSettingsHint}</p>
+            ) : rowBrokenBadge && (rowBrokenStatus || rowBrokenHint) ? (
+              <p className="mt-1 text-xs leading-5 text-amber-700">
+                {[rowBrokenStatus, rowBrokenHint].filter(Boolean).join(" ")}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {ownScreenHref ? (
+            <Button asChild size="sm" variant="secondary" className="h-8 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50">
+              <Link href={ownScreenHref} aria-label={`${c.openVoipSettings}: ${channel.configName}`}>{c.openVoipSettings}</Link>
+            </Button>
+          ) : (
+            <>
               <Button
-                asChild
                 size="sm"
                 variant="secondary"
-                className="h-9 flex-1 justify-center gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                className="h-8 gap-1.5 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                onClick={() => editExistingChannel(channel)}
               >
-                <Link href={ownScreenHref} aria-label={`${c.openVoipSettings}: ${card.title}`}>
-                  <Workflow className="h-4 w-4" />
-                  {c.openVoipSettings}
-                </Link>
+                <Pencil className="h-3.5 w-3.5" />
+                {c.configureConnected}
               </Button>
-            ) : connected && (connectionLive || !card.oauthStart) ? (
-              <>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="h-9 flex-1 justify-center gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                  onClick={() => editExistingChannel(connected)}
-                >
-                  <Pencil className="h-4 w-4" />
-                  {c.configureConnected}
-                </Button>
-                {connected.channelType === "whatsapp" && connected.isActive && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-9 w-9 p-0 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                    onClick={() => {
-                      setTestChannelId(connected.id)
-                      setTestPhone("")
-                      setTestTemplateName("hello_world")
-                      setTestLanguageCode("en_US")
-                      setTestResult(null)
-                    }}
-                    title={c.testAction}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                )}
+              {channel.channelType === "whatsapp" && channel.isActive && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-9 w-9 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                  className="h-8 w-8 p-0 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
                   onClick={() => {
-                    setDeleteId(connected.id)
-                    setDeleteName(connected.configName)
+                    setTestChannelId(channel.id)
+                    setTestPhone("")
+                    setTestTemplateName("hello_world")
+                    setTestLanguageCode("en_US")
+                    setTestResult(null)
                   }}
-                  title={c.delete}
+                  title={c.testAction}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Send className="h-4 w-4" />
                 </Button>
-              </>
-            ) : card.oauthStart ? (
-              <>
-                {/* Plain same-origin navigation, exactly like the Social Monitoring
-                    connect tiles: the session cookie rides along, so no fetch or
-                    client state is needed to start the Meta dialog.
-                    Order matters: this branch now sits ABOVE the generic ones and
-                    the branch above it only claims LIVE connections, so a draft row
-                    (saved, but Meta never returned a Page) lands here and the way
-                    back into OAuth never disappears from the card. */}
-                <Button
-                  asChild
-                  size="sm"
-                  className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
-                >
-                  <a href={card.oauthStart} aria-label={`${c.oauthConnect}: ${card.title}`}>
-                    <Plus className="h-4 w-4" />
-                    {c.oauthConnect}
-                  </a>
-                </Button>
-                {connected ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-zinc-600 hover:bg-zinc-50"
-                      onClick={() => editExistingChannel(connected)}
-                      title={c.configureConnected}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      onClick={() => {
-                        setDeleteId(connected.id)
-                        setDeleteName(connected.configName)
-                      }}
-                      title={c.delete}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>
-                ) : (
-                  <Button asChild size="sm" variant="ghost" className="h-9 shrink-0 px-2 text-xs text-zinc-600 hover:bg-zinc-50">
-                    <Link href={`/settings/channels/connect/${card.id}?mode=new&stage=connect`}>{c.manualSetupLink}</Link>
-                  </Button>
-                )}
-              </>
-            ) : card.action.type === "link" ? (
-              <Button
-                asChild
-                size="sm"
-                className="h-9 gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-              >
-                <Link
-                  href={guideHref || card.action.href}
-                  aria-label={guideHref ? `${c.notConnected}: ${card.title}` : `${c.configure}: ${card.title}`}
-                >
-                  {guideHref ? (
-                    <Plus className="h-4 w-4" />
-                  ) : (
-                    <Workflow className="h-4 w-4" />
-                  )}
-                  {guideHref ? c.notConnected : c.configure}
-                </Link>
-              </Button>
-            ) : card.action.type === "disabled" ? (
+              )}
               <Button
                 size="sm"
-                variant="secondary"
-                disabled
-                className="h-9 border border-zinc-200 bg-zinc-100 text-zinc-400"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                onClick={() => {
+                  setDeleteId(channel.id)
+                  setDeleteName(channel.configName)
+                }}
+                title={c.delete}
               >
-                {c.comingSoon}
+                <Trash2 className="h-4 w-4" />
               </Button>
-            ) : card.action.type === "guide" ? (
-              <Button
-                asChild
-                size="sm"
-                className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
-              >
-                <Link href={`/settings/channels/connect/${card.id}`} aria-label={`${c.notConnected}: ${card.title}`}>
-                  <Plus className="h-4 w-4" />
-                  {c.notConnected}
-                </Link>
-              </Button>
-            ) : card.id === "whatsapp-business" ? (
-              <>
-                {/* Meta's Embedded Signup straight from the card, like Connect with Meta on Facebook and
-                    Instagram. A server without it configured gets today's way in instead: the form. */}
-                <WhatsAppEmbeddedSignup
-                  variant="button"
-                  labels={{
-                    title: card.title,
-                    description: "",
-                    button: c.oauthConnect,
-                    working: c.esWorking,
-                    connected: c.esConnected,
-                    paymentHint: "",
-                    cancelled: c.esCancelled,
-                    failed: c.esFailed,
-                  }}
-                  onConnected={() => void fetchChannels()}
-                  fallback={
-                    <Button
-                      asChild
-                      size="sm"
-                      className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
-                    >
-                      <Link href={`/settings/channels/connect/${card.id}?mode=new&stage=connect`} aria-label={`${c.notConnected}: ${card.title}`}>
-                        <Plus className="h-4 w-4" />
-                        {c.notConnected}
-                      </Link>
-                    </Button>
-                  }
-                />
-                <Button asChild size="sm" variant="ghost" className="h-9 shrink-0 px-2 text-xs text-zinc-600 hover:bg-zinc-50">
-                  <Link href={`/settings/channels/connect/${card.id}?mode=new&stage=connect`}>{c.manualSetupLink}</Link>
-                </Button>
-              </>
-            ) : (
-              <Button
-                asChild
-                size="sm"
-                className="h-9 flex-1 justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600"
-              >
-                <Link href={`/settings/channels/connect/${card.id}`} aria-label={`${c.notConnected}: ${card.title}`}>
-                  <Plus className="h-4 w-4" />
-                  {c.notConnected}
-                </Link>
-              </Button>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </article>
     )
@@ -2535,244 +2491,53 @@ function ChannelsPageInner() {
       ) : (
         <>
       <div className="border-b border-zinc-200 bg-white px-6 py-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="mb-2 flex items-center gap-3">
-              <div className="grid h-9 w-9 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-orange-600">
-                <Settings className="h-5 w-5" />
-              </div>
+            <div className="mb-1 flex items-center gap-3">
               <h1 data-tour-id="channels-header" className="text-2xl font-semibold tracking-tight">
                 {c.title}
               </h1>
               <TourReplayButton tourId="channels" />
               <HelpButton slug="channels" variant="label" />
             </div>
-            <p className="text-sm text-zinc-600">{c.desc}</p>
-            <p className="mt-1 text-xs text-zinc-500">{c.hint}</p>
+            <p className="max-w-2xl text-sm text-zinc-500">{c.tilesHint}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              data-testid="channels-active-count"
-              className="gap-1 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              {activeCount} {c.active}
-            </Badge>
-            <Badge className="gap-1 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50">
-              <CircleDot className="h-3.5 w-3.5" />
-              {availableCount} {c.available}
-            </Badge>
-            <Button
-              onClick={() => {
-                setActiveTab("all")
-                setSearch("")
-                document.getElementById("channel-catalog-grid")?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }}
-              className="gap-2 bg-orange-500 text-white hover:bg-orange-600"
-            >
-              <Plus className="h-4 w-4" />
-              {t("channelAdd")}
-            </Button>
-          </div>
+          <Badge
+            data-testid="channels-active-count"
+            className="w-fit gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {activeCount} {c.active}
+          </Badge>
         </div>
       </div>
 
-      {/* The Meta messengers first, one click each — the way Social Monitoring connects accounts. The same
-          cards as before (renderCatalogCard), so their connection state reads exactly as it did in the grid. */}
-      <section data-testid="channels-meta-quick" className="border-b border-zinc-200 bg-zinc-50/70 px-6 py-5">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-zinc-950">{c.metaQuickTitle}</h2>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-500">{c.metaQuickHint}</p>
-        </div>
+      <div id="channel-catalog-grid" className="space-y-6 px-6 py-6">
         {loading ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-40 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-100" />
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 12 }, (_, i) => (
+              <div key={i} className="h-[92px] animate-pulse rounded-xl border border-zinc-200 bg-zinc-100" />
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-3">
-            {metaQuickCards.map((card) => renderCatalogCard(card, true))}
-          </div>
-        )}
-      </section>
-
-      <div className="border-b border-zinc-200 bg-white px-6 py-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {tabs.map((tab) => {
-              const selected = activeTab === tab
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={cn(
-                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
-                    selected
-                      ? "bg-orange-50 text-orange-700 ring-1 ring-orange-200 shadow-[inset_0_-3px_0_rgba(249,115,22,0.85)]"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
-                  )}
-                >
-                  {c.tabs[tab]}
-                </button>
-              )
-            })}
-          </div>
-          <div className="relative w-full xl:w-[360px]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={c.search}
-              className="h-11 rounded-xl border-zinc-200 bg-white pl-10 text-zinc-950 placeholder:text-zinc-400 focus-visible:ring-orange-500"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div id="channel-catalog-grid" className="min-h-[560px] scroll-mt-6 px-6 py-6">
-        {loading ? (
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))] gap-5">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <div key={i} className="h-64 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-100" />
-            ))}
-          </div>
-        ) : !hasVisibleChannels ? (
-          <div className="grid min-h-[360px] place-items-center rounded-2xl border border-dashed border-zinc-200 bg-white text-center">
-            <div className="max-w-sm px-6">
-              <Search className="mx-auto mb-3 h-8 w-8 text-zinc-400" />
-              <p className="font-medium text-zinc-700">{c.noResults}</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">{c.noResultsHint}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {(["business", "calls", "sms", "email", "live"] as const).map((group) => {
-              const groupCards = visibleCards.filter((card) => card.tab === group)
-              if (groupCards.length === 0) return null
-              return (
-                <section key={group} className="space-y-4">
-                  {activeTab === "all" && (
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                      <h2 className="text-base font-semibold text-zinc-950">{c.groups[group]}</h2>
-                      <p className="max-w-2xl text-sm leading-6 text-zinc-500">{c.tabGuides[group]}</p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-4">
-                    {groupCards.map((card) => renderCatalogCard(card))}
-                  </div>
-                </section>
-              )
-            })}
-            {unmatchedChannels.length > 0 && (
-              <section className="space-y-4">
-                <div>
-                  <h2 className="text-sm font-semibold text-zinc-900">{c.otherConnected}</h2>
-                  <p className="mt-1 text-xs text-zinc-500">{c.otherConnectedHint}</p>
+          <>
+            {tileGroups.map(({ group, cards: groupCards }) => (
+              <section key={group} className="space-y-2.5">
+                <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">{c.groups[group]}</h2>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+                  {groupCards.map((card) => renderChannelTile(card))}
                 </div>
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-5">
-                  {unmatchedChannels.map((channel) => {
-                    // This list is where a Model B tenant's SECOND facebook row lands (the Meta-app
-                    // config row with no pageId — the catalog card shows the delivering page row
-                    // instead). It used to wear an unconditional "Connected" badge, i.e. the exact
-                    // claim the card above had already stopped making about that same row.
-                    const rowState = channelConnectionState(channel)
-                    const rowBrokenBadge = cardBrokenBadge(c, rowState, claimedCopy)
-                    return (
-                    <article
-                      key={channel.id}
-                      data-testid={`channel-row-${channel.id}`}
-                      className="group relative flex min-h-[220px] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white p-5 transition duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-[0_18px_60px_rgba(15,23,42,0.10)]"
-                    >
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-orange-500/10 via-zinc-50 to-transparent" />
-                      <div className="relative flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="mb-3 flex flex-wrap items-center gap-2">
-                            {rowBrokenBadge ? (
-                              <Badge
-                                data-testid="channel-row-broken-badge"
-                                className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50"
-                              >
-                                <Clock3 className="mr-1 h-3 w-3" />
-                                {rowBrokenBadge}
-                              </Badge>
-                            ) : (
-                              <Badge
-                                data-testid="channel-row-connected-badge"
-                                className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50"
-                              >
-                                {c.connected}
-                              </Badge>
-                            )}
-                            <Badge className="border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-100">
-                              {channel.channelType}
-                            </Badge>
-                          </div>
-                          <h3 className="line-clamp-2 text-xl font-semibold leading-tight text-zinc-950">
-                            {channel.configName}
-                          </h3>
-                        </div>
-                        <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-orange-200 bg-orange-50 text-orange-600 shadow-inner">
-                          <Webhook className="h-7 w-7" />
-                        </div>
-                      </div>
-                      <div className="relative mt-4 flex items-center gap-2 text-sm text-zinc-600">
-                        <span className={cn(
-                          "h-2 w-2 rounded-full",
-                          channel.isActive ? "bg-orange-400" : "bg-zinc-500"
-                        )} />
-                        <span className="min-w-0 break-words">{channelLabel(channel)}</span>
-                      </div>
-                      <div className="relative mt-auto flex items-center justify-between gap-2 border-t border-zinc-200 pt-4">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="h-9 gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                          onClick={() => editExistingChannel(channel)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          {c.edit}
-                        </Button>
-                        <div className="flex items-center gap-1">
-                          {channel.channelType === "whatsapp" && channel.isActive && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-9 w-9 p-0 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                              onClick={() => {
-                                setTestChannelId(channel.id)
-                                setTestPhone("")
-                                setTestTemplateName("hello_world")
-                                setTestLanguageCode("en_US")
-                                setTestResult(null)
-                              }}
-                              title={c.testAction}
-                            >
-                              <Send className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-9 w-9 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
-                            onClick={() => {
-                              setDeleteId(channel.id)
-                              setDeleteName(channel.configName)
-                            }}
-                            title={c.delete}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </article>
-                    )
-                  })}
+              </section>
+            ))}
+            {listedChannels.length > 0 && (
+              <section className="space-y-2.5 border-t border-zinc-200 pt-6">
+                <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">{c.connectedListTitle}</h2>
+                <div className="space-y-2">
+                  {listedChannels.map((channel) => renderConnectedRow(channel))}
                 </div>
               </section>
             )}
-          </div>
+          </>
         )}
       </div>
         </>
@@ -2795,6 +2560,8 @@ function ChannelsPageInner() {
         lockChannelTypeLabel={c.selectedChannel}
         lockChannelTypeHint={c.setupLockedHint}
         setupIntent={connectMode}
+        // A small window with just the fields: the setup guides and field maps live in the docs, not here.
+        guidanceMode="compact"
       />
 
       <Dialog
