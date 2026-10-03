@@ -1719,3 +1719,37 @@ are complete; selected-tenant observation has not started or been admitted.
 Next action: owner supplies exact authorized production tenant slug/activation
 record; verify flag/operator/collection admission, establish real baseline and
 complete seven evidenced Asia/Baku days, then review the flag-retirement release.
+
+
+## 2026-10-03 — User challenged progress percentages and premature stopping
+
+- User asked why development was not continuing by the plan and recalled an
+  earlier statement that41% remained. Treat this as steering the active100%
+  goal, not cancellation or permission to fabricate completion/tenant history.
+- Current plan count191/190 is a checkbox count, not a weighted measurement of
+  product readiness or remaining effort. Reporting99.48% without this distinction
+  caused confusion. Future status should name delivered scope and outstanding
+  gates rather than present the checkbox fraction as overall module readiness.
+- Neither active/reference journal nor current plan contains a literal41%/59%
+  completion statement. Read-only search of this thread's stored assistant-final
+  messages also finds no such percentage; application-owned sessions untouched.
+  Independent reviewer examined109 historical plan snapshots: no112/191 or
+  113/191 state; verified transitions include107→115 checked on September28.
+  Exact origin of the recalled41% remains UNVERIFIED; do not invent an attribution.
+- Concrete remaining implementation gap: the rollout API is read-only and the
+  generic tenant PUT normalizes features/reconciles modules, with separate
+  unawaited audit. It cannot satisfy this protocol's flag-only atomic audited
+  activation. Preparing the missing scoped operator action does not require
+  choosing a production tenant. Earlier stopping at the slug request left this
+  independent preparation unfinished; continue it now.
+- Safety-lane plan: prepare existing-superadmin flag-only action with strict
+  tenant slug/id, expected state and compiled artifact SHA; preserve all other
+  feature entries/representation; atomically change the fixed canary flag and
+  record actor/state/source/time audit; test rejection, idempotency, rollback
+  and concurrency behavior. Independently review the existing baseline contract.
+  No tenant selection, flag mutation or old deployment replay in preparation.
+- Resumed root/branch/origin confirmed by codex-project-context. Registered
+  route remains13.140.132.245:/opt/leaddrive-v2, PR/main/immutable Actions.
+  Latest main read6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00; fetch/integrate
+  reviewed main while preserving all local checkpoints before new source work.
+  Small-check host preflight:15230MiB available,338GiB free, PSI avg10/60 zero.
