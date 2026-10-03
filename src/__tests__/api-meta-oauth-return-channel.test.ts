@@ -7,7 +7,8 @@ import type { NextRequest } from "next/server"
  *
  * 2026-09-21, production, tenant `leaddrive`: "Connect Facebook Page" was started from channel
  * cmua55s6t03n0kpvtm63bclud and came back as
- *   /settings/channels/connect/facebook?mode=existing&stage=connect&connected=facebook&pages=1&ig=0
+ *   /settings/channels?oauth=facebook&connected=facebook&pages=1&ig=0 (until 2026-10-03 the setup wizard's
+ *   /settings/channels/connect/facebook?mode=existing&stage=connect&…)
  * with no row id at all. The page then opened the first live Facebook row it found — another
  * customer's Page, "Andrologiya.az" — under the green "Channel connected" banner, editable and savable.
  *
@@ -218,7 +219,8 @@ describe("facebook callback: the card is handed the row this round trip wired", 
     stubFacebookGraph([LEADDRIVE_PAGE])
     const state = signState({ ret: "channels-facebook", channelId: "cc_origin_fb" })
     const url = landing(await fbCallback(callbackReq("facebook", state)))
-    expect(url.pathname).toBe("/settings/channels/connect/facebook")
+    expect(url.pathname).toBe("/settings/channels")
+    expect(url.searchParams.get("oauth")).toBe("facebook")
     expect(url.searchParams.get("connected")).toBe("facebook")
     expect(url.searchParams.get("channelId")).toBe("cc_origin_fb")
   })
@@ -264,7 +266,8 @@ describe("facebook callback: the card is handed the row this round trip wired", 
     stubFacebookGraph([{ ...LEADDRIVE_PAGE, instagram_business_account: { id: "IG_LD", username: "leaddrive" } }])
     const state = signState({ ret: "channels-instagram" })
     const url = landing(await fbCallback(callbackReq("facebook", state)))
-    expect(url.pathname).toBe("/settings/channels/connect/instagram")
+    expect(url.pathname).toBe("/settings/channels")
+    expect(url.searchParams.get("oauth")).toBe("instagram")
     expect(url.searchParams.get("channelId")).toBe("cc_ld_ig")
   })
 

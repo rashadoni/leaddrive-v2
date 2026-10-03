@@ -23,15 +23,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
  */
 
 const pushes = vi.hoisted(() => [] as string[])
+const replaces = vi.hoisted(() => [] as string[])
+const search = vi.hoisted(() => ({ current: new URLSearchParams() }))
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn((href: string) => { pushes.push(href) }),
-    replace: vi.fn(),
+    replace: vi.fn((href: string) => { replaces.push(href) }),
     refresh: vi.fn(),
     prefetch: vi.fn(),
     back: vi.fn(),
   }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => search.current,
 }))
 
 vi.mock("next-intl", () => ({
@@ -142,6 +144,8 @@ describe("Channel catalog — one tile per platform", () => {
   beforeEach(() => {
     stubMatchMedia()
     pushes.length = 0
+    replaces.length = 0
+    search.current = new URLSearchParams()
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -230,6 +234,45 @@ describe("Channel catalog — one tile per platform", () => {
   it("never walks a platform through the setup wizard's pages", async () => {
     await renderCatalog([], true)
     expect(container.querySelectorAll('a[href^="/settings/channels/connect/"]')).toHaveLength(0)
+  })
+
+  it("says on the catalog what Meta's login wired, marks that row, and closes the note", async () => {
+    // Where Facebook / Instagram Login lands since 2026-10-03 (lib/social/oauth-return).
+    search.current = new URLSearchParams("oauth=instagram&connected=instagram&pages=0&ig=1&channelId=ig-1")
+    await renderCatalog([
+      { id: "ig-1", channelType: "instagram", configName: "Acme / @acme", pageId: "IG1", isActive: true, hasAccessToken: true, settings: { inboxSubscribed: true } },
+      { id: "ig-2", channelType: "instagram", configName: "Other / @other", pageId: "IG2", isActive: true, hasAccessToken: true, settings: { inboxSubscribed: true } },
+    ], true)
+    const banner = container.querySelector<HTMLElement>('[data-testid="oauth-result-banner"]')
+    expect(banner?.getAttribute("data-tone")).toBe("success")
+    expect(banner?.textContent).toContain("Channel connected")
+    expect(container.querySelector('[data-oauth-result="true"]')?.getAttribute("data-testid")).toBe("channel-row-ig-1")
+    const close = [...(banner?.querySelectorAll("button") || [])].find((button) => button.textContent === "Close")
+    await click(close as HTMLElement)
+    expect(replaces).toEqual(["/settings/channels"])
+  })
+
+  it("does not call an Instagram connect a success when Meta returned no Instagram account", async () => {
+    search.current = new URLSearchParams("oauth=instagram&connected=facebook&pages=1&ig=0")
+    await renderCatalog([], true)
+    const banner = container.querySelector<HTMLElement>('[data-testid="oauth-result-banner"]')
+    expect(banner?.getAttribute("data-tone")).toBe("warning")
+    expect(banner?.textContent).toContain("This channel is still not connected")
+    expect(container.querySelector('[data-oauth-result="true"]')).toBeNull()
+  })
+
+  it("reports a failed Meta login with Meta's own code", async () => {
+    search.current = new URLSearchParams("oauth=facebook&error=facebook_denied")
+    await renderCatalog([], true)
+    expect(container.querySelector('[data-testid="oauth-result-banner"]')).toBeNull()
+    expect(container.querySelector('[data-testid="oauth-error-banner"]')?.textContent).toContain("facebook_denied")
+  })
+
+  it("ignores result parameters that do not come with a known return", async () => {
+    search.current = new URLSearchParams("connected=facebook&pages=3&error=x")
+    await renderCatalog([], true)
+    expect(container.querySelector('[data-testid="oauth-result-banner"]')).toBeNull()
+    expect(container.querySelector('[data-testid="oauth-error-banner"]')).toBeNull()
   })
 
   it("lists a connected channel with Edit opening the same window, and shows it on its tile", async () => {
