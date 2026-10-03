@@ -1799,3 +1799,33 @@ complete seven evidenced Asia/Baku days, then review the flag-retirement release
   prior checkpoint history preserved. This is source synchronization, not a new
   production merge/deploy. Operator test/CI additions are the next source unit;
   selected-tenant actions and real observation remain unexecuted.
+
+
+## 2026-10-03 — Real PostgreSQL proof prepared for the new operator candidate
+
+- Added ten real PostgreSQL cases for the actual route and Prisma RLS proxy:
+  a non-superuser/non-bypass role with FORCE RLS, exact flag/actor audit,
+  rollback of features and updatedAt on audit failure, encoded-state and
+  unrelated-tenant preservation, unchanged confirmation, guarded rejection,
+  and two deterministically overlapping requests with one commit/one conflict.
+- The gate accepts only an explicit CI=true loopback PostgreSQL URL with a
+  nonempty port, postgres user and fixed support_ux_canary_test database.
+  It refuses an existing scratch database and rechecks the immutable target
+  before DDL. Role/password are generated in memory; setup failures export
+  source-authored fixed phase codes, never connection/SQL/exception payloads.
+  No application DATABASE_URL is accepted as the destructive test target.
+- Additive PR static-checks and release checks run the new gate after Prisma
+  generation/per-job service-port resolution and before existing fixture
+  gates. Existing gates, baselines, runner policy and release route retained.
+- Current-tree scoped PostgreSQL-test ESLint PASS, workflow YAML/order/env
+  validation PASS, runner policy PASS for40 workflows, git diff --check PASS.
+  Default no-URL import explicitly SKIPPED all10 database cases. Four supplied
+  unsafe-context probes (non-CI, remote host, wrong database and absent port)
+  rejected before DB access. These are guard checks, not positive DB proof.
+- Actual PostgreSQL execution, full compiler and production build remain
+  NOT RUN locally under the Contabo workload contract; the exact new source
+  candidate must pass hosted CI before release. Independent final source/CI
+  review found no blocker. No production tenant chosen or flag changed.
+- Next action: publish the new candidate as a draft PR, mark ready after the
+  source checkpoint, diagnose any actual new CI failure, and record its exact
+  source-bound result. Completed530/505/501 workflows are not replayed.

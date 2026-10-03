@@ -151,6 +151,15 @@ jobs:
           echo "EVENT_PLATFORM_PG_PORT=$PG_PORT" >> "$GITHUB_ENV"
           echo "event-platform-postgres is on 127.0.0.1:$PG_PORT"
 
+      - name: Support UX canary atomic PostgreSQL gate
+        # A separate fixed scratch database exercises the actual RLS proxy and
+        # handler without changing the event-platform/Workforce fixtures.
+        run: npx vitest run src/__tests__/support-ux-canary-postgres.test.ts
+        env:
+          CI: "true"
+          VITEST_MAX_WORKERS: "1"
+          SUPPORT_UX_CANARY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/support_ux_canary_test
+
       - name: Generate frozen pre-pilot Prisma client
         run: npx prisma generate --schema scripts/ci/fixtures/event-platform-legacy-client/schema.prisma
         env:
