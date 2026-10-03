@@ -1795,15 +1795,17 @@ function ChannelsPageInner() {
     setShowForm(true)
   }
 
-  const tileGroups = (["business", "calls", "sms", "email", "live"] as const)
+  // Telephony is not here: VoIP providers and WhatsApp Calling are set up under VoIP calls, which has its
+  // own menu entry (owner, 2026-10-03: «почему телефония в этом разделе»). Their cards stay in the catalog
+  // list only so old `?connect=` links still resolve.
+  const tileGroups = (["business", "sms", "email", "live"] as const)
     .map((group) => ({ group, cards: cards.filter((card) => card.tab === group && card.action.type !== "disabled") }))
     .filter((entry) => entry.cards.length > 0)
-  // A row that belongs to its own screen (lib/channels/dedicated-channel-types) is listed only where a card shows it —
-  // VoIP's. Social Monitoring's settings rows and the Slack/Teams notification hooks have no card and are not channels:
-  // "Other connected channels" used to offer them the channel form's Edit and a Delete, and the "active" count below
-  // counted them. They are managed on their own screens, and the channels API refuses to edit or delete them.
-  const listedChannels = channels.filter((channel) =>
-    connectedByCard.primaryIds.has(channel.id) || !isDedicatedChannelType(channel.channelType))
+  // A row that belongs to its own screen (lib/channels/dedicated-channel-types) is not listed here: VoIP rows live under
+  // VoIP calls, Social Monitoring's settings rows and the Slack/Teams notification hooks on their own screens. The list
+  // used to offer them the channel form's Edit and a Delete — which the channels API refuses — and the "active" count
+  // counted them.
+  const listedChannels = channels.filter((channel) => !isDedicatedChannelType(channel.channelType))
 
   // "N active" sits next to a green check, so it has to mean "N channels that actually work". An
   // empty Meta row is created with isActive=true, so counting isActive alone counted drafts as wins.
