@@ -1537,3 +1537,51 @@ representative tenant/activation/baseline. Next action: after owner's “дав�
 release the concrete Calendar/telemetry candidate through protected main/Actions,
 verify selected-tenant admission, collect seven full Asia/Baku days, review
 baseline by2026-10-08 and only then prepare governed flag retirement for100%.
+
+
+## 2026-10-03 — Owner confirmed the concrete new PR530 release
+
+- User replied “подтерждаю” after the prepared Calendar/telemetry release list
+  and next-step explanation. This supplies the required owner go-ahead for the
+  NEW PR530 release; no repeated confirmation is needed. It does not identify
+  a representative tenant or establish any past flag/observation history.
+  Exact production tenant slug/activation record requested asynchronously while
+  the independently authorized release proceeds.
+- Resumed designated managed worktree/branch; codex-project-context resolves
+  Contabo remote-alt, root/mnt/HC_Volume_106454338/codex-alt-data/worktrees/
+  leaddrive-help-ai-guides, branchcodex/help-ai-guides,
+  originhttps://github.com/rashadoni/leaddrive-v2.git,
+  productionaliasleaddrive-prod:/opt/leaddrive-v2, releasegithub-actions-main.
+  Current-main779fce0cb1bdd882d296942bd25a412d9b115d52 registry/deployment
+  contract confirms registered13.140.132.245 and app.leaddrivecrm.org.
+- Exact published candidateb9de0dad8c8db1cc6b84a8bd6a9eca682bfdae5b remains
+  OPEN/ready/MERGEABLE/CLEAN. Latest required pr-scope/static/type contexts
+  and standalone build37078743036 SUCCESS; runner37078588718 and
+  scan37078588733 SUCCESS. Completed green candidate checks are reused.
+  Local docs-only checkpoint47665784ccfe2c542255b3342c21cfa8c0bd64fc stays
+  preserved and unpushed; the explicit remote SHA protects the approved merge.
+- Proceed only with exact PR530 protected merge, observe its automatically
+  triggered immutable main release, then public/feasible feature smoke and
+  journal checkpoint. Original #501/#505 CI/merge/deploy are not repeated.
+  No arbitrary tenant selection, flag activation or elapsed-day claim.
+
+
+## 2026-10-03 12:45 Asia/Baku — Approved PR530 merged; new automatic release queued
+
+- gh pr merge530 --merge --match-head-commitb9de0dad8 completed through
+  protected GitHub path, no admin bypass/branch deletion. PR state MERGED at
+  2026-10-03T08:45:22Z (12:45:22Asia/Baku), merge commit
+  f62ab3a609a0461cbd14c264306df2d28325628f. Local checkpoints preserved.
+- New automatically triggered exact-main workflows: Deploy37110761933,
+  post-merge PRchecks37110761818, runner37110761810, scan37110761817.
+  All initially queued; no workflow_dispatch/re-run/manual production deploy.
+- Fetched origin/main read-only for source verification. All8 accepted daily
+  page/data paths, Calendar fix, both instrumented Macros APIs, observation
+  helper and daily collector byte-identical approvedb9→mergedf62. This is Git
+  source identity, not new production/browser evidence. No build on Contabo.
+- Current result/status: approved new source merged; new immutable release and
+  post-merge gates pending. Last completed action: exact protected PR530 merge
+  and source admission check. Precise stopping point: wait for automatic
+  37110761933 release/gates, then public exact identity/feasible feature smoke.
+  Next action: complete release verification; selected tenant still required
+  before flag/observation actions or any seven-day completion claim.
