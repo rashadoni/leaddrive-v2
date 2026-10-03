@@ -1,0 +1,41 @@
+{
+  "observedAtUtc": "2026-10-03T15:49:22.689162+00:00",
+  "runId": 37133952754,
+  "event": "pull_request",
+  "status": "completed/success",
+  "completedAtUtc": "2026-10-03T15:46:16Z",
+  "artifactId": 11278355984,
+  "archiveBytes": 3403295,
+  "sourceHead": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "checkedSyntheticMergeSha": "2e97ef4345deda9bb22941ab02ff9d35d9d0a684",
+  "base": "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+  "treeEqualsCandidate": true,
+  "originals": [
+    {
+      "originalPath": "/tmp/workforce546-contrast-final-f1e55420/extracted/receipt.json",
+      "originalBytes": 396249,
+      "originalSha256": "a5ad15be30ebea7cb17adf6d2d9fa79aa50e57b56ae73e454b63d586df6529ea",
+      "gzipPath": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-f1e55420-final-receipt.json.gz",
+      "gzipBytes": 12054,
+      "gzipSha256": "aaa13e55581b5c2b9d0d27a6b3771d4ec43130e61819c59aa6ad611fc5c5fd01"
+    },
+    {
+      "originalPath": "/tmp/workforce546-contrast-final-f1e55420/original-provenance.json",
+      "originalBytes": 9507,
+      "originalSha256": "69cee12f979262bea4b246852dadb9a6ada6878a51479b4b04f340e7a363d2cf",
+      "gzipPath": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-f1e55420-final-provenance.json.gz",
+      "gzipBytes": 3084,
+      "gzipSha256": "d342abccb60d50630d10f6fc0ed15a399d95056e78cd149ef209e683273a5fba"
+    }
+  ],
+  "contrast": "36PASS/0FAIL/0NOT_PROVEN",
+  "functional": "12PASS",
+  "confirmRatioLower": 5.162994512865741,
+  "geometry": "27 positive phases/zero failures",
+  "reading": "36 positive vertical-reading/native-focus-preserved probes",
+  "auth": "14 actual CSRF/callback200 pairs",
+  "rawUnchangedConfigGitleaks": "0 findings/396249bytes/222ms",
+  "successfulArtifactFiles": "46 unique files:44PNG+receipt+context; failure-only workflow-failure.json correctly absent",
+  "independentFinalReceiptAndCurrentPngReview": "ACTIVE",
+  "fiveRequiredGatesAndRelease": "PENDING; no merge/deploy acceptance yet"
+}
