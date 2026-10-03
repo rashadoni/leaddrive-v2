@@ -205,6 +205,7 @@ const copy = {
     manualSetupLink: "Manual setup",
     tilesHint: "Click a platform to connect it. WhatsApp, Facebook and Instagram open Meta's window; the others ask only for their key.",
     tileConnect: "Connect",
+    tileNotConnected: "Not connected",
     tileOpen: "Open",
     tileConnectedCount: "{count} connected",
     connectedListTitle: "Connected channels",
@@ -389,6 +390,7 @@ const copy = {
     manualSetupLink: "Ручная настройка",
     tilesHint: "Нажмите на платформу, чтобы подключить. WhatsApp, Facebook и Instagram открывают окно Meta, остальным нужен только их ключ.",
     tileConnect: "Подключить",
+    tileNotConnected: "Не подключено",
     tileOpen: "Открыть",
     tileConnectedCount: "Подключено: {count}",
     connectedListTitle: "Подключённые каналы",
@@ -571,6 +573,7 @@ const copy = {
     manualSetupLink: "Əl ilə quraşdırma",
     tilesHint: "Qoşmaq üçün platformaya klikləyin. WhatsApp, Facebook və Instagram Meta pəncərəsini açır, digərlərinə yalnız öz açarı lazımdır.",
     tileConnect: "Qoş",
+    tileNotConnected: "Qoşulmayıb",
     tileOpen: "Aç",
     tileConnectedCount: "Qoşulub: {count}",
     connectedListTitle: "Qoşulmuş kanallar",
@@ -1541,11 +1544,6 @@ function channelMatchesCard(card: CatalogCard, channel: ChannelConfig) {
   return channelProvider(channel) === card.provider
 }
 
-function channelLabel(channel: ChannelConfig) {
-  const provider = channelProvider(channel)
-  return [channel.channelType, provider, channel.phoneNumber].filter(Boolean).join(" · ")
-}
-
 /**
  * A Meta row that is not live is not automatically a "draft". Three different things break delivery
  * and each needs a different action from the user: nothing came back from Meta (draft → finish the
@@ -1797,15 +1795,17 @@ function ChannelsPageInner() {
     setShowForm(true)
   }
 
-  const tileGroups = (["business", "calls", "sms", "email", "live"] as const)
+  // Telephony is not here: VoIP providers and WhatsApp Calling are set up under VoIP calls, which has its
+  // own menu entry (owner, 2026-10-03: «почему телефония в этом разделе»). Their cards stay in the catalog
+  // list only so old `?connect=` links still resolve.
+  const tileGroups = (["business", "sms", "email", "live"] as const)
     .map((group) => ({ group, cards: cards.filter((card) => card.tab === group && card.action.type !== "disabled") }))
     .filter((entry) => entry.cards.length > 0)
-  // A row that belongs to its own screen (lib/channels/dedicated-channel-types) is listed only where a card shows it —
-  // VoIP's. Social Monitoring's settings rows and the Slack/Teams notification hooks have no card and are not channels:
-  // "Other connected channels" used to offer them the channel form's Edit and a Delete, and the "active" count below
-  // counted them. They are managed on their own screens, and the channels API refuses to edit or delete them.
-  const listedChannels = channels.filter((channel) =>
-    connectedByCard.primaryIds.has(channel.id) || !isDedicatedChannelType(channel.channelType))
+  // A row that belongs to its own screen (lib/channels/dedicated-channel-types) is not listed here: VoIP rows live under
+  // VoIP calls, Social Monitoring's settings rows and the Slack/Teams notification hooks on their own screens. The list
+  // used to offer them the channel form's Edit and a Delete — which the channels API refuses — and the "active" count
+  // counted them.
+  const listedChannels = channels.filter((channel) => !isDedicatedChannelType(channel.channelType))
 
   // "N active" sits next to a green check, so it has to mean "N channels that actually work". An
   // empty Meta row is created with isActive=true, so counting isActive alone counted drafts as wins.
@@ -1907,7 +1907,7 @@ function ChannelsPageInner() {
           ? brokenStatus || brokenBadge
           : whatsappManual
             ? c.tileWhatsAppManual
-            : actionLabel
+            : c.tileNotConnected
 
     const inner = (
       <>
@@ -2050,7 +2050,9 @@ function ChannelsPageInner() {
                 </span>
               )}
             </div>
-            <div className="text-xs text-zinc-500">{card?.title || channel.channelType} · {channelLabel(channel)}</div>
+            <div className="text-xs text-zinc-500">
+              {[card?.title || channel.channelType, channelProvider(channel), channel.phoneNumber].filter(Boolean).join(" · ")}
+            </div>
             {ownScreenHref ? (
               <p className="mt-1 text-xs text-zinc-500">{c.cardVoipSettingsHint}</p>
             ) : rowBrokenBadge && (rowBrokenStatus || rowBrokenHint) ? (
