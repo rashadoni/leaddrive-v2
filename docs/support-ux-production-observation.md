@@ -15,13 +15,13 @@ evidence; this protocol does not require repeating them.
 | --- | --- |
 | Representative authorized production tenant | Exact slug requested from owner; PENDING. Do not select an arbitrary paying tenant or count an isolated CI fixture |
 | Current production route | `rashadoni/leaddrive-v2`, protected `main`, GitHub Actions, `13.140.132.245:/opt/leaddrive-v2`; public app `https://app.leaddrivecrm.org` |
-| Last verified production snapshot | PR #530 merge `f62ab3a609a0461cbd14c264306df2d28325628f`, new deploy `37110761933` SUCCESS; independent exact full-SHA/public ping receipt at `2026-10-03 13:13:22–23` (Asia/Baku). Earlier 88 snapshot remains in the release ledger. Later main a276 includes f62 and preserves checked Support sources; its deployment is outside this receipt |
+| Last verified production snapshot | PR #544 merge `3294093a4364be8be35d8a03c1b9fde57c3dd3b9`, new automatic deploy `37124821392` and post-merge checks SUCCESS; independent ping/exact full-SHA receipt at `2026-10-03 17:27:00–01` (Asia/Baku). Earlier PR #530/f62 and 88 snapshots remain dated in the release ledger |
 | Authenticated flag state | UNVERIFIED. Read the selected tenant's authenticated no-store `/api/v1/support/ux-rollout`; only explicit `enabled: true` proves client admission. Public ping/build-info cannot prove this |
 | Audited activation | UNVERIFIED. Require tenant slug, owner/actor, exact source/artifact SHA, before/after state and activation UTC/Asia-Baku timestamp; use an already approved record if it exists |
-| Safe operator path | Direct SSH key was rejected at the recorded check. The existing protected diagnostic's bounded read-only `support-ux-rollout` view is now admitted on reviewed main by PR #530. It reports anonymous aggregate counts or one exact selected tenant's flag/count metadata and cannot activate a flag. Selected-tenant execution remains NOT RUN |
+| Safe operator path | PR #544 delivered the fixed-flag atomic superadmin operator described below, with protected/PG/release/public-SHA admission complete. PR #530's protected read-only `support-ux-rollout` view can report anonymous aggregate counts or exact selected-tenant metadata; it cannot activate a flag. Direct SSH was rejected at its dated check. Selected-tenant execution remains NOT RUN |
 | Permissions and rollback | Verify selected administrator/manager permissions and tenant fences. Preserve all unrelated features and existing macro/category data. Removing the tenant flag restores browser mode while retaining DB categories |
 | Error and latency baseline | Actual selected-tenant baseline PENDING. PR #530 released unsampled category-handler instrumentation and the reviewed-main bounded read-only daily collector. Effective logging, selected-tenant collection and daily coverage remain UNVERIFIED/NOT RUN. Generic Sentry configuration, endpoint RTT and a short PM2 tail are insufficient |
-| Baseline validity | Existing Service Desk source ceilings require review by 2026-10-08 or earlier source/fixture/topology changes. Record the review before relying on them for final admission; do not increase a ceiling to fit a slow candidate |
+| Baseline validity | Fresh bounded current-source48-cell seven-sample capture/comparison and independent PNG/quantile review are complete; see the dated review in the rollout contract. Existing ceilings/2026-10-08 boundary remain, original96 dimensions are not replaced or extended, and real handler baseline is still PENDING. Broader validity requires review before final admission; do not increase a ceiling to fit a slow candidate |
 
 The relevant persisted-state boundary is Macros custom-category storage. The
 redesign's presentation and previously shipped navigation do not become a new
@@ -34,8 +34,8 @@ result without inventing an earlier activation timestamp. Re-read authenticated
 state after activation. No other tenant, category, macro, permission, billing
 setting or customer message changes as an incidental action.
 
-Independent operator preparation (2026-10-03): a dedicated superadmin
-`POST /api/v1/admin/tenants/[id]/support-ux-canary` is implemented in
+Independent operator release (2026-10-03): a dedicated superadmin
+`POST /api/v1/admin/tenants/[id]/support-ux-canary` was delivered in
 [PR #544](https://github.com/rashadoni/leaddrive-v2/pull/544). Strict
 input binds the tenant slug/id, desired and expected flag states and compiled
 artifact SHA. The serialized, row-locked transaction changes only features
@@ -46,8 +46,12 @@ Confirming an existing state writes a separately named confirmation and does
 not establish an earlier activation time. Receipt issuance after commit is
 separate from the required authenticated flag re-read. Preparation/unit checks
 do not authorize selecting or activating an arbitrary production tenant.
-Actual PostgreSQL admission is recorded below; final-head protected checks and
-release admission remain required before production use.
+Final protected admission and production release are complete on merge
+`3294093a4364be8be35d8a03c1b9fde57c3dd3b9`: real PostgreSQL 10/10, full
+compiler with both unchanged blockers, standalone build and automatic deploy
+passed. Independent public ping/build-info matched the exact merge SHA;
+unauthenticated operator POST returned 401. These results admit the delivered
+source, not a selected tenant, authenticated activation or observation day.
 
 The action accepts only these four keys. This is an intentionally unusable
 template until an authorized exact tenant and current public artifact are
@@ -446,9 +450,13 @@ an incident is a rollback. They must not be confused. Before the later release:
    when those remaining requirements are actually satisfied.
 
 Current stopping point: all sixteen independent literal layout/source/browser
-criteria are accepted; PR#530 released the corrected Calendar behavior and
-minimal telemetry/collector with green gates and independent public SHA/smoke.
-Representative tenant, audited activation, real baseline/coverage and seven
-complete production days remain pending. Next action: supply the exact
-authorized tenant/activation record, verify flag and collection admission,
-establish the real baseline/coverage, and start the evidenced calendar window.
+criteria are accepted; PR #530 delivered Calendar correction and minimal
+telemetry/collector, and PR #544 delivered the atomic operator/trusted audit
+boundary with protected release and independent public SHA/smoke. Fresh bounded
+48-cell source baseline preparation/comparison is complete with unchanged
+ceilings/October 8 limits. Representative tenant, authenticated flag state,
+audited activation, real handler baseline/effective INFO/retention/continuity,
+seven complete production days and later flag retirement remain pending.
+Next action: obtain the exact authorized tenant slug and selected-tenant auth
+context, verify flag/audit/collection admission, establish actual baseline and
+coverage, then start the evidenced calendar window. No tenant action has run.

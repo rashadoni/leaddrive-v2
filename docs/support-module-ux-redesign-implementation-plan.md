@@ -6,7 +6,7 @@
 > **Original date:** 2026-08-31
 > **Last reviewed:** 2026-10-03 (Asia/Baku)
 > **Code baseline:** `rashadoni/leaddrive-v2` `main` at
-> `f62ab3a609a0461cbd14c264306df2d28325628f` for the dated PR #530 release;
+> `3294093a4364be8be35d8a03c1b9fde57c3dd3b9` for the dated PR #544 release;
 > historical browser receipts retain their own exact source SHAs.
 > **Scope:** 15 potentially visible Support destinations (14 base destinations
 > plus role/add-on-gated Support AI Settings), their nested operational flows,
@@ -46,9 +46,18 @@ count correction and minimal observation instrumentation as
 and post-merge checks are green. Independent public ping and exact build-info
 passed at `2026-10-03 13:13:22–23` (Asia/Baku); three protected API GETs without a
 session returned expected 401. Authenticated tenant behavior is NOT RUN.
-Later main `a27681fcf8768e8f2163edd2c5a509d9d950e5e6` includes this release and
-preserves the checked Support sources; its deployment is outside this dated
-receipt. See the
+Subsequent historical main `a27681fcf8768e8f2163edd2c5a509d9d950e5e6` includes
+the PR #530 release and preserves the checked Support sources; its deployment
+is outside that dated receipt. The new atomic canary operator and trusted audit
+reservation were delivered by [PR #544](https://github.com/rashadoni/leaddrive-v2/pull/544)
+as `3294093a4364be8be35d8a03c1b9fde57c3dd3b9`. Its protected checks,
+real PostgreSQL 10/10 gate, production build, automatic deploy
+[37124821392](https://github.com/rashadoni/leaddrive-v2/actions/runs/37124821392)
+and post-merge checks are green. Independent ping/exact build-info and four
+unauthenticated API guards passed at `2026-10-03 17:27:00–01` (Asia/Baku).
+The fresh bounded 48-cell source comparison also passed; original dimensions
+and the October 8 review boundary retain their stated limits. No production
+tenant was selected or activated. See the
 [release ledger](support-ux-performance-and-rollout.md#release-ledger) for dated
 production snapshots and the
 [observation protocol](support-ux-production-observation.md) for the remaining
@@ -4147,14 +4156,18 @@ checkpoints; the current release ledger above supersedes them for release status
 Execution breakdown for ROL-006 (2026-10-03; these are gates within the existing
 task, not new SUPUX IDs or percentage weights):
 
-- Atomic operator action: IN_PROGRESS. Prepare the fixed-flag superadmin action
-  with exact tenant/compiled SHA/expected-state checks and same-transaction audit.
-  Existing generic tenant PUT is insufficient. Unit, real PostgreSQL rollback/
-  concurrency and protected release admission are required before using it.
-- Source performance baseline review: IN_PROGRESS. Keep the existing ceilings
-  and2026-10-08 review boundary. Original34241690941/34247698584 artifact lookups
-  returned404 through the registered repository; source/builder changes prevent
-  an unsupported expiry extension. Prepare fresh bounded seven-sample proof.
+- Atomic operator preparation and release: DONE. PR #544 delivered the fixed-flag
+  superadmin action with exact tenant/compiled SHA/expected-state checks and
+  same-transaction actor audit, plus the reserved generic-audit boundary.
+  Scoped units, real PostgreSQL rollback/concurrency 10/10, protected checks,
+  normal release and public exact-SHA smoke passed. Existing generic tenant PUT
+  remains insufficient; actual selected-tenant use is still NOT RUN.
+- Source performance baseline preparation: DONE for the current bounded 48-cell
+  EN/typical/enabled source scope. Fresh seven-sample capture37119565433 and
+  comparison37122190158 pass all 48 visual/performance cells with independent
+  quantile/PNG review. Existing ceilings and2026-10-08 review boundary remain;
+  original34241690941/34247698584 artifact lookups returned404, and the original
+  96-cell scope is not replaced or extended. Real handler baseline stays pending.
 - Selected tenant and activation: PENDING exact authorized slug and audit record;
   confirm authenticated flag state after any separately admitted operator action.
 - Real handler baseline and coverage: PENDING matched activity/error/duration
