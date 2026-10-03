@@ -521,7 +521,7 @@ export function WorkforceCalendarConfiguration() {
       })}</p>
       <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("reversalReviewHint")}</p>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="button" className="h-auto min-h-11 max-w-full whitespace-normal" onClick={() => void reverseMovedDay()} disabled={saving}>
+        <Button type="button" className="h-auto min-h-11 max-w-full whitespace-normal bg-orange-700 hover:bg-orange-800 dark:bg-primary dark:hover:bg-primary/90" onClick={() => void reverseMovedDay()} disabled={saving}>
           {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : null}
           {t("reversalConfirm")}
         </Button>

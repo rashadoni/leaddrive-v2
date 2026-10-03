@@ -446,14 +446,9 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     await settle()
   }
 
-  const card = (id: string) => {
-    const element = container.querySelector<HTMLElement>(`[data-testid="channel-card-${id}"]`)
-    if (!element) throw new Error(`no card ${id}`)
-    return element
-  }
-  /** The card or the "Other connected channels" row that shows this channel. */
+  /** The connected-list row that shows this channel — where its Edit and Delete live. */
   const tileShowing = (configName: string) => {
-    const tile = [...container.querySelectorAll<HTMLElement>('article[data-testid^="channel-"]')]
+    const tile = [...container.querySelectorAll<HTMLElement>('article[data-testid^="channel-row-"]')]
       .find((candidate) => candidate.textContent?.includes(configName))
     if (!tile) throw new Error(`nothing shows ${configName}`)
     return tile
@@ -465,42 +460,26 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     [...(dialog()?.querySelectorAll("button") ?? [])].find((button) => button.textContent?.trim() === label)
   const refusal = () => dialog()?.querySelector<HTMLElement>('[role="alert"]')?.textContent ?? null
 
-  it("sends a VoIP row to VoIP settings instead of offering the delete the channels API refuses", async () => {
+  it("leaves VoIP to VoIP settings: no tile, no row, no delete the channels API would refuse", async () => {
+    // Since 2026-10-03 telephony is not on the channels screen at all (owner: «почему телефония в этом
+    // разделе»); it has its own menu entry. So a VoIP row cannot be offered the channel form's Edit or a
+    // trash here — the API refuses both — because it is not offered anything.
     const voip = await saveAsteriskInVoipSettings({ isActive: true })
     await telegramBot("Support bot", "111:aaa")
 
     await openCatalog()
 
-    const asterisk = card("asterisk")
-    // The card still shows the connection the VoIP screen saved.
-    expect(asterisk.textContent).toContain("Asterisk VoIP")
-    expect(asterisk.querySelector('[data-testid="channel-card-connected-badge"]')?.textContent).toBe("Connected")
-    // No trash, and no Edit into the channel form: the channels API refuses both for a VoIP row.
-    expect(trashIn(asterisk)).toBeNull()
-    expect(asterisk.textContent).not.toContain("Edit setup")
-    // Instead, one way to where VoIP is managed.
-    const link = asterisk.querySelector<HTMLAnchorElement>('a[href="/settings/voip"]')
-    expect(link?.textContent).toBe("Open VoIP settings")
-    expect(asterisk.textContent).toContain("Managed in VoIP settings.")
-    // The Telegram card beside it keeps its trash: only a row with its own screen lost it.
-    expect(trashIn(card("telegram"))).not.toBeNull()
+    expect(container.querySelector('[data-testid="channel-card-asterisk"]')).toBeNull()
+    expect(container.querySelector('[data-testid="channel-card-twilio-calls"]')).toBeNull()
+    expect(container.querySelector(`[data-testid="channel-row-${voip}"]`)).toBeNull()
+    expect(container.textContent).not.toContain("Asterisk VoIP")
+    // Nor is it counted among the channels that work.
+    expect(container.querySelector('[data-testid="channels-active-count"]')?.textContent).toContain("1 active")
+    // The Telegram bot beside it keeps its trash.
+    expect(trashIn(tileShowing("Support bot"))).not.toBeNull()
 
     expect(deletes).toEqual([])
     expect(await voipSettingsRow()).toMatchObject({ id: voip, configName: "Asterisk VoIP", isActive: true })
-  })
-
-  it("tells a switched-off VoIP row to be switched back on in VoIP settings, not in an Edit the card no longer has", async () => {
-    await saveAsteriskInVoipSettings({ isActive: false })
-
-    await openCatalog()
-
-    const asterisk = card("asterisk")
-    expect(asterisk.querySelector('[data-testid="channel-card-broken-badge"]')?.textContent).toContain("Switched off")
-    expect(trashIn(asterisk)).toBeNull()
-    expect(asterisk.querySelector('a[href="/settings/voip"]')?.textContent).toBe("Open VoIP settings")
-    // The generic switched-off hint ends "Turn it back on in Edit setup."
-    expect(asterisk.textContent).toContain("Managed in VoIP settings.")
-    expect(asterisk.textContent).not.toContain("Edit setup")
   })
 
   it("keeps a refused delete on screen with the server's reason, and starts the next delete without it", async () => {

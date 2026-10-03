@@ -9,6 +9,11 @@ import { NextRequest } from "next/server"
  */
 
 const waCalls: any[] = []
+// WhatsApp conversations by id: which workspace and which channel (number) each belongs to.
+const conversations: Record<string, { organizationId: string; channelConfigId: string | null }> = {
+  conv_new_number: { organizationId: "org_1", channelConfigId: "wa_new" },
+  conv_other_org: { organizationId: "org_2", channelConfigId: "wa_foreign" },
+}
 
 vi.mock("@/lib/api-auth", () => ({
   getOrgId: vi.fn(async () => "org_1"),
@@ -24,7 +29,20 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     contact: { findFirst: vi.fn(async () => null), updateMany: vi.fn(async () => ({ count: 0 })) },
     channelConfig: { findFirst: vi.fn(async () => null) },
-    channelMessage: { create: vi.fn(async () => ({ id: "m1" })), findFirst: vi.fn(async () => null) },
+    channelMessage: {
+      create: vi.fn(async () => ({ id: "m1" })),
+      update: vi.fn(async () => ({ id: "m1" })),
+      findFirst: vi.fn(async () => null),
+    },
+    socialConversation: {
+      findFirst: vi.fn(async ({ where }: any) => {
+        const conv = conversations[where.id]
+        return conv && conv.organizationId === where.organizationId && where.platform === "whatsapp"
+          ? { channelConfigId: conv.channelConfigId }
+          : null
+      }),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    },
   },
 }))
 vi.mock("@/lib/whatsapp", () => ({
@@ -64,5 +82,29 @@ describe("POST /api/v1/inbox — channel: 'whatsapp' (Slice 3b #4)", () => {
     const res = await POST(makeReq({ to: "+994501112233", body: "hi", channel: "whatsapp", contactId: "c1" }))
     expect(res.status).toBe(201)
     expect(waCalls[0].leadId).toBeUndefined()
+  })
+})
+
+/**
+ * Found on production 2026-10-03: a workspace with two WhatsApp numbers answered, from the Inbox
+ * composer, with the workspace's FIRST number — not the one the customer wrote to. The route bound the
+ * conversation's channel for Facebook, Instagram, TikTok and VK only; WhatsApp sent with none.
+ */
+describe("POST /api/v1/inbox — WhatsApp answers from the conversation's number", () => {
+  it("passes the conversation's channel to the WhatsApp transport", async () => {
+    await POST(makeReq({ to: "+994501112233", body: "salam", channel: "whatsapp", conversationId: "conv_new_number" }))
+    expect(waCalls).toHaveLength(1)
+    expect(waCalls[0].channelConfigId).toBe("wa_new")
+    expect(waCalls[0].to).toBe("+994501112233")
+  })
+
+  it("keeps the workspace's number for a send with no conversation", async () => {
+    await POST(makeReq({ to: "+994501112233", body: "salam", channel: "whatsapp" }))
+    expect(waCalls[0].channelConfigId ?? null).toBeNull()
+  })
+
+  it("never takes the channel of another workspace's conversation", async () => {
+    await POST(makeReq({ to: "+994501112233", body: "salam", channel: "whatsapp", conversationId: "conv_other_org" }))
+    expect(waCalls.map((c) => c.channelConfigId ?? null)).not.toContain("wa_foreign")
   })
 })

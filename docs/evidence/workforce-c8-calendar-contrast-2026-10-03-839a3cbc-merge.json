@@ -1,0 +1,54 @@
+{
+  "observedAtUtc": "2026-10-03T16:06:32.429360+00:00",
+  "pr": 546,
+  "mergedAtUtc": "2026-10-03T16:02:43Z",
+  "normalMerge": true,
+  "mergedSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+  "preMergeFreshMain": "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+  "publishedCandidate": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "parents": [
+    "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+    "f1e55420fa1165a7321b7596ae0330e6e7e8077a"
+  ],
+  "tree": "af7e6df1d80b48c31c9ee624ba592dc5760b46ac",
+  "treeEqualsReviewedCandidate": true,
+  "freshSourceAndFiveActualContextsRecheckedImmediatelyBeforeMerge": true,
+  "finalIndependent": "GREEN P0-P3=0,44CURRENTFINALPNGs actually viewed, bounded36/12 acceptance",
+  "originals": [
+    {
+      "originalPath": "/tmp/workforce546-f1e-corrected-independent.json",
+      "savedPath": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-f1e55420-preliminary-independent.json",
+      "bytes": 5438,
+      "sha256": "47adaaa9e7036c3cb1f7455ab1b0f7637aa540336d3814ebe1c44ba808a2f413"
+    },
+    {
+      "originalPath": "/tmp/workforce546-final-f1e-independent.json",
+      "savedPath": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-f1e55420-final-independent.json",
+      "bytes": 9589,
+      "sha256": "d3af648c8b42c618020c1df040d9e4e12e6dcf0182b294e346e07b115d5308a8"
+    },
+    {
+      "originalPath": "/tmp/workforce546-f1e-required-five-green.json",
+      "savedPath": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-f1e55420-required-five-green.json",
+      "bytes": 2214,
+      "sha256": "4b4008d0ea1e5b11aac60f9bad620b92a0de76937eff3971dde27aeb800c7616"
+    },
+    {
+      "originalPath": "/tmp/workforce546-f1e-ci-baseline-receipt.json",
+      "savedPath": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-f1e55420-ci-baseline.json",
+      "bytes": 1493,
+      "sha256": "dd14695cb2f32bb34f3ab702d07797240f3a3f94a7751baa61cdcf067795960c"
+    }
+  ],
+  "ownNormalDeploy": {
+    "id": 37135406406,
+    "event": "push",
+    "headBranch": "main",
+    "headSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+    "createdAtUtc": "2026-10-03T16:02:46Z",
+    "path": ".github/workflows/deploy.yml",
+    "status": "ACTIVE; allfour+wholeSUCCESS still required"
+  },
+  "productionReleaseProof": "PENDING, no production acceptance credit",
+  "privateReceiptCarry": "These docs-only checkpoints remain unpublished until successor carry after verified release."
+}

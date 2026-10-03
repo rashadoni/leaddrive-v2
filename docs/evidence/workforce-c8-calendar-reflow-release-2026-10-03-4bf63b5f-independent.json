@@ -1,0 +1,243 @@
+{
+  "review": "Independent own PR542 merged-SHA normal release proof",
+  "completedAt": "2026-10-03T11:19:34.200665+00:00",
+  "releaseGreen": true,
+  "normalRunSuccessStillRequired": false,
+  "findings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "mergedSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+  "parents": [
+    "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+    "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d"
+  ],
+  "normalDeploy": {
+    "id": 37117815477,
+    "run_attempt": 1,
+    "event": "push",
+    "head_branch": "main",
+    "head_sha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+    "path": ".github/workflows/deploy.yml",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-03T10:52:16Z",
+    "updated_at": "2026-10-03T11:18:10Z",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37117815477"
+  },
+  "requiredJobs": {
+    "Production build & publish artifact": {
+      "id": 111187915750,
+      "name": "Production build & publish artifact",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T10:52:19Z",
+      "completed_at": "2026-10-03T11:08:51Z"
+    },
+    "Quality & security gates": {
+      "id": 111187915739,
+      "name": "Quality & security gates",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T10:52:19Z",
+      "completed_at": "2026-10-03T11:02:04Z"
+    },
+    "Deploy to production & post-deploy smoke": {
+      "id": 111190469874,
+      "name": "Deploy to production & post-deploy smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T11:08:55Z",
+      "completed_at": "2026-10-03T11:18:00Z"
+    },
+    "Cap retained deploy artifacts": {
+      "id": 111191882798,
+      "name": "Cap retained deploy artifacts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T11:18:04Z",
+      "completed_at": "2026-10-03T11:18:09Z"
+    }
+  },
+  "artifact": {
+    "id": 11272014627,
+    "node_id": "MDg6QXJ0aWZhY3QxMTI3MjAxNDYyNw==",
+    "name": "leaddrive-prod-4bf63b5f647a467dd6fa38af39577571efca7407",
+    "size_in_bytes": 443963101,
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11272014627",
+    "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11272014627/zip",
+    "expired": false,
+    "digest": "sha256:957273d60fc3a6720e864c3a9b0e590098923356a3485c8325e35f6fbe28206b",
+    "created_at": "2026-10-03T11:08:49Z",
+    "updated_at": "2026-10-03T11:08:49Z",
+    "expires_at": "2026-11-02T11:08:44Z",
+    "workflow_run": {
+      "id": 37117815477,
+      "repository_id": 1362346481,
+      "head_repository_id": 1362346481,
+      "head_branch": "main",
+      "head_sha": "4bf63b5f647a467dd6fa38af39577571efca7407"
+    }
+  },
+  "publicProof": {
+    "observedAt": "2026-10-03T11:19:34.096627+00:00",
+    "expectedMergedSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+    "runId": 37117815477,
+    "productionHost": "13.140.132.245",
+    "tlsHostname": "app.leaddrivecrm.org",
+    "strictPinnedBracketPositive": true,
+    "requests": {
+      "build-info-first": {
+        "label": "build-info-first",
+        "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+        "startedAt": "2026-10-03T11:19:33.705652+00:00",
+        "completedAt": "2026-10-03T11:19:33.791829+00:00",
+        "curlExit": 0,
+        "httpStatus": 200,
+        "remoteIp": "13.140.132.245",
+        "tlsVerifyResult": "0",
+        "cacheControlNoStore": true,
+        "bytes": 112,
+        "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876",
+        "bodyMatchesPublicContract": true,
+        "original": {
+          "path": "/tmp/workforce542-production-4bf-independent/public-20261003T111933705495Z/build-info-first.json",
+          "bytes": 112,
+          "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+        },
+        "sha": "4bf63b5f647a",
+        "artifactSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+        "builtAt": "2026-10-03T10:58:05Z"
+      },
+      "ping": {
+        "label": "ping",
+        "url": "https://app.leaddrivecrm.org/api/v1/ping",
+        "startedAt": "2026-10-03T11:19:33.792519+00:00",
+        "completedAt": "2026-10-03T11:19:33.960661+00:00",
+        "curlExit": 0,
+        "httpStatus": 200,
+        "remoteIp": "13.140.132.245",
+        "tlsVerifyResult": "0",
+        "cacheControlNoStore": true,
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+        "bodyMatchesPublicContract": true,
+        "original": {
+          "path": "/tmp/workforce542-production-4bf-independent/public-20261003T111933705495Z/ping.json",
+          "bytes": 11,
+          "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+        },
+        "ok": true
+      },
+      "build-info-confirm": {
+        "label": "build-info-confirm",
+        "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+        "startedAt": "2026-10-03T11:19:33.961228+00:00",
+        "completedAt": "2026-10-03T11:19:34.096123+00:00",
+        "curlExit": 0,
+        "httpStatus": 200,
+        "remoteIp": "13.140.132.245",
+        "tlsVerifyResult": "0",
+        "cacheControlNoStore": true,
+        "bytes": 112,
+        "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876",
+        "bodyMatchesPublicContract": true,
+        "original": {
+          "path": "/tmp/workforce542-production-4bf-independent/public-20261003T111933705495Z/build-info-confirm.json",
+          "bytes": 112,
+          "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+        },
+        "sha": "4bf63b5f647a",
+        "artifactSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+        "builtAt": "2026-10-03T10:58:05Z"
+      }
+    },
+    "normalRunSuccessStillRequired": false
+  },
+  "originals": [
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/artifacts.json",
+      "bytes": 762,
+      "sha256": "d1c5265ae27afaff012cc4acce49abf8bb2dea4a7a6843a63552d5c5ecfca1bc"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/candidate-commit.json",
+      "bytes": 1196,
+      "sha256": "1cf7611c30849d9e84efaf1fdd8729b4c3fe401ced8ffb2ebecf53e0ebe9f307"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/jobs.json",
+      "bytes": 19829,
+      "sha256": "fdb29aff30ecf39b57aa4d400ecf163b20916fb68e352c1c671d4bee60542dd8"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/main-at-observation.json",
+      "bytes": 342,
+      "sha256": "dd8fd24f58275172b57a47e49234d87f5aba836e21b56c065b42dce54bc7466f"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/merged-commit.json",
+      "bytes": 2743,
+      "sha256": "113189f17e2cc4119ddc709ead3547b27e06d6b607f4fc54e06773be3844a37a"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/pr.json",
+      "bytes": 18979,
+      "sha256": "02e1f706e40d5fffd1450ea76574a338b969102ad03abcf5cedd595a82126572"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/run.json",
+      "bytes": 12407,
+      "sha256": "78ab2f2db5150ce3c37bdd975ea00dc259b3f4b29259ee21d02db3f9f98b2788"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-proof-latest.json",
+      "bytes": 4658,
+      "sha256": "8cae567d60ebbea7f3aa29b9a55e4e3565d84fffbe71e4d9b6756890cd1ed5fc"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/public-proof.json",
+      "bytes": 2948,
+      "sha256": "263de3694adf2e675aaee4ab4e8579685c15797cacbeb202354d44204563652e"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/build-info-first.json",
+      "bytes": 112,
+      "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+    }
+  ],
+  "limits": [
+    "Only unauthenticated public build-info/ping were requested; no business mutations.",
+    "Large production artifact was not downloaded; exact-SHA artifact metadata and own normal workflow inspected.",
+    "TLS proof uses app.leaddrivecrm.org pinned to 13.140.132.245. Literal IP TLS certificate SAN limitation is separate; no insecure IP result is used as primary TLS proof.",
+    "Any earlier pending public flag is historical and is superseded only by actual complete own normal workflow success here."
+  ],
+  "priorObservationIntegrity": {
+    "allAttemptProofsPreserved": true,
+    "attemptCount": 1,
+    "httpOrTransportFailureCount": 0,
+    "publicContractGuardRejectionCount": 0,
+    "nonMatchingArtifactShaCount": 0,
+    "attemptProofs": [
+      {
+        "path": "/tmp/workforce542-production-4bf-independent/public-20261003T111933705495Z/attempt-proof.json",
+        "bytes": 2948,
+        "sha256": "263de3694adf2e675aaee4ab4e8579685c15797cacbeb202354d44204563652e"
+      }
+    ],
+    "historicalPr540HelperGuardIssueDoesNotApplyToThisRun": true,
+    "noFailureCauseInferred": true
+  }
+}

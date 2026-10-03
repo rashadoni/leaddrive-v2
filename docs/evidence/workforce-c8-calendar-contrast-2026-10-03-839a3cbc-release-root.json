@@ -1,0 +1,322 @@
+{
+  "review": "Root actual own PR546 normal release observation; independent report remains separate",
+  "independent": false,
+  "releaseGreen": true,
+  "mergedSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+  "github": {
+    "observedAt": "2026-10-03T16:30:44.659236+00:00",
+    "mergedSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+    "preMergeBase": "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+    "candidateHead": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+    "parents": [
+      "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+      "f1e55420fa1165a7321b7596ae0330e6e7e8077a"
+    ],
+    "mergeTreeEqualsCandidate": true,
+    "prBaseCommitAtObservation": "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+    "mainCommitAtObservation": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+    "ownNormalRouteVerified": true,
+    "run": {
+      "id": 37135406406,
+      "run_attempt": 1,
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+      "path": ".github/workflows/deploy.yml",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-03T16:02:46Z",
+      "updated_at": "2026-10-03T16:29:35Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37135406406"
+    },
+    "jobs": {
+      "Production build & publish artifact": {
+        "id": 111238815589,
+        "name": "Production build & publish artifact",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-03T16:02:49Z",
+        "completed_at": "2026-10-03T16:19:19Z"
+      },
+      "Quality & security gates": {
+        "id": 111238815368,
+        "name": "Quality & security gates",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-03T16:02:49Z",
+        "completed_at": "2026-10-03T16:13:59Z"
+      },
+      "Deploy to production & post-deploy smoke": {
+        "id": 111241749644,
+        "name": "Deploy to production & post-deploy smoke",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-03T16:19:23Z",
+        "completed_at": "2026-10-03T16:29:26Z"
+      },
+      "Cap retained deploy artifacts": {
+        "id": 111243558069,
+        "name": "Cap retained deploy artifacts",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-03T16:29:29Z",
+        "completed_at": "2026-10-03T16:29:34Z"
+      }
+    },
+    "boundArtifact": {
+      "id": 11277963611,
+      "node_id": "MDg6QXJ0aWZhY3QxMTI3Nzk2MzYxMQ==",
+      "name": "leaddrive-prod-839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+      "size_in_bytes": 443942074,
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11277963611",
+      "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11277963611/zip",
+      "expired": false,
+      "digest": "sha256:2b93a0e04d75b82339322d8e5f029ea1dff938bc8a5174e8d48f7733e9bd06f8",
+      "created_at": "2026-10-03T16:19:16Z",
+      "updated_at": "2026-10-03T16:19:16Z",
+      "expires_at": "2026-11-02T16:19:10Z",
+      "workflow_run": {
+        "id": 37135406406,
+        "repository_id": 1362346481,
+        "head_repository_id": 1362346481,
+        "head_branch": "main",
+        "head_sha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5"
+      }
+    },
+    "wholeOwnRunSuccess": true,
+    "normalRunSuccessStillRequired": false,
+    "originals": [
+      {
+        "path": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/artifacts.json",
+        "bytes": 762,
+        "sha256": "d3e877218d768319a2054ab6cd3e13284c49da1062578fc3f58d34aecd690f03"
+      },
+      {
+        "path": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/candidate-commit.json",
+        "bytes": 1465,
+        "sha256": "e8d3e26a2041478573753f0a7cc44c897d6a6098994c83495a472cc7f00b95e2"
+      },
+      {
+        "path": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/jobs.json",
+        "bytes": 20186,
+        "sha256": "3c763aaa029fcc6b6afc423ae5505049a9c267b9ef8d03e0d4159c6aed6412f6"
+      },
+      {
+        "path": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/main-at-observation.json",
+        "bytes": 342,
+        "sha256": "d86ac077d035ef9cdb855804e758b5a413ad20daacd21ff2124a248970b8f4cf"
+      },
+      {
+        "path": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/merged-commit.json",
+        "bytes": 2727,
+        "sha256": "8b92a9bf0fa5759124e2b95806a96d3b3e4046e53097c760a2af3a9b2290c2ee"
+      },
+      {
+        "path": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/pr.json",
+        "bytes": 19113,
+        "sha256": "c593479e5a193c291ff4b23cb64fa82ccd77c7d0cf577e4c404a2cf64f29ee65"
+      },
+      {
+        "path": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/run.json",
+        "bytes": 12399,
+        "sha256": "eb99f008c896c7c092d29eca01fe4c16d1201c185bd64aead1980b21e388cf92"
+      }
+    ]
+  },
+  "strictPinnedPublicProof": {
+    "observedAt": "2026-10-03T16:31:12.859852+00:00",
+    "expectedMergedSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+    "runId": 37135406406,
+    "productionHost": "13.140.132.245",
+    "tlsHostname": "app.leaddrivecrm.org",
+    "strictPinnedBracketPositive": true,
+    "requests": {
+      "build-info-first": {
+        "label": "build-info-first",
+        "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+        "startedAt": "2026-10-03T16:31:11.816815+00:00",
+        "completedAt": "2026-10-03T16:31:12.660829+00:00",
+        "curlExit": 0,
+        "httpStatus": 200,
+        "remoteIp": "13.140.132.245",
+        "tlsVerifyResult": "0",
+        "cacheControlNoStore": true,
+        "bytes": 112,
+        "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+        "bodyMatchesPublicContract": true,
+        "original": {
+          "path": "/tmp/workforce546-production-839-primary-github/public-20261003T163111816645Z/build-info-first.json",
+          "bytes": 112,
+          "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20"
+        },
+        "sha": "839a3cbcdc32",
+        "artifactSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+        "builtAt": "2026-10-03T16:08:26Z"
+      },
+      "ping": {
+        "label": "ping",
+        "url": "https://app.leaddrivecrm.org/api/v1/ping",
+        "startedAt": "2026-10-03T16:31:12.661425+00:00",
+        "completedAt": "2026-10-03T16:31:12.770278+00:00",
+        "curlExit": 0,
+        "httpStatus": 200,
+        "remoteIp": "13.140.132.245",
+        "tlsVerifyResult": "0",
+        "cacheControlNoStore": true,
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+        "bodyMatchesPublicContract": true,
+        "original": {
+          "path": "/tmp/workforce546-production-839-primary-github/public-20261003T163111816645Z/ping.json",
+          "bytes": 11,
+          "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+        },
+        "ok": true
+      },
+      "build-info-confirm": {
+        "label": "build-info-confirm",
+        "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+        "startedAt": "2026-10-03T16:31:12.771238+00:00",
+        "completedAt": "2026-10-03T16:31:12.859368+00:00",
+        "curlExit": 0,
+        "httpStatus": 200,
+        "remoteIp": "13.140.132.245",
+        "tlsVerifyResult": "0",
+        "cacheControlNoStore": true,
+        "bytes": 112,
+        "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+        "bodyMatchesPublicContract": true,
+        "original": {
+          "path": "/tmp/workforce546-production-839-primary-github/public-20261003T163111816645Z/build-info-confirm.json",
+          "bytes": 112,
+          "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20"
+        },
+        "sha": "839a3cbcdc32",
+        "artifactSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+        "builtAt": "2026-10-03T16:08:26Z"
+      }
+    },
+    "normalRunSuccessStillRequired": false
+  },
+  "literalIpSupplement": {
+    "exactMergedSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+    "requests": [
+      {
+        "label": "build-info-first",
+        "url": "https://app.leaddrivecrm.org/api/v1/public/build-info?receipt=839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+        "startedAt": "2026-10-03T16:31:22.615144+00:00",
+        "completedAt": "2026-10-03T16:31:22.838216+00:00",
+        "transport": "strict-pinned-domain",
+        "targetIp": "13.140.132.245",
+        "curlExit": 0,
+        "httpStatus": "200",
+        "bytes": 112,
+        "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+        "bodyPath": "/tmp/workforce546-production-839-root-literal-supplement/build-info-first.json",
+        "body": {
+          "sha": "839a3cbcdc32",
+          "artifactSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+          "builtAt": "2026-10-03T16:08:26Z"
+        }
+      },
+      {
+        "label": "ping",
+        "url": "https://app.leaddrivecrm.org/api/v1/ping?receipt=839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+        "startedAt": "2026-10-03T16:31:22.838659+00:00",
+        "completedAt": "2026-10-03T16:31:22.971738+00:00",
+        "transport": "strict-pinned-domain",
+        "targetIp": "13.140.132.245",
+        "curlExit": 0,
+        "httpStatus": "200",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+        "bodyPath": "/tmp/workforce546-production-839-root-literal-supplement/ping.json",
+        "body": {
+          "ok": true
+        }
+      },
+      {
+        "label": "build-info-confirm",
+        "url": "https://app.leaddrivecrm.org/api/v1/public/build-info?receipt=839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+        "startedAt": "2026-10-03T16:31:22.972224+00:00",
+        "completedAt": "2026-10-03T16:31:23.064739+00:00",
+        "transport": "strict-pinned-domain",
+        "targetIp": "13.140.132.245",
+        "curlExit": 0,
+        "httpStatus": "200",
+        "bytes": 112,
+        "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+        "bodyPath": "/tmp/workforce546-production-839-root-literal-supplement/build-info-confirm.json",
+        "body": {
+          "sha": "839a3cbcdc32",
+          "artifactSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+          "builtAt": "2026-10-03T16:08:26Z"
+        }
+      },
+      {
+        "label": "ip-strict-ping",
+        "url": "https://13.140.132.245/api/v1/ping?receipt=839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+        "startedAt": "2026-10-03T16:31:23.065282+00:00",
+        "completedAt": "2026-10-03T16:31:23.127807+00:00",
+        "transport": "strict-literal-ip",
+        "targetIp": "13.140.132.245",
+        "curlExit": 60,
+        "httpStatus": "000",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bodyPath": "/tmp/workforce546-production-839-root-literal-supplement/ip-strict-ping.json",
+        "body": null,
+        "transportError": "curl: (60) SSL: no alternative certificate subject name matches target host name '13.140.132.245'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above."
+      },
+      {
+        "label": "ip-ping",
+        "url": "https://13.140.132.245/api/v1/ping?receipt=839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+        "startedAt": "2026-10-03T16:31:23.128328+00:00",
+        "completedAt": "2026-10-03T16:31:23.198917+00:00",
+        "transport": "insecure-literal-ip-supplement",
+        "targetIp": "13.140.132.245",
+        "curlExit": 0,
+        "httpStatus": "200",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+        "bodyPath": "/tmp/workforce546-production-839-root-literal-supplement/ip-ping.json",
+        "body": {
+          "ok": true
+        }
+      },
+      {
+        "label": "ip-build-info",
+        "url": "https://13.140.132.245/api/v1/public/build-info?receipt=839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+        "startedAt": "2026-10-03T16:31:23.199625+00:00",
+        "completedAt": "2026-10-03T16:31:23.244362+00:00",
+        "transport": "insecure-literal-ip-supplement",
+        "targetIp": "13.140.132.245",
+        "curlExit": 0,
+        "httpStatus": "200",
+        "bytes": 112,
+        "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+        "bodyPath": "/tmp/workforce546-production-839-root-literal-supplement/ip-build-info.json",
+        "body": {
+          "sha": "839a3cbcdc32",
+          "artifactSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+          "builtAt": "2026-10-03T16:08:26Z"
+        }
+      }
+    ]
+  },
+  "progress": {
+    "done": 81,
+    "registerRows": 161,
+    "gatesDone": 14,
+    "gatesTotal": 15,
+    "c8Percent": 36,
+    "overallPercent": 59,
+    "nonDone": 80
+  },
+  "limits": [
+    "No authenticated production calendar or tenant feature/grant activation",
+    "Strict literal IP TLS remains curl60 certificate SAN mismatch; insecure IP200 is supplementary only",
+    "No human AT/native zoom/whole-page keyboard/physical/Android/load/pilot acceptance",
+    "Full local build/typecheck/suite/browser/PostgreSQL NOT RUN under Contabo host contract"
+  ]
+}

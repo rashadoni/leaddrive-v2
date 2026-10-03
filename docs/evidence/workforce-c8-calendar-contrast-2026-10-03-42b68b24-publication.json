@@ -1,0 +1,60 @@
+{
+  "observedAtUtc": "2026-10-03T14:56:27.113777+00:00",
+  "pr": 546,
+  "draft": true,
+  "publishedExactHead": "42b68b2428858fd3ebcb21118c1957eecfdb3b65",
+  "freshMain": "c6eec1382ab5b43a07c557ef4a5c7944b0d9f517",
+  "sourceVerdict": "GREEN P0-P3=0",
+  "fullDiff": {
+    "paths": 43,
+    "bytes": 386540,
+    "sha256": "a6e99b95864bba94869ff4ce19446715107fe69cf4905a39df6eac2b5958a5de"
+  },
+  "originalReviewChain": [
+    {
+      "path": "/tmp/workforce-part20-13c2282b-independent.json",
+      "bytes": 5030,
+      "sha256": "8539d74f868f642b7b8dde4b079e692982ac5ae251a9bc9aac451ae75dddd065"
+    },
+    {
+      "path": "/tmp/workforce-part20-34505ba6-independent.json",
+      "bytes": 5764,
+      "sha256": "444ec2c6a678d1d6558a25d0ae9508c2c5a199f5a55a5f53473601245c106e2a"
+    },
+    {
+      "path": "/tmp/workforce-part20-1db146c3-independent.json",
+      "bytes": 6285,
+      "sha256": "2209daeb2edd7e2b5fb594e09aac3e3740aebe5666a236e7321e67d0f44409db"
+    },
+    {
+      "path": "/tmp/workforce-part20-42b68b24-independent.json",
+      "bytes": 3739,
+      "sha256": "fc97934475f7a9eabcb6534e9357fa75184f65baf0d85b4bdd0e20c039aba4bb"
+    }
+  ],
+  "incoming548": {
+    "paths": 2,
+    "changes": "54+/1-",
+    "owned43BlobsExactPreviousHead": true,
+    "incomingBlobsExactMain": true,
+    "postChecks": "runnerpolicy40/assets27-86-5/diff PASS"
+  },
+  "localSecretScan": {
+    "version": "8.30.1",
+    "configUnchanged": true,
+    "findings": 0,
+    "scannedBytesApprox": 333014,
+    "durationMs": 602
+  },
+  "secondDiagnostic": {
+    "runId": 37131296303,
+    "attempt": 1,
+    "headSha": "42b68b2428858fd3ebcb21118c1957eecfdb3b65",
+    "event": "workflow_dispatch",
+    "statusAtObservation": "in_progress",
+    "acceptanceCredit": false
+  },
+  "correctedHostedContrast": "PENDING",
+  "draftSkipCredit": false,
+  "fullLocalHeavyChecks": "NOT RUN"
+}

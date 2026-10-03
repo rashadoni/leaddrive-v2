@@ -1,0 +1,65 @@
+{
+  "verifiedAt": "2026-10-03T10:52:09.992569+00:00",
+  "pr": 542,
+  "candidateHead": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+  "freshMain": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+  "requiredContexts": [
+    {
+      "id": 111184233760,
+      "name": "pr-scope",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+      "completed_at": "2026-10-03T10:28:09Z"
+    },
+    {
+      "id": 111184279553,
+      "name": "static-checks",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+      "completed_at": "2026-10-03T10:42:24Z"
+    },
+    {
+      "id": 111184279573,
+      "name": "typecheck",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+      "completed_at": "2026-10-03T10:42:11Z"
+    },
+    {
+      "id": 111184142860,
+      "name": "runner-policy",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+      "completed_at": "2026-10-03T10:27:34Z"
+    },
+    {
+      "id": 111184142826,
+      "name": "scan",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+      "completed_at": "2026-10-03T10:27:32Z"
+    }
+  ],
+  "protectionUnchanged": true,
+  "enforceAdmins": true,
+  "forcePushAllowed": false,
+  "deleteAllowed": false,
+  "finalBrowserRun": 37116498411,
+  "finalBrowserJob": 111184233766,
+  "checkedSynthetic": "0b94e1ae4202e5befdbfa0bd8823968fa195777d",
+  "syntheticTreeEqualsReviewedCandidate": true,
+  "actualCasesPassed": 12,
+  "independentFinalFindings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "independentFinalDigest": "5b5bf0ba7457b2e85049211569bed58074c2303032a34c07306622e4703cf6d9",
+  "normalMainProductionBuildStillRequired": true
+}

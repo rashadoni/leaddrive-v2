@@ -1,0 +1,309 @@
+{
+  "schema": "workforce-default-light-contrast-independent-exact-source-review-v1",
+  "reviewedAtUtc": "2026-10-03T14:05:40.841507+00:00",
+  "independentReadOnly": true,
+  "verdict": "GREEN exact source and append-only receipt integrity; hosted contrast acceptance NOT RUN",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "routing": {
+    "root": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3",
+    "branch": "codex/workforce-completion-part20",
+    "origin": "https://github.com/rashadoni/leaddrive-v2.git",
+    "head": "6f70b95c1d9065f0f42299c5b4e04762687c551c",
+    "baseSha": "25a944ecbe2fbfe9dd716efc4009d79b6462f26f",
+    "productionHost": "13.140.132.245",
+    "productionPath": "/opt/leaddrive-v2",
+    "releaseRoute": "reviewed main -> deploy.yml -> immutable SHA-bound artifact -> registered production",
+    "finalCleanExactHeadVerified": true,
+    "freshMainMustBeCheckedAgainBeforePublicationAndMerge": true
+  },
+  "initialFrozenCandidate": {
+    "head": "8be335bf31f5dbde1197577351c5fcd215b3cfdd",
+    "baseSha": "3294093a4364be8be35d8a03c1b9fde57c3dd3b9",
+    "fullDiff": {
+      "paths": 35,
+      "bytes": 307137,
+      "sha256": "6cfaf4d5e3ff793b14dddea76f2861e33878391d84a552c72bf7fce2288abdb7",
+      "algorithm": "raw git diff --binary base head",
+      "names": [
+        ".github/workflows/workforce-calendar-browser-evidence.yml",
+        "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-targeted-checks.json",
+        "docs/evidence/workforce-c8-calendar-contrast-plan-2026-10-03-default-light.json",
+        "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-carry.json",
+        "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-e148b4cb-independent.json",
+        "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-e148b4cb-local-scan.json",
+        "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-e148b4cb-publication.json",
+        "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-main329-incoming.json",
+        "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-9a754dae-independent.json",
+        "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-a5cc4d32-final.json",
+        "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-a5cc4d32-independent.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-artifact-pending.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-gates.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-confirm-build.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-first-build.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-github.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-ping.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-public.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-ip-build.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-ip-ping.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-qa.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-confirm-build.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-first-build.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-github.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-ping.json",
+        "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-public.json",
+        "docs/evidence/workforce-c8-calendar-reflow-successor-2026-10-03-a5cc4d32-exact.json",
+        "docs/workforce-c8-moved-day-reversal-evidence-2026-09-30.md",
+        "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "docs/workforce-hrm-session-log.md",
+        "scripts/workforce-calendar-browser-evidence.mjs",
+        "scripts/workforce-calendar-contrast-colors.mjs",
+        "scripts/workforce-calendar-contrast-dom.mjs",
+        "src/__tests__/workforce-calendar-browser-evidence-contrast-colors.test.ts"
+      ]
+    },
+    "nonDocDiff": {
+      "paths": 5,
+      "bytes": 45714,
+      "sha256": "696cfd2e06591e2d62fd9a10408ea3839f05595a91c7dba2e8b33e537ec8e81f",
+      "algorithm": "raw git diff --binary base head -- explicit non-doc paths",
+      "names": [
+        ".github/workflows/workforce-calendar-browser-evidence.yml",
+        "scripts/workforce-calendar-browser-evidence.mjs",
+        "scripts/workforce-calendar-contrast-colors.mjs",
+        "scripts/workforce-calendar-contrast-dom.mjs",
+        "src/__tests__/workforce-calendar-browser-evidence-contrast-colors.test.ts"
+      ]
+    },
+    "allFiveSourceBlobsByteExactFinal": true,
+    "reviewExtendedAfterOrdinaryMain545MergeAndAppendOnlyDocsCheckpoint": true
+  },
+  "fullDiff": {
+    "paths": 35,
+    "bytes": 310998,
+    "sha256": "0e6605456288aab9492bb05a48b8546049afc8b3433daa9c1d16d61f595aebf3",
+    "algorithm": "raw git diff --binary base head",
+    "names": [
+      ".github/workflows/workforce-calendar-browser-evidence.yml",
+      "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-targeted-checks.json",
+      "docs/evidence/workforce-c8-calendar-contrast-plan-2026-10-03-default-light.json",
+      "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-carry.json",
+      "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-e148b4cb-independent.json",
+      "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-e148b4cb-local-scan.json",
+      "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-e148b4cb-publication.json",
+      "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-main329-incoming.json",
+      "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-9a754dae-independent.json",
+      "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-a5cc4d32-final.json",
+      "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-a5cc4d32-independent.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-artifact-pending.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-gates.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-confirm-build.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-first-build.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-github.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-ping.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-public.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-ip-build.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-ip-ping.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-qa.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-confirm-build.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-first-build.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-github.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-ping.json",
+      "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-public.json",
+      "docs/evidence/workforce-c8-calendar-reflow-successor-2026-10-03-a5cc4d32-exact.json",
+      "docs/workforce-c8-moved-day-reversal-evidence-2026-09-30.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "scripts/workforce-calendar-browser-evidence.mjs",
+      "scripts/workforce-calendar-contrast-colors.mjs",
+      "scripts/workforce-calendar-contrast-dom.mjs",
+      "src/__tests__/workforce-calendar-browser-evidence-contrast-colors.test.ts"
+    ]
+  },
+  "nonDocDiff": {
+    "paths": 5,
+    "bytes": 45714,
+    "sha256": "696cfd2e06591e2d62fd9a10408ea3839f05595a91c7dba2e8b33e537ec8e81f",
+    "algorithm": "raw git diff --binary base head -- explicit non-doc paths",
+    "names": [
+      ".github/workflows/workforce-calendar-browser-evidence.yml",
+      "scripts/workforce-calendar-browser-evidence.mjs",
+      "scripts/workforce-calendar-contrast-colors.mjs",
+      "scripts/workforce-calendar-contrast-dom.mjs",
+      "src/__tests__/workforce-calendar-browser-evidence-contrast-colors.test.ts"
+    ]
+  },
+  "sourceManifest": [
+    {
+      "path": ".github/workflows/workforce-calendar-browser-evidence.yml",
+      "bytes": 8313,
+      "sha256": "c30072618eebc9306a31f88aa10b03420c131eee0e0e7530ef2e61d6c34da648"
+    },
+    {
+      "path": "scripts/workforce-calendar-browser-evidence.mjs",
+      "bytes": 60889,
+      "sha256": "50338f484ab9ef373380529d1aede5a94380bd9db89f886a24708491b8499e2d"
+    },
+    {
+      "path": "scripts/workforce-calendar-contrast-colors.mjs",
+      "bytes": 11547,
+      "sha256": "ccfd96a15c6f9fd055d84a2cd7a2a53da694c3c5b8cb96b56d05807af133e901"
+    },
+    {
+      "path": "scripts/workforce-calendar-contrast-dom.mjs",
+      "bytes": 9432,
+      "sha256": "79355703f05b4f831fae60b5507add16e79f9f032b300a62156255154a97126c"
+    },
+    {
+      "path": "src/__tests__/workforce-calendar-browser-evidence-contrast-colors.test.ts",
+      "bytes": 12654,
+      "sha256": "fe737d6dec832ff64495175fb0a0e00b85ad923a3e519775f1afc5245d3cc836"
+    }
+  ],
+  "integrityChecks": {
+    "currentHeadExact": true,
+    "workingTreeClean": true,
+    "baseAncestor": true,
+    "allFiveSourceBlobsExactPrior": true,
+    "sixIncomingPreservedExactMain": true,
+    "mainOriginals": {
+      "count": 53,
+      "byteExact": true,
+      "mismatches": []
+    },
+    "oldPrivatePart19Originals": {
+      "count": 73,
+      "byteExact": true,
+      "mismatches": []
+    },
+    "allWorkforceJsonValid": {
+      "count": 80,
+      "invalid": []
+    },
+    "documents": {
+      "docs/workforce-c8-moved-day-reversal-evidence-2026-09-30.md": {
+        "preservesMainPrefix": true,
+        "preservesOldPrivatePrefix": true,
+        "preservesFrozenInitialPrefix": true,
+        "appendVsMainBytes": 34449,
+        "appendVsPriorBytes": 1280
+      },
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md": {
+        "preservesMainPrefix": true,
+        "preservesOldPrivatePrefix": true,
+        "preservesFrozenInitialPrefix": true,
+        "appendVsMainBytes": 34449,
+        "appendVsPriorBytes": 1280
+      },
+      "docs/workforce-hrm-session-log.md": {
+        "preservesMainPrefix": true,
+        "preservesOldPrivatePrefix": true,
+        "preservesFrozenInitialPrefix": true,
+        "appendVsMainBytes": 34449,
+        "appendVsPriorBytes": 1280
+      }
+    },
+    "threeNewAppendSequencesByteIdentical": true,
+    "targetedReceiptSourceHashesExactFrozen": true,
+    "actualRootTestLog": {
+      "present": true,
+      "sha256Matches": true
+    }
+  },
+  "originalIntegrity": {
+    "all75PreparedE148OriginalsByteExact": true,
+    "all53CurrentMainOriginalsByteExact": true,
+    "all73OldPrivatePart19OriginalsByteExact": true,
+    "all80WorkforceJsonParsed": true,
+    "e148IndependentReportByteExactTmp": true,
+    "incoming329IndependentReportByteExactTmp": true,
+    "priorLocalScanOriginalReportAndLogBytesHashesMatch": true,
+    "targetedRootActualTestLogBytesHashMatch": true,
+    "earlierHistoricalReleaseReceiptsNotReinterpretedAsCurrentProductionRevision": true
+  },
+  "sourceReview": {
+    "allFiveChangedExecutablePathsRead": true,
+    "actualTargetProductMarkupButtonStylesGlobalCssAndExistingFocusReadingFlowsRead": true,
+    "collector": [
+      "Collector is serialized as a standalone Playwright function; nested helpers depend only on browser DOM APIs and arguments.",
+      "No style, focus, theme, localStorage, fixture, authentication or application-state write. A detached 1x1 canvas performs only color conversion.",
+      "Actual nonempty DOM text nodes and positive Range fragments become separate runs. Rendered targets are bound to nonempty localized expected text, not copied business payloads.",
+      "Every text owner and ancestor is recorded, including ancestors behind the nearest opaque layer. Unsupported group opacity, gradients/background images, filters, masks, blend, generated paint, text shadows and inset shadows prevent acceptance.",
+      "Actual default-light class/color scheme, sRGB gamut, no forced colors, no light-lock/wallpaper and loaded fonts are required. Stable paint/native focus/enabled requirements fail closed.",
+      "Resolved RGB/sRGB channels are validated, and only absolute supported OKLCH/OKLAB/LCH/LAB colors use opaque sRGB canvas conversion. Original alpha is retained separately and converted channels carry conservative one-full-unorm8-step intervals.",
+      "Default flat-painted current target ancestry was reviewed. This is a bounded collector for these existing semantic targets, not a general screenshot or arbitrary layered-page contrast engine."
+    ],
+    "math": [
+      "Layer order is owner-first input, then nearest opaque backdrop composed toward owner and foreground alpha composed last. No implicit white backdrop.",
+      "All color fields and all ancestors are validated. Missing, malformed, empty, nonfinite, unsupported and unstable observations remain NOT_PROVEN.",
+      "Monotonic sRGB luminance and independent uncertainty intervals provide conservative lower/upper contrast bounds. Acceptance uses the unrounded lower bound; a threshold-straddling interval never passes.",
+      "Normal text requires 4.5. Large text requires 3 only at observed size>=24px, or size>=18.666666666666668px and numeric weight>=700. Semibold600 and unknown qualification retain the normal threshold.",
+      "Run/node/fragment cardinality checks prevent vacuous acceptance. A known failing run remains overall FAIL even when another run is unsupported. Browser observation inputs are not mutated."
+    ],
+    "integration": [
+      "Twelve distinct keys per RU/AZ/EN 320 CSS TEAM flow require exactly36 original observations, with no missing or duplicated key receiving credit.",
+      "Actual inventory markup supports the closest-li first direct-div paragraph selectors; actual review markup supports direct review paragraphs/title. Browser context is en-US, matching existing and new date assertions.",
+      "Source/confirm/cancel observations follow the existing native keyboard and viewport assertions. Review/unknown/replay observations retain real product focus and reading flows without focus injection.",
+      "All existing twelve real functional cases and populated no-tenant RLS checks run before the cumulative contrast assertion. No existing auth/session/CSRF/pacing, Cancel state equality, real committed-response loss, exact serialized retry, replay no-write, geometry or reading assertion is removed.",
+      "First contrast FAIL/NOT_PROVEN is collected for all36 targets before the final assertion. Existing finally serialization preserves receipt JSON even when the new acceptance fails.",
+      "Workflow diff adds only the two helper paths to the existing narrow paths filter. Hosted runner, concurrency, timeout, services, credentials masking, isolated role/schema, native browser and artifact guards are unchanged."
+    ]
+  },
+  "transitiveReview": {
+    "main545SixFileDiffRead": true,
+    "incomingPaths": [
+      "src/__tests__/lib-whatsapp-reply-from-receiving-number.test.ts",
+      "src/app/api/v1/inbox/conversations/[id]/messages/route.ts",
+      "src/app/api/v1/webhooks/whatsapp/route.ts",
+      "src/lib/chatbot-autoreply.ts",
+      "src/lib/inbox/send-conversation-reply.ts",
+      "src/lib/whatsapp.ts"
+    ],
+    "allSixIncomingBlobsExactMain": true,
+    "taskIntersection": false,
+    "workforceAuthRlsSchemaCalendarTransactionDeployBaselinesUnchanged": true,
+    "receivingNumberChangesConfinedToWhatsAppInboxTransportAndTests": true,
+    "incoming329SharedBoundaryIndependentOriginalPreserved": true,
+    "noForeignBranchOrPrMutation": true
+  },
+  "verification": {
+    "parentActualTargetedVitest": {
+      "files": 1,
+      "passedTests": 56,
+      "durationMs": 314,
+      "currentFiveSourceHashesMatchRecordedChecks": true,
+      "actualLogSha256": "87600a70df9b11dfd63e83cb7cb8c34673158296de536c94e53a74204ad4e89c"
+    },
+    "parentRecordedScopedEslintSyntaxDiff": "PASS; source manifest and retained check receipt inspected",
+    "reviewerRepeatedTests": "NOT RUN: parent already ran current bounded meaningful checks; no duplicate or heavy check needed",
+    "hostedBrowserContrast": "NOT RUN",
+    "fiveRequiredGitHubPrContexts": "NOT RUN in this independent source review; no context published",
+    "productionReleaseOfCandidate": "NOT RUN",
+    "localFullBuildTypecheckSuiteBrowserPostgresAndroidLoad": "NOT RUN: Contabo workload contract"
+  },
+  "limits": [
+    "This review covers frozen6f70b95c1d9065f0f42299c5b4e04762687c551c against exact25a944ecbe2fbfe9dd716efc4009d79b6462f26f. Any later source change needs its own current review.",
+    "Source GREEN is not hosted contrast PASS, UI defect proof, current screenshot acceptance, overall WCAG compliance, production release proof, or required GitHub context.",
+    "Preserve first actual hosted FAIL/NOT_PROVEN receipt and current screenshots before any measured bounded UI correction; do not derive a production CSS fix solely from this static review.",
+    "Dark, forced colors, hover/pressed, non-text/focus-ring, native zoom, AT, whole-page keyboard, authenticated production calendar, physical-device, Android/load and pilot acceptance remain outside this lane or NOT RUN.",
+    "General update/delete, break policy, AGENT moves and Route mutation remain excluded. No canonical checkout, old conflicting worktree, LeadShelf or unrelated branch was touched.",
+    "No repo/Git/production mutation, hosted workflow dispatch, GitHub review/status publication or external communication performed by reviewer."
+  ],
+  "progress": {
+    "done": 81,
+    "total": 161,
+    "gatesDone": 14,
+    "gatesTotal": 15,
+    "c8Percent": 36,
+    "overallPercent": 59,
+    "nonDone": 80,
+    "wfC8007": "PARTIAL",
+    "changedByReview": false
+  }
+}

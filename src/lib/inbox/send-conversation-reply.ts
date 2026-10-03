@@ -374,6 +374,7 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
             filename: attachment.filename,
             caption: body.trim() || undefined,
             organizationId: orgId,
+            channelConfigId,
           })
           status = result.success ? "delivered" : "failed"
           if (!result.success) errorMsg = result.error || "WhatsApp media send failed"
@@ -386,6 +387,8 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
           organizationId: orgId,
           contactId: contactId || undefined,
           leadId: leadId || undefined,
+          // From the number this conversation came in on (a workspace may hold several).
+          channelConfigId,
           // The live composer keeps the historical self-logging behavior. Flow actions need
           // one conversation-linked canonical row, so they suppress the transport log below.
           ...(conversationId ? { skipLog: true } : {}),

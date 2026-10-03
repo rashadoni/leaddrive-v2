@@ -1,0 +1,80 @@
+{
+  "observedAtUtc": "2026-10-03T11:03:28.714407+00:00",
+  "kind": "Sanitized completed own PR542 main QA log receipt",
+  "mergedSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+  "normalRouteVerified": true,
+  "run": {
+    "id": 37117815477,
+    "event": "push",
+    "head_branch": "main",
+    "head_sha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+    "path": ".github/workflows/deploy.yml",
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37117815477"
+  },
+  "qualityJob": {
+    "id": 111187915739,
+    "name": "Quality & security gates",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-10-03T10:52:19Z",
+    "completed_at": "2026-10-03T11:02:04Z"
+  },
+  "completedSteps": [
+    {
+      "name": "Event-platform migration and database invariant gate",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-10-03T10:55:44Z"
+    },
+    {
+      "name": "Workforce shared-lock PostgreSQL race gate",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-10-03T10:55:56Z"
+    },
+    {
+      "name": "Previous Prisma client rollback-window gate",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-10-03T10:56:19Z"
+    },
+    {
+      "name": "Run security gates",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-10-03T10:56:24Z"
+    },
+    {
+      "name": "Unit tests vs baseline (BLOCKING)",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-10-03T11:02:01Z"
+    }
+  ],
+  "actualWorkforcePostgresPassedTests": {
+    "lib-workforce-calendar-configuration-lock-postgres.test.ts": 12,
+    "lib-workforce-exception-lock-postgres.test.ts": 15,
+    "lib-workforce-exception-policy-revision-postgres.test.ts": 6
+  },
+  "actualWorkforcePostgresPassedTotal": 33,
+  "testBaseline": {
+    "failingFiles": 18,
+    "baselineFiles": 18,
+    "noNewFailures": true,
+    "everyBaselineEntryStillFails": true,
+    "blockingGatePassed": true,
+    "zeroFailureClaim": false
+  },
+  "rawLog": {
+    "path": "/tmp/workforce542-own-qa-completed.log",
+    "bytes": 286391,
+    "sha256": "0aa5ea44c381c4d5fa443ffac5df4679b42616fd0083443d2c9a10a9441d2c12",
+    "rawLogNotCommitted": true
+  },
+  "limits": [
+    "Completed own QA alone does not prove own production build/deploy/retention/whole workflow or public exact merged SHA.",
+    "No full suite or PostgreSQL test was run on Contabo."
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "observedAt": "2026-10-03T11:19:33.596579+00:00",
+  "mergedSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+  "preMergeBase": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+  "candidateHead": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+  "parents": [
+    "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+    "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d"
+  ],
+  "mergeTreeEqualsCandidate": true,
+  "prBaseCommitAtObservation": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+  "mainCommitAtObservation": "2f7f56ff6b8731c14c1f9483d977a9f80a57333f",
+  "ownNormalRouteVerified": true,
+  "run": {
+    "id": 37117815477,
+    "run_attempt": 1,
+    "event": "push",
+    "head_branch": "main",
+    "head_sha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+    "path": ".github/workflows/deploy.yml",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-03T10:52:16Z",
+    "updated_at": "2026-10-03T11:18:10Z",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37117815477"
+  },
+  "jobs": {
+    "Production build & publish artifact": {
+      "id": 111187915750,
+      "name": "Production build & publish artifact",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T10:52:19Z",
+      "completed_at": "2026-10-03T11:08:51Z"
+    },
+    "Quality & security gates": {
+      "id": 111187915739,
+      "name": "Quality & security gates",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T10:52:19Z",
+      "completed_at": "2026-10-03T11:02:04Z"
+    },
+    "Deploy to production & post-deploy smoke": {
+      "id": 111190469874,
+      "name": "Deploy to production & post-deploy smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T11:08:55Z",
+      "completed_at": "2026-10-03T11:18:00Z"
+    },
+    "Cap retained deploy artifacts": {
+      "id": 111191882798,
+      "name": "Cap retained deploy artifacts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T11:18:04Z",
+      "completed_at": "2026-10-03T11:18:09Z"
+    }
+  },
+  "boundArtifact": {
+    "id": 11272014627,
+    "node_id": "MDg6QXJ0aWZhY3QxMTI3MjAxNDYyNw==",
+    "name": "leaddrive-prod-4bf63b5f647a467dd6fa38af39577571efca7407",
+    "size_in_bytes": 443963101,
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11272014627",
+    "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11272014627/zip",
+    "expired": false,
+    "digest": "sha256:957273d60fc3a6720e864c3a9b0e590098923356a3485c8325e35f6fbe28206b",
+    "created_at": "2026-10-03T11:08:49Z",
+    "updated_at": "2026-10-03T11:08:49Z",
+    "expires_at": "2026-11-02T11:08:44Z",
+    "workflow_run": {
+      "id": 37117815477,
+      "repository_id": 1362346481,
+      "head_repository_id": 1362346481,
+      "head_branch": "main",
+      "head_sha": "4bf63b5f647a467dd6fa38af39577571efca7407"
+    }
+  },
+  "wholeOwnRunSuccess": true,
+  "normalRunSuccessStillRequired": false,
+  "originals": [
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/artifacts.json",
+      "bytes": 762,
+      "sha256": "d1c5265ae27afaff012cc4acce49abf8bb2dea4a7a6843a63552d5c5ecfca1bc"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/candidate-commit.json",
+      "bytes": 1196,
+      "sha256": "1cf7611c30849d9e84efaf1fdd8729b4c3fe401ced8ffb2ebecf53e0ebe9f307"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/jobs.json",
+      "bytes": 19829,
+      "sha256": "fdb29aff30ecf39b57aa4d400ecf163b20916fb68e352c1c671d4bee60542dd8"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/main-at-observation.json",
+      "bytes": 342,
+      "sha256": "dd8fd24f58275172b57a47e49234d87f5aba836e21b56c065b42dce54bc7466f"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/merged-commit.json",
+      "bytes": 2743,
+      "sha256": "113189f17e2cc4119ddc709ead3547b27e06d6b607f4fc54e06773be3844a37a"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/pr.json",
+      "bytes": 18979,
+      "sha256": "02e1f706e40d5fffd1450ea76574a338b969102ad03abcf5cedd595a82126572"
+    },
+    {
+      "path": "/tmp/workforce542-production-4bf-independent/github-20261003T111930566294Z/run.json",
+      "bytes": 12407,
+      "sha256": "78ab2f2db5150ce3c37bdd975ea00dc259b3f4b29259ee21d02db3f9f98b2788"
+    }
+  ]
+}
