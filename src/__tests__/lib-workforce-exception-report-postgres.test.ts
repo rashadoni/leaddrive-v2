@@ -215,7 +215,9 @@ postgresDescribe("bounded recorded exception report on real PostgreSQL", () => {
       // Equivalent key columns, ordinary CREATE INDEX on an isolated empty fixture;
       // does not claim production CREATE INDEX CONCURRENTLY rollout/replay.
       await tx.$executeRawUnsafe(extract(src.decisionIndex, 'CREATE UNIQUE INDEX CONCURRENTLY "workforce_exception_decisions_org_case_revision_key"').replace('CONCURRENTLY ', ''))
-      // Actual production response lookup is NON-UNIQUE; multiple signals per cycle remain legal.
+      // The selected production response lookup index is NON-UNIQUE.
+      // This fixture omits the later response-cycle unique index migration;
+      // it does not test or accept duplicate signals in a current response cycle.
       await tx.$executeRawUnsafe(extract(src.responseIndex, 'CREATE INDEX CONCURRENTLY "workforce_exception_employee_responses_org_case_revision_idx"').replace('CONCURRENTLY ', ''))
       await tx.$executeRawUnsafe(extract(src.links, 'CREATE INDEX "mtm_hrm_requests_organizationId_exceptionCaseId_idx"'))
       for (const [source, table] of [[src.cases,"workforce_exception_cases"], [src.cases,"workforce_exception_decisions"], [src.responses,"workforce_exception_employee_responses"], [src.h3,"workforce_time_corrections"]]) {
