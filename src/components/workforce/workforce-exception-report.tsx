@@ -66,7 +66,15 @@ export function WorkforceExceptionReport() {
   const number = useMemo(() => new Intl.NumberFormat(locale), [locale])
 
   useEffect(() => {
-    if (sessionStatus !== "authenticated" || !userId || !organizationId) return
+    if (sessionStatus !== "authenticated" || !userId || !organizationId) {
+      // Reauthentication can reuse the same user/org key. Discard the prior
+      // session's result and completion before accepting another server read.
+      setResult(null)
+      setCompletedRequestKey(null)
+      setAccessDeniedRequestKey(null)
+      setError(null)
+      return
+    }
     const controller = new AbortController()
     const parameters = new URLSearchParams()
     if (requestedRange) {

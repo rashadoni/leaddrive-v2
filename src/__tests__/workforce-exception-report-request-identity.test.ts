@@ -82,4 +82,21 @@ describe("report results stay bound to the current authenticated request", () =>
     expect(container.textContent).not.toContain("731")
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
+
+  it.each(["loading", "unauthenticated"])("requires a new result after %s and reauthentication as the same reader", async interim => {
+    await act(async () => render())
+    await act(async () => pending[0].resolve(response(731)))
+    expect(container.textContent).toContain("731")
+    auth.status = interim
+    await act(async () => render())
+    expect(container.textContent).not.toContain("731")
+    auth.status = "authenticated"
+    await act(async () => render())
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(container.textContent).not.toContain("731")
+    expect(container.textContent).toContain(messages.workforceExceptionReport.loading)
+    await act(async () => pending[1].resolve(new Response(JSON.stringify({ code: "WORKFORCE_GRANULAR_ACCESS_REQUIRED" }), { status: 403 })))
+    expect(container.textContent).toContain(messages.workforceExceptionReport.adminOnly)
+    expect(container.textContent).not.toContain("731")
+  })
 })

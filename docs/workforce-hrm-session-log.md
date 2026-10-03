@@ -5977,3 +5977,16 @@ A private successor `codex/workforce-completion-part25` was created in the same 
 - Workflow count correction: the #560 PostgreSQL shared-lock command contains THREE older files plus ONE new report fixture (4 total). Earlier independent `baselineFourFilesAndDatabaseEnvironmentPreserved` wording overstated the older-file count; that original remains intact. The exact reconstruct-base proof remains valid; no workflow/baseline/policy change made for this correction.
 - #560 remains frozen remote exact `5f8c595ded09b7f3d4229a771bea46d6bb12957a`. Reviewer observed actual new PostgreSQL 9/9, all four PostgreSQL files 42/42, Today hosted 6/6, current static/type baseline gates SUCCESS; root fresh-main/premerge proof pending. This private UI checkpoint is NOT PUSHED / NOT RELEASED. Full local build/typecheck/full suite/browser/Android/load/physical devices/AT/pilot NOT RUN (host contract; hosted proof or external acceptance required).
 - Progress credit unchanged: DONE81/161, GATES14/15, C8 36%, overall59%; no new full-row DONE. Next: guard/merge/release #560, integrate fresh main into this successor, obtain actual new report hosted browser and independent source/receipt review before successor release.
+
+
+### 2026-10-03T22:07:08.889512+00:00 — private reauthentication correction and own560 guarded merge
+
+- 7ef5ef98c73354766f7536181d3c66218da202b9 normalguarded21:57:02Z exactparents[9faf,5f8c]/candidatetree; wholedeploy/publicPENDING
+- a268/6df P2=1 session reentry, P3=1 evidence wording; original intact
+- 6 identity tests:2 reauthenticationFAIL,4 priorPASS
+- 26/26 targeted tests,3files PASS; touched ESLint exit0
+- Invalidate retained result/completion/denial/error when session is not authenticated or lacks identity; add two actual reauthentication pending/403 regressions. No server or business writer change.
+- Evidence wording correction: First run17 outcomes+4identity+4contract=25(4FAIL21PASS). Corrected initial run16outcomes+4identity+4contract=24PASS. Required ACKNOWLEDGE was added to fixture sequences AND one standalone Intl.NumberFormat minimum-share test was removed because it mirrored formatting without testing component/builder. Earlier phrase only fixture sequence corrected was incomplete; original preserved. New reauth2 tests yield26 total.
+- Own merged main integrated normally into privatepart25 as6dfb6a1a3cbe57aa4465203f82039a1e69cf4ca5; all19UIcheckpoint blobs remain exact; no merge overlap. New browser workflow/SQL preparation is uncommitted and outside this correction checkpoint.
+- Originals: docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-reauth.json. Full local build/type/suite/browser/Android/load NOT RUN per host contract; production release and new UIbrowser remain pending.
+- Progress: 81/161DONE,14/15GATES,C836%,overall59% unchanged. Next: finish bounded report-browser fixture, independent review and hosted proof while own560 deploy completes.
