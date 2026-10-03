@@ -1,0 +1,175 @@
+{
+  "observedAt": "2026-10-03T09:26:33.364738+00:00",
+  "mergedSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+  "ownRunId": 37112124490,
+  "event": "push",
+  "headBranch": "main",
+  "workflow": ".github/workflows/deploy.yml",
+  "qa": {
+    "id": 111171917674,
+    "name": "Quality & security gates",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-10-03T09:10:05Z",
+    "completed_at": "2026-10-03T09:21:25Z"
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Initialize containers",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Checkout code",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Validate workflow-dispatch deployment mode",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Authorize manually dispatched normal target",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Authorize recovery-bootstrap target",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Remove checkout credential before repository code",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Setup Node.js",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Cache node_modules",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install dependencies",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Generate Prisma client",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Generate frozen pre-pilot Prisma client",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Event-platform Kafka and schema asset gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "PostgreSQL maintenance safety unit tests",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Event-platform migration and database invariant gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Event-platform SDK PostgreSQL concurrency gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Workforce shared-lock PostgreSQL race gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Demo Center database constraints gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "MTM client categories database gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Previous Prisma client rollback-window gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run security gates",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run MTM + auth + i18n tests",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run Gemini-only browser voice regression gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Unit tests vs baseline (BLOCKING)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Cache node_modules",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Setup Node.js",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Checkout code",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Stop containers",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "actualQaLogFacts": {
+    "workforcePostgresFiles": 3,
+    "workforcePostgresTestsPassed": 33,
+    "baselineFailingFiles": 18,
+    "baselineEntriesStillFailing": 18,
+    "newFailures": 0,
+    "logBytes": 286057,
+    "logSha256": "d1b821f86ea085fd4712aac0447cad824900f17924fe261109165120d42d52bb",
+    "rawLogPreservedOnlyInTmp": true
+  },
+  "wholeNormalRunSuccessStillRequired": true,
+  "publicExactMergedSha": "NOT RUN — own deployment not started at observation"
+}
