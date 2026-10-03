@@ -63,3 +63,10 @@ production Manager Today, Android/physical/load/pilot and heavy local
 build/typecheck/full suite/browser/PostgreSQL are NOT RUN. No production
 feature/grant activation, general update/delete, break policy, AGENT moves
 or Route mutation.
+
+
+## 2026-10-03 — bounded Today source installed and actual guard checks PASS
+
+- Installed the isolated hosted workflow, real-auth Today harness, source-derived disposable SQL and twelve subprocess guard checks. Runtime product/calendar lane unchanged. Harness requires six actual cases: RU/AZ/EN manager, restricted approver, real403 no-grant and forged-header session binding; it requires populated20-table forced-RLS before/after and unchanged19-table facts across2tenants. First actual25 plus cursor1 must become26unique people via nativeTab+Enter; selected absence/no-show/previous-open/leave/holiday/unavailable explanations and current screenshots remain required. SQL limitations are explicit.
+- Actual local guard12/12 PASS/10.62s/oneworker, scopedESLint/syntax/diff PASS, runnerpolicy41 PASS, bounded YAML routing parsed. Source/log identities and original safe guard log in docs/evidence/workforce-c8-manager-today-2026-10-03-targeted-checks.json. AvailableRAM15GiB,disk340GiB,pressure0. Hosted browser/PostgreSQL and heavy local checks NOT RUN; no browser/source acceptanceGREEN yet.
+- To keep both reviews bounded, accumulated append-only release receipts will be normally published as a separate docs PR from e584cca75, then the actual Today code PR integrates that main. Allfive mandatory contexts retain repository semantics; no baseline/check weakening. Continue autonomous exact reviews, actual hosted diagnostics/finalgates/normalrelease. Progress59%/81of161 remains unchanged; prior scope and human/device/pilot limits remain.
