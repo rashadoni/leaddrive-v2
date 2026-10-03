@@ -348,7 +348,7 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
     assert.ok((await articles.nth(1).innerText()).includes(view.ui.timesheetApprovalException.NO_SHOW))
     assert.ok((await articles.nth(1).innerText()).includes(view.ui.timesheetExceptionStatus.OPEN))
   } else {
-    assert.equal(await section.getByText(view.ui.timesheetApprovalException.NO_SHOW, { exact: true }).count(), 0)
+    assert.equal((await section.innerText()).includes(view.ui.timesheetApprovalException.NO_SHOW), false)
   }
   assert.equal(await section.getByText(fixture.employees[25].name, { exact: true }).count(), 0)
   await view.page.screenshot({ path: `${outputDirectory}/${principal.key}-${locale}-first-page.png`, fullPage: true })
