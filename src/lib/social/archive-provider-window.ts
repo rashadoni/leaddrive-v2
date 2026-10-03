@@ -184,7 +184,16 @@ export function shouldAdvanceMonitoringRouteProviderCursor(input: {
   return Boolean(input.fetchAfter && input.adapterKey)
 }
 
-/** Atomic JSONB merge: preserves scenario links/provider settings written while a collector runs. */
+/**
+ * Atomic JSONB merge: preserves scenario links/provider settings written while a collector runs.
+ *
+ * Every value handed to `jsonb_build_object` in this file carries a cast. The
+ * function is VARIADIC "any", so Postgres takes an argument's type from the
+ * argument itself, and a bound NULL has none: without `::text` an empty
+ * optional value fails the whole statement with 42P18 «could not determine
+ * data type of parameter $N». A mocked Prisma cannot show that;
+ * `lib-social-monitoring-cursor-postgres.test.ts` runs both statements for real.
+ */
 export async function advanceMonitoringSourceFetchAfter(input: {
   organizationId: string
   sourceId: string
@@ -201,9 +210,9 @@ export async function advanceMonitoringSourceFetchAfter(input: {
       COALESCE(settings, '{}'::jsonb),
       '{searchIndex}',
       COALESCE(settings->'searchIndex', '{}'::jsonb) || jsonb_build_object(
-        'fetchAfter', ${until},
-        'fetchAfterUpdatedAt', ${updatedAt},
-        'fetchAfterReason', ${input.reason}
+        'fetchAfter', ${until}::text,
+        'fetchAfterUpdatedAt', ${updatedAt}::text,
+        'fetchAfterReason', ${input.reason}::text
       ),
       true
     )
@@ -243,16 +252,16 @@ export async function advanceMonitoringRouteProviderCursor(input: {
         'routeProviderCursors',
         COALESCE(settings->'searchIndex'->'routeProviderCursors', '{}'::jsonb)
           || jsonb_build_object(
-            ${cursorKey},
+            ${cursorKey}::text,
             jsonb_build_object(
-              'fetchAfter', ${until},
-              'updatedAt', ${updatedAt},
-              'reason', ${input.reason},
-              'routePlanId', ${input.routePlanId},
-              'adapterKey', ${input.adapterKey},
-              'fullArchiveRun', ${input.fullArchiveRun === true},
-              'targetScenarioId', ${input.targetScenarioId ?? null},
-              'archiveStartAt', ${dateValue(input.archiveStartAt)?.toISOString() ?? null}
+              'fetchAfter', ${until}::text,
+              'updatedAt', ${updatedAt}::text,
+              'reason', ${input.reason}::text,
+              'routePlanId', ${input.routePlanId}::text,
+              'adapterKey', ${input.adapterKey}::text,
+              'fullArchiveRun', ${input.fullArchiveRun === true}::boolean,
+              'targetScenarioId', ${input.targetScenarioId ?? null}::text,
+              'archiveStartAt', ${dateValue(input.archiveStartAt)?.toISOString() ?? null}::text
             )
           )
       ),
@@ -261,7 +270,7 @@ export async function advanceMonitoringRouteProviderCursor(input: {
     WHERE id = ${input.sourceId}
       AND "organizationId" = ${input.organizationId}
       AND COALESCE(
-        settings->'searchIndex'->'routeProviderCursors'->${cursorKey}->>'fetchAfter',
+        settings->'searchIndex'->'routeProviderCursors'->(${cursorKey}::text)->>'fetchAfter',
         ''
       ) < ${until}
   `)

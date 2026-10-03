@@ -217,6 +217,18 @@ jobs:
           MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_CONTACT_CATEGORIES_DB_GATE: required
 
+      - name: Social monitoring cursor database gate
+        # The statements that store a collector's cursor, run on a real
+        # Postgres with the arguments a scheduled run passes. From 2026-09-04
+        # to 2026-10-02 every scheduled Google Alerts run on prod that had
+        # entries to read lost its checkpoint to 42P18 «could not determine
+        # data type of parameter $8»: a bound NULL inside jsonb_build_object.
+        # The unit tests mock Prisma, so the statement had never been sent.
+        run: npx vitest run src/__tests__/lib-social-monitoring-cursor-postgres.test.ts
+        env:
+          SOCIAL_MONITORING_CURSOR_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          SOCIAL_MONITORING_CURSOR_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

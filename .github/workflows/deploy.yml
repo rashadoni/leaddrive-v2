@@ -395,6 +395,15 @@ jobs:
           MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_CONTACT_CATEGORIES_DB_GATE: required
 
+      - name: Social monitoring cursor database gate
+        # Same gate as in pr-checks: the statements that store a collector's
+        # cursor on a real Postgres (see the test's header — for a month every
+        # scheduled Google Alerts run on prod lost its checkpoint to 42P18).
+        run: npx vitest run src/__tests__/lib-social-monitoring-cursor-postgres.test.ts
+        env:
+          SOCIAL_MONITORING_CURSOR_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          SOCIAL_MONITORING_CURSOR_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:
