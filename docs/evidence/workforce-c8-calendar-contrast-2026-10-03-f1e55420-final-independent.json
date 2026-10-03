@@ -1,0 +1,203 @@
+{
+ "schema": "workforce-calendar-final-pr-independent-acceptance-review-v1",
+ "reviewedAtUtc": "2026-10-03T16:00:23.783917+00:00",
+ "head": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+ "base": "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+ "independentReadOnly": true,
+ "verdict": "GREEN exact final PR browser bounded default-light text/functional evidence and immutable receipt integrity; production release NOT RUN",
+ "findings": {
+  "P0": [],
+  "P1": [],
+  "P2": [],
+  "P3": []
+ },
+ "binding": {
+  "runId": 37133952754,
+  "attempt": 1,
+  "event": "pull_request",
+  "conclusion": "success",
+  "completedAtUtc": "2026-10-03T15:46:16Z",
+  "sourceHead": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "checkedMergeSha": "2e97ef4345deda9bb22941ab02ff9d35d9d0a684",
+  "mergeParents": [
+   "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+   "f1e55420fa1165a7321b7596ae0330e6e7e8077a"
+  ],
+  "mergeAndCandidateTree": "af7e6df1d80b48c31c9ee624ba592dc5760b46ac",
+  "treeExactSourceCandidate": true,
+  "workflow": ".github/workflows/workforce-calendar-browser-evidence.yml",
+  "artifactId": 11278355984,
+  "archiveBytes": 3403295,
+  "archiveSha256": "9b07e2723763d5ada12e8918c2b2200393c2905d2f802df09d676f7e0b0ad637",
+  "originalReceiptBytes": 396249,
+  "originalReceiptSha256": "a5ad15be30ebea7cb17adf6d2d9fa79aa50e57b56ae73e454b63d586df6529ea",
+  "originalProvenance": {
+   "bytes": 9507,
+   "sha256": "69cee12f979262bea4b246852dadb9a6ada6878a51479b4b04f340e7a363d2cf"
+  },
+  "allRunArtifactReceiptContextSourceAttemptBindingsExact": true,
+  "all46UniqueSafeZipMembersManifestExtractedNamesBytesHashesExact": true,
+  "files": "44PNG+receipt+workflow-context; success correctly omits failure-only workflow-failure.json",
+  "apiSource": "Original retained root gh API metadata independently reconciled against raw ZIP/receipt/provenance and local synthetic Git object; no reviewer network call."
+ },
+ "actualFinalContrast": {
+  "requiredTargets": 36,
+  "pass": 36,
+  "fail": 0,
+  "notProven": 0,
+  "exact12UniqueSemanticKeysPerRuAzEn": true,
+  "allExpectedTextAndPositiveRenderedOwnerRunsFragments": true,
+  "allStableLoadedDefaultLightSrgbFixture": true,
+  "allRequiredNativeFocusVisibleEnabledStates": true,
+  "allOwnerToHtmlAncestorRawBoxShadowProvenancePresent": true,
+  "allUnsupportedObservationAndRunFailureArraysEmpty": true,
+  "all36FullEvaluationObjectsReproducedUsingFrozenMath": true,
+  "mathSha256": "ccfd96a15c6f9fd055d84a2cd7a2a53da694c3c5b8cb96b56d05807af133e901",
+  "confirmAllRuAzEn": {
+   "foreground": "opaque rgb(255,255,255)",
+   "background": "opaque lab(46.4615 57.7275 70.8507)",
+   "nativeOffDomSrgbCanvasInterval": [
+    [
+     0.788235294117647,
+     0.796078431372549
+    ],
+    [
+     0.20392156862745098,
+     0.21176470588235294
+    ],
+    [
+     0,
+     0.00392156862745098
+    ]
+   ],
+   "channelUncertainty": 0.00392156862745098,
+   "fontSizePx": 14,
+   "fontWeight": 500,
+   "ratioLower": 5.162994512865741,
+   "ratioUpper": 5.283420235782954,
+   "threshold": 4.5,
+   "opaqueAncestorIndex": 0,
+   "independentAllEightChannelCornersPass": true
+  },
+  "all36MinimumRatioLower": 4.707471087355336,
+  "measuredConfirmP2": "Closed in this actual FINAL bounded enabled/nativefocused/light state. Prior actual42b3.619970712637973RED is retained; historical6f70unsupported numerics do not supply acceptance."
+ },
+ "actualFinalFunctional": {
+  "all12RealCasesPass": true,
+  "all14RealCsrfCredentialsCallbackPairs200": true,
+  "all27Geometry320CssPositiveTargetsZeroFailures": true,
+  "all36ReadingPositiveReachableFocusPreserved": true,
+  "populatedNonOwnerNoBypassAuditAndCalendarTenantlessFailClosed": true,
+  "dbSuperuser": false,
+  "dbBypassRls": false,
+  "commitments": "Cancel0writes and unchanged state/source focus; native Enter/Space/Tab action flows; exact retry2posts byteidentical request and reversed[true,false] with2tombstones/1audit/replay0writes; real principal/tenant context switches preserve new held reads and session.",
+  "handlerAssertion": "Final successful frozen harness passed zero-handler-error assertion; successful receipts omit catch-only failure diagnostics rather than encoding a count field."
+ },
+ "allCurrentFinalPngInspection": {
+  "viewedCount": 44,
+  "artifact": 11278355984,
+  "allIndividuallyViewed": [
+   "confirmation-ORGANIZATION-2026-10-19.png",
+   "confirmation-ORGANIZATION-2026-11-16.png",
+   "confirmation-ORGANIZATION-2026-11-30.png",
+   "confirmation-ORGANIZATION-2026-12-14.png",
+   "confirmation-ORGANIZATION-2026-12-28.png",
+   "confirmation-ORGANIZATION-2027-01-11.png",
+   "confirmation-ORGANIZATION-2027-01-25.png",
+   "confirmation-TEAM-2026-11-02.png",
+   "confirmation-TEAM-2027-02-08.png",
+   "context-principal.png",
+   "context-tenant.png",
+   "exact-retry-unknown-en.png",
+   "exact-retry-unknown-ru.png",
+   "keyboard-cancel-source-ORGANIZATION-en.png",
+   "keyboard-completed-ORGANIZATION-en.png",
+   "keyboard-exact-retry-unknown-TEAM-ru.png",
+   "keyboard-replay-TEAM-ru.png",
+   "reflow-320-az-cancel-source.png",
+   "reflow-320-az-cancel.png",
+   "reflow-320-az-confirm.png",
+   "reflow-320-az-inventory.png",
+   "reflow-320-az-reopened-review.png",
+   "reflow-320-az-replay.png",
+   "reflow-320-az-retry-confirm.png",
+   "reflow-320-az-review.png",
+   "reflow-320-az-unknown.png",
+   "reflow-320-cancel-source.png",
+   "reflow-320-cancel.png",
+   "reflow-320-confirm.png",
+   "reflow-320-en-cancel-source.png",
+   "reflow-320-en-cancel.png",
+   "reflow-320-en-confirm.png",
+   "reflow-320-en-inventory.png",
+   "reflow-320-en-reopened-review.png",
+   "reflow-320-en-replay.png",
+   "reflow-320-en-retry-confirm.png",
+   "reflow-320-en-review.png",
+   "reflow-320-en-unknown.png",
+   "reflow-320-inventory.png",
+   "reflow-320-reopened-review.png",
+   "reflow-320-replay.png",
+   "reflow-320-retry-confirm.png",
+   "reflow-320-review.png",
+   "reflow-320-unknown.png"
+  ],
+  "preliminaryPngsNotSubstituted": true,
+  "observed": "Desktop/mobile localized confirmations have paired dates and stable action context; current confirm controls use darker orange. Cancel source restoration, wrapped320CSS fixtures, distinct focused unknown/replay explanations, principal/tenant changes and completed inventory align with original final cases.",
+  "honestOcclusionLimit": "Next dev issue badge partially overlaps lower-left content in some320CSS screenshots, including RU confirm, locale cancel-source controls and AZ retry-confirm; viewport scroll also intentionally shows portions of long review text. No blanket all44 unoccluded, whole-page simultaneous reading, focus-ring contrast or screenshot-only pixel ratio claim. Text contrast is supported by actual paint records and conservative interval math."
+ },
+ "immutablePreservation": {
+  "publicCleanExactSource": true,
+  "privateDocsOnlyLatest": "1d8bdbd109e9eb254273d6ffc8579a1c741733be",
+  "privateCommits": [
+   "56e745bf0d25b15a1e8f5d8a8a0a4297b9b38d63",
+   "42e957d77aadfd27ac57deecfe68af34618f338b",
+   "1d8bdbd109e9eb254273d6ffc8579a1c741733be"
+  ],
+  "allSevenPrivateExecutableBlobsExactPublicF1e": true,
+  "all89SourceOriginalsByteExactPrivateLatest": true,
+  "allThreeDocPrefixesPreservedAcrossAllPrivateCommits": true,
+  "all12NewLosslessGzipRawAndManifestHashesMatchOriginalTmp": true,
+  "historicalFirstUnsupportedLosslessRawGzipStillExact": true,
+  "originalSourceRedAndSourceGreenAndSupportedRedPreserved": true,
+  "preliminaryOriginalIndependent": {
+   "bytes": 5438,
+   "sha256": "47adaaa9e7036c3cb1f7455ab1b0f7637aa540336d3814ebe1c44ba808a2f413"
+  },
+  "publicSourceFullDiff": {
+   "paths": 46,
+   "bytes": 399550,
+   "sha256": "58b886038ef71e261bfc90ead08e08145fff6ba579747f6dfc97bb1e4b2385e0"
+  },
+  "publicSourceNonDocDiff": {
+   "paths": 7,
+   "bytes": 52417,
+   "sha256": "61840032f5fcdcfbc993db4dd27fa460dde86f675324f60e22b17ac809fbea54"
+  },
+  "public400000ByteCapAndBaselinesUnchanged": true
+ },
+ "fiveActualRequiredContexts": {
+  "sourceHead": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "names": [
+   "pr-scope",
+   "static-checks",
+   "typecheck",
+   "runner-policy",
+   "scan"
+  ],
+  "allActualCompletedSuccessSnapshotInspected": true,
+  "snapshot": {
+   "bytes": 2214,
+   "sha256": "4b4008d0ea1e5b11aac60f9bad620b92a0de76937eff3971dde27aeb800c7616",
+   "observedAt": "2026-10-03T15:55:35.819259+00:00"
+  },
+  "baselineMeaning": "Root reports actual static18baseline failed files/18known/noNew/everyStillFails; type commandexit2/1195historical diagnostics with66gated pairs equal baseline66 and both blocking checksPASS, zero diagnostics in46touchedpaths. Successful required checks do not imply zero diagnostics or fullsuite green. Reviewer inspected the bound five-success snapshot, not repeated full logs or checks."
+ },
+ "limits": [
+  "Frozen sourcef1e/basecb6 and final37133952754/synthetic2e97 only. Fresh-main/source identity must still be checked immediately before normal own-SHA merge.",
+  "Production deploy/mainartifactSha/ping/build-info verification NOT RUN by this reviewer. This browser release acceptance is not production release proof.",
+  "Hosted development bundle/disposablePostgreSQL16; bounded normal/enabled/nativefocused light text only. OverallWCAG/dark/forcedcolour/hover/pressed/nontext/focusring/nativezoom/wholepage/AT/Android/physical/load/pilot acceptance NOT RUN.",
+  "Progress remains81/161DONE,14/15gates,C8 36%,overall59%,80non-DONE until root records evidence-backed changes; no100% claim.",
+  "No repository/Git/network/status/production mutation, testsuite or local browser executed by reviewer. User general update/delete/breakpolicy/AGENTmoves/Route mutation exclusions retained."
+ ]
+}
