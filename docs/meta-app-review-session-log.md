@@ -457,3 +457,43 @@ Noticed and left alone: in the Instagram business login settings the
 "Deauthorize callback URL" and "Data deletion request URL" are empty, and the
 application has no endpoint for either. The app-level data deletion
 instructions URL is set and was accepted in the first review.
+
+## 2026-10-03 (night) — published, recorded end to end, resubmitted
+
+- **The app was published** by the owner (the button is blocked for an agent session). Before
+  that, a Direct message between two Instagram testers to an account whose subscription was on
+  produced no webhook at all — Meta's "Live only" rule for Instagram webhooks is real, not a
+  dashboard banner.
+- **Test accounts, all the owner's own:** business `@rentacarazerbaijan` (IG id
+  `17841405965503896`, connected to `leaddrive` through the ordinary Instagram Login, row
+  `cmurlu8ci000okpg5xv7wl58z`, `inboxSubscribed: true`), customers `@rahimofff` and
+  `@leaddrive.az`. All three hold the Instagram Tester role; adding roles is also blocked for an
+  agent session, the owner did it.
+- **Verified on production after publishing:** a Direct from `@rahimofff` reached
+  `/api/v1/webhooks/instagram` (200) and was stored as inbound (`igLogin: true`); the reply typed
+  in the inbox went out through `graph.instagram.com/me/messages` and showed "Seen" in Instagram;
+  "Create lead and assign salesperson" created lead `cmurmiyf7000fkp4zanieuy2y` with both
+  messages under Interactions. The test phone on that lead is Ofcom's reserved drama number.
+- **Screencast:** 1:34, 1568x952 H.264, English caption bar under every frame, third-party names
+  and older private chats blurred. Built from the recorder frames with `build.py`; master and
+  sources in `/home/rashad/inbox/meta-review-2026-10-03/` on the dev box (SHA-256 `dd60986c…`).
+  Recorder GIFs larger than ~10 MB do not pass `/api/v1/inbox/upload` ("Invalid form data");
+  decoding the GIF in the page and uploading frames one by one works (mind the rate limit).
+- **Submission `2592383921221617`** — "Идет проверка" since 2026-10-03 ~02:58 Baku: new requests
+  `instagram_business_basic`, `instagram_business_manage_messages`; the five approved permissions
+  carried over as renewals. Descriptions carry timecodes and say explicitly: Instagram Login by the
+  account owner, no System User token, exchange/webhooks/replies on our server. Data handling now
+  lists **Anthropic, PBC** as a processor: the inbox lead classifier and the stage classifier send
+  Instagram message text to Anthropic, and the earlier list (Contabo, Cloudflare, OpenAI) missed
+  it. Reviewer instructions rewritten (the old text named `@leaddrive.az`, "development mode" and a
+  non-admin reviewer); the access-codes field still holds the current reviewer password (checked by
+  hash against the root-only file on production).
+- **Left as found / changed on purpose:** the staged row "@leaddrive.az (App Review)"
+  (`cmuawxt5o00hfkp9kjet96tsq`) stays switched off — it never delivered anything and kept the
+  Instagram card on "Edit setup" instead of "Connect with Meta"; one click in its form turns it back
+  on. Chatbot auto-reply for Instagram was off only during the take and is on again.
+- **Still open:** the Instagram business login "Deauthorize callback URL" and "Data deletion
+  request URL" are empty and the app has no endpoints for them; the `leaddrive` inbox that the
+  reviewer login opens contains real third-party conversations; `whatsapp_business_messaging`,
+  `instagram_manage_comments` and `business_management` are not requested.
+
