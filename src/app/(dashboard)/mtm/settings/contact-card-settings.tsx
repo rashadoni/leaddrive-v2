@@ -15,13 +15,14 @@ import {
   type MtmContactRequiredField,
 } from "@/lib/mtm/contact-required-fields"
 import { coerceMtmContactSpecialties } from "@/lib/mtm/contact-specialties"
+import { coerceMtmContactClasses, MTM_CONTACT_CLASS_PRIORITY } from "@/lib/mtm/contact-classes"
 import { mtmSettingValuesEqual } from "@/lib/mtm/settings-validation"
 import { cn } from "@/lib/utils"
 import { ContactCategorySettings } from "./contact-category-settings"
 import { ContactFieldSettings } from "./contact-required-field-settings"
 import { ContactSpecialtySettings } from "./contact-specialty-settings"
 
-type Tab = "categories" | "fields" | "specialties"
+type Tab = "categories" | "classes" | "fields" | "specialties"
 
 /**
  * Everything a tenant decides about its client card, in one place.
@@ -36,12 +37,15 @@ export function ContactCardSettings({
   requiredFields,
   hiddenFields,
   specialties,
+  classes,
   onSaved,
 }: {
   /** The values the server holds (not the page's unsaved draft). */
   requiredFields: unknown
   hiddenFields: unknown
   specialties: unknown
+  /** The tenant's client classes (A, B, C, VIP…); absent on an older caller = the defaults. */
+  classes?: unknown
   /** Tells the page what is now stored, so its own «unsaved» bar stays quiet. */
   onSaved: (changes: Record<string, unknown>) => void
 }) {
@@ -53,9 +57,11 @@ export function ContactCardSettings({
     hidden: coerceMtmContactHiddenFields(hiddenFields),
   }), [hiddenFields, requiredFields])
   const storedSpecialties = useMemo(() => coerceMtmContactSpecialties(specialties), [specialties])
+  const storedClasses = useMemo(() => coerceMtmContactClasses(classes), [classes])
 
   const [fieldsDraft, setFieldsDraft] = useState(storedFields)
   const [specialtiesDraft, setSpecialtiesDraft] = useState(storedSpecialties)
+  const [classesDraft, setClassesDraft] = useState(storedClasses)
   // What the server holds changed (saved here, or reloaded by the page):
   // take it. An unchanged reload must not wipe what is being edited.
   const [seenFields, setSeenFields] = useState(storedFields)
@@ -69,9 +75,16 @@ export function ContactCardSettings({
     setSpecialtiesDraft(storedSpecialties)
   }
 
+  const [seenClasses, setSeenClasses] = useState(storedClasses)
+  if (!mtmSettingValuesEqual(seenClasses, storedClasses)) {
+    setSeenClasses(storedClasses)
+    setClassesDraft(storedClasses)
+  }
+
   const [saving, setSaving] = useState<Tab | null>(null)
   const fieldsDirty = !mtmSettingValuesEqual(fieldsDraft, storedFields)
   const specialtiesDirty = !mtmSettingValuesEqual(specialtiesDraft, storedSpecialties)
+  const classesDirty = !mtmSettingValuesEqual(classesDraft, storedClasses)
 
   const save = async (which: Tab, changes: Record<string, unknown>) => {
     setSaving(which)
@@ -95,6 +108,9 @@ export function ContactCardSettings({
   const showsSpecialty = !fieldsDraft.hidden.includes("specialtyName")
   const tabs: Array<{ id: Tab; label: string; dirty: boolean }> = [
     { id: "categories", label: t("tabs.categories"), dirty: false },
+    // The letters themselves in the tab name: a person looking for "A, B, C,
+    // VIP" finds it without opening anything.
+    { id: "classes", label: t("tabs.classes", { list: classesDraft.join(", ") }), dirty: classesDirty },
     {
       id: "fields",
       label: fieldsDraft.hidden.length > 0 ? t("tabs.fieldsHidden", { count: fieldsDraft.hidden.length }) : t("tabs.fields"),
@@ -153,6 +169,51 @@ export function ContactCardSettings({
               </p>
             ) : null
           )}
+        />
+      </div>
+
+      <div role="tabpanel" id="mtm-contact-card-panel-classes" aria-labelledby="mtm-contact-card-tab-classes" hidden={tab !== "classes"} className="pt-4">
+        <div data-testid="mtm-contact-class-settings">
+          <p className="max-w-3xl text-sm text-muted-foreground">{t("classesHint")}</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {MTM_CONTACT_CLASS_PRIORITY.map((value) => {
+              const checked = classesDraft.includes(value)
+              const last = checked && classesDraft.length === 1
+              return (
+                <label
+                  key={value}
+                  className={cn(
+                    "flex min-h-11 items-center gap-3 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700",
+                    last ? "cursor-not-allowed" : "cursor-pointer",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    data-testid={`mtm-contact-class-setting-${value}`}
+                    className="h-5 w-5 accent-primary"
+                    checked={checked}
+                    // The last one stays: a card with no category to choose is unusable.
+                    disabled={last}
+                    onChange={(event) => setClassesDraft(coerceMtmContactClasses(
+                      event.target.checked ? [...classesDraft, value] : classesDraft.filter((item) => item !== value),
+                    ))}
+                  />
+                  <span className="font-medium">{t(`classLabel_${value}` as never)}</span>
+                </label>
+              )
+            })}
+          </div>
+          <p className="mt-3 max-w-3xl text-xs text-muted-foreground">
+            {classesDraft.length === 1 ? `${t("classesMinOne")} ` : ""}{t("classesKept")}
+          </p>
+        </div>
+        <SaveBar
+          testId="mtm-contact-classes-save"
+          dirty={classesDirty}
+          saving={saving === "classes"}
+          onCancel={() => setClassesDraft(storedClasses)}
+          onSave={() => void save("classes", { contactClasses: classesDraft })}
+          t={t}
         />
       </div>
 

@@ -9,6 +9,7 @@ import { isValidTimezone } from "@/lib/timezone"
 import { coerceMtmContactRequiredFields } from "@/lib/mtm/contact-required-fields"
 import { coerceMtmContactHiddenFields, isMtmContactSwitchableField } from "@/lib/mtm/contact-field-visibility"
 import { parseMtmContactSpecialties } from "@/lib/mtm/contact-specialties"
+import { parseMtmContactClasses } from "@/lib/mtm/contact-classes"
 import { parseMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
 import { mtmSettingValuesEqual, validateMtmSettingChanges } from "@/lib/mtm/settings-validation"
 
@@ -120,6 +121,13 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
         return NextResponse.json({ error: specialties.error }, { status: 400 })
       }
       body.contactSpecialties = specialties.data
+    }
+    if (body.contactClasses !== undefined) {
+      const classes = parseMtmContactClasses(body.contactClasses)
+      if (!classes.success) {
+        return NextResponse.json({ error: classes.error }, { status: 400 })
+      }
+      body.contactClasses = classes.data
     }
     if (body.routeTargetTypes !== undefined) {
       const targetTypes = parseMtmRouteTargetTypes(body.routeTargetTypes)

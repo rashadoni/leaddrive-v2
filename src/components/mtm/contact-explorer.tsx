@@ -79,6 +79,7 @@ import {
 } from "@/lib/mtm/contact-category-editor"
 import { contactFieldVisibility, type MtmContactSwitchableField } from "@/lib/mtm/contact-field-visibility"
 import { mtmApiErrorKey } from "@/lib/mtm/api-error-message"
+import { contactClassOptions } from "@/lib/mtm/contact-classes"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -196,6 +197,8 @@ type ContactFacets = {
   /** The tenant's specialty list, then specialties contacts carry beyond it. */
   specialties?: string[]
   configuredSpecialties?: string[]
+  /** The classes this tenant grades clients with (A, B, C, VIP…). */
+  classes?: string[]
   /** Client fields this tenant switched off in MTM settings. */
   hiddenFields?: string[]
   profiles: string[]
@@ -862,7 +865,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           {advancedOpen ? (
             <>
               <MtmFilterSelectField testId="mtm-contact-category" label={t("category")} value={filters.category} onChange={(value) => updateFilter("category", value)} allLabel={t("all")}
-                options={["A", "B", "C", "D"].map((category) => ({ value: category, label: category }))} />
+                options={contactClassOptions(facets?.classes, filters.category).map((category) => ({ value: category, label: category }))} />
               {scoped ? null : (
                 <MtmFilterSelectField testId="mtm-contact-assignment-state" label={t("assignmentState")} value={filters.assignmentState} onChange={(value) => updateFilter("assignmentState", value)} allLabel={t("all")}
                   options={[{ value: "ASSIGNED", label: t("assigned") }, { value: "UNASSIGNED", label: t("unassigned") }]} />

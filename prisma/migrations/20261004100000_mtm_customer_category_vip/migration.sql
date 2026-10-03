@@ -1,0 +1,12 @@
+-- Client classes: VIP, above A.
+--
+-- Pharma tenants grade doctors A, B, C and VIP; the enum offered A..D only, so
+-- "VIP" could not be stored at all. Additive: no existing row changes, D stays
+-- for the tenants that use it, and which classes a tenant offers is its own
+-- MTM setting (`contactClasses`). Renaming D was not an option — D is the
+-- LOWEST class.
+--
+-- BEFORE 'A' matters: route candidates sorted "by priority" are ORDER BY
+-- category, and Postgres orders an enum by position. Appended at the end, VIP
+-- would have sorted below D.
+ALTER TYPE "MtmCustomerCategory" ADD VALUE IF NOT EXISTS 'VIP' BEFORE 'A';
