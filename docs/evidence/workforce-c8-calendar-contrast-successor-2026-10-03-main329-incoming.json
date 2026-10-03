@@ -1,0 +1,135 @@
+{
+  "reviewKind": "read-only incoming-main intersection and transitive-boundary review; not exact review of concurrently implemented task candidate",
+  "completedAtUtc": "2026-10-03T13:40:13.835382+00:00",
+  "routing": {
+    "root": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3",
+    "branch": "codex/workforce-completion-part20",
+    "origin": "https://github.com/rashadoni/leaddrive-v2.git",
+    "observedCurrentHead": "7feab20146bf50faddd8cc59e6cdbf946de49621",
+    "observedStatus": [
+      " M .github/workflows/workforce-calendar-browser-evidence.yml",
+      " M scripts/workforce-calendar-browser-evidence.mjs",
+      "?? scripts/workforce-calendar-contrast-dom.mjs"
+    ],
+    "productionHost": "13.140.132.245",
+    "productionPath": "/opt/leaddrive-v2",
+    "releaseRoute": "reviewed main -> .github/workflows/deploy.yml"
+  },
+  "base": "2f7f56ff6b8731c14c1f9483d977a9f80a57333f",
+  "incomingMain": "3294093a4364be8be35d8a03c1b9fde57c3dd3b9",
+  "ordinaryIntegration": "65a04a4a29b0955edcc859d8d5cc72d562b8e007",
+  "incomingPaths": [
+    ".github/workflows/deploy.yml",
+    ".github/workflows/pr-checks.yml",
+    "docs/help-ai-guides-session-log.md",
+    "docs/support-module-ux-redesign-implementation-plan.md",
+    "docs/support-ux-performance-and-rollout.md",
+    "docs/support-ux-production-observation.md",
+    "scripts/ci/test-event-platform-assets.mjs",
+    "src/__tests__/api-admin-support-ux-canary.test.ts",
+    "src/__tests__/api-audit-log.test.ts",
+    "src/__tests__/support-ux-canary-change.test.ts",
+    "src/__tests__/support-ux-canary-postgres.test.ts",
+    "src/app/api/v1/admin/tenants/[id]/support-ux-canary/route.ts",
+    "src/app/api/v1/audit-log/route.ts",
+    "src/lib/support-ux-canary-change.ts"
+  ],
+  "fullDiff": {
+    "algorithm": "SHA256(raw git diff --binary bytes)",
+    "paths": 14,
+    "bytes": 121773,
+    "sha256": "4e83f4adaf05958bd2a159dd05308d11d29fa613dd677c4ef331d1725cd6e07d"
+  },
+  "nonDocDiff": {
+    "algorithm": "SHA256(raw git diff --binary bytes)",
+    "paths": 10,
+    "bytes": 46343,
+    "sha256": "91252dad344725d39196c2a64ed4af4d3f7181c17f20434c10c888ca32602725"
+  },
+  "incomingBlobPreservationAtIntegration": {
+    ".github/workflows/deploy.yml": true,
+    ".github/workflows/pr-checks.yml": true,
+    "docs/help-ai-guides-session-log.md": true,
+    "docs/support-module-ux-redesign-implementation-plan.md": true,
+    "docs/support-ux-performance-and-rollout.md": true,
+    "docs/support-ux-production-observation.md": true,
+    "scripts/ci/test-event-platform-assets.mjs": true,
+    "src/__tests__/api-admin-support-ux-canary.test.ts": true,
+    "src/__tests__/api-audit-log.test.ts": true,
+    "src/__tests__/support-ux-canary-change.test.ts": true,
+    "src/__tests__/support-ux-canary-postgres.test.ts": true,
+    "src/app/api/v1/admin/tenants/[id]/support-ux-canary/route.ts": true,
+    "src/app/api/v1/audit-log/route.ts": true,
+    "src/lib/support-ux-canary-change.ts": true
+  },
+  "protectedBlobUnchangedByIncoming": {
+    "src/lib/prisma.ts": true,
+    "src/lib/rls-context.ts": true,
+    "src/lib/superadmin-guard.ts": true,
+    "src/lib/api-auth.ts": true,
+    "src/lib/with-rls.ts": true,
+    "src/lib/workforce/calendar-configuration.ts": true,
+    "src/app/api/v1/workforce/configuration/calendar/route.ts": true,
+    "prisma/schema.prisma": true,
+    ".gitleaks.toml": true,
+    "test-baseline.json": true,
+    "typecheck-baseline.json": true,
+    "scripts/workforce-calendar-browser-evidence.mjs": true,
+    "scripts/ci/prepare-hosted-build-runner.sh": true
+  },
+  "reviewedScope": [
+    "Complete incoming non-document diff across ten paths; foreign documentation retained, not re-authored.",
+    "Existing hosted-runner preflight helper, Prisma RLS transaction override, RLS context helpers, superadmin guard, withRls authorization, and calendar audit model boundary."
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "intersectionAssessment": [
+    "No direct incoming Workforce component, calendar API, shared auth/RLS implementation, Prisma schema, hosted calendar harness, secret detector or test/typecheck baseline changes.",
+    "Shared deploy/PR static workflows add a guarded hosted Support PostgreSQL gate before existing fixture gates, using its own fixed support_ux_canary_test database and resolved service port. Existing Workforce real PostgreSQL gates are retained.",
+    "Typecheck keeps the full compiler, original PIPESTATUS capture, both blocking gates and finite 60-minute bound. New 14-GiB heap requires measured 18-GiB RAM+swap admission through the unchanged hosted-only helper with at most 4-GiB swap and always cleanup.",
+    "New Support canary handler requires superadmin, stamped exact artifact identity, strict body and expected state. Its scoped RLS bypass wraps one Serializable row-locked transaction; only the fixed feature changes and its awaited actor-bound audit commit together.",
+    "Generic audit-log POST additionally rejects forged support_ux_canary receipts. Moved-day creation/reversal writes and replay use mtmAuditLog within their own transaction; generic audit-log POST denial does not change their contract."
+  ],
+  "necessaryVerification": [
+    "Fresh hosted mandatory contexts on the actual integrated published candidate, including measured-budget full typecheck and unchanged security/baseline checks.",
+    "Hosted real Support scratch-PG gate and existing Workforce PG gates; local fixture/browser/full-compiler substitution is disallowed.",
+    "Actual hosted contrast diagnostic retains all twelve functional, native-keyboard, geometry, authentication and populated-RLS cases before any contrast acceptance."
+  ],
+  "rootReportedAlreadyRun": [
+    {
+      "check": "runner policy",
+      "result": "PASS",
+      "workflows": 40,
+      "attribution": "root reported actual small check after ordinary integration; reviewer did not rerun"
+    },
+    {
+      "check": "event-platform assets",
+      "result": "PASS",
+      "domains": 27,
+      "topics": 86,
+      "schemas": 5,
+      "attribution": "root reported actual small check after ordinary integration; reviewer did not rerun"
+    }
+  ],
+  "reviewerRunChecks": [],
+  "notRun": [
+    "Support real PostgreSQL tests",
+    "Workforce PostgreSQL tests",
+    "full typecheck",
+    "production build",
+    "full unit suite",
+    "hosted browser contrast acceptance"
+  ],
+  "mathArchitectureAssessment": {
+    "status": "suitable with fail-closed guards; not actual contrast acceptance",
+    "normalization": "Resolved sRGB channels exact. Off-DOM opaque native sRGB Canvas2D conversion is admitted only after actual color acceptance/context/data-space/opaque-alpha validation; one full 8-bit step channel intervals retained, raw CSS alpha separate. Unsupported paint remains NOT_PROVEN.",
+    "composition": "Validate every ancestor layer even above nearest opaque ancestor, resolve backgrounds from that opaque layer inward, and composite foreground alpha onto the resolved backdrop. Never assume white or multiply group opacity into a guessed foreground.",
+    "ratio": "Use monotone sRGB luminance intervals and conservative lower/upper symmetric contrast bounds. PASS requires the entire unrounded interval to meet 4.5 or valid large-font 3.0; uncertain intervals cannot pass.",
+    "guards": "Positive nonempty actual text-node/fragment counts, each run positive fragments/textLength, exact sum/count consistency, no unsupported observation/run failures. Unknown font weight never grants the bold-only threshold.",
+    "scope": "36 actual targets in existing RU/AZ/EN default-light reversal flows only; no whole-page/dark/AT/native-zoom/production or progress credit."
+  }
+}
