@@ -1987,3 +1987,97 @@ complete seven evidenced Asia/Baku days, then review the flag-retirement release
   localhost/typical/enabled synthetic fixture only. It does not close a
   relative matched comparison, renew ceiling expiry or count a production day.
   Archive hashing/independent actual PNG review are the next evidence phase.
+
+
+## 2026-10-03 — Final reservation candidate and bounded baseline archive
+
+- Final source checkpointfdb2b314a98c958d8de94ac80d18f5e161d5de04 pushed
+  normally to the same PR544. Required new source run37122064497 executing;
+  runner37122064743 and scan37122064658 SUCCESS. Prior c431 green result
+  retained; it was not merged because self-audit found the reservation gap.
+  Final candidate guards/heap/thresholds unchanged; no completed workflow rerun.
+- Updated PR title/body around the final atomic flag action and trusted audit
+  reservation, including actual proof scope and outstanding final-head gates.
+  Used structured REST body file because installed gh pr edit hits the retired
+  Projects classic query. PR remains attached and ready on the final source.
+- Baseline archive now hashes55 files/5226012B plus provenance.json (56
+  physical files), comprising50 actual downloaded files (48 PNG/evidence.json/
+  index.md) and workflow/job/artifact/source/metrics metadata. Eleven fixture/
+  controller/builder/SD-detail source blobs are equal from4b capture to fdb
+  compare candidate. ZIP digest remains API metadata only, not independent ZIP
+  rehash. Independent report JSON hash matches101158c157cb00fc3cf6329334faef73de2858d7f0cfc19326080034f117dea7.
+- Independent reviewer recalculated every nearest-rank percentile and actually
+  viewed eight original screenshots: two per scenario across all three roles,
+  both themes and desktop/mobile. Main workspace/heading/primary representation
+  visible in each; mobile long labels truncate and some content/actions require
+  the owned scrolling area. Do not claim all records/labels/actions visible.
+  No blocking composition issue found in this limited first-frame review.
+  Max CLS p75 is0.011798959774159366; record it without an old relative claim.
+- Dispatched new matched48×7 comparison37122190158 on finalfdb using baseline
+  37119565433/exact artifact name through the existing workflow. Product,
+  fixture/controller/package/config sources are unchanged between those heads;
+  differences are test annotations, generic audit reservation and docs.
+  This is a new bounded source comparison, not a replay of the already closed
+  full acceptance or old52045 repeatability matrices. Result PENDING; preserve
+  existing ceilings/October8 and disclose null/last-navigation event metrics.
+- Still no selected production tenant, authenticated tenant operation or
+  activation. Real coverage/INFO/retention/baseline and seven full Baku days
+  remain required before the later separately admitted flag-retirement source.
+
+- Added independent review receipt9488B/hash4cd4c14b664749e459e50b63a222389b2706c4c3581e455fcbc0d4bef73f88e0
+  to the baseline archive after verifying all55 prior stored hashes. It now
+  contains56 hashed files/5235500B plus manifest (57 physical files).
+  Stored c431 compiler receipt separately under support-ux-canary-37120817658,
+  1405B/hash e049a0c6928897ed39621aaf1f79ba1e3514147154d951b7ef90b8ed030f6a43.
+- Final fdb real PostgreSQL gate actual10/10 PASS, zero skips,1036ms in
+  run37122064497/static111200022422 at12:18:13–12:18:15Z. Actual test checkout
+  1480b782c8caa004510b785ce6d282316111e640; nine reviewed source blobs match
+  the final head. Sanitized4943B receipt/hash cdaa16dcdea1991b80ea2448d941a9c1479fc8eafc2dce214082242e042802b7
+  archived with a manifest under support-ux-canary-37122064497.
+  Typecheck/build results still PENDING; no preemptive merge.
+- Requested the exact production tenant slug asynchronously for the remaining
+  representative observation. This is the missing scope parameter, not another
+  approval request for the prepared source release. Independent CI/compare and
+  release work continue. No answer or elapsed time is treated as tenant input.
+
+
+## 2026-10-03 — Second final-head heap failure; bounded hosted compiler repair
+
+- Final fdb run37122064497 finished FAILURE solely at required typecheck
+  111200022506: full-project compile12:19:31–12:33:55Z exhausted the unchanged
+  12288MiB heap, exit134. Compiler-completion blocker FAILED; baseline blocker
+  SKIPPED. No canary diagnostic output is not compiler admission. Static
+  checks and production standalone build111199979751 SUCCESS, PG10/10 PASS
+  remain separate proof. No merge/deploy was attempted under this red gate.
+- Appended immutable sanitized compiler failure3483B/hash
+  45fc8991aaf13877099a05afe7e9223ed1001473c798b82c65f6cebc0840b5fe
+  to support-ux-canary-37122064497 after verifying the prior PG hash. Archive
+  now contains two hashed receipts/8426B plus provenance.json. Earlier c431
+  green compile proves one completed attempt, not deterministic heap headroom.
+- Source comparison c431→fdb adds only the audited entity reservation, its
+  six cases and docs; no new generated-client specialization was identified.
+  Repair is scoped to the ephemeral hosted typecheck resources: reuse the
+  unchanged helper's GitHub-hosted/Linux/path/RAM/disk guards and <=4096MiB
+  allocated swap, require measured RAM+swap>=18874368KiB, bounded heap14336MiB,
+  core dumps disabled, unchanged60-minute timeout/full compiler/exit capture/
+  both mandatory blockers, and always-cleanup in the same job. No baseline,
+  defect family, draft policy, runner policy or test expectation weakened.
+- Actual final production-build preflight observed ram14761244KiB + free
+  swap7340024KiB=22101268KiB and82939MiB free on both work/temp filesystems.
+  This supports the bounded resource choice; the future typecheck must still
+  measure and admit its own budget, never infer it from the hosted image label.
+  Production-build/evidence helper behavior remains unchanged. Static policy
+  assertions now bind the14GiB/18GiB bounds and exactly one always-cleanup
+  separately in each typecheck/production-build job.
+- Local preflight15898MiB available/347646MiB disk/PSI zero; only small static
+  validation runs here. Full compiler/build/browser/PG and the swap helper
+  NOT RUN on persistent Contabo. Fresh48-cell source comparison37122190158
+  executing browser capture; final compiler repair checks still PENDING.
+
+- Bounded repair validation PASS: full small static assets suite (27 domains,
+  86 topics,5 concrete schemas), runner policy40 workflows, parsed YAML job
+  order/exact budget/full blockers/always cleanup, and git diff --check.
+  Independent review PASS after strengthening the preflight-presence assertion
+  (index -1 cannot admit a missing step) and binding the actual helper/env.
+  Only pr-checks typecheck policy, its existing static regression assertions
+  and the append-only journal changed. Full hosted compiler remains PENDING.
