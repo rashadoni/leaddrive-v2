@@ -1,0 +1,277 @@
+{
+  "atUtc": "2026-10-03T19:06:57.142235+00:00",
+  "candidateHead": "e8caf9e580936cbbc56c78da7618a37eef2b495e",
+  "base": "f34e04af037705eb2838285da26c78d7c9e2abc9",
+  "run": 37145309199,
+  "status": "Current bounded hosted6/6PASS; allfiveactualsameheadgatesSUCCESS; merge/deploy/publicPENDING",
+  "originals": [
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/artifacts-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-00.gz",
+      "bytes": 808,
+      "sha256": "4e5b0cff47aa94626ac944de2475dbcd9caabe982c294cd44fcd6c10336b4310",
+      "gzipBytes": 480,
+      "gzipSha256": "86c095ac46e04239041f221f2acd55e273eb74e374290c0f0d8ec8edae07eae5",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/jobs-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-01.gz",
+      "bytes": 3577,
+      "sha256": "11ea4de43daef021755f40204c19509b44f1910796250ecbaea47ec2717d25d9",
+      "gzipBytes": 872,
+      "gzipSha256": "a399f63cdeaaea1fff8a6c0dcef4799227578b680276d9957a7a8427440e19a1",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/native-checks-final-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-02.gz",
+      "bytes": 42825,
+      "sha256": "0edfce6ded524371a3e379a4c9d34cbaf6543e386c5643adbc1dbe43b0791f7e",
+      "gzipBytes": 2474,
+      "gzipSha256": "b27ec917727e6aeb5862264e1e4c79aaad9d1a8770e37473850f2c80820693d7",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/native-checks-observation-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-03.gz",
+      "bytes": 42804,
+      "sha256": "d363fb1e95afb12af271a4187e866b741d285f19bfb1e244bc050fa57d5a60a0",
+      "gzipBytes": 2492,
+      "gzipSha256": "c10f69d3aa4b9abdbee0b9a39836c62c0277c820222aea99cef68a192908ae32",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/native-gates-final-summary.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-04.gz",
+      "bytes": 5287,
+      "sha256": "a31ee83b5696c004e97bfd52983e7250f2672a0d7ca8c1083b7a512235f5b038",
+      "gzipBytes": 1418,
+      "gzipSha256": "32b8dd19b47ec500de423cba7c4e640586ba82df5682f7a13b4091896f344751",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/pr-acceptance-observation-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-05.gz",
+      "bytes": 17838,
+      "sha256": "43accfedcf1c37c7ec41c70ff833d0489cff9d76f107ead4308c5acafb5dcc24",
+      "gzipBytes": 3079,
+      "gzipSha256": "b149e5253bd586ca581751c64a0b555a0cb7270481094f99d0c4f8bf50fe96da",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/prchecks-jobs-final-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-06.gz",
+      "bytes": 10634,
+      "sha256": "7cd80915ea1415b08285718a09db395d0b134fc26002a361d4b00443b98a6c27",
+      "gzipBytes": 1553,
+      "gzipSha256": "9abed956f7c81a4544fcb4db7cd649413b5d455c1773c941fe7f0c56e8142f33",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/prchecks-run-final-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-07.gz",
+      "bytes": 12877,
+      "sha256": "93718ffe30b8698300fda4e22c9ccc6840d8a194bdf4a32070be906104775965",
+      "gzipBytes": 1636,
+      "gzipSha256": "b5d072b780850cc9f8e2f1bc1e9af0491dcf7dab51e54de3a3da61388500a78d",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/protection-observation-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-08.gz",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76",
+      "gzipBytes": 422,
+      "gzipSha256": "bdaec664bbb0d3971e4bfc06d28c73b1abd217b91596b0a79f6c473ce0005a37",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/provenance.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-09.gz",
+      "bytes": 3891,
+      "sha256": "6918622c8173aacdfd696d1d9bc37833030ef691eb336977d1e92945cd2c2c2b",
+      "gzipBytes": 1476,
+      "gzipSha256": "5d7f284636f1b9d95961da3f765e750d5ca4e1e926cc5bb0f0c7f13cad94caeb",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/root-actual-hosted-review.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-10.gz",
+      "bytes": 24942,
+      "sha256": "329ad1f580141ebcef8c1bb691b4709fb745c370ce4fb138d0ffb71fe68c2d27",
+      "gzipBytes": 4108,
+      "gzipSha256": "d89a7759abead6920ba96ce1f9410b348918e2616cb05aa6c6352342f6b9104a",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/run-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-11.gz",
+      "bytes": 12936,
+      "sha256": "caebae310a38f8c7a3c06d0311700144875ef627d79e7a36425c84a8c2969271",
+      "gzipBytes": 1658,
+      "gzipSha256": "6e2ffb1ce6f5ca0d86cea04f3fbccc2abba3842b36f711ee42fb86a2bef092a0",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/extracted/manager-today-receipt.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-12.gz",
+      "bytes": 20506,
+      "sha256": "d9763108663640b9bb2fef28b19b898076e6b6b2d3c99b3277ce833cb604b764",
+      "gzipBytes": 2677,
+      "gzipSha256": "28c1e90e80df8b2087d829c2ec7de571ce1c0fc445826f3dcb606f0e1032ca08",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-today-e8caf9e5-final/extracted/workflow-context.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-13.gz",
+      "bytes": 261,
+      "sha256": "c1bcf7803b566b0651a01a71d96521e724e0a35bf48fb13ada788485ab6699dc",
+      "gzipBytes": 208,
+      "gzipSha256": "6fe1113f0192f0a7429d8061568bf61a29886e40637613673f9fe773892f5464",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-hosted-final-independent.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-14.gz",
+      "bytes": 21134,
+      "sha256": "5e7e7ec917d5198a9c4f49b9b8569632c36aad8c49b66d84e8ea72f159605055",
+      "gzipBytes": 6697,
+      "gzipSha256": "ac78432b8bd06dd3584043573b6740a1881cf8faffda81ea732db589fd98b1d4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-release-helper-preflight-independent.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-15.gz",
+      "bytes": 3291,
+      "sha256": "517db99be0a8088f6f2667318156860b27aea064fabbb0b141f5b020023d5b37",
+      "gzipBytes": 1778,
+      "gzipSha256": "538b095d572dda843e46f838a5f24ce1e014cf74ea400ab15e2ecdc1d88d779a",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-typecheck-original.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-16.gz",
+      "bytes": 260892,
+      "sha256": "7056d24002f2f602fc5ed15dbed46776b2155c7a796cd30a25831e187d9f2e10",
+      "gzipBytes": 34702,
+      "gzipSha256": "4beebe805a1d3e5127f77fd8367f96d1774c9d666d5839844aa18c43b7c28542",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-static-checks-original.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-17.gz",
+      "bytes": 193626,
+      "sha256": "53ad5c044bb389a0c4fc45e7dc726718ae12f5291eb44c91d86b2c3df806cd19",
+      "gzipBytes": 38220,
+      "gzipSha256": "e076b20f902322a228c25dfb0a54ff45b08c53ef8bc9539a77f4a3ca422d1ea7",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-hosted-originals-gitleaks.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-18.gz",
+      "bytes": 145,
+      "sha256": "ab6cfd5a48d472e72f50d4eb16491703d494b428b5faf4e5a4c37a952a1ed220",
+      "gzipBytes": 126,
+      "gzipSha256": "ebaea53124bb1ad52576cc6d3820fe885c0972a3e7afe742717129756e186a0e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-hosted-final-all-originals-gitleaks.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-19.gz",
+      "bytes": 145,
+      "sha256": "f23e32e13dbb7d8e07ac299988370134988cbe1ffeb678e01896f95ec4114848",
+      "gzipBytes": 126,
+      "gzipSha256": "69b993de70145cc06032bab30ee8bcca3a280874e0197542c2120241cbdd9362",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "archiveAnd13Pngs": {
+    "location": "/tmp/workforce552-today-e8caf9e5-final",
+    "preservedInPersistentTaskTmp": true,
+    "artifactId": 11282058331,
+    "archiveBytes": 1219103,
+    "archiveSha256": "ea143638443c5259c87532560c25209ae5d806a4e3a2cf5ca8a9ca51a1d97edd",
+    "members": [
+      {
+        "path": "approver-ru-absent-page-two.png",
+        "bytes": 84156,
+        "sha256": "992b345c606376241cbbc6fac106c6391a21ed4890b142f6afe1f56928b9b451"
+      },
+      {
+        "path": "approver-ru-first-page.png",
+        "bytes": 50891,
+        "sha256": "28bb324c38acff7c529fa31226170f48aa6171a2be9b5f512873ecf0c091f5e3"
+      },
+      {
+        "path": "approver-ru-native-pagination.png",
+        "bytes": 83121,
+        "sha256": "c1f660dd1c01329c9033d1fd3e3f5edda35bce3bc32ab0cbc916eb4b4de38cdc"
+      },
+      {
+        "path": "denied-ru-no-grant.png",
+        "bytes": 50135,
+        "sha256": "3c46429597b9f789c0cf5eb9dd1bf8fe06022d1a43f16ea54ba988851da1fd6c"
+      },
+      {
+        "path": "manager-az-absent-page-two.png",
+        "bytes": 93535,
+        "sha256": "4c88b9c9bc9525b60843dee077ca9963690c04fce927e5e18d757ac41550004a"
+      },
+      {
+        "path": "manager-az-first-page.png",
+        "bytes": 77457,
+        "sha256": "4327acf38a7121d00ea2148849216db010c01eff28b0af2eb28e5a2f9f9f88c3"
+      },
+      {
+        "path": "manager-az-native-pagination.png",
+        "bytes": 90628,
+        "sha256": "7ec300ee7b6f98a47c2de9224cbe84067da857db6a764869068594aefc67e070"
+      },
+      {
+        "path": "manager-en-absent-page-two.png",
+        "bytes": 184741,
+        "sha256": "3f61a6dbe933a4931c056606767c83a90284aa5ab5286d9acc1f2f7aa5a860d5"
+      },
+      {
+        "path": "manager-en-first-page.png",
+        "bytes": 151270,
+        "sha256": "82ecfdd7949a20b19be73fb108b5e8d6119535bd030ce259b06c712f36d63d54"
+      },
+      {
+        "path": "manager-en-native-pagination.png",
+        "bytes": 170136,
+        "sha256": "6300088bfee37385f58528677a78d6d249748e6f2cc6ffcf03c5d992eaa4fd5f"
+      },
+      {
+        "path": "manager-ru-absent-page-two.png",
+        "bytes": 81843,
+        "sha256": "d3918ab565ad5c36723a5e6ad6e797e1997d9130e1a43e353e9a1e444bd3161e"
+      },
+      {
+        "path": "manager-ru-first-page.png",
+        "bytes": 50891,
+        "sha256": "28bb324c38acff7c529fa31226170f48aa6171a2be9b5f512873ecf0c091f5e3"
+      },
+      {
+        "path": "manager-ru-native-pagination.png",
+        "bytes": 80959,
+        "sha256": "a3c08247078b2ecdd9fd5d3c3a3cdd5718cdcac1f9e3a8127c4c79720326c13a"
+      },
+      {
+        "path": "manager-today-receipt.json",
+        "bytes": 20506,
+        "sha256": "d9763108663640b9bb2fef28b19b898076e6b6b2d3c99b3277ce833cb604b764"
+      },
+      {
+        "path": "workflow-context.json",
+        "bytes": 261,
+        "sha256": "c1bcf7803b566b0651a01a71d96521e724e0a35bf48fb13ada788485ab6699dc"
+      }
+    ],
+    "notCopiedPngsIntoGit": true
+  },
+  "historicalActualBothFailuresRetained": true,
+  "scanBytes": 679780,
+  "scanExit": 0
+}
