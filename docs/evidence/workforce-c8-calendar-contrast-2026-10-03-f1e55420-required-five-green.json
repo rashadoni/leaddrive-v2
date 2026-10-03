@@ -1,0 +1,59 @@
+{
+  "observedAtUtc": "2026-10-03T15:55:35.819259+00:00",
+  "sourceHead": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "requiredContexts": {
+    "pr-scope": {
+      "id": 111234522684,
+      "name": "pr-scope",
+      "head_sha": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T15:39:04Z",
+      "completed_at": "2026-10-03T15:39:17Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37133952791/job/111234522684"
+    },
+    "static-checks": {
+      "id": 111234673805,
+      "name": "static-checks",
+      "head_sha": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T15:39:21Z",
+      "completed_at": "2026-10-03T15:54:27Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37133952791/job/111234673805"
+    },
+    "typecheck": {
+      "id": 111234673687,
+      "name": "typecheck",
+      "head_sha": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T15:39:20Z",
+      "completed_at": "2026-10-03T15:51:02Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37133952791/job/111234673687"
+    },
+    "runner-policy": {
+      "id": 111232458756,
+      "name": "runner-policy",
+      "head_sha": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T15:26:42Z",
+      "completed_at": "2026-10-03T15:26:54Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37133257036/job/111232458756"
+    },
+    "scan": {
+      "id": 111232459064,
+      "name": "scan",
+      "head_sha": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T15:26:42Z",
+      "completed_at": "2026-10-03T15:26:59Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37133257047/job/111232459064"
+    }
+  },
+  "appId": 15368,
+  "allActualSuccess": true,
+  "draftSkipCredit": false
+}

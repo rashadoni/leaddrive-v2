@@ -1,0 +1,118 @@
+{
+  "observedAtUtc": "2026-10-03T15:29:35.461666+00:00",
+  "privateReceiptBranch": "codex/workforce-completion-part20-release-receipts",
+  "publishedSource": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "originals": [
+    {
+      "originalPath": "/tmp/workforce-part20-13c2282b-independent.json",
+      "originalBytes": 5030,
+      "originalSha256": "8539d74f868f642b7b8dde4b079e692982ac5ae251a9bc9aac451ae75dddd065",
+      "losslessGzipPath": "/tmp/workforce-part20-private-originals-prepared/0-workforce-part20-13c2282b-independent.json.gz",
+      "gzipBytes": 2500,
+      "gzipSha256": "afe2eeda632e4f56f0e57ed164b62cd4ce23fcee414f16fb16f95a7dddd25994",
+      "repositoryDestination": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-13c2282b-source-red.json.gz",
+      "storedGzip": {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-13c2282b-source-red.json.gz",
+        "bytes": 2500,
+        "sha256": "afe2eeda632e4f56f0e57ed164b62cd4ce23fcee414f16fb16f95a7dddd25994"
+      }
+    },
+    {
+      "originalPath": "/tmp/workforce-part20-34505ba6-independent.json",
+      "originalBytes": 5764,
+      "originalSha256": "444ec2c6a678d1d6558a25d0ae9508c2c5a199f5a55a5f53473601245c106e2a",
+      "losslessGzipPath": "/tmp/workforce-part20-private-originals-prepared/1-workforce-part20-34505ba6-independent.json.gz",
+      "gzipBytes": 2828,
+      "gzipSha256": "abfb8d3f591ae353cfa50967c36b51e8db82464dd2a2979775892f4668ce7f23",
+      "repositoryDestination": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-34505ba6-source-green.json.gz",
+      "storedGzip": {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-34505ba6-source-green.json.gz",
+        "bytes": 2828,
+        "sha256": "abfb8d3f591ae353cfa50967c36b51e8db82464dd2a2979775892f4668ce7f23"
+      }
+    },
+    {
+      "originalPath": "/tmp/workforce-part20-1db146c3-independent.json",
+      "originalBytes": 6285,
+      "originalSha256": "2209daeb2edd7e2b5fb594e09aac3e3740aebe5666a236e7321e67d0f44409db",
+      "losslessGzipPath": "/tmp/workforce-part20-private-originals-prepared/2-workforce-part20-1db146c3-independent.json.gz",
+      "gzipBytes": 3026,
+      "gzipSha256": "1b7bb40a9e33dd3ce22b27e3b0dbeda9bb9b9659964309604c06954b5532cc44",
+      "repositoryDestination": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-1db146c3-main547-source-green.json.gz",
+      "storedGzip": {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-1db146c3-main547-source-green.json.gz",
+        "bytes": 3026,
+        "sha256": "1b7bb40a9e33dd3ce22b27e3b0dbeda9bb9b9659964309604c06954b5532cc44"
+      }
+    },
+    {
+      "originalPath": "/tmp/workforce-part20-42b68b24-independent.json",
+      "originalBytes": 3739,
+      "originalSha256": "fc97934475f7a9eabcb6534e9357fa75184f65baf0d85b4bdd0e20c039aba4bb",
+      "losslessGzipPath": "/tmp/workforce-part20-private-originals-prepared/3-workforce-part20-42b68b24-independent.json.gz",
+      "gzipBytes": 1980,
+      "gzipSha256": "ff1324d515896631e1db5d3d48bd64be98c93033b5e7625034adb38ab42f5bcd",
+      "repositoryDestination": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-42b68b24-main548-source-green.json.gz",
+      "storedGzip": {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-42b68b24-main548-source-green.json.gz",
+        "bytes": 1980,
+        "sha256": "ff1324d515896631e1db5d3d48bd64be98c93033b5e7625034adb38ab42f5bcd"
+      }
+    },
+    {
+      "originalPath": "/tmp/workforce546-42b68b24-supported-red-independent.json",
+      "originalBytes": 6737,
+      "originalSha256": "0c92f4b755901b31b8a5b30cef1da19cb5287c61636a1814b9f5f6b855118f39",
+      "losslessGzipPath": "/tmp/workforce-part20-private-originals-prepared/4-workforce546-42b68b24-supported-red-independent.json.gz",
+      "gzipBytes": 3033,
+      "gzipSha256": "8b1c1b7ca182ffe7c24c84c8f4336f43ba7bf9138330763d2216bd75eca3bd97",
+      "repositoryDestination": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-42b68b24-supported-red-independent.json.gz",
+      "storedGzip": {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-42b68b24-supported-red-independent.json.gz",
+        "bytes": 3033,
+        "sha256": "8b1c1b7ca182ffe7c24c84c8f4336f43ba7bf9138330763d2216bd75eca3bd97"
+      }
+    },
+    {
+      "originalPath": "/tmp/workforce546-contrast-supported-42b68b24/original-provenance.json",
+      "originalBytes": 9675,
+      "originalSha256": "e9a8a46a844d3146cadcba0bc46949db5a0c3cc08aee8b3f7de747bee4e94530",
+      "losslessGzipPath": "/tmp/workforce-part20-private-originals-prepared/5-original-provenance.json.gz",
+      "gzipBytes": 3113,
+      "gzipSha256": "b8a0997f7180d416dfa0ff094e09ac2a676067fced8fd7bca1b836dc9e928113",
+      "repositoryDestination": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-42b68b24-supported-red-provenance.json.gz",
+      "storedGzip": {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-42b68b24-supported-red-provenance.json.gz",
+        "bytes": 3113,
+        "sha256": "b8a0997f7180d416dfa0ff094e09ac2a676067fced8fd7bca1b836dc9e928113"
+      }
+    },
+    {
+      "originalPath": "/tmp/workforce546-contrast-supported-42b68b24/extracted/receipt.json",
+      "originalBytes": 398820,
+      "originalSha256": "96ce387d7af05c8852e0102f3023e92235582514ebc4c7b0bd663a07a9a33753",
+      "losslessGzipPath": "/tmp/workforce-part20-private-originals-prepared/6-receipt.json.gz",
+      "gzipBytes": 12434,
+      "gzipSha256": "52fc064ffcb7a4f8fe6aa1d9f30f98f2462b77aafce940372df0418e0df43945",
+      "repositoryDestination": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-42b68b24-supported-red-receipt.json.gz",
+      "storedGzip": {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-42b68b24-supported-red-receipt.json.gz",
+        "bytes": 12434,
+        "sha256": "52fc064ffcb7a4f8fe6aa1d9f30f98f2462b77aafce940372df0418e0df43945"
+      }
+    },
+    {
+      "original": {
+        "path": "/tmp/workforce-part20-f1e55420-independent.json",
+        "bytes": 6104,
+        "sha256": "d16d3054008811df2342556a9e0e83e82b83344fc1ccd1892d7d902ed8d74105"
+      },
+      "storedGzip": {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-f1e55420-source-green.json.gz",
+        "bytes": 2960,
+        "sha256": "9491ab8437e092e8502bf4923a89e05f7f178f3ab3938a3b48fa00482dc002a2"
+      }
+    }
+  ],
+  "preservation": "New byte-exact lossless gzip originals, saved privately after source publication; no original removed or reconstructed, no baseline exception."
+}

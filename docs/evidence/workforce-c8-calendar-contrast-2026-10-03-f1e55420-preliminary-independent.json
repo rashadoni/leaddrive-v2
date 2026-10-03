@@ -1,0 +1,114 @@
+{
+  "schema": "workforce-calendar-corrected-preliminary-independent-review-v1",
+  "reviewedAtUtc": "2026-10-03T15:50:46.432387+00:00",
+  "head": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "base": "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+  "independentReadOnly": true,
+  "verdict": "GREEN actual corrected preliminary bounded default-light text evidence; final PR acceptance NOT REVIEWED here",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "actualBinding": {
+    "runId": 37133254330,
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "conclusion": "success",
+    "completedAt": "2026-10-03T15:36:17Z",
+    "sourceHead": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+    "checkedMergeSha": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+    "artifactId": 11277529264,
+    "archiveBytes": 3428852,
+    "archiveSha256": "ad9b8430063f4f6117a8e4e5c85df8d1e42b0a76ff033346ecab7245f4a48587",
+    "receiptBytes": 396249,
+    "receiptSha256": "0d3f228c3b525815ecd19a4a64dd3140688368251229ea414b3404e6c6d6acc6",
+    "originalProvenance": {
+      "bytes": 9520,
+      "sha256": "2eb677030208670a31048da3e7c53b594413eca3067e465102f7634fda5cf610"
+    },
+    "allMetadataReceiptWorkflowContextBindingsExact": true,
+    "all46UniqueZipManifestExtractedFilesBytesHashesExact": true,
+    "pngCount": 44,
+    "successfulFileCount": "44PNG+receipt+workflow-context=46. Failed runs additionally have workflow-failure.json; no missing evidence inferred.",
+    "apiSource": "Retained actual root gh API metadata; reviewer made no new network call."
+  },
+  "boundedContrast": {
+    "summary": {
+      "criterion": "WCAG2.2 SC1.4.3 (bounded default-light text only)",
+      "requiredTargets": 36,
+      "passedTargets": 36,
+      "lowContrastTargets": 0,
+      "notProvenTargets": 0,
+      "allTwelveFunctionalCasesPassed": true,
+      "populatedRlsGuardReached": true
+    },
+    "all12UniqueSemanticTargetsPerRuAzEn": true,
+    "allActualStableLoadedDefaultLightSrgbFixture": true,
+    "allRequiredNativeFocusVisibleEnabledAndExpectedTextFragments": true,
+    "ownerToHtmlRawBoxShadowLayersAllPresentAndUnsupportedFailureArraysEmpty": true,
+    "all36FullEvaluationObjectsReproducedUsingExactFrozenMath": true,
+    "frozenMathSha256": "ccfd96a15c6f9fd055d84a2cd7a2a53da694c3c5b8cb96b56d05807af133e901",
+    "confirmAllThreeLocales": {
+      "foreground": "rgb(255,255,255)",
+      "background": "lab(46.4615 57.7275 70.8507)",
+      "canvasSrgbChannels": [
+        [
+          0.788235294117647,
+          0.796078431372549
+        ],
+        [
+          0.20392156862745098,
+          0.21176470588235294
+        ],
+        [
+          0,
+          0.00392156862745098
+        ]
+      ],
+      "uncertainty": 0.00392156862745098,
+      "lower": 5.162994512865741,
+      "upper": 5.283420235782954,
+      "threshold": 4.5,
+      "fontSizePx": 14,
+      "fontWeight": 500,
+      "independentAllEightChannelIntervalCornersMeetThreshold": true
+    },
+    "all36MinimumRatioLower": 4.707471087355336,
+    "previousP2": "Actual supported confirm defect3.619970712637973 closes for this preliminary corrected bounded state. Historical42bRED and first6f70unsupported originals remain distinct, not rewritten."
+  },
+  "functional": {
+    "all12RealCasesPass": true,
+    "all14RealCsrfCredentialsCallbackPairs200": true,
+    "all27Geometry320CssPositiveTargetsZeroFailures": true,
+    "all36ReadingPositiveReachableFocusPreserved": true,
+    "populatedAuditCalendarTenantlessFailClosed": true,
+    "dbSuperuser": false,
+    "dbBypassRls": false,
+    "handlerErrors": "Successful frozen harness passed its zero-handler-error assertion; success receipts omit catch-only failure/intercepted-count diagnostics."
+  },
+  "actualPngInspection": {
+    "viewed": [
+      "reflow-320-confirm.png",
+      "reflow-320-az-confirm.png",
+      "reflow-320-en-confirm.png",
+      "reflow-320-inventory.png",
+      "reflow-320-az-inventory.png",
+      "reflow-320-en-inventory.png",
+      "reflow-320-az-review.png",
+      "reflow-320-unknown.png",
+      "reflow-320-replay.png"
+    ],
+    "viewedCount": 9,
+    "remaining35": "NOT VIEWED in preliminary review",
+    "observed": "Three corrected confirm controls visibly use darker orange with white text. Three source inventories retain wrapped fixtures/focused source actions; AZ review title focus and RU unknown/replay focused explanations present.",
+    "occlusionLimit": "Next dev badge partly overlaps RU confirm lower-left and some unrelated lower content; no blanket unoccluded/whole-page screenshot acceptance. Supported ratios derive from actual rendered paint chains and conservative math."
+  },
+  "limits": [
+    "This is exactf1e workflow_dispatch diagnostic. Distinct current final PR artifact requires its own binding/math/currentPNG review; preliminary screenshots cannot substitute for final evidence.",
+    "Native normal/enabled/focused default-light bounded36 text targets only. No overallWCAG/dark/forcedcolour/hover/pressed/nontext/focusring/nativezoom/AT/wholepage/Android/physical/load/pilot acceptance.",
+    "Final required PR static/type gates and production deployment NOT REVIEWED here. Source cap399550/400000 and baseline unchanged; no new progress or100% claim.",
+    "No repository/Git/network/status/production mutation, testsuite or local browser executed by reviewer. User general update/delete/breakpolicy/AGENTmove/Route mutation exclusions retained."
+  ]
+}

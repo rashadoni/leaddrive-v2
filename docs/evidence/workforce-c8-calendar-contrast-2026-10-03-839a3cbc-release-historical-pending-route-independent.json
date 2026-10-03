@@ -1,0 +1,84 @@
+{
+  "schema": "workforce-pr546-own-release-route-pending-independent-review-v1",
+  "reviewedAtUtc": "2026-10-03T16:07:55.028530+00:00",
+  "verdict": "PENDING production acceptance; initial own merge/deploy route and strict helper guards reviewed without findings",
+  "releaseGreen": false,
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "repo": "rashadoni/leaddrive-v2",
+  "pr": 546,
+  "candidateHead": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "preMergeBase": "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+  "mergedMainSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+  "parents": [
+    "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+    "f1e55420fa1165a7321b7596ae0330e6e7e8077a"
+  ],
+  "mergedTree": "af7e6df1d80b48c31c9ee624ba592dc5760b46ac",
+  "mergeTreeByteIdentity": "Merged API tree equals candidate API tree and both locally verified Git trees.",
+  "initialGithubSnapshot": {
+    "path": "/tmp/workforce546-production-839-primary-github/github-proof-latest.json",
+    "observedAtUtc": "2026-10-03T16:04:14.869671+00:00",
+    "bytes": 3229,
+    "sha256": "cdb8e2e2c0ecf55b969351662327d6e325d41e43fc15efb5a9cc99f577dc82cf",
+    "allSevenOriginalApiResponseBytesHashesMatch": true,
+    "prClosedMergedExactOwnShaAndCandidate": true,
+    "currentMainAtObservation": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+    "runId": 37135406406,
+    "attempt": 1,
+    "event": "push",
+    "branch": "main",
+    "workflow": ".github/workflows/deploy.yml",
+    "sourceSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+    "status": "in_progress",
+    "conclusion": null,
+    "observedJobs": {
+      "Production build & publish artifact": {
+        "id": 111238815589,
+        "name": "Production build & publish artifact",
+        "status": "in_progress",
+        "conclusion": null,
+        "started_at": "2026-10-03T16:02:49Z",
+        "completed_at": null
+      },
+      "Quality & security gates": {
+        "id": 111238815368,
+        "name": "Quality & security gates",
+        "status": "in_progress",
+        "conclusion": null,
+        "started_at": "2026-10-03T16:02:49Z",
+        "completed_at": null
+      }
+    },
+    "artifact": "PENDING: original artifact count0, no bound artifact yet",
+    "wholeOwnRunSuccess": false
+  },
+  "helperReview": {
+    "path": "/tmp/workforce546-release-proof-helper.py",
+    "bytes": 11459,
+    "sha256": "4be4edd24377beb2151205f3de90bd1f1eebcd5970036ba0c5553e7c66aafd3c",
+    "correctPrRepoHeadBaseHostConstants": true,
+    "exactFullArgsRequireShaAndBaseMatchesPinnedBase": true,
+    "githubGuard": "PR546 own merged SHA/candidate, ordered[base,head] parents, candidate-equal tree; own push/main/exactM/.github/workflows/deploy.yml run; unique required jobs; when present unique nonexpired leaddrive-prod-M artifact bound to same run/source with sha256 digest.",
+    "publicGate": "public mode asserts wholeOwnRunSuccess and normalRunSuccessStillRequired=false before any request; flag is computed from actual completed SUCCESS whole run and allfour named jobs. finalize additionally requires bound artifact and positive public bracket.",
+    "allFourRequiredJobs": [
+      "Production build & publish artifact",
+      "Quality & security gates",
+      "Deploy to production & post-deploy smoke",
+      "Cap retained deploy artifacts"
+    ],
+    "strictPublicRoute": "TLS app.leaddrivecrm.org pinned by curl --resolve to13.140.132.245, --noproxy*, HTTPS-only, no insecure fallback, no redirect follow; requires curl0/HTTP200/remote13.140.132.245/TLSverify0/no-store/public-onlyJSONcontract. ExactM build-info first -> ping oktrue -> exactM build-info confirm.",
+    "temporaryScope": "New original GitHub snapshot/attempt directories and exclusive safe receipt writes under/tmp; no repository/deploy action. Large production artifact download is excluded. Literal IP certificate limitation must remain separate supplemental evidence."
+  },
+  "notRun": [
+    "No production public request by reviewer; strictly prohibited while current own run pending.",
+    "No polling loop/helper execution/network/status/repository/source/Git mutation or heavy verification by reviewer.",
+    "Bound production artifact and completed four-job/whole-run success not yet available in this observation.",
+    "Public exactM artifactSha/TLS/no-store/build-ping-build and productionrelease GREEN remain PENDING."
+  ],
+  "nextAction": "Root waits own normal37135406406 whole/allfour actualSUCCESS, retains new original metadata/artifact binding, then obtains strict pinned public bracket for independent final release review. No old main/preliminary browser success substitutes for own normal release."
+}

@@ -1,0 +1,12 @@
+{
+  "source": "/tmp/workforce-part20-next-actionable-plan.json",
+  "rawBytes": 19202,
+  "rawSha256": "2991757d5f96ed6de6a1ebf03de1918aa2ac890f61777778b7fee02e7b59baec",
+  "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-next-actionable-plan.json.gz",
+  "gzipBytes": 6947,
+  "gzipSha256": "f33050eb30d32a82dfce37541292ea9df549e4b58b18052e1828e63109a273af",
+  "losslessDecompressionVerified": true,
+  "historicalPreparedBranch": "codex/workforce-completion-part20",
+  "activeSuccessor": "codex/workforce-completion-part21",
+  "runtimeAcceptance": "NOT RUN"
+}

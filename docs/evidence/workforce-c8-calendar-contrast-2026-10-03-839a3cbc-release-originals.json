@@ -1,0 +1,451 @@
+{
+  "recordedAt": "2026-10-03T16:39:12.361867+00:00",
+  "mergedSha": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+  "productionHost": "13.140.132.245",
+  "productionPath": "/opt/leaddrive-v2",
+  "normalRun": 37135406406,
+  "originals": [
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-001.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/build-info-first.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-002.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T160411964630Z/artifacts.json",
+      "bytes": 32,
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-003.json.gz",
+      "gzipBytes": 52,
+      "gzipSha256": "445c0201400e7d67debcd7865fdc885bab735bc10686fdc583a3bd4a3be3286e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T160411964630Z/candidate-commit.json",
+      "bytes": 1465,
+      "sha256": "e8d3e26a2041478573753f0a7cc44c897d6a6098994c83495a472cc7f00b95e2",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-004.json.gz",
+      "gzipBytes": 563,
+      "gzipSha256": "d783ba6287d8b5669c57d089554b5facc7d329f0be79aef2d9e111f8702203d3",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T160411964630Z/github-proof.json",
+      "bytes": 3229,
+      "sha256": "cdb8e2e2c0ecf55b969351662327d6e325d41e43fc15efb5a9cc99f577dc82cf",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-005.json.gz",
+      "gzipBytes": 1108,
+      "gzipSha256": "b5bdbf8914df764d410ae6ad21a08b6f0892859cbf6321439aa4815c3ba66322",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T160411964630Z/jobs.json",
+      "bytes": 11468,
+      "sha256": "77ca6e7af64496ff0dd99b74b4140e234a44efc616a22bd0121001eee5aa3733",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-006.json.gz",
+      "gzipBytes": 1710,
+      "gzipSha256": "e07d7d00c6a048bcfb042b9fe081de7b303e96bbed2f992d25d73b40a12fcaa3",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T160411964630Z/main-at-observation.json",
+      "bytes": 342,
+      "sha256": "d86ac077d035ef9cdb855804e758b5a413ad20daacd21ff2124a248970b8f4cf",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-007.json.gz",
+      "gzipBytes": 215,
+      "gzipSha256": "b5baf13b15b81fe3298b88bda886b152f3c8fe2d24897778ecd0f31850d3c7a2",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T160411964630Z/merged-commit.json",
+      "bytes": 2727,
+      "sha256": "8b92a9bf0fa5759124e2b95806a96d3b3e4046e53097c760a2af3a9b2290c2ee",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-008.json.gz",
+      "gzipBytes": 1317,
+      "gzipSha256": "56edfdecf2b5a13f7ca8e63a87a87827bb7134a106e7623ddeaef39aed7671ff",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T160411964630Z/pr.json",
+      "bytes": 19113,
+      "sha256": "dea03bd83798d7ddfd6d69f1d8ac8cfb273bf70a3f847699f69c7a6b5f7e6700",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-009.json.gz",
+      "gzipBytes": 3146,
+      "gzipSha256": "069ad6c19d8f485d0a05e795c471e414043db4e048d3459668a281d37138608d",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T160411964630Z/run.json",
+      "bytes": 12396,
+      "sha256": "90189d07a8c0dd5b6e7af3e3a74493f81e11b67ad10bcf209436cc7de885bd0d",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-010.json.gz",
+      "gzipBytes": 1539,
+      "gzipSha256": "94afc190f41fcfd204f3b85156885595b9d6f0b28a304be6a9b6615d423a0d80",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/artifacts.json",
+      "bytes": 762,
+      "sha256": "d3e877218d768319a2054ab6cd3e13284c49da1062578fc3f58d34aecd690f03",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-011.json.gz",
+      "gzipBytes": 431,
+      "gzipSha256": "4158556debe433ad2b3231f55869a39c879b318950ab9e4a5abab5ee5d0842c2",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/candidate-commit.json",
+      "bytes": 1465,
+      "sha256": "e8d3e26a2041478573753f0a7cc44c897d6a6098994c83495a472cc7f00b95e2",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-012.json.gz",
+      "gzipBytes": 563,
+      "gzipSha256": "d783ba6287d8b5669c57d089554b5facc7d329f0be79aef2d9e111f8702203d3",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/github-proof.json",
+      "bytes": 4679,
+      "sha256": "9e2c68f03a2797c8f86b1bcf1c1dccdca02aa23defc2197c38fae49945c4686d",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-013.json.gz",
+      "gzipBytes": 1444,
+      "gzipSha256": "6bfad13cd7294a546f85b11c48107b9db9e878c49cf620e1674fa52965e6a823",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/jobs.json",
+      "bytes": 20186,
+      "sha256": "3c763aaa029fcc6b6afc423ae5505049a9c267b9ef8d03e0d4159c6aed6412f6",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-014.json.gz",
+      "gzipBytes": 2582,
+      "gzipSha256": "f9477b281c494d56bd7f8784541b43f98b0d09641c26adbdca62b66f68bce958",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/main-at-observation.json",
+      "bytes": 342,
+      "sha256": "d86ac077d035ef9cdb855804e758b5a413ad20daacd21ff2124a248970b8f4cf",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-015.json.gz",
+      "gzipBytes": 215,
+      "gzipSha256": "b5baf13b15b81fe3298b88bda886b152f3c8fe2d24897778ecd0f31850d3c7a2",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/merged-commit.json",
+      "bytes": 2727,
+      "sha256": "8b92a9bf0fa5759124e2b95806a96d3b3e4046e53097c760a2af3a9b2290c2ee",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-016.json.gz",
+      "gzipBytes": 1317,
+      "gzipSha256": "56edfdecf2b5a13f7ca8e63a87a87827bb7134a106e7623ddeaef39aed7671ff",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/pr.json",
+      "bytes": 19113,
+      "sha256": "c593479e5a193c291ff4b23cb64fa82ccd77c7d0cf577e4c404a2cf64f29ee65",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-017.json.gz",
+      "gzipBytes": 3145,
+      "gzipSha256": "ed7469e667dd57229bd1561e8fce03933c3592700cedb366a81e48071a3d113c",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-20261003T163041681375Z/run.json",
+      "bytes": 12399,
+      "sha256": "eb99f008c896c7c092d29eca01fe4c16d1201c185bd64aead1980b21e388cf92",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-018.json.gz",
+      "gzipBytes": 1539,
+      "gzipSha256": "d3b30fe4b695d8414e45353a61d827fda3dbef4671e2a644331d4e562f5e5e68",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/github-proof-latest.json",
+      "bytes": 4679,
+      "sha256": "9e2c68f03a2797c8f86b1bcf1c1dccdca02aa23defc2197c38fae49945c4686d",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-019.json.gz",
+      "gzipBytes": 1444,
+      "gzipSha256": "6bfad13cd7294a546f85b11c48107b9db9e878c49cf620e1674fa52965e6a823",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-020.json.gz",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/public-20261003T163111816645Z/attempt-proof.json",
+      "bytes": 2957,
+      "sha256": "4f0635f9f17fca41517ed81dad3e42bd4e52e860911b5521fa4439431452ae61",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-021.json.gz",
+      "gzipBytes": 746,
+      "gzipSha256": "f7027b28e1fa529163e6ec80ca9e82e91d54a6cb407c0f0e0b8be8f54dc932fb",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/public-20261003T163111816645Z/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-022.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/public-20261003T163111816645Z/build-info-first.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-023.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/public-20261003T163111816645Z/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-024.json.gz",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-primary-github/public-proof.json",
+      "bytes": 2957,
+      "sha256": "4f0635f9f17fca41517ed81dad3e42bd4e52e860911b5521fa4439431452ae61",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-025.json.gz",
+      "gzipBytes": 746,
+      "gzipSha256": "f7027b28e1fa529163e6ec80ca9e82e91d54a6cb407c0f0e0b8be8f54dc932fb",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-root-literal-supplement/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-026.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-root-literal-supplement/build-info-first.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-027.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-root-literal-supplement/ip-build-info.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-028.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-root-literal-supplement/ip-ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-029.json.gz",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-root-literal-supplement/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-030.json.gz",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-root-literal-supplement/public-proof.json",
+      "bytes": 4647,
+      "sha256": "afe67c7ec4857880e76463800e248418ce15be155a361f6914a3c0d09efced30",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-031.json.gz",
+      "gzipBytes": 993,
+      "gzipSha256": "1fe90cf23a1c05db85fc424a9ab3ca69f1a8639218e516c735c695387ecf132e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-032.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/build-info-first.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-033.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/github-20261003T163154228001Z/artifacts.json",
+      "bytes": 762,
+      "sha256": "d3e877218d768319a2054ab6cd3e13284c49da1062578fc3f58d34aecd690f03",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-034.json.gz",
+      "gzipBytes": 431,
+      "gzipSha256": "4158556debe433ad2b3231f55869a39c879b318950ab9e4a5abab5ee5d0842c2",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/github-20261003T163154228001Z/candidate-commit.json",
+      "bytes": 1465,
+      "sha256": "e8d3e26a2041478573753f0a7cc44c897d6a6098994c83495a472cc7f00b95e2",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-035.json.gz",
+      "gzipBytes": 563,
+      "gzipSha256": "d783ba6287d8b5669c57d089554b5facc7d329f0be79aef2d9e111f8702203d3",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/github-20261003T163154228001Z/github-proof.json",
+      "bytes": 4658,
+      "sha256": "24946aecd5ba0d356982e5ff513e0a0df8808e4f8e1e7714997e60f9c63e82e4",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-036.json.gz",
+      "gzipBytes": 1445,
+      "gzipSha256": "7d0ebe45ef0a08c3dd75d97d9bf7a981d57127e3aea41076d7cf18694bbca1eb",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/github-20261003T163154228001Z/jobs.json",
+      "bytes": 20186,
+      "sha256": "3c763aaa029fcc6b6afc423ae5505049a9c267b9ef8d03e0d4159c6aed6412f6",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-037.json.gz",
+      "gzipBytes": 2582,
+      "gzipSha256": "f9477b281c494d56bd7f8784541b43f98b0d09641c26adbdca62b66f68bce958",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/github-20261003T163154228001Z/main-at-observation.json",
+      "bytes": 342,
+      "sha256": "d86ac077d035ef9cdb855804e758b5a413ad20daacd21ff2124a248970b8f4cf",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-038.json.gz",
+      "gzipBytes": 215,
+      "gzipSha256": "b5baf13b15b81fe3298b88bda886b152f3c8fe2d24897778ecd0f31850d3c7a2",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/github-20261003T163154228001Z/merged-commit.json",
+      "bytes": 2727,
+      "sha256": "8b92a9bf0fa5759124e2b95806a96d3b3e4046e53097c760a2af3a9b2290c2ee",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-039.json.gz",
+      "gzipBytes": 1317,
+      "gzipSha256": "56edfdecf2b5a13f7ca8e63a87a87827bb7134a106e7623ddeaef39aed7671ff",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/github-20261003T163154228001Z/pr.json",
+      "bytes": 19113,
+      "sha256": "c593479e5a193c291ff4b23cb64fa82ccd77c7d0cf577e4c404a2cf64f29ee65",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-040.json.gz",
+      "gzipBytes": 3145,
+      "gzipSha256": "ed7469e667dd57229bd1561e8fce03933c3592700cedb366a81e48071a3d113c",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/github-20261003T163154228001Z/run.json",
+      "bytes": 12399,
+      "sha256": "eb99f008c896c7c092d29eca01fe4c16d1201c185bd64aead1980b21e388cf92",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-041.json.gz",
+      "gzipBytes": 1539,
+      "gzipSha256": "d3b30fe4b695d8414e45353a61d827fda3dbef4671e2a644331d4e562f5e5e68",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/github-proof-latest.json",
+      "bytes": 4658,
+      "sha256": "24946aecd5ba0d356982e5ff513e0a0df8808e4f8e1e7714997e60f9c63e82e4",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-042.json.gz",
+      "gzipBytes": 1445,
+      "gzipSha256": "7d0ebe45ef0a08c3dd75d97d9bf7a981d57127e3aea41076d7cf18694bbca1eb",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-043.json.gz",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/public-20261003T163215644029Z/attempt-proof.json",
+      "bytes": 2948,
+      "sha256": "e6866015be16d8646aac9fffbe090774696a9378a397cc5b6a62f51b12a76743",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-044.json.gz",
+      "gzipBytes": 742,
+      "gzipSha256": "3616fedec51de75ee483994e592ab62f9f06a4b2570a1efcb75aa4a16598ed7b",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/public-20261003T163215644029Z/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-045.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/public-20261003T163215644029Z/build-info-first.json",
+      "bytes": 112,
+      "sha256": "c2d0ffd13030612f0c1cfb81af644167bd3a98bd377b01adfefa8dbbfc88fd20",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-046.json.gz",
+      "gzipBytes": 112,
+      "gzipSha256": "b5bc8915be51ec96495b30e50421f0988cab3eedd60e063ca75541eec2c3e3e4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/public-20261003T163215644029Z/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-047.json.gz",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/public-proof.json",
+      "bytes": 2948,
+      "sha256": "e6866015be16d8646aac9fffbe090774696a9378a397cc5b6a62f51b12a76743",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-048.json.gz",
+      "gzipBytes": 742,
+      "gzipSha256": "3616fedec51de75ee483994e592ab62f9f06a4b2570a1efcb75aa4a16598ed7b",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "original": "/tmp/workforce546-production-839-independent/release-proof.json",
+      "bytes": 9684,
+      "sha256": "ac48d54f0390beb4d4886711ccf45415b8887fc1be4debcd70dfd8f15b2fbbdd",
+      "preserved": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-839a3cbc-release-original-049.json.gz",
+      "gzipBytes": 2535,
+      "gzipSha256": "602a3163991974e3ec36c98fe8c2c2c21939068669a6573885dea78278db688c",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "policy": "New originals preserved byte-exact; no historical evidence rewritten or relabelled."
+}

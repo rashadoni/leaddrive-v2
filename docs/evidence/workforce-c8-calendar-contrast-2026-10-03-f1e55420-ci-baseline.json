@@ -1,0 +1,42 @@
+{
+  "sourceHead": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "staticJob": 111234673805,
+  "typeJob": 111234673687,
+  "staticOriginal": {
+    "path": "/tmp/workforce546-f1e-static-checks.log",
+    "bytes": 193404,
+    "sha256": "8b7c9e4b8165ef275e010f88f03445cb5a7ee94f3de06c6ccc9b477dcfb1c66c"
+  },
+  "typeOriginal": {
+    "path": "/tmp/workforce546-f1e-typecheck.log",
+    "bytes": 260364,
+    "sha256": "a4a0fb9d629ebd6dfb001178925eea1b77fb1c488b530f3b990b92078de6d843"
+  },
+  "testBaseline": {
+    "failures": 18,
+    "baseline": 18,
+    "noNewFailures": true,
+    "allBaselineStillFail": true
+  },
+  "typeBaseline": {
+    "tscExit": 2,
+    "diagnosticsTotal": 1195,
+    "gatedPairs": 66,
+    "baselinePairs": 66,
+    "bothBlockingStepsPass": true,
+    "touchedPathDiagnostics": 0
+  },
+  "postgresPassSummaries": [
+    "2026-10-03T15:47:10.8511184Z  Test Files  1 passed (1)",
+    "2026-10-03T15:47:10.8512252Z       Tests  10 passed (10)",
+    "2026-10-03T15:47:26.8151355Z  Test Files  1 passed (1)",
+    "2026-10-03T15:47:26.8152382Z       Tests  2 passed (2)",
+    "2026-10-03T15:47:41.4001703Z  Test Files  3 passed (3)",
+    "2026-10-03T15:47:41.4003539Z       Tests  33 passed (33)",
+    "2026-10-03T15:47:57.4827725Z  Test Files  1 passed (1)",
+    "2026-10-03T15:47:57.4828769Z       Tests  6 passed (6)",
+    "2026-10-03T15:48:12.4090454Z  Test Files  1 passed (1)",
+    "2026-10-03T15:48:12.4091508Z       Tests  5 passed (5)"
+  ],
+  "fullCleanSuiteOrTypecheckClaim": false
+}

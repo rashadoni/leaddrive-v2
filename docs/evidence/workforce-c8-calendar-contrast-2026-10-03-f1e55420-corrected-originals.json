@@ -1,0 +1,50 @@
+{
+  "observedAtUtc": "2026-10-03T15:40:18.890509+00:00",
+  "originals": [
+    {
+      "originalPath": "/tmp/workforce546-contrast-corrected-f1e55420/extracted/receipt.json",
+      "originalBytes": 396249,
+      "originalSha256": "0d3f228c3b525815ecd19a4a64dd3140688368251229ea414b3404e6c6d6acc6",
+      "gzipPath": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-f1e55420-corrected-receipt.json.gz",
+      "gzipBytes": 12021,
+      "gzipSha256": "8ad7b568c1024ed638e1f979cfa7b2cdf9f7ea8472f55991015d2f8ba4848bbc"
+    },
+    {
+      "originalPath": "/tmp/workforce546-contrast-corrected-f1e55420/original-provenance.json",
+      "originalBytes": 9520,
+      "originalSha256": "2eb677030208670a31048da3e7c53b594413eca3067e465102f7634fda5cf610",
+      "gzipPath": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-f1e55420-corrected-provenance.json.gz",
+      "gzipBytes": 3065,
+      "gzipSha256": "8df5d48c9f17b60612111dc7157e4754bc0d43b0f796ef58bf98b400bf335384"
+    }
+  ],
+  "preliminaryRun": 37133254330,
+  "artifactId": 11277529264,
+  "status": "PASS",
+  "contrast": "36PASS/0FAIL/0NOT_PROVEN",
+  "functional": "12PASS",
+  "confirmRatioLower": 5.162994512865741,
+  "threshold": 4.5,
+  "rawUnchangedConfigGitleaks": "0 findings/396249bytes/262ms",
+  "rootCurrentPngInspection": [
+    "reflow-320-confirm.png",
+    "reflow-320-az-confirm.png",
+    "reflow-320-en-confirm.png"
+  ],
+  "visualLimit": "Next dev indicator partially overlaps RU confirmation; no blanket occlusion or whole-page acceptance",
+  "independentActualReceiptReview": "PENDING",
+  "finalSyntheticBinding": {
+    "sourceCandidate": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+    "base": "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+    "syntheticMergeSha": "2e97ef4345deda9bb22941ab02ff9d35d9d0a684",
+    "parents": [
+      "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+      "f1e55420fa1165a7321b7596ae0330e6e7e8077a"
+    ],
+    "tree": "af7e6df1d80b48c31c9ee624ba592dc5760b46ac",
+    "treeEqualsCandidate": true,
+    "finalBrowserRun": 37133952754,
+    "finalPrChecksRun": 37133952791
+  },
+  "finalBrowserAndFiveRequiredGates": "PENDING; draft skips/preliminary are not final acceptance"
+}
