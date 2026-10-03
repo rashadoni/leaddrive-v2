@@ -1,0 +1,75 @@
+{
+  "observedAt": "2026-10-03T11:19:34.096627+00:00",
+  "expectedMergedSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+  "runId": 37117815477,
+  "productionHost": "13.140.132.245",
+  "tlsHostname": "app.leaddrivecrm.org",
+  "strictPinnedBracketPositive": true,
+  "requests": {
+    "build-info-first": {
+      "label": "build-info-first",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "startedAt": "2026-10-03T11:19:33.705652+00:00",
+      "completedAt": "2026-10-03T11:19:33.791829+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControlNoStore": true,
+      "bytes": 112,
+      "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876",
+      "bodyMatchesPublicContract": true,
+      "original": {
+        "path": "/tmp/workforce542-production-4bf-independent/public-20261003T111933705495Z/build-info-first.json",
+        "bytes": 112,
+        "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+      },
+      "sha": "4bf63b5f647a",
+      "artifactSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+      "builtAt": "2026-10-03T10:58:05Z"
+    },
+    "ping": {
+      "label": "ping",
+      "url": "https://app.leaddrivecrm.org/api/v1/ping",
+      "startedAt": "2026-10-03T11:19:33.792519+00:00",
+      "completedAt": "2026-10-03T11:19:33.960661+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControlNoStore": true,
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "bodyMatchesPublicContract": true,
+      "original": {
+        "path": "/tmp/workforce542-production-4bf-independent/public-20261003T111933705495Z/ping.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      "ok": true
+    },
+    "build-info-confirm": {
+      "label": "build-info-confirm",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "startedAt": "2026-10-03T11:19:33.961228+00:00",
+      "completedAt": "2026-10-03T11:19:34.096123+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControlNoStore": true,
+      "bytes": 112,
+      "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876",
+      "bodyMatchesPublicContract": true,
+      "original": {
+        "path": "/tmp/workforce542-production-4bf-independent/public-20261003T111933705495Z/build-info-confirm.json",
+        "bytes": 112,
+        "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+      },
+      "sha": "4bf63b5f647a",
+      "artifactSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+      "builtAt": "2026-10-03T10:58:05Z"
+    }
+  },
+  "normalRunSuccessStillRequired": false
+}
