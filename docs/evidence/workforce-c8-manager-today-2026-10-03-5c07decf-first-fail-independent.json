@@ -1,0 +1,134 @@
+{
+  "schema": "workforce552-first-actual-hosted-failure-independent-review-v1",
+  "reviewedAtUtc": "2026-10-03T17:41:42.660381+00:00",
+  "candidateHead": "5c07decf80f91cf616cea6b88235051421dd69fe",
+  "base": "7c0e136f1529b9df9e96a2273d798d48718c1d80",
+  "checkedMergeSha": "b84370c929cf4d69041647b40a3aca12a95d892c",
+  "runId": 37140152774,
+  "attempt": 1,
+  "verdict": "RED actual first hosted Today evidence; source-review GREEN historical, no native acceptance",
+  "independentReadOnly": true,
+  "artifact": {
+    "id": 11280370977,
+    "name": "workforce-manager-today-browser-b84370c929cf4d69041647b40a3aca12a95d892c-1",
+    "bytes": 53065,
+    "sha256": "5abe44b71aedeac22df8b9891db6b521a00335734eb488f5d09caf7b67ce2979",
+    "apiDigestMatched": true,
+    "uniqueFiles": 4,
+    "allZipExtractedManifestSizesHashesEqual": true,
+    "originalProvenanceBytes": 1798,
+    "originalProvenanceSha256": "028cc936de25e154941ae1bed7972672a04a64d21efb9a69216cb904ac6c3ef6"
+  },
+  "originalFiles": [
+    {
+      "path": "failure-original.png",
+      "bytes": 51857,
+      "sha256": "5ff986cb16cec163f290edf93712b99ee20ac3aaa217bd66f0fc7c209be95749"
+    },
+    {
+      "path": "manager-today-receipt.json",
+      "bytes": 5456,
+      "sha256": "dc6a3e0bd88688a88dab40257de4d5d4e8a75592cb0875bc60af60a9a6abf97e"
+    },
+    {
+      "path": "workflow-context.json",
+      "bytes": 261,
+      "sha256": "41773ee0d5e49440c76d542be67a23b12405c2f9f41ecd58ffa17325c0244814"
+    },
+    {
+      "path": "workflow-failure.json",
+      "bytes": 219,
+      "sha256": "f6338bb4c0336071f977a2cdaedb15c067ec750bf96c3c53a0297f68acc468d2"
+    }
+  ],
+  "bindings": {
+    "artifactWorkflowRunIdSourceHeadRepositoryAndBranchMatch": true,
+    "workflowContextFailureAndReceiptCandidateCiRunAttemptAgree": true,
+    "actualHarnessSha256MatchesFrozenGitBlob": true,
+    "harnessSha256": "fa3f53369b7b39abb90734dd9ea433fc65dc18373946b52e1a251b926760229a",
+    "syntheticTreeIndependentlyChecked": false,
+    "syntheticTreeLimit": "Synthetic commit is not in local object store; source/CI binding is corroborated by retained API artifact metadata plus workflow-context and actual harness digest, without a fresh network request."
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [
+      {
+        "title": "Render manager exception type from the real catalog namespace",
+        "file": "src/components/workforce/workforce-manager-today.tsx",
+        "line": 168,
+        "issue": "The component calls timesheetExceptionType.${exception.type}; that namespace is absent from workforcePage in all three frozen RU/AZ/EN catalogs. The existing timesheetApprovalException map contains NO_SHOW and other supported types, and workbench already uses it. The mocked UI test expected the missing key verbatim, so it could not catch missing localization.",
+        "fix": "Use existing timesheetApprovalException in this component and add meaningful real-next-intl RU/AZ/EN rendered-label assertions plus absent-error/fallback assertions. Retain authorized status/boundary/pagination/private-id checks."
+      },
+      {
+        "title": "Read the real exception type catalog in hosted assertions",
+        "file": "scripts/workforce-manager-today-browser-evidence.mjs",
+        "line": 348,
+        "issue": "Actual run reaches view.ui.timesheetExceptionType.NO_SHOW, dereferences undefined and aborts before any completed case. The Error/sourcePosition matches the frozen line and absent map; timesheetExceptionStatus exists and does not need renaming. Restricted-approver negative assertion at351 also uses missing type map.",
+        "fix": "Change both type lookup sites to existing timesheetApprovalException.NO_SHOW, keep actual localized positive/negative assertions and six-case completion requirements."
+      },
+      {
+        "title": "Finish context teardown before closing its browser",
+        "file": "scripts/workforce-manager-today-browser-evidence.mjs",
+        "line": 504,
+        "issue": "Promise.allSettled starts context.close and browser.close concurrently. BrowserContext.close disposes its request context and later closes its channel; installed Playwright does not swallow target-closed at the latter step, so concurrent parent browser shutdown can reject. Actual receipt cleanup is FAIL. Per-action reasons were not retained, so the original failure cannot independently prove that race was its sole cleanup cause.",
+        "fix": "Await context cleanup settlements before browser close, then disconnect database clients; preserve cleanup rejection as FAIL and keep sanitized per-action outcomes if useful. Do not make cleanup failure automatically pass."
+      }
+    ],
+    "P3": []
+  },
+  "actualObserved": {
+    "startedAt": "2026-10-03T17:26:57.940Z",
+    "completedAt": "2026-10-03T17:27:18.368Z",
+    "status": "FAIL",
+    "cleanup": "FAIL",
+    "completedCases": 0,
+    "phase": "today-manager-ru-localized-first-page",
+    "sourcePosition": {
+      "line": 348,
+      "column": 91
+    },
+    "authCallbacks": 1,
+    "csrfStatus": 200,
+    "callbackStatus": 200,
+    "rlsBeforeTables": 20,
+    "rlsBeforeNonemptyTables": 12,
+    "allTwentyForcedNonOwnerUnscopedZero": true,
+    "corePopulatedCounts": {
+      "mtm_agent_workdays": 1,
+      "mtm_agents": 29,
+      "users": 4,
+      "workforce_access_grants": 2,
+      "workforce_exception_cases": 1
+    },
+    "preFailureProgressDerivedFromPinnedSequentialSource": "Receipt reaches line348 after real session, checked first200 response and25 localized article/name/calendar/attendance/boundary assertions; this is partial progress, not a completed scenario."
+  },
+  "imageReview": {
+    "actualCurrentFilesViewed": [
+      "failure-original.png"
+    ],
+    "dimensions": [
+      320,
+      900
+    ],
+    "visible": "RU dashboard summary shows 0 working/paused/completed and1 needs-review, localized navigation and roster header. A dev badge reports2 Issues. The viewport capture does not show the NO_SHOW exception badge/25-row content, so the product diagnosis is source/catalog-grounded, not a screenshot label claim.",
+    "noWholeRosterOrOcclusionClaim": true
+  },
+  "notRunOrNotReached": [
+    "Native pagination Tab/Enter",
+    "Second page26 ordered/geometry acceptance",
+    "Remaining AZ/EN/approver/no-grant/forged-header cases",
+    "After-read fact hashes andRLS recheck",
+    "Any successful completed Today case",
+    "Corrected-source hosted acceptance",
+    "Full local/browser/PostgreSQL checks",
+    "Production Manager Today/AT/nativezoom/whole-pagekeyboard/Android/physical/load/pilot"
+  ],
+  "preservation": "All original API-derived artifact metadata, ZIP, threeJSON and PNG remain unchanged. Historical frozen-source GREEN remains an original source-only opinion superseded for hosted acceptance by this actual first RED; no first-failure relabelling.",
+  "progress": "DONE81/161;GATES14/15;C8 36%;overall59%;80non-DONE;WF-C8-002 PARTIAL.",
+  "limits": [
+    "No edits, repository/Git/status/network/production mutations or local browser/PG/tests by reviewer. No full run/job API independently refetched; retained artifact API digest/bindings and actual failure originals independently checked.",
+    "Root reports own552 returned to draft and not merged. Before any repair preserve this original failure; corrected exact-source review and a new actual hosted run must close findings, not threshold/assertion weakening.",
+    "Original generalupdate/delete/breakpolicy/AGENTmoves/Route mutation exclusions retained."
+  ]
+}
