@@ -151,6 +151,15 @@ jobs:
           echo "EVENT_PLATFORM_PG_PORT=$PG_PORT" >> "$GITHUB_ENV"
           echo "event-platform-postgres is on 127.0.0.1:$PG_PORT"
 
+      - name: Support UX canary atomic PostgreSQL gate
+        # A separate fixed scratch database exercises the actual RLS proxy and
+        # handler without changing the event-platform/Workforce fixtures.
+        run: npx vitest run src/__tests__/support-ux-canary-postgres.test.ts
+        env:
+          CI: "true"
+          VITEST_MAX_WORKERS: "1"
+          SUPPORT_UX_CANARY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/support_ux_canary_test
+
       - name: Generate frozen pre-pilot Prisma client
         run: npx prisma generate --schema scripts/ci/fixtures/event-platform-legacy-client/schema.prisma
         env:
@@ -244,9 +253,11 @@ jobs:
     # skipping the blocking gates below; it was moved to a 14 GiB Intel macOS
     # runner, which then became the most expensive job in the repository
     # (macOS minutes count against the allowance at ten times the Linux rate:
-    # 1,444 of them cost more than 96,000 Linux minutes). It now runs on the
-    # A public-repository standard Linux runner has 16 GiB, enough for the
-    # bounded 12-GiB Node heap without renting a hosted Mac or using Contabo.
+    # 1,444 of them cost more than 96,000 Linux minutes).
+    # A public-repository standard Linux runner has 16 GiB. Two full-project
+    # compiler attempts exhausted the former 12-GiB heap on 2026-10-03.
+    # Require a measured 18-GiB RAM+swap budget for the bounded 14-GiB heap,
+    # using only the existing ephemeral-runner helper's capped 4-GiB swap.
     #
     # It still skips draft pull requests: the runner is a single shared
     # resource, and an agent's intermediate pushes would only queue behind each
@@ -277,15 +288,21 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate --schema prisma/schema.prisma
 
+      - name: Prepare bounded GitHub-hosted typecheck memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
+
       - name: TypeScript compile-check (advisory diagnostics)
         # The complete diagnostic set remains advisory while the historical
         # baseline exists. Its exit status and selected defect families are
-        # enforced by the two blocking steps below. The former 11-GiB ceiling
-        # reproducibly aborted at ~11.1 GiB on 2026-09-27, so keep one bounded
-        # extra GiB of heap while leaving the full compiler pass intact.
+        # enforced by the two blocking steps below. Keep the full pass and
+        # finite job timeout; the preflight must admit the measured budget
+        # before this bounded heap can be used.
         env:
-          NODE_OPTIONS: --max-old-space-size=12288
+          NODE_OPTIONS: --max-old-space-size=14336
         run: |
+          ulimit -c 0
           set +e
           npx tsc --noEmit 2>&1 | tee tsc-output.log
           echo "${PIPESTATUS[0]}" > tsc-exit-code
@@ -296,6 +313,10 @@ jobs:
 
       - name: Defect-shaped type errors vs baseline (BLOCKING)
         run: node scripts/ci/check-typecheck-baseline.mjs tsc-output.log
+
+      - name: Cleanup bounded typecheck swap
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
 
   production-build:
     name: GitHub-hosted Linux production build

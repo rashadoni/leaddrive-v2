@@ -1429,3 +1429,655 @@ Asia/Baku days remain necessary for100%.
   needed for this scope; the final required exact-head contexts still apply.
 - New source/config checkpoint is needed to satisfy the failed secret gate.
   Production tenant/activation/real baseline/full-day coverage remain pending.
+
+
+## 2026-10-03 — Exact final candidate gates and durable evidence archive
+
+- Source/config checkpointb9de0dad8c8db1cc6b84a8bd6a9eca682bfdae5b published.
+  Exact scan37078588733 and runner37078588718 SUCCESS. Superseded8b60 PR
+  37078259827 cancelled while running after its synthetic scan failure;
+  b9 PR37078588724 cancelled before completing the expensive jobs so the same
+  final candidate can get its required release-risk production-build proof.
+  Existing production-build label added; current PR37078743036 runs required
+  source/static/type contexts and the new production standalone build. This
+  new instrumentation was not present in the completed895 historical build.
+  Results PENDING. No completed prior release/evidence gate was replayed.
+- PR#530 title/body rewritten around final Calendar correction, bounded
+  telemetry and accepted exact-source evidence. Required current contexts
+  must be green before the concrete owner release decision.
+- Historical workflow retains artifacts14 days. Copied all14 downloaded
+  original/current/comparison files to persistent non-secret archive
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-historical-37074506981
+  (1101045 bytes) and verified byte equality with downloads. provenance.json
+  records exact run/source/GitHub archive metadata and individual extracted
+  file hashes; archive digests are API receipts, not extracted-file hashes.
+- Current root/branch/origin still designated managed worktree,
+  codex/help-ai-guides, https://github.com/rashadoni/leaddrive-v2.git.
+  Registered production13.140.132.245:/opt/leaddrive-v2; protected PR→main→
+  GitHub Actions immutable artifact route. No production action was performed.
+
+Current result/status:190/191 tracked and16/17 literal criteria; final candidate
+required gates/build running. Last completed action: exact candidate publish,
+scoped scan repair and durable comparison archive. Precise stopping point:
+wait for37078743036, then self-audit/final documentation checkpoint. Next action:
+resolve any genuine gate failure; after green, owner release decision and exact
+representative tenant/activation evidence are needed before production window.
+
+
+## 2026-10-03 — Remaining accepted browser evidence made durable; activation scope checked
+
+- Persistent byte-identical archives now also retain exact viewport68files/
+  8419842bytes at codex-alt-data/support-ux-acceptance-37055428421,
+  explicit vision338files/33524421bytes at support-ux-vision-37055624370,
+  and corrected Calendar4files/203584bytes at support-ux-calendar-37061949081.
+  All under/mnt/HC_Volume_106454338/codex-alt-data. Each provenance.json records
+  source/run/artifact metadata and extracted-file SHA256. Only previously
+  accepted non-secret synthetic JSON/Markdown/PNG receipts were copied; no new
+  browser execution or inspection claim is inferred from copying the files.
+- Source check of existing generic superadmin tenant PUT shows whole features
+  normalization and derived modules reconciliation, with a separate audit call.
+  It cannot be presumed to satisfy the scoped atomic flag-only activation
+  contract or preserve the exact original feature representation. No call made.
+  Prepared diagnostics remain read-only. If selected tenant lacks an approved
+  activation record, prepare/review the specific flag-only audited action after
+  owner supplies the authorized tenant; do not improvise a broad tenant edit.
+
+
+## 2026-10-03 — Final source candidate green; independent self-audit and documentation checkpoint
+
+- Exact published source candidateb9de0dad8c8db1cc6b84a8bd6a9eca682bfdae5b
+  has all five required contexts SUCCESS: pr-scope/static-checks/typecheck
+  run37078743036, runner-policy37078588718, secret-scan37078588733. Additional
+  hosted production standalone build in37078743036 SUCCESS (compiled7.1min;
+  verified standalone/server.js, static assets, service worker and no retired
+  one-release marker). PR#530 is ready, MERGEABLE/CLEAN at inspection. PR body
+  now records actual final results and the accepted receipt/source boundaries.
+- Type compiler exit2 retains existing advisory diagnostics: blocking gate
+  reports no syntax/missing-module/undefined-name errors and no NEW defect-shaped
+  type errors against unchanged baseline. Unit baseline gate reports no NEW
+  failures and every existing baseline entry still fails. These are successful
+  governed gates, not a zero-error full compiler/all-unit-test claim. No test/
+  type baseline, assertion, geometry threshold or runtime failure filter changed.
+- Completed obsolete PR runs37078259827 and37078588724 confirmed CANCELLED;
+  their uncompleted expensive jobs were superseded, not accepted as green.
+  All accepted old viewport/vision/Calendar/historical captures and #501/#505
+  merge/deploy receipts remain reused at their original source identities.
+- Independent final read-only audit finds no material inconsistency or completion
+  overclaim:191unique/190checked/onlyROL-006,17literalrows=16DONE/1IN_PROGRESS;
+  all eight page/data API paths identical895→b9→current. Persistent manifests
+  and byte totals verified; all14 historical/all4Calendar extracted hashes and
+  download bytes verified independently, plus JSON/index/3PNG samples in each
+  viewport/vision archive. Root copy verification covered all downloaded files.
+  API ZIP digests remain metadata receipts; no independent ZIP rehash claimed.
+- Original active-journal prefix30183bytes preserved; complete legacy reference
+  journal218460bytes unchanged. Current workflow display name corrected to
+  Inspect production safely; path stays.github/workflows/tail-app-logs.yml.
+  Prepared collection continues UNVERIFIED/observationAdmitted:false. Actual
+  production collection, authenticated tenant/flag inspection/activation,
+  real baseline and seven complete days NOT RUN: exact authorized tenant and
+  activation/coverage evidence have not been supplied and candidate not released.
+- Read-only current-main contract46739dbe0c158e9f48455398463e401e42b927e2 still
+  confirms leaddrive registered13.140.132.245, appDir/opt/leaddrive-v2, domain
+  app.leaddrivecrm.org and supported SHA-bound GitHub Actions deploy route.
+  This is repository routing evidence, not a new production/live SHA observation.
+- No merge, main push, deploy, flag mutation or production message sent in this
+  expanded phase. Per DELIVERY-ARCHITECTURE.md layer4, before the NEW visible
+  Calendar correction merge, owner must see the concrete client-visible change
+  and answer “давай” or exclude it. Earlier completed deploys remain untouched.
+  The local documentation-only checkpoint records final self-audit/gates without
+  pushing another head or rerunning the completed exact candidate gates.
+
+Current result/status:190/191 tracked (99.48%);16/17 literal criteria accepted;
+PR#530 exact candidate all required contexts and production build green.
+Last completed action: verified final hosted gates, independent source/archive/
+journal audit and final documentation checkpoint preparation.
+Precise stopping point: no independent CI/capture remains running; NEW release
+awaits concrete owner admission and production observation requires the exact
+representative tenant/activation/baseline. Next action: after owner's “давай”,
+release the concrete Calendar/telemetry candidate through protected main/Actions,
+verify selected-tenant admission, collect seven full Asia/Baku days, review
+baseline by2026-10-08 and only then prepare governed flag retirement for100%.
+
+
+## 2026-10-03 — Owner confirmed the concrete new PR530 release
+
+- User replied “подтерждаю” after the prepared Calendar/telemetry release list
+  and next-step explanation. This supplies the required owner go-ahead for the
+  NEW PR530 release; no repeated confirmation is needed. It does not identify
+  a representative tenant or establish any past flag/observation history.
+  Exact production tenant slug/activation record requested asynchronously while
+  the independently authorized release proceeds.
+- Resumed designated managed worktree/branch; codex-project-context resolves
+  Contabo remote-alt, root/mnt/HC_Volume_106454338/codex-alt-data/worktrees/
+  leaddrive-help-ai-guides, branchcodex/help-ai-guides,
+  originhttps://github.com/rashadoni/leaddrive-v2.git,
+  productionaliasleaddrive-prod:/opt/leaddrive-v2, releasegithub-actions-main.
+  Current-main779fce0cb1bdd882d296942bd25a412d9b115d52 registry/deployment
+  contract confirms registered13.140.132.245 and app.leaddrivecrm.org.
+- Exact published candidateb9de0dad8c8db1cc6b84a8bd6a9eca682bfdae5b remains
+  OPEN/ready/MERGEABLE/CLEAN. Latest required pr-scope/static/type contexts
+  and standalone build37078743036 SUCCESS; runner37078588718 and
+  scan37078588733 SUCCESS. Completed green candidate checks are reused.
+  Local docs-only checkpoint47665784ccfe2c542255b3342c21cfa8c0bd64fc stays
+  preserved and unpushed; the explicit remote SHA protects the approved merge.
+- Proceed only with exact PR530 protected merge, observe its automatically
+  triggered immutable main release, then public/feasible feature smoke and
+  journal checkpoint. Original #501/#505 CI/merge/deploy are not repeated.
+  No arbitrary tenant selection, flag activation or elapsed-day claim.
+
+
+## 2026-10-03 12:45 Asia/Baku — Approved PR530 merged; new automatic release queued
+
+- gh pr merge530 --merge --match-head-commitb9de0dad8 completed through
+  protected GitHub path, no admin bypass/branch deletion. PR state MERGED at
+  2026-10-03T08:45:22Z (12:45:22Asia/Baku), merge commit
+  f62ab3a609a0461cbd14c264306df2d28325628f. Local checkpoints preserved.
+- New automatically triggered exact-main workflows: Deploy37110761933,
+  post-merge PRchecks37110761818, runner37110761810, scan37110761817.
+  All initially queued; no workflow_dispatch/re-run/manual production deploy.
+- Fetched origin/main read-only for source verification. All8 accepted daily
+  page/data paths, Calendar fix, both instrumented Macros APIs, observation
+  helper and daily collector byte-identical approvedb9→mergedf62. This is Git
+  source identity, not new production/browser evidence. No build on Contabo.
+- Current result/status: approved new source merged; new immutable release and
+  post-merge gates pending. Last completed action: exact protected PR530 merge
+  and source admission check. Precise stopping point: wait for automatic
+  37110761933 release/gates, then public exact identity/feasible feature smoke.
+  Next action: complete release verification; selected tenant still required
+  before flag/observation actions or any seven-day completion claim.
+
+
+## 2026-10-03 12:50 Asia/Baku — Read-only log-source metadata captured
+
+- Independent release-scope reviewer confirms no routing/transport/auth/RLS/
+  activation change or blocker. Main779 package/lock/Prisma/Next/server-deploy
+  matches approvedb9. Narrow postrelease cookie-free GETs may verify401 with
+  Sec-Fetch-Mode:cors and fixedcode session_expired; ordinary non-browser API
+  requests can redirect307 to login. These cannot establish authenticated
+  Calendar/category operation, telemetry coverage or the production week.
+- Protected exact-main read-only diagnostic37110998886 SUCCESS onf62ab3a609,
+  viewbackup-log-inventory. No log contents/DB query/data mutation; only bounded
+  source metadata. At2026-10-03T08:50:08Z PM2outauthority is
+  /var/lib/leaddrive-v2-logs/out.log, errorauthority same-directory/error.log.
+  Directorymode2750/group leaddrive-backup; outputfile regular/mode0644/
+  16687827bytes; errorfile900676bytes. No stdout rotation archive appears in
+  this snapshot. Owner/group fields are GitHub-masked, so numeric root UID is
+  not established by the exported receipt; collector still enforces it locally.
+- Current out.log footprint fits the reviewed64MiB collector ceiling. This is
+  only a dated size/path/mode snapshot, not future volume,14-day retention,
+  effective INFO level, daily completeness, any tenant event or seven-day proof.
+  Actual selected-tenant collection remains NOT RUN: no authorized slug supplied.
+- New exact main runner37110761810 and scan37110761817 SUCCESS. Automatic
+  release37110761933 and post-merge type context37110761818 still running;
+  no new deploy dispatch/re-run or production flag change.
+
+
+## 2026-10-03 13:04 Asia/Baku — New main build and post-merge gates passed
+
+- Post-merge PRchecks37110761818 SUCCESS on exact merge
+  f62ab3a609a0461cbd14c264306df2d28325628f. Blocking syntax/module/name and
+  defect-shaped baseline checks passed; existing advisory compiler diagnostics
+  retain their governed scope. Runner37110761810 and scan37110761817 SUCCESS.
+- Automatic release37110761933 quality/security gates SUCCESS; production
+  standalone build, verification and immutable artifact publication SUCCESS.
+  GitHub artifact11269788634, name
+  leaddrive-prod-f62ab3a609a0461cbd14c264306df2d28325628f,443892431bytes,
+  API archive digestsha256:e8ceb671c61001b0c5ed9ee02269e9b1bb24d25a24ad4e0df0e748dbb0563db7.
+  Archive digest is GitHub metadata, not an independent download/rehash claim.
+- Protected production job started09:03:55UTC; target admission, safety
+  preflight and downloaded artifact verification passed. Immutable staging/
+  atomic installation and post-deploy smoke still running at this phase.
+  No independent public full-SHA success claimed before release completion.
+- Prepared bounded cookie-free public DB/revision/API-guard check; no browser,
+  tenant authentication or writes. Lightweight check preflight: about14.6GiB
+  available RAM,338GiB disk free, memory PSI avg10/60 zero. No local full build,
+  full compiler or browser gate attempted.
+
+
+## 2026-10-03 13:13 Asia/Baku — Approved new release and independent smoke verified
+
+- New automatic deploy37110761933 SUCCESS on exact merge
+  f62ab3a609a0461cbd14c264306df2d28325628f; production job completed
+  2026-10-03T09:12:22Z. Hosted build/quality/security, immutable staging,
+  artifact verification, atomic installation, scheduler/tenant-isolation
+  checks and public ping/revision/login/hashed-assets smoke all SUCCESS.
+  Post-merge37110761818, runner37110761810 and scan37110761817 SUCCESS.
+  Original #501/#505 releases/checks were not repeated. No deploy dispatch,
+  manual production deployment or tenant flag mutation.
+- Independent system-trust TLS public GETs without cookies/Authorization:
+  ping200/ok:true/no-store at09:13:22.958988UTC (13:13:22.958988Baku),
+  request RTT0.373999s; build-info200/no-store at09:13:23.333122UTC,
+  artifactSha exactlyf62ab3a609a0461cbd14c264306df2d28325628f,
+  builtAt2026-10-03T08:53:06Z, request RTT0.092568s. Timings include bounded
+  response-body reads; they are not server-handler/page latency or a baseline.
+- Calendar, Macros and rollout API GETs, using Sec-Fetch-Mode:cors and no
+  session, each returned401/code session_expired at09:13:23.425974–.570390UTC.
+  This proves unauthenticated rejection only. Authenticated Calendar/Macros/
+  rollout behavior, selected-tenant state and actual daily collection NOT RUN:
+  no authorized representative tenant slug/auth/activation record supplied.
+  Observation start, baseline, whole-day coverage and seven days not admitted.
+- Later maina27681fcf8768e8f2163edd2c5a509d9d950e5e6 (Workforce PR#540)
+  directly includes f62. Root verified all14 recorded Support page/data/API/
+  helper/collector/diagnostic blobs match approvedb9→f62→a276. Independent
+  reviewer verified25 relevant source/contract files and Workforce-only diff.
+  This is Git identity, not a claim about the successor's deployment/live SHA.
+  Dated independent public f62 receipt remains accurate at its own timestamps;
+  no unrelated next release is replayed or claimed complete here.
+- Permanent safe release archive:
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-release-37110761933.
+  Eleven hashed files/30483bytes plus provenance.json retain actual PR/workflow/
+  artifact metadata, public smoke JSON/script, source identities and metadata-
+  only runtime snapshot. Root verified source equality and completed-SUCCESS
+  identities; independent reviewer verified every extracted file hash/size and
+  receipt agreement. Artifact ZIP digest remains GitHub API metadata; no ZIP
+  download/rehash claim. No secrets, auth cookies or raw production log contents.
+- Plan/observation/release ledger now record the delivered Calendar correction,
+  telemetry readiness, exact new release/public receipt and later-main boundary.
+  Old88 and #501/#505 dated receipts remain preserved. Checklist remains190/191
+  and literal acceptance16DONE/1IN_PROGRESS. Service Desk baseline review due
+  2026-10-08 remains required; no threshold/coverage/elapsed-day waiver.
+
+Current result/status: new PR530 release and independent public/401-guard smoke
+verified;190/191 and16/17, representative production admission incomplete.
+Last completed action: exact release/public/source/archive verification and
+documentation reconciliation. Precise stopping point: final documentation
+self-audit/checkpoint; no required PR530 CI or release is left running.
+Next action: obtain exact authorized tenant/activation evidence, verify scoped
+flag and collection admission, establish baseline/coverage, observe seven full
+Asia/Baku days, then prepare the separately governed flag-retirement release.
+
+
+## 2026-10-03 — Release closeout self-audit and final documentation checkpoint
+
+- Final independent read-only review of all four task-owned documentation
+  changes PASS: approved PR530/deploy/source/artifact/public receipts agree;
+  dated livef62 is separate from later maina276; no current release-pending
+  statement remains and no representative observation/completion overclaim.
+- Root verification confirms191unique tracked tasks/190checked/onlyROL-006
+  open;17literal rows/16DONE/1IN_PROGRESS. Corrected Calendar page/API blobs
+  are identical43440→approvedb9→releasedf62. All11 release-archive file hashes
+  and byte sizes were independently verified against provenance.json.
+- Active journal original30183byte prefix remains preserved; the complete
+  legacy reference journal218460bytes remains unchanged. Journal additions
+  retain earlier decisions/receipts and explicitly supersede pending states.
+- Scoped documentation git diff --check PASS. Current closeout paths only:
+  docs/help-ai-guides-session-log.md,
+  docs/support-module-ux-redesign-implementation-plan.md,
+  docs/support-ux-production-observation.md,
+  docs/support-ux-performance-and-rollout.md.
+  These form the final local documentation-only checkpoint; prior47665784
+  andd1960c083 checkpoints remain preserved. No docs push/new deployment is
+  required. Full local build/compiler/browser gates NOT RUN under host workload
+  rules; completed hosted release gates are reused rather than replayed.
+
+Current result/status: approved PR530 delivered and independently smoke-verified;
+190/191 (99.48%),16/17;100% still requires representative production admission.
+Last completed action: release receipts archived, plan/journal reconciled,
+independent self-audit and scoped documentation verification completed.
+Precise stopping point: final local documentation checkpoint; PR530 checks/deploy
+are complete; selected-tenant observation has not started or been admitted.
+Next action: owner supplies exact authorized production tenant slug/activation
+record; verify flag/operator/collection admission, establish real baseline and
+complete seven evidenced Asia/Baku days, then review the flag-retirement release.
+
+
+## 2026-10-03 — User challenged progress percentages and premature stopping
+
+- User asked why development was not continuing by the plan and recalled an
+  earlier statement that41% remained. Treat this as steering the active100%
+  goal, not cancellation or permission to fabricate completion/tenant history.
+- Current plan count191/190 is a checkbox count, not a weighted measurement of
+  product readiness or remaining effort. Reporting99.48% without this distinction
+  caused confusion. Future status should name delivered scope and outstanding
+  gates rather than present the checkbox fraction as overall module readiness.
+- Neither active/reference journal nor current plan contains a literal41%/59%
+  completion statement. Read-only search of this thread's stored assistant-final
+  messages also finds no such percentage; application-owned sessions untouched.
+  Independent reviewer examined109 historical plan snapshots: no112/191 or
+  113/191 state; verified transitions include107→115 checked on September28.
+  Exact origin of the recalled41% remains UNVERIFIED; do not invent an attribution.
+- Concrete remaining implementation gap: the rollout API is read-only and the
+  generic tenant PUT normalizes features/reconciles modules, with separate
+  unawaited audit. It cannot satisfy this protocol's flag-only atomic audited
+  activation. Preparing the missing scoped operator action does not require
+  choosing a production tenant. Earlier stopping at the slug request left this
+  independent preparation unfinished; continue it now.
+- Safety-lane plan: prepare existing-superadmin flag-only action with strict
+  tenant slug/id, expected state and compiled artifact SHA; preserve all other
+  feature entries/representation; atomically change the fixed canary flag and
+  record actor/state/source/time audit; test rejection, idempotency, rollback
+  and concurrency behavior. Independently review the existing baseline contract.
+  No tenant selection, flag mutation or old deployment replay in preparation.
+- Resumed root/branch/origin confirmed by codex-project-context. Registered
+  route remains13.140.132.245:/opt/leaddrive-v2, PR/main/immutable Actions.
+  Latest main read6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00; fetch/integrate
+  reviewed main while preserving all local checkpoints before new source work.
+  Small-check host preflight:15230MiB available,338GiB free, PSI avg10/60 zero.
+
+
+## 2026-10-03 — Atomic canary operator implemented; bounded source tests passed
+
+- Added the dedicated superadmin POST at
+  src/app/api/v1/admin/tenants/[id]/support-ux-canary/route.ts and the feature-
+  preservation helper src/lib/support-ux-canary-change.ts. No UI change or
+  automatic tenant activation. The fixed flag is the only mutable entitlement;
+  tenant slug/id, expected state and exact compiled artifact must match.
+- Existing requireSuperAdmin precedes every database operation. Authorized
+  cross-tenant scope uses the existing Prisma RLS transaction proxy. A row lock
+  and Serializable transaction serialize changes/confirmations; feature update
+  and actor-bound audit INSERT use the same transaction client. Audit failure
+  must roll back the update. No logAudit helper, silent audit failure or retry.
+- Native/encoded array representation and unrelated duplicate/unknown entries
+  are retained; malformed/oversized state fails closed. Inactive tenants cannot
+  be enabled, but their flag can be disabled. A confirmation does not rewrite
+  features or manufacture an original activation timestamp. The receipt's
+  issuance time follows commit; authenticated state re-read is still required.
+- Independent review identified raw-query Serializable/deadlock failures that
+  Prisma can report as P2010 with SQLSTATE40001/40P01. These and P2034 now return
+  fixed409; unrelated database errors return fixed500. No error-message matching,
+  raw exception export or automatic retry. Actual PostgreSQL proof is being added.
+- Targeted current-tree verification: four files /39 tests PASS, comprising
+  29 new helper/API cases and10 unchanged rollout/RLS-proxy cases. Scoped ESLint
+  for the two source/two unit-test files PASS. Runner policy PASS for40 current
+  workflows. Full local compiler/build/browser and actual PostgreSQL execution
+  NOT RUN under the Contabo workload contract; new hosted gates remain required.
+- Added explicit ROL-006 execution gates to the plan and removed the raw99.48%
+  fraction from its operative readiness statement. Checkbox counts remain
+  191 unique/190 checked, not weighted effort/readiness. Independent broader
+  history audit now covers199 plan revisions (superseding the earlier109-snapshot
+  search scope), still with no supported literal41%/59% attribution. Legacy
+  reference journal51–55 already cautions against using raw checkbox counts as
+  remaining-time estimates; its bytes are preserved.
+- Original repeatability artifact lookups34241690941 and34247698584 both404 via
+  the registered rashadoni/leaddrive-v2 API. No retired owner/host fallback.
+  Current package/Next builder/evidence runner and Service Desk/detail sources
+  differ from52045 source. Do not renew the old budget expiry or replace original
+  seven-sample proof with three-sample layout captures. Existing ceilings and
+  October8 review requirement retained; fresh bounded measurement preparation
+  is independent of selecting a production tenant.
+- Reviewed main integrated locally without conflicts before new source edits;
+  prior checkpoint history preserved. This is source synchronization, not a new
+  production merge/deploy. Operator test/CI additions are the next source unit;
+  selected-tenant actions and real observation remain unexecuted.
+
+
+## 2026-10-03 — Real PostgreSQL proof prepared for the new operator candidate
+
+- Added ten real PostgreSQL cases for the actual route and Prisma RLS proxy:
+  a non-superuser/non-bypass role with FORCE RLS, exact flag/actor audit,
+  rollback of features and updatedAt on audit failure, encoded-state and
+  unrelated-tenant preservation, unchanged confirmation, guarded rejection,
+  and two deterministically overlapping requests with one commit/one conflict.
+- The gate accepts only an explicit CI=true loopback PostgreSQL URL with a
+  nonempty port, postgres user and fixed support_ux_canary_test database.
+  It refuses an existing scratch database and rechecks the immutable target
+  before DDL. Role/password are generated in memory; setup failures export
+  source-authored fixed phase codes, never connection/SQL/exception payloads.
+  No application DATABASE_URL is accepted as the destructive test target.
+- Additive PR static-checks and release checks run the new gate after Prisma
+  generation/per-job service-port resolution and before existing fixture
+  gates. Existing gates, baselines, runner policy and release route retained.
+- Current-tree scoped PostgreSQL-test ESLint PASS, workflow YAML/order/env
+  validation PASS, runner policy PASS for40 workflows, git diff --check PASS.
+  Default no-URL import explicitly SKIPPED all10 database cases. Four supplied
+  unsafe-context probes (non-CI, remote host, wrong database and absent port)
+  rejected before DB access. These are guard checks, not positive DB proof.
+- Actual PostgreSQL execution, full compiler and production build remain
+  NOT RUN locally under the Contabo workload contract; the exact new source
+  candidate must pass hosted CI before release. Independent final source/CI
+  review found no blocker. No production tenant chosen or flag changed.
+- Next action: publish the new candidate as a draft PR, mark ready after the
+  source checkpoint, diagnose any actual new CI failure, and record its exact
+  source-bound result. Completed530/505/501 workflows are not replayed.
+
+
+## 2026-10-03 — New operator PR544 published; exact-source hosted gates running
+
+- Checkpoint4b4fe6d595ba2e6f5eea99932abb26d044a3be7a contains the real-DB
+  gate after source checkpointf75a941e2b724ba2ea76a80103b34a6023dc4965.
+  Branch pushed normally; created and attached
+  https://github.com/rashadoni/leaddrive-v2/pull/544 as draft, applied
+  production-build, then marked ready on the same final source.
+- gh pr edit hit the installed client's deprecated projectCards GraphQL
+  query; label applied through the normal GitHub REST endpoint instead.
+  No gate bypass or repository-policy modification. The label-triggered
+  draft run37119434272 was normally superseded by ready_for_review
+  run37119434975; no completed heavy gate was replayed.
+- Required runner-policy37119396681 and scan37119396689 report SUCCESS on
+  the new head. The initial draft pr-checks37119396709 has skipped heavy
+  jobs and is not positive source/type/DB/build proof. Ready run37119434975
+  is the required complete candidate gate; results remain PENDING.
+- Re-read current AGENTS.md and docs/DELIVERY-ARCHITECTURE.md: standing
+  authorization covers branch/PR and verified release. Layer4 requires an
+  owner list/go-ahead for user-visible behavior; this PR adds only the
+  internal operator API, tests/CI and documentation, with no UI or automatic
+  activation. Exact selected-tenant authorization is still required before
+  invoking the new action. No production write has been made in this phase.
+
+- Independent source-baseline work: dispatched a bounded current-candidate
+  ephemeral capture for48 cells (four Service Desk/detail scenarios, three
+  staff roles, two themes, desktop/mobile, EN/typical), seven measured loads
+  per cell after warm-up. This is fresh source evidence for baseline review,
+  not a replay of the completed acceptance/color/historical matrices.
+  Capture is not a matched comparison pass and cannot renew the October8
+  expiry, establish relative repeatability or replace real tenant telemetry.
+  Keep old ceilings; inspect raw arrays/structure and compare applicable
+  metrics separately. Existing interactionP75 has last-navigation scope,
+  unlike the seven-load arrays; missing values remain unmeasured.
+
+- Hosted PostgreSQL gate completed SUCCESS (not skipped) in PR run37119434975,
+  static-checks111192565028,11:29:30Z–11:29:32Z. Per-case log receipt remains
+  PENDING until job logs become available; do not infer individual output from
+  step metadata. Candidate head4b4fe6d595ba2e6f5eea99932abb26d044a3be7a,
+  PR base2f7f56ff6b8731c14c1f9483d977a9f80a57333f and tested synthetic
+  merge33e2df85da5202c8315aa8275b05f59f3d434798 must remain distinct.
+  Default actions/checkout checks the integrated PR merge ref; run head_sha
+  identifies its candidate, not a detached-head-only test tree.
+- Fresh source capture run37119565433 is bound to the actual dispatch head4b4;
+  capture remains in progress. Existing harness controls (isolated CI fixture,
+  disabled SW and mocked same-origin CSP reporting endpoint during regular
+  capture) must be disclosed with its receipt; no production CSP/SW proof.
+
+- Provenance refinement:33e2df85 above is the PR's CURRENT synthetic merge
+  reference, not yet an independently verified checkout-log SHA. The actual
+  test-tree SHA remains PENDING the checkout log. API tree comparison confirms
+  all new canary/helper/test/workflow blobs identical to head4b4; integrated
+  tree contains reviewed main-side Workforce/WhatsApp/gitleaks changes.
+  Production standalone build now reports SUCCESS on the same PR run; full
+  required typecheck/static result remains PENDING.
+
+
+## 2026-10-03 — Real DB proof admitted; full compiler OOM correctly blocks release
+
+- Actual static-checks111192565028 completed SUCCESS. Sanitized named-step
+  receipt verifies1 test file/10 PostgreSQL tests PASS, zero skipped,1315ms.
+  Default reporter omits individual passing names: the ten names are explicitly
+  source-reconciled to that actual aggregate, not represented as verbose output.
+  /tmp/leaddrive-support-canary-37119434975-receipt.json SHA256
+  f603f61478f22bfb66587fe02c9a4916316df173f0160809fb4b69802d42363f.
+- Checkout log now independently confirms33e2df85da5202c8315aa8275b05f59f3d434798,
+  superseding its earlier provisional current-ref status. Seven helper/route/
+  test/Prisma/RLS/workflow blobs match candidate4b4. Raw log, connection URL,
+  generated role/password and exception payloads were not saved or printed.
+- Typecheck111192565027 failed at11:40:45Z: full compiler exited134 with
+  FATAL JS heap allocation failure at the existing12288MiB cap and no TS
+  diagnostics. The blocking gate correctly rejects an inconclusive compile.
+  It is not a code diagnostic and not positive type proof. No merge/deploy.
+  Same main-base2f typecheck37118713925/111190515934 completed SUCCESS earlier;
+  source graph cost is a bounded hypothesis, not an established root cause.
+- Minimal fix only widens all three test constructor options explicitly to
+  Prisma.PrismaClientOptions and retains the small disconnect/Response ports
+  used by the harness. This avoids inferred-specialization structural checks
+  while retaining actual dynamic route/proxy imports. No SQL, RLS, mock, cast,
+  any, assertion, guard, transaction/cleanup timing, baseline or gate change.
+- Scoped ESLint PASS after small-check preflight (15694MiB available,340GiB
+  free, PSI zero). One-file TypeScript transpile check proves before/after
+  runtime JavaScript byte-identical with comments removed, SHA256
+  e7a386f6dc64a00dd496d07afcec80902af0ae1df8b5088782946a2ac9d5bbc5.
+  This is an emit identity check, not full compile/type admission. Independent
+  patch review PASS; effect on memory remains UNVERIFIED until new hosted CI.
+- New source checkpoint/gates are required. Completed4b tests/build receipts
+  keep their identity, and current capture37119565433 remains bound to4b;
+  neither is relabelled as proof of the next source head. Existing compiler
+  heap/time bound and both blockers retained; no local full compiler run.
+- Official runner capacity cross-check used only GitHub's primary documentation
+  https://docs.github.com/en/actions/reference/runners/github-hosted-runners.
+  No runner relabelling, paid Mac, larger runner or resource increase applied.
+
+- Type-only fix checkpointc431174c07d49237fd3c3593cdd1a88f25ca392c pushed
+  normally. New PR checks37120817658 apply to this changed candidate;
+  runner37120817663 and scan37120817677 SUCCESS. Full compiler and other
+  new-head required results PENDING; first-candidate4b OOM is retained.
+- Durable original DB receipt archive:
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-canary-37119434975;
+  one hashed4533-byte receipt plus provenance.json. Stored hash reverified
+  against the sanitized download; ten real passes remain admitted for4b.
+- Fresh48-cell source capture37119565433 now executes its actual browser
+  capture step after successful isolated setup/build. It retains source4b
+  and cannot be relabelled as c431 or as representative production history.
+
+
+## 2026-10-03 — Compiler repaired; self-audit closes generic-audit forgery gap
+
+- Full c431 PR checks37120817658 SUCCESS: required scope/static/typecheck,
+  existing source-bound runner/scan, and production standalone build green.
+  Typecheck111196439423 completed12:01:52Z after actual compiler11:52:06–
+  12:01:49Z, exit2 with both blockers SUCCESS, no OOM or diagnostics in new
+  canary files. Historical project diagnostics remain baseline-governed;
+  this is not a zero-diagnostic claim. Heap stayed12288MiB. Actual checkout
+  4e8a9fa11f3fc1f2ecc4b79bee7c0b5cec6d5d6d differs from candidatec431.
+  Receipt /tmp/leaddrive-support-typecheck-37120817658-receipt.json.
+  Passing the bounded source fix supports it operationally; it does not
+  establish which single erased annotation caused the earlier heap pressure.
+- Independent runbook review found the generic audit POST permits arbitrary
+  caller action/entityType/userId/old-new values. Before this fix it could
+  forge a support_ux_canary record without the operator transaction. Held
+  release despite green c431 gates; audit provenance must be defensible.
+- Reserved only the exact support_ux_canary entity in the existing server-only
+  POST list. All generic callers, including superadmin, receive403 before
+  create. Actual canary transaction's direct INSERT and audit GET unchanged.
+  Six forged actor/source payload tests cover admin/superadmin and all three
+  enable/disable/confirm actions. No product UI, flag or existing data change.
+- Three focused unit files52/52 PASS; after lint exposed five pre-existing
+  any casts in the touched audit test, removed four redundant mock casts and
+  completed its existing AuthResult fixture. Scoped source/test ESLint then
+  PASS; final audit file23/23 PASS. Preflight16059MiB available,340GiB free,
+  PSI zero. Changes remain confined to the required audit reservation/test.
+- Runbook now binds GET reads to a session authorized for the selected tenant
+  (superadmin's path-based mutation and own-org GET are different scopes),
+  rejects automatic conflict retries, retains category/entitlement rollback,
+  and uses post-commit receipt/authenticated read as a conservative admission
+  bound. Audit creation can precede commit, so it cannot prove midnight.
+  Reservation does not authenticate older unknown-origin audit entries;
+  confirmation cannot fabricate their activation time or observation days.
+  Independent source/runbook review PASS. Final reservation head needs its
+  own new source checks; do not merge the incomplete c431 candidate instead.
+- Fresh source capture37119565433 SUCCESS, artifact11273491239,
+  support-ux-evidence-4b4fe6d595ba2e6f5eea99932abb26d044a3be7a-typical-enabled-capture,
+  size4735828B, API digestsha256d2e280e6b5604bc67ca388ab9d5da0a912e0fa1b9845acbc2a98ecf63ee1cfc2.
+  Actual download at
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-baseline-37119565433/download.
+  All48 unique required cells PASS with seven finite load/CLS samples;
+  every24 applicable filter cell has seven samples. Actual load p75 maxima:
+  Service Desk520,Kanban538,reports496,detail394ms, each below unchanged
+  650/600/700/600 ceilings; filter p50 maxima30/104ms below200. Event timings
+  have last-navigation scope: SD9 measured cells(max40ms),3 null; reports12
+  measured(max120ms), Kanban/detail null. Null is not zero or measured PASS.
+  Capture comparisons all not_configured. Source4b/production app mode,
+  localhost/typical/enabled synthetic fixture only. It does not close a
+  relative matched comparison, renew ceiling expiry or count a production day.
+  Archive hashing/independent actual PNG review are the next evidence phase.
+
+
+## 2026-10-03 — Final reservation candidate and bounded baseline archive
+
+- Final source checkpointfdb2b314a98c958d8de94ac80d18f5e161d5de04 pushed
+  normally to the same PR544. Required new source run37122064497 executing;
+  runner37122064743 and scan37122064658 SUCCESS. Prior c431 green result
+  retained; it was not merged because self-audit found the reservation gap.
+  Final candidate guards/heap/thresholds unchanged; no completed workflow rerun.
+- Updated PR title/body around the final atomic flag action and trusted audit
+  reservation, including actual proof scope and outstanding final-head gates.
+  Used structured REST body file because installed gh pr edit hits the retired
+  Projects classic query. PR remains attached and ready on the final source.
+- Baseline archive now hashes55 files/5226012B plus provenance.json (56
+  physical files), comprising50 actual downloaded files (48 PNG/evidence.json/
+  index.md) and workflow/job/artifact/source/metrics metadata. Eleven fixture/
+  controller/builder/SD-detail source blobs are equal from4b capture to fdb
+  compare candidate. ZIP digest remains API metadata only, not independent ZIP
+  rehash. Independent report JSON hash matches101158c157cb00fc3cf6329334faef73de2858d7f0cfc19326080034f117dea7.
+- Independent reviewer recalculated every nearest-rank percentile and actually
+  viewed eight original screenshots: two per scenario across all three roles,
+  both themes and desktop/mobile. Main workspace/heading/primary representation
+  visible in each; mobile long labels truncate and some content/actions require
+  the owned scrolling area. Do not claim all records/labels/actions visible.
+  No blocking composition issue found in this limited first-frame review.
+  Max CLS p75 is0.011798959774159366; record it without an old relative claim.
+- Dispatched new matched48×7 comparison37122190158 on finalfdb using baseline
+  37119565433/exact artifact name through the existing workflow. Product,
+  fixture/controller/package/config sources are unchanged between those heads;
+  differences are test annotations, generic audit reservation and docs.
+  This is a new bounded source comparison, not a replay of the already closed
+  full acceptance or old52045 repeatability matrices. Result PENDING; preserve
+  existing ceilings/October8 and disclose null/last-navigation event metrics.
+- Still no selected production tenant, authenticated tenant operation or
+  activation. Real coverage/INFO/retention/baseline and seven full Baku days
+  remain required before the later separately admitted flag-retirement source.
+
+- Added independent review receipt9488B/hash4cd4c14b664749e459e50b63a222389b2706c4c3581e455fcbc0d4bef73f88e0
+  to the baseline archive after verifying all55 prior stored hashes. It now
+  contains56 hashed files/5235500B plus manifest (57 physical files).
+  Stored c431 compiler receipt separately under support-ux-canary-37120817658,
+  1405B/hash e049a0c6928897ed39621aaf1f79ba1e3514147154d951b7ef90b8ed030f6a43.
+- Final fdb real PostgreSQL gate actual10/10 PASS, zero skips,1036ms in
+  run37122064497/static111200022422 at12:18:13–12:18:15Z. Actual test checkout
+  1480b782c8caa004510b785ce6d282316111e640; nine reviewed source blobs match
+  the final head. Sanitized4943B receipt/hash cdaa16dcdea1991b80ea2448d941a9c1479fc8eafc2dce214082242e042802b7
+  archived with a manifest under support-ux-canary-37122064497.
+  Typecheck/build results still PENDING; no preemptive merge.
+- Requested the exact production tenant slug asynchronously for the remaining
+  representative observation. This is the missing scope parameter, not another
+  approval request for the prepared source release. Independent CI/compare and
+  release work continue. No answer or elapsed time is treated as tenant input.
+
+
+## 2026-10-03 — Second final-head heap failure; bounded hosted compiler repair
+
+- Final fdb run37122064497 finished FAILURE solely at required typecheck
+  111200022506: full-project compile12:19:31–12:33:55Z exhausted the unchanged
+  12288MiB heap, exit134. Compiler-completion blocker FAILED; baseline blocker
+  SKIPPED. No canary diagnostic output is not compiler admission. Static
+  checks and production standalone build111199979751 SUCCESS, PG10/10 PASS
+  remain separate proof. No merge/deploy was attempted under this red gate.
+- Appended immutable sanitized compiler failure3483B/hash
+  45fc8991aaf13877099a05afe7e9223ed1001473c798b82c65f6cebc0840b5fe
+  to support-ux-canary-37122064497 after verifying the prior PG hash. Archive
+  now contains two hashed receipts/8426B plus provenance.json. Earlier c431
+  green compile proves one completed attempt, not deterministic heap headroom.
+- Source comparison c431→fdb adds only the audited entity reservation, its
+  six cases and docs; no new generated-client specialization was identified.
+  Repair is scoped to the ephemeral hosted typecheck resources: reuse the
+  unchanged helper's GitHub-hosted/Linux/path/RAM/disk guards and <=4096MiB
+  allocated swap, require measured RAM+swap>=18874368KiB, bounded heap14336MiB,
+  core dumps disabled, unchanged60-minute timeout/full compiler/exit capture/
+  both mandatory blockers, and always-cleanup in the same job. No baseline,
+  defect family, draft policy, runner policy or test expectation weakened.
+- Actual final production-build preflight observed ram14761244KiB + free
+  swap7340024KiB=22101268KiB and82939MiB free on both work/temp filesystems.
+  This supports the bounded resource choice; the future typecheck must still
+  measure and admit its own budget, never infer it from the hosted image label.
+  Production-build/evidence helper behavior remains unchanged. Static policy
+  assertions now bind the14GiB/18GiB bounds and exactly one always-cleanup
+  separately in each typecheck/production-build job.
+- Local preflight15898MiB available/347646MiB disk/PSI zero; only small static
+  validation runs here. Full compiler/build/browser/PG and the swap helper
+  NOT RUN on persistent Contabo. Fresh48-cell source comparison37122190158
+  executing browser capture; final compiler repair checks still PENDING.
+
+- Bounded repair validation PASS: full small static assets suite (27 domains,
+  86 topics,5 concrete schemas), runner policy40 workflows, parsed YAML job
+  order/exact budget/full blockers/always cleanup, and git diff --check.
+  Independent review PASS after strengthening the preflight-presence assertion
+  (index -1 cannot admit a missing step) and binding the actual helper/env.
+  Only pr-checks typecheck policy, its existing static regression assertions
+  and the append-only journal changed. Full hosted compiler remains PENDING.

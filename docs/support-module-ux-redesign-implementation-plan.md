@@ -6,7 +6,7 @@
 > **Original date:** 2026-08-31
 > **Last reviewed:** 2026-10-03 (Asia/Baku)
 > **Code baseline:** `rashadoni/leaddrive-v2` `main` at
-> `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf` for release reconciliation;
+> `f62ab3a609a0461cbd14c264306df2d28325628f` for the dated PR #530 release;
 > historical browser receipts retain their own exact source SHAs.
 > **Scope:** 15 potentially visible Support destinations (14 base destinations
 > plus role/add-on-gated Support AI Settings), their nested operational flows,
@@ -29,15 +29,26 @@ continues from a clean current-main worktree on a dedicated `codex/*` branch.
 
 Status legend: `TODO` · `IN_PROGRESS` · `DONE` · `BLOCKED` · `DEFERRED`
 
-Current completion checkpoint (2026-10-02): 191 unique tracked SUPUX tasks;
-190 checked (99.48%) and only `SUPUX-ROL-006` open. Implementation, isolated
+Current completion checkpoint (2026-10-03): 191 unique tracked SUPUX tasks;
+190 checked and only `SUPUX-ROL-006` open. These are unweighted task counts;
+they do not estimate overall product readiness or remaining development time.
+Implementation, isolated
 browser/accessibility/performance acceptance at their recorded dimensions and
 the production-release ledger are complete. PR [#501](https://github.com/rashadoni/leaddrive-v2/pull/501)
 merged as `bd83c5d41182fca0003282e2241e5ad9ae35c04b`; its existing production
 run [36600569942](https://github.com/rashadoni/leaddrive-v2/actions/runs/36600569942)
-is green. The last verified live snapshot matched the later successful main
-release `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf` at
-`2026-10-02T22:54:27+04:00`; current live identity has not been rechecked. See the
+is green. The earlier live snapshot `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf`
+at `2026-10-02T22:54:27+04:00` remains a dated historical receipt. Approved
+PR [#530](https://github.com/rashadoni/leaddrive-v2/pull/530) released the Calendar
+count correction and minimal observation instrumentation as
+`f62ab3a609a0461cbd14c264306df2d28325628f`; new deploy
+[37110761933](https://github.com/rashadoni/leaddrive-v2/actions/runs/37110761933)
+and post-merge checks are green. Independent public ping and exact build-info
+passed at `2026-10-03 13:13:22–23` (Asia/Baku); three protected API GETs without a
+session returned expected 401. Authenticated tenant behavior is NOT RUN.
+Later main `a27681fcf8768e8f2163edd2c5a509d9d950e5e6` includes this release and
+preserves the checked Support sources; its deployment is outside this dated
+receipt. See the
 [release ledger](support-ux-performance-and-rollout.md#release-ledger) for dated
 production snapshots and the
 [observation protocol](support-ux-production-observation.md) for the remaining
@@ -4133,6 +4144,29 @@ checkpoints; the current release ledger above supersedes them for release status
 - [ ] **SUPUX-ROL-006** Remove a flag only after representative tenants pass the
   agreed observation window with no unresolved P0/P1 regression.
 
+Execution breakdown for ROL-006 (2026-10-03; these are gates within the existing
+task, not new SUPUX IDs or percentage weights):
+
+- Atomic operator action: IN_PROGRESS. Prepare the fixed-flag superadmin action
+  with exact tenant/compiled SHA/expected-state checks and same-transaction audit.
+  Existing generic tenant PUT is insufficient. Unit, real PostgreSQL rollback/
+  concurrency and protected release admission are required before using it.
+- Source performance baseline review: IN_PROGRESS. Keep the existing ceilings
+  and2026-10-08 review boundary. Original34241690941/34247698584 artifact lookups
+  returned404 through the registered repository; source/builder changes prevent
+  an unsupported expiry extension. Prepare fresh bounded seven-sample proof.
+- Selected tenant and activation: PENDING exact authorized slug and audit record;
+  confirm authenticated flag state after any separately admitted operator action.
+- Real handler baseline and coverage: PENDING matched activity/error/duration
+  samples, effective INFO, retention, process/source/key/flag continuity.
+- Seven complete Asia/Baku days and incident review: NOT STARTED/UNVERIFIED.
+- Permission/isolation/direct-route and compatibility recheck: REQUIRED on the
+  later flag-retirement candidate after the admitted observation.
+- Flag-retirement source, PR, protected checks, release and smoke: PENDING.
+
+Tenant input is needed for the tenant actions. It does not prevent independent
+operator development, tests or baseline preparation; continue those first.
+
 Release-ledger closure (2026-10-02): the
 [canonical receipt](support-ux-performance-and-rollout.md#release-ledger)
 maps the earlier slices and final integrated PR #501 to their release evidence,
@@ -4664,7 +4698,7 @@ by the recorded evidence; they are distinct from the SUPUX checklist count.
 | --- | --- | --- | --- |
 | Daily work visible in first viewport | Compact shell, max three indicators, sticky toolbar | Foundation canonical coverage plus additive exact-1366 run `37055428421`, artifact `11249886749`, 66/66 pass and eight representative screenshots inspected; see observation receipt | DONE — recorded exact-source 1366 x 768 mouse/keyboard evidence |
 | Support navigation is understandable | Three permission-aware groups | Navigation flows `36512893404` and 72-cell matrix `36514758825` | DONE — admitted source evidence |
-| No misleading metrics | Agent/VoIP aggregates and Calendar date-range counts | Agent/VoIP receipts plus Calendar route regressions and corrected `37061949081`/artifact `11252200158`, two actual screenshots with header/day count12; see bounded candidate receipt | DONE — corrected candidate source/API/UI evidence; new production release still pending |
+| No misleading metrics | Agent/VoIP aggregates and Calendar date-range counts | Agent/VoIP receipts plus Calendar route regressions and corrected `37061949081`/artifact `11252200158`, two actual screenshots with header/day count12; PR #530 released unchanged Calendar source via `37110761933`; independent full-SHA public receipt in the release ledger | DONE — corrected source/API/UI evidence and production release verified; authenticated production counts not newly inspected |
 | No page-level mobile overflow | Responsive cards/agenda/master-detail | Foundation `36542434997`, zero overflow failures including 375 px | DONE — admitted browser matrix |
 | Keyboard access | Semantic tables, rows, menus, switches, calendar events | Operational aggregate `36521929861`, recovery `36539937236`, and navigation flows | DONE — recorded representative journeys |
 | Touch target safety | Shared control sizing and row menus | Full matrix zero touch failures plus hit-tested operational mobile flows | DONE — admitted mobile evidence |

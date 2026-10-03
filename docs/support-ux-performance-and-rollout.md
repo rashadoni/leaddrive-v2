@@ -1,9 +1,10 @@
 # Support UX performance and rollout contract
 
 Status: **IMPLEMENTATION, EVIDENCE AND PRODUCTION RELEASE RECEIPT COMPLETE;
-REPRESENTATIVE OBSERVATION AND FLAG RETIREMENT PENDING** (reconciled 2026-10-02).
+REPRESENTATIVE OBSERVATION AND FLAG RETIREMENT PENDING** (reconciled 2026-10-03).
 This contract is the release authority for the Support UX branch. PR #501 and
-its production deploy are complete. Recorded source comparison and pre-release
+the approved Calendar/telemetry PR #530 production releases are complete.
+Recorded source comparison and pre-release
 canary gates remain accepted at their exact historical dimensions; the later
 tenant observation/flag-retirement gate is still open. The tracked checklist
 is 190/191, not 100%. Remaining representative production admission is listed
@@ -207,7 +208,7 @@ intentionally deferred until all conditions hold:
 
 ## Release ledger
 
-Reconciled 2026-10-02 from immutable existing GitHub records, fresh public
+Initial reconciliation on 2026-10-02 used immutable existing GitHub records, fresh public
 endpoint observations and a protected bounded runtime diagnostic. This updates
 pre-release placeholders; it does not rerun completed checks, merge or deploy.
 The earlier per-slice release receipts remain in the canonical plan (Service
@@ -220,7 +221,7 @@ Support slices and preserves those earlier delivered surfaces.
 | Slice / PR / merge SHA | [PR #501](https://github.com/rashadoni/leaddrive-v2/pull/501), head `8ef809a7b9c2e4cd3401b280092391be10cf3916`, merged `2026-09-29T16:49:44Z` as `bd83c5d41182fca0003282e2241e5ad9ae35c04b` |
 | Protected PR admission | Existing `pr-scope`, `static-checks`, `typecheck` [36598285873](https://github.com/rashadoni/leaddrive-v2/actions/runs/36598285873); `runner-policy` [36598285850](https://github.com/rashadoni/leaddrive-v2/actions/runs/36598285850); `scan` [36598285885](https://github.com/rashadoni/leaddrive-v2/actions/runs/36598285885): all green on that exact head |
 | Original production artifact / deploy | `bd83c5d41182fca0003282e2241e5ad9ae35c04b`, existing successful [36600569942](https://github.com/rashadoni/leaddrive-v2/actions/runs/36600569942), completed `2026-09-29T17:18:59Z`; original main checks [36600569920](https://github.com/rashadoni/leaddrive-v2/actions/runs/36600569920) green |
-| Last verified main / live snapshot | `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf`; existing successful deploy [37045608290](https://github.com/rashadoni/leaddrive-v2/actions/runs/37045608290), main checks [37045608605](https://github.com/rashadoni/leaddrive-v2/actions/runs/37045608605) and scan [37045608454](https://github.com/rashadoni/leaddrive-v2/actions/runs/37045608454); live full-SHA equality observed `2026-10-02T22:54:27+04:00`. Current live/main identity has not been rechecked |
+| Earlier verified main / live snapshot | `88cd6fcc41b748f9a22720bdab6b1c60fa73b1bf`; existing successful deploy [37045608290](https://github.com/rashadoni/leaddrive-v2/actions/runs/37045608290), main checks [37045608605](https://github.com/rashadoni/leaddrive-v2/actions/runs/37045608605) and scan [37045608454](https://github.com/rashadoni/leaddrive-v2/actions/runs/37045608454); live full-SHA equality observed `2026-10-02T22:54:27+04:00`. Superseded as latest snapshot by the separately dated PR #530 receipt below |
 | Canary tenant and flag | Current production flag state UNVERIFIED; representative tenant selection/activation evidence requested. The prior pre-release ledger recorded none enabled and the source defaults off; that historical entry is not a current DB read |
 | Evidence artifacts | Full 1296/1296 run `36542434997`, artifact `11024298303`; canary off `36551225927`/`11025885144`; canary on `36552953697`/`11027281153`; profiles 0/5/50/500 runs `36554107100`, `36555323681`, `36557478393`, `36559389503` |
 | Roles / profiles | Agent, manager, admin, customer; high and measured 0/5/50/500 accepted |
@@ -244,6 +245,27 @@ The current protected diagnostic path works through GitHub Actions. Direct
 inspection via `leaddrive-prod` was rejected with `Permission denied (publickey)`;
 no alternate target/key was used. That access failure does not justify
 substituting a retired production host or a direct server deployment.
+
+### Calendar correction and observation preparation — PR #530
+
+| Field | Actual result, 2026-10-03 |
+| --- | --- |
+| Owner admission / PR / merge | Owner “подтерждаю”; [PR #530](https://github.com/rashadoni/leaddrive-v2/pull/530), approved head `b9de0dad8c8db1cc6b84a8bd6a9eca682bfdae5b`, merged at 08:45:22 UTC as `f62ab3a609a0461cbd14c264306df2d28325628f`, no admin bypass |
+| Protected admission | All five required contexts and standalone build SUCCESS on exact b9: PR checks 37078743036, runner 37078588718, scan 37078588733; existing baseline diagnostics retain their qualification, not a zero-error full compiler/all-unit-test claim |
+| New automatic release | [37110761933](https://github.com/rashadoni/leaddrive-v2/actions/runs/37110761933) SUCCESS; production job finished at 09:12:22 UTC. Hosted build/quality/security, SHA-bound artifact verification, atomic install, schedulers/tenant isolation, public DB ping, revision and login/hashed assets PASS |
+| Immutable artifact | `11269788634`, `leaddrive-prod-f62ab3a609a0461cbd14c264306df2d28325628f`, 443892431 bytes; GitHub API digest `sha256:e8ceb671c61001b0c5ed9ee02269e9b1bb24d25a24ad4e0df0e748dbb0563db7` (archive not independently downloaded/rehashed) |
+| New post-merge checks | PR checks 37110761818, runner 37110761810 and scan 37110761817 SUCCESS on exact f62 |
+| Independent public snapshot | TLS-verified cookie-free GETs at 13:13:22–23 Asia/Baku: ping 200/ok:true/no-store, request RTT 0.373999 s; build-info 200/no-store/exact full f62, RTT 0.092568 s, builtAt 08:53:06 UTC. RTT includes bounded body read, not handler/page latency |
+| Protected API smoke | Calendar, Macros and rollout GETs each 401/`session_expired` with `Sec-Fetch-Mode:cors`. This proves unauthenticated rejection; authenticated feature behavior/tenant flag remains NOT RUN |
+| Source and subsequent main | Calendar source matches corrected 43440 receipt; all 14 recorded Support/release diagnostic blobs match b9→f62→later main a27681fc, which directly includes f62. Later Workforce release/live state is outside this dated receipt |
+| Durable receipts | `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-release-37110761933`: metadata, independent safe JSON/script, source identities and per-file SHA256 manifest. No credentials/raw production logs |
+| Remaining admission | Representative tenant/activation, actual baseline/telemetry completeness, seven complete Asia/Baku days, incident review and later governed flag retirement remain open; 190/191, 16/17. No flag mutation or observation-day claim |
+
+Original #501/#505 CI, merge and deploy were not repeated. This is the separately
+approved new Calendar/telemetry release. It establishes delivered code and dated
+public health; collector delivery does not establish collector execution or
+longitudinal stability. Full local build/compiler/browser checks are NOT RUN
+under the Contabo workload contract; the new required build/checks ran in CI.
 
 ### Final visual/performance comparison receipt
 

@@ -49,7 +49,7 @@ describe("GET /api/v1/audit-log", () => {
 
   it("returns success with log list", async () => {
     const log = { id: "l-1", action: "create", entityType: "deal", createdAt: new Date() }
-    vi.mocked(prisma.auditLog.findMany).mockResolvedValue([log as any])
+    vi.mocked(prisma.auditLog.findMany).mockResolvedValue([log])
     vi.mocked(prisma.auditLog.count).mockResolvedValue(1)
 
     const res = await GET(makeReq("http://localhost/api/v1/audit-log"))
@@ -70,11 +70,11 @@ describe("GET /api/v1/audit-log", () => {
       userId: "admin-1",
       createdAt: new Date(),
     }
-    vi.mocked(prisma.auditLog.findMany).mockResolvedValue([log as any])
+    vi.mocked(prisma.auditLog.findMany).mockResolvedValue([log])
     vi.mocked(prisma.auditLog.count).mockResolvedValue(1)
     vi.mocked(prisma.user.findMany).mockResolvedValue([
       { id: "admin-1", name: "Admin", email: "admin@example.com" },
-    ] as any)
+    ])
 
     const response = await GET(makeReq("http://localhost/api/v1/audit-log"))
     const json = await response.json()
@@ -209,7 +209,9 @@ describe("GET /api/v1/audit-log — a person with hidden modules", () => {
 describe("POST /api/v1/audit-log", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(getSession).mockResolvedValue({ orgId: "org-1", userId: "u-1", role: "admin" } as any)
+    vi.mocked(getSession).mockResolvedValue({
+      orgId: "org-1", userId: "u-1", role: "admin", email: "operator@example.invalid", name: "Operator",
+    })
   })
 
   it("returns 401 when no session", async () => {
@@ -231,7 +233,7 @@ describe("POST /api/v1/audit-log", () => {
 
   it("creates audit log and returns 201", async () => {
     const log = { id: "l-1", action: "create", entityType: "deal", organizationId: "org-1" }
-    vi.mocked(prisma.auditLog.create).mockResolvedValue(log as any)
+    vi.mocked(prisma.auditLog.create).mockResolvedValue(log)
 
     const res = await POST(makeReq("http://localhost/api/v1/audit-log", {
       method: "POST",
@@ -278,6 +280,31 @@ describe("POST /api/v1/audit-log", () => {
 
     expect(res.status).toBe(403)
     expect((await res.json()).error).toBe("Reserved system audit entity")
+    expect(prisma.auditLog.create).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["admin", "support_ux_canary_enable"],
+    ["admin", "support_ux_canary_disable"],
+    ["admin", "support_ux_canary_confirm"],
+    ["superadmin", "support_ux_canary_enable"],
+    ["superadmin", "support_ux_canary_disable"],
+    ["superadmin", "support_ux_canary_confirm"],
+  ] as const)("rejects a forged canary receipt from %s for %s", async (role, action) => {
+    vi.mocked(getSession).mockResolvedValue({
+      orgId: "org-1", userId: "u-1", role, email: "operator@example.invalid", name: "Operator",
+    })
+    const response = await POST(makeReq("http://localhost/api/v1/audit-log", {
+      method: "POST",
+      body: JSON.stringify({
+        userId: "forged-superadmin", action, entityType: "support_ux_canary",
+        entityId: "org-1", entityName: "support_ux_v2_canary",
+        oldValue: { enabled: false },
+        newValue: { enabled: true, changed: true, artifactSha: "a".repeat(40) },
+      }),
+    }))
+    expect(response.status).toBe(403)
+    expect((await response.json()).error).toBe("Reserved system audit entity")
     expect(prisma.auditLog.create).not.toHaveBeenCalled()
   })
 
