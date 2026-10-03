@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "reviewedAt": "2026-10-03T10:00:24.123485+00:00",
+  "independentReadOnly": true,
+  "head": "1a7cb47f37071956e87565a902301ebd884debff",
+  "reviewBase": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+  "clean": true,
+  "branch": "codex/workforce-completion-part19",
+  "verdict": "GREEN PRE-INTEGRATION SOURCE AND RECEIPT REVIEW ONLY",
+  "findings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "fullDiff": {
+    "paths": 25,
+    "bytes": 184559,
+    "sha256": "d9e9b21f23b9579c7b9db6c3beb65883e0e54e36f2cbf88c845b75673e52be85",
+    "algorithm": "raw git diff --binary reviewBase head, SHA256 of exact output bytes"
+  },
+  "nonDocDiff": {
+    "paths": 1,
+    "bytes": 8187,
+    "sha256": "8b6cc824a523a9b183c402928d65f72784c1b5ea93e4f846c98fe17362c36afa"
+  },
+  "changedSource": "scripts/workforce-calendar-browser-evidence.mjs",
+  "unchangedFunctionCount": 26,
+  "unchangedFunctions": [
+    "databaseTarget",
+    "barrier",
+    "until",
+    "handled",
+    "copy",
+    "assertSession",
+    "checkedContextRead",
+    "authenticate",
+    "open",
+    "inventory",
+    "pair",
+    "tabToButton",
+    "focusedInViewport",
+    "tabToNext",
+    "review",
+    "reviewedConfirmation",
+    "state",
+    "reversed",
+    "standard",
+    "lostResponse",
+    "keyboardCancelConfirm",
+    "keyboardLostResponse",
+    "reflowGeometry",
+    "readReflowText",
+    "reviewedReflowConfirmation",
+    "switchContext"
+  ],
+  "sourceAssertions": {
+    "oldTenInvocationsAndOrderingByteExact": true,
+    "defaultRuIndex9NamePhaseAndReflowFunctionalPreserved": true,
+    "newAzEnAfterOldTen": true,
+    "actualCalendarWriterAndRestrictedRoleRetained": true,
+    "maxLabelUtf16Length": 160,
+    "longUnbrokenTokenAtLeast80": true,
+    "newIndices": [
+      10,
+      11
+    ],
+    "maximumFixtureDestinationOffsetDays": 179,
+    "existingForwardWindowDays": 367,
+    "localeGeometryPhaseNamespaces": [
+      "RU unchanged",
+      "az-",
+      "en-"
+    ],
+    "expectedGeometryPhases": 27,
+    "allNinePhasesIncludingReopenedReviewNamespaced": true,
+    "geometryRangeClipOwnParagraphVerticalReadFocusGuardsByteExact": true,
+    "geometryFailuresFatalBeforeCasePass": true,
+    "nativeTabEnterSpaceCancelReopenNoFocusInjection": true,
+    "cancelPostZeroAndFullStateEquality": true,
+    "realCommittedResponseHeldAndConnectionReset": true,
+    "disabledConfirmAndCancelBeforeRelease": true,
+    "exactGenerationBoundTeamDraft": true,
+    "twoPostsByteIdenticalReplayResponsesTrueFalse": true,
+    "twoTombstonesOneActorAuditVerifiedByUnchangedHelper": true,
+    "replayFullStateEqualityZeroWrites": true,
+    "sessionAndSelectedTeamPreserved": true,
+    "allFailurePromisesHandledAndBarriersReleasedFinally": true,
+    "realCsrfCredentialsAndPacing8Per61SecondsByteExact": true,
+    "populatedAuditCalendarRlsPostflightAndHandlerErrorsBeforeWholePass": true,
+    "noNewMocksOrAuthRetryOrBypass": true,
+    "noComponentApiSchemaRouteSharedAuthWorkflowBaselineChange": true
+  },
+  "receipts": {
+    "originalJsonCount": 47,
+    "existing46ByteExactReviewedCaa": true,
+    "new47thIntegrityReportByteExactTmp": true,
+    "priorIntegrityReport": {
+      "path": "/tmp/workforce-part19-caa715b6-receipt-integrity.json",
+      "bytes": 23615,
+      "sha256": "8b501aba6ac666a7b244462086afc04b694bbdf251cc6082f5220dad4b6b681d"
+    },
+    "appendOnlyDocs": [
+      {
+        "path": "docs/workforce-c8-moved-day-reversal-evidence-2026-09-30.md",
+        "priorPrefixIntact": true,
+        "newAppend": {
+          "bytes": 3307,
+          "sha256": "94bd4cbb4403aa8e1efa6ee4dab512615f30aad2f2e8f23d74c1586de3be5c95"
+        }
+      },
+      {
+        "path": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "priorPrefixIntact": true,
+        "newAppend": {
+          "bytes": 3307,
+          "sha256": "94bd4cbb4403aa8e1efa6ee4dab512615f30aad2f2e8f23d74c1586de3be5c95"
+        }
+      },
+      {
+        "path": "docs/workforce-hrm-session-log.md",
+        "priorPrefixIntact": true,
+        "newAppend": {
+          "bytes": 3307,
+          "sha256": "94bd4cbb4403aa8e1efa6ee4dab512615f30aad2f2e8f23d74c1586de3be5c95"
+        }
+      }
+    ],
+    "actual540ReleaseAndHistoricalGuardLimitsRetained": true
+  },
+  "freshMain": {
+    "observedRemoteSha": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+    "satisfied": false,
+    "publicationHeld": true,
+    "nextRequired": "Ordinary integration of advanced main, overlap/preservation checks and new exact candidate review before final publication/ready acceptance."
+  },
+  "acceptanceAndProgress": {
+    "hostedTwelve": "NOT RUN",
+    "sourceGreenIsNotBrowserAcceptance": true,
+    "done": 81,
+    "total": 161,
+    "gatesDone": 14,
+    "gatesTotal": 15,
+    "c8Percent": 36,
+    "overallPercent": 59,
+    "nonDoneRows": 80,
+    "wfC8_007": "PARTIAL",
+    "nativeZoomAtPhysicalWholePageProductionCalendarAndroidLoadPilot": "NOT RUN",
+    "generalUpdateDeleteBreakPolicyAgentMovesRouteMutation": "EXCLUDED"
+  },
+  "actions": {
+    "projectOrRefsEdited": false,
+    "statusPublished": false,
+    "checksRerun": false,
+    "heavyOrProductionRequests": false
+  }
+}
