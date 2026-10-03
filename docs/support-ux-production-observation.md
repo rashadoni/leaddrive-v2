@@ -34,6 +34,19 @@ result without inventing an earlier activation timestamp. Re-read authenticated
 state after activation. No other tenant, category, macro, permission, billing
 setting or customer message changes as an incidental action.
 
+Independent operator preparation (2026-10-03): a dedicated superadmin
+`POST /api/v1/admin/tenants/[id]/support-ux-canary` is being implemented. Strict
+input binds the tenant slug/id, desired and expected flag states and compiled
+artifact SHA. The serialized, row-locked transaction changes only features
+and writes the actor/old-new state/SHA audit through its transaction client;
+audit failure must roll back the flag. Native arrays and encoded arrays retain
+their representation and every unrelated entry; unsupported state fails closed.
+Confirming an existing state writes a separately named confirmation and does
+not establish an earlier activation time. Receipt issuance after commit is
+separate from the required authenticated flag re-read. Preparation/unit checks
+do not authorize selecting or activating an arbitrary production tenant. This
+new action still needs its own PostgreSQL and protected release admission.
+
 ## Seven full calendar days
 
 Use Asia/Baku calendar boundaries and retain UTC timestamps. The partial

@@ -30,7 +30,9 @@ continues from a clean current-main worktree on a dedicated `codex/*` branch.
 Status legend: `TODO` · `IN_PROGRESS` · `DONE` · `BLOCKED` · `DEFERRED`
 
 Current completion checkpoint (2026-10-03): 191 unique tracked SUPUX tasks;
-190 checked (99.48%) and only `SUPUX-ROL-006` open. Implementation, isolated
+190 checked and only `SUPUX-ROL-006` open. These are unweighted task counts;
+they do not estimate overall product readiness or remaining development time.
+Implementation, isolated
 browser/accessibility/performance acceptance at their recorded dimensions and
 the production-release ledger are complete. PR [#501](https://github.com/rashadoni/leaddrive-v2/pull/501)
 merged as `bd83c5d41182fca0003282e2241e5ad9ae35c04b`; its existing production
@@ -4141,6 +4143,29 @@ checkpoints; the current release ledger above supersedes them for release status
   metrics, owner, and rollback decision for every released slice.
 - [ ] **SUPUX-ROL-006** Remove a flag only after representative tenants pass the
   agreed observation window with no unresolved P0/P1 regression.
+
+Execution breakdown for ROL-006 (2026-10-03; these are gates within the existing
+task, not new SUPUX IDs or percentage weights):
+
+- Atomic operator action: IN_PROGRESS. Prepare the fixed-flag superadmin action
+  with exact tenant/compiled SHA/expected-state checks and same-transaction audit.
+  Existing generic tenant PUT is insufficient. Unit, real PostgreSQL rollback/
+  concurrency and protected release admission are required before using it.
+- Source performance baseline review: IN_PROGRESS. Keep the existing ceilings
+  and2026-10-08 review boundary. Original34241690941/34247698584 artifact lookups
+  returned404 through the registered repository; source/builder changes prevent
+  an unsupported expiry extension. Prepare fresh bounded seven-sample proof.
+- Selected tenant and activation: PENDING exact authorized slug and audit record;
+  confirm authenticated flag state after any separately admitted operator action.
+- Real handler baseline and coverage: PENDING matched activity/error/duration
+  samples, effective INFO, retention, process/source/key/flag continuity.
+- Seven complete Asia/Baku days and incident review: NOT STARTED/UNVERIFIED.
+- Permission/isolation/direct-route and compatibility recheck: REQUIRED on the
+  later flag-retirement candidate after the admitted observation.
+- Flag-retirement source, PR, protected checks, release and smoke: PENDING.
+
+Tenant input is needed for the tenant actions. It does not prevent independent
+operator development, tests or baseline preparation; continue those first.
 
 Release-ledger closure (2026-10-02): the
 [canonical receipt](support-ux-performance-and-rollout.md#release-ledger)

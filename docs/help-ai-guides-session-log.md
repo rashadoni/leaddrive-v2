@@ -1753,3 +1753,49 @@ complete seven evidenced Asia/Baku days, then review the flag-retirement release
   Latest main read6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00; fetch/integrate
   reviewed main while preserving all local checkpoints before new source work.
   Small-check host preflight:15230MiB available,338GiB free, PSI avg10/60 zero.
+
+
+## 2026-10-03 — Atomic canary operator implemented; bounded source tests passed
+
+- Added the dedicated superadmin POST at
+  src/app/api/v1/admin/tenants/[id]/support-ux-canary/route.ts and the feature-
+  preservation helper src/lib/support-ux-canary-change.ts. No UI change or
+  automatic tenant activation. The fixed flag is the only mutable entitlement;
+  tenant slug/id, expected state and exact compiled artifact must match.
+- Existing requireSuperAdmin precedes every database operation. Authorized
+  cross-tenant scope uses the existing Prisma RLS transaction proxy. A row lock
+  and Serializable transaction serialize changes/confirmations; feature update
+  and actor-bound audit INSERT use the same transaction client. Audit failure
+  must roll back the update. No logAudit helper, silent audit failure or retry.
+- Native/encoded array representation and unrelated duplicate/unknown entries
+  are retained; malformed/oversized state fails closed. Inactive tenants cannot
+  be enabled, but their flag can be disabled. A confirmation does not rewrite
+  features or manufacture an original activation timestamp. The receipt's
+  issuance time follows commit; authenticated state re-read is still required.
+- Independent review identified raw-query Serializable/deadlock failures that
+  Prisma can report as P2010 with SQLSTATE40001/40P01. These and P2034 now return
+  fixed409; unrelated database errors return fixed500. No error-message matching,
+  raw exception export or automatic retry. Actual PostgreSQL proof is being added.
+- Targeted current-tree verification: four files /39 tests PASS, comprising
+  29 new helper/API cases and10 unchanged rollout/RLS-proxy cases. Scoped ESLint
+  for the two source/two unit-test files PASS. Runner policy PASS for40 current
+  workflows. Full local compiler/build/browser and actual PostgreSQL execution
+  NOT RUN under the Contabo workload contract; new hosted gates remain required.
+- Added explicit ROL-006 execution gates to the plan and removed the raw99.48%
+  fraction from its operative readiness statement. Checkbox counts remain
+  191 unique/190 checked, not weighted effort/readiness. Independent broader
+  history audit now covers199 plan revisions (superseding the earlier109-snapshot
+  search scope), still with no supported literal41%/59% attribution. Legacy
+  reference journal51–55 already cautions against using raw checkbox counts as
+  remaining-time estimates; its bytes are preserved.
+- Original repeatability artifact lookups34241690941 and34247698584 both404 via
+  the registered rashadoni/leaddrive-v2 API. No retired owner/host fallback.
+  Current package/Next builder/evidence runner and Service Desk/detail sources
+  differ from52045 source. Do not renew the old budget expiry or replace original
+  seven-sample proof with three-sample layout captures. Existing ceilings and
+  October8 review requirement retained; fresh bounded measurement preparation
+  is independent of selecting a production tenant.
+- Reviewed main integrated locally without conflicts before new source edits;
+  prior checkpoint history preserved. This is source synchronization, not a new
+  production merge/deploy. Operator test/CI additions are the next source unit;
+  selected-tenant actions and real observation remain unexecuted.
