@@ -52,8 +52,11 @@
  * currently tell a good token from a dead one without calling Graph. Adding that probe is its own
  * feature; this module deliberately does not guess.
  *
- * KNOWN LIMITATION 2 (deliberately out of scope): for an `instagram` row, fact (3) is dead weight —
- * it is always true, so this module can never return `needsReconnect` for Instagram. Instagram Direct
+ * KNOWN LIMITATION 2 (deliberately out of scope): for a FACEBOOK-LOGIN `instagram` row, fact (3) is
+ * dead weight — it is always true, so this module can never return `needsReconnect` for it. (An
+ * INSTAGRAM-LOGIN row, `settings.igLogin`, is different: that account is itself the subscriber, the
+ * Instagram callback asks Meta through `subscribeInstagramLoginAccount` and stores the real outcome, so
+ * fact (3) means for it exactly what it means for a Page.) On the Facebook-Login path Instagram Direct
  * has no subscription of its own: an IG account id does not support `subscribed_apps`, so
  * `ensureInboxChannelForPage` hardcodes `{ success: true }` for IG (lib/social/inbox-channel.ts) and
  * writes `inboxSubscribed: true` on every non-staged connect. (A staged connect writes the staged

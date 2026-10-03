@@ -34,6 +34,7 @@ import {
 } from "@/lib/user-module-access"
 import {
   ASSIGNABLE_FIELD_CARD_ROLES,
+  defaultFieldCardRole,
   fieldAccessOutcome,
   moduleAccessOutcome,
   settingsAccessOutcome,
@@ -228,8 +229,11 @@ function UserFormDialog({
   const tenantHasField = moduleOptions.some((option) => option.id === "mtm")
   const [fieldCards, setFieldCards] = useState<FieldCard[] | null>(null)
   const [fieldCardsFailed, setFieldCardsFailed] = useState(false)
-  const [fieldCardChoice, setFieldCardChoice] = useState(FIELD_CARD_NONE)
-  const [newFieldRole, setNewFieldRole] = useState<AssignableFieldRole>("AGENT")
+  // null = the admin has not chosen yet, so the form shows the default: the
+  // card this login already has, or — for a manager without one — a new card
+  // over the whole organization (see defaultFieldCardRole).
+  const [fieldCardPick, setFieldCardPick] = useState<string | null>(null)
+  const [fieldRolePick, setFieldRolePick] = useState<AssignableFieldRole | null>(null)
   const editUserId = editUser?.id
   // The card this login acts as today: its oldest ACTIVE one, as resolveMtmRouteActor picks.
   const linkedFieldCard = (fieldCards ?? [])
@@ -237,6 +241,10 @@ function UserFormDialog({
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0] ?? null
   const fieldCardOptions = (fieldCards ?? []).filter((card) =>
     card.status === "ACTIVE" && (card.userId === null || card.id === linkedFieldCard?.id))
+  const fieldCardChoice = fieldCardPick
+    ?? linkedFieldCard?.id
+    ?? (form.role === "manager" ? FIELD_CARD_NEW : FIELD_CARD_NONE)
+  const newFieldRole: AssignableFieldRole = fieldRolePick ?? defaultFieldCardRole(form.role)
   const chosenFieldCard = fieldCardChoice === FIELD_CARD_NEW
     ? { role: newFieldRole }
     : fieldCardOptions.find((card) => card.id === fieldCardChoice) ?? null
@@ -278,8 +286,8 @@ function UserFormDialog({
     let cancelled = false
     setFieldCards(null)
     setFieldCardsFailed(false)
-    setFieldCardChoice(FIELD_CARD_NONE)
-    setNewFieldRole("AGENT")
+    setFieldCardPick(null)
+    setFieldRolePick(null)
     fetch("/api/v1/mtm/agents?limit=200", {
       headers: orgId ? { "x-organization-id": orgId } : undefined,
     })
@@ -291,10 +299,6 @@ function UserFormDialog({
       .then((cards) => {
         if (cancelled) return
         setFieldCards(cards)
-        const linked = cards
-          .filter((card) => editUserId && card.userId === editUserId && card.status === "ACTIVE")
-          .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]
-        setFieldCardChoice(linked?.id ?? FIELD_CARD_NONE)
       })
       .catch(() => {
         if (cancelled) return
@@ -550,7 +554,11 @@ function UserFormDialog({
                               <div className="grid gap-2 sm:grid-cols-2">
                                 <div>
                                   <Label htmlFor="fieldCard" className="text-xs">{tu("fieldCardLabel")}</Label>
-                                  <Select id="fieldCard" value={fieldCardChoice} onChange={(e) => setFieldCardChoice(e.target.value)}>
+                                  <Select
+                                    id="fieldCard"
+                                    value={fieldCardChoice}
+                                    onChange={(e) => setFieldCardPick(e.target.value)}
+                                  >
                                     <option value={FIELD_CARD_NONE}>{tu("fieldCardNone")}</option>
                                     {fieldCardOptions.map((card) => (
                                       <option key={card.id} value={card.id}>
@@ -566,7 +574,11 @@ function UserFormDialog({
                                 {fieldCardChoice === FIELD_CARD_NEW && (
                                   <div>
                                     <Label htmlFor="fieldRole" className="text-xs">{tu("fieldCardRoleLabel")}</Label>
-                                    <Select id="fieldRole" value={newFieldRole} onChange={(e) => setNewFieldRole(e.target.value as AssignableFieldRole)}>
+                                    <Select
+                                      id="fieldRole"
+                                      value={newFieldRole}
+                                      onChange={(e) => setFieldRolePick(e.target.value as AssignableFieldRole)}
+                                    >
                                       {ASSIGNABLE_FIELD_CARD_ROLES.map((fieldRole) => (
                                         <option key={fieldRole} value={fieldRole}>{tu(`fieldRoleShort_${fieldRole}` as never)}</option>
                                       ))}

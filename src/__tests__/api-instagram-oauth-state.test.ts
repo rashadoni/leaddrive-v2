@@ -136,3 +136,75 @@ describe("Instagram-Login OAuth callback signed-state acceptance", () => {
     }))
   })
 })
+
+/**
+ * Authorizing an account is not what makes Meta deliver its Direct messages: the app also has to switch
+ * the account's webhook subscription on with the account's own token. Nothing did, so every account
+ * connected here read "connected" and received nothing (production, 2026-10-02: the dashboard showed
+ * the subscription "off" for the one connected account, and not one webhook POST had ever arrived).
+ */
+describe("Instagram-Login OAuth callback turns on the account's message subscription", () => {
+  function connectWith(subscribeResponse: () => Response) {
+    process.env.INSTAGRAM_APP_ID = "IG_APP_ID"
+    process.env.INSTAGRAM_APP_SECRET = "IG_APP_SECRET"
+    process.env.INSTAGRAM_REDIRECT_URI = "https://app.leaddrivecrm.org/api/v1/social/oauth/instagram/callback"
+    vi.mocked(getOrgId).mockResolvedValue("org1" as never)
+    const subscribeRequests: Array<{ url: string; init?: RequestInit }> = []
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === "https://api.instagram.com/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "SHORT_IG_TOKEN", user_id: "1781" }), { status: 200 })
+      }
+      if (url.includes("/access_token?grant_type=ig_exchange_token")) {
+        return new Response(JSON.stringify({ access_token: "LONG_IG_TOKEN", expires_in: 3600 }), { status: 200 })
+      }
+      if (url.includes("/me?fields=user_id,username")) {
+        return new Response(JSON.stringify({ user_id: "1781", username: "brand" }), { status: 200 })
+      }
+      if (url.includes("/subscribed_apps")) {
+        subscribeRequests.push({ url, init })
+        return subscribeResponse()
+      }
+      return new Response("not found", { status: 404 })
+    }))
+    return subscribeRequests
+  }
+  const storedSettings = () =>
+    (vi.mocked(prisma.channelConfig.create).mock.calls[0]?.[0] as { data: { settings: Record<string, unknown> } }).data.settings
+
+  it("asks Meta for the `messages` field with the account's own token, and stores that it worked", async () => {
+    const subscribeRequests = connectWith(() => new Response(JSON.stringify({ success: true }), { status: 200 }))
+    const s = valid()
+
+    const res = await GET(req(s, s))
+
+    expect(new URL(res.headers.get("location") || "").searchParams.get("connected")).toBe("instagram")
+    expect(subscribeRequests.map((request) => request.url)).toEqual([
+      "https://graph.instagram.com/v21.0/me/subscribed_apps?subscribed_fields=messages",
+    ])
+    expect(subscribeRequests[0].init?.method).toBe("POST")
+    expect(subscribeRequests[0].init?.headers).toMatchObject({ Authorization: "Bearer LONG_IG_TOKEN" })
+    expect(storedSettings()).toMatchObject({ igLogin: true, username: "brand", inboxSubscribed: true })
+  })
+
+  it("stores a refusal as a refusal — the account is saved, but not as a delivering inbox", async () => {
+    connectWith(() => new Response(JSON.stringify({ error: { message: "(#10) permission missing" } }), { status: 400 }))
+    const s = valid()
+
+    const res = await GET(req(s, s))
+
+    expect(new URL(res.headers.get("location") || "").searchParams.get("connected")).toBe("instagram")
+    expect(storedSettings()).toMatchObject({ igLogin: true, inboxSubscribed: false })
+    expect(storedSettings()).not.toHaveProperty("subscriptionPending")
+  })
+
+  it("still saves the account when the subscription request itself cannot be made", async () => {
+    connectWith(() => { throw new Error("network down") })
+    const s = valid()
+
+    const res = await GET(req(s, s))
+
+    expect(new URL(res.headers.get("location") || "").searchParams.get("connected")).toBe("instagram")
+    expect(storedSettings()).toMatchObject({ inboxSubscribed: false })
+  })
+})

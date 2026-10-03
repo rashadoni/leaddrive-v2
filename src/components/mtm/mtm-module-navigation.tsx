@@ -24,7 +24,7 @@ export function MtmModuleNavigation() {
   const t = useTranslations("mtmModuleNavigation")
   const tNav = useTranslations("nav")
   const { data: session } = useSession()
-  const toolGroups = visibleMtmToolGroups(useMtmOrgSettings(session?.user))
+  const toolGroups = visibleMtmToolGroups(useMtmOrgSettings(session?.user), session?.user?.role)
   const activeTool = toolGroups.flatMap((group) => group.items)
     .find((item) => isMtmNavigationItemActive(item.href, pathname))
 

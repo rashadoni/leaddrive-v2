@@ -210,11 +210,20 @@ export function WorkforceCalendarConfiguration() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirmation, setConfirmation] = useState<ReversalConfirmation | null>(null)
+  const confirmationTitle = useRef<HTMLHeadingElement | null>(null)
+  const reversalError = useRef<HTMLParagraphElement | null>(null)
+  const reversalSource = useRef<HTMLButtonElement | null>(null)
+  const reversalResult = useRef<HTMLParagraphElement | null>(null)
+  const reversalFocus = useRef<(CalendarMutationIdentity & { target: "source" | "result" }) | null>(null)
   const targetKey = JSON.stringify([scope, scope === "TEAM" ? teamId : null, scope === "AGENT" ? agentId : null])
   const activeIdentity = useRef<CalendarMutationIdentity>({ contextKey, targetKey })
   const mutation = useRef<CalendarMutationState>({ current: null })
   const latestLoad = useRef<LatestCalendarRequestState>({ sequence: 0, controller: null })
   useLayoutEffect(() => {
+    if (activeIdentity.current.contextKey !== contextKey || activeIdentity.current.targetKey !== targetKey) {
+      reversalFocus.current = null
+      reversalSource.current = null
+    }
     if (activeIdentity.current.contextKey !== contextKey) {
       mutation.current.current = null
       setSaving(false)
@@ -225,6 +234,33 @@ export function WorkforceCalendarConfiguration() {
     }
     activeIdentity.current = { contextKey, targetKey }
   }, [contextKey, targetKey])
+  useEffect(() => {
+    if (!confirmation || confirmation.contextKey !== contextKey || confirmation.targetKey !== targetKey) return
+    // The source action may be far below this review in a narrow viewport.
+    // Move keyboard focus and the scroll position to the newly opened review.
+    confirmationTitle.current?.focus({ preventScroll: true })
+    confirmationTitle.current?.parentElement?.scrollIntoView({ block: "start", behavior: "instant" })
+  }, [confirmation, contextKey, targetKey])
+  useEffect(() => {
+    if (!error || !confirmation || confirmation.contextKey !== contextKey || confirmation.targetKey !== targetKey) return
+    // A late failure can insert the retry explanation above the review.
+    reversalError.current?.focus({ preventScroll: true })
+    reversalError.current?.scrollIntoView({ block: "start", behavior: "instant" })
+  }, [error, confirmation, contextKey, targetKey])
+  useEffect(() => {
+    const pending = reversalFocus.current
+    if (!pending) return
+    if (pending.contextKey !== contextKey || pending.targetKey !== targetKey) {
+      reversalFocus.current = null
+      return
+    }
+    if (confirmation || saving || loading) return
+    const element = pending.target === "source" ? reversalSource.current : reversalResult.current
+    reversalFocus.current = null
+    if (!element?.isConnected) return
+    element.focus({ preventScroll: true })
+    element.scrollIntoView({ block: pending.target === "source" ? "nearest" : "start", behavior: "instant" })
+  }, [confirmation, contextKey, targetKey, saving, loading, notice])
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeZone: "UTC",
@@ -367,6 +403,13 @@ export function WorkforceCalendarConfiguration() {
     }
   }
 
+  function cancelReversal() {
+    if (saving || !confirmation || confirmation.contextKey !== contextKey || confirmation.targetKey !== targetKey) return
+    reversalFocus.current = { contextKey, targetKey, target: "source" }
+    setConfirmation(null)
+    setError(null)
+  }
+
   async function reverseMovedDay() {
     if (!confirmation || confirmation.contextKey !== contextKey || confirmation.targetKey !== targetKey) return
     const submitted = confirmation
@@ -384,6 +427,7 @@ export function WorkforceCalendarConfiguration() {
         || result.data.sourceDate !== submitted.draft.sourceDate
         || result.data.destinationDate !== submitted.draft.destinationDate
         || typeof result.data.reversed !== "boolean") throw new Error("unconfirmed-reversal")
+      reversalFocus.current = { contextKey, targetKey, target: "result" }
       setNotice(t(result.data.reversed ? "reversalRecorded" : "reversalAlreadyRecorded"))
       setConfirmation(null)
       await load(submitted.selection)
@@ -453,7 +497,7 @@ export function WorkforceCalendarConfiguration() {
       <Button
         type="button"
         variant="outline"
-        className="min-h-11"
+        className="h-auto min-h-11 max-w-full whitespace-normal"
         onClick={() => void load({ scope, teamId, teamQuery, agentId, agentQuery })}
         disabled={loading || saving || Boolean(confirmation)}
       >
@@ -462,29 +506,26 @@ export function WorkforceCalendarConfiguration() {
       </Button>
     </div>
 
-    {error ? <p className="border-b border-red-200 bg-red-50 px-5 py-4 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200 sm:px-6" role="alert">{error}</p> : null}
-    {notice ? <p className="border-b border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200 sm:px-6" role="status" aria-live="polite">{notice}</p> : null}
+    {error ? <p ref={reversalError} tabIndex={-1} className="border-b border-red-200 bg-red-50 px-5 py-4 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200 sm:px-6" role="alert">{error}</p> : null}
+    {notice ? <p ref={reversalResult} tabIndex={-1} className="border-b border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200 sm:px-6" role="status" aria-live="polite">{notice}</p> : null}
 
     {confirmation && confirmation.contextKey === contextKey && confirmation.targetKey === targetKey ? <div
       className="space-y-3 border-b border-amber-200 bg-amber-50 px-5 py-5 dark:border-amber-900 dark:bg-amber-950/20 sm:px-6"
       aria-labelledby="workforce-calendar-reversal-title"
     >
-      <h3 id="workforce-calendar-reversal-title" className="font-semibold">{t("reversalReviewTitle")}</h3>
-      <p className="text-sm font-medium">{confirmation.label} · {confirmation.scopeLabel}</p>
+      <h3 ref={confirmationTitle} tabIndex={-1} id="workforce-calendar-reversal-title" className="font-semibold">{t("reversalReviewTitle")}</h3>
+      <p className="text-sm font-medium [overflow-wrap:anywhere]">{confirmation.label} · {confirmation.scopeLabel}</p>
       <p className="text-sm">{t("reversalDates", {
         source: dateFormatter.format(new Date(`${confirmation.draft.sourceDate}T00:00:00.000Z`)),
         destination: dateFormatter.format(new Date(`${confirmation.draft.destinationDate}T00:00:00.000Z`)),
       })}</p>
       <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("reversalReviewHint")}</p>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="button" className="min-h-11" onClick={() => void reverseMovedDay()} disabled={saving}>
+        <Button type="button" className="h-auto min-h-11 max-w-full whitespace-normal" onClick={() => void reverseMovedDay()} disabled={saving}>
           {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : null}
           {t("reversalConfirm")}
         </Button>
-        <Button type="button" variant="outline" className="min-h-11" disabled={saving} onClick={() => {
-          setConfirmation(null)
-          setError(null)
-        }}>{t("reversalCancel")}</Button>
+        <Button type="button" variant="outline" className="min-h-11" disabled={saving} onClick={cancelReversal}>{t("reversalCancel")}</Button>
       </div>
     </div> : null}
 
@@ -650,7 +691,7 @@ export function WorkforceCalendarConfiguration() {
       : null}
 
     {visibleCalendar ? <>
-      <form className="grid gap-5 px-5 py-6 sm:px-6 md:grid-cols-4" onSubmit={createOverride}>
+      <form className="grid grid-cols-1 gap-5 px-5 py-6 sm:px-6 md:grid-cols-4" onSubmit={createOverride}>
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="workforce-calendar-operation">{t("operation")}</label>
           <Select
@@ -757,7 +798,7 @@ export function WorkforceCalendarConfiguration() {
                   ? t("createHintAgent", { timezone: visibleCalendar.timezone, agent: selectedAgent.name })
                   : t("createHintOrganization", { timezone: visibleCalendar.timezone })
           }</p>
-          <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={saving || loading || Boolean(confirmation) || !canCreate}>
+          <Button type="submit" className="h-auto min-h-11 w-full max-w-full whitespace-normal sm:w-auto" disabled={saving || loading || Boolean(confirmation) || !canCreate}>
             {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Plus />}
             {t(operation === "MOVE_WORKDAY" ? "moveCreate" : "create")}
           </Button>
@@ -783,8 +824,8 @@ export function WorkforceCalendarConfiguration() {
                 : "emptyOrganization")}</p>
           : <ul className="divide-y divide-zinc-200 border-t border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
             {visibleCalendar.days.map((day) => <li key={`${day.date}:${day.kind}`} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div>
-                <p className="font-medium">{day.name || t("unnamed")}</p>
+              <div className="min-w-0">
+                <p className="font-medium [overflow-wrap:anywhere]">{day.name || t("unnamed")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{dateFormatter.format(new Date(`${day.date}T00:00:00.000Z`))}</p>
                 {day.pairedDate ? <p className="mt-1 text-xs text-muted-foreground">{t("pairedDate", {
                   date: dateFormatter.format(new Date(`${day.pairedDate}T00:00:00.000Z`)),
@@ -797,8 +838,10 @@ export function WorkforceCalendarConfiguration() {
                     type="button" variant="outline" className="min-h-11"
                     disabled={loading || saving || Boolean(confirmation)}
                     aria-label={t("reversalActionLabel", { name: day.name || t("unnamed") })}
-                    onClick={() => {
+                    onClick={(event) => {
                       if (!day.pairedDate || !day.pairGenerationId) return
+                      reversalSource.current = event.currentTarget
+                      reversalFocus.current = null
                       setNotice(null)
                       setError(null)
                       setConfirmation({

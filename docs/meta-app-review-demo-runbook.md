@@ -59,13 +59,43 @@ valid evidence for Meta.
    - Facebook Messenger webhook:
      'https://app.leaddrivecrm.org/api/v1/webhooks/facebook?t=leaddrive'
    - Instagram Login webhook:
-     'https://app.leaddrivecrm.org/api/v1/webhooks/instagram?t=leaddrive'
+     'https://app.leaddrivecrm.org/api/v1/webhooks/instagram' — **without**
+     '?t='. The Instagram product of this app ('782807994549098') is the same
+     ID production carries in 'INSTAGRAM_APP_ID', so this callback is the
+     shared path for every tenant; adding '?t=leaddrive' would cut Instagram
+     off for all the others.
 
 7. Confirm a synthetic user with the CRM `sales` role is available as the lead
    assignee. The conversion endpoint deliberately rejects non-sales assignees.
 8. Clear old test conversations so the new inbound event is unambiguous.
 9. Disable desktop notifications and hide browser bookmarks/password-manager
    popovers before recording.
+
+## Instagram: what has to be true before a take
+
+Checked on 2026-10-02/03; each item was the reason an earlier attempt could not
+have worked.
+
+1. **Two test Instagram accounts, both with the Instagram Tester role on the
+   app and the invitation accepted.** One professional account that gets
+   connected, one account that sends the Direct message. '@leaddrive.az' is not
+   a test account: it is the company's live profile, its Direct is claimed by
+   the 'fanumsec' workspace, and a message sent to it is routed there, not to
+   'leaddrive'.
+2. **The connect is the ordinary one** — the Connect button on the Instagram
+   card, no '?app='. It already runs through Instagram App ID
+   '782807994549098', the Instagram product of the app under review. A staged
+   ('?app=') connect deliberately does not switch message delivery on.
+3. **After the connect, the app dashboard shows "Webhooks subscription: on"
+   for that account** (Instagram API setup → step 2). The callback requests it
+   since PR #535; before that nothing did, and no connected account ever
+   received a message.
+4. **The app is published.** Meta delivers Instagram webhooks to Live apps only
+   (stated in the Instagram Platform webhook documentation and in the banner on
+   the app's own webhook settings). Publishing is the owner's decision.
+5. The `leaddrive` tenant has chatbot and AI auto-reply enabled. Check which
+   rule would answer the test message before recording, so the reply shown is
+   the one typed by the operator.
 
 ## 90-second Instagram recording
 

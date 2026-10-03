@@ -1,0 +1,74 @@
+[
+  {
+    "label": "tls-domain-ping",
+    "url": "https://app.leaddrivecrm.org/api/v1/ping",
+    "startedAt": "2026-10-02T22:04:24.638240+00:00",
+    "completedAt": "2026-10-02T22:04:24.699050+00:00",
+    "transport": "strict-pinned-domain",
+    "targetIp": "13.140.132.245",
+    "curlExit": 0,
+    "httpStatus": "200",
+    "error": "",
+    "bytes": 11,
+    "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+    "bodyPath": "/tmp/workforce528-prod-bb-root-20261002T220424Z/tls-domain-ping.json",
+    "body": {
+      "ok": true
+    }
+  },
+  {
+    "label": "tls-domain-build",
+    "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+    "startedAt": "2026-10-02T22:04:24.699278+00:00",
+    "completedAt": "2026-10-02T22:04:24.774170+00:00",
+    "transport": "strict-pinned-domain",
+    "targetIp": "13.140.132.245",
+    "curlExit": 0,
+    "httpStatus": "200",
+    "error": "",
+    "bytes": 112,
+    "sha256": "ea035e97901cf7efea972aaeb31a21ea1d1ed04f7efe392e905f5d243d5a0466",
+    "bodyPath": "/tmp/workforce528-prod-bb-root-20261002T220424Z/tls-domain-build.json",
+    "body": {
+      "sha": "bb314679b786",
+      "artifactSha": "bb314679b786cc3294a39927141bfdc15e1cc4b4",
+      "builtAt": "2026-10-02T21:46:25Z"
+    }
+  },
+  {
+    "label": "ip-ping",
+    "url": "https://13.140.132.245/api/v1/ping",
+    "startedAt": "2026-10-02T22:04:24.774421+00:00",
+    "completedAt": "2026-10-02T22:04:24.837045+00:00",
+    "transport": "insecure-literal-ip-supplement",
+    "targetIp": "13.140.132.245",
+    "curlExit": 0,
+    "httpStatus": "200",
+    "error": "",
+    "bytes": 11,
+    "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+    "bodyPath": "/tmp/workforce528-prod-bb-root-20261002T220424Z/ip-ping.json",
+    "body": {
+      "ok": true
+    }
+  },
+  {
+    "label": "ip-build",
+    "url": "https://13.140.132.245/api/v1/public/build-info",
+    "startedAt": "2026-10-02T22:04:24.837247+00:00",
+    "completedAt": "2026-10-02T22:04:24.942832+00:00",
+    "transport": "insecure-literal-ip-supplement",
+    "targetIp": "13.140.132.245",
+    "curlExit": 0,
+    "httpStatus": "200",
+    "error": "",
+    "bytes": 112,
+    "sha256": "ea035e97901cf7efea972aaeb31a21ea1d1ed04f7efe392e905f5d243d5a0466",
+    "bodyPath": "/tmp/workforce528-prod-bb-root-20261002T220424Z/ip-build.json",
+    "body": {
+      "sha": "bb314679b786",
+      "artifactSha": "bb314679b786cc3294a39927141bfdc15e1cc4b4",
+      "builtAt": "2026-10-02T21:46:25Z"
+    }
+  }
+]

@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "candidateHead": "ded45c395951e37d54628ec452288d9da84d8411",
+  "checkedMergeSha": "a800e8a57a5b38855adfc8677e691ad257b64c4c",
+  "startedAt": "2026-10-02T20:16:38.129Z",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF + credentials provider + session cookie; no auth mocks",
+  "cases": [
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-TEAM-ru",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-az",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-en",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-ru",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    }
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "No production business data",
+    "No Android/AT/load/pilot evidence"
+  ],
+  "status": "FAIL",
+  "databaseRole": {
+    "superuser": false,
+    "bypassRls": false,
+    "unscopedUsers": 0,
+    "unscopedTeams": 0,
+    "unscopedWorkforceAudits": 0
+  },
+  "failure": {
+    "name": "Error",
+    "message": "Timed out: new context GET survives obsolete POST settlement"
+  },
+  "readDiagnostics": [
+    {
+      "phase": "principal-request-failed",
+      "method": "GET",
+      "requestFailed": true
+    },
+    {
+      "phase": "principal-held-context-read",
+      "scope": "ORGANIZATION",
+      "status": 200,
+      "sessionCookieHeaderPresent": true,
+      "success": true
+    }
+  ],
+  "interceptedFailureCount": 0,
+  "completedAt": "2026-10-02T20:17:56.672Z"
+}

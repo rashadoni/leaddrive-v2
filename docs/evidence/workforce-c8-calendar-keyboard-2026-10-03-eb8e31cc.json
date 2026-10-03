@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "candidateHead": "eb8e31cceadbeafff4a463fa2e71ae69f663bd91",
+  "checkedMergeSha": "b571acb1b9e308679da1a5a84df3bb9a3c80ba6a",
+  "startedAt": "2026-10-02T23:14:55.986Z",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF + credentials provider + session cookie; no auth mocks",
+  "authenticationDiagnostics": [
+    {
+      "ordinal": 1,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-02T23:14:58.470Z"
+    },
+    {
+      "ordinal": 2,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-02T23:15:22.153Z"
+    },
+    {
+      "ordinal": 3,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-02T23:15:26.288Z"
+    },
+    {
+      "ordinal": 4,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-02T23:15:30.189Z"
+    },
+    {
+      "ordinal": 5,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-02T23:15:33.940Z"
+    },
+    {
+      "ordinal": 6,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-02T23:15:37.675Z"
+    },
+    {
+      "ordinal": 7,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-02T23:15:41.027Z"
+    },
+    {
+      "ordinal": 8,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-02T23:15:42.531Z"
+    },
+    {
+      "ordinal": 9,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 13433,
+      "callbackStartedAt": "2026-10-02T23:15:59.494Z"
+    },
+    {
+      "ordinal": 10,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 21870,
+      "callbackStartedAt": "2026-10-02T23:16:23.195Z"
+    },
+    {
+      "ordinal": 11,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-02T23:16:28.206Z"
+    }
+  ],
+  "cases": [
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-TEAM-ru",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-az",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-en",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-ru",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "late-committed-response-principal-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "exactHeldRead": true,
+      "newContextRefreshHeld": true,
+      "heldReadLiveBeforeObsoleteResponse": true,
+      "obsoleteResponseDidNotCancelHeldRead": true,
+      "realSessionPreserved": true,
+      "teamNavigationCompleted": true,
+      "posts": 1
+    },
+    {
+      "name": "late-committed-response-tenant-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "exactHeldRead": true,
+      "newContextRefreshHeld": true,
+      "heldReadLiveBeforeObsoleteResponse": true,
+      "obsoleteResponseDidNotCancelHeldRead": true,
+      "realSessionPreserved": true,
+      "teamNavigationCompleted": true,
+      "posts": 1
+    },
+    {
+      "name": "keyboard-cancel-reopen-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "nativeTabNavigation": true,
+      "sourceTabs": 9,
+      "openedWithEnter": true,
+      "confirmationTabOrder": true,
+      "shiftTabReturnsToConfirm": true,
+      "cancelledWithSpace": true,
+      "cancelWrites": 0,
+      "cancelStateUnchanged": true,
+      "cancelRestoresSourceFocus": true,
+      "reopenedWithEnter": true,
+      "confirmedWithEnter": true,
+      "resultFocusedAndVisible": true,
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1,
+      "realSessionPreserved": true
+    },
+    {
+      "name": "keyboard-committed-response-loss-exact-retry-TEAM-ru",
+      "status": "PASS",
+      "nativeTabNavigation": true,
+      "sourceTabs": 22,
+      "openedWithEnter": true,
+      "confirmedWithSpace": true,
+      "pendingButtonsDisabled": true,
+      "unknownNoticeVisibleAndFocused": true,
+      "alertTabReachesExactConfirm": true,
+      "retriedWithEnter": true,
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "resultFocusedAndVisible": true,
+      "realSessionPreserved": true
+    }
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "No production business data",
+    "No Android/AT/load/pilot evidence",
+    "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI",
+    "No whole-page keyboard or zoom acceptance"
+  ],
+  "status": "PASS",
+  "databaseRole": {
+    "superuser": false,
+    "bypassRls": false,
+    "unscopedUsers": 0,
+    "unscopedTeams": 0,
+    "unscopedWorkforceAudits": 0,
+    "populatedAuditAndCalendarFailClosed": true
+  },
+  "completedAt": "2026-10-02T23:16:32.552Z"
+}

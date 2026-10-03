@@ -7,6 +7,7 @@ import {
   MTM_ALL_NAVIGATION_HREFS,
   MTM_PRIMARY_NAVIGATION,
   MTM_TOOL_GROUPS,
+  visibleMtmToolGroups,
 } from "@/lib/mtm/navigation"
 
 describe("MTM module navigation", () => {
@@ -50,7 +51,7 @@ describe("MTM module navigation", () => {
 
     expect(new Set(MTM_ALL_NAVIGATION_HREFS).size).toBe(MTM_ALL_NAVIGATION_HREFS.length)
     expect([...MTM_ALL_NAVIGATION_HREFS].sort()).toEqual(existingMtmHrefs.sort())
-    expect(MTM_TOOL_GROUPS.flatMap((group) => group.items)).toHaveLength(13)
+    expect(MTM_TOOL_GROUPS.flatMap((group) => group.items)).toHaveLength(14)
   })
 
   it("uses progressive groups that explain how secondary tools relate", () => {
@@ -59,8 +60,22 @@ describe("MTM module navigation", () => {
       ["reference", ["/mtm/customers", "/mtm/contacts", "/mtm/agents", "/mtm/products"]],
       ["control", ["/mtm/alerts", "/mtm/photos", "/mtm/operations"]],
       ["analytics", ["/mtm/reports", "/mtm/leaderboard", "/mtm/activity"]],
-      ["administration", ["/mtm/settings"]],
+      ["administration", ["/mtm/access", "/mtm/settings"]],
     ])
+  })
+
+  it("offers Access & permissions to a CRM administrator only", () => {
+    // The page links employee cards to logins — administrator work, and its API
+    // refuses anyone else. A tool the menu offers and the page then refuses is
+    // the broken pattern this menu exists to avoid.
+    const hrefs = (role?: string) => visibleMtmToolGroups({}, role).flatMap((group) => group.items.map((item) => item.href))
+
+    expect(hrefs("admin")).toContain("/mtm/access")
+    expect(hrefs("superadmin")).toContain("/mtm/access")
+    for (const role of ["manager", "sales", "support", undefined]) {
+      expect([role, hrefs(role).includes("/mtm/access")]).toEqual([role, false])
+    }
+    expect(navItems.find((item) => item.href === "/mtm/access")?.allowedRoles).toEqual(["admin", "superadmin"])
   })
 
   it("does not keep Today active beside a child page", () => {

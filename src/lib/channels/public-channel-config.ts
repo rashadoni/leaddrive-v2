@@ -98,7 +98,7 @@ function publicChannelSettings(
  *
  * Matches on the shapes credentials actually take in this blob — `secret`,
  * `password`, `apiKey`, `accessToken`, `refreshToken`, `authToken`,
- * `clientSecret`, `atlPassword`, `inboundSecret` — while leaving metadata like
+ * `clientSecret`, `atlPassword`, `inboundSecret`, `registrationPin` — while leaving metadata like
  * `tokenExpiresAt` alone. A bare "token" match would take that with it.
  */
 function looksLikeCredential(key: string): boolean {
@@ -115,7 +115,8 @@ function looksLikeCredential(key: string): boolean {
     k.endsWith("accesstoken") ||
     k.endsWith("refreshtoken") ||
     k.endsWith("authtoken") ||
-    k.endsWith("bottoken")
+    k.endsWith("bottoken") ||
+    k.endsWith("pin")
   )
 }
 

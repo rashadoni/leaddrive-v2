@@ -5,6 +5,7 @@ import { getOrgId } from "@/lib/api-auth"
 import { runWithTenant } from "@/lib/rls-context"
 import { getTenantInstagramLoginApp, getPinnedMetaApp, isAppReviewOnly } from "@/lib/social/tenant-meta-app"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
+import { subscribeInstagramLoginAccount } from "@/lib/social/instagram-login"
 import {
   normalizeOAuthReturnKey,
   oauthReturnChannelType,
@@ -55,8 +56,10 @@ async function redactedProviderText(res: Response): Promise<string> {
  *  2. Exchange `code` -> short-lived Instagram User token (POST api.instagram.com/oauth/access_token).
  *  3. Exchange short -> long-lived token (~60d) (GET graph.instagram.com/access_token ig_exchange_token).
  *  4. GET /me -> IG user id + username.
- *  5. Upsert ChannelConfig(instagram) holding the IG-Login token (settings.igLogin=true) so the inbox
- *     webhook + reply path can use it, distinct from any legacy Facebook-Login page-token row.
+ *  5. Enable the account's `messages` webhook subscription (POST /me/subscribed_apps) — skipped on a
+ *     staged connect — and upsert ChannelConfig(instagram) holding the IG-Login token
+ *     (settings.igLogin=true, settings.inboxSubscribed=the outcome) so the inbox webhook + reply path
+ *     can use it, distinct from any legacy Facebook-Login page-token row.
  *     No SocialAccount(instagram) row is written here (see the step-5 note in the body for why).
  */
 export async function GET(req: NextRequest) {
@@ -162,12 +165,16 @@ export async function GET(req: NextRequest) {
   // 3) IG user profile (id + username)
   let username = ""
   let userId = shortUserId
+  // The app-scoped id (`id` of GET /me). Meta's Deauthorize / Data Deletion callbacks name the user by
+  // an id, and the revocation (lib/social/instagram-revoke) matches either this one or `user_id`.
+  let scopedId = ""
   try {
     const meRes = await fetch(`${IG_GRAPH}/me?fields=user_id,username`, graphBearerInit(longToken))
     if (meRes.ok) {
       const me = await meRes.json() as { user_id?: string | number; username?: string; id?: string }
       userId = String(me.user_id ?? me.id ?? shortUserId)
       username = me.username || ""
+      scopedId = me.id ? String(me.id) : ""
     }
   } catch {
     /* non-fatal — fall back to the id from the token exchange */
@@ -203,7 +210,24 @@ export async function GET(req: NextRequest) {
       ? (existing.settings as Record<string, unknown>)
       : {}
   const settings: Record<string, unknown> = { ...prevSettings, igLogin: true, tokenExpiresAt: expiresAt, username }
-  if (staged) settings.appReviewOnly = true
+  if (scopedId && scopedId !== userId) settings.igScopedId = scopedId
+  // A reconnect is a fresh grant: a revocation recorded for an earlier one no longer describes the row.
+  delete settings.revokedByMeta
+  if (staged) {
+    settings.appReviewOnly = true
+  } else {
+    // Ask Meta to deliver this account's Direct messages to the webhook. Authorizing is not enough:
+    // without this call the account reads "connected" and receives nothing (see
+    // subscribeInstagramLoginAccount). The outcome goes on the row, where every channel screen already
+    // reads it (lib/channels/live-connection): a refusal shows as "reconnect needed", not as a working
+    // inbox. A STAGED connect asks for nothing, for the same reason the Facebook one does not
+    // (lib/social/inbox-channel): the account may be a live one claimed by another workspace, and
+    // switching its delivery on is not something a staging run gets to do as a side effect.
+    const sub = await subscribeInstagramLoginAccount(longToken)
+    if (!sub.success) console.warn(`[instagram-oauth] webhook subscribe failed for IG ${userId}: ${sub.error}`)
+    settings.inboxSubscribed = sub.success
+    delete settings.subscriptionPending
+  }
   // The one row this round trip wired — handed back to the channel card so it opens this account.
   let wiredChannelId: string
   if (existing) {

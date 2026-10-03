@@ -4,7 +4,7 @@ import { accessibleNavItems, navItems, orgFromSession } from "@/lib/nav-items"
 import { PERMISSION_MODULE_TO_MODULE_ID } from "@/lib/permissions"
 import {
   ASSIGNABLE_FIELD_CARD_ROLES, FIELD_CARD_ROLES, HIDEABLE_MODULE_SCOPES,
-  fieldAccessOutcome, moduleAccessOutcome, settingsAccessOutcome,
+  defaultFieldCardRole, fieldAccessOutcome, moduleAccessOutcome, settingsAccessOutcome,
 } from "@/lib/user-access-summary"
 import { VALID_MTM_AGENT_ROLES } from "@/lib/mtm/territory-scope"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
@@ -144,11 +144,17 @@ describe("what one person gets — Route & Field needs an employee card", () => 
     expect(disagreements).toEqual([])
   })
 
-  it("knows exactly the roles the field engine knows, and hands out the ones the Agents form does", () => {
+  it("knows exactly the roles the field engine knows; the user card also hands out the whole organization", () => {
     expect([...FIELD_CARD_ROLES].sort()).toEqual([...VALID_MTM_AGENT_ROLES].sort())
     const form = readFileSync("src/components/mtm/agent-form.tsx", "utf8")
     const offered = [...form.matchAll(/<option value="(AGENT|SUPERVISOR|MANAGER|ADMIN)">/g)].map((match) => match[1])
-    expect([...ASSIGNABLE_FIELD_CARD_ROLES].sort()).toEqual([...new Set(offered)].sort())
+    expect([...ASSIGNABLE_FIELD_CARD_ROLES].sort()).toEqual([...new Set([...offered, "ADMIN"])].sort())
+  })
+
+  it("offers a manager the whole organization and anyone else their own work", () => {
+    expect(defaultFieldCardRole("manager")).toBe("ADMIN")
+    expect(["sales", "support", "ticketing", "viewer", "regional-lead"].map(defaultFieldCardRole))
+      .toEqual(["AGENT", "AGENT", "AGENT", "AGENT", "AGENT"])
   })
 })
 
