@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { isMtmContactClass } from "@/lib/mtm/contact-classes"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { mtmFieldScopeRequiredResponse } from "@/lib/mtm/field-access"
@@ -154,7 +155,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     ...(status && ["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"].includes(status) ? { status: status as "ACTIVE" | "INACTIVE" | "PROSPECT" | "DUPLICATE" | "MERGED" } : {}),
     ...(profile ? { profile } : {}),
     ...(qualificationCategory ? { qualificationCategory } : {}),
-    ...(category && ["A", "B", "C", "D"].includes(category) ? { category: category as "A" | "B" | "C" | "D" } : {}),
+    ...(isMtmContactClass(category) ? { category } : {}),
     ...(and.length > 0 ? { AND: and } : {}),
   }
 

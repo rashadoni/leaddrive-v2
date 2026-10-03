@@ -299,6 +299,8 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
         hiddenFields: settings.contactHiddenFields,
         // The tenant's list the card's specialty is chosen from.
         specialties: settings.contactSpecialties,
+        // The classes this tenant grades clients with (A, B, C, VIP…).
+        classes: settings.contactClasses,
       },
       asOf: asOf.toISOString().slice(0, 10),
       timezone,

@@ -12,6 +12,7 @@ import {
   coerceMtmContactSpecialties,
   MTM_CONTACT_SPECIALTY_DEFAULTS,
 } from "@/lib/mtm/contact-specialties"
+import { coerceMtmContactClasses, MTM_CONTACT_CLASS_DEFAULTS } from "@/lib/mtm/contact-classes"
 import {
   coerceMtmRouteTargetTypes,
   MTM_ROUTE_TARGET_TYPE_DEFAULTS,
@@ -115,6 +116,10 @@ export const MTM_SETTING_DEFAULTS = {
   // the «Клиенты» filter. The tenant adds and removes them in MTM settings; a
   // contact keeps its specialty as text, so removing one rewrites nobody.
   contactSpecialties: MTM_CONTACT_SPECIALTY_DEFAULTS,
+  // The classes a client is graded with (A, B, C, D, VIP) — which of them this
+  // tenant uses, see contact-classes.ts. A client keeps a class the tenant
+  // later stops offering; only the choices change.
+  contactClasses: MTM_CONTACT_CLASS_DEFAULTS,
   // Additive rollout guard: existing tenants may already have weekend routes.
   // Once enabled, create/update APIs reject dates whose effective calendar day
   // does not allow route planning.
@@ -181,6 +186,9 @@ function coerce<K extends keyof MtmSettingsShape>(
     }
     if (key === "contactSpecialties") {
       return coerceMtmContactSpecialties(raw) as MtmSettingsShape[K]
+    }
+    if (key === "contactClasses") {
+      return coerceMtmContactClasses(raw) as MtmSettingsShape[K]
     }
     return (Array.isArray(raw) ? raw : fallback) as MtmSettingsShape[K]
   }
