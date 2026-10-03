@@ -18,8 +18,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
  * What each tile does is the contract checked here: WhatsApp starts Meta's Embedded Signup from the
  * tile itself (or opens its form when the server has no Embedded Signup); Facebook and Instagram are
  * links into Meta's login; a platform that needs a key opens its form in a window over the catalog; VoIP
- * and integrations go to their own screens. No tile walks the user through the setup wizard's pages,
- * and Edit on a connected channel opens the same window.
+ * and integrations go to their own screens; telephony is not here (VoIP calls has its own menu entry). No
+ * tile walks the user through the setup wizard's pages, and Edit on a connected channel opens the same window.
  */
 
 const pushes = vi.hoisted(() => [] as string[])
@@ -219,17 +219,17 @@ describe("Channel catalog — one tile per platform", () => {
     expect(pushes).toEqual([])
   })
 
-  it("sends VoIP and integrations to their own screens", async () => {
+  it("sends website chat to its own screen, and leaves telephony to VoIP calls", async () => {
     await renderCatalog([], true)
-    expect(action("asterisk").getAttribute("href")).toBe("/settings/voip")
     expect(action("website-chat").getAttribute("href")).toBe("/settings/web-chat")
+    for (const id of ["twilio-calls", "threecx", "asterisk", "custom-sip", "whatsapp-business-calls"]) {
+      expect(tile(id)).toBeNull()
+    }
   })
 
-  it("never walks a platform through the setup wizard's pages, except the WhatsApp Calling guide", async () => {
+  it("never walks a platform through the setup wizard's pages", async () => {
     await renderCatalog([], true)
-    const wizardLinks = [...container.querySelectorAll<HTMLAnchorElement>('a[href^="/settings/channels/connect/"]')]
-      .map((link) => link.getAttribute("href"))
-    expect(wizardLinks).toEqual(["/settings/channels/connect/whatsapp-business-calls"])
+    expect(container.querySelectorAll('a[href^="/settings/channels/connect/"]')).toHaveLength(0)
   })
 
   it("lists a connected channel with Edit opening the same window, and shows it on its tile", async () => {
