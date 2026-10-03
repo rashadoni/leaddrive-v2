@@ -470,6 +470,24 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(json.data.policies).toMatchObject({ fieldContactsEnabled: true, canPlanOwnRoutes: true })
   })
 
+  it("sends the client classes the tenant grades with, A–D for one that never chose", async () => {
+    const classes = async () => (await (await GET(request())).json()).data.policies.contactClasses
+    expect(await classes()).toEqual(["A", "B", "C", "D"])
+
+    // Stored in whatever order the settings form sent; delivered in the order
+    // the web card offers them, so the app and the web list the same sequence.
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "contactClasses", value: ["VIP", "C", "A", "B"] },
+    ] as never)
+    expect(await classes()).toEqual(["A", "B", "C", "VIP"])
+
+    // A damaged setting must not leave the app with nothing to choose from.
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "contactClasses", value: ["Z"] },
+    ] as never)
+    expect(await classes()).toEqual(["A", "B", "C", "D"])
+  })
+
   it("advertises enabled attendance add-ons without claiming an enforcement policy", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...mobileAuth("AGENT"),

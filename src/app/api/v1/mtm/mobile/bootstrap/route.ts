@@ -475,6 +475,12 @@ export const GET = withMobileRls(async (req, auth) => {
           // screens and entry points; promotion APIs keep answering and older
           // APKs keep showing them.
           pharmacyPromotionsEnabled: settings.pharmacyPromotionsEnabled !== false,
+          // The classes this tenant grades clients with (A, B, C, VIP…), in the
+          // order the web card offers them. The app listed a hard-coded A–D, so
+          // an agent of a tenant grading "A, B, C, VIP" could not propose VIP.
+          // Never empty (getMtmSettings coerces it). Older APKs ignore the key
+          // and keep their A–D.
+          contactClasses: settings.contactClasses,
           // The organization's check-in zone, as check-in enforces it. The app
           // checked a hard-coded 100 m before sending and turned agents back at
           // 150 m when the zone was 250 m (Redmi Pad SE, 2026-09-15). A
