@@ -47,8 +47,10 @@ const receipts = {
   environment: "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
   authentication: "real CSRF + credentials provider + session cookie; no auth mocks",
   authenticationDiagnostics: [],
+  reflowDiagnostics: [],
+  readingDiagnostics: [],
   cases: [],
-  limitations: ["Development bundle, not production build", "No production business data", "No Android/AT/load/pilot evidence", "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI", "No whole-page keyboard or zoom acceptance"],
+  limitations: ["Development bundle, not production build", "No production business data", "No Android/AT/load/pilot evidence", "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI", "No whole-page keyboard or zoom acceptance", "320 CSS reflow allows vertical reading scroll; no native browser zoom proof"],
   status: "RUNNING",
 }
 const contexts = []
@@ -171,7 +173,7 @@ async function inventory(context, principal, scope = "ORGANIZATION", teamId) {
   assert.equal(body.success, true)
   return body.data
 }
-async function pair(context, principal, index, teamId) {
+async function pair(context, principal, index, teamId, name = `Browser proof ${index} ${suffix}`) {
   const data = await inventory(context, principal)
   const source = new Date(`${data.currentDate}T00:00:00.000Z`)
   source.setUTCDate(source.getUTCDate() + 14 + index * 14)
@@ -181,7 +183,7 @@ async function pair(context, principal, index, teamId) {
   const draft = {
     operation: "MOVE_WORKDAY", scope: teamId ? "TEAM" : "ORGANIZATION", ...(teamId ? { teamId } : {}),
     sourceDate: source.toISOString().slice(0, 10), destinationDate: destination.toISOString().slice(0, 10),
-    name: `Browser proof ${index} ${suffix}`,
+    name,
   }
   const response = await context.request.post(endpoint, { timeout: 120_000, headers: { "x-organization-id": principal.organizationId }, data: draft })
   assert.equal(response.status(), 201, "Fixture pair uses the actual calendar writer")
@@ -477,6 +479,246 @@ async function keyboardLostResponse(principal, team) {
   receipts.cases.push({ name: "keyboard-committed-response-loss-exact-retry-TEAM-ru", status: "PASS", nativeTabNavigation: true, sourceTabs, openedWithEnter: true, confirmedWithSpace: true, pendingButtonsDisabled: true, unknownNoticeVisibleAndFocused: true, alertTabReachesExactConfirm: true, retriedWithEnter: true, posts: 2, reversedResponses: responses, byteIdenticalRetry: true, replayWrites: 0, resultFocusedAndVisible: true, realSessionPreserved: true })
   await view.context.close()
 }
+// New 320-CSS-pixel evidence is separate from the nine existing strict cases.
+// Collect horizontal failures before asserting them at case completion so the
+// original viewport screenshots also preserve every observed clipping phase.
+async function reflowGeometry(view, phase) {
+  const diagnostic = await view.section.locator("h2, h3, p, label, button, input, select, li span").evaluateAll(elements => {
+    const failures = []
+    let textFragments = 0
+    const tolerance = 1 // CSS-pixel rounding only; existing cases stay strict.
+    for (const [index, element] of elements.entries()) {
+      const bounds = element.getBoundingClientRect()
+      const section = element.closest('section[aria-labelledby="workforce-calendar-configuration-title"]')
+      const main = element.closest("main")
+      if (!main || !section || bounds.width <= 0 || bounds.height <= 0) {
+        failures.push({ index, tag: element.tagName, kind: "missing-visible-element" })
+        continue
+      }
+      const sectionBounds = section.getBoundingClientRect()
+      const mainBounds = main.getBoundingClientRect()
+      let left = Math.max(0, sectionBounds.left, mainBounds.left)
+      let right = Math.min(window.innerWidth, sectionBounds.right, mainBounds.right)
+      for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        if (["hidden", "clip", "auto", "scroll"].includes(getComputedStyle(ancestor).overflowX)) {
+          const box = ancestor.getBoundingClientRect()
+          left = Math.max(left, box.left + ancestor.clientLeft)
+          right = Math.min(right, box.left + ancestor.clientLeft + ancestor.clientWidth)
+        }
+      }
+      if (bounds.left < left - tolerance || bounds.right > right + tolerance) {
+        failures.push({ index, tag: element.tagName, kind: "element", left: bounds.left, right: bounds.right, clipLeft: left, clipRight: right })
+      }
+      // Native input/select text is rendered by the browser; their control
+      // boxes are checked above. Paragraph/button text must fit its own box.
+      if (["INPUT", "SELECT"].includes(element.tagName)) continue
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+      let fragments = 0
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent.trim()) continue
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        for (const text of range.getClientRects()) {
+          if (text.width <= 0 || text.height <= 0) continue
+          fragments++
+          const clipLeft = Math.max(left, bounds.left)
+          const clipRight = Math.min(right, bounds.right)
+          if (text.left < clipLeft - tolerance || text.right > clipRight + tolerance) {
+            failures.push({ index, tag: element.tagName, kind: "text", left: text.left, right: text.right, clipLeft, clipRight })
+          }
+        }
+      }
+      if (element.textContent.trim() && fragments === 0) failures.push({ index, tag: element.tagName, kind: "missing-text-fragments" })
+      textFragments += fragments
+    }
+    return { viewportWidth: window.innerWidth, viewportHeight: window.innerHeight, toleranceCssPixels: tolerance, elements: elements.length, textFragments, failures }
+  })
+  assert.equal(diagnostic.viewportWidth, 320)
+  assert.equal(diagnostic.viewportHeight, 844)
+  assert.ok(diagnostic.elements > 0 && diagnostic.textFragments > 0)
+  receipts.reflowDiagnostics.push({ phase, ...diagnostic })
+  await view.page.screenshot({ path: `${outputDirectory}/reflow-320-${phase}.png`, fullPage: false })
+}
+async function readReflowText(view, locator, phase) {
+  // Reading probes scroll only. Native navigation/product effects establish
+  // focus, which must remain unchanged through every text-line scroll probe.
+  const elements = await locator.all()
+  assert.ok(elements.length > 0, "The requested reflow text must actually exist")
+  for (const element of elements) {
+    const diagnostic = await element.evaluate(async paragraph => {
+      const focused = document.activeElement
+      const main = paragraph.closest("main")
+      if (!main) return { fragments: 0, scrolls: 0, verticallyReadable: false, focusPreserved: false }
+      const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT)
+      let fragments = 0
+      let scrolls = 0
+      let verticallyReadable = true
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent.trim()) continue
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        const count = range.getClientRects().length
+        for (let index = 0; index < count; index++) {
+          let bounds = range.getClientRects()[index]
+          if (!bounds || bounds.width <= 0 || bounds.height <= 0) continue
+          const viewport = main.getBoundingClientRect()
+          const top = Math.max(0, viewport.top)
+          const bottom = Math.min(window.innerHeight, viewport.bottom)
+          const delta = bounds.top < top ? bounds.top - top : bounds.bottom > bottom ? bounds.bottom - bottom : 0
+          if (delta) {
+            main.scrollBy({ top: delta, behavior: "instant" })
+            scrolls++
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+            bounds = range.getClientRects()[index]
+          }
+          fragments++
+          const paragraphBounds = paragraph.getBoundingClientRect()
+          let clipTop = Math.max(top, paragraphBounds.top)
+          let clipBottom = Math.min(bottom, paragraphBounds.bottom)
+          for (let ancestor = paragraph.parentElement; ancestor; ancestor = ancestor.parentElement) {
+            if (["hidden", "clip", "auto", "scroll"].includes(getComputedStyle(ancestor).overflowY)) {
+              const box = ancestor.getBoundingClientRect()
+              clipTop = Math.max(clipTop, box.top + ancestor.clientTop)
+              clipBottom = Math.min(clipBottom, box.top + ancestor.clientTop + ancestor.clientHeight)
+            }
+          }
+          verticallyReadable &&= Boolean(bounds && bounds.top >= clipTop - 1 && bounds.bottom <= clipBottom + 1)
+        }
+      }
+      return { fragments, scrolls, verticallyReadable, focusPreserved: document.activeElement === focused }
+    })
+    receipts.readingDiagnostics.push({ phase, ...diagnostic })
+    assert.ok(diagnostic.fragments > 0)
+    assert.equal(diagnostic.verticallyReadable, true, "Each reflow text line must be reachable by vertical reading scroll")
+    assert.equal(diagnostic.focusPreserved, true, "Reading scroll must never inject or change focus")
+  }
+}
+async function reviewedReflowConfirmation(view, moved, team, phase) {
+  const title = view.section.getByRole("heading", { name: view.ui.reversalReviewTitle, exact: true })
+  await title.waitFor()
+  await focusedInViewport(title, "320 CSS review title receives visible product focus")
+  const confirmation = view.section.locator('[aria-labelledby="workforce-calendar-reversal-title"]')
+  const text = await confirmation.innerText()
+  const formatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" })
+  assert.ok(text.includes(moved.name))
+  assert.ok(text.includes(team.name))
+  assert.ok(text.includes(formatter.format(new Date(`${moved.sourceDate}T00:00:00Z`))))
+  assert.ok(text.includes(formatter.format(new Date(`${moved.destinationDate}T00:00:00Z`))))
+  assert.equal((await view.section.innerText()).includes(moved.pairGenerationId), false)
+  assert.equal(await view.section.locator("#workforce-calendar-scope").isDisabled(), true)
+  assert.equal(await view.section.locator("#workforce-calendar-team").isDisabled(), true)
+  assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
+  assert.equal(await view.section.getByRole("button", { name: view.ui.refresh, exact: true }).isDisabled(), true)
+  await reflowGeometry(view, phase)
+  await readReflowText(view, confirmation.locator("h3, p"), phase)
+  await title.scrollIntoViewIfNeeded()
+  await focusedInViewport(title, "reading probes preserve the product-focused review title")
+  return confirmation
+}
+async function reflow320(principal, team) {
+  const view = await open(principal, "ru", { width: 320, height: 844 })
+  const name = (`Проверка переноса ${suffix} ` + "Ж".repeat(160)).slice(0, 160)
+  assert.equal(name.length, 160)
+  assert.ok(/\S{80}/u.test(name), "The valid maximum-length fixture includes a long unbroken fragment")
+  const moved = await pair(view.context, principal, 9, team.id, name)
+  const before = await state(principal, moved)
+  let posts = 0
+  view.page.on("request", request => { if (calendarRoute(new URL(request.url())) && request.method() === "POST") posts++ })
+  await view.section.locator("#workforce-calendar-scope").selectOption("TEAM")
+  await view.section.locator(`#workforce-calendar-team option[value="${team.id}"]`).waitFor({ state: "attached" })
+  await view.section.locator("#workforce-calendar-team").selectOption(team.id)
+  const source = view.section.getByRole("button", { name: view.ui.reversalActionLabel.replace("{name}", name), exact: true })
+  const sourceTabs = await tabToButton(view.page, source)
+  assert.ok(sourceTabs > 0)
+  await focusedInViewport(source, "320 CSS source action is visibly reached by native Tab")
+  await reflowGeometry(view, "inventory")
+  assert.equal(await view.section.getByText(name, { exact: true }).count(), 2, "Both original pair labels must be present")
+  await readReflowText(view, view.section.getByText(name, { exact: true }), "inventory-label")
+  await source.scrollIntoViewIfNeeded()
+  await focusedInViewport(source, "reading long inventory labels preserves native source focus")
+  await view.page.keyboard.press("Enter")
+  const confirmation = await reviewedReflowConfirmation(view, moved, team, "review")
+  const confirm = confirmation.getByRole("button", { name: view.ui.reversalConfirm, exact: true })
+  const cancel = confirmation.getByRole("button", { name: view.ui.reversalCancel, exact: true })
+  await tabToNext(view.page, confirm)
+  await reflowGeometry(view, "confirm")
+  await tabToNext(view.page, cancel)
+  await reflowGeometry(view, "cancel")
+  assert.equal(posts, 0)
+  await view.page.keyboard.press("Space")
+  await until(async () => await confirmation.count() === 0, "320 CSS cancel removes the review")
+  await focusedInViewport(source, "320 CSS cancel restores visible source focus")
+  assert.equal(await source.isDisabled(), false)
+  assert.equal(posts, 0)
+  assert.deepEqual(await state(principal, moved), before)
+  await reflowGeometry(view, "cancel-source")
+  await view.page.keyboard.press("Enter")
+  await reviewedReflowConfirmation(view, moved, team, "reopened-review")
+  const delivery = barrier()
+  const bodies = []
+  const responses = []
+  await view.page.route(calendarRoute, handled(async route => {
+    if (route.request().method() !== "POST") return route.continue()
+    bodies.push(route.request().postData())
+    const response = await route.fetch({ timeout: 120_000, maxRedirects: 0 })
+    assert.equal(response.status(), 200)
+    const payload = await response.json()
+    responses.push(payload.data.reversed)
+    if (bodies.length === 1) {
+      assert.equal(payload.data.reversed, true)
+      await delivery.promise
+      await route.abort("connectionreset")
+    } else {
+      assert.equal(payload.data.reversed, false)
+      await route.fulfill({ response })
+    }
+  }))
+  await tabToNext(view.page, confirm)
+  await view.page.keyboard.press("Space")
+  await until(() => responses.length === 1, "320 CSS real transaction commits before response loss", 120_000)
+  const beforeRetry = await state(principal, moved)
+  reversed(beforeRetry, principal)
+  assert.equal(posts, 1)
+  assert.equal(bodies.length, 1)
+  assert.deepEqual(JSON.parse(bodies[0]), {
+    operation: "REVERSE_MOVE_WORKDAY", scope: "TEAM", teamId: team.id,
+    sourceDate: moved.sourceDate, destinationDate: moved.destinationDate, pairGenerationId: moved.pairGenerationId,
+  })
+  assert.equal(await confirm.isDisabled(), true)
+  assert.equal(await cancel.isDisabled(), true)
+  delivery.release()
+  const alert = view.section.getByRole("alert")
+  await until(async () => (await alert.innerText()).includes(view.ui.reversalOutcomeUnknown), "320 CSS unknown outcome")
+  await focusedInViewport(alert, "320 CSS unknown explanation receives fully visible product focus")
+  await reflowGeometry(view, "unknown")
+  await readReflowText(view, alert, "unknown")
+  await until(async () => !(await confirm.isDisabled()), "320 CSS exact retry becomes available")
+  assert.equal(await view.section.locator("#workforce-calendar-scope").isDisabled(), true)
+  assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
+  await tabToNext(view.page, confirm)
+  await reflowGeometry(view, "retry-confirm")
+  await view.page.keyboard.press("Enter")
+  await until(async () => (await view.section.innerText()).includes(view.ui.reversalAlreadyRecorded)
+    && !(await view.section.innerText()).includes(name)
+    && await view.section.getAttribute("aria-busy") === "false", "320 CSS replay inventory settles")
+  assert.equal(posts, 2)
+  assert.equal(bodies.length, 2)
+  assert.equal(bodies[0], bodies[1])
+  assert.deepEqual(responses, [true, false])
+  assert.deepEqual(await state(principal, moved), beforeRetry)
+  const result = view.section.getByRole("status")
+  assert.ok((await result.innerText()).includes(view.ui.reversalAlreadyRecorded))
+  await focusedInViewport(result, "320 CSS replay result receives stable visible focus")
+  await reflowGeometry(view, "replay")
+  await readReflowText(view, result, "replay")
+  assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
+  await assertSession(view.context, principal, "320-css-team-replay")
+  receipts.reflowFunctional = { cancelWrites: 0, cancelStateUnchanged: true, posts, tombstones: 2, audits: 1, byteIdenticalRetry: true, reversedResponses: responses, replayWrites: 0, realSessionPreserved: true }
+  assert.equal(receipts.reflowDiagnostics.reduce((count, phase) => count + phase.failures.length, 0), 0,
+    "320 CSS controls and every text fragment must fit their visible horizontal bounds")
+  receipts.cases.push({ name: "320-css-reflow-keyboard-cancel-exact-retry-TEAM-ru", status: "PASS", viewport: { width: 320, height: 844 }, labelLength: 160, sourceTabs, nativeKeyboard: true, verticalReadingScrollOnly: true, horizontalContainment: true, focusedTargetsVisible: true, ...receipts.reflowFunctional })
+  await view.context.close()
+}
 async function switchContext(from, to, index, targetTeam, label) {
   const view = await open(from)
   const moved = await pair(view.context, from, index)
@@ -633,6 +875,9 @@ try {
   await switchContext(principals[0], principals[2], 5, teams[1], "tenant")
   await keyboardCancelConfirm(principals[0])
   await keyboardLostResponse(principals[0], teams[0])
+  assert.equal(receipts.cases.length, 9, "All nine existing scenarios must complete before the new reflow case")
+  await reflow320(principals[0], teams[0])
+  assert.equal(receipts.cases.length, 10)
   assert.equal(await app.mtmAuditLog.count(), 0, "Existing Workforce audit receipts must be hidden without tenant context")
   assert.equal(await app.mtmWorkCalendarDay.count(), 0, "Existing calendar tombstones must be hidden without tenant context")
   receipts.databaseRole.populatedAuditAndCalendarFailClosed = true

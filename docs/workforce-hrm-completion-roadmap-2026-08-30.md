@@ -4881,3 +4881,413 @@ from this worktree.
   C8 36%,overall59%,80non-DONE,007 PARTIAL; zoom,AT,authenticated production,
   physical Android,load and pilot NOT RUN. General update/delete,break policy,
   AGENT moves and Route mutation excluded.
+
+
+## 2026-10-03 (Asia/Baku) — integrated exact-head review GREEN, replacement published
+
+- Complete independent review of clean eb8e31cceadbeafff4a463fa2e71ae69f663bd91
+  against e2c473d50272205e42d17af014909a1b2de4e7f0 GREEN P0=0,P1=0,P2=0,P3=0.
+  Full14paths/130887bytes/SHA256e6c396eed607c218a9d2596ec86fa881a48463ab4c370a3a4fdec300c496e1c6;
+  non-doc2paths/21129bytes/SHA25649b823628a5762e5022df21eedeac76f270a1bec3743f7d12632e6b1c0151ed7.
+  Incoming12paths exactmain, source2exact192, all16primaryJSONs preserved,
+  docs3append-only. Actual57/57in2.81s primary log independently confirmed.
+- Final fresh fetch still e2; exacteb8 pushed to PR537 and ready_for_review.
+  RemoteREST confirms open,draftfalse,headexacteb8,baseexacte2. PR description
+  updated through structured REST payload; no repository-owned rollout change.
+  Protection still five GitHub Actions app15368 contexts,strictfalse,enforceadmins,
+  force/deletion disabled. No bypass,external agent context or baseline change.
+- Current status: reviewed replacement published; nine real hosted cases and
+  fresh static/type gates pending. Draft browser SKIPPED is not acceptance.
+  Last action: exact push/ready and PR description. Precise stopping point:
+  actual replacement CI execution and independent JSON/screenshot inspection.
+  Next action: fix any actual failures without weakening tests, then allfive
+  GREEN/fresh-main normalmerge and deploy/public own SHA. These local receipt
+  commits stay behind publishedhead during CI; progress59%,007PARTIAL unchanged.
+
+
+## 2026-10-03 (Asia/Baku) — replacement ready-event reconciliation
+
+- Initial immediate ready event retained old7e while synchronizeeb8 was draft;
+  browser37076024544 SKIPPED and draft PRchecks37076024503 static/type SKIPPED
+  are not acceptance. After REST confirmed settled exacteb8/basee2, toggled
+  draft/ready normally without modifying source. Real ready runs created
+  23:08:36Z (UTC): browser37076132550/job111066347164 and
+  PRchecks37076132505; pr-scope111066347064 SUCCESS,
+  static111066406548/type111066406591 executing. Runner37076024359 and
+  scan37076024467 SUCCESS on exacteb8. PR production build111066348159 SKIPPED
+  normally. No ready/draft skip is credited as static/type/browser PASS.
+- Current result: real replacement execution underway; merge remains blocked
+  by pending gates and nine-case acceptance. Last action: actual event/head
+  reconciliation. Precise stopping point: hosted execution/artifact inspection.
+  Next action: primary real nine-case results and allfive mandatory GREEN,
+  final freshmain,normal merge/deploy,own exact public SHA. Progress59%,007PARTIAL;
+  remaining authenticated production/AT/zoom/physical/load/pilot NOT RUN.
+
+
+## 2026-10-03 (Asia/Baku) — actual nine-case keyboard browser acceptance GREEN
+
+- Real ready browser37076132550/job111066347164 SUCCESS, attempt1,
+  artifact11256443497/1911794bytes/archiveSHA256
+  d7afd26a067f638ec33037ab41c3cc2ea1ad67e70ea47dcca084327794c5433b.
+  Candidateexacteb8e31cceadbeafff4a463fa2e71ae69f663bd91;
+  syntheticb571acb1b9e308679da1a5a84df3bb9a3c80ba6a APIparents[e2c473d5,eb8e31cc].
+  Original5981-byte JSON/SHA256adaeb7c4da4a746f2ee65314b113d5e965d4091245940e3ed07ea4fb2378280d
+  copied byte-for-byte to docs/evidence/workforce-c8-calendar-keyboard-2026-10-03-eb8e31cc.json.
+  UTC23:14:55.986Z–23:16:32.552Z,96.566s. All9cases PASS; old7assertions retained,
+  both principal/tenant exact-held-refresh/session/navigation fences true.
+- Eleven real CSRF/credential callbacks200, no retries/auth bypass/mocks.
+  Actual bounded pacing waits13433ms atordinal9 and21870ms at10, others0;
+  calls9/10/11 at least61024/61042/61918ms after the corresponding prior8.
+  Historical7e missing callbackstatus/cause remains NOT PROVEN, unchangedFAIL8.
+- ORGkeyboard sourceTabs9, nativeEnter/Space/Tab/ShiftTab review/cancel/reopen/
+  confirm alltrue; Cancel fullpair/audit state unchanged,writes0,sourcefocused;
+  completedposts1,tombstones2,audit1,resultfullyvisible/focused,real session.
+  TEAMRU390x844 sourceTabs22, nativeSpace commit disabledbothbuttons, actual
+  committed-response loss focusesunknownalert; nativeTab reachesexactConfirm,
+  Enterretry posts2,byte-identicalbodies,responses[true,false],replaywrites0,
+  completednoticefullyvisible/focused,same team/realsessionpreserved. Restricted
+  role superuserfalse,bypassRlsfalse; populatedAuditAndCalendarFailClosedtrue.
+- Root independently readfullJSON/parents and actually viewed all4newkeyboard
+  PNGs. Independent reviewer also individually viewed all4 plusprincipal/tenant
+  screenshots; actual artifact review GREEN P0=0,P1=0,P2=0,P3=0. Cancel original
+  action visiblyfocused; ORG resultfocused/pairabsent; TEAM unknowntext/confirm
+  fullyvisible; TEAM replayresultfocused/same selectedteam. No focus defect
+  proven. Visible Next dev issuebadge is not production/causal evidence.
+- Current status: bounded real keyboard acceptance GREEN; static/type pending,
+  no merge/deploy claim yet. Last action: original receipt/screens inspection
+  and byteexact preservation. Precise stopping point: mandatory fresh gates.
+  Next action: allfive GREEN, final freshmain check/normal exacthead merge,
+  deploy.yml and own exact merged public artifactSha. Development-only reversal
+  action evidence; wholepagekeyboard/zoom/AT/productionauth/Android/load/pilot
+  NOT RUN. Progress81/161,14/15,C8 36%,59%,80non-DONE,007PARTIAL unchanged.
+
+
+## 2026-10-03 (Asia/Baku) — five required gates GREEN, normal PR537 merge
+
+- Exact publishedeb8 latest mandatory checks all SUCCESS/GitHubapp15368:
+  pr-scope111066347064,static111066406548,type111066406591,
+  runner-policy111066006880,scan111066007336. Static completed23:22:05Z UTC,
+  primary33/33 Workforce PostgreSQL tests14.20s,baseline18/18/no newfailures.
+  Type completed23:24:27Z,baseline66/66,1195advisorydiagnostics,compileexit2,
+  no syntax/missing-module/undefined-name errors and no newdefect-shaped errors.
+  Root and independent reviewer checked actual latestjobs/app/head and primary
+  logs. PR productionbuild SKIPPED normally; not mistaken for fullbuild PASS.
+- Browser actual9/9/4newimages GREEN and exactsource review P0–P3=0. Visible
+  changes stated beforemerge: Cancel restores original actionfocus; completion
+  or exactreplay focuses resultnotice. User's active autonomous authorization
+  applies; no new permission or gate/context/baseline bypass introduced.
+- Two final freshfetches still e2c473d50272205e42d17af014909a1b2de4e7f0;
+  RESTopen/ready/exactheadbase/mergeableclean. Normal ghmerge --merge with
+  match-head-commit eb8 (noadmin/force/delete) mergedPR537 at23:25:51Z UTC.
+  Own mergedmainSHA46739dbe0c158e9f48455398463e401e42b927e2;
+  parents[e2c473d50272205e42d17af014909a1b2de4e7f0,
+  eb8e31cceadbeafff4a463fa2e71ae69f663bd91]. Entire merge tree byte-identical
+  to reviewedeb8. Private append-onlyreceipt commits remainoutsideclosedPRhead.
+- Ownnormal main-push deploy.yml run37077538032 started23:25:54Z UTC, exact467M.
+  Production target13.140.132.245:/opt/leaddrive-v2, GitHubmain->immutableartifact
+  ->deploy.yml only. No directcopy/serverdeploy/SSHmutation/retiredtarget.
+- Current status: source merged, production release PENDING. Last action:
+  normal exacthead merge and parent/tree/run verification. Precise stopping
+  point: ownnormal deploybuild/QA/deploy/retention and exact ownSHApublicproof.
+  Next action: waitSUCCESS/capture literalIPping+buildinfo and primarystrictTLS
+  domain pinnedto13.140.132.245, appendrelease receipts, successorcheckpoint.
+  Progress81/161,14/15,C8 36%,overall59%,80non-DONE,007PARTIAL unchanged;
+  productionbusinessauth/wholepagekeyboard/zoom/AT/Android/load/pilot NOT RUN.
+
+
+## 2026-10-03 (Asia/Baku) — next bounded acceptance scope, source-only reconnaissance
+
+- Read-only root/independent reconnaissance identifies remaining320CSS-pixel
+  reflow proof beyond released-candidate9 desktop/390px cases. Smallest next
+  successor lane: one real hostedTEAM/RU320x844 case with a valid160-character
+  synthetic pairlabel including a long unbroken fragment; retain allcurrent9.
+  Fixture name extension only in harness, actualwriter validation/session/RLS.
+- Require nativeTab/Enter/Space cancel/reopen/committed-response-loss/exactretry,
+  Cancel POST0/fullpair+audit unchanged, realfirstcommit2tombstones/1audit,
+  byte-identicalretry[true,false]/0replaywrites, samegeneration/team/session,
+  final populatedRLSprobe. Controls and individualtext Range rectangles must
+  fit calendar/main horizontalbounds; document.scrollWidth alone cannot prove
+  absence of clipping behindexisting overflow-hidden. Longconfirmation may
+  scrollvertically; focusedheading/alert and eachkeyboardbutton must be visible
+  whenreached. Current9fullviewport assertions must notbeweakened fornewcase.
+- Source-only risk: sharedButton whitespace-nowrap and labelparagraphs lacking
+  longwordwrapping could clip at320. Actualdefect NOT PROVEN; no sourcefix yet.
+  First add honest hostedcase; ifactualfailure confirmsclipping, fix onlythe
+  calendarcomponent with narrowwrapping/sizing, notsharedButton/appshell/API.
+- This is320CSSreflow, notnative200%browserzoom. No provennativezoom method in
+  currentharness; zoom/AT/contrast/wholepage/physical/authenticatedproduction
+  remain NOT RUN. General update/delete,breakpolicy,AGENTmoves,Route mutation
+  excluded. No newcompletioncredit:81/161,14/15,C8 36%,overall59%,007PARTIAL.
+- Current status: nextbounded scope prepared while own467Mproductionbuild/QA
+  pending. Last action: read-only scope/testmethod reconnaissance. Precise
+  stopping point: currentrelease productionproof; nextcase notimplemented/run.
+  Next action: finish ownnormal deploy/exactSHAreceipts, createpart18 in same
+  worktree/preserveprivateappend-onlyreceipts, then implementthe320CSScase.
+
+
+## 2026-10-03 (Asia/Baku) — own production build/QA GREEN, deployment executing
+
+- Own normal push run37077538032/exact46739dbe0c158e9f48455398463e401e42b927e2:
+  QA111070660981 SUCCESS23:38:37Z UTC; primary33/33 Workforce PostgreSQL tests,
+  baseline18/18/no new failures,/tmp/workforce537-467-deploy-quality.log.
+  Productionbuild111070660966 SUCCESS23:42:27Z UTC. Immutableartifact11257403434,
+  nameleaddrive-prod-46739dbe0c158e9f48455398463e401e42b927e2,
+  443905745bytes,created23:42:24Z UTC,archiveSHA256
+  fbfe221c136737086bf530c88334997d2e5a585ee46c7e23703f42a98341e99e.
+  Only small metadata snapshot preserved byteexact in
+  docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-artifacts.json;
+  archive itself NOT DOWNLOADED on Contabo. No manualbuild/deploy/servercopy.
+- Own protected deploy111074659271 nowexecuting; productionrelease stillPENDING.
+  Independent reviewer will capture earliest exact467M strictTLS domain pinned
+  toregistered13.140.132.245; rootwillindependently repeat public/literalIPproof.
+  No previous/descendant SHA is accepted as ownrelease; whole normalrun success
+  and postdeploysmoke/retention stillrequired.
+- Current status: fullhostedproductionbuild/QA GREEN, deployment pending. Last
+  action: immutableartifact metadata preservation. Precise stopping point:
+  own deploysmoke/retention and public exactSHA. Next action: original receipts
+  and final independentreleaseproof, then fresh-main successorpart18 checkpoint.
+  Progress59%,007PARTIAL; authenticatedproductionbusiness/zoom/AT/Android/load/
+  physical/pilot NOT RUN, current ninecase evidence is developmentChromium only.
+
+
+## 2026-10-03 (Asia/Baku) — PR537 production release GREEN, exact own SHA proved
+
+- Own mergedmain46739dbe0c158e9f48455398463e401e42b927e2 released via normal
+  deploy.yml mainpush run37077538032 COMPLETE SUCCESS updated23:52:46Z UTC,
+  attempt1. Build111070660966 SUCCESS23:42:27Z,QA111070660981 SUCCESS23:38:37Z,
+  deploy/smoke111074659271 SUCCESS23:52:37Z,retention111076999118 SUCCESS23:52:45Z.
+  Immutable11257403434/443905745bytes/archiveSHAfbfe221c136737086bf530c88334997d2e5a585ee46c7e23703f42a98341e99e
+  boundexact467M. Required PRfive/actualbrowser9/source review GREEN retained.
+  Allnormalpath scheduler checks,tenant-isolation/mobile-retention and public
+  ping/revision/login+hashedassets smoke steps SUCCESS. No manualdeploy/copy.
+- Root independently captured strictTLS app.leaddrivecrm.org pinnedto
+  13.140.132.245 at23:53:21.553951Z–23:53:21.933852Z UTC: build->ping->build
+  all200,exactartifactSha467M,builtAt23:31:29Z. LiteralIPping/build200with-k
+  supplement. ActualstrictliteralIPcurl60/http000/certificateSANmismatch remains
+  recorded honestly; supplement is not strictTLS proof. Strictpinneddomain is
+  primaryTLSverified route. Ping11bytes/SHA4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93;
+  build112bytes/SHAf4c5ad601699272a5f106c5ffa20a956d2025ce83f2ade2d1c28d3ec7bf25b1c.
+- Independent exact-M bracket23:54:24.971332Z–23:54:25.211420Z UTC: three200,
+  curl0/TLSverify0/actualremote13.140.132.245,nocache,exactM andsamebodyhashes.
+  Independently matched wholeownnormalrun/artifact/mergeparents/publicproof;
+  final release review GREEN P0=0,P1=0,P2=0,P3=0. Recorded11precedinge2responses
+  23:44:02.753Z–23:50:48.388Z all200/predeploymentstate; no observedHTTP/transport
+  errors in those bounded samples, not a claim of zero downtime overall.
+- Seven immutable original release JSONs preserved under
+  docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-:
+  artifacts,build-info,ping,public,workflow,independent-public,independent-release.
+  Rootpublic4569bytes/SHA1f13c2e93c468fca2def2c2a69606ec7b3d45f900952e6b7a11a781f3cc9504d;
+  workflow10001bytes/SHA6681f0211491e52a92daf32e40062d9f8126805289d5328cc3a43f1f71fccc19;
+  independentpublic2056bytes/SHA41849f3ae8be89faa3a1705d9535934cac707933ab0864ca1dd41341d6845a51;
+  independentrelease5285bytes/SHAc4dae2a702f95f5d91ed039f070486440a6d20e735ad4b3c9ba5aa061ae1cc22.
+  Originalindependentpublic normalRunSuccessStillRequired=true remains historical
+  pendingverification flag; finalindependentrelease/workflow andthisappend
+  explicitly supersede it with ownnormalrunSUCCESS. No originalrewriting.
+- Current result: bounded reversalkeyboard implementation/acceptance RELEASED.
+  Last action: ownnormaldeploySUCCESS and two independent exact-Mpublic proofs.
+  Precise stopping point: releasecheckpoint before fresh-main successorcreation.
+  Next action: createcodex/workforce-completion-part18 in thesameallowedworktree,
+  carryprivateappend-onlyreceipts, exactreceipt-integrityreview/publishcheckpoint,
+  then prepared320CSSreflow case. Authenticatedproductioncalendarbusiness,
+  wholepagekeyboard,zoom,AT,contrast,Android,physical,load andpilot NOT RUN.
+  ProgressDONE81/161,GATES14/15,C8 36%,overall59%,80non-DONE/about41%weighted
+  remaining; WF-C8-007 PARTIAL. No generalupdate/delete/breakpolicy/AGENTmoves/
+  Routemutation or baselineweakening; no100%/newcompletioncredit.
+
+
+## 2026-10-03 (Asia/Baku) — released-main successor part18, receipts preserved
+
+- After own467M releaseGREEN freshfetch still46739dbe0c158e9f48455398463e401e42b927e2;
+  part18 checkedfree locally/remotely. Createdcodex/workforce-completion-part18
+  fromorigin/main in sameallowedworktree; canonical/foreignworktrees untouched.
+  Seven private task-ownedreceipt commits cherry-picked withoutconflicts:
+  ff900a4e5->cee3e49dc,706de08d2->70de2f1cb,ed142957a->15bee0f9f,
+  2392c1e7d->e91eccac3,9697fc852->bb0d5152d,87a9f7823->12dda8d08,
+  d5405b216->6a9dbb8ff. Preservedpart17ref atd5405b216; no closedbranchpush.
+  Whole6a9dbb8ff tree byte-identical tod5405b216 before thiscontinuityappend.
+- Successor diffrelativefresh467M contains11task-owneddoc/evidence paths only;
+  no non-doc delta. Actualsource remains released/reviewedeb8/467M, ninecase
+  original/allsevenownreleaseJSONs carriedbyteexact; allhistoricalreceipts
+  retained. Docs-only whitespace verification, completeindependentreview and
+  exactcheckpointpublication follow. No new fullbuild/type/suite/browserrun
+  needed forreceipt-onlydelta; next320case stillNOT RUN/notimplemented.
+- Current result: PR537released, successorreceipt tree prepared; overall59%,
+  DONE81/161,GATES14/15,C8 36%,80non-DONE,WF-C8-007PARTIAL. Last action:
+  fresh-main successorcreation and conflict-free receiptcherry-picks. Precise
+  stopping point: successorcheckpoint/receipt-integrityreview/publish. Next
+  action: exactreceiptreview/push, then prepared320CSS TEAMRU/160charcase with
+  allcurrent9preserved; zoom/AT/productionbusinessauth/Android/load/pilot NOT RUN.
+
+
+## 2026-10-03 (Asia/Baku) — successor exact receipt review GREEN and checkpoint published
+
+- Complete independent exact62537a6d369634503453ecd684ce3a4b4d76e361/base467M
+  receipt-integrityreview GREEN P0=0,P1=0,P2=0,P3=0. Full11paths/83991bytes/
+  SHA256600ca7eb215653e1b2a2a937dd3eaee73c9d4e4520cf3f64c477edebab448432;
+  non-doc0paths/0bytes/SHA256e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.
+  All24JSONoriginals exactprimarysources; threeidenticalappend-onlysuffixes,
+  no source/schema/auth/workflow/baseline change, allownreleaseproofslimits
+  andhistoricalpendingflag reconciled. Docs-only whitespace PASS; no heavy
+  currentreceipt-onlychecks run or falselycredited.
+- Finalfreshfetch still467M; exact625 pushed asneworigin/codex/workforce-completion-part18,
+  remote ls-remote exact625 verified; tracking nowownsuccessor (notorigin/main).
+  Part17/d540 retained; closedPR537head remainsreviewedeb8, no closedbranchpush.
+  This finaldoc-onlycontinuityappend records actualpublication in samephase;
+  releasedsource/primaryoriginals unchanged and nextproductcase notimplemented.
+- Current result: PR537productionreleaseGREEN and reviewedreceipt successor
+  published, overall59%,DONE81/161,GATES14/15,C8 36%,80non-DONE,007PARTIAL.
+  Last completed action: exactsuccessorpublication and durablecontinuityreceipt.
+  Precise stopping point: sameallowedworktree/part18, cleanreceipt-onlycheckpoint;
+  no new320CSSsourcecase or execution yet. Next action: add oneTEAM/RU320x844
+  actualhostedcase/160charlabel, keepall9 andstate/retry/session/RLS assertions,
+  inspectactualtext/controlhorizontalcontainment andfocusedtargets. Fixonly
+  provenlocalcalendarclipping; generalupdate/delete/breakpolicy/AGENTmoves/Route
+  mutation excluded. Wholepage/zoom/AT/contrast/authenticatedproductioncalendar/
+  Android/physical/load/pilot NOT RUN. No100%claim or newcompletioncredit.
+
+
+## 2026-10-03 (Asia/Baku) — bounded 320 CSS acceptance resumed
+
+- User explicitly resumed prepared successor lane. Initialallowedworktreepart3,
+  codex/workforce-completion-part18,cleanHEADb5ec59e800eedb42a177e1193f9dd15f116425fb,
+  originrashadoni/leaddrive-v2 verified withcodex-project-context. CurrentAGENTS
+  andDELIVERY fullyread/routing reconciled withregistry/deploy docs. Production
+  only13.140.132.245:/opt/leaddrive-v2 via reviewedmain->deploy.yml; existingtask
+  autonomouspush/merge/deploy authorization persists,no manualcopy/fallback.
+- Freshmain advanced467M->063f47b9f7ee924a061ad8838d79c359810619c0 through#538:
+  onlydocs/meta-app-review-session-log.md changed,no taskoverlap. Ordinarymerge
+  completedwithoutconflicts; incomingforeignpath byteequalmain. Historical
+  released537/source/24originalreceipts retained; no canonical/foreign edits.
+- Currentboundedplan: add oneTEAM/RU320x844CSS-pixel hostedChromium case with
+  valid160-character syntheticlabel/longunbrokenfragment; retainallold9exactly.
+  NativeTab/Enter/Space cancel/reopen/realcommit+lostresponse/exactretry,
+  fullpersistedCancelstate/writes0,2tombstones/1audit,byte-identicaldraft,
+  responses[true,false]/replaywrites0,realsession/team andfinalpopulatedRLS.
+  Measureactualcontrols/textRange horizontalcontainment insidecalendar/main,
+  notonlydocument.scrollWidth; allowlongnewconfirmation verticalscroll while
+  focusedheading/alert/actions remainvisible whenreached. Old9fullviewport
+  assertions unchanged. No programmaticfocus/CSSzoom/authmocks/limiterbypass.
+- Initiallyharness-only; firstactualhostedrun provesanyclipping beforelocalUI
+  change. Ifconfirmed, narrowcalendarcomponentwrapping only,notsharedButton/
+  appshell/schema/API/auth/RLS/Route/workflow/baseline. Safegeometry metadata
+  andscreenshots mustpreservefailureproof. 320CSSreflow isnotnative200%zoom.
+- Currentresult: phasebegun,mainintegrated,implementation starts. Lastaction:
+  routing/status/docreconciliation andfreshmainmerge. Precise stoppingpoint:
+  newhostedcase implementation; actual10cases NOT RUN. Nextaction: bounded
+  checks/exactreview/draftPR->ready actual10/fivegates, diagnoseactualfailures,
+  freshmain normalmerge/deploy/publicexactSHA ifverified. Full Contabobuild/
+  typecheck/suite/browser/PG/Android/load NOT RUN byhostcontract; hostedCIfor
+  heavychecks. Wholepagekeyboard/nativezoom/AT/contrast/authenticatedproduction
+  calendar/physical/pilot NOT RUN. Progress81/161,14/15,C8 36%,overall59%,
+  80non-DONE/about41%weighted,007PARTIAL;generalupdate/delete/breakpolicy/AGENT
+  moves/Routemutationexcluded. No100%claim/newcompletioncredit.
+
+
+## 2026-10-03 (Asia/Baku) — 320 CSS harness implementation and bounded checks
+
+- Newtest-only sourcepath scripts/workforce-calendar-browser-evidence.mjs:
+  optionalfixturelabelargument preservesolddefaults; index9 valid160-charRU
+  label with>=80unbrokencharacters,actualTEAM writer. Existingnine scenario,
+  review/focus/auth/open functions independently bytecompared to063main and
+  identical. UI/sharedButton/API/auth/RLS/schema/workflow/baseline unchanged.
+- New320x844case uses realnativeTab/Enter/Space Cancel/reopen/commit/loss/retry,
+  fullCancelstate/POST0,specificgeneration-boundTEAMdraft,2rows/1audit,
+  heldcommittedresponse/bothbuttonsdisabled,byte-identicalretry[true,false]/
+  exactstateequal0replaywrites,visiblefocusedtargets/realsession/team. New
+  postflight assertsallold9completedbeforecase and10beforepopulatedRLSprobe.
+- Geometrymeasures renderedcontrols andeachtextNodeRange fragment against own
+  box,calendar/main/viewport andclippingancestors; 1CSSpixel roundingtolerance
+  recordedfornewcaseonly. Textreadingscroll checks eachline against paragraph
+  andverticalclippingancestors,positivefragments/preservedfocus; nofocus
+  injection. Individualfocusedtargets retainexistingstrict0-tolerancehelper.
+  Longnewconfirmation mayscrollvertically; old9wholeconfirmation checksunchanged.
+  Nineviewport-phasePNGs plusanonymousgeometry/readingdiagnostics retained.
+  Horizontalfailures collectedthroughfunctionalflow, thenstrictlyrequirezero
+  beforecasePASS; failures are neverdropped/relabeled, overallFAILifany.
+- Currenttree node syntax/scopedESLint/whitespace PASS. Actualthree targetedsuites
+  57/57 PASS2.44s withmaxWorkers1,/tmp/workforce-reflow-part18-final-targeted.log.
+  Earlier3.09s check retainedhistorically. RAM~15GBavailable,pressure0,disk338GB
+  free; checks small/sequential. FullContabotype/build/suite/browser/PG/Android/
+  load NOT RUN perhostcontract; no localbrowser used. Actualnew10case NOT RUN.
+- Publishonlyafterindependentexactsource/receipt review. Existingnonproduction
+  browserworkflow_dispatch canrun reviewedbranch diagnostic while PRstaysdraft;
+  thisisbranchSHA evidence, notPRsyntheticmerge evidence. FinalreadyPRmuststill
+  run actual10onexactcandidate/base andallfivefreshmandatorycontexts before
+  normalmerge/deploy. Existingworkflow/guards unchanged, no productiondispatch.
+- Currentstatus: newharnessimplemented,actualreflowproof pending. Lastaction:
+  meaningfulgeometry/functional assertions andactualbounded57tests. Precise
+  stoppingpoint: checkpoint/exactreview beforedraftpublication/hosteddiagnostic.
+  Nextaction: actual10, inspectoriginalreceipt/viewportPNG/measurements, fixonly
+  provedcalendarclipping, finalexactheadreview/readyfiveGREEN/freshmainrelease.
+  Progress59%,81/161,14/15,C8 36%,80non-DONE,007PARTIAL; nativezoom/AT/wholepage/
+  contrast/authenticatedproductioncalendar/physical/Android/load/pilot NOT RUN.
+  Generalupdate/delete/breakpolicy/AGENTmoves/Routemutation excluded.
+
+
+## 2026-10-03 (Asia/Baku) — fresh539 main integrated, first reflow candidate frozen
+
+- Prepublication fetch foundmain advanced063->779fce0cb1bdd882d296942bd25a412d9b115d52
+  via#539,9Instagram callback/helper/test paths,no Workforce overlap. Ordinary
+  merge1a05ffc4dfcc7065feaa227cdc36f95e684ecd68 completedwithoutconflicts;
+  all9incomingpaths byteequalmain andnewharness byteequalcb94db1d1 checkpoint.
+  Foreigndata-deletion/revoke behavior belongs tomain, no task-ownedchanges.
+- Integratedcurrenttree actualthree boundedUI/reversal/API suites57/57PASS2.47s,
+  /tmp/workforce-reflow-part18-integrated-targeted.log; syntax/scopedlint/diff
+  PASS. Node20/oneworker, RAM15GBavailable/pressure0/disk338GB, no heavylocalrun.
+  Earlier57/2.44and3.09 logs historical. Actualnew10 hostedcases NOT RUN.
+- Currentstatus: harness-only integratedcandidate beforeindependentexactreview.
+  Lastaction: preservefreshforeignmain andactualboundedchecks. Precise stopping
+  point: frozencheckpoint/review beforedraftPR andexistingnonproductionbrowser
+  dispatch. Nextaction: actualbranchdiagnostic10/geometryscreens, fixonlyproved
+  UIclipping, finalexactcandidate PRready10/fiveGREEN/freshmain normalrelease.
+  Existingold9functions/helpers/auth unchanged; 24originalreceipts retained,
+  docs3appendonly, sourceUI/API/schema/auth/RLS/workflows/baseline unchanged.
+  Progress81/161,14/15,C836%,59%,80non-DONE,007PARTIAL; nativezoom/AT/wholepage/
+  contrast/authenticatedproductioncalendar/physical/Android/load/pilot NOT RUN.
+
+
+## 2026-10-03 (Asia/Baku) — exact137 review, draft540 and hosted branch diagnostic
+
+- Independent read-only review of clean source candidate 137c74ec45441b96670e16cd89fb1ce2bebaefb8 against fresh main 779fce0cb1bdd882d296942bd25a412d9b115d52 is GREEN: P0=0, P1=0, P2=0, P3=0. Full diff 12 paths / 130,049 bytes / SHA256 37eae594b7bb9de37f099663b5fd5618dd3af148bc45ce5ab88b944e216fefd8; non-doc 1 path / 18,626 bytes / SHA256 5b41a0a6f00882543a6490ddbd47f4dd67244a6762b898e43490889c0c2e8c19.
+- Entire harness, auth pacing, native focus, reading scroll, cancel/full-state, real transaction/exact replay, handler/finally cleanup and RLS guards reviewed. All 22 existing helpers except optional pair-label parameter and all nine old invocations remain byte-exact. Horizontal failures remain fatal before new case PASS. All 24 original JSON receipts are byte-exact to published b5; three document prefixes retained, identical 25,508-byte appended suffix; nine incoming #539 paths byte-exact to main.
+- Immediately preceding publication fresh fetch still main779; no conflicts. Pushed exactly reviewed137 to codex/workforce-completion-part18 and created attached DRAFT PR https://github.com/rashadoni/leaddrive-v2/pull/540. Production remains only 13.140.132.245:/opt/leaddrive-v2 through reviewed main -> deploy.yml; no production action occurred in this phase. Existing autonomous task authorization persists.
+- Existing nonproduction workflow_dispatch run https://github.com/rashadoni/leaddrive-v2/actions/runs/37108693462 started 08:08:30Z on exact137. It is in progress, preliminary branch evidence; checkedMergeSha will be branch137, not a PR synthetic merge. Draft pull_request run37108683234 SKIPPED is preserved historically and receives no acceptance credit. Final ready PR must still prove actual ten on its candidate/base plus all five required contexts, unchanged app15368 protection.
+- Current result: exact source review GREEN and draft diagnostic launched; actual hosted ten not yet complete. Last completed action: publish137/create540/start existing isolated browser workflow. Precise stopping point: waiting for original receipt, measurements and actual screenshots. Next action: inspect real ten-case result, fix only proved calendar clipping if needed, final exact-head review/ready ten/five GREEN/fresh-main merge/deploy/public exact merged SHA. Private append-only checkpoints do not restart CI.
+- Progress remains DONE81/161, GATES14/15, C8 36%, overall59%, 80 non-DONE/about41% weighted, WF-C8-007 PARTIAL. Full local build/typecheck/suite/browser/PG/Android/load NOT RUN under Contabo contract; native zoom/AT/whole-page keyboard/contrast/authenticated production calendar/physical/pilot NOT RUN. General update/delete, break policy, AGENT moves and Route mutation excluded.
+
+
+## 2026-10-03 (Asia/Baku) — actual320 clipping retained and narrow wrapping candidate
+
+- Preliminary branch diagnostic37108693462 / job111162180378 completed FAIL at08:14:23Z; artifact11268976518, 2,591,932 bytes, archive SHA256 ad803d4473f124a8ba3602df81d58f3ad57f840d602c033fb1be16bbf865694c. Exact head/checkedMergeSha both137; this is not final PR synthetic evidence. Original receipt copied byte-exact to docs/evidence/workforce-c8-calendar-reflow-2026-10-03-137c74ec-failed-diagnostic.json: 30,989 bytes / SHA256 1b430c09c5f49ca99ca85257121d774df5bdc710b7836101b0b26484c8327944, UTC08:12:52.037Z–08:14:19.844Z.
+- All old nine cases PASS; new functional sequence actually completed Cancel POST0/full-state unchanged, real committed response loss, two POSTs/byte-identical generation draft, two tombstones/one audit, responses[true,false], state-equal replay writes0 and real session preserved. All twelve CSRF/callbacks200, conservative pacing waits28,016/14,099/191ms at ordinals9/10/12; no auth bypass/retry. New case is NOT PASS: final horizontal assertion failed with93 observations across inventory3/review12/confirm12/cancel12/cancel-source10/reopened-review12/unknown12/retry-confirm12/replay8. Final populated RLS probe NOT REACHED; initial restricted-role fail-closed checks only.
+- Root and independent reviewer read original receipt and actual320 viewport PNGs. Long inventory text right2314.234375 vs own clip281; review text right2042.34375 vs clip287; confirm text left74.875/right309.140625 outside own97..287. Additional refresh/form controls overflow observed. Twelve positive reading probes preserved focus/vertical reachability, all scrolls0 in this failed attempt; this does not prove horizontal readability. Raw logs/cookies/passwords are not preserved.
+- Applied adapt skill with required impeccable preparation/responsive reference in allowed worktree; existing CRM theme/context and user-bounded reversal scope retained. Narrow seven-line class-only delta in calendar component: overflow-wrap:anywhere on inventory/review labels, min-w-0 inventory text container, h-auto/max-w-full/whitespace-normal on refresh/confirm/create buttons, explicit grid-cols-1 (minmax0) below existing md:grid-cols-4. No sections/copy/logic/focus/auth/RLS/API/schema/Route/shared Button/app shell/workflow/baseline changes. Harness byte-exact to reviewed137, assertions/tolerance retained.
+- Actual bounded three UI/reversal/API suites57/57 PASS2.52s /tmp/workforce540-wrap-targeted.log; scoped ESLint/syntax/diff checks PASS. RAM14.9GB available, pressure0, disk338GB free, one worker; no heavy local run. Freshmain remains779. Exact wrapping candidate awaits independent source/original-integrity review; corrected hosted ten is NOT RUN. DRAFT540 remains draft while iterating; final ready ten/five mandatory GREEN/fresh-main normal release still required.
+- Current result: real clipping proved, originalFAIL retained and narrow correction implemented. Last completed action: class-only fix and57 bounded tests. Precise stopping point: frozen corrected checkpoint before independent review/publication. Next action: reviewed candidate hosted ten, actual text/control/screenshot inspection; ready PR full gates and normal merge/deploy only when verified. Progress81/161,14/15,C8 36%,overall59%,80 non-DONE,007PARTIAL; full local build/typecheck/suite/browser/PG/Android/load and nativezoom/AT/whole-page/contrast/production calendar/physical/pilot NOT RUN.
+
+
+## 2026-10-03 (Asia/Baku) — corrected1ae review and hosted diagnostic publication
+
+- Independent exact-head source/integrity review of clean1ae970d9003fa3ad60f36cf36614fa54b9c7e638 vs fresh main779 is GREEN: P0=0/P1=0/P2=0/P3=0. Full14 paths/185,916 bytes/SHA2565b3d5a3dd79586fd245f2ef5345d8b47b0c611a9560eab1c499dd2176b6d0cea; non-doc2 paths/22,933 bytes/SHA256e803d019fbd551b9c1bf6715c25324054a94b04023a3451f0b055a57da989c95. Seven class edits reviewed against observed clipping; installed class merging confirms h-auto/whitespace-normal override inherited h-9/nowrap while retaining min-h-11/max-w-full. Whole UI minus literal class attributes is byte-equivalent; harness remains byte-exact137. All25 originals and three append-only documents retained, incoming9 paths exact main.
+- Independent diagnostic reviewer individually viewed all nine actual137 viewport PNGs.93 measurements represent repeated phase observations, not93 distinct defects. Reading probes have no scrolls in the failed137 attempt; do not claim its line-scroll branch was exercised. Independent diagnostic review /tmp/workforce540-browser-137-diagnostic/independent-diagnostic-review.json,5,019 bytes/SHA256bcc79dfbda56a4b6abc4b482ab575fdfc1858081fb07f466c17c2460c133b5cd, corroborates old9PASS/newfunctional completion/horizontalFAIL/finalpopulatedRLS NOT REACHED.
+- Fresh prepublication fetch stillmain779, clean exact1ae pushed to own part18 branch. PR540 remains DRAFT with description/title rewritten for actual clipping and narrow correction. Existing isolated browser workflow_dispatch37110061877 started08:32:43Z on exact1ae; in progress. Draft pull_request37110057367 SKIPPED has no acceptance credit. This dispatch remains preliminary branch evidence, not final candidate/base proof; five required contexts/workflow/baseline unchanged.
+- Current result: corrected source review GREEN and corrected real diagnostic launched. Last completed action: publish exact1ae/update draft540/dispatch existing browser workflow. Precise stopping point: original corrected receipt and measurements/screenshots pending. Next action: verify actualten/zero clipping/native focus/reading/transaction+replay/session/populatedRLS; finalize ready candidate with freshmain/exactreview and actualPRten/fiveGREEN before normalrelease. Source GREEN alone is not acceptance. Private doc-only checkpoint does not restart CI. Progress59%,81/161,14/15,C8 36%,007PARTIAL; previous NOT RUN limits/exclusions remain.
+
+
+## 2026-10-03 (Asia/Baku) — corrected real ten-case diagnostic PASS, ready candidate preparation
+
+- Corrected preliminary branch dispatch37110061877 / job111166058354 SUCCESS, completed08:39:27Z; actual harness UTC08:37:51.738Z–08:39:20.860Z,89.122s. Artifact11269057973,2,445,123 bytes/archive SHA256bdf6f6364cc4a7397952bc8be1c68ca4d48fffca59c1ac80a0a5a5910feee383. Original receipt copied byte-exact to docs/evidence/workforce-c8-calendar-reflow-2026-10-03-1ae970d9-diagnostic.json:10,805 bytes/SHA256275df7dbec1690cd56d7316f7f79bae9bfb63f1433cdfe3d0d72d69aa79eaa16. candidateHead==checkedMergeSha==1ae970d9003fa3ad60f36cf36614fa54b9c7e638; branch dispatch only, not final PR synthetic acceptance.
+- Actual ten cases PASS, old nine retained; new320x844 TEAM/RU label160/native sourceTabs22 case PASS. All nine geometry phases have positive control/text counts and zero failures under unchanged1CSS-pixel rounding tolerance; old strict viewport/focus assertions retained. All twelve reading diagnostics positive/verticallyReadable/focusPreserved, actual inventory-label scrolls1+2=3; no focus injection. Root viewed actual inventory/review/confirm/unknown/replay/cancel-source viewport PNGs and verified originalJSON. Independent nine-image review is in progress at this entry's timestamp; no final independent screenshot result claimed yet.
+- Actual Cancel POST0/full-state unchanged, real committed-response loss/disabled buttons, exact generation-bound serialized TEAM draft, two POSTs/byte-identical retry, responses[true,false], two tombstones/one audit, full-state-equal replay writes0 and session preserved. All12 realCSRF/callbacks200; pacing waits30,146/12,798ms at9/10, no auth retry/bypass. Initial restricted role superuser=false/bypassRls=false and final populatedAuditAndCalendarFailClosed=true actually reached. Old principal/tenant held-read navigation/session flags retainactualPASS. Development-bundle evidence does not claim production/authenticated-calendar/physical/AT/nativezoom/load/pilot proof.
+- Original137 failure remains byte-exact and historical; corrected89.122s proof supersedes its pending correction but never rewrites its93 observations/no10PASS/finalRLS-not-reached. Seven component class edits and harness unchanged since independent1aeGREEN; source57/57/2.52s/scopedlint/syntax/diff receipts remain applicable, no unnecessary localrerun. Existing25 originals plus new26th receipt retained.
+- Current result: actual corrected branch ten PASS; final ready candidate preparation. Last completed action: root original receipt/assertion/screenshot inspection and byte-exact preservation. Precise stopping point: final checkpoint exact-head/integrity review before publication/ready; independent corrected screenshot review pending. Next action: publish reviewed final candidate, confirm settled exact PR head/base, ready540 -> actual ten on synthetic candidate/base plus allfive required GREEN -> freshmain normalmerge/deploy/public exact own merged SHA. Draft skips receive no credit. No weakening/newagent-review context/manualproduction action.
+- Progress DONE81/161,GATES14/15,C8 36%,overall59%,80non-DONE/about41%weighted,007PARTIAL unchanged. Full local build/typecheck/suite/browser/PG/Android/load NOT RUN under host contract; physical devices/nativezoom/AT/wholepage/contrast/authenticatedproductioncalendar/pilot NOT RUN. General update/delete/breakpolicy/AGENTmoves/Routemutation excluded.
+
+
+## 2026-10-03 (Asia/Baku) — independent corrected proof GREEN, fresh530 main integrated
+
+- Independent corrected branch diagnostic and all nine actual320 viewport PNGs GREEN P0=0/P1=0/P2=0/P3=0. Original1ae proof10PASS/nine zero-failure phases/908 measured phase text fragments,12 positive readings/106 reading fragments/3 actual inventory scrolls,12CSRF/callback200, native22tabs/focus, actual Cancel0/full-state and realcommit/exactreplay2rows/1audit/0replaywrites/session/finalpopulatedRLS corroborated. Immutable independent review /tmp/workforce540-browser-1ae-diagnostic/independent-diagnostic-review.json,8,178bytes/SHA2561ff659e3856da3299b8932e399c4f451c18a19903dabdf24a3dfbdb9a1cc57b4. Development issue badge observed; no production/causal/nativezoom/AT claim. Prior entry's independent image review pending is superseded by this actualGREEN; original primary receipt retained unchanged.
+- Exact clean83b9aa81f1a79cfadf29db2d6af4f0f628eff30a integrity review GREEN relative779: full15paths/215,292bytes/SHA256db90d596e2652d845456711025b53937ab6e7c19b038e405d6aa7014b4813771; non-doc2paths/22,933bytes/SHA256e803d019fbd551b9c1bf6715c25324054a94b04023a3451f0b055a57da989c95. Code exact1ae,26originals/three append-only docs verified. Final independent ls-remote detected main advanced to f62ab3a609a0461cbd14c264306df2d28325628f; fresh-main requirement explicitly FALSE for83, so83 was never published/markedready as a stale candidate.
+- Fresh main#530 brings29 Support evidence/telemetry/API paths, no direct Workforce overlap. Ordinary merge completed conflict-free; all29 incoming paths byte-exactf62 and both Workforce source paths byte-exactreviewed1ae. Incoming .gitleaks test-only AND allowlist is part of already reviewedmain, preserved unchanged; task delta changes no baseline/check/security policy. Legacy/calendar/agent and ticket-macros routes are separate from Workforce calendar endpoint; no shared auth/RLS/schema/Workforce workflow changes in this advance. No foreign PR/worktree edits.
+- Postintegration current actual bounded UI/reversal/API57/57 PASS2.42s /tmp/workforce540-f62-integrated-targeted.log; syntax/scopedlint/diffPASS. RAM14.7GBavailable/pressure0/disk338GB, sequentialoneworker; no heavylocalcheck. Earlier57/2.52 remains historical1ae source evidence. Final integrated hosted ten still NOT RUN; prior1ae branchPASS does not substitute current synthetic proof.
+- Current result: corrected real diagnostic independently GREEN and freshmain530 preserved. Last completed action: fresh-main ordinary merge/source identity and bounded checks. Precise stopping point: integrated checkpoint before independent exact-head review/final publication/ready. Next action: reviewed finalhead -> ready540 actualten/synthetic+five mandatory GREEN -> freshmain normalmerge/deploy/public exact own merged SHA. Progress59%,81/161,14/15,C8 36%,80non-DONE,007PARTIAL; previous NOT RUN limits/exclusions unchanged.

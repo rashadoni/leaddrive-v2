@@ -1,0 +1,106 @@
+{
+  "exactMergedSha": "46739dbe0c158e9f48455398463e401e42b927e2",
+  "requests": [
+    {
+      "label": "build-info-first",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info?receipt=46739dbe0c158e9f48455398463e401e42b927e2",
+      "startedAt": "2026-10-02T23:53:21.553951+00:00",
+      "completedAt": "2026-10-02T23:53:21.620293+00:00",
+      "transport": "strict-pinned-domain",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 112,
+      "sha256": "f4c5ad601699272a5f106c5ffa20a956d2025ce83f2ade2d1c28d3ec7bf25b1c",
+      "bodyPath": "/tmp/workforce537-production-467-root-final/build-info-first.json",
+      "body": {
+        "sha": "46739dbe0c15",
+        "artifactSha": "46739dbe0c158e9f48455398463e401e42b927e2",
+        "builtAt": "2026-10-02T23:31:29Z"
+      }
+    },
+    {
+      "label": "ping",
+      "url": "https://app.leaddrivecrm.org/api/v1/ping?receipt=46739dbe0c158e9f48455398463e401e42b927e2",
+      "startedAt": "2026-10-02T23:53:21.620784+00:00",
+      "completedAt": "2026-10-02T23:53:21.676817+00:00",
+      "transport": "strict-pinned-domain",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "bodyPath": "/tmp/workforce537-production-467-root-final/ping.json",
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "label": "build-info-confirm",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info?receipt=46739dbe0c158e9f48455398463e401e42b927e2",
+      "startedAt": "2026-10-02T23:53:21.677551+00:00",
+      "completedAt": "2026-10-02T23:53:21.746510+00:00",
+      "transport": "strict-pinned-domain",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 112,
+      "sha256": "f4c5ad601699272a5f106c5ffa20a956d2025ce83f2ade2d1c28d3ec7bf25b1c",
+      "bodyPath": "/tmp/workforce537-production-467-root-final/build-info-confirm.json",
+      "body": {
+        "sha": "46739dbe0c15",
+        "artifactSha": "46739dbe0c158e9f48455398463e401e42b927e2",
+        "builtAt": "2026-10-02T23:31:29Z"
+      }
+    },
+    {
+      "label": "ip-strict-ping",
+      "url": "https://13.140.132.245/api/v1/ping?receipt=46739dbe0c158e9f48455398463e401e42b927e2",
+      "startedAt": "2026-10-02T23:53:21.747181+00:00",
+      "completedAt": "2026-10-02T23:53:21.820527+00:00",
+      "transport": "strict-literal-ip",
+      "targetIp": "13.140.132.245",
+      "curlExit": 60,
+      "httpStatus": "000",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bodyPath": "/tmp/workforce537-production-467-root-final/ip-strict-ping.json",
+      "body": null,
+      "transportError": "curl: (60) SSL: no alternative certificate subject name matches target host name '13.140.132.245'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above."
+    },
+    {
+      "label": "ip-ping",
+      "url": "https://13.140.132.245/api/v1/ping?receipt=46739dbe0c158e9f48455398463e401e42b927e2",
+      "startedAt": "2026-10-02T23:53:21.820999+00:00",
+      "completedAt": "2026-10-02T23:53:21.871598+00:00",
+      "transport": "insecure-literal-ip-supplement",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "bodyPath": "/tmp/workforce537-production-467-root-final/ip-ping.json",
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "label": "ip-build-info",
+      "url": "https://13.140.132.245/api/v1/public/build-info?receipt=46739dbe0c158e9f48455398463e401e42b927e2",
+      "startedAt": "2026-10-02T23:53:21.872077+00:00",
+      "completedAt": "2026-10-02T23:53:21.933852+00:00",
+      "transport": "insecure-literal-ip-supplement",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 112,
+      "sha256": "f4c5ad601699272a5f106c5ffa20a956d2025ce83f2ade2d1c28d3ec7bf25b1c",
+      "bodyPath": "/tmp/workforce537-production-467-root-final/ip-build-info.json",
+      "body": {
+        "sha": "46739dbe0c15",
+        "artifactSha": "46739dbe0c158e9f48455398463e401e42b927e2",
+        "builtAt": "2026-10-02T23:31:29Z"
+      }
+    }
+  ]
+}
