@@ -345,10 +345,10 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
   assert.ok((await articles.nth(3).innerText()).includes(view.ui.managerPlanState.NON_WORKING_DAY))
   assert.ok((await articles.nth(5).innerText()).includes(view.ui.managerPlanState.NON_WORKING_DAY))
   if (exceptions) {
-    assert.ok((await articles.nth(1).innerText()).includes(view.ui.timesheetExceptionType.NO_SHOW))
+    assert.ok((await articles.nth(1).innerText()).includes(view.ui.timesheetApprovalException.NO_SHOW))
     assert.ok((await articles.nth(1).innerText()).includes(view.ui.timesheetExceptionStatus.OPEN))
   } else {
-    assert.equal(await section.getByText(view.ui.timesheetExceptionType.NO_SHOW, { exact: true }).count(), 0)
+    assert.equal(await section.getByText(view.ui.timesheetApprovalException.NO_SHOW, { exact: true }).count(), 0)
   }
   assert.equal(await section.getByText(fixture.employees[25].name, { exact: true }).count(), 0)
   await view.page.screenshot({ path: `${outputDirectory}/${principal.key}-${locale}-first-page.png`, fullPage: true })
@@ -501,11 +501,20 @@ try {
   }
   process.exitCode = 1
 } finally {
-  const cleanup = await Promise.allSettled([
-    ...contexts.map(context => context.close()),
-    ...(browser ? [browser.close()] : []),
-    app.$disconnect(), admin.$disconnect(),
-  ])
+  // A browser must outlive its contexts' request/channel disposal. Keep each
+  // rejection fatal, and record only fixed action labels and safe error types.
+  const contextCleanup = await Promise.allSettled(contexts.map(context => context.close()))
+  const browserCleanup = browser ? await Promise.allSettled([browser.close()]) : []
+  const databaseCleanup = await Promise.allSettled([app.$disconnect(), admin.$disconnect()])
+  const cleanup = [...contextCleanup, ...browserCleanup, ...databaseCleanup]
+  const labels = [...contexts.map((_, index) => `context-${index + 1}`), ...(browser ? ["browser"] : []), "application-database", "fixture-database"]
+  receipts.cleanupActions = cleanup.map((result, index) => ({
+    action: labels[index],
+    status: result.status === "fulfilled" ? "PASS" : "FAIL",
+    ...(result.status === "rejected" ? {
+      name: ["TimeoutError", "PrismaClientKnownRequestError", "PrismaClientValidationError"].includes(result.reason?.name) ? result.reason.name : "Error",
+    } : {}),
+  }))
   receipts.cleanup = cleanup.every(result => result.status === "fulfilled") ? "PASS" : "FAIL"
   if (receipts.cleanup === "FAIL") { receipts.status = "FAIL"; process.exitCode = 1 }
   receipts.completedAt = new Date().toISOString()

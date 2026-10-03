@@ -117,7 +117,7 @@ describe("Workforce manager Today UI", () => {
 
     expect(container.textContent).toContain("Aysel Aliyeva")
     expect(container.textContent).toContain("managerAttendanceState.NO_SHOW")
-    expect(container.textContent).toContain("timesheetExceptionType.NO_SHOW")
+    expect(container.textContent).toContain("timesheetApprovalException.NO_SHOW")
     expect(container.textContent).toContain("Murad Hasanov")
     expect(container.textContent).toContain("managerCalendarState.APPROVED_LEAVE")
     expect(container.textContent).toContain("managerExceptionsRestricted")
