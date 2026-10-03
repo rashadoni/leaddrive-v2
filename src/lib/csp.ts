@@ -43,6 +43,11 @@ const SOCIAL_MEDIA_CDNS = [
   "https://*.tiktok.com",
 ].join(" ")
 
+// Meta's JS SDK for WhatsApp Embedded Signup (components/channels/whatsapp-embedded-signup): the
+// script itself loads under 'strict-dynamic' (our nonced bundle inserts it), but the SDK talks to
+// facebook.com and runs helper iframes from it while the signup popup is open.
+const META_SDK_ORIGINS = "https://www.facebook.com https://web.facebook.com https://staticxx.facebook.com https://connect.facebook.net"
+
 // Inline video players embedded in the social-monitoring feed (mention cards
 // render an <iframe> for YouTube watch/shorts and TikTok video URLs). Without
 // these in frame-src the browser blocks every embed under the default policy.
@@ -65,13 +70,13 @@ export function buildCsp(nonce: string, frameAncestors: FrameAncestorsMode = "no
     "img-src 'self' data: blob: https:",
     `media-src 'self' blob: ${SOCIAL_MEDIA_CDNS}`,
     "font-src 'self' data: https://fonts.gstatic.com",
-    `connect-src 'self' ${process.env.NEXTAUTH_URL || "https://app.leaddrivecrm.org"} ${process.env.NEXT_PUBLIC_MARKETING_URL || "https://leaddrivecrm.org"} https://api.anthropic.com https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://accounts.google.com https://login.microsoftonline.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://tile.openstreetmap.de https://core-renderer-tiles.maps.yandex.net https://unpkg.com ${SOCIAL_MEDIA_CDNS}`,
+    `connect-src 'self' ${process.env.NEXTAUTH_URL || "https://app.leaddrivecrm.org"} ${process.env.NEXT_PUBLIC_MARKETING_URL || "https://leaddrivecrm.org"} https://api.anthropic.com https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://accounts.google.com https://login.microsoftonline.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://tile.openstreetmap.de https://core-renderer-tiles.maps.yandex.net https://unpkg.com ${SOCIAL_MEDIA_CDNS} ${META_SDK_ORIGINS}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "form-action 'self' https://accounts.google.com https://login.microsoftonline.com",
     // The optional MTM Google Maps Embed iframe is separate from the
     // product-owned Leaflet map and is rendered only after an explicit click.
-    `frame-src 'self' https://editor.unlayer.com https://*.unlayer.com https://www.google.com ${VIDEO_EMBED_FRAMES}`,
+    `frame-src 'self' https://editor.unlayer.com https://*.unlayer.com https://www.google.com ${VIDEO_EMBED_FRAMES} ${META_SDK_ORIGINS}`,
   ]
   if (frameAncestors !== "omit") {
     directives.push(`frame-ancestors '${frameAncestors}'`)

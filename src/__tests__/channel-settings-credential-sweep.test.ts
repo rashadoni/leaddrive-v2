@@ -36,6 +36,7 @@ describe("channel settings never serve a credential", () => {
     ["apiKey", "generic provider key"],
     ["accessToken", "provider access token"],
     ["refreshToken", "provider refresh token"],
+    ["registrationPin", "WhatsApp two-step verification PIN set by Embedded Signup (stored encrypted, still not served)"],
   ])("strips %s (%s)", key => {
     const out = channel({ [key]: "the-actual-secret-value", displayName: "Main" })
     expect(out.settings).not.toHaveProperty(key)

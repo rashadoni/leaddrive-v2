@@ -138,10 +138,19 @@ async function resolveWhatsAppWebhookChannelConfig({
   tenantCtx,
   tenantSlug,
   phoneNumberId,
+  signedBySharedApp = false,
 }: {
   tenantCtx: WhatsAppWebhookTenantCtx | null
   tenantSlug: string | null
   phoneNumberId: unknown
+  /**
+   * The payload carries a valid signature of LeadDrive's shared Meta app (env WHATSAPP_APP_SECRET).
+   * Meta sends every WABA subscribed to that app to the app's ONE callback URL — whatever `?t=` it
+   * happens to carry — so a number onboarded through Embedded Signup must still be found when the URL
+   * names another tenant. Only this signature unlocks that lookup: a tenant's own app secret never
+   * reaches another workspace's number.
+   */
+  signedBySharedApp?: boolean
 }): Promise<WhatsAppWebhookChannelConfig | null> {
   const phoneId = String(phoneNumberId || "")
   let channelConfig: WhatsAppWebhookChannelConfig | null = null
@@ -160,7 +169,12 @@ async function resolveWhatsAppWebhookChannelConfig({
       })
     )
     if (row) channelConfig = { id: row.id, organizationId: row.organizationId, settings: row.settings, appSecret: row.appSecret || null }
-    else {
+    else if (signedBySharedApp) {
+      channelConfig = await resolveEmbeddedSignupChannelConfig(phoneId)
+      if (!channelConfig) {
+        console.warn(`[WA Webhook] POST: tenant=${tenantSlug} and no Embedded Signup channel for phone_number_id=${sanitizeLog(phoneId)}. Ignoring.`)
+      }
+    } else {
       console.warn(`[WA Webhook] POST: tenant=${tenantSlug} but phone_number_id=${sanitizeLog(phoneId)} doesn't match its ChannelConfig. Ignoring.`)
     }
     return channelConfig
@@ -182,6 +196,23 @@ async function resolveWhatsAppWebhookChannelConfig({
   )
   if (row) channelConfig = { id: row.id, organizationId: row.organizationId, settings: row.settings, appSecret: row.appSecret || null }
   return channelConfig
+}
+
+/** An active channel onboarded through Embedded Signup for this number, in any workspace. */
+async function resolveEmbeddedSignupChannelConfig(phoneId: string): Promise<WhatsAppWebhookChannelConfig | null> {
+  if (!phoneId) return null
+  // RLS: org resolution by external identifier (phone_number_id) -> bypass scope.
+  const row = await runWithRlsBypass(() =>
+    prisma.channelConfig.findFirst({
+      where: {
+        channelType: "whatsapp",
+        isActive: true,
+        phoneNumberId: phoneId,
+        settings: { path: ["embeddedSignup"], equals: true },
+      },
+    })
+  )
+  return row ? { id: row.id, organizationId: row.organizationId, settings: row.settings, appSecret: row.appSecret || null } : null
 }
 
 export async function GET(req: NextRequest) {
@@ -298,10 +329,14 @@ export async function POST(req: NextRequest) {
       console.error(`[WA Webhook] POST: invalid signature (tenant=${tenantSlug || "legacy"}, phone_number_id=${sanitizeLog(String(phoneNumberId || ""))})`)
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
     }
+    const sharedAppSecret = process.env.WHATSAPP_APP_SECRET || null
+    const signedBySharedApp = !!sharedAppSecret && verifyWhatsAppSignature(rawBody, signature, sharedAppSecret)
+    const resolveChannel = () =>
+      resolveWhatsAppWebhookChannelConfig({ tenantCtx, tenantSlug, phoneNumberId, signedBySharedApp })
 
     if (isCallWebhook) {
       const channelConfig = legacyChannelConfigForSignature
-        ?? await resolveWhatsAppWebhookChannelConfig({ tenantCtx, tenantSlug, phoneNumberId })
+        ?? await resolveChannel()
       if (!channelConfig) {
         console.log(`[WA Webhook] POST: no matching ChannelConfig for calls phone_number_id=${sanitizeLog(String(phoneNumberId))} (tenant=${tenantSlug || "none"}) — ignoring to avoid cross-tenant leak`)
         return NextResponse.json({ ok: true })
@@ -320,7 +355,7 @@ export async function POST(req: NextRequest) {
     // Handle message status updates (sent, delivered, read)
     if (value.statuses) {
       const statusChannelConfig = legacyChannelConfigForSignature
-        ?? await resolveWhatsAppWebhookChannelConfig({ tenantCtx, tenantSlug, phoneNumberId })
+        ?? await resolveChannel()
       if (!statusChannelConfig) {
         console.log(`[WA Webhook] POST: no matching ChannelConfig for status phone_number_id=${sanitizeLog(String(phoneNumberId))} (tenant=${tenantSlug || "none"}) — ignoring to avoid cross-tenant status write`)
         return NextResponse.json({ ok: true })
@@ -346,7 +381,7 @@ export async function POST(req: NextRequest) {
     //    for un-migrated rows). No more "first active config" fallback — the
     //    previous behaviour routed cross-tenant inbound into random orgs.
     const channelConfig = legacyChannelConfigForSignature
-      ?? await resolveWhatsAppWebhookChannelConfig({ tenantCtx, tenantSlug, phoneNumberId })
+      ?? await resolveChannel()
 
     if (!channelConfig) {
       console.log(`[WA Webhook] POST: no matching ChannelConfig for phone_number_id=${sanitizeLog(String(phoneNumberId))} (tenant=${tenantSlug || "none"}) — ignoring to avoid cross-tenant leak`)

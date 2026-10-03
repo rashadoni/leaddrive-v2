@@ -60,6 +60,16 @@ const SERVER_OWNED_SETTING_KEYS_BY_TYPE: Readonly<Record<string, readonly string
     "socialLeadGroupName",
     "whatsappSocialLeadGroupId",
     "whatsappSocialLeadGroupName",
+    // api/v1/channels/whatsapp/embedded-signup (lib/whatsapp-embedded-signup). `embeddedSignup` is what routes
+    // the number's webhooks to this workspace behind the shared app's callback (webhooks/whatsapp): a Save that
+    // erased it would drop every inbound message from then on. `registrationPin` is the number's two-step
+    // verification PIN, the only copy LeadDrive has.
+    "embeddedSignup",
+    "businessId",
+    "displayPhoneNumber",
+    "onboardedAt",
+    "registration",
+    "registrationPin",
   ],
 }
 
