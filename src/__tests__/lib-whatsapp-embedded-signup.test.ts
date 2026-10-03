@@ -71,8 +71,8 @@ function stubGraph() {
 const input = { organizationId: "org_a", code: "CODE", wabaId: "111222333", phoneNumberId: "444555666", businessId: "99988877", createdBy: "user_1" }
 
 beforeEach(() => {
-  process.env.WHATSAPP_APP_ID = "2414060595720618"
-  process.env.WHATSAPP_APP_SECRET = "APP_SECRET"
+  process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_ID = "2414060595720618"
+  process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET = "APP_SECRET"
   process.env.WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID = "1234567890"
   db.rows.length = 0
   phoneStatus = "PENDING"

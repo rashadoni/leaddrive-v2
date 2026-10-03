@@ -23,16 +23,19 @@ import { redactOAuthProviderText } from "@/lib/oauth-redaction"
  * customer's and is shown to them, not done here.
  *
  * Configuration (all three or nothing; the feature stays hidden otherwise):
- *   WHATSAPP_APP_ID, WHATSAPP_APP_SECRET            LeadDrive's shared Meta app (the Tech Provider app)
- *   WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID              the Facebook Login for Business configuration id
+ *   WHATSAPP_EMBEDDED_SIGNUP_APP_ID, WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET
+ *                                       LeadDrive's shared Meta app (the Tech Provider app)
+ *   WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID  the Facebook Login for Business configuration id
+ * Deliberately NOT the older WHATSAPP_APP_SECRET: webhooks/whatsapp gives that one a meaning of its own (the
+ * secret for callbacks without `?t=`), and setting it would change how those are verified.
  */
 const GRAPH = "https://graph.facebook.com/v21.0"
 
 export type WhatsAppPlatformApp = { appId: string; appSecret: string; configId: string }
 
 export function whatsappPlatformApp(): WhatsAppPlatformApp | null {
-  const appId = process.env.WHATSAPP_APP_ID?.trim()
-  const appSecret = process.env.WHATSAPP_APP_SECRET?.trim()
+  const appId = process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_ID?.trim()
+  const appSecret = process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET?.trim()
   const configId = process.env.WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID?.trim()
   return appId && appSecret && configId ? { appId, appSecret, configId } : null
 }
@@ -172,7 +175,7 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     phoneNumberId,
     businessAccountId: wabaId,
     displayName: verifiedName,
-    // The shared app's secret verifies webhooks for this row (env WHATSAPP_APP_SECRET); nothing per row.
+    // The shared app's secret verifies webhooks for this row (env WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET); nothing per row.
     appSecret: null,
     verifyToken: null,
     isActive: true,

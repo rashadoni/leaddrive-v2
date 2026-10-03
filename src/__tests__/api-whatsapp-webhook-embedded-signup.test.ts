@@ -90,7 +90,7 @@ function req(body: string, sig: string): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.WHATSAPP_APP_SECRET = SHARED
+  process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET = SHARED
   state.messageLookups.length = 0
   state.configs.splice(0, state.configs.length,
     // LeadDrive's own number on the same shared app (its row carries that app's secret).
@@ -101,7 +101,10 @@ beforeEach(() => {
     { id: "cfg_manual", organizationId: "org_manual", phoneNumberId: "777888999", appSecret: "THEIR_OWN", isActive: true, settings: {} },
   )
 })
-afterEach(() => { delete process.env.WHATSAPP_APP_SECRET })
+afterEach(() => {
+  delete process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET
+  delete process.env.WHATSAPP_APP_SECRET
+})
 
 describe("WhatsApp webhook — Embedded Signup numbers behind the shared callback", () => {
   it("routes a customer's Embedded Signup number to the customer's workspace", async () => {
@@ -123,10 +126,19 @@ describe("WhatsApp webhook — Embedded Signup numbers behind the shared callbac
   })
 
   it("does not unlock Embedded Signup numbers when the shared app secret is not configured", async () => {
-    delete process.env.WHATSAPP_APP_SECRET
+    delete process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET
     const body = statusFor("444555666")
     // Signed with the tenant's own secret (which here equals the shared one), but the server does not
     // know it as the shared app's: the customer's number stays unresolved.
+    expect((await POST(req(body, sign(body, SHARED)))).status).toBe(200)
+    expect(state.messageLookups).toEqual([])
+  })
+
+  it("is not unlocked by the older WHATSAPP_APP_SECRET either", async () => {
+    // That variable verifies callbacks without `?t=`; it says nothing about Embedded Signup numbers.
+    delete process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET
+    process.env.WHATSAPP_APP_SECRET = SHARED
+    const body = statusFor("444555666")
     expect((await POST(req(body, sign(body, SHARED)))).status).toBe(200)
     expect(state.messageLookups).toEqual([])
   })

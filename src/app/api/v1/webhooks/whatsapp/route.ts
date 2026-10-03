@@ -144,7 +144,7 @@ async function resolveWhatsAppWebhookChannelConfig({
   tenantSlug: string | null
   phoneNumberId: unknown
   /**
-   * The payload carries a valid signature of LeadDrive's shared Meta app (env WHATSAPP_APP_SECRET).
+   * The payload carries a valid signature of LeadDrive's shared Meta app (env WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET).
    * Meta sends every WABA subscribed to that app to the app's ONE callback URL — whatever `?t=` it
    * happens to carry — so a number onboarded through Embedded Signup must still be found when the URL
    * names another tenant. Only this signature unlocks that lookup: a tenant's own app secret never
@@ -329,7 +329,9 @@ export async function POST(req: NextRequest) {
       console.error(`[WA Webhook] POST: invalid signature (tenant=${tenantSlug || "legacy"}, phone_number_id=${sanitizeLog(String(phoneNumberId || ""))})`)
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
     }
-    const sharedAppSecret = process.env.WHATSAPP_APP_SECRET || null
+    // Embedded Signup's own variable, not WHATSAPP_APP_SECRET above: that one also decides how callbacks
+    // without `?t=` are verified, and the feature must not change that.
+    const sharedAppSecret = process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET?.trim() || null
     const signedBySharedApp = !!sharedAppSecret && verifyWhatsAppSignature(rawBody, signature, sharedAppSecret)
     const resolveChannel = () =>
       resolveWhatsAppWebhookChannelConfig({ tenantCtx, tenantSlug, phoneNumberId, signedBySharedApp })
