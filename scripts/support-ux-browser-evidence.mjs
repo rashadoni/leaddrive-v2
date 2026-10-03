@@ -8,6 +8,16 @@ import { assertDemoTenant, requireDemoTenant } from "./screenshot-safety.mjs"
 import { compareScreenshotPixels } from "./support-ux-visual-compare.mjs"
 import { compareSupportPerformance } from "./support-ux-performance-compare.mjs"
 import { prepareSupportEvidenceScreenshot } from "./support-ux-screenshot.mjs"
+import {
+  SUPPORT_EVIDENCE_VIEWPORTS,
+  applySupportVisionDeficiency,
+  supportEvidenceCaptureDimensions,
+  supportEvidenceDimensionsMatch,
+  supportEvidenceScreenshotName,
+  supportEvidenceSupportsLegacyBaseline,
+  supportEvidenceViewports,
+  supportEvidenceVisionDeficiencies,
+} from "./support-ux-evidence-dimensions.mjs"
 
 const require = createRequire(import.meta.url)
 const axeSource = await readFile(require.resolve("axe-core/axe.min.js"), "utf8")
@@ -65,7 +75,9 @@ const selectedRoles = new Set((process.env.SUPPORT_EVIDENCE_ROLES || "agent,mana
 const selectedScenariosValue = (process.env.SUPPORT_EVIDENCE_SCENARIOS || "all").trim()
 const selectedLocales = new Set((process.env.SUPPORT_EVIDENCE_LOCALES || "az,ru,en").split(",").map((value) => value.trim()).filter(Boolean))
 const selectedThemes = new Set((process.env.SUPPORT_EVIDENCE_THEMES || "light,dark").split(",").map((value) => value.trim()).filter(Boolean))
-const selectedViewports = new Set((process.env.SUPPORT_EVIDENCE_VIEWPORTS || "desktop,tablet,narrow-tablet,mobile").split(",").map((value) => value.trim()).filter(Boolean))
+const selectedViewports = supportEvidenceViewports(process.env.SUPPORT_EVIDENCE_VIEWPORTS || undefined)
+const selectedVisions = supportEvidenceVisionDeficiencies(process.env.SUPPORT_EVIDENCE_VISION_DEFICIENCIES || undefined)
+const captureDimensions = supportEvidenceCaptureDimensions(selectedViewports, selectedVisions)
 
 function requireKnownSelection(label, selected, allowed) {
   if (selected.size === 0) throw new Error(label + " must select at least one value")
@@ -77,7 +89,6 @@ function requireKnownSelection(label, selected, allowed) {
 requireKnownSelection("SUPPORT_EVIDENCE_ROLES", selectedRoles, new Set(["agent", "manager", "admin", "customer"]))
 requireKnownSelection("SUPPORT_EVIDENCE_LOCALES", selectedLocales, new Set(["az", "ru", "en"]))
 requireKnownSelection("SUPPORT_EVIDENCE_THEMES", selectedThemes, new Set(["light", "dark"]))
-requireKnownSelection("SUPPORT_EVIDENCE_VIEWPORTS", selectedViewports, new Set(["desktop", "tablet", "narrow-tablet", "mobile"]))
 
 const roles = [
   { key: "agent", email: process.env.SUPPORT_EVIDENCE_AGENT_EMAIL, password: process.env.SUPPORT_EVIDENCE_AGENT_PASSWORD },
@@ -88,13 +99,6 @@ const roles = [
 
 for (const role of roles) {
   if (!role.email || !role.password) throw new Error("Missing credentials for selected role: " + role.key)
-}
-
-const viewports = {
-  desktop: { width: 1440, height: 900 },
-  tablet: { width: 1024, height: 900 },
-  "narrow-tablet": { width: 768, height: 900 },
-  mobile: { width: 375, height: 812 },
 }
 
 const scenarios = [
@@ -136,10 +140,6 @@ requireKnownSelection("SUPPORT_EVIDENCE_SCENARIOS", selectedScenarioIds, knownSc
 function envPath(name, prefix) {
   const value = (process.env[name] || "").trim()
   return value ? prefix + encodeURIComponent(value) : null
-}
-
-function slug(value) {
-  return value.replace(/[^a-z0-9_-]+/gi, "-").toLowerCase()
 }
 
 function percentile(values, ratio) {
@@ -242,8 +242,23 @@ async function sha256(filePath) {
   return createHash("sha256").update(await readFile(filePath)).digest("hex")
 }
 
-async function baselineComparison(fileName, actualPath) {
+function comparableBaselineResult(common) {
+  return baselineEvidence?.results?.find((result) =>
+    result.id === common.id
+    && result.role === common.role
+    && result.locale === common.locale
+    && result.theme === common.theme
+    && supportEvidenceDimensionsMatch(common, result)
+    && baselineEvidence.dataProfile === dataProfile
+    && result.status === "passed"
+  )
+}
+
+async function baselineComparison(fileName, actualPath, common) {
   if (!baselineDirectory) return { status: "not_configured" }
+  if ((!baselineEvidence && !supportEvidenceSupportsLegacyBaseline(common)) || (baselineEvidence && !comparableBaselineResult(common))) {
+    return { status: "baseline_matrix_mismatch" }
+  }
   const baselinePath = path.join(baselineDirectory, fileName)
   try {
     await access(baselinePath)
@@ -271,15 +286,7 @@ async function baselineComparison(fileName, actualPath) {
 
 function performanceComparison(common, performance, metrics, budgets) {
   if (!baselineEvidence) return { status: "not_configured", regressions: [] }
-  const baseline = baselineEvidence.results?.find((result) =>
-    result.id === common.id
-    && result.role === common.role
-    && result.locale === common.locale
-    && result.theme === common.theme
-    && result.viewport === common.viewport
-    && baselineEvidence.dataProfile === dataProfile
-    && result.status === "passed"
-  )
+  const baseline = comparableBaselineResult(common)
   return compareSupportPerformance(performance, metrics, baseline, budgets)
 }
 
@@ -412,6 +419,7 @@ async function inspectPage(page, workspaceSelector, primarySelector) {
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
       documentHeight: document.documentElement.scrollHeight,
+      viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
       mainClientHeight: main.clientHeight,
       mainClientWidth: main.clientWidth,
@@ -605,15 +613,16 @@ function markdown(report) {
     "- Data profile: " + report.dataProfile,
     "- Support UX canary: " + report.supportUxCanary,
     "- Loads per matrix cell: " + report.sampleCount,
+    "- Vision capture states: " + report.visionDeficiencies.join(", "),
     "",
-    "| Scenario | Role | Locale | Theme | Viewport | Result | Overflow | A11y issues | p50/p75 load | Perf compare | Screenshot |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Scenario | Role | Locale | Theme | Viewport | Vision | Result | Overflow | A11y issues | p50/p75 load | Perf compare | Screenshot |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
   ]
   for (const result of report.results) {
     const timing = result.performance
       ? String(result.performance.loadP50) + "/" + String(result.performance.loadP75) + " ms"
       : "—"
-    lines.push("| " + [result.id, result.role, result.locale, result.theme, result.viewport, result.status,
+    lines.push("| " + [result.id, result.role, result.locale, result.theme, result.viewport, result.visionDeficiency, result.status,
       String(result.metrics?.horizontalOverflow ?? "—"), String(result.a11yIssueCount ?? "—"), timing,
       result.performanceComparison?.status || "—",
       result.screenshot || result.reason || "—"].join(" | ") + " |")
@@ -632,6 +641,7 @@ const report = {
   dataProfile,
   supportUxCanary,
   sampleCount,
+  visionDeficiencies: [...selectedVisions],
   results: [],
 }
 
@@ -645,8 +655,8 @@ try {
       const reason = error instanceof Error ? error.message : String(error)
       for (const locale of selectedLocales) {
         for (const theme of selectedThemes) {
-          for (const viewportName of selectedViewports) {
-            report.results.push({ id: "authentication", role: role.key, locale, theme, viewport: viewportName, status: "blocked", reason })
+          for (const dimensions of captureDimensions) {
+            report.results.push({ id: "authentication", role: role.key, locale, theme, ...dimensions, status: "blocked", reason })
           }
         }
       }
@@ -657,9 +667,10 @@ try {
     if (!authenticated) continue
     for (const locale of selectedLocales) {
       for (const theme of selectedThemes) {
-        for (const viewportName of selectedViewports) {
-          const viewport = viewports[viewportName]
-          const expectsTouch = viewportName !== "desktop"
+        for (const dimensions of captureDimensions) {
+          const { viewport: viewportName, expectsTouch, visionDeficiency } = dimensions
+          const { width, height } = SUPPORT_EVIDENCE_VIEWPORTS[viewportName]
+          const viewport = { width, height }
           const context = await browser.newContext({
             baseURL: baseUrl,
             viewport,
@@ -683,11 +694,11 @@ try {
           try {
             await primeEvidenceStorage(context, theme, authenticated.portalUser)
             const roleScenarios = scenarios.filter((item) => item.roles.includes(role.key) && selectedScenarioIds.has(item.id))
-            console.log(`[support-evidence] ${role.key}/${locale}/${theme}/${viewportName}: ${roleScenarios.length} scenario(s)`)
+            console.log(`[support-evidence] ${role.key}/${locale}/${theme}/${viewportName}/${visionDeficiency}: ${roleScenarios.length} scenario(s)`)
             for (const scenario of roleScenarios) {
               console.log(`[support-evidence] capturing ${scenario.id}`)
               const scenarioPath = typeof scenario.path === "function" ? scenario.path() : scenario.path
-              const common = { id: scenario.id, role: role.key, locale, theme, viewport: viewportName, path: scenarioPath, primaryFlowClicks: scenario.primaryClicks }
+              const common = { id: scenario.id, role: role.key, locale, theme, ...dimensions, path: scenarioPath, primaryFlowClicks: scenario.primaryClicks }
               if (!scenarioPath) {
                 report.results.push({ ...common, status: "blocked", reason: "required_fixture_identifier_missing" })
                 continue
@@ -706,6 +717,7 @@ try {
                 }
               })
               try {
+                await applySupportVisionDeficiency(page, visionDeficiency)
                 const loadSamples = []
                 const filterSamples = []
                 const layoutShiftSamples = []
@@ -757,7 +769,7 @@ try {
                     }
                   }
                 }
-                const fileName = slug([scenario.id, role.key, locale, theme, viewportName, dataProfile].join("-")) + ".png"
+                const fileName = supportEvidenceScreenshotName([scenario.id, role.key, locale, theme, viewportName, dataProfile], visionDeficiency)
                 const screenshotPath = path.join(outputDirectory, fileName)
                 const { developmentChromeHosts } = await prepareSupportEvidenceScreenshot(page)
                 const axeViolations = await inspectAccessibility(page)
@@ -772,7 +784,9 @@ try {
                   || metrics.environment.activeTheme !== theme
                   || metrics.environment.prefersDark !== (theme === "dark")
                   || !metrics.environment.reducedMotion
-                  || (expectsTouch && metrics.environment.maxTouchPoints < 1)
+                  || (metrics.environment.maxTouchPoints > 0) !== expectsTouch
+                  || metrics.viewportWidth !== viewport.width
+                  || metrics.viewportHeight !== viewport.height
                 const primaryWorkMiss = Boolean(scenario.primary) && (!metrics.primaryWorkVisible || metrics.primaryWorkTop === null || metrics.primaryWorkTop > Math.min(768, viewport.height))
                 const performance = {
                   loadP50: percentile(loadSamples, 0.5),
@@ -788,7 +802,7 @@ try {
                   cumulativeLayoutShift: percentile(layoutShiftSamples, 0.75),
                   cumulativeLayoutShiftSamples: layoutShiftSamples,
                 }
-                const visual = await baselineComparison(fileName, screenshotPath)
+                const visual = await baselineComparison(fileName, screenshotPath, common)
                 const comparedPerformance = performanceComparison(common, performance, metrics, scenario.performanceBudget)
                 const profileContract = dataProfileContract(scenario, metrics)
                 const scopedRoleContract = roleContract(scenario, role, metrics)
@@ -796,6 +810,7 @@ try {
                   || axeViolations.length || keyboard.uniqueStops === 0 || environmentMismatch
                   || profileContract.status === "mismatched"
                   || scopedRoleContract.status === "mismatched"
+                  || visual.status === "baseline_matrix_mismatch"
                   || (requireBaseline ? visual.status !== "matched" || comparedPerformance.status !== "matched" : visual.status === "changed")
                 report.results.push({
                   ...common,
@@ -823,7 +838,7 @@ try {
               }
             }
           } catch (error) {
-            report.results.push({ id: "authentication", role: role.key, locale, theme, viewport: viewportName, status: "blocked", reason: error instanceof Error ? error.message : String(error) })
+            report.results.push({ id: "authentication", role: role.key, locale, theme, ...dimensions, status: "blocked", reason: error instanceof Error ? error.message : String(error) })
           } finally {
             await context.close()
           }

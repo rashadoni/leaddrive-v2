@@ -10,6 +10,7 @@ import {
   settingsWithMacroCategories,
   uniqueMacroCategories,
 } from "@/lib/ticket-macros/presentation"
+import { observeSupportUxOperation } from "@/lib/support-ux-observation"
 import { supportUxV2CanaryEnabled } from "@/lib/support-ux-rollout"
 import { withRlsAuth } from "@/lib/with-rls"
 
@@ -33,7 +34,8 @@ function rolloutDisabled() {
   )
 }
 
-export const POST = withRlsAuth("tickets", "write", async (req, auth) => {
+export const POST = withRlsAuth("tickets", "write", (req, auth) => observeSupportUxOperation(
+  { orgId: auth.orgId, operation: "CATEGORY_CREATE" }, async (setMode) => {
   const denied = forbidden(auth.role)
   if (denied) return denied
   const parsed = createSchema.safeParse(await req.json().catch(() => null))
@@ -43,7 +45,9 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth) => {
     const categories = await prisma.$transaction(async (tx) => {
       const organization = await tx.organization.findUnique({ where: { id: auth.orgId }, select: { settings: true, features: true } })
       if (!organization) return { kind: "missing" } as const
-      if (!supportUxV2CanaryEnabled(organization.features)) return { kind: "disabled" } as const
+      const enabled = supportUxV2CanaryEnabled(organization.features)
+      setMode(enabled ? "database" : "browser")
+      if (!enabled) return { kind: "disabled" } as const
       const custom = customMacroCategoriesFromSettings(organization.settings)
       const existingKeys = new Set([...MACRO_DEFAULT_CATEGORIES, ...custom].map((category) => category.toLocaleLowerCase()))
       if (existingKeys.has(parsed.data.name.toLocaleLowerCase())) return { kind: "conflict" } as const
@@ -62,9 +66,10 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth) => {
     console.error("[ticket-macros/categories POST]", error)
     return NextResponse.json({ error: "Failed to add category.", code: "MACRO_CATEGORY_SAVE_FAILED" }, { status: 500 })
   }
-})
+}))
 
-export const PATCH = withRlsAuth("tickets", "write", async (req, auth) => {
+export const PATCH = withRlsAuth("tickets", "write", (req, auth) => observeSupportUxOperation(
+  { orgId: auth.orgId, operation: "CATEGORY_RENAME" }, async (setMode) => {
   const denied = forbidden(auth.role)
   if (denied) return denied
   const parsed = renameSchema.safeParse(await req.json().catch(() => null))
@@ -77,7 +82,9 @@ export const PATCH = withRlsAuth("tickets", "write", async (req, auth) => {
     const result = await prisma.$transaction(async (tx) => {
       const organization = await tx.organization.findUnique({ where: { id: auth.orgId }, select: { settings: true, features: true } })
       if (!organization) return { kind: "organization-missing" } as const
-      if (!supportUxV2CanaryEnabled(organization.features)) return { kind: "disabled" } as const
+      const enabled = supportUxV2CanaryEnabled(organization.features)
+      setMode(enabled ? "database" : "browser")
+      if (!enabled) return { kind: "disabled" } as const
       const custom = customMacroCategoriesFromSettings(organization.settings)
       const sourceIndex = custom.findIndex((category) => category.toLocaleLowerCase() === parsed.data.name.toLocaleLowerCase())
       if (sourceIndex < 0) return { kind: "category-missing" } as const
@@ -105,9 +112,10 @@ export const PATCH = withRlsAuth("tickets", "write", async (req, auth) => {
     console.error("[ticket-macros/categories PATCH]", error)
     return NextResponse.json({ error: "Failed to rename category.", code: "MACRO_CATEGORY_SAVE_FAILED" }, { status: 500 })
   }
-})
+}))
 
-export const DELETE = withRlsAuth("tickets", "write", async (req, auth) => {
+export const DELETE = withRlsAuth("tickets", "write", (req, auth) => observeSupportUxOperation(
+  { orgId: auth.orgId, operation: "CATEGORY_DELETE" }, async (setMode) => {
   const denied = forbidden(auth.role)
   if (denied) return denied
   const parsed = deleteSchema.safeParse(await req.json().catch(() => null))
@@ -120,7 +128,9 @@ export const DELETE = withRlsAuth("tickets", "write", async (req, auth) => {
     const result = await prisma.$transaction(async (tx) => {
       const organization = await tx.organization.findUnique({ where: { id: auth.orgId }, select: { settings: true, features: true } })
       if (!organization) return { kind: "organization-missing" } as const
-      if (!supportUxV2CanaryEnabled(organization.features)) return { kind: "disabled" } as const
+      const enabled = supportUxV2CanaryEnabled(organization.features)
+      setMode(enabled ? "database" : "browser")
+      if (!enabled) return { kind: "disabled" } as const
       const custom = customMacroCategoriesFromSettings(organization.settings)
       const exists = custom.some((category) => category.toLocaleLowerCase() === parsed.data.name.toLocaleLowerCase())
       if (!exists) return { kind: "category-missing" } as const
@@ -143,4 +153,4 @@ export const DELETE = withRlsAuth("tickets", "write", async (req, auth) => {
     console.error("[ticket-macros/categories DELETE]", error)
     return NextResponse.json({ error: "Failed to delete category.", code: "MACRO_CATEGORY_DELETE_FAILED" }, { status: 500 })
   }
-})
+}))

@@ -10,6 +10,8 @@ import {
   normalizeMacroCategory,
 } from "@/lib/ticket-macros/presentation"
 import { macroActionsSchema, macroActionSchema } from "@/lib/ticket-macros/schema"
+import { supportUxV2CanaryEnabled } from "@/lib/support-ux-rollout"
+import { observeSupportUxOperation } from "@/lib/support-ux-observation"
 import { withRlsAuth } from "@/lib/with-rls"
 
 const createMacroSchema = z.object({
@@ -36,14 +38,15 @@ async function invalidAssignee(orgId: string, actions: z.infer<typeof macroActio
   return count !== ids.length
 }
 
-export const GET = withRlsAuth("tickets", "read", async (_req, auth) => {
+export const GET = withRlsAuth("tickets", "read", (_req, auth) => observeSupportUxOperation(
+  { orgId: auth.orgId, operation: "CATEGORY_LIST" }, async (setMode) => {
   try {
     const [macros, organization, agents] = await Promise.all([
       prisma.ticketMacro.findMany({
         where: { organizationId: auth.orgId },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       }),
-      prisma.organization.findUnique({ where: { id: auth.orgId }, select: { settings: true } }),
+      prisma.organization.findUnique({ where: { id: auth.orgId }, select: { settings: true, features: true } }),
       prisma.user.findMany({
         where: {
           organizationId: auth.orgId,
@@ -55,6 +58,7 @@ export const GET = withRlsAuth("tickets", "read", async (_req, auth) => {
       }),
     ])
 
+    if (organization) setMode(supportUxV2CanaryEnabled(organization.features) ? "database" : "browser")
     return NextResponse.json({
       success: true,
       data: macros,
@@ -66,7 +70,7 @@ export const GET = withRlsAuth("tickets", "read", async (_req, auth) => {
     console.error("[ticket-macros GET]", error)
     return NextResponse.json({ error: "Failed to load ticket macros.", code: "MACRO_LOAD_FAILED" }, { status: 500 })
   }
-})
+}))
 
 export const POST = withRlsAuth("tickets", "write", async (req, auth) => {
   if (!canManageTicketMacros(auth.role)) {

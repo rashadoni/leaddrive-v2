@@ -92,10 +92,10 @@ export const GET = withRls(async (req, { orgId }) => {
       const isOpen = !["closed", "resolved"].includes(t.status)
 
       if (isOpen) {
-        // Open tickets: show as all-day on today
-        if (todayStart >= dateFrom && todayStart <= dateTo) {
-          const hasSpecificTime = !!t.slaDueAt
-          const displayDate = t.slaDueAt || todayStart
+        // Dated tickets belong to their SLA date; undated work belongs to today.
+        const hasSpecificTime = !!t.slaDueAt
+        const displayDate = t.slaDueAt || todayStart
+        if (displayDate >= dateFrom && displayDate <= dateTo) {
           items.push({
             id: t.id,
             type: "ticket",

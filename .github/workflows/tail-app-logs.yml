@@ -3,7 +3,8 @@ name: Inspect production safely
 # Read-only diagnostics: print the tail of the leaddrive-v2 PM2 error log,
 # report backup-gate readiness with every configured value redacted, inspect
 # anonymized PostgreSQL TLS metadata, or list bounded log-source metadata
-# without reading any log contents.
+# without reading any log contents, or report bounded Support rollout counts
+# without exposing organization features, settings, credentials or category names.
 # Dispatch-only: editing this workflow must not create an implicit production
 # connection.
 
@@ -21,6 +22,18 @@ on:
           - backup-log-inventory
           - postgres-tls-metadata
           - postgres-san-scratch-audit
+          - support-ux-rollout
+          - support-ux-observation
+      support_tenant:
+        description: "Optional exact tenant slug for Support rollout metadata; empty returns anonymous aggregate counts"
+        required: false
+        default: ""
+        type: string
+      support_day:
+        description: "Completed Asia/Baku day (YYYY-MM-DD) for the selected tenant's bounded Support handler metrics"
+        required: false
+        default: ""
+        type: string
       lines:
         description: "How many log lines to tail"
         required: false
@@ -86,12 +99,75 @@ jobs:
           [ "$IN_LINES" -ge 1 ] && [ "$IN_LINES" -le 1000 ] \
             || { echo "FATAL: lines must be between 1 and 1000"; exit 1; }
 
+      - name: Verify Support rollout diagnostic before production access
+        if: ${{ inputs.view == 'support-ux-rollout' }}
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -I .github/scripts/test_inspect_support_ux_rollout.py
+      - name: Verify Support observation diagnostic before production access
+        if: ${{ inputs.view == 'support-ux-observation' }}
+        run: node --test .github/scripts/test-inspect-support-ux-observation.mjs
       - name: Setup pinned production SSH
         uses: ./.github/actions/setup-production-ssh
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           server-host: ${{ secrets.SERVER_HOST }}
           known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Inspect bounded Support rollout metadata
+        if: ${{ inputs.view == 'support-ux-rollout' }}
+        env:
+          SUPPORT_UX_TENANT: ${{ inputs.support_tenant }}
+        run: |
+          set -euo pipefail
+          if [ -n "$SUPPORT_UX_TENANT" ]; then
+            SLUG_RE='^[a-z0-9]([a-z0-9-]{0,78}[a-z0-9])?$'
+            [[ "$SUPPORT_UX_TENANT" =~ $SLUG_RE ]] || {
+              echo "::error::Support tenant slug has an invalid shape"
+              exit 1
+            }
+          fi
+          set +e
+          DIAGNOSTIC_OUTPUT="$(
+            ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "SUPPORT_UX_TENANT='$SUPPORT_UX_TENANT' PYTHONDONTWRITEBYTECODE=1 python3 -I -" \
+              < .github/scripts/inspect_support_ux_rollout.py 2>/dev/null
+          )"
+          DIAGNOSTIC_STATUS=$?
+          set -e
+          printf '%s' "$DIAGNOSTIC_OUTPUT" \
+            | python3 -I .github/scripts/inspect_support_ux_rollout.py --validate-output
+          [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
+            echo "::error::Read-only Support rollout inspection failed"
+            exit "$DIAGNOSTIC_STATUS"
+          }
+      - name: Collect bounded Support handler metrics for one completed day
+        if: ${{ inputs.view == 'support-ux-observation' }}
+        env:
+          SUPPORT_UX_TENANT: ${{ inputs.support_tenant }}
+          SUPPORT_UX_DAY: ${{ inputs.support_day }}
+        run: |
+          set -euo pipefail
+          SLUG_RE='^[a-z0-9]([a-z0-9-]{0,78}[a-z0-9])?$'
+          DAY_RE='^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          [[ "$SUPPORT_UX_TENANT" =~ $SLUG_RE ]] \
+            && [[ "$SUPPORT_UX_DAY" =~ $DAY_RE ]] || {
+              echo "::error::Support observation requires an exact tenant slug and completed day"
+              exit 1
+            }
+          set +e
+          DIAGNOSTIC_OUTPUT="$(
+            ssh -T -o ConnectTimeout=10 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "SUPPORT_UX_TENANT='$SUPPORT_UX_TENANT' SUPPORT_UX_DAY='$SUPPORT_UX_DAY' NODE_NO_WARNINGS=1 node --input-type=module -" \
+              < .github/scripts/inspect-support-ux-observation.mjs 2>/dev/null
+          )"
+          DIAGNOSTIC_STATUS=$?
+          set -e
+          printf '%s' "$DIAGNOSTIC_OUTPUT" \
+            | node .github/scripts/inspect-support-ux-observation.mjs --validate-output
+          [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
+            echo "::error::Read-only Support observation collection failed"
+            exit "$DIAGNOSTIC_STATUS"
+          }
       - name: Tail PM2 logs
         if: ${{ inputs.view == 'logs' }}
         env:
