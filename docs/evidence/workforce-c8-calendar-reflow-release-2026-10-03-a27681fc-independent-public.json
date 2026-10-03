@@ -1,0 +1,72 @@
+{
+  "observedAt": "2026-10-03T09:37:24.521337+00:00",
+  "expectedMergedSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+  "runId": 37112124490,
+  "productionHost": "13.140.132.245",
+  "tlsHostname": "app.leaddrivecrm.org",
+  "strictPinnedBracketPositive": true,
+  "requests": {
+    "build-info-first": {
+      "label": "build-info-first",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "startedAt": "2026-10-03T09:37:24.340869+00:00",
+      "completedAt": "2026-10-03T09:37:24.396100+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControlNoStore": true,
+      "bytes": 112,
+      "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85",
+      "original": {
+        "path": "/tmp/workforce540-production-a276-independent/public-20261003T093724340673Z/build-info-first.json",
+        "bytes": 112,
+        "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85"
+      },
+      "sha": "a27681fcf876",
+      "artifactSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+      "builtAt": "2026-10-03T09:16:38Z"
+    },
+    "ping": {
+      "label": "ping",
+      "url": "https://app.leaddrivecrm.org/api/v1/ping",
+      "startedAt": "2026-10-03T09:37:24.396651+00:00",
+      "completedAt": "2026-10-03T09:37:24.462392+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControlNoStore": true,
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "original": {
+        "path": "/tmp/workforce540-production-a276-independent/public-20261003T093724340673Z/ping.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      "ok": true
+    },
+    "build-info-confirm": {
+      "label": "build-info-confirm",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "startedAt": "2026-10-03T09:37:24.463029+00:00",
+      "completedAt": "2026-10-03T09:37:24.520622+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControlNoStore": true,
+      "bytes": 112,
+      "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85",
+      "original": {
+        "path": "/tmp/workforce540-production-a276-independent/public-20261003T093724340673Z/build-info-confirm.json",
+        "bytes": 112,
+        "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85"
+      },
+      "sha": "a27681fcf876",
+      "artifactSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+      "builtAt": "2026-10-03T09:16:38Z"
+    }
+  },
+  "normalRunSuccessStillRequired": false
+}

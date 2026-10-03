@@ -1,0 +1,106 @@
+{
+  "exactMergedSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+  "requests": [
+    {
+      "label": "build-info-first",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info?receipt=a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+      "startedAt": "2026-10-03T09:35:36.869450+00:00",
+      "completedAt": "2026-10-03T09:35:37.085234+00:00",
+      "transport": "strict-pinned-domain",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 112,
+      "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85",
+      "bodyPath": "/tmp/workforce540-production-a276-primary/build-info-first.json",
+      "body": {
+        "sha": "a27681fcf876",
+        "artifactSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+        "builtAt": "2026-10-03T09:16:38Z"
+      }
+    },
+    {
+      "label": "ping",
+      "url": "https://app.leaddrivecrm.org/api/v1/ping?receipt=a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+      "startedAt": "2026-10-03T09:35:37.085640+00:00",
+      "completedAt": "2026-10-03T09:35:37.201623+00:00",
+      "transport": "strict-pinned-domain",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "bodyPath": "/tmp/workforce540-production-a276-primary/ping.json",
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "label": "build-info-confirm",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info?receipt=a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+      "startedAt": "2026-10-03T09:35:37.202109+00:00",
+      "completedAt": "2026-10-03T09:35:37.299441+00:00",
+      "transport": "strict-pinned-domain",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 112,
+      "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85",
+      "bodyPath": "/tmp/workforce540-production-a276-primary/build-info-confirm.json",
+      "body": {
+        "sha": "a27681fcf876",
+        "artifactSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+        "builtAt": "2026-10-03T09:16:38Z"
+      }
+    },
+    {
+      "label": "ip-strict-ping",
+      "url": "https://13.140.132.245/api/v1/ping?receipt=a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+      "startedAt": "2026-10-03T09:35:37.300412+00:00",
+      "completedAt": "2026-10-03T09:35:37.346721+00:00",
+      "transport": "strict-literal-ip",
+      "targetIp": "13.140.132.245",
+      "curlExit": 60,
+      "httpStatus": "000",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bodyPath": "/tmp/workforce540-production-a276-primary/ip-strict-ping.json",
+      "body": null,
+      "transportError": "curl: (60) SSL: no alternative certificate subject name matches target host name '13.140.132.245'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above."
+    },
+    {
+      "label": "ip-ping",
+      "url": "https://13.140.132.245/api/v1/ping?receipt=a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+      "startedAt": "2026-10-03T09:35:37.347251+00:00",
+      "completedAt": "2026-10-03T09:35:37.453356+00:00",
+      "transport": "insecure-literal-ip-supplement",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "bodyPath": "/tmp/workforce540-production-a276-primary/ip-ping.json",
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "label": "ip-build-info",
+      "url": "https://13.140.132.245/api/v1/public/build-info?receipt=a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+      "startedAt": "2026-10-03T09:35:37.453866+00:00",
+      "completedAt": "2026-10-03T09:35:37.507908+00:00",
+      "transport": "insecure-literal-ip-supplement",
+      "targetIp": "13.140.132.245",
+      "curlExit": 0,
+      "httpStatus": "200",
+      "bytes": 112,
+      "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85",
+      "bodyPath": "/tmp/workforce540-production-a276-primary/ip-build-info.json",
+      "body": {
+        "sha": "a27681fcf876",
+        "artifactSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+        "builtAt": "2026-10-03T09:16:38Z"
+      }
+    }
+  ]
+}

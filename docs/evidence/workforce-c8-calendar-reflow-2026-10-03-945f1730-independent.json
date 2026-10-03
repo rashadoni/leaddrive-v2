@@ -1,0 +1,288 @@
+{
+  "version": 1,
+  "reviewedAt": "2026-10-03T09:03:38.680144+00:00",
+  "independentReadOnly": true,
+  "verdict": "GREEN",
+  "findings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "run": {
+    "id": 37111111917,
+    "jobId": 111169042409,
+    "event": "pull_request",
+    "headSha": "945f17306d4488205842faeeecdec61ad3582e3c",
+    "createdAt": "2026-10-03T08:51:50Z",
+    "jobStartedAt": "2026-10-03T08:51:58Z",
+    "jobCompletedAt": "2026-10-03T08:59:31Z",
+    "updatedAt": "2026-10-03T08:59:31Z",
+    "conclusion": "success",
+    "attempt": 1
+  },
+  "artifact": {
+    "id": 11269418525,
+    "name": "workforce-calendar-browser-231d23c540fa98fcf03c47a8a99eb919ae8c8896-1",
+    "createdAt": "2026-10-03T08:59:23Z",
+    "archive": {
+      "path": "/tmp/workforce540-browser-945-final/sanitized-artifact.zip",
+      "bytes": 2437809,
+      "sha256": "f9997dc5f03f6df927a5c3c69b2e475ea9df51e73d43df0d4ea00365356edd4f"
+    }
+  },
+  "receipt": {
+    "path": "/tmp/workforce540-browser-945-final/artifact/receipt.json",
+    "bytes": 10804,
+    "sha256": "f3253933a8552127f8a921b69e7ac2f1c725b42419f682094d7716250b012f65"
+  },
+  "workflowContext": {
+    "path": "/tmp/workforce540-browser-945-final/artifact/workflow-context.json",
+    "bytes": 261,
+    "sha256": "26ae094249265c9f3ed287a059224cac9ec1652959dd7b15f769623a6170dce5"
+  },
+  "syntheticCommit": {
+    "sha": "231d23c540fa98fcf03c47a8a99eb919ae8c8896",
+    "parents": [
+      "f62ab3a609a0461cbd14c264306df2d28325628f",
+      "945f17306d4488205842faeeecdec61ad3582e3c"
+    ],
+    "treeByteEqualCandidate": true,
+    "primaryMetadata": {
+      "path": "/tmp/workforce540-browser-945-final/synthetic-commit-metadata.json",
+      "bytes": 2643,
+      "sha256": "e2a70df6a9d8f8415f420b5b941d8d2b9b75fecc393f6e7ddb184d76fc174aa8"
+    }
+  },
+  "actualReceiptFacts": {
+    "candidateHead": "945f17306d4488205842faeeecdec61ad3582e3c",
+    "checkedMergeSha": "231d23c540fa98fcf03c47a8a99eb919ae8c8896",
+    "startedAt": "2026-10-03T08:57:35.525Z",
+    "completedAt": "2026-10-03T08:59:21.689Z",
+    "durationSeconds": 106.164,
+    "status": "PASS",
+    "passedCases": 10,
+    "allTenCaseAssertionsByteEquivalentPreliminaryProof": true,
+    "geometryPhases": 9,
+    "geometryFailures": 0,
+    "geometryTextFragments": 908,
+    "readingDiagnostics": 12,
+    "readingFragments": 106,
+    "actualReadingScrolls": 3,
+    "allReadingFocusPreserved": true,
+    "allReadingVerticallyReadable": true,
+    "authenticationCallbacks": 12,
+    "allCsrfAndCallbacks200": true,
+    "authenticationPacingWaitsMs": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      8042,
+      26472,
+      0,
+      0
+    ],
+    "eightCallbackGapsMs": [
+      61025,
+      61034,
+      61217,
+      61616
+    ],
+    "databaseRole": {
+      "superuser": false,
+      "bypassRls": false,
+      "unscopedUsers": 0,
+      "unscopedTeams": 0,
+      "unscopedWorkforceAudits": 0,
+      "populatedAuditAndCalendarFailClosed": true
+    },
+    "reflowFunctional": {
+      "cancelWrites": 0,
+      "cancelStateUnchanged": true,
+      "posts": 2,
+      "tombstones": 2,
+      "audits": 1,
+      "byteIdenticalRetry": true,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "replayWrites": 0,
+      "realSessionPreserved": true
+    },
+    "newCase": {
+      "name": "320-css-reflow-keyboard-cancel-exact-retry-TEAM-ru",
+      "status": "PASS",
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "labelLength": 160,
+      "sourceTabs": 22,
+      "nativeKeyboard": true,
+      "verticalReadingScrollOnly": true,
+      "horizontalContainment": true,
+      "focusedTargetsVisible": true,
+      "cancelWrites": 0,
+      "cancelStateUnchanged": true,
+      "posts": 2,
+      "tombstones": 2,
+      "audits": 1,
+      "byteIdenticalRetry": true,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "replayWrites": 0,
+      "realSessionPreserved": true
+    }
+  },
+  "screenshots": [
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/reflow-320-inventory.png",
+      "bytes": 43797,
+      "sha256": "3df276087c8dbd0bf28de3bc6061b75514c92805bb3c846379e5703d119605d2",
+      "dimensions": [
+        320,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/reflow-320-review.png",
+      "bytes": 60835,
+      "sha256": "547a5d8d2c85bab98c2ca9c4e54c02878b07f12f81fdc18c77299452cd4c1df4",
+      "dimensions": [
+        320,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/reflow-320-confirm.png",
+      "bytes": 62245,
+      "sha256": "034f3a1b69b963e9be6574ddff8850754aad97a2b441875c05e46d2aa1906a83",
+      "dimensions": [
+        320,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/reflow-320-cancel.png",
+      "bytes": 72260,
+      "sha256": "cb362b8044fec825b2db93db672c59f0cf53dc42273ffe0b7d05c7c3229741a5",
+      "dimensions": [
+        320,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/reflow-320-cancel-source.png",
+      "bytes": 54240,
+      "sha256": "b04602daa9eadb6aeb7de09fda61f1d959d39380ff7161bf3ce127b60712f991",
+      "dimensions": [
+        320,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/reflow-320-reopened-review.png",
+      "bytes": 60835,
+      "sha256": "547a5d8d2c85bab98c2ca9c4e54c02878b07f12f81fdc18c77299452cd4c1df4",
+      "dimensions": [
+        320,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/reflow-320-unknown.png",
+      "bytes": 62470,
+      "sha256": "18f859e80482e20ba51aa6e249470a3f8b8bcf97237385f2ca2ad7a85dd26f17",
+      "dimensions": [
+        320,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/reflow-320-retry-confirm.png",
+      "bytes": 70827,
+      "sha256": "00de9e41e686611c063530f7b075e4370720184f2b09df7784e0670315ac5662",
+      "dimensions": [
+        320,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/reflow-320-replay.png",
+      "bytes": 60796,
+      "sha256": "f0daa847a4dfcfb1cc6ff42338db4e5e44d0b86b8084c45b141a910cdcfe3aa9",
+      "dimensions": [
+        320,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/keyboard-cancel-source-ORGANIZATION-en.png",
+      "bytes": 130436,
+      "sha256": "5455d9af8d673137d95745aab9fb89a4a52a169ccc0c817e32b0425c552bf04f",
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/keyboard-completed-ORGANIZATION-en.png",
+      "bytes": 117251,
+      "sha256": "d5875ced689ace1a5ada7702d14fffe8b8d12c5c92ab44820860cbb6f5a7a716",
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/keyboard-exact-retry-unknown-TEAM-ru.png",
+      "bytes": 80228,
+      "sha256": "79eae17fed17a34a0a5c21f025c08b71e1c0cb698c30c71c2d225f55fd0ea364",
+      "dimensions": [
+        390,
+        844
+      ],
+      "independentlyViewed": true
+    },
+    {
+      "path": "/tmp/workforce540-browser-945-final/artifact/keyboard-replay-TEAM-ru.png",
+      "bytes": 67154,
+      "sha256": "2d4fdbdd897a792318e6c5bd99d154942e81c1f37465c4b5712c3025e248e15b",
+      "dimensions": [
+        390,
+        844
+      ],
+      "independentlyViewed": true
+    }
+  ],
+  "visualInterpretation": "All thirteen current-run PNGs actually viewed individually: nine 320px reflow stages and four preserved keyboard stages. Long unbroken localized label wraps inside its paragraph; controls and localized explanation remain horizontally contained. Native source/cancel/review focus and known result/unknown notice focus are visible. Actual per-line Range and vertical scroll checks supply long-text reading proof. One Next development issue badge visible; no production or causal claim inferred.",
+  "limits": [
+    "Development bundle, not production build",
+    "No production business data",
+    "No Android/AT/load/pilot evidence",
+    "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI",
+    "No whole-page keyboard or zoom acceptance",
+    "320 CSS reflow allows vertical reading scroll; no native browser zoom proof",
+    "This review validates actual final PR browser evidence on exact synthetic parents; five mandatory gates and fresh-main release check are separate.",
+    "No production deployment or authenticated production calendar evidence supplied by this browser run."
+  ]
+}
