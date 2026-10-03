@@ -35,7 +35,8 @@ state after activation. No other tenant, category, macro, permission, billing
 setting or customer message changes as an incidental action.
 
 Independent operator preparation (2026-10-03): a dedicated superadmin
-`POST /api/v1/admin/tenants/[id]/support-ux-canary` is being implemented. Strict
+`POST /api/v1/admin/tenants/[id]/support-ux-canary` is implemented in
+[PR #544](https://github.com/rashadoni/leaddrive-v2/pull/544). Strict
 input binds the tenant slug/id, desired and expected flag states and compiled
 artifact SHA. The serialized, row-locked transaction changes only features
 and writes the actor/old-new state/SHA audit through its transaction client;
@@ -44,8 +45,54 @@ their representation and every unrelated entry; unsupported state fails closed.
 Confirming an existing state writes a separately named confirmation and does
 not establish an earlier activation time. Receipt issuance after commit is
 separate from the required authenticated flag re-read. Preparation/unit checks
-do not authorize selecting or activating an arbitrary production tenant. This
-new action still needs its own PostgreSQL and protected release admission.
+do not authorize selecting or activating an arbitrary production tenant.
+Actual PostgreSQL admission is recorded below; final-head protected checks and
+release admission remain required before production use.
+
+The action accepts only these four keys. This is an intentionally unusable
+template until an authorized exact tenant and current public artifact are
+supplied; credentials and actual tenant payloads do not belong in this document.
+
+```json
+{
+  "tenantSlug": "<exact-authorized-slug>",
+  "enabled": true,
+  "expectedEnabled": false,
+  "expectedArtifactSha": "<full-current-public-artifact-sha>"
+}
+```
+
+Use the selected organization's exact ID in the path. First retain the approved
+tenant identity and a rollout read using a session authorized for that selected
+tenant. The superadmin mutation uses the ID in its path, while rollout/audit
+GETs scope reads to the caller's organization; the operator's own-organization
+session alone cannot verify a different tenant. After a successful write retain
+the receipt's audit ID, actor-bound audit/source and UTC issuance time, then
+independently re-read authenticated rollout state. An existing enabled state
+uses `enabled: true` and `expectedEnabled: true` and records confirmation only.
+Rollback uses `enabled: false` with the observed expected state and current
+artifact; it retains saved categories and unrelated entitlements.
+
+A 409 state/source conflict requires fresh reads and an explicit decision,
+never automatic retry. Unsupported features or inactive enabling require a
+separate resolution; do not fall back to the generic tenant update. If a
+response is lost or fails, re-read flag and audit before deciding what happened;
+a client transport error alone cannot prove rollback or commit. An audit
+INSERT failure inside the transaction is covered by the real PostgreSQL gate.
+
+The database audit creation timestamp can precede commit while the row lock is
+held. Neither it nor the receipt's later issuance timestamp proves the exact
+commit instant. For a fresh activation use the retained post-commit receipt
+and authenticated re-read as a conservative verified admission bound. Do not
+count a midnight exception from audit creation time alone; if that boundary
+is uncertain, start with the next full Asia/Baku day after verified admission.
+
+The generic audit POST reserves `support_ux_canary` for trusted server writes,
+including enable, disable and confirmation. The new reservation does not
+authenticate older records: a historical entry of unknown origin remains
+UNVERIFIED. Admit new evidence only with the reviewed reservation release,
+operator receipt/matching audit and selected-tenant state reads. Confirmation
+does not establish an earlier activation or recover missing observation days.
 
 ## Seven full calendar days
 

@@ -1923,3 +1923,67 @@ complete seven evidenced Asia/Baku days, then review the flag-retirement release
 - Official runner capacity cross-check used only GitHub's primary documentation
   https://docs.github.com/en/actions/reference/runners/github-hosted-runners.
   No runner relabelling, paid Mac, larger runner or resource increase applied.
+
+- Type-only fix checkpointc431174c07d49237fd3c3593cdd1a88f25ca392c pushed
+  normally. New PR checks37120817658 apply to this changed candidate;
+  runner37120817663 and scan37120817677 SUCCESS. Full compiler and other
+  new-head required results PENDING; first-candidate4b OOM is retained.
+- Durable original DB receipt archive:
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-canary-37119434975;
+  one hashed4533-byte receipt plus provenance.json. Stored hash reverified
+  against the sanitized download; ten real passes remain admitted for4b.
+- Fresh48-cell source capture37119565433 now executes its actual browser
+  capture step after successful isolated setup/build. It retains source4b
+  and cannot be relabelled as c431 or as representative production history.
+
+
+## 2026-10-03 — Compiler repaired; self-audit closes generic-audit forgery gap
+
+- Full c431 PR checks37120817658 SUCCESS: required scope/static/typecheck,
+  existing source-bound runner/scan, and production standalone build green.
+  Typecheck111196439423 completed12:01:52Z after actual compiler11:52:06–
+  12:01:49Z, exit2 with both blockers SUCCESS, no OOM or diagnostics in new
+  canary files. Historical project diagnostics remain baseline-governed;
+  this is not a zero-diagnostic claim. Heap stayed12288MiB. Actual checkout
+  4e8a9fa11f3fc1f2ecc4b79bee7c0b5cec6d5d6d differs from candidatec431.
+  Receipt /tmp/leaddrive-support-typecheck-37120817658-receipt.json.
+  Passing the bounded source fix supports it operationally; it does not
+  establish which single erased annotation caused the earlier heap pressure.
+- Independent runbook review found the generic audit POST permits arbitrary
+  caller action/entityType/userId/old-new values. Before this fix it could
+  forge a support_ux_canary record without the operator transaction. Held
+  release despite green c431 gates; audit provenance must be defensible.
+- Reserved only the exact support_ux_canary entity in the existing server-only
+  POST list. All generic callers, including superadmin, receive403 before
+  create. Actual canary transaction's direct INSERT and audit GET unchanged.
+  Six forged actor/source payload tests cover admin/superadmin and all three
+  enable/disable/confirm actions. No product UI, flag or existing data change.
+- Three focused unit files52/52 PASS; after lint exposed five pre-existing
+  any casts in the touched audit test, removed four redundant mock casts and
+  completed its existing AuthResult fixture. Scoped source/test ESLint then
+  PASS; final audit file23/23 PASS. Preflight16059MiB available,340GiB free,
+  PSI zero. Changes remain confined to the required audit reservation/test.
+- Runbook now binds GET reads to a session authorized for the selected tenant
+  (superadmin's path-based mutation and own-org GET are different scopes),
+  rejects automatic conflict retries, retains category/entitlement rollback,
+  and uses post-commit receipt/authenticated read as a conservative admission
+  bound. Audit creation can precede commit, so it cannot prove midnight.
+  Reservation does not authenticate older unknown-origin audit entries;
+  confirmation cannot fabricate their activation time or observation days.
+  Independent source/runbook review PASS. Final reservation head needs its
+  own new source checks; do not merge the incomplete c431 candidate instead.
+- Fresh source capture37119565433 SUCCESS, artifact11273491239,
+  support-ux-evidence-4b4fe6d595ba2e6f5eea99932abb26d044a3be7a-typical-enabled-capture,
+  size4735828B, API digestsha256d2e280e6b5604bc67ca388ab9d5da0a912e0fa1b9845acbc2a98ecf63ee1cfc2.
+  Actual download at
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-baseline-37119565433/download.
+  All48 unique required cells PASS with seven finite load/CLS samples;
+  every24 applicable filter cell has seven samples. Actual load p75 maxima:
+  Service Desk520,Kanban538,reports496,detail394ms, each below unchanged
+  650/600/700/600 ceilings; filter p50 maxima30/104ms below200. Event timings
+  have last-navigation scope: SD9 measured cells(max40ms),3 null; reports12
+  measured(max120ms), Kanban/detail null. Null is not zero or measured PASS.
+  Capture comparisons all not_configured. Source4b/production app mode,
+  localhost/typical/enabled synthetic fixture only. It does not close a
+  relative matched comparison, renew ceiling expiry or count a production day.
+  Archive hashing/independent actual PNG review are the next evidence phase.
