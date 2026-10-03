@@ -4,8 +4,8 @@
  * Agent Calendar — help article (Azerbaijani).
  * Video-skript formatı: yalnız-oxumaq üçün həftəlik təqvim — Tiketlər + Tapşırıqlar +
  * Tədbirlər + Fəaliyyətlər /api/v1/calendar/agent-dən birləşdirilir. Burada heç nə
- * yaradılmır/redaktə edilmir — bu, planlama mənzərəsidir; elementə klikləmək sizi
- * mənbə səhifəsinə aparır.
+ * yaradılmır/redaktə edilmir — bu, planlama mənzərəsidir; elementə klikləmək
+ * məlumat panelini açır; oradan mövcud mənbə səhifəsinə keçmək olar.
  */
 import {
   HelpScenario,
@@ -21,49 +21,47 @@ export default function AgentCalendarHelpAz() {
     <div className="space-y-6">
       <HelpScenario
         persona="Dəstək agenti və ya menecersiniz"
-        goal="Bu həftə sizdən nə tələb olunduğunu — tiketlər, tapşırıqlar, tədbirlər və fəaliyyətlər — bir həftəlik lövhədə görmək və lazım olan elementə birbaşa keçmək"
+        goal="Həftənin tiketlərini, tapşırıqlarını, tədbirlərini və fəaliyyətlərini bir təqvimdə nəzərdən keçirmək, elementin məlumatını açmaq və mövcud mənbəsinə keçmək"
       >
         Səhifə dörd ayrı yeri — <HelpKey>Tiketlər</HelpKey>, <HelpKey>Tapşırıqlar</HelpKey>,{" "}
         <HelpKey>Tədbirlər</HelpKey> və <HelpKey>Fəaliyyətlər</HelpKey> (zənglər, e-poçtlar, görüşlər,
         qeydlər, tapşırıq-fəaliyyətlər) — vahid həftəlik mənzərəyə yığır. Bütün məlumat yalnız sizin
-        təşkilatınızdandır və <strong>yalnız-oxunaqlıdır</strong>: burada heç nə yaratmırsınız, bu, hər
-        şeyi bir yerdə göstərən planlama görünüşüdür.
+        təşkilatınızdandır və <strong>yalnız-oxunaqlıdır</strong>: burada heç nə yaratmırsınız, bu,
+        təqvim elementlərini bir yerdə göstərən planlama görünüşüdür.
       </HelpScenario>
 
       <HelpSection title="Səhifədə nə var">
         <p>
           Yuxarı solda təqvim ikonu və <HelpKey>Agent Təqvimi</HelpKey> başlığı, onun altında isə cari
-          həftənin tarix aralığı (məs. «16 iyn — 22 iyn 2026») yazılır. Sağ yuxarıda üç naviqasiya
-          düyməsi durur: <HelpKey>‹</HelpKey> (əvvəlki həftə), <HelpKey>Bu gün</HelpKey> və{" "}
-          <HelpKey>›</HelpKey> (növbəti həftə). Başlığın altında dörd rəngli statistika kartı gəlir:{" "}
+          həftənin tarix aralığı (məs. «15 iyn — 21 iyn 2026») yazılır. Sağ yuxarıda <HelpKey>‹</HelpKey>{" "}
+          (əvvəlki həftə) və <HelpKey>›</HelpKey> (növbəti həftə) oxları, aralarında isə <HelpKey>Bu gün</HelpKey> var.
+          Kiçik ekranda «Bu gün» düyməsi başlığın altında yerləşir. Kompakt yekun sətri həftə üzrə{" "}
           <strong>Tiketlər</strong>, <strong>Tapşırıqlar</strong>, <strong>Tədbirlər</strong> və{" "}
-          <strong>Fəaliyyətlər</strong> — hər biri bu həftə üçün sayı göstərir.
+          <strong>Fəaliyyətlər</strong> sayını göstərir.
         </p>
         <p>
-          Mərkəzdə həftəlik şəbəkə var: solda saat sütunu (<strong>7:00-dan 19:00-a qədər</strong>),
-          yuxarıda yeddi gün başlığı (B.e.–B.). Bu gün vurğulanır — rəqəm dairə içində göstərilir. Gün
-          başlığının altındakı kiçik rəngli nöqtələr o gün hansı növ işlərin olduğunu bildirir (qırmızı =
-          tiket, narıncı = tapşırıq, indiqo = tədbir, yaşıl = fəaliyyət). Bütün gün davam edən elementlər
-          varsa, gün başlıqları ilə saat sətirləri arasında ayrıca <HelpKey>BÜTÜN GÜN</HelpKey> sətri çıxır.
+          Geniş ekranda kompakt həftə görünüşündə yeddi gün sütunu var (B.e.–B.). Hər başlıqda tarix və
+          element sayı göstərilir; bu günün başlığı vurğulanır. Hər sütunda əvvəlcə altıya qədər element görünür.
+          Daha dar ekranda yeddi tarix arasından gün seçin: onun altında həmin günün cədvəli, əvvəlcə
+          20-yə qədər element açılır. Əvvəl bütün gün elementləri, sonra vaxt ardıcıllığı ilə digər elementlər gəlir.
         </p>
         <p>
-          Aşağıda yan-yana iki kart durur: solda <HelpKey>İzah</HelpKey> (rənglərin hansı növə aid
-          olduğunu və saylarını göstərir), sağda isə <HelpKey>Bu gün</HelpKey> — bugünkü cədvəli vaxt
-          sırası ilə sadalayır.
+          Göstərilən həftədə vaxtı qeyd edilmiş gələcək element varsa, təqvimin üstündə{" "}
+          <HelpKey>Növbəti planlaşdırılmış iş</HelpKey> görünür. Bəzi mənbələr yüklənməsə, bildiriş onların
+          adını göstərir və <HelpKey>Yenidən cəhd et</HelpKey> düyməsini təklif edir; mövcud məlumat görünür.
         </p>
         <dl className="rounded-md border p-3">
-          <HelpDef term="Tiketlər / Tapşırıqlar / Tədbirlər / Fəaliyyətlər">Yuxarıdakı dörd kart — cari həftədə hər növün sayı (məzmun /api/v1/calendar/agent-dən gəlir).</HelpDef>
-          <HelpDef term="Saat sütunu">Sol kənardakı 7:00–19:00 vaxt slotları; vaxtlı elementlər başladıqları saata yerləşir.</HelpDef>
-          <HelpDef term="BÜTÜN GÜN sətri">Konkret saatı olmayan elementlər (məs. açıq tiketlər və tapşırıqlar) — yalnız belə element varsa görünür.</HelpDef>
-          <HelpDef term="Cari vaxt xətti">Bu günün sütununda indiki anı göstərən nazik xətt (kiçik nöqtə ilə).</HelpDef>
-          <HelpDef term="Prioritet nöqtəsi">Element kartındakı rəngli nöqtə: qırmızı=təcili, narıncı=yüksək, sarı=orta, yaşıl=aşağı.</HelpDef>
-          <HelpDef term="İzah">Aşağı sol kart — hansı rəngin hansı növ olduğunu və bu həftə üzrə sayını göstərir.</HelpDef>
-          <HelpDef term="Bu gün (cədvəl)">Aşağı sağ kart — bugünkü elementlər: əvvəl bütün gün açıq tiketlər/tapşırıqlar, sonra vaxt sırası ilə planlaşdırılmışlar.</HelpDef>
+          <HelpDef term="Həftə yekunu">Dörd təqvim mənbəsinin sayını göstərən kompakt sətir.</HelpDef>
+          <HelpDef term="Gün seçimi">Daha dar ekranda cədvəlini oxumaq istədiyiniz tarixi seçin.</HelpDef>
+          <HelpDef term="BÜTÜN GÜN">Konkret vaxtı olmayan elementin etiketi; element öz gününün siyahısında qalır.</HelpDef>
+          <HelpDef term="07:00–19:00 xaricində">Standart iş saatlarından kənarda vaxtı qeyd edilmiş element. O, görünən qalır.</HelpDef>
+          <HelpDef term="Prioritet">Elementin prioriteti olduqda göstərilən çərçivəli etiket.</HelpDef>
+          <HelpDef term="Daha … göstər">Gün sütununun qalan elementlərini və ya seçilmiş günün cədvəlində növbəti hissəni açır.</HelpDef>
+          <HelpDef term="Qeydi aç">Mənbə keçidi olduqda elementin məlumat panelində göstərilən düymə.</HelpDef>
         </dl>
         <p>
-          Hər element kartında rəngli sol haşiyə, növ ikonu və başlıq olur; prioriteti varsa, altında rəngli
-          nöqtə və prioritet adı görünür. Üzərinə kursoru gətirdikdə kart bir az qalxır və varsa{" "}
-          <strong>məkan</strong> (xəritə ikonu ilə) və <strong>status</strong> nişanı əlavə görünür.
+          Hər elementdə ikon, başlıq, vaxt və ya <HelpKey>BÜTÜN GÜN</HelpKey> etiketi və növ adı görünür.
+          Prioritet və iş saatlarından kənar etiketi uyğun olduqda göstərilir. Məlumatını oxumaq üçün elementə klikləyin.
         </p>
       </HelpSection>
 
@@ -74,18 +72,18 @@ export default function AgentCalendarHelpAz() {
             üçün <HelpKey>‹</HelpKey> oxunu basın.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Başlıq altındakı tarix aralığı yeddi gün irəli/geri sürüşür, şəbəkə yenidən yüklənir və yuxarıdakı
-            dörd statistika kartı həmin həftənin saylarına yenilənir. Yüklənmə zamanı şəbəkə yerinə fırlanan
-            işarə və «Təqvim yüklənir...» mətni çıxır.
+            Tarix aralığı yeddi gün irəli və ya geri dəyişir, təqvim və yekun sayları yenidən yüklənir.
+            Yüklənmə zamanı yer tutan sətirlər göstərilir.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
           <p>
-            İstənilən vaxt cari həftəyə qayıtmaq üçün ortadakı <HelpKey>Bu gün</HelpKey> düyməsini basın.
+            Cari həftəyə qayıtmaq üçün <HelpKey>Bu gün</HelpKey> düyməsini basın. Kiçik ekranda düymə
+            başlığın altında yerləşir.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Təqvim bu günü əhatə edən həftəyə qayıdır; bugünkü gün sütunu vurğulanır (rəqəm dairə içində),
-            cari saat slotunda isə nazik <strong>cari vaxt xətti</strong> görünür.
+            Təqvim bu günü əhatə edən həftəyə qayıdır. Geniş görünüşdə bugünkü başlıq vurğulanır;
+            daha dar görünüşdə bu gün seçilir və onun cədvəli göstərilir.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
@@ -93,64 +91,60 @@ export default function AgentCalendarHelpAz() {
       <HelpSection title="Addım-addım: bir elementi oxu və ona keç">
         <HelpStep n={1}>
           <p>
-            Şəbəkədə bir elementə baxın — rəngli sol haşiyəsi və ikonu növü bildirir (məs. qırmızı = tiket,
-            indiqo = tədbir). Daha çox detal üçün kursoru elementin üzərinə gətirin.
+            Elementin başlığını, vaxtını və növünü oxuyun, sonra məlumatını açmaq üçün ona klikləyin.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Kart bir az böyüyüb kölgələnir. Varsa, məkan (xəritə ikonu ilə) və status nişanı («Açıq», «İcrada»,
-            «Həll edildi» və s.) görünür. Prioritet nöqtəsi və adı (təcili/yüksək/orta/aşağı) isə həmişə görünür.
+            Sağda məlumat paneli açılır; telefonda bütün ekranı tutur. Tarix və vaxt, mövcud olduqda isə
+            status, prioritet, məkan və onlayn format göstərilir.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
           <p>
-            Elementin tam mənbəsinə keçmək üçün onun üzərinə klikləyin.
+            Mənbə səhifəsinə keçmək üçün məlumat panelində <HelpKey>Qeydi aç</HelpKey> düyməsini basın.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Sizi həmin elementin öz səhifəsinə aparır (məs. tiketin detalı). <strong>BÜTÜN GÜN</strong>{" "}
-            sətrindəki tiket/tapşırıq yığını isə müvafiq olaraq <HelpKey>Tiketlər</HelpKey> və ya{" "}
-            <HelpKey>Tapşırıqlar</HelpKey> siyahısını açır. Mənbə URL-i olmayan element klikləməyə cavab vermir.
+            Əlaqəli qeyd və ya siyahı, məsələn tiket məlumatı və ya tapşırıqlar siyahısı açılır.
+            Mənbə keçidi yoxdursa, panel yenə məlumatı göstərir, lakin «Qeydi aç» düyməsi olmur.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
 
-      <HelpSection title="Addım-addım: İzah və Bu gün kartlarını oxu">
+      <HelpSection title="Addım-addım: günün işlərini oxu">
         <HelpStep n={1}>
           <p>
-            Aşağı soldakı <HelpKey>İzah</HelpKey> kartına baxın — hansı rəngin hansı işə aid olduğunu öyrənmək
-            üçün.
+            Geniş ekranda lazım olan günün sütununu oxuyun. Daha dar ekranda cədvəlin üstündə həmin tarixi seçin.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Hər sətirdə kiçik rəngli ikon, növün adı (Tiket, Tapşırıq, Tədbir, Zəng, E-poçt, Görüş, Qeyd,
-            Tapşırıq Fəaliyyəti) və bu həftə üzrə sayı durur. Tiket, Tapşırıq, Tədbir və Zəng həmişə göstərilir;
-            digər növlər yalnız bu həftə mövcuddursa siyahıya düşür.
+            Əvvəl bütün gün elementləri, sonra vaxt ardıcıllığı ilə digər elementlər gəlir. Boş gün üçün{" "}
+            <HelpKey>Planlaşdırılmış iş yoxdur</HelpKey> görünür. Daha çox element varsa, <HelpKey>Daha … göstər</HelpKey>{" "}
+            düyməsini basın. Geniş sütunu <HelpKey>Daha az göstər</HelpKey> ilə yenidən yığmaq olar.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
           <p>
-            Aşağı sağdakı <HelpKey>Bu gün</HelpKey> kartına baxın — bugünkü işlərin vaxt sıralı siyahısı üçün.
+            Təqvimin üstündə <HelpKey>Növbəti planlaşdırılmış iş</HelpKey> varsa, göstərilən həftədə vaxtı
+            qeyd edilmiş ən yaxın gələcək elementə baxmaq üçün onu basın.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Əvvəl <HelpKey>BÜTÜN GÜN</HelpKey> bölməsi — açıq tiketlər (prioritet bölgüsü ilə: kritik/yüksək/
-            orta/aşağı) və açıq tapşırıqlar; sonra <HelpKey>Planlaşdırılmış</HelpKey> bölməsi — vaxt sırası ilə
-            elementlər (saat · növ). Bu gün heç nə yoxdursa, təqvim ikonu və «Bu gün üçün element yoxdur» mətni
-            görünür.
+            Eyni məlumat paneli açılır. Göstərilən həftədə vaxtı qeyd edilmiş gələcək element yoxdursa,
+            bu düymə göstərilmir.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
 
       <HelpCallout kind="tip">
         <p>
-          Şəbəkə yalnız <strong>7:00–19:00</strong> aralığını göstərir və üfüqi sürüşmə tələb edə bilər — dar
-          ekranlarda bütün yeddi günü görmək üçün şəbəkəni sağa-sola sürüşdürün. Gün başlığının altındakı rəngli
-          nöqtələr o günü açmadan hansı növ işlərin olduğunu tez bildirir.
+          Saat 07:00-dan əvvəl və ya 19:00-dan etibarən olan işlər görünür və{" "}
+          <HelpKey>07:00–19:00 xaricində</HelpKey> ilə işarələnir. Daha dar ekranda saat şəbəkəsini sürüşdürmək
+          əvəzinə gün seçimi ilə tarixləri dəyişin.
         </p>
       </HelpCallout>
 
       <HelpCallout kind="warning">
         <p>
           Bu səhifə <strong>yalnız-oxunaqlıdır</strong>: burada tiket, tapşırıq, tədbir və ya fəaliyyət
-          yaratmaq/redaktə etmək olmaz. Hər hansı dəyişiklik üçün elementə klikləyib öz mənbə səhifəsində işləyin
-          — təqvim növbəti yüklənmədə yenilənmiş vəziyyəti əks etdirəcək.
+          yaratmaq/redaktə etmək olmaz. Dəyişiklik üçün məlumat panelini açın, mövcud olduqda «Qeydi aç» düyməsini
+          basın və mənbə səhifəsində işləyin — təqvim növbəti yüklənmədə yenilənmiş vəziyyəti əks etdirəcək.
         </p>
       </HelpCallout>
 

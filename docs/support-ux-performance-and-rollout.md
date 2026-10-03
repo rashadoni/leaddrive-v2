@@ -3,7 +3,9 @@
 Status: **IMPLEMENTATION, EVIDENCE AND PRODUCTION RELEASE RECEIPT COMPLETE;
 REPRESENTATIVE OBSERVATION AND FLAG RETIREMENT PENDING** (reconciled 2026-10-03).
 This contract is the release authority for the Support UX branch. PR #501 and
-the approved Calendar/telemetry PR #530 production releases are complete.
+the approved Calendar/telemetry PR #530 production releases are complete. The
+atomic canary operator/trusted audit boundary also shipped through PR #544;
+its separate dated production receipt is recorded below.
 Recorded source comparison and pre-release
 canary gates remain accepted at their exact historical dimensions; the later
 tenant observation/flag-retirement gate is still open. The tracked checklist
@@ -287,3 +289,79 @@ dimension, accessibility check or structural assertion changed.
 
 This ledger is updated with immutable run, PR, merge, deploy and smoke IDs as
 each gate actually completes. Pending entries are never interpreted as passes.
+
+
+### Bounded current-source baseline review — 2026-10-03
+
+Fresh capture [37119565433](https://github.com/rashadoni/leaddrive-v2/actions/runs/37119565433)
+uses source `4b4fe6d595ba2e6f5eea99932abb26d044a3be7a` and artifact
+`11273491239`. Matched comparison
+[37122190158](https://github.com/rashadoni/leaddrive-v2/actions/runs/37122190158)
+uses source `fdb2b314a98c958d8de94ac80d18f5e161d5de04` and artifact
+`11274546547`. Both reports contain the exact same 48 unique Service Desk,
+Kanban, reports and Ticket Detail cells: agent/manager/admin, EN, light/dark,
+1440 × 900 desktop and 375 × 812 touch mobile, typical fixture, enabled canary,
+standard vision and production application mode in an isolated CI tenant.
+Every cell has seven load and CLS samples after warm-up; all 24 applicable
+filter cells have seven filter samples.
+
+The actual comparison passes 48/48 visual and 48/48 performance cells. Every
+current/baseline sample percentile, all 96 PNG file hashes and dimensions, and
+all reported relative/absolute metric rules were independently checked. Raw
+pixel counting was not repeated; the declared ratio/threshold arithmetic was
+checked against the matching PNG hashes. Maximum changed-pixel ratio is
+`0.00038117283950617285`, below unchanged `0.005`; 16 PNG pairs are byte
+identical and the other 32 match within the unchanged tolerance. Primary work,
+rendered rows and bordered-container counts do not increase. Runtime, Axe,
+custom accessibility, environment, touch and overflow failures remain zero.
+
+| Scenario | Capture load p75 max | Compare load p75 max | Unchanged ceiling | Compare filter p50 max |
+| --- | ---: | ---: | ---: | ---: |
+| Service Desk | 520 ms | 483 ms | 650 ms | 27 ms |
+| Kanban | 538 ms | 528 ms | 600 ms | Not applicable |
+| Reports | 496 ms | 509 ms | 700 ms | 97 ms |
+| Ticket Detail | 394 ms | 394 ms | 600 ms | Not applicable |
+
+Maximum compare CLS p75 is `0.011798959774159366`. Event Timing covers the last
+navigation rather than the seven-load population: Service Desk has 10 measured
+current cells but only nine paired baseline/current values (max 40 ms); reports
+have 12 pairs (max 120 ms). The remaining null/nonpaired interaction values
+are unmeasured, not zero or an independent timing pass. Service workers are
+disabled and same-origin CSP-report POSTs are fulfilled with 204 by the
+synthetic harness; this evidence does not prove production SW/CSP behavior.
+
+Twelve recorded builder/controller/fixture/config/UI blobs match capture →
+compare → final CI-resource candidate `abbaf6106d33aa612a603afdd88d8422fc95f16d`.
+The comparison retains its own real fdb source identity. This review admits
+only these fresh 48 dimensions; it does not replace the original 96-cell
+repeatability record, raise any ceiling, extend the 2026-10-08 review boundary,
+or establish representative production activity or observation days. Archives:
+`/mnt/HC_Volume_106454338/codex-alt-data/support-ux-baseline-37119565433` and
+`/mnt/HC_Volume_106454338/codex-alt-data/support-ux-comparison-37122190158`.
+
+
+### Atomic canary operator and trusted audit boundary — PR #544
+
+| Field | Actual result, 2026-10-03 |
+| --- | --- |
+| Source / protected merge | [PR #544](https://github.com/rashadoni/leaddrive-v2/pull/544), final head `abbaf6106d33aa612a603afdd88d8422fc95f16d`, merged normally at 13:02:01 UTC as `3294093a4364be8be35d8a03c1b9fde57c3dd3b9`; exact head matched, no admin bypass |
+| Delivered behavior | Fixed-flag superadmin action binds tenant ID/slug, expected state and compiled SHA, preserves unrelated feature representation, and commits its actor audit in the same locked Serializable transaction. Generic audit POST reserves the canary entity; no UI or automatic tenant activation |
+| Exact-head admission | All five required GitHub Actions contexts plus standalone build SUCCESS: [37123926459](https://github.com/rashadoni/leaddrive-v2/actions/runs/37123926459), runner37123926443, scan37123926439. Full compiler completed exit2 with both unchanged blockers and bounded swap cleanup SUCCESS; historical baseline diagnostics remain qualified |
+| Targeted and actual DB proof | 52 scoped unit cases and scoped lint passed; the final audit file23/23 includes six forged receipt denials. Final real PostgreSQL gate10/10 PASS/zero skips in static111205359599, exercising actual route/RLS proxy, FORCE RLS, rollback and concurrency. Heavy checks ran in hosted CI |
+| New automatic release | [37124821392](https://github.com/rashadoni/leaddrive-v2/actions/runs/37124821392) SUCCESS; production job111210440207 completed13:25:52 UTC. Build/quality/security, immutable artifact admission, atomic install, scheduler/isolation and the three named public ping/revision/login-assets smoke steps PASS. Job metadata contains24SUCCESS/3normalSKIP steps, not24 separate smoke tests |
+| Immutable artifact | `11274851828`, `leaddrive-prod-3294093a4364be8be35d8a03c1b9fde57c3dd3b9`,443931998B; API ZIP digest `sha256:426bb20671b0d5f0b9f21bbac30adb41cdad89883a987a6966b2cb1910b0e84a`. Original ZIP was not independently downloaded/rehashed |
+| New post-merge checks | PR checks37124821333, runner37124821308 and scan37124821287 SUCCESS on exact329; normal push-only duplicate static/build jobs SKIPPED. Actual full compiler13:08:08–13:13:20 UTC, exit2, both unchanged blockers/always-cleanup SUCCESS |
+| Independent public snapshot | TLS-verified cookie-free requests17:27:00–01 Asia/Baku: ping200/ok:true/no-store; build-info200/no-store/exact full329, builtAt13:08:36 UTC. Client RTT0.431637/0.196531s includes bounded body read, not handler latency |
+| Unauthenticated API guards | Calendar, Macros and rollout GET plus the empty-body unselected sentinel operator POST each401/`session_expired`. Guard responses had no Cache-Control header; no blanket no-store claim. Authenticated tenant behavior NOT RUN |
+| Source identity | Fifteen reviewed operator/audit/auth/RLS/API/UI/build/gate blobs match approved head→merge. PR synthetic checkoute2b39811 and realmerge329 share complete committed tree `fe3cf1be7583369d1bb8d13e133b2b2633ccc422`; distinct checkout/head/merge and compiled artifact identities retained |
+| Durable receipt | `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-release-37124821392`:12hashed files/63160B plus manifest, source/PR/DB/compiler/release metadata and independent safe public JSON/script. API digest is metadata; per-file stored hashes are independently verified |
+| Remaining admission | Exact representative tenant/authenticated state/audited activation, actual handler baseline/effective INFO/retention/continuity, seven full Asia/Baku days/incident review and later protected flag-retirement release remain open. No production flag mutation or observation-day claim;190/191 remains an unweighted checklist |
+
+The earlier completed #501/#505/#530 workflows were not rerun. This is the new
+operator source's single normal protected release, including its new required
+main/deploy checks. Two earlier candidate heap failures remain archived; the
+final bounded hosted typecheck requires18GiB measured RAM+swap for a14GiB heap,
+retains the full compiler/both blockers/60-minute timeout and always-cleans its
+capped swap. No baseline, threshold, reviewer policy or branch protection was
+weakened. Local full build/compiler/browser/PG gates are NOT RUN under the
+persistent Contabo workload contract; the required hosted gates completed.
