@@ -1,6 +1,6 @@
 # Support UX production observation and final admission
 
-Status: **RELEASE VERIFIED; REPRESENTATIVE TENANT AND ACTIVATION UNVERIFIED**.
+Status: **RELEASE VERIFIED; OWNER TEST TENANT SELECTED; FLAG OFF; ACTIVATION UNVERIFIED**.
 Owner: `@rashadoni`. Reviewed: 2026-10-03, Asia/Baku.
 
 This is the execution record for `SUPUX-ROL-006` and the outstanding literal
@@ -13,12 +13,12 @@ evidence; this protocol does not require repeating them.
 
 | Required fact | Current evidence / action |
 | --- | --- |
-| Representative authorized production tenant | Exact slug requested from owner; PENDING. Do not select an arbitrary paying tenant or count an isolated CI fixture |
+| Representative authorized production tenant | Owner selected his production test tenant `leaddrive` / LeadDrive Inc. through the coordinator. This resolves selection; actual representative activity still needs evidence. Controlled test traffic remains labeled as such and is not an isolated CI fixture or proof of natural usage |
 | Current production route | `rashadoni/leaddrive-v2`, protected `main`, GitHub Actions, `13.140.132.245:/opt/leaddrive-v2`; public app `https://app.leaddrivecrm.org` |
-| Last verified production snapshot | Current runtime `cb6d01ce1c0a7af315c94fe43972b56f735c9700`, independently observed after another task's automatic deploy `37132067233` SUCCESS; ping200/oktrue and build-info200/exact full SHA at `2026-10-03 19:35:48` (Asia/Baku). Eighteen scoped Support/operator/telemetry/runtime blobs match released PR #544/329. This task did not dispatch or repeat that deploy. PR #544's `37124821392` release and earlier snapshots remain dated evidence |
-| Authenticated flag state | UNVERIFIED. Read the selected tenant's authenticated no-store `/api/v1/support/ux-rollout`; only explicit `enabled: true` proves client admission. Public ping/build-info cannot prove this |
-| Audited activation | UNVERIFIED. Require tenant slug, owner/actor, exact source/artifact SHA, before/after state and activation UTC/Asia-Baku timestamp; use an already approved record if it exists |
-| Safe operator path | PR #544 delivered the fixed-flag atomic superadmin operator described below, with protected/PG/release/public-SHA admission complete. PR #530's protected read-only `support-ux-rollout` view can report anonymous aggregate counts or exact selected-tenant metadata; it cannot activate a flag. Direct SSH was rejected at its dated check. Selected-tenant execution remains NOT RUN |
+| Last verified production snapshot | Runtime `022c4a453e80f58e13d71e5808354d12daeb65aa`, independently observed after another task's automatic deploy `37141070643` SUCCESS; ping200/oktrue and build-info200/exact full SHA, both no-store, at `2026-10-03 22:21:05` (Asia/Baku). This task did not dispatch or repeat that deploy. Earlier source-identity comparisons and runtime receipts remain dated evidence |
+| Authenticated flag state | Coordinator's normal selected-tenant Chrome request reports `/api/v1/support/ux-rollout` HTTP200 with explicit `enabled:false`; Macros DOM reports browser storage. This corroborates protected metadata. Root has no authenticated browser access. Exact request timestamp/cache header was not supplied; any mutation still needs fresh reads |
+| Audited activation | NOT PERFORMED. Coordinator's selected-tenant `support_ux_canary` audit read reports success with total0/logs[]. No earlier activation or observation is inferred. A future action needs actor/source/before-after state, a trusted receipt and a fresh authenticated state read |
+| Safe operator path | PR #544 delivered the fixed-flag atomic superadmin operator described below, with protected/PG/release/public-SHA admission complete. PR #530's protected read-only `support-ux-rollout` run37143634459 SUCCESS reports selected `leaddrive` active, flag false, native feature array, four macros and zero stored categories at18:17:48UTC. It performed no activation and does not replace authenticated flag/audit reads. Direct SSH was rejected at its dated check |
 | Permissions and rollback | Verify selected administrator/manager permissions and tenant fences. Preserve all unrelated features and existing macro/category data. Removing the tenant flag restores browser mode while retaining DB categories |
 | Error and latency baseline | Actual selected-tenant baseline PENDING. PR #530 released unsampled category-handler instrumentation and the reviewed-main bounded read-only daily collector. Effective logging, selected-tenant collection and daily coverage remain UNVERIFIED/NOT RUN. Generic Sentry configuration, endpoint RTT and a short PM2 tail are insufficient |
 | Baseline validity | Fresh bounded current-source48-cell seven-sample capture/comparison and independent PNG/quantile review are complete; see the dated review in the rollout contract. Existing ceilings/2026-10-08 boundary remain, original96 dimensions are not replaced or extended, and real handler baseline is still PENDING. Broader validity requires review before final admission; do not increase a ceiling to fit a slow candidate |
@@ -528,3 +528,47 @@ files or compiled revision between its reads. The 16 behavioral tests include
 real temporary-file symlink/inode/write races and mocked fixed-localhost HTTP
 limits/aborts; they do not access production. Local runner policy, workflow
 guard wiring and production asset guards also pass.
+
+
+## 2026-10-03 — Owner test tenant selected; flag remains off
+
+This entry supersedes earlier pending-tenant-selection statements. The Mac
+coordinator delivered the owner's selection of LeadDrive Inc., slug
+`leaddrive`, for tests and tenant-specific Support canary after normal audit
+and logging admission. Its normal authenticated organization/session reads
+report a matching slug and superadmin role; no credential was transferred.
+The remote session has no access to that authenticated browser. Tenant tests
+do not authorize other organizations, external sends, irreversible deletion
+or global settings/release changes. Existing PR553 predates this clarification.
+
+Protected read-only [37143634459](https://github.com/rashadoni/leaddrive-v2/actions/runs/37143634459)
+completed SUCCESS on current main022c4a453e80f58e13d71e5808354d12daeb65aa.
+At18:17:48UTC/22:17:48Asia/Baku it reported this exact active tenant, flag off,
+native feature array, four macros and zero stored categories. No activation
+or audit write occurred. The result does not substitute for the selected
+organization's normal authenticated rollout/audit reads.
+
+Independent public ping/build-info at18:21:05UTC/22:21:05Asia/Baku both
+returned200/no-store, ping oktrue and the exact full022c artifact SHA.
+Its existing automatic deploy37141070643 was not repeated. An initial default
+urllib request returned403; that failed attempt is retained separately from
+the successful bounded request with the previously verified headers.
+
+Receipts: `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-tenant-37143634459`.
+Next: authenticated selected-tenant flag/audit, runtime logging readiness and
+actual matched handler baseline; then an audited tenant action and a fresh
+client-visible state read if admission succeeds. No observation day is counted.
+
+
+Subsequent coordinator evidence on the same selected organization reports a
+normal authenticated rollout GET HTTP200/enabled:false and Macros DOM browser
+mode. The matching support_ux_canary audit read returned success/total0/logs[].
+No action was performed; request UTC/cache metadata was not provided, so these
+reported reads do not establish a future mutation bound. The sanitized report
+is retained in the same archive, attributed to the Mac coordinator.
+
+A confirmed browser-mode copy defect is being corrected before final admission:
+category management must describe local empty-category storage while preserving
+that categories assigned to macros are shared. Delete-copy must describe its
+local-list and shared-macro effects accurately. This is a wording correction,
+not a persistence or flag change, and is not yet released.

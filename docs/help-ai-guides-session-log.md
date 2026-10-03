@@ -2552,3 +2552,184 @@ flag/audit и метрики, выполнить допущенную актив
 - Preparing explicit task-path source checkpoint and new internal diagnostic
   PR under standing active-task authorization. No user-visible UI change, no
   tenant selection and no replay of completed PR505/530/544 gates/deploys.
+
+
+## 2026-10-03 — New readiness source checkpoint and PR553
+
+- Created source checkpoint55c72d622956761679c7f3cb85610a061db51636 and pushed
+  codex/help-ai-guides normally. Opened and attached PR553:
+  https://github.com/rashadoni/leaddrive-v2/pull/553. Eight task-owned paths
+  against reviewed main022c; four documentation paths carry prior verified
+  source-release/history checkpoints as well as this new readiness work.
+- Final reviewer confirmed current two script hashes exactly match the actual
+ 16/16 tested files; no source blockers. Ready PR started new required checks
+ 37142804354 on exact55c72 head, runner37142804465 and scan37142804342.
+  At18:06UTC, pr-scope/runner-policy/scan SUCCESS; static/typecheck in progress.
+  Optional duplicate PR production-build SKIPPED because this internal script/
+  workflow change does not request that label. A normal main release still
+  requires its own protected deploy build/quality gates; no build PASS implied.
+- Read-only branch-protection recheck: exactly five required contexts, each
+  GitHub Actions app15368; admins enforced, PR-only, no force-push/deletion or
+  mandatory external reviewer. Nothing changed in the repository rules.
+- Layer4 user-visible approval does not apply to this internal diagnostic,
+  tests and documentation. Existing active-task autonomous release authorization
+  persists; merge waits for all required exact-head checks. No new tenant
+  input has arrived; no flag or customer data change is part of this PR.
+
+## 2026-10-03 — Selected test tenant received through the coordinator
+
+- The coordinator thread01a102e3-a292-75c4-9400-7d9dc1db10fd delivered the
+  owner's clarification for the existing canary question: use his test tenant
+  LeadDrive Inc., exact slug `leaddrive`. Normal authenticated Mac Chrome GETs
+  reportedly returned organizationId `cmmxg74k10000td3rr37dl6am`, matching
+  organization name/slug and superadmin role. No cookie/token was transferred.
+  This supersedes the earlier pending-tenant-selection statements; it is not
+  evidence of an enabled flag, activation audit or observation admission.
+- The delivered clarification limits action to tests and tenant-specific
+  Support canary after normal audit/logging checks. It does not authorize other
+  tenants, irreversible deletion, external notifications, global security or
+  settings changes, or a global release. PR553 was already prepared/pushed
+  under the separately recorded existing task authorization before this input;
+  it remains unmerged while its required checks run. No release is needed just
+  to inspect the selected tenant with the already released operator/diagnostic.
+- Root read the named coordinator thread for provenance/capability. Its earlier
+  forwarding attempt was rejected by automatic review and a direct confirmation
+  was requested there; its newest active turn shows the now-delivered send,
+  without exposing the latest user text. Preserve this distinction: do not use
+  the rejected attempt as authorization or bypass it. Current work is read-only
+  inspection; no authenticated write has been attempted by this session.
+- Authenticated browser access remains on the Mac coordinator. This remote
+  session has no browser-control or send-to-thread tool; it will not fabricate
+  a session, export cookies or mint credentials. Existing protected exact-main
+  selected-tenant diagnostic is the next independent read-only action.
+- At18:15UTC, main022c4a453e80f58e13d71e5808354d12daeb65aa and its existing
+  automatic deploy37141070643 were SUCCESS. PR553 typecheck completed SUCCESS;
+  actual full compiler exit2 and both unchanged blocking gates passed, not zero
+  diagnostics. Static checks remain pending; no rerun or merge performed.
+
+
+## 2026-10-03 — First selected-tenant receipt and current runtime check
+
+- Existing protected read-only view `support-ux-rollout` ran once for exact
+  slug `leaddrive`: Actions37143634459, job111263028990, source/current
+  main022c4a453e80f58e13d71e5808354d12daeb65aa, SUCCESS. Existing helper tests,
+  exact-main/environment/SSH guards and cleanup passed. At18:17:48UTC
+  (22:17:48Asia/Baku), tenantFound/tenantActive true, flagEnabled false,
+  featuresFormat array, macroCount4, storedCategoryEntries0. This was a
+  read-only transaction; no flag/audit write or activation occurred.
+- Independent public GETs at18:21:05UTC (22:21:05Asia/Baku), using the reviewed
+  no-cookie/no-auth request headers and verified TLS/no redirects, returned
+  ping200/oktrue and build-info200/exact full022c SHA, both no-store;
+  builtAt17:43:08UTC. Another task's deploy37141070643 was already SUCCESS;
+  this task did not repeat, dispatch or mutate that release.
+- Initial receipt extraction assumed JSON key order and found no record; fixed
+  extraction reads the JSON object independent of key order, without repeating
+  the workflow. Initial default urllib public request returned403; retained
+  failure and used the previously verified request headers in a bounded
+  comparison. No public-success or coverage claim was inferred from that403.
+- Durable selected-tenant/runtime receipts and hashes retained under
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-tenant-37143634459.
+  Authenticated rollout/audit remains NOT RUN by this remote session; the
+  selected tenant's protected DB metadata is not client-visible admission.
+
+## 2026-10-03 — PR553 required-gate failure diagnosed
+
+- Run37142804354 static-checks111260605060 FAILED at Unit tests vs baseline.
+  The new readiness suite actually passed16/16 with0skips. Full compiler
+  typecheck111260605050 passed with actual exit2 and both unchanged blockers,
+  cleanup and exact synthetic-checkout/source identity retained separately.
+- Actual failure is ci-static-checks-skipped-on-main.test.ts:100: the existing
+  guard correctly requires every PR static gate also be covered by deploy
+  quality, because duplicate static checks are skipped on main push. The new
+  readiness test step was missing there. Preserve this guard and baseline;
+  add the identical node:test step to existing deploy quality after install.
+  No optional exemption, weakened assertion, red merge or rerun of failed55.
+- Corrective source change and one narrow sequential local test/runner-policy
+  verification are in progress. Full build/compiler/browser remain NOT RUN
+  on persistent Contabo; new candidate hosted checks follow the actual fix.
+
+
+## 2026-10-03 — Authenticated coordinator evidence and confirmed copy defect
+
+- Coordinator supplied the requested normal Chrome page request for exactly
+  leaddrive/orgcmmxg74k10000td3rr37dl6am: GET support/ux-rollout HTTP200,
+  success:true/data.enabled:false; Macros DOM data-category-storage browser.
+  Its tenant-filtered support_ux_canary audit GET reports success:true,
+  total0/logs[]. No mutation or observation start. Request UTC/cache headers
+  and audit HTTP code were not supplied; do not invent them. Root did not
+  execute these authenticated requests or receive cookies/tokens.
+- Sanitized coordinator receipt appended to the selected-tenant archive. This
+  supersedes the earlier statement that authenticated evidence was entirely
+  missing. Fresh reads are still required at any actual operator action.
+- Coordinator found live DialogDescription promising organization-wide
+  categories despite browser mode. Root verified unconditional sharedCategoriesHint
+  at settings/macros/page.tsx:641 and the actual browser handlers: empty added
+  categories use per-org localStorage; categories on persisted macros and
+  rename/delete macro updates are shared. The deletion warning also claimed
+  deletion for every user despite retaining other browsers' local lists.
+- Preparing a narrow mode-aware description/deletion-copy correction in the
+  existing page and EN/RU/AZ translations. No storage, handler, permission,
+  navigation or layout change. This updates PR553 scope before its repaired
+  candidate's new CI, avoiding an unnecessary separate release. The earlier
+  internal-only/Layer4-inapplicable characterization is superseded: before
+  merge show the owner the concrete visible copy change and follow Layer4.
+- Existing required-gate coverage fix is complete: three deploy.yml lines add
+  the identical readiness node:test step after dependency installation in the
+  existing quality job. Targeted coverage regression3/3 PASS and runner-policy
+ 40workflows PASS after15639MiB RAMavailable/347524MiB diskfree/zeroPSI;
+  no full local suite/build/compiler. Failed55 receipt remains archived under
+  support-ux-readiness-37142804354 (gates.json SHA256
+  dd5aab8f7c1bff49c17ee31a450d963215a1f44069b7d16c02b997df93a365d4).
+
+
+## 2026-10-03 — Help self-audit expanded only to confirmed stale guidance
+
+- Coordinator's normal CRM session reportedly opened all14baseSupport sections
+  and Support AI. The three portal routes redirect to their separate login;
+  no customer session was created. Help guide/back navigation worked. These
+  reported reads are not a new all-role/tenant/portal behavioral acceptance.
+  The visible SLA warning already says business-hours is saved while deadlines
+  use calendar time; no deadline implementation change is part of this phase.
+- Confirmed stale Entitlements guides in all three locales describe five KPI
+  tiles/card grid instead of the current compact three-count strip, filters,
+  desktop table/mobile list and separate detail/form panels. Root rewrote only
+  these help articles against current page source, retaining draft-first rules,
+  milestone definitions, lifecycle permissions and recovery guidance.
+- Calendar guide review likewise confirmed obsolete hourly-grid, KPI-card,
+  Legend/Today-card and direct-navigation instructions. Preparing EN/RU/AZ
+  article corrections for actual weekly columns/mobile day agenda and details
+  panel; the real Today control remains. Registry subtitles corrected only
+  for this article to describe details then an available source-record link.
+  No videos/voiceover generated or storage/navigation/permission code changed.
+- PR553 is temporarily draft while this single repaired candidate is prepared.
+  Main advanced independently to f34e04af037705eb2838285da26c78d7c9e2abc9;
+  fetched read-only. Its eight changed paths concern channels/OAuth and do not
+  overlap Support or repository release instructions. Sync follows our scoped
+  checkpoint; no action on the unrelated channel task or its deploy.
+- Macros wording fix is prepared in page plus EN/RU/AZ messages. Actual scoped
+  ESLint PASS; i18n parity24151keys/zero missing-or-extra PASS; existing macro
+  UX contract14/14 PASS after15913MiB RAMavailable/347518MiBdisk/zero memoryPSI.
+  No extra mirror tests, full local suite/compiler/build/browser or flag write.
+
+
+## 2026-10-03 — Repaired source candidate ready for protected verification
+
+- Final review completed for mode-aware Macros wording and six Help articles.
+  Corrected the deletion clause to promise only that categories saved in other
+  browsers are not removed; merged visible lists can change through shared
+  macro assignments. Independent review corrected Entitlements overdue scope
+  to the API's prior30day window and Calendar's example to a real Mon–Sun week.
+- Final i18n check PASS24151keys/zero missing-or-extra after15709MiB RAMavailable
+  and zero memoryPSI. Scoped ESLint for six guides plus registry initially found
+  thirteen JSX quote-escaping errors in Calendar EN; corrected only those text
+  characters and the final seven-file ESLint PASS. No rule was disabled.
+- Existing Help registry test selected only the two changed slugs:12/12 PASS,
+  including six actual HTML renders and six locale/file checks;1087 unrelated
+  cases intentionally NOT RUN by name selection. Duration1.07s, one worker,
+  after15866MiB RAMavailable/347512MiB freedisk/zero memoryPSI. This is static
+  rendering, not authenticated browser proof of an unreleased candidate.
+- Full compiler/build/browser remain NOT RUN on Contabo by workload policy;
+  repaired-candidate hosted gates are next. The earlier failed55 hosted check
+  remains visible. Source changes are prepared before the one required Layer4
+  owner confirmation of visible Macros/help wording. No selected-tenant write,
+  flag change, observation day or production release occurred in this phase.

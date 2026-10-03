@@ -4172,8 +4172,19 @@ task, not new SUPUX IDs or percentage weights):
   inventory proves paths/instantaneous size only. The new bounded read-only
   process/logging/rotation probe passes 16 targeted behavioral tests without tenant access, while keeping actual
   effective INFO and longitudinal coverage unverified unless supported by evidence.
-- Selected tenant and activation: PENDING exact authorized slug and audit record;
-  confirm authenticated flag state after any separately admitted operator action.
+- Selected tenant: owner chose his production test tenant `leaddrive` / LeadDrive
+  Inc. through the coordinator. Protected read-only37143634459 SUCCESS reports
+  active tenant/flag false at2026-10-03T18:17:48Z. Coordinator's normal Chrome
+  request corroborates enabled:false/browser storage and audit total0/logs[].
+  Exact request timestamp/cache metadata was not provided. Audited activation
+  remains NOT PERFORMED; any admitted action needs fresh reads and a trusted
+  receipt. Test activity must remain labeled and cannot imply historical or
+  representative natural usage.
+- Confirmed guidance defects from selected-tenant self-audit: PREPARED/PENDING
+  release. Macros descriptions must reflect browser versus tenant storage;
+  Entitlements and Calendar help must describe the current compact/adaptive UI
+  in EN/RU/AZ. These are wording fixes with unchanged handlers and permissions;
+  their visible release list is subject to delivery Layer4.
 - Real handler baseline and coverage: PENDING matched activity/error/duration
   samples, effective INFO, retention, process/source/key/flag continuity.
 - Seven complete Asia/Baku days and incident review: NOT STARTED/UNVERIFIED.

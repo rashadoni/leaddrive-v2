@@ -1107,9 +1107,9 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
       az: "Agent Təqvimi",
     },
     subtitle: {
-      en: "A read-only weekly view that pulls your tickets, tasks, events, and activities into one timeline — click any item to open its source record.",
-      ru: "Недельный режим только для чтения, который сводит ваши тикеты, задачи, мероприятия и активности в одну ленту — кликните элемент, чтобы открыть исходную запись.",
-      az: "Tiketlərinizi, tapşırıqlarınızı, tədbirlərinizi və fəaliyyətlərinizi vahid xronologiyaya yığan yalnız-oxumaq həftəlik görünüş — mənbə qeydini açmaq üçün istənilən elementə klikləyin.",
+      en: "Review tickets, tasks, events and activities by week or selected day. Select an item for details, then open its source record when a link is available.",
+      ru: "Просматривайте тикеты, задачи, мероприятия и активности за неделю или выбранный день. Откройте подробности элемента, затем исходную запись, если для неё есть ссылка.",
+      az: "Tiketlərə, tapşırıqlara, tədbirlərə və fəaliyyətlərə həftə və ya seçilmiş gün üzrə baxın. Elementin təfərrüatlarını, sonra keçid varsa mənbə qeydini açın.",
     },
     content: {
       en: lazy(() => import("./agent-calendar/en")),
