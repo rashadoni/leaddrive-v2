@@ -437,6 +437,7 @@ async function verifyUnscopedRls(fixture, phase) {
 async function deniedScenario(fixture) {
   stage = "today-denied-no-grant"
   const view = await openToday(fixture.denied, "ru", { width: 320, height: 900 })
+  stage = "today-denied-response-boundary"
   assert.equal(view.response.status(), 403)
   const headers = await view.response.headers()
   assert.ok(headers["cache-control"]?.includes("private") && headers["cache-control"]?.includes("no-store"))
@@ -445,13 +446,25 @@ async function deniedScenario(fixture) {
   assert.equal(body.code, "WORKFORCE_TODAY_READ_ACCESS_REQUIRED")
   assert.deepEqual(Object.keys(body).sort(), ["code", "error"])
   for (const employee of [...fixture.employees, ...fixture.sentinels]) assert.ok(!JSON.stringify(body).includes(employee.id) && !JSON.stringify(body).includes(employee.name))
-  const alert = view.page.getByRole("alert")
+  stage = "today-denied-localized-error-alert"
+  // Next's route announcer is also an alert in an open shadow root. Require
+  // the actual localized error alert, keeping strict role/visibility checks.
+  const alert = view.page.getByRole("alert").filter({ hasText: view.ui.loadFailed })
   await alert.waitFor()
+  const localizedErrorAlerts = await alert.count()
+  assert.equal(localizedErrorAlerts, 1)
+  receipts.deniedBoundary = {
+    responseStatus: view.response.status(),
+    totalRoleAlerts: await view.page.getByRole("alert").count(),
+    localizedErrorAlerts,
+  }
   assert.ok((await alert.innerText()).includes(view.ui.loadFailed))
+  stage = "today-denied-roster-excluded"
   assert.equal(await view.page.locator('section[aria-labelledby="workforce-manager-today-list"]').count(), 0)
   assert.equal(await view.page.getByText(fixture.employees[0].name, { exact: true }).count(), 0)
   await view.page.screenshot({ path: `${outputDirectory}/denied-ru-no-grant.png` })
   assert.deepEqual(view.workforceWrites, [])
+  stage = "today-denied-preserved-real-session"
   await assertSession(view.context, fixture.denied)
   receipts.cases.push({ name: "no-grant-real-session-denied", status: "PASS", responseStatus: 403, code: body.code, namesAndFactsExcluded: true, noRosterRendered: true, localizedErrorRendered: true, readOnlyWorkforceRequests: true, realSessionPreserved: true })
   await view.context.close()
