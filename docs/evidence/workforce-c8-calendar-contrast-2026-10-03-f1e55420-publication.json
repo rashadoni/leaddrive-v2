@@ -1,0 +1,61 @@
+{
+  "observedAtUtc": "2026-10-03T15:29:35.461944+00:00",
+  "publishedExactHead": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+  "freshMain": "cb6d01ce1c0a7af315c94fe43972b56f735c9700",
+  "pr": 546,
+  "draft": true,
+  "sourceReview": {
+    "verdict": "GREEN P0-P3=0",
+    "original": {
+      "path": "/tmp/workforce-part20-f1e55420-independent.json",
+      "bytes": 6104,
+      "sha256": "d16d3054008811df2342556a9e0e83e82b83344fc1ccd1892d7d902ed8d74105"
+    }
+  },
+  "fullDiff": {
+    "paths": 46,
+    "bytes": 399550,
+    "sha256": "58b886038ef71e261bfc90ead08e08145fff6ba579747f6dfc97bb1e4b2385e0"
+  },
+  "nonDocDiff": {
+    "paths": 7,
+    "bytes": 52417,
+    "sha256": "61840032f5fcdcfbc993db4dd27fa460dde86f675324f60e22b17ac809fbea54"
+  },
+  "main549Reconciliation": {
+    "owned46Exact": true,
+    "incoming7RenameSidesExact": true,
+    "ordinaryMerge": true
+  },
+  "checks": {
+    "runnerPolicy": "40 workflows PASS",
+    "assets": "27 domains/86 topics/5 schemas PASS",
+    "diff": "PASS",
+    "componentScopedLint": "PASS at d3dc4b371",
+    "math": "56 PASS unchanged source",
+    "collector": "8 PASS unchanged source",
+    "gitleaks": {
+      "version": "8.30.1",
+      "configurationUnchanged": true,
+      "commits": 22,
+      "scannedBytesApprox": 344388,
+      "durationMs": 845,
+      "findings": 0,
+      "original": {
+        "path": "/tmp/workforce-part20-f1e55420-gitleaks.json",
+        "bytes": 3,
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      }
+    },
+    "fullLocalBuildTypecheckSuiteBrowser": "NOT RUN: Contabo workload contract"
+  },
+  "thirdPreliminary": {
+    "runId": 37133254330,
+    "attempt": 1,
+    "createdAtUtc": "2026-10-03T15:26:36Z",
+    "event": "workflow_dispatch",
+    "head": "f1e55420fa1165a7321b7596ae0330e6e7e8077a",
+    "acceptance": "PENDING; no final PR acceptance credit"
+  },
+  "sourcePreservation": "Published source branch stays exact f1e; this receipt-only branch is private and will be carried after release."
+}
