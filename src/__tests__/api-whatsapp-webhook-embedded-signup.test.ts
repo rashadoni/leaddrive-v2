@@ -27,9 +27,10 @@ vi.mock("@/lib/prisma", () => ({
     organization: { findUnique: vi.fn(async ({ where }: Row) => (where.slug === "leaddrive" ? { id: "org_leaddrive" } : null)) },
     channelConfig: {
       findFirst: vi.fn(async ({ where }: Row) => {
-        // resolveTenantWhatsAppConfig: the tenant's own active row
+        // resolveTenantWhatsAppConfig: the tenant's own active row (rows are kept in creation order)
         if (where.organizationId && !where.OR && !where.phoneNumberId) {
-          return state.configs.find((c) => c.organizationId === where.organizationId) ?? null
+          const ownSecretOnly = Array.isArray(where.NOT)
+          return state.configs.find((c) => c.organizationId === where.organizationId && c.isActive && (!ownSecretOnly || !!c.appSecret)) ?? null
         }
         // tenant-addressed lookup by id + phone
         if (where.id) {
@@ -132,6 +133,18 @@ describe("WhatsApp webhook — Embedded Signup numbers behind the shared callbac
     // know it as the shared app's: the customer's number stays unresolved.
     expect((await POST(req(body, sign(body, SHARED)))).status).toBe(200)
     expect(state.messageLookups).toEqual([])
+  })
+
+  it("keeps the shared callback working when LeadDrive's workspace also holds an Embedded Signup number", async () => {
+    // Created BEFORE LeadDrive's own row, so an unordered pick of "the workspace's WhatsApp row" could land
+    // on it — and its missing secret would reject every callback to ?t=leaddrive.
+    state.configs.unshift({ id: "cfg_ld_es", organizationId: "org_leaddrive", phoneNumberId: "123123123", appSecret: null, isActive: true, settings: { embeddedSignup: true } })
+    for (const [phone, org] of [["984538588084578", "org_leaddrive"], ["444555666", "org_customer"], ["123123123", "org_leaddrive"]]) {
+      state.messageLookups.length = 0
+      const body = statusFor(phone)
+      expect((await POST(req(body, sign(body, SHARED)))).status).toBe(200)
+      expect(state.messageLookups).toEqual([org])
+    }
   })
 
   it("is not unlocked by the older WHATSAPP_APP_SECRET either", async () => {
