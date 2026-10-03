@@ -536,6 +536,32 @@ describe("saving the channel form keeps what other screens and endpoints wrote",
     expect({ templates: await notificationTemplates(), group: await leadGroup() }).toEqual(before)
   })
 
+  it("keeps a number connected through Embedded Signup routed after a save", async () => {
+    const id = await whatsappRow()
+    // The row as api/v1/channels/whatsapp/embedded-signup leaves it: no per-row app secret or verify token
+    // (the shared app's secret verifies its webhooks) and the onboarding facts in settings.
+    const embedded = {
+      embeddedSignup: true,
+      businessId: "99988877",
+      displayPhoneNumber: "+994 50 123 45 67",
+      onboardedAt: "2026-10-03T08:00:00.000Z",
+      registration: "registered",
+      registrationPin: "encrypted-pin",
+    }
+    Object.assign(store.rows.get(id)!, { appSecret: null, verifyToken: null, settings: { ...embedded } })
+
+    await openForm(id)
+    await typeInto("#configName", "WhatsApp — Acme")
+    await save()
+
+    expect(store.rows.get(id)?.configName).toBe("WhatsApp — Acme")
+    // webhooks/whatsapp finds the number behind the shared callback only by `embeddedSignup`; the PIN is the
+    // number's two-step verification PIN and exists nowhere else.
+    expect(settingsOf(id)).toMatchObject(embedded)
+    // The form never received the PIN, so it could not have sent it back.
+    expect(JSON.stringify(store.puts[0])).not.toContain("encrypted-pin")
+  })
+
   it("keeps the reply policy on Telegram, and still lets the form clear the chat id it owns", async () => {
     const id = await telegramRow()
     await setPolicy({ configId: id, mode: "ai", afterHoursAi: true })
@@ -674,6 +700,15 @@ describe("the protected lists keep up with their writers", () => {
     expect(templates.length).toBeGreaterThan(0)
     expect(group.length).toBeGreaterThan(0)
     expect([...templates, ...group].filter((key) => !whatsapp.includes(key))).toEqual([])
+  })
+
+  it("covers every key Embedded Signup writes", () => {
+    const source = readFileSync(join(process.cwd(), "src/lib/whatsapp-embedded-signup.ts"), "utf8")
+    const block = source.match(/const settings: Record<string, unknown> = \{([\s\S]*?)\n {2}\}/)?.[1] ?? ""
+    const written = [...block.matchAll(/^\s*(?:\.\.\.\(pin \? \{ )?(\w+):/gm)].map((match) => match[1])
+    expect(written).toContain("embeddedSignup")
+    expect(written).toContain("registrationPin")
+    expect(written.filter((key) => !serverOwnedSettingKeys("whatsapp").includes(key))).toEqual([])
   })
 
   it("keeps the Facebook/Instagram list carrying the same reply policy", () => {
