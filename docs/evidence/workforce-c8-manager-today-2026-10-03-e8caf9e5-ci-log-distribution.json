@@ -1,0 +1,46 @@
+{
+  "atUtc": "2026-10-03T19:53:40.488455+00:00",
+  "purpose": "Lossless distribution of two existing own552 final CI originals into the bounded docs-only archive phase",
+  "copiedFromPrivateHead": "4ee2bfed76182cc6cfb89aee6d785eae66417d44",
+  "originalManifestRetainedOnSuccessor": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final.json",
+  "candidateHead": "e8caf9e580936cbbc56c78da7618a37eef2b495e",
+  "base": "f34e04af037705eb2838285da26c78d7c9e2abc9",
+  "ownPr": 552,
+  "contexts": [
+    {
+      "name": "typecheck",
+      "jobId": 111267962724,
+      "conclusion": "SUCCESS",
+      "completedAt": "2026-10-03T18:55:39Z",
+      "meaning": "1196 advisory diagnostics; both blocking gates passed; 66 current/baseline pairs, no new defect/syntax/missing-module/undefined failures. Advisory tsc exit 2 does not mean clean full typecheck."
+    },
+    {
+      "name": "static-checks",
+      "jobId": 111267962700,
+      "conclusion": "SUCCESS",
+      "completedAt": "2026-10-03T18:59:02Z",
+      "meaning": "18 failing full-suite baseline files / 18 unchanged baseline. No clean full-suite claim."
+    }
+  ],
+  "originals": [
+    {
+      "source": "/tmp/workforce552-e8-typecheck-original.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-16.gz",
+      "bytes": 260892,
+      "sha256": "7056d24002f2f602fc5ed15dbed46776b2155c7a796cd30a25831e187d9f2e10",
+      "gzipBytes": 34702,
+      "gzipSha256": "4beebe805a1d3e5127f77fd8367f96d1774c9d666d5839844aa18c43b7c28542",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-static-checks-original.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-hosted-final-original-17.gz",
+      "bytes": 193626,
+      "sha256": "53ad5c044bb389a0c4fc45e7dc726718ae12f5291eb44c91d86b2c3df806cd19",
+      "gzipBytes": 38220,
+      "gzipSha256": "e076b20f902322a228c25dfb0a54ff45b08c53ef8bc9539a77f4a3ca422d1ea7",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "status": "Originals were captured before own552 merge; their bytes and historical statuses are unchanged. This distribution adds no new runtime acceptance. Later final hosted/merge/deploy/public receipt packet remains on the retained successor."
+}
