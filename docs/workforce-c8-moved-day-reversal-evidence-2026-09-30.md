@@ -1927,3 +1927,40 @@
   provenlocalcalendarclipping; generalupdate/delete/breakpolicy/AGENTmoves/Route
   mutation excluded. Wholepage/zoom/AT/contrast/authenticatedproductioncalendar/
   Android/physical/load/pilot NOT RUN. No100%claim or newcompletioncredit.
+
+
+## 2026-10-03 (Asia/Baku) — bounded 320 CSS acceptance resumed
+
+- User explicitly resumed prepared successor lane. Initialallowedworktreepart3,
+  codex/workforce-completion-part18,cleanHEADb5ec59e800eedb42a177e1193f9dd15f116425fb,
+  originrashadoni/leaddrive-v2 verified withcodex-project-context. CurrentAGENTS
+  andDELIVERY fullyread/routing reconciled withregistry/deploy docs. Production
+  only13.140.132.245:/opt/leaddrive-v2 via reviewedmain->deploy.yml; existingtask
+  autonomouspush/merge/deploy authorization persists,no manualcopy/fallback.
+- Freshmain advanced467M->063f47b9f7ee924a061ad8838d79c359810619c0 through#538:
+  onlydocs/meta-app-review-session-log.md changed,no taskoverlap. Ordinarymerge
+  completedwithoutconflicts; incomingforeignpath byteequalmain. Historical
+  released537/source/24originalreceipts retained; no canonical/foreign edits.
+- Currentboundedplan: add oneTEAM/RU320x844CSS-pixel hostedChromium case with
+  valid160-character syntheticlabel/longunbrokenfragment; retainallold9exactly.
+  NativeTab/Enter/Space cancel/reopen/realcommit+lostresponse/exactretry,
+  fullpersistedCancelstate/writes0,2tombstones/1audit,byte-identicaldraft,
+  responses[true,false]/replaywrites0,realsession/team andfinalpopulatedRLS.
+  Measureactualcontrols/textRange horizontalcontainment insidecalendar/main,
+  notonlydocument.scrollWidth; allowlongnewconfirmation verticalscroll while
+  focusedheading/alert/actions remainvisible whenreached. Old9fullviewport
+  assertions unchanged. No programmaticfocus/CSSzoom/authmocks/limiterbypass.
+- Initiallyharness-only; firstactualhostedrun provesanyclipping beforelocalUI
+  change. Ifconfirmed, narrowcalendarcomponentwrapping only,notsharedButton/
+  appshell/schema/API/auth/RLS/Route/workflow/baseline. Safegeometry metadata
+  andscreenshots mustpreservefailureproof. 320CSSreflow isnotnative200%zoom.
+- Currentresult: phasebegun,mainintegrated,implementation starts. Lastaction:
+  routing/status/docreconciliation andfreshmainmerge. Precise stoppingpoint:
+  newhostedcase implementation; actual10cases NOT RUN. Nextaction: bounded
+  checks/exactreview/draftPR->ready actual10/fivegates, diagnoseactualfailures,
+  freshmain normalmerge/deploy/publicexactSHA ifverified. Full Contabobuild/
+  typecheck/suite/browser/PG/Android/load NOT RUN byhostcontract; hostedCIfor
+  heavychecks. Wholepagekeyboard/nativezoom/AT/contrast/authenticatedproduction
+  calendar/physical/pilot NOT RUN. Progress81/161,14/15,C8 36%,overall59%,
+  80non-DONE/about41%weighted,007PARTIAL;generalupdate/delete/breakpolicy/AGENT
+  moves/Routemutationexcluded. No100%claim/newcompletioncredit.
