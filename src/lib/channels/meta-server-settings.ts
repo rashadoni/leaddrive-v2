@@ -15,6 +15,9 @@ import { META_INBOX_CHANNEL_TYPES } from "@/lib/channels/live-connection"
  *                        `inboxSubscribed`, a staged row read as a working connection.
  *   tokenExpiresAt       expiry of the Instagram-Login token (api/v1/social/oauth/instagram/callback).
  *   username             the Instagram handle that token belongs to (same callback).
+ *   igScopedId           the app-scoped id of that account (same callback); Meta's deauthorize and
+ *                        data deletion callbacks may name the account by it (lib/social/instagram-revoke).
+ *   revokedByMeta        when and why Meta's deauthorize / data deletion callback switched the row off.
  *   replyMode … aiRolloutPercent
  *                        the reply policy, owned by api/v1/settings/channel-reply (admin-only, validated,
  *                        audited). webhooks/facebook and webhooks/instagram read `replyMode` with a default of
@@ -30,6 +33,8 @@ export const META_SERVER_OWNED_SETTING_KEYS = [
   "subscriptionPending",
   "tokenExpiresAt",
   "username",
+  "igScopedId",
+  "revokedByMeta",
   "replyMode",
   "afterHoursAi",
   "outOfOffice",
