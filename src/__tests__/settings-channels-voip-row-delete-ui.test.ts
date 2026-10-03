@@ -446,11 +446,6 @@ describe("channel catalog — a VoIP row and a refused delete", () => {
     await settle()
   }
 
-  const card = (id: string) => {
-    const element = container.querySelector<HTMLElement>(`[data-testid="channel-card-${id}"]`)
-    if (!element) throw new Error(`no card ${id}`)
-    return element
-  }
   /** The connected-list row that shows this channel — where its Edit and Delete live. */
   const tileShowing = (configName: string) => {
     const tile = [...container.querySelectorAll<HTMLElement>('article[data-testid^="channel-row-"]')]
