@@ -1,0 +1,114 @@
+{
+  "observedAt": "2026-10-03T09:35:20.718108+00:00",
+  "mergedSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+  "preMergeBase": "f62ab3a609a0461cbd14c264306df2d28325628f",
+  "candidateHead": "945f17306d4488205842faeeecdec61ad3582e3c",
+  "parents": [
+    "f62ab3a609a0461cbd14c264306df2d28325628f",
+    "945f17306d4488205842faeeecdec61ad3582e3c"
+  ],
+  "mergeTreeEqualsCandidate": true,
+  "currentPrApiBaseSha": "f62ab3a609a0461cbd14c264306df2d28325628f",
+  "ownNormalRouteVerified": true,
+  "run": {
+    "id": 37112124490,
+    "run_attempt": 1,
+    "event": "push",
+    "head_branch": "main",
+    "head_sha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+    "path": ".github/workflows/deploy.yml",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-03T09:10:01Z",
+    "updated_at": "2026-10-03T09:34:19Z",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37112124490"
+  },
+  "jobs": {
+    "Production build & publish artifact": {
+      "id": 111171917566,
+      "name": "Production build & publish artifact",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T09:10:05Z",
+      "completed_at": "2026-10-03T09:27:16Z"
+    },
+    "Quality & security gates": {
+      "id": 111171917674,
+      "name": "Quality & security gates",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T09:10:05Z",
+      "completed_at": "2026-10-03T09:21:25Z"
+    },
+    "Deploy to production & post-deploy smoke": {
+      "id": 111174659792,
+      "name": "Deploy to production & post-deploy smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T09:27:20Z",
+      "completed_at": "2026-10-03T09:34:11Z"
+    },
+    "Cap retained deploy artifacts": {
+      "id": 111175732927,
+      "name": "Cap retained deploy artifacts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T09:34:14Z",
+      "completed_at": "2026-10-03T09:34:19Z"
+    }
+  },
+  "boundArtifact": {
+    "id": 11270795593,
+    "node_id": "MDg6QXJ0aWZhY3QxMTI3MDc5NTU5Mw==",
+    "name": "leaddrive-prod-a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+    "size_in_bytes": 443897828,
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11270795593",
+    "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11270795593/zip",
+    "expired": false,
+    "digest": "sha256:2e88a0409364f894adaf76f3c0f64211dfd8f93b77cbd10ba8139e6fdb9336dc",
+    "created_at": "2026-10-03T09:27:12Z",
+    "updated_at": "2026-10-03T09:27:12Z",
+    "expires_at": "2026-11-02T09:27:06Z",
+    "workflow_run": {
+      "id": 37112124490,
+      "repository_id": 1362346481,
+      "head_repository_id": 1362346481,
+      "head_branch": "main",
+      "head_sha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6"
+    }
+  },
+  "wholeOwnRunSuccess": true,
+  "normalRunSuccessStillRequired": false,
+  "originals": [
+    {
+      "path": "/tmp/workforce540-production-a276-independent/github-20261003T093518150839Z/artifacts.json",
+      "bytes": 762,
+      "sha256": "8bb930dc1150f4b753a6afc91561868ed957a92aaa991ee5d34b55fc0a122301"
+    },
+    {
+      "path": "/tmp/workforce540-production-a276-independent/github-20261003T093518150839Z/candidate-commit.json",
+      "bytes": 1191,
+      "sha256": "6a53deb5298f315d18826102b13a0f3b6bc36db0e0d445193221dd5adeb23edf"
+    },
+    {
+      "path": "/tmp/workforce540-production-a276-independent/github-20261003T093518150839Z/jobs.json",
+      "bytes": 19829,
+      "sha256": "cd9d61c44c17a0760e5079d5bb289234876d3012dfa57d3828549147baa0a318"
+    },
+    {
+      "path": "/tmp/workforce540-production-a276-independent/github-20261003T093518150839Z/merged-commit.json",
+      "bytes": 2761,
+      "sha256": "7b42c20704983f6233ec9dd8cd41bf3f5cc8119765389e70f79c64ddd26e59f8"
+    },
+    {
+      "path": "/tmp/workforce540-production-a276-independent/github-20261003T093518150839Z/pr.json",
+      "bytes": 20187,
+      "sha256": "53feed861436324a5a4529147eab12a714e0f422e84c8a7fa25e7a2d268a2b53"
+    },
+    {
+      "path": "/tmp/workforce540-production-a276-independent/github-20261003T093518150839Z/run.json",
+      "bytes": 12416,
+      "sha256": "ad4e28ad38b4e52288569c4a0fa7e545ed7e8f179075a5255280527b8a633556"
+    }
+  ]
+}

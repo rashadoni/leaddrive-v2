@@ -1,0 +1,477 @@
+{
+  "recordedAt": "2026-10-03T09:36:36.411599+00:00",
+  "pr": 540,
+  "candidateHead": "945f17306d4488205842faeeecdec61ad3582e3c",
+  "mergedSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+  "run": {
+    "id": 37112124490,
+    "run_attempt": 1,
+    "event": "push",
+    "head_branch": "main",
+    "head_sha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+    "path": ".github/workflows/deploy.yml",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-03T09:10:01Z",
+    "updated_at": "2026-10-03T09:34:19Z",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37112124490"
+  },
+  "normalRequiredJobs": [
+    {
+      "id": 111171917566,
+      "name": "Production build & publish artifact",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T09:10:05Z",
+      "completed_at": "2026-10-03T09:27:16Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate workflow-dispatch deployment mode",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Checkout code",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Authorize workflow-dispatch build target",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Remove checkout credential before repository code",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Setup Node.js",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Prepare bounded GitHub-hosted build memory",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies from lockfile",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Generate Prisma client",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stamp the revision into the bundle",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build Next.js standalone",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify standalone build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Assemble standalone bundle",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Create deployment tarball",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Upload SHA-bound deploy artifact",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Cleanup bounded build swap",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Setup Node.js",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Checkout code",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 111171917674,
+      "name": "Quality & security gates",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T09:10:05Z",
+      "completed_at": "2026-10-03T09:21:25Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Checkout code",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate workflow-dispatch deployment mode",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Authorize manually dispatched normal target",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Authorize recovery-bootstrap target",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Remove checkout credential before repository code",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Setup Node.js",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Cache node_modules",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Generate Prisma client",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Generate frozen pre-pilot Prisma client",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Event-platform Kafka and schema asset gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PostgreSQL maintenance safety unit tests",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Event-platform migration and database invariant gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Event-platform SDK PostgreSQL concurrency gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Workforce shared-lock PostgreSQL race gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Demo Center database constraints gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "MTM client categories database gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Previous Prisma client rollback-window gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run security gates",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run MTM + auth + i18n tests",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run Gemini-only browser voice regression gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Unit tests vs baseline (BLOCKING)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Cache node_modules",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Setup Node.js",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Checkout code",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 111174659792,
+      "name": "Deploy to production & post-deploy smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T09:27:20Z",
+      "completed_at": "2026-10-03T09:34:11Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Require production to deploy only from main",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Checkout code",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate workflow-dispatch deployment mode",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Recheck manually dispatched normal target",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Recheck recovery-bootstrap target",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Setup SSH",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Pre-deploy AI-call safety preflight",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Download SHA-bound deploy artifact",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify downloaded SHA-bound artifact",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stage immutable artifact on production disk",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Upload deploy script",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Deploy atomically on production",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify callback commitment scheduler",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify the MTM route day-close scheduler",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify the campaign scheduled-send scheduler",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify missed inbound reconciliation scheduler",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify the AI-call queue scheduler",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify the Chatwoot inbound backstop scheduler",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify tenant isolation coverage",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify MTM mobile sync retention scheduler",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Cleanup SSH key",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post-deploy ping (public DB-path probe)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post-deploy revision check (is the new bundle actually serving?)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post-deploy feature smoke (login page + hashed assets)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Checkout code",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 111175732927,
+      "name": "Cap retained deploy artifacts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-03T09:34:14Z",
+      "completed_at": "2026-10-03T09:34:19Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Delete superseded deploy artifacts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "boundArtifact": {
+    "id": 11270795593,
+    "node_id": "MDg6QXJ0aWZhY3QxMTI3MDc5NTU5Mw==",
+    "name": "leaddrive-prod-a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+    "size_in_bytes": 443897828,
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11270795593",
+    "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11270795593/zip",
+    "expired": false,
+    "digest": "sha256:2e88a0409364f894adaf76f3c0f64211dfd8f93b77cbd10ba8139e6fdb9336dc",
+    "created_at": "2026-10-03T09:27:12Z",
+    "updated_at": "2026-10-03T09:27:12Z",
+    "expires_at": "2026-11-02T09:27:06Z",
+    "workflow_run": {
+      "id": 37112124490,
+      "repository_id": 1362346481,
+      "head_repository_id": 1362346481,
+      "head_branch": "main",
+      "head_sha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6"
+    }
+  },
+  "wholeOwnNormalRunSuccess": true,
+  "normalRunSuccessStillRequired": false,
+  "productionTarget": "13.140.132.245",
+  "productionPath": "/opt/leaddrive-v2",
+  "largeArtifactDownloaded": false,
+  "publicPrimaryProof": "workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-public.json"
+}

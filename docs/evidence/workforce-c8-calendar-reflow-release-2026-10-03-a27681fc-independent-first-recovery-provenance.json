@@ -1,0 +1,6 @@
+{
+  "method": "Reconstructed known public API contract fields independently supplied by root positive proof; bytes and SHA256 must equal original request metadata. Not represented as a new HTTP response. Original attempt proof remains unchanged.",
+  "bytes": 112,
+  "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85",
+  "originalAttemptGuardAccepted": false
+}

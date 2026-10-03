@@ -1,0 +1,24 @@
+{
+  "observedAt": "2026-10-03T09:35:25.938945+00:00",
+  "expectedMergedSha": "a27681fcf8768e8f2163edd2c5a509d9d950e5e6",
+  "runId": 37112124490,
+  "productionHost": "13.140.132.245",
+  "tlsHostname": "app.leaddrivecrm.org",
+  "strictPinnedBracketPositive": false,
+  "requests": {
+    "build-info-first": {
+      "label": "build-info-first",
+      "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+      "startedAt": "2026-10-03T09:35:25.826190+00:00",
+      "completedAt": "2026-10-03T09:35:25.938553+00:00",
+      "curlExit": 0,
+      "httpStatus": 200,
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "0",
+      "cacheControlNoCache": false,
+      "bytes": 112,
+      "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85"
+    }
+  },
+  "normalRunSuccessStillRequired": false
+}
