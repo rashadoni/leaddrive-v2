@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { addDateKeyDays, currentDateKey, isDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { getMtmSettings } from "@/lib/mtm-settings"
@@ -6,16 +7,17 @@ import { clientIp } from "@/lib/request-ip"
 import { isValidTimezone } from "@/lib/timezone"
 import { withWorkforceSessionExceptionQueueAuth } from "@/lib/with-workforce-rls-auth"
 import {
-  buildWorkforceExceptionCaseReport,
   WorkforceExceptionCaseReportError,
 } from "@/lib/workforce/exception-case-report"
+import {
+  readWorkforceExceptionCaseReport,
+  WorkforceExceptionCaseReportReadLimitError,
+} from "@/lib/workforce/exception-case-report-read"
 import { requireWorkforceExceptionReportRateLimit } from "@/lib/workforce/approved-report-rate-limit"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 const MAX_RANGE_DAYS = 93
-const MAX_EXCEPTION_CASES = 5_000
-const MAX_DECISIONS_PER_CASE = 64
 
 function exceptionReportJson(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status, headers: workforceSensitiveResponseHeaders })
@@ -59,48 +61,17 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextReques
       return badRange()
     }
 
-    const cases = await prisma.workforceExceptionCase.findMany({
-      where: {
+    // The case cohort and approved-request correction proofs share one RLS-
+    // scoped snapshot; a committed approval cannot appear halfway through it.
+    const report = await prisma.$transaction((tx: Prisma.TransactionClient) =>
+      readWorkforceExceptionCaseReport(tx, {
         organizationId: auth.orgId,
-        createdAt: {
-          gte: localDateKeyToUtc(start, timezone),
-          lt: localDateKeyToUtc(addDateKeyDays(end, 1), timezone),
-        },
-      },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      take: MAX_EXCEPTION_CASES + 1,
-      select: {
-        // The report handles only aggregate counts. Do not select IDs,
-        // workday/site/evidence links, names, decision reasons or response
-        // content/links, even though the privileged queue can show a row.
-        agentId: true,
-        kind: true,
-        decisions: {
-          orderBy: { caseRevision: "asc" },
-          // Any case at the sentinel length is retained for integrity review;
-          // never derive a terminal state from a truncated decision ledger.
-          take: MAX_DECISIONS_PER_CASE + 1,
-          select: { decisionCode: true, caseRevision: true },
-        },
-        employeeResponses: { take: 1, select: { id: true } },
-      },
-    })
-    if (cases.length > MAX_EXCEPTION_CASES) {
-      return exceptionReportJson({
-        error: "Too many exception cases for one report; narrow the date range",
-        code: "WORKFORCE_EXCEPTION_REPORT_LIMIT_EXCEEDED",
-      }, 413)
-    }
-
-    const report = buildWorkforceExceptionCaseReport({
-      cases: cases.map((item) => ({
-        agentId: item.agentId,
-        kind: item.kind,
-        decisionCodes: item.decisions.slice(0, MAX_DECISIONS_PER_CASE).map((decision) => decision.decisionCode),
-        decisionHistoryTruncated: item.decisions.length >= MAX_DECISIONS_PER_CASE + 1
-          || item.decisions.some((decision, index) => decision.caseRevision !== index + 1),
-        recordedEmployeeResponseCount: item.employeeResponses.length,
-      })),
+        startAt: localDateKeyToUtc(start, timezone),
+        endAt: localDateKeyToUtc(addDateKeyDays(end, 1), timezone),
+      }), {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      maxWait: 5_000,
+      timeout: 10_000,
     })
     const audit = auditContext(req)
     await prisma.mtmAuditLog.create({
@@ -120,7 +91,10 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextReques
           hrReviewCount: report.summary.hrReview,
           resolvedCount: report.summary.resolved,
           dataIntegrityReviewCount: report.summary.dataIntegrityReview,
-          // No employee/case IDs, names, proofs, reasons or timestamps.
+          recordedLinkedCorrectionCases: report.recordedOutcomes.linkedCorrection.recordedLinkedCorrectionCases,
+          firstResolutionSampleCount: report.recordedOutcomes.firstResolution.sampleCount,
+          firstResolutionIntegrityExcludedCount: report.recordedOutcomes.firstResolution.integrityExcludedCases,
+          // No employee/case/request IDs, names, proofs, reasons or timestamps.
         },
         ipAddress: audit.ipAddress,
         userAgent: audit.userAgent,
@@ -137,6 +111,12 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextReques
       },
     })
   } catch (error) {
+    if (error instanceof WorkforceExceptionCaseReportReadLimitError) {
+      return exceptionReportJson({
+        error: "Too many exception cases or linked corrections; narrow the date range",
+        code: error.code,
+      }, 413)
+    }
     if (error instanceof WorkforceExceptionCaseReportError) {
       return exceptionReportJson({
         error: "An exception case cannot be safely aggregated for reporting",
