@@ -960,8 +960,12 @@ async function processMessages(
   // Resolve the WA access token ONCE, and only when this batch actually carries media — inbound
   // media arrives as an opaque id that must be fetched from the Graph API + stored before the
   // thread can render it (Slice 1: inbound media ingestion).
+  // The token of the number that RECEIVED the media: a number connected through Embedded Signup lives
+  // in the customer's own WhatsApp Business Account, and another number's token cannot fetch its media.
   const waMediaToken = messages.some((m) => typeof m?.type === "string" && MEDIA_TYPES.has(m.type))
-    ? ((await resolveWhatsAppConfig(orgId))?.accessToken ?? null)
+    ? ((await resolveWhatsAppConfig(orgId, { channelConfigId: channelConfig.id }))?.accessToken
+      ?? (await resolveWhatsAppConfig(orgId))?.accessToken
+      ?? null)
     : null
 
   for (const msg of messages) {
@@ -1323,7 +1327,7 @@ async function processMessages(
         const { maybeAutoReply, chatbotTookOwnership } = await import("@/lib/chatbot-autoreply")
         const r = await maybeAutoReply({
           orgId, channelType: "whatsapp", conversationId: convId,
-          contactId, inboundText: text, to: waId,
+          contactId, inboundText: text, to: waId, channelConfigId: channelConfig.id,
         })
         botOwned = chatbotTookOwnership(r)
       } catch (err) {
@@ -1342,6 +1346,7 @@ async function processMessages(
           customerMessageAlreadyTicketed: inboundTicket.commentAdded,
           conversationId: convId,
           channelSettings: channelConfig.settings,
+          channelConfigId: channelConfig.id,
         })
       } catch (err) {
         console.error(`[WA Webhook] Da Vinci auto-reply error:`, err)
@@ -1471,7 +1476,7 @@ async function handleAiAutoReply(
   leadId: string | undefined,
   senderName: string,
   contactCompanyId: string | null = null,
-  opts: { customerMessageAlreadyTicketed?: boolean; conversationId?: string | null; channelSettings?: unknown } = {},
+  opts: { customerMessageAlreadyTicketed?: boolean; conversationId?: string | null; channelSettings?: unknown; channelConfigId?: string | null } = {},
 ) {
   // Support AI predates this switch, so the shared helper preserves the legacy
   // default (ON) and stops here only after an administrator explicitly opts out.
@@ -2025,6 +2030,8 @@ async function handleAiAutoReply(
       message: aiReply,
       organizationId,
       contactId,
+      // Answer from the number the customer wrote to (a workspace may hold several).
+      channelConfigId: opts.channelConfigId,
       forceText: true,
       // A4 — badge the logged outbound as AI-generated (+ its judge score for A5 debugging).
       extraMetadata: {
