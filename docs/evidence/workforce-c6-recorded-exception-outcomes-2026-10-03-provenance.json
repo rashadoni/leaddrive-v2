@@ -1,0 +1,92 @@
+{
+  "atUtc": "2026-10-03T19:56:20.798459+00:00",
+  "sourceHeadBeforeReceipt": "eb909d79750f779423aab9aa9d5beebec53ed270",
+  "retainedInitialSourceHead": "4ee2bfed76182cc6cfb89aee6d785eae66417d44",
+  "docsCandidateHead": "4040b4f5a70b1557f51cce7df69f948ad4994539",
+  "original64ReviewHistoricalOnly": {
+    "head": "64a73f2fe76ad390e386594f06c184033abe379b",
+    "status": "GREEN_DOCS_SOURCE_AND_RECEIPT_INTEGRITY_ONLY",
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "newDocsExactHeadReview": "PENDING",
+  "changedPgFinalLint": {
+    "command": "npx --no-install eslint src/__tests__/lib-workforce-exception-report-postgres.test.ts",
+    "exitCode": 0,
+    "actualExecutedBefore4eeCheckpoint": true,
+    "file": "src/__tests__/lib-workforce-exception-report-postgres.test.ts",
+    "bytes": 34960,
+    "sha256": "69816a51d5d9f082053235caa8d2b06def6bbd68851e267c53d265372bdb8ac4"
+  },
+  "sourceIntegrity": "Nine non-doc current paths were rehashed byte-identical to validated4ee after normal docs404 merge. No repeat of unchanged85 source tests needed at this point.",
+  "scanBytes": 40431,
+  "scanExit": 0,
+  "originals": [
+    {
+      "source": "/tmp/workforce-part22-docs-independent.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-provenance-original-00.gz",
+      "bytes": 10174,
+      "sha256": "82d10f7429c9a336e67501162ad18685298b176be4a90a275378907493a419c8",
+      "gzipBytes": 3836,
+      "gzipSha256": "8f62a8792c6a27cdfdc2a64cee10b41fdcc342601b548a646d298da486332a26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part22-docs-integrity-audit.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-provenance-original-01.gz",
+      "bytes": 29839,
+      "sha256": "5919af527380a0c5832785a0bdd7fa94059d153cfe78d5132a4d6e772443a816",
+      "gzipBytes": 4409,
+      "gzipSha256": "dd375497fbd5a56b5c825d9791119c4fe28029685589c82f13fd46a9086b9a54",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part22-extended-diff-identity.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-provenance-original-02.gz",
+      "bytes": 245,
+      "sha256": "8551b9da7284e1fbfc5f789f9dda01465105800fd97acb32bebc0c73013a98a8",
+      "gzipBytes": 188,
+      "gzipSha256": "4febf881b393c16f1f475e76974953c63ceff67b96fbba82774ac48946d156a1",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part22-extended-gitleaks.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-provenance-original-03.gz",
+      "bytes": 173,
+      "sha256": "dccb1147f44e9643201473ed22ad562e0a27a2eca3fb5cea556a50e4acff0a32",
+      "gzipBytes": 140,
+      "gzipSha256": "73d63f88002971d68d7865f4ce9b4a0fcacfe5b1be1a641bc26817d382f3de31",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-pg-final-eslint.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-provenance-original-04.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-docs-provenance-scan.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-provenance-original-05.gz",
+      "bytes": 143,
+      "sha256": "d4dd6bc5507a3282e7ae67f3c1f0811d3e7c10ad5fde93e6400a192066ea991a",
+      "gzipBytes": 126,
+      "gzipSha256": "d94dbd9097698d63ca3f0f464142a9bbc27f63ba7b04fc66086d221bd994de0b",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "NOT_RUN": [
+    "local full build",
+    "local full typecheck",
+    "local full suite",
+    "local PostgreSQL",
+    "browser/AT",
+    "Android/device",
+    "load/pilot"
+  ],
+  "currentHostedC6Acceptance": "PENDING"
+}
