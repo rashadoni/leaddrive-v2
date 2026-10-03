@@ -17,8 +17,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
  *
  * The rule pinned here: after an OAuth return the page opens the row the URL names (checked against
  * the session's own channel list and the card's type) or no row at all. The last block runs the real
- * callback against a workspace shaped like `leaddrive` and feeds its redirect to the real page, so the
- * route and the page are held to the rule together.
+ * callback against a workspace shaped like `leaddrive` and feeds its redirect to the real page — since
+ * 2026-10-03 the channel catalog, which lists every row and marks only the named one as the result — so
+ * the route and the page are held to the rule together.
  */
 
 const routeParams = { channel: "facebook" }
@@ -84,6 +85,12 @@ vi.mock("@/components/ui/dialog", () => ({
 vi.mock("@/components/channels/tiktok-channel-hub", () => ({
   TikTokChannelHub: () => null,
 }))
+
+// The channel catalog (where the callback lands) — its chrome is not under test here.
+vi.mock("@/components/tour/tour-provider", () => ({ useAutoTour: () => undefined }))
+vi.mock("@/components/tour/tour-replay-button", () => ({ TourReplayButton: () => null }))
+vi.mock("@/components/help/help-button", () => ({ HelpButton: () => null }))
+vi.mock("@/components/delete-confirm-dialog", () => ({ DeleteConfirmDialog: () => null }))
 
 // ---- Server side of the round trip: an in-memory ChannelConfig table instead of Postgres. ----------
 
@@ -161,6 +168,7 @@ vi.mock("@/lib/social/tenant-meta-app", async (importOriginal) => ({
 }))
 
 import ChannelConnectPage from "@/app/(dashboard)/settings/channels/connect/[channel]/page"
+import ChannelsPage from "@/app/(dashboard)/settings/channels/page"
 import { GET as facebookCallback } from "@/app/api/v1/social/oauth/facebook/callback/route"
 
 type ApiChannel = {
@@ -419,7 +427,7 @@ describe("connect page after a Meta round trip", () => {
     })
   })
 
-  describe("round trip: the real callback's redirect, rendered by the real page", () => {
+  describe("round trip: the real callback's redirect, rendered by the real channel catalog", () => {
     const SECRET = process.env.NEXTAUTH_SECRET || "ld-social-oauth"
 
     function signedState(fields: Record<string, unknown>): string {
@@ -482,14 +490,18 @@ describe("connect page after a Meta round trip", () => {
     }
 
     async function renderLanding(landing: URL) {
-      routeParams.channel = landing.pathname.split("/").pop() || ""
+      expect(landing.pathname).toBe("/settings/channels")
       currentSearch = new URLSearchParams(landing.search)
       stubChannelsApi(channelsApiView())
       await act(async () => {
-        root.render(createElement(ChannelConnectPage))
+        root.render(createElement(ChannelsPage))
       })
       await flushMicrotasks()
     }
+
+    /** The connected-list row the catalog marks as this round trip's result; null when it marks none. */
+    const resultRow = () => container.querySelector<HTMLElement>('[data-oauth-result="true"]')
+    const resultRowId = () => resultRow()?.getAttribute("data-testid")?.replace("channel-row-", "") ?? null
 
     it("lands on the channel that was connected, never on another customer's Page", async () => {
       seedLeaddriveWorkspace()
@@ -497,15 +509,18 @@ describe("connect page after a Meta round trip", () => {
         signedState({ ret: "channels-facebook", channelId: ORIGIN_ID }),
         [{ id: "PAGE_LD", name: "LeadDrive", access_token: "NEW_TOKEN" }],
       )
-      expect(landing.pathname).toBe("/settings/channels/connect/facebook")
+      expect(landing.pathname).toBe("/settings/channels")
+      expect(landing.searchParams.get("oauth")).toBe("facebook")
       expect(landing.searchParams.get("channelId")).toBe(ORIGIN_ID)
       // The callback really did re-wire that row, and only that row.
       expect(store.find((row) => row.id === ORIGIN_ID)?.apiKey).toBe("NEW_TOKEN")
       expect(store.find((row) => row.id === "cc_andrologiya")?.apiKey).toBe("ANDRO_TOKEN")
 
       await renderLanding(landing)
-      expect(formName()).toBe("LeadDrive")
-      expect(container.textContent).not.toContain("Andrologiya.az")
+      // The catalog lists every channel of the workspace — the result it marks is the connected one only.
+      expect(resultRowId()).toBe(ORIGIN_ID)
+      expect(resultRow()?.textContent).toContain("LeadDrive")
+      expect(resultRow()?.textContent).not.toContain("Andrologiya.az")
       expect(tone()).toBe("success")
     })
 
@@ -519,8 +534,8 @@ describe("connect page after a Meta round trip", () => {
       expect(landing.searchParams.get("channelId")).toBe(created?.id)
 
       await renderLanding(landing)
-      expect(formName()).toBe("Brand New Clinic")
-      expect(container.textContent).not.toContain("Andrologiya.az")
+      expect(resultRowId()).toBe(created?.id)
+      expect(resultRow()?.textContent).toContain("Brand New Clinic")
     })
 
     it("a connect that wires several Pages at once opens none of them", async () => {
@@ -535,8 +550,7 @@ describe("connect page after a Meta round trip", () => {
       expect(landing.searchParams.has("channelId")).toBe(false)
 
       await renderLanding(landing)
-      expect(form()).toBeNull()
-      expect(noRowSummary()).not.toBeNull()
+      expect(resultRow()).toBeNull()
       expect(tone()).toBe("neutral")
     })
 
@@ -549,7 +563,7 @@ describe("connect page after a Meta round trip", () => {
       expect(landing.searchParams.get("channelId")).toBe(ORIGIN_ID)
 
       await renderLanding(landing)
-      expect(formName()).toBe("LeadDrive")
+      expect(resultRowId()).toBe(ORIGIN_ID)
       expect(container.textContent).not.toContain("Other Tenant Page")
     })
   })

@@ -33,8 +33,8 @@ import { AccordionItem } from "@/components/ui/accordion"
 import { ChannelConfigForm } from "@/components/channel-config-form"
 import { TikTokChannelHub } from "@/components/channels/tiktok-channel-hub"
 import { cn } from "@/lib/utils"
-import { channelConnectionState, channelIsLiveConnection } from "@/lib/channels/live-connection"
-import { metaConnectionReason, metaSubscriptionPendingLabels } from "@/lib/channels/connection-reason"
+import { channelIsLiveConnection } from "@/lib/channels/live-connection"
+import { metaOAuthReturnBanner } from "@/lib/channels/meta-oauth-return-banner"
 
 type Loc = "en" | "ru" | "az"
 type ConnectMode = "new" | "existing"
@@ -261,28 +261,11 @@ const routeAliases: Record<string, string> = {
  * `?pages=` / `?ig=` as a count. Absent, non-numeric or zero all mean "nothing of this kind was
  * wired" — the Instagram callback, for instance, sends `ig` and no `pages` at all.
  */
-function positiveCountParam(raw: string | null): number {
-  const parsed = Number.parseInt(raw ?? "", 10)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
-}
-
 const copy = {
   en: {
     back: "Back to Channel Catalog",
-    oauthSuccessTitle: "Channel connected",
-    oauthSuccessDesc: "Meta returned {pages} Facebook Page(s) and {ig} Instagram account(s). Send one message to the account to confirm it reaches Inbox.",
-    oauthPartialTitle: "This channel is still not connected",
-    oauthNoInstagramDesc: "Meta returned {pages} Facebook Page(s) and no Instagram account. Instagram Direct is delivered through the Facebook Page that an Instagram BUSINESS account is linked to, so until that link exists nothing can reach Inbox here. Link the Instagram business account to the Page in Meta Business settings, then run Connect with Meta again.",
-    oauthNoPageDesc: "Meta finished the login but returned no Facebook Page for this channel, so no message can arrive yet. Run Connect with Meta again and tick the Page you want to use.",
     oauthErrorTitle: "Connection did not finish",
     oauthErrorDesc: "Meta returned: {code}. Try again, or open \"I have my own Meta app\" and enter your own credentials.",
-    oauthNotDeliveringTitle: "Connected, but not delivering yet",
-    oauthNoChannelRowDesc: "Meta finished the login, but this workspace still holds no channel for it, so there is nothing for an inbound message to arrive in. Run Connect with Meta again; if it keeps ending here, the callback could not save the channel.",
-    oauthCheckingTitle: "Checking what actually got wired",
-    oauthCheckingDesc: "Meta has reported back. LeadDrive is reading the saved channel before it calls anything connected.",
-    oauthUnverifiedDesc: "Meta has reported back, but LeadDrive could not read this workspace's channels, so it cannot confirm that the connection works. Reload the page, and open the channel catalog if it fails again.",
-    oauthUnidentifiedTitle: "Meta finished the connection",
-    oauthUnidentifiedDesc: "Meta returned {pages} Facebook Page(s) and {ig} Instagram account(s). This page cannot tell which saved channel came from this connection, so it opens none of them — check each one in the channel list.",
     noRowTitle: "No channel is open here",
     noRowDesc: "This page opens a channel only when it knows exactly which one you mean. Here it does not, so no channel's settings are shown. Open the channel list and pick the channel you want to edit.",
     noRowAction: "Open the channel list",
@@ -718,20 +701,8 @@ const copy = {
   },
   ru: {
     back: "Назад в каталог каналов",
-    oauthSuccessTitle: "Канал подключён",
-    oauthSuccessDesc: "Meta вернула страниц Facebook: {pages}, аккаунтов Instagram: {ig}. Отправьте одно сообщение на аккаунт, чтобы убедиться, что оно доходит в Inbox.",
-    oauthPartialTitle: "Этот канал всё ещё не подключён",
-    oauthNoInstagramDesc: "Meta вернула страниц Facebook: {pages}, аккаунтов Instagram — ни одного. Instagram Direct доставляется через страницу Facebook, к которой привязан БИЗНЕС-аккаунт Instagram, поэтому пока такой привязки нет, сюда ничего не придёт. Привяжите бизнес-аккаунт Instagram к странице в настройках Meta Business и запустите «Подключить через Meta» ещё раз.",
-    oauthNoPageDesc: "Meta завершила вход, но не вернула для этого канала ни одной страницы Facebook, поэтому сообщения приходить не будут. Запустите «Подключить через Meta» ещё раз и отметьте нужную страницу.",
     oauthErrorTitle: "Подключение не завершилось",
     oauthErrorDesc: "Meta вернула: {code}. Повторите попытку или откройте «У меня своё приложение Meta» и введите свои ключи.",
-    oauthNotDeliveringTitle: "Подключено, но пока не доставляет",
-    oauthNoChannelRowDesc: "Meta завершила вход, но в этом рабочем пространстве до сих пор нет канала для него — входящему сообщению просто некуда прийти. Запустите «Подключить через Meta» ещё раз; если всё повторится, значит callback не смог сохранить канал.",
-    oauthCheckingTitle: "Проверяем, что подключилось на самом деле",
-    oauthCheckingDesc: "Meta ответила. LeadDrive читает сохранённый канал, прежде чем называть что-либо подключённым.",
-    oauthUnverifiedDesc: "Meta ответила, но LeadDrive не смог прочитать каналы этого рабочего пространства и не может подтвердить, что подключение работает. Обновите страницу, а если снова не выйдет — откройте каталог каналов.",
-    oauthUnidentifiedTitle: "Meta завершила подключение",
-    oauthUnidentifiedDesc: "Meta вернула страниц Facebook: {pages}, аккаунтов Instagram: {ig}. Эта страница не может определить, какой сохранённый канал относится к этому подключению, поэтому не открывает ни один — проверьте каждый в списке каналов.",
     noRowTitle: "Здесь не открыт ни один канал",
     noRowDesc: "Эта страница открывает канал, только когда точно знает, какой именно нужен. Здесь это неизвестно, поэтому настройки ни одного канала не показаны. Откройте список каналов и выберите канал, который хотите изменить.",
     noRowAction: "Открыть список каналов",
@@ -1150,20 +1121,8 @@ const copy = {
   },
   az: {
     back: "Kanal kataloquna qayıt",
-    oauthSuccessTitle: "Kanal qoşuldu",
-    oauthSuccessDesc: "Meta {pages} Facebook səhifəsi və {ig} Instagram hesabı qaytardı. Inbox-a çatdığını yoxlamaq üçün hesaba bir mesaj göndərin.",
-    oauthPartialTitle: "Bu kanal hələ də qoşulmayıb",
-    oauthNoInstagramDesc: "Meta {pages} Facebook səhifəsi qaytardı, Instagram hesabı isə qaytarmadı. Instagram Direct mesajları Instagram BİZNES hesabı bağlanmış Facebook səhifəsi vasitəsilə çatdırılır, ona görə həmin bağlantı olmayana qədər bura heç nə gələ bilməz. Meta Business tənzimləmələrində Instagram biznes hesabını səhifəyə bağlayın və «Meta ilə qoş» addımını yenidən işə salın.",
-    oauthNoPageDesc: "Meta girişi tamamladı, amma bu kanal üçün heç bir Facebook səhifəsi qaytarmadı, ona görə mesaj gələ bilməz. «Meta ilə qoş» addımını yenidən işə salın və istifadə edəcəyiniz səhifəni seçin.",
     oauthErrorTitle: "Qoşulma tamamlanmadı",
     oauthErrorDesc: "Meta qaytardı: {code}. Yenidən cəhd edin və ya «Öz Meta tətbiqim var» bölməsini açıb öz açarlarınızı daxil edin.",
-    oauthNotDeliveringTitle: "Qoşulub, amma hələ çatdırmır",
-    oauthNoChannelRowDesc: "Meta girişi tamamladı, amma bu iş sahəsində hələ də bunun üçün kanal yoxdur — gələn mesajın düşəcəyi yer yoxdur. «Meta ilə qoş» addımını yenidən işə salın; təkrarlanarsa, deməli callback kanalı saxlaya bilməyib.",
-    oauthCheckingTitle: "Əslində nəyin qoşulduğunu yoxlayırıq",
-    oauthCheckingDesc: "Meta cavab verdi. LeadDrive nəyisə qoşulmuş adlandırmazdan əvvəl saxlanılmış kanalı oxuyur.",
-    oauthUnverifiedDesc: "Meta cavab verdi, amma LeadDrive bu iş sahəsinin kanallarını oxuya bilmədi və qoşulmanın işlədiyini təsdiqləyə bilmir. Səhifəni yeniləyin, yenə alınmasa kanal kataloqunu açın.",
-    oauthUnidentifiedTitle: "Meta qoşulmanı tamamladı",
-    oauthUnidentifiedDesc: "Meta {pages} Facebook səhifəsi və {ig} Instagram hesabı qaytardı. Bu səhifə hansı saxlanılmış kanalın bu qoşulmaya aid olduğunu müəyyən edə bilmir, ona görə heç birini açmır — hər birini kanallar siyahısında yoxlayın.",
     noRowTitle: "Burada heç bir kanal açılmayıb",
     noRowDesc: "Bu səhifə kanalı yalnız hansının lazım olduğunu dəqiq bildikdə açır. Burada bu məlum deyil, ona görə heç bir kanalın tənzimləmələri göstərilmir. Kanallar siyahısını açın və dəyişmək istədiyiniz kanalı seçin.",
     noRowAction: "Kanallar siyahısını aç",
@@ -2565,14 +2524,10 @@ function ChannelConnectInner() {
   // separate Instagram Login card returns through its own callback and reports the IG account.
   // A green "Channel connected" on the Instagram card in that state is simply false, and it is the
   // state the user is least able to diagnose on their own — hence the explicit explanation below.
-  const oauthPageCount = positiveCountParam(oauthPages)
-  const oauthIgCount = positiveCountParam(oauthIg)
   // Only the two Meta cards can be an OAuth return target (lib/social/oauth-return), so on any other
   // guide a `?connected=` is hand-typed, not a result — say nothing rather than describe someone
   // else's Facebook Page.
   const showOauthResult = Boolean(oauthConnected) && isMetaOneClickGuide
-  const oauthWiredForThisChannel =
-    guide?.formChannelId === "instagram" ? oauthIgCount > 0 : oauthPageCount > 0
   const needsChannelSnapshot = isWhatsAppCallingGuide || isMetaOneClickGuide || Boolean(requestedChannelId)
   const stage = connectStageFromParam(urlStage) || "intro"
   const whatsappCallingTenantSlug = orgSlug || TENANT_SLUG_PLACEHOLDER
@@ -2755,73 +2710,23 @@ function ChannelConnectInner() {
   // The banner only shows on an OAuth return, and there the form renders the named row or none at all
   // (metaRowGuessAllowed) — so the banner judges requestedChannel, never a row the page picked itself.
   const oauthBannerRow = isMetaOneClickGuide ? requestedChannel : null
-  const oauthBannerRowState = oauthBannerRow ? channelConnectionState(oauthBannerRow) : null
-  // "There is no row" is a verdict, and it is only available once the channel list is in hand. While
-  // it is still loading, or the session has no org yet, or the list failed to load, the page knows
-  // nothing beyond the URL — the exact half-truth this banner exists to stop repeating. Say so
-  // instead of guessing in either direction.
-  const oauthRowUnknown = !oauthBannerRow && (!orgId || channelsLoading || Boolean(channelsError))
-  // Meta wired something for this card and the workspace does hold rows of this type, yet none was
-  // named — several Pages connected in one go, or the id no longer resolves. "Holds no channel" would be
-  // false, and any one of them could be the wrong customer's: say that the connect finished, no more.
-  const oauthRowUnidentified =
-    !oauthBannerRow
-    && !oauthRowUnknown
-    && channels.some((channel) => channel.channelType === metaFormChannelType)
-  const oauthBannerTone: "success" | "pending" | "neutral" | "warning" =
-    // Meta itself reported nothing for this card — no row lookup can rescue that.
-    !oauthWiredForThisChannel
-      ? "warning"
-      : oauthRowUnknown
-        ? "pending"
-        : oauthRowUnidentified
-          ? "neutral"
-          : oauthBannerRowState === "live"
-            ? "success"
-            : "warning"
-  const oauthBannerTitle =
-    oauthBannerTone === "pending"
-      ? c.oauthCheckingTitle
-      : oauthBannerTone === "neutral"
-      ? c.oauthUnidentifiedTitle
-      : oauthBannerTone === "success"
-        ? c.oauthSuccessTitle
-        // A stored, wired Page that is switched off or unsubscribed IS connected — it just does not
-        // deliver. Calling that "still not connected" would send the user back through an OAuth that
-        // has nothing left to fix.
-        : oauthWiredForThisChannel && oauthBannerRowState === "claimedElsewhere"
-          ? ts("channelClaimedElsewhere.title")
-          // A staged (App Review) connect that did exactly what it is built to do: store the Page and ask
-          // Meta for nothing. Its own title says so, in the words the catalog card uses for the same row.
-          : oauthWiredForThisChannel && oauthBannerRowState === "subscriptionPending"
-            ? metaSubscriptionPendingLabels(loc).title
-            : oauthWiredForThisChannel
-              && (oauthBannerRowState === "paused" || oauthBannerRowState === "needsReconnect")
-              ? c.oauthNotDeliveringTitle
-              : c.oauthPartialTitle
-  const oauthBannerDesc =
-    oauthBannerTone === "pending"
-      ? (channelsError ? c.oauthUnverifiedDesc : c.oauthCheckingDesc)
-      : oauthBannerTone === "neutral"
-      ? c.oauthUnidentifiedDesc
-          .replace("{pages}", String(oauthPageCount))
-          .replace("{ig}", String(oauthIgCount))
-      : oauthBannerTone === "success"
-        ? c.oauthSuccessDesc
-            .replace("{pages}", String(oauthPageCount))
-            .replace("{ig}", String(oauthIgCount))
-        : !oauthWiredForThisChannel
-          ? (guide?.formChannelId === "instagram"
-              ? c.oauthNoInstagramDesc.replace("{pages}", String(oauthPageCount))
-              : c.oauthNoPageDesc)
-          // Word-for-word the sentence the form prints for this state (lib/channels/connection-reason,
-          // or the messages key for claimedElsewhere), so the two elements cannot drift into describing
-          // one row two ways. The tenant learns that another workspace won the routing, never which one.
-          : oauthBannerRowState === "claimedElsewhere"
-            ? ts("channelClaimedElsewhere.reason")
-            : oauthBannerRowState && oauthBannerRowState !== "live"
-              ? metaConnectionReason(loc, oauthBannerRowState)
-              : c.oauthNoChannelRowDesc
+  // The verdict itself is shared with the channel catalog, where the callback lands since 2026-10-03
+  // (lib/channels/meta-oauth-return-banner): one rule, so the two screens cannot describe one
+  // connection two ways.
+  const oauthBanner = metaOAuthReturnBanner({
+    locale: loc,
+    channelType: guide?.formChannelId === "instagram" ? "instagram" : "facebook",
+    pages: oauthPages,
+    ig: oauthIg,
+    row: oauthBannerRow,
+    listUnknown: !orgId || channelsLoading || Boolean(channelsError),
+    listFailed: Boolean(channelsError),
+    rowsOfTypeExist: channels.some((channel) => channel.channelType === metaFormChannelType),
+    claimedElsewhere: { title: ts("channelClaimedElsewhere.title"), reason: ts("channelClaimedElsewhere.reason") },
+  })
+  const oauthBannerTone = oauthBanner.tone
+  const oauthBannerTitle = oauthBanner.title
+  const oauthBannerDesc = oauthBanner.desc
 
   if (!guide) {
     return (

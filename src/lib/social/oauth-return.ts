@@ -13,9 +13,13 @@
  * existing entry point (Social Monitoring tiles, onboarding checklist, Meta App Review evidence)
  * keeps behaving exactly as before.
  */
+// Since 2026-10-03 a channel connect lands back in the channel catalog — where it was started, and where
+// the connected list shows the row — instead of the setup wizard's page (owner: «каша»). The catalog reads
+// `oauth` to know which channel type the result is about and renders the same banner the wizard does
+// (lib/channels/meta-oauth-return-banner).
 const RETURN_TARGETS = {
-  "channels-facebook": "/settings/channels/connect/facebook?mode=existing&stage=connect",
-  "channels-instagram": "/settings/channels/connect/instagram?mode=existing&stage=connect",
+  "channels-facebook": "/settings/channels?oauth=facebook",
+  "channels-instagram": "/settings/channels?oauth=instagram",
 } as const
 
 const DEFAULT_RETURN_PATH = "/social-monitoring"
