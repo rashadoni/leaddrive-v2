@@ -25,7 +25,7 @@ export const POST = withInboxSessionWrite(async (req, { orgId }, { params }: { p
 
   if (conv.platform === "whatsapp" && channel) {
     const { sendWhatsAppMessage } = await import("@/lib/whatsapp")
-    sent = await sendWhatsAppMessage({ to: conv.externalId, message: text, organizationId: orgId })
+    sent = await sendWhatsAppMessage({ to: conv.externalId, message: text, organizationId: orgId, channelConfigId: channel.id })
       .then(r => r.success)
       .catch(() => false)
   } else if (conv.platform === "telegram" && channel) {

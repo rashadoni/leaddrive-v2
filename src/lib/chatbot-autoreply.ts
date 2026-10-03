@@ -75,7 +75,7 @@ export async function sendChannelReply(opts: {
       // would double-write an orphaned, loop-guard-invisible row.
       const r = await sendWhatsAppMessage({
         to, message: text, organizationId: orgId, contactId: contactId ?? undefined,
-        forceText: true, skipLog: true,
+        forceText: true, skipLog: true, channelConfigId,
       })
       return { ok: !!r.success, error: r.success ? undefined : (r.error ?? "whatsapp send failed") }
     }

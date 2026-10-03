@@ -537,6 +537,20 @@ async function insideSessionWindow(
   return hours < SESSION_WINDOW_HOURS
 }
 
+/**
+ * The number a message goes out from. The conversation's channel names it; without one — or when that
+ * row is gone or switched off — the workspace's WhatsApp number answers, as it always did. A workspace
+ * with two numbers (routine since Embedded Signup, lib/whatsapp-embedded-signup) otherwise answered a
+ * customer from the number they never wrote to: outside that number's 24h window, so Meta refused it.
+ */
+async function resolveSendingConfig(organizationId: string, channelConfigId?: string | null) {
+  if (channelConfigId) {
+    const own = await resolveWhatsAppConfig(organizationId, { channelConfigId })
+    if (own) return own
+  }
+  return resolveWhatsAppConfig(organizationId)
+}
+
 // ─── Free-form text send ─────────────────────────────────────────────
 //
 // Allowed ONLY when the tenant is inside the 24h customer service window
@@ -549,6 +563,7 @@ export async function sendWhatsAppText({
   contactId,
   leadId,
   skipLog,
+  channelConfigId,
 }: {
   to: string
   body: string
@@ -557,8 +572,10 @@ export async function sendWhatsAppText({
   leadId?: string
   /** Caller persists its own canonical conversation-linked ChannelMessage. */
   skipLog?: boolean
+  /** The number to answer from (see resolveSendingConfig). */
+  channelConfigId?: string | null
 }): Promise<{ success: boolean; messageId?: string; error?: string; hint?: string }> {
-  const config = await resolveWhatsAppConfig(organizationId)
+  const config = await resolveSendingConfig(organizationId, channelConfigId)
   if (!config) {
     return { success: false, error: "WhatsApp not configured for this tenant" }
   }
@@ -619,6 +636,7 @@ export async function sendWhatsAppTemplate({
   organizationId,
   contactId,
   leadId,
+  channelConfigId,
 }: {
   to: string
   templateName: string
@@ -627,8 +645,10 @@ export async function sendWhatsAppTemplate({
   organizationId: string
   contactId?: string
   leadId?: string
+  /** The number to send from (see resolveSendingConfig). */
+  channelConfigId?: string | null
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const config = await resolveWhatsAppConfig(organizationId)
+  const config = await resolveSendingConfig(organizationId, channelConfigId)
   if (!config) {
     return { success: false, error: "WhatsApp not configured for this tenant" }
   }
@@ -731,6 +751,7 @@ export async function sendWhatsAppMessage({
   forceText,
   skipLog,
   extraMetadata,
+  channelConfigId,
 }: {
   to: string
   message: string
@@ -749,6 +770,8 @@ export async function sendWhatsAppMessage({
   // A4 — extra keys merged into the logged ChannelMessage.metadata (e.g. aiAutoReply/aiQuality
   // from the Da Vinci auto-reply, so the inbox thread can badge AI-generated messages).
   extraMetadata?: Record<string, unknown>
+  /** The conversation's channel — the number to answer from (see resolveSendingConfig). */
+  channelConfigId?: string | null
 }) {
   if (!organizationId) {
     return { success: false, error: "organizationId required" }
@@ -763,12 +786,13 @@ export async function sendWhatsAppMessage({
       organizationId,
       contactId,
       leadId,
+      channelConfigId,
     })
   }
 
   // forceText=true callers bypass the window check (they already know).
   if (forceText) {
-    const config = await resolveWhatsAppConfig(organizationId)
+    const config = await resolveSendingConfig(organizationId, channelConfigId)
     if (!config) return { success: false, error: "WhatsApp not configured for this tenant" }
     const cleanPhone = to.replace(/[\s\-\(\)]/g, "").replace(/^\+/, "")
     try {
@@ -805,7 +829,7 @@ export async function sendWhatsAppMessage({
     }
   }
 
-  return sendWhatsAppText({ to, body: message, organizationId, contactId, leadId, skipLog })
+  return sendWhatsAppText({ to, body: message, organizationId, contactId, leadId, skipLog, channelConfigId })
 }
 
 /**
@@ -821,6 +845,7 @@ export async function sendWhatsAppMedia({
   filename,
   caption,
   organizationId,
+  channelConfigId,
 }: {
   to: string
   buffer: Buffer
@@ -828,8 +853,10 @@ export async function sendWhatsAppMedia({
   filename: string
   caption?: string
   organizationId: string
+  /** The number to send from (see resolveSendingConfig). */
+  channelConfigId?: string | null
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const config = await resolveWhatsAppConfig(organizationId)
+  const config = await resolveSendingConfig(organizationId, channelConfigId)
   if (!config) return { success: false, error: "WhatsApp not configured for this tenant" }
   const cleanPhone = to.replace(/[\s\-\(\)]/g, "").replace(/^\+/, "")
   const waType = mime.startsWith("image/") ? "image"
