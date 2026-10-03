@@ -1,0 +1,311 @@
+{
+  "reviewedAtUtc": "2026-10-03T10:50:17.904194+00:00",
+  "independentReadOnly": true,
+  "verdict": "GREEN final exact-candidate synthetic twelve-case browser evidence and specified actual image scope",
+  "findings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "run": {
+    "id": 37116498411,
+    "attempt": 1,
+    "event": "pull_request",
+    "workflowPath": ".github/workflows/workforce-calendar-browser-evidence.yml",
+    "head": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+    "headBranch": "codex/workforce-completion-part19",
+    "conclusion": "success",
+    "createdAt": "2026-10-03T10:27:50Z",
+    "updatedAt": "2026-10-03T10:37:14Z",
+    "originalMetadata": {
+      "path": "/tmp/workforce542-browser-a5-final/independent-metadata/run.json",
+      "bytes": 12922,
+      "sha256": "3d1715aeefa94e34feb2e7b5ed5b6240c5726edc27be724deaae1072a4206b04"
+    }
+  },
+  "job": {
+    "id": 111184233766,
+    "conclusion": "success",
+    "startedAt": "2026-10-03T10:27:53Z",
+    "completedAt": "2026-10-03T10:37:14Z",
+    "originalMetadata": {
+      "path": "/tmp/workforce542-browser-a5-final/independent-metadata/job.json",
+      "bytes": 3538,
+      "sha256": "916ee8b3b197319e304e55b093dd4ad2d0be6ce7a3eae22d4604d744e3a5e364"
+    }
+  },
+  "artifact": {
+    "id": 11272525309,
+    "name": "workforce-calendar-browser-0b94e1ae4202e5befdbfa0bd8823968fa195777d-1",
+    "createdAt": "2026-10-03T10:37:10Z",
+    "size": 3402256,
+    "digest": "sha256:9ce651f77a811eea1cb4cf50ac5c022a6d072b09120409dc616d055bbd3b6735",
+    "archive": {
+      "path": "/tmp/workforce542-browser-a5-final/archive.zip",
+      "bytes": 3402256,
+      "sha256": "9ce651f77a811eea1cb4cf50ac5c022a6d072b09120409dc616d055bbd3b6735"
+    },
+    "originalMetadata": {
+      "path": "/tmp/workforce542-browser-a5-final/independent-metadata/artifact.json",
+      "bytes": 771,
+      "sha256": "0fa53eab37fafaf600b3de8c7e1d94f69303e4bdce6db4e3ec1826a3b8bbdd2e"
+    },
+    "allExtractedFilesByteExactArchive": true
+  },
+  "synthetic": {
+    "sha": "0b94e1ae4202e5befdbfa0bd8823968fa195777d",
+    "parents": [
+      "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+      "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d"
+    ],
+    "tree": "0f1e2b93f10ab950e8e7855092df5503344e4481",
+    "entireTreeEqualCandidate": true,
+    "originalMetadata": {
+      "path": "/tmp/workforce542-browser-a5-final/synthetic-commit.json",
+      "bytes": 2846,
+      "sha256": "8fc82e0b2ceccb5ac1e1cd2b7a1cae8fd9ab5ecfa87f9a47e16fc353f1a6f14f"
+    }
+  },
+  "receipt": {
+    "path": "/tmp/workforce542-browser-a5-final/artifact/receipt.json",
+    "bytes": 19708,
+    "sha256": "9fa301d50d36a89438b0ade7ee610277e8364eb364963d85061ebd96138f7b41",
+    "startedAt": "2026-10-03T10:35:11.297Z",
+    "completedAt": "2026-10-03T10:37:08.239Z",
+    "cases": 12,
+    "allCasesPass": true,
+    "previousSevenStrongStateAndHeldContextFlagsVerified": true,
+    "previousTwoNativeKeyboardCasesStrongFlagsVerified": true,
+    "allThree320CasesRealCancelAndGenerationExactTransactionReplayFlagsVerified": true,
+    "actualAuth": {
+      "count": 14,
+      "allCsrfAndCallbacks200": true,
+      "positivePacingWaitMs": [
+        6479,
+        25031
+      ],
+      "everyEightPriorCallbacksGapMs": [
+        61025.0,
+        61026.0,
+        61746.0,
+        62208.0,
+        63360.0,
+        64144.99999999999
+      ],
+      "boundedEightPer61SecondsVerified": true
+    },
+    "populatedFinalRestrictedRlsProbe": true,
+    "localeMetrics": {
+      "ru": {
+        "phases": 9,
+        "geometryFailures": 0,
+        "geometryFragments": 908,
+        "readings": 12,
+        "readingFragments": 106,
+        "actualReadingScrolls": 3,
+        "sourceTabs": 22
+      },
+      "az": {
+        "phases": 9,
+        "geometryFailures": 0,
+        "geometryFragments": 683,
+        "readings": 12,
+        "readingFragments": 73,
+        "actualReadingScrolls": 0,
+        "sourceTabs": 22
+      },
+      "en": {
+        "phases": 9,
+        "geometryFailures": 0,
+        "geometryFragments": 783,
+        "readings": 12,
+        "readingFragments": 93,
+        "actualReadingScrolls": 3,
+        "sourceTabs": 22
+      }
+    },
+    "uniqueGeometryPhases27": true,
+    "allGeometryFailuresZero": true,
+    "all36ReadingsPositiveVerticallyReadableFocusPreserved": true
+  },
+  "individuallyViewedCurrentImages": [
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-az-inventory.png",
+      "bytes": 51934,
+      "sha256": "30b630ea76476738dfe47ba1f60002a793bf298646aa81951e358cc3ed2ac739"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-az-review.png",
+      "bytes": 59181,
+      "sha256": "d95249b6b6d83112e1da1bc0abe115a58591b19d2e0aaf52b690dcab94e7e233"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-az-confirm.png",
+      "bytes": 58990,
+      "sha256": "e9d8754da71d5248efa88a44f6a92761e571c295a9e3226f3903ce71af9f5a1f"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-az-cancel.png",
+      "bytes": 60675,
+      "sha256": "a4572c607a3fe76b97b846dd1cfcf7f0c37d2e168c4560af325dc1456e371a0d"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-az-cancel-source.png",
+      "bytes": 56899,
+      "sha256": "bf8d8a1ac3e231783e621ec015e4962b2c80984be86bfe91181c8fd16b807a1f"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-az-reopened-review.png",
+      "bytes": 59181,
+      "sha256": "d95249b6b6d83112e1da1bc0abe115a58591b19d2e0aaf52b690dcab94e7e233"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-az-unknown.png",
+      "bytes": 58264,
+      "sha256": "faa56c1c8713cc56390af71d529e39264f039e49272b255dfb757b63487f89f2"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-az-retry-confirm.png",
+      "bytes": 58664,
+      "sha256": "84aa2387f8528e84e640a3d1ceaca20ad7816a55717be119595edf9959468258"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-az-replay.png",
+      "bytes": 54553,
+      "sha256": "a1b9685e056c1de0597880ce9a3cd26cc2478285a069af335fd6abf99c8a205d"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-en-inventory.png",
+      "bytes": 38005,
+      "sha256": "a175e25d13d52685fc3868f89eca4a2adc956464e78b4bb4c7b387629405d32c"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-en-review.png",
+      "bytes": 51535,
+      "sha256": "3ac7e3dc1746a5d0f59a28546f7e47c9c3c8fb1d3c8a91f5e1e809df68c6d938"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-en-confirm.png",
+      "bytes": 51318,
+      "sha256": "cf6b5a9fa1675d155471c6fcd93dba82269b3d503ea1484ce3dd16c048f6d8fb"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-en-cancel.png",
+      "bytes": 52437,
+      "sha256": "f04c89a2f9c133b170e497468ec00686c41f634fc155025642e5fbd72f7385f0"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-en-cancel-source.png",
+      "bytes": 48471,
+      "sha256": "925b86a12329ffc23a51375706364d234b9d48383904d4f64d0e8ecbd597f7a0"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-en-reopened-review.png",
+      "bytes": 51535,
+      "sha256": "3ac7e3dc1746a5d0f59a28546f7e47c9c3c8fb1d3c8a91f5e1e809df68c6d938"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-en-unknown.png",
+      "bytes": 51051,
+      "sha256": "6ae42e4cf1f192e2a0ace5c498c0a7a46db521b75e9c882868f1263edf89c97f"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-en-retry-confirm.png",
+      "bytes": 56593,
+      "sha256": "7991e241f3d9bdbcf342278b26f578e5bb86174063ece342efad79ffb36a903e"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-en-replay.png",
+      "bytes": 53546,
+      "sha256": "914cbc8351cd36e494e7b8e7bb3e921e8725f89df393ddb76ca2910fbcc7d7f3"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-inventory.png",
+      "bytes": 44177,
+      "sha256": "01a14e5d1cd469744b53372fe6145965bb2940dcdbf0a3c92287cc13230a2ef8"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-review.png",
+      "bytes": 61177,
+      "sha256": "d3d406470b52ff105b3530dec34fc85c6908797249c9e47629d5f48487186738"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-confirm.png",
+      "bytes": 62537,
+      "sha256": "9916d001a48ea69472c61fadc40c2ec128f0aabe68b7b4d60de10bbadcc68536"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-cancel.png",
+      "bytes": 72330,
+      "sha256": "765ebbae3050cdf16c8e0e8474beb8383ab4333b53a4dd95b0cef67da0886317"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-cancel-source.png",
+      "bytes": 54605,
+      "sha256": "a4a480cf33cdd75b7d8e038413b4c6d45722d3da0241a4447c6753cae4b1e885"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-reopened-review.png",
+      "bytes": 61177,
+      "sha256": "d3d406470b52ff105b3530dec34fc85c6908797249c9e47629d5f48487186738"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-unknown.png",
+      "bytes": 62773,
+      "sha256": "953d7cdba16c136893394f7b3ddd668b153a8f6937875116c811a7a99829460d"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-retry-confirm.png",
+      "bytes": 70624,
+      "sha256": "35ee4cd63bb1dcc9812e01209ad6ea76ae58ae3f5c36dcc796df4b508a23ffbf"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/reflow-320-replay.png",
+      "bytes": 60796,
+      "sha256": "f0daa847a4dfcfb1cc6ff42338db4e5e44d0b86b8084c45b141a910cdcfe3aa9"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/keyboard-cancel-source-ORGANIZATION-en.png",
+      "bytes": 130860,
+      "sha256": "4a9919408d403003ab65d61c5b37c84f8edd73fb0f7f2465c23a682ed59ec0d7"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/keyboard-completed-ORGANIZATION-en.png",
+      "bytes": 117256,
+      "sha256": "d884bd2c76f4edcd94060ab46cf8207fae572dab149b3609d2b1330d7956d894"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/keyboard-exact-retry-unknown-TEAM-ru.png",
+      "bytes": 80049,
+      "sha256": "baba68b40f36649fb00a678f88927f15465fc755d674d5732564dcd764dbb810"
+    },
+    {
+      "path": "/tmp/workforce542-browser-a5-final/artifact/keyboard-replay-TEAM-ru.png",
+      "bytes": 67164,
+      "sha256": "06d5f3986e7bad4896068a01124a259b9c83ae7b24dc85217b9c198aa8e0f7fe"
+    }
+  ],
+  "viewedCurrentImageCount": 31,
+  "archivePngCount": 44,
+  "preliminaryImagesNotSubstituted": true,
+  "observations": [
+    "All eighteen new AZ/EN and nine retained RU320 images plus four retained keyboard images individually viewed from this final run archive",
+    "Long labels wrap and important localized text is horizontally contained in inspected phases; focused title/unknown/replay outlines and source/confirmation native navigation positions are present",
+    "Snapshots may contain vertically off-screen content while actual individual reading probes permit only vertical scrolling with preserved focus",
+    "Development issue badge appears and overlaps the lower-left page area or parts of controls in some captures; no claim of complete absence of visual occlusion or production defect",
+    "AZ actual reading scroll count zero; RU and EN three each; AZ scrolling branch not exercised"
+  ],
+  "limits": [
+    "Thirteen other archive PNGs were not independently viewed",
+    "No contrast, native browser zoom, assistive technology, whole-page, production-calendar, physical device, Android, load or pilot acceptance claim",
+    "Final browser GREEN does not substitute five required gates, fresh-main check, normal merge or own exact-SHA deployment/public proof"
+  ],
+  "reviewerActions": {
+    "noBrowserOrTestsRunLocally": true,
+    "noProjectOrGitMutation": true,
+    "noProductionRequests": true,
+    "onlySanitizedSmallArtifactAndPublicGitHubMetadataRead": true,
+    "writesOnlyUnderTmp": true
+  }
+}
