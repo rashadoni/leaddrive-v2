@@ -61,7 +61,7 @@ export async function collectRenderedTextContrast(element, options) {
     const values = Object.fromEntries(properties.map(key => [key, computed[key] ?? ""]))
     // Outset focus rings do not paint the text backdrop. Inset shadows could,
     // so they remain unsupported; unrelated ring transitions do not delay text.
-    if (!values.boxShadow.includes("inset")) values.boxShadow = "no-inset-shadow"
+    if (!values.boxShadow.includes("inset")) values.boxShadow = "none"
     return values
   }
   const owners = []
@@ -127,7 +127,7 @@ export async function collectRenderedTextContrast(element, options) {
       }
       const background = color(style.backgroundColor)
       if (background.unsupportedReason) runFailures.push(`${background.unsupportedReason}:${depth}`)
-      return { tag: node.tagName, depth, ...background }
+      return { tag: node.tagName, depth, boxShadow: getComputedStyle(node).boxShadow, ...background }
     })
     const foreground = color(own.webkitTextFillColor || own.color)
     if (foreground.unsupportedReason) runFailures.push(foreground.unsupportedReason)
