@@ -5181,3 +5181,44 @@ from this worktree.
   calendar/physical/pilot NOT RUN. Progress81/161,14/15,C8 36%,overall59%,
   80non-DONE/about41%weighted,007PARTIAL;generalupdate/delete/breakpolicy/AGENT
   moves/Routemutationexcluded. No100%claim/newcompletioncredit.
+
+
+## 2026-10-03 (Asia/Baku) — 320 CSS harness implementation and bounded checks
+
+- Newtest-only sourcepath scripts/workforce-calendar-browser-evidence.mjs:
+  optionalfixturelabelargument preservesolddefaults; index9 valid160-charRU
+  label with>=80unbrokencharacters,actualTEAM writer. Existingnine scenario,
+  review/focus/auth/open functions independently bytecompared to063main and
+  identical. UI/sharedButton/API/auth/RLS/schema/workflow/baseline unchanged.
+- New320x844case uses realnativeTab/Enter/Space Cancel/reopen/commit/loss/retry,
+  fullCancelstate/POST0,specificgeneration-boundTEAMdraft,2rows/1audit,
+  heldcommittedresponse/bothbuttonsdisabled,byte-identicalretry[true,false]/
+  exactstateequal0replaywrites,visiblefocusedtargets/realsession/team. New
+  postflight assertsallold9completedbeforecase and10beforepopulatedRLSprobe.
+- Geometrymeasures renderedcontrols andeachtextNodeRange fragment against own
+  box,calendar/main/viewport andclippingancestors; 1CSSpixel roundingtolerance
+  recordedfornewcaseonly. Textreadingscroll checks eachline against paragraph
+  andverticalclippingancestors,positivefragments/preservedfocus; nofocus
+  injection. Individualfocusedtargets retainexistingstrict0-tolerancehelper.
+  Longnewconfirmation mayscrollvertically; old9wholeconfirmation checksunchanged.
+  Nineviewport-phasePNGs plusanonymousgeometry/readingdiagnostics retained.
+  Horizontalfailures collectedthroughfunctionalflow, thenstrictlyrequirezero
+  beforecasePASS; failures are neverdropped/relabeled, overallFAILifany.
+- Currenttree node syntax/scopedESLint/whitespace PASS. Actualthree targetedsuites
+  57/57 PASS2.44s withmaxWorkers1,/tmp/workforce-reflow-part18-final-targeted.log.
+  Earlier3.09s check retainedhistorically. RAM~15GBavailable,pressure0,disk338GB
+  free; checks small/sequential. FullContabotype/build/suite/browser/PG/Android/
+  load NOT RUN perhostcontract; no localbrowser used. Actualnew10case NOT RUN.
+- Publishonlyafterindependentexactsource/receipt review. Existingnonproduction
+  browserworkflow_dispatch canrun reviewedbranch diagnostic while PRstaysdraft;
+  thisisbranchSHA evidence, notPRsyntheticmerge evidence. FinalreadyPRmuststill
+  run actual10onexactcandidate/base andallfivefreshmandatorycontexts before
+  normalmerge/deploy. Existingworkflow/guards unchanged, no productiondispatch.
+- Currentstatus: newharnessimplemented,actualreflowproof pending. Lastaction:
+  meaningfulgeometry/functional assertions andactualbounded57tests. Precise
+  stoppingpoint: checkpoint/exactreview beforedraftpublication/hosteddiagnostic.
+  Nextaction: actual10, inspectoriginalreceipt/viewportPNG/measurements, fixonly
+  provedcalendarclipping, finalexactheadreview/readyfiveGREEN/freshmainrelease.
+  Progress59%,81/161,14/15,C8 36%,80non-DONE,007PARTIAL; nativezoom/AT/wholepage/
+  contrast/authenticatedproductioncalendar/physical/Android/load/pilot NOT RUN.
+  Generalupdate/delete/breakpolicy/AGENTmoves/Routemutation excluded.
