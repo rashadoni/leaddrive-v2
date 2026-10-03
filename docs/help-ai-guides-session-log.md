@@ -2455,3 +2455,38 @@ flag/audit и метрики, выполнить допущенную актив
   docs: record Support observation readiness and pending tenant selection.
   Exact stopping point remains before selected-tenant auth/flag/activation;
   pending question asks for organization name/slug, not renewed work permission.
+
+
+## 2026-10-03 — Resume after unrelated screenshot correction
+
+- User reiterated that the Channels screenshot belongs to another task and
+  instructed this task to continue its own work. Resumed from7eb4671d6 in the
+  recorded worktree/branch; no screenshot/telephony implementation pursued.
+- Read operative ROL006 breakdown, observation admission/retirement sections
+  and released operator/collector contracts. Plan has191unique tracked IDs,
+ 190checked and onlySUPUX-ROL-006open; this is an unweighted checklist count.
+  Already completed operator release, source baseline, protected checks and
+  readiness receipts are not replayed.
+- Asked a concise asynchronous scope question for the production company
+  name/slug. Existing work authorization is sufficient; no repeat approval
+  requested. No answer at this point. The unrelated screenshot does not select
+  a Support canary tenant or establish an authenticated application session.
+- Remaining real baseline, flag/audit admission, full-day collection and final
+  flag retirement require the selected tenant and actual activity. Existing
+  metadata-only inventory remains a dated snapshot; source defaultINFO and
+  logrotate configuration do not turn runtime unknowns into PASS. Reviewing
+  whether any concrete independent source gap remains; no new production
+  request, workflow dispatch, build, test or release performed in this resume.
+
+- Bounded independent review found no product operator/collector defect, but
+  established a remaining verification-path gap: current reviewed views do
+  not report runtime INFO/process continuity. Existing backup-readiness only
+  compares live logrotate authorities. Preparing a narrow tenant-independent
+  read-only readiness probe within the protected diagnostic is justified by
+  plan4173–4174/runbook384–391. It must distinguish current process/startup
+  facts and observed INFO events from effective level and complete longitudinal
+  coverage; unsupported claims stayUNVERIFIED. No new observability platform,
+  auth bypass, DB write, local heavy build or replay of earlier release gates.
+- Preflight16119MiB availableRAM/347546MiB freedisk/zeroPSI; journal diff-check
+  PASS and entire163545B7eb prefix preserved; legacy hash unchanged.
+  Checkpoint this resume before syncing reviewed main and implementing probe.
