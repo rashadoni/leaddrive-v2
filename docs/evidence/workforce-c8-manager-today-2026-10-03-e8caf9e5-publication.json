@@ -1,0 +1,263 @@
+{
+  "at": "2026-10-03T18:49:06.367857+00:00",
+  "head": "e8caf9e580936cbbc56c78da7618a37eef2b495e",
+  "base": "f34e04af037705eb2838285da26c78d7c9e2abc9",
+  "ready": "2026-10-03T18:44:02Z",
+  "actualBrowserRun": 37145309199,
+  "actualPrChecksRun": 37145309184,
+  "status": "ACTIVE;no correctedhostedacceptanceyet",
+  "originals": [
+    {
+      "source": "/tmp/workforce552-0b545860-independent.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-00.gz",
+      "bytes": 8027,
+      "sha256": "a900d352bd6c73460e54aaad63282547be2af569eaf03927978adcbbdd86b0e6",
+      "gzipBytes": 3654,
+      "gzipSha256": "ed01355039fd57d1367bed3e3cc5ef5525420225ce18a9656ba3ad936c5e4b49",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8caf9e5-independent.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-01.gz",
+      "bytes": 11039,
+      "sha256": "16b0bbf937853e2ac8e9a151cd10611699dba6b6b6345708873846b1f87473ce",
+      "gzipBytes": 4515,
+      "gzipSha256": "80740aaa543cb585fec151884083eb510453a46d4f5ce3881074996945740d80",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-guards.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-02.gz",
+      "bytes": 281,
+      "sha256": "0876973aea0d090db77bcbce54a043c56245cff2f0bec0b7b6bc3f2bb350fe0a",
+      "gzipBytes": 227,
+      "gzipSha256": "06e12b3340449ab80da9a5938a76a7f0ba258540e847db37a56856e4fed02a7d",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-small-checks.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-03.gz",
+      "bytes": 384,
+      "sha256": "c7c29c7347008ce2c91a3393ec5c93751eb772e16dbd7c83597e0e587c178c94",
+      "gzipBytes": 177,
+      "gzipSha256": "a682f282a45de81a9c1147c91b8b1422df3b3609128aaa3791d7ec03045a0548",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-syntax.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-04.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-eslint.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-05.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-runner-policy.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-06.gz",
+      "bytes": 44,
+      "sha256": "73576c5e5c928d8da7eec52b821fcceb9a1096a935209271300b906b27db852d",
+      "gzipBytes": 64,
+      "gzipSha256": "943293d11a1b12908c1bd6c15e762f061284c273d3db37b7471c741e3556bc90",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-diff-check.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-07.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-source-identities.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-08.gz",
+      "bytes": 700,
+      "sha256": "0ffbe5dad603488a565707cd9cb6c7bdf541a716aa330948d16b683c0d1e8423",
+      "gzipBytes": 421,
+      "gzipSha256": "863ab278535bf44e2d077ac422d4f32b83246bfdd0c9dee8b7bfa94371511d03",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-0b545860-gitleaks.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-09.gz",
+      "bytes": 110,
+      "sha256": "0e4d9d7c972c33514ea0dce44448e47b3d231421f2dc6ca4b4a0949e4a1f73f4",
+      "gzipBytes": 105,
+      "gzipSha256": "2600e45d0f155a6e3ba179e9050b194ca59331afe4a4dfeea16af63c9e30bf25",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-f34-final-targeted.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-10.gz",
+      "bytes": 284,
+      "sha256": "0f8fdc8e3fceb2c0cc0346a02639dfcb7d6c0e8730b562d45e90a17eba9f6a28",
+      "gzipBytes": 231,
+      "gzipSha256": "679e344d19c21d5785c2f161211524a41e786e16ddce9f0d92030fedbea94608",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-f34-small-checks.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-11.gz",
+      "bytes": 463,
+      "sha256": "4dd54f19fb8cf91a84f9601f9fb45c49fd3f97b66622d24a145d3edd16ab4f51",
+      "gzipBytes": 190,
+      "gzipSha256": "9dbba543f0df161358abf6153bab3d8b9278d880b4760d045c5bbc345cfb2075",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-f34-syntax.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-12.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-f34-eslint.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-13.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-f34-runner-policy.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-14.gz",
+      "bytes": 44,
+      "sha256": "73576c5e5c928d8da7eec52b821fcceb9a1096a935209271300b906b27db852d",
+      "gzipBytes": 64,
+      "gzipSha256": "943293d11a1b12908c1bd6c15e762f061284c273d3db37b7471c741e3556bc90",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-f34-diff-check.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-15.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-f34-gitleaks.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-16.gz",
+      "bytes": 110,
+      "sha256": "dd321acc5d60c4309264df673e261245033ead4d4825be3f3c1a0382a34c16d9",
+      "gzipBytes": 105,
+      "gzipSha256": "6f36a4c108786b8c69e129a47f4526228c065afce235265a8aa7e5f3dd297578",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-scoped-alert-f34-identities.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-17.gz",
+      "bytes": 569,
+      "sha256": "399842059ca89a5a48cbcdb7bfe0085cae5a41157d4114ff7476a82e04290325",
+      "gzipBytes": 350,
+      "gzipSha256": "3ce865960e0a6179c165b3af9941f531204624de961ae1a1170cb6320673f470",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-715b8860-final-native-checks-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-18.gz",
+      "bytes": 42819,
+      "sha256": "97845ab00146f63e4af11cd5d37af837117035285959434c473791961d347a61",
+      "gzipBytes": 2477,
+      "gzipSha256": "bee2aefdf87d692a46a4716dbb43bb324e5b18c3f17f2c1c997d85c0aa982993",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-715b8860-final-native-checks-summary.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-19.gz",
+      "bytes": 1615,
+      "sha256": "1874998f281552fda67d5ea7d1a80edd5c2f20f4976f0107e7334cbbb6048930",
+      "gzipBytes": 411,
+      "gzipSha256": "1e62e37a51814f3ce966b6b2230f22f713b00daf60978b7b661bc326be50faa0",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-ready-pr-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-20.gz",
+      "bytes": 17838,
+      "sha256": "43accfedcf1c37c7ec41c70ff833d0489cff9d76f107ead4308c5acafb5dcc24",
+      "gzipBytes": 3079,
+      "gzipSha256": "b149e5253bd586ca581751c64a0b555a0cb7270481094f99d0c4f8bf50fe96da",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-ready-runs-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-21.gz",
+      "bytes": 77425,
+      "sha256": "eeb94ef1e96824054bcc90d43cbb8e63781dc88da50ca3161f3ff05636d1ac5e",
+      "gzipBytes": 2735,
+      "gzipSha256": "4fd857a46da5091f84003575a293142b400183dd4e0865dbb556feeb5527ed81",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-corrected-pr-patch.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-22.gz",
+      "bytes": 2178,
+      "sha256": "84b03e8b31a6693f2113ab27426574af459831480a8b22a4dec941153f340ead",
+      "gzipBytes": 1262,
+      "gzipSha256": "d3343b221ba0c536c11c649c67c8c158d1a1ae821f545df643155b1724e8c5f5",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-release-proof-helper.py",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-23.gz",
+      "bytes": 11459,
+      "sha256": "44971e8eaac4fe16dd8fd7edc7bd7e8a8e78ee3ee79e688dc3a54856a000a7c3",
+      "gzipBytes": 4187,
+      "gzipSha256": "06a4298a9c4b89a0635b1d3a0f9b0bc75a13fd3513ced9cad0152d2808e38dd2",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-e8-release-helper-original.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-24.gz",
+      "bytes": 404,
+      "sha256": "0ceb75bced71d34d9647f43b56fb36604d35ecebf37c8e9e8fe2943a6795506a",
+      "gzipBytes": 296,
+      "gzipSha256": "277bded3e918b457c07690e4e1cafd11ead235344b628bdd535e92b9e2fed7ee",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part22-c6-010-linked-report-plan.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-25.gz",
+      "bytes": 13940,
+      "sha256": "0d30fb8e8cf12674a5dad5ef061aeae53306602eaabb7986f7270b252d08040f",
+      "gzipBytes": 6053,
+      "gzipSha256": "f062386d82c891a6b5888639f9a445bbb8bcd4dc747d8e1eb5794f03ceacd570",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-next-c6-source-notes.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-26.gz",
+      "bytes": 1946,
+      "sha256": "33cc1df42195e562abbebdb863e0fbe0a36d8a3e55473d3fdd20ef5e11cbab6d",
+      "gzipBytes": 1041,
+      "gzipSha256": "807c707e3fe2e944d0c101a56313e41c75a6babe469c802cb66924e71b3929e2",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-715b8860-synthetic-binding.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-e8caf9e5-publication-original-27.gz",
+      "bytes": 563,
+      "sha256": "92470fcd29a22e705e0fd9bfe61c828c77b3451d71af142656347cd0933a38f8",
+      "gzipBytes": 346,
+      "gzipSha256": "7ef95ddf654d4022ab5e3a4bdbc8029fe9be15a110fa21e2ad8150f81da86ac5",
+      "losslessDecompressionVerified": true
+    }
+  ]
+}
