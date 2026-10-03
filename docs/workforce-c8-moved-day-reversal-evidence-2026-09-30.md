@@ -2286,3 +2286,8 @@
 ## 2026-10-03 (Asia/Baku) — independent P2 test-vacuity repaired
 
 - Review of13c2282b found one P2: named opacity/filter/font/theme tests accepted a baseline NOT_PROVEN from jsdom textShadow. They now require the specific effect/global fixture refusal, so removing those guards cannot hide behind that baseline. Collector/math/product unchanged. Actual corrected8/8 PASS (1.89s), scoped lint/diff PASS; hashes in dom-p2-checks.json. Previous8PASS remains historical and was insufficient for these named guards; source review remains pending until exact replacement rereview. Native browser/canvas/contrast acceptance NOT RUN; second draft diagnostic follows GREEN/fresh-main publication. Progress59% and exclusions unchanged.
+
+
+## 2026-10-03 (Asia/Baku) — fresh547 main reconciled after replacement GREEN
+
+- Exact34505 replacement review GREEN P0-P3=0 (original/tmp/workforce-part20-34505ba6-independent.json,5764bytes/SHA444ec2c6a678d1d6558a25d0ae9508c2c5a199f5a55a5f53473601245c106e2a);13cRED preserved. Fresh main146dfc861f23580e0156fdd0ca688b6b7493f32c adds4localchannelsUI files, no Workforce/shared-Button/auth/RLS/schema/CI overlap. Root read incomingdiff; ordinary merge6652dbaacb21b6c965cfe8d1e9778eb61c9339a4 preserves4incoming and43ownedblobs exactly. Actual runnerpolicy40/assets27-86-5/diff PASS. Final reconciled exact review pending before second diagnostic; no corrected contrast acceptance yet. Progress59% and limits/exclusions unchanged.
