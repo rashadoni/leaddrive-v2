@@ -42,14 +42,13 @@ describe("oauth return target whitelist", () => {
     }
   })
 
-  it("merges result params into the whitelisted channel-card target", () => {
+  it("merges result params into the whitelisted channel-card target — the channel catalog", () => {
     const url = oauthReturnUrl("channels-instagram", { connected: "facebook", pages: "2", ig: "1" })
     const [path, query] = url.split("?")
-    expect(path).toBe("/settings/channels/connect/instagram")
+    expect(path).toBe("/settings/channels")
     const params = new URLSearchParams(query)
-    // The target's own params survive alongside the merged result params.
-    expect(params.get("mode")).toBe("existing")
-    expect(params.get("stage")).toBe("connect")
+    // The target's own param (which channel type the result is about) survives alongside the result.
+    expect(params.get("oauth")).toBe("instagram")
     expect(params.get("connected")).toBe("facebook")
     expect(params.get("pages")).toBe("2")
     expect(params.get("ig")).toBe("1")
@@ -57,7 +56,7 @@ describe("oauth return target whitelist", () => {
 
   it("encodes param values, so callers must not pre-encode them", () => {
     const url = oauthReturnUrl("channels-facebook", { error: "facebook_denied: needs review" })
-    expect(url).toContain("/settings/channels/connect/facebook?")
+    expect(url).toContain("/settings/channels?oauth=facebook&")
     expect(url).not.toContain("facebook_denied: needs review")
     const params = new URLSearchParams(url.split("?")[1])
     expect(params.get("error")).toBe("facebook_denied: needs review")
@@ -87,7 +86,7 @@ describe("oauth return channel id", () => {
   it("attaches the id to a channel card, never to the Social Monitoring default", () => {
     const params = new URLSearchParams(oauthReturnUrl("channels-facebook", { connected: "facebook" }, "cc_1").split("?")[1])
     expect(params.get("channelId")).toBe("cc_1")
-    expect(params.get("mode")).toBe("existing")
+    expect(params.get("oauth")).toBe("facebook")
     expect(oauthReturnUrl(null, { connected: "facebook" }, "cc_1")).toBe("/social-monitoring?connected=facebook")
     expect(oauthReturnUrl("channels-facebook", { error: "x" }, "a b")).not.toContain("channelId")
   })
