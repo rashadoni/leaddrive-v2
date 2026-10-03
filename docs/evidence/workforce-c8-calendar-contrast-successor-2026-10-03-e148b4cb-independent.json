@@ -1,0 +1,643 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-03T11:33:42.840641+00:00",
+  "independentReadOnly": true,
+  "verdict": "GREEN docs-only successor receipt integrity; default-light contrast is PREPARED and NOT IMPLEMENTED/NOT RUN",
+  "findings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "routing": {
+    "root": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3",
+    "head": "e148b4cb6425e7a9e2814db7b3d9253c854a201b",
+    "branch": "codex/workforce-completion-part20",
+    "clean": true,
+    "origin": "https://github.com/rashadoni/leaddrive-v2.git",
+    "freshRemoteMain": "2f7f56ff6b8731c14c1f9483d977a9f80a57333f",
+    "freshMainSatisfied": true,
+    "oldPrivatePart19Head": "0177fa0d8b3ae45db0bda5710da9329a479fb4b7",
+    "closedPart19RemoteUnchanged": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+    "productionHost": "13.140.132.245",
+    "productionPath": "/opt/leaddrive-v2",
+    "releaseRoute": "reviewed main -> deploy.yml -> immutable SHA-bound artifact -> registered production"
+  },
+  "fullDiff": {
+    "paths": 25,
+    "bytes": 186448,
+    "sha256": "4b8eefb9300635ee7ed48c47a13d78b06a09e231c1c954e48bed9168036334b9",
+    "algorithm": "raw git diff --binary base head"
+  },
+  "nonDocDiff": {
+    "paths": 0,
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "algorithm": "empty raw executable/non-doc diff"
+  },
+  "scope": {
+    "all25ChangedPathsDocsOnly": true,
+    "applicationHarnessSchemaAuthRlsApiRouteWorkflowBaselinesGitleaksConfigurationExecutableDelta": false,
+    "allSourceBlobsEqualFreshMain": true,
+    "canonicalForeignWorktreesUntouched": true
+  },
+  "carry": {
+    "original": {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-carry.json",
+      "bytes": 1700,
+      "sha256": "a04b548a333ee4c03de788e76afb6c7d0e6f459bc0fa4841c85bd4b4b17c180a"
+    },
+    "originalByteExactTmp": true,
+    "sevenMappings": [
+      {
+        "old": "ce2747ac35d7f52f8922613f7ed10d2be9be1d9a",
+        "new": "96b213bfcea6224893f154de8fda7816106a1c1f"
+      },
+      {
+        "old": "3c0156edcfd2106d8ad22361228811ec8988d0bb",
+        "new": "7cf92a831fa4b94f50e887d7802214df9749a17e"
+      },
+      {
+        "old": "41282c43cafcc2d37c123f8568c8f2313ce9ba03",
+        "new": "3890dcc758cfbce844edb5eb40096919edfbe8fb"
+      },
+      {
+        "old": "ef26007d64fd332e6f6fddd850a48762a1aedbb9",
+        "new": "bcef749971706884b4d82209c4a736466efa698f"
+      },
+      {
+        "old": "39c714eb7bdafce0102cae3d5e60bdc6e4b06fda",
+        "new": "723b3ae8c06d096b0d8ecf8d2f44b9f10f74d45f"
+      },
+      {
+        "old": "e5c2fc266e9c449e761dc85d10874386472c2b3a",
+        "new": "f5c901dedb5a96a9096d4386de2e7e7f4eee3584"
+      },
+      {
+        "old": "0177fa0d8b3ae45db0bda5710da9329a479fb4b7",
+        "new": "bef341b77b37339ceb6c2eee9af0dbc92958c5ac"
+      }
+    ],
+    "allSevenRawPatchesByteExact": true,
+    "carryHead": "bef341b77b37339ceb6c2eee9af0dbc92958c5ac",
+    "allOldOwnedDocsByteExactAtCarryHead": true,
+    "onlyTreeDeltaFromOldAtCarryHead": [
+      "src/__tests__/api-whatsapp-webhook-embedded-signup.test.ts",
+      "src/__tests__/lib-whatsapp-embedded-signup.test.ts",
+      "src/app/api/v1/webhooks/whatsapp/route.ts",
+      "src/lib/whatsapp-embedded-signup.ts"
+    ],
+    "allFourIncomingForeignBlobsByteExactFreshMain": true,
+    "foreignContractNoWorkforceAuthRlsSchemaWorkflowReceiptOverlap": true
+  },
+  "documents": {
+    "threeDocsPreserveMainAndOldPrivatePrefixes": true,
+    "allSevenPriorCarryAppendsFullyRead": true,
+    "threeIdenticalNewFinalAppends": {
+      "bytesEach": 3811,
+      "sha256": "0b6fb869cc40c1e728fd1ec450621c504052846a679e36ff0a9e0f923208e911"
+    },
+    "historicalPendingFlagsPreservedAndExplicitlySupersededByActualOwnRelease": true,
+    "noInventedFailureContrastAtOrProgressCredit": true
+  },
+  "originalJsonIntegrity": {
+    "total": 75,
+    "all53MainOriginalsByteExact": true,
+    "all73OldPrivateOriginalsByteExact": true,
+    "twoNewPlanCarryOriginalsByteExactTmp": true,
+    "thirteenRootIndependentReleaseFilesByteExactTmpManifest": true,
+    "sixAdditionalBrowserSourceGatesArtifactFilesByteExactTmp": true,
+    "qaOriginalHashAndRawPrimarySafeCountsVerified": true,
+    "manifest": {
+      "path": "/tmp/workforce542-release-preserved-manifest.json",
+      "bytes": 3865,
+      "sha256": "00fffe9afba3acdd64bae9301ebc621e454c2cd8f3343282e6b90b94b25b630c"
+    },
+    "allOriginalIdentities": [
+      {
+        "path": "docs/evidence/workforce-c8-calendar-browser-2026-10-02-03b7eb03.json",
+        "bytes": 2274,
+        "sha256": "c1b4f14a764a4e8b9c6e320991ff2d44ecf5f751ae119d8884bad7e1c0a186c4"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-browser-2026-10-02-22723274.json",
+        "bytes": 2274,
+        "sha256": "f89ea93c64b479a045187bd2a7a896b7cf70e1dd6c5452a314f17c130cb321ae"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-browser-2026-10-02-35c518f1.json",
+        "bytes": 1920,
+        "sha256": "ba9cd4664098f8c4c42446083dd36f557534822fc70d3feedcbb74b56b708809"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-browser-2026-10-02-adaec943-failed-attempt1.json",
+        "bytes": 2289,
+        "sha256": "bdfd7b58101049dd4b8334eeae35bdb862b553f70b6fbdaa98e50739ba5dc4b9"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-browser-2026-10-02-c2e069c9.json",
+        "bytes": 2760,
+        "sha256": "a12d9511cf4b0340b317b214cda8ba81070bad3b147da8bf20a50f288106644e"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-browser-2026-10-02-c78a5aa8.json",
+        "bytes": 2760,
+        "sha256": "41fef24ba48ca393b8d80e3402efbecd93c9a1434a5822db207553db26a0ceb8"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-browser-2026-10-02-ded45c39-failed-attempt1.json",
+        "bytes": 2276,
+        "sha256": "36f82492223c2376adee451920299f85b5d57060b35f05dd08444e05a0c1d252"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-browser-2026-10-02-fd02801c.json",
+        "bytes": 2760,
+        "sha256": "4088bb9782db847350ec6b4ddf42fb2490a485519a6c530ce7322b0a19cabacd"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-plan-2026-10-03-default-light.json",
+        "bytes": 13359,
+        "sha256": "3e676ed5fc4a87f0eb5a3e50d454147e176db0e374899700d2a38d8b3a3c6495"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-contrast-successor-2026-10-03-carry.json",
+        "bytes": 1700,
+        "sha256": "a04b548a333ee4c03de788e76afb6c7d0e6f459bc0fa4841c85bd4b4b17c180a"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-keyboard-2026-10-03-7e703a53-failed-attempt1.json",
+        "bytes": 5404,
+        "sha256": "080e904728e8f06f365f3de98216610833874e92769f90b07ae8169529924855"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-keyboard-2026-10-03-eb8e31cc.json",
+        "bytes": 5981,
+        "sha256": "adaeb7c4da4a746f2ee65314b113d5e965d4091245940e3ed07ea4fb2378280d"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-artifacts.json",
+        "bytes": 762,
+        "sha256": "d16015bf0c126fc5d642b3a1f34a7c4a2d0813dac1daf0f8ca7d5b4cfa1ce877"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-build-info.json",
+        "bytes": 112,
+        "sha256": "f4c5ad601699272a5f106c5ffa20a956d2025ce83f2ade2d1c28d3ec7bf25b1c"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-independent-public.json",
+        "bytes": 2056,
+        "sha256": "41849f3ae8be89faa3a1705d9535934cac707933ab0864ca1dd41341d6845a51"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-independent-release.json",
+        "bytes": 5285,
+        "sha256": "c4dae2a702f95f5d91ed039f070486440a6d20e735ad4b3c9ba5aa061ae1cc22"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-ping.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-public.json",
+        "bytes": 4569,
+        "sha256": "1f13c2e93c468fca2def2c2a69606ec7b3d45f900952e6b7a11a781f3cc9504d"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-keyboard-release-2026-10-03-46739dbe-workflow.json",
+        "bytes": 10001,
+        "sha256": "6681f0211491e52a92daf32e40062d9f8126805289d5328cc3a43f1f71fccc19"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-137c74ec-failed-diagnostic.json",
+        "bytes": 30989,
+        "sha256": "1b430c09c5f49ca99ca85257121d774df5bdc710b7836101b0b26484c8327944"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-1ae970d9-diagnostic.json",
+        "bytes": 10805,
+        "sha256": "275df7dbec1690cd56d7316f7f79bae9bfb63f1433cdfe3d0d72d69aa79eaa16"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-945f1730-final.json",
+        "bytes": 10804,
+        "sha256": "f3253933a8552127f8a921b69e7ac2f1c725b42419f682094d7716250b012f65"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-945f1730-independent.json",
+        "bytes": 9049,
+        "sha256": "8a3a7858ab5c6542b92d004028187e3830a61152372ca7d2b8f372905cd2777b"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-9a754dae-independent.json",
+        "bytes": 12206,
+        "sha256": "1306397ccabc269c11f94be899c842ae54debefa14e6fb4ca885919d520c774b"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-9a754dae-preliminary.json",
+        "bytes": 19709,
+        "sha256": "c34fb6723e1594a0e4a0276bcf232559070ae2ff7becd9360c811dbc9e593836"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-a5cc4d32-final.json",
+        "bytes": 19708,
+        "sha256": "9fa301d50d36a89438b0ade7ee610277e8364eb364963d85061ebd96138f7b41"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-2026-10-03-a5cc4d32-independent.json",
+        "bytes": 12296,
+        "sha256": "5b5bf0ba7457b2e85049211569bed58074c2303032a34c07306622e4703cf6d9"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-artifact-pending.json",
+        "bytes": 4338,
+        "sha256": "e8d781331c190a46c229685c60434547be19b994adbb27cf82d70f4305995596"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-gates.json",
+        "bytes": 1940,
+        "sha256": "2faca4dad3fd5e9ddc4fc0eb69e8bdcf759da7456f973bddaf57c32a43b5a300"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-confirm-build.json",
+        "bytes": 112,
+        "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-first-build.json",
+        "bytes": 112,
+        "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-github.json",
+        "bytes": 4658,
+        "sha256": "8cae567d60ebbea7f3aa29b9a55e4e3565d84fffbe71e4d9b6756890cd1ed5fc"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-ping.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent-public.json",
+        "bytes": 2948,
+        "sha256": "263de3694adf2e675aaee4ab4e8579685c15797cacbeb202354d44204563652e"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-independent.json",
+        "bytes": 9684,
+        "sha256": "a5a10cd4b3073233eb4317f69a881d0c6893c6107e27742f636323a9d9655483"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-ip-build.json",
+        "bytes": 112,
+        "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-ip-ping.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-qa.json",
+        "bytes": 2562,
+        "sha256": "a43e095bf9755c77012fe29006d4994cd80fe9bfd4f4c8de9130ef824a601578"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-confirm-build.json",
+        "bytes": 112,
+        "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-first-build.json",
+        "bytes": 112,
+        "sha256": "3065453a15f0a38a8fff167f6dc63688dda3ac4ac7ef462a1b54d6489eda4876"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-github.json",
+        "bytes": 4630,
+        "sha256": "ba10629fb37f58a4dcac7b335c3f927c71b7870a913bfa2c90f53b92d2b3b160"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-ping.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-4bf63b5f-root-public.json",
+        "bytes": 4593,
+        "sha256": "4d67663edcf81834dea8b70eb0aedc4cd00ff40a24fc763e07ca66c731e3e07b"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-artifacts.json",
+        "bytes": 762,
+        "sha256": "8bb930dc1150f4b753a6afc91561868ed957a92aaa991ee5d34b55fc0a122301"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-build-info-confirm.json",
+        "bytes": 112,
+        "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-build-info-first.json",
+        "bytes": 112,
+        "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-gates.json",
+        "bytes": 3014,
+        "sha256": "ca195cb5eb115fa2e3ad2c938ece1ef7011248196553a32341a5f0c50fa94044"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-build-info-confirm.json",
+        "bytes": 112,
+        "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-build-info-first.json",
+        "bytes": 112,
+        "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-first-guard-attempt.json",
+        "bytes": 828,
+        "sha256": "9d0c95fb3821d9c57811d0e5c34492a132a6a5c019605d4c3fbbe8e4a9e3a689"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-first-recovery-provenance.json",
+        "bytes": 386,
+        "sha256": "9439428a7e4dcf8ac6200b893a84c3e40c663c271e6af7af9b2d86764c74fb6c"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-github.json",
+        "bytes": 4352,
+        "sha256": "c426b4fdebaed69b8dd817194bf9955d2f0a560646134f4b5a43f778eba7ab6c"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-ping.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-public.json",
+        "bytes": 2828,
+        "sha256": "10e32e62c75c923a1f57d68c17783908ab0ff478c6fd15f45caac1f9e7598c77"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-independent-release.json",
+        "bytes": 10165,
+        "sha256": "42236af7c3ea18bef2ddb897f81dbc56b641b4d8685ac3a1c56baf2651905b54"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-ip-build-info-supplement.json",
+        "bytes": 112,
+        "sha256": "cac3244abdeb111fb7e9ed1d9be67def109f76a7424dcd1a7f27ccd8cc739f85"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-ip-ping-supplement.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-normal-success.json",
+        "bytes": 13794,
+        "sha256": "434a33b27661ff3c9edda77a6a775b10b4655f09ee258a90ba02161bc841d389"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-ping.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-public.json",
+        "bytes": 4557,
+        "sha256": "abd3e901bd44ef47e03185f565636a6ff4d2113b5ed9c9503cdf71480ae4f242"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-release-2026-10-03-a27681fc-qa.json",
+        "bytes": 4418,
+        "sha256": "caf06fcd38024f9c6a539fd453abfd01bce78037afaca4628d1ca08b4e309e93"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-scan-2026-10-03-controls.json",
+        "bytes": 1403,
+        "sha256": "98a77ef3b37b90c504a5f918932e913fdd758352d7bada5a69108c73c2e5fef7"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-scan-2026-10-03-failed.json",
+        "bytes": 1093,
+        "sha256": "cdcfe37ee9e1a8d694369fc42567bb7663e7d1aad65bfeb79e441c9d74f69367"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-scan-2026-10-03-independent.json",
+        "bytes": 4985,
+        "sha256": "288018ebb5091743909967e8408e277afde37256f29a718b2fb3458b07d8e949"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-successor-2026-10-03-1a7cb47f-preintegration.json",
+        "bytes": 5117,
+        "sha256": "efff5f00ba00aef2919bbabd4fb5bdcc5ee59720d2a7eadef2f34621c824b76e"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-successor-2026-10-03-9a754dae-integrated.json",
+        "bytes": 4602,
+        "sha256": "1c6cbc5553595591ea51ca5d63c17d96fcf8e4b3d60f8c013757919c75554fe9"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-successor-2026-10-03-a5cc4d32-exact.json",
+        "bytes": 4566,
+        "sha256": "bfe00119b9405620cc03d38dc082f25d63f8748ac0a7a85e27bb7c8b94909a05"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-reflow-successor-2026-10-03-caa715b6-integrity.json",
+        "bytes": 23615,
+        "sha256": "8b501aba6ac666a7b244462086afc04b694bbdf251cc6082f5220dad4b6b681d"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-release-2026-10-02-bb314679-artifacts.json",
+        "bytes": 762,
+        "sha256": "bcf3d686b1caf8eace3bb6f8cddc6300dfacce71650b3b915e4ec80c36f2af60"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-release-2026-10-02-bb314679-build-info.json",
+        "bytes": 112,
+        "sha256": "ea035e97901cf7efea972aaeb31a21ea1d1ed04f7efe392e905f5d243d5a0466"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-release-2026-10-02-bb314679-independent-public.json",
+        "bytes": 1662,
+        "sha256": "f2647072b3a603e2b9f80d679beafdd3d7b8fc8c8b36c4422e4445406249917f"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-release-2026-10-02-bb314679-independent-release.json",
+        "bytes": 2435,
+        "sha256": "1056bd145efc562f38c55adaac189e14d25cfaf14acda8df3838e57699f4bc60"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-release-2026-10-02-bb314679-ping.json",
+        "bytes": 11,
+        "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-release-2026-10-02-bb314679-public.json",
+        "bytes": 2501,
+        "sha256": "2a2be9799a4c329e393399e9efa94902a028b432484e965c814b611df007eed4"
+      },
+      {
+        "path": "docs/evidence/workforce-c8-calendar-release-2026-10-02-bb314679-workflow.json",
+        "bytes": 9971,
+        "sha256": "910b7e60d9de5dbd2215b41ee17fa7708acb6a775ad03513b7bfe815e29f5fb3"
+      }
+    ]
+  },
+  "own542ReleaseReconciled": {
+    "mergedSha": "4bf63b5f647a467dd6fa38af39577571efca7407",
+    "parents": [
+      "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+      "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d"
+    ],
+    "tree": "0f1e2b93f10ab950e8e7855092df5503344e4481",
+    "treeEqualsReviewedCandidateAndFinalSynthetic": true,
+    "normalRun": 37117815477,
+    "normalRunAttempt": 1,
+    "normalEventBranchPath": "push/main/.github/workflows/deploy.yml",
+    "fourJobsAndWholeOwnRunSuccess": true,
+    "requiredJobIds": [
+      111187915750,
+      111187915739,
+      111190469874,
+      111191882798
+    ],
+    "artifact": {
+      "id": 11272014627,
+      "name": "leaddrive-prod-4bf63b5f647a467dd6fa38af39577571efca7407",
+      "bytes": 443963101,
+      "sha256": "957273d60fc3a6720e864c3a9b0e590098923356a3485c8325e35f6fbe28206b",
+      "metadataOnlyNoLargeDownload": true
+    },
+    "finalBrowser": {
+      "run": 37116498411,
+      "job": 111184233766,
+      "actualCases": 12,
+      "actualCurrentImagesIndependentlyViewed": 31,
+      "otherImagesUnviewed": 13,
+      "originalByteExact": true,
+      "noContrastZoomAtOrProductionCalendarClaim": true
+    },
+    "fiveRequiredGatesExactHeadAndApp15368OriginalsReconciled": true,
+    "protectionFiveContextsAdminEnforcementNoForceNoDeleteRetained": true,
+    "qa": {
+      "actualPostgresTests": 33,
+      "suiteCounts": [
+        12,
+        15,
+        6
+      ],
+      "baselineFailedFiles": 18,
+      "baselineFiles": 18,
+      "noNewFailures": true,
+      "everyBaselineEntryStillFails": true,
+      "zeroFailureClaim": false,
+      "rawLog": {
+        "path": "/tmp/workforce542-own-qa-completed.log",
+        "bytes": 286391,
+        "sha256": "0aa5ea44c381c4d5fa443ffac5df4679b42616fd0083443d2c9a10a9441d2c12"
+      },
+      "rawLogNotCommitted": true
+    },
+    "rootAndIndependentPublicBuildPingBuildBodyBytesEqual": true,
+    "bothFullPublicArtifactShaExactOwnMergedSha": true,
+    "rootBracket": {
+      "start": "2026-10-03T11:18:38.922843+00:00",
+      "end": "2026-10-03T11:18:39.260922+00:00",
+      "strictPinnedDomainAll200Curl0": true,
+      "doesNotRecordActualRemoteIpTlsMetrics": true
+    },
+    "independentBracket": {
+      "start": "2026-10-03T11:19:33.705652+00:00",
+      "end": "2026-10-03T11:19:34.096123+00:00",
+      "all200Curl0ActualRemoteIp13140132245Tls0NoStore": true
+    },
+    "literalIp": {
+      "strictCurlExit": 60,
+      "certificateSanLimitationHonest": true,
+      "insecure200SupplementOnly": true,
+      "noSupplementalTlsCredit": true
+    },
+    "independentOneAttemptNoTransportHttpGuardOrShaMismatch": true,
+    "noDescendantSubstitution": true,
+    "freshMain2fAdvanceRecordedSeparately": true,
+    "normalRunSuccessStillRequired": false,
+    "independentFinal": {
+      "path": "/tmp/workforce542-production-4bf-independent/release-proof.json",
+      "bytes": 9684,
+      "sha256": "a5a10cd4b3073233eb4317f69a881d0c6893c6107e27742f636323a9d9655483"
+    }
+  },
+  "preparedContrastPlan": {
+    "original": {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/docs/evidence/workforce-c8-calendar-contrast-plan-2026-10-03-default-light.json",
+      "bytes": 13359,
+      "sha256": "3e676ed5fc4a87f0eb5a3e50d454147e176db0e374899700d2a38d8b3a3c6495"
+    },
+    "sourceIdentityFiveStillExact": true,
+    "boundedDefaultLightTeam320RuAzEnOnly": true,
+    "twelveDistinctRenderedTargetsPerLocaleThirtySixRequired": true,
+    "noNewFixtureMutationAuthenticationOperations": true,
+    "preserveCurrentTwelveGeometryNativeCancelStateCommitExactReplaySessionPacingRls": true,
+    "effectiveLightAndBackdropsMeasuredWithoutCssInjection": true,
+    "alphaOpacityGradientUnsupportedCannotYieldPass": true,
+    "unroundedThresholdsAndSemibold600NormalThreshold": true,
+    "firstHostedFailRawOriginalRequired": true,
+    "noGlobalButtonPaletteFixBeforeMeasuredFailure": true,
+    "implementation": "NOT IMPLEMENTED",
+    "hostedContrast": "NOT RUN",
+    "actualContrastPassClaim": false,
+    "officialW3cReferencesRetained": true
+  },
+  "actualRootSmallChecks": {
+    "gitleaks": {
+      "version": "8.30.1",
+      "range": "2f7f56ff6b8731c14c1f9483d977a9f80a57333f..e148b4cb6425e7a9e2814db7b3d9253c854a201b",
+      "commits": 8,
+      "actualFindings": 0,
+      "original": {
+        "path": "/tmp/workforce-part20-e148-gitleaks.json",
+        "bytes": 3,
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      },
+      "log": {
+        "path": "/tmp/workforce-part20-e148-gitleaks.log",
+        "bytes": 110,
+        "sha256": "9bc28c3dbf1d5cbdac6a76b21fd2e64c3054aa75f74552deba1455f690cc50f7"
+      },
+      "sameUnchangedRepoConfiguration": true,
+      "reviewerDidNotRerun": true,
+      "notGithubMandatoryContextCredit": true
+    },
+    "diffCheck": "Root actually PASS; reviewer did not rerun"
+  },
+  "progress": {
+    "done": 81,
+    "total": 161,
+    "gates": "14/15",
+    "c8Percent": 36,
+    "overallPercent": 59,
+    "nonDone": 80,
+    "remainingWeightedApproxPercent": 41,
+    "wfC8007": "PARTIAL"
+  },
+  "notRunAndExcluded": [
+    "Contrast implementation/hosted measurement, native zoom, assistive technology, dark/forced colors, whole-page and production-calendar acceptance",
+    "Physical Android/load/pilot; full local build/typecheck/suite/browser/PostgreSQL under Contabo workload contract",
+    "General update/delete, break policy, AGENT moves and Route mutation"
+  ],
+  "reviewerActions": {
+    "noRepoOrGitRefMutation": true,
+    "noStatusPublication": true,
+    "noCheckReruns": true,
+    "noProductionRequests": true,
+    "writesOnlyUnderTmp": true
+  }
+}

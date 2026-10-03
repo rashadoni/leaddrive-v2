@@ -1,0 +1,32 @@
+{
+  "kind": "Actual small sequential docs-range Gitleaks receipt",
+  "scanner": "Gitleaks8.30.1",
+  "base": "2f7f56ff6b8731c14c1f9483d977a9f80a57333f",
+  "head": "e148b4cb6425e7a9e2814db7b3d9253c854a201b",
+  "commitsScanned": 8,
+  "approximateScannedBytes": 166789,
+  "elapsedFromLogMs": 327,
+  "findings": 0,
+  "report": {
+    "source": "/tmp/workforce-part20-e148-gitleaks.json",
+    "bytes": 3,
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  "log": {
+    "source": "/tmp/workforce-part20-e148-gitleaks.log",
+    "bytes": 110,
+    "sha256": "9bc28c3dbf1d5cbdac6a76b21fd2e64c3054aa75f74552deba1455f690cc50f7"
+  },
+  "configurationChanged": false,
+  "resourcesBeforeCheck": {
+    "availableRam": "15Gi",
+    "memoryPressureAvg10": "0.00",
+    "diskAvailable": "340G"
+  },
+  "gitDiffCheckPassed": true,
+  "githubRequiredContextCredit": false,
+  "limits": [
+    "No full build/typecheck/full suite/browser/PostgreSQL/Android/load was run on Contabo.",
+    "Local narrow scan does not substitute a required GitHub PR scan context."
+  ]
+}

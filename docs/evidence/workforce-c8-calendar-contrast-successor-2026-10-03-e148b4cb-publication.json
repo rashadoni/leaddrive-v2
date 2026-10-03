@@ -1,0 +1,32 @@
+{
+  "observedAtUtc": "2026-10-03T11:36:37.351362+00:00",
+  "kind": "Exact reviewed successor checkpoint new-branch publication receipt",
+  "publishedHead": "e148b4cb6425e7a9e2814db7b3d9253c854a201b",
+  "freshMainAtPublication": "2f7f56ff6b8731c14c1f9483d977a9f80a57333f",
+  "branch": "codex/workforce-completion-part20",
+  "origin": "https://github.com/rashadoni/leaddrive-v2.git",
+  "remoteRefs": {
+    "refs/heads/codex/workforce-completion-part19": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+    "refs/heads/codex/workforce-completion-part20": "e148b4cb6425e7a9e2814db7b3d9253c854a201b",
+    "refs/heads/main": "2f7f56ff6b8731c14c1f9483d977a9f80a57333f"
+  },
+  "publishedExactlyReviewedHead": true,
+  "independentFindings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "changedPaths": 25,
+  "fullDiffBytes": 186448,
+  "fullDiffSha256": "4b8eefb9300635ee7ed48c47a13d78b06a09e231c1c954e48bed9168036334b9",
+  "nonDocPaths": 0,
+  "noPullRequestCreated": true,
+  "noProductionDeployRequested": true,
+  "contrastStatus": "PREPARED / NOT IMPLEMENTED / NOT RUN",
+  "limits": [
+    "Publication is a docs-only preparation checkpoint, not a new product acceptance or release.",
+    "Required five PR gates were GREEN on released PR542 sourcea5; no PR was created for this prepared checkpoint.",
+    "Own PR542 exact merged-SHA public release proof remains the actual historical strict bracket, not an assertion of perpetual production revision."
+  ]
+}
