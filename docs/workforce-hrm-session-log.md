@@ -5717,3 +5717,6 @@ corrections as new entries that explicitly supersede the earlier fact.
 ## 2026-10-03 (Asia/Baku) — first supported text contrast FAIL preserved before UI correction
 
 - Actual42b diagnostic37131296303/attempt1 FAIL15:03:50Z:12functionalPASS,33/36textPASS,3confirm-onlyFAIL,0NOT_PROVEN, populatedRLS. RU/AZ/EN enabled/native-focused confirm white text onrgb(233,86,12) is3.619970712637973:1, unrounded threshold4.5,14px/500weight; other33pass. Raw398820bytes/SHA96ce387d7af05c8852e0102f3023e92235582514ebc4c7b0bd663a07a9a33753 andboundartifact11277561145/zip3411968bytes preserved verbatim/tmp/workforce546-contrast-supported-42b68b24; archive digest verified, raw unchanged-configGitleaks0. Compact raw/provenance/PNG/ratio binding in42b-supported-red.json before anyUIchange. Full lossless raw originals will enterprivatepostpublicationreceipts without relaxing400KB or trimmingoldoriginals. Independent actualRED review active. Next boundedfix is only calendar confirmation light background; sharedButton/palette/domain/auth/RLS unchanged. Progress59%; no contrastPASS/AT/whole-page/zoom/physical credit.
+
+
+2026-10-03 (Asia/Baku): d3dc4b371 changes only reversal-confirm light background; scoped ESLint/diff PASS. Runtime/harness/guards unchanged. Build/typecheck/browser local NOT RUN; hosted acceptance pending. Supported RED preserved before fix; progress59%.
