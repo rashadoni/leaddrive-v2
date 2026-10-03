@@ -1,0 +1,120 @@
+{
+  "atUtc": "2026-10-03T20:45:09.046096+00:00",
+  "reviewedHead": "13f8c18b5a6375086ea6114f33e5cd7666172a6c",
+  "base": "10d81ee294062aa491bd0d235bbabb2e855224ba",
+  "originalReviewer": "/root/c6_pg_independent_review",
+  "authorless": true,
+  "status": "ORIGINAL_SOURCE_REVIEW_P3_1; correction PENDING",
+  "severityCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 1
+  },
+  "findings": [
+    {
+      "priority": "P3",
+      "path": "src/__tests__/lib-workforce-exception-report-postgres.test.ts",
+      "line": 218,
+      "title": "Limit the non-unique lookup-index comment to the selected fixture subset",
+      "body": "The selected 20260927014250 response lookup index is correctly imported as NON-UNIQUE, but the trailing comment that multiple signals per cycle remain legal overstates the current production contract. A separate existing 20260928123000 migration creates workforce_exception_employee_responses_org_case_revision_key as UNIQUE(organizationId,caseId,observedCaseRevision). Only legacy NULL revisions remain multiply legal under that later index. The nine current fixture tests do not depend on duplicate response-cycle rows, so this is a comment-honesty issue and not an identified metric/runtime defect.",
+      "evidence": [
+        "fixture line218 comment and line219 selected non-unique CREATE INDEX",
+        "prisma/migrations/20260928123000_workforce_exception_response_cycle_unique_index/migration.sql lines1-9",
+        "prisma/migrations/20260927014250_workforce_exception_case_revisions_response_index/migration.sql lines5-6"
+      ],
+      "action": "Replace the trailing multiple-signals legality statement with a precise note that this fixture imports the selected non-unique lookup index and does not reproduce the separate later response-cycle uniqueness migration. Do not claim duplicate-cycle write acceptance or expand DDL/behavior scope to correct this comment.",
+      "runtimeImpactIdentified": false
+    }
+  ],
+  "allNinePgCasesActual": "NOT RUN",
+  "currentC6Ci": "NOT RUN",
+  "currentC6Production": "NOT RUN",
+  "correctiveScope": "Only misleading selected-lookup index comment; no DDL or behavior expansion",
+  "actualCurrentUnitRun": {
+    "head": "fafeed3f0e759e3d4631dc2494ca6c5d6f64bb8e",
+    "atUtc": "2026-10-03T20:25:37.542079+00:00",
+    "tests": 85,
+    "files": 5,
+    "workers": 1,
+    "externalWallSeconds": 5.224,
+    "vitestReportedSeconds": 2.86,
+    "current13TreeByteExactFafe": true
+  },
+  "originals": [
+    {
+      "source": "/tmp/workforce-part23-pg-authorless-independent.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-authorless-p3-original-00.gz",
+      "bytes": 41897,
+      "sha256": "7cf39c282988937fc0a5ff29509674dd28c7d41f1b724067b656d4dc8a92ec68",
+      "gzipBytes": 12458,
+      "gzipSha256": "ef8fbd7a2d5bd6a4c4840a8ccc8fdad03a3df6480f0634d0b43c427da80de864",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-pg-authorless-input-audit.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-authorless-p3-original-01.gz",
+      "bytes": 14787,
+      "sha256": "0c5e0dd4571896cd954cd639844956fba5f2e1922fa532544151857674d1ec55",
+      "gzipBytes": 3534,
+      "gzipSha256": "27bc4df5dc43f6932d03588c187844adeb280d97fc07c506dfac448384dc720c",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-pg-authorless-current-closure.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-authorless-p3-original-02.gz",
+      "bytes": 2100,
+      "sha256": "f20d57d68cb7d50137afa2506fc7b85c0888248ed034f3ca80764e14646a3a09",
+      "gzipBytes": 709,
+      "gzipSha256": "d0854865d338766fa850f42d2cee6d280b252d28e8b493cf9b977240abcce9e7",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-pg-authorless-ddl-audit.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-authorless-p3-original-03.gz",
+      "bytes": 11565,
+      "sha256": "7c78cd44ba3e7349128e297682eef75c3afd3d75f144379b52cfc2d5e1e53989",
+      "gzipBytes": 2927,
+      "gzipSha256": "90a461fd1ca40a59a85e4be0abd501da8e2e7d38739fe7a52a09124caa9e5fb3",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fafe-targeted.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-authorless-p3-original-04.gz",
+      "bytes": 4012,
+      "sha256": "2d4268f952339d410f94eb50e8ffd1274a9e417f9caa27e03a263a3a581728c2",
+      "gzipBytes": 668,
+      "gzipSha256": "c7e7a0f7f3ad725c9288d7d938e2c1ce530e6c84c8489f9d1d1c50f4892da2b9",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fafe-targeted-result.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-authorless-p3-original-05.gz",
+      "bytes": 671,
+      "sha256": "8febe06262c9125ee8a49b9edb9544f7296cc688d8613b342415b2f273c1aa92",
+      "gzipBytes": 373,
+      "gzipSha256": "ff5b1e250f1127d6bd468f9d65e7abcad79ecf9d42e40bdca92c09ffac504fb4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-13f8-gitleaks.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-authorless-p3-original-06.gz",
+      "bytes": 179,
+      "sha256": "e3667b40674ae3b673c22e97aceb7f8b36c02412a968cc2e6cbfbd315234fad1",
+      "gzipBytes": 143,
+      "gzipSha256": "c77e139200292d1bdc35dd5b70faf368734739a427de17175a18c0e43c872776",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-authorless-p3-scan.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-authorless-p3-original-07.gz",
+      "bytes": 145,
+      "sha256": "96d4db24740564abc11ca04e9b5d016f9eb3ae72ad4bb19626099c730c11c856",
+      "gzipBytes": 127,
+      "gzipSha256": "d749cf45df5c8b3a403475a613b3a76f8fcffac0d7d4cb344ce45195d51411a1",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "rawScanBytes": 75211,
+  "rawScanExit": 0
+}
