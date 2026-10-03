@@ -161,11 +161,11 @@ jobs:
       AUTH_TRUST_HOST: "true"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
 
@@ -192,7 +192,7 @@ jobs:
 
       - name: Download SHA-bound visual baseline
         if: ${{ inputs.visual_mode == 'compare' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.baseline_artifact_name }}
           path: artifacts/support-ux-baseline
@@ -1498,7 +1498,7 @@ jobs:
 
       - name: Upload non-secret evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.support_ux_canary }}-${{ inputs.visual_mode }}${{ inputs.vision_deficiencies != '' && inputs.vision_deficiencies != 'standard' && format('-vision-{0}', inputs.vision_deficiencies) || '' }}
           path: artifacts/support-ux/${{ github.sha }}

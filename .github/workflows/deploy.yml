@@ -199,7 +199,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_TARGET_SHA }}
           # Use strings: numeric 0 is falsy in Actions expressions and would
@@ -305,12 +305,12 @@ jobs:
           fi
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Cache node_modules
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         id: cache-deps
         with:
           path: node_modules
@@ -550,7 +550,7 @@ jobs:
           esac
 
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_TARGET_SHA }}
           # Use strings: numeric 0 is falsy in Actions expressions and would
@@ -625,7 +625,7 @@ jobs:
           fi
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -993,7 +993,7 @@ jobs:
       - name: Checkout code
         # The app was built by the external build job; this checkout supplies
         # server-deploy.sh and the authenticated smoke script only.
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_TARGET_SHA }}
           # Use strings: numeric 0 is falsy in Actions expressions and would
@@ -1365,7 +1365,7 @@ jobs:
           REMOTE
 
       - name: Download SHA-bound deploy artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: leaddrive-prod-${{ env.DEPLOY_TARGET_SHA }}
           path: /tmp/leaddrive-deploy-artifact
@@ -1844,7 +1844,7 @@ jobs:
           }
 
       - name: Checkout deployment script from the recovered revision
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.recovery_sha }}
           fetch-depth: 0
@@ -1898,7 +1898,7 @@ jobs:
           esac
 
       - name: Download exact retained recovery artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: leaddrive-prod-${{ env.RECOVERY_SHA }}
           path: /tmp/leaddrive-recovery-artifact
