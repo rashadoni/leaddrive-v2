@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MtmContactEditDialog } from "@/components/mtm/contact-edit-dialog"
 import { MtmContactClassPicker } from "@/components/mtm/contact-class-picker"
+import { contactHistoryActionKey, contactHistoryChanges } from "@/lib/mtm/contact-history"
 import { contactFieldVisibility } from "@/lib/mtm/contact-field-visibility"
 import {
   contactCategoryFieldDisplayValue,
@@ -175,6 +176,10 @@ type AuditEvent = {
   entity: string
   metadataKind: string | null
   createdAt: string
+  oldData?: unknown
+  newData?: unknown
+  /** The office user who acted; set when they have no employee card. */
+  actorName?: string | null
   agent: {
     id: string
     name: string
@@ -754,9 +759,19 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                 <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
                   {history.map((event) => (
                     <article key={event.id} className="grid gap-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]">
-                      <div className="grid gap-1">
-                        <span className="font-medium">{event.action}</span>
-                        <span className="text-xs text-muted-foreground">{event.agent?.name || t("systemActor")} · {event.metadataKind || event.entity}</span>
+                      <div className="grid gap-1" data-testid="mtm-contact-history-event">
+                        <span className="font-medium">{t(`historyActions.${contactHistoryActionKey(event.action)}` as never)}</span>
+                        {contactHistoryChanges(event).length > 0 ? (
+                          <span className="text-sm">
+                            {contactHistoryChanges(event).map((change) => {
+                              const field = t(`historyFields.${change.field}` as never)
+                              if (change.to === null && change.from === null) return field
+                              if (change.from === null) return t("historyChangeSet", { field, to: change.to ?? "—" })
+                              return t("historyChange", { field, from: change.from, to: change.to ?? "—" })
+                            }).join(" · ")}
+                          </span>
+                        ) : null}
+                        <span className="text-xs text-muted-foreground">{event.agent?.name || event.actorName || t("systemActor")}</span>
                       </div>
                       <span className="text-xs text-muted-foreground tabular-nums">{dateTimeFormatter.format(new Date(event.createdAt))}</span>
                     </article>
