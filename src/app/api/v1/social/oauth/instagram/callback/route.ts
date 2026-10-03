@@ -165,12 +165,16 @@ export async function GET(req: NextRequest) {
   // 3) IG user profile (id + username)
   let username = ""
   let userId = shortUserId
+  // The app-scoped id (`id` of GET /me). Meta's Deauthorize / Data Deletion callbacks name the user by
+  // an id, and the revocation (lib/social/instagram-revoke) matches either this one or `user_id`.
+  let scopedId = ""
   try {
     const meRes = await fetch(`${IG_GRAPH}/me?fields=user_id,username`, graphBearerInit(longToken))
     if (meRes.ok) {
       const me = await meRes.json() as { user_id?: string | number; username?: string; id?: string }
       userId = String(me.user_id ?? me.id ?? shortUserId)
       username = me.username || ""
+      scopedId = me.id ? String(me.id) : ""
     }
   } catch {
     /* non-fatal — fall back to the id from the token exchange */
@@ -206,6 +210,9 @@ export async function GET(req: NextRequest) {
       ? (existing.settings as Record<string, unknown>)
       : {}
   const settings: Record<string, unknown> = { ...prevSettings, igLogin: true, tokenExpiresAt: expiresAt, username }
+  if (scopedId && scopedId !== userId) settings.igScopedId = scopedId
+  // A reconnect is a fresh grant: a revocation recorded for an earlier one no longer describes the row.
+  delete settings.revokedByMeta
   if (staged) {
     settings.appReviewOnly = true
   } else {
