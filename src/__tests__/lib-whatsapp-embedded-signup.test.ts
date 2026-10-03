@@ -140,6 +140,14 @@ describe("completeEmbeddedSignup", () => {
     expect(db.rows[0].settings).toMatchObject({ replyMode: "agent", embeddedSignup: true })
   })
 
+  it("keeps a reconnected row's own App Secret and Verify Token", async () => {
+    // LeadDrive's own number: its row's secret verifies the shared callback `?t=leaddrive` for every
+    // workspace. Erasing it on a reconnect would reject every WhatsApp callback behind that URL.
+    db.rows.push({ id: "ours", organizationId: "org_a", channelType: "whatsapp", isActive: true, phoneNumberId: "444555666", accessToken: "OLD", appSecret: "OWN_SECRET", verifyToken: "OWN_VERIFY", settings: {} })
+    expect(await completeEmbeddedSignup(input)).toMatchObject({ ok: true, created: false })
+    expect(db.rows[0]).toMatchObject({ appSecret: "OWN_SECRET", verifyToken: "OWN_VERIFY", accessToken: "BUSINESS_TOKEN" })
+  })
+
   it("saves the channel but says so when Meta refuses the registration", async () => {
     registerOk = false
     const result = await completeEmbeddedSignup(input)

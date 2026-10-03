@@ -175,14 +175,15 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     phoneNumberId,
     businessAccountId: wabaId,
     displayName: verifiedName,
-    // The shared app's secret verifies webhooks for this row (env WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET); nothing per row.
-    appSecret: null,
-    verifyToken: null,
     isActive: true,
     settings,
   }
   let channelId: string
   if (existing) {
+    // A reconnect keeps the row's own App Secret and Verify Token. The shared app's secret is what verifies
+    // this number from now on, but the row's secret may be the one webhooks/whatsapp checks for the whole
+    // `?t=<slug>` URL — LeadDrive's own number is exactly that row for the shared callback — and erasing
+    // it would reject every WhatsApp callback behind that URL, every workspace's included.
     await prisma.channelConfig.update({ where: { id: existing.id }, data })
     channelId = existing.id
   } else {
@@ -192,6 +193,10 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
         channelType: "whatsapp",
         configName: verifiedName || displayPhoneNumber || "WhatsApp",
         createdBy: input.createdBy || null,
+        // The shared app's secret verifies webhooks for this row (env WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET);
+        // nothing per row.
+        appSecret: null,
+        verifyToken: null,
         ...data,
       },
       select: { id: true },

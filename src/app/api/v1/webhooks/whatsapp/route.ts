@@ -74,10 +74,19 @@ async function resolveTenantWhatsAppConfig(
   return runWithRlsBypass(async () => {
     const org = await prisma.organization.findUnique({ where: { slug }, select: { id: true } })
     if (!org) return null
+    // The row whose app secret verifies this URL. A workspace can hold several WhatsApp rows, and one
+    // connected through Embedded Signup has no secret of its own (the shared app's signs for it): picked
+    // by an unordered findFirst, such a row would reject every callback to `?t=<slug>` — and for the slug
+    // in the shared app's callback URL, that is every Embedded Signup number of every workspace. So the
+    // row with its own secret wins, oldest first; a workspace without one keeps today's behaviour.
+    const where = { organizationId: org.id, channelType: "whatsapp", isActive: true }
+    const select = { id: true, verifyToken: true, appSecret: true } as const
+    const orderBy = { createdAt: "asc" } as const
     const cfg = await prisma.channelConfig.findFirst({
-      where: { organizationId: org.id, channelType: "whatsapp", isActive: true },
-      select: { id: true, verifyToken: true, appSecret: true },
-    })
+      where: { ...where, NOT: [{ appSecret: null }, { appSecret: "" }] },
+      select,
+      orderBy,
+    }) ?? await prisma.channelConfig.findFirst({ where, select, orderBy })
     if (!cfg) return null
     return {
       organizationId: org.id,
