@@ -1,0 +1,476 @@
+{
+  "observedAt": "2026-10-03T17:51:06.778548+00:00",
+  "mergedSha": "7c0e136f1529b9df9e96a2273d798d48718c1d80",
+  "rootIndependent": false,
+  "independentOriginal": "fd5d20a459f42282e7dbae62e588c658b336dfe0f94055fdbbea0de9df712506",
+  "originals": [
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-release.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-00.gz",
+      "bytes": 20766,
+      "sha256": "891d9392b71a497190a21c66dcd50d25a5b346f4d9180de3ae252151a72553ad",
+      "gzipBytes": 3749,
+      "gzipSha256": "44b5341123024bf5bfd530e7e661c54599ba3e0f500c7578935b504c3c29ccb3",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-7c0-production-independent.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-01.gz",
+      "bytes": 11979,
+      "sha256": "fd5d20a459f42282e7dbae62e588c658b336dfe0f94055fdbbea0de9df712506",
+      "gzipBytes": 3419,
+      "gzipSha256": "7935bddb5e40c7c2e88945c775d2c229e7ca408dac386dd0c23b2adb62745e1d",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-release-proof-helper.py",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-02.gz",
+      "bytes": 11459,
+      "sha256": "0e86088efbdf561fa89549bfd3c8bd293a253fdcea45f0dfc23da903f33cacbb",
+      "gzipBytes": 4188,
+      "gzipSha256": "bf26c9666a044fb3abdc5e66397a1b160dfcdfd731ac52576345a1100509f66f",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/build-info-confirm.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-03.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/build-info-first.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-04.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T171102383820Z/artifacts.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-05.gz",
+      "bytes": 32,
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "gzipBytes": 52,
+      "gzipSha256": "445c0201400e7d67debcd7865fdc885bab735bc10686fdc583a3bd4a3be3286e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T171102383820Z/candidate-commit.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-06.gz",
+      "bytes": 1177,
+      "sha256": "a0abc3897792f3894aa6e0bd69830e1140d05c9f7a396946bfdb745fa984c4a5",
+      "gzipBytes": 508,
+      "gzipSha256": "b8effda8cf13b6e736b4e2a7e4d663d4608e9efdd1cf6f0ea4fe90b224c5ef43",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T171102383820Z/github-proof.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-07.gz",
+      "bytes": 3229,
+      "sha256": "fa27f0fdcc8b324e35741a8d48f278a86a276fef5d5ee15dbf873affc08d1e45",
+      "gzipBytes": 1104,
+      "gzipSha256": "11ec69c01206c689b166abb357ce03460c1ea985745979f4826a2b9c9050506e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T171102383820Z/jobs.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-08.gz",
+      "bytes": 11468,
+      "sha256": "92f47280caa99f3236ff09c7b82e89b422eeab5853571cbf48056c46e08eee61",
+      "gzipBytes": 1689,
+      "gzipSha256": "a1a74d8c9af42eb4978cc0fff54803c1a67268efdd173f9837f92d837cd2affc",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T171102383820Z/main-at-observation.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-09.gz",
+      "bytes": 342,
+      "sha256": "9621eb7c5d7a711c7a1bcb7321eaf242cac3db72fc493b183587c74313506a11",
+      "gzipBytes": 216,
+      "gzipSha256": "4c9c0985a2860fd6894d7640cade988d321dbda4620713dd8fe0adb6dc5745fd",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T171102383820Z/merged-commit.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-10.gz",
+      "bytes": 2749,
+      "sha256": "13cf9cd00fffa03163d94065a59cf4d892cb84aa7d6ffb45ceb72b94ca4e1c16",
+      "gzipBytes": 1324,
+      "gzipSha256": "3776b21bc3cce4aac7952e3d2eeba6ad7ede4837fa0060d4be57ddf51c5bd592",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T171102383820Z/pr.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-11.gz",
+      "bytes": 17865,
+      "sha256": "a935b0dcefd8f0f7af7a01bdb443e0f74b487adf11cb49ed62b79b7aea388be1",
+      "gzipBytes": 2534,
+      "gzipSha256": "eb5a96ca9c715250f10c4edc23ecf5bafe457fc3ae9fdfa975b0561e1ad6ec60",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T171102383820Z/run.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-12.gz",
+      "bytes": 12407,
+      "sha256": "e777373d05b93666799f3973a7a4150d39e603319547bff1fb202c367be8bd22",
+      "gzipBytes": 1552,
+      "gzipSha256": "c35549ab9a3c79f58d73018a42ca2366254ab5f14cb0788eda4533adc1c91e99",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T174010957200Z/artifacts.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-13.gz",
+      "bytes": 762,
+      "sha256": "cbd5c553f4f9a2244ec4e16a620f1341d6f9f9bf9054eca134abbc0b37645471",
+      "gzipBytes": 433,
+      "gzipSha256": "b43162127ea8fbccee4036fcda5c347717fb6cdaa3f86b8d5dce048debce85ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T174010957200Z/candidate-commit.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-14.gz",
+      "bytes": 1177,
+      "sha256": "a0abc3897792f3894aa6e0bd69830e1140d05c9f7a396946bfdb745fa984c4a5",
+      "gzipBytes": 508,
+      "gzipSha256": "b8effda8cf13b6e736b4e2a7e4d663d4608e9efdd1cf6f0ea4fe90b224c5ef43",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T174010957200Z/github-proof.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-15.gz",
+      "bytes": 4679,
+      "sha256": "9913fc4d1da4b60768f3d3cf6532f3bac25b6ee98c34a7c78b1929e300fa9a4c",
+      "gzipBytes": 1459,
+      "gzipSha256": "855667be9384d35cc94f6dd6e93df2b0e79b1c69bf4bdccb15445c1c09c47da6",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T174010957200Z/jobs.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-16.gz",
+      "bytes": 20186,
+      "sha256": "9c1302de16d3a1062882a93a8a2a6eb3d037c2205429aff9455406c9facdaeba",
+      "gzipBytes": 2548,
+      "gzipSha256": "7eb54d4e22f4def1984b02ed0e293b6ff80708951b0bfa023fb9c6a090616ede",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T174010957200Z/main-at-observation.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-17.gz",
+      "bytes": 342,
+      "sha256": "c4ef4862089eecf9cd7a1d7f67eb811040bf493f802d46be9d4f3891f4387c08",
+      "gzipBytes": 215,
+      "gzipSha256": "4e568616779aa9bffc201899f02f814c720fc856a21762e32450eac2c244b53a",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T174010957200Z/merged-commit.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-18.gz",
+      "bytes": 2749,
+      "sha256": "13cf9cd00fffa03163d94065a59cf4d892cb84aa7d6ffb45ceb72b94ca4e1c16",
+      "gzipBytes": 1324,
+      "gzipSha256": "3776b21bc3cce4aac7952e3d2eeba6ad7ede4837fa0060d4be57ddf51c5bd592",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T174010957200Z/pr.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-19.gz",
+      "bytes": 17865,
+      "sha256": "ea84d1a8a49c493eda12ed23cf2aa7b53b16d69ad73b36c8adea508b255f3efb",
+      "gzipBytes": 2538,
+      "gzipSha256": "f705b29471e0c9e628dfc9cd1edc2eec967a4344894aadbc69d156c1c41448d1",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-20261003T174010957200Z/run.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-20.gz",
+      "bytes": 12410,
+      "sha256": "d72c981648c76b4866cbc8d7f25e459cf93545da59a046076d8288c4fcfc9370",
+      "gzipBytes": 1555,
+      "gzipSha256": "dc7904a8365c817d4ad8d23e919cdab39979000ffb0191ca3ae565725dbf1737",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/github-proof-latest.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-21.gz",
+      "bytes": 4679,
+      "sha256": "9913fc4d1da4b60768f3d3cf6532f3bac25b6ee98c34a7c78b1929e300fa9a4c",
+      "gzipBytes": 1459,
+      "gzipSha256": "855667be9384d35cc94f6dd6e93df2b0e79b1c69bf4bdccb15445c1c09c47da6",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/ping.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-22.gz",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/public-20261003T174610280645Z/attempt-proof.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-23.gz",
+      "bytes": 2957,
+      "sha256": "fae5348620dc68f68899ac947782c4b04fdcd9d6cb72bf00d31b3d590e3a1e05",
+      "gzipBytes": 739,
+      "gzipSha256": "b295be843be313cbe4a7f98d2b6cc1d8427a5a5f6a69837b59518578f61b355f",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/public-20261003T174610280645Z/build-info-confirm.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-24.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/public-20261003T174610280645Z/build-info-first.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-25.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/public-20261003T174610280645Z/ping.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-26.gz",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-github/public-proof.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-27.gz",
+      "bytes": 2957,
+      "sha256": "fae5348620dc68f68899ac947782c4b04fdcd9d6cb72bf00d31b3d590e3a1e05",
+      "gzipBytes": 739,
+      "gzipSha256": "b295be843be313cbe4a7f98d2b6cc1d8427a5a5f6a69837b59518578f61b355f",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-ip-supplement/build-info-confirm.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-28.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-ip-supplement/build-info-first.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-29.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-ip-supplement/ip-build-info.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-30.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-ip-supplement/ip-ping.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-31.gz",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-ip-supplement/ping.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-32.gz",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-primary-ip-supplement/public-proof.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-33.gz",
+      "bytes": 4635,
+      "sha256": "2fe7aa8007bbbdafae1ec5b340829059c2963df3d6afacf05c8fb589f9c57e7b",
+      "gzipBytes": 988,
+      "gzipSha256": "ead2c747a85865a85316e87aa3f39dba18d9874ab4d6063654efe3de5a09b24c",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/build-info-confirm.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-34.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/build-info-first.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-35.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/github-20261003T174634315168Z/artifacts.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-36.gz",
+      "bytes": 762,
+      "sha256": "cbd5c553f4f9a2244ec4e16a620f1341d6f9f9bf9054eca134abbc0b37645471",
+      "gzipBytes": 433,
+      "gzipSha256": "b43162127ea8fbccee4036fcda5c347717fb6cdaa3f86b8d5dce048debce85ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/github-20261003T174634315168Z/candidate-commit.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-37.gz",
+      "bytes": 1177,
+      "sha256": "a0abc3897792f3894aa6e0bd69830e1140d05c9f7a396946bfdb745fa984c4a5",
+      "gzipBytes": 508,
+      "gzipSha256": "b8effda8cf13b6e736b4e2a7e4d663d4608e9efdd1cf6f0ea4fe90b224c5ef43",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/github-20261003T174634315168Z/github-proof.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-38.gz",
+      "bytes": 4658,
+      "sha256": "d49bf625ad67ca251b009e8150642c4d91ad853668001e7cb43352ca6203e5c6",
+      "gzipBytes": 1460,
+      "gzipSha256": "19007cdf7aab175db28520506b9ebeeb03a4ed407064f2785f8a690503cd4d19",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/github-20261003T174634315168Z/jobs.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-39.gz",
+      "bytes": 20186,
+      "sha256": "9c1302de16d3a1062882a93a8a2a6eb3d037c2205429aff9455406c9facdaeba",
+      "gzipBytes": 2548,
+      "gzipSha256": "7eb54d4e22f4def1984b02ed0e293b6ff80708951b0bfa023fb9c6a090616ede",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/github-20261003T174634315168Z/main-at-observation.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-40.gz",
+      "bytes": 342,
+      "sha256": "c4ef4862089eecf9cd7a1d7f67eb811040bf493f802d46be9d4f3891f4387c08",
+      "gzipBytes": 215,
+      "gzipSha256": "4e568616779aa9bffc201899f02f814c720fc856a21762e32450eac2c244b53a",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/github-20261003T174634315168Z/merged-commit.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-41.gz",
+      "bytes": 2749,
+      "sha256": "13cf9cd00fffa03163d94065a59cf4d892cb84aa7d6ffb45ceb72b94ca4e1c16",
+      "gzipBytes": 1324,
+      "gzipSha256": "3776b21bc3cce4aac7952e3d2eeba6ad7ede4837fa0060d4be57ddf51c5bd592",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/github-20261003T174634315168Z/pr.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-42.gz",
+      "bytes": 17865,
+      "sha256": "ea84d1a8a49c493eda12ed23cf2aa7b53b16d69ad73b36c8adea508b255f3efb",
+      "gzipBytes": 2538,
+      "gzipSha256": "f705b29471e0c9e628dfc9cd1edc2eec967a4344894aadbc69d156c1c41448d1",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/github-20261003T174634315168Z/run.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-43.gz",
+      "bytes": 12410,
+      "sha256": "d72c981648c76b4866cbc8d7f25e459cf93545da59a046076d8288c4fcfc9370",
+      "gzipBytes": 1555,
+      "gzipSha256": "dc7904a8365c817d4ad8d23e919cdab39979000ffb0191ca3ae565725dbf1737",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/github-proof-latest.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-44.gz",
+      "bytes": 4658,
+      "sha256": "d49bf625ad67ca251b009e8150642c4d91ad853668001e7cb43352ca6203e5c6",
+      "gzipBytes": 1460,
+      "gzipSha256": "19007cdf7aab175db28520506b9ebeeb03a4ed407064f2785f8a690503cd4d19",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/ping.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-45.gz",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/public-20261003T174645650762Z/attempt-proof.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-46.gz",
+      "bytes": 2948,
+      "sha256": "debcf682b0c23235897377f36058c885e3ae46ebd14c904e4ba1258451339eff",
+      "gzipBytes": 737,
+      "gzipSha256": "218751e61cca49e5871adef18a9de71c58913189f9a5290093f4839ccfa9bf1a",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/public-20261003T174645650762Z/build-info-confirm.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-47.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/public-20261003T174645650762Z/build-info-first.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-48.gz",
+      "bytes": 112,
+      "sha256": "bbf843e29e26be9d3811fb86e980fcc527e89dbc7060aa49b382b01193bf834d",
+      "gzipBytes": 111,
+      "gzipSha256": "e821a3a645cd80f6e2a351c586ebdacba94faf32982d533a9c1a5b27cd0814ca",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/public-20261003T174645650762Z/ping.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-49.gz",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/public-proof.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-50.gz",
+      "bytes": 2948,
+      "sha256": "debcf682b0c23235897377f36058c885e3ae46ebd14c904e4ba1258451339eff",
+      "gzipBytes": 737,
+      "gzipSha256": "218751e61cca49e5871adef18a9de71c58913189f9a5290093f4839ccfa9bf1a",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce551-production-7c0-independent/release-proof.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-7c0e136f-release-original-51.gz",
+      "bytes": 9684,
+      "sha256": "1b51db66680eb23096bb2f2c86e310207aa39971fb99c87f80b84e6d3268b28c",
+      "gzipBytes": 2525,
+      "gzipSha256": "1088ee412c105938daa1177175a0a54b93df2245a8f04fa7313cbadb8c6cba03",
+      "losslessDecompressionVerified": true
+    }
+  ]
+}

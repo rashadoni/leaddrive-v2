@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "candidateHead": "5c07decf80f91cf616cea6b88235051421dd69fe",
+  "checkedMergeSha": "b84370c929cf4d69041647b40a3aca12a95d892c",
+  "harnessSha256": "fa3f53369b7b39abb90734dd9ea433fc65dc18373946b52e1a251b926760229a",
+  "startedAt": "2026-10-03T17:26:57.940Z",
+  "date": "2026-10-03",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF, credentials provider and session; no auth mocks",
+  "authenticationDiagnostics": [
+    {
+      "ordinal": 1,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T17:27:00.546Z"
+    }
+  ],
+  "cases": [],
+  "status": "FAIL",
+  "limitations": [
+    "Development bundle, not production build",
+    "Synthetic disposable data only",
+    "No positive immutable current-workday snapshot rendering acceptance",
+    "No human AT/native zoom/whole-page keyboard/Android/physical/load/pilot acceptance",
+    "Geometry/text checks do not prove pixel occlusion or whole-page accessibility",
+    "Read-only manager Today; no production feature/grant activation"
+  ],
+  "rlsBefore": {
+    "phase": "BEFORE_AUTHENTICATED_READS",
+    "role": "wf_manager_today_browser",
+    "tenantContextAbsent": true,
+    "bypassAbsent": true,
+    "unsafeRolePrivilegesAbsent": true,
+    "counts": [
+      {
+        "table": "mtm_agent_workday_events",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_agent_workdays",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_agents",
+        "syntheticRows": 29,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_settings",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_teams",
+        "syntheticRows": 3,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "mtm_work_calendar_days",
+        "syntheticRows": 3,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "users",
+        "syntheticRows": 4,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_access_grant_revocations",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_access_grants",
+        "syntheticRows": 2,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_employee_team_memberships",
+        "syntheticRows": 26,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_exception_cases",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_exception_decisions",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_policy_snapshots",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_assignments",
+        "syntheticRows": 25,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_default_assignments",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_segments",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_snapshots",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_team_default_assignments",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_shift_templates",
+        "syntheticRows": 1,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      },
+      {
+        "table": "workforce_workday_schedule_snapshots",
+        "syntheticRows": 0,
+        "unscopedVisibleRows": 0,
+        "forcedRls": true,
+        "appOwnsTable": false
+      }
+    ]
+  },
+  "failure": {
+    "stage": "today-manager-ru-localized-first-page",
+    "name": "Error",
+    "sourcePosition": {
+      "line": 348,
+      "column": 91
+    },
+    "check": "Inspect sourcePosition against harnessSha256; no raw error message recorded",
+    "diagnostic": "Original hosted assertion failed; no raw payload, stack, token or credentials uploaded",
+    "screenshot": "failure-original.png"
+  },
+  "cleanup": "FAIL",
+  "completedAt": "2026-10-03T17:27:18.368Z"
+}

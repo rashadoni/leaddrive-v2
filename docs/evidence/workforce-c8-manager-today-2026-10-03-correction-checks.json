@@ -1,0 +1,114 @@
+{
+  "observedAt": "2026-10-03T17:54:57.027213+00:00",
+  "code": [
+    {
+      "path": "scripts/workforce-manager-today-browser-evidence.mjs",
+      "bytes": 35651,
+      "sha256": "736db810cdddba71c751bac4f262f6078999ab3df1e762f318f478b061a1d8e0"
+    },
+    {
+      "path": "src/components/workforce/workforce-manager-today.tsx",
+      "bytes": 8629,
+      "sha256": "f1fef29057a2e7696abb4645c2ed24b8699f2dae1c6891c213a60bfdfc632762"
+    },
+    {
+      "path": "src/__tests__/workforce-manager-today-ui.test.ts",
+      "bytes": 5448,
+      "sha256": "fa3926511685992b5a85b8948eca2af9475b5c34e6e46e55a7f67a7baa0788b2"
+    },
+    {
+      "path": "src/__tests__/workforce-manager-today-localization.test.ts",
+      "bytes": 4048,
+      "sha256": "6b6fc025a8dd1de24c2b6472060f00411834d39ca9be17eaae22fb9c8c68c731"
+    }
+  ],
+  "checks": {
+    "realIntlUi": "PASS5/5,2files,oneworker,2.88s; actualNextIntlClientProvider;10types x6statuses in each EN/RU/AZ; zero IntlErrors",
+    "originalDefectRegression": "EXPECTED RED3/3 locales,exit1,1.64s on preserved original5c product; corrected bytes restored in finally",
+    "guards": "PASS12/12,oneworker,8.30s",
+    "scopedEslint": "PASS exit0,zero output after documented react/no-children-prop correction",
+    "nodeSyntax": "PASS",
+    "runnerPolicy": "PASS41workflows",
+    "rawChecksGitleaks": "PASS30,802bytes/186ms/0findings unchanged8.30.1config",
+    "rawReleaseGitleaks": "PASS250,608bytes/199ms/0findings unchanged8.30.1config"
+  },
+  "originals": [
+    {
+      "source": "/tmp/workforce552-correction-ui-tests.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-correction-original-00.gz",
+      "bytes": 281,
+      "sha256": "fd24b7677d8bd2aa160fe8e4c26f8ca5bc3e7fd8e6188b2161e7dcb4706abe51",
+      "gzipBytes": 227,
+      "gzipSha256": "6888bb0f1ab90d81109addf1c3fa8e732adbb0f38d255291403a3e878ff76329",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-correction-ui-final.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-correction-original-01.gz",
+      "bytes": 281,
+      "sha256": "866e7cd84c9b06dd412d23c0707e8833da9980c25d829f8430f3e3bb09a21f9f",
+      "gzipBytes": 228,
+      "gzipSha256": "4ffcf87bd1266e95510a2fa7053a24e7d94d22dfc019e3c379f113fecb72ceb5",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-correction-guards.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-correction-original-02.gz",
+      "bytes": 279,
+      "sha256": "1522d9f682b1a796deff36aad41965218559d9ca60281dff6803956542b3747e",
+      "gzipBytes": 224,
+      "gzipSha256": "c060ae44460099dce27ba2fccbd31d416d94e9e0076213a1fb3a4bb83b3033c3",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-real-intl-original-defect-red.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-correction-original-03.gz",
+      "bytes": 19033,
+      "sha256": "6e79ab3fa6edf82301294f695275d66cd6a8fd8cf2a250d3f0b226e51e364ca7",
+      "gzipBytes": 2889,
+      "gzipSha256": "444028d188a2c51097af3c2322c24c14693fa8ac326ead342cec896c714e553a",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-correction-eslint.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-correction-original-04.gz",
+      "bytes": 330,
+      "sha256": "33af8b250f6bf6e36b395033da232e7881c85ea2976cf4f56d02d220c04ddfc6",
+      "gzipBytes": 256,
+      "gzipSha256": "bb959fe623e6e08dc424627693d8e3c7936611903dfa07c10d1842d32b925acf",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-correction-eslint-final.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-correction-original-05.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part21-next-actionable-plan.json",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-correction-original-06.gz",
+      "bytes": 10591,
+      "sha256": "84c3535e5209e523cc9de9235a5778c2457009ac85020b21aa0cc6d3a5599bf0",
+      "gzipBytes": 4525,
+      "gzipSha256": "62ad5b3fd5a7e459e25782090fc71317333086583b48ba23d953780790a15b93",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce552-correction-eslint-final-alias.log",
+      "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-correction-original-07.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "notRun": [
+    "Corrected hosted browser/PostgreSQL",
+    "Full local typecheck/build/suite;Contabo contract",
+    "Production Today/AT/nativezoom/wholepagekeyboard/Android/physical/load/pilot"
+  ]
+}

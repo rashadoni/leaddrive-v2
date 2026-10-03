@@ -1,0 +1,47 @@
+{
+  "schema": "workforce-part21-release-records-independent-exact-docs-review-v1",
+  "reviewedAtUtc": "2026-10-03T17:02:17.011946+00:00",
+  "head": "e584cca75df69c52dd0f26832ef881bd0e6acf8a",
+  "base": "839a3cbcdc321d8cc3a2091762449ec5d31de6f5",
+  "independentReadOnly": true,
+  "verdict": "GREEN exact append-only docs/release-original receipt slice; Today source/browser/PG acceptance excluded",
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "fullDiff": {
+    "paths": 80,
+    "bytes": 308598,
+    "sha256": "ac494e1699efa0571a5452cd53be7b37c852d3f16f7cdbee90086ff68b76b285"
+  },
+  "nonDocDiff": {
+    "paths": 0,
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "cap": {
+    "unchanged": 400000,
+    "remainingBytes": 91402
+  },
+  "verified": {
+    "all80PathsDocsOnly": true,
+    "allOldMainWorkforceOriginalsByteExact": 89,
+    "allThreeMainDocPrefixesPreserved": true,
+    "fiveCarriedCommitTreesEachEqualPrivateOriginal": true,
+    "initialSuccessorTreeEqualsPrivateFinalTree": "1ebc16568beb3f83f273ac0b478e8b18e93534cc",
+    "all49ReleaseGzipOriginalRawSizesHashesAndOriginalTmpByteExact": true,
+    "rootIndependentHistoricalPendingFinalAndPreliminaryOriginalReportsVerbatim": true,
+    "plan19202OriginalGzipAndTmpByteExact": true,
+    "allNewJsonParses": true
+  },
+  "releaseTruth": "Own546 normal839 merge/source/parents/tree/fivegates/final36PASS12PASS and own37135406406 whole/allfourSUCCESS corroborated by previously independent actual proof. Root and independent pinned domain bracket exact839 HTTP200/TLS0/no-store preserved. IP strictcurl60 certificate SAN failure and permissive supplementary results remain distinct. Historical RED/PENDING reports retained and superseded by dated actual receipts; no relabelling.",
+  "todayTruth": "New WF-C8-002 doc/plan bounds real managerToday auth/RLS/scheduled absence/authority/read-only/native25\u219226/currentRU-AZ-EN evidence, explicitly NOT RUN source/hosted browser/PostgreSQL at its recorded preparation checkpoint. No runtime/permission/schema/workflow/baseline mutation in this docs slice, no browser/PG acceptance credit.",
+  "progress": "DONE81/161;GATES14/15;C8 36%;overall59%;80non-DONE. HumanAT/nativezoom/wholepage/authenticatedproductionToday/Android/physical/load/pilot and heavy local checks NOT RUN.",
+  "limits": [
+    "Frozen exacte584 versus839; root must fetch fresh main and satisfy own mandatory gates before normal docs PR merge. This review does not authorize skipping checks or changing400KB baseline.",
+    "Next sourcea490 review is separate and pending. No interpretation of guard tests as actual hosted/native/PG acceptance.",
+    "No repo/Git/network/production/status mutation, fullsuite/browser/PG/localheavy checks by reviewer; original generalupdate/delete/breakpolicy/AGENTmoves/Route mutation exclusions retained."
+  ]
+}

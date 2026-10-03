@@ -165,7 +165,7 @@ export function WorkforceManagerToday({
               <p className="inline-flex items-center gap-2 text-sm font-medium"><ShieldAlert className="h-4 w-4" aria-hidden="true" />{t("managerExceptionsTitle")}</p>
               {person.exceptions == null ? <p className="mt-1 text-sm text-muted-foreground">{t("managerExceptionsRestricted")}</p> : person.exceptions.length === 0 ? <p className="mt-1 text-sm text-muted-foreground">{t("managerExceptionsNone")}</p> : <div className="mt-2 flex flex-wrap gap-2">
                 {person.exceptions.map((exception) => <Badge key={`${exception.type}-${exception.status}`} variant={exception.status === "RESOLVED" ? "outline" : "warning"}>
-                  {t(`timesheetExceptionType.${exception.type}`)} · {t(`timesheetExceptionStatus.${exception.status}`)}
+                  {t(`timesheetApprovalException.${exception.type}`)} · {t(`timesheetExceptionStatus.${exception.status}`)}
                 </Badge>)}
               </div>}
               {person.exceptions?.length ? <Button asChild variant="link" className="mt-2 min-h-12 px-0">

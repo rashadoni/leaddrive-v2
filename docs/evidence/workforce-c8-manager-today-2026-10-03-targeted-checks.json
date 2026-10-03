@@ -1,0 +1,48 @@
+{
+  "observedAt": "2026-10-03T16:56:20.854953+00:00",
+  "source": [
+    {
+      "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "bytes": 9033,
+      "sha256": "884280dc4d1f730848fd4fbf9cb24c76c4fce0a430506b5f289bdb5326439634"
+    },
+    {
+      "path": "scripts/workforce-manager-today-browser-evidence.mjs",
+      "bytes": 34810,
+      "sha256": "fa3f53369b7b39abb90734dd9ea433fc65dc18373946b52e1a251b926760229a"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "path": "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts",
+      "bytes": 3980,
+      "sha256": "e370358c6ca3d15ecde5c567af9ed2846aecae1a9a966aaaf4f979192d9fd639"
+    }
+  ],
+  "checks": {
+    "guardTests": "PASS12/12, one worker,10.62s; no browser/PostgreSQL connections",
+    "scopedEslint": "PASS, zero output",
+    "nodeSyntax": "PASS",
+    "runnerPolicy": "PASS41 workflows",
+    "yaml": "PASS restricted hosted routing/draft/path/concurrency guards",
+    "diffCheck": "PASS"
+  },
+  "guardLog": {
+    "bytes": 281,
+    "sha256": "e721ceea35e11be2a9db9512632dcb755f11baea711491f2889e7d69d6fe0182",
+    "preserved": "docs/evidence/workforce-c8-manager-today-2026-10-03-guard-tests.log.gz",
+    "gzipBytes": 225,
+    "gzipSha256": "0f9327a5f046295af7f2e68df0413f6e2a2b42bd5284f173370d0afe0a163552",
+    "losslessDecompressionVerified": true
+  },
+  "notRun": [
+    "Hosted real browser/PostgreSQL",
+    "Full local typecheck/build/suite",
+    "Android/physical/load/pilot",
+    "HumanAT/nativezoom/whole-pagekeyboard",
+    "Authenticated production Manager Today"
+  ]
+}

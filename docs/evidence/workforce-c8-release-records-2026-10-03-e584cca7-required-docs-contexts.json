@@ -1,0 +1,53 @@
+{
+  "observedAt": "2026-10-03T17:09:25.279883+00:00",
+  "docsOnly": true,
+  "head": "e584cca75df69c52dd0f26832ef881bd0e6acf8a",
+  "checks": [
+    {
+      "id": 111250435238,
+      "name": "pr-scope",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "e584cca75df69c52dd0f26832ef881bd0e6acf8a",
+      "completed_at": "2026-10-03T17:08:04Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37139368144/job/111250435238"
+    },
+    {
+      "id": 111250483594,
+      "name": "static-checks",
+      "status": "completed",
+      "conclusion": "skipped",
+      "head_sha": "e584cca75df69c52dd0f26832ef881bd0e6acf8a",
+      "completed_at": "2026-10-03T17:08:05Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37139368144/job/111250483594"
+    },
+    {
+      "id": 111250484373,
+      "name": "typecheck",
+      "status": "completed",
+      "conclusion": "skipped",
+      "head_sha": "e584cca75df69c52dd0f26832ef881bd0e6acf8a",
+      "completed_at": "2026-10-03T17:08:05Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37139368144/job/111250484373"
+    },
+    {
+      "id": 111250397067,
+      "name": "runner-policy",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "e584cca75df69c52dd0f26832ef881bd0e6acf8a",
+      "completed_at": "2026-10-03T17:07:49Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37139358788/job/111250397067"
+    },
+    {
+      "id": 111250397098,
+      "name": "scan",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "e584cca75df69c52dd0f26832ef881bd0e6acf8a",
+      "completed_at": "2026-10-03T17:07:53Z",
+      "details_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37139358814/job/111250397098"
+    }
+  ],
+  "staticTypeActualSuccessClaim": false
+}
