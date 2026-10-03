@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/workforce-calendar-browser-evidence.yml"
       - "scripts/workforce-calendar-browser-evidence.mjs"
+      - "scripts/workforce-calendar-contrast-colors.mjs"
+      - "scripts/workforce-calendar-contrast-dom.mjs"
       - "scripts/ci/fixtures/workforce-calendar-browser.sql"
       - "src/__tests__/workforce-calendar-browser-evidence*.test.*"
       - "src/components/workforce/workforce-calendar-configuration.tsx"
