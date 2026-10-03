@@ -1,0 +1,833 @@
+{
+  "version": 1,
+  "candidateHead": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+  "checkedMergeSha": "0b94e1ae4202e5befdbfa0bd8823968fa195777d",
+  "startedAt": "2026-10-03T10:35:11.297Z",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF + credentials provider + session cookie; no auth mocks",
+  "authenticationDiagnostics": [
+    {
+      "ordinal": 1,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:35:13.968Z"
+    },
+    {
+      "ordinal": 2,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:35:41.061Z"
+    },
+    {
+      "ordinal": 3,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:35:45.717Z"
+    },
+    {
+      "ordinal": 4,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:35:49.908Z"
+    },
+    {
+      "ordinal": 5,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:35:54.241Z"
+    },
+    {
+      "ordinal": 6,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:35:58.812Z"
+    },
+    {
+      "ordinal": 7,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:36:03.246Z"
+    },
+    {
+      "ordinal": 8,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:36:04.909Z"
+    },
+    {
+      "ordinal": 9,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 6479,
+      "callbackStartedAt": "2026-10-03T10:36:14.993Z"
+    },
+    {
+      "ordinal": 10,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 25031,
+      "callbackStartedAt": "2026-10-03T10:36:42.087Z"
+    },
+    {
+      "ordinal": 11,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:36:47.463Z"
+    },
+    {
+      "ordinal": 12,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:36:52.116Z"
+    },
+    {
+      "ordinal": 13,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:36:57.601Z"
+    },
+    {
+      "ordinal": 14,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-03T10:37:02.957Z"
+    }
+  ],
+  "reflowDiagnostics": [
+    {
+      "phase": "inventory",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 30,
+      "textFragments": 78,
+      "failures": []
+    },
+    {
+      "phase": "review",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 114,
+      "failures": []
+    },
+    {
+      "phase": "confirm",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 114,
+      "failures": []
+    },
+    {
+      "phase": "cancel",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 114,
+      "failures": []
+    },
+    {
+      "phase": "cancel-source",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 30,
+      "textFragments": 78,
+      "failures": []
+    },
+    {
+      "phase": "reopened-review",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 114,
+      "failures": []
+    },
+    {
+      "phase": "unknown",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 37,
+      "textFragments": 122,
+      "failures": []
+    },
+    {
+      "phase": "retry-confirm",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 37,
+      "textFragments": 122,
+      "failures": []
+    },
+    {
+      "phase": "replay",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 25,
+      "textFragments": 52,
+      "failures": []
+    },
+    {
+      "phase": "az-inventory",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 30,
+      "textFragments": 59,
+      "failures": []
+    },
+    {
+      "phase": "az-review",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 85,
+      "failures": []
+    },
+    {
+      "phase": "az-confirm",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 85,
+      "failures": []
+    },
+    {
+      "phase": "az-cancel",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 85,
+      "failures": []
+    },
+    {
+      "phase": "az-cancel-source",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 30,
+      "textFragments": 59,
+      "failures": []
+    },
+    {
+      "phase": "az-reopened-review",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 85,
+      "failures": []
+    },
+    {
+      "phase": "az-unknown",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 37,
+      "textFragments": 91,
+      "failures": []
+    },
+    {
+      "phase": "az-retry-confirm",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 37,
+      "textFragments": 91,
+      "failures": []
+    },
+    {
+      "phase": "az-replay",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 25,
+      "textFragments": 43,
+      "failures": []
+    },
+    {
+      "phase": "en-inventory",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 30,
+      "textFragments": 68,
+      "failures": []
+    },
+    {
+      "phase": "en-review",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 99,
+      "failures": []
+    },
+    {
+      "phase": "en-confirm",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 99,
+      "failures": []
+    },
+    {
+      "phase": "en-cancel",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 99,
+      "failures": []
+    },
+    {
+      "phase": "en-cancel-source",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 30,
+      "textFragments": 68,
+      "failures": []
+    },
+    {
+      "phase": "en-reopened-review",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 36,
+      "textFragments": 99,
+      "failures": []
+    },
+    {
+      "phase": "en-unknown",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 37,
+      "textFragments": 105,
+      "failures": []
+    },
+    {
+      "phase": "en-retry-confirm",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 37,
+      "textFragments": 105,
+      "failures": []
+    },
+    {
+      "phase": "en-replay",
+      "viewportWidth": 320,
+      "viewportHeight": 844,
+      "toleranceCssPixels": 1,
+      "elements": 25,
+      "textFragments": 41,
+      "failures": []
+    }
+  ],
+  "readingDiagnostics": [
+    {
+      "phase": "inventory-label",
+      "fragments": 14,
+      "scrolls": 1,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "inventory-label",
+      "fragments": 14,
+      "scrolls": 2,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "review",
+      "fragments": 3,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "review",
+      "fragments": 15,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "review",
+      "fragments": 13,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "reopened-review",
+      "fragments": 3,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "reopened-review",
+      "fragments": 15,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "reopened-review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "reopened-review",
+      "fragments": 13,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "unknown",
+      "fragments": 8,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "replay",
+      "fragments": 4,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-inventory-label",
+      "fragments": 9,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-inventory-label",
+      "fragments": 9,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-review",
+      "fragments": 10,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-review",
+      "fragments": 9,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-reopened-review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-reopened-review",
+      "fragments": 10,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-reopened-review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-reopened-review",
+      "fragments": 9,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-unknown",
+      "fragments": 6,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "az-replay",
+      "fragments": 3,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-inventory-label",
+      "fragments": 14,
+      "scrolls": 1,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-inventory-label",
+      "fragments": 14,
+      "scrolls": 2,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-review",
+      "fragments": 14,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-review",
+      "fragments": 10,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-reopened-review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-reopened-review",
+      "fragments": 14,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-reopened-review",
+      "fragments": 2,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-reopened-review",
+      "fragments": 10,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-unknown",
+      "fragments": 6,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    },
+    {
+      "phase": "en-replay",
+      "fragments": 3,
+      "scrolls": 0,
+      "verticallyReadable": true,
+      "focusPreserved": true
+    }
+  ],
+  "cases": [
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-TEAM-ru",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-az",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-en",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-ru",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "late-committed-response-principal-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "exactHeldRead": true,
+      "newContextRefreshHeld": true,
+      "heldReadLiveBeforeObsoleteResponse": true,
+      "obsoleteResponseDidNotCancelHeldRead": true,
+      "realSessionPreserved": true,
+      "teamNavigationCompleted": true,
+      "posts": 1
+    },
+    {
+      "name": "late-committed-response-tenant-switch",
+      "status": "PASS",
+      "realSessionChanged": true,
+      "staleNotice": false,
+      "newReadCompleted": true,
+      "exactHeldRead": true,
+      "newContextRefreshHeld": true,
+      "heldReadLiveBeforeObsoleteResponse": true,
+      "obsoleteResponseDidNotCancelHeldRead": true,
+      "realSessionPreserved": true,
+      "teamNavigationCompleted": true,
+      "posts": 1
+    },
+    {
+      "name": "keyboard-cancel-reopen-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "nativeTabNavigation": true,
+      "sourceTabs": 9,
+      "openedWithEnter": true,
+      "confirmationTabOrder": true,
+      "shiftTabReturnsToConfirm": true,
+      "cancelledWithSpace": true,
+      "cancelWrites": 0,
+      "cancelStateUnchanged": true,
+      "cancelRestoresSourceFocus": true,
+      "reopenedWithEnter": true,
+      "confirmedWithEnter": true,
+      "resultFocusedAndVisible": true,
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1,
+      "realSessionPreserved": true
+    },
+    {
+      "name": "keyboard-committed-response-loss-exact-retry-TEAM-ru",
+      "status": "PASS",
+      "nativeTabNavigation": true,
+      "sourceTabs": 22,
+      "openedWithEnter": true,
+      "confirmedWithSpace": true,
+      "pendingButtonsDisabled": true,
+      "unknownNoticeVisibleAndFocused": true,
+      "alertTabReachesExactConfirm": true,
+      "retriedWithEnter": true,
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "resultFocusedAndVisible": true,
+      "realSessionPreserved": true
+    },
+    {
+      "name": "320-css-reflow-keyboard-cancel-exact-retry-TEAM-ru",
+      "status": "PASS",
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "labelLength": 160,
+      "sourceTabs": 22,
+      "nativeKeyboard": true,
+      "verticalReadingScrollOnly": true,
+      "horizontalContainment": true,
+      "focusedTargetsVisible": true,
+      "cancelWrites": 0,
+      "cancelStateUnchanged": true,
+      "posts": 2,
+      "tombstones": 2,
+      "audits": 1,
+      "byteIdenticalRetry": true,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "replayWrites": 0,
+      "realSessionPreserved": true
+    },
+    {
+      "name": "320-css-reflow-keyboard-cancel-exact-retry-TEAM-az",
+      "status": "PASS",
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "labelLength": 160,
+      "sourceTabs": 22,
+      "nativeKeyboard": true,
+      "verticalReadingScrollOnly": true,
+      "horizontalContainment": true,
+      "focusedTargetsVisible": true,
+      "cancelWrites": 0,
+      "cancelStateUnchanged": true,
+      "posts": 2,
+      "tombstones": 2,
+      "audits": 1,
+      "byteIdenticalRetry": true,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "replayWrites": 0,
+      "realSessionPreserved": true
+    },
+    {
+      "name": "320-css-reflow-keyboard-cancel-exact-retry-TEAM-en",
+      "status": "PASS",
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "labelLength": 160,
+      "sourceTabs": 22,
+      "nativeKeyboard": true,
+      "verticalReadingScrollOnly": true,
+      "horizontalContainment": true,
+      "focusedTargetsVisible": true,
+      "cancelWrites": 0,
+      "cancelStateUnchanged": true,
+      "posts": 2,
+      "tombstones": 2,
+      "audits": 1,
+      "byteIdenticalRetry": true,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "replayWrites": 0,
+      "realSessionPreserved": true
+    }
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "No production business data",
+    "No Android/AT/load/pilot evidence",
+    "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI",
+    "No whole-page keyboard or zoom acceptance",
+    "320 CSS reflow allows vertical reading scroll; no native browser zoom proof"
+  ],
+  "status": "PASS",
+  "databaseRole": {
+    "superuser": false,
+    "bypassRls": false,
+    "unscopedUsers": 0,
+    "unscopedTeams": 0,
+    "unscopedWorkforceAudits": 0,
+    "populatedAuditAndCalendarFailClosed": true
+  },
+  "reflowFunctional": {
+    "cancelWrites": 0,
+    "cancelStateUnchanged": true,
+    "posts": 2,
+    "tombstones": 2,
+    "audits": 1,
+    "byteIdenticalRetry": true,
+    "reversedResponses": [
+      true,
+      false
+    ],
+    "replayWrites": 0,
+    "realSessionPreserved": true
+  },
+  "completedAt": "2026-10-03T10:37:08.239Z"
+}

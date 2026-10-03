@@ -1,0 +1,44 @@
+{
+  "kind": "collector neutral shadow correction targeted checks",
+  "sourceFiles": [
+    {
+      "path": "scripts/workforce-calendar-contrast-dom.mjs",
+      "bytes": 9466,
+      "sha256": "b31415b556b8decfee3800f4dfbb33b86f499cf29a789502f2060303ae43db81"
+    },
+    {
+      "path": "src/__tests__/workforce-calendar-browser-evidence-contrast-dom.test.ts",
+      "bytes": 4733,
+      "sha256": "c44a881e35c10e8064fe8fb4a285127dc36dcd4f58aacea45d6e394f09d7a9f5"
+    }
+  ],
+  "historicalRuns": [
+    {
+      "path": "/tmp/workforce-part20-contrast-dom-targeted.log",
+      "bytes": 14755,
+      "sha256": "eec3a039a8f9a5d5e090e539313c97d5feaead54285c0a36c80d3bd944f66fc2",
+      "result": "6/8 FAIL jsdom text-shadow serialization",
+      "durationMs": null
+    },
+    {
+      "path": "/tmp/workforce-part20-contrast-dom-targeted-final.log",
+      "bytes": 14755,
+      "sha256": "87984e3535f852dc90b1d4c57665002adbe61605e2044fb5a1df6073b6091248",
+      "result": "6/8 FAIL jsdom text-shadow serialization",
+      "durationMs": null
+    },
+    {
+      "path": "/tmp/workforce-part20-contrast-dom-targeted-final-v3.log",
+      "bytes": 12267,
+      "sha256": "008bade634c8a3a58b508146809fe69d6cceef77c1f9825353944a599291d68c",
+      "result": "8/8 PASS",
+      "durationMs": 2070
+    }
+  ],
+  "scopedLint": "PASS",
+  "diffCheck": "PASS",
+  "priorMath56": "PASS on unchanged source blob; not rerun without math change",
+  "testLimit": "Actual-export jsdom with fixture geometry/fonts/innerText and known text-shadow:none transparent-color serialization; native rendering/colorCanvas not proven",
+  "hostedCorrectionAcceptance": "NOT RUN",
+  "productCssChanges": 0
+}

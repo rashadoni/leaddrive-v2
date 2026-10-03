@@ -1,0 +1,14 @@
+{
+  "reviewedRejectedHead": "13c2282b6fcd058170611086ab8c157002795acf",
+  "finding": "P2: effect/theme/font tests were vacuous under baseline jsdom textShadow NOT_PROVEN",
+  "repair": "assert specific effect and fixture failure codes; no collector/math/product change",
+  "testSha256": "4168ae1005da461eaae6d1eb0e5ea2e11b95d166a0aa6e5d7d4985658b360192",
+  "actualTestsPassed": 8,
+  "durationMs": 1890,
+  "scopedLint": "PASS",
+  "diffCheck": "PASS",
+  "logPath": "/tmp/workforce-part20-contrast-dom-targeted-p2-fixed.log",
+  "logSha256": "e4e9403ce38022bf0be94a85e1eb3f64d89dc7be8468c414ed6d4031b9410791",
+  "nativeRendering": "NOT RUN",
+  "replacementIndependentReview": "PENDING"
+}

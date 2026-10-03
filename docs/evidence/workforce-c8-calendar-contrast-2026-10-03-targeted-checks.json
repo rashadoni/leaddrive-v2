@@ -1,0 +1,56 @@
+{
+  "schema": "workforce-default-light-contrast-targeted-checks-v1",
+  "observedAtUtc": "2026-10-03T13:58:06.110216+00:00",
+  "baseSha": "3294093a4364be8be35d8a03c1b9fde57c3dd3b9",
+  "preCheckpointHead": "4c4bc17aebb5814fb24bb5be253e02e5393dcdf1",
+  "files": [
+    {
+      "path": "scripts/workforce-calendar-contrast-dom.mjs",
+      "bytes": 9432,
+      "sha256": "79355703f05b4f831fae60b5507add16e79f9f032b300a62156255154a97126c"
+    },
+    {
+      "path": "scripts/workforce-calendar-contrast-colors.mjs",
+      "bytes": 11547,
+      "sha256": "ccfd96a15c6f9fd055d84a2cd7a2a53da694c3c5b8cb96b56d05807af133e901"
+    },
+    {
+      "path": "src/__tests__/workforce-calendar-browser-evidence-contrast-colors.test.ts",
+      "bytes": 12654,
+      "sha256": "fe737d6dec832ff64495175fb0a0e00b85ad923a3e519775f1afc5245d3cc836"
+    },
+    {
+      "path": ".github/workflows/workforce-calendar-browser-evidence.yml",
+      "bytes": 8313,
+      "sha256": "c30072618eebc9306a31f88aa10b03420c131eee0e0e7530ef2e61d6c34da648"
+    },
+    {
+      "path": "scripts/workforce-calendar-browser-evidence.mjs",
+      "bytes": 60889,
+      "sha256": "50338f484ab9ef373380529d1aede5a94380bd9db89f886a24708491b8499e2d"
+    }
+  ],
+  "checks": {
+    "targetedVitest": {
+      "files": 1,
+      "passedTests": 56,
+      "durationMs": 314,
+      "logPath": "/tmp/workforce-part20-contrast-colors-targeted-final.log",
+      "logSha256": "87600a70df9b11dfd63e83cb7cb8c34673158296de536c94e53a74204ad4e89c"
+    },
+    "scopedEslint": "PASS",
+    "nodeSyntaxChecks": "PASS",
+    "diffCheck": "PASS"
+  },
+  "hostedContrast": "NOT RUN",
+  "localFullBuildTypecheckSuiteBrowserPostgresAndroidLoad": "NOT RUN: Contabo host contract",
+  "productChanges": 0,
+  "progress": {
+    "done": 81,
+    "total": 161,
+    "gatesDone": 14,
+    "gatesTotal": 15,
+    "c8Percent": 36,
+    "overallPercent": 59
+  }
+}

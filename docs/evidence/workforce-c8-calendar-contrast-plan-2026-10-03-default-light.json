@@ -1,0 +1,188 @@
+{
+  "preparedAtUtc": "2026-10-03T10:46:44.154152+00:00",
+  "kind": "Read-only acceptance-design reconnaissance; no implementation or contrast PASS claim",
+  "currentPrivateHeadAtObservation": "41282c43cafcc2d37c123f8568c8f2313ce9ba03",
+  "publishedCandidate": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+  "pr": 542,
+  "scope": "After successful PR542 release, smallest next lane is default-light text contrast for the existing three 320x844 TEAM reversal flows (RU/AZ/EN), preserving all twelve current real functional cases",
+  "sourceIdentities": [
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/components/workforce/workforce-calendar-configuration.tsx",
+      "bytes": 40379,
+      "sha256": "5177ec85899987b0d09ea893bc5c3f09369de67feae5478aa909fc2c324942a5"
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/components/ui/button.tsx",
+      "bytes": 2099,
+      "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a"
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/app/globals.css",
+      "bytes": 52755,
+      "sha256": "7ab5a052ade58a3be83771ce412d57b801b57145b9d37fe7947d1c803eaeb019"
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/components/theme-provider.tsx",
+      "bytes": 577,
+      "sha256": "79e92c65b593fb08e5e2f1a3762724f6e1c4e6240a32f802c8e008a354ef49ee"
+    },
+    {
+      "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/scripts/workforce-calendar-browser-evidence.mjs",
+      "bytes": 55808,
+      "sha256": "945597b9fcbd9c735721ae6cee7d1b4ef9438170c6eb444d06de98d7d8541abc"
+    }
+  ],
+  "sourceOnlyFindings": [
+    "Calendar section is bg-background and contains no force-light class; force-light exists for other product subtrees and must not be injected into the test",
+    "ThemeProvider uses attribute=class defaultTheme=light enableSystem with current CSP nonce; browser fixture currently opens a fresh context without forcing a theme",
+    "Enabled source/cancel buttons use shared outline variant; enabled confirm uses shared default variant. Pending disabled controls use disabled:opacity-50 and are outside this minimum enabled-text lane",
+    "Review hint and inventory dates use muted-foreground; review panel is amber-50, unknown is red-50/red-800, replay is emerald-50/emerald-800. These are source class facts, not actual contrast ratios",
+    "Global wallpaper and other scoped surface rules can override backgrounds/colors; default-light acceptance must verify actual effective theme and no wallpaper rather than assume CSS variables",
+    "No global Button or palette fix is justified before actual hosted computed-color failure"
+  ],
+  "smallestImplementationShape": {
+    "affectedPathInitially": "scripts/workforce-calendar-browser-evidence.mjs only",
+    "extendExistingFlows": "Add read-only contrast collection at existing native inventory/review/confirm/cancel/unknown/replay phases of reflow320; no extra fixture dates, credentials callbacks, mutation operations or duplicate case",
+    "helpers": "Keep every existing twelve-case helper/assertion and geometry/native focus/state/replay/auth/RLS check unchanged. Add separate target collector and pure deterministic color/contrast helpers",
+    "receipt": "Append contrastDiagnostics and distinct final contrast verdict; preserve existing case facts. Collect all three locales and assert cumulative new failures before overall PASS, so original FAIL preserves all observed functional and contrast phases",
+    "screens": "Reference current actual phase PNGs; any extra failure PNG must have a distinct name and preserve current screenshot identities",
+    "minimumExpected": "Exactly twelve required semantic targets per locale = thirty-six records, each with positive nonempty rendered text-node/range count. Every category/locale must exist exactly once; no vacuous PASS",
+    "measureState": "Observe enabled/native-focused buttons before commit/cancel, actual focused unknown/replay after guarded states. Never measure only disabled text or substitute hidden copies"
+  },
+  "targets": [
+    {
+      "key": "source-action",
+      "stage": "inventory with native Tab source focus",
+      "locator": "named reversal button for exact moved pair; enabled",
+      "expected": "rendered localized reversalAction, not aria-label alone"
+    },
+    {
+      "key": "source-label",
+      "stage": "inventory",
+      "locator": "matching moved-pair source li > div > first p",
+      "expected": "exact 160-character fixture label"
+    },
+    {
+      "key": "source-date",
+      "stage": "inventory",
+      "locator": "matching source li > div > second p",
+      "expected": "source date"
+    },
+    {
+      "key": "source-paired-date",
+      "stage": "inventory",
+      "locator": "matching source li > div > third p",
+      "expected": "paired destination date"
+    },
+    {
+      "key": "review-title",
+      "stage": "review after actual product title focus",
+      "locator": "#workforce-calendar-reversal-title",
+      "expected": "localized review heading"
+    },
+    {
+      "key": "review-label-team",
+      "stage": "review",
+      "locator": "confirmation direct first p",
+      "expected": "both exact moved.name and team.name; one rendered owner may cover both"
+    },
+    {
+      "key": "review-dates",
+      "stage": "review",
+      "locator": "confirmation direct second p",
+      "expected": "both exact source/destination localized dates"
+    },
+    {
+      "key": "review-hint",
+      "stage": "review",
+      "locator": "confirmation direct third p",
+      "expected": "exact localized reversalReviewHint"
+    },
+    {
+      "key": "confirm-enabled-focused",
+      "stage": "native Tab to enabled confirmation button before native Space",
+      "locator": "exact localized confirm button",
+      "expected": "rendered confirmation text"
+    },
+    {
+      "key": "cancel-enabled-focused",
+      "stage": "native Tab to enabled cancel button before native Space",
+      "locator": "exact localized cancel button",
+      "expected": "rendered cancel text"
+    },
+    {
+      "key": "unknown-focused",
+      "stage": "after real commit and response loss, focused alert",
+      "locator": "section role=alert containing reversalOutcomeUnknown",
+      "expected": "localized unknown-outcome notice"
+    },
+    {
+      "key": "replay-focused",
+      "stage": "after exact native retry and no-write replay, focused status",
+      "locator": "section role=status containing reversalAlreadyRecorded",
+      "expected": "localized audit-backed replay notice"
+    }
+  ],
+  "themeAndObservationPreconditions": [
+    "Wait for real page hydration and document.fonts.ready; verify section belongs to intended TEAM and real session/tenant remains unchanged",
+    "Assert html effective light state and absence of dashboard wallpaper for this explicitly bounded default fixture. Record actual html class, colorScheme, forced-colors media, device scale and nearest force-light presence. Do not mutate DOM classes/theme/localStorage/CSS to improve the result",
+    "Read actual computed styles after bounded stable samples; active/focus-visible/hover/disabled flags recorded. The initial lane covers normal/native-focused enabled text; hover/pressed transient states are not separately credited",
+    "Do not use programmatic focus, mocks, auth-cookie removal, color probes inserted over page, or style replacements"
+  ],
+  "paintAndColorHandling": {
+    "foreground": "Read computed color and text-fill color from the actual parent of every rendered text run; inherited paragraph styles must not hide differently styled descendants. Exclude SVG/icon-only nodes from text count",
+    "background": "Start from text owner and compose alpha background-color layers over nearest actual opaque ancestor; retain the chain. Walk all ancestors through document root for effects even after finding an opaque background. Account for target-owned background before parent backdrop",
+    "alpha": "Straight foreground/background RGBA alpha compositing in supported sRGB paint model; foreground color alpha is separate from CSS group opacity. Never multiply ancestor opacity naively and call that rendered contrast",
+    "opacity": "Small initial lane requires computed opacity=1 on target and every ancestor. Any non-unit group opacity is unsupported/fatal, with measured reason; implement correct group/backdrop compositing only if the actual diagnostic proves that is necessary",
+    "unsupported": "Any background-image/gradient, blend mode other than normal, filter/backdrop-filter/mask, relevant pseudo-element overlay, unresolvable backdrop/text-fill, or unsupported color space must produce explicit diagnostic failure/NOT PROVEN, never skip or automatic PASS. Do not assume body white or use the nearest transparent color alone",
+    "colorFormats": "Collect raw computed strings first. Normalize only explicitly supported resolved RGB/RGBA or color(srgb) values with validated numeric ranges. If Chromium reports OKLCH/other spaces, do not reinterpret them as RGB: add a deterministic validated CSS Color conversion or conservative browser-conversion bounds before acceptance. A preliminary UNSUPPORTED result is a harness proof gap, not an inferred UI defect",
+    "noScreenshotSampling": "Do not calculate from anti-aliased glyph PNG pixels or guess from CSS comments/screenshots. If a browser color-normalization probe is used, keep it off-DOM and record sRGB conversion/precision; ambiguous threshold bounds are FAIL/NOT PROVEN",
+    "stability": "No outstanding font load or animating color/opacity transition at observation; use bounded repeated computed reads and fail if unsettled rather than raising tolerance"
+  },
+  "thresholdsAndMath": {
+    "criterion": "WCAG 2.2 SC1.4.3 Contrast Minimum (AA), scoped text targets only",
+    "normalTextMinimum": 4.5,
+    "largeTextMinimum": 3,
+    "largeTextRule": "24 CSS px or greater; or at least 18.666666666666668 CSS px with confirmed bold weight >=700. Semibold600 does not receive the lower threshold; unknown font metrics/weight conservatively retain4.5",
+    "fontEvidence": "Record computed font-size, numeric font-weight, font-family, text run identity and threshold for every target; current source classes do not establish runtime metrics",
+    "relativeLuminance": "For normalized sRGB channel c, use c/12.92 when c<=0.04045, else ((c+0.055)/1.055)^2.4; L=0.2126R+0.7152G+0.0722B",
+    "ratio": "(max(Lforeground,Lbackground)+0.05)/(min(Lforeground,Lbackground)+0.05)",
+    "comparison": "Compare unrounded ratio >= exact threshold; no display rounding, epsilon or color-estimate exception can turn a below-threshold ratio into PASS",
+    "inactive": "Pending genuinely disabled buttons may be identified as outside the enabled-text requirement, but expected enabled confirm/cancel/source records are still mandatory; no inactive exemption for hints/notices",
+    "scopeLimits": "No overall WCAG compliance, non-text/focus-ring contrast, hover/pressed states, dark theme, forced colors, native zoom, assistive technology or whole-page acceptance claim"
+  },
+  "diagnosticIntegrity": [
+    "Preserve exact first hosted receipt even on FAIL, plus run/job/artifact/head/synthetic parents/digest and actual phase PNGs",
+    "Record target key/locale/phase, rendered text length or expected-match flags, resolved colors, backdrop chain, font, state, ratio/threshold and supported/failure reasons; do not collect credentials/business payloads",
+    "Functional PASS facts can remain alongside contrast FAIL, but final overall receipt and actual workflow gate must FAIL on any required missing/unsupported/low-contrast target",
+    "Only after actual measured failure select the narrowest affected calendar class fix; preserve global Button/palette until evidence and explicit scope justify changes",
+    "After any fix obtain independent exact-head review and actual hosted current acceptance/gates; previous preliminary/final542 evidence remains historical"
+  ],
+  "officialSources": [
+    {
+      "title": "W3C WCAG2.2 SC1.4.3 Contrast Minimum",
+      "url": "https://www.w3.org/TR/WCAG22/#contrast-minimum"
+    },
+    {
+      "title": "W3C Understanding SC1.4.3: fonts, inactive controls, user-agent colors and no rounding",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html"
+    },
+    {
+      "title": "W3C WCAG2.2 relative luminance definition",
+      "url": "https://www.w3.org/TR/WCAG22/#dfn-relative-luminance"
+    }
+  ],
+  "notRun": [
+    "No actual contrast calculation/PASS or CSS fix was performed",
+    "No local browser/build/full typecheck/full suite/PostgreSQL/Android/load",
+    "No production requests or project/Git edits"
+  ],
+  "excluded": [
+    "General update/delete",
+    "Break policy",
+    "AGENT moves",
+    "Route mutation",
+    "Whole-page/dark/forced-colors/zoom/assistive technology"
+  ],
+  "releaseDependency": "Do not implement or credit this lane before own PR542 release is proven complete; interrupt reconnaissance immediately for final542 evidence review"
+}

@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { setTimeout as delay } from "node:timers/promises"
 import { makeRlsTestPrisma } from "./_rls.mjs"
+import { collectRenderedTextContrast } from "./workforce-calendar-contrast-dom.mjs"
+import { evaluateTextContrast } from "./workforce-calendar-contrast-colors.mjs"
 import bcrypt from "bcryptjs"
 import { chromium } from "playwright"
 
@@ -49,8 +51,10 @@ const receipts = {
   authenticationDiagnostics: [],
   reflowDiagnostics: [],
   readingDiagnostics: [],
+  contrastDiagnostics: [],
+  contrastVerdict: "NOT RUN",
   cases: [],
-  limitations: ["Development bundle, not production build", "No production business data", "No Android/AT/load/pilot evidence", "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI", "No whole-page keyboard or zoom acceptance", "320 CSS reflow allows vertical reading scroll; no native browser zoom proof"],
+  limitations: ["Development bundle, not production build", "No production business data", "No Android/AT/load/pilot evidence", "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI", "No whole-page keyboard or zoom acceptance", "320 CSS reflow allows vertical reading scroll; no native browser zoom proof", "Contrast covers thirty-six default-light enabled/normal/native-focused text targets only; no dark/forced-color/hover/pressed/non-text/focus-ring or overall WCAG compliance claim"],
   status: "RUNNING",
 }
 const contexts = []
@@ -615,6 +619,25 @@ async function reviewedReflowConfirmation(view, moved, team, phase) {
   await focusedInViewport(title, "reading probes preserve the product-focused review title")
   return confirmation
 }
+const contrastTargetKeys = ["source-action", "source-label", "source-date", "source-paired-date", "review-title", "review-label-team", "review-dates", "review-hint", "confirm-enabled-focused", "cancel-enabled-focused", "unknown-focused", "replay-focused"]
+async function reflowTextContrast(view, locator, locale, phase, key, expectedTexts, requirements = {}) {
+  assert.ok(contrastTargetKeys.includes(key))
+  const target = { key, locale, phase, screenshot: `reflow-320-${phase}.png` }
+  if (await locator.count() !== 1) {
+    receipts.contrastDiagnostics.push({ ...target, status: "NOT_PROVEN", failures: [{ code: "required-single-text-target-missing" }] })
+    return
+  }
+  await view.page.evaluate(() => document.fonts.ready)
+  let observation
+  try {
+    observation = await locator.evaluate(collectRenderedTextContrast, { expectedTexts, ...requirements })
+  } catch (error) {
+    receipts.contrastDiagnostics.push({ ...target, status: "NOT_PROVEN", failures: [{ code: "browser-text-observation-failed", kind: error.name }] })
+    return
+  }
+  const evaluation = evaluateTextContrast(observation)
+  receipts.contrastDiagnostics.push({ ...target, observation, ...evaluation })
+}
 async function reflow320(principal, team, locale = "ru", index = 9) {
   const labels = {
     ru: ["Проверка переноса", "Ж"],
@@ -641,18 +664,33 @@ async function reflow320(principal, team, locale = "ru", index = 9) {
   assert.ok(sourceTabs > 0)
   await focusedInViewport(source, "320 CSS source action is visibly reached by native Tab")
   await reflowGeometry(view, phase("inventory"))
+  const formatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" })
+  const sourceDate = formatter.format(new Date(`${moved.sourceDate}T00:00:00Z`))
+  const destinationDate = formatter.format(new Date(`${moved.destinationDate}T00:00:00Z`))
+  const inventoryText = source.locator("xpath=ancestor::li[1]").locator(":scope > div").first().locator(":scope > p")
+  await reflowTextContrast(view, source, locale, phase("inventory"), "source-action", [view.ui.reversalAction], { focused: true, enabled: true })
+  await reflowTextContrast(view, inventoryText.nth(0), locale, phase("inventory"), "source-label", [name])
+  await reflowTextContrast(view, inventoryText.nth(1), locale, phase("inventory"), "source-date", [sourceDate])
+  await reflowTextContrast(view, inventoryText.nth(2), locale, phase("inventory"), "source-paired-date", [destinationDate])
   assert.equal(await view.section.getByText(name, { exact: true }).count(), 2, "Both original pair labels must be present")
   await readReflowText(view, view.section.getByText(name, { exact: true }), phase("inventory-label"))
   await source.scrollIntoViewIfNeeded()
   await focusedInViewport(source, "reading long inventory labels preserves native source focus")
   await view.page.keyboard.press("Enter")
   const confirmation = await reviewedReflowConfirmation(view, moved, team, phase("review"))
+  const reviewText = confirmation.locator(":scope > p")
+  await reflowTextContrast(view, confirmation.locator("#workforce-calendar-reversal-title"), locale, phase("review"), "review-title", [view.ui.reversalReviewTitle], { focused: true })
+  await reflowTextContrast(view, reviewText.nth(0), locale, phase("review"), "review-label-team", [name, team.name])
+  await reflowTextContrast(view, reviewText.nth(1), locale, phase("review"), "review-dates", [sourceDate, destinationDate])
+  await reflowTextContrast(view, reviewText.nth(2), locale, phase("review"), "review-hint", [view.ui.reversalReviewHint])
   const confirm = confirmation.getByRole("button", { name: view.ui.reversalConfirm, exact: true })
   const cancel = confirmation.getByRole("button", { name: view.ui.reversalCancel, exact: true })
   await tabToNext(view.page, confirm)
   await reflowGeometry(view, phase("confirm"))
+  await reflowTextContrast(view, confirm, locale, phase("confirm"), "confirm-enabled-focused", [view.ui.reversalConfirm], { focused: true, enabled: true })
   await tabToNext(view.page, cancel)
   await reflowGeometry(view, phase("cancel"))
+  await reflowTextContrast(view, cancel, locale, phase("cancel"), "cancel-enabled-focused", [view.ui.reversalCancel], { focused: true, enabled: true })
   assert.equal(posts, 0)
   await view.page.keyboard.press("Space")
   await until(async () => await confirmation.count() === 0, "320 CSS cancel removes the review")
@@ -701,6 +739,7 @@ async function reflow320(principal, team, locale = "ru", index = 9) {
   await focusedInViewport(alert, "320 CSS unknown explanation receives fully visible product focus")
   await reflowGeometry(view, phase("unknown"))
   await readReflowText(view, alert, phase("unknown"))
+  await reflowTextContrast(view, alert, locale, phase("unknown"), "unknown-focused", [view.ui.reversalOutcomeUnknown], { focused: true })
   await until(async () => !(await confirm.isDisabled()), "320 CSS exact retry becomes available")
   assert.equal(await view.section.locator("#workforce-calendar-scope").isDisabled(), true)
   assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
@@ -720,6 +759,7 @@ async function reflow320(principal, team, locale = "ru", index = 9) {
   await focusedInViewport(result, "320 CSS replay result receives stable visible focus")
   await reflowGeometry(view, phase("replay"))
   await readReflowText(view, result, phase("replay"))
+  await reflowTextContrast(view, result, locale, phase("replay"), "replay-focused", [view.ui.reversalAlreadyRecorded], { focused: true })
   assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
   await assertSession(view.context, principal, "320-css-team-replay")
   const functional = { cancelWrites: 0, cancelStateUnchanged: true, posts, tombstones: 2, audits: 1, byteIdenticalRetry: true, reversedResponses: responses, replayWrites: 0, realSessionPreserved: true }
@@ -897,6 +937,18 @@ try {
   assert.equal(await app.mtmWorkCalendarDay.count(), 0, "Existing calendar tombstones must be hidden without tenant context")
   receipts.databaseRole.populatedAuditAndCalendarFailClosed = true
   assert.equal(handlerErrors.length, 0)
+  assert.equal(receipts.contrastDiagnostics.length, 36, "All thirty-six localized text targets must produce original observations")
+  for (const locale of ["ru", "az", "en"]) {
+    const keys = receipts.contrastDiagnostics.filter(target => target.locale === locale).map(target => target.key)
+    assert.equal(keys.length, 12)
+    assert.deepEqual([...keys].sort(), [...contrastTargetKeys].sort(), "No missing or duplicated semantic contrast target may receive acceptance credit")
+  }
+  const passedTargets = receipts.contrastDiagnostics.filter(target => target.status === "PASS").length
+  const lowContrastTargets = receipts.contrastDiagnostics.filter(target => target.status === "FAIL").length
+  const notProvenTargets = receipts.contrastDiagnostics.filter(target => target.status === "NOT_PROVEN").length
+  receipts.contrastVerdict = lowContrastTargets ? "FAIL" : notProvenTargets ? "NOT_PROVEN" : "PASS"
+  receipts.contrastSummary = { criterion: "WCAG2.2 SC1.4.3 (bounded default-light text only)", requiredTargets: 36, passedTargets, lowContrastTargets, notProvenTargets, allTwelveFunctionalCasesPassed: receipts.cases.length === 12 && receipts.cases.every(test => test.status === "PASS"), populatedRlsGuardReached: receipts.databaseRole.populatedAuditAndCalendarFailClosed }
+  assert.equal(passedTargets, 36, "Every required default-light text target must meet its unrounded contrast threshold with proven paint/precision bounds")
   receipts.status = "PASS"
   console.log(`Workforce calendar browser evidence: ${receipts.cases.length} cases PASS`)
 } catch (error) {

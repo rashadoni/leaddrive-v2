@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "reviewedAtUtc": "2026-10-03T10:26:28.023673+00:00",
+  "readOnlyIndependent": true,
+  "head": "a5cc4d323bf901d5bd7e3c98f7a7bc1a9d37503d",
+  "base": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+  "branch": "codex/workforce-completion-part19",
+  "clean": true,
+  "freshRemoteMain": "6cdc7c6d592408cd88e3cfa3a4b2e00f9566cb00",
+  "freshMainSatisfied": true,
+  "verdict": "GREEN source/receipt-integrity; final twelve-case browser and all five required gates pending on new candidate",
+  "findings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "fullDiff": {
+    "paths": 32,
+    "bytes": 250427,
+    "sha256": "985c70aca7e9599b5ded4fc7fad96d94d8d702acae14b0c4043eafdec72d30cd",
+    "algorithm": "raw git diff --binary base head"
+  },
+  "nonDocDiff": {
+    "paths": 2,
+    "bytes": 8836,
+    "sha256": "3408eb18eb616d4b9bd496369a7b4d179a93958f67cec1daf851f501e0702b52",
+    "algorithm": "raw git diff --binary base head -- explicit non-doc paths"
+  },
+  "source": {
+    "harnessByteExactPrior9a": true,
+    "previousIntegratedSourceReviewRetained": true,
+    "configurationByteExactReviewedScratch": true,
+    "oneExactANDPathAndLinePublicIdentifierException": true,
+    "upstreamDetectorAndAllPriorExceptionsUnchanged": true,
+    "authRlsSchemaApiComponentRouteWorkflowBaselinesProtectionDelta": false,
+    "all15IncomingMainPathsByteExactBase": true
+  },
+  "receipts": {
+    "totalOriginalJson": 53,
+    "previous48ByteExactPrior9a": true,
+    "fourNewByteExactTmpPrimaries": true,
+    "fifthSanitizedScanFailureReconciledAgainstRedactedFindingAndActualGitHubRunJob": true,
+    "originalPublicGitShaReceipt": {
+      "bytes": 4352,
+      "sha256": "c426b4fdebaed69b8dd817194bf9955d2f0a560646134f4b5a43f778eba7ab6c",
+      "byteExactPrior": true
+    },
+    "threeDocsAppendOnlyBaseAndPrior9a": true,
+    "threeIdenticalNewAppends": {
+      "bytesEach": 5700,
+      "sha256": "55384f07ca69316d7546a2f707e0d1c5dc9478217092f232e91f9455c25a2aa5"
+    },
+    "historicAllowlistUnchangedClaimsExplicitlySupersededWithoutRewrite": true,
+    "scanFailure": {
+      "runId": 37115223243,
+      "jobId": 111180639084,
+      "head": "9a754dae99a6115312c9ed2de9207bfd86ee1e95",
+      "actualConclusion": "failure",
+      "newGitHubScanStillRequired": true
+    },
+    "rootActualCurrentRangeOriginal": {
+      "path": "/tmp/workforce542-gitleaks-corrected-current-range.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    }
+  },
+  "preliminaryBrowserReceiptClaimsReconciled": {
+    "runId": 37115271868,
+    "head": "9a754dae99a6115312c9ed2de9207bfd86ee1e95",
+    "event": "pull_request",
+    "conclusion": "success",
+    "artifactId": 11270314500,
+    "artifactSize": 3381265,
+    "artifactDigest": "sha256:16c00921b9584892b6579da8d3e0e4bbb725084f3c22aee5d1fdf8b2c9f52587",
+    "receipt": {
+      "bytes": 19709,
+      "sha256": "c34fb6723e1594a0e4a0276bcf232559070ae2ff7becd9360c811dbc9e593836"
+    },
+    "cases": 12,
+    "geometryPhases": 27,
+    "uniquePhases": true,
+    "readingRecords": 36,
+    "metrics": {
+      "ru": {
+        "phases": 9,
+        "geometryFailures": 0,
+        "geometryFragments": 908,
+        "readings": 12,
+        "readingFragments": 106,
+        "actualReadingScrolls": 3
+      },
+      "az": {
+        "phases": 9,
+        "geometryFailures": 0,
+        "geometryFragments": 683,
+        "readings": 12,
+        "readingFragments": 73,
+        "actualReadingScrolls": 0
+      },
+      "en": {
+        "phases": 9,
+        "geometryFailures": 0,
+        "geometryFragments": 783,
+        "readings": 12,
+        "readingFragments": 93,
+        "actualReadingScrolls": 3
+      }
+    },
+    "actualAuthCallbacks": 14,
+    "allCsrfAndCallbacks200": true,
+    "populatedFinalRestrictedRlsProbe": true,
+    "independentImagesNotYetReviewed": true,
+    "preliminaryEvidenceOnlyFinalCandidateAcceptanceStillNotRun": true
+  },
+  "progress": {
+    "done": 81,
+    "total": 161,
+    "gates": "14/15",
+    "c8Percent": 36,
+    "overallPercent": 59,
+    "nonDone": 80,
+    "wfC8007": "PARTIAL"
+  },
+  "limits": [
+    "No native zoom, assistive technology, contrast, whole-page, production-calendar, physical Android, load or pilot acceptance",
+    "Full local build/typecheck/suite/browser/PostgreSQL NOT RUN on Contabo",
+    "General update/delete, break policy, AGENT moves and Route mutation excluded"
+  ],
+  "reviewerActions": {
+    "noProjectOrGitMutation": true,
+    "noCheckReruns": true,
+    "noProductionRequests": true,
+    "writesOnlyUnderTmp": true
+  }
+}
