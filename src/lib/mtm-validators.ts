@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { MTM_CONTACT_CLASS_VALUES } from "@/lib/mtm/contact-classes"
 import { GovernedDoctorScoringDefinitionSchema } from "@/lib/mtm/professional-glossary"
 
 // Reusable primitives
@@ -66,7 +67,7 @@ export const AgentUpdateSchema = AgentCreateSchema.partial().extend({
 })
 
 // ─── Customers ─────────────────────────────────────────────────────────────
-export const MtmCustomerCategory = z.enum(["A", "B", "C", "D"])
+export const MtmCustomerCategory = z.enum(MTM_CONTACT_CLASS_VALUES)
 export const MtmCustomerStatus = z.enum(["ACTIVE", "INACTIVE", "PROSPECT"])
 export const MtmCustomerObjectType = z.enum(["PHARMACY", "CLINIC", "DOCTOR", "STORE", "OTHER"])
 

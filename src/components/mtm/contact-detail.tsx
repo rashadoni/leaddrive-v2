@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MtmContactEditDialog } from "@/components/mtm/contact-edit-dialog"
+import { MtmContactClassPicker } from "@/components/mtm/contact-class-picker"
 import { contactFieldVisibility } from "@/lib/mtm/contact-field-visibility"
 import {
   contactCategoryFieldDisplayValue,
@@ -44,7 +45,6 @@ import {
   MtmContactWorkplaceEndDialog,
 } from "@/components/mtm/contact-workplace-dialog"
 import {
-  contactScoringBlockShown,
   MtmContactScoringPanel,
   type MtmBrandPotential,
   type MtmScoringAssessment,
@@ -56,7 +56,6 @@ import type {
 import { cn } from "@/lib/utils"
 import type { MtmContactRequiredField } from "@/lib/mtm/contact-required-fields"
 import {
-  contactCategoriesBlockShown,
   MtmContactDictionaryAssignmentPanel,
   type GovernedContactDictionary,
   type GovernedContactDictionaryAssignment,
@@ -197,6 +196,8 @@ type ApiPayload = {
       requiredFields: MtmContactRequiredField[]
       specialties?: string[]
       hiddenFields?: string[]
+      /** The classes this tenant grades clients with (A, B, C, VIP…). */
+      classes?: string[]
     }
     asOf: string
     timezone: string
@@ -701,23 +702,15 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
 
         <TabsContent value="categories" data-testid="mtm-contact-scoring-state">
           <div className="grid gap-5">
-            {/* Both blocks below show only what exists; say so rather than leave the tab blank. */}
-            {!contactCategoriesBlockShown({
-              dictionaries: payload.availableContactDictionaries,
-              assignments: contact.dictionaryAssignments,
-              changeRequests: contact.changeRequests,
-              canManage: capabilities.canManage,
-            }) && !contactScoringBlockShown({
-              contactType: contact.type,
-              assessments: contact.doctorAssessments,
-              potentials: contact.fieldPotentials,
-              canAssess: capabilities.canManage,
-              canRecordPotential: capabilities.canRecordBrandPotential,
-            }) ? (
-              <p data-testid="mtm-contact-categories-nothing" className="rounded-2xl border border-dashed border-zinc-300 p-5 text-center text-sm text-muted-foreground dark:border-zinc-700">
-                {t("categoriesNothing")}
-              </p>
-            ) : null}
+            <MtmContactClassPicker
+              contactId={contact.id}
+              value={contact.category}
+              classes={payload.contactPolicy.classes}
+              contactUpdatedAt={contact.updatedAt}
+              canManage={capabilities.canManage}
+              orgId={orgId ? String(orgId) : undefined}
+              onChanged={loadContact}
+            />
             <MtmContactDictionaryAssignmentPanel
               contactId={contact.id}
               contactUpdatedAt={contact.updatedAt}
@@ -832,6 +825,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
             canRequestChanges={capabilities.canRequestChanges}
             requiredFields={payload.contactPolicy.requiredFields}
             specialties={payload.contactPolicy.specialties}
+            classes={payload.contactPolicy.classes}
             hiddenFields={payload.contactPolicy.hiddenFields}
             assignedCategoryLabel={assignedClientType ? clientCategoryLabel : null}
             orgId={orgId ? String(orgId) : undefined}

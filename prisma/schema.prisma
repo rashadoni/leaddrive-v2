@@ -5012,6 +5012,10 @@ enum MtmAgentStatus {
 }
 
 enum MtmCustomerCategory {
+  /// Above A, and first in the database's enum order too (the migration adds it
+  /// BEFORE 'A'), so ORDER BY category lists VIP first. Which classes a tenant
+  /// offers is the MTM setting `contactClasses`.
+  VIP
   A
   B
   C

@@ -661,6 +661,7 @@ export default function MtmSettingsPage() {
           requiredFields={loaded.contactRequiredFields}
           hiddenFields={loaded.contactHiddenFields}
           specialties={loaded.contactSpecialties}
+          classes={loaded.contactClasses}
           onSaved={applySavedSettings}
         />
       ) : null}

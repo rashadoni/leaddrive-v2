@@ -163,6 +163,8 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
       hiddenFields: settings.contactHiddenFields,
       // The list alone: what the «new client» form offers.
       configuredSpecialties: settings.contactSpecialties,
+      // The classes this tenant grades clients with (A, B, C, VIP…).
+      classes: settings.contactClasses,
       qualificationCategories: strings(qualifications, (row) => row.qualificationCategory),
       regions: strings(regions, (row) => row.region),
       administrativeDistricts: strings(administrativeDistricts, (row) => row.administrativeDistrict),

@@ -86,6 +86,7 @@ function Page({ initial }: { initial: Record<string, unknown> }) {
     requiredFields: loaded.contactRequiredFields,
     hiddenFields: loaded.contactHiddenFields,
     specialties: loaded.contactSpecialties,
+    classes: loaded.contactClasses,
     onSaved: (changes) => setLoaded((current) => ({ ...current, ...changes })),
   })
 }
@@ -164,10 +165,13 @@ afterEach(async () => {
 })
 
 describe("MTM settings: the client card in one block", () => {
-  it("names its three parts in words, and shows doctors' specialties where their fields are", async () => {
+  it("names its parts in words, and shows doctors' specialties where their fields are", async () => {
     await open()
     expect([...container.querySelectorAll('[role="tab"]')].map((item) => item.textContent)).toEqual([
-      "Kateqoriyalar",
+      // Client TYPES (doctor, pharmacist…) are not called "categories" any more:
+      // that word belongs to the A, B, C, VIP letters next to it.
+      "Müştəri növləri",
+      "Kateqoriyalar · A, B, C, D",
       // Four fields are off until a tenant asks for them (see below).
       "Sahələr · 4 gizli",
       "İxtisaslar · 34",
@@ -184,6 +188,37 @@ describe("MTM settings: the client card in one block", () => {
     await click(notes[0].querySelector("button"))
     expect(panel("specialties").hidden).toBe(false)
     expect(specialtyNames()).toEqual([...MTM_CONTACT_SPECIALTY_DEFAULTS])
+  })
+})
+
+// Owner, 2026-10-04: "doctor categories must be A, B, C, VIP — is this where I
+// edit them?" — asked on a screen that had nothing to do with it. The letters
+// lived in six dropdowns as a fixed A..D and VIP could not be stored at all.
+describe("MTM settings: the client categories A, B, C, VIP", () => {
+  const letter = (value: string) => panel("classes").querySelector<HTMLInputElement>(`[data-testid="mtm-contact-class-setting-${value}"]`)!
+  const saveClasses = () => click(container.querySelector('[data-testid="mtm-contact-classes-save"]'))
+  const classesTab = () => tab("classes").textContent
+
+  it("lets a tenant switch to A, B, C, VIP and stores exactly that", async () => {
+    await open()
+    await click(tab("classes"))
+    expect(["VIP", "A", "B", "C", "D"].map((value) => letter(value).checked)).toEqual([false, true, true, true, true])
+
+    await click(letter("VIP"))
+    await click(letter("D"))
+    expect(classesTab()).toContain("A, B, C, VIP")
+    await saveClasses()
+
+    expect(stored).toEqual([{ key: "contactClasses", value: ["A", "B", "C", "VIP"] }])
+  })
+
+  it("never lets the last category be switched off", async () => {
+    stored = [{ key: "contactClasses", value: ["VIP"] }]
+    await open()
+    await click(tab("classes"))
+
+    expect(letter("VIP").disabled).toBe(true)
+    expect(panel("classes").textContent).toContain("Ən azı bir kateqoriya saxlayın.")
   })
 })
 

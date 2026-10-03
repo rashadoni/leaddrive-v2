@@ -1,4 +1,5 @@
 import { contactSpecialtyKey } from "@/lib/mtm/contact-specialties"
+import { MTM_CONTACT_CLASS_VALUES } from "@/lib/mtm/contact-classes"
 
 export const MTM_CONTACT_PAGE_SIZES = [25, 50, 100, 200] as const
 export const MTM_CONTACT_BULK_LIMIT = 200
@@ -69,7 +70,7 @@ const FILTER_KEYS = Object.keys(EMPTY_CONTACT_FILTERS) as Array<keyof ContactExp
 // `type` holds a client category code: a built-in type or one the tenant made.
 const CONTACT_CATEGORY_CODE = /^[A-Z0-9][A-Z0-9_-]{0,79}$/
 const CONTACT_STATUSES = new Set(["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"])
-const CONTACT_CATEGORIES = new Set(["A", "B", "C", "D"])
+const CONTACT_CATEGORIES = new Set<string>(MTM_CONTACT_CLASS_VALUES)
 const ORGANIZATION_TYPES = new Set(["PHARMACY", "CLINIC", "STORE", "OTHER"])
 const ASSIGNMENT_STATES = new Set(["ASSIGNED", "UNASSIGNED"])
 const COVERAGE_PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/

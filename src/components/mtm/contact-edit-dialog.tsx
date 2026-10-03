@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { ContactSpecialtyInput } from "@/components/mtm/contact-specialty-input"
 import { contactFieldVisibility } from "@/lib/mtm/contact-field-visibility"
+import { contactClassOptions } from "@/lib/mtm/contact-classes"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -252,6 +253,7 @@ export function MtmContactEditDialog({
   canRequestChanges,
   requiredFields,
   specialties = [],
+  classes,
   hiddenFields,
   assignedCategoryLabel,
   orgId,
@@ -265,6 +267,8 @@ export function MtmContactEditDialog({
   requiredFields: readonly MtmContactRequiredField[]
   /** The tenant's specialty list; empty means the specialty is typed freely. */
   specialties?: readonly string[]
+  /** The classes this tenant grades clients with; defaults to A–D when absent. */
+  classes?: readonly string[]
   /** Fields the tenant switched off in MTM settings: not offered, not sent. */
   hiddenFields?: readonly string[]
   /**
@@ -478,7 +482,7 @@ export function MtmContactEditDialog({
             </Field>
             <Field id="contact-category" label={t("category")}>
               <Select id="contact-category" value={form.category} onChange={(event) => update("category", event.target.value)}>
-                {["A", "B", "C", "D"].map((value) => <option key={value} value={value}>{value}</option>)}
+                {contactClassOptions(classes, form.category).map((value) => <option key={value} value={value}>{value}</option>)}
               </Select>
             </Field>
             {shows("specialtyName") ? (
