@@ -290,7 +290,8 @@ secret; no tenant/user ID, name, category content, body, query or raw error is
 logged by this instrumentation. Logging is unsampled and best effort; failures
 to log do not change the operation's result.
 
-The protected existing `Tail app logs` workflow has a prepared
+The protected existing `Inspect production safely` workflow
+(`.github/workflows/tail-app-logs.yml`) has a prepared
 `support-ux-observation` view. After reviewed main admission, select the exact
 authorized tenant slug and one completed Asia/Baku day (`support_day`). The
 standalone trusted collector is streamed through the pinned production SSH

@@ -1429,3 +1429,111 @@ Asia/Baku days remain necessary for100%.
   needed for this scope; the final required exact-head contexts still apply.
 - New source/config checkpoint is needed to satisfy the failed secret gate.
   Production tenant/activation/real baseline/full-day coverage remain pending.
+
+
+## 2026-10-03 — Exact final candidate gates and durable evidence archive
+
+- Source/config checkpointb9de0dad8c8db1cc6b84a8bd6a9eca682bfdae5b published.
+  Exact scan37078588733 and runner37078588718 SUCCESS. Superseded8b60 PR
+  37078259827 cancelled while running after its synthetic scan failure;
+  b9 PR37078588724 cancelled before completing the expensive jobs so the same
+  final candidate can get its required release-risk production-build proof.
+  Existing production-build label added; current PR37078743036 runs required
+  source/static/type contexts and the new production standalone build. This
+  new instrumentation was not present in the completed895 historical build.
+  Results PENDING. No completed prior release/evidence gate was replayed.
+- PR#530 title/body rewritten around final Calendar correction, bounded
+  telemetry and accepted exact-source evidence. Required current contexts
+  must be green before the concrete owner release decision.
+- Historical workflow retains artifacts14 days. Copied all14 downloaded
+  original/current/comparison files to persistent non-secret archive
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-historical-37074506981
+  (1101045 bytes) and verified byte equality with downloads. provenance.json
+  records exact run/source/GitHub archive metadata and individual extracted
+  file hashes; archive digests are API receipts, not extracted-file hashes.
+- Current root/branch/origin still designated managed worktree,
+  codex/help-ai-guides, https://github.com/rashadoni/leaddrive-v2.git.
+  Registered production13.140.132.245:/opt/leaddrive-v2; protected PR→main→
+  GitHub Actions immutable artifact route. No production action was performed.
+
+Current result/status:190/191 tracked and16/17 literal criteria; final candidate
+required gates/build running. Last completed action: exact candidate publish,
+scoped scan repair and durable comparison archive. Precise stopping point:
+wait for37078743036, then self-audit/final documentation checkpoint. Next action:
+resolve any genuine gate failure; after green, owner release decision and exact
+representative tenant/activation evidence are needed before production window.
+
+
+## 2026-10-03 — Remaining accepted browser evidence made durable; activation scope checked
+
+- Persistent byte-identical archives now also retain exact viewport68files/
+  8419842bytes at codex-alt-data/support-ux-acceptance-37055428421,
+  explicit vision338files/33524421bytes at support-ux-vision-37055624370,
+  and corrected Calendar4files/203584bytes at support-ux-calendar-37061949081.
+  All under/mnt/HC_Volume_106454338/codex-alt-data. Each provenance.json records
+  source/run/artifact metadata and extracted-file SHA256. Only previously
+  accepted non-secret synthetic JSON/Markdown/PNG receipts were copied; no new
+  browser execution or inspection claim is inferred from copying the files.
+- Source check of existing generic superadmin tenant PUT shows whole features
+  normalization and derived modules reconciliation, with a separate audit call.
+  It cannot be presumed to satisfy the scoped atomic flag-only activation
+  contract or preserve the exact original feature representation. No call made.
+  Prepared diagnostics remain read-only. If selected tenant lacks an approved
+  activation record, prepare/review the specific flag-only audited action after
+  owner supplies the authorized tenant; do not improvise a broad tenant edit.
+
+
+## 2026-10-03 — Final source candidate green; independent self-audit and documentation checkpoint
+
+- Exact published source candidateb9de0dad8c8db1cc6b84a8bd6a9eca682bfdae5b
+  has all five required contexts SUCCESS: pr-scope/static-checks/typecheck
+  run37078743036, runner-policy37078588718, secret-scan37078588733. Additional
+  hosted production standalone build in37078743036 SUCCESS (compiled7.1min;
+  verified standalone/server.js, static assets, service worker and no retired
+  one-release marker). PR#530 is ready, MERGEABLE/CLEAN at inspection. PR body
+  now records actual final results and the accepted receipt/source boundaries.
+- Type compiler exit2 retains existing advisory diagnostics: blocking gate
+  reports no syntax/missing-module/undefined-name errors and no NEW defect-shaped
+  type errors against unchanged baseline. Unit baseline gate reports no NEW
+  failures and every existing baseline entry still fails. These are successful
+  governed gates, not a zero-error full compiler/all-unit-test claim. No test/
+  type baseline, assertion, geometry threshold or runtime failure filter changed.
+- Completed obsolete PR runs37078259827 and37078588724 confirmed CANCELLED;
+  their uncompleted expensive jobs were superseded, not accepted as green.
+  All accepted old viewport/vision/Calendar/historical captures and #501/#505
+  merge/deploy receipts remain reused at their original source identities.
+- Independent final read-only audit finds no material inconsistency or completion
+  overclaim:191unique/190checked/onlyROL-006,17literalrows=16DONE/1IN_PROGRESS;
+  all eight page/data API paths identical895→b9→current. Persistent manifests
+  and byte totals verified; all14 historical/all4Calendar extracted hashes and
+  download bytes verified independently, plus JSON/index/3PNG samples in each
+  viewport/vision archive. Root copy verification covered all downloaded files.
+  API ZIP digests remain metadata receipts; no independent ZIP rehash claimed.
+- Original active-journal prefix30183bytes preserved; complete legacy reference
+  journal218460bytes unchanged. Current workflow display name corrected to
+  Inspect production safely; path stays.github/workflows/tail-app-logs.yml.
+  Prepared collection continues UNVERIFIED/observationAdmitted:false. Actual
+  production collection, authenticated tenant/flag inspection/activation,
+  real baseline and seven complete days NOT RUN: exact authorized tenant and
+  activation/coverage evidence have not been supplied and candidate not released.
+- Read-only current-main contract46739dbe0c158e9f48455398463e401e42b927e2 still
+  confirms leaddrive registered13.140.132.245, appDir/opt/leaddrive-v2, domain
+  app.leaddrivecrm.org and supported SHA-bound GitHub Actions deploy route.
+  This is repository routing evidence, not a new production/live SHA observation.
+- No merge, main push, deploy, flag mutation or production message sent in this
+  expanded phase. Per DELIVERY-ARCHITECTURE.md layer4, before the NEW visible
+  Calendar correction merge, owner must see the concrete client-visible change
+  and answer “давай” or exclude it. Earlier completed deploys remain untouched.
+  The local documentation-only checkpoint records final self-audit/gates without
+  pushing another head or rerunning the completed exact candidate gates.
+
+Current result/status:190/191 tracked (99.48%);16/17 literal criteria accepted;
+PR#530 exact candidate all required contexts and production build green.
+Last completed action: verified final hosted gates, independent source/archive/
+journal audit and final documentation checkpoint preparation.
+Precise stopping point: no independent CI/capture remains running; NEW release
+awaits concrete owner admission and production observation requires the exact
+representative tenant/activation/baseline. Next action: after owner's “давай”,
+release the concrete Calendar/telemetry candidate through protected main/Actions,
+verify selected-tenant admission, collect seven full Asia/Baku days, review
+baseline by2026-10-08 and only then prepare governed flag retirement for100%.
