@@ -42,6 +42,7 @@ import { Input } from "@/components/ui/input"
 import { ChannelConfigForm } from "@/components/channel-config-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { useWhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
+import { metaOAuthReturnBanner } from "@/lib/channels/meta-oauth-return-banner"
 import { HelpButton } from "@/components/help/help-button"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
@@ -206,6 +207,9 @@ const copy = {
     tilesHint: "Click a platform to connect it. WhatsApp, Facebook and Instagram open Meta's window; the others ask only for their key.",
     tileConnect: "Connect",
     tileNotConnected: "Not connected",
+    oauthErrorTitle: "Connection did not finish",
+    oauthErrorDesc: "Meta returned: {code}. Click the tile to try again.",
+    dismiss: "Close",
     tileOpen: "Open",
     tileConnectedCount: "{count} connected",
     connectedListTitle: "Connected channels",
@@ -391,6 +395,9 @@ const copy = {
     tilesHint: "Нажмите на платформу, чтобы подключить. WhatsApp, Facebook и Instagram открывают окно Meta, остальным нужен только их ключ.",
     tileConnect: "Подключить",
     tileNotConnected: "Не подключено",
+    oauthErrorTitle: "Подключение не завершилось",
+    oauthErrorDesc: "Meta вернула: {code}. Нажмите на плитку, чтобы попробовать ещё раз.",
+    dismiss: "Закрыть",
     tileOpen: "Открыть",
     tileConnectedCount: "Подключено: {count}",
     connectedListTitle: "Подключённые каналы",
@@ -574,6 +581,9 @@ const copy = {
     tilesHint: "Qoşmaq üçün platformaya klikləyin. WhatsApp, Facebook və Instagram Meta pəncərəsini açır, digərlərinə yalnız öz açarı lazımdır.",
     tileConnect: "Qoş",
     tileNotConnected: "Qoşulmayıb",
+    oauthErrorTitle: "Qoşulma tamamlanmadı",
+    oauthErrorDesc: "Meta qaytardı: {code}. Yenidən cəhd etmək üçün plitəyə klikləyin.",
+    dismiss: "Bağla",
     tileOpen: "Aç",
     tileConnectedCount: "Qoşulub: {count}",
     connectedListTitle: "Qoşulmuş kanallar",
@@ -1616,6 +1626,7 @@ function ChannelsPageInner() {
 
   const [channels, setChannels] = useState<ChannelConfig[]>([])
   const [loading, setLoading] = useState(true)
+  const [listFailed, setListFailed] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [connectCard, setConnectCard] = useState<CatalogCard | null>(null)
   const [connectMode, setConnectMode] = useState<"new" | "existing">("new")
@@ -1647,9 +1658,13 @@ function ChannelsPageInner() {
       if (res.ok) {
         const result = await res.json()
         setChannels(result.data || [])
+        setListFailed(false)
+      } else {
+        setListFailed(true)
       }
     } catch (err) {
       console.error(err)
+      setListFailed(true)
     } finally {
       setLoading(false)
     }
@@ -1663,6 +1678,33 @@ function ChannelsPageInner() {
     failedMessage: c.esFailed,
     onConnected: () => void fetchChannels(),
   })
+
+  // Back from Meta's login (lib/social/oauth-return): `?oauth=facebook|instagram` plus what the callback
+  // reports — `connected`, `pages`, `ig`, or `error` — and `channelId`, the row it wired or started from.
+  // The banner judges that named row only (checked against this session's own list and the type), with the
+  // same rule as the connect page (lib/channels/meta-oauth-return-banner).
+  const oauthType = searchParams.get("oauth")
+  const oauthChannelType = oauthType === "facebook" || oauthType === "instagram" ? oauthType : null
+  const oauthConnected = oauthChannelType ? searchParams.get("connected") : null
+  const oauthError = oauthChannelType ? searchParams.get("error") : null
+  const oauthChannelId = oauthChannelType ? searchParams.get("channelId") : null
+  const oauthRow = oauthChannelId
+    ? channels.find((channel) => channel.id === oauthChannelId && channel.channelType === oauthChannelType) || null
+    : null
+  const oauthBanner = oauthChannelType && oauthConnected
+    ? metaOAuthReturnBanner({
+        locale,
+        channelType: oauthChannelType,
+        pages: searchParams.get("pages"),
+        ig: searchParams.get("ig"),
+        row: oauthRow,
+        listUnknown: !orgId || loading || listFailed,
+        listFailed,
+        rowsOfTypeExist: channels.some((channel) => channel.channelType === oauthChannelType),
+        claimedElsewhere: { title: t("channelClaimedElsewhere.title"), reason: t("channelClaimedElsewhere.reason") },
+      })
+    : null
+  const dismissOAuthResult = () => router.replace("/settings/channels")
 
   useEffect(() => {
     const connectId = searchParams.get("connect")
@@ -2019,7 +2061,12 @@ function ChannelsPageInner() {
       <article
         key={channel.id}
         data-testid={`channel-row-${channel.id}`}
-        className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 sm:flex-row sm:items-center"
+        data-oauth-result={oauthRow?.id === channel.id ? "true" : undefined}
+        className={cn(
+          "flex flex-col gap-3 rounded-xl border bg-white p-3 sm:flex-row sm:items-center",
+          // The channel Meta's login just wired, so the user sees which row the banner is about.
+          oauthRow?.id === channel.id ? "border-emerald-300 ring-2 ring-emerald-200" : "border-zinc-200",
+        )}
       >
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
@@ -2513,6 +2560,53 @@ function ChannelsPageInner() {
           </Badge>
         </div>
       </div>
+
+      {(oauthBanner || oauthError) && (
+        <div className="border-b border-zinc-200 bg-white px-6 py-4">
+          {oauthBanner ? (
+            <div
+              data-testid="oauth-result-banner"
+              data-tone={oauthBanner.tone}
+              className={cn(
+                "flex items-start justify-between gap-3 rounded-xl border p-3",
+                oauthBanner.tone === "success"
+                  ? "border-emerald-200 bg-emerald-50"
+                  : oauthBanner.tone === "pending" || oauthBanner.tone === "neutral"
+                    ? "border-zinc-200 bg-zinc-50"
+                    : "border-amber-200 bg-amber-50",
+              )}
+            >
+              <div className="min-w-0">
+                <p className={cn(
+                  "text-sm font-semibold",
+                  oauthBanner.tone === "success" ? "text-emerald-800" : oauthBanner.tone === "warning" ? "text-amber-900" : "text-zinc-800",
+                )}>
+                  {oauthBanner.title}
+                </p>
+                <p className={cn(
+                  "mt-0.5 text-sm leading-6",
+                  oauthBanner.tone === "success" ? "text-emerald-700" : oauthBanner.tone === "warning" ? "text-amber-800" : "text-zinc-600",
+                )}>
+                  {oauthBanner.desc}
+                </p>
+              </div>
+              <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-xs text-zinc-600" onClick={dismissOAuthResult}>
+                {c.dismiss}
+              </Button>
+            </div>
+          ) : (
+            <div data-testid="oauth-error-banner" className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-red-800">{c.oauthErrorTitle}</p>
+                <p className="mt-0.5 text-sm leading-6 text-red-700">{c.oauthErrorDesc.replace("{code}", oauthError || "")}</p>
+              </div>
+              <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-xs text-zinc-600" onClick={dismissOAuthResult}>
+                {c.dismiss}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div id="channel-catalog-grid" className="space-y-6 px-6 py-6">
         {loading ? (
