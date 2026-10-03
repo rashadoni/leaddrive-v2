@@ -2281,3 +2281,8 @@
 ## 2026-10-03 (Asia/Baku) — neutral-shadow collector correction verified locally
 
 - Collector neutral marker is now none; every ancestor also records its raw computed boxShadow. Actual inset remains unsupported; no math threshold, effect guard, UI/auth/RLS/transaction or existing functional assertion relaxed. New actual-export jsdom regression8/8 PASS (2.07s), scoped lint/diff PASS. Two prior6/8 failures are retained: jsdom serializes text-shadow:none as transparent color, so unit expectations explicitly remain NOT_PROVEN for that known uncertainty while forbidding invented inset. Source/log identities in dom-correction-checks.json; native render/canvas remains NOT RUN locally. Fresh main unchanged25a944; next independent exact review and second hosted diagnostic. Progress59% unchanged. Next actionable lane after release: C8-002 hosted manager Today (plan /tmp/workforce-part20-next-actionable-plan.json, SHA2991757d5f96ed6de6a1ebf03de1918aa2ac890f61777778b7fee02e7b59baec); AT/owner dependencies are not credited.
+
+
+## 2026-10-03 (Asia/Baku) — independent P2 test-vacuity repaired
+
+- Review of13c2282b found one P2: named opacity/filter/font/theme tests accepted a baseline NOT_PROVEN from jsdom textShadow. They now require the specific effect/global fixture refusal, so removing those guards cannot hide behind that baseline. Collector/math/product unchanged. Actual corrected8/8 PASS (1.89s), scoped lint/diff PASS; hashes in dom-p2-checks.json. Previous8PASS remains historical and was insufficient for these named guards; source review remains pending until exact replacement rereview. Native browser/canvas/contrast acceptance NOT RUN; second draft diagnostic follows GREEN/fresh-main publication. Progress59% and exclusions unchanged.

@@ -73,16 +73,22 @@ describe("DOM contrast shadow guards", () => {
     expect(value.runs[0].failures.some(failure => failure.startsWith("unsupported-inset-shadow:"))).toBe(true)
     expect(evaluateTextContrast(value).status).toBe("NOT_PROVEN")
   })
-  it.each(["opacity:0.5", "filter:blur(1px)"])("rejects %s", async css => {
+  it.each([["opacity:0.5", "unsupported-group-opacity:"], ["filter:blur(1px)", "unsupported-filter:"]])("rejects %s", async (css, failurePrefix) => {
     target.querySelector("span")!.setAttribute("style", css)
-    expect(evaluateTextContrast(await collect()).status).toBe("NOT_PROVEN")
+    const value = await collect()
+    expect(value.runs.flatMap(run => run.failures).some(failure => failure.startsWith(failurePrefix))).toBe(true)
+    expect(evaluateTextContrast(value).status).toBe("NOT_PROVEN")
   })
   it("rejects unloaded fonts and wrong theme", async () => {
     define(document, "fonts", { status: "loading" })
-    expect(evaluateTextContrast(await collect()).status).toBe("NOT_PROVEN")
+    const unloadedFonts = await collect()
+    expect(unloadedFonts.failures).toContain("default-light-srgb-fixture-not-proven")
+    expect(evaluateTextContrast(unloadedFonts).status).toBe("NOT_PROVEN")
     define(document, "fonts", { status: "loaded" })
     document.documentElement.className = "dark"
-    expect(evaluateTextContrast(await collect()).status).toBe("NOT_PROVEN")
+    const wrongTheme = await collect()
+    expect(wrongTheme.failures).toContain("default-light-srgb-fixture-not-proven")
+    expect(evaluateTextContrast(wrongTheme).status).toBe("NOT_PROVEN")
   })
   it("preserves styles, DOM and focus", async () => {
     const before = document.body.outerHTML
