@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { MTM_CONTACT_CLASS_PRIORITY } from "@/lib/mtm/contact-classes"
 import { useTranslations } from "next-intl"
 import { AlertCircle, Check, Eye, EyeOff, Info, LockKeyhole, Plus, RefreshCw, Save, Settings2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
@@ -19,7 +20,8 @@ import {
 
 const ACTION_KEYS = ["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "FEEDBACK", "SIGNATURE"] as const
 const MODES = ["REQUIRED", "OPTIONAL", "HIDDEN"] as const
-const CATEGORIES = ["A", "B", "C", "D"] as const
+// Most important first; a rule may name any class, VIP included.
+const CATEGORIES = MTM_CONTACT_CLASS_PRIORITY
 const OBJECT_TYPES = ["PHARMACY", "CLINIC", "DOCTOR", "STORE", "OTHER"] as const
 
 type ActionKey = typeof ACTION_KEYS[number]

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { isMtmContactClass } from "@/lib/mtm/contact-classes"
 import { normalizeMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
@@ -141,7 +142,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     objectType: objectType && ["PHARMACY", "CLINIC", "STORE", "OTHER"].includes(objectType)
       ? objectType as "PHARMACY" | "CLINIC" | "STORE" | "OTHER"
       : { not: "DOCTOR" },
-    ...(category && ["A", "B", "C", "D"].includes(category) ? { category: category as "A" | "B" | "C" | "D" } : {}),
+    ...(isMtmContactClass(category) ? { category } : {}),
     ...(status && ["ACTIVE", "INACTIVE", "PROSPECT"].includes(status) ? { status: status as "ACTIVE" | "INACTIVE" | "PROSPECT" } : {}),
     ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
     ...(region ? { region: { equals: region, mode: "insensitive" } } : {}),

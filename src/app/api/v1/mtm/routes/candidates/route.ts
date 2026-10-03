@@ -1,4 +1,5 @@
 import { Prisma, type MtmCustomerCategory } from "@prisma/client"
+import { MTM_CONTACT_CLASS_PRIORITY } from "@/lib/mtm/contact-classes"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { activeFieldAssignmentWindow, contactScopeForActor } from "@/lib/mtm/field-scope"
@@ -78,7 +79,9 @@ type CandidatePaginationRequest = {
 }
 
 const legacyCandidateLimit = 500
-const mtmCustomerCategoryOrder: readonly MtmCustomerCategory[] = ["A", "B", "C", "D"]
+// Must equal the DATABASE's enum order — the cursor below continues an
+// ORDER BY category — and that order is importance: VIP, A, B, C, D.
+const mtmCustomerCategoryOrder: readonly MtmCustomerCategory[] = MTM_CONTACT_CLASS_PRIORITY
 
 const dateKeyPattern = /^\d{4}-\d{2}-\d{2}$/
 
