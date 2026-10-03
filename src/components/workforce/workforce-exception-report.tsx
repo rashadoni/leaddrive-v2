@@ -46,6 +46,18 @@ type ReportResponse = {
 
 export function WorkforceExceptionReport() {
   const { data: session, status: sessionStatus } = useSession()
+  const organizationId = session?.user?.organizationId ? String(session.user.organizationId) : ""
+  const userId = session?.user?.id ?? ""
+  // A session transition creates fresh report state, including when the same
+  // actor signs in again. Old aggregates cannot precede fresh authorization.
+  return <WorkforceExceptionReportForSession key={JSON.stringify([sessionStatus, userId, organizationId])} sessionStatus={sessionStatus} userId={userId} organizationId={organizationId} />
+}
+
+function WorkforceExceptionReportForSession({ sessionStatus, userId, organizationId }: {
+  sessionStatus: "loading" | "authenticated" | "unauthenticated"
+  userId: string
+  organizationId: string
+}) {
   const locale = useLocale()
   const t = useTranslations("workforceExceptionReport")
   const tQueue = useTranslations("workforceExceptionQueue")
@@ -56,8 +68,6 @@ export function WorkforceExceptionReport() {
   const [error, setError] = useState<{ requestKey: string; message: string } | null>(null)
   const [completedRequestKey, setCompletedRequestKey] = useState<string | null>(null)
   const [retry, setRetry] = useState(0)
-  const organizationId = session?.user?.organizationId ? String(session.user.organizationId) : ""
-  const userId = session?.user?.id ?? ""
   const requestKey = JSON.stringify([sessionStatus, userId, organizationId, requestedRange?.start, requestedRange?.end, retry])
   const accessDenied = accessDeniedRequestKey === requestKey
   const loading = completedRequestKey !== requestKey
@@ -66,15 +76,7 @@ export function WorkforceExceptionReport() {
   const number = useMemo(() => new Intl.NumberFormat(locale), [locale])
 
   useEffect(() => {
-    if (sessionStatus !== "authenticated" || !userId || !organizationId) {
-      // Reauthentication can reuse the same user/org key. Discard the prior
-      // session's result and completion before accepting another server read.
-      setResult(null)
-      setCompletedRequestKey(null)
-      setAccessDeniedRequestKey(null)
-      setError(null)
-      return
-    }
+    if (sessionStatus !== "authenticated" || !userId || !organizationId) return
     const controller = new AbortController()
     const parameters = new URLSearchParams()
     if (requestedRange) {

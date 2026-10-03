@@ -5990,3 +5990,14 @@ A private successor `codex/workforce-completion-part25` was created in the same 
 - Own merged main integrated normally into privatepart25 as6dfb6a1a3cbe57aa4465203f82039a1e69cf4ca5; all19UIcheckpoint blobs remain exact; no merge overlap. New browser workflow/SQL preparation is uncommitted and outside this correction checkpoint.
 - Originals: docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-reauth.json. Full local build/type/suite/browser/Android/load NOT RUN per host contract; production release and new UIbrowser remain pending.
 - Progress: 81/161DONE,14/15GATES,C836%,overall59% unchanged. Next: finish bounded report-browser fixture, independent review and hosted proof while own560 deploy completes.
+
+
+### 2026-10-03T22:15:54.991177+00:00 — explicit lint receipt correction; keyed session state
+
+- cb933 actualAfterFix ESLint exit0 statement was FALSE: actual retained ESLint exit1/set-state-in-effect. Root acknowledged tool exit1 was overlooked while constructing metadata. Original manifest and FAIL log untouched; separate independent historical verification P2 retained. No publication or merge used that false claim.
+- Outer real useSession creates a fresh keyed private report component for status/user/org transitions. No synchronous setState in effect, eslint suppression, policy or baseline change. Existing keyed range/retry and aborted response guards retained.
+- Actual current checks: 26/26 targeted PASS (3files,4.924s external), touched UI/tests ESLint actual exit0; current full log retained. Earlier26PASS on synchronous-reset source does not imply earlier lint success.
+- a268 P2 sessionreentry reproduced2FAIL/4PASS and corrected; a268 P3 omitted removed formattertest explicitly corrected in cb933; cb933 verificationP2 original retained here. Exact corrected source independent review pending.
+- Originals: docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-session-key.json. Three new report-browser preparation files remain uncommitted, no browser/PG/browser-fixture execution on Contabo.
+- Own560 wholedeploy/public remains pending; own main quality new9/9 and all42/42 and build actual SUCCESS separately observed by independent reviewer.
+- Progress unchanged: 81/161DONE,14/15GATES,C836%,overall59% unchanged. Next: independent exact corrected/UI+browser source review, actual hosted browser and own560 whole release/public proof.
