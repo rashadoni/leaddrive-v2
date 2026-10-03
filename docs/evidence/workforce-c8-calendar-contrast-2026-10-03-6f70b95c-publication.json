@@ -1,0 +1,40 @@
+{
+  "observedAtUtc": "2026-10-03T14:08:26.030934+00:00",
+  "pr": 546,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/546",
+  "draft": true,
+  "publishedHead": "6f70b95c1d9065f0f42299c5b4e04762687c551c",
+  "base": "25a944ecbe2fbfe9dd716efc4009d79b6462f26f",
+  "independentSourceVerdict": "GREEN P0-P3=0; hosted acceptance NOT RUN",
+  "independentOriginal": {
+    "path": "docs/evidence/workforce-c8-calendar-contrast-2026-10-03-6f70b95c-independent.json",
+    "bytes": 18844,
+    "sha256": "731a5e7b9d058c1526d1983a383d2f2c5736601580e16b633cc2f0cdce8b0410"
+  },
+  "localSecretScan": {
+    "tool": "gitleaks8.30.1",
+    "range": "25a944ecbe2fbfe9dd716efc4009d79b6462f26f..6f70b95c1d9065f0f42299c5b4e04762687c551c",
+    "commits": 13,
+    "scannedBytesApprox": 281960,
+    "durationMs": 766,
+    "findings": 0,
+    "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "ciContextCredit": false,
+    "configUnchanged": true
+  },
+  "preliminaryDiagnostic": {
+    "runId": 37128500360,
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "headSha": "6f70b95c1d9065f0f42299c5b4e04762687c551c",
+    "statusAtObservation": "in_progress",
+    "workflowPath": ".github/workflows/workforce-calendar-browser-evidence.yml",
+    "acceptanceCredit": false
+  },
+  "draftBrowserSkip": {
+    "runId": 37128489708,
+    "acceptanceCredit": false
+  },
+  "fullLocalHeavyChecks": "NOT RUN: Contabo host contract",
+  "hostedContrast": "PENDING, no PASS claim"
+}
