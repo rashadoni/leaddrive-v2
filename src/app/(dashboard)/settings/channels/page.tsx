@@ -205,6 +205,7 @@ const copy = {
     manualSetupLink: "Manual setup",
     tilesHint: "Click a platform to connect it. WhatsApp, Facebook and Instagram open Meta's window; the others ask only for their key.",
     tileConnect: "Connect",
+    tileNotConnected: "Not connected",
     tileOpen: "Open",
     tileConnectedCount: "{count} connected",
     connectedListTitle: "Connected channels",
@@ -389,6 +390,7 @@ const copy = {
     manualSetupLink: "Ручная настройка",
     tilesHint: "Нажмите на платформу, чтобы подключить. WhatsApp, Facebook и Instagram открывают окно Meta, остальным нужен только их ключ.",
     tileConnect: "Подключить",
+    tileNotConnected: "Не подключено",
     tileOpen: "Открыть",
     tileConnectedCount: "Подключено: {count}",
     connectedListTitle: "Подключённые каналы",
@@ -571,6 +573,7 @@ const copy = {
     manualSetupLink: "Əl ilə quraşdırma",
     tilesHint: "Qoşmaq üçün platformaya klikləyin. WhatsApp, Facebook və Instagram Meta pəncərəsini açır, digərlərinə yalnız öz açarı lazımdır.",
     tileConnect: "Qoş",
+    tileNotConnected: "Qoşulmayıb",
     tileOpen: "Aç",
     tileConnectedCount: "Qoşulub: {count}",
     connectedListTitle: "Qoşulmuş kanallar",
@@ -1541,11 +1544,6 @@ function channelMatchesCard(card: CatalogCard, channel: ChannelConfig) {
   return channelProvider(channel) === card.provider
 }
 
-function channelLabel(channel: ChannelConfig) {
-  const provider = channelProvider(channel)
-  return [channel.channelType, provider, channel.phoneNumber].filter(Boolean).join(" · ")
-}
-
 /**
  * A Meta row that is not live is not automatically a "draft". Three different things break delivery
  * and each needs a different action from the user: nothing came back from Meta (draft → finish the
@@ -1907,7 +1905,7 @@ function ChannelsPageInner() {
           ? brokenStatus || brokenBadge
           : whatsappManual
             ? c.tileWhatsAppManual
-            : actionLabel
+            : c.tileNotConnected
 
     const inner = (
       <>
@@ -2050,7 +2048,9 @@ function ChannelsPageInner() {
                 </span>
               )}
             </div>
-            <div className="text-xs text-zinc-500">{card?.title || channel.channelType} · {channelLabel(channel)}</div>
+            <div className="text-xs text-zinc-500">
+              {[card?.title || channel.channelType, channelProvider(channel), channel.phoneNumber].filter(Boolean).join(" · ")}
+            </div>
             {ownScreenHref ? (
               <p className="mt-1 text-xs text-zinc-500">{c.cardVoipSettingsHint}</p>
             ) : rowBrokenBadge && (rowBrokenStatus || rowBrokenHint) ? (
