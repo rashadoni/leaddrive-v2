@@ -7,6 +7,7 @@ import { withRls } from "@/lib/with-rls"
 const SYSTEM_PAID_RUN_AUDIT_ENTITY = "social_paid_run_authorization"
 const SYSTEM_RESET_BOUNDARY_ACTION = "reset_boundary"
 const SYSTEM_VOICE_PERMISSION_AUDIT_ENTITY = "lead_voice_permission"
+const SYSTEM_SUPPORT_UX_CANARY_AUDIT_ENTITY = "support_ux_canary"
 
 const createAuditLogSchema = z.object({
   userId: z.string().optional(),
@@ -124,8 +125,9 @@ export const POST = withRls(async (req, { orgId, session }) => {
   if (
     parsed.data.entityType === SYSTEM_PAID_RUN_AUDIT_ENTITY
     || parsed.data.entityType === SYSTEM_VOICE_PERMISSION_AUDIT_ENTITY
+    || parsed.data.entityType === SYSTEM_SUPPORT_UX_CANARY_AUDIT_ENTITY
   ) {
-    // These entries affect immutable budget or voice-permission enforcement.
+    // These entries affect budget, voice permissions or tenant canary admission.
     // They may only be emitted by their trusted server-side workflows.
     return NextResponse.json({ error: "Reserved system audit entity" }, { status: 403 })
   }

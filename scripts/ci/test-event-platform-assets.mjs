@@ -363,11 +363,23 @@ const typecheckJob = githubPrChecks.slice(
 )
 assert.ok(
   typecheckJob.includes("runs-on: ubuntu-24.04")
-    && typecheckJob.includes("NODE_OPTIONS: --max-old-space-size=12288")
+    && typecheckJob.includes("NODE_OPTIONS: --max-old-space-size=14336")
+    && typecheckJob.includes('LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"')
+    && typecheckJob.includes("timeout-minutes: 60")
+    && typecheckJob.includes("ulimit -c 0")
+    && typecheckJob.indexOf("Prepare bounded GitHub-hosted typecheck memory") >= 0
+    && typecheckJob.indexOf("Prepare bounded GitHub-hosted typecheck memory")
+      < typecheckJob.indexOf("TypeScript compile-check (advisory diagnostics)")
     && typecheckJob.includes("npx tsc --noEmit 2>&1 | tee tsc-output.log")
+    && typecheckJob.includes('echo "${PIPESTATUS[0]}" > tsc-exit-code')
     && typecheckJob.includes("bash scripts/ci/check-typecheck-gate.sh tsc-output.log tsc-exit-code")
     && typecheckJob.includes("node scripts/ci/check-typecheck-baseline.mjs tsc-output.log"),
-  "typecheck must retain the full compiler pass, both blocking gates and its bounded 12-GiB heap",
+  "typecheck must retain the full compiler pass, both blockers, finite timeout and a measured budget for its bounded 14-GiB heap",
+)
+assert.match(
+  typecheckJob,
+  /- name: Prepare bounded GitHub-hosted typecheck memory\s+run: bash scripts\/ci\/prepare-hosted-build-runner\.sh\s+env:\s+LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"/u,
+  "the compiler must execute the hosted-only memory preflight with its own fixed 18-GiB budget",
 )
 assert.ok(
   nextConfig.includes('webpackBuildWorker: process.env.LEADDRIVE_COLD_PRODUCTION_BUILD === "1" ? true : undefined')
@@ -922,11 +934,19 @@ assert.equal(
   1,
   "production build must always clean its bounded swap",
 )
-assert.equal(
-  (githubPrChecks.match(/prepare-hosted-build-runner\.sh cleanup/gu) ?? []).length,
-  1,
-  "PR production build must always clean its bounded swap",
-)
+const prProductionBuildJob = githubPrChecks.slice(githubPrChecks.indexOf("  production-build:"))
+for (const [jobName, source] of [["typecheck", typecheckJob], ["production build", prProductionBuildJob]]) {
+  assert.equal(
+    (source.match(/prepare-hosted-build-runner\.sh cleanup/gu) ?? []).length,
+    1,
+    `PR ${jobName} must clean its bounded swap exactly once`,
+  )
+  assert.match(
+    source,
+    /- name: Cleanup bounded (?:typecheck|build) swap\s+if: always\(\)\s+run: bash scripts\/ci\/prepare-hosted-build-runner\.sh cleanup/u,
+    `PR ${jobName} must clean its bounded swap even when a preceding gate fails`,
+  )
+}
 assert.ok(
   buildInfoRoute.includes("const artifactSha")
     && buildInfoRoute.includes("{ sha, artifactSha, builtAt:"),

@@ -325,6 +325,22 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: Resolve the per-job Postgres port
+        env:
+          PG_PORT: ${{ job.services.event-platform-postgres.ports['5432'] }}
+        run: |
+          test -n "$PG_PORT" || { echo "::error::service port for event-platform-postgres was not published"; exit 1; }
+          echo "EVENT_PLATFORM_PG_PORT=$PG_PORT" >> "$GITHUB_ENV"
+
+      - name: Support UX canary atomic PostgreSQL gate
+        # This fixed scratch database is created and removed by the guarded
+        # test; the following fixture gates retain their own database.
+        run: npx vitest run src/__tests__/support-ux-canary-postgres.test.ts
+        env:
+          CI: "true"
+          VITEST_MAX_WORKERS: "1"
+          SUPPORT_UX_CANARY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/support_ux_canary_test
+
       - name: Generate frozen pre-pilot Prisma client
         run: npx prisma generate --schema scripts/ci/fixtures/event-platform-legacy-client/schema.prisma
         env:
