@@ -855,6 +855,17 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     }
     replyTo = boundConversation.externalId
     boundChannelConfigId = boundConversation.channelConfigId
+  } else if (channel === "whatsapp" && conversationId) {
+    // WhatsApp keeps the composer's `to` (the customer's phone), but answers from the number the
+    // conversation came in on: a workspace can hold several numbers (Embedded Signup makes that routine),
+    // and without the channel the transport picked the workspace's first one — a number the customer
+    // never wrote to, outside its 24h window, so Meta refused the reply. A send with no conversation
+    // (a phone typed into a new thread) keeps the workspace's number.
+    const boundConversation = await prisma.socialConversation.findFirst({
+      where: { id: conversationId, organizationId: orgId, platform: "whatsapp", deletedAt: null },
+      select: { channelConfigId: true },
+    })
+    boundChannelConfigId = boundConversation?.channelConfigId ?? null
   }
 
   // Web-chat reply: single-source — write a WebChatMessage(agent) into the session (the visitor's
