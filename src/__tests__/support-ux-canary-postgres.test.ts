@@ -51,8 +51,9 @@ describe.skipIf(!scratchUrl)("Support canary real PostgreSQL atomicity and RLS",
   let control: PrismaClient | undefined
   let admin: PrismaClient | undefined
   let unscopedApp: PrismaClient | undefined
-  let app: typeof import("@/lib/prisma").prisma | undefined
-  let post: typeof import("@/app/api/v1/admin/tenants/[id]/support-ux-canary/route").POST
+  // Keep only the APIs used by this harness; the route still loads the real proxy.
+  let app: { $disconnect(): Promise<void> } | undefined
+  let post: (req: NextRequest, context: { params: Promise<{ id: string }> }) => Promise<Response>
   let createdDatabase = false
   let createdRole = false
   const role = `support_canary_app_${randomBytes(12).toString("hex")}`
@@ -101,7 +102,10 @@ describe.skipIf(!scratchUrl)("Support canary real PostgreSQL atomicity and RLS",
     const validated = guardedUrl(configuredUrl!)
     const controlUrl = new URL(validated); controlUrl.pathname = "/postgres"
     const { PrismaClient: Client } = await import("@prisma/client")
-    control = new Client({ datasourceUrl: controlUrl.toString() })
+    // Share the base client-options instantiation across these three clients.
+    // Inferred constructor options otherwise force structural comparisons of
+    // the entire generated model graph when assigned to PrismaClient variables.
+    control = new Client<Prisma.PrismaClientOptions>({ datasourceUrl: controlUrl.toString() })
     let setupPhase = "database-preflight"
     try {
       // Never reset somebody else's existing scratch database.
@@ -111,7 +115,7 @@ describe.skipIf(!scratchUrl)("Support canary real PostgreSQL atomicity and RLS",
       setupPhase = "database-create"
       await ddl(control, `CREATE DATABASE "${DATABASE}"`)
       createdDatabase = true
-      admin = new Client({ datasourceUrl: validated.toString() })
+      admin = new Client<Prisma.PrismaClientOptions>({ datasourceUrl: validated.toString() })
       setupPhase = "role-create"
       await ddl(control, `CREATE ROLE "${role}" LOGIN PASSWORD '${password}' NOSUPERUSER NOBYPASSRLS`)
       createdRole = true
@@ -139,7 +143,7 @@ describe.skipIf(!scratchUrl)("Support canary real PostgreSQL atomicity and RLS",
       const appUrl = new URL(validated)
       appUrl.username = role; appUrl.password = password
       appUrl.searchParams.set("connection_limit", "4")
-      unscopedApp = new Client({ datasourceUrl: appUrl.toString() })
+      unscopedApp = new Client<Prisma.PrismaClientOptions>({ datasourceUrl: appUrl.toString() })
       process.env.DATABASE_URL = appUrl.toString()
       vi.resetModules()
       delete globals.prisma

@@ -1829,3 +1829,97 @@ complete seven evidenced Asia/Baku days, then review the flag-retirement release
 - Next action: publish the new candidate as a draft PR, mark ready after the
   source checkpoint, diagnose any actual new CI failure, and record its exact
   source-bound result. Completed530/505/501 workflows are not replayed.
+
+
+## 2026-10-03 — New operator PR544 published; exact-source hosted gates running
+
+- Checkpoint4b4fe6d595ba2e6f5eea99932abb26d044a3be7a contains the real-DB
+  gate after source checkpointf75a941e2b724ba2ea76a80103b34a6023dc4965.
+  Branch pushed normally; created and attached
+  https://github.com/rashadoni/leaddrive-v2/pull/544 as draft, applied
+  production-build, then marked ready on the same final source.
+- gh pr edit hit the installed client's deprecated projectCards GraphQL
+  query; label applied through the normal GitHub REST endpoint instead.
+  No gate bypass or repository-policy modification. The label-triggered
+  draft run37119434272 was normally superseded by ready_for_review
+  run37119434975; no completed heavy gate was replayed.
+- Required runner-policy37119396681 and scan37119396689 report SUCCESS on
+  the new head. The initial draft pr-checks37119396709 has skipped heavy
+  jobs and is not positive source/type/DB/build proof. Ready run37119434975
+  is the required complete candidate gate; results remain PENDING.
+- Re-read current AGENTS.md and docs/DELIVERY-ARCHITECTURE.md: standing
+  authorization covers branch/PR and verified release. Layer4 requires an
+  owner list/go-ahead for user-visible behavior; this PR adds only the
+  internal operator API, tests/CI and documentation, with no UI or automatic
+  activation. Exact selected-tenant authorization is still required before
+  invoking the new action. No production write has been made in this phase.
+
+- Independent source-baseline work: dispatched a bounded current-candidate
+  ephemeral capture for48 cells (four Service Desk/detail scenarios, three
+  staff roles, two themes, desktop/mobile, EN/typical), seven measured loads
+  per cell after warm-up. This is fresh source evidence for baseline review,
+  not a replay of the completed acceptance/color/historical matrices.
+  Capture is not a matched comparison pass and cannot renew the October8
+  expiry, establish relative repeatability or replace real tenant telemetry.
+  Keep old ceilings; inspect raw arrays/structure and compare applicable
+  metrics separately. Existing interactionP75 has last-navigation scope,
+  unlike the seven-load arrays; missing values remain unmeasured.
+
+- Hosted PostgreSQL gate completed SUCCESS (not skipped) in PR run37119434975,
+  static-checks111192565028,11:29:30Z–11:29:32Z. Per-case log receipt remains
+  PENDING until job logs become available; do not infer individual output from
+  step metadata. Candidate head4b4fe6d595ba2e6f5eea99932abb26d044a3be7a,
+  PR base2f7f56ff6b8731c14c1f9483d977a9f80a57333f and tested synthetic
+  merge33e2df85da5202c8315aa8275b05f59f3d434798 must remain distinct.
+  Default actions/checkout checks the integrated PR merge ref; run head_sha
+  identifies its candidate, not a detached-head-only test tree.
+- Fresh source capture run37119565433 is bound to the actual dispatch head4b4;
+  capture remains in progress. Existing harness controls (isolated CI fixture,
+  disabled SW and mocked same-origin CSP reporting endpoint during regular
+  capture) must be disclosed with its receipt; no production CSP/SW proof.
+
+- Provenance refinement:33e2df85 above is the PR's CURRENT synthetic merge
+  reference, not yet an independently verified checkout-log SHA. The actual
+  test-tree SHA remains PENDING the checkout log. API tree comparison confirms
+  all new canary/helper/test/workflow blobs identical to head4b4; integrated
+  tree contains reviewed main-side Workforce/WhatsApp/gitleaks changes.
+  Production standalone build now reports SUCCESS on the same PR run; full
+  required typecheck/static result remains PENDING.
+
+
+## 2026-10-03 — Real DB proof admitted; full compiler OOM correctly blocks release
+
+- Actual static-checks111192565028 completed SUCCESS. Sanitized named-step
+  receipt verifies1 test file/10 PostgreSQL tests PASS, zero skipped,1315ms.
+  Default reporter omits individual passing names: the ten names are explicitly
+  source-reconciled to that actual aggregate, not represented as verbose output.
+  /tmp/leaddrive-support-canary-37119434975-receipt.json SHA256
+  f603f61478f22bfb66587fe02c9a4916316df173f0160809fb4b69802d42363f.
+- Checkout log now independently confirms33e2df85da5202c8315aa8275b05f59f3d434798,
+  superseding its earlier provisional current-ref status. Seven helper/route/
+  test/Prisma/RLS/workflow blobs match candidate4b4. Raw log, connection URL,
+  generated role/password and exception payloads were not saved or printed.
+- Typecheck111192565027 failed at11:40:45Z: full compiler exited134 with
+  FATAL JS heap allocation failure at the existing12288MiB cap and no TS
+  diagnostics. The blocking gate correctly rejects an inconclusive compile.
+  It is not a code diagnostic and not positive type proof. No merge/deploy.
+  Same main-base2f typecheck37118713925/111190515934 completed SUCCESS earlier;
+  source graph cost is a bounded hypothesis, not an established root cause.
+- Minimal fix only widens all three test constructor options explicitly to
+  Prisma.PrismaClientOptions and retains the small disconnect/Response ports
+  used by the harness. This avoids inferred-specialization structural checks
+  while retaining actual dynamic route/proxy imports. No SQL, RLS, mock, cast,
+  any, assertion, guard, transaction/cleanup timing, baseline or gate change.
+- Scoped ESLint PASS after small-check preflight (15694MiB available,340GiB
+  free, PSI zero). One-file TypeScript transpile check proves before/after
+  runtime JavaScript byte-identical with comments removed, SHA256
+  e7a386f6dc64a00dd496d07afcec80902af0ae1df8b5088782946a2ac9d5bbc5.
+  This is an emit identity check, not full compile/type admission. Independent
+  patch review PASS; effect on memory remains UNVERIFIED until new hosted CI.
+- New source checkpoint/gates are required. Completed4b tests/build receipts
+  keep their identity, and current capture37119565433 remains bound to4b;
+  neither is relabelled as proof of the next source head. Existing compiler
+  heap/time bound and both blockers retained; no local full compiler run.
+- Official runner capacity cross-check used only GitHub's primary documentation
+  https://docs.github.com/en/actions/reference/runners/github-hosted-runners.
+  No runner relabelling, paid Mac, larger runner or resource increase applied.
