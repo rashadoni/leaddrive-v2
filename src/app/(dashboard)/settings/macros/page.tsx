@@ -638,7 +638,7 @@ export default function MacrosSettingsPage() {
       </Dialog>
 
       <Dialog open={categoryManagerOpen} onOpenChange={setCategoryManagerOpen} widthClassName="max-w-[34rem]">
-        <DialogHeader><DialogTitle>{t("manageCategories")}</DialogTitle><DialogDescription>{t("sharedCategoriesHint")}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{t("manageCategories")}</DialogTitle><DialogDescription>{t(categoryStorageMode === "browser" ? "browserCategoriesHint" : "sharedCategoriesHint")}</DialogDescription></DialogHeader>
         <DialogContent>
           <div className="space-y-3" data-testid="macro-category-manager">
           {notice && <div role="status" aria-live="polite" className={cn("flex gap-2 rounded-lg border p-3 text-sm", notice.kind === "error" && "border-destructive/40 text-destructive")}>{notice.kind === "error" ? <AlertCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}<span>{notice.text}</span></div>}
@@ -656,7 +656,7 @@ export default function MacrosSettingsPage() {
       </Dialog>
 
       <Dialog open={Boolean(confirmTarget)} onOpenChange={(open) => { if (!open) setConfirmTarget(null) }} widthClassName="max-w-[28rem]">
-        <DialogHeader><DialogTitle>{confirmTarget?.type === "macro" ? t("deleteMacroTitle") : t("deleteCategoryTitle")}</DialogTitle><DialogDescription>{confirmTarget?.type === "macro" ? t("deleteMacroImpact", { name: confirmTarget.macro.name }) : confirmTarget ? t("deleteCategoryImpact", { name: confirmTarget.category, count: confirmTarget.count }) : ""}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{confirmTarget?.type === "macro" ? t("deleteMacroTitle") : t("deleteCategoryTitle")}</DialogTitle><DialogDescription>{confirmTarget?.type === "macro" ? t("deleteMacroImpact", { name: confirmTarget.macro.name }) : confirmTarget ? t(categoryStorageMode === "browser" ? "deleteBrowserCategoryImpact" : "deleteCategoryImpact", { name: confirmTarget.category, count: confirmTarget.count }) : ""}</DialogDescription></DialogHeader>
         <DialogFooter><Button variant="outline" className="min-h-11" onClick={() => setConfirmTarget(null)}>{tc("cancel")}</Button><Button variant="destructive" className="min-h-11" onClick={queueDelete} data-testid="macro-delete-confirm">{t("confirmDelete")}</Button></DialogFooter>
       </Dialog>
     </SupportPageShell>

@@ -2081,3 +2081,655 @@ complete seven evidenced Asia/Baku days, then review the flag-retirement release
   (index -1 cannot admit a missing step) and binding the actual helper/env.
   Only pr-checks typecheck policy, its existing static regression assertions
   and the append-only journal changed. Full hosted compiler remains PENDING.
+
+- Repair checkpointabbaf6106d33aa612a603afdd88d8422fc95f16d pushed normally.
+  New required PR run37123926459 now queued/starting; runner37123926443
+  SUCCESS and scan37123926439 executing. PR544 stays OPEN/not merged on
+  this exact head. Independent reviewer owns the new compiler/PG receipts;
+  root continues the current48-cell comparison/archive and release preparation.
+  Updated the PR description around the final bounded resource policy and
+  retained full gates, rather than claiming earlier green checks admit abbaf.
+
+- Read-only protected-main contract reverified: exactly pr-scope/static-checks/
+  typecheck/runner-policy/scan, each bound to GitHub Actions app15368; admins
+  enforced, no force-push/deletion, no mandatory external reviewer. No rule
+  changed. Internal API/test/resource/docs release has no user-visible layer4
+  addition; standing autonomous release authorization applies after green gates.
+- Twelve builder/controller/fixture/config/SD-detail UI blobs are identical
+  from fresh capture4b→comparefdb→resourceabbaf; the existing swap helper itself
+  is identical too. Comparison can retain its real fdb identity when assessing
+  this resource-only final head; this is scoped identity, not full-tree equality.
+- Preliminary continuity self-audit PASS: current journal retains the entire
+ 8759fa995417c49919ad16c515d3b945f77d85ec byte prefix, and the old Support
+  journal is byte-identical to that checkpoint. App-owned session history and
+  dirty canonical checkout untouched. No additional audit-log update/delete/
+  upsert call surfaced in the bounded src/app/api+src/lib inventory.
+
+
+## 2026-10-03 — New compiler admitted; matched source comparison completed
+
+- abbaf final-source compiler37123926459/typecheck111205359617 SUCCESS.
+  Actual full tsc12:49:14–12:52:26Z exited2; both unchanged blocking gates
+  SUCCESS, no OOM, always-cleanup SUCCESS/log-confirmed. Measured available
+  RAM14760956KiB+free swap7340024KiB=22100980KiB admitted the18GiB budget;
+  observed heap14336MiB. Existing audit-route diagnostics remain governed by
+  the unchanged baseline, not zero-diagnostic/full-test-clean claims.
+- Actual PR synthetic checkoute2b39811b21c3ad10b40b96fb53d240c7db6c826;
+  nine reviewed API/test/helper/gate blobs match candidateabbaf. Independently
+  reviewed compiler receipt5941B/hash8a61ce6a6b289ba81929c386ec28ca41987eb7b3c477fd9c764dc2c31241c104
+  archived under support-ux-canary-37123926459 with provenance. Static tests/
+  standalone build remain PENDING; new compiler success alone is not release.
+- Fresh matched48-cell compare37122190158 SUCCESS on actualfdb. Artifact
+  11274546547/support-ux-evidence-fdb2b314a98c958d8de94ac80d18f5e161d5de04-typical-enabled-compare
+  size4741948B/API digestsha25613874c553cbf4b8d501a16aa51421d150f940734d175cec3f8ab4ca6b128206e,
+  downloaded50files. Actual JSON reports48/48 cells passed,48visual matched
+  and48performance matched. Root independently audits dimensions/quantiles/
+  metrics/hashes; reviewer inspects original PNG first frames next.
+  GeneratedAt12:31:23Z is the report field, not inferred capture finish time.
+  Scope remains synthetic EN/typical/enabled/standard/three roles/two themes/
+  desktop1440x900/mobile375x812 with7load+CLS samples, not a production week.
+- Added resource-head identity receipt to the baseline archive after all56
+  stored hashes verified;57hashedfiles/5239140B+manifest (58physicalfiles).
+  Current comparison does not replay archived full acceptance or renew the
+ 2026-10-08 ceiling review boundary. Exact production tenant remains pending.
+
+- Independent48-cell source review PASS: exactCartesian dimensions, all seven
+  current/baseline load/CLS/applicable-filter quantiles, all96 PNG hashes and
+  dimensions, relative/unchanged-ceiling rules and structural upper bounds
+  verified. Max compare load p75 SD483/Kanban528/reports509/detail394ms;
+  filter p50 SD27/reports97ms; CLS0.011798959774159366. All48 visual/48perf
+  matched;16identical PNG pairs/32within tolerance, max pixel ratio
+  0.00038117283950617285<=unchanged0.005. Raw pixel counts not repeated.
+- Interaction scope correctly retains null/nonpaired values: SD10current
+  measurements/9paired(max40ms), reports12paired(max120ms); Kanban/detail
+  unmeasured. These are last-navigation event measurements, not seven-load
+  interaction populations. No SW/CSP/production-day/expiry-renewal claim.
+- Comparison archive currently55hashedfiles/5293020B+manifest:50downloaded
+  files and5safe workflow/job/artifact/source/metrics receipts. Original50
+  screenshots/report/index and review results preserved; independent first-
+  frame reviewer receipt will be appended after actual inspection.
+  Added the dated bounded performance review to the rollout contract.
+- New final standalone production build111205317494 SUCCESS on abbaf;
+  typecheck SUCCESS already admitted. Shared static baseline tests continue.
+  No merge until every protected context is complete and green.
+
+- Protected final admission13:00:39Z: all five required contexts and the
+  standalone build SUCCESS on exactabbaf6106d33aa612a603afdd88d8422fc95f16d,
+  each check bound to GitHub Actions app15368. PR544 ready/OPEN/mergeable true/
+  clean with unchangedbase2f7f56ff. Saved protected-admission.json; merge may
+  now use exact --match-head-commit without admin bypass. New operator has
+  no user-visible UI addition or automatic flag activation; release stays
+  within standing task authorization. Source-bound real PG receipt is being
+  independently extracted from the now-completed static job.
+
+- Final abb real PG admission:10/10 PASS,zero skips in37123926459/static
+  111205359599, named gate12:52:05–12:52:07Z. Actual synthetic checkout
+  e2b39811b21c3ad10b40b96fb53d240c7db6c826; nine reviewed actual route/RLS/
+  fixture/workflow blobs match abb. Independently sanitized4791B receipt/hash
+  60414b07a47af919ffcb455b2a89ba8b54c9fb2adf87f9e6ad9725c1bdc19fe8
+  appended to support-ux-canary-37123926459 with exact protected admission.
+- Independent reviewer actually viewed eight new comparison PNGs and reread
+  six nonidentical baseline PNGs; other two inspected pairs are byte-identical.
+  No first-frame layout regression found; long mobile labels truncate and
+  reports/detail bodies/actions below the first frame remain outside the
+  bounded visibility claim. The separate review receipt is being archived.
+
+
+## 2026-10-03 — Atomic operator protected release initiated
+
+- PR544 merged normally with exact head matching and no admin bypass at
+  2026-10-03T13:02:01Z as3294093a4364be8be35d8a03c1b9fde57c3dd3b9.
+  Approved sourceabbaf6106d33aa612a603afdd88d8422fc95f16d retains all six
+  required/build SUCCESS contexts and real10-case PG proof. No owner-visible
+  UI change or selected-tenant activation was included.
+- New automatic production run37124821392 and post-merge checks37124821333
+  started on exact3294093a. Runner37124821308 and scan37124821287 SUCCESS.
+  Build/quality/deploy/postmerge compiler/public exactSHA smoke PENDING.
+  This is the new source's normal release; completed505/530 deploys and
+  earlier browser matrices were not repeated or manually dispatched.
+
+- Recorded worktree fast-forwarded normally to merged main3294093a, retaining
+  all checkpoint ancestry and uncommitted task documentation. Integrated other
+  reviewed main changes without staging or editing their files. Fifteen
+  operator/audit/RLS/auth/Support API/UI/build/gate blobs match approvedabbaf
+  to actualmerge3294093a. Source-identity receipt prepared for the release
+  archive; current production build and quality checks still executing.
+
+- Independent comparison review receipt22404B/hash
+  439e5210a68f3d395b7b832fab7cc4009f158d16605fcf1b107e18ccc40dd45e
+  appended after all55 existing archive hashes verified. Comparison archive
+  now56hashedfiles/5315424B+manifest (57physicalfiles). Reviewer separately
+  reconciled48×7load/CLS/24×7filter quantiles and17page/controller/fixture/
+  package/config/rollout blobs4b→fdb→abb. Eight current first frames inspected;
+  six differing baseline frames re-viewed. Dynamic Updated/comment timestamps
+  vary as expected; no claim of all-mobile-content/action visibility.
+
+- Pre-final integrity audit PASS across all six current operator/baseline/
+  comparison archives:120per-file SHA256/byte counts reverified, including
+  earlier actual red compiler receipts. Original failure/history evidence
+  retained alongside the admitted abb proof. Plan source counter independently
+  recomputed191unique IDs/190checked, onlyROL-006 open; unweighted checklist
+  remains separate from remaining effort and production admission.
+
+- New postmerge compiler37124821333/typecheck111207926952 SUCCESS on exact
+  checked-out3294093a. Actual full tsc13:08:08–13:13:20Z exited2; both unchanged
+  blockers and always-cleanup SUCCESS13:13:21Z, no OOM. Measured RAM14888424
+  +free swap7340024=22228448KiB admitted the18GiB budget/14GiB heap. Same
+  historical baseline diagnostics remain qualified; no canary diagnostics.
+- Sanitized postmerge6632B receipt/hash
+  8adcd674179eaaa72ca267ad775a6ac22815a333cd5a8ff54e62cb596504b732
+  archived alongside exact PR/compiler/PG admission after all existing hashes
+  reverified. New main source checks/runner/scan complete; production run
+  still owns its separate build/quality/atomic-release/public-smoke admission.
+
+- GitHub git/commits API independently proves the PR executed synthetic
+  checkoute2b39811 and real merge3294093a have the same complete committed
+  source treefe3cf1be7583369d1bb8d13e133b2b2633ccc422. SHA identities remain
+  distinct, and build stamping/runtime/tenant behavior are not inferred from
+  tree equality. Added this proof to the pending release source receipt.
+- New deploy quality/security111207880263 SUCCESS. New main source checks
+  complete (normal push-only static/build duplicates skipped); no repeated
+  oldrelease. Production build111207880199 still executing.
+
+- New automatic build111207880199 and quality/security111207880263 SUCCESS.
+  Immutable artifact11274851828 named
+  leaddrive-prod-3294093a4364be8be35d8a03c1b9fde57c3dd3b9,443931998B, API
+  digestsha256426bb20671b0d5f0b9f21bbac30adb41cdad89883a987a6966b2cb1910b0e84a.
+  Original ZIP not downloaded/rehashed. New production job111210440207 now
+  runs the atomic install; no manual action/old deploy replay. Independent
+  public smoke remains NOT RUN until actual deploy completion.
+
+
+## 2026-10-03 — New operator release and independent production smoke verified
+
+- New automatic deploy37124821392 SUCCESS on
+  3294093a4364be8be35d8a03c1b9fde57c3dd3b9. Production job111210440207
+  completed13:25:52UTC/17:25:52Asia-Baku. New source build/quality/security,
+  artifact/atomic install, schedulers/tenant isolation and named public
+  ping/exact revision/login-assets smoke SUCCESS. Actual job metadata27steps:
+ 24SUCCESS,3normalSKIP; setup/cleanup are not distinct feature smoke tests.
+- Independent verified-TLS/no-cookie/no-auth/no-redirect six-request smoke
+  at13:27:00–01UTC/17:27:00–01Baku PASS: ping200/oktrue/no-store; build-info
+  200/no-store/exact full329, builtAt13:08:36UTC. Calendar/Macros/rollout GET
+  and empty-body unselected sentinel operator POST each401/session_expired.
+  Guard Cache-Control absent/null retained; no authenticated tenant claim,
+  no flag mutation. ClientRTT0.431637/0.196531s includes boundedbodyread and
+  cannot serve as handler latency or seven-day evidence.
+- Durable new release archive
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-release-37124821392:
+ 12hashedfiles/63160B plus manifest (13physicalfiles). Safe public script/JSON,
+  exact source/PR/DB/compiler checks, immutable artifact and workflow/job
+  metadata retained; ZIP API digest is not an independent original-ZIP rehash.
+- Updated operative plan/observation/latest ledger to dated329 release;
+  earlier530/f62 and501/505 history remains. Operator preparation+release
+  DONE; bounded current48 baseline preparation DONE, original96/ceilings/
+  October8 validity retained. Checklist remains190/191/16DONE+1IN_PROGRESS,
+  neither effort percentage nor overall100% readiness.
+- Exact representative tenant slug and selected-tenant auth context still
+  missing. Authenticated flag/audit, real handler baseline/effective INFO/
+  retention/continuity and seven fullBaku days/incidentreview remain pending.
+  Later flag-retirement source/PR/release must follow actual admission. No
+  arbitrary tenant chosen, midnight activation invented, elapsed time counted
+  as a reply, automation scheduled or premature flag removal performed.
+- Final independent documentation/receipt self-audit and scoped docs checkpoint
+  are the remaining closeout actions for this completed source release.
+
+
+## 2026-10-03 — Final source-release documentation self-audit
+
+- Root self-audit PASS: exactly four task-owned documentation paths changed;
+  both original c3e90d86/30183B and prior8759fa995/113180B journal prefixes
+  preserved. Legacy Support journal218460B/hash
+  9962054360d363001652c9bbb34f54a2b2852c83751385dcd6e847cf17b76b22
+  unchanged; canonical dirty checkout/unrelated worktrees/app session files
+  untouched. No handoff, destructive cleanup, forced push or direct deploy.
+- Seven current source/baseline/compare/release archives independently
+  reconciled to complete manifests:133file hashes/byte counts verified,
+  including both genuine earlier OOM failures. Newrelease12hashedfiles/63160B
+  and actual public six-request result remain source/time scoped. Old completed
+  release/evidence workflows were never rerun to inflate the record.
+- Scope/count audit PASS:191unique tracked IDs/190checked, literal16DONE/
+ 1IN_PROGRESS. Atomic operator preparation/release and bounded current48
+  source proof DONE; original96 andOctober8 limits retained. No checkbox
+  count/fixture/EventTiming/null/RTT/logtail/confirmation treated as real
+  tenant observation or100% admission. Generic audit reservation cannot
+  authenticate an older unknown-origin activation record.
+- Local docs-only git diff --check PASS after preflight15867MiB RAMavailable,
+ 347672MiB diskfree and zeroPSI. Full local compiler/build/browser/PG NOT RUN
+  under host policy; required exact-source PR/main/deploy hosted gates actually
+  completed. Preparing explicit-path final documentation checkpoint only;
+  no docs-only push, second deploy or additional permission question.
+
+Current result/status: atomic operator/trusted audit code is in verified
+production3294093a; remaining representative admission and flag retirement
+are open, so100% is not claimed.
+Last completed action: independent public six-request smoke and root final
+documentation/history/133-hash audit; final checkpoint follows below.
+Precise stopping point: before selecting/authenticating/activating any real
+production tenant; exact slug/auth context are missing and no observation
+day is admitted.
+Next action: obtain the exact authorized tenant slug and selected-tenant auth
+context, verify current flag/audit/real baseline/effective INFO/retention/
+continuity, then collect seven complete Asia/Baku days and admit the later
+flag-retirement source/PR/release. No arbitrary tenant or invented start date.
+
+
+## 2026-10-03 — Final documentation checkpoint
+
+- Independent read-only final audit PASS, no blockers: exact four-document
+  scope,190/191 unique tasks and16/17 literal criteria, complete append-only
+  HEAD/c3e90/8759 prefixes, byte-identical legacy journal,12release file hashes/
+ 63160B,15approved→merge source identities and actual public6/6. No new
+  production request, CI replay, heavy local check or tenant mutation occurred
+  during this audit. Root and independent reviewer agree on the stopping point.
+- This final documentation checkpoint contains the dated PR544/main329
+  release, compiler/PG/build/48-cell/public receipts, retained red history,
+  corrected unweighted-count wording and precise remaining admission. Branch
+  codex/help-ai-guides at the recorded Contabo worktree; commit subject:
+  docs: checkpoint verified Support canary release and remaining admission.
+  Explicit four-document staging only; docs-only diff check PASS. No push or
+  subsequent docs deploy is part of this checkpoint.
+
+Текущий результат/статус: новый атомарный оператор canary и защита его аудита
+в production3294093a; обязательные проверки, deploy и независимый smoke
+успешны. SUPUX-ROL-006 открыт;100% не заявлено.
+Последнее завершённое действие: финальный root/independent self-audit и
+документационный checkpoint с сохранением истории и результатов.
+Точная точка остановки: перед выбором и авторизованной проверкой/активацией
+реального production tenant; slug/auth context не получены, дни наблюдения
+не подтверждены.
+Следующее действие: получить точный разрешённый slug и tenant auth context,
+проверить flag/audit/реальный baseline/INFO/retention/continuity, собрать семь
+полных дней Asia/Baku, затем подготовить и выпустить отдельно допущенное
+снятие флага.
+
+
+## 2026-10-03 — Resumed selected-tenant admission preparation
+
+- User said “начинай” after the e6208dd documentation checkpoint. Resumed
+  SUPUX-ROL-006 at its saved boundary; authorization to continue work persists.
+  Asked once for the exact production organization name/slug as a missing scope
+  parameter, not for repeated work approval. No reply/tenant selection yet.
+- Recorded worktree/branch/origin reconfirmed with codex-project-context:
+  leaddrive-help-ai-guides, codex/help-ai-guides, rashadoni/leaddrive-v2.
+  Read current-main deployment/registry/pinned-SSH sources: accepted target
+  remains13.140.132.245:/opt/leaddrive-v2 through protected GitHub Actions.
+- Current main is cb6d01ce1c0a7af315c94fe43972b56f735c9700. Other tasks have
+  advanced production since the dated PR544/329 receipt. Existing automatic
+  deploy37132067233 is in progress (observed15:26UTC); this task did not start,
+  rerun, cancel or modify it. Wait for a stable boundary before the new
+  metadata-only readiness inventory. Main identity is not serving identity.
+- Independent source audit identifies existing backup-log-inventory as the
+  bounded tenant-independent readiness view. It reports PM2 log paths and file
+  metadata, not log bodies, secrets, effective LOG_LEVEL, full-day retention or
+  accepted observation days. Source defaultINFO and rotate14 do not prove live
+  INFO or fourteen calendar days. No new code gap is established by this audit.
+- No production tenant request/activation or observation collection has run in
+  this phase. Full local build/compiler/browser/PG NOT RUN: no source changes
+  and Contabo workload policy. Completed releases/CI/matrices are retained.
+
+
+## 2026-10-03 — Fresh admission-readiness snapshot completed
+
+- Dispatched only the reviewed metadata diagnostic37133442555 from exactmain
+  cb6d01ce1c0a7af315c94fe43972b56f735c9700. It queued behind the already running
+  unrelated deploy37132067233, which completedSUCCESS without this task
+  starting/rerunning/cancelling it. Diagnostic job111233021061 ran15:33:27–52UTC
+  and completedSUCCESS; bounded inventory emitted15:33:49UTC.
+- PM2 stdout remains/var/lib/leaddrive-v2-logs/out.log, regular0644,16854344B;
+  stderr904211B; parent2750 with masked owner preserved. Stdout is within the
+  collector67108864B cap at this instant. No log bodies/customer payloads/env
+  were collected. INFO, real samples, parseability, full-day coverage, retention
+  and source/key/flag/process continuity remainUNVERIFIED. No count of files
+  or bytes is treated as seven days of observation.
+- Fresh no-auth/cookie/redirect verified-TLS GETs at15:35:48UTC/19:35:48Baku
+  returned ping200/oktrue and build-info200/exactfullcb6; bothno-store.
+  BuiltAt15:12:19UTC. This updates runtime identity after intervening releases;
+  dated PR544/329 and prior receipts remain valid for their original scope.
+  This phase did not rerun source CI, browser matrices, merge or deployment.
+- Root and independent agent compared18unique named Support/operator/audit/
+  rollout/category/telemetry/collector/logrotate/PM2/RLS/auth blobs329→cb6:
+  all18identical. Scoped compatibility does not prove whole-tree equality,
+  runtime environment or authenticated tenant behavior.
+- Durable archive support-ux-readiness-37133442555 under the established
+  codex-alt-data root contains7hashed receipts/12289B plusmanifest. Actual
+  diagnostic metadata and public two-request result retained with scoped
+  source identity; no secrets or raw operational logs stored.
+- Updated only active observation record and appended this journal. Existing
+  plan remains190/191trackedIDs andSUPUX-ROL-006open. Exact tenant question
+  has no answer yet; no arbitrary paying/demo tenant selected, no flag write,
+  no authenticated tenant request, no daily collector execution, no automation
+  and no invented activation/startdate. Ordinary work authorization remains.
+- Preflight15585MiB availableRAM/347618MiB freedisk/zero memoryPSI. Full local
+  compiler/build/browser/PG NOT RUN: docs/read-only phase and Contabo policy.
+  Finishing scoped docs diff-check/history/receipt audit and documentation
+  checkpoint; no docs push or deploy.
+
+
+## 2026-10-03 — Screenshot question and final readiness checkpoint
+
+- User asked why telephony is not in the3CX section and supplied a Channels
+  screenshot. Screenshot shows Asterisk marked connected and3CX showingOpen.
+  Reviewed actual currentcb6 catalog via immutable git show because that file
+  changed since this task's worktree:3CX/Asterisk/Twilio/CustomSIP cards all link
+  to/settings/voip without a provider selector. Unchanged VoIP page loads the
+  saved provider; card identity follows channel.settings.provider. This explains
+  shared navigation and the displayed Asterisk card; it does not independently
+  establish the correct real PBX configuration or call health. Explained the
+  navigation shortcoming to the user; no provider/settings/credentials changed.
+  Screenshot organization label is not treated as a Support canary selection
+  or a usable authenticated session. Existing exact-organization question stays
+  pending.
+- Root self-audit PASS: complete e620journal prefix155748B preserved; legacy
+  journal218460B/checksum unchanged; exact7receiptfiles/12289B and complete
+  manifest match; only two task-owned docs changed. Scoped git diff --check
+  PASS. No application implementation was changed in this phase.
+- Preparing explicit-path documentation checkpoint only. New diagnostic and
+  fresh dated runtime checks are complete; exact production organization/auth
+  and seven-day admission remain open. No new deploy is requested or needed
+  for this checkpoint.
+
+Текущий результат/статус: подготовка наблюдения проверена; источник логов
+доступен, текущий productioncb6 подтверждён; SUPUX-ROL-006 остаётся открыт.
+Последнее завершённое действие: metadata inventory37133442555SUCCESS,
+независимые ping/build-info и проверка сохранности журнала/семи receipts.
+Точная точка остановки: до выбора, авторизованной проверки и активации
+production-организации; ответ с точным названием/slug пока не получен.
+Следующее действие: по указанной организации проверить выбранный tenant/auth,
+flag/audit и метрики, выполнить допущенную активацию и собирать семь полных
+дней Asia/Baku; объяснение навигации3CX не меняет этот допуск.
+
+
+## 2026-10-03 — User correction and completed self-audit
+
+- User clarified the telephony screenshot was intended for another task:
+  “ой это не тебе не отвлекайся”, then stated telephony belongs in its own
+  section. This supersedes treating that question as work for this task.
+  Acknowledged and returned exclusively to Support admission; no telephony
+  edit, provider switch, migration, PR or deployment is part of this task.
+- Independent final read-only audit PASS: both task-owned docs, complete
+  e620journal prefix, unchanged legacy bytes/hash, exact7receipt/12289B
+  manifest,18sourceblob pairs, dated diagnostic/public identity and all
+  non-admitted tenant/coverage limits verified. Root scoped diff-check PASS.
+- Final documentation checkpoint subject:
+  docs: record Support observation readiness and pending tenant selection.
+  Exact stopping point remains before selected-tenant auth/flag/activation;
+  pending question asks for organization name/slug, not renewed work permission.
+
+
+## 2026-10-03 — Resume after unrelated screenshot correction
+
+- User reiterated that the Channels screenshot belongs to another task and
+  instructed this task to continue its own work. Resumed from7eb4671d6 in the
+  recorded worktree/branch; no screenshot/telephony implementation pursued.
+- Read operative ROL006 breakdown, observation admission/retirement sections
+  and released operator/collector contracts. Plan has191unique tracked IDs,
+ 190checked and onlySUPUX-ROL-006open; this is an unweighted checklist count.
+  Already completed operator release, source baseline, protected checks and
+  readiness receipts are not replayed.
+- Asked a concise asynchronous scope question for the production company
+  name/slug. Existing work authorization is sufficient; no repeat approval
+  requested. No answer at this point. The unrelated screenshot does not select
+  a Support canary tenant or establish an authenticated application session.
+- Remaining real baseline, flag/audit admission, full-day collection and final
+  flag retirement require the selected tenant and actual activity. Existing
+  metadata-only inventory remains a dated snapshot; source defaultINFO and
+  logrotate configuration do not turn runtime unknowns into PASS. Reviewing
+  whether any concrete independent source gap remains; no new production
+  request, workflow dispatch, build, test or release performed in this resume.
+
+- Bounded independent review found no product operator/collector defect, but
+  established a remaining verification-path gap: current reviewed views do
+  not report runtime INFO/process continuity. Existing backup-readiness only
+  compares live logrotate authorities. Preparing a narrow tenant-independent
+  read-only readiness probe within the protected diagnostic is justified by
+  plan4173–4174/runbook384–391. It must distinguish current process/startup
+  facts and observed INFO events from effective level and complete longitudinal
+  coverage; unsupported claims stayUNVERIFIED. No new observability platform,
+  auth bypass, DB write, local heavy build or replay of earlier release gates.
+- Preflight16119MiB availableRAM/347546MiB freedisk/zeroPSI; journal diff-check
+  PASS and entire163545B7eb prefix preserved; legacy hash unchanged.
+  Checkpoint this resume before syncing reviewed main and implementing probe.
+
+
+## 2026-10-03 — Independent logging-readiness probe implementation
+
+- Checkpointbb0e15b01 preserved the resume and explicit verification gap.
+  Fetched reviewed origin/main022c4a453e80f58e13d71e5808354d12daeb65aa and
+  merged it normally as03afe70be in this worktree; no conflicts, reset or
+  unrelated branch edits. All prior checkpoint/history commits retained.
+- Implementing only the narrow protected support-ux-readiness diagnostic: fixed
+  runtime build-info, process identity, bounded current INFO sample and live
+  logrotate/artifact comparison. Source/current-process facts must not assert
+  effective Pino level, historical retention or complete observation admission.
+  No tenant query/flag action is required for this independent preparation.
+- Rejected pm2 CLI approach during design: jlist can auto-start a missing daemon
+  after a precheck race. Probe instead reads bounded fixed app PID/proc metadata
+  and validates identity without invoking PM2 or touching process state. Unknown
+  startup/env facts remain unknown; credentials and raw logs never leave the
+  host. No application configuration or running process is changed.
+- Added opt-in workflow view with its node:test gate before production SSH and
+  strict local output validation after collection. Added targeted tests to the
+  existing PR static-checks job; all existing required gates remain unchanged.
+  Implementation/tests are in progress; no new PASS/runtime result claimed yet.
+
+- Initial source review checked strict fixed paths, private bounded process
+  environment consumption, output allowlist and source/process race rejection.
+  Root identified /proc btime precision and HTTP partial-body deadline issues;
+  implementation now excludes the first estimated process second from INFO
+  evidence, includes the clock mapping in stability checks, and explicitly
+  rejects aborted/incomplete HTTP responses with a whole-body deadline.
+  Meaningful tests cover these boundaries, stale PID/source, secret redaction
+  and real inode/symlink/write-during-read behavior. Targeted execution pending.
+- Workflow YAML/guard wiring check PASS after16070MiB RAMavailable/347544MiB
+  diskfree/zeroPSI: opt-in view, required environment, unchanged production lock,
+  pre-SSH tests, bounded output validator and always-cleanup retained. No full
+  local compiler/build/browser/dependency check; hosted source gates pending.
+
+
+## 2026-10-03 — Readiness probe prepared and targeted verification passed
+
+- Standalone read-only probe and behavioral suite completed in two task-owned
+  .github/scripts files. No PM2 invocation/RPC, app import, app.env read, DB query,
+  flag mutation or raw secret/log export. Bounded private startup-environment
+  bytes are reduced to allowlisted routing/level facts; secret hashes remain
+  internal to stability checks and are not exported.
+- Actual node:test16/16 PASS,0skips,~0.42s in current tree after15949MiB
+  RAMavailable/347539MiBdiskfree/zeroPSI. Cases cover fixed HTTP/bodydeadline/
+  redirects/aborts, zero-size proc reads, conservative PID/time boundary,
+  changed PID/start/cwd/environment/clock/source, redaction, unknown-output
+  rejection and real temp-file symlink/inode/write races. No production call
+  or heavyweight local check was part of these tests.
+- Root review of both files and workflow integration completed. Root sequential
+  runner-policy check PASS40workflows; production/event-platform asset guards
+  PASS27domains/86topics/5schemas after15807MiB RAMavailable/zeroPSI. Existing
+  gates/runner restrictions/main-only/pinnedSSH/environment/lock unchanged.
+  No proof is claimed for current runtime INFO/coverage from synthetic tests.
+- Source hashes at review: probe84195a051317d08803df7536f258a94a523b2c610ad94307871044bc29091511;
+  tests22cb8b97cea8f9af8f1cc2d6f264f17997cd21022feea9cd1323c2c07bd2d454.
+  Protected exact-source PR gates remainPENDING. Full compiler/build/browser
+  NOT RUN on Contabo under workload policy; required hosted gates follow.
+- Preparing explicit task-path source checkpoint and new internal diagnostic
+  PR under standing active-task authorization. No user-visible UI change, no
+  tenant selection and no replay of completed PR505/530/544 gates/deploys.
+
+
+## 2026-10-03 — New readiness source checkpoint and PR553
+
+- Created source checkpoint55c72d622956761679c7f3cb85610a061db51636 and pushed
+  codex/help-ai-guides normally. Opened and attached PR553:
+  https://github.com/rashadoni/leaddrive-v2/pull/553. Eight task-owned paths
+  against reviewed main022c; four documentation paths carry prior verified
+  source-release/history checkpoints as well as this new readiness work.
+- Final reviewer confirmed current two script hashes exactly match the actual
+ 16/16 tested files; no source blockers. Ready PR started new required checks
+ 37142804354 on exact55c72 head, runner37142804465 and scan37142804342.
+  At18:06UTC, pr-scope/runner-policy/scan SUCCESS; static/typecheck in progress.
+  Optional duplicate PR production-build SKIPPED because this internal script/
+  workflow change does not request that label. A normal main release still
+  requires its own protected deploy build/quality gates; no build PASS implied.
+- Read-only branch-protection recheck: exactly five required contexts, each
+  GitHub Actions app15368; admins enforced, PR-only, no force-push/deletion or
+  mandatory external reviewer. Nothing changed in the repository rules.
+- Layer4 user-visible approval does not apply to this internal diagnostic,
+  tests and documentation. Existing active-task autonomous release authorization
+  persists; merge waits for all required exact-head checks. No new tenant
+  input has arrived; no flag or customer data change is part of this PR.
+
+## 2026-10-03 — Selected test tenant received through the coordinator
+
+- The coordinator thread01a102e3-a292-75c4-9400-7d9dc1db10fd delivered the
+  owner's clarification for the existing canary question: use his test tenant
+  LeadDrive Inc., exact slug `leaddrive`. Normal authenticated Mac Chrome GETs
+  reportedly returned organizationId `cmmxg74k10000td3rr37dl6am`, matching
+  organization name/slug and superadmin role. No cookie/token was transferred.
+  This supersedes the earlier pending-tenant-selection statements; it is not
+  evidence of an enabled flag, activation audit or observation admission.
+- The delivered clarification limits action to tests and tenant-specific
+  Support canary after normal audit/logging checks. It does not authorize other
+  tenants, irreversible deletion, external notifications, global security or
+  settings changes, or a global release. PR553 was already prepared/pushed
+  under the separately recorded existing task authorization before this input;
+  it remains unmerged while its required checks run. No release is needed just
+  to inspect the selected tenant with the already released operator/diagnostic.
+- Root read the named coordinator thread for provenance/capability. Its earlier
+  forwarding attempt was rejected by automatic review and a direct confirmation
+  was requested there; its newest active turn shows the now-delivered send,
+  without exposing the latest user text. Preserve this distinction: do not use
+  the rejected attempt as authorization or bypass it. Current work is read-only
+  inspection; no authenticated write has been attempted by this session.
+- Authenticated browser access remains on the Mac coordinator. This remote
+  session has no browser-control or send-to-thread tool; it will not fabricate
+  a session, export cookies or mint credentials. Existing protected exact-main
+  selected-tenant diagnostic is the next independent read-only action.
+- At18:15UTC, main022c4a453e80f58e13d71e5808354d12daeb65aa and its existing
+  automatic deploy37141070643 were SUCCESS. PR553 typecheck completed SUCCESS;
+  actual full compiler exit2 and both unchanged blocking gates passed, not zero
+  diagnostics. Static checks remain pending; no rerun or merge performed.
+
+
+## 2026-10-03 — First selected-tenant receipt and current runtime check
+
+- Existing protected read-only view `support-ux-rollout` ran once for exact
+  slug `leaddrive`: Actions37143634459, job111263028990, source/current
+  main022c4a453e80f58e13d71e5808354d12daeb65aa, SUCCESS. Existing helper tests,
+  exact-main/environment/SSH guards and cleanup passed. At18:17:48UTC
+  (22:17:48Asia/Baku), tenantFound/tenantActive true, flagEnabled false,
+  featuresFormat array, macroCount4, storedCategoryEntries0. This was a
+  read-only transaction; no flag/audit write or activation occurred.
+- Independent public GETs at18:21:05UTC (22:21:05Asia/Baku), using the reviewed
+  no-cookie/no-auth request headers and verified TLS/no redirects, returned
+  ping200/oktrue and build-info200/exact full022c SHA, both no-store;
+  builtAt17:43:08UTC. Another task's deploy37141070643 was already SUCCESS;
+  this task did not repeat, dispatch or mutate that release.
+- Initial receipt extraction assumed JSON key order and found no record; fixed
+  extraction reads the JSON object independent of key order, without repeating
+  the workflow. Initial default urllib public request returned403; retained
+  failure and used the previously verified request headers in a bounded
+  comparison. No public-success or coverage claim was inferred from that403.
+- Durable selected-tenant/runtime receipts and hashes retained under
+  /mnt/HC_Volume_106454338/codex-alt-data/support-ux-tenant-37143634459.
+  Authenticated rollout/audit remains NOT RUN by this remote session; the
+  selected tenant's protected DB metadata is not client-visible admission.
+
+## 2026-10-03 — PR553 required-gate failure diagnosed
+
+- Run37142804354 static-checks111260605060 FAILED at Unit tests vs baseline.
+  The new readiness suite actually passed16/16 with0skips. Full compiler
+  typecheck111260605050 passed with actual exit2 and both unchanged blockers,
+  cleanup and exact synthetic-checkout/source identity retained separately.
+- Actual failure is ci-static-checks-skipped-on-main.test.ts:100: the existing
+  guard correctly requires every PR static gate also be covered by deploy
+  quality, because duplicate static checks are skipped on main push. The new
+  readiness test step was missing there. Preserve this guard and baseline;
+  add the identical node:test step to existing deploy quality after install.
+  No optional exemption, weakened assertion, red merge or rerun of failed55.
+- Corrective source change and one narrow sequential local test/runner-policy
+  verification are in progress. Full build/compiler/browser remain NOT RUN
+  on persistent Contabo; new candidate hosted checks follow the actual fix.
+
+
+## 2026-10-03 — Authenticated coordinator evidence and confirmed copy defect
+
+- Coordinator supplied the requested normal Chrome page request for exactly
+  leaddrive/orgcmmxg74k10000td3rr37dl6am: GET support/ux-rollout HTTP200,
+  success:true/data.enabled:false; Macros DOM data-category-storage browser.
+  Its tenant-filtered support_ux_canary audit GET reports success:true,
+  total0/logs[]. No mutation or observation start. Request UTC/cache headers
+  and audit HTTP code were not supplied; do not invent them. Root did not
+  execute these authenticated requests or receive cookies/tokens.
+- Sanitized coordinator receipt appended to the selected-tenant archive. This
+  supersedes the earlier statement that authenticated evidence was entirely
+  missing. Fresh reads are still required at any actual operator action.
+- Coordinator found live DialogDescription promising organization-wide
+  categories despite browser mode. Root verified unconditional sharedCategoriesHint
+  at settings/macros/page.tsx:641 and the actual browser handlers: empty added
+  categories use per-org localStorage; categories on persisted macros and
+  rename/delete macro updates are shared. The deletion warning also claimed
+  deletion for every user despite retaining other browsers' local lists.
+- Preparing a narrow mode-aware description/deletion-copy correction in the
+  existing page and EN/RU/AZ translations. No storage, handler, permission,
+  navigation or layout change. This updates PR553 scope before its repaired
+  candidate's new CI, avoiding an unnecessary separate release. The earlier
+  internal-only/Layer4-inapplicable characterization is superseded: before
+  merge show the owner the concrete visible copy change and follow Layer4.
+- Existing required-gate coverage fix is complete: three deploy.yml lines add
+  the identical readiness node:test step after dependency installation in the
+  existing quality job. Targeted coverage regression3/3 PASS and runner-policy
+ 40workflows PASS after15639MiB RAMavailable/347524MiB diskfree/zeroPSI;
+  no full local suite/build/compiler. Failed55 receipt remains archived under
+  support-ux-readiness-37142804354 (gates.json SHA256
+  dd5aab8f7c1bff49c17ee31a450d963215a1f44069b7d16c02b997df93a365d4).
+
+
+## 2026-10-03 — Help self-audit expanded only to confirmed stale guidance
+
+- Coordinator's normal CRM session reportedly opened all14baseSupport sections
+  and Support AI. The three portal routes redirect to their separate login;
+  no customer session was created. Help guide/back navigation worked. These
+  reported reads are not a new all-role/tenant/portal behavioral acceptance.
+  The visible SLA warning already says business-hours is saved while deadlines
+  use calendar time; no deadline implementation change is part of this phase.
+- Confirmed stale Entitlements guides in all three locales describe five KPI
+  tiles/card grid instead of the current compact three-count strip, filters,
+  desktop table/mobile list and separate detail/form panels. Root rewrote only
+  these help articles against current page source, retaining draft-first rules,
+  milestone definitions, lifecycle permissions and recovery guidance.
+- Calendar guide review likewise confirmed obsolete hourly-grid, KPI-card,
+  Legend/Today-card and direct-navigation instructions. Preparing EN/RU/AZ
+  article corrections for actual weekly columns/mobile day agenda and details
+  panel; the real Today control remains. Registry subtitles corrected only
+  for this article to describe details then an available source-record link.
+  No videos/voiceover generated or storage/navigation/permission code changed.
+- PR553 is temporarily draft while this single repaired candidate is prepared.
+  Main advanced independently to f34e04af037705eb2838285da26c78d7c9e2abc9;
+  fetched read-only. Its eight changed paths concern channels/OAuth and do not
+  overlap Support or repository release instructions. Sync follows our scoped
+  checkpoint; no action on the unrelated channel task or its deploy.
+- Macros wording fix is prepared in page plus EN/RU/AZ messages. Actual scoped
+  ESLint PASS; i18n parity24151keys/zero missing-or-extra PASS; existing macro
+  UX contract14/14 PASS after15913MiB RAMavailable/347518MiBdisk/zero memoryPSI.
+  No extra mirror tests, full local suite/compiler/build/browser or flag write.
+
+
+## 2026-10-03 — Repaired source candidate ready for protected verification
+
+- Final review completed for mode-aware Macros wording and six Help articles.
+  Corrected the deletion clause to promise only that categories saved in other
+  browsers are not removed; merged visible lists can change through shared
+  macro assignments. Independent review corrected Entitlements overdue scope
+  to the API's prior30day window and Calendar's example to a real Mon–Sun week.
+- Final i18n check PASS24151keys/zero missing-or-extra after15709MiB RAMavailable
+  and zero memoryPSI. Scoped ESLint for six guides plus registry initially found
+  thirteen JSX quote-escaping errors in Calendar EN; corrected only those text
+  characters and the final seven-file ESLint PASS. No rule was disabled.
+- Existing Help registry test selected only the two changed slugs:12/12 PASS,
+  including six actual HTML renders and six locale/file checks;1087 unrelated
+  cases intentionally NOT RUN by name selection. Duration1.07s, one worker,
+  after15866MiB RAMavailable/347512MiB freedisk/zero memoryPSI. This is static
+  rendering, not authenticated browser proof of an unreleased candidate.
+- Full compiler/build/browser remain NOT RUN on Contabo by workload policy;
+  repaired-candidate hosted gates are next. The earlier failed55 hosted check
+  remains visible. Source changes are prepared before the one required Layer4
+  owner confirmation of visible Macros/help wording. No selected-tenant write,
+  flag change, observation day or production release occurred in this phase.
