@@ -282,13 +282,17 @@ try {
   assert.deepEqual(await facts(), before)
 
   stage = "controlled-invalid-guarantee-receipt-rejected"
-  let actual200 = false
+  let actual200 = false, corruptionResolve, corruptionReject
+  const corruptionReady = new Promise((resolve, reject) => { corruptionResolve = resolve; corruptionReject = reject }); corruptionReady.catch(() => {})
   await view.page.route("**/employee-impact", async route => {
-    const response = await route.fetch({ timeout: 120000 }); assert.equal(response.status(), 200); actual200 = true
-    const body = await response.json(); body.data.preview.guaranteedAtActivation = true
-    await route.fulfill({ response, json: body })
+    try {
+      const response = await route.fetch({ timeout: 120000 }); assert.equal(response.status(), 200); actual200 = true
+      const body = await response.json(); body.data.preview.guaranteedAtActivation = true
+      await route.fulfill({ response, json: body }); corruptionResolve()
+    } catch (error) { corruptionReject(error); try { await route.abort("failed") } catch { /* Preserve original failure. */ } }
   }, { times: 1 })
   await view.section.getByRole("button", { name: view.impact.preview, exact: true }).click()
+  await waitForTransport(corruptionReady)
   await view.section.getByRole("alert").getByText(view.impact.failed, { exact: true }).waitFor()
   assert.equal(actual200, true); assert.equal(await view.section.locator("dl").count(), 0); assert.deepEqual(await facts(), before)
   cases.push({ name: stage, status: "PASS", realServer200BeforeControlledCorruption: true, controlledTransportReceiptCorruption: true, rejectedFalseGuarantee: true })
