@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { agentPermissionStates } from "@/lib/mtm/agent-permissions"
 import { checkInGeofenceRadius } from "@/lib/mtm/check-in-geofence"
 import {
   hasMobilePermission,
@@ -481,6 +482,12 @@ export const GET = withMobileRls(async (req, auth) => {
           // Never empty (getMtmSettings coerces it). Older APKs ignore the key
           // and keep their A–D.
           contactClasses: settings.contactClasses,
+          // "What an agent may do" — the organization's switches, one boolean
+          // per function (src/lib/mtm/agent-permissions.ts). UI visibility
+          // only: every endpoint behind a switch refuses on its own. Older
+          // APKs ignore the key and keep showing the entry points; the server
+          // then answers MTM_AGENT_PERMISSION_DISABLED.
+          agentPermissions: agentPermissionStates(settings),
           // The organization's check-in zone, as check-in enforces it. The app
           // checked a hard-coded 100 m before sending and turned agents back at
           // 150 m when the zone was 250 m (Redmi Pad SE, 2026-09-15). A

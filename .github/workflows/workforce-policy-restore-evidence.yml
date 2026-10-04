@@ -4,6 +4,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - ".github/workflows/workforce-policy-restore-evidence.yml"
+      - "scripts/_rls.mjs"
       - "scripts/ci/workforce-policy-restore-fixture.mjs"
       - "scripts/ci/workforce-policy-restore-base-row.mjs"
       - "scripts/ci/fixtures/workforce-policy-restore-writer.sql"
