@@ -143,7 +143,7 @@ function stubServer() {
     if (path === "/api/v1/mtm/contacts") {
       const owner = params.get("ownerAgentId")
       const state = params.get("assignmentState")
-      const search = (params.get("search") ?? "").toLowerCase()
+      const search = (params.get("search") ?? params.get("name") ?? "").toLowerCase()
       const found = clients
         .filter((client) => !owner || client.ownerId === owner)
         .filter((client) => state === "UNASSIGNED" ? !client.ownerId : state === "ASSIGNED" ? Boolean(client.ownerId) : true)
@@ -223,6 +223,29 @@ async function click(element: Element | null | undefined) {
 
 function buttonNamed(container: HTMLElement, name: string): HTMLButtonElement | undefined {
   return Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.trim() === name)
+}
+
+async function choose(container: HTMLElement, testId: string, value: string) {
+  const select = container.querySelector<HTMLSelectElement>(`select[data-testid='${testId}']`)
+  if (!select) throw new Error(`no select ${testId}`)
+  await act(async () => {
+    select.value = value
+    select.dispatchEvent(new Event("change", { bubbles: true }))
+  })
+}
+
+async function type(container: HTMLElement, testId: string, value: string) {
+  const input = container.querySelector<HTMLInputElement>(`input[data-testid='${testId}']`)
+  if (!input) throw new Error(`no input ${testId}`)
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set
+  await act(async () => {
+    setValue?.call(input, value)
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+}
+
+function columns(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll("thead th")).map((cell) => cell.textContent ?? "")
 }
 
 /** The desktop table and the phone cards render the same rows; read the table. */
@@ -323,10 +346,9 @@ describe("an employee's own section", () => {
     const asked = listCalls().find((params) => params.get("assignmentState") === "UNASSIGNED")
     expect(asked?.get("ownerAgentId")).toBeNull()
     expect(tableRows(container)[0]).toContain("Nigar Səfərova")
-    // The hint tells the manager to change the assignment state to take a client
-    // over from someone else: that field must be in sight, not behind «more».
-    expect(container.querySelector("[data-testid='mtm-contact-assignment-state']")).not.toBeNull()
-    expect(container.querySelector("[data-testid='mtm-contact-owner']")).not.toBeNull()
+    // The explanation sends the manager to the «whose clients» field to take a
+    // client over from someone else: it must be in sight, not behind «more».
+    expect(container.querySelector("[data-testid='mtm-contact-whose']")).not.toBeNull()
     await until(() => container.querySelector("[data-testid='mtm-agent-tab-assigned']")?.textContent === fill(section.tabAssignedCount, { count: 2 }), "the employee's client count")
 
     await tick(container, "c-nigar")
@@ -341,6 +363,116 @@ describe("an employee's own section", () => {
     expect(clients.find((client) => client.id === "c-nigar")?.ownerId).toBe(ANAR.id)
     await until(() => container.querySelector("[data-testid='mtm-agent-tab-assigned']")?.textContent === fill(section.tabAssignedCount, { count: 3 }), "the count after attaching")
     await until(() => tableRows(container).length === 0, "the attached client to leave the free list")
+  })
+
+  // Owner, 2026-10-04, in front of this list on prod: «как понять, привязаны ли
+  // эти клиенты к агенту или нет… не понятно, кому привязаны, какая-то каша».
+  it("says whose clients the list holds — above it, over the table and in every row", async () => {
+    const { container } = await openSection({ locale: "ru" })
+    const scope = words<{ assignedTitle: string; assignedHow: string; assignedTotal: string; ownerColumn: string }>("ru", "mtmContactExplorer.agentScope")
+    await until(() => tableRows(container).length === 2, "the employee's two clients")
+
+    const explainer = container.querySelector("[data-testid='mtm-agent-scope-explainer']")?.textContent ?? ""
+    expect(explainer).toContain(fill(scope.assignedTitle, { name: ANAR.name }))
+    expect(explainer).toContain(scope.assignedHow)
+    expect(container.querySelector("[data-testid='mtm-contact-result-count']")?.textContent).toBe(fill(scope.assignedTotal, { name: ANAR.name, count: 2 }))
+    // The employee stands right after the client in every row.
+    expect(columns(container)[2]).toBe(scope.ownerColumn)
+    for (const id of ["c-aysel", "c-rauf"]) {
+      expect(container.querySelector(`tbody [data-testid='mtm-contact-owner-${id}']`)?.textContent).toBe(ANAR.name)
+    }
+  })
+
+  it("after a tick says how many clients are chosen and that none is deleted, in plain words", async () => {
+    const { container } = await openSection({ locale: "ru" })
+    const scope = words<{ selected: string; selectionNote: string }>("ru", "mtmContactExplorer.agentScope")
+    const explorer = words<{ assignmentBoundary: string; selection: { custom: string } }>("ru", "mtmContactExplorer")
+    await until(() => tableRows(container).length === 2, "the employee's clients")
+
+    await tick(container, "c-rauf")
+
+    const text = container.textContent ?? ""
+    expect(text).toContain(fill(scope.selected, { count: 1 }))
+    expect(text).toContain(scope.selectionNote)
+    expect(text).not.toContain(explorer.assignmentBoundary)
+    expect(text).not.toContain(explorer.selection.custom)
+  })
+
+  it("keeps the two tab names apart: one is a list, the other an action", async () => {
+    for (const locale of ["ru", "az", "en"]) {
+      const section = words<{ tabAssigned: string; tabAttach: string }>(locale, "mtmAgentSection")
+      const first = (text: string) => text.trim().split(/\s+/)[0].toLowerCase().slice(0, 6)
+      // «Привязанные клиенты» next to «Привязать клиентов» read as one button twice.
+      expect([locale, first(section.tabAssigned) === first(section.tabAttach)]).toEqual([locale, false])
+    }
+  })
+
+  it("leaves the coverage column and the audit dates to the Clients page", async () => {
+    const section = await openSection({ locale: "ru" })
+    const explorer = words<{ coverage: string; asOf: string }>("ru", "mtmContactExplorer")
+    await until(() => tableRows(section.container).length === 2, "the employee's clients")
+    expect(columns(section.container)).not.toContain(explorer.coverage)
+    expect(section.container.textContent).not.toContain(fill(explorer.asOf, { date: "2026-10-02" }))
+    await act(async () => { root?.unmount() })
+    document.body.innerHTML = ""
+    calls = []
+
+    seed()
+    stubServer()
+    navigation.search = ""
+    const page = await mount(createElement(MtmContactExplorer), "ru")
+    await until(() => tableRows(page.container).length === 4, "every client")
+    expect(columns(page.container)).toContain(explorer.coverage)
+    expect(page.container.textContent).toContain(fill(explorer.asOf, { date: "2026-10-02" }))
+  })
+
+  it("still says whose clients they are when the list is narrowed", async () => {
+    const { container } = await openSection({ locale: "ru" })
+    const scope = words<{ assignedFound: string }>("ru", "mtmContactExplorer.agentScope")
+    await until(() => tableRows(container).length === 2, "the employee's clients")
+
+    await type(container, "mtm-contact-name", "Aysel")
+
+    await until(() => tableRows(container).length === 1, "the narrowed list")
+    expect(container.querySelector("[data-testid='mtm-contact-result-count']")?.textContent).toBe(fill(scope.assignedFound, { name: ANAR.name, count: 1 }))
+    // A narrowed list is not the employee's client count.
+    const section = words<{ tabAssignedCount: string }>("ru", "mtmAgentSection")
+    expect(container.querySelector("[data-testid='mtm-agent-tab-assigned']")?.textContent).toBe(fill(section.tabAssignedCount, { count: 2 }))
+  })
+
+  it("on the attach tab shows whose every client is now, and finds a colleague's clients with one field", async () => {
+    const { container } = await openSection({ tab: "attach", locale: "ru" })
+    const scope = words<{ candidatesTitle: string; freeTotal: string; noOwner: string }>("ru", "mtmContactExplorer.agentScope")
+    await until(() => tableRows(container).length === 1, "the client nobody is responsible for")
+
+    expect(container.querySelector("[data-testid='mtm-agent-scope-explainer']")?.textContent).toContain(fill(scope.candidatesTitle, { name: ANAR.name }))
+    expect(container.querySelector("[data-testid='mtm-contact-result-count']")?.textContent).toBe(fill(scope.freeTotal, { count: 1 }))
+    expect(container.querySelector("tbody [data-testid='mtm-contact-owner-c-nigar']")?.textContent).toBe(scope.noOwner)
+    // The employee is not offered their own clients to take over.
+    const offered = Array.from(container.querySelectorAll<HTMLOptionElement>("select[data-testid='mtm-contact-whose'] option")).map((option) => option.value)
+    expect(offered).toContain(LEYLA.id)
+    expect(offered).not.toContain(ANAR.id)
+
+    // Choosing a colleague used to find nothing: the second field still said «nobody's».
+    await choose(container, "mtm-contact-whose", LEYLA.id)
+    await until(() => tableRows(container).some((row) => row.includes("Kamran Hüseynov")), "the colleague's client")
+
+    const asked = listCalls().at(-1)
+    expect(asked?.get("ownerAgentId")).toBe(LEYLA.id)
+    expect(asked?.get("assignmentState")).toBeNull()
+    expect(tableRows(container)).toHaveLength(1)
+    expect(container.querySelector("tbody [data-testid='mtm-contact-owner-c-kamran']")?.textContent).toBe(LEYLA.name)
+  })
+
+  it("does not tell someone who may only look how to detach a client", async () => {
+    canTransfer = false
+    const { container } = await openSection({ locale: "ru" })
+    const scope = words<{ assignedTitle: string; assignedHow: string }>("ru", "mtmContactExplorer.agentScope")
+    await until(() => tableRows(container).length === 2, "the employee's clients")
+
+    const explainer = container.querySelector("[data-testid='mtm-agent-scope-explainer']")?.textContent ?? ""
+    expect(explainer).toContain(fill(scope.assignedTitle, { name: ANAR.name }))
+    expect(explainer).not.toContain(scope.assignedHow)
   })
 
   it("explains why clients cannot be attached to a manager instead of offering a list that would refuse them all", async () => {
