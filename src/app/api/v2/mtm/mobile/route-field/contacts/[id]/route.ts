@@ -8,6 +8,7 @@ import { contactScopeForActor, customerScopeForActor } from "@/lib/mtm/field-sco
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
+import { routeFieldContactChangeOffer } from "@/lib/mtm/route-field-contact-change"
 
 const ROUTE_FIELD_WORKPLACE_LIMIT = 20
 
@@ -22,6 +23,12 @@ const ROUTE_FIELD_WORKPLACE_LIMIT = 20
 const routeFieldContactSelect = (customerScope: Prisma.MtmCustomerWhereInput) => ({
   id: true,
   displayName: true,
+  // The parts of the name and the version stamp exist for one purpose: the
+  // card's "propose a change" form shows what it changes and proves which
+  // version it changed.
+  firstName: true,
+  lastName: true,
+  updatedAt: true,
   specialtyName: true,
   type: true,
   category: true,
@@ -67,6 +74,9 @@ function projectRouteFieldContact(source: RouteFieldContactSource) {
   return {
     id: source.id,
     name: source.displayName,
+    firstName: source.firstName,
+    lastName: source.lastName,
+    updatedAt: source.updatedAt,
     specialty: source.specialtyName,
     type: source.type,
     category: source.category,
@@ -88,6 +98,10 @@ function projectRouteFieldContact(source: RouteFieldContactSource) {
  *
  * Additive, read-only Route Field contact detail. This endpoint intentionally
  * has no query switches and never falls back to the broad v1 contact detail.
+ *
+ * `changeRequest` tells the card whether the agent may propose a change, which
+ * fields and choices the form offers, and what became of the request they sent
+ * last — their own words and the manager's answer to them, nobody else's.
  */
 export const GET = withMobileRls(async (_req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const permission = requireMobilePermission(auth, "ROUTE_EXECUTE")
@@ -130,10 +144,25 @@ export const GET = withMobileRls(async (_req, auth, { params }: { params: Promis
   })
   if (!contact) return noStoreJson({ error: "Not found", code: "MTM_ROUTE_FIELD_CONTACT_NOT_FOUND" }, { status: 404 })
 
+  const latestRequest = await prisma.mtmContactChangeRequest.findFirst({
+    where: {
+      organizationId: auth.orgId,
+      contactId: contact.id,
+      requestedByAgentId: actor.agentId,
+      kind: "CONTACT_UPDATE",
+    },
+    orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+    select: { id: true, status: true, reason: true, decisionComment: true, submittedAt: true, reviewedAt: true },
+  })
+
   return noStoreJson({
     success: true,
     data: {
       contact: projectRouteFieldContact(contact),
+      changeRequest: {
+        ...routeFieldContactChangeOffer(settings, { category: contact.category, specialtyName: contact.specialtyName }),
+        latest: latestRequest ?? null,
+      },
       asOf: asOf.toISOString().slice(0, 10),
       timezone,
       workplaceLimit: ROUTE_FIELD_WORKPLACE_LIMIT,

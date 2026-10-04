@@ -46,6 +46,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-08-30T08:00:00.000Z"))
   vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth() as never)
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([])
+  vi.mocked(prisma.mtmContactChangeRequest.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
     id: AGENT,
     role: "AGENT",
@@ -149,6 +150,66 @@ describe("GET /api/v2/mtm/mobile/route-field/contacts/:id", () => {
     ]) {
       expect(serialized).not.toContain(forbidden)
     }
+  })
+
+  it("tells the card what the agent may propose, from the organization's own lists", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "contactClasses", value: ["A", "B", "C", "VIP"] },
+      { key: "contactSpecialties", value: ["Nevroloq", "Kardioloq"] },
+    ] as never)
+    vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue({
+      id: "contact-1", displayName: "Farid Aliyev", firstName: "Farid", lastName: "Aliyev",
+      updatedAt: new Date("2026-08-29T10:00:00.000Z"),
+      // Graded D before the organization stopped offering it; a specialty off the list.
+      specialtyName: "Cardiology", type: "DOCTOR", category: "D", status: "ACTIVE", workplaces: [],
+    } as never)
+
+    const { data } = await (await detail()).json()
+
+    expect(data.contact).toMatchObject({
+      firstName: "Farid", lastName: "Aliyev", updatedAt: "2026-08-29T10:00:00.000Z",
+    })
+    expect(data.changeRequest).toEqual({
+      allowed: true,
+      fields: ["category", "specialtyName", "firstName", "lastName"],
+      // What the client already has stays among the choices.
+      classes: ["A", "B", "C", "D", "VIP"],
+      specialties: ["Nevroloq", "Kardioloq", "Cardiology"],
+      latest: null,
+    })
+  })
+
+  it("follows the organization's switch and the fields it turned off", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "agentContactChangeRequests", value: false },
+      { key: "contactHiddenFields", value: ["specialtyName"] },
+    ] as never)
+
+    const { data } = await (await detail()).json()
+
+    expect(data.changeRequest).toMatchObject({
+      allowed: false,
+      fields: ["category", "firstName", "lastName"],
+      specialties: [],
+    })
+  })
+
+  it("shows the agent what became of their own last request, and nobody else's", async () => {
+    vi.mocked(prisma.mtmContactChangeRequest.findFirst).mockResolvedValue({
+      id: "request-9", status: "REJECTED", reason: "Врач сказал на визите", decisionComment: "Класс подтверждён как B",
+      submittedAt: new Date("2026-08-28T09:00:00.000Z"), reviewedAt: new Date("2026-08-29T09:00:00.000Z"),
+    } as never)
+
+    const { data } = await (await detail()).json()
+
+    expect(data.changeRequest.latest).toEqual({
+      id: "request-9", status: "REJECTED", reason: "Врач сказал на визите", decisionComment: "Класс подтверждён как B",
+      submittedAt: "2026-08-28T09:00:00.000Z", reviewedAt: "2026-08-29T09:00:00.000Z",
+    })
+    expect(vi.mocked(prisma.mtmContactChangeRequest.findFirst).mock.calls[0][0]).toMatchObject({
+      where: { organizationId: ORG, contactId: "contact-1", requestedByAgentId: AGENT, kind: "CONTACT_UPDATE" },
+      select: { id: true, status: true, reason: true, decisionComment: true, submittedAt: true, reviewedAt: true },
+    })
   })
 
   it("rejects a disabled Route Field tenant before it queries route data", async () => {
