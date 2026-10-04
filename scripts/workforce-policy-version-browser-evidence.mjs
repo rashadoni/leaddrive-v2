@@ -45,6 +45,7 @@ const password = `Fixture!9a-${randomUUID()}`
 const date = new Date().toISOString().slice(0, 10)
 const workDate = new Date(`${date}T00:00:00.000Z`)
 const earlier = days => new Date(workDate.getTime() - days * 86_400_000)
+const future = days => new Date(workDate.getTime() + days * 86_400_000)
 function currentDate() {
   assert.equal(new Date().toISOString().slice(0, 10), date, "Real UTC date crossed midnight; preserve failure without reseeding")
 }
@@ -63,6 +64,9 @@ const receipts = {
     "src/lib/with-workforce-rls-auth.ts", "src/lib/workforce/policy-definition.ts",
     "src/app/api/v1/workforce/configuration/policies/search/route.ts", "src/app/api/v1/workforce/configuration/policies/compare/route.ts",
     "messages/en.json", "messages/ru.json", "messages/az.json", "prisma/schema.prisma",
+    "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
+    "prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql",
+    "prisma/migrations/20260829140000_workforce_system_provisioning_defaults/migration.sql",
   ].map(async path => { const raw = await readFile(new URL("../" + path, import.meta.url)); return { path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") } })),
   environment: "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
   authentication: "real CSRF, credentials provider and session; no auth mocks",
@@ -187,17 +191,17 @@ async function seed() {
       effectiveFrom: earlier(2), effectiveUntil: null, operationId: `policy-${suffix}-${index}-${principal.key}`,
       grantedByUserId: issuer.id, grantReasonCode: "BROWSER_FIXTURE_ONLY",
     } })
-    async function policy(name, version, status, definition, teamId = null, badHash = false) {
+    async function policy(name, version, status, definition, teamId = null, badHash = false, window = null) {
       return admin.workforcePolicy.create({ data: {
         organizationId: organization.id, teamId, version, status, name,
-        effectiveFrom: new Date(status === "ACTIVE" ? "2027-01-01T00:00:00.000Z" : "2025-01-01T00:00:00.000Z"),
-        effectiveTo: status === "RETIRED" ? new Date("2025-12-31T00:00:00.000Z") : null,
+        effectiveFrom: window?.from ?? (status === "ACTIVE" ? future(30) : earlier(365)),
+        effectiveTo: window?.to ?? (status === "RETIRED" ? earlier(30) : null),
         definition, definitionHash: badHash ? "0".repeat(64) : fixtureHash(definition), provenance: "TENANT_ADMIN", createdByUserId: issuer.id,
         createdAt: earlier(3), activatedByUserId: status === "DRAFT" ? null : issuer.id,
         activatedAt: status === "DRAFT" ? null : earlier(3), retiredAt: status === "RETIRED" ? earlier(2) : null,
       } })
     }
-    const before = await policy("Recorded Organization Before", 1, "RETIRED", beforeDefinition)
+    const before = await policy("Recorded Organization Before", 1, "ACTIVE", beforeDefinition, null, false, { from: earlier(365), to: future(29) })
     const after = await policy("Recorded Organization After", 2, "ACTIVE", afterDefinition)
     const teamBefore = await policy("Recorded Team Before", 1, "RETIRED", beforeDefinition, team.id)
     const teamAfter = await policy("Recorded Team After", 2, "ACTIVE", afterDefinition, team.id)
@@ -207,6 +211,30 @@ async function seed() {
     tenants.push({ organization, issuer, reader, team, people, before, after, teamBefore, teamAfter, corrupted, catalog })
   }
   return { primary: tenants[0], foreign: tenants[1] }
+}
+async function verifyPublishedWindows(fixture) {
+  for (const tenant of [fixture.primary, fixture.foreign]) {
+    assert.equal(tenant.before.status, "ACTIVE"); assert.equal(tenant.after.status, "ACTIVE")
+    assert.equal(tenant.before.effectiveTo.getTime() + 86_400_000, tenant.after.effectiveFrom.getTime())
+    assert.ok(tenant.after.effectiveFrom > workDate)
+  }
+  // Separate isolated owner probes; no canonical writer or app write grant.
+  const rejected = []
+  for (const [kind, source] of [["ORGANIZATION", fixture.primary.before], ["TEAM", fixture.primary.teamAfter]]) {
+    let postgresCode = null
+    try {
+      await admin.$transaction(tx => tx.$executeRaw`
+        INSERT INTO public.workforce_policies
+        SELECT (jsonb_populate_record(NULL::public.workforce_policies,
+          to_jsonb(p) || jsonb_build_object('id', ${randomUUID()}::text, 'version', 2147483640))).*
+        FROM public.workforce_policies p WHERE id=${source.id} AND "organizationId"=${fixture.primary.organization.id}
+      `)
+    } catch (error) { if (error?.code !== "P2010") throw error; postgresCode = error.meta?.code }
+    assert.equal(postgresCode, "23P01", "Only PostgreSQL exclusion violation proves overlap rejection")
+    assert.equal(await admin.workforcePolicy.count({ where: { organizationId: fixture.primary.organization.id, version: 2147483640 } }), 0)
+    rejected.push({ kind, postgresCode, rolledBack: true })
+  }
+  return { twoAdjacentPublishedOrganizationVersions: true, futureVersionNotCurrentlyEffective: true, isolatedOwnerOverlapRejections: rejected, canonicalWriterAcceptance: "NOT RUN" }
 }
 async function sensitive(response, status) {
   assert.equal(response.status(), status)
@@ -371,6 +399,8 @@ async function denied(principal, locale, code) {
 try {
   stage = "seed"
   const fixture = await seed(), ids = [fixture.primary.organization.id, fixture.foreign.organization.id]
+  stage = "selected-published-window-constraints"
+  receipts.selectedPublishedWindows = await verifyPublishedWindows(fixture)
   const before = await facts(ids)
   receipts.rlsBefore = await verifyRls(fixture, "BEFORE")
   browser = await chromium.launch({ headless: true })

@@ -51,9 +51,17 @@ ALTER TABLE public.workforce_policies ADD CONSTRAINT wf_policy_version_activatio
   (provenance = 'TENANT_ADMIN' AND (status = 'DRAFT' OR ("activatedAt" IS NOT NULL AND "activatedByUserId" IS NOT NULL)))
   OR (provenance = 'SYSTEM_PROVISIONING' AND status IN ('ACTIVE','RETIRED') AND "activatedAt" IS NOT NULL AND "activatedByUserId" IS NULL)
 );
--- Restore production partial uniqueness, including the NULL organization scope.
+-- Version uniqueness includes the NULL organization scope. Current 20260829114500
+-- replaced single-ACTIVE indexes with non-overlapping published date windows.
 CREATE UNIQUE INDEX wf_policy_version_org_unique ON public.workforce_policies ("organizationId", version) WHERE "teamId" IS NULL;
 CREATE UNIQUE INDEX wf_policy_version_team_unique ON public.workforce_policies ("organizationId", "teamId", version) WHERE "teamId" IS NOT NULL;
-CREATE UNIQUE INDEX wf_policy_version_org_active ON public.workforce_policies ("organizationId") WHERE status = 'ACTIVE' AND "teamId" IS NULL;
-CREATE UNIQUE INDEX wf_policy_version_team_active ON public.workforce_policies ("organizationId", "teamId") WHERE status = 'ACTIVE' AND "teamId" IS NOT NULL;
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+ALTER TABLE public.workforce_policies ADD CONSTRAINT wf_policy_version_org_no_overlap
+  EXCLUDE USING gist ("organizationId" WITH =,
+    daterange("effectiveFrom", COALESCE("effectiveTo" + 1, 'infinity'::date), '[)') WITH &&)
+  WHERE (status = 'ACTIVE' AND "teamId" IS NULL);
+ALTER TABLE public.workforce_policies ADD CONSTRAINT wf_policy_version_team_no_overlap
+  EXCLUDE USING gist ("organizationId" WITH =, "teamId" WITH =,
+    daterange("effectiveFrom", COALESCE("effectiveTo" + 1, 'infinity'::date), '[)') WITH &&)
+  WHERE (status = 'ACTIVE' AND "teamId" IS NOT NULL);
 COMMIT;

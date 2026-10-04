@@ -35,7 +35,15 @@ describe("recorded policy-version comparison", () => {
     expect(result.from.version).toBe(2)
     expect(result.to.version).toBe(1)
   })
-  it("warns about opaque signed changes while excluding their raw keys and values", () => {
+  it("compares consecutive published versions without interpreting future applicability", () => {
+    const result = compare(record({ effectiveTo: new Date("2026-12-31") }), after({ status: "ACTIVE", effectiveFrom: new Date("2027-01-01") }))
+    expect(result.from.status).toBe("ACTIVE")
+    expect(result.to.status).toBe("ACTIVE")
+    expect(result.from.effectiveTo).toBe("2026-12-31")
+    expect(result.to.effectiveFrom).toBe("2027-01-01")
+    expect(result.basis).toBe("RECORDED_DEFINITIONS_ONLY_NO_EFFECTIVE_IMPACT_OR_APPROVAL")
+  })
+  it("warns about opaque hash-verified changes while excluding their raw keys and values", () => {
     const changed = { ...definition, privateFutureKey: { PRIVATE: "opaque-reason" } }
     const result = compare(record(), after({ definition: changed, definitionHash: workforcePolicyDefinitionHash(changed) }))
     expect(result.changedCalculationFields).toBe(0)

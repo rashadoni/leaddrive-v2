@@ -97,3 +97,14 @@
 
 - Own563actual404 release is separatelycomplete and doesnotexecute this privatecomparison. Corrected0213 sources unchanged: actual81tests/5filesPASS14.91s, thirteen-file ESLintmaxwarnings0/i18n24267leaves RUAZ0missingextra/syntax/installedjs-yamlparsePASS. Current17-commit range scanEXIT0 and decompressedCORE originals scanEXIT0 with unchangedconfiguration. Original775P2 full12204/2183cd73+narrow3788/abf0bdad and narrative37508->actual37500 correction1357/96e8d50e retained unchanged innewboundedCORE; fixedordinaryUIlogoutproxy401 requires separatecurrentruntime.
 - Archivefullbindings documented bydocs/evidence/workforce-c6-releases-and-policy-source-core-2026-10-04.json; inputaudits/fullZIPs/otherwholelogs external explicitly. No new12-browser/SQL/hostedcompiler/activation/effectiveimpact/rollback/DONE credit. Next exactcorrectedsource+receipt independent review, freshmain guard, normal ownPRpublication and actualhostedchecks. Overall59%unchanged; continueautonomously.
+
+
+### 2026-10-04T02:37:01.885780+00:00 — published-window source correction
+
+- Root READFULL originaldba9 P2 7724/6044de80, rawgzip-preserved bydocs/evidence/workforce-policy-version-active-window-source-finding-2026-10-04.json/scan0. Supersedes2fc/775/dba fourproductionindex parity wording: authoritative20260829114500 replaces two singleACTIVE keys with twoGiST date exclusions; original775review missed that migration. Alloldreviews/CORE43bindings/archiveaudit unchanged.
+- Isolatedfixture nowkeeps two versionkeys plusactualGiST, adjacenttwoACTIVEorg/retiredteam positives, assertedUTC+30future and owneroverlapprobes requiringP2010/23P01+zero committedprobes. ActualSQL/browser12 NOT RUN; canonicalwriters/schema/auth/grants untouched. Actual82tests/5filesPASS13.67s/syntax/scopedlint0/YAMLparse+migrationwatchersPASS. Newexactsource/receipt review/freshmain publication required; cap400000unchanged. Overall59%,81/161DONE,14/15GATES,C836% unchanged; continueautonomously.
+
+
+### 2026-10-04T02:38:48.444814+00:00 — source-finding archive placement correction
+
+- The preceding gzip-publication draft is superseded: scopeguard rejected403611 beforecommit/push. Fullproposal/manifest-v1/gzip remain byte-exact /tmp/workforce-policy-403611-unpublished-proposal; currentfindingmanifest binds external7724/SHA6044de80 and3475-bytegzip, NOT EMBEDDED/no completepublication. ExistingCORE76028/526900e6 and alloldreceipts unchanged. Sourcechecks82PASS/SQLbrowserNOTRUN unchanged; independentexactheadreview/publication stillpending, cap400000neverchanged.

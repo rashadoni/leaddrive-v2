@@ -34,6 +34,9 @@ on:
       - "src/proxy.ts"
       - "messages/*.json"
       - "prisma/schema.prisma"
+      - "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql"
+      - "prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql"
+      - "prisma/migrations/20260829140000_workforce_system_provisioning_defaults/migration.sql"
   workflow_dispatch:
 
 concurrency:
