@@ -99,7 +99,8 @@ describe("«Что может агент»", () => {
     expect(container.textContent).not.toContain("mtmAccess.")
     expect(row("contactCreateRequest").textContent).toContain("Подать заявку на нового клиента")
     expect(row("contactCreateRequest").textContent).toContain("Где: в мобильном приложении")
-    expect(row("contactChangeRequest").textContent).toContain("Где: на сайте")
+    expect(row("contactChangeRequest").textContent).toContain("Где: в мобильном приложении и на сайте")
+    expect(row("customerCreateRequest").textContent).toContain("Где: на сайте")
   })
 
   it("shows what an organization that never touched the switches has", async () => {

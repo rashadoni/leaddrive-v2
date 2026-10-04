@@ -226,6 +226,8 @@ describe("switch rows are enforced where the agent asks", () => {
   it.each([
     ["contactCreateRequest", "src/app/api/v2/mtm/mobile/route-field/contact-create-requests/route.ts"],
     ["contactChangeRequest", "src/app/api/v1/mtm/contacts/[id]/change-requests/route.ts"],
+    // The same request from the field app: its own door, the same switch.
+    ["contactChangeRequest", "src/app/api/v2/mtm/mobile/route-field/contacts/[id]/change-requests/route.ts"],
     ["customerCreateRequest", "src/app/api/v1/mtm/customer-create-requests/route.ts"],
   ])("%s is refused by its endpoint", (id, file) => {
     expect(source(file)).toContain(`agentPermissionDeniedBody("${id}")`)

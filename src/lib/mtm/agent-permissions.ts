@@ -107,7 +107,7 @@ export const AGENT_PERMISSION_ROWS = [
   },
   {
     id: "contactChangeRequest", group: "clients", kind: "switch", setting: "agentContactChangeRequests",
-    surfaces: ["web"],
+    surfaces: ["app", "web"],
   },
   {
     id: "customerCreateRequest", group: "clients", kind: "switch", setting: "agentCustomerCreateRequests",

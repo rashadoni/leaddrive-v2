@@ -11266,7 +11266,7 @@
     "perm_contactCreateRequest": "Yeni müştəri üçün sorğu göndərmək",
     "perm_contactCreateRequest_hint": "Müştəri rəhbər təsdiqlədikdən sonra bazada görünür.",
     "perm_contactChangeRequest": "Müştəri məlumatlarının dəyişdirilməsi üçün sorğu göndərmək",
-    "perm_contactChangeRequest_hint": "Məlumatlar rəhbər təsdiqlədikdən sonra dəyişir. Mobil tətbiqdə belə forma hələ yoxdur.",
+    "perm_contactChangeRequest_hint": "Məlumatlar rəhbər təsdiqlədikdən sonra dəyişir. Tətbiqdə agent sinfi, ixtisası, adı və soyadı təklif edir; saytda — kartın istənilən sahəsini.",
     "perm_customerCreateRequest": "Yeni təşkilat üçün sorğu göndərmək",
     "perm_customerCreateRequest_hint": "Təşkilat rəhbər təsdiqlədikdən sonra bazada görünür.",
     "perm_masterDataEdit": "Müştəriləri və təşkilatları özü dəyişmək və ya əlavə etmək",
