@@ -6,10 +6,28 @@ on:
     paths:
       - ".github/workflows/workforce-policy-employee-impact-evidence.yml"
       - "scripts/ci/fixtures/workforce-policy-employee-impact.sql"
+      - "scripts/workforce-policy-employee-impact-browser-evidence.mjs"
+      - "scripts/_rls.mjs"
       - "scripts/ci/fixtures/workforce-manager-today-browser.sql"
       - "scripts/ci/fixtures/workforce-policy-version-browser.sql"
       - "src/__tests__/*workforce-policy-employee-impact*.test.*"
       - "src/app/api/v1/workforce/configuration/policies/*/employee-impact/route.ts"
+      - "src/components/workforce/workforce-policy-employee-impact-preview.tsx"
+      - "src/components/workforce/workforce-policy-version-comparison.tsx"
+      - "src/components/ui/button.tsx"
+      - "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx"
+      - "src/app/api/v1/workforce/configuration/policies/search/route.ts"
+      - "src/app/api/v1/workforce/configuration/policies/compare/route.ts"
+      - "src/components/providers.tsx"
+      - "src/app/(dashboard)/layout.tsx"
+      - "src/lib/auth.ts"
+      - "src/lib/rls-context.ts"
+      - "src/lib/prisma.ts"
+      - "src/lib/tenant-capabilities.ts"
+      - "src/lib/permissions.ts"
+      - "src/lib/rate-limit.ts"
+      - "src/proxy.ts"
+      - "messages/*.json"
       - "src/lib/workforce/policy*.ts"
       - "src/lib/workforce/team-membership.ts"
       - "src/lib/workforce/sensitive-operation-log.ts"
@@ -33,16 +51,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  employee-impact-postgres:
-    name: Real PostgreSQL employee impact SELECT-only evidence
+  employee-impact-evidence:
+    name: Real PostgreSQL SELECT-only and authenticated employee impact browser evidence
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
       CI: "true"
       NODE_ENV: development
       NODE_OPTIONS: --max-old-space-size=4096
       WF_POLICY_IMPACT_POSTGRES: "1"
+      WF_POLICY_IMPACT_BROWSER: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+      LEADDRIVE_DISABLE_SERVICE_WORKER: "1"
       WF_POLICY_IMPACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       WF_POLICY_IMPACT_OUTPUT_DIR: artifacts/workforce-policy-employee-impact
     services:
@@ -76,8 +97,13 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           WF_IMPACT_APP_PASSWORD="$(openssl rand -hex 24)"
           WF_IMPACT_READER_PASSWORD="$(openssl rand -hex 24)"
+          WF_IMPACT_AUTH_SECRET="$(openssl rand -hex 32)"
+          WF_IMPACT_PII_SECRET="$(openssl rand -hex 32)"
+          APP_PORT="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
           echo "::add-mask::$WF_IMPACT_APP_PASSWORD"
           echo "::add-mask::$WF_IMPACT_READER_PASSWORD"
+          echo "::add-mask::$WF_IMPACT_AUTH_SECRET"
+          echo "::add-mask::$WF_IMPACT_PII_SECRET"
           {
             echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
             echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
@@ -85,6 +111,17 @@ jobs:
             echo "WF_POLICY_IMPACT_READ_DATABASE_URL=postgresql://wf_policy_impact_reader:${WF_IMPACT_READER_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
             echo "WF_IMPACT_APP_PASSWORD=$WF_IMPACT_APP_PASSWORD"
             echo "WF_IMPACT_READER_PASSWORD=$WF_IMPACT_READER_PASSWORD"
+            echo "APP_PORT=$APP_PORT"
+            echo "NEXTAUTH_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_URL=http://localhost:${APP_PORT}"
+            echo "APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${APP_PORT}"
+            echo "WF_POLICY_IMPACT_BASE_URL=http://localhost:${APP_PORT}"
+            echo "WF_POLICY_IMPACT_APP_LOG=${RUNNER_TEMP}/workforce-policy-employee-impact-app.log"
+            echo "AUTH_SECRET=$WF_IMPACT_AUTH_SECRET"
+            echo "NEXTAUTH_SECRET=$WF_IMPACT_AUTH_SECRET"
+            echo "TENANT_PII_MASTER_KEY=$WF_IMPACT_PII_SECRET"
           } >> "$GITHUB_ENV"
 
       - name: Setup Node.js
@@ -109,6 +146,33 @@ jobs:
       - name: Verify populated real PostgreSQL snapshots, locks, RLS and bounds
         run: npx vitest run src/__tests__/lib-workforce-policy-employee-impact-postgres.test.ts --maxWorkers=1
 
+      - name: Install Chromium on hosted Ubuntu
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify real authenticated on-demand aggregate UI and session boundaries
+        shell: bash
+        run: |
+          test "$CI" = true && test "$WF_POLICY_IMPACT_BROWSER" = 1
+          # Raw application logs stay transient, outside the uploaded evidence.
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$APP_PORT" > "$WF_POLICY_IMPACT_APP_LOG" 2>&1 &
+          WF_IMPACT_APP_PID=$!
+          cleanup() {
+            kill "$WF_IMPACT_APP_PID" 2>/dev/null || true
+            wait "$WF_IMPACT_APP_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "${WF_POLICY_IMPACT_BASE_URL}/api/v1/ping" >/dev/null 2>&1; then
+              break
+            fi
+            if ! kill -0 "$WF_IMPACT_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then
+              echo "::error::Isolated employee impact browser application did not become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+          node scripts/workforce-policy-employee-impact-browser-evidence.mjs
+
       - name: Preserve safe workflow outcome
         if: always()
         env:
@@ -130,7 +194,7 @@ jobs:
           (directory / 'workflow-context.json').write_text(json.dumps(receipt, indent=2) + '\n')
           PY
 
-      - name: Upload complete non-secret PostgreSQL evidence
+      - name: Upload complete non-secret PostgreSQL and browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
