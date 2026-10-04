@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { agentPermissionDeniedBody, agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { contactRequestHash, rankContactDuplicates } from "@/lib/mtm/contact-create-request"
 
 const bodySchema = z.object({
@@ -76,6 +78,11 @@ export const POST = withMobileRls(async (req, auth) => {
   })
   if (!actor?.agentId || actor.role !== "AGENT" || actor.agentId !== auth.agentId) {
     return NextResponse.json({ error: "Forbidden", code: "MTM_ROUTE_FIELD_AGENT_REQUIRED" }, { status: 403 })
+  }
+  // The organization may switch the request itself off ("what an agent may
+  // do"). Reading the agent's earlier requests (GET) stays open.
+  if (!agentPermissionEnabled(await getMtmSettings(auth.orgId), "contactCreateRequest")) {
+    return NextResponse.json(agentPermissionDeniedBody("contactCreateRequest"), { status: 403 })
   }
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {

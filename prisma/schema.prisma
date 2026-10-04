@@ -8265,6 +8265,9 @@ model WorkforcePolicy {
   effectiveTo       DateTime?                @db.Date
   definition        Json
   definitionHash    String                   @db.VarChar(64)
+  /// Server-only consumed restore operation, retained through draft edits/publication.
+  restoreOperationId String?
+  restoreRequestHash String?                 @db.VarChar(64)
   provenance        WorkforceDefinitionProvenance @default(TENANT_ADMIN)
   /// Non-null only for an explicit system-provisioned default profile.
   systemProfileVersion String?
@@ -8283,6 +8286,7 @@ model WorkforcePolicy {
   attendanceVerifications WorkforceAttendanceVerification[]
 
   @@unique([organizationId, id])
+  @@unique([organizationId, restoreOperationId])
   @@index([organizationId, teamId, status, effectiveFrom])
   @@index([organizationId, provenance])
   @@index([organizationId, createdByUserId])

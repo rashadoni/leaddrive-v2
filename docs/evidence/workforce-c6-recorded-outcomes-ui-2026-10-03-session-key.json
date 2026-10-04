@@ -1,0 +1,75 @@
+{
+  "atUtc": "2026-10-03T22:15:54.991177+00:00",
+  "status": "PRIVATE_CORRECTED_SOURCE_ONLY_NOT_PUBLISHED_NOT_RELEASED",
+  "correction": "cb933 actualAfterFix ESLint exit0 statement was FALSE: actual retained ESLint exit1/set-state-in-effect. Root acknowledged tool exit1 was overlooked while constructing metadata. Original manifest and FAIL log untouched; separate independent historical verification P2 retained. No publication or merge used that false claim.",
+  "implementation": "Outer real useSession creates a fresh keyed private report component for status/user/org transitions. No synchronous setState in effect, eslint suppression, policy or baseline change. Existing keyed range/retry and aborted response guards retained.",
+  "actualChecks": {
+    "targeted": {
+      "startedAt": "2026-10-03T22:09:04.550255+00:00",
+      "finishedAt": "2026-10-03T22:09:09.474201+00:00",
+      "exitCode": 0,
+      "log": "/tmp/workforce-part25-report-ui-session-key-targeted.log",
+      "scope": "26tests/3files; keyed session state; local targeted only"
+    },
+    "tests": "26/26 PASS,3files on current keyed-session source",
+    "eslint": "Root actual tool session90698 exited0; complete touched UI/test command; raw log is empty. Not reviewer executed."
+  },
+  "historicalFindings": "a268 P2 sessionreentry reproduced2FAIL/4PASS and corrected; a268 P3 omitted removed formattertest explicitly corrected in cb933; cb933 verificationP2 original retained here. Exact corrected source independent review pending.",
+  "originals": [
+    {
+      "source": "/tmp/workforce-part25-ui-cb933-verification-independent.json",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-session-key-original-00.gz",
+      "bytes": 6503,
+      "sha256": "f3425785de247729af90861654cbb59a1ad1f6f34636096342c34261ba5e80c2",
+      "gzipBytes": 2444,
+      "gzipSha256": "c2722ee8a634609e45581ebec46f17bb02f2e33398166e31a9b276d3d5d0b05e"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-session-key-targeted.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-session-key-original-01.gz",
+      "bytes": 283,
+      "sha256": "a4f4deb12eab6b00eeb7531f5a9a1a94fd9c092e6a2fa2e09b340536ba087d52",
+      "gzipBytes": 229,
+      "gzipSha256": "55f7b2e0573e9b3f2ffafd985957a527f25fe0a0ec06ec75a1095a625b36e782"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-session-key-targeted-result.json",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-session-key-original-02.gz",
+      "bytes": 263,
+      "sha256": "730bfefb38ff65c9da6b762da7f5163f94b44db5cafe79ebfa4f9e1690309a83",
+      "gzipBytes": 198,
+      "gzipSha256": "9edfad55b120338e3c5d2f1ec3edf26963a30f531229442dd6657dd1cd1a9d95"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-session-key-eslint.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-session-key-original-03.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-reauth-eslint.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-session-key-original-04.gz",
+      "bytes": 1473,
+      "sha256": "dc586b4984abfc087f81a4fc54c5f949151375e6355bad12705858fe489fbff0",
+      "gzipBytes": 721,
+      "gzipSha256": "f75b3759ca01bfef7c0eeb4666927a0b82376cb17990941fce337ccdb0c23124"
+    },
+    {
+      "source": "/tmp/workforce-part25-session-key-originals-scan.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-session-key-original-05.gz",
+      "bytes": 78,
+      "sha256": "72480a1d287694241ec014e2c331e2bf9d3cccc0742640ee0a78b154a83ae5fa",
+      "gzipBytes": 89,
+      "gzipSha256": "c4eddb8270a860e1bedd6f2ca74bd74a061ec00dbc385b98e5f5ee594ff11a68"
+    }
+  ],
+  "notRun": [
+    "real report hosted browser",
+    "successor hosted fulltype/build/fullsuite",
+    "successor production release",
+    "physical AT/Android/load/pilot"
+  ],
+  "progress": "81/161DONE,14/15GATES,C836%,overall59% unchanged"
+}

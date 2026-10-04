@@ -18,6 +18,7 @@ import {
   type AccessWrite,
 } from "@/lib/mtm/access-roster"
 import { ASSIGNABLE_FIELD_CARD_ROLES } from "@/lib/user-access-summary"
+import { MtmAgentPermissionMatrix } from "@/components/mtm/agent-permission-matrix"
 
 /**
  * Route & Field → "Access & permissions": the one place inside the module
@@ -105,6 +106,7 @@ export function MtmAccessPanel() {
         <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
       </div>
 
+      <h2 className="text-lg font-semibold">{t("rosterTitle")}</h2>
       {loadFailed ? (
         <p className="text-sm text-red-500">{t("loadFailed")}</p>
       ) : !roster ? (
@@ -145,6 +147,9 @@ export function MtmAccessPanel() {
           <Link href="/mtm/agents" className="underline">{t("openAgents")}</Link>
         </p>
       )}
+
+      {/* What every agent may do — the organization's switches and the system's rules. */}
+      <MtmAgentPermissionMatrix cards={cards} />
     </div>
   )
 }
