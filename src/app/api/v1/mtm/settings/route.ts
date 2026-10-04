@@ -12,6 +12,7 @@ import { parseMtmContactSpecialties } from "@/lib/mtm/contact-specialties"
 import { parseMtmContactClasses } from "@/lib/mtm/contact-classes"
 import { parseMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
 import { mtmSettingValuesEqual, validateMtmSettingChanges } from "@/lib/mtm/settings-validation"
+import { AGENT_PERMISSION_ADMIN_ONLY_KEYS } from "@/lib/mtm/agent-permissions"
 
 const MODULE_TOGGLE_ROLES = ["admin", "superadmin"]
 // Whole-feature visibility switches. Only an administrator changes them.
@@ -65,7 +66,8 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     // drop the key instead of refusing the save, and name it in
     // `data.ignoredKeys` so the current page can say so (old pages ignore it).
     const ignoredKeys: string[] = []
-    for (const key of [...ADVANCED_KEYS, ...MODULE_TOGGLE_KEYS]) {
+    // Same rule for what a field agent may ask for ("Access & permissions").
+    for (const key of [...ADVANCED_KEYS, ...MODULE_TOGGLE_KEYS, ...AGENT_PERMISSION_ADMIN_ONLY_KEYS]) {
       if (body[key] !== undefined && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
         delete body[key]
         ignoredKeys.push(key)

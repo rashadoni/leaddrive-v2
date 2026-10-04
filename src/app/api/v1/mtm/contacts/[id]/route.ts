@@ -6,6 +6,7 @@ import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { ContactDirectUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { buildContactUpdateData, utcDate } from "@/lib/mtm/contact-master-data"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import {
@@ -321,7 +322,8 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
         actorAgentId: actor.agentId,
         actorRole: actor.role,
         canManage: canManageFieldMasterData(actor),
-        canRequestChanges: actor.role === "AGENT" && actor.agentId !== null,
+        canRequestChanges: actor.role === "AGENT" && actor.agentId !== null
+          && agentPermissionEnabled(settings, "contactChangeRequest"),
         canRecordBrandPotential: actor.agentId !== null || actor.role === "ADMIN",
         canReviewBrandPotential: canManageFieldMasterData(actor),
         brandPotentialPerAgent: settings.brandPotentialPerAgentEnabled,
