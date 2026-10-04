@@ -53,6 +53,8 @@ async function facts() {
   const users = await owner.user.findMany({ where: { organizationId: { in: organizations } }, orderBy: { id: "asc" } })
   result.push({ table: "users-except-explicit-login-metadata", rows: users.length,
     sha256: digest(users.map(({ lastLogin: _a, loginCount: _b, updatedAt: _c, ...row }) => row)) })
+  const organizationRows = await owner.organization.findMany({ where: { id: { in: organizations } }, orderBy: { id: "asc" } })
+  result.push({ table: "organizations", rows: organizationRows.length, sha256: digest(organizationRows) })
   return result
 }
 async function seed() {
@@ -138,4 +140,54 @@ async function readPreview(view, expected = 200) {
   http.push({ expectedStatus: expected, actualStatus: response.status(), privateNoStoreNosniffCookieToken: true })
   assert.equal(response.request().method(), "GET"); assert.equal(response.request().postData(), null)
   return response.json()
+}
+
+async function displayed(view, body, pair = policies[0], expected = { directoryEmployees: 3, selectedDraft: 2, teamOverride: 1, missingMembership: 1 }) {
+  assert.equal(body.success, true); const preview = body.data.preview
+  assert.equal(preview.draft.id, pair[1].id); assert.equal(preview.draft.version, pair[1].version)
+  assert.equal(preview.draft.definitionHash, pair[1].definitionHash); assert.equal(preview.draft.effectiveFrom, day(30).toISOString().slice(0, 10))
+  assert.equal(preview.canonicalActivationRequired, true); assert.equal(preview.guaranteedAtActivation, false)
+  assert.equal(preview.employeeIdentityReturned, false); assert.equal(preview.timezone, "UTC")
+  for (const [key, value] of Object.entries(expected)) assert.equal(preview.counts[key], value)
+  assert.equal(preview.groups.reduce((sum, group) => sum + group.count, 0), preview.counts.selectedDraft)
+  const serialized = JSON.stringify(body)
+  for (const agent of agents) assert.equal(serialized.includes(agent.id), false)
+  assert.equal(serialized.includes("PRIVATE_IMPACT_EMPLOYEE"), false); assert.equal(serialized.includes("PRIVATE_FIXTURE_DEFINITION"), false)
+  await view.section.getByText(view.impact.boundary, { exact: true }).waitFor()
+  await view.section.getByText(view.impact.membership, { exact: true }).waitFor()
+  assert.equal(await view.section.locator("dl dt").count(), 11)
+  for (const [index, key] of Object.keys(preview.counts).entries()) {
+    assert.equal(await view.section.locator("dl dt").nth(index).innerText(), view.impact.counts[key])
+    assert.equal(await view.section.locator("dl dd").nth(index).innerText(), new Intl.NumberFormat(view.locale).format(preview.counts[key]))
+  }
+  const summary = view.section.locator("summary"); await summary.press("Enter")
+  assert.equal(await view.section.locator("details").getAttribute("open"), "")
+  assert.equal(await view.section.locator("tbody tr").count(), preview.groups.length * 5)
+  const text = await view.section.innerText()
+  for (const agent of agents) { assert.equal(text.includes(agent.id), false); assert.equal(text.includes(agent.name), false) }
+  assert.equal(text.includes(pair[1].definitionHash), false); assert.equal(text.includes("PRIVATE_FIXTURE_DEFINITION"), false)
+  return preview
+}
+async function geometry(view) {
+  const result = await view.section.evaluate(element => {
+    const rect = element.getBoundingClientRect(), buttons = [...element.querySelectorAll("button,summary")]
+    return { insideWidth: rect.left >= -1 && rect.right <= innerWidth + 1,
+      pageHasNoHorizontalOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+      controls44px: buttons.every(button => button.getBoundingClientRect().height >= 43),
+      localScrollRegions: [...element.querySelectorAll('[role="region"]')].map(region => ({
+        keyboardFocusable: region.tabIndex === 0, contained: region.scrollWidth >= region.clientWidth,
+        overflowX: getComputedStyle(region).overflowX })) }
+  })
+  assert.equal(result.insideWidth, true); assert.equal(result.pageHasNoHorizontalOverflow, true); assert.equal(result.controls44px, true)
+  assert.ok(result.localScrollRegions.every(region => region.keyboardFocusable && region.contained && region.overflowX === "auto"))
+  return result
+}
+async function nativeFocus(view, target) {
+  for (let n = 0; n < 100; n++) {
+    if (await target.evaluate(element => element === document.activeElement)) {
+      assert.equal(await target.evaluate(element => element.matches(":focus-visible")), true); return
+    }
+    await view.page.keyboard.press("Tab")
+  }
+  assert.fail("Bounded native tab target was not reached")
 }
