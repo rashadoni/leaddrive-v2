@@ -1,0 +1,37 @@
+{
+  "atUtc": "2026-10-04T22:43:38.230516+00:00",
+  "status": "FIRST BLOCKED RECEIPT INTEGRITY ACCEPTED; ORIGINAL FAILURE RETAINED; NO MERGE CREDIT",
+  "candidateHead": "1b02c68bf6a19ada33c6f62f779728a1ecffbdeb",
+  "base": "1181d28e63352531db4de75851dd35825376a540",
+  "report": {
+    "path": "/tmp/workforce-pr580-1b02-current-hosted-first-blocked-independent.json",
+    "bytes": 51868,
+    "sha256": "575ce66e87bf0c7ec664fb79452964a977564e875dd6075c6d4b95456b05e390"
+  },
+  "audit": {
+    "path": "/tmp/workforce-pr580-1b02-current-hosted-first-blocked-input-audit-independent.json",
+    "bytes": 523198,
+    "sha256": "ffc5b728455d1d64e012eda63c6306d1323d5df87ab4c1a795b947dc6b97f061"
+  },
+  "directOriginalsWhollyHashed": 476,
+  "explicitGitSnapshotsExact": 196,
+  "wholeJSONParsed": 101,
+  "wholeUTF8Decoded": 365,
+  "wholeZIPMembersExact": 115,
+  "wholePNGCRCAndIDATDecoded": 108,
+  "managerSourceBindingsExact": 48,
+  "calendarSourceBindingsExact": 31,
+  "reportSourceBindingsExact": 12,
+  "originalFailurePngRootViewedAtUtc": "2026-10-04 22:40:13 UTC",
+  "rootOtherPNGVisualReview": "NOT RUN; whole byte/CRC/IDAT verification only",
+  "managerCasesPassed": 7,
+  "ruNativeCompletion": "NOT RUN",
+  "azNative": "NOT RUN",
+  "finalFactsAndRlsAfter": "NOT RUN",
+  "strictFailedRightExcessCSSPixels": 3.0859375,
+  "managerCleanup": "PASS",
+  "compilerSuiteAtImmutableFirstFrame": "PENDING; no inferred totals",
+  "fixRuntime": "NOT RUN; new exact-head CI required",
+  "normalMergeAllowed": false,
+  "filesVerifiedUnique": 476
+}
