@@ -437,14 +437,30 @@ try {
   await assertSession(reader.context, fixture.primary.reader)
   receipts.cases.push({ name: "foreign-boundaries", status: "PASS", forgedHeadersRemainSessionBound: true, foreignIdsNotFound: true, unknownTenantQueryRejected: true, noHeaderDerived403Claim: true })
   stage = "real-logout-reauthentication"
+  await namedSearch(reader, "Recorded Organization", [fixture.primary.before, fixture.primary.after])
+  await compare(reader, fixture.primary.before, fixture.primary.after)
   const csrf = await reader.context.request.get("/api/auth/csrf"), { csrfToken } = await csrf.json()
   assert.equal(csrf.status(), 200); assert.equal(typeof csrfToken, "string")
   authenticationPostTimes.push(Date.now())
   const logout = await reader.context.request.post("/api/auth/signout", { headers: { "X-Auth-Return-Redirect": "1" }, form: { csrfToken, callbackUrl: `${baseURL}/login` } })
   assert.equal(logout.status(), 200)
   const absent = await reader.context.request.get("/api/auth/session"); assert.equal(absent.status(), 200); assert.equal(await absent.json(), null)
-  const unauthenticated = await reader.context.request.get(searchEndpoint + "?q=Recorded")
-  await sensitive(unauthenticated, 401)
+  // The actual UI fetch reaches the unchanged session-less proxy branch.
+  // A plain APIRequestContext GET follows its login redirect; the policy
+  // route's private headers cannot be proved by either proxy-short-circuit.
+  const unauthenticatedPending = reader.page.waitForResponse(response => responseFor(response, searchEndpoint), { timeout: 120_000 })
+  await reader.page.getByRole("button", { name: reader.ui.search, exact: true }).click()
+  const unauthenticated = await unauthenticatedPending
+  assert.equal(unauthenticated.status(), 401)
+  const unauthenticatedHeaders = await unauthenticated.headers()
+  assert.equal(unauthenticatedHeaders["x-content-type-options"], "nosniff")
+  const unauthenticatedBody = await unauthenticated.json()
+  assert.deepEqual(Object.keys(unauthenticatedBody).sort(), ["code", "error"])
+  assert.equal(unauthenticatedBody.code, "session_expired")
+  assert.equal(typeof unauthenticatedBody.error, "string")
+  await reader.page.getByText(reader.ui.signIn, { exact: true }).waitFor()
+  assert.equal(await reader.page.getByRole("table").count(), 0)
+  assert.equal(await reader.page.locator("select").count(), 0)
   // Navigation reflects the actual server logout; no auth/session response mock.
   await reader.page.reload({ waitUntil: "domcontentloaded" })
   assert.equal(await reader.page.getByRole("table").count(), 0)
@@ -455,7 +471,7 @@ try {
   assert.equal(await reader.page.getByRole("table").count(), 0)
   await namedSearch(reader, "Recorded Organization", [fixture.primary.before, fixture.primary.after])
   await compare(reader, fixture.primary.before, fixture.primary.after)
-  receipts.cases.push({ name: "real-logout-reauthentication", status: "PASS", actualSignoutAndSameActorCredentialCallback: true, unauthenticatedSensitive401: true, navigationAndReauthClearSelectionsAndResults: true, latePendingRequestAcceptanceRemainsMockedUnitScope: true })
+  receipts.cases.push({ name: "real-logout-reauthentication", status: "PASS", actualSignoutAndSameActorCredentialCallback: true, actualUiFetchProxy401: true, staleComparisonAndChoicesClearedBeforeNavigation: true, proxyNoStoreObserved: /no-store/.test(unauthenticatedHeaders["cache-control"] || ""), unauthenticatedPrivateRouteHeaderAcceptance: "NOT RUN: unchanged proxy returns before the policy route", navigationAndReauthClearSelectionsAndResults: true, latePendingRequestAcceptanceRemainsMockedUnitScope: true })
   stage = "after-fingerprints-and-rls"
   const after = await facts(ids); assert.deepEqual(after, before)
   receipts.factImmutability = { status: "PASS", tenantCount: 2, tables: before.map((row, index) => ({ ...row, afterSha256: after[index].sha256, unchanged: true })), userAuthenticationMetadataExcluded: true, emptyTablesNotPositiveRlsProof: true }
