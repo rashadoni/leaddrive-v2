@@ -313,7 +313,7 @@ export function SlaPolicyForm({
               <p className="text-xs text-muted-foreground">{t("calendarProspective")}</p>
               {!calendarSource && !calendarLoading && <p className="text-xs text-muted-foreground">{t("calendarUnavailable")}</p>}
               {selectedCalendar && <details className="rounded border p-2 text-sm">
-                <summary className="min-h-11 cursor-pointer py-2">{t("calendarSummary", { timezone: selectedCalendar.timezone })}</summary>
+                <summary className="min-h-11 cursor-pointer rounded-md py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("calendarSummary", { timezone: selectedCalendar.timezone })}</summary>
                 <dl className="space-y-1">{(["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const).map((key, index) => {
                   const day = selectedCalendar.schedule[key]
                   return <div key={key} className="flex flex-wrap justify-between gap-2"><dt>{new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 7 + index)))}</dt><dd>{day?.enabled ? day.intervals.map(interval => `${interval.start}–${interval.end}`).join(", ") || t("calendarClosed") : t("calendarClosed")}</dd></div>
