@@ -25,18 +25,18 @@ function comparison(): WorkforcePolicyVersionComparison {
       { field: "expectedWorkSeconds", before: 28_800, after: 25_200, changed: true, deltaSeconds: -3_600 },
       { field: "lateGraceSeconds", before: 0, after: 0, changed: false, deltaSeconds: 0 },
       { field: "undertimeToleranceSeconds", before: 300, after: 600, changed: true, deltaSeconds: 300 },
-      { field: "overtimeThresholdSeconds", before: 0, after: null, changed: true, deltaSeconds: null },
+      { field: "overtimeThresholdSeconds", before: 0, after: 0, changed: false, deltaSeconds: 0 },
       { field: "longPauseThresholdSeconds", before: null, after: 0, changed: true, deltaSeconds: null },
     ],
-    changedCalculationFields: 4, opaqueDefinitionChanged: true,
+    changedCalculationFields: 3, opaqueDefinitionChanged: true,
     opaqueDefinitionInterpretation: "ADDITIONAL_HASH_VERIFIED_KEYS_NOT_DISPLAYED_OR_INTERPRETED",
   }
 }
 let container: HTMLDivElement, root: Root
 let pending: Array<{ url: string; resolve: (response: Response) => void; signal: AbortSignal }>
-function render(locale = "en", table = false) {
+function render(locale = "en", table = false, tableComparison = comparison()) {
   const messages = JSON.parse(readFileSync("messages/" + locale + ".json", "utf8"))
-  root.render(createElement(IntlProvider, { locale, messages, timeZone: "UTC" }, table ? createElement(WorkforcePolicyComparisonTable, { comparison: comparison() }) : createElement(WorkforcePolicyVersionComparisonPage)))
+  root.render(createElement(IntlProvider, { locale, messages, timeZone: "UTC" }, table ? createElement(WorkforcePolicyComparisonTable, { comparison: tableComparison }) : createElement(WorkforcePolicyVersionComparisonPage)))
 }
 const response = (data: unknown, status = 200) => new Response(JSON.stringify({ success: status === 200, data, error: "PRIVATE_ERROR_PAYLOAD" }), { status })
 async function find(query = "Policy") {
@@ -80,7 +80,7 @@ describe("policy version comparison display", () => {
     const rows = container.querySelectorAll("tbody tr")
     expect(rows).toHaveLength(5)
     expect(rows[1].textContent).not.toContain(t.notSet)
-    expect(rows[3].querySelectorAll("td")[1].textContent).toBe(t.notSet)
+    expect(rows[3].textContent).not.toContain(t.notSet)
     expect(rows[4].querySelectorAll("td")[0].textContent).toBe(t.notSet)
     expect(rows[4].querySelectorAll("td")[1].textContent).not.toBe(t.notSet)
     expect(rows[4].querySelectorAll("td")[2].textContent).toBe(t.notComparable)
@@ -91,6 +91,16 @@ describe("policy version comparison display", () => {
     expect(container.textContent).toContain(t.integrityHint)
     expect(container.textContent).not.toContain(choices[0].id)
     expect(container.textContent).not.toContain("a".repeat(64))
+  })
+  it.each(["en", "ru", "az"])("keeps zero-to-unset long-pause distinct in a reverse %s comparison", async locale => {
+    const reverse = comparison()
+    ;[reverse.from, reverse.to] = [reverse.to, reverse.from]
+    reverse.fields = reverse.fields.map(row => ({ ...row, before: row.after, after: row.before, deltaSeconds: row.deltaSeconds === null ? null : row.deltaSeconds === 0 ? 0 : -row.deltaSeconds }))
+    await act(async () => render(locale, true, reverse))
+    const t = JSON.parse(readFileSync("messages/" + locale + ".json", "utf8")).workforcePolicyVersionComparison
+    const cells = container.querySelectorAll("tbody tr")[4].querySelectorAll("td")
+    expect(cells[0].textContent).not.toBe(t.notSet); expect(cells[1].textContent).toBe(t.notSet)
+    expect(cells[2].textContent).toBe(t.notComparable)
   })
   it("does not request a catalog before a named search or expose opaque identifiers as labels", async () => {
     await act(async () => render()); expect(pending).toHaveLength(0)
@@ -140,6 +150,17 @@ describe("policy version comparison display", () => {
     expect(container.querySelector("table")).toBeNull(); expect(container.textContent).toContain(en.compareFailed)
     expect(container.textContent).not.toContain("PRIVATE_ERROR_PAYLOAD")
   })
+  it.each(["required-null", "duplicate-field", "wrong-delta", "bad-metadata"])("rejects malformed success %s without rendering metrics", async malformed => {
+    await act(async () => render()); await find(); await answerSearch(); await startComparison()
+    const wrong = comparison()
+    if (malformed === "required-null") wrong.fields[0].before = null
+    else if (malformed === "duplicate-field") wrong.fields[0].field = "longPauseThresholdSeconds"
+    else if (malformed === "wrong-delta") wrong.fields[0].deltaSeconds = 999
+    else wrong.from.definitionHash = "INVALID_HASH"
+    await act(async () => pending[1].resolve(response({ comparison: wrong })))
+    expect(container.querySelector("table")).toBeNull(); expect(container.textContent).toContain(en.compareFailed)
+    expect(container.textContent).not.toContain("PRIVATE_ERROR_PAYLOAD")
+  })
   it.each(["organization", "reader", "loading", "unauthenticated"])("clears every selected version and result on a %s transition", async transition => {
     await loadedComparison()
     if (transition === "organization") auth.user.organizationId = "org-b"
@@ -170,5 +191,14 @@ describe("policy version comparison display", () => {
     await act(async () => pending[2].resolve(response({}, 403)))
     expect(container.textContent).toContain(en.denied); expect(container.querySelector("table")).toBeNull()
     expect(container.textContent).not.toContain("Policy 1"); expect(container.textContent).not.toContain("PRIVATE_ERROR_PAYLOAD")
+  })
+  it.each(["search", "comparison"])("clears prior choices and metrics when %s returns401 before session status updates", async operation => {
+    await loadedComparison()
+    if (operation === "search") await find("Other")
+    else await act(async () => compareButton().click())
+    await act(async () => pending[2].resolve(response({}, 401)))
+    expect(container.textContent).toContain(en.signIn); expect(container.querySelector("table")).toBeNull()
+    expect(container.querySelector("select")).toBeNull(); expect(container.textContent).not.toContain("Policy 1")
+    expect(container.textContent).not.toContain("PRIVATE_ERROR_PAYLOAD")
   })
 })

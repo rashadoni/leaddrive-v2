@@ -28,12 +28,21 @@ function validSearch(value: Search, query: string): boolean {
 }
 function validComparison(value: WorkforcePolicyVersionComparison, from: Choice, to: Choice): boolean {
   const seconds = (n: unknown) => n === null || (typeof n === "number" && Number.isSafeInteger(n) && n >= 0)
+  const metadata = (record: WorkforcePolicyVersionComparison["from"], choice: Choice) => Boolean(record
+    && record.id === choice.id && record.version === choice.version && typeof record.name === "string"
+    && record.name.trim().length > 0 && record.name.length <= 160 && ["DRAFT", "ACTIVE", "RETIRED"].includes(record.status)
+    && /^\d{4}-\d{2}-\d{2}$/u.test(record.effectiveFrom)
+    && (record.effectiveTo === null || /^\d{4}-\d{2}-\d{2}$/u.test(record.effectiveTo))
+    && /^[a-f0-9]{64}$/iu.test(record.definitionHash))
   return Boolean(value && value.basis === "RECORDED_DEFINITIONS_ONLY_NO_EFFECTIVE_IMPACT_OR_APPROVAL"
-    && value.from?.id === from.id && value.to?.id === to.id && value.scope?.teamId === from.teamId
+    && metadata(value.from, from) && metadata(value.to, to) && value.scope?.teamId === from.teamId
+    && value.scope.kind === (from.teamId === null ? "ORGANIZATION" : "TEAM")
     && typeof value.opaqueDefinitionChanged === "boolean" && Array.isArray(value.fields) && value.fields.length === fields.length
     && fields.every(field => value.fields.filter(row => row.field === field).length === 1)
     && value.fields.every(row => seconds(row.before) && seconds(row.after) && row.changed === (row.before !== row.after)
-      && row.deltaSeconds === (row.before === null || row.after === null ? null : row.after - row.before)))
+      && (row.field === "longPauseThresholdSeconds" || (row.before !== null && row.after !== null))
+      && row.deltaSeconds === (row.before === null || row.after === null ? null : row.after - row.before))
+    && value.changedCalculationFields === value.fields.filter(row => row.changed).length)
 }
 
 export function WorkforcePolicyVersionComparisonPage() {
@@ -53,7 +62,7 @@ function ComparisonForSession({ status, userId, organizationId }: {
   const [comparison, setComparison] = useState<WorkforcePolicyVersionComparison | null>(null)
   const [searching, setSearching] = useState(false), [comparing, setComparing] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null), [comparisonError, setComparisonError] = useState<string | null>(null)
-  const [denied, setDenied] = useState(false)
+  const [denied, setDenied] = useState<"permission" | "session" | null>(null)
   const alive = useRef(false), requests = useRef({ search: 0, compare: 0 })
   const controllers = useRef<{ search: AbortController | null; compare: AbortController | null }>({ search: null, compare: null })
   useEffect(() => {
@@ -61,10 +70,10 @@ function ComparisonForSession({ status, userId, organizationId }: {
     const pendingRequests = controllers.current
     return () => { alive.current = false; pendingRequests.search?.abort(); pendingRequests.compare?.abort() }
   }, [])
-  function deny() {
+  function deny(reason: "permission" | "session" = "permission") {
     controllers.current.search?.abort(); controllers.current.compare?.abort()
     requests.current.search++; requests.current.compare++
-    setDenied(true); setSearch(null); setFrom(null); setTo(null); setComparison(null)
+    setDenied(reason); setSearch(null); setFrom(null); setTo(null); setComparison(null)
     setSearching(false); setComparing(false); setSearchError(null); setComparisonError(null)
   }
   async function find(event: FormEvent<HTMLFormElement>) {
@@ -79,6 +88,7 @@ function ComparisonForSession({ status, userId, organizationId }: {
       const response = await fetch("/api/v1/workforce/configuration/policies/search?" + new URLSearchParams({ q }), { credentials: "same-origin", signal: controller.signal })
       const body = await response.json().catch(() => ({}))
       if (!current()) return
+      if (response.status === 401) { deny("session"); return }
       if (response.status === 403) { deny(); return }
       if (!response.ok || !body.success || !validSearch(body.data, q)) throw new Error("POLICY_SEARCH_FAILED")
       setSearch(body.data)
@@ -103,6 +113,7 @@ function ComparisonForSession({ status, userId, organizationId }: {
       const response = await fetch("/api/v1/workforce/configuration/policies/compare?" + new URLSearchParams({ from: from.id, to: to.id }), { credentials: "same-origin", signal: controller.signal })
       const body = await response.json().catch(() => ({}))
       if (!current()) return
+      if (response.status === 401) { deny("session"); return }
       if (response.status === 403) { deny(); return }
       if (!response.ok || !body.success || !validComparison(body.data?.comparison, from, to)) throw new Error("POLICY_COMPARISON_FAILED")
       setComparison(body.data.comparison)
@@ -114,7 +125,7 @@ function ComparisonForSession({ status, userId, organizationId }: {
   return <section className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{t("subtitle")}</p></div><Button asChild variant="outline" className="min-h-11"><Link href="/workforce/configuration"><ArrowLeft aria-hidden="true" />{t("back")}</Link></Button></div>
     <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm leading-6">{t("boundary")}</p>
-    {!ready || denied ? <p role="status" className="rounded-lg border p-4 text-sm">{t(denied ? "denied" : status === "loading" ? "sessionLoading" : "signIn")}</p> : <>
+    {!ready || denied ? <p role="status" className="rounded-lg border p-4 text-sm">{t(denied === "permission" ? "denied" : status === "loading" ? "sessionLoading" : "signIn")}</p> : <>
       <form onSubmit={find} className="space-y-3"><label htmlFor="workforce-policy-version-query" className="block text-sm font-medium">{t("searchLabel")}</label><div className="flex flex-col gap-3 sm:flex-row"><Input id="workforce-policy-version-query" value={query} onChange={event => setQuery(event.target.value)} minLength={2} maxLength={100} required aria-describedby="workforce-policy-version-query-hint" className="min-h-11 sm:max-w-xl" /><Button type="submit" disabled={searching} className="min-h-11">{searching ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{t(searching ? "searching" : "search")}</Button></div><p id="workforce-policy-version-query-hint" className="text-sm text-muted-foreground">{t("queryHint")}</p></form>
       {searchError ? <p role="alert" className="text-sm text-destructive">{searchError}</p> : null}
       {search ? <div role="status" className="text-sm text-muted-foreground"><p>{t(search.policies.length ? "searchResults" : "empty", { query: search.query, count: number.format(search.policies.length) })}</p>{search.hasMore ? <p className="mt-1">{t("refine")}</p> : null}</div> : null}
