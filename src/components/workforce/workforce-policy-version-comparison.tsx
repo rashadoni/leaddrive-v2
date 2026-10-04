@@ -12,6 +12,7 @@ import type { WorkforcePolicyVersionComparison } from "@/lib/workforce/policy-ve
 import { WorkforcePolicyFutureWindowSection } from "@/components/workforce/workforce-policy-future-window-preview"
 import { WorkforcePolicyRestoreDraftSection } from "@/components/workforce/workforce-policy-restore-draft"
 import type { WorkforcePolicyRestoreSource } from "@/lib/workforce/policy-restore-receipt"
+import { WorkforcePolicyEmployeeImpactSection } from "@/components/workforce/workforce-policy-employee-impact-preview"
 
 type Choice = {
   id: string; name: string; version: number; status: "DRAFT" | "ACTIVE" | "RETIRED"
@@ -158,6 +159,8 @@ function ComparisonForSession({ status, userId, organizationId }: {
       {comparisonError ? <p role="alert" className="text-sm text-destructive">{comparisonError}</p> : null}
       {comparison ? <WorkforcePolicyComparisonTable comparison={comparison} /> : null}
       <WorkforcePolicyFutureWindowSection key={JSON.stringify([to?.id, to?.version, to?.status])} choice={to} onDenied={deny} />
+      <WorkforcePolicyEmployeeImpactSection key={JSON.stringify(comparison?.to)} blocked={restoreHeld} onDenied={deny}
+        source={comparison?.to.status === "DRAFT" ? { ...comparison.to, teamId: comparison.scope.teamId } : null} />
       <WorkforcePolicyRestoreDraftSection key={JSON.stringify(restoreSource)} source={restoreSource} onDenied={deny} onHold={holdRestore} />
     </>}
   </section>
