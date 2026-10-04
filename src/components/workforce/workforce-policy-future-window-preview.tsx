@@ -87,7 +87,7 @@ export function WorkforcePolicyFutureWindowSection({ choice, onDenied }: { choic
     finally { if (current()) setLoading(false) }
   }
   const number = new Intl.NumberFormat(locale)
-  return <section aria-labelledby="workforce-policy-future-window-title" className="space-y-4 rounded-lg border p-4" aria-busy={loading}>
+  return <section aria-labelledby="workforce-policy-future-window-title" className="space-y-4 break-words rounded-lg border p-4" aria-busy={loading}>
     <div><h2 id="workforce-policy-future-window-title" className="font-semibold">{t("title")}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{t("hint")}</p></div>
     <Button type="button" onClick={() => void load()} disabled={!choice || choice.status !== "DRAFT" || loading} className="min-h-11">{loading ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{t(loading ? "loading" : "preview")}</Button>
     {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}

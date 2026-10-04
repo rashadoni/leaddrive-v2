@@ -50,7 +50,7 @@ function currentDate() {
   assert.equal(new Date().toISOString().slice(0, 10), date, "Real UTC date crossed midnight; preserve failure without reseeding")
 }
 const receipts = {
-  version: 1,
+  version: 2,
   candidateHead: process.env.WF_POLICY_VERSION_BROWSER_HEAD_SHA,
   checkedMergeSha: process.env.GITHUB_SHA,
   harnessSha256: createHash("sha256").update(await readFile(new URL(import.meta.url))).digest("hex"),
@@ -62,6 +62,10 @@ const receipts = {
     "src/components/workforce/workforce-policy-version-comparison.tsx", "src/app/(dashboard)/workforce/configuration/page.tsx",
     "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx", "src/lib/workforce/policy-version-comparison.ts",
     "src/lib/with-workforce-rls-auth.ts", "src/lib/workforce/policy-definition.ts",
+    "src/lib/workforce/policy-future-window-preview.ts", "src/lib/workforce/policy-future-window-read.ts",
+    "src/components/workforce/workforce-policy-future-window-preview.tsx",
+    "src/app/api/v1/workforce/configuration/policies/[id]/window-preview/route.ts",
+    "src/__tests__/lib-workforce-policy-future-window-postgres.test.ts",
     "src/app/api/v1/workforce/configuration/policies/search/route.ts", "src/app/api/v1/workforce/configuration/policies/compare/route.ts",
     "messages/en.json", "messages/ru.json", "messages/az.json", "prisma/schema.prisma",
     "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
@@ -73,7 +77,7 @@ const receipts = {
   authenticationDiagnostics: [],
   cases: [],
   status: "RUNNING",
-  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "Historical owner-imported policy definitions, not canonical publication/activation/rollback writers", "No human AT/native zoom/whole-page keyboard/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Two recorded versions only; no effective-impact, digital signature/approval or production feature/grant activation"],
+  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "Historical owner-imported policy definitions, not canonical publication/activation/rollback writers", "No human AT/native zoom/whole-page keyboard/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Recorded definition comparisons and bounded future-window projections only; no effective-impact, digital signature/approval, canonical writer or production feature/grant activation"],
 }
 const contexts = []
 const authenticationPostTimes = []
@@ -208,7 +212,18 @@ async function seed() {
     const corrupted = index === 0 ? await policy("Invalid Integrity Draft", 3, "DRAFT", afterDefinition, null, true) : null
     const catalog = []
     if (index === 0) for (let n = 1; n <= 21; n++) catalog.push(await policy(`Catalog ${String(n).padStart(2, "0")}`, 99 + n, "DRAFT", beforeDefinition))
-    tenants.push({ organization, issuer, reader, team, people, before, after, teamBefore, teamAfter, corrupted, catalog })
+    const futureDraft = await policy("Future Organization Draft" + (index === 0 ? " " + "x".repeat(120) : ""), 200, "DRAFT", afterDefinition, null, false, { from: future(60), to: null })
+    const teamDraft = await policy("Future Team Draft", 3, "DRAFT", afterDefinition, team.id, false, { from: future(60), to: null })
+    const emptyDraft = await policy("Empty Predecessor Draft", 4, "DRAFT", afterDefinition, team.id, false, { from: future(30), to: null })
+    const laterDraft = await policy("Later Published Window Draft", 201, "DRAFT", afterDefinition, null, false, { from: future(15), to: null })
+    let overflowDraft = null
+    if (index === 0) {
+      const overflowTeam = await admin.mtmTeam.create({ data: { organizationId: organization.id, name: "Window cap fixture team", code: `WINDOW-CAP-${suffix}`, isActive: true } })
+      for (let n = 0; n < 101; n++) await policy("Cap Recorded Window", n + 1, "ACTIVE", beforeDefinition, overflowTeam.id, false,
+        { from: earlier(730 - n), to: n === 100 ? null : earlier(730 - n) })
+      overflowDraft = await policy("Overflow Future Draft", 200, "DRAFT", afterDefinition, overflowTeam.id, false, { from: future(60), to: null })
+    }
+    tenants.push({ organization, issuer, reader, team, people, before, after, teamBefore, teamAfter, corrupted, catalog, futureDraft, teamDraft, emptyDraft, laterDraft, overflowDraft })
   }
   return { primary: tenants[0], foreign: tenants[1] }
 }
@@ -264,7 +279,8 @@ async function open(principal, locale, width) {
   await page.getByRole("heading", { level: 1, name: ui.title, exact: true }).waitFor({ timeout: 120_000 })
   await page.getByLabel(ui.searchLabel, { exact: true }).waitFor({ timeout: 120_000 })
   assert.notEqual(new URL(page.url()).pathname, "/login")
-  return { context, page, ui, locale, writes }
+  const windowUi = JSON.parse(await readFile(new URL(`../messages/${locale}.json`, import.meta.url), "utf8")).workforcePolicyFutureWindowPreview
+  return { context, page, ui, windowUi, locale, writes }
 }
 async function namedSearch(view, q, expected) {
   activePage = view.page
@@ -346,6 +362,65 @@ async function compare(view, before, after, reverse = false, native = false) {
   assert.deepEqual(view.writes, [])
   return { exactFiveNumericAndLocalizedRows: true, nullZeroDistinct: true, signedDelta: reverse ? "reverse" : "forward", opaqueNotInterpreted: true, hashIntegrityNotApproval: true, applyTabs, tableTabs, geometry }
 }
+const windowEndpoint = policy => `/api/v1/workforce/configuration/policies/${encodeURIComponent(policy.id)}/window-preview`
+async function windowRead(context, policy, status = 200, code = null, query = "") {
+  const body = await sensitive(await context.request.get(windowEndpoint(policy) + query, { timeout: 120_000 }), status)
+  if (code) { assert.deepEqual(Object.keys(body).sort(), ["code", "error"]); assert.equal(body.code, code) }
+  return body
+}
+function expectedWindow(body, draft, previous, windows) {
+  assert.equal(body.success, true); assert.deepEqual(Object.keys(body.data), ["preview"])
+  const result = body.data.preview
+  assert.deepEqual(Object.keys(result).sort(), ["basis", "canonicalActivationRequired", "currentDate", "draft", "guaranteedAtActivation", "observedAt", "predecessor", "projectedWindow", "recordedWindows", "scope", "timezone"])
+  assert.equal(result.basis, "RECORDED_SCOPE_WINDOWS_ONLY_NO_EMPLOYEE_IMPACT_OR_APPROVAL")
+  assert.equal(result.canonicalActivationRequired, true); assert.equal(result.guaranteedAtActivation, false)
+  assert.equal(result.timezone, "Asia/Baku")
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: result.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(result.observedAt))
+  const part = name => parts.find(row => row.type === name).value
+  assert.equal(result.currentDate, `${part("year")}-${part("month")}-${part("day")}`)
+  const metadata = row => ({ id: row.id, name: row.name, version: row.version, effectiveFrom: row.effectiveFrom.toISOString().slice(0, 10), effectiveTo: row.effectiveTo?.toISOString().slice(0, 10) ?? null })
+  assert.deepEqual(result.draft, metadata(draft)); assert.deepEqual(result.recordedWindows, windows.map(metadata))
+  const close = new Date(draft.effectiveFrom.getTime() - 86_400_000).toISOString().slice(0, 10)
+  assert.deepEqual(result.predecessor, { ...metadata(previous), projectedEffectiveTo: close })
+  assert.deepEqual(result.projectedWindow, { effectiveFrom: metadata(draft).effectiveFrom, effectiveTo: null })
+  assert.deepEqual(result.scope, { kind: draft.teamId === null ? "ORGANIZATION" : "TEAM", teamId: draft.teamId })
+  assert.equal(JSON.stringify(result).includes("historical-"), false)
+  assert.equal(JSON.stringify(result).includes("definitionHash"), false)
+  return result
+}
+async function previewWindow(view, draft, previous, windows, native = false, keepLoaded = false) {
+  activePage = view.page; stage = "future-window-selection"
+  await view.page.getByLabel(view.ui.to, { exact: true }).selectOption(draft.id)
+  const region = view.page.getByRole("region", { name: view.windowUi.title, exact: true })
+  const button = region.getByRole("button", { name: view.windowUi.preview, exact: true })
+  assert.equal(await button.isEnabled(), true)
+  const nativeTabs = native ? await tabTo(view.page, button) : null
+  if (native) assert.equal(await button.evaluate(element => element.matches(":focus-visible")), true)
+  const pending = view.page.waitForResponse(response => responseFor(response, windowEndpoint(draft)), { timeout: 120_000 })
+  if (native) await view.page.keyboard.press("Enter"); else await button.click()
+  const result = expectedWindow(await sensitive(await pending, 200), draft, previous, windows)
+  const localized = (pattern, values) => Object.entries(values).reduce((text, [name, value]) => text.replace(`{${name}}`, String(value)), pattern)
+  const version = await view.page.evaluate(({ locale, value }) => new Intl.NumberFormat(locale).format(value), { locale: view.locale, value: draft.version })
+  await region.getByText(localized(view.windowUi.selected, { name: draft.name, version }), { exact: true }).waitFor()
+  await region.getByText(view.windowUi.boundary, { exact: true }).waitFor()
+  const times = await region.locator("time").allTextContents(); assert.deepEqual(times, [result.projectedWindow.effectiveFrom])
+  const predecessorVersion = await view.page.evaluate(({ locale, value }) => new Intl.NumberFormat(locale).format(value), { locale: view.locale, value: previous.version })
+  await region.getByText(localized(view.windowUi.close, { name: previous.name, version: predecessorVersion, date: result.predecessor.projectedEffectiveTo }), { exact: true }).waitFor()
+  await region.locator("summary").click(); assert.equal(await region.locator("li").count(), windows.length)
+  await region.scrollIntoViewIfNeeded()
+  const geometry = await region.evaluate(element => { const r = element.getBoundingClientRect(); return { visible: r.width > 0 && r.height > 0, horizontallyWithinViewport: r.left >= 0 && r.right <= innerWidth, documentNoHorizontalOverflow: document.documentElement.scrollWidth <= innerWidth } })
+  assert.deepEqual(geometry, { visible: true, horizontallyWithinViewport: true, documentNoHorizontalOverflow: true })
+  await view.page.screenshot({ path: `${outputDirectory}/future-window-${view.locale}-${draft.teamId === null ? "organization" : "team"}.png` })
+  assert.deepEqual(view.writes, [])
+  // Selection remount must clear the previous projection without another automatic request.
+  if (!keepLoaded) {
+    await view.page.getByLabel(view.ui.to, { exact: true }).selectOption(previous.id)
+    assert.equal(await region.getByText(view.windowUi.boundary, { exact: true }).count(), 0)
+    assert.equal(await button.isEnabled(), false)
+  }
+  return { minimalCompleteDto: true, organizationTimezoneDate: true, projectedDatesExact: true, recordedWindows: windows.length,
+    noEmployeeImpactApprovalOrActivation: true, selectionRemountClearsProjection: !keepLoaded, nativeTabs, geometry }
+}
 async function errorRead(context, endpoint, parameters, status, code, options = {}) {
   const response = await context.request.get(endpoint + "?" + new URLSearchParams(parameters), { timeout: 120_000, ...options })
   const body = await sensitive(response, status)
@@ -393,8 +468,9 @@ async function denied(principal, locale, code) {
   assert.deepEqual(view.writes, [])
   await view.page.getByText(view.ui.denied, { exact: true }).scrollIntoViewIfNeeded()
   await view.page.screenshot({ path: `${outputDirectory}/denied-${principal.key}.png` })
+  await windowRead(view.context, { id: "unavailable-window-fixture" }, 403, code)
   await assertSession(view.context, principal)
-  receipts.cases.push({ name: principal.key + "-denied", status: "PASS", responseStatus: 403, privateNoStoreNosniff: true, noChoicesOrComparisonRendered: true, realSessionPreserved: true })
+  receipts.cases.push({ futureWindowActual403: true, name: principal.key + "-denied", status: "PASS", responseStatus: 403, privateNoStoreNosniff: true, noChoicesOrComparisonRendered: true, realSessionPreserved: true })
 }
 try {
   stage = "seed"
@@ -413,6 +489,10 @@ try {
     // ACTIVE is published but deliberately future-effective: no effective-policy claim.
     assert.ok((await view.page.locator("select").first().innerText()).includes(view.ui.statuses.ACTIVE))
     receipts.cases.push({ name: "organization-" + locale, status: "PASS", viewport: { width, height: 900 }, futurePublishedNotCurrentEffective: true, ...proof })
+    stage = "future-window-organization-" + locale
+    await namedSearch(view, "Future Organization Draft", [fixture.primary.futureDraft])
+    receipts.cases.push({ name: "future-window-organization-" + locale, status: "PASS", viewport: { width, height: 900 },
+      ...await previewWindow(view, fixture.primary.futureDraft, fixture.primary.after, [fixture.primary.before, fixture.primary.after], locale === "ru") })
     if (locale === "en") {
       stage = "granular-reader-configuration-entry"
       await view.page.goto("/workforce/configuration", { waitUntil: "domcontentloaded" })
@@ -449,10 +529,25 @@ try {
   await namedSearch(reader, "No Such Fixture Policy", [])
   assert.deepEqual(await reader.page.locator("select").evaluateAll(elements => elements.map(element => element.value)), selections)
   receipts.cases.push({ name: "catalog-lookahead-and-retention", status: "PASS", seededMatches: 21, visibleChoices: 20, hasMore: true, narrowMatch: 1, emptyMatches: 0, selectionsRetainedInSameSession: true })
+  stage = "future-window-team"
+  await namedSearch(reader, "Future Team Draft", [fixture.primary.teamDraft])
+  receipts.cases.push({ name: "future-window-team", status: "PASS", ...await previewWindow(reader, fixture.primary.teamDraft, fixture.primary.teamAfter, [fixture.primary.teamAfter]) })
+  stage = "future-window-fail-closed"
+  const windowFailures = []
+  for (const [draft, code] of [[fixture.primary.overflowDraft, "LIMIT_EXCEEDED"], [fixture.primary.emptyDraft, "CONFLICT"],
+    [fixture.primary.laterDraft, "CONFLICT"], [fixture.primary.catalog[0], "NOT_FUTURE_DRAFT"], [fixture.primary.corrupted, "INTEGRITY_INVALID"]]) {
+    await windowRead(reader.context, draft, 409, "WORKFORCE_POLICY_WINDOW_" + code)
+    windowFailures.push({ expectedCode: "WORKFORCE_POLICY_WINDOW_" + code, status: 409, fixedSafeBody: true, noPartialPreview: true })
+  }
+  await windowRead(reader.context, fixture.primary.futureDraft, 400, "WORKFORCE_POLICY_WINDOW_INPUT_INVALID", "?organizationId=foreign")
+  await windowRead(reader.context, fixture.foreign.futureDraft, 404, "WORKFORCE_POLICY_WINDOW_NOT_FOUND")
+  receipts.cases.push({ name: "future-window-fail-closed", status: "PASS", actual101WindowSentinel: true, checks: windowFailures, foreignId404: true, unknownQuery400: true })
   stage = "explicit-legacy-read"
   const legacy = await open(fixture.foreign.issuer, "en", 1440)
   await namedSearch(legacy, "Recorded Organization", [fixture.foreign.before, fixture.foreign.after])
   receipts.cases.push({ name: "explicit-legacy-read", status: "PASS", ...await compare(legacy, fixture.foreign.before, fixture.foreign.after), explicitLegacyFeatureOff: true, noGranularGrantOnLegacyAdmin: true })
+  await namedSearch(legacy, "Future Organization Draft", [fixture.foreign.futureDraft])
+  receipts.cases.push({ name: "future-window-explicit-legacy-read", status: "PASS", ...await previewWindow(legacy, fixture.foreign.futureDraft, fixture.foreign.after, [fixture.foreign.before, fixture.foreign.after]), explicitLegacyFeatureOff: true })
   stage = "team-grant-denial"
   await denied(fixture.primary.people[2], "ru", "WORKFORCE_GRANULAR_ACCESS_REQUIRED")
   stage = "crm-admin-no-fallback-denial"
@@ -469,6 +564,9 @@ try {
   stage = "real-logout-reauthentication"
   await namedSearch(reader, "Recorded Organization", [fixture.primary.before, fixture.primary.after])
   await compare(reader, fixture.primary.before, fixture.primary.after)
+  await namedSearch(reader, "Future Organization Draft", [fixture.primary.futureDraft])
+  await compare(reader, fixture.primary.before, fixture.primary.futureDraft)
+  await previewWindow(reader, fixture.primary.futureDraft, fixture.primary.after, [fixture.primary.before, fixture.primary.after], false, true)
   const csrf = await reader.context.request.get("/api/auth/csrf"), { csrfToken } = await csrf.json()
   assert.equal(csrf.status(), 200); assert.equal(typeof csrfToken, "string")
   authenticationPostTimes.push(Date.now())
@@ -491,6 +589,7 @@ try {
   await reader.page.getByText(reader.ui.signIn, { exact: true }).waitFor()
   assert.equal(await reader.page.getByRole("table").count(), 0)
   assert.equal(await reader.page.locator("select").count(), 0)
+  assert.equal(await reader.page.getByText(reader.windowUi.boundary, { exact: true }).count(), 0)
   // Navigation reflects the actual server logout; no auth/session response mock.
   await reader.page.reload({ waitUntil: "domcontentloaded" })
   assert.equal(await reader.page.getByRole("table").count(), 0)
@@ -501,13 +600,13 @@ try {
   assert.equal(await reader.page.getByRole("table").count(), 0)
   await namedSearch(reader, "Recorded Organization", [fixture.primary.before, fixture.primary.after])
   await compare(reader, fixture.primary.before, fixture.primary.after)
-  receipts.cases.push({ name: "real-logout-reauthentication", status: "PASS", actualSignoutAndSameActorCredentialCallback: true, actualUiFetchProxy401: true, staleComparisonAndChoicesClearedBeforeNavigation: true, proxyNoStoreObserved: /no-store/.test(unauthenticatedHeaders["cache-control"] || ""), unauthenticatedPrivateRouteHeaderAcceptance: "NOT RUN: unchanged proxy returns before the policy route", navigationAndReauthClearSelectionsAndResults: true, latePendingRequestAcceptanceRemainsMockedUnitScope: true })
+  receipts.cases.push({ name: "real-logout-reauthentication", status: "PASS", actualSignoutAndSameActorCredentialCallback: true, actualUiFetchProxy401: true, staleComparisonAndChoicesClearedBeforeNavigation: true, staleFutureProjectionClearedBeforeNavigation: true, proxyNoStoreObserved: /no-store/.test(unauthenticatedHeaders["cache-control"] || ""), unauthenticatedPrivateRouteHeaderAcceptance: "NOT RUN: unchanged proxy returns before the policy route", navigationAndReauthClearSelectionsAndResults: true, latePendingRequestAcceptanceRemainsMockedUnitScope: true })
   stage = "after-fingerprints-and-rls"
   const after = await facts(ids); assert.deepEqual(after, before)
   receipts.factImmutability = { status: "PASS", tenantCount: 2, tables: before.map((row, index) => ({ ...row, afterSha256: after[index].sha256, unchanged: true })), userAuthenticationMetadataExcluded: true, emptyTablesNotPositiveRlsProof: true }
   receipts.rlsAfter = await verifyRls(fixture, "AFTER")
   for (const view of [reader, legacy]) assert.deepEqual(view.writes, [])
-  assert.equal(receipts.cases.length, 12); currentDate(); receipts.status = "PASS"
+  assert.equal(receipts.cases.length, 18); currentDate(); receipts.status = "PASS"
 } catch (error) {
   receipts.status = "FAIL"
   const frame = String(error?.stack || "").split("\n").find(line => line.includes(import.meta.url)), position = frame?.match(/:(\d+):(\d+)\)?$/)
