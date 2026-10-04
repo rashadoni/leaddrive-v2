@@ -5255,7 +5255,10 @@
     "replyLanguageAuto": "Müştəriyə görə",
     "replyLanguageAz": "Yalnız Azərbaycan dili",
     "replyLanguageRu": "Yalnız rus dili",
-    "replyLanguageEn": "Yalnız ingilis dili"
+    "replyLanguageEn": "Yalnız ingilis dili",
+    "portalAddEmail": "Əvvəlcə e-poçt əlavə edin",
+    "portalEmailReadiness": "Kontakta e-poçt əlavə edin, sonra portal girişini aktivləşdirin.",
+    "portalBulkReadiness": "Seçilmiş {count} kontakt üçün e-poçt və ya aktiv CRM profili lazımdır. Onları dəyişin və ya seçimdən çıxarın."
   },
   "approvalDelegates": {
     "title": "Təsdiqlə Nümayəndəlik",
@@ -7041,7 +7044,7 @@
     },
     "skillRouting": {
       "headerTitle": "Bacarıq marşrutlaşdırması",
-      "headerDesc": "Hansı agentin hansı tiketi götürəcəyini qurun — yuxarıda agent bacarıqları, aşağıda marşrut-qaydası növbələri.",
+      "headerDesc": "Növbəni seçin və uyğun bacarıqları olan agentləri yoxlayın. Dar ekranda «Növbələr» və «Agentlər» bölmələrindən istifadə edin.",
       "agentsTitle": "Agent bacarıqları",
       "agentsDesc": "Hər agentin nəyi gördüyünü çiplərlə işarələyin — dərhal saxlanır. Çiplər növbə bacarıqlarından gəlir, sərbəst mətn yoxdur.",
       "queuesTitle": "Növbələr",
@@ -14864,7 +14867,7 @@
     "csatHint": "Müştərinin 1-dən 5-dək düzgün qiymətlərinin ortası; qiymətləndirilməmiş tiketlər daxil edilmir.",
     "viewAll": "Hamısına bax",
     "noOpenCases": "Açıq müraciət yoxdur",
-    "noOpenCasesHint": "Təyin edilmiş açıq tiketlər burada görünəcək.",
+    "noOpenCasesHint": "Rolunuz üçün əlçatan təyin edilməmiş müraciətlərə baxın və ya rəhbərdən iş təyin etməsini istəyin.",
     "colSubject": "Mövzu",
     "colPriority": "Prioritet",
     "colStatus": "Status",
@@ -14892,7 +14895,9 @@
       "closed": "Bağlanıb",
       "escalated": "Eskalasiya edilib",
       "unknown": "Status mövcud deyil"
-    }
+    },
+    "viewUnassigned": "Təyin edilməmiş müraciətlər",
+    "viewMyQueue": "Növbəmi aç"
   },
   "mtmActivity": {
     "title": "Aktivlik jurnalı",
@@ -20479,7 +20484,11 @@
     "noResponses": "Hələ cavab yoxdur",
     "responsePlaceholder": "Cavab yazın…",
     "sending": "Göndərilir…",
-    "send": "Göndər"
+    "send": "Göndər",
+    "closeFilters": "Filtrləri bağla",
+    "deadlineMissedHistorically": "Müddətdən sonra tamamlanıb",
+    "deadlineMetHistorically": "Vaxtında tamamlanıb",
+    "deadlineRecorded": "Qeydə alınmış müddət; tamamlanma vaxtı məlum deyil"
   },
   "slice2": {
     "loyaltyPos": {

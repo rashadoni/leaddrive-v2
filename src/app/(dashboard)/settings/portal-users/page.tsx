@@ -37,6 +37,7 @@ import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import {
   portalAccessState,
+  portalEnableBlocker,
   selectAllVisible,
   togglePortalSelection,
   type PortalContactRecord,
@@ -386,9 +387,28 @@ export default function PortalUsersPage() {
   const allSelected = contacts.length > 0 && selected.size === contacts.length
   const selectedContacts = useMemo(() => contacts.filter((contact) => selected.has(contact.id)), [contacts, selected])
 
+  const ineligibleSelected = selectedContacts.filter((contact) => portalEnableBlocker(contact) !== null).length
+
   const selectCheckbox = (contact: PortalContactRecord) => <SelectionCheckbox checked={selected.has(contact.id)} onChange={() => setSelected((current) => togglePortalSelection(current, contact.id))} ariaLabel={t("portalSelectUser", { name: contact.fullName })} testId="portal-user-select" />
 
-  const accessButton = (contact: PortalContactRecord) => <Button variant="outline" size="sm" className="min-h-11" disabled={Boolean(busyAction) || !contact.isActive} onClick={() => contact.portalAccessEnabled ? setDisableDialog(contact) : void runAccessChange(contact, true).catch(() => {})} data-testid="portal-user-access">{contact.portalAccessEnabled ? <ShieldOff className="mr-2 h-4 w-4" /> : <Shield className="mr-2 h-4 w-4" />}{!contact.isActive ? t("portalCrmInactive") : t(contact.portalAccessEnabled ? "portalBtnDisable" : "portalBtnEnable")}</Button>
+  const accessButton = (contact: PortalContactRecord) => {
+    const needsEmail = !contact.portalAccessEnabled && portalEnableBlocker(contact) === "email"
+    return <div className="flex max-w-64 flex-col items-end gap-1">
+      <Button variant="outline" size="sm" className="min-h-11" disabled={Boolean(busyAction) || !contact.isActive}
+        onClick={(event) => {
+          if (contact.portalAccessEnabled) setDisableDialog(contact)
+          else if (needsEmail) {
+            actionMenuTriggerRef.current = event.currentTarget
+            openEditDialog(contact)
+          } else void runAccessChange(contact, true).catch(() => {})
+        }} data-testid="portal-user-access">
+        {contact.portalAccessEnabled ? <ShieldOff className="mr-2 h-4 w-4" /> : <Shield className="mr-2 h-4 w-4" />}
+        {!contact.isActive ? t("portalCrmInactive") : needsEmail ? t("portalAddEmail") : t(contact.portalAccessEnabled ? "portalBtnDisable" : "portalBtnEnable")}
+      </Button>
+      {needsEmail && <p className="text-xs text-muted-foreground">{t("portalEmailReadiness")}</p>}
+    </div>
+  }
+
 
   const actionMenu = (contact: PortalContactRecord) => (
     <DropdownMenu>
@@ -445,7 +465,7 @@ export default function PortalUsersPage() {
           </div>
         </>}
 
-      {selected.size > 0 && <div role="region" aria-label={t("portalBulkToolbar")} className="sticky bottom-3 z-20 flex flex-col gap-2 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center" data-testid="portal-users-bulk"><div className="min-w-0 flex-1"><strong className="text-sm">{t("portalSelected", { count: selected.size })}</strong><p className="text-xs text-muted-foreground">{t("portalSelectionScope", { count: selectedContacts.length })}</p></div><Button variant="ghost" className="min-h-11" onClick={() => setSelected(new Set())} disabled={Boolean(busyAction)} data-testid="portal-users-clear-selection">{t("portalClearSelection")}</Button><Button variant="outline" className="min-h-11" onClick={() => void runBulkAction("enable").catch(() => {})} disabled={Boolean(busyAction)} data-testid="portal-users-bulk-enable"><Shield className="mr-2 h-4 w-4" />{t("portalEnableAccess")}</Button><Button variant="destructive" className="min-h-11" onClick={() => setBulkDisableOpen(true)} disabled={Boolean(busyAction)} data-testid="portal-users-bulk-disable"><ShieldOff className="mr-2 h-4 w-4" />{t("portalDisableAccess")}</Button></div>}
+      {selected.size > 0 && <div role="region" aria-label={t("portalBulkToolbar")} className="sticky bottom-3 z-20 flex flex-col gap-2 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center" data-testid="portal-users-bulk"><div className="min-w-0 flex-1"><strong className="text-sm">{t("portalSelected", { count: selected.size })}</strong><p className="text-xs text-muted-foreground">{t("portalSelectionScope", { count: selectedContacts.length })}</p>{ineligibleSelected > 0 && <p className="text-xs text-muted-foreground" role="status">{t("portalBulkReadiness", { count: ineligibleSelected })}</p>}</div><Button variant="ghost" className="min-h-11" onClick={() => setSelected(new Set())} disabled={Boolean(busyAction)} data-testid="portal-users-clear-selection">{t("portalClearSelection")}</Button><Button variant="outline" className="min-h-11" onClick={() => void runBulkAction("enable").catch(() => {})} disabled={Boolean(busyAction) || ineligibleSelected > 0} data-testid="portal-users-bulk-enable"><Shield className="mr-2 h-4 w-4" />{t("portalEnableAccess")}</Button><Button variant="destructive" className="min-h-11" onClick={() => setBulkDisableOpen(true)} disabled={Boolean(busyAction)} data-testid="portal-users-bulk-disable"><ShieldOff className="mr-2 h-4 w-4" />{t("portalDisableAccess")}</Button></div>}
 
       <ConfirmDialog open={Boolean(resetDialog)} onOpenChange={(open) => { if (!open) { setResetDialog(null); restoreActionMenuFocus() } }} onConfirm={handleResetPassword} title={t("portalResetPasswordTitle")} description={t("portalResetPasswordDesc")} confirmLabel={t("portalResetPasswordBtn")} confirmVariant="default" loadingLabel={t("portalResetting")} />
       <ConfirmDialog open={Boolean(disableDialog)} onOpenChange={(open) => { if (!open) setDisableDialog(null) }} onConfirm={() => disableDialog ? runAccessChange(disableDialog, false) : Promise.resolve()} title={t("portalDisableTitle")} description={disableDialog ? t("portalDisableImpact", { name: disableDialog.fullName }) : ""} confirmLabel={t("portalBtnDisable")} loadingLabel={t("portalDisabling")} />

@@ -5255,7 +5255,10 @@
     "replyLanguageAuto": "Follow the customer",
     "replyLanguageAz": "Azerbaijani only",
     "replyLanguageRu": "Russian only",
-    "replyLanguageEn": "English only"
+    "replyLanguageEn": "English only",
+    "portalAddEmail": "Add email first",
+    "portalEmailReadiness": "Add an email address to the contact, then enable portal access.",
+    "portalBulkReadiness": "{count} selected contacts need an email address or an active CRM profile. Edit them or remove them from this selection."
   },
   "approvalDelegates": {
     "title": "Approval Delegation",
@@ -7041,7 +7044,7 @@
     },
     "skillRouting": {
       "headerTitle": "Skill Routing",
-      "headerDesc": "Set up which agent takes which ticket — agent skills on top, the routing-rule queues below.",
+      "headerDesc": "Choose a queue and review the agents whose skills match it. On smaller screens, use the Queues and Agents tabs.",
       "agentsTitle": "Agent Skills",
       "agentsDesc": "Tick the chips for what each agent handles — it saves instantly. Chips come from the queue skills, so there's no free-text drift.",
       "queuesTitle": "Queues",
@@ -14868,7 +14871,7 @@
     "csatHint": "Average valid customer rating from 1 to 5; unrated tickets are excluded.",
     "viewAll": "View all",
     "noOpenCases": "No open cases",
-    "noOpenCasesHint": "Assigned open tickets will appear here.",
+    "noOpenCasesHint": "Browse unassigned tickets available to your role, or ask your manager to assign work.",
     "colSubject": "Subject",
     "colPriority": "Priority",
     "colStatus": "Status",
@@ -14896,7 +14899,9 @@
       "closed": "Closed",
       "escalated": "Escalated",
       "unknown": "Status unavailable"
-    }
+    },
+    "viewUnassigned": "View unassigned tickets",
+    "viewMyQueue": "View my queue"
   },
   "mtmActivity": {
     "title": "Activity Journal",
@@ -20483,7 +20488,11 @@
     "noResponses": "No responses yet",
     "responsePlaceholder": "Write a response…",
     "sending": "Sending…",
-    "send": "Send"
+    "send": "Send",
+    "closeFilters": "Close filters",
+    "deadlineMissedHistorically": "Completed after deadline",
+    "deadlineMetHistorically": "Completed within deadline",
+    "deadlineRecorded": "Recorded deadline; completion time unavailable"
   },
   "slice2": {
     "loyaltyPos": {

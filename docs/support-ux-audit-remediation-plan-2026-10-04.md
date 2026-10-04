@@ -47,3 +47,10 @@ Support completed-day evidence до 20:00 UTC не запускать; это о
 - Targeted tests 73/73 в 6 файлах PASS. Изменённый production source и остальные test/help файлы ESLint PASS; api-reports-journeys.test.ts содержит 84 прежних no-explicit-any diagnostics, совпадающих с base по rule/message/source line; новых 0. Первая scoped lint попытка: 87 diagnostics сохранена в журнале исполнения: 84 прежних any + 3 прежних JSX-апострофа; последние исправлены без изменения правил. Whole-file lint этого legacy test не объявляется чистым.
 - Translation parity EN/RU/AZ: 24442 leaf keys, missing 0 / extra 0 PASS; diff-check PASS. Full typecheck/build/fullsuite/реальныйDB/browser/independentacceptance NOT RUN в этом блоке; draft skips не являютсяPASS.
 - План UX04–UX10/P3 сохраняется; ни один из 10 пунктов не объявлен независимо ACCEPTED. HRM #576 и исходный Support worktree не изменены.
+
+## Продолжение: UX04, UX06, UX09, UX10
+- UX04 IMPLEMENTED: очередь → агенты; положение больше не описано как «сверху/снизу». Во время тура нужная мобильная панель видна, после завершения сохраняется выбранная пользователем вкладка.
+- UX06 IMPLEMENTED: подтверждено, что реестр читает owner=mine/unassigned, а прежний assignee=me не является его контрактом. Заголовок теперь явно обозначает личную очередь; пустая очередь открывает неназначенные обращения через существующий разрешённый tickets/read маршрут.
+- UX09 IMPLEMENTED: сервер уже отвергал single/bulk enable без email/активного контакта. UI предлагает редактирование email, не вызывает enable преждевременно и объясняет блокировку неготовой массовой выборки. Серверные права и операции отправки не изменены.
+- UX10 IMPLEMENTED: подписанный popover с видимым Close использует штатный Radix Close/Escape/focus return. Для завершённой жалобы SLA сравнивается с resolvedAt, затем closedAt; при отсутствии времени завершения история не выдумывается. Текущая красная просрочка относится только к незавершённым обращениям.
+- Targeted checks: 74/74 tests в 9 файлах PASS; scoped ESLint новых/изменённых файлов PASS. Независимая браузерная приёмка этих пунктов ещё NOT RUN.
