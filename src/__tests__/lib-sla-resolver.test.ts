@@ -75,6 +75,17 @@ describe("resolveTicketSla", () => {
     })
   })
 
+  it("retains calendar-time deadlines even when the business-hours preference is set", async () => {
+    slaPolicyFindFirst.mockResolvedValue({
+      id: "calendar", name: "Calendar preference", firstResponseHours: 4,
+      resolutionHours: 24, businessHoursOnly: true,
+    })
+    const friday = Date.parse("2026-10-02T12:00:00Z")
+    const result = await resolveTicketSla("org1", { priority: "high", now: friday })
+    expect(result.slaFirstResponseDueAt?.toISOString()).toBe("2026-10-02T16:00:00.000Z")
+    expect(result.slaDueAt?.toISOString()).toBe("2026-10-03T12:00:00.000Z")
+  })
+
   it("returns an empty object (no SLA fields) when no policy matches", async () => {
     companyFindFirst.mockResolvedValue(null)
     slaPolicyFindFirst.mockResolvedValue(null)

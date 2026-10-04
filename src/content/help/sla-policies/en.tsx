@@ -45,7 +45,7 @@ export default function SlaPoliciesHelpEn() {
           <HelpDef term="Priority">A colored badge — <strong>Critical</strong> (red), <strong>High</strong> (orange), <strong>Medium</strong> (yellow), <strong>Low</strong> (green). Shows which ticket priority this policy applies to.</HelpDef>
           <HelpDef term="1st Response">The target time for the team to reply to the ticket for the first time, shown as «4h 30m» (hours and minutes).</HelpDef>
           <HelpDef term="Resolution">The target time for the ticket to be closed, in the same «hours minutes» format.</HelpDef>
-          <HelpDef term="Business Hours">«Yes» means the target counts business hours only; «No» means time is counted continuously (24/7).</HelpDef>
+          <HelpDef term="Business Hours">This stores a preference only. Both settings currently use continuous calendar time, including nights, weekends and holidays.</HelpDef>
           <HelpDef term="Status">Whether the policy is <strong>Active</strong> (blue badge) or <strong>Inactive</strong> (grey badge).</HelpDef>
         </dl>
         <p>
@@ -64,7 +64,7 @@ export default function SlaPoliciesHelpEn() {
             A dialog titled «New SLA Policy» opens. It contains: <strong>Policy Name *</strong>, a{" "}
             <strong>Priority</strong> dropdown, an <strong>h</strong> (hours) and <strong>m</strong> (minutes)
             box each for <strong>Response Time (hours) *</strong> and <strong>Resolution Time (hours) *</strong>,
-            plus <strong>Business hours only</strong> and <strong>Active</strong> checkboxes.
+            plus <strong>Business-hours preference</strong> and <strong>Active</strong> checkboxes.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -101,11 +101,11 @@ export default function SlaPoliciesHelpEn() {
         </HelpStep>
         <HelpStep n={5}>
           <p>
-            Optionally tick <HelpKey>Business hours only</HelpKey> (checked by default), and toggle{" "}
+            Optionally tick <HelpKey>Business-hours preference</HelpKey> (checked by default), and toggle{" "}
             <HelpKey>Active</HelpKey> as needed (also checked by default).
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            With «Business hours only» ticked, the target is measured against working hours only. If you
+            The preference does not enable a working calendar: deadlines still advance continuously. If you
             clear «Active», the policy will appear as <strong>Inactive</strong> in the table.
           </HelpCallout>
         </HelpStep>
@@ -117,7 +117,7 @@ export default function SlaPoliciesHelpEn() {
           <HelpCallout kind="see" label="What you'll see">
             The button switches to <strong>Saving...</strong> while it saves, then the dialog closes and
             the new policy appears in the table — with its name, the colored priority badge, both targets
-            in «hours minutes» format, Yes/No for business hours, and the status badge.
+            in «hours minutes» format, the calendar-time explanation, and the status badge.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
@@ -155,15 +155,15 @@ export default function SlaPoliciesHelpEn() {
       <HelpCallout kind="tip">
         <p>
           A common setup is one policy per priority: a short response/resolution target for critical
-          tickets, a wider one for low priority. The «Business hours only» option keeps nights and
-          weekends from counting toward the target — leave it ticked unless you promise 24/7 support.
+          tickets, a wider one for low priority. The preference does not exclude nights, weekends or holidays from deadlines.
+          Do not promise working-time deadlines until a supported calendar is available.
         </p>
       </HelpCallout>
 
       <HelpCallout kind="security">
         <p>
-          All SLA policies are scoped to your organization — you can't see or change another
-          organization's policies. The table and form operate only on your own tenant's data.
+          All SLA policies are scoped to your organization — you cannot see or change another
+          organization’s policies. The table and form operate only on your own tenant’s data.
         </p>
       </HelpCallout>
     </div>

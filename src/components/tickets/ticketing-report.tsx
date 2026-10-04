@@ -93,7 +93,9 @@ interface ServiceDeskReportData {
     pendingClosure: number
     reopened: number
     autoClosedLast30: number
-    slaComplianceRate: number
+    slaComplianceRate: number | null
+    slaComplianceSampleSize: number
+    slaCompliantTickets: number
     avgResolutionHours: number
     avgFirstResponseMinutes: number
   }
@@ -521,9 +523,29 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
     return `/tickets?${next.toString()}#ticketing-report`
   }
 
+  const slaValue = serviceDesk.totals.slaComplianceRate === null
+    ? t("noData")
+    : `${serviceDesk.totals.slaComplianceRate}%`
+  const slaSample = t("slaSample", {
+    count: serviceDesk.totals.slaComplianceSampleSize,
+    met: serviceDesk.totals.slaCompliantTickets,
+  })
+  const periodLabels: Record<string, string> = {
+    all: t("allTime"), "7d": t("period7d"), "14d": t("period14d"),
+    "30d": t("period30d"), "90d": t("period90d"),
+    this_month: t("periodThisMonth"), custom: t("allTime"),
+  }
+  const appliedPeriod = appliedFilters.from || appliedFilters.to
+    ? `${appliedFilters.from || "…"} – ${appliedFilters.to || "…"} (UTC)`
+    : periodLabels[appliedFilters.period] || t("allTime")
+  const slaScope = t("slaScope", { period: appliedPeriod, count: appliedFilterCount })
+  const slaHint = serviceDesk.totals.slaComplianceSampleSize === 0
+    ? t("slaEmptySample")
+    : t("slaSnapshotMeaning")
+
   const metrics = [
     { label: t("activeTickets"), value: serviceDesk.totals.active.toLocaleString(locale), icon: <Inbox className="h-4 w-4" />, tone: "text-foreground" },
-    { label: t("slaCompliance"), value: `${serviceDesk.totals.slaComplianceRate}%`, icon: <ShieldCheck className="h-4 w-4" />, tone: "text-foreground" },
+    { label: t("slaActiveSnapshot"), value: slaValue, hint: `${slaSample}. ${slaHint}`, icon: <ShieldCheck className="h-4 w-4" />, tone: "text-foreground" },
     { label: t("slaBreached"), value: serviceDesk.totals.slaBreached.toLocaleString(locale), icon: <AlertTriangle className="h-4 w-4" />, tone: "text-red-700 dark:text-red-300" },
     { label: t("slaAtRisk"), value: serviceDesk.totals.slaAtRisk.toLocaleString(locale), icon: <Clock className="h-4 w-4" />, tone: "text-amber-700 dark:text-amber-300" },
     { label: t("firstResponseBreached"), value: serviceDesk.totals.firstResponseBreached.toLocaleString(locale), icon: <FileText className="h-4 w-4" />, tone: "text-red-700 dark:text-red-300" },
@@ -584,7 +606,10 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
     const rows = [
       [t("serviceDeskOps"), ""],
       [t("activeTickets"), serviceDesk.totals.active],
-      [t("slaCompliance"), `${serviceDesk.totals.slaComplianceRate}%`],
+      [t("slaActiveSnapshot"), slaValue],
+      [t("slaSampleLabel"), slaSample],
+      [t("slaScopeLabel"), slaScope],
+      [t("slaMeaningLabel"), slaHint],
       [t("slaBreached"), serviceDesk.totals.slaBreached],
       [t("slaAtRisk"), serviceDesk.totals.slaAtRisk],
       [t("firstResponseBreached"), serviceDesk.totals.firstResponseBreached],
@@ -840,14 +865,16 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
           </div>
         </form>
 
+        <p data-testid="ticketing-report-scope" className="text-xs text-muted-foreground">{slaScope}</p>
         <div className="grid overflow-hidden rounded-md border bg-background sm:grid-cols-2 lg:grid-cols-4">
           {primaryMetrics.map(metric => (
             <div key={metric.label} className="min-h-[82px] border-b border-r p-3 last:border-r-0">
               <div className={cn("mb-2 flex items-center gap-1.5 text-xs font-medium", metric.tone)}>
                 {metric.icon}
-                <span className="truncate">{metric.label}</span>
+                <span className="min-w-0 break-words">{metric.label}</span>
               </div>
               <div className="text-xl font-bold tracking-tight">{metric.value}</div>
+              {metric.hint && <p data-testid="ticketing-report-sla-sample" className="mt-1 text-xs text-muted-foreground">{metric.hint}</p>}
             </div>
           ))}
         </div>
