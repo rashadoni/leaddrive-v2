@@ -13,6 +13,7 @@ import {
   workforceShiftDefinitionHash,
 } from "@/lib/workforce/shift-definition"
 import { prisma } from "@/lib/prisma"
+import { createWorkforcePolicyDraftRow, workforcePolicyScopeLock } from "./policy-draft-write"
 
 const WorkforceDateKeySchema = z.string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
@@ -679,38 +680,18 @@ export async function createWorkforcePolicyDraft(input: {
   audit: WorkforceConfigurationAuditContext
   db?: PrismaClient
 }) {
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   const teamId = input.draft.teamId ?? null
   const definition = asPolicyDefinition(input.draft.definition)
   assertDateRange(input.draft.effectiveFrom, input.draft.effectiveTo ?? null)
   try {
-    return await db.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${configurationLock([
-        input.organizationId,
-        "policy",
-        teamId ?? "organization",
-      ])}))`
-      const latest = await tx.workforcePolicy.findFirst({
-        where: { organizationId: input.organizationId, teamId },
-        orderBy: { version: "desc" },
-        select: { version: true },
-      })
-      const policy = await tx.workforcePolicy.create({
-        data: {
-          organizationId: input.organizationId,
-          teamId,
-          version: (latest?.version ?? 0) + 1,
-          status: "DRAFT",
-          name: input.draft.name,
-          effectiveFrom: asDate(input.draft.effectiveFrom),
-          effectiveTo: input.draft.effectiveTo ? asDate(input.draft.effectiveTo) : null,
-          definition: definition.definition,
-          definitionHash: definition.definitionHash,
-          provenance: "TENANT_ADMIN",
-          systemProfileVersion: null,
-          createdByUserId: input.createdByUserId,
-        },
-        select: workforcePolicySelect,
+    return await db.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${workforcePolicyScopeLock(input.organizationId, teamId)}))`
+      const policy = await createWorkforcePolicyDraftRow(tx, {
+        organizationId: input.organizationId, teamId, createdByUserId: input.createdByUserId,
+        name: input.draft.name, effectiveFrom: input.draft.effectiveFrom,
+        effectiveTo: input.draft.effectiveTo ?? null,
+        definition: definition.definition, definitionHash: definition.definitionHash,
       })
       await tx.mtmAuditLog.create({
         data: {
@@ -752,7 +733,7 @@ export async function updateWorkforcePolicyDraft(input: {
   audit: WorkforceConfigurationAuditContext
   db?: PrismaClient
 }) {
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   return db.$transaction(async (tx) => {
     const beforeLock = await tx.workforcePolicy.findFirst({
       where: { id: input.policyId, organizationId: input.organizationId },
@@ -882,7 +863,7 @@ export async function activateWorkforcePolicyDraft(input: {
       "Workforce configuration activation time is invalid",
     )
   }
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   try {
     return await db.$transaction(async (tx) => {
       const beforeLock = await tx.workforcePolicy.findFirst({
@@ -1061,7 +1042,7 @@ export async function createWorkforceShiftTemplateDraft(input: {
   audit: WorkforceConfigurationAuditContext
   db?: PrismaClient
 }) {
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   const teamId = input.draft.teamId ?? null
   const definition = asShiftDefinition(input.draft.definition)
   const segments = input.draft.segments
@@ -1164,7 +1145,7 @@ export async function updateWorkforceShiftTemplateDraft(input: {
   audit: WorkforceConfigurationAuditContext
   db?: PrismaClient
 }) {
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   return db.$transaction(async (tx) => {
     const beforeLock = await tx.workforceShiftTemplate.findFirst({
       where: { id: input.templateId, organizationId: input.organizationId },
@@ -1310,7 +1291,7 @@ export async function activateWorkforceShiftTemplateDraft(input: {
       "Workforce configuration activation time is invalid",
     )
   }
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   try {
     return await db.$transaction(async (tx) => {
       const beforeLock = await tx.workforceShiftTemplate.findFirst({
@@ -1449,7 +1430,7 @@ export async function scheduleWorkforceShiftAssignment(input: {
     )
   }
 
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   try {
     return await db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${configurationLock([
@@ -1681,7 +1662,7 @@ export async function previewWorkforceShiftAssignments(input: {
     )
   }
 
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   const template = await db.workforceShiftTemplate.findFirst({
     where: {
       id: input.preview.templateId,
@@ -1822,7 +1803,7 @@ export async function publishWorkforceShiftAssignments(input: {
     )
   }
 
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   const requestHash = bulkShiftAssignmentRequestHash(input)
   const orderedAgentIds = [...input.publish.agentIds].sort()
   const bulkPreview = {
@@ -2173,7 +2154,7 @@ export async function publishWorkforceShiftDefault(input: {
     defaultAssignment: input.publish,
     currentDateKey: input.currentDateKey,
   })
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   const requestHash = workforceShiftDefaultPublishRequestHash(input)
   try {
     return await db.$transaction(async (tx) => {
@@ -2472,7 +2453,7 @@ export async function publishWorkforceShiftTeamDefault(input: {
   db?: PrismaClient
 }): Promise<WorkforceShiftTeamDefaultPublishResult> {
   assertWorkforceTeamDefaultShiftPublishInput(input)
-  const db = input.db ?? prisma
+  const db: PrismaClient = input.db ?? prisma
   const requestHash = workforceShiftTeamDefaultPublishRequestHash(input)
   try {
     return await db.$transaction(async (tx) => {
