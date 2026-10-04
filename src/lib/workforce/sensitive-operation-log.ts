@@ -31,6 +31,7 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "configuration-access-review"
     | "configuration-exception-response-cycle-audit"
     | "configuration-policy-version-comparison"
+    | "configuration-policy-version-search"
     | "configuration-exception-policy-revision-read"
     | "configuration-exception-policy-revision-write"
     | "read-request-list"
