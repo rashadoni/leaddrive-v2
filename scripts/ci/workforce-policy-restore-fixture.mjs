@@ -27,6 +27,7 @@ const paths = [foundationPath, lifecyclePath, "scripts/ci/fixtures/workforce-man
   "scripts/ci/fixtures/workforce-policy-version-browser.sql", "scripts/ci/fixtures/workforce-policy-restore-writer.sql",
   "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql", "prisma/schema.prisma",
   "scripts/ci/workforce-policy-restore-fixture.mjs", "scripts/ci/workforce-policy-restore-base-row.mjs",
+  "scripts/ci/workforce-policy-restore-pre-anchor.mjs",
   "scripts/_rls.mjs", ".github/workflows/workforce-policy-restore-evidence.yml"]
 const sourceBindings = await Promise.all(paths.map(async path => { const raw = await readFile(path); return { path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") } }))
 await writeFile(directory + "/selected-baseline-source-bindings.json", JSON.stringify({ sourceBindings,
