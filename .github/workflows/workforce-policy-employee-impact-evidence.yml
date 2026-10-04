@@ -1,0 +1,140 @@
+name: Workforce policy employee impact evidence
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/workforce-policy-employee-impact-evidence.yml"
+      - "scripts/ci/fixtures/workforce-policy-employee-impact.sql"
+      - "scripts/ci/fixtures/workforce-manager-today-browser.sql"
+      - "scripts/ci/fixtures/workforce-policy-version-browser.sql"
+      - "src/__tests__/*workforce-policy-employee-impact*.test.*"
+      - "src/app/api/v1/workforce/configuration/policies/*/employee-impact/route.ts"
+      - "src/lib/workforce/policy*.ts"
+      - "src/lib/workforce/team-membership.ts"
+      - "src/lib/workforce/sensitive-operation-log.ts"
+      - "src/lib/workforce/access*.ts"
+      - "src/lib/workforce/granular-access-rollout.ts"
+      - "src/lib/with-workforce-rls-auth.ts"
+      - "src/lib/with-rls.ts"
+      - "src/lib/mtm-settings.ts"
+      - "src/lib/mtm/mobile-week.ts"
+      - "src/lib/timezone.ts"
+      - "prisma/schema.prisma"
+      - "package.json"
+      - "package-lock.json"
+      - "vitest.config.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: workforce-policy-employee-impact-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  employee-impact-postgres:
+    name: Real PostgreSQL employee impact SELECT-only evidence
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=4096
+      WF_POLICY_IMPACT_POSTGRES: "1"
+      WF_POLICY_IMPACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      WF_POLICY_IMPACT_OUTPUT_DIR: artifacts/workforce-policy-employee-impact
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: workforce_manager_today_browser
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d workforce_manager_today_browser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - name: Checkout candidate merge
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Resolve isolated masked database credentials
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        shell: bash
+        run: |
+          test -n "$PG_PORT"
+          [[ "$WF_POLICY_IMPACT_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          WF_IMPACT_APP_PASSWORD="$(openssl rand -hex 24)"
+          WF_IMPACT_READER_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$WF_IMPACT_APP_PASSWORD"
+          echo "::add-mask::$WF_IMPACT_READER_PASSWORD"
+          {
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "DATABASE_URL=postgresql://wf_manager_today_browser:${WF_IMPACT_APP_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "WF_POLICY_IMPACT_READ_DATABASE_URL=postgresql://wf_policy_impact_reader:${WF_IMPACT_READER_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "WF_IMPACT_APP_PASSWORD=$WF_IMPACT_APP_PASSWORD"
+            echo "WF_IMPACT_READER_PASSWORD=$WF_IMPACT_READER_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install exact candidate dependencies
+        run: npm ci
+
+      - name: Prepare current schema and separate SELECT-only role
+        shell: bash
+        run: |
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$WF_IMPACT_APP_PASSWORD" -f scripts/ci/fixtures/workforce-manager-today-browser.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/ci/fixtures/workforce-policy-version-browser.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=impact_password="$WF_IMPACT_READER_PASSWORD" -f scripts/ci/fixtures/workforce-policy-employee-impact.sql
+          npx prisma generate
+
+      - name: Verify populated real PostgreSQL snapshots, locks, RLS and bounds
+        run: npx vitest run src/__tests__/lib-workforce-policy-employee-impact-postgres.test.ts --maxWorkers=1
+
+      - name: Preserve safe workflow outcome
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          directory = pathlib.Path(os.environ['WF_POLICY_IMPACT_OUTPUT_DIR'])
+          directory.mkdir(parents=True, exist_ok=True)
+          receipt = {
+              'status': os.environ['JOB_STATUS'],
+              'candidateHead': os.environ['WF_POLICY_IMPACT_HEAD_SHA'],
+              'checkedMergeSha': os.environ['GITHUB_SHA'],
+              'runId': os.environ['GITHUB_RUN_ID'],
+              'runAttempt': os.environ['GITHUB_RUN_ATTEMPT'],
+              'runtime': 'disposable-postgresql16-only',
+              'productionMutation': False,
+          }
+          (directory / 'workflow-context.json').write_text(json.dumps(receipt, indent=2) + '\n')
+          PY
+
+      - name: Upload complete non-secret PostgreSQL evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workforce-policy-employee-impact-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/workforce-policy-employee-impact
+          if-no-files-found: error
+          retention-days: 14
