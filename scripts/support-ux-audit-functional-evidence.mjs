@@ -233,10 +233,20 @@ async function main() {
         mark("ux01-filter-reset-" + view)
         await open("/tickets?view=" + view + "&q=" + encodeURIComponent(query), "tickets-workspace")
         await page.getByTestId("tickets-search").fill(query)
+        // DataTable intentionally renders separate desktop and mobile empty
+        // states. Exercise the one visible at this viewport, without first().
         const empty = page.getByTestId(view === "list" ? "tickets-no-results-state" : "tickets-kanban-no-results-state")
+          .filter({ visible: true })
         await empty.waitFor({ state: "visible" })
-        await empty.getByRole("button").click()
+        check(await empty.count() === 1, "VISIBLE_EMPTY_STATE_NOT_UNIQUE")
+        await empty.getByRole("button", { name: "Reset filters", exact: true }).click()
         await empty.waitFor({ state: "hidden" })
+        await page.waitForFunction(() => document.querySelector("[data-testid='tickets-search']")?.value === ""
+          && !new URLSearchParams(window.location.search).has("q"))
+        const resultSelector = view === "list"
+          ? "[data-testid='tickets-workspace'] tbody tr[tabindex='0']:visible"
+          : "[data-testid='tickets-kanban-viewport'] article:visible"
+        await eventually(async () => await page.locator(resultSelector).count() > 0, "RESET_DID_NOT_RESTORE_TICKETS")
       }
     })
 
@@ -387,7 +397,7 @@ async function main() {
       await ticketControlSynced("status", "waiting")
       mark("ux05-self-and-full-assignment")
       await actionResponse("/api/v1/tickets/" + row.id, "PUT",
-        () => page.getByRole("button", { name: "Assign to me", exact: true }).click(), 200, "SELF_ASSIGN_FAILED")
+        () => page.getByTestId("ticket-quick-assign-self").click(), 200, "SELF_ASSIGN_FAILED")
       check((await db.ticket.findUnique({ where: { id: row.id } })).assignedTo === actorId, "SELF_ASSIGN_NOT_SAVED")
       await ticketControlSynced("assignee", actorId)
       const agent = await db.user.findFirst({ where: { organizationId: orgId, email: process.env.SUPPORT_EVIDENCE_AGENT_EMAIL }, select: { id: true } })
@@ -583,13 +593,22 @@ async function main() {
       await page.getByTestId("portal-user-edit-form").waitFor({ state: "visible" })
       const unchanged = await db.contact.findUnique({ where: { id: contact.id } })
       check(!unchanged.portalAccessEnabled && unchanged.portalVerificationToken === null, "PREMATURE_PORTAL_ENABLE")
-      await page.locator("#portal-user-email").fill(prefix.toLowerCase() + "@support-evidence.invalid")
+      const savedEmail = prefix.toLowerCase() + "@support-evidence.invalid"
+      await page.locator("#portal-user-email").fill(savedEmail)
       await actionResponse("/api/v1/portal-users", "PATCH",
         () => page.getByTestId("portal-user-edit-save").click(), 200, "EMAIL_SAVE_FAILED")
       await page.getByTestId("portal-user-edit-form").waitFor({ state: "hidden" })
       mark("ux09-ready-enable")
+      // Closing the edit form precedes its list refresh. The old row still
+      // offers "Add email first"; wait for the saved data and intended action.
+      await row.getByText(savedEmail, { exact: true }).waitFor({ state: "visible" })
+      const enableAccess = row.getByRole("button", { name: "Enable access", exact: true })
+        .and(row.locator("[data-testid='portal-user-access']:enabled"))
+      await enableAccess.waitFor({ state: "visible" })
+      await eventually(() => enableAccess.evaluate(el => document.activeElement === el),
+        "PROFILE_SAVE_FOCUS_NOT_RESTORED")
       await actionResponse("/api/v1/portal-users", "PATCH",
-        () => row.getByTestId("portal-user-access").click(), 200, "READY_ENABLE_FAILED")
+        () => enableAccess.click(), 200, "READY_ENABLE_FAILED")
       const ready = await db.contact.findUnique({ where: { id: contact.id } })
       check(ready.portalAccessEnabled && ready.portalVerificationToken === null, "READY_STATE_OR_UNREQUESTED_INVITE")
     })

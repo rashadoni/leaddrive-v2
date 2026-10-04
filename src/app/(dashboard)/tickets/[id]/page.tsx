@@ -1283,7 +1283,7 @@ export default function TicketDetailPage() {
           {ticket.status === "closed" ? (
             <Button size="sm" variant="outline" className="h-11 w-full sm:h-9" disabled={updatingStatus} onClick={() => void handleReopen()}>{t("reopenTicket")}</Button>
           ) : !ticket.assignedTo ? (
-            <Button size="sm" className="h-11 w-full sm:h-9" disabled={updatingAssignee} onClick={() => void handleAssignToMe()}>{t("assignToMe")}</Button>
+            <Button data-testid="ticket-quick-assign-self" size="sm" className="h-11 w-full sm:h-9" disabled={updatingAssignee} onClick={() => void handleAssignToMe()}>{t("assignToMe")}</Button>
           ) : (
             <Button size="sm" className="h-11 w-full sm:h-9" onClick={() => { setIsInternal(false); commentRef.current?.focus() }}>{t("replyBtn")}</Button>
           )}

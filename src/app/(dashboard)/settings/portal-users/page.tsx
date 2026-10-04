@@ -128,6 +128,7 @@ export default function PortalUsersPage() {
   const desktopSelectAllRef = useRef<HTMLInputElement>(null)
   const mobileSelectAllRef = useRef<HTMLInputElement>(null)
   const actionMenuTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const restoreProfileFocusRef = useRef(false)
   const hasLoadedRef = useRef(false)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [busyAction, setBusyAction] = useState("")
@@ -305,6 +306,19 @@ export default function PortalUsersPage() {
     })
   }
 
+  useEffect(() => {
+    if (refreshing || savingEdit || !restoreProfileFocusRef.current) return
+    restoreProfileFocusRef.current = false
+    const trigger = actionMenuTriggerRef.current
+    const active = document.activeElement
+    // A disabled action cannot receive the dialog's immediate focus return.
+    // Restore it once the new row is ready, unless the user moved focus.
+    if (trigger?.isConnected && !trigger.disabled
+      && (!active || active === document.body || active === trigger)) {
+      trigger.focus({ preventScroll: true })
+    }
+  }, [refreshing, savingEdit])
+
   const handleSavePortalUser = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!editDialog || savingEdit) return
@@ -326,8 +340,11 @@ export default function PortalUsersPage() {
           setNotice({ kind: "error", text: t("portalEditSavedLinkFailed") })
         }
       } else setNotice({ kind: updated.auditRecorded ? "success" : "error", text: `${t("portalEditSaved")} ${t(updated.auditRecorded ? "portalAuditRecorded" : "portalAuditFailed")}` })
+      // Keep the access action unavailable until the refreshed row reflects
+      // the saved profile; closing the dialog must not expose stale email data.
+      restoreProfileFocusRef.current = true
+      setRefreshing(true)
       setEditDialog(null)
-      restoreActionMenuFocus()
       setReloadToken((value) => value + 1)
     } catch {
       setEditError(t("portalActionFailed"))
@@ -394,7 +411,7 @@ export default function PortalUsersPage() {
   const accessButton = (contact: PortalContactRecord) => {
     const needsEmail = !contact.portalAccessEnabled && portalEnableBlocker(contact) === "email"
     return <div className="flex max-w-64 flex-col items-end gap-1">
-      <Button variant="outline" size="sm" className="min-h-11" disabled={Boolean(busyAction) || !contact.isActive}
+      <Button variant="outline" size="sm" className="min-h-11" disabled={Boolean(busyAction) || refreshing || savingEdit || !contact.isActive}
         onClick={(event) => {
           if (contact.portalAccessEnabled) setDisableDialog(contact)
           else if (needsEmail) {
