@@ -6086,3 +6086,6 @@ Independent exact387 P3 /tmp/workforce-policy-window-387e-conceptual-hash-wordin
 
 
 Append-only timing clarification (2026-10-04T05:18:34.960554+00:00): the preceding correction heading05:13 is an inaccurate phase label. The actual correction checkpoint29df3e6f74edf460dfaa784149522d528c255230 was created05:17:43Z after reading the immutable finding timestamp05:16:34Z. Originalheading remains; actual commit/receipt chronology controls.
+
+
+Clarification: Git29df committer05:17:42Z;05:17:43Z is root completion observation. Final156-test /tmp/workforce-part31-final-bounded-checks-primary/resources.log has17586MiB available;17797MiB was an earlier separate terminal observation. Original wording preserved; code unchanged.
