@@ -303,7 +303,7 @@ async function applyRange(view, day, keyboard = false) {
   if (keyboard) { await tabTo(view.page, control); await view.page.keyboard.press("Enter") } else await control.click()
   return checkedRead(await response, view.principal.tenant)
 }
-function expectedDuration(milliseconds, locale) {
+function expectedDuration([milliseconds, locale]) {
   if (milliseconds === null) return null
   const [unit, divisor] = milliseconds >= 86_400_000 ? ["day", 86_400_000] : milliseconds >= 3_600_000 ? ["hour", 3_600_000] : milliseconds >= 60_000 ? ["minute", 60_000] : ["second", 1_000]
   return new Intl.NumberFormat(locale, { style: "unit", unit, unitDisplay: "long", maximumFractionDigits: 3 }).format(milliseconds / divisor)
@@ -313,7 +313,9 @@ async function assertRendered(view, truth) {
   await block.waitFor({ state: "visible" })
   const value = async testId => (await view.page.getByTestId(testId).innerText()).trim()
   assert.equal(await value("workforce-exception-recorded-link-share"), truth.share === null ? view.ui.recordedOutcomes.noCases : new Intl.NumberFormat(view.locale, { style: "percent", maximumFractionDigits: 2 }).format(truth.share))
-  assert.equal(await value("workforce-exception-recorded-resolution-mean"), expectedDuration(truth.mean, view.locale) ?? view.ui.recordedOutcomes.noSamples)
+  const expected = await view.page.evaluate(expectedDuration, [truth.mean, view.locale])
+  receipts.durationRealms ??= []; receipts.durationRealms.push({ locale: view.locale, equal: expectedDuration([truth.mean, view.locale]) === expected })
+  assert.equal(await value("workforce-exception-recorded-resolution-mean"), expected ?? view.ui.recordedOutcomes.noSamples)
   const counts = [["samples", truth.samples], ["unresolved", truth.unresolved], ["integrityExcluded", truth.excluded]]
   for (const [key, count] of counts) {
     const term = block.locator("dt").filter({ hasText: view.ui.recordedOutcomes[key] })
