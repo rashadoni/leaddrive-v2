@@ -6,7 +6,7 @@ import net from "node:net"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
-import { validateContext, childEnvironment, sanitizedAuthLogEvidence, sanitizedRedirectEvidence, loopbackApplicationOrigin } from "./support-backend-evidence-guards.mjs"
+import { validateContext, childEnvironment, sanitizedAuthLogEvidence, sanitizedRedirectEvidence, loopbackApplicationOrigin, publicPostPacer, sanitizedRouteLogEvidence } from "./support-backend-evidence-guards.mjs"
 import { runLoggedCommand, stopOwnedProcess } from "./support-backend-evidence-process.mjs"
 
 const root = fileURLToPath(new URL("../", import.meta.url))
@@ -52,6 +52,8 @@ const receipt = {
     "No mock Prisma, auth, route handlers or HTTP response fulfillment.",
   ],
 }
+receipt.publicPostPacing = { minimumIntervalMs: 6100, requests: 0, waitedMs: 0 }
+const pacePublicPost = publicPostPacer({ now: () => performance.now(), sleep: delay, evidence: receipt.publicPostPacing })
 let control, admin, unscopedApp, server, serverLog
 let createdDatabase = false, createdRole = false, stage = "preflight"
 const contexts = []
@@ -91,7 +93,14 @@ async function snapshotForeign() {
 }
 async function api(context, method, route, expected, body) {
   check(route.startsWith("/api/") && !route.startsWith("//"), "LOCAL_API_PATH_REQUIRED")
+  await pacePublicPost(method, route)
   const response = await context.fetch(route, { method, ...(body === undefined ? {} : { data: body }), timeout: 120_000, maxRedirects: 0 })
+  if (response.status() !== expected) {
+    const payload = await response.json().catch(() => null)
+    const allowedCodes = ["MACRO_SAVE_FAILED", "MACRO_INVALID", "MACRO_ASSIGNEE_INVALID", "MACRO_SHORTCUT_CONFLICT"]
+    receipt.httpFailures ||= []
+    receipt.httpFailures.push({ expected, actual: response.status(), code: allowedCodes.includes(payload?.code) ? payload.code : "OTHER" })
+  }
   check(response.status() === expected, "HTTP_STATUS_" + expected + "_GOT_" + response.status())
   return response.json()
 }
@@ -314,6 +323,7 @@ async function scenarios() {
     const files = []
     for (const [context, ticket] of [[portalA, fixture.tickets[0]], [portalSibling, fixture.tickets[1]], [portalB, fixture.tickets[2]]]) {
       const target = "/api/v1/public/portal-tickets/" + ticket.id + "/files"
+      await pacePublicPost("POST", target)
       const response = await context.post(target, { multipart: { file: { name: "proof.txt", mimeType: "text/plain", buffer: content } }, maxRedirects: 0, timeout: 120_000 })
       check(response.status() === 201, "OWN_FILE_UPLOAD_FAILED")
       const file = (await response.json()).data
@@ -435,6 +445,8 @@ try {
   await control?.$disconnect().catch(() => cleanupFailures.push("control-disconnect"))
   try { receipt.authenticationLogEvidence = sanitizedAuthLogEvidence(await readFile(path.join(privateDir, "app.log"), "utf8")) }
   catch { receipt.authenticationLogEvidence = { unavailable: true } }
+  try { receipt.routeLogEvidence = sanitizedRouteLogEvidence(await readFile(path.join(privateDir, "app.log"), "utf8")) }
+  catch { receipt.routeLogEvidence = { unavailable: true } }
   receipt.cleanup = cleanupFailures.length ? "FAIL" : "PASS"
   receipt.cleanupFailures = cleanupFailures
   try { receipt.outboundBlockedCount = (await readFile(path.join(privateDir, "outbound.log"), "utf8")).split("\n").filter(Boolean).length } catch { receipt.outboundBlockedCount = null }

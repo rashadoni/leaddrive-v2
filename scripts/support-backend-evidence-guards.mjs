@@ -76,3 +76,29 @@ export function loopbackApplicationOrigin(port) {
   // canonical hostname throughout cookies, Auth.js and exact-origin evidence.
   return "http://localhost:" + port
 }
+
+// Pace synthetic public writes below the unchanged 10/minute IP budget.
+// This delays requests only; it never retries mutations or changes server limits.
+export function publicPostPacer({ now, sleep, evidence }) {
+  let previous = null
+  return async (method, route) => {
+    if (method !== "POST" || !route.startsWith("/api/v1/public/")) return
+    if (previous !== null) {
+      const wait = Math.max(0, 6_100 - (now() - previous))
+      if (wait) { await sleep(wait); evidence.waitedMs += wait }
+    }
+    previous = now()
+    evidence.requests += 1
+  }
+}
+
+export function sanitizedRouteLogEvidence(log) {
+  const classes = ["PrismaClientValidationError", "PrismaClientKnownRequestError", "PrismaClientUnknownRequestError", "PrismaClientInitializationError", "TypeError", "ReferenceError"]
+  return {
+    macroPostError: log.includes("[ticket-macros POST]"),
+    errorClasses: classes.filter(kind => log.includes(kind)),
+    unknownArguments: ["category", "details"].filter(field => log.includes("Unknown argument \`" + field + "\`") || log.includes("Unknown argument '" + field + "'")),
+    invalidMacroCreate: /Invalid[^\n]{0,180}ticketMacro\.create/.test(log),
+    invalidAuditCreate: /Invalid[^\n]{0,180}auditLog\.create/.test(log),
+  }
+}

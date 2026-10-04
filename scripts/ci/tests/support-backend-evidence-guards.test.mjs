@@ -1,5 +1,5 @@
 import { createRequire } from "node:module"
-import { sanitizedAuthLogEvidence, sanitizedRedirectEvidence, loopbackApplicationOrigin } from "../../support-backend-evidence-guards.mjs"
+import { sanitizedAuthLogEvidence, sanitizedRedirectEvidence, loopbackApplicationOrigin, publicPostPacer, sanitizedRouteLogEvidence } from "../../support-backend-evidence-guards.mjs"
 import test from "node:test"
 import assert from "node:assert/strict"
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs"
@@ -136,4 +136,34 @@ test("application origin accepts only a numeric unprivileged loopback port", () 
   for (const port of [0, -1, 80, 65536, NaN, "45678", "example.test"]) {
     assert.throws(() => loopbackApplicationOrigin(port), /INVALID_EPHEMERAL_APP_PORT/)
   }
+})
+
+test("public POST pacing preserves a real ten-per-minute sliding window", async () => {
+  let clock = 0
+  const evidence = { requests: 0, waitedMs: 0 }, sent = []
+  const pace = publicPostPacer({ now: () => clock, sleep: async ms => { clock += ms }, evidence })
+  await pace("GET", "/api/v1/public/portal-tickets")
+  await pace("POST", "/api/v1/ticket-macros")
+  assert.equal(evidence.requests, 0)
+  for (let i = 0; i < 25; i++) {
+    await pace("POST", "/api/v1/public/portal-tickets/synthetic/files")
+    sent.push(clock)
+    clock += i % 3 === 0 ? 1300 : 20
+  }
+  for (const start of sent) assert.ok(sent.filter(t => t >= start && t < start + 60_000).length <= 10)
+  assert.equal(evidence.requests, 25)
+  assert.ok(evidence.waitedMs > 100_000)
+  clock += 70_000
+  const before = evidence.waitedMs
+  await pace("POST", "/api/v1/public/portal-auth")
+  assert.equal(evidence.waitedMs, before)
+})
+test("route diagnostics expose only allowlisted classes and field names", () => {
+  const input = "[ticket-macros POST] PrismaClientValidationError secret-never-publish\nUnknown argument " + String.fromCharCode(96) + "category" + String.fromCharCode(96)
+  const result = sanitizedRouteLogEvidence(input)
+  assert.equal(result.macroPostError, true)
+  assert.deepEqual(result.errorClasses, ["PrismaClientValidationError"])
+  assert.deepEqual(result.unknownArguments, ["category"])
+  assert.equal(JSON.stringify(result).includes("secret-never-publish"), false)
+  assert.deepEqual(sanitizedRouteLogEvidence("Unknown argument privateToken secret").unknownArguments, [])
 })
