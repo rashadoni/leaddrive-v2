@@ -6,6 +6,7 @@ on:
       - ".github/workflows/support-real-backend-evidence.yml"
       - "scripts/support-backend-*.mjs"
       - "scripts/ci/tests/support-backend-*.test.mjs"
+      - "docs/support-portal-user-audit-fix-evidence-2026-10-04.md"
       - "src/app/api/v1/portal-users/route.ts"
       - "src/__tests__/api-portal-users.test.ts"
       - "prisma/schema.prisma"

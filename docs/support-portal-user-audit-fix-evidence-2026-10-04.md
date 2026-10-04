@@ -31,3 +31,11 @@ At 2026-10-04 12:42:07 UTC the owner explicitly approved publication and install
 The eight existing workflow/harness/document files from test head 3e59046dabab2ab6d1313af83c12d802081358cb are reused so the real-backend run can check this exact product candidate. The workflow admits only the established test branch and the dedicated codex/support-portal-audit-fix branch in the canonical repository. It retains hosted-only, exact-SHA, clean-checkout, disposable-loopback-DB, restricted-role/RLS, network and cleanup guards. Expected status/audit assertions are unchanged. Only the audit route is product code.
 
 Historical failures remain immutable. Post-fix hosted acceptance and release are still pending at this checkpoint.
+
+## Fresh main integration after first complete acceptance
+
+Candidate 3b013f57f51c078676fe561f83641de434b2b08c passed all five required checks and real-backend run37203198019:10/10PASS, cleanupPASS, outbound0. Artifact11304220328 SHA25697765c4b273528e45d996561cdc9c12c692b2ff663059838abc5e31a2170701e; receipt SHA256b2582452a89267ea33b1925b5320152e969e8ad080d2bbab9588dc3534df68c0. This evidence remains historical and unchanged.
+
+The final premerge guard stopped before merge when main advanced to abda8aa024f6e8fd52527cdbc9e85b42192fdc15 through the original HRM PR571 at13:01:26UTC. Normal integration produced8ee0a73a29d666604e8898cc7e12b73e9be4b706 without conflicts. Audit product/test logic and backend harness assertions remain byte-identical. The dedicated audit evidence document is added to this branch-fenced push workflow's paths so evidence/integration checkpoints receive a fresh exact-head run. No security or branch guard is removed.
+
+Fresh hosted acceptance and mandatory checks will run on the integrated candidate before merge. HRM changes belong to upstream main and are not additional product changes in this PR.
