@@ -265,7 +265,7 @@ export function WorkforceCalendarConfiguration() {
     reversalFocus.current = null
     if (!element?.isConnected) return
     element.focus({ preventScroll: true })
-    element.scrollIntoView({ block: pending.target === "source" ? "nearest" : "start", behavior: "instant" })
+    element.scrollIntoView({ block: pending.target === "source" ? "center" : "start", behavior: "instant" })
   }, [confirmation, contextKey, targetKey, saving, loading, notice])
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
