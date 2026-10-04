@@ -6,7 +6,7 @@ import net from "node:net"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
-import { validateContext, childEnvironment } from "./support-backend-evidence-guards.mjs"
+import { validateContext, childEnvironment, sanitizedAuthLogEvidence } from "./support-backend-evidence-guards.mjs"
 import { runLoggedCommand, stopOwnedProcess } from "./support-backend-evidence-process.mjs"
 
 const root = fileURLToPath(new URL("../", import.meta.url))
@@ -110,6 +110,11 @@ async function office(principal) {
   })
   check(response.status() === 200, "OFFICE_LOGIN_FAILED")
   const redirect = new URL((await response.json()).url, origin)
+  const callbackError = redirect.searchParams.get("error")
+  const knownCallbackErrors = ["CredentialsSignin", "Configuration", "CallbackRouteError", "AccessDenied", "MissingCSRF", "UntrustedHost"]
+  receipt.authenticationObservations ??= []
+  receipt.authenticationObservations.push({ callbackStatus: response.status(), sameOrigin: redirect.origin === origin,
+    errorPresent: callbackError !== null, errorCategory: callbackError === null ? null : knownCallbackErrors.includes(callbackError) ? callbackError : "OTHER" })
   check(redirect.origin === origin && !redirect.searchParams.has("error"), "OFFICE_LOGIN_REDIRECT_INVALID")
   const session = await api(context, "GET", "/api/auth/session", 200)
   check(session.user?.id === principal.id && session.user.organizationId === principal.organizationId, "REAL_SESSION_MISMATCH")
@@ -425,6 +430,8 @@ try {
     if (createdRole) await guardedDDL(control, 'DROP ROLE "' + role + '"')
   } catch { cleanupFailures.push("owned-database-and-role") }
   await control?.$disconnect().catch(() => cleanupFailures.push("control-disconnect"))
+  try { receipt.authenticationLogEvidence = sanitizedAuthLogEvidence(await readFile(path.join(privateDir, "app.log"), "utf8")) }
+  catch { receipt.authenticationLogEvidence = { unavailable: true } }
   receipt.cleanup = cleanupFailures.length ? "FAIL" : "PASS"
   receipt.cleanupFailures = cleanupFailures
   try { receipt.outboundBlockedCount = (await readFile(path.join(privateDir, "outbound.log"), "utf8")).split("\n").filter(Boolean).length } catch { receipt.outboundBlockedCount = null }

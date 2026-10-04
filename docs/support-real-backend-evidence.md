@@ -51,3 +51,7 @@ No production bundle/build, full production migration replay, escalation schedul
 node --test scripts/ci/tests/support-backend-evidence-guards.test.mjs scripts/ci/tests/support-backend-evidence-process.test.mjs
 
 These tests exercise pure context/environment guards, loopback-only transport behavior, actual local refusal before dependencies load, private child logging, nonzero exit, spawn failure, deadlines and process termination. They do not connect to PostgreSQL or start Next.
+
+## First hosted attempt retained
+
+Run 37196539918 on a7afd26d941d927892327b166c16733602553df5 failed before cases at real-authentication with OFFICE_LOGIN_REDIRECT_INVALID. All ten cases stayed NOT_RUN; cleanup PASS, outboundBlockedCount=0, container removal SUCCESS. Artifact 11300877868, SHA-256 96f81d42345e4c61f093d5a6b22e086cd17bb43e537806abb518d8a9f4d077b4. The cause is unproven because the original receipt did not record the callback error category. One diagnostic retry adds only allowlisted auth/Prisma categories and fixed error-presence booleans; raw logs and private values remain unexported. No auth behavior, fixture permissions, application code, or acceptance assertion is weakened.

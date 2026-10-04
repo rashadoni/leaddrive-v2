@@ -1,3 +1,4 @@
+import { sanitizedAuthLogEvidence } from "../../support-backend-evidence-guards.mjs"
 import test from "node:test"
 import assert from "node:assert/strict"
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs"
@@ -87,4 +88,22 @@ test("real harness refuses local execution before loading Prisma or making reque
   const result=spawnSync(process.execPath,[path.join(root,"scripts/support-backend-evidence.mjs")],{env:{PATH:process.env.PATH,CI:"false"},encoding:"utf8",timeout:15_000})
   assert.notEqual(result.status,0)
   assert.match(result.stderr,/HOSTED_EPHEMERAL_REQUIRED/)
+})
+
+test("auth diagnostics retain fixed error categories without private values", () => {
+  const secret = "never-publish-this-secret"
+  const result = sanitizedAuthLogEvidence("[Auth] credentials_rejected reason=no_candidates email=" + secret
+    + "\n[Auth] Login error: code: 'P2022' permission denied for table users\nCredentialsSignin")
+  assert.deepEqual(result.credentialReasons, ["no_candidates"])
+  assert.deepEqual(result.prismaCodes, ["P2022"])
+  assert.equal(result.permissionDenied, true)
+  assert.equal(result.authLoginException, true)
+  assert.equal(JSON.stringify(result).includes(secret), false)
+})
+test("unknown auth reasons and arbitrary messages are not exported", () => {
+  const result = sanitizedAuthLogEvidence("reason=custom_private_reason token=secret https://private.example")
+  assert.deepEqual(result.credentialReasons, [])
+  assert.deepEqual(result.authErrorTypes, [])
+  assert.deepEqual(result.prismaCodes, [])
+  assert.equal(JSON.stringify(result).includes("private"), false)
 })

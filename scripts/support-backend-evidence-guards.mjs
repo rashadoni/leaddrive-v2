@@ -40,3 +40,18 @@ export function childEnvironment(env, additions) {
     ...additions,
   }
 }
+
+export function sanitizedAuthLogEvidence(log) {
+  const knownReasons = ["schema_invalid", "principal_rate_limited", "organization_not_found", "no_candidates", "password_mismatch", "organization_inactive"]
+  const knownErrors = ["CredentialsSignin", "Configuration", "CallbackRouteError", "AccessDenied", "MissingCSRF", "UntrustedHost", "JWTSessionError", "SessionTokenError"]
+  return {
+    credentialReasons: knownReasons.filter(reason => log.includes("reason=" + reason)),
+    authErrorTypes: knownErrors.filter(kind => log.includes(kind)),
+    prismaCodes: [...new Set(log.match(/\bP[12][0-9]{3}\b/g) || [])].sort(),
+    permissionDenied: /permission denied/i.test(log),
+    rowSecurityRejected: /violates row-level security/i.test(log),
+    databaseUnreachable: /Can.t reach database server/i.test(log),
+    missingDatabaseObject: /(?:table|relation|column)[^\n]{0,160}does not exist/i.test(log),
+    authLoginException: log.includes("[Auth] Login error:"),
+  }
+}
