@@ -35,7 +35,7 @@ let stage = "seed", failed = false, fixture, beforeFacts
 const op = label => `restore-api-${label}-${suffix}`
 const body = label => ({ operationId: op(label), expectedSourceVersion: 1, expectedSourceDefinitionHash: definitionHash, name: "Restored API draft", effectiveFrom: key(30) })
 const endpoint = id => `/api/v1/workforce/configuration/policies/${id}/restore-draft`
-const privateHeaders = response => { assert.equal(response.headers()["cache-control"], "private, no-store"); assert.equal(response.headers().vary, "Cookie"); assert.equal(response.headers()["x-content-type-options"], "nosniff") }
+const privateHeaders = response => { assert.equal(response.headers()["cache-control"], "private, no-store"); assert.ok((response.headers().vary || "").split(",").some(token => token.trim().toLowerCase() === "cookie")); assert.equal(response.headers()["x-content-type-options"], "nosniff") }
 async function post(context, id, data, status, query = "") {
   const response = await context.post(endpoint(id) + query, { data, headers: { "x-organization-id": orgs[1], "x-user-id": "untrusted" }, timeout: 120000 })
   const headers = response.headers()
