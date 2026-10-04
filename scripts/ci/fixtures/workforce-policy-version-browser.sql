@@ -51,4 +51,9 @@ ALTER TABLE public.workforce_policies ADD CONSTRAINT wf_policy_version_activatio
   (provenance = 'TENANT_ADMIN' AND (status = 'DRAFT' OR ("activatedAt" IS NOT NULL AND "activatedByUserId" IS NOT NULL)))
   OR (provenance = 'SYSTEM_PROVISIONING' AND status IN ('ACTIVE','RETIRED') AND "activatedAt" IS NOT NULL AND "activatedByUserId" IS NULL)
 );
+-- Restore production partial uniqueness, including the NULL organization scope.
+CREATE UNIQUE INDEX wf_policy_version_org_unique ON public.workforce_policies ("organizationId", version) WHERE "teamId" IS NULL;
+CREATE UNIQUE INDEX wf_policy_version_team_unique ON public.workforce_policies ("organizationId", "teamId", version) WHERE "teamId" IS NOT NULL;
+CREATE UNIQUE INDEX wf_policy_version_org_active ON public.workforce_policies ("organizationId") WHERE status = 'ACTIVE' AND "teamId" IS NULL;
+CREATE UNIQUE INDEX wf_policy_version_team_active ON public.workforce_policies ("organizationId", "teamId") WHERE status = 'ACTIVE' AND "teamId" IS NOT NULL;
 COMMIT;

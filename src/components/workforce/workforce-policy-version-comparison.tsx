@@ -51,6 +51,12 @@ export function WorkforcePolicyVersionComparisonPage() {
   return <ComparisonForSession key={JSON.stringify([status, userId, organizationId])} status={status} userId={userId} organizationId={organizationId} />
 }
 
+/** The read entry remains discoverable for granular HR users; the API owns access. */
+export function WorkforcePolicyVersionComparisonLink() {
+  const t = useTranslations("workforceConfigurationPage")
+  return <Link href="/workforce/configuration/policy-versions" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{t("comparePolicyVersions")}</Link>
+}
+
 function ComparisonForSession({ status, userId, organizationId }: {
   status: "loading" | "authenticated" | "unauthenticated"; userId: string; organizationId: string
 }) {
