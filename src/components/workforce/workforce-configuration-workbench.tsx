@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import type { FormEvent } from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSession } from "next-auth/react"
@@ -1265,6 +1266,7 @@ export function WorkforceConfigurationWorkbench() {
             <h2 id="workforce-policy-configuration" className="text-lg font-semibold">{t("policiesTitle")}</h2>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("policiesHint")}</p>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("defaultProfileHint")}</p>
+            <Link href="/workforce/configuration/policy-versions" className="inline-flex min-h-11 items-center self-start text-sm font-medium underline underline-offset-4">{t("comparePolicyVersions")}</Link>
           </div>
           <form className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700" onSubmit={savePolicy}>
             <div className="flex flex-wrap items-center justify-between gap-3">

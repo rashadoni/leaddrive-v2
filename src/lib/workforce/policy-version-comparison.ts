@@ -91,7 +91,7 @@ export function compareWorkforcePolicyVersions(input: {
     from: from.metadata, to: to.metadata, fields,
     changedCalculationFields: fields.filter(field => field.changed).length,
     opaqueDefinitionChanged: from.opaqueDefinition !== to.opaqueDefinition,
-    opaqueDefinitionInterpretation: "ADDITIONAL_SIGNED_KEYS_NOT_DISPLAYED_OR_INTERPRETED" as const,
+    opaqueDefinitionInterpretation: "ADDITIONAL_HASH_VERIFIED_KEYS_NOT_DISPLAYED_OR_INTERPRETED" as const,
   }
 }
 export type WorkforcePolicyVersionComparison = ReturnType<typeof compareWorkforcePolicyVersions>
