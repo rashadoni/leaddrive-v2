@@ -6180,3 +6180,25 @@ Original bindings for this phase (selected temporary originals; not a claim of f
 - `/tmp/workforce566-059-root-complete-browser-artifacts-primary.json` — 20330 bytes, SHA256 `65c50b5a00ac1930279cd3b9da038f4e175681200afab44ef2e260cc8b0535bb`.
 - `/tmp/workforce566-059-root-calendar-complete-semantic-primary.json` — 8790 bytes, SHA256 `718804b339308ba4e058276341029c1d8ba219bc76accede90bc7c3d4e9f94aa`.
 - `/tmp/workforce566-059-pr-description-current-validation-primary/proof.json` — 326 bytes, SHA256 `4865fd3d66afb107be81273685dbb0ee1257b48528aec703c702e4dbca359126`.
+
+
+### 2026-10-04 07:13 UTC — next restore proposal reconciled before implementation; parent release pending
+
+Own #566 remains mergedc735; deploy37184315566 build and quality were still running at last captured observation. No public release proof or successor writer implementation yet. Current code remains exactc735; only private append journals differ.
+
+Authorless conceptual finding on immutable proposalv2 is P2=1: its assumption that restore403 could retain separately authorized read comparison was unsupported because compare/search/window and writer all share actual WORKFORCE_POLICY_DRAFT_WRITE. Root read the entire6,288-byte issued finding and rehashed21 nested/19 unique originals, allparity. V3 explicitly uses existing parentdeny403/session401 to clear all protected state, computes fresh server time after locks and keeps exact creation-receipt replay before expired-date revalidation. Independent narrow v3 concept closure was issued and root FULLREAD; this is proposal reconciliation only, not implemented-source or runtime GREEN.
+
+Root further verified actual migration contract: published policy BEFOREDELETE guard55000 persists independently of updated UPDATEguard. **Canonical global mtm_audit_logs append-only trigger was NOT established**; ordinary audit_logs is a different table, and the report-browser audit trigger is fixture-only. V4 supersedes the earlier generic audit-guard wording without editingv2/v3: any new isolated writer audit SELECT/INSERT-only privileges and extra immutable fixture guard must be labeled fixture containment, not proof of production global immutability. Service remains one new DRAFT+one audit, strict scoped bounded historical creation receipt, no audit/source update or delete. Owner cleanup must be explicit isolated scoped transaction with named guard restoration and row/catalog absence checks; no behavioral test while disabled. Existing readonly fixture must remain byte-exact. Full migration replay/canonical restore/PG/browser/current writer compiler/build/release allNOTRUN.
+
+Temporary selected CORE proposalv1 contains44 complete raw originals /2,317,443 bytes. Actual unchanged-config Gitleaks raw-directory scan exit0,211ms, report[]; output exists in tool trace only, JSON report is persisted (no invented stdout file). Deterministic lossless temporary archive193,024 bytes /`33ba25d18edf0ecd8b5edebaf331b23e1522adc07e3d1eb0c5ae5b3b27d6a7c3`, all44 safe unique regular members hash-parity. **Not published**, current own production originals stillpending, no complete publication of1,344 bound inputs/large whole browser ZIPs claimed. Any final selection/catalogue must preserve whole selected bytes, name external originals honestly, rescan after new inputs, and stay under400,000 cap without gate/baseline exemptions.
+
+Next: finish ownc735 deploy4/public artifactSha proof and independent release review, append originals, then create part32 and implement/test actual bounded restore writer. Overall81/161DONE,14/15GATES,C836%,59% unchanged. Original conceptP2 and all setup/type/browser failures remain historical.
+
+- `/tmp/workforce-policy-restore-plan-v2-conceptual-independent.json` — 6288 bytes, SHA256 `0ebb50e30e91b71404f5af5d8e90c17ce407a2ea30054a70bfed05a90a806652`.
+- `/tmp/workforce-policy-restore-plan-v2-conceptual-independent-input-audit.json` — 4734 bytes, SHA256 `2fbdc60633a7ee970d99e0181ee17c1eba2c811caf0ce4f49880d72dc686a993`.
+- `/tmp/workforce-policy-restore-plan-v3-conceptual-closure-independent.json` — 3189 bytes, SHA256 `e5afe06c7c47de7fdcd086e5a778b9630a62488d039d5f3174a69d80e3f38e16`.
+- `/tmp/workforce-policy-restore-next-bounded-plan-v4-primary.json` — 12846 bytes, SHA256 `32b7cafcbfb4aaee03d5e6d320804d31c5913f4a1d9569f8bfebd01ba737343d`.
+- `/tmp/workforce566-c735-selected-core-proposal-primary/selection-v1/proposal-proof.json` — 1084 bytes, SHA256 `13474bbb76d5d378b9007703cdfe84fcc955dece91badd8e007ee63a72ff3295`.
+
+
+Post-entry receipt clarification: while the preceding proposal journal append was being prepared, root received the completed GitHub snapshot `github-20261004T071257739007Z/github-proof.json`. It actually records quality job111382990037 SUCCESS, completed2026-10-04T07:10:10Z; build111382990025 remainsin_progress. Thus the preceding generic build-and-quality-running wording describes the earlier07:09 observation and is superseded for quality by this exact receipt. Whole deploy/public remainPENDING.
