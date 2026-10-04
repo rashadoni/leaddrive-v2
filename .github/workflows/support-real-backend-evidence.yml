@@ -48,7 +48,7 @@ jobs:
           stage="link-pinned-transport"
           ln -s "$fixture_deps/node_modules/pino-pretty" node_modules/pino-pretty
           stage="construct-development-logger"
-          node -e 'const pino=require("pino");const log=pino({transport:{target:"pino-pretty"}});log.flush()'
+          node -e 'const pino=require("pino");const log=pino({transport:{target:require.resolve("pino-pretty")}});log.flush()'
       - name: Verify isolated harness guards
         run: |
           node scripts/ci/check-github-runner-policy.mjs

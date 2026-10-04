@@ -167,3 +167,9 @@ test("route diagnostics expose only allowlisted classes and field names", () => 
   assert.equal(JSON.stringify(result).includes("secret-never-publish"), false)
   assert.deepEqual(sanitizedRouteLogEvidence("Unknown argument privateToken secret").unknownArguments, [])
 })
+
+test("inline logger prerequisite resolves its installed transport explicitly", () => {
+  const code = 'const assert=require("node:assert/strict"),pino=require("pino");const target="pino/file.js";assert.ok(require.resolve(target));assert.throws(()=>pino({transport:{target}}),/unable to determine transport target/);const log=pino({transport:{target:require.resolve(target)}});log.flush();'
+  const result = spawnSync(process.execPath, ["-e", code], { cwd: root, env: { PATH: process.env.PATH }, encoding: "utf8", timeout: 15_000 })
+  assert.equal(result.status, 0, result.stderr)
+})
