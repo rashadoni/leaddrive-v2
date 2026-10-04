@@ -25387,6 +25387,7 @@
     "empty": "Özünüyoxlama üçün əlçatan iştirak istisnanız yoxdur."
   },
   "workforceConfigurationPage": {
+    "comparePolicyVersions": "Saxlanmış siyasət versiyalarını müqayisə et",
     "title": "İş vaxtı tənzimləməsi",
     "subtitle": "Audit olunan siyasət və növbə şablonları hazırlayın. Nəşr yalnız gələcəyə təsir edir və tamamlanmış iş günlərini dəyişmir.",
     "loading": "İş vaxtı tənzimləməsi yüklənir",
@@ -26171,5 +26172,56 @@
     "body": "Təşkilatınız aptek promolarını menyudan və agent tətbiqindən gizlədib. Məlumatlar silinməyib.",
     "openSettings": "Parametrlərdə yandır",
     "askAdmin": "Yenidən yandırmaq üçün administratora müraciət edin."
+  },
+  "workforcePolicyVersionComparison": {
+    "title": "Siyasət versiyalarının müqayisəsi",
+    "subtitle": "Eyni əhatədə iki versiyanın beş saxlanmış hesablama parametrini nəzərdən keçirin.",
+    "back": "İş vaxtı parametrləri",
+    "boundary": "Müqayisə saxlanmış tərifləri göstərir. İşçilərə təsiri hesablamır, siyasəti təsdiqləmir, aktivləşdirmir və geri qaytarmır. Dərc olunmuş versiyanın qüvvəyə minmə tarixi gələcəkdə ola bilər.",
+    "searchLabel": "Siyasətin adına görə versiyaları tapın",
+    "queryHint": "2–100 simvol daxil edin. Axtarış ən çox 20 versiya qaytarır.",
+    "search": "Versiyaları tap",
+    "searching": "Versiyalar axtarılır…",
+    "searchFailed": "Versiyaları yükləmək mümkün olmadı. Axtarışı təkrarlayın.",
+    "searchResults": "“{query}” üçün {count} versiya tapıldı.",
+    "empty": "“{query}” üçün versiya tapılmadı.",
+    "refine": "Daha çox versiya uyğun gəlir. Lazım olan versiyaları tapmaq üçün adı dəqiqləşdirin.",
+    "from": "Əvvəlki versiya",
+    "to": "Sonrakı versiya",
+    "choose": "Versiya seçin",
+    "version": "Versiya {value}",
+    "organizationScope": "Təşkilat",
+    "teamUnavailable": "Komandanın adı əlçatan deyil",
+    "pairHint": "Eyni təşkilat və ya komanda əhatəsində fərqli versiya nömrələrini seçin. Bu sessiyada başqa axtarış zamanı seçilmiş versiyalar saxlanılır.",
+    "compare": "Versiyaları müqayisə et",
+    "comparing": "Müqayisə edilir…",
+    "compareFailed": "Bu versiyaları müqayisə etmək mümkün olmadı. Yenidən axtarın və eyni əhatədə iki əlçatan versiya seçin.",
+    "denied": "Hesabınızın siyasət parametrlərini oxumaq icazəsi yoxdur.",
+    "sessionLoading": "Sessiya yoxlanılır…",
+    "signIn": "Siyasət parametrlərini oxumaq üçün daxil olun.",
+    "result": "Saxlanmış hesablama parametrləri",
+    "direction": "{from} · versiya {fromVersion} → {to} · versiya {toVersion}",
+    "tableLabel": "Saxlanmış siyasət parametrlərinin saniyə ilə fərqləri",
+    "field": "Parametr",
+    "before": "Əvvəl",
+    "after": "Sonra",
+    "delta": "Dəyişiklik",
+    "notSet": "Təyin edilməyib",
+    "notComparable": "Rəqəmsal dəyişiklik əlçatan deyil",
+    "seconds": "{value} san",
+    "integrityHint": "Hər iki tərif saxlanmış SHA-256 heşləri ilə yoxlanılıb. Uyğun heş bütövlüyü təsdiqləyir, lakin təsdiqi və ya hazırkı tətbiqi müəyyən etmir.",
+    "opaqueChanged": "Əlavə tərif parametrləri fərqlənir. Beş sahəli müqayisə onları göstərmir və şərh etmir.",
+    "statuses": {
+      "DRAFT": "Qaralama",
+      "ACTIVE": "Dərc olunub",
+      "RETIRED": "İstifadədən çıxarılıb"
+    },
+    "fields": {
+      "expectedWorkSeconds": "Gözlənilən iş vaxtı",
+      "lateGraceSeconds": "Gecikmə güzəşti",
+      "undertimeToleranceSeconds": "Az işləmə güzəşti",
+      "overtimeThresholdSeconds": "Əlavə iş həddi",
+      "longPauseThresholdSeconds": "Uzun fasilə həddi"
+    }
   }
 }

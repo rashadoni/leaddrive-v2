@@ -25391,6 +25391,7 @@
     "empty": "You have no attendance exceptions available for self-service review."
   },
   "workforceConfigurationPage": {
+    "comparePolicyVersions": "Compare recorded policy versions",
     "title": "Work-time configuration",
     "subtitle": "Prepare auditable policies and shift templates. Publishing is future-only, so completed workdays never change.",
     "loading": "Loading work-time configuration",
@@ -26175,5 +26176,56 @@
     "body": "Your organization has hidden pharmacy promotions from the menu and the agent app. No data was deleted.",
     "openSettings": "Turn on in settings",
     "askAdmin": "Ask an administrator to turn them back on."
+  },
+  "workforcePolicyVersionComparison": {
+    "title": "Compare policy versions",
+    "subtitle": "Review five recorded calculation settings for two versions with the same scope.",
+    "back": "Work-time configuration",
+    "boundary": "This comparison shows recorded definitions. It does not calculate employee impact or approve, activate or roll back a policy. Published versions may have future effective dates.",
+    "searchLabel": "Find policy versions by name",
+    "queryHint": "Enter 2–100 characters. Search returns up to 20 versions.",
+    "search": "Find versions",
+    "searching": "Finding versions…",
+    "searchFailed": "Policy versions could not be loaded. Try the search again.",
+    "searchResults": "{count} versions found for “{query}”.",
+    "empty": "No versions found for “{query}”.",
+    "refine": "More versions match. Refine the name to find the versions you need.",
+    "from": "Before version",
+    "to": "After version",
+    "choose": "Choose a version",
+    "version": "Version {value}",
+    "organizationScope": "Organization",
+    "teamUnavailable": "Team name unavailable",
+    "pairHint": "Choose different version numbers within the same organization or team scope. Selected versions stay available during another search in this session.",
+    "compare": "Compare versions",
+    "comparing": "Comparing…",
+    "compareFailed": "These versions could not be compared. Search again and select two available versions in the same scope.",
+    "denied": "Your account does not have permission to read policy configuration.",
+    "sessionLoading": "Checking your session…",
+    "signIn": "Sign in to read policy configuration.",
+    "result": "Recorded calculation settings",
+    "direction": "{from} · version {fromVersion} → {to} · version {toVersion}",
+    "tableLabel": "Recorded policy setting differences in seconds",
+    "field": "Setting",
+    "before": "Before",
+    "after": "After",
+    "delta": "Change",
+    "notSet": "Not set",
+    "notComparable": "No numeric change available",
+    "seconds": "{value} s",
+    "integrityHint": "Both definitions were checked against their stored SHA-256 hashes. A matching hash confirms integrity; it does not establish approval or current applicability.",
+    "opaqueChanged": "Additional definition settings differ. They are not displayed or interpreted in this five-field comparison.",
+    "statuses": {
+      "DRAFT": "Draft",
+      "ACTIVE": "Published",
+      "RETIRED": "Retired"
+    },
+    "fields": {
+      "expectedWorkSeconds": "Expected work time",
+      "lateGraceSeconds": "Late-arrival grace",
+      "undertimeToleranceSeconds": "Undertime tolerance",
+      "overtimeThresholdSeconds": "Overtime threshold",
+      "longPauseThresholdSeconds": "Long-pause threshold"
+    }
   }
 }
