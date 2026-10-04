@@ -219,6 +219,7 @@ export interface MilestoneDefinitionInput {
 }
 
 export interface MilestoneDueCalcInput {
+  businessCalendar?: unknown
   definition: MilestoneDefinitionInput
   /** Ticket creation time — usually the milestone-anchor. */
   ticketCreatedAt: Date

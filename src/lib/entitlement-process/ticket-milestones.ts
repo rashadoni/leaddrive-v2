@@ -90,6 +90,7 @@ export async function createTicketEntitlementMilestones(
     },
     orderBy: [{ validFrom: "desc" }, { createdAt: "desc" }],
     include: {
+      slaPolicy: { select: { businessHoursOnly: true, businessCalendar: true } },
       milestoneDefinitions: {
         orderBy: [{ type: "asc" }, { severityTier: "asc" }, { createdAt: "asc" }],
       },
@@ -106,9 +107,11 @@ export async function createTicketEntitlementMilestones(
     return { applied: false, reason: "no_matching_definitions", entitlementId: entitlement.id }
   }
 
+  const businessCalendar = entitlement.slaPolicy?.businessHoursOnly ? entitlement.slaPolicy.businessCalendar : null
   const createdMilestoneIds: string[] = []
   for (const definition of definitions) {
     const due = calculateMilestoneDue({
+      businessCalendar,
       definition: {
         type: definition.type as MilestoneType,
         severityTier: definition.severityTier as SeverityTier | null | undefined,
@@ -132,6 +135,7 @@ export async function createTicketEntitlementMilestones(
         status: "in_progress",
         dueAt: due.dueAt,
         metadata: {
+          ...(businessCalendar ? { businessCalendar } : {}),
           entitlementId: entitlement.id,
           supportLevel: entitlement.supportLevel,
           ticketSeverity,

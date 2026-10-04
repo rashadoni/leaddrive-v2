@@ -8,11 +8,13 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   updateMany: vi.fn(),
   deleteMany: vi.fn(),
+  businessHoursFindUnique: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: mocks.transaction,
+    businessHours: { findUnique: mocks.businessHoursFindUnique },
     slaPolicy: {
       findMany: mocks.findMany,
       findFirst: mocks.findFirst,
@@ -44,6 +46,7 @@ const params = (id: string) => ({ params: Promise.resolve({ id }) })
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.transaction.mockImplementation(async (callback: (tx: { slaPolicy: unknown }) => unknown) => callback({
+    businessHours: { findUnique: mocks.businessHoursFindUnique },
     slaPolicy: {
       findMany: mocks.findMany,
       findFirst: mocks.findFirst,
@@ -55,6 +58,42 @@ beforeEach(() => {
 })
 
 describe("SLA policy API validation", () => {
+  it("captures only the selected tenant's explicitly confirmed work calendar", async () => {
+    const updatedAt = new Date("2026-10-03T00:00:00Z")
+    mocks.businessHoursFindUnique.mockResolvedValue({
+      id: "work-calendar", isActive: true, timezone: "Asia/Baku", updatedAt,
+      schedule: { mon: { enabled: true, intervals: [{ start: "09:00", end: "18:00" }] } }, holidays: [],
+    })
+    mocks.create.mockResolvedValue({ id: "work-policy" })
+    const response = await POST(request("/api/v1/sla-policies", "POST", {
+      name: "Working", priority: "low", firstResponseHours: 1, resolutionHours: 4,
+      isActive: false, businessHoursOnly: true, businessCalendarAction: "capture",
+      expectedCalendarUpdatedAt: updatedAt.toISOString(),
+    }))
+    expect(response.status).toBe(201)
+    expect(mocks.businessHoursFindUnique).toHaveBeenCalledWith({
+      where: { organizationId_channelType: { organizationId: "org-1", channelType: "all" } },
+    })
+    expect(mocks.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      businessCalendar: expect.objectContaining({ version: 1, sourceId: "work-calendar", timezone: "Asia/Baku" }),
+    }) })
+    expect(mocks.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("rejects a changed source calendar rather than silently capturing unreviewed hours", async () => {
+    mocks.businessHoursFindUnique.mockResolvedValue({
+      id: "work-calendar", isActive: true, timezone: "Asia/Baku", updatedAt: new Date("2026-10-04T00:00:00Z"),
+      schedule: { mon: { enabled: true, intervals: [{ start: "09:00", end: "18:00" }] } }, holidays: [],
+    })
+    const response = await POST(request("/api/v1/sla-policies", "POST", {
+      name: "Working", priority: "low", firstResponseHours: 1, resolutionHours: 4,
+      isActive: false, businessCalendarAction: "capture", expectedCalendarUpdatedAt: "2026-10-03T00:00:00.000Z",
+    }))
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe("SLA_CALENDAR_SOURCE_CHANGED")
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+
   it("rejects resolution earlier than first response before writing", async () => {
     const response = await POST(request("/api/v1/sla-policies", "POST", {
       name: "Invalid", priority: "high", firstResponseHours: 4, resolutionHours: 2,

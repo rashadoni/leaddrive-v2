@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client"
+import { addSlaWorkingMilliseconds, readSlaBusinessCalendar } from "@/lib/ticketing/sla-business-calendar"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -10,6 +12,7 @@ export interface ResolvedSla {
   slaDueAt?: Date
   slaFirstResponseDueAt?: Date
   slaPolicyName?: string
+  slaCalendarSnapshot?: Prisma.InputJsonValue | typeof Prisma.DbNull
 }
 
 /** The four priority tiers an SlaPolicy is keyed by AND the only values the SLA
@@ -54,6 +57,8 @@ type SlaPolicyRow = {
   name: string
   resolutionHours: number
   firstResponseHours: number
+  businessHoursOnly?: boolean
+  businessCalendar?: unknown
 }
 
 export async function resolveTicketSla(
@@ -81,9 +86,15 @@ export async function resolveTicketSla(
   if (!slaPolicy) return {}
 
   const base = opts.now ?? Date.now()
+  const calendar = slaPolicy.businessHoursOnly && slaPolicy.businessCalendar
+    ? readSlaBusinessCalendar(slaPolicy.businessCalendar) : null
+  const due = (hours: number) => calendar
+    ? addSlaWorkingMilliseconds(new Date(base), hours * 3600000, calendar)
+    : new Date(base + hours * 3600000)
   return {
-    slaDueAt: new Date(base + slaPolicy.resolutionHours * 3600000),
-    slaFirstResponseDueAt: new Date(base + slaPolicy.firstResponseHours * 3600000),
+    slaDueAt: due(slaPolicy.resolutionHours),
+    slaFirstResponseDueAt: due(slaPolicy.firstResponseHours),
+    slaCalendarSnapshot: calendar || Prisma.DbNull,
     slaPolicyName: slaPolicy.name,
   }
 }

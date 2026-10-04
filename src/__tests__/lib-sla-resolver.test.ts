@@ -9,6 +9,7 @@ vi.mock("@/lib/prisma", () => ({
 
 import { resolveTicketSla, normalizeTicketPriority } from "@/lib/sla-resolver"
 import { prisma } from "@/lib/prisma"
+import { syntheticSlaCalendar } from "./fixtures/sla-calendar"
 
 const companyFindFirst = prisma.company.findFirst as unknown as ReturnType<typeof vi.fn>
 const slaPolicyFindFirst = prisma.slaPolicy.findFirst as unknown as ReturnType<typeof vi.fn>
@@ -21,6 +22,26 @@ beforeEach(() => {
 })
 
 describe("resolveTicketSla", () => {
+  it("applies an explicitly pinned work calendar and returns the identical frozen snapshot", async () => {
+    slaPolicyFindFirst.mockResolvedValue({
+      id: "business", name: "Business SLA", firstResponseHours: 4, resolutionHours: 4,
+      businessHoursOnly: true, businessCalendar: syntheticSlaCalendar,
+    })
+    const result = await resolveTicketSla("org1", { priority: "high", now: Date.parse("2026-10-02T12:00:00Z") })
+    expect(result.slaFirstResponseDueAt?.toISOString()).toBe("2026-10-05T07:00:00.000Z")
+    expect(result.slaDueAt?.toISOString()).toBe("2026-10-05T07:00:00.000Z")
+    expect(result.slaCalendarSnapshot).toEqual(syntheticSlaCalendar)
+  })
+
+  it("keeps calendar time when work hours are disabled even if a snapshot exists", async () => {
+    slaPolicyFindFirst.mockResolvedValue({
+      id: "disabled", name: "Calendar SLA", firstResponseHours: 4, resolutionHours: 4,
+      businessHoursOnly: false, businessCalendar: syntheticSlaCalendar,
+    })
+    const result = await resolveTicketSla("org1", { priority: "high", now: Date.parse("2026-10-02T12:00:00Z") })
+    expect(result.slaDueAt?.toISOString()).toBe("2026-10-02T16:00:00.000Z")
+  })
+
   it("uses the company-assigned policy and does NOT fall through to priority", async () => {
     companyFindFirst.mockResolvedValue({
       slaPolicy: { id: "p1", name: "VIP", resolutionHours: 4, firstResponseHours: 1 },

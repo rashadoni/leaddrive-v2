@@ -47,7 +47,7 @@ export default function SlaPoliciesHelpAz() {
           <HelpDef term="Prioritet">Rəngli nişan — <strong>Kritik</strong> (qırmızı), <strong>Yüksək</strong> (narıncı), <strong>Orta</strong> (sarı), <strong>Aşağı</strong> (yaşıl). Bu siyasətin hansı prioritetli biletlərə aid olduğunu göstərir.</HelpDef>
           <HelpDef term="İlk cavab">Komandanın biletə ilk dəfə cavab verməsi üçün hədəf vaxt, «4s 30d» formatında (saat və dəqiqə).</HelpDef>
           <HelpDef term="Həll">Biletin tam bağlanması üçün hədəf vaxt, eyni «saat dəqiqə» formatında.</HelpDef>
-          <HelpDef term="İş saatları">Bu, yalnız saxlanmış seçimdir. Hər iki halda müddətlər gecələr, həftəsonu və bayramlar daxil olmaqla fasiləsiz təqvim vaxtı ilə hesablanır.</HelpDef>
+          <HelpDef term="İş saatları">Saxlanmış iş təqvimi və aktiv seçim olduqda yalnız iş intervalları sayılır. Təqvim seçilməyibsə, müddətlər fasiləsiz təqvim vaxtı ilə hesablanır.</HelpDef>
           <HelpDef term="Status">Siyasətin <strong>Aktiv</strong> (mavi nişan) və ya <strong>Qeyri-aktiv</strong> (boz nişan) olması.</HelpDef>
         </dl>
         <p>
@@ -108,7 +108,7 @@ export default function SlaPoliciesHelpAz() {
             olaraq işarələnmiş).
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Bu seçim iş təqvimini aktivləşdirmir: müddətlər hələ fasiləsiz hesablanır. «Aktiv»
+            İş vaxtı hesablaması üçün təşkilat təqviminin surətini seçin, saat qurşağını, intervalları və bayramları yoxlayın. «Aktiv»
             işarəsini götürsəniz, siyasət cədvəldə <strong>Qeyri-aktiv</strong> kimi görünəcək.
           </HelpCallout>
         </HelpStep>
@@ -120,7 +120,7 @@ export default function SlaPoliciesHelpAz() {
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             Düymə yadda saxlanarkən <strong>Saxlanılır...</strong> yazısına keçir, sonra pəncərə bağlanır
             və yeni siyasət cədvəldə peyda olur — adı, rəngli prioritet nişanı, «saat dəqiqə» formatında
-            iki hədəfi, təqvim hesablamasının izahı və status nişanı ilə.
+            iki hədəfi, seçilmiş hesablama rejiminin izahı və status nişanı ilə.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
@@ -160,8 +160,7 @@ export default function SlaPoliciesHelpAz() {
       <HelpCallout kind="tip">
         <p>
           Adətən hər prioritet üçün bir siyasət qurulur: kritik biletlərə qısa cavab/həll hədəfi, aşağı
-          prioritetli biletlərə daha geniş. Bu seçim gecələri, həftəsonunu və bayramları müddətdən çıxmır.
-          Uyğun təqvim tətbiq edilənədək iş saatları ilə son tarix vəd etməyin.
+          prioritetli biletlərə daha geniş. Təqvim surəti yalnız yeni hesablamalara aiddir. Mövcud müraciət və mərhələ müddətləri dəyişmir; gözləmə statusu saatı dayandırmır.
         </p>
       </HelpCallout>
 

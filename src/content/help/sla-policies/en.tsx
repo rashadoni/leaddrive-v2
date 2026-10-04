@@ -45,7 +45,7 @@ export default function SlaPoliciesHelpEn() {
           <HelpDef term="Priority">A colored badge — <strong>Critical</strong> (red), <strong>High</strong> (orange), <strong>Medium</strong> (yellow), <strong>Low</strong> (green). Shows which ticket priority this policy applies to.</HelpDef>
           <HelpDef term="1st Response">The target time for the team to reply to the ticket for the first time, shown as «4h 30m» (hours and minutes).</HelpDef>
           <HelpDef term="Resolution">The target time for the ticket to be closed, in the same «hours minutes» format.</HelpDef>
-          <HelpDef term="Business Hours">This stores a preference only. Both settings currently use continuous calendar time, including nights, weekends and holidays.</HelpDef>
+          <HelpDef term="Business Hours">With a saved work calendar and this preference enabled, deadlines count only its working intervals. Without a saved calendar, deadlines continue in calendar time.</HelpDef>
           <HelpDef term="Status">Whether the policy is <strong>Active</strong> (blue badge) or <strong>Inactive</strong> (grey badge).</HelpDef>
         </dl>
         <p>
@@ -105,7 +105,7 @@ export default function SlaPoliciesHelpEn() {
             <HelpKey>Active</HelpKey> as needed (also checked by default).
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            The preference does not enable a working calendar: deadlines still advance continuously. If you
+            Select a copy of the organization work calendar to enable working-time calculation, then review its timezone, intervals and holidays. If you
             clear «Active», the policy will appear as <strong>Inactive</strong> in the table.
           </HelpCallout>
         </HelpStep>
@@ -117,7 +117,7 @@ export default function SlaPoliciesHelpEn() {
           <HelpCallout kind="see" label="What you'll see">
             The button switches to <strong>Saving...</strong> while it saves, then the dialog closes and
             the new policy appears in the table — with its name, the colored priority badge, both targets
-            in «hours minutes» format, the calendar-time explanation, and the status badge.
+            in «hours minutes» format, the selected clock explanation, and the status badge.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
@@ -155,8 +155,7 @@ export default function SlaPoliciesHelpEn() {
       <HelpCallout kind="tip">
         <p>
           A common setup is one policy per priority: a short response/resolution target for critical
-          tickets, a wider one for low priority. The preference does not exclude nights, weekends or holidays from deadlines.
-          Do not promise working-time deadlines until a supported calendar is available.
+          tickets, a wider one for low priority. Calendar copies affect only newly calculated deadlines. Existing ticket and milestone deadlines are unchanged; waiting status does not pause their clocks.
         </p>
       </HelpCallout>
 
