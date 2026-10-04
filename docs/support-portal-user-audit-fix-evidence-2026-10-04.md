@@ -23,3 +23,11 @@ No schema/migration, permissions, tenant selection, credential changes or loggin
 Self-review: only the audit data mapping changes; all existing write authorization, organization filters and await/catch behavior remain intact. Actor comes from trusted session auth, metadata comes from existing bounded event descriptors, and credentials are not added to any audit/log. Schema is unchanged. This is not an independent-agent review.
 
 Product publication and release are pending explicit authorization. No push, product PR, merge or deploy has occurred. Before release require current mandatory CI, unchanged real-backend audit assertions with a disposable database, and the normal protected-main deployment path. A local mock-backed PASS does not replace real PostgreSQL evidence.
+
+## Publication authorization and exact-head test preparation
+
+At 2026-10-04 12:42:07 UTC the owner explicitly approved publication and installation of this audit fix after successful checks. This supersedes the earlier publication hold; it does not authorize unrelated product changes.
+
+The eight existing workflow/harness/document files from test head 3e59046dabab2ab6d1313af83c12d802081358cb are reused so the real-backend run can check this exact product candidate. The workflow admits only the established test branch and the dedicated codex/support-portal-audit-fix branch in the canonical repository. It retains hosted-only, exact-SHA, clean-checkout, disposable-loopback-DB, restricted-role/RLS, network and cleanup guards. Expected status/audit assertions are unchanged. Only the audit route is product code.
+
+Historical failures remain immutable. Post-fix hosted acceptance and release are still pending at this checkpoint.
