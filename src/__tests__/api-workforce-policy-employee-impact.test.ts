@@ -87,6 +87,12 @@ describe("session-tenant employee impact administrative read", () => {
     expect(response.status).toBe(200); expect((await response.json()).data.preview.counts.directoryEmployees).toBe(0)
     expect(mocks.memberships).not.toHaveBeenCalled()
   })
+  it.each(["INACTIVE", "SUSPENDED"])("refuses an unexpected %s ORM row before membership SQL", async status => {
+    mocks.employees.mockResolvedValue([{ id: "private-employee", organizationId: "org", status }])
+    const response = await run(), body = await response.json()
+    expect(response.status).toBe(409); expect(body.code).toBe("WORKFORCE_POLICY_IMPACT_RECORD_INVALID")
+    expect(body.data).toBeUndefined(); expect(mocks.memberships).not.toHaveBeenCalled()
+  })
   it("retains null membership as organization fallback", async () => {
     mocks.memberships.mockResolvedValue([{ agentId: "private-employee", membershipId: null, membershipOrganizationId: null,
       membershipAgentId: null, teamId: null, effectiveAt: null }])

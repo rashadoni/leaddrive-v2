@@ -25,12 +25,15 @@ export async function readWorkforcePolicyEmployeeImpact(tx: Prisma.TransactionCl
     where: { organizationId: input.organizationId, status: "ACTIVE" }, select: policySelect,
     orderBy: [{ teamId: "asc" }, { effectiveFrom: "asc" }, { id: "asc" }], take: WORKFORCE_POLICY_IMPACT_POLICY_LIMIT + 1,
   })
-  const directory: Array<{ id: string; organizationId: string; status: "ACTIVE" }> = await tx.mtmAgent.findMany({
+  const directory = await tx.mtmAgent.findMany({
     where: { organizationId: input.organizationId, status: "ACTIVE" }, select: { id: true, organizationId: true, status: true },
     orderBy: { id: "asc" }, take: WORKFORCE_POLICY_IMPACT_EMPLOYEE_LIMIT + 1,
   })
   if (published.length > WORKFORCE_POLICY_IMPACT_POLICY_LIMIT || directory.length > WORKFORCE_POLICY_IMPACT_EMPLOYEE_LIMIT) {
     throw new WorkforcePolicyEmployeeImpactError("WORKFORCE_POLICY_IMPACT_LIMIT_EXCEEDED")
+  }
+  if (directory.some(employee => employee.status !== "ACTIVE")) {
+    throw new WorkforcePolicyEmployeeImpactError("WORKFORCE_POLICY_IMPACT_RECORD_INVALID")
   }
   // Validate the entire recorded scenario before resolving membership. Empty cohort is never a validation shortcut.
   const scenario = previewWorkforcePolicyEmployeeImpact({ ...input, timezone, draft, published, employees: [] })
@@ -60,18 +63,18 @@ export async function readWorkforcePolicyEmployeeImpact(tx: Prisma.TransactionCl
     || rows.some(row => !directory.some(employee => employee.id === row.agentId))) {
     throw new WorkforcePolicyEmployeeImpactError("WORKFORCE_POLICY_IMPACT_RECORD_INVALID")
   }
-  const employees: WorkforcePolicyImpactEmployee[] = directory.map(employee => {
+  const employees = directory.map((employee): WorkforcePolicyImpactEmployee => {
     const row = byId.get(employee.id)!
     if (row.membershipId === null) {
       if (row.membershipOrganizationId !== null || row.membershipAgentId !== null || row.teamId !== null || row.effectiveAt !== null) {
         throw new WorkforcePolicyEmployeeImpactError("WORKFORCE_POLICY_IMPACT_RECORD_INVALID")
       }
-      return { ...employee, membership: null }
+      return { id: employee.id, organizationId: employee.organizationId, status: "ACTIVE", membership: null }
     }
     if (row.membershipOrganizationId === null || row.membershipAgentId === null || row.effectiveAt === null) {
       throw new WorkforcePolicyEmployeeImpactError("WORKFORCE_POLICY_IMPACT_RECORD_INVALID")
     }
-    return { ...employee, membership: { id: row.membershipId, organizationId: row.membershipOrganizationId,
+    return { id: employee.id, organizationId: employee.organizationId, status: "ACTIVE", membership: { id: row.membershipId, organizationId: row.membershipOrganizationId,
       agentId: row.membershipAgentId, teamId: row.teamId, effectiveAt: row.effectiveAt } }
   })
   return previewWorkforcePolicyEmployeeImpact({ ...input, timezone, draft, published, employees })
