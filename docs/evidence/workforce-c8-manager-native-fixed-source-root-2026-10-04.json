@@ -1,0 +1,46 @@
+{
+  "atUtc": "2026-10-04T23:00:30.283439+00:00",
+  "status": "EXACT HEAD SOURCE-ONLY GREEN ACCEPTED; NEW RUNTIME NOT RUN",
+  "candidateHead": "70a112ef08382ef981ce340bc2394e66c2756b81",
+  "baseSha": "1181d28e63352531db4de75851dd35825376a540",
+  "report": {
+    "path": "/tmp/workforce-manager-70a-whole-source-independent.json",
+    "bytes": 10914,
+    "sha256": "d461d38a1be6ca087b67697fe12107a3b1076d493df30ab189e26909b8fa0911"
+  },
+  "audit": {
+    "path": "/tmp/workforce-manager-70a-whole-source-input-audit-independent.json",
+    "bytes": 893644,
+    "sha256": "7431b5e58761b535f2e04ef07137e943e4aa1daed2dcccbbef31f6fbffe33686"
+  },
+  "sourceOnlyGreenAccepted": true,
+  "wholeDirectOriginalsHashed": 557,
+  "explicitGitSnapshotsExact": 343,
+  "expectedMissingPriorStderrExact": 10,
+  "wholeJSONParsed": 149,
+  "wholeUTF8Decoded": 528,
+  "full17DiffBytesExact": {
+    "paths": 17,
+    "bytes": 246547,
+    "sha256": "311c434583f2153a0c2441b66fc0b4b020b51caacc28f09de60dc03fa035fc95"
+  },
+  "nonDoc6DiffBytesExact": {
+    "paths": 6,
+    "bytes": 28836,
+    "sha256": "146682be2faf79f2b16e446a6a8434d9217b4a4d124bf104899ebe56fc533abb"
+  },
+  "peerFull17PatchReconstructionRetained": true,
+  "wholeJournalPrefixesExact": 14,
+  "fourNewAppendsByteExact": 4530,
+  "newAndEarlierDurableCopiesExact": 6,
+  "singleProductClassDeltaExact": true,
+  "boundedActualCommandsPassed": 5,
+  "rangeFindings": 0,
+  "scopeMaximum": 400000,
+  "accountingUniqueIds": 161,
+  "DONE": 82,
+  "nonDONE": 79,
+  "runtimeCredit": false,
+  "normalMergeAllowed": false,
+  "historicalFirst1b02P2StillBlocked": true
+}
