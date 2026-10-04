@@ -186,7 +186,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         },
         agentAssignments: {
           where: activeFieldAssignmentWindow(asOf),
-          include: { agent: { select: { id: true, name: true, role: true } } },
+          // `status` is what the list reads to mark a responsible employee
+          // inactive; without it every assigned client said «неактивен».
+          include: { agent: { select: { id: true, name: true, role: true, status: true } } },
           orderBy: [{ role: "asc" }, { effectiveFrom: "desc" }],
         },
         dictionaryAssignments: {
