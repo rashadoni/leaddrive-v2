@@ -5,6 +5,7 @@
  * cookies, credentials, DOM dumps, screenshots, or raw exception messages.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { randomUUID } from "node:crypto"
@@ -43,14 +44,18 @@ async function main() {
   await mkdir(outputDirectory, { recursive: true })
   const report = { schemaVersion: 1, commit, suite: "support-audit-functional", target: "ephemeral-localhost",
     generatedAt: new Date().toISOString(), cases: [], cleanup: "pending", passed: false }
+  const checkpoint = () => writeFileSync(path.join(outputDirectory, "audit-functional-progress.json"),
+    JSON.stringify({ schemaVersion: 1, commit, phase, completedCases: report.cases.length, passed: false }) + "\n")
   const cleanups = []
   let db, browser, context, page
   let phase = "bootstrap"
+  checkpoint()
   let blockedExternalRequests = 0
   const orgId = target.orgId
   const prefix = "Audit-" + randomUUID().slice(0, 8)
   async function record(id, action) {
     phase = id
+    checkpoint()
     try {
       await action()
       report.cases.push({ id, status: "passed" })
@@ -65,7 +70,7 @@ async function main() {
       }
     }
   }
-  const mark = (name) => { phase = name }
+  const mark = (name) => { phase = name; checkpoint() }
   async function api(method, url, data, expected = 200, request = context.request) {
     const response = await request.fetch(url, { method, ...(data === undefined ? {} : { data }) })
     check(response.status() === expected, "HTTP_STATUS_UNEXPECTED")
@@ -126,11 +131,13 @@ async function main() {
     return row
   }
   try {
+    mark("bootstrap-database")
     db = await makeScriptPrisma({ orgId })
     const org = await db.organization.findFirst({ where: { id: orgId },
       select: { slug: true, name: true, provisionedBy: true } })
     check(org?.slug === "support-evidence" && org.name === "Northstar Support Lab"
       && org.provisionedBy === "support-ux-evidence-ci", "FIXTURE_IDENTITY_MISMATCH")
+    mark("bootstrap-browser")
     browser = await chromium.launch({ headless: true })
     context = await newContext()
     const actorId = await signIn(context, process.env.SUPPORT_EVIDENCE_ADMIN_EMAIL, process.env.SUPPORT_EVIDENCE_ADMIN_PASSWORD)

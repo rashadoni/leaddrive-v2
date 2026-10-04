@@ -31,7 +31,20 @@ export async function runAuditPostgresEvidence({ admin, context, orgId, actorId,
   const org = await admin.organization.findUnique({ where: { id: orgId }, select: { slug: true, name: true } })
   check(org?.slug === "support-evidence" && org.name === "Northstar Support Lab", "AUDIT_PG_DEMO")
   check(await admin.user.findFirst({ where: { id: actorId, organizationId: orgId, role: "admin" }, select: { id: true } }), "AUDIT_PG_ACTOR")
-  const { PrismaClient } = await import("@prisma/client")
+  const { makeRlsTestPrisma } = await import("./_rls.mjs")
+  // Use the classified test-client factory. Each client is frozen to this
+  // guarded disposable target; restore the fixture environment immediately.
+  function isolatedClient(databaseUrl) {
+    guard(outputDirectory)
+    const previous = process.env.EVENT_PLATFORM_TEST_DATABASE_URL
+    try {
+      process.env.EVENT_PLATFORM_TEST_DATABASE_URL = databaseUrl
+      return makeRlsTestPrisma(databaseUrl)
+    } finally {
+      if (previous === undefined) delete process.env.EVENT_PLATFORM_TEST_DATABASE_URL
+      else process.env.EVENT_PLATFORM_TEST_DATABASE_URL = previous
+    }
+  }
   const receipt = { version: 1, candidateHead: sha, baseSchemaCommit: BASE, status: "RUNNING", cases: [], cleanup: "NOT_RUN",
     limitations: ["Disposable service superuser; not a physical non-bypass-role RLS proof.", "No production data, backfill, external delivery or activation."] }
   let stage = "preflight", control, scratch, scratchName, temp
@@ -74,14 +87,14 @@ export async function runAuditPostgresEvidence({ admin, context, orgId, actorId,
       && statements[1] === 'ALTER TABLE "tickets" ADD COLUMN "slaCalendarSnapshot" JSONB', "AUDIT_MIGRATION_CHANGED")
     receipt.migrationSha256 = hash(migration); receipt.baseSchemaSha256 = hash(schema)
     const controlUrl = new URL(url); controlUrl.pathname = "/postgres"
-    control = new PrismaClient({ datasourceUrl: controlUrl.href })
+    control = isolatedClient(controlUrl.href)
     scratchName = "support_audit_upgrade_" + randomBytes(12).toString("hex")
     const exists = await control.$queryRaw`SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = ${scratchName}) AS present`
     check(exists[0]?.present === false, "AUDIT_DB_ALREADY_EXISTS")
     stage = "upgrade-create-database"
     await ddl(control, `CREATE DATABASE "${scratchName}"`); created = true
     const scratchUrl = new URL(url); scratchUrl.pathname = "/" + scratchName
-    scratch = new PrismaClient({ datasourceUrl: scratchUrl.href })
+    scratch = isolatedClient(scratchUrl.href)
     await ddl(scratch, "CREATE EXTENSION IF NOT EXISTS vector")
     check(path.isAbsolute(process.env.RUNNER_TEMP || ""), "AUDIT_TEMP_REQUIRED")
     temp = await mkdtemp(path.join(process.env.RUNNER_TEMP, "support-audit-upgrade-"))

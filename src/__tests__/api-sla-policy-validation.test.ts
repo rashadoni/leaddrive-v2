@@ -45,7 +45,7 @@ const params = (id: string) => ({ params: Promise.resolve({ id }) })
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.transaction.mockImplementation(async (callback: (tx: { slaPolicy: unknown }) => unknown) => callback({
+  mocks.transaction.mockImplementation(async (callback: (tx: { slaPolicy: unknown; businessHours: { findUnique: typeof mocks.businessHoursFindUnique } }) => unknown) => callback({
     businessHours: { findUnique: mocks.businessHoursFindUnique },
     slaPolicy: {
       findMany: mocks.findMany,

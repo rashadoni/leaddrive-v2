@@ -1598,11 +1598,15 @@ jobs:
           audit_acceptance_status=0
           if [ "$SUPPORT_AUDIT_ACCEPTANCE" = "ephemeral-audit-20261004-v1" ]; then
             audit_stage=HARNESS_RUNNING
-            node scripts/support-ux-audit-functional-evidence.mjs > "$RUNNER_TEMP/support-audit-harness.log" 2>&1 || audit_acceptance_status=$?
+            node --import ./scripts/support-ux-audit-bootstrap-evidence.mjs scripts/support-ux-audit-functional-evidence.mjs > "$RUNNER_TEMP/support-audit-harness.log" 2>&1 || audit_acceptance_status=$?
             audit_stage=HARNESS_FINISHED
           fi
           audit_stage=CAPTURE_RUNNING
-          node scripts/support-ux-browser-evidence.mjs || capture_status=$?
+          if [ "$SUPPORT_AUDIT_ACCEPTANCE" = "ephemeral-audit-20261004-v1" ]; then
+            node --import ./scripts/support-ux-audit-bootstrap-evidence.mjs scripts/support-ux-browser-evidence.mjs > "$RUNNER_TEMP/support-audit-capture.log" 2>&1 || capture_status=$?
+          else
+            node scripts/support-ux-browser-evidence.mjs || capture_status=$?
+          fi
           audit_stage=CAPTURE_FINISHED
           if [ "$audit_acceptance_status" -ne 0 ]; then
             echo "Independent audit acceptance failed; inspect the sanitized audit evidence artifact."
