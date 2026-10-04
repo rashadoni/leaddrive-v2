@@ -21,7 +21,7 @@ function window(value: unknown): value is Preview["draft"] {
     && dateKey(value.effectiveFrom) && (value.effectiveTo === null || (dateKey(value.effectiveTo) && value.effectiveTo >= value.effectiveFrom))
 }
 function predecessor(value: unknown): value is NonNullable<Preview["predecessor"]> {
-  return window(value) && object(value) && dateKey(value.projectedEffectiveTo)
+  return object(value) && dateKey(value.projectedEffectiveTo) && window(value)
 }
 function validPreview(value: unknown, choice: Choice): value is Preview {
   if (!object(value) || value.basis !== "RECORDED_SCOPE_WINDOWS_ONLY_NO_EMPLOYEE_IMPACT_OR_APPROVAL"
