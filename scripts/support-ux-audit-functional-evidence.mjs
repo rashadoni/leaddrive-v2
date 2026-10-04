@@ -15,7 +15,43 @@ import { makeScriptPrisma } from "./_rls.mjs"
 const LOCAL = new Set(["localhost", "127.0.0.1", "[::1]", "::1"])
 const CONFIRM = "ephemeral-audit-20261004-v1"
 class AcceptanceFailure extends Error {
-  constructor(code) { super(code); this.code = code }
+  constructor(code, diagnostics = {}) {
+    super(code)
+    this.name = "AcceptanceFailure"
+    this.code = code
+    this.actualHTTPStatus = diagnostics.actualHTTPStatus
+    this.expectedHTTPStatus = diagnostics.expectedHTTPStatus
+  }
+}
+const SAFE_ERROR_NAMES = new Set(["AcceptanceFailure", "Error", "TimeoutError", "TypeError", "RangeError",
+  "ReferenceError", "SyntaxError", "PrismaClientKnownRequestError", "PrismaClientInitializationError",
+  "PrismaClientValidationError"])
+export function safeFailure(error) {
+  return {
+    code: error instanceof AcceptanceFailure ? error.code : "UNEXPECTED_FAILURE",
+    errorName: SAFE_ERROR_NAMES.has(error?.name) ? error.name : "UnknownError",
+    ...(Number.isInteger(error?.actualHTTPStatus) && error.actualHTTPStatus >= 100 && error.actualHTTPStatus <= 599
+      ? { actualHTTPStatus: error.actualHTTPStatus } : {}),
+    ...(Number.isInteger(error?.expectedHTTPStatus) && error.expectedHTTPStatus >= 100 && error.expectedHTTPStatus <= 599
+      ? { expectedHTTPStatus: error.expectedHTTPStatus } : {}),
+  }
+}
+function checkHttp(response, expected, code = "HTTP_STATUS_UNEXPECTED") {
+  if (response.status() !== expected) {
+    throw new AcceptanceFailure(code, { actualHTTPStatus: response.status(), expectedHTTPStatus: expected })
+  }
+}
+// Attach rejection handlers to both branches before either callback runs.
+// Await settlement of both so a timed-out click cannot leave an orphan response
+// promise (or a still-running click) behind when the next case starts.
+export async function observeAction(waitForResult, action) {
+  const [observed, performed] = await Promise.allSettled([
+    Promise.resolve().then(waitForResult),
+    Promise.resolve().then(action),
+  ])
+  if (performed.status === "rejected") throw performed.reason
+  if (observed.status === "rejected") throw observed.reason
+  return observed.value
 }
 function check(condition, code) {
   if (!condition) throw new AcceptanceFailure(code)
@@ -45,7 +81,8 @@ async function main() {
   const report = { schemaVersion: 1, commit, suite: "support-audit-functional", target: "ephemeral-localhost",
     generatedAt: new Date().toISOString(), cases: [], cleanup: "pending", passed: false }
   const checkpoint = () => writeFileSync(path.join(outputDirectory, "audit-functional-progress.json"),
-    JSON.stringify({ schemaVersion: 1, commit, phase, completedCases: report.cases.length, passed: false }) + "\n")
+    JSON.stringify({ schemaVersion: 1, commit, phase, completedCases: report.cases.length,
+      cases: report.cases, passed: false }) + "\n")
   const cleanups = []
   let db, browser, context, page
   let phase = "bootstrap"
@@ -61,8 +98,9 @@ async function main() {
       report.cases.push({ id, status: "passed" })
     } catch (error) {
       report.cases.push({ id, status: "failed", stage: phase,
-        code: error instanceof AcceptanceFailure ? error.code : "UNEXPECTED_FAILURE" })
+        ...safeFailure(error) })
     } finally {
+      checkpoint()
       if (page) {
         await page.unrouteAll({ behavior: "ignoreErrors" }).catch(() => undefined)
         const composer = page.getByTestId("ticket-comment-composer")
@@ -73,8 +111,27 @@ async function main() {
   const mark = (name) => { phase = name; checkpoint() }
   async function api(method, url, data, expected = 200, request = context.request) {
     const response = await request.fetch(url, { method, ...(data === undefined ? {} : { data }) })
-    check(response.status() === expected, "HTTP_STATUS_UNEXPECTED")
+    checkHttp(response, expected)
     return response.json()
+  }
+  async function actionResponse(endpoint, method, action, expected = 200, code = "HTTP_STATUS_UNEXPECTED") {
+    const response = await observeAction(
+      () => page.waitForResponse(item => new URL(item.url()).pathname === endpoint && item.request().method() === method),
+      action,
+    )
+    checkHttp(response, expected, code)
+    return response
+  }
+  async function ticketControlSynced(kind, value) {
+    await page.waitForFunction(({ kind, value }) => {
+      const select = document.querySelector("[data-testid='ticket-" + kind + "-select']")
+      const submit = document.querySelector("[data-testid='ticket-" + kind + "-submit']")
+      return select?.value === value && submit?.getAttribute("data-state") === "synced"
+    }, { kind, value })
+  }
+  async function ticketControlReady(kind) {
+    await page.locator("[data-testid='ticket-" + kind + "-submit'][data-state='ready']:not(:disabled)")
+      .waitFor({ state: "visible" })
   }
   async function eventually(predicate, code) {
     for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -86,12 +143,12 @@ async function main() {
   async function signIn(browserContext, email, password) {
     check(email.endsWith("@support-evidence.invalid") && Boolean(password), "SYNTHETIC_CREDENTIALS_REQUIRED")
     const csrfResponse = await browserContext.request.get("/api/auth/csrf")
-    check(csrfResponse.ok(), "CSRF_FAILED")
+    checkHttp(csrfResponse, 200, "CSRF_FAILED")
     const csrf = await csrfResponse.json()
     const response = await browserContext.request.post("/api/auth/callback/credentials", {
       form: { csrfToken: csrf.csrfToken, email, password, callbackUrl: target.baseUrl + "/tickets", json: "true" },
     })
-    check(response.ok(), "AUTH_FAILED")
+    checkHttp(response, 200, "AUTH_FAILED")
     const sessionResponse = await browserContext.request.get("/api/auth/session")
     const session = await sessionResponse.json()
     check(Boolean(session?.user?.id) && session.user.email === email, "AUTH_SESSION_MISMATCH")
@@ -161,9 +218,10 @@ async function main() {
       check((await page.getByTestId("ticketing-report-sla-sample").innerText()).includes("0"), "SAMPLE_MISSING")
       await page.getByTestId("ticketing-report-scope").waitFor({ state: "visible" })
       mark("ux01-csv")
-      const downloadPromise = page.waitForEvent("download")
-      await workspace.getByRole("button", { name: "CSV", exact: true }).click()
-      const download = await downloadPromise
+      const download = await observeAction(
+        () => page.waitForEvent("download"),
+        () => workspace.getByRole("button", { name: "CSV", exact: true }).click(),
+      )
       const csv = await readFile(await download.path(), "utf8")
       check(/Active without SLA breach.*No data/.test(csv), "CSV_EMPTY_METRIC_MISMATCH")
       mark("ux01-nonempty-api")
@@ -226,9 +284,8 @@ async function main() {
       check((await form.innerText()).includes("09:00–18:00") && (await form.innerText()).includes("2026-10-12"),
         "CALENDAR_DETAILS_MISSING")
       check(/working/i.test(await page.getByTestId("sla-policy-preview").innerText()), "WORKING_PREVIEW_MISSING")
-      const create = page.waitForResponse(response => response.url().endsWith("/api/v1/sla-policies") && response.request().method() === "POST")
-      await page.getByTestId("sla-policy-submit").click()
-      check((await create).status() === 201, "CALENDAR_UI_SAVE_FAILED")
+      await actionResponse("/api/v1/sla-policies", "POST",
+        () => page.getByTestId("sla-policy-submit").click(), 201, "CALENDAR_UI_SAVE_FAILED")
       await form.waitFor({ state: "hidden" })
       const saved = await db.slaPolicy.findFirst({ where: { organizationId: orgId, name: prefix + "-working" } })
       check(Boolean(saved), "CAPTURED_POLICY_MISSING")
@@ -315,29 +372,32 @@ async function main() {
       const draft = "Synthetic unsent reply preserved"
       await page.getByTestId("ticket-comment-composer").fill(draft)
       mark("ux05-quick-status")
-      const update = page.waitForResponse(response => response.url().endsWith("/api/v1/tickets/" + row.id) && response.request().method() === "PUT")
-      await page.locator("[aria-label='Ticket status progress']").getByRole("button", { name: "In Progress", exact: true }).click()
-      check((await update).ok(), "QUICK_STATUS_FAILED")
+      await actionResponse("/api/v1/tickets/" + row.id, "PUT",
+        () => page.locator("[aria-label='Ticket status progress']").getByRole("button", { name: "In Progress", exact: true }).click(),
+        200, "QUICK_STATUS_FAILED")
       check((await db.ticket.findUnique({ where: { id: row.id } })).status === "in_progress", "QUICK_STATUS_NOT_SAVED")
+      await ticketControlSynced("status", "in_progress")
       mark("ux05-full-status")
       await page.getByTestId("ticket-status-select").selectOption("waiting")
       check((await db.ticket.findUnique({ where: { id: row.id } })).status === "in_progress", "FULL_STATUS_SAVED_PREMATURELY")
-      const full = page.waitForResponse(response => response.url().endsWith("/api/v1/tickets/" + row.id) && response.request().method() === "PUT")
-      await page.getByTestId("ticket-status-submit").click()
-      check((await full).ok(), "FULL_STATUS_FAILED")
+      await ticketControlReady("status")
+      await actionResponse("/api/v1/tickets/" + row.id, "PUT",
+        () => page.getByTestId("ticket-status-submit").click(), 200, "FULL_STATUS_FAILED")
       check((await db.ticket.findUnique({ where: { id: row.id } })).status === "waiting", "FULL_STATUS_NOT_SAVED")
+      await ticketControlSynced("status", "waiting")
       mark("ux05-self-and-full-assignment")
-      const assign = page.waitForResponse(response => response.url().endsWith("/api/v1/tickets/" + row.id) && response.request().method() === "PUT")
-      await page.getByRole("button", { name: "Assign to me", exact: true }).click()
-      check((await assign).ok(), "SELF_ASSIGN_FAILED")
+      await actionResponse("/api/v1/tickets/" + row.id, "PUT",
+        () => page.getByRole("button", { name: "Assign to me", exact: true }).click(), 200, "SELF_ASSIGN_FAILED")
       check((await db.ticket.findUnique({ where: { id: row.id } })).assignedTo === actorId, "SELF_ASSIGN_NOT_SAVED")
+      await ticketControlSynced("assignee", actorId)
       const agent = await db.user.findFirst({ where: { organizationId: orgId, email: process.env.SUPPORT_EVIDENCE_AGENT_EMAIL }, select: { id: true } })
       await page.getByTestId("ticket-assignee-select").selectOption(agent.id)
       check((await db.ticket.findUnique({ where: { id: row.id } })).assignedTo === actorId, "FULL_ASSIGN_SAVED_PREMATURELY")
-      const assignment = page.waitForResponse(response => response.url().endsWith("/api/v1/tickets/" + row.id) && response.request().method() === "PUT")
-      await page.getByTestId("ticket-assignee-submit").click()
-      check((await assignment).ok(), "FULL_ASSIGN_FAILED")
+      await ticketControlReady("assignee")
+      await actionResponse("/api/v1/tickets/" + row.id, "PUT",
+        () => page.getByTestId("ticket-assignee-submit").click(), 200, "FULL_ASSIGN_FAILED")
       check((await db.ticket.findUnique({ where: { id: row.id } })).assignedTo === agent.id, "FULL_ASSIGN_NOT_SAVED")
+      await ticketControlSynced("assignee", agent.id)
       mark("ux05-audit-correspondence")
       await eventually(async () => {
         const audits = await db.auditLog.findMany({ where: { organizationId: orgId, entityType: "ticket", entityId: row.id, action: "update" }, select: { newValue: true } })
@@ -373,7 +433,7 @@ async function main() {
           const listing = await api("GET", "/api/v1/tickets?owner=unassigned", undefined, 200, roleContext.request)
           check(JSON.stringify(listing).includes(work.id), "UNASSIGNED_WORK_INACCESSIBLE")
           const denied = await roleContext.request.patch("/api/v1/portal-users", { data: { contactIds: [prefix], action: "enable" } })
-          check(denied.status() === 403, "PORTAL_PERMISSION_EXPANDED")
+          checkHttp(denied, 403, "PORTAL_PERMISSION_EXPANDED")
         } finally { await roleContext.close() }
       }
     })
@@ -524,14 +584,12 @@ async function main() {
       const unchanged = await db.contact.findUnique({ where: { id: contact.id } })
       check(!unchanged.portalAccessEnabled && unchanged.portalVerificationToken === null, "PREMATURE_PORTAL_ENABLE")
       await page.locator("#portal-user-email").fill(prefix.toLowerCase() + "@support-evidence.invalid")
-      const profile = page.waitForResponse(response => response.url().endsWith("/api/v1/portal-users") && response.request().method() === "PATCH")
-      await page.getByTestId("portal-user-edit-save").click()
-      check((await profile).ok(), "EMAIL_SAVE_FAILED")
+      await actionResponse("/api/v1/portal-users", "PATCH",
+        () => page.getByTestId("portal-user-edit-save").click(), 200, "EMAIL_SAVE_FAILED")
       await page.getByTestId("portal-user-edit-form").waitFor({ state: "hidden" })
       mark("ux09-ready-enable")
-      const enabled = page.waitForResponse(response => response.url().endsWith("/api/v1/portal-users") && response.request().method() === "PATCH")
-      await row.getByTestId("portal-user-access").click()
-      check((await enabled).ok(), "READY_ENABLE_FAILED")
+      await actionResponse("/api/v1/portal-users", "PATCH",
+        () => row.getByTestId("portal-user-access").click(), 200, "READY_ENABLE_FAILED")
       const ready = await db.contact.findUnique({ where: { id: contact.id } })
       check(ready.portalAccessEnabled && ready.portalVerificationToken === null, "READY_STATE_OR_UNREQUESTED_INVITE")
     })
@@ -577,7 +635,7 @@ async function main() {
     })
   } catch (error) {
     report.cases.push({ id: "bootstrap", status: "failed", stage: phase,
-      code: error instanceof AcceptanceFailure ? error.code : "UNEXPECTED_FAILURE" })
+      ...safeFailure(error) })
   } finally {
     let cleaned = true
     for (const cleanup of cleanups.reverse()) {
@@ -591,7 +649,7 @@ async function main() {
     report.passed = cleaned && report.cases.length === 11 && report.cases.every(item => item.status === "passed")
     await writeFile(path.join(outputDirectory, "audit-functional-evidence.json"), JSON.stringify(report, null, 2) + "\n")
     console.log(JSON.stringify({ suite: report.suite, commit, passed: report.passed,
-      cases: report.cases.map(({ id, status, stage, code }) => ({ id, status, ...(stage ? { stage, code } : {}) })), cleanup: report.cleanup }))
+      cases: report.cases, cleanup: report.cleanup }))
     if (!report.passed) process.exitCode = 1
   }
 }

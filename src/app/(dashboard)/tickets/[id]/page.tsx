@@ -1782,7 +1782,7 @@ export default function TicketDetailPage() {
               <p className="text-xs text-muted-foreground">{t("fullControlsSaveHint")}</p>
               {/* Status change */}
               <div className="flex flex-wrap items-center gap-2">
-                <Select data-testid="ticket-status-select" aria-label={tc("status")} value={newStatus} onChange={e => setNewStatus(e.target.value)} className="h-11 w-48 sm:h-9">
+                <Select data-testid="ticket-status-select" disabled={updatingStatus || updatingAssignee} aria-label={tc("status")} value={newStatus} onChange={e => setNewStatus(e.target.value)} className="h-11 w-48 sm:h-9">
                   <option value="new">{t("statusNew")}</option>
                   <option value="open">{t("statusOpen")}</option>
                   <option value="in_progress">{t("statusInProgress")}</option>
@@ -1804,7 +1804,7 @@ export default function TicketDetailPage() {
 
               {/* Reassign */}
               <div className="flex flex-wrap items-center gap-2">
-                <Select data-testid="ticket-assignee-select" aria-label={tc("assigned")} value={newAssignee} onChange={e => setNewAssignee(e.target.value)} className="h-11 w-48 sm:h-9">
+                <Select data-testid="ticket-assignee-select" disabled={updatingStatus || updatingAssignee} aria-label={tc("assigned")} value={newAssignee} onChange={e => setNewAssignee(e.target.value)} className="h-11 w-48 sm:h-9">
                   <option value="">{t("unassignedOption")}</option>
                   {users.map(u => (
                     <option key={u.id} value={u.id}>{u.name || u.email}</option>
