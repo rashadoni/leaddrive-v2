@@ -16,22 +16,37 @@ try {
     await owner.organization.create({ data: { id: org, name: "Additive migration existing fixture", slug: org }, select: { id: true } })
     await owner.user.create({ data: { id: user, organizationId: org, email: user + "@example.test", name: "Fixture actor", role: "admin", passwordHash: randomUUID() }, select: { id: true } })
     await owner.workforcePolicy.create({ data: { id, organizationId: org, version: 1, name: "Existing legacy draft", effectiveFrom: new Date("2090-01-01"), definition, definitionHash, createdByUserId: user }, select: { id: true } })
-    const [row] = await owner.$queryRaw`SELECT to_jsonb(p) AS row FROM workforce_policies p WHERE id=${id}`
-    assert.equal(Object.hasOwn(row.row, "restoreOperationId"), false)
-    await writeFile(path, JSON.stringify(row.row, null, 2) + "\n", { flag: "wx" })
+    for (const [version, status, from, to, system] of [[2, "ACTIVE", "2020-01-01", "2030-12-31", false],
+      [3, "RETIRED", "2019-01-01", "2019-12-31", false], [4, "ACTIVE", "2031-01-01", null, true]]) {
+      await owner.workforcePolicy.create({ data: { id: id + "-" + version, organizationId: org, version, status,
+        name: "Existing published fixture", effectiveFrom: new Date(from), effectiveTo: to == null ? null : new Date(to), definition, definitionHash,
+        provenance: system ? "SYSTEM_PROVISIONING" : "TENANT_ADMIN", systemProfileVersion: system ? "existing-fixture-profile" : null,
+        createdByUserId: system ? null : user, activatedByUserId: system ? null : user, activatedAt: new Date(from), retiredAt: status === "RETIRED" ? new Date(to) : null }, select: { id: true } })
+    }
+    const rows = await owner.$queryRaw`SELECT to_jsonb(p) AS row FROM workforce_policies p WHERE "organizationId"=${org} ORDER BY id`
+    assert.equal(rows.length, 4); for (const row of rows) assert.equal(Object.hasOwn(row.row, "restoreOperationId"), false)
+    await writeFile(path, JSON.stringify(rows.map(row => row.row), null, 2) + "\n", { flag: "wx" })
   } else {
     assert.equal(process.argv[2], "after")
     const before = JSON.parse(await readFile(path, "utf8"))
-    const [row] = await owner.$queryRaw`SELECT to_jsonb(p) AS row FROM workforce_policies p WHERE id=${id}`
-    assert.equal(row.row.restoreOperationId, null); assert.equal(row.row.restoreRequestHash, null)
-    const preserved = { ...row.row }
-    delete preserved.restoreOperationId; delete preserved.restoreRequestHash
+    const rows = await owner.$queryRaw`SELECT to_jsonb(p) AS row FROM workforce_policies p WHERE "organizationId"=${org} ORDER BY id`
+    assert.equal(rows.length, 4)
+    const preserved = rows.map(({ row }) => { assert.equal(row.restoreOperationId, null); assert.equal(row.restoreRequestHash, null)
+      const original = { ...row }; delete original.restoreOperationId; delete original.restoreRequestHash; return original })
     assert.deepEqual(preserved, before)
-    await owner.$transaction(async tx => { await tx.workforcePolicy.delete({ where: { id } }); await tx.user.delete({ where: { id: user } }); await tx.organization.delete({ where: { id: org } }) })
+    await owner.$transaction(async tx => {
+      await tx.workforcePolicy.delete({ where: { id } }) // Ordinary unanchored DRAFT behavior.
+      await tx.$executeRawUnsafe("ALTER TABLE workforce_policies DISABLE TRIGGER workforce_policies_published_definition_delete_guard")
+      await tx.workforcePolicy.deleteMany({ where: { organizationId: org } })
+      await tx.$executeRawUnsafe("ALTER TABLE workforce_policies ENABLE TRIGGER workforce_policies_published_definition_delete_guard")
+      await tx.user.delete({ where: { id: user } }); await tx.organization.delete({ where: { id: org } })
+    })
     assert.equal(await owner.organization.count({ where: { id: org } }), 0)
+    const [guard] = await owner.$queryRaw`SELECT tgenabled FROM pg_trigger WHERE tgname='workforce_policies_published_definition_delete_guard'`
+    assert.equal(guard.tgenabled, "O")
     await writeFile("artifacts/workforce-policy-restore/additive-existing-row-after.json", JSON.stringify({ status: "PASS",
       baseSha: process.env.WF_POLICY_RESTORE_BASE_SHA, candidateHead: process.env.WF_POLICY_RESTORE_HEAD_SHA, checkedMergeSha: process.env.GITHUB_SHA,
-      beforeWholeRowPreserved: true, bothNewFieldsNull: true, legacyUnanchoredDeleteAllowed: true, cleanupAbsence: true,
-      boundary: "One existing populated legacy DRAFT across actual additive migration on selected exact-base schema; not full historic migration replay." }, null, 2) + "\n", { flag: "wx" })
+      existingRows: 4, beforeWholeRowsPreserved: true, bothNewFieldsNull: true, legacyUnanchoredDeleteAllowed: true, cleanupAbsence: true, publishedDeleteGuardRestored: true,
+      boundary: "Four existing populated legacy DRAFT/TENANT_ADMIN ACTIVE/RETIRED/SYSTEM_PROVISIONING ACTIVE rows across actual additive migration on selected exact-base schema; not full historic migration replay." }, null, 2) + "\n", { flag: "wx" })
   }
 } finally { await owner.$disconnect() }
