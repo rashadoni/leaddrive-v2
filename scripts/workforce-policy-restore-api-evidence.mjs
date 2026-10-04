@@ -29,7 +29,8 @@ function canonical(value) { if (value == null || typeof value !== "object") retu
 const hash = value => createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex")
 const definition = { expectedWorkSeconds: 0, lateGraceSeconds: 0, undertimeToleranceSeconds: 0, overtimeThresholdSeconds: 0,
   longPauseThresholdSeconds: null, opaque: { retained: [null, 0, { deferred: true }] } }, definitionHash = hash(definition)
-const cases = [], authentication = [], cleanup = []
+const cases = [], authentication = [], cleanup = [], httpObservations = []
+let failure = null
 let stage = "seed", failed = false, fixture, beforeFacts
 const op = label => `restore-api-${label}-${suffix}`
 const body = label => ({ operationId: op(label), expectedSourceVersion: 1, expectedSourceDefinitionHash: definitionHash, name: "Restored API draft", effectiveFrom: key(30) })
@@ -37,6 +38,13 @@ const endpoint = id => `/api/v1/workforce/configuration/policies/${id}/restore-d
 const privateHeaders = response => { assert.equal(response.headers()["cache-control"], "private, no-store"); assert.equal(response.headers().vary, "Cookie"); assert.equal(response.headers()["x-content-type-options"], "nosniff") }
 async function post(context, id, data, status, query = "") {
   const response = await context.post(endpoint(id) + query, { data, headers: { "x-organization-id": orgs[1], "x-user-id": "untrusted" }, timeout: 120000 })
+  const headers = response.headers()
+  httpObservations.push({ stage, expectedStatus: status, observedStatus: response.status(),
+    privateCache: /(?:^|[,\s])private(?:$|[,\s])/.test(headers["cache-control"] || ""),
+    noStore: /(?:^|[,\s])no-store(?:$|[,\s])/.test(headers["cache-control"] || ""),
+    nosniff: headers["x-content-type-options"] === "nosniff",
+    cookieVaryToken: (headers.vary || "").split(",").some(token => token.trim().toLowerCase() === "cookie"),
+    exactCookieVary: headers.vary === "Cookie" })
   assert.equal(response.status(), status); privateHeaders(response)
   return response.json()
 }
@@ -160,7 +168,15 @@ try {
   stage = "preserved-source-facts"
   assert.deepEqual(await facts(), beforeFacts); assert.equal(authentication.length, 5)
   cases.push("published-source-team-grant-facts-unchanged-login-metadata-excluded")
-} catch { failed = true }
+} catch (error) {
+  failed = true
+  const position = /workforce-policy-restore-api-evidence\.mjs:(\d+):(\d+)/.exec(error?.stack || "")
+  const primitive = value => value == null ? null : typeof value === "number" && Number.isFinite(value) || typeof value === "boolean" ? value : "WITHHELD"
+  failure = { stage, name: ["AssertionError", "TimeoutError", "PrismaClientKnownRequestError", "PrismaClientValidationError"].includes(error?.name) ? error.name : "Error",
+    sourcePosition: position ? { line: Number(position[1]), column: Number(position[2]) } : null,
+    actual: primitive(error?.actual), expected: primitive(error?.expected),
+    diagnostic: "Fixed category/position/numeric-or-boolean assertions only; no raw error, stack, body, credentials, cookies or arbitrary header values" }
+}
 finally {
   for (const context of contexts) { try { await context.dispose() } catch { failed = true } }
   try {
@@ -190,7 +206,7 @@ finally {
     "scripts/ci/fixtures/workforce-policy-restore-writer.sql", "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql"]
   const sourceBindings = await Promise.all(paths.map(async path => { const raw = await readFile(path); return { path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") } }))
   await writeFile(directory + "/restore-authorized-api-receipt.json", JSON.stringify({ status: !failed && cases.length === 9 ? "PASS" : "FAIL", requiredCases: 9,
-    cases, stage, authentication, candidateHead: process.env.WF_POLICY_RESTORE_HEAD_SHA, checkedMergeSha: process.env.GITHUB_SHA, completedAt: new Date().toISOString(), sourceBindings, cleanup,
+    cases, stage, authentication, httpObservations, failure, candidateHead: process.env.WF_POLICY_RESTORE_HEAD_SHA, checkedMergeSha: process.env.GITHUB_SHA, completedAt: new Date().toISOString(), sourceBindings, cleanup,
     boundary: "Actual credentials/CSRF/JWT session/proxy/granular grants/API/canonical restore transactions on disposable hosted Next dev/PostgreSQL. APIRequestContext only: no rendered UI or browser/keyboard/a11y credit. Auth login metadata writes expected and excluded from stable facts. Anonymous proxy307 is distinct from handler401; no private-header credit for its redirect. Fixture audit immutability is not production global immutability." }, null, 2) + "\n", { flag: "wx" })
 }
 if (failed || cases.length !== 9) throw new Error("Restore API fixture failed; sanitized complete receipt retains stage and completed cases")
