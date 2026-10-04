@@ -106,8 +106,9 @@ export function previewWorkforcePolicyEmployeeImpact(input: {
       || !instant(membership.effectiveAt) || membership.effectiveAt > scopeInstant)) return fail("WORKFORCE_POLICY_IMPACT_RECORD_INVALID")
   }
   // Closing the predecessor and activating the draft happen only in this in-memory scenario.
-  const hypothetical: WorkforcePolicyImpactRecord[] = input.published.map(row => row.id === window.predecessor?.id
-    ? { ...row, effectiveTo: new Date(`${window.predecessor.projectedEffectiveTo}T00:00:00.000Z`) } : row)
+  const predecessor = window.predecessor
+  const hypothetical: WorkforcePolicyImpactRecord[] = input.published.map(row => predecessor && row.id === predecessor.id
+    ? { ...row, effectiveTo: new Date(`${predecessor.projectedEffectiveTo}T00:00:00.000Z`) } : row)
   hypothetical.push({ ...input.draft, status: "ACTIVE", activatedAt: input.observedAt })
   function resolve(employee: WorkforcePolicyImpactEmployee, policies: readonly WorkforcePolicyImpactRecord[]) {
     try { return resolveWorkforcePolicy({ workDate: draft.metadata.effectiveFrom, workdayStartedAt: scopeInstant,

@@ -149,10 +149,10 @@ pgDescribe("hosted employee impact SELECT-only coherent PostgreSQL projection", 
         for (const org of orgs) {
           const count = (tx: Prisma.TransactionClient, filter?: string) => tx.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
             SELECT count(*) FROM ${Prisma.raw(`"public"."${table}"`)} WHERE "organizationId"=${filter ?? org}`)
-          expect((await owner.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT count(*) FROM ${Prisma.raw(`"public"."${table}"`)} WHERE "organizationId"=${org}`))[0].count).toBeGreaterThan(0n)
-          expect((await scoped(tx => count(tx), org))[0].count).toBeGreaterThan(0n)
-          expect((await scoped(tx => count(tx, orgs.find(id => id !== org)), org))[0].count).toBe(0n)
-          expect((await scoped(tx => count(tx), null))[0].count).toBe(0n)
+          expect((await owner.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT count(*) FROM ${Prisma.raw(`"public"."${table}"`)} WHERE "organizationId"=${org}`))[0].count).toBeGreaterThan(BigInt(0))
+          expect((await scoped(tx => count(tx), org))[0].count).toBeGreaterThan(BigInt(0))
+          expect((await scoped(tx => count(tx, orgs.find(id => id !== org)), org))[0].count).toBe(BigInt(0))
+          expect((await scoped(tx => count(tx), null))[0].count).toBe(BigInt(0))
         }
         await expect(scoped(tx => tx.$executeRaw(Prisma.sql`UPDATE ${Prisma.raw(`"public"."${table}"`)} SET "id"="id" WHERE "organizationId"=${orgs[0]}`)))
           .rejects.toMatchObject({ code: "P2010", meta: { code: "42501" } })
