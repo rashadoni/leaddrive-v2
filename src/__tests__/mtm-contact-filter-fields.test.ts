@@ -205,10 +205,25 @@ beforeEach(async () => {
   vi.mocked(prisma.mtmCoverageSnapshotRow.findMany).mockResolvedValue([])
 
   // One in-memory table behind the list, its count and the facet dictionaries.
-  vi.mocked(prisma.mtmContact.findMany).mockImplementation((async (args: { where: Record<string, unknown>; distinct?: string[] }) => {
+  vi.mocked(prisma.mtmContact.findMany).mockImplementation((async (args: {
+    where: Record<string, unknown>
+    distinct?: string[]
+    include?: { agentAssignments?: { include?: { agent?: { select?: Record<string, boolean> } } } }
+  }) => {
     const rows = CLIENTS.filter((row) => matchesPrismaWhere(row, args.where))
+    // Prisma hands back only the employee columns the handler selects. A
+    // stand-in that returns the whole employee hides a column the handler
+    // forgot — that is how «deaktiv» stood under every working employee.
+    const agentColumns = args.include?.agentAssignments?.include?.agent?.select
+    const asSelected = (row: (typeof CLIENTS)[number]) => !agentColumns ? row : {
+      ...row,
+      agentAssignments: (row.agentAssignments as Array<{ agent: Record<string, unknown> }>).map((assignment) => ({
+        ...assignment,
+        agent: Object.fromEntries(Object.entries(assignment.agent).filter(([column]) => agentColumns[column])),
+      })),
+    }
     // The list is ordered by name, as the handler asks.
-    if (!args.distinct) return [...rows].sort((left, right) => left.displayName.localeCompare(right.displayName, "az"))
+    if (!args.distinct) return [...rows].sort((left, right) => left.displayName.localeCompare(right.displayName, "az")).map(asSelected)
     const column = args.distinct[0] as keyof (typeof CLIENTS)[number]
     return [...new Map(rows.map((row) => [row[column], row])).values()]
   }) as never)
@@ -302,6 +317,23 @@ describe("«Müştərilər»: the filter as named fields", () => {
 
     await choose("mtm-contact-owner", SEYMUR.id)
     expect(listed()).toEqual(["Rəşad Əliyev"])
+  })
+
+  // Prod, 2026-10-04, Zeytun Pharma: «deaktiv» under the employee's name in
+  // every one of 321 rows, while the employee was working.
+  it("marks the responsible employee inactive only when they are", async () => {
+    const employeeOf = (client: string) => [...container.querySelectorAll("tbody tr")]
+      .find((row) => row.textContent?.includes(client))?.querySelector("td:last-child")?.textContent
+    expect(employeeOf("Rəşad Əliyev")).toBe(SEYMUR.name)
+
+    SEYMUR.status = "INACTIVE"
+    try {
+      await click(field("mtm-contact-more-filters"))
+      await choose("mtm-contact-assignment-state", "ASSIGNED")
+      expect(employeeOf("Rəşad Əliyev")).toBe(`${SEYMUR.name}deaktiv`)
+    } finally {
+      SEYMUR.status = "ACTIVE"
+    }
   })
 
   it("shows inactive clients when the status field says so", async () => {
