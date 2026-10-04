@@ -508,3 +508,6 @@ Private5ae UI review identified overly broad recognized rejection acceptance. Ac
 ### 2026-10-04 — PR571 second hosted failure and session oracle repair
 
 Exactfb3 run37200268851 failed rendered case15 at298:40 after14PASS; native5/Policy18/Report9/Today6/Calendar12 succeeded. Whole ZIP11302028767/978276bytes/SHA348b4f3dc8dc03ce177248a453f56b7c240b7b2da53518b917af7b5e2215b788 and18members retained /tmp/workforce571-fb3-first-restore-failure-primary. Providers disables focus refetch; fixture now uses native AuthJS broadcast to fetch real changed session, retaining15cases/allassertions. Syntax/lint/diff PASS; new hosted NOT RUN. No app/auth/gate changes or DONE credit.
+
+
+2026-10-04: Integrated main81cb5b5e85b456167a0e552a96a243829157c582 (#573), no intersections;13owned blobs exact425.107tests/4PASS13.76s,lint/syntax/i18n/diffPASS (first incorrect npm-path invocation retained in /tmp/workforce571-main81-integrated-bounded-primary). New hosted NOT RUN.
