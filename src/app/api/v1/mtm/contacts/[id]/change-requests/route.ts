@@ -7,6 +7,7 @@ import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { contactScopeForActor, customerScopeForActor } from "@/lib/mtm/field-scope"
 import { ContactChangeRequestSchema, parseBody } from "@/lib/mtm-validators"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { agentPermissionDeniedBody, agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { writeMtmAudit } from "@/lib/mtm-audit"
@@ -71,6 +72,10 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
   const { actor, settings, asOf } = await actorContext(auth)
   if (!actor?.agentId || actor.role !== "AGENT") {
     return NextResponse.json({ error: "Managers edit master data directly", code: "MTM_CONTACT_DIRECT_EDIT_REQUIRED" }, { status: 403 })
+  }
+  // The organization may switch the request itself off ("what an agent may do").
+  if (!agentPermissionEnabled(settings, "contactChangeRequest")) {
+    return NextResponse.json(agentPermissionDeniedBody("contactChangeRequest"), { status: 403 })
   }
 
   const parsed = parseBody(ContactChangeRequestSchema, await req.json().catch(() => null))

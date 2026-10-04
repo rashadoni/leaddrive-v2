@@ -488,6 +488,34 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(await classes()).toEqual(["A", "B", "C", "D"])
   })
 
+  it("tells the app which functions the organization allows its agents", async () => {
+    const permissions = async () => (await (await GET(request())).json()).data.policies.agentPermissions
+    // Nothing configured: exactly what agents could do before the matrix existed.
+    expect(await permissions()).toEqual({
+      routeSelfPublish: false,
+      teamSchedule: false,
+      contactCreateRequest: true,
+      contactChangeRequest: true,
+      customerCreateRequest: true,
+      taskSelfCreate: true,
+      taskSelfRecurring: true,
+    })
+
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "agentContactCreateRequests", value: false },
+      { key: "taskSelfCreate", value: false },
+      { key: "routeSelfPublish", value: true },
+    ] as never)
+    expect(await permissions()).toMatchObject({
+      contactCreateRequest: false,
+      contactChangeRequest: true,
+      routeSelfPublish: true,
+      taskSelfCreate: false,
+      // Recurring own tasks mean nothing without own tasks.
+      taskSelfRecurring: false,
+    })
+  })
+
   it("advertises enabled attendance add-ons without claiming an enforcement policy", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...mobileAuth("AGENT"),
