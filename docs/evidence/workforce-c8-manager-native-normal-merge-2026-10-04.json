@@ -1,0 +1,53 @@
+{
+  "atUtc": "2026-10-04T23:34:20.391072+00:00",
+  "head": "70a112ef08382ef981ce340bc2394e66c2756b81",
+  "freshMain": "1181d28e63352531db4de75851dd35825376a540",
+  "clean": true,
+  "allFiveActionsSuccess": true,
+  "allSixOwnCurrentWorkflowsSuccess": true,
+  "normalMergeOnly": true,
+  "adminBypass": false,
+  "sourceScope": {
+    "full": {
+      "paths": 17,
+      "bytes": 246547,
+      "sha256": "311c434583f2153a0c2441b66fc0b4b020b51caacc28f09de60dc03fa035fc95"
+    },
+    "nonDoc": {
+      "paths": 6,
+      "bytes": 28836,
+      "sha256": "146682be2faf79f2b16e446a6a8434d9217b4a4d124bf104899ebe56fc533abb"
+    }
+  },
+  "exactHostedReport": {
+    "path": "/tmp/workforce-pr580-70a-current-hosted-green-independent.json",
+    "bytes": 67084,
+    "sha256": "3820e4bf94147b0c837bfc814a0aa6da812b16d34c92bc1162b56c99966d088b"
+  },
+  "rootWholeAccepted": {
+    "path": "/tmp/workforce-pr580-current-root-accepted-primary.json",
+    "bytes": 3347,
+    "sha256": "df3954fbd81805e3b79213dd2d5fe477fd96b421133a8f236434e439ce4149cd"
+  },
+  "exactScan": {
+    "path": "/tmp/workforce-part36-pagination-fix-range-scan-primary/proof.json",
+    "bytes": 4764,
+    "sha256": "7009a61af93e51a174130acf8bfb351c597347f3c0776ac6877a36e4026550f9"
+  },
+  "publication": {
+    "path": "/tmp/workforce-part36-pagination-fix-ready-primary/ready-publication-proof.json",
+    "bytes": 19989,
+    "sha256": "d6b0946f80275ab9c29010797009901dded23d832f89ac74165b3fcdadcb9027"
+  },
+  "compilerClean": false,
+  "suiteClean": false,
+  "ownMergedMainBuildDeployAndPublicArtifactProof": "PENDING",
+  "mergedAt": "2026-10-04T23:34:22Z",
+  "mergedSha": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "mergedParents": [
+    "1181d28e63352531db4de75851dd35825376a540",
+    "70a112ef08382ef981ce340bc2394e66c2756b81"
+  ],
+  "mergeTreeEqualsTestedCandidate": true,
+  "normalMergeComplete": true
+}
