@@ -11,14 +11,17 @@ on:
       - "scripts/ci/fixtures/workforce-policy-version-browser.sql"
       - "src/__tests__/workforce-policy-version*.test.*"
       - "src/__tests__/api-workforce-policy-version*.test.*"
+      - "src/__tests__/*workforce-policy-future-window*.test.*"
       - "src/app/(dashboard)/workforce/configuration/page.tsx"
       - "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx"
       - "src/components/workforce/workforce-policy-version-comparison.tsx"
+      - "src/components/workforce/workforce-policy-future-window-preview.tsx"
       - "src/components/ui/button.tsx"
       - "src/components/ui/input.tsx"
       - "src/components/ui/select.tsx"
       - "src/app/api/v1/workforce/configuration/policies/search/route.ts"
       - "src/app/api/v1/workforce/configuration/policies/compare/route.ts"
+      - "src/app/api/v1/workforce/configuration/policies/*/window-preview/route.ts"
       - "src/lib/workforce/policy*.ts"
       - "src/lib/workforce/access*.ts"
       - "src/lib/workforce/granular-access-rollout.ts"
@@ -153,6 +156,11 @@ jobs:
 
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
+
+      - name: Verify real future-window PostgreSQL snapshots and bounds
+        env:
+          WF_POLICY_WINDOW_POSTGRES: "1"
+        run: npx vitest run src/__tests__/lib-workforce-policy-future-window-postgres.test.ts --maxWorkers=1
 
       - name: Run real authenticated policy version scenarios
         shell: bash
