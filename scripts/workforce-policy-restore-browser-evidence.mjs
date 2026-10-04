@@ -296,9 +296,15 @@ try {
   await changedView.section.getByRole("button", { name: changedView.restore.create, exact: true }).click(); await waitForTransport(ready); await held(changedView)
   await replaceSession(changedView, fixture.principals.find(row => row.kind === "foreign"))
   const sessionRead = changedView.page.waitForResponse(r => new URL(r.url()).pathname === "/api/auth/session")
-  await changedView.page.bringToFront()
-  await changedView.page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")))
-  const currentSession = await (await sessionRead).json(); assert.equal(currentSession.user.organizationId, orgs[1])
+  // Providers deliberately disables focus refetch. Notify its real AuthJS
+  // listener without supplying session data; it must fetch the changed cookie.
+  await changedView.page.evaluate(() => {
+    const channel = new BroadcastChannel("next-auth")
+    channel.postMessage({ event: "session", data: { trigger: "getSession" } }); channel.close()
+  })
+  const sessionResponse = await sessionRead; assert.equal(sessionResponse.status(), 200)
+  const currentSession = await sessionResponse.json(); assert.equal(currentSession.user.organizationId, orgs[1])
+  assert.equal(currentSession.user.id, fixture.principals.find(row => row.kind === "foreign").id)
   await changedView.section.getByText(changedView.restore.chooseSource, { exact: true }).waitFor()
   assert.equal(await changedView.page.locator("#workforce-policy-version-from").inputValue(), "")
   assert.equal(await changedView.page.locator("#workforce-policy-version-to").inputValue(), "")
@@ -306,7 +312,9 @@ try {
   assert.equal(fulfill.length, 1); assert.equal((await changedView.section.innerText()).includes(heldCreation.creation.name), false)
   assert.equal(await changedView.section.getByText(changedView.restore.created, { exact: true }).count(), 0)
   assert.equal(await owner.workforcePolicy.count({ where: { id: heldCreation.creation.policyId, organizationId: orgs[0] } }), 1)
-  cases.push({ name: stage, status: "PASS", actualOldServer201: true, actualNewTenantSession: true, parentSelectionCleared: true, oldCreationNotRendered: true, transportCompletion: fulfill[0], navigationDoesNotRollback: true })
+  cases.push({ name: stage, status: "PASS", actualOldServer201: true, actualNewTenantSession: true,
+    sessionRefresh: "NATIVE_AUTHJS_BROADCAST_REAL_SESSION_GET", parentSelectionCleared: true,
+    oldCreationNotRendered: true, transportCompletion: fulfill[0], navigationDoesNotRollback: true })
   assert.deepEqual(await facts(), before); assert.ok(posts.every(row => row.restorePath))
   assert.equal(cases.length, 15); assert.equal(new Date().toISOString().slice(0, 10), today)
 } catch (error) {

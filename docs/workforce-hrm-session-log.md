@@ -6705,3 +6705,8 @@ Private5ae UI review identified overly broad recognized rejection acceptance. Ac
 - Actual merged-tree107tests/4files PASS(13.49s), touched6-filelint/syntax/diffPASS, locale24406keys/missing0extra0 PASS; resource16GB/disk334GB/pressure0 inspected. Whole bounded proof7105/SHAb97c50dd7c58a19e60dc0d20e0542defa981680d95e30e90fb27444da8a7833e. Full local compiler/build/suite/PG/browser/Android/load NOT RUN: hostedonly.
 - Exact048 independent source-onlyGREEN report6f4b815ad314287086022655e3cd7b7a3c5e52c921312587badd8dad91a98930/audit1af4edb0fe0e210c222b5470be1f41289906de151e68753737d7c0bf16398415 and rootwholedeclaredparity4265fe2be9d9f16a9a20b0ba1c6bdea2898046bb30d09a3bc7b60df3b579ca34 remain immutable. First ef hostedBLOCKED/P2=2 is unchanged; observed13PG/11PG/9API partialPASS cannot become new-head acceptance.
 - Next exact integrated-head source/receipt review and unchanged-config range scan, fresh-main check, ordinary PR571push, all required gates/current runtime, normalmerge/own deploy/strict fullSHA receipts. Overall59% and whole WF-C8-011 NON-DONE; no employeeimpact/activation/DONE credit.
+
+
+### 2026-10-04 — PR571 second hosted failure and session oracle repair
+
+Exactfb3 run37200268851 failed rendered case15 at298:40 after14PASS; native5/Policy18/Report9/Today6/Calendar12 succeeded. Whole ZIP11302028767/978276bytes/SHA348b4f3dc8dc03ce177248a453f56b7c240b7b2da53518b917af7b5e2215b788 and18members retained /tmp/workforce571-fb3-first-restore-failure-primary. Providers disables focus refetch; fixture now uses native AuthJS broadcast to fetch real changed session, retaining15cases/allassertions. Syntax/lint/diff PASS; new hosted NOT RUN. No app/auth/gate changes or DONE credit.
