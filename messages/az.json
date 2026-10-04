@@ -26223,5 +26223,26 @@
       "overtimeThresholdSeconds": "Əlavə iş həddi",
       "longPauseThresholdSeconds": "Uzun fasilə həddi"
     }
+  },
+  "workforcePolicyFutureWindowPreview": {
+    "title": "Gələcək siyasət pəncərəsinə önbaxış",
+    "hint": "«Sonrakı versiya» sahəsində qaralama seçin, sonra təklif edilən tarix pəncərəsinə baxın. Bu əməl yalnız saxlanmış siyasətləri oxuyur.",
+    "preview": "Gələcək pəncərəyə bax",
+    "loading": "Gələcək pəncərə oxunur…",
+    "selected": "{name} · qaralama versiyası {version}",
+    "observed": "Oxunma vaxtı: {time}. Təşkilatın tarixi: {date} ({timezone}).",
+    "newWindow": "Qaralamanın təklif edilən pəncərəsi",
+    "openEnded": "Bitmə tarixi qeyd edilməyib",
+    "predecessor": "Əvvəlki versiyanın təklif edilən dəyişməsi",
+    "close": "{name} · versiya {version} üçün bitmə tarixi {date} olardı.",
+    "noPredecessor": "Bu əhatə dairəsində dərc edilmiş versiya qeyd edilməyib.",
+    "recorded": "Saxlanmış dərc edilmiş pəncərələr ({count})",
+    "record": "{name} · versiya {version}: {from} — {to}",
+    "boundary": "Göstərilən tarixə aid bu önbaxış işçilərə təsiri hesablamır, qaralamanı təsdiqləmir və aktivləşdirmir. Oxunuşdan sonra qeydlər dəyişə bilər. Aktivləşdirmə cari vəziyyəti yenidən yoxlamalıdır; burada keçmiş iş günləri və surətlər dəyişmir.",
+    "conflict": "Saxlanmış pəncərələr bu qaralama ilə ziddiyyət təşkil edir. Daha sonrakı dərc edilmiş versiya, boşluq və ya boş əvvəlki pəncərə önbaxışa mane olur.",
+    "limit": "Bu əhatə dairəsində 100-dən çox dərc edilmiş pəncərə var. Tam məhdud önbaxış əlçatan deyil; qismən proqnoz göstərilmir.",
+    "notFuture": "Təşkilatın cari tarixindən sonra başlayan və bitmə tarixi olmayan qaralama seçin.",
+    "integrity": "Saxlanmış siyasətlərin bütövlüyü yoxlanıla bilmədi. Təklif edilən pəncərə göstərilmir.",
+    "failed": "Gələcək pəncərəni təhlükəsiz oxumaq mümkün olmadı. Axtarışı təkrarlayın və əlçatan qaralama seçin."
   }
 }

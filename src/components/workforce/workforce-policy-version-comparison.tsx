@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import type { WorkforcePolicyVersionComparison } from "@/lib/workforce/policy-version-comparison"
+import { WorkforcePolicyFutureWindowSection } from "@/components/workforce/workforce-policy-future-window-preview"
 
 type Choice = {
   id: string; name: string; version: number; status: "DRAFT" | "ACTIVE" | "RETIRED"
@@ -140,6 +141,7 @@ function ComparisonForSession({ status, userId, organizationId }: {
       <Button type="button" onClick={() => void compare()} disabled={!pairValid || comparing} className="min-h-11">{comparing ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : <GitCompareArrows aria-hidden="true" />}{t(comparing ? "comparing" : "compare")}</Button>
       {comparisonError ? <p role="alert" className="text-sm text-destructive">{comparisonError}</p> : null}
       {comparison ? <WorkforcePolicyComparisonTable comparison={comparison} /> : null}
+      <WorkforcePolicyFutureWindowSection key={JSON.stringify([to?.id, to?.version, to?.status])} choice={to} onDenied={deny} />
     </>}
   </section>
 }
