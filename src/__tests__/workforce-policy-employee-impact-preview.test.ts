@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { workforcePolicyDefinitionHash } from "@/lib/workforce/policy-definition"
+import { workforcePolicyDefinitionHash, type WorkforcePolicySnapshotValues } from "@/lib/workforce/policy-definition"
 import { previewWorkforcePolicyEmployeeImpact as preview, type WorkforcePolicyImpactRecord,
   type WorkforcePolicyImpactEmployee } from "@/lib/workforce/policy-employee-impact-preview"
 
-const definition = { expectedWorkSeconds: 28_800, lateGraceSeconds: 0, undertimeToleranceSeconds: 0,
+const definition: WorkforcePolicySnapshotValues & { opaque: { retained: string } } = {
+  expectedWorkSeconds: 28_800, lateGraceSeconds: 0, undertimeToleranceSeconds: 0,
   overtimeThresholdSeconds: 0, longPauseThresholdSeconds: null, opaque: { retained: "not-displayed" } }
 const policy = (patch: Partial<WorkforcePolicyImpactRecord> = {}): WorkforcePolicyImpactRecord => ({
   id: "published", organizationId: "org", teamId: null, version: 1, status: "ACTIVE", name: "Recorded policy",
@@ -62,7 +63,7 @@ describe("bounded aggregate future-date employee policy what-if", () => {
     expect(preview(data).counts).toMatchObject({ selectedDraft: 0, noPolicyBefore: 1, noPolicyAfter: 1, outsideDraftTeam: 1 })
   })
   it("reports NULL/0 exactly and does not interpret opaque definition keys", () => {
-    const data = input(); data.published = [rehash(policy(), { ...definition, longPauseThresholdSeconds: 0 } as typeof definition)]
+    const data = input(); data.published = [rehash(policy(), { ...definition, longPauseThresholdSeconds: 0 })]
     data.draft = rehash(draft(), { ...definition, expectedWorkSeconds: 0, opaque: { retained: "different" } })
     const value = preview(data)
     expect(value.counts).toMatchObject({ calculationChanged: 1, opaqueDefinitionChanged: 1 })
