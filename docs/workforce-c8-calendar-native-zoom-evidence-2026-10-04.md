@@ -1,0 +1,15 @@
+# WF-C8-010 bounded calendar native zoom evidence
+
+## 2026-10-04 — private source preparation; execution NOT RUN
+
+Prepared three additional real authenticated TEAM calendar scenarios for EN/RU/AZ at automatic per-tab Chromium zoom200. A disposable minimal ManifestV3 fixture performs browser Tabs API zoom; no content script, application/auth mutation, CSS zoom, pinch scaling or viewport/device-scale emulation. Require exact browser factor/event/settings,640-to320CSS-width control, observed content-height/DPR changes and unchanged visualViewport/root/body CSS. Temporary profiles remain outside uploaded artifacts and cleanup failure is fatal.
+
+The original12functional/36contrast cases complete and pass independently before any new case. New cases reuse exact real pair reversal, cancel/no-write, committed response-loss/replay, nativeTab/Enter/Space, maximum160-character labels, line-reading/focus and tenant session checks. Then all15functional and72distinct original text-contrast observations are required. No existing assertion, limiter, role, RLS, baseline or application file is weakened. Additive workflow watches/source hashes bind the helper, minimal extension and selected mounted dependencies.
+
+Actual initial Contabo checks: three Node20 syntax commands, three-file scoped ESLint0warnings/errors and diffPASS; sequential after17GBavailable/333GBdisk/pressure0. Original proof `/tmp/workforce-part35-native-zoom-initial-bounded-primary/first-original-proof.json`5604/SHA1067184027b6177f464342e6f6fdd60a4f2cf5764336069c89bfab1ae8060d5a. Source catalogue31paths all exist, minimal manifest and YAML parsed; runnerpolicy46workflowfilesPASS. Subsequent safe cleanup-verdict/logging amendment needs final syntax/lint/diff verification.
+
+Actual native zoom/browser/PostgreSQL/full compiler/build/full suite/Android/humanAT/load/pilot: **NOT RUN** under Contabo placement. PR575 exactf1 remains frozen with its independent hosted review running; this private source has no current PR575 runtime or production credit. After ownparent release, integrate fresh main, review the exact successor source and run hosted originals. This bounded calendar evidence does not close all roles/pages, whole-page keyboard/WCAG or WF-C8-010. Accepted59%,81/161DONE,14/15gates,C836% unchanged.
+
+## 2026-10-04 — final bounded source checks
+
+The cleanup-verdict/logging amendment and additive RLS-helper watch now passed final syntax/three-file lint, complete31-source/watch parity, minimal manifest/YAML, runnerpolicy46 and diff checks. Originalproof8157/SHA6a52738786084906873b4a93c752542234571b1deb5cd11a3ed75fb75ac7056b in /tmp/workforce-part35-native-zoom-final-bounded-primary. All actual native/runtime/release gates remain NOT RUN; first originals preserved.

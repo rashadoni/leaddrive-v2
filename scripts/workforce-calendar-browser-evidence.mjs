@@ -1,10 +1,11 @@
 import assert from "node:assert/strict"
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { setTimeout as delay } from "node:timers/promises"
 import { makeRlsTestPrisma } from "./_rls.mjs"
 import { collectRenderedTextContrast } from "./workforce-calendar-contrast-dom.mjs"
 import { evaluateTextContrast } from "./workforce-calendar-contrast-colors.mjs"
+import { createNativeZoomContext, proveNative200Zoom } from "./workforce-native-browser-zoom.mjs"
 import bcrypt from "bcryptjs"
 import { chromium } from "playwright"
 
@@ -51,13 +52,38 @@ const receipts = {
   authenticationDiagnostics: [],
   reflowDiagnostics: [],
   readingDiagnostics: [],
+  nativeZoomDiagnostics: [],
+  nativeZoomVerdict: "NOT RUN",
   contrastDiagnostics: [],
   contrastVerdict: "NOT RUN",
   cases: [],
-  limitations: ["Development bundle, not production build", "No production business data", "No Android/AT/load/pilot evidence", "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI", "No whole-page keyboard or zoom acceptance", "320 CSS reflow allows vertical reading scroll; no native browser zoom proof", "Contrast covers thirty-six default-light enabled/normal/native-focused text targets only; no dark/forced-color/hover/pressed/non-text/focus-ring or overall WCAG compliance claim"],
+  limitations: ["Development bundle, not production build", "No production business data", "No Android/AT/load/pilot evidence", "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI", "No whole-page keyboard, all-page zoom or WCAG acceptance", "Native200 cases are fixture-extension automatic browser zoom, not a human browser-shortcut/AT session", "Contrast covers bounded default-light enabled/normal/native-focused text targets only; no dark/forced-color/hover/pressed/non-text/focus-ring or overall WCAG compliance claim"],
   status: "RUNNING",
 }
+// Selected raw checkout bindings, validated against candidate Git by review.
+// A generated fixture/schema is not represented as a historical migration replay.
+const sourcePaths = [
+  "scripts/workforce-calendar-browser-evidence.mjs", "scripts/workforce-native-browser-zoom.mjs",
+  "scripts/workforce-calendar-contrast-colors.mjs", "scripts/workforce-calendar-contrast-dom.mjs",
+  "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json",
+  "scripts/ci/fixtures/workforce-native-zoom-extension/background.js",
+  "scripts/ci/fixtures/workforce-calendar-browser.sql", "scripts/_rls.mjs",
+  ".github/workflows/workforce-calendar-browser-evidence.yml", "prisma/schema.prisma",
+  "src/components/workforce/workforce-calendar-configuration.tsx",
+  "src/app/api/v1/workforce/configuration/calendar/route.ts",
+  "src/lib/workforce/calendar-configuration.ts", "src/lib/workforce/calendar-configuration-contract.ts",
+  "src/lib/workforce/calendar-moved-day-pair.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/with-rls.ts",
+  "src/lib/auth.ts", "src/lib/api-auth.ts", "src/lib/user-module-access.ts", "src/proxy.ts",
+  "src/app/layout.tsx", "src/app/(dashboard)/layout.tsx", "src/app/globals.css", "src/components/providers.tsx",
+  "src/components/ui/button.tsx", "src/components/ui/input.tsx", "src/components/ui/select.tsx",
+  "messages/en.json", "messages/ru.json", "messages/az.json",
+]
+receipts.sourceBindings = await Promise.all(sourcePaths.map(async path => {
+  const bytes = await readFile(new URL(`../${path}`, import.meta.url))
+  return { path, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") }
+}))
 const contexts = []
+const nativeZoomContexts = []
 const barriers = []
 const handlerErrors = []
 const readDiagnostics = []
@@ -153,8 +179,10 @@ async function authenticate(context, principal) {
   assert.ok((await context.cookies()).some(cookie => cookie.name.endsWith("authjs.session-token")))
   await assertSession(context, principal)
 }
-async function open(principal, locale = "en", viewport = { width: 1440, height: 1000 }) {
-  const context = await browser.newContext({ baseURL, locale: "en-US", viewport, serviceWorkers: "block" })
+async function open(principal, locale = "en", viewport = { width: 1440, height: 1000 }, nativeZoom = false) {
+  const native = nativeZoom ? await createNativeZoomContext(baseURL) : null
+  if (native) nativeZoomContexts.push(native)
+  const context = native?.context ?? await browser.newContext({ baseURL, locale: "en-US", viewport, serviceWorkers: "block" })
   contexts.push(context)
   await context.addCookies([{ name: "NEXT_LOCALE", value: locale, url: baseURL }])
   await authenticate(context, principal)
@@ -167,7 +195,12 @@ async function open(principal, locale = "en", viewport = { width: 1440, height: 
   const section = page.locator('section[aria-labelledby="workforce-calendar-configuration-title"]')
   await section.locator("#workforce-calendar-date").waitFor()
   assert.notEqual(new URL(page.url()).pathname, "/login")
-  return { context, page, section, ui }
+  const view = { context, page, section, ui, ...(native ? { worker: native.worker } : {}) }
+  if (native) {
+    view.nativeZoom = await proveNative200Zoom(view, outputDirectory, locale)
+    receipts.nativeZoomDiagnostics.push({ locale, status: "PASS", ...view.nativeZoom })
+  }
+  return view
 }
 async function inventory(context, principal, scope = "ORGANIZATION", teamId) {
   const query = new URLSearchParams({ scope, ...(teamId ? { teamId } : {}) })
@@ -538,7 +571,7 @@ async function reflowGeometry(view, phase) {
     return { viewportWidth: window.innerWidth, viewportHeight: window.innerHeight, toleranceCssPixels: tolerance, elements: elements.length, textFragments, failures }
   })
   assert.equal(diagnostic.viewportWidth, 320)
-  assert.equal(diagnostic.viewportHeight, 844)
+  assert.equal(diagnostic.viewportHeight, view.nativeZoom?.zoomed.height ?? 844)
   assert.ok(diagnostic.elements > 0 && diagnostic.textFragments > 0)
   receipts.reflowDiagnostics.push({ phase, ...diagnostic })
   await view.page.screenshot({ path: `${outputDirectory}/reflow-320-${phase}.png`, fullPage: false })
@@ -638,7 +671,7 @@ async function reflowTextContrast(view, locator, locale, phase, key, expectedTex
   const evaluation = evaluateTextContrast(observation)
   receipts.contrastDiagnostics.push({ ...target, observation, ...evaluation })
 }
-async function reflow320(principal, team, locale = "ru", index = 9) {
+async function reflow320(principal, team, locale = "ru", index = 9, nativeZoom = false) {
   const labels = {
     ru: ["Проверка переноса", "Ж"],
     az: ["Köçürmənin yoxlanması", "Ş"],
@@ -646,10 +679,10 @@ async function reflow320(principal, team, locale = "ru", index = 9) {
   }
   assert.ok(Object.hasOwn(labels, locale), "Reflow evidence requires one supported locale")
   const [prefix, repeatedCharacter] = labels[locale]
-  const view = await open(principal, locale, { width: 320, height: 844 })
+  const view = await open(principal, locale, { width: 320, height: 844 }, nativeZoom)
   const name = (`${prefix} ${suffix} ` + repeatedCharacter.repeat(160)).slice(0, 160)
   // Keep existing RU phase identities; additional locales have distinct receipts/PNGs.
-  const phase = value => locale === "ru" ? value : `${locale}-${value}`
+  const phase = value => nativeZoom ? `native-200-${locale}-${value}` : locale === "ru" ? value : `${locale}-${value}`
   assert.equal(name.length, 160)
   assert.ok(/\S{80}/u.test(name), "The valid maximum-length fixture includes a long unbroken fragment")
   const moved = await pair(view.context, principal, index, team.id, name)
@@ -763,10 +796,12 @@ async function reflow320(principal, team, locale = "ru", index = 9) {
   assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
   await assertSession(view.context, principal, "320-css-team-replay")
   const functional = { cancelWrites: 0, cancelStateUnchanged: true, posts, tombstones: 2, audits: 1, byteIdenticalRetry: true, reversedResponses: responses, replayWrites: 0, realSessionPreserved: true }
-  if (locale === "ru") receipts.reflowFunctional = functional
+  if (locale === "ru" && !nativeZoom) receipts.reflowFunctional = functional
   assert.equal(receipts.reflowDiagnostics.reduce((count, phase) => count + phase.failures.length, 0), 0,
     "320 CSS controls and every text fragment must fit their visible horizontal bounds")
-  receipts.cases.push({ name: `320-css-reflow-keyboard-cancel-exact-retry-TEAM-${locale}`, status: "PASS", viewport: { width: 320, height: 844 }, labelLength: 160, sourceTabs, nativeKeyboard: true, verticalReadingScrollOnly: true, horizontalContainment: true, focusedTargetsVisible: true, ...functional })
+  receipts.cases.push({ name: `${nativeZoom ? "native-200" : "320-css"}-reflow-keyboard-cancel-exact-retry-TEAM-${locale}`, status: "PASS",
+    viewport: { width: 320, height: view.nativeZoom?.zoomed.height ?? 844 }, ...(nativeZoom ? { browserZoom: view.nativeZoom } : {}),
+    labelLength: 160, sourceTabs, nativeKeyboard: true, verticalReadingScrollOnly: true, horizontalContainment: true, focusedTargetsVisible: true, ...functional })
   await view.context.close()
 }
 async function switchContext(from, to, index, targetTeam, label) {
@@ -931,15 +966,24 @@ try {
   await reflow320(principals[0], teams[0], "az", 10)
   await reflow320(principals[0], teams[0], "en", 11)
   assert.equal(receipts.cases.length, 12)
+  assert.equal(receipts.contrastDiagnostics.length, 36, "All existing contrast observations must complete before native zoom")
+  assert.equal(receipts.contrastDiagnostics.every(target => target.status === "PASS"), true, "Native cases cannot hide a baseline failure")
+  await reflow320(principals[0], teams[0], "en", 12, true)
+  await reflow320(principals[0], teams[0], "ru", 13, true)
+  await reflow320(principals[0], teams[0], "az", 14, true)
+  assert.equal(receipts.cases.length, 15)
+  assert.equal(receipts.nativeZoomDiagnostics.length, 3)
+  receipts.nativeZoomVerdict = "PASS"
   assert.equal(new Set(receipts.reflowDiagnostics.map(({ phase }) => phase)).size, receipts.reflowDiagnostics.length,
     "Each localized reflow phase must retain a distinct receipt and screenshot identity")
   assert.equal(await app.mtmAuditLog.count(), 0, "Existing Workforce audit receipts must be hidden without tenant context")
   assert.equal(await app.mtmWorkCalendarDay.count(), 0, "Existing calendar tombstones must be hidden without tenant context")
   receipts.databaseRole.populatedAuditAndCalendarFailClosed = true
   assert.equal(handlerErrors.length, 0)
-  assert.equal(receipts.contrastDiagnostics.length, 36, "All thirty-six localized text targets must produce original observations")
-  for (const locale of ["ru", "az", "en"]) {
-    const keys = receipts.contrastDiagnostics.filter(target => target.locale === locale).map(target => target.key)
+  assert.equal(receipts.contrastDiagnostics.length, 72, "Existing36 and native20036 targets must all produce original observations")
+  for (const nativeZoom of [false, true]) for (const locale of ["ru", "az", "en"]) {
+    const keys = receipts.contrastDiagnostics.filter(target => target.locale === locale
+      && target.phase.startsWith("native-200-") === nativeZoom).map(target => target.key)
     assert.equal(keys.length, 12)
     assert.deepEqual([...keys].sort(), [...contrastTargetKeys].sort(), "No missing or duplicated semantic contrast target may receive acceptance credit")
   }
@@ -947,10 +991,13 @@ try {
   const lowContrastTargets = receipts.contrastDiagnostics.filter(target => target.status === "FAIL").length
   const notProvenTargets = receipts.contrastDiagnostics.filter(target => target.status === "NOT_PROVEN").length
   receipts.contrastVerdict = lowContrastTargets ? "FAIL" : notProvenTargets ? "NOT_PROVEN" : "PASS"
-  receipts.contrastSummary = { criterion: "WCAG2.2 SC1.4.3 (bounded default-light text only)", requiredTargets: 36, passedTargets, lowContrastTargets, notProvenTargets, allTwelveFunctionalCasesPassed: receipts.cases.length === 12 && receipts.cases.every(test => test.status === "PASS"), populatedRlsGuardReached: receipts.databaseRole.populatedAuditAndCalendarFailClosed }
-  assert.equal(passedTargets, 36, "Every required default-light text target must meet its unrounded contrast threshold with proven paint/precision bounds")
+  receipts.contrastSummary = { criterion: "WCAG2.2 SC1.4.3 (bounded default-light text only)", requiredTargets: 72,
+    originalTargets: 36, native200Targets: 36, passedTargets, lowContrastTargets, notProvenTargets,
+    allTwelveFunctionalCasesPassed: receipts.cases.slice(0, 12).length === 12 && receipts.cases.slice(0, 12).every(test => test.status === "PASS"),
+    allThreeNativeZoomCasesPassed: receipts.cases.slice(12).length === 3 && receipts.cases.slice(12).every(test => test.status === "PASS"),
+    populatedRlsGuardReached: receipts.databaseRole.populatedAuditAndCalendarFailClosed }
+  assert.equal(passedTargets, 72, "Every required default-light text target must meet its unrounded contrast threshold with proven paint/precision bounds")
   receipts.status = "PASS"
-  console.log(`Workforce calendar browser evidence: ${receipts.cases.length} cases PASS`)
 } catch (error) {
   receipts.status = "FAIL"
   // Playwright transport call logs can include authentication headers/body.
@@ -964,10 +1011,16 @@ try {
 } finally {
   for (const release of barriers) release()
   await Promise.allSettled(contexts.map(context => context.close()))
+  const nativeCleanup = await Promise.allSettled(nativeZoomContexts.map(context => context.dispose()))
+  receipts.nativeZoomCleanup = nativeCleanup.map((result, index) => ({ ordinal: index + 1, status: result.status === "fulfilled" ? "PASS" : "FAIL" }))
+  if (nativeCleanup.some(result => result.status === "rejected")) {
+    receipts.status = "FAIL"; receipts.nativeZoomVerdict = "FAIL CLEANUP"; process.exitCode = 1
+  }
   await browser?.close()
   await Promise.allSettled([admin.$disconnect(), app.$disconnect()])
   receipts.completedAt = new Date().toISOString()
   await writeFile(`${outputDirectory}/receipt.json`, JSON.stringify(receipts, null, 2) + "\n")
+  if (receipts.status === "PASS") console.log(`Workforce calendar browser evidence: ${receipts.cases.length} cases PASS; native profiles closed`)
   // The whole service DB is disposable. Never perform cleanup against an
   // existing org, production records, or a developer's database.
 }
