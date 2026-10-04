@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { spawnSync } from "node:child_process"
 import path from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { validateContext, childEnvironment } from "../../support-backend-evidence-guards.mjs"
 const root = fileURLToPath(new URL("../../../", import.meta.url))
 const temporary = () => mkdtempSync(path.join(tmpdir(), "support-backend-guard-unit-"))
@@ -59,16 +59,27 @@ test("Node transport fence rejects TCP/DNS/UDP and permits loopback without faki
   const cwd = temporary()
   const log = path.join(cwd,"network.log")
   writeFileSync(log,"")
+  const preload = path.join(cwd, "dns-tripwire.mjs")
+  // Guard regressions must fail closed even if a DNS patch is accidentally removed.
+  writeFileSync(preload, [
+    'import dns from "node:dns";',
+    'for (const target of [dns,dns.promises,dns.Resolver.prototype,dns.promises.Resolver.prototype]) for (const name of Object.getOwnPropertyNames(target)) {',
+    'if (!/^(lookup|reverse|resolve)/.test(name) || typeof target[name]!=="function") continue; const original=target[name];',
+    'target[name]=function(host,...args) { if (name==="lookup" && ["127.0.0.1","::1","localhost"].includes(host)) return original.call(this,host,...args); throw new Error("DNS_TRIPWIRE_UNGUARDED"); }; }',
+    'await import(' + JSON.stringify(pathToFileURL(path.join(root,"scripts/support-backend-network-guard.mjs")).href) + ');',
+  ].join("\n"))
   const code = [
-    'import assert from "node:assert/strict"; import net from "node:net"; import dns from "node:dns"; import dgram from "node:dgram";',
-    'for (const action of [()=>net.connect({host:"203.0.113.1",port:25}),()=>dns.lookup("example.invalid",()=>{}),()=>dgram.createSocket("udp4")]) assert.throws(action,/SUPPORT_BACKEND_OUTBOUND_BLOCKED/);',
+    'import assert from "node:assert/strict"; import net from "node:net"; import dns, { resolve4 as namedResolve4 } from "node:dns"; import { resolveTxt as namedResolveTxt, lookup as namedPromiseLookup } from "node:dns/promises"; import dgram from "node:dgram";',
+    'for (const action of [()=>net.connect({host:"203.0.113.1",port:25}),()=>dns.lookup("example.invalid",()=>{}),()=>dgram.createSocket("udp4"),()=>dns.resolve4("example.invalid",()=>{}),()=>dns.promises.resolveTxt("example.invalid"),()=>new dns.Resolver().resolveMx("example.invalid",()=>{}),()=>new dns.promises.Resolver().resolveSrv("example.invalid"),()=>dns.reverse("203.0.113.1",()=>{}),()=>dns.lookupService("203.0.113.1",25,()=>{}),()=>namedResolve4("example.invalid",()=>{}),()=>namedResolveTxt("example.invalid")]) assert.throws(action,/SUPPORT_BACKEND_OUTBOUND_BLOCKED/);',
+    'await assert.rejects(dns.promises.lookup("example.invalid"),/SUPPORT_BACKEND_OUTBOUND_BLOCKED/); await assert.rejects(namedPromiseLookup("example.invalid"),/SUPPORT_BACKEND_OUTBOUND_BLOCKED/);',
+    'assert.equal((await dns.promises.lookup("127.0.0.1")).address,"127.0.0.1");',
     'const server=net.createServer(socket=>socket.end("local")); await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));',
     'const client=net.connect({host:"127.0.0.1",port:server.address().port}); let data=""; client.on("data",chunk=>data+=chunk); await new Promise(resolve=>client.on("end",resolve)); assert.equal(data,"local"); await new Promise(resolve=>server.close(resolve));',
   ].join("\n")
   try {
-    const result=spawnSync(process.execPath,["--import",path.join(root,"scripts/support-backend-network-guard.mjs"),"--input-type=module","-e",code],{env:{PATH:process.env.PATH,SUPPORT_BACKEND_NETWORK_LOG:log},encoding:"utf8",timeout:15_000})
+    const result=spawnSync(process.execPath,["--import",preload,"--input-type=module","-e",code],{env:{PATH:process.env.PATH,SUPPORT_BACKEND_NETWORK_LOG:log},encoding:"utf8",timeout:15_000})
     assert.equal(result.status,0,result.stderr)
-    assert.equal(readFileSync(log,"utf8").trim().split("\n").length,3)
+    assert.equal(readFileSync(log,"utf8").trim().split("\n").length,13)
   } finally { rmSync(cwd,{recursive:true}) }
 })
 test("real harness refuses local execution before loading Prisma or making requests", () => {

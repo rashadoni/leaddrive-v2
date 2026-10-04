@@ -25,7 +25,16 @@ dns.lookup = function (hostname, ...args) {
   if (!allowed.has(hostname)) deny()
   return originalLookup.call(this, hostname, ...args)
 }
+const originalPromiseLookup = dns.promises.lookup
+dns.promises.lookup = async function (hostname, ...args) {
+  if (!allowed.has(hostname)) deny()
+  return originalPromiseLookup.call(this, hostname, ...args)
+}
+// c-ares DNS resolution bypasses net.Socket and the public dgram API.
+// No fixture requires DNS records or reverse lookups; deny every such entry.
+const resolutionMethods = ["lookupService", "reverse", "resolve", "resolveAny", "resolve4", "resolve6", "resolveCaa", "resolveCname", "resolveMx", "resolveNaptr", "resolveNs", "resolvePtr", "resolveSoa", "resolveSrv", "resolveTxt", "resolveTlsa"]
+for (const target of [dns, dns.promises, dns.Resolver.prototype, dns.promises.Resolver.prototype]) {
+  for (const method of resolutionMethods) if (typeof target[method] === "function") target[method] = deny
+}
 dgram.createSocket = deny
-
-
 syncBuiltinESMExports()
