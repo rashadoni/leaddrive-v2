@@ -1,6 +1,6 @@
 # Support real backend evidence — prepared, not executed
 
-This test-only harness addresses five evidence gaps: macro persistence, escalation-rule persistence, portal resource ownership, AI settings audit/role/tenant boundaries, and Portal Users password/revocation/audit. No application or workflow file is changed.
+This test-only harness addresses five evidence gaps: macro persistence, escalation-rule persistence, portal resource ownership, AI settings audit/role/tenant boundaries, and Portal Users password/revocation/audit. Application files remain unchanged. The dedicated test-only workflow now runs on pushes to the explicitly authorized evidence branch.
 
 ## Current evidence boundary
 
@@ -23,9 +23,9 @@ The harness uses actual Next development routes, credential/portal authenticatio
 
 The audit case deliberately requires the real persisted AuditLog record. Static review currently finds that Portal Users writes a details field absent from the candidate Prisma AuditLog schema; its catch path reports auditRecorded=false. Existing mocked tests can hide this defect. This remains a potential real-run failure, not a runtime-confirmed result; do not weaken the assertion.
 
-## Future authorized execution
+## Authorized hosted execution
 
-Publication and workflow changes are not included in this change. A future reviewed workflow_dispatch should check out the exact candidate commit on an ephemeral ubuntu-24.04 runner, use the repository Node/dependency setup, and supply a fresh PostgreSQL 16 service with pgvector. Playwright APIRequestContext needs no browser installation. Do not use a production database, existing service database, self-hosted runner, PR merge checkout or persistent development host.
+The owner explicitly authorized publication and these ten isolated cases on 2026-10-04. The dedicated workflow checks out the exact push SHA on an ephemeral ubuntu-24.04 runner, uses Node 20 and npm ci, and creates a disposable PostgreSQL 16/pgvector container bound only to loopback with a generated password. Its branch fence excludes main. The workflow uploads only the sanitized receipt and removes its container with an always-run cleanup step. No production environment or repository secret is referenced. Playwright APIRequestContext needs no browser installation. Do not use a production database, existing service database, self-hosted runner, PR merge checkout or persistent development host.
 
 Required environment, using disposable credentials only:
 
