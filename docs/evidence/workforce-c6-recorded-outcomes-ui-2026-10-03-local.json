@@ -1,0 +1,84 @@
+{
+  "atUtc": "2026-10-03T21:52:29.968561+00:00",
+  "status": "PRIVATE_SOURCE_CHECKPOINT_ONLY_NOT_PUBLISHED_NOT_RELEASED",
+  "checks": {
+    "existingIdentityBeforeFix": "4/4 actual FAIL; previous aggregates persisted on org/reader/session changes and aborted reply overwrote newer reply",
+    "firstNewUiRender": "4 FAIL /21 PASS; test fixture initially omitted required ACKNOWLEDGE. Runtime builder correctly rejected illegal direct OPEN->RESOLVED. Original retained; only test sequence corrected.",
+    "correctedTargeted": "24/24 PASS,3files; real React DOM/next-intl EN/RU/AZ and report builder; no local browser",
+    "eslint": "exit0",
+    "i18n": "24221 EN leafkeys; RU/AZ missing0 extra0"
+  },
+  "notRun": [
+    "full typecheck/full build/full suite: hosted CI only",
+    "real report browser: hosted successor proof pending",
+    "physical devices, assistive technology, Android, load, pilot"
+  ],
+  "nonCredit": "C6-010 remains bounded partial; false-positive/appeal taxonomy unapproved; DONE81/161,GATES14/15,C836%,overall59% unchanged",
+  "originals": [
+    {
+      "source": "/tmp/workforce-part25-report-identity-before-fix.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-local-original-00.gz",
+      "bytes": 6572,
+      "sha256": "39a45e473cb8361964289f33efa5809124674461907b73ba271f0418fbe55d61",
+      "gzipBytes": 1402,
+      "gzipSha256": "2e995a746eb76606b0b1d230bd4a77c72d8c9aea8a942783f3796936e1a85571"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-targeted-first.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-local-original-01.gz",
+      "bytes": 2967,
+      "sha256": "c9bf6c0d0c578729cde81340c27de2e170c62a606aae58141620973b510a4034",
+      "gzipBytes": 789,
+      "gzipSha256": "80abf5e75b205f10f5d6c13ee366a04d5dcd1481b0aa27753dd111bc52629cea"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-targeted-corrected.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-local-original-02.gz",
+      "bytes": 283,
+      "sha256": "51dcc71a446c1081c955dd46b37c815f244f0586d0f457066323da3c736298ea",
+      "gzipBytes": 229,
+      "gzipSha256": "9269c9a2efbbd432d128e8c24059798965ee317057164191bcd627dc9295543f"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-eslint.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-local-original-03.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-i18n.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-local-original-04.gz",
+      "bytes": 192,
+      "sha256": "a21d6a6fe4d7f70d0bdc7b661f512c55e3f4e3002e548360ec7e627058e771ee",
+      "gzipBytes": 168,
+      "gzipSha256": "9fe30c7488145623ed287e54d483d2c937993f5d1d3cb1795d80da023c0694bb"
+    },
+    {
+      "source": "/tmp/workforce-c6-recorded-outcomes-successor-ui-brief.json",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-local-original-05.gz",
+      "bytes": 2059,
+      "sha256": "9857e3eba84aaaaad19029a9c9c7a1f08d31b3b4c2552dde3212e200f82cb615",
+      "gzipBytes": 1103,
+      "gzipSha256": "9af52daeafc8aa9896e22856309a424bd85d0979cb939c33c965ef65c6b06526"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-local-originals.json",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-local-original-06.gz",
+      "bytes": 2410,
+      "sha256": "d103a92ac7f18988f9448c1839793bd7607bb72bee25d551f84743d6d79dabe6",
+      "gzipBytes": 1266,
+      "gzipSha256": "e084fe89d81e7e8bd899790900b61a21ad1d65d52b8168157c1c19bc19c7cd11"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-originals-scan.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-local-original-07.gz",
+      "bytes": 80,
+      "sha256": "d3ce902dc2af72847784ea900dc11d7d174d4db768c36d881f0726dc26730f73",
+      "gzipBytes": 91,
+      "gzipSha256": "bbd66a58075a78c5ed9e502483c2a0d8c2625f3f52306194d4922b44fa286c91"
+    }
+  ],
+  "preservation": "Lossless originals, deterministic gzip, every original/decompression/hash/size independently recomputed by root before checkpoint. Actual before-fix and fixture-failure outputs retained unchanged. No browser/CI/release credit."
+}

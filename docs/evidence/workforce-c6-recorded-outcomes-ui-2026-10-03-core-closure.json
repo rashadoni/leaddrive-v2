@@ -1,0 +1,438 @@
+{
+  "atUtc": "2026-10-03T22:58:29.278500+00:00",
+  "status": "CORE_ORIGINALS_PRESERVED_NOT_COMPLETE_560_RAW_PACKET",
+  "parentBeforePacket": "850efea0c5261b782ccc5bce2db699174afce2b6",
+  "currentMainBase": "2b6ca9b0390c2ea5bfa738c68428bab2cea59ecd",
+  "originalBindings": 42,
+  "uniqueLosslessOriginals": 38,
+  "own560": {
+    "mergedSha": "7ef5ef98c73354766f7536181d3c66218da202b9",
+    "ownDeployRun": 37156782271,
+    "wholeFourRequiredJobsSuccess": true,
+    "actualNewPgPrAndMain": "9/9 each, zero skip",
+    "rootStrictWindow": "22:19:40.180629Z–22:19:40.401465Z",
+    "independentStrictWindow": "22:20:09.422637Z–22:20:11.345941Z",
+    "rootAndReviewerDistinct": true,
+    "literalIpStrictTlsCurl60Retained": true,
+    "known208OriginalInventory": "Inventory preserved losslessly. Only listed core originals copied here; remaining full raw APIs/job logs/audits retained unchanged/tmp and applicable Actions. Further bounded publication pending.",
+    "largeTodayZip": "Not copied; original/tmp and hosted11286225744 retained,1219108bytes/SHA ddef0998c9db431e7ed9495a1aa1181fe4c9b29f361c253b6f0962967e0ee9ec"
+  },
+  "currentUi": {
+    "e009UiSourceReview": "GREEN_SOURCE_ONLY P0-P3=0",
+    "95a7BrowserSourceReview": "GREEN_SOURCE_ONLY P0-P3=0",
+    "all11NonDocBlobsExactAcrossMainIntegrations": true,
+    "actual35Tests": "PASS on004/a68;26React/UI+9refusal guards, not browser/SQL runtime",
+    "historicalFindings": "Originala268P2/P3 andcb933false-lint verificationP2 retained; separately correctede009",
+    "actualNewBrowserSql": "NOT RUN; nine real hosted scenarios required",
+    "currentWholeCandidateReview": "Required after append"
+  },
+  "own562": {
+    "pr": 562,
+    "candidate": "495052f9a7e2552c8518bb2351c387c538fc17d1",
+    "merge": "2b6ca9b0390c2ea5bfa738c68428bab2cea59ecd",
+    "normalFreshMainMergeGuardPassed": true,
+    "nativeDocsProfile": "3SUCCESS/2normalSKIP, no code credit",
+    "deployRun": 37159299784,
+    "wholeRelease": "PENDING at root22:51:14 observation; previous own560 not substitute"
+  },
+  "scanHonesty": {
+    "whole23RawExitCode": 1,
+    "additional12RawExitCode": 1,
+    "combined40RawExitCode": 1,
+    "combined40Findings": 2,
+    "publicShaAndPublicDigestOnly": "Both original public full Gitbase binding and its SHA256 digest metadata independently adjudicated nonsecret. Original whole23FAIL1 and additional12FAIL1 preserved separately.",
+    "other22RawExitCode": 0,
+    "digestSupplementOwnRawExitCode": 0,
+    "wholeRawPassClaimed": false,
+    "originalConfigAllowlistBaselinesUnchanged": true,
+    "currentCommitRangeAndNativeScanRequired": true
+  },
+  "preservation": "Older originals unchanged; incoming main Markdown prefixes plus every private suffix from common2841 retained; no cap/history change.",
+  "originals": [
+    {
+      "source": "/tmp/workforce-part25-ui-e009-independent.json",
+      "bytes": 6310,
+      "sha256": "f995cfb1dfc9276b0273098723812e54fbcda192b94e9d2f6f2349444904cc57",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-00.gz",
+      "gzipBytes": 3007,
+      "gzipSha256": "71887f97dee78427cbaebbefad185184013bd180774c19152ff977626708219f",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-ui-e009-independent-input-audit.json",
+      "bytes": 4944,
+      "sha256": "854658664403d43329d446560468f693131c72b14d7c399f1549a1ad85be7b88",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-01.gz",
+      "gzipBytes": 1435,
+      "gzipSha256": "daebc1c7d8aeab9933fb61b3ae193eb47f6549b485da52b70ca4903f7026d382",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-browser-95a7-independent.json",
+      "bytes": 22094,
+      "sha256": "4732f3ba1db0d4b40e47d15865340405c752bd8f17208f02cdd3a382d037eadd",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-02.gz",
+      "gzipBytes": 8006,
+      "gzipSha256": "cde7890d32b8d6efe70b9aade0ae47ccc9c12a2bc6f3175484f80f235c301a9b",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-browser-95a7-independent-input-audit.json",
+      "bytes": 120676,
+      "sha256": "6b4f940a2ff08f1992a34a6691789f37dd0d96a7cdc40bba3c87d09206a53869",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-03.gz",
+      "gzipBytes": 24125,
+      "gzipSha256": "6124ace772424a5af0ce1bc03f60e881e7e46fd034a9e248bf6bfb202be116e1",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-docs-main-integration-result.json",
+      "bytes": 1610,
+      "sha256": "7224e5e69937d2e17b2d06e783e8e19fd8d09dcf4f745d07b7b2d5b4b5fcac14",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-04.gz",
+      "gzipBytes": 640,
+      "gzipSha256": "afe0a30a76eb5f1abc9009988f0d2bf67094d664b1fb966a4705a5d4105b4133",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-fresha68-targeted.log",
+      "bytes": 284,
+      "sha256": "f7fa4158edb65778abaece03c834de28166fc46d3313d7f657d38cdbfe0443ec",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-05.gz",
+      "gzipBytes": 231,
+      "gzipSha256": "3db6d72f7f8c81aa21dbdfe5adabad0ffbe209df9a84af51d92bebda85730e36",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-fresha68-targeted-result.json",
+      "bytes": 463,
+      "sha256": "7db9552552aa89bc29da3e7b791da591e60bc5cd4c0648281ea1501cd54246f8",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-06.gz",
+      "gzipBytes": 320,
+      "gzipSha256": "6c3c4b6f45c8f3b1073060b7885b1b32c70a3f92036c37393c6e152433f9f8af",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-production-7ef-primary/release-proof.json",
+      "bytes": 9727,
+      "sha256": "5aa9e68035f26617c13eb446cba6a8b14c1efc860f8635a42b5f6acbdcffd040",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-07.gz",
+      "gzipBytes": 2571,
+      "gzipSha256": "478fa0898a29c3da31f78fd6262b68b16a6a85da5d66bacd43c1a965b9fa1e01",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-7ef-production-independent.json",
+      "bytes": 20953,
+      "sha256": "de156d15be9664e6416470af452274fc68b598fa561be220e6d078f662c48c7f",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-08.gz",
+      "gzipBytes": 7091,
+      "gzipSha256": "70130a4b8761f0e12c46c2b595673ea6556b57309c8e4bb87f6319c07af9d3f9",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-current-hosted-independent.json",
+      "bytes": 23598,
+      "sha256": "8183abec2283c7ffd92d9bc051e0cfa16232063cd99819004d4943e2bb364a3f",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-09.gz",
+      "gzipBytes": 8139,
+      "gzipSha256": "7a917d223162bb6fcdcc0bb41aef41f8c158314a9d3c6dc65f323931ccfe54c6",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-ci-independent-input-audit.json",
+      "bytes": 27363,
+      "sha256": "dcbca1645e143136342e5fb4a75ceb193d30aa0531ff89d53d0b936b8a5d672f",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-10.gz",
+      "gzipBytes": 5559,
+      "gzipSha256": "8a4f33969074cba65b750536531d481fd985cb87fdac5a833aa9fd1852be0600",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-main-quality-independent.json",
+      "bytes": 10140,
+      "sha256": "dc45bc28ccc505e8a6283fac30ce6b2c5299533738008d02cd3887d85bf0ddfe",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-11.gz",
+      "gzipBytes": 3738,
+      "gzipSha256": "fed758f0bd5d6aca094b7e52fe1ea9f2ffdaa2b0ad2459c7d68d24c520e545d2",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-release-independent-input-audit.json",
+      "bytes": 24581,
+      "sha256": "e96d2c64576c92efe14d97a926dae3a7c743e2ae460d81d9c8829601b38c4ea2",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-12.gz",
+      "gzipBytes": 3490,
+      "gzipSha256": "e496ba8904edfb7b89ce0572a1d3cb77df18d975509a49305cc4f68e2ef141f9",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce562-premerge-20261003T224130846310Z/summary.json",
+      "bytes": 2130,
+      "sha256": "b90dd982aa39f58cf42f9057cfc62ab4891d9fb16daaee9ed1c92929c30103fd",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-13.gz",
+      "gzipBytes": 657,
+      "gzipSha256": "06a42da8a7c72cca54fe7a58f50bad1f5e4e8082946c4786e443c7f017041b36",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-proposed-release-original-index.json",
+      "bytes": 85074,
+      "sha256": "67376ac1c7fb6a8b1c8720312a738624ba283142c7ce1449779c7d05f25b2406",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-14.gz",
+      "gzipBytes": 13213,
+      "gzipSha256": "cd73fca6c80e4c8cc93eaa42b48b7a550018b7493183e888a29a053bb7e51926",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-production-7ef-ip-strict/ping.json",
+      "bytes": 791,
+      "sha256": "9d1aefae25129c818845572ba1a688e27c5e1714372969def21068bfbf63f39b",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-15.gz",
+      "gzipBytes": 520,
+      "gzipSha256": "cd0d652f41645d19677ca115e6e24196bc49a702e767f9fccf9c73b564d01a66",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-production-7ef-ip-strict/build-info.json",
+      "bytes": 804,
+      "sha256": "699cc37b07fde4fd5f5e24b38cc8075fe434643679f350edf4f6ca122bb8169c",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-16.gz",
+      "gzipBytes": 530,
+      "gzipSha256": "94aa27db24be71e33575b3043c3b534b879621a86efa13d0730cc0144d19f79e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-production-7ef-primary/public-20261003T221940180426Z/build-info-first.json",
+      "bytes": 112,
+      "sha256": "5904bb860673c059ce25a4bd15fbd22db9997996c8d93fa075d584e5d8f1e221",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-17.gz",
+      "gzipBytes": 110,
+      "gzipSha256": "8ba5202b02a298d61d2fe5dbda4991e0da184eefec9f0fec03ffd68e5be89756",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-production-7ef-primary/public-20261003T221940180426Z/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-18.gz",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-production-7ef-primary/public-20261003T221940180426Z/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "5904bb860673c059ce25a4bd15fbd22db9997996c8d93fa075d584e5d8f1e221",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-17.gz",
+      "gzipBytes": 110,
+      "gzipSha256": "8ba5202b02a298d61d2fe5dbda4991e0da184eefec9f0fec03ffd68e5be89756",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-production-7ef-independent/public-20261003T222009422467Z/build-info-first.json",
+      "bytes": 112,
+      "sha256": "5904bb860673c059ce25a4bd15fbd22db9997996c8d93fa075d584e5d8f1e221",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-17.gz",
+      "gzipBytes": 110,
+      "gzipSha256": "8ba5202b02a298d61d2fe5dbda4991e0da184eefec9f0fec03ffd68e5be89756",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-production-7ef-independent/public-20261003T222009422467Z/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-18.gz",
+      "gzipBytes": 31,
+      "gzipSha256": "de58e24084c863b6d68698cba2f94f8fc2bd12e0960853e8631b7cacf2b28d26",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce560-production-7ef-independent/public-20261003T222009422467Z/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "5904bb860673c059ce25a4bd15fbd22db9997996c8d93fa075d584e5d8f1e221",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-17.gz",
+      "gzipBytes": 110,
+      "gzipSha256": "8ba5202b02a298d61d2fe5dbda4991e0da184eefec9f0fec03ffd68e5be89756",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-ordered-stdin-sources.json",
+      "bytes": 1738,
+      "sha256": "2a6d7a25ad2beb80a46f83c50e4341f9e22bb5c0d8de17e1c88f9cfb32c15b5a",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-19.gz",
+      "gzipBytes": 429,
+      "gzipSha256": "d1b5f0c5e458c0ddcf4973805a83afb3b96f22a5b13bb61318eba081f8e6d628",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-raw-scan.log",
+      "bytes": 82,
+      "sha256": "cd52fcc198e3ccef9ab3c10a81cf267aea5a7481403366d3eefc9804ece52f18",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-20.gz",
+      "gzipBytes": 95,
+      "gzipSha256": "d9158381c243caa5f60bbe769a7770d97aac823527a5a9248b769a76892f863f",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-raw-scan-findings-redacted.json",
+      "bytes": 528,
+      "sha256": "ce19b2bf6361a2a76fd6685f5094baeb22422986e23d25c2438bcb860336924d",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-21.gz",
+      "gzipBytes": 325,
+      "gzipSha256": "fc294e229ef808915cdc73d1b1af838419bd105727ad78b59e357c9164779e08",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-scan-safe-triage.json",
+      "bytes": 646,
+      "sha256": "b90e29a51933cbde9dd05794e5d2a669799a38486bbbcba440d8e4a8b703d681",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-22.gz",
+      "gzipBytes": 395,
+      "gzipSha256": "6d93b0063a5e2ea996870ca8a8280cc6b2e317c8613e99dea847793e9b5c4f55",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-other22-raw-scan.log",
+      "bytes": 82,
+      "sha256": "4f6c450b3db7ea52d5766c4f563047b4287030046eae25e1ba9d79a529f79663",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-23.gz",
+      "gzipBytes": 92,
+      "gzipSha256": "1cfae88a7a7e6f46515d936b570c2b48835fa58b39b4baf32e0ea9ec90e4a684",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-public-base-scan-primary-triage.json",
+      "bytes": 704,
+      "sha256": "82fb20f36919d469c3ac7e59c3d620bdb42d7b94c5d97f56f493f998c81348e9",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-24.gz",
+      "gzipBytes": 436,
+      "gzipSha256": "8908a007873df209ab04fc9c1f571972c9e255e7ad263e386e34dc16fcdb1460",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-public-base-independent.json",
+      "bytes": 10768,
+      "sha256": "f7bc74ac18e0377570090003b28520b92bd941b91e779da8221a2e74b2f0598b",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-25.gz",
+      "gzipBytes": 3673,
+      "gzipSha256": "ac63042f5291e1d6fffed7ed852b5960d6d37aa8a16dd639d027951387e2338e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-public-sha-independent/public-github-commit.json",
+      "bytes": 3064,
+      "sha256": "383c897173277ddd0f45a9874f746608e3baf39b4c72f52fe14ba345c72620b2",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-26.gz",
+      "gzipBytes": 1441,
+      "gzipSha256": "161183327092e5bb02187f763e193d2d90eb404305b5c4f27ddedbcefd578cc5",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-public-sha-independent/public-github-observation.json",
+      "bytes": 239,
+      "sha256": "e912a3fda93ff8f6642cf5826c02eb14ac9a1d0745d2ad51124343a4733d3ebb",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-27.gz",
+      "gzipBytes": 205,
+      "gzipSha256": "0042a8d795bf0db62143e54f3d0fa5e485ef3c0b1c680be0b3b27f1b4bfa2e67",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-scan-independent/whole23-stderr.log",
+      "bytes": 82,
+      "sha256": "48e66de44c20a381a02574ba487f94a84d65928ea9d0abc03ca3a8c480810123",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-28.gz",
+      "gzipBytes": 95,
+      "gzipSha256": "9fd387dd7ab1bf75d01806923e6e7bec9dd70ac38ae17c8c992eba5ced85ec95",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-scan-independent/other22-stderr.log",
+      "bytes": 82,
+      "sha256": "4904b5f86a6c53ec9fcfef407b0d9e82c29488f8e048eeb7213225718736b2f8",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-29.gz",
+      "gzipBytes": 92,
+      "gzipSha256": "bda0b46ec75b62e9cf6faf09a13abef6db000184f3d28671657f86be5057e319",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-scan-independent/other22-findings.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-30.gz",
+      "gzipBytes": 23,
+      "gzipSha256": "2ca4529576310b626c1bd48352d283b521d029d54f195d8416536872d826e4c6",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-public-digest-independent.json",
+      "bytes": 1805,
+      "sha256": "fc1a18f21afea762c65f3070e6ab633fc3dc95f472d6646a4dae8b56a8f185b4",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-31.gz",
+      "gzipBytes": 993,
+      "gzipSha256": "2d29b2e47f1618fca86c0a4bb8cffeba854861d6322eb25fbcc188c98e0263b7",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-additional12-scan.log",
+      "bytes": 80,
+      "sha256": "cb3a51d5a04d5de0e8e583395b0369685b8179246cb3b6f4939f46f813bf34af",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-32.gz",
+      "gzipBytes": 95,
+      "gzipSha256": "5ef3cf3a851cfa791a54677e4cc7f6384db6b304103dd3de37d63d130ee5dd93",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-scan-independent/adjudication-receipt-scan.log",
+      "bytes": 80,
+      "sha256": "f9b5ca931086fb351b6aeeb9bccabe77857e7c29da746ccef7d9d67492337fd7",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-33.gz",
+      "gzipBytes": 95,
+      "gzipSha256": "cf50a5ac74f4d4d58a85ebd5c7d92d9ef7ec2d0f0db717d8f1b2156453fadc8e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-scan-independent/adjudication-receipt-findings.json",
+      "bytes": 505,
+      "sha256": "9540f439159f59acc19d4739b859aae0b273a7922410838504daf3224b03fcd3",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-34.gz",
+      "gzipBytes": 309,
+      "gzipSha256": "ed6fc87f5d9e2058935e3fc0778b47ca44b44a7df633ce73fc62a204c341a9be",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-scan-independent/digest-supplement-scan.log",
+      "bytes": 78,
+      "sha256": "275a396a23bb990692baea2f8bf9dc06548bc56155b1ec3bde35e4a0fcb4fdd4",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-35.gz",
+      "gzipBytes": 89,
+      "gzipSha256": "00ebc6b35606db620cbe2c7df8a3ad913e6814ce9fd9a33c33d088fe1404cfb8",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-combined40-findings-redacted.json",
+      "bytes": 1033,
+      "sha256": "3f71f571e5f49314e53fbf5314bd29ae2f849f2faff7529e3884542c31a282af",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-36.gz",
+      "gzipBytes": 378,
+      "gzipSha256": "a6b06e6ff02edaf1d8ca979079f3be47ad9acf289c21141e362b7382061ef356",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part25-core-closure-combined40-scan.log",
+      "bytes": 82,
+      "sha256": "6cc16fb6a6d40625ecfc251f3c87577eaafdcf2919a46c3fe16111340106a539",
+      "preserved": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-core-closure-original-37.gz",
+      "gzipBytes": 95,
+      "gzipSha256": "b88e2f8c16d45c49b0cfdd47236319513787d3b9108d7cf35f84b57fa4b9a0d9",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "notRun": [
+    "Current UI hosted native gates",
+    "Actual new report browser/SQL/visual evidence",
+    "Current UI normal merged-SHA deploy/public proof",
+    "Contabo local heavy build/typecheck/suite/browser/PG/Android/load prohibited"
+  ],
+  "progress": "DONE81/161,GATES14/15,C836%,overall59%,80nonDONE"
+}
