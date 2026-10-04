@@ -1,6 +1,6 @@
 "use client"
 
-import type { FormEvent } from "react"
+import type { FocusEvent, FormEvent } from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
@@ -184,6 +184,12 @@ function localizedMutationFailure(t: ReturnType<typeof useTranslations>, failure
   return t("outcomeUnknown")
 }
 
+function revealKeyboardReversalAction(event: FocusEvent<HTMLButtonElement>) {
+  if (event.currentTarget.matches(":focus-visible")) {
+    event.currentTarget.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" })
+  }
+}
+
 /**
  * Forward-only organization/team/employee calendar editor. Authorization
  * remains in the API so a granular Scheduler is not hidden behind the legacy
@@ -259,7 +265,7 @@ export function WorkforceCalendarConfiguration() {
     reversalFocus.current = null
     if (!element?.isConnected) return
     element.focus({ preventScroll: true })
-    element.scrollIntoView({ block: pending.target === "source" ? "nearest" : "start", behavior: "instant" })
+    element.scrollIntoView({ block: pending.target === "source" ? "center" : "start", behavior: "instant" })
   }, [confirmation, contextKey, targetKey, saving, loading, notice])
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -521,11 +527,11 @@ export function WorkforceCalendarConfiguration() {
       })}</p>
       <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("reversalReviewHint")}</p>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="button" className="h-auto min-h-11 max-w-full whitespace-normal bg-orange-700 hover:bg-orange-800 dark:bg-primary dark:hover:bg-primary/90" onClick={() => void reverseMovedDay()} disabled={saving}>
+        <Button type="button" className="h-auto min-h-11 max-w-full whitespace-normal bg-orange-700 hover:bg-orange-800 dark:bg-primary dark:hover:bg-primary/90" onFocus={revealKeyboardReversalAction} onClick={() => void reverseMovedDay()} disabled={saving}>
           {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : null}
           {t("reversalConfirm")}
         </Button>
-        <Button type="button" variant="outline" className="min-h-11" disabled={saving} onClick={cancelReversal}>{t("reversalCancel")}</Button>
+        <Button type="button" variant="outline" className="min-h-11" disabled={saving} onFocus={revealKeyboardReversalAction} onClick={cancelReversal}>{t("reversalCancel")}</Button>
       </div>
     </div> : null}
 
