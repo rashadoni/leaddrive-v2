@@ -178,7 +178,7 @@ export function WorkforceManagerToday({
         {data.people.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{t("noPeople")}</p> : null}
       </div>
       {data.pagination.nextCursor ? <div className="border-t border-zinc-200 py-5 text-center dark:border-zinc-700">
-        <Button type="button" variant="outline" className="min-h-12" disabled={loadingMore} onClick={onLoadMore}>
+        <Button type="button" variant="outline" className="h-auto min-h-12 max-w-full whitespace-normal text-center" disabled={loadingMore} onClick={onLoadMore}>
           {loadingMore ? t("managerLoadingMore") : t("managerLoadMore")}
         </Button>
       </div> : null}

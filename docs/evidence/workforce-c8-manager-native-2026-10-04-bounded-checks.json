@@ -1,0 +1,192 @@
+{
+  "atUtc": "2026-10-04T21:58:30.693267+00:00",
+  "branch": "codex/workforce-completion-part36",
+  "beforeHead": "655f1ada015a0a629dd0e64cea504179b9cb3c1f",
+  "scope": "Small sequential checks after actual guarded five-file application; full compiler/suite/build/browser/PostgreSQL/Android/load NOT RUN locally; hosted CI required",
+  "commands": [
+    {
+      "label": "resources",
+      "command": [
+        "bash",
+        "-c",
+        "free -m\ndf -h .\ncat /proc/pressure/memory"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/resources.stdout",
+        "bytes": 431,
+        "sha256": "a01956600eb1eceb45f70a03fcaf562a19a3110769bfa9cc49cd675070e25b92"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/resources.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "manager-syntax",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--check",
+        "scripts/workforce-manager-today-browser-evidence.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/manager-syntax.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/manager-syntax.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "shared-helper-syntax",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--check",
+        "scripts/workforce-native-browser-zoom.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/shared-helper-syntax.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/shared-helper-syntax.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "runner-policy",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "scripts/ci/check-github-runner-policy.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/runner-policy.stdout",
+        "bytes": 44,
+        "sha256": "e35e40988499750aae748b49ecad458e59869df92c898b8d29cb340748c3f602"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/runner-policy.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "manager-preconnection-guards",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--max-old-space-size=384",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts",
+        "--maxWorkers=1"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/manager-preconnection-guards.stdout",
+        "bytes": 279,
+        "sha256": "2d6cc90c4928cf609cc10a954a4befc564c5056ed26c2d5043af523e06b1fc6c"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/manager-preconnection-guards.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "export-preview-boundary",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--max-old-space-size=384",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-timesheet-export-preview-ui-contract.test.ts",
+        "--maxWorkers=1"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/export-preview-boundary.stdout",
+        "bytes": 275,
+        "sha256": "7668aaaa550a1519a9f1ac2080a2c54da87f90a58a01949580ccbb48efa9fe50"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/export-preview-boundary.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "manager-ui",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--max-old-space-size=384",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-manager-today-ui.test.ts",
+        "--maxWorkers=1"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/manager-ui.stdout",
+        "bytes": 281,
+        "sha256": "7b547c3742e5461bf74ac32ba71f7cef0c77b3bd57c3f8731b5f45d935e32cec"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/manager-ui.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "scoped-eslint",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--max-old-space-size=512",
+        "node_modules/eslint/bin/eslint.js",
+        "src/components/workforce/workforce-workbench.tsx",
+        "src/__tests__/workforce-timesheet-export-preview-ui-contract.test.ts",
+        "scripts/workforce-manager-today-browser-evidence.mjs",
+        "scripts/workforce-native-browser-zoom.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/scoped-eslint.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/scoped-eslint.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/diff-check.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-bounded-originals-primary/diff-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "allRequestedPassed": true
+}
