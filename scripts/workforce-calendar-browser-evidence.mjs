@@ -5,7 +5,7 @@ import { setTimeout as delay } from "node:timers/promises"
 import { makeRlsTestPrisma } from "./_rls.mjs"
 import { collectRenderedTextContrast } from "./workforce-calendar-contrast-dom.mjs"
 import { evaluateTextContrast } from "./workforce-calendar-contrast-colors.mjs"
-import { createNativeZoomContext, proveNative200Zoom } from "./workforce-native-browser-zoom.mjs"
+import { captureNativeViewport, createNativeZoomContext, isNativeZoomPage, proveNative200Zoom } from "./workforce-native-browser-zoom.mjs"
 import bcrypt from "bcryptjs"
 import { chromium } from "playwright"
 
@@ -53,6 +53,8 @@ const receipts = {
   reflowDiagnostics: [],
   readingDiagnostics: [],
   nativeZoomDiagnostics: [],
+  nativeCaptureDiagnostics: [],
+  focusGeometryDiagnostics: [],
   nativeZoomVerdict: "NOT RUN",
   contrastDiagnostics: [],
   contrastVerdict: "NOT RUN",
@@ -197,7 +199,7 @@ async function open(principal, locale = "en", viewport = { width: 1440, height: 
   assert.notEqual(new URL(page.url()).pathname, "/login")
   const view = { context, page, section, ui, ...(native ? { worker: native.worker } : {}) }
   if (native) {
-    view.nativeZoom = await proveNative200Zoom(view, outputDirectory, locale)
+    view.nativeZoom = await proveNative200Zoom(view, outputDirectory, locale, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
     receipts.nativeZoomDiagnostics.push({ locale, status: "PASS", ...view.nativeZoom })
   }
   return view
@@ -239,15 +241,60 @@ async function tabToButton(page, button) {
   throw new Error("Native Tab did not reach the named reversal action")
 }
 async function focusedInViewport(locator, description) {
-  await until(async () => locator.evaluate(element => {
-    const bounds = element.getBoundingClientRect()
-    const container = element.closest("main")?.getBoundingClientRect()
-    return document.activeElement === element
-      && bounds.top >= Math.max(0, container?.top ?? 0)
-      && bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight)
-      && bounds.left >= Math.max(0, container?.left ?? 0)
-      && bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth)
-  }), description)
+  const diagnostic = { description, status: "FAIL", polls: 0 }
+  try {
+    await until(async () => {
+      const sample = await locator.evaluate(element => {
+        const bounds = element.getBoundingClientRect()
+        const container = element.closest("main")?.getBoundingClientRect()
+        // Keep the original predicate and timeout exactly. Diagnostics read
+        // unrounded coordinates; they never focus, scroll or change styles.
+        const pass = document.activeElement === element
+          && bounds.top >= Math.max(0, container?.top ?? 0)
+          && bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight)
+          && bounds.left >= Math.max(0, container?.left ?? 0)
+          && bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth)
+        const rect = box => box ? Object.fromEntries(["top", "bottom", "left", "right", "width", "height"]
+          .map(key => [key, Number.isFinite(box[key]) ? box[key] : null])) : null
+        const dimensions = node => ({ clientWidth: node.clientWidth, clientHeight: node.clientHeight,
+          scrollWidth: node.scrollWidth, scrollHeight: node.scrollHeight, offsetWidth: node.offsetWidth,
+          offsetHeight: node.offsetHeight, scrollLeft: node.scrollLeft, scrollTop: node.scrollTop })
+        const ancestors = []
+        for (let node = element.parentElement; node && ancestors.length < 8; node = node.parentElement) {
+          const style = getComputedStyle(node)
+          const overflow = value => ["visible", "hidden", "clip", "auto", "scroll", "overlay"].includes(value) ? value : "OTHER"
+          ancestors.push({ tag: node.tagName, bounds: rect(node.getBoundingClientRect()), ...dimensions(node),
+            overflowX: overflow(style.overflowX), overflowY: overflow(style.overflowY) })
+        }
+        return { pass, focused: document.activeElement === element, focusVisible: element.matches(":focus-visible"),
+          connected: element.isConnected, disabled: element.matches(":disabled"),
+          clauses: { top: bounds.top >= Math.max(0, container?.top ?? 0),
+            bottom: bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight),
+            left: bounds.left >= Math.max(0, container?.left ?? 0),
+            right: bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth) },
+          target: rect(bounds), main: rect(container),
+          viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio,
+            visualWidth: window.visualViewport?.width, visualHeight: window.visualViewport?.height,
+            visualScale: window.visualViewport?.scale, scrollX: window.scrollX, scrollY: window.scrollY },
+          root: dimensions(document.documentElement), body: dimensions(document.body), ancestors }
+      })
+      diagnostic.polls++
+      diagnostic.first ??= sample
+      diagnostic.last = sample
+      return sample.pass
+    }, description)
+    diagnostic.status = "PASS"
+  } finally {
+    receipts.focusGeometryDiagnostics.push(diagnostic)
+  }
+}
+
+async function evidenceScreenshot(page, path, fullPage) {
+  if (isNativeZoomPage(page)) {
+    await captureNativeViewport(page, path, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+  } else {
+    await page.screenshot({ path, fullPage })
+  }
 }
 async function tabToNext(page, button, key = "Tab") {
   await page.keyboard.press(key)
@@ -574,7 +621,7 @@ async function reflowGeometry(view, phase) {
   assert.equal(diagnostic.viewportHeight, view.nativeZoom?.zoomed.height ?? 844)
   assert.ok(diagnostic.elements > 0 && diagnostic.textFragments > 0)
   receipts.reflowDiagnostics.push({ phase, ...diagnostic })
-  await view.page.screenshot({ path: `${outputDirectory}/reflow-320-${phase}.png`, fullPage: false })
+  await evidenceScreenshot(view.page, `${outputDirectory}/reflow-320-${phase}.png`, false)
 }
 async function readReflowText(view, locator, phase) {
   // Reading probes scroll only. Native navigation/product effects establish
@@ -1005,7 +1052,7 @@ try {
   receipts.failure = { name: error.name, message: failureMessage }
   receipts.readDiagnostics = readDiagnostics
   receipts.interceptedFailureCount = handlerErrors.length
-  if (activePage && !activePage.isClosed()) await activePage.screenshot({ path: `${outputDirectory}/failure.png`, fullPage: true }).catch(() => {})
+  if (activePage && !activePage.isClosed()) await evidenceScreenshot(activePage, `${outputDirectory}/failure.png`, true).catch(() => {})
   process.exitCode = 1
   console.error(`Workforce calendar browser evidence failed: ${failureMessage}`)
 } finally {
