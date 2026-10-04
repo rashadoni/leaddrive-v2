@@ -1,0 +1,145 @@
+{
+  "atUtc": "2026-10-04T23:46:21.805834+00:00",
+  "status": "UNAPPLIED THREE FILE POSITIVE SNAPSHOT DRAFT; NO APPLICATION/RUNTIME ACCEPTANCE",
+  "frozenSourceBase": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "applicationSourceMutated": false,
+  "requiredOwn580RootAndIndependentFinalRelease": "PENDING",
+  "drafts": [
+    {
+      "repoPath": "scripts/workforce-manager-today-browser-evidence.mjs",
+      "base": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/frozen-base/scripts/workforce-manager-today-browser-evidence.mjs",
+        "bytes": 44217,
+        "sha256": "918fc4b7f687f4376d389b4184f1c8625063344877404ae44e464d0e5741bde3"
+      },
+      "draft": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/files/scripts/workforce-manager-today-browser-evidence.mjs",
+        "bytes": 59561,
+        "sha256": "874f61c20dba16e515102d37b12cb485ef84cd24625b179e03c99b6f065bb4d9"
+      },
+      "unappliedPatch": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/scripts__workforce-manager-today-browser-evidence.mjs.unapplied.diff",
+        "bytes": 23983,
+        "sha256": "f79891221c5292d159804486e970da7ae8d9cadb1171e07d22f6393380959902"
+      }
+    },
+    {
+      "repoPath": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "base": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/frozen-base/.github/workflows/workforce-manager-today-browser-evidence.yml",
+        "bytes": 9334,
+        "sha256": "844f7f65892bdd07c45aff30ce84d14ef44d9754f0335a4893574394fe1cd13b"
+      },
+      "draft": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/files/.github/workflows/workforce-manager-today-browser-evidence.yml",
+        "bytes": 10288,
+        "sha256": "741f5ee020129c6ef98c275b6ad62e2ec61986e04da047cf884533331bc534a1"
+      },
+      "unappliedPatch": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/.github__workflows__workforce-manager-today-browser-evidence.yml.unapplied.diff",
+        "bytes": 1766,
+        "sha256": "6348bf7293a1571f7c6bb319d32a580cc673137126ad1f662a764ba5347436f0"
+      }
+    },
+    {
+      "repoPath": "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+      "base": null,
+      "draft": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/files/scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+        "bytes": 15243,
+        "sha256": "e0433c3a48370f2b789c03c7749aa1a66611f70544dd76cf8c87a904b397a2eb"
+      },
+      "unappliedPatch": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/scripts__ci__fixtures__workforce-manager-today-snapshot-browser.sql.unapplied.diff",
+        "bytes": 15729,
+        "sha256": "797a5a82f1591b6db04c67069b0c79ffad98acb8087fe265d998f0205144ea4a"
+      }
+    }
+  ],
+  "selectedRuntimeCatalogueCount": 58,
+  "selectedRuntimePaths": [
+    "scripts/workforce-manager-today-browser-evidence.mjs",
+    "scripts/workforce-native-browser-zoom.mjs",
+    "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json",
+    "scripts/ci/fixtures/workforce-native-zoom-extension/background.js",
+    "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+    "scripts/_rls.mjs",
+    ".github/workflows/workforce-manager-today-browser-evidence.yml",
+    "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+    "src/lib/workforce/snapshot-writer.ts",
+    "src/lib/workforce/policy-definition.ts",
+    "src/lib/workforce/policy-resolution.ts",
+    "src/lib/workforce/geofence-evaluation.ts",
+    "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
+    "prisma/migrations/20260830110000_workforce_shift_default_timeline/migration.sql",
+    "prisma/migrations/20260830120000_workforce_workday_schedule_snapshots/migration.sql",
+    "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql",
+    "prisma/migrations/20260901080000_workforce_team_default_shift_timeline/migration.sql",
+    "prisma/schema.prisma",
+    "src/app/(dashboard)/workforce/page.tsx",
+    "src/components/workforce/workforce-manager-today.tsx",
+    "src/components/workforce/workforce-workbench.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/badge.tsx",
+    "src/app/api/v1/workforce/today/route.ts",
+    "src/lib/workforce/manager-today.ts",
+    "src/lib/workforce/today-read-access.ts",
+    "src/lib/workforce/access-control.ts",
+    "src/lib/workforce/access-grant-resolution.ts",
+    "src/lib/workforce/actor.ts",
+    "src/lib/workforce/employee-today.ts",
+    "src/lib/workforce/exception-read-access.ts",
+    "src/lib/workforce/exception-case-read-scope.ts",
+    "src/lib/workforce/granular-access-rollout.ts",
+    "src/lib/workforce/sensitive-response.ts",
+    "src/lib/workforce/team-membership.ts",
+    "src/lib/workforce/calendar.ts",
+    "src/lib/workforce/shift-definition.ts",
+    "src/lib/workforce/shift-resolution.ts",
+    "src/lib/workforce/timesheet-schedule-snapshot.ts",
+    "src/lib/workforce/timesheet-read-model.ts",
+    "src/lib/with-workforce-rls-auth.ts",
+    "src/lib/with-rls.ts",
+    "src/lib/auth.ts",
+    "src/lib/api-auth.ts",
+    "src/lib/user-module-access.ts",
+    "src/lib/mtm-settings.ts",
+    "src/lib/mtm/mobile-week.ts",
+    "src/lib/timezone.ts",
+    "src/lib/modules.ts",
+    "src/lib/tenant-capabilities.ts",
+    "src/proxy.ts",
+    "src/app/layout.tsx",
+    "src/app/(dashboard)/layout.tsx",
+    "src/app/globals.css",
+    "src/components/providers.tsx",
+    "messages/en.json",
+    "messages/ru.json",
+    "messages/az.json"
+  ],
+  "selectedCatalogueIsCompleteImportGraph": false,
+  "extraWatchPathsAllPresent": true,
+  "namedSnapshotDatabaseNegativeCases": 10,
+  "positiveSyntheticCurrentWorkdayStates": [
+    "STARTED",
+    "PAUSED",
+    "COMPLETED"
+  ],
+  "originalCaseCountUnchanged": 9,
+  "expectedNativeCaptureDiagnosticsAfterAddedPositiveStateViews": 24,
+  "expectedPNGCount": 49,
+  "expectedFactTables": 20,
+  "expectedForcedRlsTables": 21,
+  "guardedUnchangedScope": [
+    "Shared report fixture SQL",
+    "Production migrations",
+    "Application writer/auth/route/policy logic",
+    "Native focus/capture predicates",
+    "Existing roles/authpacing/UTCrollover/25+1/privacy guards",
+    "Baselines/400000diff cap",
+    "Breakpolicy/AGENTmoves/Route mutation"
+  ],
+  "checks": "NOT RUN: unapplied draft, no PostgreSQL/browser/compiler/suite/runtime claim",
+  "rootCurrent6dabAdditional4SelectedTsDiagnosticsHistoricalOnly": "Zero in already accepted70a current compiler; future exact source still requires own fresh CI",
+  "rowClosure": false
+}
