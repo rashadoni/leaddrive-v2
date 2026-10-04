@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionPolicyConfigurationAuth } from "@/lib/with-workforce-rls-auth"
-import { compareWorkforcePolicyVersions, WorkforcePolicyComparisonError } from "@/lib/workforce/policy-version-comparison"
+import { compareWorkforcePolicyVersions as compare, WorkforcePolicyComparisonError } from "@/lib/workforce/policy-version-comparison"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 
 const headers = { "Cache-Control": "private, no-store", Vary: "Cookie", "X-Content-Type-Options": "nosniff" }
 const identifier = (value: string | null): value is string => value !== null && value.trim().length > 0 && value.length <= 191 && !/[\u0000-\u001f]/u.test(value)
-const select = {
-  id: true, organizationId: true, teamId: true, version: true, status: true, name: true,
-  effectiveFrom: true, effectiveTo: true, definition: true, definitionHash: true,
-} as const
+const select={id:true,organizationId:true,teamId:true,version:true,status:true,name:true,effectiveFrom:true,effectiveTo:true,definition:true,definitionHash:true} as const
 
 /** Bounded same-scope administrative read. No employee, workday, snapshot or policy mutation. */
 export const GET = withWorkforceSessionPolicyConfigurationAuth(async (req: NextRequest, auth) => {
@@ -21,14 +18,14 @@ export const GET = withWorkforceSessionPolicyConfigurationAuth(async (req: NextR
   }
   try {
     // One SELECT observes both versions at one statement snapshot. Exact tenant predicate is mandatory.
-    const records = await prisma.workforcePolicy.findMany({
+    const records: Parameters<typeof compare>[0]["from"][] = await prisma.workforcePolicy.findMany({
       where: { organizationId: auth.orgId, id: { in: [from, to] } }, select, take: 2,
     })
     const before = records.find(record => record.id === from), after = records.find(record => record.id === to)
     if (!before || !after) {
       return NextResponse.json({ error: "The requested policy versions are unavailable.", code: "WORKFORCE_POLICY_COMPARISON_NOT_FOUND" }, { status: 404, headers })
     }
-    const comparison = compareWorkforcePolicyVersions({ organizationId: auth.orgId, from: before, to: after })
+    const comparison = compare({ organizationId: auth.orgId, from: before, to: after })
     return NextResponse.json({ success: true, data: { comparison } }, { headers })
   } catch (error) {
     if (error instanceof WorkforcePolicyComparisonError) {
