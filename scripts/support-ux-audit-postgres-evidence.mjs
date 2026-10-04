@@ -144,21 +144,33 @@ export async function runAuditPostgresEvidence({ admin, context, orgId, actorId,
 
     for (const point of ["audit", "usage"]) {
       stage = "macro-rollback-" + point
-      const rollbackActions = [{ type: "add_comment", value: "Synthetic rollback public" }, { type: "set_status", value: "open" }, { type: "add_tag", value: "must-rollback" }]
+      const rollbackActions = [{ type: "add_comment", value: "Synthetic rollback public" }, { type: "set_status", value: "in_progress" }, { type: "add_tag", value: "must-rollback" }]
       const fixture = await createCase(rollbackActions)
       constraintName = "audit_failure_" + randomBytes(8).toString("hex")
       constraintTable = point === "audit" ? "audit_logs" : "ticket_macros"
       const expression = point === "audit" ? `"entityId" IS DISTINCT FROM '${fixture.ticketId}'` : `id <> '${fixture.macroId}' OR "usageCount" = 0`
       await ddl(admin, `ALTER TABLE "${constraintTable}" ADD CONSTRAINT "${constraintName}" CHECK (${expression})`)
       const before = await state(fixture.ticketId, fixture.macroId)
+      const rollbackRequestId = randomUUID()
       try {
-        await apply(fixture.macroId, fixture.ticketId, randomUUID(), rollbackActions, 500)
+        await apply(fixture.macroId, fixture.ticketId, rollbackRequestId, rollbackActions, 500)
         check(hash(before) === hash(await state(fixture.ticketId, fixture.macroId)), "AUDIT_ROLLBACK_INCOMPLETE")
-        pass("rollback-at-" + point, { commentsRolledBack: true, ticketRolledBack: true, receiptRolledBack: true, usageUnchanged: true })
       } finally {
         await ddl(admin, `ALTER TABLE "${constraintTable}" DROP CONSTRAINT "${constraintName}"`)
         constraintName = null; constraintTable = null
       }
+      stage = "macro-recovery-" + point
+      await apply(fixture.macroId, fixture.ticketId, rollbackRequestId, rollbackActions)
+      const recovered = await state(fixture.ticketId, fixture.macroId)
+      check(recovered.ticket.status === "in_progress" && recovered.ticket.tags.includes("preserve")
+        && recovered.ticket.tags.filter(tag => tag === "must-rollback").length === 1
+        && recovered.comments.length === 1 && recovered.comments[0].isInternal === false
+        && recovered.comments[0].comment === "Synthetic rollback public"
+        && recovered.macro.usageCount === 1 && recovered.audits.length === 1
+        && recovered.audits[0].id === "macro_" + hash([orgId, actorId, fixture.ticketId, rollbackRequestId]),
+      "AUDIT_ROLLBACK_RECOVERY_FAILED")
+      pass("rollback-at-" + point, { commentsRolledBack: true, ticketRolledBack: true, receiptRolledBack: true,
+        usageUnchanged: true, sameRequestSucceedsAfterConstraintRemoved: true })
     }
     receipt.status = "PASS"
   } catch {
