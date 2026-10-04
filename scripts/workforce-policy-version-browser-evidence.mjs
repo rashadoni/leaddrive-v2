@@ -442,7 +442,7 @@ try {
   authenticationPostTimes.push(Date.now())
   const logout = await reader.context.request.post("/api/auth/signout", { headers: { "X-Auth-Return-Redirect": "1" }, form: { csrfToken, callbackUrl: `${baseURL}/login` } })
   assert.equal(logout.status(), 200)
-  const absent = await reader.context.request.get("/api/auth/session"); assert.equal(absent.status(), 200); assert.equal((await absent.json()).user, undefined)
+  const absent = await reader.context.request.get("/api/auth/session"); assert.equal(absent.status(), 200); assert.equal(await absent.json(), null)
   const unauthenticated = await reader.context.request.get(searchEndpoint + "?q=Recorded")
   await sensitive(unauthenticated, 401)
   // Navigation reflects the actual server logout; no auth/session response mock.
