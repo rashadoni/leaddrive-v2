@@ -51,6 +51,32 @@ const metrics = page => page.evaluate(() => ({
   rootTransform: getComputedStyle(document.documentElement).transform, bodyTransform: getComputedStyle(document.body).transform,
 }))
 
+// Runs as a read-only browser probe. Preserve the actual node identities:
+// window scroll alone cannot represent the dashboard's scrolling main.
+function captureState({ focused, scrollNodes }) {
+  const current = new Set([document.documentElement, document.body])
+  for (const target of [...document.querySelectorAll("main"), focused]) {
+    for (let node = target; node; node = node.parentElement) current.add(node)
+  }
+  const nodes = [...current]
+  if (!scrollNodes) return nodes
+  const number = value => Number.isFinite(value) ? value : null
+  return {
+    scrollX: window.scrollX, scrollY: window.scrollY,
+    visualViewportWidth: window.visualViewport?.width, visualViewportHeight: window.visualViewport?.height,
+    visualViewportOffsetLeft: window.visualViewport?.offsetLeft, visualViewportOffsetTop: window.visualViewport?.offsetTop,
+    sameFocusedElement: document.activeElement === focused,
+    focusVisible: document.activeElement?.matches(":focus-visible") ?? false,
+    sameScrollNodes: nodes.length === scrollNodes.length && nodes.every((node, index) => node === scrollNodes[index]),
+    scrollContainers: scrollNodes.map(node => ({
+      tag: node.tagName, connected: node.isConnected,
+      scrollLeft: number(node.scrollLeft), scrollTop: number(node.scrollTop),
+      clientWidth: number(node.clientWidth), clientHeight: number(node.clientHeight),
+      scrollWidth: number(node.scrollWidth), scrollHeight: number(node.scrollHeight),
+    })),
+  }
+}
+
 // Native page zoom changes CSS pixels without changing the physical window.
 // Omit regional clip coordinates, whose units differ from the CSS viewport.
 // Save original PNG bytes before validating them; never resize or crop them.
@@ -62,18 +88,12 @@ export async function captureNativeViewport(page, path, record, control = false)
   assert.equal(target.username + target.password + target.search + target.hash, "")
   assert.match(basename(path), /^[a-z0-9-]+\.png$/)
   const diagnostic = { screenshot: basename(path), method: "CDP_VISIBLE_SURFACE_NO_CLIP", suppliedClip: false, control, status: "FAIL" }
-  let session, focused, timer
+  let session, focused, scrollNodes, timer
   const deadline = new Promise((_, reject) => {
     timer = setTimeout(() => reject(new Error("Native visible-surface capture timed out")), 15_000)
   })
   const bounded = operation => Promise.race([operation, deadline])
-  const state = async () => ({ ...await metrics(page), ...await page.evaluate(element => ({
-    scrollX: window.scrollX, scrollY: window.scrollY,
-    visualViewportWidth: window.visualViewport?.width, visualViewportHeight: window.visualViewport?.height,
-    visualViewportOffsetLeft: window.visualViewport?.offsetLeft, visualViewportOffsetTop: window.visualViewport?.offsetTop,
-    sameFocusedElement: document.activeElement === element,
-    focusVisible: document.activeElement?.matches(":focus-visible") ?? false,
-  }), focused) })
+  const state = async () => ({ ...await metrics(page), ...await page.evaluate(captureState, { focused, scrollNodes }) })
   const layout = async () => {
     const result = await session.send("Page.getLayoutMetrics")
     const selected = {}
@@ -87,8 +107,16 @@ export async function captureNativeViewport(page, path, record, control = false)
   }
   try {
     focused = await bounded(page.evaluateHandle(() => document.activeElement))
+    assert.ok(focused.asElement(), "Native capture requires a focused DOM element")
+    scrollNodes = await bounded(page.evaluateHandle(captureState, { focused }))
+    assert.ok(await bounded(scrollNodes.evaluate(nodes => nodes.length <= 64)), "Native capture node binding must remain bounded")
     session = await bounded(page.context().newCDPSession(page))
     diagnostic.before = await bounded(state())
+    assert.equal(diagnostic.before.sameFocusedElement, true, "Native capture must begin with its bound focused element")
+    assert.equal(diagnostic.before.sameScrollNodes, true, "Native capture must begin with its bound scrolling nodes")
+    assert.ok(diagnostic.before.scrollContainers.every(node => node.connected
+      && ["scrollLeft", "scrollTop", "clientWidth", "clientHeight", "scrollWidth", "scrollHeight"].every(key => Number.isFinite(node[key]))),
+    "Native capture requires connected scrolling nodes with finite dimensions")
     diagnostic.layoutBefore = await bounded(layout())
     const screenshot = await bounded(session.send("Page.captureScreenshot", {
       format: "png", fromSurface: true, captureBeyondViewport: false,
@@ -124,7 +152,7 @@ export async function captureNativeViewport(page, path, record, control = false)
   } finally {
     clearTimeout(timer)
     let cleanupFailed = false
-    for (const cleanup of [() => session?.detach(), () => focused?.dispose()]) {
+    for (const cleanup of [() => session?.detach(), () => focused?.dispose(), () => scrollNodes?.dispose()]) {
       let cleanupTimer
       try {
         await Promise.race([cleanup(), new Promise((_, reject) => {
