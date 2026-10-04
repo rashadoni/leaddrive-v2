@@ -58,7 +58,8 @@ function ComparisonForSession({ status, userId, organizationId }: {
   const controllers = useRef<{ search: AbortController | null; compare: AbortController | null }>({ search: null, compare: null })
   useEffect(() => {
     alive.current = true
-    return () => { alive.current = false; controllers.current.search?.abort(); controllers.current.compare?.abort() }
+    const pendingRequests = controllers.current
+    return () => { alive.current = false; pendingRequests.search?.abort(); pendingRequests.compare?.abort() }
   }, [])
   function deny() {
     controllers.current.search?.abort(); controllers.current.compare?.abort()
