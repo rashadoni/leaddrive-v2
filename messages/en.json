@@ -26379,7 +26379,7 @@
     "chooseDraft": "Choose and compare a future draft as the after version.",
     "selected": "{name}, version {version} · proposed date {date}",
     "observed": "Read at {time} · {timezone}",
-    "boundary": "This is a what-if preview for employees currently marked active, across all directory roles. It does not predict who will be employed on the future date. Later changes can alter the result; activation still requires the canonical activation checks.",
+    "boundary": "This is a what-if preview for employees currently marked active, across all directory roles. It does not predict who will be employed on the future date. Later changes can alter the result; activation still requires the normal checks.",
     "membership": "Team selection uses recorded membership at local midnight on the draft date. Missing history falls back to organization policy; the current directory team is not substituted. Actual workday start times can produce different results.",
     "groups": "Inspect {count} groups selected by this draft",
     "beforePolicy": "{count} employees · currently selected baseline: {name}, version {version}",
