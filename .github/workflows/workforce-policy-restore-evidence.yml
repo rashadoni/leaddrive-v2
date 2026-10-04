@@ -7,11 +7,26 @@ on:
       - "scripts/_rls.mjs"
       - "scripts/ci/workforce-policy-restore-fixture.mjs"
       - "scripts/ci/workforce-policy-restore-base-row.mjs"
+      - "scripts/ci/workforce-policy-restore-pre-anchor.mjs"
       - "scripts/ci/fixtures/workforce-policy-restore-writer.sql"
       - "scripts/ci/fixtures/workforce-manager-today-browser.sql"
       - "scripts/ci/fixtures/workforce-policy-version-browser.sql"
       - "scripts/workforce-policy-restore-api-evidence.mjs"
+      - "scripts/workforce-policy-restore-browser-evidence.mjs"
       - "src/__tests__/*workforce-policy-restore*.test.ts"
+      - "src/components/workforce/workforce-policy-restore-draft.tsx"
+      - "src/components/workforce/workforce-policy-version-comparison.tsx"
+      - "src/components/workforce/workforce-policy-future-window-preview.tsx"
+      - "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx"
+      - "src/app/(dashboard)/layout.tsx"
+      - "src/components/providers.tsx"
+      - "src/components/ui/button.tsx"
+      - "src/components/ui/input.tsx"
+      - "src/components/ui/select.tsx"
+      - "messages/*.json"
+      - "src/app/api/v1/workforce/configuration/policies/search/route.ts"
+      - "src/app/api/v1/workforce/configuration/policies/compare/route.ts"
+      - "src/lib/rate-limit.ts"
       - "src/lib/workforce/policy*.ts"
       - "src/lib/workforce/configuration-management.ts"
       - "src/lib/workforce/configuration-route.ts"
@@ -48,15 +63,16 @@ permissions:
   contents: read
 jobs:
   restore-writer:
-    name: Real PostgreSQL and authorized policy restore API evidence
+    name: Real PostgreSQL, authorized API and rendered policy restore UI evidence
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       CI: "true"
       NODE_ENV: development
       NODE_OPTIONS: --max-old-space-size=6144
       NEXT_TELEMETRY_DISABLED: "1"
+      LEADDRIVE_DISABLE_SERVICE_WORKER: "1"
       WF_POLICY_RESTORE_POSTGRES: "1"
       WF_POLICY_RESTORE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       WF_POLICY_RESTORE_BASE_SHA: ${{ github.event.pull_request.base.sha || 'c735c1be23cf19a4a948aed4b855e6070b084187' }}
@@ -124,6 +140,8 @@ jobs:
           git show "$WF_POLICY_RESTORE_BASE_SHA:prisma/schema.prisma" > prisma/workforce-restore-base.prisma
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/workforce-restore-base.prisma --skip-generate
+          npx prisma generate
+          node scripts/ci/workforce-policy-restore-pre-anchor.mjs
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$WF_READ_PASSWORD" -f scripts/ci/fixtures/workforce-manager-today-browser.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/ci/fixtures/workforce-policy-version-browser.sql
           node scripts/ci/workforce-policy-restore-fixture.mjs
@@ -150,6 +168,22 @@ jobs:
             sleep 2
           done
           node scripts/workforce-policy-restore-api-evidence.mjs
+      - name: Install Chromium on hosted Ubuntu
+        run: npx playwright install --with-deps chromium
+      - name: Execute real rendered manual restore UI, session, retry and rollback scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$APP_PORT" > "$RUNNER_TEMP/workforce-restore-ui-app.log" 2>&1 &
+          WF_APP_PID=$!
+          cleanup() { kill "$WF_APP_PID" 2>/dev/null || true; wait "$WF_APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "${WF_POLICY_RESTORE_BASE_URL}/api/v1/ping" >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then exit 1; fi
+            sleep 2
+          done
+          node scripts/workforce-policy-restore-browser-evidence.mjs
       - name: Upload complete non-secret restore receipts
         if: always()
         uses: actions/upload-artifact@v4

@@ -15,6 +15,7 @@ on:
       - "src/app/(dashboard)/workforce/configuration/page.tsx"
       - "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx"
       - "src/components/workforce/workforce-policy-version-comparison.tsx"
+      - "src/components/workforce/workforce-policy-restore-draft.tsx"
       - "src/components/workforce/workforce-policy-future-window-preview.tsx"
       - "src/components/ui/button.tsx"
       - "src/components/ui/input.tsx"
