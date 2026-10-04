@@ -414,7 +414,9 @@ async function previewWindow(view, draft, previous, windows, native = false, kee
   assert.deepEqual(view.writes, [])
   // Selection remount must clear the previous projection without another automatic request.
   if (!keepLoaded) {
-    await view.page.getByLabel(view.ui.to, { exact: true }).selectOption(previous.id)
+    // A narrowed search can remove the predecessor; the empty option always remains.
+    await view.page.getByLabel(view.ui.to, { exact: true }).selectOption("")
+    assert.equal(await view.page.getByLabel(view.ui.to, { exact: true }).inputValue(), "")
     assert.equal(await region.getByText(view.windowUi.boundary, { exact: true }).count(), 0)
     assert.equal(await button.isEnabled(), false)
   }
