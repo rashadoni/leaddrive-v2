@@ -1,0 +1,25 @@
+# WF-C8-011 future-date employee policy impact: bounded implementation plan
+
+Status: PREPARATION ONLY. Parent manual restore UI PR571 remains independently gated. Overall accepted progress is unchanged at 59%; whole WF-C8-011 is NON-DONE. This plan provides no runtime, employee-effect, activation or release credit.
+
+## Concrete behavior
+
+An organization HR policy administrator selects an existing future open-ended DRAFT and explicitly requests an employee-impact preview. The server chooses the draft's recorded effective date and organization timezone, resolves its local 00:00 only if it identifies one UTC instant, and projects the five already defined calculation fields for the currently ACTIVE employee-directory cohort. It reports aggregate counts and grouped policy deltas, without employee identities or full definition JSON. It labels this cohort and the hypothetical boundary: future employment eligibility, later membership/policy edits and actual workday start times are not predicted. Missing membership history uses organization fallback rather than the mutable directory team. No historical workday, snapshot, employment, membership, schedule, policy or audit row changes.
+
+## Source and transaction boundary
+
+- Separate pure projector and SELECT-only loader; reuse existing full-definition hash validation, five calculation-field names, pure canonical policy selection and existing recorded future-window validation. Do not call the canonical lock-taking database workday resolver, refactor existing resolvers, or change the original future-window/comparison basis.
+- Existing withWorkforceSessionPolicyConfigurationAuth enforces tenant capability and organization policy grant (legacy admin where applicable). Session derives organization; route accepts no tenant/date/team/query overrides. Generic private/no-store/nosniff response and fixed-label failures preserve current wrapper behavior.
+- One bounded RepeatableRead transaction reads draft, organization timezone, all ACTIVE policy records (100+1) and current ACTIVE directory cohort (100+1). At overflow, fail closed without truncated counts. The global policy cap is intentionally conservative. Membership metadata is selected once with tenant-fenced LATERAL latest effectiveAt<=preview instant, ordered by effectiveAt/id, without FOR SHARE or advisory locks. Neither mutable current team nor employee PII is selected.
+- A separate same-scope recorded-window validation models the canonical predecessor close; the pure before selection uses recorded published policies, after selection uses a hypothetical draft activation and predecessor close only in memory. Existing team overrides remain selected for an organization draft. A team draft covers only recorded membership in that team; an organization predecessor can be replaced for that employee. Missing baseline coverage is explicit; ambiguous policies, invalid timestamps/scopes/duplicates/full hashes fail closed.
+- Loader and route contain no business DML. The RLS transaction proxy sets tenant context before invoking the handler, so this slice will not add an unproven late SET TRANSACTION READ ONLY or alter the shared wrapper. Real hosted evidence must prove SELECT-only fixture privileges and unchanged populated business facts; this does not claim all production DB privileges are read-only.
+
+## Verification and release sequence
+
+1. Pure tests: organization/team precedence, history and missing membership, NULL/0 rules, opaque-key changes, first coverage, unchanged calculations, ambiguous baseline, duplicate/cross-tenant facts, 100/101 policy and employee controls, real dates and DST gap/fold failure.
+2. API/loader focused tests: existing authorization wrapper, strict no-override envelope, single RR snapshot/bounds/minimal selections, missing/foreign draft, safe error/cache behavior. Only small sequential targeted tests/lint on Contabo after resource checks.
+3. Hosted disposable PostgreSQL tests: populated two-tenant RLS and SELECT-only role, coherent concurrent commits, no row/advisory lock blocking of independent directory writes, 100/101 sentinels, integrity failure and transaction/GUC cleanup, fingerprints of business rows before/after. Owner fixture changes are labeled separately.
+4. Native web UI uses existing policy configuration page and parent session reset, on-demand read with stale-response suppression and denial clearing; EN/RU/AZ, 320/768/1440 rendered evidence, no implicit fetch while manual restore request is held. No section removal or activation control added.
+5. Independent exact-head review, mandatory PR gates and all triggered existing regressions, normal merge after fresh-main check, own deploy.yml and strict registered-host full-SHA production receipts. Preserve original failures and append-only evidence.
+
+Full local typecheck/build/suite/browser/PostgreSQL/Android/load: NOT RUN under Contabo workload placement. Current implementation, PostgreSQL, rendered UI and release: NOT RUN. General update/delete, break policy, AGENT calendar moves, Route mutation, payroll/attendance effects and canonical activation remain excluded.
