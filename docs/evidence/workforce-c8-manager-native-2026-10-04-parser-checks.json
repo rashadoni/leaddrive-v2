@@ -1,0 +1,275 @@
+{
+  "atUtc": "2026-10-04T21:59:22.581Z",
+  "status": "PASS ON ACTUAL APPLIED WORKING PARSER ONLY; FULL PROJECT/NATIVE/RUNTIME NOT RUN",
+  "sourceProof": {
+    "path": "/tmp/workforce-manager-today-part36-actual-application-primary/actual-application-proof.json",
+    "bytes": 2894,
+    "sha256": "acc79be38128c2ef22a7944bcb27e30b24d6966bc604185793d0ac8fd0f33497"
+  },
+  "runner": {
+    "path": "/tmp/workforce-part36-actual-parser-check-primary.cjs",
+    "bytes": 7349,
+    "sha256": "07e7abcb0f7a4189e44b2abb4a76165527ddf82e1bd3f32dcfdc134ea61669c3"
+  },
+  "originalSelected": {
+    "path": "/tmp/workforce-part36-actual-parser-primary/original-selected-parser.ts",
+    "bytes": 5560,
+    "sha256": "44520706699314693d70ca7c61ca89287284bd600b6a454f3824d6c9995ef18a"
+  },
+  "draftSelected": {
+    "path": "/tmp/workforce-part36-actual-parser-primary/draft-selected-parser.ts",
+    "bytes": 5640,
+    "sha256": "4bde4fa9bd0805254dd901cd1ef087e00b18860de4e7bb5779faef9e0d3bf88d"
+  },
+  "isolatedStrictCompiler": {
+    "originalDiagnostics": [
+      {
+        "code": 18046,
+        "message": "'value.warningCodes' is of type 'unknown'."
+      },
+      {
+        "code": 18046,
+        "message": "'scope.employee' is of type 'unknown'."
+      },
+      {
+        "code": 18046,
+        "message": "'scope.periodStart' is of type 'unknown'."
+      },
+      {
+        "code": 18046,
+        "message": "'scope.periodEnd' is of type 'unknown'."
+      }
+    ],
+    "draftDiagnostics": [],
+    "scope": "Eight explicitly extracted actual private parser declarations; full project compiler NOT RUN locally"
+  },
+  "pureActualParserCases": 37,
+  "cases": [
+    {
+      "name": "valid-approval",
+      "expected": "ALLOWLISTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "valid-correction",
+      "expected": "ALLOWLISTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "max93rows",
+      "expected": "ALLOWLISTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "minimized-extra-fields",
+      "expected": "ALLOWLISTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "null",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "array",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "string",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "missing-approval",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "missing-delivery",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "invalid-employee",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "invalid-period",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "revision0",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "revision-fraction",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "negative-calculation-version",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "invalid-approval-date",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "count0",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "count94",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "count-mismatch",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "other-employee",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "before-period",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "after-period",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "duplicate-row-id",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "not-completed",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "payable-overtime",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "negative-work-seconds",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "nan-pause-seconds",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "fraction-long-pause",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "missing-warning",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "duplicate-warning",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "unknown-warning",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "numeric-warning",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "null-warnings",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "wrong-purpose",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "wrong-recipient",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "persisted-artifact",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "wrong-site-scope",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    },
+    {
+      "name": "numeric-workday-id",
+      "expected": "REJECTED",
+      "originalDraftEqual": true,
+      "inputUnchanged": true
+    }
+  ],
+  "limits": [
+    "Extracted parser executions do not accept browser, PostgreSQL, API auth, production or human AT.",
+    "Actual working source after guarded application; exact-head independent review and fresh hosted CI pending."
+  ]
+}

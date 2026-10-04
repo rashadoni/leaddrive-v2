@@ -6,6 +6,13 @@ on:
     paths:
       - ".github/workflows/workforce-manager-today-browser-evidence.yml"
       - "scripts/workforce-manager-today-browser-evidence.mjs"
+      - "scripts/workforce-native-browser-zoom.mjs"
+      - "scripts/ci/fixtures/workforce-native-zoom-extension/**"
+      - "src/app/layout.tsx"
+      - "src/app/globals.css"
+      - "src/lib/workforce/actor.ts"
+      - "src/lib/workforce/employee-today.ts"
+      - "src/lib/workforce/timesheet*.ts"
       - "scripts/_rls.mjs"
       - "scripts/ci/fixtures/workforce-manager-today-browser.sql"
       - "src/__tests__/workforce-manager-today-browser-evidence*.test.*"

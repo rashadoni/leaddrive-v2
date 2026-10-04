@@ -270,3 +270,8 @@ Accounting remains82/161DONE,79nonDONE,14/15roadmapgates,C845%,overall59%. WF-C8
 - /tmp/workforce576-1181-root-whole-release-log-parity-primary.json —2119bytes/SHA4f155a57768424870fc1fd90ab2cd5ed316c43dfb2424c6bf289115f42c3776f.
 - /tmp/workforce576-1181-final-pr-metadata-primary/metadata-proof.json —1201bytes/SHA7ff3dc1eb454b9202447e35d156072202f71f8d08c61b60097c575071772cd3a.
 - /tmp/workforce-manager-today-part36-apply-plan-primary/unapplied-apply-plan.json —9887bytes/SHA8d73e08fc91264482af13381b14f8b1c08d95b7dabb293970fa4a72cbb337f7f; still UNAPPLIED here.
+
+
+### 2026-10-04 22:03 UTC — sharedhelper successor regression pending
+
+Own576 release1181 accepted. Part36 extends exact owned fixture enum to manager-today; calendar default/native contract preserved. Fresh calendar15/72 and manager9 runtime NOT RUN locally/PENDING hosted. Historical576 does not accept successor. No broader WCAG/DONE credit.

@@ -12,10 +12,13 @@ const controlSurfaces = new WeakMap()
 export const isNativeZoomPage = page => ownedContexts.has(page.context())
 
 /** Hosted fixture only. Native browser page zoom; no app injection/emulation. */
-export async function createNativeZoomContext(baseURL) {
+export async function createNativeZoomContext(baseURL, fixture = "calendar") {
+  assert.ok(["calendar", "manager-today"].includes(fixture), "Exact native fixture required")
+  const route = fixture === "calendar" ? "/workforce/calendar" : "/workforce"
+  const optIn = fixture === "calendar" ? "WF_CALENDAR_BROWSER" : "WF_MANAGER_TODAY_BROWSER"
   assert.equal(process.env.GITHUB_ACTIONS, "true")
   assert.equal(process.env.CI, "true")
-  assert.equal(process.env.WF_CALENDAR_BROWSER, "1")
+  assert.equal(process.env[optIn], "1")
   assert.equal(process.env.LEADDRIVE_DISABLE_SERVICE_WORKER, "1")
   assert.notEqual(process.env.NODE_ENV, "production")
   const origin = new URL(baseURL)
@@ -34,7 +37,7 @@ export async function createNativeZoomContext(baseURL) {
     const extensionWorker = worker => worker.url().startsWith("chrome-extension://")
     const worker = context.serviceWorkers().find(extensionWorker)
       ?? await context.waitForEvent("serviceworker", { predicate: extensionWorker, timeout: 30_000 })
-    ownedContexts.set(context, origin.origin)
+    ownedContexts.set(context, { origin: origin.origin, route, fixture })
     return { context, worker, dispose: async () => {
       try { await context.close() } finally { await rm(profile, { recursive: true, force: true }) }
     } }
@@ -83,8 +86,9 @@ function captureState({ focused, scrollNodes }) {
 export async function captureNativeViewport(page, path, record, control = false) {
   assert.ok(isNativeZoomPage(page), "Only an owned native fixture context may use CDP capture")
   const target = new URL(page.url())
-  assert.equal(target.origin, ownedContexts.get(page.context()))
-  assert.equal(target.pathname, "/workforce/calendar")
+  const owned = ownedContexts.get(page.context())
+  assert.equal(target.origin, owned.origin)
+  assert.equal(target.pathname, owned.route)
   assert.equal(target.username + target.password + target.search + target.hash, "")
   assert.match(basename(path), /^[a-z0-9-]+\.png$/)
   const diagnostic = { screenshot: basename(path), method: "CDP_VISIBLE_SURFACE_NO_CLIP", suppliedClip: false, control, status: "FAIL" }
@@ -169,11 +173,14 @@ export async function captureNativeViewport(page, path, record, control = false)
 
 export async function proveNative200Zoom(view, outputDirectory, locale, record) {
   assert.ok(["en", "ru", "az"].includes(locale))
+  assert.ok(isNativeZoomPage(view.page), "Only an owned native fixture context may prove zoom")
+  const owned = ownedContexts.get(view.page.context())
   const targetURL = view.page.url()
   const target = new URL(targetURL)
   assert.ok(["127.0.0.1", "localhost"].includes(target.hostname))
   assert.equal(target.protocol, "http:")
-  assert.equal(target.pathname, "/workforce/calendar")
+  assert.equal(target.origin, owned.origin)
+  assert.equal(target.pathname, owned.route)
   assert.equal(target.username + target.password + target.search + target.hash, "")
   const setup = await view.worker.evaluate(async url => {
     const tabs = (await globalThis.chrome.tabs.query({})).filter(tab => tab.url === url)
@@ -237,7 +244,7 @@ export async function proveNative200Zoom(view, outputDirectory, locale, record) 
   assert.equal(after.rootTransform, "none")
   assert.equal(after.bodyTransform, "none")
   await captureNativeViewport(view.page, `${outputDirectory}/native-zoom-${locale}-observed-200.png`, record)
-  return { method: "BROWSER_TABS_AUTOMATIC_PER_TAB_ZOOM", factor: change.factor,
+  return { method: "BROWSER_TABS_AUTOMATIC_PER_TAB_ZOOM", fixture: owned.fixture, factor: change.factor,
     event: change.event, settings: change.settings, control: before, zoomed: after,
     viewportEmulation: false, applicationCssChanged: false, applicationServiceWorkers: 0 }
 }

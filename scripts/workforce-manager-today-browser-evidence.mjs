@@ -6,6 +6,7 @@ import { createJiti } from "jiti"
 import bcrypt from "bcryptjs"
 import { chromium } from "playwright"
 import { makeRlsTestPrisma } from "./_rls.mjs"
+import { captureNativeViewport, createNativeZoomContext, isNativeZoomPage, proveNative200Zoom } from "./workforce-native-browser-zoom.mjs"
 
 // Disposable hosted browser proof only; this is never a production seed tool.
 assert.equal(process.env.GITHUB_ACTIONS, "true", "Hosted Actions required")
@@ -58,11 +59,71 @@ const receipts = {
   environment: "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
   authentication: "real CSRF, credentials provider and session; no auth mocks",
   authenticationDiagnostics: [],
+  nativeZoomDiagnostics: [],
+  nativeCaptureDiagnostics: [],
+  focusGeometryDiagnostics: [],
+  nativeZoomVerdict: "NOT RUN",
   cases: [],
   status: "RUNNING",
-  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "No positive immutable current-workday snapshot rendering acceptance", "No human AT/native zoom/whole-page keyboard/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Read-only manager Today; no production feature/grant activation"],
+  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "No positive immutable current-workday snapshot rendering acceptance", "No human AT/whole-page keyboard/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Native200 cases are fixture-extension automatic browser zoom, not a human browser-shortcut/AT session", "Read-only manager Today; no production feature/grant activation"],
 }
+// Selected raw checkout bindings; independently verified against exact candidate Git.
+const sourcePaths = [
+  "scripts/workforce-manager-today-browser-evidence.mjs",
+  "scripts/workforce-native-browser-zoom.mjs",
+  "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json",
+  "scripts/ci/fixtures/workforce-native-zoom-extension/background.js",
+  "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+  "scripts/_rls.mjs",
+  ".github/workflows/workforce-manager-today-browser-evidence.yml",
+  "prisma/schema.prisma",
+  "src/app/(dashboard)/workforce/page.tsx",
+  "src/components/workforce/workforce-manager-today.tsx",
+  "src/components/workforce/workforce-workbench.tsx",
+  "src/components/ui/button.tsx",
+  "src/components/ui/badge.tsx",
+  "src/app/api/v1/workforce/today/route.ts",
+  "src/lib/workforce/manager-today.ts",
+  "src/lib/workforce/today-read-access.ts",
+  "src/lib/workforce/access-control.ts",
+  "src/lib/workforce/access-grant-resolution.ts",
+  "src/lib/workforce/actor.ts",
+  "src/lib/workforce/employee-today.ts",
+  "src/lib/workforce/exception-read-access.ts",
+  "src/lib/workforce/exception-case-read-scope.ts",
+  "src/lib/workforce/granular-access-rollout.ts",
+  "src/lib/workforce/sensitive-response.ts",
+  "src/lib/workforce/team-membership.ts",
+  "src/lib/workforce/calendar.ts",
+  "src/lib/workforce/shift-definition.ts",
+  "src/lib/workforce/shift-resolution.ts",
+  "src/lib/workforce/timesheet-schedule-snapshot.ts",
+  "src/lib/workforce/timesheet-read-model.ts",
+  "src/lib/with-workforce-rls-auth.ts",
+  "src/lib/with-rls.ts",
+  "src/lib/auth.ts",
+  "src/lib/api-auth.ts",
+  "src/lib/user-module-access.ts",
+  "src/lib/mtm-settings.ts",
+  "src/lib/mtm/mobile-week.ts",
+  "src/lib/timezone.ts",
+  "src/lib/modules.ts",
+  "src/lib/tenant-capabilities.ts",
+  "src/proxy.ts",
+  "src/app/layout.tsx",
+  "src/app/(dashboard)/layout.tsx",
+  "src/app/globals.css",
+  "src/components/providers.tsx",
+  "messages/en.json",
+  "messages/ru.json",
+  "messages/az.json"
+]
+receipts.sourceBindings = await Promise.all(sourcePaths.map(async path => {
+  const bytes = await readFile(new URL(`../${path}`, import.meta.url))
+  return { path, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") }
+}))
 const contexts = []
+const nativeZoomContexts = []
 const authenticationPostTimes = []
 let browser
 let activePage
@@ -298,10 +359,76 @@ async function tabTo(page, locator) {
   }
   throw new Error("Native Tab could not reach Today pagination")
 }
-async function openToday(principal, locale, viewport) {
+async function until(check, description, timeout = 30_000) {
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    if (await check()) return
+    await delay(100)
+  }
+  throw new Error(`Timed out: ${description}`)
+}
+async function focusedInViewport(locator, description) {
+  const diagnostic = { description, status: "FAIL", polls: 0 }
+  try {
+    await until(async () => {
+      const sample = await locator.evaluate(element => {
+        const bounds = element.getBoundingClientRect()
+        const container = element.closest("main")?.getBoundingClientRect()
+        // Keep the original predicate and timeout exactly. Diagnostics read
+        // unrounded coordinates; they never focus, scroll or change styles.
+        const pass = document.activeElement === element
+          && bounds.top >= Math.max(0, container?.top ?? 0)
+          && bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight)
+          && bounds.left >= Math.max(0, container?.left ?? 0)
+          && bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth)
+        const rect = box => box ? Object.fromEntries(["top", "bottom", "left", "right", "width", "height"]
+          .map(key => [key, Number.isFinite(box[key]) ? box[key] : null])) : null
+        const dimensions = node => ({ clientWidth: node.clientWidth, clientHeight: node.clientHeight,
+          scrollWidth: node.scrollWidth, scrollHeight: node.scrollHeight, offsetWidth: node.offsetWidth,
+          offsetHeight: node.offsetHeight, scrollLeft: node.scrollLeft, scrollTop: node.scrollTop })
+        const ancestors = []
+        for (let node = element.parentElement; node && ancestors.length < 8; node = node.parentElement) {
+          const style = getComputedStyle(node)
+          const overflow = value => ["visible", "hidden", "clip", "auto", "scroll", "overlay"].includes(value) ? value : "OTHER"
+          ancestors.push({ tag: node.tagName, bounds: rect(node.getBoundingClientRect()), ...dimensions(node),
+            overflowX: overflow(style.overflowX), overflowY: overflow(style.overflowY) })
+        }
+        return { pass, focused: document.activeElement === element, focusVisible: element.matches(":focus-visible"),
+          connected: element.isConnected, disabled: element.matches(":disabled"),
+          clauses: { top: bounds.top >= Math.max(0, container?.top ?? 0),
+            bottom: bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight),
+            left: bounds.left >= Math.max(0, container?.left ?? 0),
+            right: bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth) },
+          target: rect(bounds), main: rect(container),
+          viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio,
+            visualWidth: window.visualViewport?.width, visualHeight: window.visualViewport?.height,
+            visualScale: window.visualViewport?.scale, scrollX: window.scrollX, scrollY: window.scrollY },
+          root: dimensions(document.documentElement), body: dimensions(document.body), ancestors }
+      })
+      diagnostic.polls++
+      diagnostic.first ??= sample
+      diagnostic.last = sample
+      return sample.pass
+    }, description)
+    diagnostic.status = "PASS"
+  } finally {
+    receipts.focusGeometryDiagnostics.push(diagnostic)
+  }
+}
+
+async function evidenceScreenshot(page, path, fullPage) {
+  if (isNativeZoomPage(page)) {
+    await captureNativeViewport(page, path, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+  } else {
+    await page.screenshot({ path, fullPage })
+  }
+}
+async function openToday(principal, locale, viewport, nativeZoom = false) {
   currentDate()
-  const context = await browser.newContext({ baseURL, locale: "en-US", viewport, serviceWorkers: "block" })
-  contexts.push(context)
+  const native = nativeZoom ? await createNativeZoomContext(baseURL, "manager-today") : null
+  if (native) nativeZoomContexts.push(native)
+  const context = native?.context ?? await browser.newContext({ baseURL, locale: "en-US", viewport, serviceWorkers: "block" })
+  if (!native) contexts.push(context)
   await context.addCookies([{ name: "NEXT_LOCALE", value: locale, url: baseURL }])
   await authenticate(context, principal)
   const page = await context.newPage()
@@ -317,12 +444,13 @@ async function openToday(principal, locale, viewport) {
   await page.goto("/workforce", { waitUntil: "domcontentloaded" })
   const response = await firstResponse
   assert.notEqual(new URL(page.url()).pathname, "/login")
-  return { context, page, response, workforceWrites, ui: await copy(locale) }
+  return { context, page, response, workforceWrites, ui: await copy(locale), ...(native ? { worker: native.worker } : {}) }
 }
-async function managerScenario(fixture, principal, locale, viewport, exceptions) {
-  const scenario = `today-${principal.key}-${locale}`
+async function managerScenario(fixture, principal, locale, viewport, exceptions, nativeZoom = false) {
+  const caseName = `${principal.key}-${locale}${nativeZoom ? "-native-200" : ""}`
+  const scenario = `today-${caseName}`
   stage = `${scenario}-real-authentication`
-  const view = await openToday(principal, locale, viewport)
+  const view = await openToday(principal, locale, viewport, nativeZoom)
   stage = `${scenario}-first-response`
   const first = await checkedRead(view.response, fixture, { exceptions })
   stage = `${scenario}-localized-first-page`
@@ -330,6 +458,12 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
   const articles = section.locator("article")
   await articles.nth(24).waitFor()
   assert.equal(await articles.count(), 25)
+  if (nativeZoom) {
+    stage = `${scenario}-native-zoom-proof`
+    await view.page.evaluate(() => document.fonts.ready)
+    view.nativeZoom = await proveNative200Zoom(view, outputDirectory, locale, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+    receipts.nativeZoomDiagnostics.push({ locale, status: "PASS", ...view.nativeZoom })
+  }
   for (let index = 0; index < 25; index++) {
     const article = articles.nth(index)
     const person = first.people[index]
@@ -351,13 +485,14 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
     assert.equal((await section.innerText()).includes(view.ui.timesheetApprovalException.NO_SHOW), false)
   }
   assert.equal(await section.getByText(fixture.employees[25].name, { exact: true }).count(), 0)
-  await view.page.screenshot({ path: `${outputDirectory}/${principal.key}-${locale}-first-page.png`, fullPage: true })
+  await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-first-page.png`, true)
   const loadMore = section.getByRole("button", { name: view.ui.managerLoadMore, exact: true })
   assert.equal(await loadMore.isEnabled(), true)
   stage = `${scenario}-native-tab`
   const tabs = await tabTo(view.page, loadMore)
   assert.equal(await loadMore.evaluate(element => element.matches(":focus-visible")), true)
-  await view.page.screenshot({ path: `${outputDirectory}/${principal.key}-${locale}-native-pagination.png` })
+  if (nativeZoom) await focusedInViewport(loadMore, "native200 Today pagination visible focus")
+  await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-native-pagination.png`)
   const nextResponse = view.page.waitForResponse(response => responseForToday(response) && new URL(response.url()).searchParams.get("cursor") === fixture.employees[24].id)
   stage = `${scenario}-native-enter-second-response`
   await view.page.keyboard.press("Enter")
@@ -385,12 +520,12 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
   }, view.ui.managerAttendanceState[second.people[0].attendance.state])
   assert.equal(absenceGeometry.length, 2)
   for (const geometry of absenceGeometry) assert.deepEqual(geometry, { positive: true, withinViewport: true, untruncated: true, displayed: true, stateTextMatched: true })
-  await view.page.screenshot({ path: `${outputDirectory}/${principal.key}-${locale}-absent-page-two.png` })
+  await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-absent-page-two.png`)
   assert.deepEqual(view.workforceWrites, [])
   stage = `${scenario}-preserved-real-session`
   await assertSession(view.context, principal)
-  receipts.cases.push({ name: `${principal.key}-${locale}`, status: "PASS", firstPage: 25, secondPage: 1, finalUniqueOrderedPeople: 26, scheduledWithoutWorkdayExplained: true, persistedNoShowAuthority: exceptions, exceptionsNullWithoutAuthority: !exceptions, previousOpenRetained: true, leaveAndHolidayExplained: true, unavailableScheduleExplained: true, nativePaginationTabs: tabs, nativePaginationEnter: true, pageTwoAbsenceGeometry: absenceGeometry, readOnlyWorkforceRequests: true, realSessionPreserved: true, viewport })
-  if (principal.key === "manager" && locale === "en") {
+  receipts.cases.push({ name: caseName, status: "PASS", firstPage: 25, secondPage: 1, finalUniqueOrderedPeople: 26, scheduledWithoutWorkdayExplained: true, persistedNoShowAuthority: exceptions, exceptionsNullWithoutAuthority: !exceptions, previousOpenRetained: true, leaveAndHolidayExplained: true, unavailableScheduleExplained: true, nativePaginationTabs: tabs, nativePaginationEnter: true, pageTwoAbsenceGeometry: absenceGeometry, readOnlyWorkforceRequests: true, realSessionPreserved: true, viewport: nativeZoom ? await view.page.evaluate(() => ({ width: innerWidth, height: innerHeight })) : viewport, ...(nativeZoom ? { nativeZoom: view.nativeZoom } : {}) })
+  if (!nativeZoom && principal.key === "manager" && locale === "en") {
     stage = `${scenario}-forged-tenant-headers`
     // The actual proxy strips caller tenant headers on loopback. The request
     // therefore remains bound to its authenticated tenant rather than 403.
@@ -399,7 +534,7 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
     await assertSession(view.context, principal)
     receipts.cases.push({ name: "forged-tenant-headers-remain-session-bound", status: "PASS", responseStatus: 200, foreignPeopleExcluded: true, authenticatedTenantPreserved: true, noHeaderDerived403Claim: true })
   }
-  await view.context.close()
+  if (!nativeZoom) await view.context.close()
 }
 
 async function verifyUnscopedRls(fixture, phase) {
@@ -484,12 +619,18 @@ try {
   for (const [locale, width] of [["ru", 320], ["az", 768], ["en", 1440]]) await managerScenario(fixture, fixture.manager, locale, { width, height: 900 }, true)
   await managerScenario(fixture, fixture.approver, "ru", { width: 320, height: 900 }, false)
   await deniedScenario(fixture)
+  assert.equal(receipts.cases.length, 6, "All original Today cases must pass before native zoom")
+  for (const locale of ["en", "ru", "az"]) await managerScenario(fixture, fixture.manager, locale, { width: 320, height: 900 }, true, true)
+  assert.equal(receipts.nativeZoomDiagnostics.length, 3)
+  assert.ok(receipts.nativeZoomDiagnostics.every(row => row.status === "PASS" && row.fixture === "manager-today" && row.factor === 2))
+  receipts.nativeZoomVerdict = "PASS"
   stage = "read-only-facts-after"
   const after = await facts(organizationIds)
   assert.deepEqual(after, before, "Every captured Workforce fact must remain byte-identical after real authenticated reads")
   receipts.factImmutability = { status: "PASS", tenantCount: 2, tables: before.map((row, index) => ({ ...row, afterSha256: after[index].sha256, unchanged: true })), userAuthenticationMetadataExcluded: true }
   receipts.rlsAfter = await verifyUnscopedRls(fixture, "AFTER_AUTHENTICATED_READS")
-  assert.equal(receipts.cases.length, 6)
+  assert.equal(receipts.cases.length, 9)
+  assert.equal(new Set(receipts.cases.map(row => row.name)).size, 9)
   currentDate()
   receipts.status = "PASS"
 } catch (error) {
@@ -510,17 +651,18 @@ try {
     diagnostic: "Original hosted assertion failed; no raw payload, stack, token or credentials uploaded",
   }
   if (activePage && !activePage.isClosed()) {
-    try { await activePage.screenshot({ path: `${outputDirectory}/failure-original.png`, fullPage: true }); receipts.failure.screenshot = "failure-original.png" } catch { receipts.failure.screenshot = "NOT_CAPTURED" }
+    try { await evidenceScreenshot(activePage, `${outputDirectory}/failure-original.png`, true); receipts.failure.screenshot = "failure-original.png" } catch { receipts.failure.screenshot = "NOT_CAPTURED" }
   }
   process.exitCode = 1
 } finally {
   // A browser must outlive its contexts' request/channel disposal. Keep each
   // rejection fatal, and record only fixed action labels and safe error types.
   const contextCleanup = await Promise.allSettled(contexts.map(context => context.close()))
+  const nativeCleanup = await Promise.allSettled(nativeZoomContexts.map(view => view.dispose()))
   const browserCleanup = browser ? await Promise.allSettled([browser.close()]) : []
   const databaseCleanup = await Promise.allSettled([app.$disconnect(), admin.$disconnect()])
-  const cleanup = [...contextCleanup, ...browserCleanup, ...databaseCleanup]
-  const labels = [...contexts.map((_, index) => `context-${index + 1}`), ...(browser ? ["browser"] : []), "application-database", "fixture-database"]
+  const cleanup = [...contextCleanup, ...nativeCleanup, ...browserCleanup, ...databaseCleanup]
+  const labels = [...contexts.map((_, index) => `context-${index + 1}`), ...nativeZoomContexts.map((_, index) => `native-context-profile-${index + 1}`), ...(browser ? ["browser"] : []), "application-database", "fixture-database"]
   receipts.cleanupActions = cleanup.map((result, index) => ({
     action: labels[index],
     status: result.status === "fulfilled" ? "PASS" : "FAIL",
