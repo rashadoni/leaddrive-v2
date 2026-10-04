@@ -22,6 +22,10 @@ const V2_MTM_MOBILE_EXACT_PATHS = new Set([
   "/api/v2/mtm/mobile/sync/workforce",
 ])
 const V2_MTM_MOBILE_DETAIL_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/(?:contacts|organizations)\/[^/%]+$/
+// An agent's change request on one client. Without this line the proxy sends
+// the app's POST to /login (307): the handler was live on production for an
+// hour on 2026-10-04 and unreachable.
+const V2_MTM_MOBILE_CONTACT_CHANGE_REQUEST_PATH = /^\/api\/v2\/mtm\/mobile\/route-field\/contacts\/[^/%]+\/change-requests$/
 
 function normalizedPathname(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname
@@ -29,7 +33,9 @@ function normalizedPathname(pathname: string): string {
 
 function isApprovedV2MtmMobilePath(pathname: string): boolean {
   const normalized = normalizedPathname(pathname)
-  return V2_MTM_MOBILE_EXACT_PATHS.has(normalized) || V2_MTM_MOBILE_DETAIL_PATH.test(normalized)
+  return V2_MTM_MOBILE_EXACT_PATHS.has(normalized)
+    || V2_MTM_MOBILE_DETAIL_PATH.test(normalized)
+    || V2_MTM_MOBILE_CONTACT_CHANGE_REQUEST_PATH.test(normalized)
 }
 
 export function isMtmApiPath(pathname: string): boolean {
