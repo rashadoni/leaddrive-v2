@@ -10,7 +10,7 @@ import { GET } from "@/app/api/v1/workforce/configuration/policies/compare/route
 const definition = { expectedWorkSeconds: 28800, lateGraceSeconds: 300, undertimeToleranceSeconds: 0, overtimeThresholdSeconds: 0, longPauseThresholdSeconds: null }
 const row = (id: string, version: number) => ({ id, version, organizationId: "org", teamId: null, status: "ACTIVE" as const, name: "Policy", effectiveFrom: new Date("2026-01-01"), effectiveTo: null, definition, definitionHash: workforcePolicyDefinitionHash(definition) })
 const auth = { orgId: "org", userId: "admin", role: "admin" }
-const call = GET as unknown as (request: NextRequest, auth: typeof auth) => Promise<Response>
+const call = GET as unknown as (request: NextRequest, context: typeof auth) => Promise<Response>
 const request = (query: string) => new NextRequest("http://localhost/api/v1/workforce/configuration/policies/compare?" + query, { headers: { "x-organization-id": "foreign" } })
 beforeEach(() => { mocks.findMany.mockReset(); mocks.failure.mockReset() })
 
