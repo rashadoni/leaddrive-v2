@@ -56,7 +56,7 @@ postgresDescribe("hosted real PostgreSQL recorded future-window read", () => {
       await admin.organization.create({ data: { id, name: "Window isolated fixture", slug: `window-${index}-${suffix}` } })
       await admin.mtmSetting.create({ data: { organizationId: id, key: "timezone", value: "UTC" } })
     }
-    await admin.user.create({ data: { id: actor, organizationId: orgs[0], email: `window-${suffix}@example.test`, name: "Window fixture actor", role: "admin" } })
+    await admin.user.create({ data: { id: actor, organizationId: orgs[0], email: `window-${suffix}@example.test`, name: "Window fixture actor", role: "admin", passwordHash: randomUUID() } })
     await admin.mtmTeam.create({ data: { id: team, organizationId: orgs[0], name: "Window cap team", code: `window-${suffix}` } })
     const common = { organizationId: orgs[0], name: "Recorded window fixture", definition, definitionHash,
       provenance: "TENANT_ADMIN" as const, createdByUserId: actor }
