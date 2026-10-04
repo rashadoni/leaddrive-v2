@@ -62,10 +62,11 @@ test("Node transport fence rejects TCP/DNS/UDP and permits loopback without faki
   const preload = path.join(cwd, "dns-tripwire.mjs")
   // Guard regressions must fail closed even if a DNS patch is accidentally removed.
   writeFileSync(preload, [
-    'import dns from "node:dns";',
+    'import dns from "node:dns"; import { syncBuiltinESMExports } from "node:module";',
     'for (const target of [dns,dns.promises,dns.Resolver.prototype,dns.promises.Resolver.prototype]) for (const name of Object.getOwnPropertyNames(target)) {',
     'if (!/^(lookup|reverse|resolve)/.test(name) || typeof target[name]!=="function") continue; const original=target[name];',
     'target[name]=function(host,...args) { if (name==="lookup" && ["127.0.0.1","::1","localhost"].includes(host)) return original.call(this,host,...args); throw new Error("DNS_TRIPWIRE_UNGUARDED"); }; }',
+    'syncBuiltinESMExports();',
     'await import(' + JSON.stringify(pathToFileURL(path.join(root,"scripts/support-backend-network-guard.mjs")).href) + ');',
   ].join("\n"))
   const code = [
