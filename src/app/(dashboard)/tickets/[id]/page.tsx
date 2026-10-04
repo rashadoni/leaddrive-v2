@@ -27,6 +27,8 @@ import { useStageLabel } from "@/lib/status-labels"
 import { safeTicketReturnTo, ticketDetailHref } from "@/lib/ticketing/workspace-state"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import type { MacroAction } from "@/lib/ticket-macros/presentation"
 import { parseTicketReplyDraft, serializeTicketReplyDraft, ticketDraftStorageKey } from "@/lib/ticketing/ticket-draft"
 import { formatFileSize } from "@/lib/format-file-size"
 
@@ -158,6 +160,7 @@ interface TicketSiblingData {
 }
 
 interface TicketMacroData {
+  actions: MacroAction[]
   id: string
   name: string
   shortcutKey?: string | null
@@ -347,6 +350,14 @@ export default function TicketDetailPage() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showMacrosMenu, setShowMacrosMenu] = useState(false)
   const [applyingMacroId, setApplyingMacroId] = useState<string | null>(null)
+  const [macroPreview, setMacroPreview] = useState<{ macro: TicketMacroData; requestId: string } | null>(null)
+  const [macroApplyError, setMacroApplyError] = useState("")
+  const macroApplyInFlight = useRef(false)
+  const previewMacro = (macro: TicketMacroData) => {
+    if (macroApplyInFlight.current || macroPreview) return
+    setMacroApplyError("")
+    setMacroPreview({ macro, requestId: crypto.randomUUID() })
+  }
   const [convertOpen, setConvertOpen] = useState(false)
   const [waivingMilestoneId, setWaivingMilestoneId] = useState<string | null>(null)
   const [savingWaiverId, setSavingWaiverId] = useState<string | null>(null)
@@ -613,27 +624,35 @@ export default function TicketDetailPage() {
 
   useEffect(() => { fetchTicketCalls() }, [fetchTicketCalls])
 
-  const applyMacro = useCallback(async (macro: TicketMacroData) => {
-    if (applyingMacroId) return
+  const applyMacro = useCallback(async (macro: TicketMacroData, requestId: string) => {
+    if (macroApplyInFlight.current) return
+    macroApplyInFlight.current = true
+    setMacroApplyError("")
     setApplyingMacroId(macro.id)
     try {
       const response = await fetch(`/api/v1/ticket-macros/${macro.id}/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ ticketId }),
+        body: JSON.stringify({ ticketId, requestId, expectedActions: macro.actions }),
       })
-      if (!response.ok) throw new Error(tm("applyError"))
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.code === "MACRO_PREVIEW_STALE" ? tm("previewStale") : tm("applyRetrySafe"))
+      if (!payload?.success) throw new Error(tm("applyRetrySafe"))
+      setMacroPreview(null)
       await fetchTicket()
       toast.success(tm("appliedSuccess", { name: macro.name }))
-    } catch {
+    } catch (failure) {
+      setMacroApplyError(failure instanceof Error ? failure.message : tm("applyRetrySafe"))
       toast.error(tm("applyError"))
     } finally {
+      macroApplyInFlight.current = false
       setApplyingMacroId(null)
     }
-  }, [applyingMacroId, fetchTicket, headers, ticketId, tm])
+  }, [fetchTicket, headers, ticketId, tm])
 
   // Keyboard shortcuts
   useTicketShortcuts({
+    enabled: !macroPreview && !applyingMacroId,
     onReply: () => { setIsInternal(false); commentRef.current?.focus() },
     onInternalNote: () => { setIsInternal(true); commentRef.current?.focus() },
     onAssignToMe: () => {
@@ -647,7 +666,7 @@ export default function TicketDetailPage() {
     onToggleShortcuts: () => setShowShortcuts(s => !s),
     macros: macros.filter(m => m.isActive).map(m => ({
       execute: () => {
-        void applyMacro(m)
+        previewMacro(m)
       },
     })),
   })
@@ -1137,7 +1156,7 @@ export default function TicketDetailPage() {
                         className="flex min-h-11 w-full items-center justify-between rounded px-3 py-1.5 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                         onClick={() => {
                           setShowMacrosMenu(false)
-                          void applyMacro(m)
+                          previewMacro(m)
                         }}
                       >
                         <span>{applyingMacroId === m.id ? tm("applying") : m.name}</span>
@@ -1151,7 +1170,7 @@ export default function TicketDetailPage() {
           )}
           {/* Customer 360 toggle */}
           <Button data-testid="ticket-context-toggle" size="sm" className="h-11 shrink-0 sm:h-9" variant={showContext ? "default" : "outline"} onClick={() => setShowContext(!showContext)}>
-            <UserCheck className="h-3.5 w-3.5 mr-1" /> 360
+            <UserCheck className="h-3.5 w-3.5 mr-1" /> {t("customerContextAction")}
           </Button>
           {/* Shortcuts help */}
           <Button aria-label={tsk("title")} size="icon" variant="ghost" className="h-11 w-11 shrink-0 sm:h-9 sm:w-9" onClick={() => setShowShortcuts(!showShortcuts)} title={tsk("title")}>
@@ -1181,6 +1200,28 @@ export default function TicketDetailPage() {
           <Button data-testid="ticket-detail-retry-stale" size="sm" variant="outline" className="h-11 sm:h-9" onClick={() => void fetchTicket()}><RefreshCw className="h-3.5 w-3.5" /> {t("retry")}</Button>
         </div>
       )}
+
+      <p className="text-xs text-muted-foreground" data-testid="ticket-quick-actions-hint">{t("quickActionsSaveHint")}</p>
+      <Dialog open={Boolean(macroPreview)} onOpenChange={(open) => { if (!open && !macroApplyInFlight.current) setMacroPreview(null) }}>
+        <DialogHeader><DialogTitle>{tm("previewTitle")}{macroPreview ? ` — ${macroPreview.macro.name}` : ""}</DialogTitle><DialogDescription>{tm("confirmEffectsHint")}</DialogDescription></DialogHeader>
+        <DialogContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">{tm("audienceHint")}</p>
+          <ol className="list-decimal space-y-3 pl-5">
+            {macroPreview?.macro.actions?.map((action, index) => {
+              const labels: Record<MacroAction["type"], string> = { set_status: "setStatus", set_priority: "setPriority", set_assignee: "setAssignee", add_comment: "publicComment", add_internal_note: "addInternalNote", add_tag: "addTag", remove_tag: "removeTag" }
+              const value = action.type === "set_assignee" ? users.find(user => user.id === action.value)?.name || tm("assigneeUnavailable")
+                : action.type === "set_status" && tm.has(`status_${action.value}`) ? tm(`status_${action.value}`)
+                : action.type === "set_priority" && tm.has(`priority_${action.value}`) ? tm(`priority_${action.value}`) : action.value
+              return <li key={index}><strong className="text-sm">{tm(labels[action.type] || "unknownAction")}</strong><p className="whitespace-pre-wrap break-words text-sm">{value}</p></li>
+            })}
+          </ol>
+          {macroApplyError && <p role="alert" className="text-sm text-destructive">{macroApplyError}</p>}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" disabled={Boolean(applyingMacroId)} onClick={() => setMacroPreview(null)}>{tc("cancel")}</Button>
+          <Button disabled={Boolean(applyingMacroId) || !macroPreview?.macro.actions?.length} onClick={() => { if (macroPreview) void applyMacro(macroPreview.macro, macroPreview.requestId) }}>{applyingMacroId ? tm("applying") : tm("confirmApply")}</Button>
+        </DialogFooter>
+      </Dialog>
 
       {/* Customer 360 moved to sidebar below */}
 
@@ -1735,6 +1776,7 @@ export default function TicketDetailPage() {
           {/* Inline actions: Status + Reassign */}
           <Card className="order-3">
             <CardContent className="space-y-3 p-4">
+              <p className="text-xs text-muted-foreground">{t("fullControlsSaveHint")}</p>
               {/* Status change */}
               <div className="flex flex-wrap items-center gap-2">
                 <Select data-testid="ticket-status-select" aria-label={tc("status")} value={newStatus} onChange={e => setNewStatus(e.target.value)} className="h-11 w-48 sm:h-9">
@@ -1783,7 +1825,7 @@ export default function TicketDetailPage() {
                   className="h-11 text-foreground sm:h-9"
                 >
                   {updatingAssignee ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
-                  {t("auto")}
+                  {t("autoAssign")}
                 </Button>
               </div>
             </CardContent>

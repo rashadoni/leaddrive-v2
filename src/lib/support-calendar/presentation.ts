@@ -6,6 +6,7 @@ export interface CalendarItem {
   type: string
   title: string
   date: string
+  dateKind?: "sla_due" | "task_due" | "scheduled" | "event_start" | "resolved" | "closed" | "completed" | "created" | "undated_today"
   endDate?: string
   hour: number
   endHour?: number
@@ -80,4 +81,14 @@ export function nextCalendarItem(items: readonly CalendarItem[], now: Date): Cal
 
 export function failedCalendarSources(sources: CalendarSourceState): CalendarSource[] {
   return (Object.keys(sources) as CalendarSource[]).filter((source) => sources[source] === "failed")
+}
+
+
+// Serialize local day boundaries as instants, preserving different UTC offsets across DST.
+export function calendarRangeParams(first: Date, last: Date): URLSearchParams {
+  const from = new Date(first)
+  from.setHours(0, 0, 0, 0)
+  const to = new Date(last)
+  to.setHours(23, 59, 59, 999)
+  return new URLSearchParams({ from: from.toISOString(), to: to.toISOString() })
 }

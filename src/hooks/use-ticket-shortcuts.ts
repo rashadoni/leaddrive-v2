@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from "react"
 
 interface ShortcutActions {
+  enabled?: boolean
   onReply?: () => void
   onInternalNote?: () => void
   onAssignToMe?: () => void
@@ -35,6 +36,7 @@ export const TICKET_SHORTCUTS: ShortcutDef[] = [
 
 export function useTicketShortcuts(actions: ShortcutActions) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (actions.enabled === false) return
     // Don't capture when typing in inputs
     const target = e.target as HTMLElement
     if (target.tagName === "TEXTAREA" || target.tagName === "INPUT" || target.isContentEditable) {

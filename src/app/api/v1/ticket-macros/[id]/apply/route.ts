@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { createHash } from "node:crypto"
 
 import { prisma } from "@/lib/prisma"
 import { MACRO_ASSIGNABLE_ROLES } from "@/lib/ticket-macros/presentation"
 import { macroActionsSchema } from "@/lib/ticket-macros/schema"
 import { withRlsAuth } from "@/lib/with-rls"
 
-const applySchema = z.object({ ticketId: z.string().min(1) }).strict()
+const applySchema = z.object({
+  ticketId: z.string().min(1),
+  requestId: z.string().uuid().optional(),
+  expectedActions: macroActionsSchema.optional(),
+}).strict().refine(value => Boolean(value.requestId) === Boolean(value.expectedActions), {
+  message: "A confirmed preview and request ID must be provided together",
+})
+
+const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex")
 
 export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
@@ -26,8 +35,29 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const ticket = await tx.ticket.findFirst({ where: { id: parsedRequest.data.ticketId, organizationId: auth.orgId } })
+      let ticket = await tx.ticket.findFirst({ where: { id: parsedRequest.data.ticketId, organizationId: auth.orgId } })
       if (!ticket) return null
+      const { requestId, expectedActions } = parsedRequest.data
+      const receiptId = requestId ? "macro_" + digest([auth.orgId, auth.userId, ticket.id, requestId]) : null
+      const requestDigest = digest([id, expectedActions])
+      if (receiptId) {
+        // Serialize confirmed attempts for this tenant/ticket. Audit and actions commit together.
+        await tx.$queryRaw`SELECT id FROM tickets WHERE id = ${ticket.id} AND "organizationId" = ${auth.orgId} FOR UPDATE`
+        ticket = await tx.ticket.findFirst({ where: { id: parsedRequest.data.ticketId, organizationId: auth.orgId } })
+        if (!ticket) return null
+        const receipt = await tx.auditLog.findFirst({
+          where: { id: receiptId, organizationId: auth.orgId, entityType: "ticket_macro_application", entityId: ticket.id },
+        })
+        if (receipt) {
+          const stored = receipt.newValue as { requestDigest?: string } | null
+          if (stored?.requestDigest !== requestDigest) throw new Error("macro_request_conflict")
+          return tx.ticket.findFirst({
+            where: { id: ticket.id, organizationId: auth.orgId },
+            include: { comments: { orderBy: { createdAt: "desc" }, take: 10 } },
+          })
+        }
+        if (digest(expectedActions) !== digest(parsedActions.data)) throw new Error("macro_preview_stale")
+      }
       let tags = [...(ticket.tags || [])]
 
       for (const action of parsedActions.data) {
@@ -69,6 +99,13 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
         }
       }
 
+      if (receiptId) {
+        await tx.auditLog.create({ data: {
+          id: receiptId, organizationId: auth.orgId, userId: auth.userId || null,
+          entityType: "ticket_macro_application", entityId: ticket.id, action: "ticket_macro_applied",
+          newValue: { macroId: id, requestDigest, actionTypes: parsedActions.data.map(action => action.type) },
+        } })
+      }
       await tx.ticketMacro.update({ where: { id }, data: { usageCount: { increment: 1 } } })
       return tx.ticket.findFirst({
         where: { id: ticket.id, organizationId: auth.orgId },
@@ -79,6 +116,12 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
     if (!updated) return NextResponse.json({ error: "Ticket not found.", code: "TICKET_NOT_FOUND" }, { status: 404 })
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
+    if (error instanceof Error && error.message === "macro_preview_stale") {
+      return NextResponse.json({ error: "Macro changed after preview. Review it again.", code: "MACRO_PREVIEW_STALE" }, { status: 409 })
+    }
+    if (error instanceof Error && error.message === "macro_request_conflict") {
+      return NextResponse.json({ error: "Request ID already belongs to a different confirmed action.", code: "MACRO_REQUEST_CONFLICT" }, { status: 409 })
+    }
     if (error instanceof Error && error.message === "macro_assignee_invalid") {
       return NextResponse.json({ error: "Macro assignee is no longer available.", code: "MACRO_ASSIGNEE_INVALID" }, { status: 409 })
     }

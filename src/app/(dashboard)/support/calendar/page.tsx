@@ -34,6 +34,7 @@ import { formatDate as formatDateLocale } from "@/lib/format-date"
 import {
   EMPTY_CALENDAR_SOURCES,
   calendarDateParam,
+  calendarRangeParams,
   failedCalendarSources,
   getWeekDates,
   isOutsideBusinessHours,
@@ -76,7 +77,7 @@ function CalendarItemButton({ item, onOpen, compact = false }: { item: CalendarI
         <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{title}</span>
-          <span className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground"><span>{time}</span><span>{t(config.labelKey)}</span>{isOutsideBusinessHours(item) && <span>{t("outsideHours")}</span>}</span>
+          <span className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground"><span>{time}</span><span>{t(config.labelKey)}</span><span>{t(`dateKinds.${item.dateKind || "unknown"}`)}</span>{isOutsideBusinessHours(item) && <span>{t("outsideHours")}</span>}</span>
         </span>
         {item.priority && <Badge variant="outline" className="shrink-0">{t.has(item.priority) ? t(item.priority) : t("unknownPriority")}</Badge>}
       </span>
@@ -99,10 +100,10 @@ function ItemDetailSheet({ item, onOpenChange, onNavigate }: { item: CalendarIte
   return (
     <Sheet open onOpenChange={onOpenChange}>
       <SheetContent side="right" className="!h-[100dvh] !w-full !max-w-none overflow-y-auto sm:!w-[28rem] sm:!max-w-[28rem]" closeLabel={t("closeDetails")} data-testid="support-calendar-detail" data-item-id={`${item.type}-${item.id}`}>
-        <SheetHeader className="pr-10"><div className="flex items-center gap-2"><Icon className="h-5 w-5 text-muted-foreground" /><SheetTitle>{title}</SheetTitle></div><SheetDescription>{t(config.labelKey)}</SheetDescription></SheetHeader>
+        <SheetHeader className="pr-10"><div className="flex items-center gap-2"><Icon className="h-5 w-5 text-muted-foreground" /><SheetTitle>{title}</SheetTitle></div><SheetDescription>{t(config.labelKey)} · {t(`dateKinds.${item.dateKind || "unknown"}`)}</SheetDescription></SheetHeader>
         <dl className="mt-6 divide-y rounded-xl border text-sm">
           <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 p-3"><dt className="text-muted-foreground">{t("date")}</dt><dd>{dateLabel}</dd></div>
-          <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 p-3"><dt className="text-muted-foreground">{t("time")}</dt><dd>{timeLabel}{isOutsideBusinessHours(item) && <span className="mt-1 block text-xs text-muted-foreground">{t("outsideHoursDetail")}</span>}</dd></div>
+          <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 p-3"><dt className="text-muted-foreground">{t("time")}</dt><dd>{timeLabel}<span className="mt-1 block text-xs text-muted-foreground">{t("displayTimezone", { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</span>{isOutsideBusinessHours(item) && <span className="mt-1 block text-xs text-muted-foreground">{t("outsideHoursDetail")}</span>}</dd></div>
           {knownStatus && <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 p-3"><dt className="text-muted-foreground">{t("status")}</dt><dd>{knownStatus}</dd></div>}
           {item.priority && <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 p-3"><dt className="text-muted-foreground">{t("priority")}</dt><dd>{t.has(item.priority) ? t(item.priority) : t("unknownPriority")}</dd></div>}
           {item.location && <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 p-3"><dt className="flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{t("location")}</dt><dd>{item.location}</dd></div>}
@@ -143,7 +144,7 @@ export default function AgentCalendarPage() {
     setError("")
     setErrorRetryable(true)
     try {
-      const response = await fetch(`/api/v1/calendar/agent?from=${calendarDateParam(weekDates[0])}&to=${calendarDateParam(weekDates[6])}`)
+      const response = await fetch(`/api/v1/calendar/agent?${calendarRangeParams(weekDates[0], weekDates[6])}`)
       const payload = await response.json().catch(() => null)
       if (payload?.data?.sources) setSources(payload.data.sources)
       if (!response.ok || !payload?.success || !Array.isArray(payload?.data?.items)) {
@@ -234,7 +235,8 @@ export default function AgentCalendarPage() {
             })}
           </div>
 
-          <section aria-labelledby="selected-day-title" className="rounded-xl border bg-card xl:hidden" data-testid="support-calendar-agenda">
+          <p className="text-xs text-muted-foreground" data-testid="support-calendar-timezone">{t("displayTimezone", { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</p>
+      <section aria-labelledby="selected-day-title" className="rounded-xl border bg-card xl:hidden" data-testid="support-calendar-agenda">
             <div className="border-b p-3"><h2 id="selected-day-title" className="text-base font-semibold">{formatDateLocale(selectedDate, locale, { weekday: "long", day: "numeric", month: "long" })}</h2><p className="mt-0.5 text-xs text-muted-foreground">{t("agendaHint")}</p></div>
             {selectedItems.length === 0 ? <div className="p-8 text-center" data-testid="support-calendar-empty-day"><CalendarDays className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-2 text-sm font-medium">{t("noItemsSelectedDay")}</p><p className="mt-1 text-xs text-muted-foreground">{t("noItemsSelectedDayHint")}</p></div> : <div className="space-y-2 p-3">{selectedItems.slice(0, agendaLimit).map((item) => <CalendarItemButton key={`${item.type}-${item.id}`} item={item} onOpen={openItem} />)}{selectedItems.length > agendaLimit && <Button variant="outline" className="min-h-11 w-full" onClick={() => setAgendaLimit((current) => current + PAGE_SIZE)} data-testid="support-calendar-agenda-show-more">{t("showMore", { count: selectedItems.length - agendaLimit })}</Button>}</div>}
           </section>

@@ -2977,7 +2977,10 @@
     "supportLevelStandard": "Standard",
     "supportLevelPremium": "Premium",
     "supportLevelEnterprise": "Enterprise",
-    "supportLevelUnknown": "Support level not specified"
+    "supportLevelUnknown": "Support level not specified",
+    "customerContextAction": "Customer context",
+    "quickActionsSaveHint": "Quick status and assignment actions save immediately. Automatic assignment selects an agent using the current routing rules. Customer context opens related records.",
+    "fullControlsSaveHint": "Choose a status or agent, then press its save button. These controls update the same ticket as the quick actions."
   },
   "contracts": {
     "title": "Contracts",
@@ -7694,7 +7697,9 @@
       "planned": "Planned",
       "registration_open": "Registration Open",
       "scheduled": "Scheduled"
-    }
+    },
+    "displayTimezone": "Times shown in {timezone}",
+    "dateKinds": {"sla_due": "SLA deadline", "task_due": "Task deadline", "scheduled": "Scheduled time", "event_start": "Event start", "resolved": "Resolution time", "closed": "Closure time", "completed": "Completion time", "created": "Creation time", "undated_today": "No date; shown today", "unknown": "Date type unavailable"}
   },
   "portal": {
     "loyalty": {
@@ -10014,7 +10019,13 @@
     "confirmDelete": "Queue deletion",
     "applying": "Applying…",
     "appliedSuccess": "{name} applied successfully.",
-    "applyError": "The macro could not be applied. No partial result was kept."
+    "applyError": "The macro result could not be confirmed. Review the message in the confirmation dialog.",
+    "confirmEffectsHint": "Confirm to save every action below, in order, directly to this ticket. This does not insert a reply draft.",
+    "audienceHint": "Public comments are visible to the customer in the portal; internal notes are for your team. Applying this macro does not send an email or channel message. Your current reply draft stays unchanged.",
+    "publicComment": "Public comment — customer visible",
+    "confirmApply": "Apply these actions",
+    "previewStale": "The macro changed after this preview. Reload the page and review the current actions before applying.",
+    "applyRetrySafe": "The result could not be confirmed. Retry this confirmation with the same request; committed actions will not repeat. Check the ticket history before starting a new application."
   },
   "customer360": {
     "title": "Customer 360",

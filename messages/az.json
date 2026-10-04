@@ -2977,7 +2977,10 @@
     "supportLevelStandard": "Standart",
     "supportLevelPremium": "Premium",
     "supportLevelEnterprise": "Korporativ",
-    "supportLevelUnknown": "Dəstək səviyyəsi göstərilməyib"
+    "supportLevelUnknown": "Dəstək səviyyəsi göstərilməyib",
+    "customerContextAction": "Müştəri konteksti",
+    "quickActionsSaveHint": "Status və təyinat üzrə sürətli əməliyyatlar dərhal saxlanılır. Avtomatik təyinat cari yönləndirmə qaydaları ilə agent seçir. Müştəri konteksti əlaqəli qeydləri açır.",
+    "fullControlsSaveHint": "Status və ya agent seçin, sonra uyğun saxlama düyməsini basın. Bu sahələr sürətli əməliyyatlarla eyni müraciəti dəyişir."
   },
   "contracts": {
     "title": "Müqavilələr",
@@ -7690,7 +7693,9 @@
       "planned": "Planlaşdırılıb",
       "registration_open": "Qeydiyyat açıqdır",
       "scheduled": "Planlaşdırılıb"
-    }
+    },
+    "displayTimezone": "Saat qurşağı: {timezone}",
+    "dateKinds": {"sla_due": "SLA son müddəti", "task_due": "Tapşırığın son müddəti", "scheduled": "Planlaşdırılmış vaxt", "event_start": "Tədbirin başlanğıcı", "resolved": "Həll vaxtı", "closed": "Bağlanma vaxtı", "completed": "Tamamlanma vaxtı", "created": "Yaradılma vaxtı", "undated_today": "Tarixsiz; bu gün göstərilir", "unknown": "Tarix növü məlum deyil"}
   },
   "portal": {
     "loyalty": {
@@ -10010,7 +10015,13 @@
     "confirmDelete": "Silməni planlaşdır",
     "applying": "Tətbiq edilir…",
     "appliedSuccess": "{name} uğurla tətbiq edildi.",
-    "applyError": "Makro tətbiq edilmədi. Natamam dəyişiklik saxlanmadı."
+    "applyError": "Makronun nəticəsi təsdiqlənmədi. Təsdiq pəncərəsindəki mesajı yoxlayın.",
+    "confirmEffectsHint": "Təsdiq aşağıdakı bütün əməliyyatları göstərilən ardıcıllıqla müraciətə dərhal saxlayır. Bu, cavab qaralaması deyil.",
+    "audienceHint": "Açıq şərh portalda müştəriyə, daxili qeyd isə komandaya görünür. Makro e-poçt və ya kanal mesajı göndərmir. Cari cavab qaralaması dəyişmir.",
+    "publicComment": "Açıq şərh — müştəriyə görünür",
+    "confirmApply": "Bu əməliyyatları tətbiq et",
+    "previewStale": "Makro önbaxışdan sonra dəyişib. Səhifəni yeniləyin və tətbiqdən əvvəl cari əməliyyatları yoxlayın.",
+    "applyRetrySafe": "Nəticə təsdiqlənmədi. Eyni təsdiqi təkrarlayın: saxlanmış əməliyyatlar təkrar icra edilməyəcək. Yeni tətbiqdən əvvəl müraciətin tarixçəsini yoxlayın."
   },
   "customer360": {
     "title": "Müştəri 360",
