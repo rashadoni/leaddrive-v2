@@ -1,11 +1,11 @@
 import assert from "node:assert/strict"
 import { randomUUID, createHash } from "node:crypto"
 import { readFile, writeFile } from "node:fs/promises"
-import { PrismaClient } from "@prisma/client"
+import { makeRlsTestPrisma } from "../_rls.mjs"
 assert.equal(process.env.GITHUB_ACTIONS, "true"); assert.equal(process.env.CI, "true"); assert.equal(process.env.WF_POLICY_RESTORE_POSTGRES, "1")
 const url = new URL(process.env.ADMIN_DATABASE_URL)
 assert.equal(url.username, "postgres"); assert.equal(url.pathname, "/workforce_manager_today_browser"); assert.ok(["127.0.0.1", "localhost"].includes(url.hostname))
-const owner = new PrismaClient({ datasourceUrl: url.href })
+const owner = makeRlsTestPrisma(url.href)
 const org = "restore-migration-existing-org", user = "restore-migration-existing-user", id = "restore-migration-existing-draft"
 const path = "artifacts/workforce-policy-restore/additive-existing-row-before.json"
 const definition = { expectedWorkSeconds: 0, lateGraceSeconds: 0, undertimeToleranceSeconds: 0, overtimeThresholdSeconds: 0, longPauseThresholdSeconds: null }

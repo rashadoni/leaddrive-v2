@@ -26,7 +26,8 @@ await writeFile(directory + "/selected-canonical-guards.sql", sql, { flag: "wx" 
 const paths = [foundationPath, lifecyclePath, "scripts/ci/fixtures/workforce-manager-today-browser.sql",
   "scripts/ci/fixtures/workforce-policy-version-browser.sql", "scripts/ci/fixtures/workforce-policy-restore-writer.sql",
   "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql", "prisma/schema.prisma",
-  "scripts/ci/workforce-policy-restore-fixture.mjs"]
+  "scripts/ci/workforce-policy-restore-fixture.mjs", "scripts/ci/workforce-policy-restore-base-row.mjs",
+  "scripts/_rls.mjs", ".github/workflows/workforce-policy-restore-evidence.yml"]
 const sourceBindings = await Promise.all(paths.map(async path => { const raw = await readFile(path); return { path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") } }))
 await writeFile(directory + "/selected-baseline-source-bindings.json", JSON.stringify({ sourceBindings,
   selectedSql: { path: "selected-canonical-guards.sql", bytes: Buffer.byteLength(sql), sha256: createHash("sha256").update(sql).digest("hex") },

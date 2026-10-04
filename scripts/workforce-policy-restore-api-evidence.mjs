@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import bcrypt from "bcryptjs"
 import { request } from "playwright"
-import { PrismaClient } from "@prisma/client"
+import { makeRlsTestPrisma } from "./_rls.mjs"
 
 assert.equal(process.env.GITHUB_ACTIONS, "true"); assert.equal(process.env.CI, "true"); assert.equal(process.env.WF_POLICY_RESTORE_POSTGRES, "1")
 assert.notEqual(process.env.NODE_ENV, "production")
@@ -18,7 +18,7 @@ function database(value, role) {
 const ownerURL = database(process.env.ADMIN_DATABASE_URL, "postgres"), appURL = database(process.env.DATABASE_URL, "wf_policy_restore")
 assert.equal(ownerURL.host, appURL.host); assert.equal(database(process.env.EVENT_PLATFORM_TEST_DATABASE_URL, "postgres").href, ownerURL.href)
 assert.match(process.env.WF_POLICY_RESTORE_HEAD_SHA || "", /^[a-f0-9]{40}$/); assert.match(process.env.GITHUB_SHA || "", /^[a-f0-9]{40}$/)
-const owner = new PrismaClient({ datasourceUrl: ownerURL.href }), contexts = [], orgs = [], people = [], sourceIds = []
+const owner = makeRlsTestPrisma(ownerURL.href), contexts = [], orgs = [], people = [], sourceIds = []
 const directory = process.env.WF_POLICY_RESTORE_OUTPUT_DIR || "artifacts/workforce-policy-restore"
 await mkdir(directory, { recursive: true })
 const suffix = randomUUID(), password = `Fixture!9-${randomUUID()}`
@@ -200,7 +200,7 @@ finally {
     assert.equal(guards.length, 4); assert.ok(guards.every(row => row.tgenabled === "O")); cleanup.push({ action: "owner-scoped-removal-and-four-named-guards-restored", status: "PASS" })
   } catch { failed = true; cleanup.push({ action: "owner-scoped-removal-or-guard-restoration", status: "FAIL" }) }
   try { await owner.$disconnect(); cleanup.push({ action: "owner-disconnect", status: "PASS" }) } catch { failed = true; cleanup.push({ action: "owner-disconnect", status: "FAIL" }) }
-  const paths = ["scripts/workforce-policy-restore-api-evidence.mjs", "src/app/api/v1/workforce/configuration/policies/[id]/restore-draft/route.ts",
+  const paths = ["scripts/workforce-policy-restore-api-evidence.mjs", "scripts/_rls.mjs", "src/app/api/v1/workforce/configuration/policies/[id]/restore-draft/route.ts",
     "src/lib/workforce/policy-restore-draft.ts", "src/lib/workforce/policy-draft-write.ts", "src/lib/workforce/configuration-management.ts",
     "src/lib/with-workforce-rls-auth.ts", "src/lib/auth.ts", "src/proxy.ts", "src/lib/prisma.ts", "src/lib/rls-context.ts",
     "scripts/ci/fixtures/workforce-policy-restore-writer.sql", "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql"]
