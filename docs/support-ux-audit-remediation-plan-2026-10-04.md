@@ -41,7 +41,7 @@ UX01 + UX02a + UX03. Исследование UX02b фиксируется, но
 Support completed-day evidence до 20:00 UTC не запускать; это отдельное согласованное продолжение и не dependency правки UI.
 
 ## Checkpoint первого блока: реализация завершена, независимая приёмка ожидается
-- UX01: API null при active=0; UI/CSV «Нет данных», numerator/denominator, применённая область/период. Существующий operational denominator всех active (в том числе без SLA due date) сохранён и явно объяснён; метрика названа «Активные без просрочки SLA», не историческим compliance.
+- UX01: API null при active=0; UI/CSV в очереди Support и общем разделе reports «Нет данных», numerator/denominator, применённая область/период. Существующий operational denominator всех active (в том числе без SLA due date) сохранён и явно объяснён; метрика названа «Активные без просрочки SLA», не историческим compliance.
 - UX02a: переключатель сохранён как предпочтение, календарный расчёт назван у сроков/матрицы/preview/справки EN/RU/AZ. UX02b календарный движок НЕ реализован; сроки/паузы/reopen writers и история не изменены.
 - UX03: основные menu/title/list/help/SLA dependency labels согласованы; template copy объяснён на основании реального create-copy endpoint.
 - Targeted tests 73/73 в 6 файлах PASS. Изменённый production source и остальные test/help файлы ESLint PASS; api-reports-journeys.test.ts содержит 84 прежних no-explicit-any diagnostics, совпадающих с base по rule/message/source line; новых 0. Первая scoped lint попытка: 87 diagnostics сохранена в журнале исполнения: 84 прежних any + 3 прежних JSX-апострофа; последние исправлены без изменения правил. Whole-file lint этого legacy test не объявляется чистым.
