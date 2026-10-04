@@ -307,7 +307,10 @@ pgDescribe("hosted employee impact SELECT-only coherent PostgreSQL projection", 
       "scripts/ci/fixtures/workforce-policy-version-browser.sql", "prisma/schema.prisma",
       ".github/workflows/workforce-policy-employee-impact-evidence.yml", "src/lib/workforce/policy-definition.ts",
       "src/lib/workforce/policy-resolution.ts", "src/lib/workforce/policy-future-window-preview.ts", "src/lib/timezone.ts",
-      "src/lib/mtm-settings.ts", "src/lib/mtm/mobile-week.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/with-rls.ts"]
+      "src/lib/mtm-settings.ts", "src/lib/mtm/mobile-week.ts", "src/lib/with-workforce-rls-auth.ts", "src/lib/with-rls.ts",
+      "src/lib/api-auth.ts", "src/lib/workforce/sensitive-response.ts", "src/lib/workforce/sensitive-operation-log.ts",
+      "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql", "prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql",
+      "prisma/migrations/20260829140000_workforce_system_provisioning_defaults/migration.sql", "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql"]
     const sourceBindings = await Promise.all(paths.map(async path => { const raw = await readFile(path); return { path, bytes: raw.length,
       sha256: createHash("sha256").update(raw).digest("hex") } }))
     const directory = process.env.WF_POLICY_IMPACT_OUTPUT_DIR || "artifacts/workforce-policy-employee-impact"

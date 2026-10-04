@@ -374,9 +374,14 @@ try {
     "src/components/workforce/workforce-policy-employee-impact-preview.tsx", "src/components/workforce/workforce-policy-version-comparison.tsx",
     "src/app/api/v1/workforce/configuration/policies/[id]/employee-impact/route.ts", "src/app/api/v1/workforce/configuration/policies/search/route.ts", "src/app/api/v1/workforce/configuration/policies/compare/route.ts",
     "src/lib/workforce/policy-definition.ts", "src/lib/workforce/policy-resolution.ts", "src/lib/workforce/policy-future-window-preview.ts", "src/lib/with-workforce-rls-auth.ts",
-    "src/lib/auth.ts", "src/lib/rls-context.ts", "src/lib/prisma.ts", "src/lib/rate-limit.ts", "src/proxy.ts", "src/lib/with-rls.ts", "src/components/providers.tsx",
-    "src/components/ui/button.tsx", "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx", "src/app/(dashboard)/layout.tsx", "src/lib/timezone.ts",
-    "src/lib/mtm-settings.ts", "src/lib/mtm/mobile-week.ts", "messages/en.json", "messages/ru.json", "messages/az.json", "prisma/schema.prisma", "package.json", "package-lock.json"]
+    "src/lib/auth.ts", "src/lib/api-auth.ts", "src/lib/workforce/sensitive-response.ts", "src/lib/workforce/sensitive-operation-log.ts",
+    "src/lib/rls-context.ts", "src/lib/prisma.ts", "src/lib/rate-limit.ts", "src/proxy.ts", "src/lib/with-rls.ts", "src/components/providers.tsx",
+    "src/components/ui/button.tsx", "src/components/ui/input.tsx", "src/components/ui/select.tsx",
+    "src/components/workforce/workforce-policy-restore-draft.tsx", "src/components/workforce/workforce-policy-future-window-preview.tsx",
+    "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx", "src/app/(dashboard)/layout.tsx", "src/lib/timezone.ts",
+    "src/lib/mtm-settings.ts", "src/lib/mtm/mobile-week.ts", "messages/en.json", "messages/ru.json", "messages/az.json", "prisma/schema.prisma", "package.json", "package-lock.json",
+    "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql", "prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql",
+    "prisma/migrations/20260829140000_workforce_system_provisioning_defaults/migration.sql", "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql"]
   const sourceBindings = await Promise.all(paths.map(async path => { const raw = await readFile(path); return { path, bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex") } }))
   await writeFile(directory + "/employee-impact-browser-receipt.json", JSON.stringify({ status: failed ? "FAIL" : "PASS", stage, failure,
     cases, requiredCases: 17, sessions, http, workforceRequests: { count: requests.length, allGet: requests.every(r => r.method === "GET") }, cleanup, sourceBindings,
