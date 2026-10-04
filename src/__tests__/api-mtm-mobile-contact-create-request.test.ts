@@ -48,6 +48,28 @@ beforeEach(() => {
 })
 
 describe("POST mobile doctor create request", () => {
+  it("refuses the request once the organization switches it off for its agents", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValueOnce([
+      { key: "agentContactCreateRequests", value: false },
+    ] as never)
+
+    const response = await POST(request(body))
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      code: "MTM_AGENT_PERMISSION_DISABLED",
+      permission: "contactCreateRequest",
+    })
+    expect(prisma.mtmContactCreateRequest.create).not.toHaveBeenCalled()
+
+    // The agent still reads what became of the requests they sent earlier.
+    vi.mocked(prisma.mtmContactCreateRequest.findMany).mockResolvedValueOnce([] as never)
+    const list = await GET(new NextRequest("http://localhost/api/v2/mtm/mobile/route-field/contact-create-requests", {
+      headers: { Authorization: "Bearer mobile" },
+    }))
+    expect(list.status).toBe(200)
+  })
+
   it("submits for manager review and returns possible duplicates", async () => {
     const response = await POST(request(body))
     expect(response.status).toBe(201)

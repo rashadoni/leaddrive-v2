@@ -20,7 +20,8 @@ import {
   resolveMtmRouteActor,
 } from "@/lib/mtm/route-permissions"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
-import { getMtmSettings } from "@/lib/mtm-settings"
+import { getMtmSettings, MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
+import { coerceMtmBooleanSetting } from "@/lib/mtm/setting-values"
 import { validateMtmMobileRouteTargetEligibility, validateMtmRouteTargets } from "@/lib/mtm/route-targets"
 import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
@@ -166,7 +167,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       }
     }
 
-    const [routes, total, selfPublishSetting] = await Promise.all([
+    const [routes, total, selfPublishSetting, customerRequestSetting] = await Promise.all([
       prisma.mtmRoute.findMany({
         where,
         skip: (page - 1) * limit,
@@ -178,6 +179,14 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       actor.role === "AGENT"
         ? prisma.mtmSetting.findUnique({
             where: { organizationId_key: { organizationId: auth.orgId, key: "routeSelfPublish" } },
+            select: { value: true },
+          })
+        : Promise.resolve(null),
+      // "What an agent may do": the organization can switch the request for a
+      // new organization off. Absent row = the default, which is on.
+      actor.role === "AGENT"
+        ? prisma.mtmSetting.findUnique({
+            where: { organizationId_key: { organizationId: auth.orgId, key: "agentCustomerCreateRequests" } },
             select: { value: true },
           })
         : Promise.resolve(null),
@@ -198,7 +207,10 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
             && settingEnabled(selfPublishSetting?.value)
           ),
           canReview: actor.role === "ADMIN" || actor.role === "MANAGER" || actor.role === "SUPERVISOR",
-          canRequestCustomer: actor.agentId !== null,
+          canRequestCustomer: actor.agentId !== null && (
+            actor.role !== "AGENT"
+            || coerceMtmBooleanSetting(customerRequestSetting?.value, MTM_SETTING_DEFAULTS.agentCustomerCreateRequests)
+          ),
           actorAgentId: actor.agentId,
         },
       },

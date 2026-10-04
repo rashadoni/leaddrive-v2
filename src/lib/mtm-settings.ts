@@ -96,6 +96,16 @@ export const MTM_SETTING_DEFAULTS = {
   // agent or editing manager-owned task content.
   taskSelfCreate: true,
   taskSelfRecurring: true,
+  // What a field agent may ask for (matrix "what an agent may do",
+  // src/lib/mtm/agent-permissions.ts). An agent never changes clients or
+  // organizations directly; these switch off even the request. Default ON —
+  // the requests existed before the switches did.
+  //   - a request to add a new client (doctor) from the field app;
+  //   - a change request on an existing client's card;
+  //   - a request to add a new organization.
+  agentContactCreateRequests: true,
+  agentContactChangeRequests: true,
+  agentCustomerCreateRequests: true,
   // Pharmacy promotion definitions, targets, and drafts remain inspectable
   // while this is false. Submit, review, and ledger posting all fail closed.
   // Enabling it is deliberately a separate tenant action after signed
