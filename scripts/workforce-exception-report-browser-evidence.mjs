@@ -346,7 +346,8 @@ async function localeScenario(tenant, locale, width) {
   await view.page.screenshot({ path: `${outputDirectory}/report-${locale}-${width}-nonempty.png`, fullPage: true })
   assert.ok((await view.page.locator('section[aria-labelledby="workforce-exception-report-summary"]').innerText()).includes(view.ui.summaryTitle))
   assert.equal(await view.page.getByTestId("workforce-exception-report-boundary").count(), 1)
-  const region = view.page.getByRole("region", { name: view.ui.typesTitle, exact: true })
+  const region = view.page.locator('section[aria-labelledby="workforce-exception-report-types"]').getByRole("region", { name: view.ui.typesTitle, exact: true })
+  assert.equal(await region.count(), 1)
   assert.equal(await region.getAttribute("tabindex"), "0")
   let keyboardControls = false
   if (locale === "ru") {

@@ -6062,6 +6062,11 @@ A private successor `codex/workforce-completion-part25` was created in the same 
 - Actual23:28:12–23:28:21Z Node20 targetedESLint of both changed filesEXIT0 and existing9refusalguards9/9PASS. Earlier syntaxEXIT0 still applies to byte-identical fixed harness. CORE originals rawscanEXIT0 excluding binaryZIP, deterministictar.xz member/tmp byte parity verified. No local fullcompiler/fullbuild/suite/PG/browser/Android/load: NOT RUN per host placement. Exact fix-head source/evidence review, fresh-main and normal update of existingPR563 then actualnewheadnative/report/Today/Calendar runs required; no749merge, no report9 runtime credit. Progress remains81/161 DONE,14/15 GATES,C836%,overall59%/80nonDONE.
 
 
+### 2026-10-03T23:56Z — second actual report FAIL preserved
+
+d3d8/report37162739337 FAIL,0cases; immutableP2 /tmp/workforce563-d3d8-report-browser-failure-independent.json SHA d164757e80ee44ba272c4df5c44f1776f9cbff0b527bead241896e9e59dae87e. Full132480-byteZIP11288123311/90612-bytelog retained/tmp+hosted, not CORE. Inferred duplicate named-region cause: scoped existing inner-region locator and require count1; label/tabindex/native-focus assertions/UI/baselines unchanged. Syntax/lint0, refusal9PASS; newhead review/runtime required.59% unchanged.
+
+
 ### 2026-10-03T23:11:03.447505+00:00 — own562 release and own563 exact-source publication; private receipt successor
 
 - Own docsPR562 normal route completed: candidate495052f9a7e2552c8518bb2351c387c538fc17d1/basea68, normalmerge2b6ca9b0390c2ea5bfa738c68428bab2cea59ecd, own deploy37159299784 wholeSUCCESS. Four jobs SUCCESS: build111309182686, quality111309182834, deploy/smoke111311998742, retention111312923719. Exact artifact11286702744/run37159299784/full2b6,443956918bytes/digestb8310fea1d081b1617b120dd3d2696af25cdbf6bf15e797787ff323fd6080df9. Actual mandatory newPG9/9 zeroSKIP3972ms, fourfiles42PASS13.60s; baseline18existingfailures/no-new blocker gate, not clean-suite claim.
