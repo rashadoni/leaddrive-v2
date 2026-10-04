@@ -5746,6 +5746,20 @@ A private successor `codex/workforce-completion-part25` was created in the same 
 - Progress unchanged DONE81/161,GATES14/15,C836%,overall59%,80non-DONE. Next: exact docs-only independent review/currentgates/freshmain/normalrelease, then integrate its main into preserved privateUI, archive own560rawreceipt originals, actual hosted newreportbrowser and codegates. Full localbuild/type/suite/browser/Android/load NOT RUN per host contract.
 
 
+### 2026-10-04T00:39:39.574626+00:00 — bounded report denial-response containment repair
+
+- Current PR563 af29 actual report37164925497/job111325789512 FAIL after6/9 PASS; strictAZ/ENduration passed. Denied-team HTTP403 passed but no-store assertion385:10 failed. Reviewer reports exact525820-byteZIP11289207455/SHA190d921922f17a7320b9a9690259658a55639331e5c0f2c11e7bfe52d3fa249e and91705-bytewholelogd0f68d21e4d3fe400bf181f300306eddf2017b00f0b95833b0326b90ac6f00be; root full original reread and immutable independentP2 closure pending. Earlier4/9 durationFAIL remains unchanged; newrun safe AZequal:false establishes current Node/Chromium oracle divergence only. No report9/9/release/DONE credit.
+- Ownpart29 starts exactfreshmain2b6 in authorizedworktree. Safety plan: apply existing sensitive headers outside this report route authorization wrapper, preserving all grant/session/capability decisions, delegated status/body/context and no handler invocation for denials; catch thrown wrapper failures with fixed503/privacylog. Verify delegated denial/success/error/noDB contracts and existing aggregate route tests, then exactauthorlessreview/five hostednativegates/freshmain normalmerge/deploy/publicSHA. Separate small repair is necessary because PR563 full399988/400000 cap cannot accommodate newsource; cap/checks stay unchanged, no previousreceipts removed. Integrate repairedmain into563 normally and repeat actual hostedreport9 before UIrelease.
+- Prepared narrow reportsource and meaningful9test draft; allnew checks NOT RUN at this draft point. Full local build/typecheck/fullsuite/browser/PG/Android/load NOT RUN under hostplacement; CI required. ConfirmedDONE81/161,GATES14/15,C836%,overall59% unchanged; autonomouswork continues.
+
+
+### 2026-10-04T00:42:59.400757+00:00 — targeted repair verification and immutable failure originals
+
+- Root personally read full immutableaf29P2 report29792/SHA0816f44c31b9578625f40e1e18a0fcd9fd2bbb0efe12b62b991f71e56edc6251 and personallydownloaded fullrun/jobs/artifacts/91705bytejoblog/525820byteZIP. All10 artifactmembers are ordinarybounded JSON/PNG and fullZIP/log exactlymatch independentdigests. Actual6PASS, denied-team no-storeFAIL, AZequal:false and seven cleanupPASS are retained; no afterfingerprint/audit/remaining3case proof.
+- Actual19/19 targeted2suites PASS/oneworker1.55s; reportsource/newdenialtest/existingreporttest ESLintEXIT0. Newtests exercise unchangeddelegatedstatus/body/headers/context,401/capability403/admin403/grant403/429/lookup503 without storage/aggregate/auditcalls and privacy-safe thrownwrapper503. They are mockedboundary tests; actualrepaired realauth/browser remainsrequired on integratedPR563.
+- Losslesspacket docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04.json binds15deterministicgzip originals, including fullfailedjoblog/three safeJSON/immutableP2+inputaudit/rootAPIs/localchecks. Actualraw13original181270bytes scanEXIT0; gitleaksconfig/allowlists unchanged. FulloriginalZIP/sevenPNG explicitly external/tmp+hostedbound, not embedded; complete rawvisualpublication pending, no omitted-full-log claim. Source/exactreview/native/release/public proof pending; heavy localgates NOT RUN.59%unchanged.
+
+
 ### 2026-10-03T21:54Z — private part25 recorded-outcomes report presentation checkpoint
 
 - User instruction remains autonomous completion/release; do not stop at checkpoints. Same authorized worktree, `codex/workforce-completion-part25`, origin `rashadoni/leaddrive-v2`; release only reviewed main -> deploy.yml -> 13.140.132.245 `/opt/leaddrive-v2`.
