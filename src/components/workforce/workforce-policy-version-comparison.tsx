@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import type { WorkforcePolicyVersionComparison } from "@/lib/workforce/policy-version-comparison"
 import { WorkforcePolicyFutureWindowSection } from "@/components/workforce/workforce-policy-future-window-preview"
+import { WorkforcePolicyRestoreDraftSection } from "@/components/workforce/workforce-policy-restore-draft"
+import type { WorkforcePolicyRestoreSource } from "@/lib/workforce/policy-restore-receipt"
 
 type Choice = {
   id: string; name: string; version: number; status: "DRAFT" | "ACTIVE" | "RETIRED"
@@ -70,6 +72,7 @@ function ComparisonForSession({ status, userId, organizationId }: {
   const [searching, setSearching] = useState(false), [comparing, setComparing] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null), [comparisonError, setComparisonError] = useState<string | null>(null)
   const [denied, setDenied] = useState<"permission" | "session" | null>(null)
+  const [restoreHeld, setRestoreHeld] = useState(false), restoreHeldRef = useRef(false)
   const alive = useRef(false), requests = useRef({ search: 0, compare: 0 })
   const controllers = useRef<{ search: AbortController | null; compare: AbortController | null }>({ search: null, compare: null })
   useEffect(() => {
@@ -80,11 +83,21 @@ function ComparisonForSession({ status, userId, organizationId }: {
   function deny(reason: "permission" | "session" = "permission") {
     controllers.current.search?.abort(); controllers.current.compare?.abort()
     requests.current.search++; requests.current.compare++
-    setDenied(reason); setSearch(null); setFrom(null); setTo(null); setComparison(null)
+    restoreHeldRef.current = false; setRestoreHeld(false)
+    setDenied(reason); setQuery(""); setSearch(null); setFrom(null); setTo(null); setComparison(null)
     setSearching(false); setComparing(false); setSearchError(null); setComparisonError(null)
+  }
+  function holdRestore(held: boolean) {
+    restoreHeldRef.current = held; setRestoreHeld(held)
+    if (held) {
+      controllers.current.search?.abort(); controllers.current.compare?.abort()
+      requests.current.search++; requests.current.compare++
+      setSearching(false); setComparing(false)
+    }
   }
   async function find(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (restoreHeldRef.current) return
     const q = query.trim()
     if (q.length < 2 || q.length > 100 || /[\u0000-\u001f]/u.test(q)) { setSearchError(t("queryHint")); return }
     controllers.current.search?.abort()
@@ -104,6 +117,7 @@ function ComparisonForSession({ status, userId, organizationId }: {
   }
   const choices = Array.from(new Map([...(search?.policies ?? []), ...(from ? [from] : []), ...(to ? [to] : [])].map(row => [row.id, row])).values())
   function choose(side: "from" | "to", id: string) {
+    if (restoreHeldRef.current) return
     controllers.current.compare?.abort(); requests.current.compare++
     setComparison(null); setComparisonError(null); setComparing(false)
     const choice = choices.find(row => row.id === id) ?? null
@@ -111,7 +125,7 @@ function ComparisonForSession({ status, userId, organizationId }: {
   }
   const pairValid = Boolean(from && to && from.id !== to.id && from.version !== to.version && from.teamId === to.teamId)
   async function compare() {
-    if (!from || !to || !pairValid) return
+    if (!from || !to || !pairValid || restoreHeldRef.current) return
     controllers.current.compare?.abort()
     const controller = new AbortController(), request = ++requests.current.compare
     controllers.current.compare = controller; setComparison(null); setComparisonError(null); setComparing(true)
@@ -129,19 +143,22 @@ function ComparisonForSession({ status, userId, organizationId }: {
   }
   const label = (choice: Choice) => `${choice.name} · ${t("version", { value: number.format(choice.version) })} · ${choice.teamId === null ? t("organizationScope") : choice.team?.name ?? t("teamUnavailable")} · ${t("statuses." + choice.status)}`
   const ready = status === "authenticated" && Boolean(userId) && Boolean(organizationId)
+  const restoreSource: WorkforcePolicyRestoreSource | null = comparison && (comparison.to.status === "ACTIVE" || comparison.to.status === "RETIRED")
+    ? { ...comparison.to, status: comparison.to.status, teamId: comparison.scope.teamId, teamName: to?.team?.name ?? null } : null
   return <section className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{t("subtitle")}</p></div><Button asChild variant="outline" className="min-h-11"><Link href="/workforce/configuration"><ArrowLeft aria-hidden="true" />{t("back")}</Link></Button></div>
     <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm leading-6">{t("boundary")}</p>
     {!ready || denied ? <p role="status" className="rounded-lg border p-4 text-sm">{t(denied === "permission" ? "denied" : status === "loading" ? "sessionLoading" : "signIn")}</p> : <>
-      <form onSubmit={find} className="space-y-3"><label htmlFor="workforce-policy-version-query" className="block text-sm font-medium">{t("searchLabel")}</label><div className="flex flex-col gap-3 sm:flex-row"><Input id="workforce-policy-version-query" value={query} onChange={event => setQuery(event.target.value)} minLength={2} maxLength={100} required aria-describedby="workforce-policy-version-query-hint" className="min-h-11 sm:max-w-xl" /><Button type="submit" disabled={searching} className="min-h-11">{searching ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{t(searching ? "searching" : "search")}</Button></div><p id="workforce-policy-version-query-hint" className="text-sm text-muted-foreground">{t("queryHint")}</p></form>
+      <form onSubmit={find} className="space-y-3"><label htmlFor="workforce-policy-version-query" className="block text-sm font-medium">{t("searchLabel")}</label><div className="flex flex-col gap-3 sm:flex-row"><Input id="workforce-policy-version-query" value={query} onChange={event => setQuery(event.target.value)} disabled={restoreHeld} minLength={2} maxLength={100} required aria-describedby="workforce-policy-version-query-hint" className="min-h-11 sm:max-w-xl" /><Button type="submit" disabled={searching || restoreHeld} className="min-h-11">{searching ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{t(searching ? "searching" : "search")}</Button></div><p id="workforce-policy-version-query-hint" className="text-sm text-muted-foreground">{t("queryHint")}</p></form>
       {searchError ? <p role="alert" className="text-sm text-destructive">{searchError}</p> : null}
       {search ? <div role="status" className="text-sm text-muted-foreground"><p>{t(search.policies.length ? "searchResults" : "empty", { query: search.query, count: number.format(search.policies.length) })}</p>{search.hasMore ? <p className="mt-1">{t("refine")}</p> : null}</div> : null}
-      <div className="grid gap-4 sm:grid-cols-2">{(["from", "to"] as const).map(side => <Select key={side} id={"workforce-policy-version-" + side} label={t(side)} value={(side === "from" ? from : to)?.id ?? ""} onChange={event => choose(side, event.target.value)} className="min-h-11"><option value="">{t("choose")}</option>{choices.map(choice => <option key={choice.id} value={choice.id}>{label(choice)}</option>)}</Select>)}</div>
+      <div className="grid gap-4 sm:grid-cols-2">{(["from", "to"] as const).map(side => <Select key={side} id={"workforce-policy-version-" + side} label={t(side)} value={(side === "from" ? from : to)?.id ?? ""} onChange={event => choose(side, event.target.value)} disabled={restoreHeld} className="min-h-11"><option value="">{t("choose")}</option>{choices.map(choice => <option key={choice.id} value={choice.id}>{label(choice)}</option>)}</Select>)}</div>
       <p className="text-sm text-muted-foreground">{t("pairHint")}</p>
-      <Button type="button" onClick={() => void compare()} disabled={!pairValid || comparing} className="min-h-11">{comparing ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : <GitCompareArrows aria-hidden="true" />}{t(comparing ? "comparing" : "compare")}</Button>
+      <Button type="button" onClick={() => void compare()} disabled={!pairValid || comparing || restoreHeld} className="min-h-11">{comparing ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : <GitCompareArrows aria-hidden="true" />}{t(comparing ? "comparing" : "compare")}</Button>
       {comparisonError ? <p role="alert" className="text-sm text-destructive">{comparisonError}</p> : null}
       {comparison ? <WorkforcePolicyComparisonTable comparison={comparison} /> : null}
       <WorkforcePolicyFutureWindowSection key={JSON.stringify([to?.id, to?.version, to?.status])} choice={to} onDenied={deny} />
+      <WorkforcePolicyRestoreDraftSection key={JSON.stringify(restoreSource)} source={restoreSource} onDenied={deny} onHold={holdRestore} />
     </>}
   </section>
 }

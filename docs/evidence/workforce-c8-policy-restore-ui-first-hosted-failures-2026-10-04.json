@@ -1,0 +1,315 @@
+{
+  "schemaVersion": 1,
+  "status": "FIRST_FAILURE_PRESERVED_CORRECTION_SOURCE_ONLY",
+  "independent": false,
+  "atUtc": "2026-10-04T11:22:07.211409+00:00",
+  "head": "ef358e6b5a10e65b0f01f70e4731e3a873c54592",
+  "base": "100bc9b0bda7ea16fd1e89e9d3eaf5245c7447de",
+  "checkedMergeSha": "3bffe7ad91c3caeb43d2ac38af7ac383a8fdc85b",
+  "completePublication": false,
+  "externalOriginalBoundary": "Whole run/job/log/ZIP and all decoded members remain immutable complete external originals on persistent Contabo. This file is a metadata manifest, not lossless publication of all originals or independent runtime acceptance.",
+  "runs": [
+    {
+      "runId": 37197463681,
+      "jobId": 111422171036,
+      "conclusion": "failure",
+      "originals": [
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/run.json",
+          "bytes": 12928,
+          "sha256": "3e519640f6ae5bfdcc5dc9eb49b2f62a102506be8e39faa4a6a43488f00c192f"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/jobs.json",
+          "bytes": 3912,
+          "sha256": "3b89fef8c12681c428f484b18df29d68f40be54e1d7062aa420129d5d3e20e4e"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifacts.json",
+          "bytes": 799,
+          "sha256": "62775dd1f833fd6edf9c2287c13f4a394bb74729f6defc5291eea0797be3221c"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/job-111422171036-whole.log",
+          "bytes": 184323,
+          "sha256": "09e3fab5f6136eb4391eb0166141f5072b9c18c33b2c81183a2cb3094b7e23de"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-original.zip",
+          "bytes": 71167,
+          "sha256": "9d1f083f8ba3af20e29332f6fa8f09a5ac119d1afa4bb1884f3f8486a3608c1b"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/complete-artifact-proof.json",
+          "bytes": 2392,
+          "sha256": "05e63e65bb3385844a8bb896b93956856b37b5f626c3d278908b8c919c835658"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/additive-existing-row-after.json",
+          "bytes": 615,
+          "sha256": "c60ba9c56361d2bac1cd34e60d2254a8a181617561095687c64a3d57497bb395"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/additive-existing-row-before.json",
+          "bytes": 3586,
+          "sha256": "ae8d0a8368ffebe48d73cd713adf10b7d038c5deb4c1f0056f0c1e1a9ae430e0"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/restore-authorized-api-receipt.json",
+          "bytes": 9164,
+          "sha256": "c02f66cc570203665e32252eefd6ccea45524f663f2fbbd8667a6bc4d912fc91"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/restore-postgres-receipt.json",
+          "bytes": 3619,
+          "sha256": "53a503d0bacdf1dfca33d875ab42147e1dbcefcb4fd942b092ff54204c86ab16"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/restore-rendered-ui-receipt.json",
+          "bytes": 7491,
+          "sha256": "89b0c1f65e636d5fef83d6616dccc9c8855e284b2a16e00befb5221d0f10c875"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/restore-ui-original-failure.png",
+          "bytes": 58687,
+          "sha256": "6d98d289a2d5431afdc02fdae2b17bf7e5943307e7e75eba957997117a37c049"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/selected-baseline-source-bindings.json",
+          "bytes": 2612,
+          "sha256": "1e55c53d5c007cadf05e90949ee477cd53e876dac14503471e761f7c4b5ed1a5"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/selected-canonical-guards.sql",
+          "bytes": 2742,
+          "sha256": "52d7efe5d0f1ebfb4e36a3124bfd2a62b1cde3f68c3e97d2286d87deb1fa054f"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/selected-pre-anchor-conversion.json",
+          "bytes": 38497,
+          "sha256": "a3c7a56174141b91b0861958223a37c872caf8fce85082e09e2f57766ca9a0c3"
+        }
+      ],
+      "artifactCompleteUniqueMembers": 9
+    },
+    {
+      "runId": 37197463713,
+      "jobId": 111422171591,
+      "conclusion": "failure",
+      "originals": [
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/run.json",
+          "bytes": 12936,
+          "sha256": "6b54f24c6395e6ac55a5207d081e46ed351d98ac94a67b1af569ba6536b43ef8"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/jobs.json",
+          "bytes": 3577,
+          "sha256": "0367d8bb39a75b4c4e92eddf456703268d2b7384090d89d4531f2046e2e91ded"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/artifacts.json",
+          "bytes": 806,
+          "sha256": "990ae95644d3cc43fd2e216b113501208dc62d58d478f69aea95f4174d6a218b"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/job-111422171591-whole.log",
+          "bytes": 89529,
+          "sha256": "55e798e635e82567ac69ea8b95b68b5f35332dcce055ba9d137139679aaec1e7"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/artifact-original.zip",
+          "bytes": 44365,
+          "sha256": "a61f8d85bc9b94a97040b6f5ad45f9dda5645818cc8624c067ae0114fa66641a"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/complete-artifact-proof.json",
+          "bytes": 1124,
+          "sha256": "868ff11e90c8b3cdd70d18d2162e9de5764e148a0ec8605fc69961edfc47ff1a"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/artifact-complete/failure-original.png",
+          "bytes": 44272,
+          "sha256": "f2f5613d85392394534edc873119bc3c755c8b621b6cdee4831f6ea0d7e90824"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/artifact-complete/manager-today-receipt.json",
+          "bytes": 5764,
+          "sha256": "e708ac63f5f890bf57506d22833798bc6181b74ffb3638690aa1b203f21a7b2a"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/artifact-complete/workflow-context.json",
+          "bytes": 261,
+          "sha256": "a7277ad53435c04f69424f28822e289e279c3141d0921dbee501485f2b2f6e55"
+        },
+        {
+          "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/artifact-complete/workflow-failure.json",
+          "bytes": 219,
+          "sha256": "c9b2692f228591b67fd824afa0168e219f8331912201df2b548a6636d5a1f184"
+        }
+      ],
+      "artifactCompleteUniqueMembers": 4
+    }
+  ],
+  "restoreObservations": {
+    "selected-pre-anchor-conversion.json": {
+      "original": {
+        "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/selected-pre-anchor-conversion.json",
+        "bytes": 38497,
+        "sha256": "a3c7a56174141b91b0861958223a37c872caf8fce85082e09e2f57766ca9a0c3"
+      },
+      "status": "PASS",
+      "requiredCases": 13,
+      "completedCases": 13,
+      "failure": null,
+      "cleanup": null
+    },
+    "restore-postgres-receipt.json": {
+      "original": {
+        "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/restore-postgres-receipt.json",
+        "bytes": 3619,
+        "sha256": "53a503d0bacdf1dfca33d875ab42147e1dbcefcb4fd942b092ff54204c86ab16"
+      },
+      "status": "PASS",
+      "requiredCases": 11,
+      "completedCases": 11,
+      "failure": null,
+      "cleanup": [
+        {
+          "action": "owned-rows-removed-named-guards-restored",
+          "status": "PASS"
+        },
+        {
+          "action": "four-connection-context-absence",
+          "status": "PASS"
+        },
+        {
+          "action": "shared-app-disconnect",
+          "status": "PASS"
+        },
+        {
+          "action": "owner-disconnect",
+          "status": "PASS"
+        }
+      ]
+    },
+    "restore-authorized-api-receipt.json": {
+      "original": {
+        "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/restore-authorized-api-receipt.json",
+        "bytes": 9164,
+        "sha256": "c02f66cc570203665e32252eefd6ccea45524f663f2fbbd8667a6bc4d912fc91"
+      },
+      "status": "PASS",
+      "requiredCases": 9,
+      "completedCases": 9,
+      "failure": null,
+      "cleanup": [
+        {
+          "action": "owner-scoped-removal-and-four-named-guards-restored",
+          "status": "PASS"
+        },
+        {
+          "action": "owner-disconnect",
+          "status": "PASS"
+        }
+      ]
+    },
+    "restore-rendered-ui-receipt.json": {
+      "original": {
+        "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/restore-rendered-ui-receipt.json",
+        "bytes": 7491,
+        "sha256": "89b0c1f65e636d5fef83d6616dccc9c8855e284b2a16e00befb5221d0f10c875"
+      },
+      "status": "FAIL",
+      "requiredCases": 15,
+      "completedCases": 0,
+      "failure": {
+        "stage": "manual-en-320",
+        "name": "AssertionError",
+        "sourcePosition": {
+          "line": 168,
+          "column": 82
+        },
+        "diagnostic": "Fixed category/position only; no raw error, stack, credentials, tokens, cookies or response body"
+      },
+      "cleanup": [
+        {
+          "action": "scoped-row-removal-and-four-guards-restored",
+          "status": "PASS"
+        },
+        {
+          "action": "disconnect",
+          "status": "PASS"
+        }
+      ]
+    },
+    "additive-existing-row-after.json": {
+      "original": {
+        "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/additive-existing-row-after.json",
+        "bytes": 615,
+        "sha256": "c60ba9c56361d2bac1cd34e60d2254a8a181617561095687c64a3d57497bb395"
+      },
+      "status": "PASS",
+      "requiredCases": null,
+      "completedCases": 0,
+      "failure": null,
+      "cleanup": null
+    }
+  },
+  "todayObservation": {
+    "status": "FAIL",
+    "cases": 0,
+    "failure": {
+      "stage": "today-manager-ru-real-authentication",
+      "name": "TimeoutError",
+      "sourcePosition": {
+        "line": 484,
+        "column": 75
+      },
+      "check": "Inspect sourcePosition against harnessSha256; no raw error message recorded",
+      "diagnostic": "Original hosted assertion failed; no raw payload, stack, token or credentials uploaded",
+      "screenshot": "failure-original.png"
+    },
+    "cleanup": "PASS",
+    "original": {
+      "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/artifact-complete/manager-today-receipt.json",
+      "bytes": 5764,
+      "sha256": "e708ac63f5f890bf57506d22833798bc6181b74ffb3638690aa1b203f21a7b2a"
+    }
+  },
+  "rootSourceParity": {
+    "observations": 62,
+    "headGitBindings": 61,
+    "generatedBaseSchemaBindings": 1,
+    "generatedSchemaResolution": "100bc9b0bda7ea16fd1e89e9d3eaf5245c7447de:prisma/schema.prisma",
+    "todayHarnessExactHead": true,
+    "firstIncorrectGeneratedAsHeadLookupPreserved": {
+      "path": "/tmp/workforce571-ef-first-failure-primary/first-manifest-source-provenance-error-original.json",
+      "bytes": 366,
+      "sha256": "3fd8c6dea3c59f9f2edb553dcc4064243af755f045e19f4966771f4e9e15728a"
+    }
+  },
+  "rootViewedOriginalScreenshots": [
+    {
+      "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463681/artifact-complete/restore-ui-original-failure.png",
+      "bytes": 58687,
+      "sha256": "6d98d289a2d5431afdc02fdae2b17bf7e5943307e7e75eba957997117a37c049"
+    },
+    {
+      "path": "/tmp/workforce571-ef-first-failure-primary/run-37197463713/artifact-complete/failure-original.png",
+      "bytes": 44272,
+      "sha256": "f2f5613d85392394534edc873119bc3c755c8b621b6cdee4831f6ea0d7e90824"
+    }
+  ],
+  "rootDiagnosis": {
+    "restore": "Original genuine201 manual-en-320 creation confirmed, then strict assertion168:82 reads absent top-level receipt.sourcePolicyId; serializer and UI validator use receipt.creation.sourcePolicyId/sourceVersion. Correct only two harness property paths; retain status/hash/cache/rows/audit/geometry/all15 assertions. Prior source reviews missed this oracle contract mismatch.",
+    "today": "Original screenshot shows Next Turbopack Google-font internal module resolution Build Error during real authenticated page. Timeout caller484:75/0cases. Underlying network/dependency cause remains UNPROVEN; no baseline/grant/auth weakening or retroGREEN."
+  },
+  "newBoundedCorrection": {
+    "path": "/tmp/workforce571-harness-creation-path-fix-bounded-primary/proof.json",
+    "bytes": 4165,
+    "sha256": "12f0d524c40174d8d51598bb8275eabdb6431426bbb5e885d4102819aeddbaec"
+  },
+  "requiredNewHosted": "NOT RUN after correction; repeat exact candidate gates/runtime and independent review before merge",
+  "wholeWfC8011": "NON-DONE; overall59% unchanged"
+}
