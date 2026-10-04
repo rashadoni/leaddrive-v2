@@ -186,7 +186,7 @@ async function seed() {
     const issuer = people[0], reader = people[1]
     const team = await admin.mtmTeam.create({ data: { organizationId: organization.id, name: `Policy team ${index + 1}`, code: `POLICY-${suffix}-${index}`, isActive: true } })
     for (const principal of people.slice(1)) await admin.workforceAccessGrant.create({ data: {
-      organizationId: organization.id, principalUserId: principal.id, role: "HR_ADMIN", scopeKind: principal.key === "team-only" ? "TEAM" : "ORG",
+      organizationId: organization.id, principalUserId: principal.id, role: "HR_ADMIN", scopeKind: principal.key === "team-only" ? "TEAM" : "ORGANIZATION",
       scopeTeamId: principal.key === "team-only" ? team.id : null, scopeSiteId: null, scopeAgentId: null,
       effectiveFrom: earlier(2), effectiveUntil: null, operationId: `policy-${suffix}-${index}-${principal.key}`,
       grantedByUserId: issuer.id, grantReasonCode: "BROWSER_FIXTURE_ONLY",
