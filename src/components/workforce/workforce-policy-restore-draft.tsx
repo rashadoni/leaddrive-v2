@@ -19,6 +19,17 @@ const rejections: Record<string, { status: number; copy: string }> = {
   WORKFORCE_POLICY_RESTORE_NOT_FUTURE: { status: 409, copy: "notFuture" },
   WORKFORCE_POLICY_RESTORE_OPERATION_CONFLICT: { status: 409, copy: "conflict" },
 }
+function rejectionCopy(body: unknown, status: number): string | null {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) return null
+  const value = body as Record<string, unknown>
+  if (Object.keys(value).length !== 2 || !Object.hasOwn(value, "error") || !Object.hasOwn(value, "code")
+    || typeof value.code !== "string" || !Object.hasOwn(rejections, value.code)) return null
+  const rejection = rejections[value.code]
+  const generic = "This recorded policy cannot be restored with this request."
+  const validMessage = value.error === generic || (value.code === "WORKFORCE_POLICY_RESTORE_INPUT_INVALID"
+    && value.error === "Choose a recorded policy, name and future start date.")
+  return rejection.status === status && validMessage ? rejection.copy : null
+}
 
 /** Selection and session keys belong to the parent; a held write cannot change its source. */
 export function WorkforcePolicyRestoreDraftSection({ source, onDenied, onHold }: {
@@ -69,9 +80,9 @@ export function WorkforcePolicyRestoreDraftSection({ source, onDenied, onHold }:
       if (body?.success === true && validWorkforcePolicyRestoreReceipt(body.data?.restore, response.status, source, request)) {
         setReceipt(body.data.restore); uncertain.current = false; setPhase("created"); onHold(false); return
       }
-      const rejection = typeof body?.code === "string" && Object.hasOwn(rejections, body.code) ? rejections[body.code] : null
-      if (!uncertain.current && body?.success !== true && rejection?.status === response.status) {
-        submitted.current = null; setPhase("edit"); setDetails(null); setError(t(rejection.copy)); onHold(false); return
+      const rejection = rejectionCopy(body, response.status)
+      if (!uncertain.current && rejection) {
+        submitted.current = null; setPhase("edit"); setDetails(null); setError(t(rejection)); onHold(false); return
       }
       uncertain.current = true; setPhase("unknown")
     } catch { if (current()) { uncertain.current = true; setPhase("unknown") } }

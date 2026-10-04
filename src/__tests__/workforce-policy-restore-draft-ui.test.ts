@@ -53,8 +53,9 @@ function receipt(index = pending.length - 1, replayed = false) {
     creation: { policyId: "opaque-created", teamId: null, version: 3, name: body.name, effectiveFrom: body.effectiveFrom,
       effectiveTo: null, definitionHash: source.definitionHash, createdAt: "2026-10-04T12:01:02.003Z", statusAtCreation: "DRAFT", sourcePolicyId: source.id, sourceVersion: 2 } }
 }
-const reply = (value: unknown, status = 201, code = "") => new Response(JSON.stringify({ success: status === 200 || status === 201,
-  data: { restore: value }, code, error: "PRIVATE_ERROR_PAYLOAD" }), { status })
+const reply = (value: unknown, status = 201, code = "") => new Response(JSON.stringify(status < 400
+  ? { success: true, data: { restore: value } }
+  : { code, error: code.startsWith("WORKFORCE_POLICY_RESTORE_") ? "This recorded policy cannot be restored with this request." : "PRIVATE_ERROR_PAYLOAD" }), { status })
 async function select(side: string, id: string) {
   await act(async () => { const picker = container.querySelector<HTMLSelectElement>("#workforce-policy-version-" + side)!; picker.value = id; picker.dispatchEvent(new Event("change", { bubbles: true })) })
 }
@@ -118,6 +119,25 @@ describe("manual restore creation and immutable uncertain retries", () => {
     expect(section().textContent).toContain(texts().notFuture); expect(section().textContent).not.toContain("PRIVATE_ERROR_PAYLOAD")
     expect(section().querySelector("form")).not.toBeNull(); expect(held).toHaveBeenLastCalledWith(false)
     await submit(); expect(request().operationId).toBe("operation-2-opaque")
+  })
+  it.each(["Choose a recorded policy, name and future start date.", "This recorded policy cannot be restored with this request."])("honors both actual INPUT_INVALID400 fixed wire messages", async error => {
+    await act(async () => render()); await submit()
+    await act(async () => pending[0].resolve(new Response(JSON.stringify({ error, code: "WORKFORCE_POLICY_RESTORE_INPUT_INVALID" }), { status: 400 })))
+    expect(section().querySelector("form")).not.toBeNull(); expect(section().textContent).toContain(texts().invalid)
+    expect(held).toHaveBeenLastCalledWith(false)
+  })
+  it.each([
+    { code: "WORKFORCE_POLICY_RESTORE_NOT_FUTURE" },
+    { code: "WORKFORCE_POLICY_RESTORE_NOT_FUTURE", error: null },
+    { code: "WORKFORCE_POLICY_RESTORE_NOT_FUTURE", error: "PRIVATE_ERROR_PAYLOAD" },
+    ...[false, true, "false", 0].map(success => ({ code: "WORKFORCE_POLICY_RESTORE_NOT_FUTURE", error: "This recorded policy cannot be restored with this request.", success })),
+    { code: "WORKFORCE_POLICY_RESTORE_NOT_FUTURE", error: "This recorded policy cannot be restored with this request.", data: {} },
+  ])("holds identity for a malformed recognized409 error envelope", async body => {
+    await act(async () => render()); await submit(); const original = pending[0].options.body
+    await act(async () => pending[0].resolve(new Response(JSON.stringify(body), { status: 409 })))
+    expect(section().textContent).toContain(texts().unknown); expect(section().querySelector("form")).toBeNull()
+    expect(held).toHaveBeenLastCalledWith(true); expect(section().textContent).not.toContain("PRIVATE_ERROR_PAYLOAD")
+    await act(async () => button(texts().retry).click()); expect(pending[1].options.body).toBe(original); expect(uuidCounter).toBe(1)
   })
   it.each([401, 403])("clears through the parent on actual current denial%s", async status => {
     await act(async () => render()); await submit(); await act(async () => pending[0].resolve(reply(null, status)))
