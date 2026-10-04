@@ -3,8 +3,14 @@ import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { workforcePolicyDefinitionHash } from "@/lib/workforce/policy-definition"
 
-const mocks = vi.hoisted(() => ({ transaction: vi.fn(), draft: vi.fn(), policies: vi.fn(), setting: vi.fn(),
-  employees: vi.fn(), memberships: vi.fn(), execute: vi.fn(), auth: vi.fn((handler: unknown) => handler), failure: vi.fn() }))
+const mocks = vi.hoisted(() => {
+  const state = { transaction: vi.fn(), draft: vi.fn(), policies: vi.fn(), setting: vi.fn(),
+    employees: vi.fn(), memberships: vi.fn(), execute: vi.fn(), auth: vi.fn(), failure: vi.fn(), authResult: null as Response | null }
+  state.auth.mockImplementation((handler: (req: NextRequest, principal: { orgId: string; userId: string; role: string },
+    context: { params: Promise<{ id: string }> }) => Promise<Response>) => async (req: NextRequest, context: { params: Promise<{ id: string }> }) =>
+    state.authResult ?? handler(req, { orgId: "org", userId: "reader", role: "viewer" }, context))
+  return state
+})
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: mocks.transaction } }))
 vi.mock("@/lib/mtm-settings", () => ({ MTM_SETTING_DEFAULTS: { timezone: "Asia/Baku" } }))
 vi.mock("@/lib/with-workforce-rls-auth", () => ({ withWorkforceSessionPolicyConfigurationAuth: mocks.auth }))
@@ -17,13 +23,12 @@ const record = (draft: boolean) => ({ id: draft ? "draft" : "published", organiz
   effectiveFrom: new Date(draft ? "2026-10-06" : "2020-01-01"), effectiveTo: null,
   activatedAt: draft ? null : new Date("2020-01-01"), retiredAt: null,
   definition, definitionHash: workforcePolicyDefinitionHash(definition) })
-const auth = { orgId: "org", userId: "reader", role: "viewer" }
-const call = GET as unknown as (req: NextRequest, principal: typeof auth, ctx: { params: Promise<{ id: string }> }) => Promise<Response>
-const run = (query = "", id = "draft") => call(new NextRequest("http://localhost/api/v1/workforce/configuration/policies/draft/employee-impact" + query,
-  { headers: { "x-organization-id": "foreign", "x-workforce-organization-id": "foreign" } }), auth, { params: Promise.resolve({ id }) })
+const run = (query = "", id = "draft") => GET(new NextRequest("http://localhost/api/v1/workforce/configuration/policies/draft/employee-impact" + query,
+  { headers: { "x-organization-id": "foreign", "x-workforce-organization-id": "foreign" } }), { params: Promise.resolve({ id }) })
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-04T12:00:00Z"))
+  mocks.authResult = null
   for (const fn of [mocks.transaction, mocks.draft, mocks.policies, mocks.setting, mocks.employees, mocks.memberships, mocks.execute, mocks.failure]) fn.mockReset()
   mocks.draft.mockResolvedValue(record(true)); mocks.policies.mockResolvedValue([record(false)]); mocks.setting.mockResolvedValue({ value: "UTC" })
   mocks.employees.mockResolvedValue([{ id: "private-employee", organizationId: "org", status: "ACTIVE" }])
@@ -38,6 +43,24 @@ afterEach(() => { vi.useRealTimers() })
 
 describe("session-tenant employee impact administrative read", () => {
   it("uses the existing organization HR policy boundary", () => { expect(mocks.auth).toHaveBeenCalledTimes(1) })
+  it.each([401, 403])("adds Cookie variation to an early wrapper %s without running the handler", async status => {
+    mocks.authResult = new Response(JSON.stringify({ error: "Unavailable", code: "DENIED" }), { status,
+      headers: { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Set-Cookie": "fixture=closed; HttpOnly" } })
+    const response = await run()
+    expect(response).toBe(mocks.authResult); expect(response.status).toBe(status)
+    expect(await response.json()).toEqual({ error: "Unavailable", code: "DENIED" })
+    expect(response.headers.get("vary")).toBe("Cookie")
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff")
+    expect(response.headers.get("set-cookie")).toBe("fixture=closed; HttpOnly")
+    expect(mocks.transaction).not.toHaveBeenCalled()
+  })
+  it.each([["Accept-Encoding", "Accept-Encoding, Cookie"], ["Accept-Encoding, cookie", "Accept-Encoding, cookie"]])(
+    "preserves existing Vary tokens on early denial: %s", async (before, after) => {
+      mocks.authResult = new Response("denied", { status: 403, headers: { Vary: before } })
+      const response = await run(); expect(response.status).toBe(403); expect(await response.text()).toBe("denied")
+      expect(response.headers.get("vary")).toBe(after); expect(mocks.transaction).not.toHaveBeenCalled()
+    })
   it("reads complete bounded facts in one RR transaction and returns aggregate private receipts", async () => {
     const response = await run(), body = await response.json()
     expect(response.status).toBe(200)
