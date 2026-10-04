@@ -78,15 +78,12 @@ postgresDescribe("hosted real PostgreSQL recorded future-window read", () => {
   it("keeps a coherent RR snapshot while another transaction replaces draft/window dates and timezone", async () => {
     let release!: () => void, reached!: () => void
     const barrier = new Promise<void>(resolve => { release = resolve }), firstRead = new Promise<void>(resolve => { reached = resolve })
-    const extended = app.$extends({ query: { workforcePolicy: { async findFirst({ args, query }) {
-      const result = await query(args)
-      if (args.where?.id === draftId) { reached(); await barrier }
-      return result
-    } } } })
-    const pending = extended.$transaction(async tx => {
-      await tx.$executeRaw`SELECT set_config('app.org_id', ${orgs[0]}, true)`
+    const pending = scoped(async tx => {
+      const anchor = await tx.workforcePolicy.findFirst({ where: { id: draftId, organizationId: orgs[0] }, select: { effectiveFrom: true } })
+      expect(anchor?.effectiveFrom).toEqual(day(60))
+      reached(); await barrier
       return read(tx)
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 10_000 })
+    })
     // Observe either first read or the original failure; never hide a failed transaction behind a wait.
     try {
       await Promise.race([firstRead, pending.then(() => { throw new Error("Snapshot barrier was not reached") })])
