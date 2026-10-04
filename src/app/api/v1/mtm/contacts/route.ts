@@ -7,6 +7,7 @@ import { isAgentInRouteScope, resolveMtmRouteActor } from "@/lib/mtm/route-permi
 import { mtmFieldScopeRequiredResponse } from "@/lib/mtm/field-access"
 import { ContactCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { missingMtmContactRequiredFields } from "@/lib/mtm/contact-required-fields"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
@@ -380,7 +381,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       availableAgents,
       capabilities: {
         canManage: canManageFieldMasterData(actor),
-        canRequestChanges: actor.role === "AGENT" && actor.agentId !== null,
+        canRequestChanges: actor.role === "AGENT" && actor.agentId !== null
+          && agentPermissionEnabled(settings, "contactChangeRequest"),
         canTransfer: canManageFieldMasterData(actor),
         actorAgentId: actor.agentId,
         actorRole: actor.role,

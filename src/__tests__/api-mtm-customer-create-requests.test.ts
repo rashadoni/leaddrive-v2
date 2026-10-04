@@ -72,6 +72,7 @@ beforeEach(() => {
     id: "agent-1", role: "AGENT", name: "Agent One", managerId: "manager-1",
   } as never)
   vi.mocked(prisma.mtmCustomer.findMany).mockResolvedValue([])
+  vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmCustomerCreateRequest.updateMany).mockResolvedValue({ count: 1 } as never)
 })
 
@@ -90,6 +91,47 @@ describe("customer create requests", () => {
     expect(prisma.mtmCustomerCreateRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ requestedByAgentId: "agent-1" }),
     }))
+  })
+
+  const newClinic = {
+    objectType: "CLINIC",
+    name: "Central Clinic",
+    phone: "+994501234567",
+    latitude: 40.4093,
+    longitude: 49.8671,
+    category: "A",
+    potential: "HIGH",
+    reason: "New clinic in territory",
+  }
+
+  it("refuses an agent request once the organization switches it off for its agents", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValueOnce([
+      { key: "agentCustomerCreateRequests", value: false },
+    ] as never)
+
+    const response = await createRequest(request("/api/v1/mtm/customer-create-requests", newClinic))
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      code: "MTM_AGENT_PERMISSION_DISABLED",
+      permission: "customerCreateRequest",
+    })
+    expect(prisma.mtmCustomerCreateRequest.create).not.toHaveBeenCalled()
+  })
+
+  it("leaves a supervisor's request alone when the switch is off for agents", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "agentCustomerCreateRequests", value: false },
+    ] as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: "agent-1", role: "SUPERVISOR", name: "Supervisor One", managerId: "manager-1",
+    } as never)
+    vi.mocked(prisma.mtmCustomerCreateRequest.create).mockResolvedValue(submitted as never)
+
+    const response = await createRequest(request("/api/v1/mtm/customer-create-requests", newClinic))
+
+    expect(response.status).toBe(201)
+    expect(prisma.mtmCustomerCreateRequest.create).toHaveBeenCalled()
   })
 
   it("submits an agent request and notifies the manager", async () => {
