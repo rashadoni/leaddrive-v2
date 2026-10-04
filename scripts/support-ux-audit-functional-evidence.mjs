@@ -379,9 +379,21 @@ async function main() {
         { type: "add_internal_note", value: "Synthetic internal macro note" },
         { type: "add_tag", value: "audit-confirmed" },
       ]
-      const macro = await db.ticketMacro.create({ data: { organizationId: orgId, name: prefix + "-macro",
-        actions, isActive: true, sortOrder: -1000, shortcutKey: "Ctrl+1" } })
+      // Create through the public contract: stored shortcuts are Alt+1..9 and
+      // ordering is nonnegative. The existing ticket keyboard handler uses the
+      // active collection's Ctrl ordinal; do not hide that mismatch in fixtures.
+      const macro = (await api("POST", "/api/v1/ticket-macros", {
+        name: prefix + "-macro", actions, isActive: true, sortOrder: 0, shortcutKey: "Alt+1",
+      }, 201)).data
+      check(Boolean(macro?.id), "MACRO_FIXTURE_CREATE_FAILED")
       cleanups.push(() => db.ticketMacro.deleteMany({ where: { id: macro.id, organizationId: orgId } }))
+      const activeMacros = (await api("GET", "/api/v1/ticket-macros")).data.filter(item => item.isActive)
+      const shortcutOrdinal = activeMacros.findIndex(item => item.id === macro.id) + 1
+      check(shortcutOrdinal >= 1 && shortcutOrdinal <= 9, "MACRO_CTRL_ORDINAL_UNAVAILABLE")
+      report.shortcutCoverage = {
+        stored: "Alt+1", exercised: "Ctrl+" + shortcutOrdinal,
+        limitation: "STORED_ALT_SHORTCUT_NOT_VERIFIED_LEGACY_CTRL_ORDINAL_ONLY",
+      }
       await open("/tickets/" + row.id, "ticket-detail-workspace")
       const draft = "Synthetic unsent macro draft"
       await page.getByTestId("ticket-comment-composer").fill(draft)
@@ -415,7 +427,7 @@ async function main() {
       await page.waitForFunction(() => document.activeElement?.getAttribute("data-tour-id") === "ticket-macros")
       mark("ux07-shortcut-preview")
       await page.getByTestId("ticket-quick-actions-hint").click()
-      await page.keyboard.press("Control+1")
+      await page.keyboard.press("Control+" + shortcutOrdinal)
       await dialog.waitFor({ state: "visible" })
       mark("ux07-lost-response")
       const sentRequestIds = []

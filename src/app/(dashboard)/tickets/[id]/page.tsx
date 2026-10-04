@@ -353,9 +353,12 @@ export default function TicketDetailPage() {
   const [macroPreview, setMacroPreview] = useState<{ macro: TicketMacroData; requestId: string } | null>(null)
   const [macroApplyError, setMacroApplyError] = useState("")
   const macroApplyInFlight = useRef(false)
+  const macrosTriggerRef = useRef<HTMLButtonElement>(null)
   const previewMacro = (macro: TicketMacroData) => {
     if (macroApplyInFlight.current || macroPreview) return
     setMacroApplyError("")
+    // The selected menu item unmounts; give Dialog a persistent focus-return target.
+    macrosTriggerRef.current?.focus({ preventScroll: true })
     setMacroPreview({ macro, requestId: crypto.randomUUID() })
   }
   const [convertOpen, setConvertOpen] = useState(false)
@@ -1142,7 +1145,7 @@ export default function TicketDetailPage() {
           {/* Macros dropdown — click toggle */}
           {activeMacros.length > 0 && (
             <div className="relative">
-              <Button data-tour-id="ticket-macros" size="sm" variant="outline" className="h-11 shrink-0 sm:h-9" onClick={() => setShowMacrosMenu(!showMacrosMenu)}>
+              <Button ref={macrosTriggerRef} data-tour-id="ticket-macros" size="sm" variant="outline" className="h-11 shrink-0 sm:h-9" onClick={() => setShowMacrosMenu(!showMacrosMenu)}>
                 <Zap className="mr-1 h-3.5 w-3.5" /> {tc("macros")}
               </Button>
               {showMacrosMenu && (
