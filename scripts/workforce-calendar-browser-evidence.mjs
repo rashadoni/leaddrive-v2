@@ -350,7 +350,13 @@ async function state(principal, moved) {
   const audits = await admin.mtmAuditLog.findMany({
     where: { organizationId: principal.organizationId, action: "WORKFORCE_CALENDAR_MOVED_DAY_REVERSED", entityId: moved.pairGenerationId }, orderBy: { id: "asc" },
   })
-  return JSON.parse(JSON.stringify({ rows, audits }))
+  // Display labels may be reused by distinct physical pairs. Retain every
+  // same-label row, but bind reversal assertions to this exact scoped pair.
+  const pairRows = rows.filter(row => row.agentId === null
+    && row.teamId === (moved.scope === "TEAM" ? moved.teamId : null)
+    && [moved.sourceDate, moved.destinationDate].includes(row.date.toISOString().slice(0, 10)))
+  return JSON.parse(JSON.stringify({ rows: pairRows,
+    otherSameNameRows: rows.filter(row => !pairRows.includes(row)), audits }))
 }
 function reversed(persisted, principal) {
   assert.equal(persisted.rows.length, 2)
@@ -734,6 +740,9 @@ async function reflow320(principal, team, locale = "ru", index = 9, nativeZoom =
   assert.ok(/\S{80}/u.test(name), "The valid maximum-length fixture includes a long unbroken fragment")
   const moved = await pair(view.context, principal, index, team.id, name)
   const before = await state(principal, moved)
+  assert.equal(before.rows.length, 2)
+  assert.equal(before.otherSameNameRows.length, nativeZoom ? 2 : 0)
+  assert.ok(before.otherSameNameRows.every(row => row.deletedAt !== null))
   let posts = 0
   view.page.on("request", request => { if (calendarRoute(new URL(request.url())) && request.method() === "POST") posts++ })
   await view.section.locator("#workforce-calendar-scope").selectOption("TEAM")
@@ -805,6 +814,8 @@ async function reflow320(principal, team, locale = "ru", index = 9, nativeZoom =
   await until(() => responses.length === 1, "320 CSS real transaction commits before response loss", 120_000)
   const beforeRetry = await state(principal, moved)
   reversed(beforeRetry, principal)
+  assert.deepEqual(beforeRetry.otherSameNameRows, before.otherSameNameRows,
+    "Reversal must preserve same-label rows outside the exact pair")
   assert.equal(posts, 1)
   assert.equal(bodies.length, 1)
   assert.deepEqual(JSON.parse(bodies[0]), {
@@ -842,7 +853,7 @@ async function reflow320(principal, team, locale = "ru", index = 9, nativeZoom =
   await reflowTextContrast(view, result, locale, phase("replay"), "replay-focused", [view.ui.reversalAlreadyRecorded], { focused: true })
   assert.equal(await view.section.locator("#workforce-calendar-team").inputValue(), team.id)
   await assertSession(view.context, principal, "320-css-team-replay")
-  const functional = { cancelWrites: 0, cancelStateUnchanged: true, posts, tombstones: 2, audits: 1, byteIdenticalRetry: true, reversedResponses: responses, replayWrites: 0, realSessionPreserved: true }
+  const functional = { cancelWrites: 0, cancelStateUnchanged: true, posts, tombstones: 2, audits: 1, byteIdenticalRetry: true, reversedResponses: responses, replayWrites: 0, realSessionPreserved: true, otherSameNameRows: before.otherSameNameRows.length, otherSameNameRowsUnchanged: true }
   if (locale === "ru" && !nativeZoom) receipts.reflowFunctional = functional
   assert.equal(receipts.reflowDiagnostics.reduce((count, phase) => count + phase.failures.length, 0), 0,
     "320 CSS controls and every text fragment must fit their visible horizontal bounds")
@@ -1049,7 +1060,14 @@ try {
   receipts.status = "FAIL"
   // Playwright transport call logs can include authentication headers/body.
   const failureMessage = error.message.split("\n", 1)[0]
-  receipts.failure = { name: error.name, message: failureMessage }
+  const sourceFrame = String(error?.stack || "").split("\n").find(line => line.includes(import.meta.url))
+  const position = sourceFrame?.match(/:(\d+):(\d+)\)?$/)
+  const safePrimitive = value => typeof value === "number" && Number.isFinite(value)
+    || typeof value === "boolean" || value === null ? value : { type: Array.isArray(value) ? "array" : typeof value }
+  receipts.failure = { name: error.name, message: failureMessage,
+    sourcePosition: position ? { line: Number(position[1]), column: Number(position[2]) } : null,
+    ...(error?.name === "AssertionError" ? { actual: safePrimitive(error.actual), expected: safePrimitive(error.expected) } : {}),
+  }
   receipts.readDiagnostics = readDiagnostics
   receipts.interceptedFailureCount = handlerErrors.length
   if (activePage && !activePage.isClosed()) await evidenceScreenshot(activePage, `${outputDirectory}/failure.png`, true).catch(() => {})
