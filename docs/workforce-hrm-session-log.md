@@ -6081,3 +6081,5 @@ A private successor `codex/workforce-completion-part25` was created in the same 
 d3d8/report37162739337 FAIL,0cases; immutableP2 /tmp/workforce563-d3d8-report-browser-failure-independent.json SHA d164757e80ee44ba272c4df5c44f1776f9cbff0b527bead241896e9e59dae87e. Full132480-byteZIP11288123311/90612-bytelog retained/tmp+hosted, not CORE. Inferred duplicate named-region cause: scoped existing inner-region locator and require count1; label/tabindex/native-focus assertions/UI/baselines unchanged. Syntax/lint0, refusal9PASS; newhead review/runtime required.59% unchanged.
 
 46aa FAIL4/9 retained; strict duration oracle now browser-realm. New runtime required.
+
+2026-10-04: #564 main=43bfff4e8945971f8d03771a0cb607aaf085fce6; #563 integrated; browser9 NOT RUN; overall59%.
