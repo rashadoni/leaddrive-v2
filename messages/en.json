@@ -26370,5 +26370,37 @@
     "notFuture": "Choose a start date after today in the organization’s timezone.",
     "conflict": "This request cannot confirm the chosen draft. Compare the source again before starting a new request.",
     "unavailable": "A secure request identifier could not be created. Reload this page before trying again."
+  },
+  "workforcePolicyEmployeeImpact": {
+    "title": "Preview employee policy impact",
+    "hint": "Compare a future draft, then inspect which recorded policy would apply to the current employee directory. This action reads data only.",
+    "preview": "Preview employee impact",
+    "loading": "Reading recorded facts…",
+    "chooseDraft": "Choose and compare a future draft as the after version.",
+    "selected": "{name}, version {version} · proposed date {date}",
+    "observed": "Read at {time} · {timezone}",
+    "boundary": "This is a what-if preview for employees currently marked active, across all directory roles. It does not predict who will be employed on the future date. Later changes can alter the result; activation still requires the normal checks.",
+    "membership": "Team selection uses recorded membership at local midnight on the draft date. Missing history falls back to organization policy; the current directory team is not substituted. Actual workday start times can produce different results.",
+    "groups": "Inspect {count} groups selected by this draft",
+    "beforePolicy": "{count} employees · currently selected baseline: {name}, version {version}",
+    "newCoverage": "{count} employees · first policy coverage in this scenario",
+    "noBaseline": "No baseline policy",
+    "tableLabel": "Projected calculation changes for this group",
+    "opaque": "Other recorded definition settings differ. This preview does not interpret their effects.",
+    "failed": "The preview could not be verified. Compare the draft again and retry.",
+    "limit": "This preview supports up to 100 active directory employees and 100 published policies. No partial result is shown.",
+    "counts": {
+      "directoryEmployees": "Currently active directory employees",
+      "selectedDraft": "Selected by this draft",
+      "unchangedSelection": "Policy selection unchanged",
+      "newlyCovered": "Newly covered by a policy",
+      "calculationChanged": "Existing coverage with calculation changes",
+      "opaqueDefinitionChanged": "Existing coverage with other definition changes",
+      "teamOverride": "Team policy retained over organization draft",
+      "outsideDraftTeam": "Outside the draft’s recorded team",
+      "missingMembership": "No recorded team membership at the cutoff",
+      "noPolicyBefore": "No policy before the scenario",
+      "noPolicyAfter": "No policy after the scenario"
+    }
   }
 }

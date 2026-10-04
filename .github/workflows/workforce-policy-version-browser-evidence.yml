@@ -17,6 +17,7 @@ on:
       - "src/components/workforce/workforce-policy-version-comparison.tsx"
       - "src/components/workforce/workforce-policy-restore-draft.tsx"
       - "src/components/workforce/workforce-policy-future-window-preview.tsx"
+      - "src/components/workforce/workforce-policy-employee-impact-preview.tsx"
       - "src/components/ui/button.tsx"
       - "src/components/ui/input.tsx"
       - "src/components/ui/select.tsx"

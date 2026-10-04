@@ -26366,5 +26366,37 @@
     "notFuture": "Təşkilatın saat qurşağında bugündən sonrakı başlama tarixini seçin.",
     "conflict": "Bu sorğu seçilmiş qaralamanı təsdiqləyə bilmir. Yeni sorğudan əvvəl mənbəni yenidən müqayisə edin.",
     "unavailable": "Təhlükəsiz sorğu identifikatoru yaradıla bilmədi. Yenidən cəhd etməzdən əvvəl səhifəni yeniləyin."
+  },
+  "workforcePolicyEmployeeImpact": {
+    "title": "Siyasətin əməkdaşlara təsirinə önbaxış",
+    "hint": "Gələcək qaralamanı müqayisə edin, sonra cari əməkdaş kataloqu üçün siyasət seçimini yoxlayın. Bu əməliyyat yalnız məlumatları oxuyur.",
+    "preview": "Əməkdaşlara təsiri göstər",
+    "loading": "Qeydə alınmış məlumatlar oxunur…",
+    "chooseDraft": "Gələcək qaralamanı sonrakı versiya kimi seçin və müqayisə edin.",
+    "selected": "{name}, versiya {version} · təklif edilən tarix {date}",
+    "observed": "Oxunma vaxtı: {time} · {timezone}",
+    "boundary": "Bu, hazırda aktiv göstərilən, kataloqda istənilən rolu olan əməkdaşlar üçün ssenari hesablamasıdır. Gələcək tarixdə kimin işləyəcəyini proqnozlaşdırmır. Sonrakı dəyişikliklər nəticəyə təsir edə bilər; aktivləşdirmə yenə də standart yoxlamalar tələb edir.",
+    "membership": "Komanda qaralama tarixinin yerli gecə yarısı üçün qeydə alınmış tarixçədən seçilir. Tarixçə yoxdursa, kataloqdakı cari komanda əvəz edilmədən təşkilat siyasəti tətbiq olunur. İş gününün faktiki başlanma vaxtı fərqli nəticə verə bilər.",
+    "groups": "Qaralamanın seçdiyi {count} qrupu yoxla",
+    "beforePolicy": "{count} əməkdaş · ilkin siyasət: {name}, versiya {version}",
+    "newCoverage": "{count} əməkdaş · bu ssenaridə ilk siyasət əhatəsi",
+    "noBaseline": "İlkin siyasət yoxdur",
+    "tableLabel": "Qrup üçün təklif edilən hesablama dəyişiklikləri",
+    "opaque": "Digər qeydə alınmış tərif parametrləri fərqlənir. Bu önbaxış onların təsirini şərh etmir.",
+    "failed": "Önbaxışı yoxlamaq mümkün olmadı. Qaralamanı yenidən müqayisə edin və təkrar cəhd edin.",
+    "limit": "Önbaxış kataloqda 100 aktiv əməkdaşı və 100 dərc edilmiş siyasəti dəstəkləyir. Natamam nəticə göstərilmir.",
+    "counts": {
+      "directoryEmployees": "Kataloqda hazırda aktiv əməkdaşlar",
+      "selectedDraft": "Bu qaralama seçiləcək",
+      "unchangedSelection": "Siyasət seçimi dəyişməyəcək",
+      "newlyCovered": "İlk dəfə siyasətlə əhatə olunacaq",
+      "calculationChanged": "Mövcud əhatədə hesablamalar dəyişəcək",
+      "opaqueDefinitionChanged": "Mövcud əhatədə digər parametrlər dəyişəcək",
+      "teamOverride": "Təşkilat qaralaması əvəzinə komanda siyasəti qalacaq",
+      "outsideDraftTeam": "Qaralamanın qeydə alınmış komandasından kənarda",
+      "missingMembership": "Hesablama anı üçün qeydə alınmış komanda yoxdur",
+      "noPolicyBefore": "Ssenaridən əvvəl siyasətsiz",
+      "noPolicyAfter": "Ssenaridən sonra siyasətsiz"
+    }
   }
 }
