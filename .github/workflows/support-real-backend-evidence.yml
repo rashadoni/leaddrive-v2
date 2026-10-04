@@ -32,6 +32,16 @@ jobs:
           node-version: 20
       - name: Install dependencies
         run: npm ci
+      - name: Prepare isolated development log transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture_deps="$(mktemp -d "$RUNNER_TEMP/support-log-transport.XXXXXX")"
+          npm install --prefix "$fixture_deps" --ignore-scripts --no-audit --no-fund --save-exact pino-pretty@13.1.1
+          node -e 'const p=require(process.argv[1]);if(p.packages["node_modules/pino-pretty"].integrity!=="sha512-TNNEOg0eA0u+/WuqH0MH0Xui7uqVk9D74ESOpjtebSQYbNWJk/dIxCXIxFsNfeN53JmtWqYHP2OrIZjT/CBEnA==")process.exit(1)' "$fixture_deps/package-lock.json"
+          test ! -e node_modules/pino-pretty
+          ln -s "$fixture_deps/node_modules/pino-pretty" node_modules/pino-pretty
+          node -e 'const pino=require("pino");const log=pino({transport:{target:"pino-pretty"}});log.flush()'
       - name: Verify isolated harness guards
         run: |
           node scripts/ci/check-github-runner-policy.mjs

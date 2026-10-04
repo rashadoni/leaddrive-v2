@@ -20,6 +20,8 @@ if (execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8"
 let PrismaClient, makeRlsTestPrisma
 const { request } = await import("playwright")
 const { default: bcrypt } = await import("bcryptjs")
+const logTransport = JSON.parse(await readFile(path.join(root, "node_modules/pino-pretty/package.json"), "utf8"))
+if (logTransport.version !== "13.1.1") throw new Error("EXACT_FIXTURE_LOG_TRANSPORT_REQUIRED")
 const EXPECTED = [
   "restricted-role-and-rls", "macro-persistence", "escalation-persistence",
   "portal-ticket-ownership", "portal-attachment-ownership", "ai-audit-and-roles",
@@ -43,6 +45,7 @@ const receipt = {
   version: 1, candidateHead: process.env.SUPPORT_BACKEND_HEAD_SHA, checkedSha,
   harnessSha256: hash(await readFile(new URL(import.meta.url))), startedAt: new Date().toISOString(),
   runtime: "GitHub-hosted loopback Next dev / PostgreSQL / real HTTP auth and routes",
+  fixtureOnlyDependency: { name: "pino-pretty", version: logTransport.version, scope: "Isolated runner transport for unchanged development logger; not a product dependency" },
   expectedCases: EXPECTED, cases: [], status: "RUNNING", cleanup: "NOT_RUN",
   limitations: [
     "Not production build or full migration replay; candidate Prisma schema plus disclosed fixture RLS.",
