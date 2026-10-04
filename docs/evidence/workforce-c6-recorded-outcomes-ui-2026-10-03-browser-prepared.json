@@ -1,0 +1,101 @@
+{
+  "atUtc": "2026-10-03T22:21:04.795563+00:00",
+  "status": "PREPARED_SOURCE_ONLY_NOT_RUN_IN_BROWSER_OR_POSTGRES",
+  "scope": "New bounded hosted report workflow/harness/SQL extension + environment refusal tests; existing Today workflow/harness/SQL unchanged.",
+  "actualChecks": {
+    "guards": "9/9 actual subprocess refusal tests PASS; every rejection before clients/SQL/navigation/Chromium",
+    "eslint": "actual tool57390 exit0; new harness/test source rawlogempty",
+    "syntax": "node --check exit0",
+    "yaml": "Python PyYAML actual parse/host/optin/dev/timeout/upload assertions PASS",
+    "runnerPolicy": "42workflows actualPASS"
+  },
+  "observedToolLimit": "Optional Node require(yaml) verifier could not run because module absent. No dependency installed or source/workflow failure inferred. Actual PyYAML parse subsequently succeeded; retained tool trace remains original.",
+  "fixtureLimits": [
+    "Owner imports historical selected Prisma-schema case/decision/response/request/ledger rows; not terminal/approval/workday-correction writer acceptance. Current selected Today case/grant checks remain. No triggers disabled.",
+    "Business facts SELECT-only app; narrowly audited GET needs tenant-scoped append-only audit INSERT, user authentication metadata UPDATE remains existing grant. No production privileges changed.",
+    "Real Auth.js CSRF/credentials and session, real GET/rate limiter development fallback; no mock/intercept/bypass. No production distributed Redis proof.",
+    "BOTH populatedtenants FIVE forcedRLS reporttables positive/unscoped/foreign controls;22businessfact fingerprints; permitted audit deltas metadata whitelist separate.",
+    "Browser captures RU320/AZ768/EN1440, empty/unresolved/no-sample/zero/integrity/TEAM/no-grant denial/foreign controls; scope9scenarios only, browser NOT RUN at preparation.",
+    "No physical AT/Android/device/zoom/whole-pagea11y/load/pilot/DONE credit."
+  ],
+  "sources": [
+    {
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "bytes": 9584,
+      "sha256": "46582002058a418fb44c13453c943ea91d5ce0b4d1267a402f97fb255aeba457"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-exception-report-browser.sql",
+      "bytes": 4741,
+      "sha256": "85d4237ef3e2a9c1fb782d9ee70e8ed801d82fcc2703fd4932494fa2e3e344b3"
+    },
+    {
+      "path": "scripts/workforce-exception-report-browser-evidence.mjs",
+      "bytes": 36729,
+      "sha256": "cf69285bbcf7b2108133dd0d9b1240d816cdbeed5a7cc2a1995f7a3e8ce73be9"
+    },
+    {
+      "path": "src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts",
+      "bytes": 2690,
+      "sha256": "5df6cf8a8b2800771cb9234aecb48b2425c898ac965b933f1831181457de41ef"
+    }
+  ],
+  "originals": [
+    {
+      "source": "/tmp/workforce-part25-report-browser-guards-first.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-browser-prepared-original-00.gz",
+      "bytes": 277,
+      "sha256": "9e71ad6363b1bf400ea5ddc6895c8c1d2c2411415ea7dda3aa5f8f3e86a4cf07",
+      "gzipBytes": 226,
+      "gzipSha256": "fffb4b89982c643b297bfa89848159208fec6aa69da6c6e8cd5830f84928fbf3"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-browser-eslint-first.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-browser-prepared-original-01.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-browser-runner-policy.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-browser-prepared-original-02.gz",
+      "bytes": 44,
+      "sha256": "8f0035224fc5fb1ccaf6ad436c324c28b21dae0bf4e894eaca7e7a473a719668",
+      "gzipBytes": 64,
+      "gzipSha256": "da54a0104bf5fa00458256b35907a99bae91a180b43fff7abdd8587055b2c23c"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-browser-yaml.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-browser-prepared-original-03.gz",
+      "bytes": 138,
+      "sha256": "0f07aaef55420850e7e095b7f149064f5a8fd57c2980166b73567bde8f31a8f0",
+      "gzipBytes": 136,
+      "gzipSha256": "59d23335af2fd9e13e18d028ef7e2bb68e135716f467ced32d6c18058af61b5f"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-browser-syntax.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-browser-prepared-original-04.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-browser-prepared-result.json",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-browser-prepared-original-05.gz",
+      "bytes": 2748,
+      "sha256": "cacf3bb1e35f5e1e060f3f0833152dd7305f1794c8e5aef161b362dcdd52c07f",
+      "gzipBytes": 1503,
+      "gzipSha256": "98a6cd8c6e6df4fc21e89cbeba6e46a975afb22ea1ab42493965d637c4ee50a3"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-browser-originals-scan.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-browser-prepared-original-06.gz",
+      "bytes": 78,
+      "sha256": "2b8ae50430a2f9653f1a26c5960297e10793daa98bee24856db07cac72f43739",
+      "gzipBytes": 89,
+      "gzipSha256": "6fb1a8f8f16158e6b270c959dba11d84d6f1d5ffd81d87ee35d8b1cd7b313819"
+    }
+  ]
+}

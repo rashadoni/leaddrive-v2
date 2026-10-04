@@ -15,7 +15,7 @@ import {
 } from "@/lib/workforce/exception-case-report-read"
 import { requireWorkforceExceptionReportRateLimit } from "@/lib/workforce/approved-report-rate-limit"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
-import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
+import { applyWorkforceSensitiveResponseHeaders, workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 const MAX_RANGE_DAYS = 93
 
@@ -43,7 +43,7 @@ function auditContext(req: NextRequest) {
  * reuse approved-timesheet report access: tenant-wide exception categories
  * require their own explicit exception-queue grant boundary.
  */
-export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextRequest, auth) => {
+const authorizedGet = withWorkforceSessionExceptionQueueAuth(async (req: NextRequest, auth) => {
   try {
     const rateLimited = await requireWorkforceExceptionReportRateLimit({
       organizationId: auth.orgId,
@@ -132,3 +132,17 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextReques
     }, 503)
   }
 })
+
+/** Contain wrapper-level session/capability/grant denials as well as aggregates. */
+export async function GET(req: NextRequest, context?: unknown): Promise<Response> {
+  try {
+    const response = context === undefined ? await authorizedGet(req) : await authorizedGet(req, context)
+    return applyWorkforceSensitiveResponseHeaders(response)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "read-exception-case-report" })
+    return exceptionReportJson({
+      error: "Workforce exception reporting is unavailable",
+      code: "WORKFORCE_EXCEPTION_REPORT_UNAVAILABLE",
+    }, 503)
+  }
+}

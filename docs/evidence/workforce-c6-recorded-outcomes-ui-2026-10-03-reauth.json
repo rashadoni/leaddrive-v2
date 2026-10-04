@@ -1,0 +1,75 @@
+{
+  "atUtc": "2026-10-03T22:07:08.889512+00:00",
+  "status": "PRIVATE_CORRECTION_ONLY_NOT_PUBLISHED_NOT_RELEASED",
+  "originalUiReview": "a268/6df P2=1 session reentry, P3=1 evidence wording; original intact",
+  "actualBeforeFix": "6 identity tests:2 reauthenticationFAIL,4 priorPASS",
+  "actualAfterFix": "26/26 targeted tests,3files PASS; touched ESLint exit0",
+  "changes": "Invalidate retained result/completion/denial/error when session is not authenticated or lacks identity; add two actual reauthentication pending/403 regressions. No server or business writer change.",
+  "wordingCorrection": "First run17 outcomes+4identity+4contract=25(4FAIL21PASS). Corrected initial run16outcomes+4identity+4contract=24PASS. Required ACKNOWLEDGE was added to fixture sequences AND one standalone Intl.NumberFormat minimum-share test was removed because it mirrored formatting without testing component/builder. Earlier phrase only fixture sequence corrected was incomplete; original preserved. New reauth2 tests yield26 total.",
+  "own560Merge": "7ef5ef98c73354766f7536181d3c66218da202b9 normalguarded21:57:02Z exactparents[9faf,5f8c]/candidatetree; wholedeploy/publicPENDING",
+  "originals": [
+    {
+      "source": "/tmp/workforce-part25-ui-a268-independent.json",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-reauth-original-00.gz",
+      "bytes": 6120,
+      "sha256": "fa71f122056e71b5fd7a3275442360a1d36c67e27a53faf736ad2b1189b2c618",
+      "gzipBytes": 2996,
+      "gzipSha256": "8d704a78b7ddd6665a114c2579c56e7c4602f4aad23c9e04c0e6f295f50ae40e"
+    },
+    {
+      "source": "/tmp/workforce-part25-ui-a268-independent-input-audit.json",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-reauth-original-01.gz",
+      "bytes": 9209,
+      "sha256": "4b798d233c1ca33e2037e2f1858471162544be087658ba87fec6e113468f0dd3",
+      "gzipBytes": 2274,
+      "gzipSha256": "acdc09c4e8889cc3ef53c4484f828daa1e32e267d8830147c3557bc8dafc3e2d"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-reauth-before-fix.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-reauth-original-02.gz",
+      "bytes": 2805,
+      "sha256": "30ee695f16350973dae57aabe760929cb060c3b7971f8a0c88a51e487d73b9ca",
+      "gzipBytes": 1164,
+      "gzipSha256": "bef604e71f47a7a5d523e783a773ffabbe59fe8850004c03d24c5a351c416f46"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-reauth-corrected.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-reauth-original-03.gz",
+      "bytes": 283,
+      "sha256": "a50d6a2e0c08ce487ba61132f3ae1c06f97dbabdd1773a4dd8c69d0cf432514f",
+      "gzipBytes": 229,
+      "gzipSha256": "aed2d4eceffee58b61254961de751a941a52dae8b952425fe2729539dff3e99b"
+    },
+    {
+      "source": "/tmp/workforce-part25-report-ui-reauth-eslint.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-reauth-original-04.gz",
+      "bytes": 1473,
+      "sha256": "dc586b4984abfc087f81a4fc54c5f949151375e6355bad12705858fe489fbff0",
+      "gzipBytes": 721,
+      "gzipSha256": "f75b3759ca01bfef7c0eeb4666927a0b82376cb17990941fce337ccdb0c23124"
+    },
+    {
+      "source": "/tmp/workforce560-actual-merge-independent.json",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-reauth-original-05.gz",
+      "bytes": 10458,
+      "sha256": "3785341a420b1811583ec505a93e624e28c474aebfcd7f819da7a6a5d62e4d40",
+      "gzipBytes": 3408,
+      "gzipSha256": "040e467ac1af3e2e70421ba462e6c9eb1c3345a5025a2c7d4fefacde7aa5d711"
+    },
+    {
+      "source": "/tmp/workforce-part25-reauth-originals-scan.log",
+      "path": "docs/evidence/workforce-c6-recorded-outcomes-ui-2026-10-03-reauth-original-06.gz",
+      "bytes": 80,
+      "sha256": "dc11542a768ac4477b0d6875aa4c34c8cbae36522bc92c641e8755f3aba7d082",
+      "gzipBytes": 91,
+      "gzipSha256": "c3b8e2910b40901291917ab1e62baedbdb4fed65067836b9af6b82087c7ea8b5"
+    }
+  ],
+  "notRun": [
+    "new report hosted browser",
+    "successor hosted type/build/fullsuite",
+    "production release",
+    "physical AT/Android/load/pilot"
+  ],
+  "progress": "81/161DONE,14/15GATES,C836%,overall59% unchanged"
+}

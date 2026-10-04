@@ -1,0 +1,17 @@
+{
+  "atUtc": "2026-10-03T23:01:41.620115+00:00",
+  "status": "PRE_PUBLICATION_COUNT_WORDING_CORRECTION",
+  "historicalCandidate": "b303a8cf0f24a81b640d8d903c67fe6fdd753738",
+  "integratedHead": "850efea0c5261b782ccc5bce2db699174afce2b6",
+  "privateParent": "004c86444fde8ceecb35df977a7846d3540205b4",
+  "publishedMainParent": "2b6ca9b0390c2ea5bfa738c68428bab2cea59ecd",
+  "priorOwnedPaths": 97,
+  "nonConflictByteExactPaths": 93,
+  "combinedMdPaths": 4,
+  "allPriorOwnedContentPreserved": true,
+  "countCorrection": "Earlier phrase Other97-owned blobs exact and integration boolean name allOther97OwnedBlobsPreserved overstate the non-conflict exact count. Actual97total=93byteexact+4incoming-prefix/private-suffix Markdown compositions. No data/source/history lost; originals and original wording remain immutable.",
+  "codeChanged": false,
+  "originalsRewritten": false,
+  "configChecksBaselinesCapChanged": false,
+  "finalExactCandidateReviewRequired": true
+}
