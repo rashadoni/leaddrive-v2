@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "atUtc": "2026-10-04T00:42:13.616427+00:00",
+  "scope": "Exactaf29 actual6/9FAIL/independentP2 plus narrowroute containment repair local verification; fullZIP/7PNGs external explicitlynotembedded",
+  "failedHead": "af29b7917aec5bc6f9fdc9697b7aac1f87f0784a",
+  "run": 37164925497,
+  "job": 111325789512,
+  "artifact": 11289207455,
+  "originals": [
+    {
+      "source": "/tmp/workforce563-af29-report-browser-failure-independent.json",
+      "bytes": 29792,
+      "sha256": "0816f44c31b9578625f40e1e18a0fcd9fd2bbb0efe12b62b991f71e56edc6251",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-00.gz",
+      "gzipBytes": 7245,
+      "gzipSha256": "48f976ab408d9acc171ce8c42ba880b2009ebd9f2d7b9f3c8ab964697e036019"
+    },
+    {
+      "source": "/tmp/workforce563-af29-report-browser-failure-independent-input-audit.json",
+      "bytes": 28000,
+      "sha256": "0eb9806f60e2a80347d9d2aa1153ecad9074895c2609062d63bf5f4c54243838",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-01.gz",
+      "gzipBytes": 5276,
+      "gzipSha256": "b21e30a0e23032339cf24669bf9c482977339d46f9d096bcfdafd0f937e48427"
+    },
+    {
+      "source": "/tmp/workforce563-af29-report-failed-primary/preservation.json",
+      "bytes": 3199,
+      "sha256": "d2b6bc9d31f7957dc2c625c5ec7a4de8f8eabce3b9908d64ae64ecadf082d714",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-02.gz",
+      "gzipBytes": 1090,
+      "gzipSha256": "47a1d782774889daa2a99d93ad16904bc0a71ef3f6bf45f3e3a08bd674c9b467"
+    },
+    {
+      "source": "/tmp/workforce563-af29-report-failed-primary/run.json",
+      "bytes": 12910,
+      "sha256": "fc7eee711c6d7f581de651e3a431920e6d75725a670acd560743c8ddf1620e59",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-03.gz",
+      "gzipBytes": 1643,
+      "gzipSha256": "3a85fa0a9e13e8567377963b73d84ca10afaed44cfd9b2df99455b007c398d56"
+    },
+    {
+      "source": "/tmp/workforce563-af29-report-failed-primary/jobs.json",
+      "bytes": 3589,
+      "sha256": "ef774f59e8c7a3a35155cadc5838489cff6c8a1adf53231418f4814a4a71a7c3",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-04.gz",
+      "gzipBytes": 891,
+      "gzipSha256": "3eb987ebbba464ad4bbb9002da5a8bffc47fe206c41115579f0305d462044ee3"
+    },
+    {
+      "source": "/tmp/workforce563-af29-report-failed-primary/artifacts.json",
+      "bytes": 810,
+      "sha256": "41d869dc83bcc68e7078be5048db831a94a3969f34ddc78eb47fe3f639258f20",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-05.gz",
+      "gzipBytes": 483,
+      "gzipSha256": "06262f48af0c562118ea1a55661590c6a2aeb87b83a56cdedd9a545fd1b28a75"
+    },
+    {
+      "source": "/tmp/workforce563-af29-report-failed-primary/whole-job.log",
+      "bytes": 91705,
+      "sha256": "d0f68d21e4d3fe400bf181f300306eddf2017b00f0b95833b0326b90ac6f00be",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-06.gz",
+      "gzipBytes": 20095,
+      "gzipSha256": "f5c192c543e9263b9e7bd8b964214cd2c225ffc4e42084c57b84d26496803fba"
+    },
+    {
+      "source": "/tmp/workforce563-af29-report-failed-primary/exception-report-receipt.json",
+      "bytes": 9291,
+      "sha256": "c07c34f0f97fe7a3283c86b0ad9038aff0090fc5a0c24631d6093dcd74c5bab7",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-07.gz",
+      "gzipBytes": 2394,
+      "gzipSha256": "5805d79c795cfed4d762966859f7aef54e2343f8b1e82cbe313dd4d5aadf68aa"
+    },
+    {
+      "source": "/tmp/workforce563-af29-report-failed-primary/workflow-context.json",
+      "bytes": 261,
+      "sha256": "ec515e9ff79db2624bfd1296b3865ed30f8a5c5209d2489964d28f39bd0e5a08",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-08.gz",
+      "gzipBytes": 208,
+      "gzipSha256": "1ccdd7f068598036c5305a140730d7e113a7c626daec17b41d215cf3da89849a"
+    },
+    {
+      "source": "/tmp/workforce563-af29-report-failed-primary/workflow-failure.json",
+      "bytes": 219,
+      "sha256": "2299836211f582a1075eb48d70d0f73d835e475b0fbf5fb4aa3fb6f3a886fb24",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-09.gz",
+      "gzipBytes": 180,
+      "gzipSha256": "915fca2d9e597df051640832d1b2463e017af9f1ef8b9035577395f113bd05d4"
+    },
+    {
+      "source": "/tmp/workforce-report-denial-header-checks.json",
+      "bytes": 1162,
+      "sha256": "0acaa53f266f9aa55a7df6229f7530222fd4b5c920f90390a0250ffbab027a43",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-10.gz",
+      "gzipBytes": 398,
+      "gzipSha256": "fd7f77f26f315c3c8f42e6095e4bb1ddbd18854cbbce61d23b7d57de38ba9282"
+    },
+    {
+      "source": "/tmp/workforce-report-denial-header-tests.log",
+      "bytes": 320,
+      "sha256": "32ae9397201ba1e5caf12645fe4ed93b0af03622d0c7693a487a973f8bf653e6",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-11.gz",
+      "gzipBytes": 238,
+      "gzipSha256": "6190f0cde91b2f534c1873816746ee25fbf439a97ab7bf8091725ca123bc93d9"
+    },
+    {
+      "source": "/tmp/workforce-report-denial-header-eslint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-12.gz",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "source": "/tmp/workforce-report-denial-header-raw-originals-scan.log",
+      "bytes": 145,
+      "sha256": "275614059f92627f0683f0770e9e31e1507fd5add4ab05cef012dfc9e3a51cd5",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-13.gz",
+      "gzipBytes": 126,
+      "gzipSha256": "a4c879ceba7b452a4e9cd15f6fd72712934619122fd25a1c926ba3eeb926604a"
+    },
+    {
+      "source": "/tmp/workforce-report-denial-header-raw-originals-scan.json",
+      "bytes": 365,
+      "sha256": "4c1955adc419e7950920f618b7e0ed8f35dd78522590ce1d037a0bacae1ac4d6",
+      "preserved": "docs/evidence/workforce-c6-report-denial-header-repair-2026-10-04-original-14.gz",
+      "gzipBytes": 244,
+      "gzipSha256": "01f22ed3efb8fd3611f74cce0b48247a36ebad37afbc23bc4f6afda17b529eaf"
+    }
+  ],
+  "rawOriginalScanExit": 0,
+  "externalBoundNotEmbedded": [
+    {
+      "path": "/tmp/workforce563-af29-report-failed-primary/original-artifact.zip",
+      "bytes": 525820,
+      "sha256": "190d921922f17a7320b9a9690259658a55639331e5c0f2c11e7bfe52d3fa249e"
+    },
+    {
+      "path": "/tmp/workforce563-af29-report-failed-primary/failure-original.png",
+      "bytes": 45895,
+      "sha256": "937f0f4182a824a7295314e62b1858b99e5544049c5774d06442d1ad1baf71ea"
+    },
+    {
+      "path": "/tmp/workforce563-af29-report-failed-primary/report-az-768-nonempty.png",
+      "bytes": 86861,
+      "sha256": "81adc1f92633238548e67dad5a689bdcd88432f106f948b495de0f00948846e1"
+    },
+    {
+      "path": "/tmp/workforce563-af29-report-failed-primary/report-en-1440-nonempty.png",
+      "bytes": 133553,
+      "sha256": "fbfa31e0e2b90186303c077a8c78162c72a4ebe1e22c3b4a691cf44388773dc9"
+    },
+    {
+      "path": "/tmp/workforce563-af29-report-failed-primary/report-ru-320-empty.png",
+      "bytes": 68176,
+      "sha256": "66c0847b871212d2ac59e40bf72e4dbb3cc49381298415d64fa7161bdfef3a29"
+    },
+    {
+      "path": "/tmp/workforce563-af29-report-failed-primary/report-ru-320-measured-zero.png",
+      "bytes": 68371,
+      "sha256": "d865038c63242b319725ab44a2df8e60ae430feb5a5ad0f3ab9dd8ef411dd3ae"
+    },
+    {
+      "path": "/tmp/workforce563-af29-report-failed-primary/report-ru-320-nonempty.png",
+      "bytes": 65602,
+      "sha256": "61303d024c404b40b0496f27d787f3de9e05ffe332f5a5a4d93cb9ee19bd709b"
+    },
+    {
+      "path": "/tmp/workforce563-af29-report-failed-primary/report-ru-320-unresolved-no-sample.png",
+      "bytes": 67978,
+      "sha256": "c0d1690d14343ac283fe531dc6f265631557106e05142cb1974b1e7a3eba48bc"
+    }
+  ],
+  "limits": [
+    "ActualFAIL6/9 preserved; no nine-case acceptance",
+    "Real currentnative/Today/Calendar completed separately; this packet does not claim repairsource currenthosted runtime",
+    "Wholefailedjoblog/three safeJSON/immutableindependentP2 are embedded losslessly; full525820byteZIP/sevenPNG remain original/tmp+hosted, completepublicationpending",
+    "No baseline/scanconfiguration/authgrant/browserassertion weakened"
+  ]
+}
