@@ -6410,3 +6410,6 @@ Own565 productionCORE GREEN fullmain89a verified at04:37independent/04:42root af
 ### 2026-10-04 05:13 UTC — Append-only conceptual receipt SHA correction
 
 Independent exact387 P3 /tmp/workforce-policy-window-387e-conceptual-hash-wording-finding-independent.json5112/SHAda9521c89a54a3e3a8ff264b9ccf4858fe0c1e2f2ea7bd8f3d40101c3d4e52ca retained. Root read wholefinding and verified actual5632-byte backend-only conceptual report SHA004d1f772aa2ae87fd1cfa4c19e736de669714c85acd53dcf4ca19dfaa3ce978. The preceding05:03 appendix omitted `dc` in that SHA; its incorrect binding is superseded by this verified fullSHA. Earlier correctbinding, immutable report/archive andoriginaltypo remainunchanged. This is receiptwording only; no code/runtime/DONE credit. Exactreplacementsource review/currenthosted18browser+4PG/compiler/build remainrequired; progress59% unchanged.
+
+
+Append-only timing clarification (2026-10-04T05:18:34.960554+00:00): the preceding correction heading05:13 is an inaccurate phase label. The actual correction checkpoint29df3e6f74edf460dfaa784149522d528c255230 was created05:17:43Z after reading the immutable finding timestamp05:16:34Z. Originalheading remains; actual commit/receipt chronology controls.
