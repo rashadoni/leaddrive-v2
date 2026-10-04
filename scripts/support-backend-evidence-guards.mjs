@@ -55,3 +55,17 @@ export function sanitizedAuthLogEvidence(log) {
     authLoginException: log.includes("[Auth] Login error:"),
   }
 }
+
+export function sanitizedRedirectEvidence(actual, expected) {
+  const target = new URL(actual), configured = new URL(expected)
+  const hostKind = ["127.0.0.1", "localhost", "[::1]"].includes(target.hostname) ? target.hostname : "NON_LOOPBACK"
+  return {
+    protocol: ["http:", "https:"].includes(target.protocol) ? target.protocol : "OTHER",
+    hostKind,
+    port: Number(target.port || (target.protocol === "https:" ? 443 : target.protocol === "http:" ? 80 : 0)),
+    sameProtocol: target.protocol === configured.protocol,
+    sameHostname: target.hostname === configured.hostname,
+    samePort: target.port === configured.port,
+    pathKind: ["/tickets", "/login", "/api/auth/error"].includes(target.pathname) ? target.pathname : "OTHER",
+  }
+}

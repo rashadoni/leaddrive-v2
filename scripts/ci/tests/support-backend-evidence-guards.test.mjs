@@ -1,4 +1,4 @@
-import { sanitizedAuthLogEvidence } from "../../support-backend-evidence-guards.mjs"
+import { sanitizedAuthLogEvidence, sanitizedRedirectEvidence } from "../../support-backend-evidence-guards.mjs"
 import test from "node:test"
 import assert from "node:assert/strict"
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs"
@@ -106,4 +106,17 @@ test("unknown auth reasons and arbitrary messages are not exported", () => {
   assert.deepEqual(result.authErrorTypes, [])
   assert.deepEqual(result.prismaCodes, [])
   assert.equal(JSON.stringify(result).includes("private"), false)
+})
+
+test("redirect diagnostics expose only fixed origin categories and numeric port", () => {
+  const observed = sanitizedRedirectEvidence("http://localhost:3000/login?token=never-print", "http://127.0.0.1:40001")
+  assert.equal(observed.hostKind, "localhost")
+  assert.equal(observed.port, 3000)
+  assert.equal(observed.sameHostname, false)
+  assert.equal(observed.samePort, false)
+  assert.equal(JSON.stringify(observed).includes("never-print"), false)
+  const foreign = sanitizedRedirectEvidence("https://private-customer.example/private-id?secret=never", "http://127.0.0.1:40001")
+  assert.equal(foreign.hostKind, "NON_LOOPBACK")
+  assert.equal(foreign.pathKind, "OTHER")
+  assert.equal(JSON.stringify(foreign).includes("private"), false)
 })

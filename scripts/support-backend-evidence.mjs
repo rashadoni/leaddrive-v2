@@ -6,7 +6,7 @@ import net from "node:net"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
-import { validateContext, childEnvironment, sanitizedAuthLogEvidence } from "./support-backend-evidence-guards.mjs"
+import { validateContext, childEnvironment, sanitizedAuthLogEvidence, sanitizedRedirectEvidence } from "./support-backend-evidence-guards.mjs"
 import { runLoggedCommand, stopOwnedProcess } from "./support-backend-evidence-process.mjs"
 
 const root = fileURLToPath(new URL("../", import.meta.url))
@@ -113,10 +113,13 @@ async function office(principal) {
   const callbackError = redirect.searchParams.get("error")
   const knownCallbackErrors = ["CredentialsSignin", "Configuration", "CallbackRouteError", "AccessDenied", "MissingCSRF", "UntrustedHost"]
   receipt.authenticationObservations ??= []
-  receipt.authenticationObservations.push({ callbackStatus: response.status(), sameOrigin: redirect.origin === origin,
-    errorPresent: callbackError !== null, errorCategory: callbackError === null ? null : knownCallbackErrors.includes(callbackError) ? callbackError : "OTHER" })
-  check(redirect.origin === origin && !redirect.searchParams.has("error"), "OFFICE_LOGIN_REDIRECT_INVALID")
+  // Read only the same loopback session; never follow the returned redirect.
   const session = await api(context, "GET", "/api/auth/session", 200)
+  receipt.authenticationObservations.push({ callbackStatus: response.status(), sameOrigin: redirect.origin === origin,
+    errorPresent: callbackError !== null, errorCategory: callbackError === null ? null : knownCallbackErrors.includes(callbackError) ? callbackError : "OTHER",
+    redirect: sanitizedRedirectEvidence(redirect.href, origin),
+    actualSessionPrincipalAndTenant: session.user?.id === principal.id && session.user.organizationId === principal.organizationId })
+  check(redirect.origin === origin && !redirect.searchParams.has("error"), "OFFICE_LOGIN_REDIRECT_INVALID")
   check(session.user?.id === principal.id && session.user.organizationId === principal.organizationId, "REAL_SESSION_MISMATCH")
   return context
 }
