@@ -6364,6 +6364,30 @@ Private5ae UI review identified overly broad recognized rejection acceptance. Ac
 - New combined source and publication packet exact review PENDING; new13realPG/15renderedUI/currentcompiler/build NOT RUN until hostedCI. Continue autonomous publication/real checks after source acceptance; existing59%progress/DONE counts unchanged.
 
 
+### 2026-10-04T11:22:07.211409+00:00 — PR571 first hosted failures preserved; strict receipt-path correction
+
+- First exactef restore37197463681/job111422171036: catalog13/13, writerPG11/11, API9/9, additive4 PASS; rendered0/15 FAIL at manual-en-320 AssertionError168:82. Genuine201/private/no-store/nosniff/Cookie-token/success/basis checks passed before wrong top-level provenance assertion. Actual backend serializer/UI validator place sourcePolicyId/sourceVersion inside creation. Corrected only these two harness access paths; all15 cases/status/security/fullJSON/row/audit/native/geometry assertions remain. Prior source review missed this contract mismatch; no retroGREEN.
+- First Today37197463713/job111422171591:0cases FAIL/real-authentication TimeoutError484:75, cleanupPASS. Root viewed original PNG showing Next Turbopack internal Google-font module resolution Build Error; underlying external/network mechanism UNPROVEN. No changes to Today app/harness/role/SQL/auth/grants.
+- New metadata manifest docs/evidence/workforce-c8-policy-restore-ui-first-hosted-failures-2026-10-04.json records complete external originals and13unique decoded members across both ZIPs. It explicitly has completePublication=false; whole original logs/ZIPs/receipts/screenshots retained unchanged in /tmp/workforce571-ef-first-failure-primary, not excerpted/replaced. Root rehashed declared source bindings, generated base schema resolved to exact main100bc schema; initial failed generated-as-head lookup preserved separately before corrected parity.
+- Actual corrected harness syntax/lint/diff checks PASS; proof4165/SHA12f0d524c40174d8d51598bb8275eabdb6431426bbb5e885d4102819aeddbaec after RAM17GB/disk334GB/pressure0 inspection. Current corrected browser/runtime/compiler/fullbuild/fullsuite remain NOT RUN; hosted only. Private part34 employee-impact source safely checkpointed fd039892e with pure35/1 PASS, otherchecksNOTRUN. Published part33 now receives this narrow fix; next exact independent review, fresh-main guard, normalpush and all actual CI before merge/deploy. Overall59%, whole WF-C8-011 NON-DONE.
+
+
+### 2026-10-04T11:43:50.876666+00:00 — PR571 fresh main835 integrated; bounded rechecks PASS
+
+- Fresh pre-push main advanced100bc→8353578baa73e810939576c783feb9acdb3e2777 (normal external PR572). Guard stopped beforepush;048sourceGREEN remains historical. Normally merged main835 into part33 as d765bc774ed98739af7e4cf08879beec451d16cc; no conflict. Only intersections3locales: every new-main value preserved, own restore namespace exact048; all nonlocale upstream blobs exact835. No new task-authored MTM/Route mutation.
+- Actual merged-tree107tests/4files PASS(13.49s), touched6-filelint/syntax/diffPASS, locale24406keys/missing0extra0 PASS; resource16GB/disk334GB/pressure0 inspected. Whole bounded proof7105/SHAb97c50dd7c58a19e60dc0d20e0542defa981680d95e30e90fb27444da8a7833e. Full local compiler/build/suite/PG/browser/Android/load NOT RUN: hostedonly.
+- Exact048 independent source-onlyGREEN report6f4b815ad314287086022655e3cd7b7a3c5e52c921312587badd8dad91a98930/audit1af4edb0fe0e210c222b5470be1f41289906de151e68753737d7c0bf16398415 and rootwholedeclaredparity4265fe2be9d9f16a9a20b0ba1c6bdea2898046bb30d09a3bc7b60df3b579ca34 remain immutable. First ef hostedBLOCKED/P2=2 is unchanged; observed13PG/11PG/9API partialPASS cannot become new-head acceptance.
+- Next exact integrated-head source/receipt review and unchanged-config range scan, fresh-main check, ordinary PR571push, all required gates/current runtime, normalmerge/own deploy/strict fullSHA receipts. Overall59% and whole WF-C8-011 NON-DONE; no employeeimpact/activation/DONE credit.
+
+
+### 2026-10-04 — PR571 second hosted failure and session oracle repair
+
+Exactfb3 run37200268851 failed rendered case15 at298:40 after14PASS; native5/Policy18/Report9/Today6/Calendar12 succeeded. Whole ZIP11302028767/978276bytes/SHA348b4f3dc8dc03ce177248a453f56b7c240b7b2da53518b917af7b5e2215b788 and18members retained /tmp/workforce571-fb3-first-restore-failure-primary. Providers disables focus refetch; fixture now uses native AuthJS broadcast to fetch real changed session, retaining15cases/allassertions. Syntax/lint/diff PASS; new hosted NOT RUN. No app/auth/gate changes or DONE credit.
+
+
+2026-10-04: Integrated main81cb5b5e85b456167a0e552a96a243829157c582 (#573), no intersections;13owned blobs exact425.107tests/4PASS13.76s,lint/syntax/i18n/diffPASS (first incorrect npm-path invocation retained in /tmp/workforce571-main81-integrated-bounded-primary). New hosted NOT RUN.
+
+
 ### 2026-10-04T11:05:47.480975+00:00 — PR571 exact ef publication; autonomous continuation (PARTIAL)
 
 - User instruction persists: continue autonomously, do not stop at checkpoints or claim 100%. Actual accepted overall remains 59%, 81/161 DONE, 14/15 GATES, C8 36%; whole WF-C8-011 remains NON-DONE. Own parent PR569/main100bc release is separately accepted; current PR571 is not yet runtime/release accepted.

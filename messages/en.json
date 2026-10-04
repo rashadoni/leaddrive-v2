@@ -11270,7 +11270,7 @@
     "perm_contactCreateRequest": "Request a new client",
     "perm_contactCreateRequest_hint": "The client appears in the base after a manager approves.",
     "perm_contactChangeRequest": "Request a change to a client's data",
-    "perm_contactChangeRequest_hint": "The data changes after a manager approves. The mobile app has no such form yet.",
+    "perm_contactChangeRequest_hint": "The data changes after a manager approves. In the app an agent proposes the class, the specialty and the name; on the website, any field of the card.",
     "perm_customerCreateRequest": "Request a new organization",
     "perm_customerCreateRequest_hint": "The organization appears in the base after a manager approves.",
     "perm_masterDataEdit": "Change or add clients and organizations on their own",

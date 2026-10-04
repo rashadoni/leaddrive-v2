@@ -162,8 +162,9 @@ async function writePortalAudit(params: {
         entityType: "contact",
         entityId: params.contactId,
         entityName: params.contactName,
-        details: { ...(params.details || {}), actorUserId: params.actorUserId },
-      },
+        userId: params.actorUserId,
+        newValue: params.details ?? {},
+      } satisfies Prisma.AuditLogUncheckedCreateInput,
     })
     return true
   } catch {

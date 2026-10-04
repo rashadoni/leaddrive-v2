@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
+import { Prisma } from "@prisma/client"
 
 const authState = vi.hoisted(() => ({ role: "admin" }))
 
@@ -36,6 +37,9 @@ import { prisma } from "@/lib/prisma"
 import { issuePortalPasswordLink } from "@/lib/portal-password-link"
 import bcrypt from "bcryptjs"
 
+// Use the generated Prisma model, not a permissive mock that accepts nonexistent fields.
+const auditFields = new Set(Prisma.dmmf.datamodel.models.find(model => model.name === "AuditLog")!.fields.map(field => field.name))
+
 const contact = {
   id: "contact-1",
   organizationId: "org-1",
@@ -61,6 +65,10 @@ function request(body: Record<string, unknown>) {
 beforeEach(() => {
   vi.clearAllMocks()
   authState.role = "admin"
+  vi.mocked(prisma.auditLog.create).mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
+    if (Object.keys(data).some(field => !auditFields.has(field))) throw new Error("AUDIT_SCHEMA_FIELD_UNKNOWN")
+    return { id: "audit-1", ...data } as never
+  })
   vi.mocked(prisma.contact.findFirst).mockResolvedValue(contact as never)
   vi.mocked(prisma.contact.updateMany).mockResolvedValue({ count: 1 } as never)
   vi.mocked(prisma.aiChatSession.findMany).mockResolvedValue([] as never)
@@ -143,7 +151,7 @@ describe("PATCH /api/v1/portal-users", () => {
       }),
     }))
     expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ action: "portal_password_set_by_admin", details: { source: "manual", actorUserId: "admin-1" } }),
+      data: expect.objectContaining({ action: "portal_password_set_by_admin", userId: "admin-1", newValue: { source: "manual" } }),
     }))
   })
 
@@ -208,9 +216,60 @@ describe("PATCH /api/v1/portal-users", () => {
     expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         action: "portal_access_bulk_disabled",
-        details: { requested: 2, updated: 2, actorUserId: "admin-1" },
+        userId: "admin-1",
+        newValue: { requested: 2, updated: 2 },
       }),
     }))
+  })
+})
+
+describe("Portal Users audit schema regression", () => {
+  const password = "Customer#Portal2026"
+  const cases: [string, Record<string, unknown>, Record<string, unknown>][] = [
+    ["portal_user_updated", { contactId: contact.id, profile: { fullName: contact.fullName, email: "changed@example.test", phone: null, portalAccessEnabled: true } }, { emailChanged: true, accessRevoked: true }],
+    ["portal_password_link_sent_by_admin", { contactId: contact.id, sendPasswordLink: true }, { mode: "reset", expiresAt: "2026-09-06T12:00:00.000Z" }],
+    ["portal_password_set_by_admin", { contactId: contact.id, administratorPassword: { password, confirmPassword: password, acknowledged: true } }, { source: "manual" }],
+    ["portal_user_removed", { contactId: contact.id, removeFromPortal: true }, { cleared: 0 }],
+    ["portal_chat_history_cleared", { contactId: contact.id, clearChatHistory: true }, { cleared: 0 }],
+    ["portal_access_enabled", { contactId: contact.id, portalAccessEnabled: true }, {}],
+    ["portal_access_disabled", { contactId: contact.id, portalAccessEnabled: false }, {}],
+    ["portal_access_bulk_enabled", { contactIds: [contact.id], action: "enable" }, { requested: 1, updated: 1 }],
+    ["portal_access_bulk_disabled", { contactIds: [contact.id], action: "disable" }, { requested: 1, updated: 1 }],
+  ]
+  it.each(cases)("records %s with schema-supported metadata and authenticated actor", async (action, body, metadata) => {
+    vi.mocked(prisma.contact.count).mockResolvedValue(0)
+    const res = await PATCH(request(body))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ success: true, auditRecorded: true })
+    expect(prisma.auditLog.create).toHaveBeenCalledTimes(1)
+    const data = vi.mocked(prisma.auditLog.create).mock.calls[0][0].data
+    expect(data).toMatchObject({
+      organizationId: "org-1", userId: "admin-1", entityType: "contact",
+      entityId: action.includes("_bulk_") ? "batch" : contact.id, action, newValue: metadata,
+    })
+    expect(data.newValue).toEqual(metadata)
+    expect(data).not.toHaveProperty("details")
+    const serialized = JSON.stringify(data)
+    for (const secret of [password, contact.portalPasswordHash, contact.portalVerificationToken, "new-password-hash", contact.email, contact.phone, "changed@example.test"]) {
+      expect(serialized).not.toContain(secret)
+    }
+  })
+
+  it.each(["manager", "support", "viewer"])("does not audit a denied %s mutation", async role => {
+    authState.role = role
+    const res = await PATCH(request({ contactId: contact.id, portalAccessEnabled: false }))
+    expect(res.status).toBe(403)
+    expect(prisma.contact.updateMany).not.toHaveBeenCalled()
+    expect(prisma.auditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("does not create an audit when the tenant-scoped contact lookup misses", async () => {
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue(null)
+    const res = await PATCH(request({ contactId: "foreign-contact", portalAccessEnabled: false }))
+    expect(res.status).toBe(404)
+    expect(prisma.contact.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "foreign-contact", organizationId: "org-1" } }))
+    expect(prisma.contact.updateMany).not.toHaveBeenCalled()
+    expect(prisma.auditLog.create).not.toHaveBeenCalled()
   })
 })
 
