@@ -6735,3 +6735,6 @@ Own39/8a5439ea native37227340558/job111509619255 FAIL: generic assertion;12/15fu
 Source proves repeated EN label at distinctdates conflated by org/name query;predicted4rows/exactfailureline remain inference,unobserved in39receipt. Fix retains allsame-label rows: exactscope/team/agentnull/twoUTCdates pair plus completecomplement. Existing2tombstones/1audit/cancel/replay/fullstate guards retained;firstcommit complement equality/native2prior-tombstones guard added. Safe failureposition/primitivecounts only;no product/writer/auth/baseline change. Editguard/twojournal capguards stoppedbeforewrite;sourcecheckpoint840086f65 preceded this append. ActualserialNode20 syntax/lint/isolatedstate5cases/diffPASS,18GBavailable/332GB/pressure0: /tmp/workforce-pr576-pair-state-bounded-primary/first-original-proof.json4069/SHA2ed3a5f511e768c9efd403ef79de0812119a0ba9dc6900a98aa18a48cee33db3 ataf35/exactworkingharness. Stubs are NOT realPG/browser acceptance.
 
 Next freeze/review/range/push/newown15/72+finalRLS/cleanup/compiler/suite/all5checks beforefreshnormalmerge/deploy. Heavy/physicalgates NOTRUN forcorrection.82/161DONE,79non-DONE,14/15gates,C845%,overall59%;no newclosure. Continueautonomously.
+
+#### Main14 integration
+Main14eb9691 merged; no overlap.77 push guard stopped before mutation. Bounded PASS; hosted NOT RUN.82/161.
