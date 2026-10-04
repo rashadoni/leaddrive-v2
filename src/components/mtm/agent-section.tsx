@@ -174,10 +174,8 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
           </div>
         </div>
       ) : (
-        <>
-          <p className="text-sm text-muted-foreground">{view === "assigned" ? t("assignedHint") : t("attachHint", { name: agent.name })}</p>
-          <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />
-        </>
+        // The list says itself whose clients it shows and how to change that.
+        <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />
       )}
     </div>
   )
