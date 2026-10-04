@@ -69,3 +69,10 @@ export function sanitizedRedirectEvidence(actual, expected) {
     pathKind: ["/tickets", "/login", "/api/auth/error"].includes(target.pathname) ? target.pathname : "OTHER",
   }
 }
+
+export function loopbackApplicationOrigin(port) {
+  requireCondition(Number.isInteger(port) && port >= 1024 && port <= 65535, "INVALID_EPHEMERAL_APP_PORT")
+  // NextRequest normalizes numeric loopback hosts to localhost. Use that same
+  // canonical hostname throughout cookies, Auth.js and exact-origin evidence.
+  return "http://localhost:" + port
+}

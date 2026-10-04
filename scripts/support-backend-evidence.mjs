@@ -6,7 +6,7 @@ import net from "node:net"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
-import { validateContext, childEnvironment, sanitizedAuthLogEvidence, sanitizedRedirectEvidence } from "./support-backend-evidence-guards.mjs"
+import { validateContext, childEnvironment, sanitizedAuthLogEvidence, sanitizedRedirectEvidence, loopbackApplicationOrigin } from "./support-backend-evidence-guards.mjs"
 import { runLoggedCommand, stopOwnedProcess } from "./support-backend-evidence-process.mjs"
 
 const root = fileURLToPath(new URL("../", import.meta.url))
@@ -208,9 +208,9 @@ async function startApp() {
   const port = await new Promise((resolve, reject) => {
     const socket = net.createServer()
     socket.once("error", reject)
-    socket.listen(0, "127.0.0.1", () => { const port = socket.address().port; socket.close(() => resolve(port)) })
+    socket.listen(0, "localhost", () => { const port = socket.address().port; socket.close(() => resolve(port)) })
   })
-  origin = "http://127.0.0.1:" + port
+  origin = loopbackApplicationOrigin(port)
   const networkLog = path.join(privateDir, "outbound.log")
   await writeFile(networkLog, "", { mode: 0o600 })
   serverLog = await open(path.join(privateDir, "app.log"), "wx", 0o600)
@@ -219,7 +219,7 @@ async function startApp() {
     SUPPORT_BACKEND_NETWORK_LOG: networkLog,
     NODE_OPTIONS: environment.NODE_OPTIONS + " --import=" + path.join(root, "scripts/support-backend-network-guard.mjs"),
   }
-  server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)],
+  server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", new URL(origin).hostname, "--port", String(port)],
     { cwd: root, env: childEnv, detached: true, stdio: ["ignore", serverLog.fd, serverLog.fd] })
   server.once("error", () => { receipt.serverSpawnError = true })
   const probe = await freshContext()

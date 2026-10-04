@@ -1,4 +1,5 @@
-import { sanitizedAuthLogEvidence, sanitizedRedirectEvidence } from "../../support-backend-evidence-guards.mjs"
+import { createRequire } from "node:module"
+import { sanitizedAuthLogEvidence, sanitizedRedirectEvidence, loopbackApplicationOrigin } from "../../support-backend-evidence-guards.mjs"
 import test from "node:test"
 import assert from "node:assert/strict"
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs"
@@ -119,4 +120,20 @@ test("redirect diagnostics expose only fixed origin categories and numeric port"
   assert.equal(foreign.hostKind, "NON_LOOPBACK")
   assert.equal(foreign.pathKind, "OTHER")
   assert.equal(JSON.stringify(foreign).includes("private"), false)
+})
+
+test("application origin survives the real NextRequest loopback canonicalization", () => {
+  const { NextRequest } = createRequire(import.meta.url)("next/server")
+  const expected = loopbackApplicationOrigin(45678)
+  const request = new NextRequest(expected + "/api/auth/callback/credentials")
+  assert.equal(new URL(request.url).origin, expected)
+  assert.equal(request.nextUrl.origin, expected)
+  const oldNumeric = new NextRequest("http://127.0.0.1:45678/api/auth/callback/credentials")
+  assert.notEqual(new URL(oldNumeric.url).origin, "http://127.0.0.1:45678")
+  assert.equal(new URL(oldNumeric.url).origin, expected)
+})
+test("application origin accepts only a numeric unprivileged loopback port", () => {
+  for (const port of [0, -1, 80, 65536, NaN, "45678", "example.test"]) {
+    assert.throws(() => loopbackApplicationOrigin(port), /INVALID_EPHEMERAL_APP_PORT/)
+  }
 })
