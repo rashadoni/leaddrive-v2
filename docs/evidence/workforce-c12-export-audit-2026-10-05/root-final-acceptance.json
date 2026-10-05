@@ -1,0 +1,163 @@
+{
+  "status": "ACCEPTED_BOUNDED_DORMANT_EXPORT_AUDIT_SOURCE_AND_EXACT_FIVE_GATES",
+  "head": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+  "tree": "6f372c91a128a8415c45a02d176a9e0eb312d81c",
+  "parent": "f17523372802339a1220e2940b8b8c47a63f187b",
+  "main": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+  "owner": "/root",
+  "singleWriter": true,
+  "independentSourceFindings": 0,
+  "rootReadFullReceipt": true,
+  "rootRehashedAllSevenSupports": true,
+  "remoteThreeFilesByteEqual": true,
+  "rootRecomputedTree": true,
+  "sourceFiles": 8739,
+  "tests": {
+    "pass": 17,
+    "fail": 0,
+    "skip": 0,
+    "actualPG": 15,
+    "guards": 2
+  },
+  "boundedTypecheckExitCode": 0,
+  "scopedLintExitCode": 0,
+  "subcriterion": "Bounded selected-window prepared-export audit projection and complete approval reference closure implementation",
+  "nextCriteria": [
+    "Independent enumeration of every source kind and complete cross-page dependencies",
+    "Stable cutoff/revisit and versioned traversal",
+    "Worker/cursor composition and crash/replay tests",
+    "Isolated production-like staging, scheduler and monitoring"
+  ],
+  "release": {
+    "candidatePR": 589,
+    "noNewDraft": true,
+    "mergeDeployActivationAuthorized": false,
+    "schemaReleaseDependency": false,
+    "cumulativeScope": [
+      "kernel integrity guard",
+      "lease/version cursor store",
+      "complete selected approval-group reader",
+      "bounded export-audit window reader"
+    ],
+    "status": "READY_FOR_SEPARATE_SCOPED_RELEASE_APPROVAL",
+    "runtimeActivationRequiresSeparateScope": true
+  },
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted": 59,
+    "C12_008": "PARTIAL"
+  },
+  "evidence": [
+    {
+      "path": "docs/evidence/workforce-c12-export-audit-2026-10-05/hrm-export-audit-independent-exact-20261005.json",
+      "bytes": 12587,
+      "sha256": "12af3ebb508e5d5780414e45442d215b551b5dd81b6ee3a190117077a486f579"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-export-audit-2026-10-05/hrm-export-tests.json",
+      "bytes": 6627,
+      "sha256": "9a02e388d850316c910f08b8696d28a6582ab3623a23f5bddaa3b38acd2f8f4f"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-export-audit-2026-10-05/hrm-export-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-export-audit-2026-10-05/hrm-export-tsconfig.json",
+      "bytes": 453,
+      "sha256": "91f500e4b6b89d2a1be12e30dc49436d48c5ddbee86f1fe2dfc58d3aa425839c"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-export-audit-2026-10-05/hrm-export-proof.json",
+      "bytes": 1110,
+      "sha256": "d7edae2f316dd9f1bcf51fd11569e58114136ecb804ba7e28eca40675a1aae0d"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-export-audit-2026-10-05/hrm-export-audit-independent-unit-tests.json",
+      "bytes": 6200,
+      "sha256": "77785a7e6ddfbd661592324001857b24110604873d5d7cfbaebea5f4a37d0626"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-export-audit-2026-10-05/hrm-export-independent-binding-proof.json",
+      "bytes": 1270,
+      "sha256": "ae4c4c71fbb600ebb20a80ca28288cc2695dd689e1c34f4b4ae7c2bde792fda1"
+    }
+  ],
+  "largeManifest": {
+    "path": "/tmp/hrm-export-base-tree.json",
+    "bytes": 1147046,
+    "sha256": "500b543335aa2b4b2c3bfaab0316565d67f3554a05198ba49900f1fea6e69702",
+    "durablyUploaded": false,
+    "immutableSourceTree": "02bb497ae8751d81b520249fb00c59283495326b"
+  },
+  "limits": [
+    "Acceptance is exact mandatory App15368 check metadata only. Successful baseline-gated typecheck does not imply zero compiler diagnostics; all-path family matrices, actual failing-suite identities and global compiler/suite cleanness remain unreviewed.",
+    "Owner17PASS includes2guard+15actual local isolated PostgreSQL cases. Independent source review ran2guards with15PG cases explicitly skipped. Standard hosted workflow lacks WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL: those15PG cases receive no hosted credit. Earlier12approval-group and11cursor local PG cases also receive no hosted credit here.",
+    "Earlier optional Manager Today browser run belongs to ad8cc2ce22f11f18eb6e090ef4264a71def6c350. No new browser execution is inferred for51fb, and no production deployment or delivery proof is claimed.",
+    "The adapter is dormant and requires one supplied authorized interactive transaction. It covers a bounded selected audit window, not full root enumeration/revisit, whole-scan consistency, worker composition, staging or C12-008 completion.",
+    "Ledger remains82/161DONE,79open,weighted59%; C12-008PARTIAL. PR589 is the sole cumulative release candidate; no duplicate merge of its historic source slices. Merge/deploy/activation require separate scoped approval.",
+    "All three exact-head workflow runs expose zero artifacts. No detailed per-test hosted result or diagnostic output was read. Finite jobs/steps metadata are recorded in full; raw logs remain unread."
+  ],
+  "observedAtUtc": "2026-10-05 18:25:00 UTC",
+  "sourceEvidenceCommit": "507114c9754c623ef0060570303e4de625542226",
+  "sourceEvidenceReadbackByteEqual": true,
+  "hosted": {
+    "rootReadFullIndependentReceipt": true,
+    "rootVerifiedOriginalHash": true,
+    "independentReceipt": {
+      "path": "docs/evidence/workforce-c12-export-audit-2026-10-05/hrm-export-audit-hosted-independent-20261005.json",
+      "bytes": 26961,
+      "sha256": "d8576175e94523be872692cf3135bc1610e92d65df859e95a7584188dfd23124"
+    },
+    "rootFreshMetadataMatchedAllFive": true,
+    "requiredIds": [
+      111907229304,
+      111907363843,
+      111907364123,
+      111907227161,
+      111907225435
+    ],
+    "appId": 15368,
+    "runs": [
+      {
+        "id": 37352696843,
+        "path": ".github/workflows/pr-checks.yml",
+        "head": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37352696843"
+      },
+      {
+        "id": 37352696931,
+        "path": ".github/workflows/runner-policy.yml",
+        "head": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37352696931"
+      },
+      {
+        "id": 37352696811,
+        "path": ".github/workflows/gitleaks.yml",
+        "head": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37352696811"
+      }
+    ],
+    "integration": {
+      "main": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+      "synthetic": "1e2396d44399ce24a4de4d16630726bb94d407a5",
+      "tree": "6f372c91a128a8415c45a02d176a9e0eb312d81c",
+      "parents": [
+        "60ccd403fa172f2fafda31a9d4728c32933d4058",
+        "51fb7146cc7fac99bdc62721c89d0ecabc040d09"
+      ]
+    }
+  }
+}
