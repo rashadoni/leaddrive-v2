@@ -1,0 +1,566 @@
+{
+  "schemaVersion": 1,
+  "status": "ACCEPTED_BOUNDED_DORMANT_SOURCE_REVIEW",
+  "observedAtUtc": "2026-10-05T16:26:40.252Z",
+  "reviewer": {
+    "task": "/root/pr585_independent_review",
+    "independentOfAuthor": true,
+    "repositorySourceEdited": false,
+    "databaseRunByReviewer": false
+  },
+  "repository": "rashadoni/leaddrive-v2",
+  "pullRequest": {
+    "number": 588,
+    "url": "https://github.com/rashadoni/leaddrive-v2/pull/588",
+    "draft": true,
+    "head": "71433bf827ace3855dedb2bc76942c62867ee4de",
+    "base": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+    "baseRef": "codex/hrm-585-integration-20261005",
+    "changedFiles": 3
+  },
+  "commit": {
+    "sha": "71433bf827ace3855dedb2bc76942c62867ee4de",
+    "tree": "ec3ff3cfa7f1320458af783c724e83380032a46e",
+    "parents": [
+      "ad8cc2ce22f11f18eb6e090ef4264a71def6c350"
+    ]
+  },
+  "provenance": "Fresh independent GitHub rashadoni connector GETs for PR, exact commit, changed files and exact-ref file bytes; remote content independently hashed and matched to preliminary local source. No shell credentials used.",
+  "treeVerification": {
+    "expectedTree": "ec3ff3cfa7f1320458af783c724e83380032a46e",
+    "files": 8734,
+    "matchesRemoteCommitTree": true,
+    "method": "Recomputed complete Git tree from independently verified PR587 integration manifest plus precisely three added 100644 remote blobs; matches fresh remote exact-commit tree."
+  },
+  "bindings": [
+    {
+      "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+      "bytes": 4958,
+      "sha256": "2a8619e3e59cb0160be9efde63f12f695f77ee2eae4baa0fe048742e81f630b0",
+      "blob": "30c9b99184fba1e1f9b13b4616fc52f4f9e7c412",
+      "matchesRemoteFileList": true,
+      "matchesLocal": true
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-cursor-store.test.ts",
+      "bytes": 11018,
+      "sha256": "f001e4b708c1d6ffa9aab79d14f47b3fa4e9acc2fb9cc34e6b2aba4244988916",
+      "blob": "31e6ab577b175b9c1de0e39661b6d2a57ad1d02c",
+      "matchesRemoteFileList": true,
+      "matchesLocal": true
+    },
+    {
+      "path": "docs/evidence/workforce-c12-cursor-fencing-draft-2026-10-05.json",
+      "bytes": 4093,
+      "sha256": "fa27341c7525120c7b1af8a132792cc1f3a3c06ee91ffa0e0f8f6eabee4cc6ee",
+      "blob": "862cae748326c1ceabf0e6c94b46bf7c2bd05d54",
+      "matchesRemoteFileList": true,
+      "matchesLocal": null
+    }
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [],
+    "introducedDefectsFound": false
+  },
+  "sourceConclusions": [
+    "Only new helper, dedicated tests and evidence file added relative to ad8cc2ce. Existing shared lease/cursor helpers, runtime callsites, schema, migrations, workflows and baselines unchanged.",
+    "Helper receives database client explicitly and imports PrismaClient only as a type. No route/scheduler/runtime integration is introduced.",
+    "Fixed-key lease row FOR UPDATE occurs before cursor row lock. Lease acquisition/completion update that lease row and therefore serialize with commit.",
+    "Existing cursor path waits for cursor row lock in its own statement; following UPDATE evaluates clock_timestamp after lock waits. Insert path evaluates lease after obtaining the lease row lock.",
+    "Conditional writes require live running lease with matching owner token. Existing cursor path additionally compares version and null-safe cursor value.",
+    "Absent expected state is separate from an existing null cursor with version. Insert conflict does nothing, ABA and duplicate replay cannot advance an observed version twice.",
+    "Version integer upper bound fails closed; cursor and owner inputs are bounded; expected observation is copied synchronously before transaction awaits.",
+    "Return states are finite COMMITTED/FENCED_OUT/VERSION_EXHAUSTED; helper does not log identifiers or raw payloads."
+  ],
+  "validation": {
+    "targetedTests": {
+      "verification": "Owner-executed sanitized JSON read independently; no reviewer DB rerun",
+      "success": true,
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "inputGuardCases": 2,
+      "realPostgreSQLCases": 11,
+      "report": {
+        "path": "/tmp/hrm-recovery/cursor-draft-tests.json",
+        "bytes": 5074,
+        "sha256": "75dbfec273dd54507a7c145f3f4a73354baa87293ad49a441e5f74e342519328"
+      },
+      "cases": [
+        "invalid observations",
+        "version exhaustion guard",
+        "two independent first inserts",
+        "ABA replay",
+        "stale owner takeover",
+        "absent/null and duplicate replay",
+        "expired lease",
+        "completed lease",
+        "missing lease",
+        "expiry after lease lock wait",
+        "expiry after cursor lock wait",
+        "transaction rollback",
+        "exhausted and unrelated row preservation"
+      ],
+      "databaseScope": "Owner-reported disposable loopback PostgreSQL 16 with minimal operational-table fixture; not production schema/migration acceptance"
+    },
+    "boundedTypecheck": {
+      "status": "PASS_REPORTED_BY_OWNER",
+      "exitCode": 0,
+      "exitCodeProvenance": "Owner report and exact remote evidence; reviewer did not execute or independently observe process exit",
+      "outputIndependentlyRead": true,
+      "output": {
+        "path": "/tmp/hrm-recovery/cursor-draft-typecheck-node.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "config": {
+        "path": "/tmp/hrm-recovery/cursor-draft-tsconfig-node.json",
+        "bytes": 429,
+        "sha256": "b6f0b4a0864a595f589b8ceee11ffb04c21a6641ed69dcf2c3acef859f1b35ce",
+        "includeOnlyTwoNewPaths": true,
+        "explicitProjectNodeTypes": true,
+        "incremental": false
+      },
+      "priorAttempts": [
+        {
+          "exit": 134,
+          "reason": "Default4096MiB Node heap exhausted loading Prisma type graph"
+        },
+        {
+          "exit": 2,
+          "diagnostic": "TS2580 process in test: external tmp config did not resolve project Node types",
+          "sourceDefect": false
+        }
+      ],
+      "priorAttemptsProvenance": "Preserved as owner-reported history in exact remote evidence; raw outputs not inspected",
+      "scope": "Two new paths and imported type dependencies only; no full compiler-clean claim"
+    },
+    "eslint": "PASS reported by owner; not rerun by reviewer",
+    "diffCheck": "PASS reported by owner; not rerun by reviewer",
+    "dbCleanup": "Container/volumes and disposable credential file removed per owner; credential file not read by reviewer"
+  },
+  "limits": [
+    "All writers for this fixed job key must use this cursor store and lease protocol. Out-of-protocol insert/delete/version reset is outside the fencing contract.",
+    "Source is dormant and is not wired into reconciliation-job; no scheduler, activation, database reader, page closure, orphan source enumeration, approval page grouping or export-delivery source is accepted.",
+    "PostgreSQL tests are opt-in; ordinary suite may skip them and cannot earn PostgreSQL credit.",
+    "Full production schema/migrations, hosted PostgreSQL, full compiler/suite/build/browser/Android/load/runtime acceptance NOT RUN or accepted by this review.",
+    "Review does not authorize merge/deploy/activation, does not close C12-008, and must not block or be credited to original PR585."
+  ],
+  "accounting": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weightedPercent": 59,
+    "C12_008": "PARTIAL",
+    "newRowClosures": 0
+  },
+  "hosted587Snapshot": {
+    "status": "PENDING_TYPECHECK",
+    "observedAtUtc": "2026-10-05T16:26:40.252Z",
+    "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+    "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+    "currentChecksPassed": 4,
+    "currentChecksPending": 1,
+    "currentChecksApp15368": true,
+    "checks": [
+      {
+        "id": 111859384095,
+        "name": "typecheck",
+        "status": "in_progress",
+        "conclusion": null,
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338427199/job/111859384095"
+      },
+      {
+        "id": 111859383948,
+        "name": "static-checks",
+        "status": "completed",
+        "conclusion": "success",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338427199/job/111859383948"
+      },
+      {
+        "id": 111859233193,
+        "name": "GitHub-hosted Linux production build",
+        "status": "completed",
+        "conclusion": "skipped",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338427199/job/111859233193"
+      },
+      {
+        "id": 111859231811,
+        "name": "pr-scope",
+        "status": "completed",
+        "conclusion": "success",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338427199/job/111859231811"
+      },
+      {
+        "id": 111859029230,
+        "name": "scan",
+        "status": "completed",
+        "conclusion": "success",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338425873/job/111859029230"
+      },
+      {
+        "id": 111859027442,
+        "name": "runner-policy",
+        "status": "completed",
+        "conclusion": "success",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338426614/job/111859027442"
+      },
+      {
+        "id": 111858503391,
+        "name": "typecheck",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338231953/job/111858503391"
+      },
+      {
+        "id": 111858502915,
+        "name": "static-checks",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338231953/job/111858502915"
+      },
+      {
+        "id": 111858355144,
+        "name": "GitHub-hosted Linux production build",
+        "status": "completed",
+        "conclusion": "skipped",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338231953/job/111858355144"
+      },
+      {
+        "id": 111858353324,
+        "name": "pr-scope",
+        "status": "completed",
+        "conclusion": "success",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "appId": 15368,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37338231953/job/111858353324"
+      }
+    ],
+    "run37338427199Jobs": [
+      {
+        "id": 111859231811,
+        "name": "pr-scope",
+        "status": "completed",
+        "conclusion": "success",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Run set -euo pipefail",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 111859233193,
+        "name": "GitHub-hosted Linux production build",
+        "status": "completed",
+        "conclusion": "skipped",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "steps": []
+      },
+      {
+        "id": 111859383948,
+        "name": "static-checks",
+        "status": "completed",
+        "conclusion": "success",
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Initialize containers",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Checkout code",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Setup Node.js",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Install dependencies",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Support UX read-only readiness diagnostic tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Generate Prisma client",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 8,
+            "name": "Resolve the per-job Postgres port",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 9,
+            "name": "Support UX canary atomic PostgreSQL gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 10,
+            "name": "Generate frozen pre-pilot Prisma client",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 11,
+            "name": "Event-platform Kafka and schema asset gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 12,
+            "name": "PostgreSQL maintenance safety unit tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 13,
+            "name": "Event-platform migration and database invariant gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 14,
+            "name": "Event-platform SDK PostgreSQL concurrency gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 15,
+            "name": "Workforce shared-lock PostgreSQL race gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 16,
+            "name": "Demo Center database constraints gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 17,
+            "name": "MTM client categories database gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 18,
+            "name": "Previous Prisma client rollback-window gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 19,
+            "name": "PII column-wrap lint guard",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 20,
+            "name": "Unit tests vs baseline (BLOCKING)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 38,
+            "name": "Post Setup Node.js",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 39,
+            "name": "Post Checkout code",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 40,
+            "name": "Stop containers",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 41,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 111859384095,
+        "name": "typecheck",
+        "status": "in_progress",
+        "conclusion": null,
+        "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout code",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Setup Node.js",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install dependencies",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Generate Prisma client",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Prepare bounded GitHub-hosted typecheck memory",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "TypeScript compile-check (advisory diagnostics)",
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "number": 8,
+            "name": "Syntax, missing-module and undefined-name errors (BLOCKING)",
+            "status": "pending",
+            "conclusion": null
+          },
+          {
+            "number": 9,
+            "name": "Defect-shaped type errors vs baseline (BLOCKING)",
+            "status": "pending",
+            "conclusion": null
+          },
+          {
+            "number": 10,
+            "name": "Cleanup bounded typecheck swap",
+            "status": "pending",
+            "conclusion": null
+          },
+          {
+            "number": 19,
+            "name": "Post Setup Node.js",
+            "status": "pending",
+            "conclusion": null
+          },
+          {
+            "number": 20,
+            "name": "Post Checkout code",
+            "status": "pending",
+            "conclusion": null
+          }
+        ]
+      }
+    ],
+    "artifactMetadata": {
+      "total_count": 0,
+      "artifacts": []
+    },
+    "preservedCancelledPriorDraftRun": 37338231953,
+    "fullCompilerDiagnosticIdentitiesAccepted": false,
+    "strictSuiteFailureIdentitiesAccepted": false,
+    "optionalManagerPgDispatchAccepted": false,
+    "rawLogsRead": false
+  },
+  "prohibitedActions": {
+    "rawCiLogs": false,
+    "credentialsRead": false,
+    "dbReadOrWrite": false,
+    "remoteWrites": false,
+    "mergeDeployActivation": false,
+    "macOrSsh": false
+  },
+  "distinctions": {
+    "originalPR585": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+    "validationPR587": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+    "thisDraftPR588": "71433bf827ace3855dedb2bc76942c62867ee4de"
+  }
+}

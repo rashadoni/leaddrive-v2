@@ -1,0 +1,23 @@
+{
+  "mode": "READ_ONLY_SAFE_PROJECTION",
+  "source": "/tmp/workforce-pr585-8a2439-current-hosted-green-independent.json",
+  "expectedSourceSha256": "653ae40406bdc323c6af7cabd9ffe298b1be56c44d2939fdbbc6eea07c5b3521",
+  "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+  "fields": [
+    "head/base/synthetic/tree/runAttempt",
+    "five required check names, IDs, app IDs, run IDs, conclusion",
+    "compiler exit code, total count, family counts",
+    "66 expected and actual baseline file/code pairs; no message text",
+    "13 selected repository paths with all-family diagnostic counts",
+    "18 expected and actual failing test-file paths; no assertion output",
+    "independent P0-P3 counts and acceptance scope",
+    "original report hash and separate sanitized projection hash"
+  ],
+  "exclude": [
+    "raw logs",
+    "diagnostic messages",
+    "test failure bodies",
+    "secrets",
+    "employee data"
+  ]
+}
