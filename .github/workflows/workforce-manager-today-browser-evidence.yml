@@ -15,6 +15,16 @@ on:
       - "src/lib/workforce/timesheet*.ts"
       - "scripts/_rls.mjs"
       - "scripts/ci/fixtures/workforce-manager-today-browser.sql"
+      - "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql"
+      - "src/lib/workforce/snapshot-writer.ts"
+      - "src/lib/workforce/policy-definition.ts"
+      - "src/lib/workforce/policy-resolution.ts"
+      - "src/lib/workforce/geofence-evaluation.ts"
+      - "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql"
+      - "prisma/migrations/20260830110000_workforce_shift_default_timeline/migration.sql"
+      - "prisma/migrations/20260830120000_workforce_workday_schedule_snapshots/migration.sql"
+      - "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql"
+      - "prisma/migrations/20260901080000_workforce_team_default_shift_timeline/migration.sql"
       - "src/__tests__/workforce-manager-today-browser-evidence*.test.*"
       - "src/app/(dashboard)/workforce/page.tsx"
       - "src/components/workforce/workforce-manager-today.tsx"
@@ -157,6 +167,9 @@ jobs:
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
             --set=app_password="$WF_MANAGER_TODAY_BROWSER_DATABASE_PASSWORD" \
             -f scripts/ci/fixtures/workforce-manager-today-browser.sql
+          # Manager-only snapshot guards; the shared report fixture is unchanged.
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -f scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql
           npx prisma generate
 
       - name: Install Chromium on hosted Ubuntu
