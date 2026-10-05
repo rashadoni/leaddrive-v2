@@ -1,0 +1,350 @@
+[
+  {
+    "path": "scripts/workforce-manager-today-browser-evidence.mjs",
+    "bytes": 62849,
+    "sha256": "dd70ea78d719d521b8ccfd39ec31b93cbf77963a3b8131685aae76a51f40cb16",
+    "gitBlob": "f8bce71d58679d02c16422b1d239581fbcd18417"
+  },
+  {
+    "path": "scripts/workforce-native-browser-zoom.mjs",
+    "bytes": 14287,
+    "sha256": "d7ca00632b2f6730bc5049ca2a897f332d594e0a0377a2f63fc96b7d5f8c24be",
+    "gitBlob": "08ff038a0f845d3b5185b9f848f879913a69a636"
+  },
+  {
+    "path": "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json",
+    "bytes": 228,
+    "sha256": "8684a33b8edce2587e17612e0b7dc7f1b25a85fe2dde08ba642b6f21ba3ec7cb",
+    "gitBlob": "08cfba7b18bf4c84f5a7d513bdbe7ee9e5ae2076"
+  },
+  {
+    "path": "scripts/ci/fixtures/workforce-native-zoom-extension/background.js",
+    "bytes": 144,
+    "sha256": "45e33ffc8a0f58560b991a8ef59dd0a31b5e93781850538e94ae03eb67d72c6c",
+    "gitBlob": "80e60a037c37c1d68f9f52e2018bbc7df2fc9ccb"
+  },
+  {
+    "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+    "bytes": 33617,
+    "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb",
+    "gitBlob": "d79b77a3196f259f24b460829e86bc2c190f4a87"
+  },
+  {
+    "path": "scripts/_rls.mjs",
+    "bytes": 2250,
+    "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266",
+    "gitBlob": "a7e989ed14be6c850da001cee6f0acb381f31d8d"
+  },
+  {
+    "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+    "bytes": 10288,
+    "sha256": "741f5ee020129c6ef98c275b6ad62e2ec61986e04da047cf884533331bc534a1",
+    "gitBlob": "415fff36b65f51129856417171293368c321d95d"
+  },
+  {
+    "path": "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+    "bytes": 15243,
+    "sha256": "e0433c3a48370f2b789c03c7749aa1a66611f70544dd76cf8c87a904b397a2eb",
+    "gitBlob": "63df11ab6ce3cb87b47d15fc5f7d3445e49db6ef"
+  },
+  {
+    "path": "src/lib/workforce/snapshot-writer.ts",
+    "bytes": 22831,
+    "sha256": "4698459ee85e3835ab362190f402d67e8dd3b6ab83ef18cccc9d706bd10a6c6b",
+    "gitBlob": "a7795889aadd6784dd78cafeb14c2ba397b02e94"
+  },
+  {
+    "path": "src/lib/workforce/policy-definition.ts",
+    "bytes": 3207,
+    "sha256": "da7a0767861a80180e6d6183fdd78f9457b8815d67c1eac04459d68f3f96eb40",
+    "gitBlob": "35bc27d637e1bd84d1a53efb72a57224c866000d"
+  },
+  {
+    "path": "src/lib/workforce/policy-resolution.ts",
+    "bytes": 7415,
+    "sha256": "e552b0c255e589057fd81fd519a78458f15d6ee1a2371e43a68c1e99695accfb",
+    "gitBlob": "613cb9cee3598aae10b18c2068c83d2799d29950"
+  },
+  {
+    "path": "src/lib/workforce/geofence-evaluation.ts",
+    "bytes": 4509,
+    "sha256": "7510d31959e0f6a8b627f9975a57a60e10b051826fee58841ea1e55155e4bcd4",
+    "gitBlob": "4f5f99ea28128f02fe921e12dada0399545576a4"
+  },
+  {
+    "path": "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
+    "bytes": 48914,
+    "sha256": "fe87338c7318fd0e713223af6905e5d1e7ca9794260fdbeb48e32d521b46681a",
+    "gitBlob": "b9014bd5466a490f64a0a69268f09a98ec90f25a"
+  },
+  {
+    "path": "prisma/migrations/20260830110000_workforce_shift_default_timeline/migration.sql",
+    "bytes": 7209,
+    "sha256": "9b097c2cee3c48780774cd1c1f7b0392193bcbb1b2717c694da6a6227682500d",
+    "gitBlob": "deff5b8286716852963951b3abe138ec6e94266f"
+  },
+  {
+    "path": "prisma/migrations/20260830120000_workforce_workday_schedule_snapshots/migration.sql",
+    "bytes": 6009,
+    "sha256": "c3f2eaee65d95a83cca1f5c4d2e50c781be0fb618a802030fc1c46bb44bb2686",
+    "gitBlob": "0ec6a4b161b7354775f51cb3b5ff77bc9544ea9d"
+  },
+  {
+    "path": "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql",
+    "bytes": 15814,
+    "sha256": "bbc3b8477ca1f6ef62a14c2f83a80b59344fdb1bf3fbf31f468aff385c2166a3",
+    "gitBlob": "c01d462989b37e276d298cc3589dace301e515c7"
+  },
+  {
+    "path": "prisma/migrations/20260901080000_workforce_team_default_shift_timeline/migration.sql",
+    "bytes": 12454,
+    "sha256": "d4141d1fb438cadf687e71253ef3bc92d0a5a3c6f24a90e05a95ef7ab44490a8",
+    "gitBlob": "2ba5e42ae93e92b5ce175fd990fa1c0ef607a2a2"
+  },
+  {
+    "path": "prisma/schema.prisma",
+    "bytes": 956388,
+    "sha256": "229c57f4cbd9707b77edb5c022edb248036e2f19e755a04d0bf5dcd3869bbf68",
+    "gitBlob": "0996414dfc1f45d206f6bc0789ef574604837841"
+  },
+  {
+    "path": "src/app/(dashboard)/workforce/page.tsx",
+    "bytes": 175,
+    "sha256": "e28a521670f737ce4087e6eb021079ee5ccdc5dccb8b916d9f1769b5c0f60b89",
+    "gitBlob": "1e9ae1c5c53c01e47d86251ed3b22d6c484e5949"
+  },
+  {
+    "path": "src/components/workforce/workforce-manager-today.tsx",
+    "bytes": 8677,
+    "sha256": "97aa1ee58b2936e26ed061370f18ff94eeae2217cd354a063fda3610e620f9a1",
+    "gitBlob": "4c1eabf588321b3d6bc54c860fa9186663817f00"
+  },
+  {
+    "path": "src/components/workforce/workforce-workbench.tsx",
+    "bytes": 84802,
+    "sha256": "3fd51bd9a372bc2ff141f0a62e58dcdeb69054d415bdb5f3cd45dfddc18faf81",
+    "gitBlob": "491624e609b8a5f3ad0f5429ffe8c30f5862416a"
+  },
+  {
+    "path": "src/components/ui/button.tsx",
+    "bytes": 2099,
+    "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a",
+    "gitBlob": "ab109355174d2efa906d9f97b7884238e448f62e"
+  },
+  {
+    "path": "src/components/ui/badge.tsx",
+    "bytes": 1746,
+    "sha256": "4a707bb4ddeae36de6d8dbb1d96c0e3ff48ed2cbd4b8d9ca89f99fd55e23506f",
+    "gitBlob": "6a6d76973278ef4065c8211071cf5aa8d10e204c"
+  },
+  {
+    "path": "src/app/api/v1/workforce/today/route.ts",
+    "bytes": 24487,
+    "sha256": "ff53b9fdb369138dedf815d61cd7be08c4370da27053fd7b295464575ae5f5d3",
+    "gitBlob": "0df59ab77879e227f0a176cd9e88036bd7cf61ac"
+  },
+  {
+    "path": "src/lib/workforce/manager-today.ts",
+    "bytes": 21291,
+    "sha256": "21f501588f7dae24648d3789a07cb660506be69195f3d9653fef4edd1f1973cd",
+    "gitBlob": "362f30767e21ffb989511b2f763b2956dea34290"
+  },
+  {
+    "path": "src/lib/workforce/today-read-access.ts",
+    "bytes": 6773,
+    "sha256": "7d2564affea535828a3e5659f2ac5d3e8b4f7c26125927a867730d8fbea5cb74",
+    "gitBlob": "8e62adb19ea5116fa8ed24d07e338fcc1649895a"
+  },
+  {
+    "path": "src/lib/workforce/access-control.ts",
+    "bytes": 10353,
+    "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f",
+    "gitBlob": "59f8d4e6aa5ec20c3819648bd8b0dce0ad6d5173"
+  },
+  {
+    "path": "src/lib/workforce/access-grant-resolution.ts",
+    "bytes": 5664,
+    "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3",
+    "gitBlob": "48d9e9016d3b1882e2ff7f95e1970dafe24140df"
+  },
+  {
+    "path": "src/lib/workforce/actor.ts",
+    "bytes": 2000,
+    "sha256": "5a2b4a7ead07f3fdf3a570bd5cf65f83446afac234145052bfba632a8f608644",
+    "gitBlob": "c2d338e07f0f92d041154dfbf1c84413f5bede86"
+  },
+  {
+    "path": "src/lib/workforce/employee-today.ts",
+    "bytes": 19963,
+    "sha256": "4021a3595fe5f9ed506c1e265451847b4487930c94f0ddf78c9d2596ed65e1cc",
+    "gitBlob": "518a7067c1c49c668b17fd03216b683af0d94b0b"
+  },
+  {
+    "path": "src/lib/workforce/exception-read-access.ts",
+    "bytes": 2032,
+    "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae",
+    "gitBlob": "3a9099c3092fe8a976234b0ab69cd7513379fd69"
+  },
+  {
+    "path": "src/lib/workforce/exception-case-read-scope.ts",
+    "bytes": 8461,
+    "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5",
+    "gitBlob": "913a42caf076646e9ae380059aa8fdde90cd1afc"
+  },
+  {
+    "path": "src/lib/workforce/granular-access-rollout.ts",
+    "bytes": 519,
+    "sha256": "5e2278c1995a9bea0d3aca34f864afaf036e0ce56d409fd4b6d42ea13ae8d93b",
+    "gitBlob": "bb8ba80a94b37d50be68266d4b3fbb6bbfb06d28"
+  },
+  {
+    "path": "src/lib/workforce/sensitive-response.ts",
+    "bytes": 553,
+    "sha256": "4c11bbe1d33bbba582ec7ac18ecd1a650494bfb86896d1ddb23bd359cf790471",
+    "gitBlob": "bb58a36b31696a6170cffc453d0c0457983fe6cf"
+  },
+  {
+    "path": "src/lib/workforce/team-membership.ts",
+    "bytes": 4282,
+    "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb",
+    "gitBlob": "4d929406051c9048bba09c43e1203731d22e000f"
+  },
+  {
+    "path": "src/lib/workforce/calendar.ts",
+    "bytes": 8032,
+    "sha256": "d4d31c098c4f54dbfbeca83c0e4e7aff21bb874aad0d7d278dc0c2737ee67da8",
+    "gitBlob": "3977138b3d0bf197992e9cad1fc95ea4be40eff9"
+  },
+  {
+    "path": "src/lib/workforce/shift-definition.ts",
+    "bytes": 5818,
+    "sha256": "f63737ed9c400f8b5d6895aa3654c1acf2ccfc9ec6f0bd1cf41882c606d07602",
+    "gitBlob": "98f1e0bb124d0295535ff284685cf9668d46b2c3"
+  },
+  {
+    "path": "src/lib/workforce/shift-resolution.ts",
+    "bytes": 10849,
+    "sha256": "fc56776588860d78293286c09e1c010de8fc8b1cff4d2065aaabfac8954b9d5f",
+    "gitBlob": "44f2c5f23f3eff490ede68ffd7c40748d601a47c"
+  },
+  {
+    "path": "src/lib/workforce/timesheet-schedule-snapshot.ts",
+    "bytes": 8140,
+    "sha256": "b4a01de4b538bddc61da0a35f641762c2a4c5967153cd9b95d1ef3bb5f2a1d2e",
+    "gitBlob": "6e3756394c6b9e673ae27dde75b24b0db0ea7ba7"
+  },
+  {
+    "path": "src/lib/workforce/timesheet-read-model.ts",
+    "bytes": 15268,
+    "sha256": "80dce28ad04af0172fb8419f947790d86ffe72405ed72379dd3d10fb128955c8",
+    "gitBlob": "4f065217c2a52af390077af85d2204cd4ac9fb54"
+  },
+  {
+    "path": "src/lib/with-workforce-rls-auth.ts",
+    "bytes": 21768,
+    "sha256": "b3353f92fc1350608556a90c6378a3c763deee15133a44e131becab4db89b043",
+    "gitBlob": "0f8830742e7445f9f48e265a185cdb3c6fea5df5"
+  },
+  {
+    "path": "src/lib/with-rls.ts",
+    "bytes": 10371,
+    "sha256": "9707a3842648d8f2615a8401752e5b368b1224584330956fe5c22b856760da74",
+    "gitBlob": "7827fd688c4852a5cb2a4fc9bf1e4517282e3fc8"
+  },
+  {
+    "path": "src/lib/auth.ts",
+    "bytes": 26635,
+    "sha256": "cc7ecee26681fb5fa8c2b0f08f064edcc2041ee2ecc845498de4fe851cbc78b7",
+    "gitBlob": "d0b7526ab93c1538271c18903148197513712d41"
+  },
+  {
+    "path": "src/lib/api-auth.ts",
+    "bytes": 26198,
+    "sha256": "202832eb031fddbd98b96b5b2ed614410b82966ea17623fc47232cd2b20074ca",
+    "gitBlob": "e83d8eb215f8ba26707656ff6e624c5ea891b3cf"
+  },
+  {
+    "path": "src/lib/user-module-access.ts",
+    "bytes": 9778,
+    "sha256": "aab31a0abf2e4be7c96df6c6ad9e474c6a2141764a6894882172d16519d12166",
+    "gitBlob": "8ff44b7b2e1b0db1a5486c6ea6ee323697cc31fa"
+  },
+  {
+    "path": "src/lib/mtm-settings.ts",
+    "bytes": 11533,
+    "sha256": "41b99a17d0ab846fdfb6ae751667b14acb222c8f053fa81932e92b3a81294ceb",
+    "gitBlob": "0a7eea683f298e8b5422e88fa599bfd6dc20536f"
+  },
+  {
+    "path": "src/lib/mtm/mobile-week.ts",
+    "bytes": 4180,
+    "sha256": "6f557666c7e17161e914696f4d7891ebac9ec2845da4de6e4de9c5b1db864d96",
+    "gitBlob": "93cb38cbe52eec5f42cb21ff86ee227dc7d9d407"
+  },
+  {
+    "path": "src/lib/timezone.ts",
+    "bytes": 12919,
+    "sha256": "88761f7c31ff4d596f1b0a0c1aa198c5c70a3d2ac4d494818728884cb5b75247",
+    "gitBlob": "6015720d9515a4c3e39d78b968281a752cfcd5cd"
+  },
+  {
+    "path": "src/lib/modules.ts",
+    "bytes": 23495,
+    "sha256": "08c8d13bebc1d6ba811687ee56f98f2510510c73f196c01f24cfefa521d23c24",
+    "gitBlob": "2fb2ecd1e6948316ab785816cde95163e1c3bbbe"
+  },
+  {
+    "path": "src/lib/tenant-capabilities.ts",
+    "bytes": 21507,
+    "sha256": "67720a5f24cf735bf2bf05d72441612ab9a6ccb671bf04cbd72758e34853d9b4",
+    "gitBlob": "3ec62258fed2a6a311fccc45342c8988a16a0868"
+  },
+  {
+    "path": "src/proxy.ts",
+    "bytes": 48987,
+    "sha256": "a013772f7d07d11905705596417f57bea000837a29b67fb0048b183606345ef5",
+    "gitBlob": "30a141d4d8ba0f622e8edb68073c8ae5404a9e06"
+  },
+  {
+    "path": "src/app/layout.tsx",
+    "bytes": 3211,
+    "sha256": "261242a8ef66750a5f296c56dd93ddda08e39eb1560bc4dbc18f58f0ee975625",
+    "gitBlob": "21f57d09b1e329bdd6ea5ff78711ce1638edbf08"
+  },
+  {
+    "path": "src/app/(dashboard)/layout.tsx",
+    "bytes": 13392,
+    "sha256": "be2ef432d60a19e8ea930becd30894b76c7bda5875a81246a95cb4cdfe4b6e3f",
+    "gitBlob": "f7d89a70329ac3c554c5e0bf029463a33a61563c"
+  },
+  {
+    "path": "src/app/globals.css",
+    "bytes": 52755,
+    "sha256": "7ab5a052ade58a3be83771ce412d57b801b57145b9d37fe7947d1c803eaeb019",
+    "gitBlob": "88ac8fb379eca534f1fa1eb75ea40471875c64bb"
+  },
+  {
+    "path": "src/components/providers.tsx",
+    "bytes": 1890,
+    "sha256": "3d82c0cf34677754f2e4d80e0978d2583bded1daa1d476ba59f2e0524242526d",
+    "gitBlob": "cc4625916c253e9301d82b9a23a85a9ecb8762bd"
+  },
+  {
+    "path": "messages/en.json",
+    "bytes": 1345106,
+    "sha256": "a29038688cd841b571bfc637916786c0445a84d4c99e81f3363079e483e7e892",
+    "gitBlob": "a04bc38bbe6fd909a628c93f86e1c21bc75f4f4a"
+  },
+  {
+    "path": "messages/ru.json",
+    "bytes": 1985758,
+    "sha256": "3729c69c6c3a6c14abc6527d699c3698b011cd5d4872c4d1b766a56b27f864aa",
+    "gitBlob": "e57ae2b623cc500b10c04e173b00dda448642386"
+  },
+  {
+    "path": "messages/az.json",
+    "bytes": 1487673,
+    "sha256": "fd02030571c3a9ac0db59687a695a3f8693fd3d376b76828343a74db0f76ac22",
+    "gitBlob": "7f7397c1be78ebf56945bddb4e711da9a83c9d40"
+  }
+]

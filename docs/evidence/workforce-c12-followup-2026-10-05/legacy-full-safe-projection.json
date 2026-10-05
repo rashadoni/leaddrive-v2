@@ -1,0 +1,309 @@
+{
+  "source": {
+    "filename": "workforce-pr585-8a2439-current-hosted-green-independent.json",
+    "sha256": "653ae40406bdc323c6af7cabd9ffe298b1be56c44d2939fdbbc6eea07c5b3521",
+    "bytes": 21204
+  },
+  "projectionHash": {
+    "algorithm": "SHA-256",
+    "canonicalization": "UTF-8 JSON of projection only; object keys recursively sorted; separators comma and colon without whitespace; ensure_ascii=false; no trailing newline",
+    "sha256": "df66f9d18fea9bd0d5d399990f96ebc63efeb71068be65177db49556842e16fd"
+  },
+  "projection": {
+    "bindings": {
+      "prNumber": 585,
+      "candidateHead": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+      "baseSha": "daf05b6030c89c4508f2a999706f4169360ccce2",
+      "testedSynthetic": "2d563c7e5b5a43a824240f5c4fc8e47d02b13698",
+      "candidateTree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+      "candidateAndSyntheticTree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+      "syntheticParents": [
+        "daf05b6030c89c4508f2a999706f4169360ccce2",
+        "8a2439093e6f8fa2bf46f377582aee41b9308dd5"
+      ]
+    },
+    "runs": [
+      {
+        "workflow": "pr-checks",
+        "runId": 37277114913,
+        "runAttempt": 1,
+        "headSha": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "workflow": "runner-policy",
+        "runId": 37277114937,
+        "runAttempt": 1,
+        "headSha": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "workflow": "gitleaks",
+        "runId": 37277115005,
+        "runAttempt": 1,
+        "headSha": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "checks": [
+      {
+        "name": "pr-scope",
+        "checkId": 111656480512,
+        "appId": 15368,
+        "runId": 37277114913,
+        "headSha": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "static-checks",
+        "checkId": 111656574127,
+        "appId": 15368,
+        "runId": 37277114913,
+        "headSha": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "typecheck",
+        "checkId": 111656574154,
+        "appId": 15368,
+        "runId": 37277114913,
+        "headSha": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "runner-policy",
+        "checkId": 111656480169,
+        "appId": 15368,
+        "runId": 37277114937,
+        "headSha": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "scan",
+        "checkId": 111656480930,
+        "appId": 15368,
+        "runId": 37277115005,
+        "headSha": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "compiler": {
+      "status": "COMPLETE_NONCLEAN_BASELINE",
+      "actualExitCode": 2,
+      "totalDiagnostics": 1168,
+      "allFamilyCounts": {
+        "TS18046": 89,
+        "TS18047": 2,
+        "TS18048": 14,
+        "TS18049": 1,
+        "TS2305": 1,
+        "TS2322": 55,
+        "TS2339": 76,
+        "TS2345": 29,
+        "TS2347": 8,
+        "TS2352": 12,
+        "TS2353": 5,
+        "TS2367": 6,
+        "TS2459": 1,
+        "TS2488": 1,
+        "TS2493": 14,
+        "TS2502": 4,
+        "TS2532": 6,
+        "TS2540": 1,
+        "TS2551": 1,
+        "TS2558": 57,
+        "TS2559": 1,
+        "TS2561": 1,
+        "TS2677": 1,
+        "TS2698": 4,
+        "TS2737": 151,
+        "TS2739": 3,
+        "TS2741": 9,
+        "TS2769": 9,
+        "TS2783": 1,
+        "TS2820": 1,
+        "TS4104": 1,
+        "TS7006": 581,
+        "TS7016": 1,
+        "TS7022": 2,
+        "TS7031": 19
+      },
+      "gatedPairs": 66,
+      "gatedPairCounts": {
+        "src/__tests__/api-account-engagement-handoff.test.ts TS2353": 1,
+        "src/__tests__/api-mtm-locations.test.ts TS2322": 3,
+        "src/__tests__/api-mtm-route-candidates.test.ts TS2322": 1,
+        "src/__tests__/api-social-facebook-native-search-worker.test.ts TS2353": 1,
+        "src/__tests__/api-social-monitoring-profile-logo.test.ts TS2322": 1,
+        "src/__tests__/api-users-me-avatar.test.ts TS2322": 1,
+        "src/__tests__/auth-session-invalidation.test.ts TS2345": 1,
+        "src/__tests__/lib-inbound-name-sanitization.test.ts TS2345": 4,
+        "src/__tests__/lib-safe-raster-upload.test.ts TS2322": 1,
+        "src/__tests__/lib-social-ai-draft-service.test.ts TS2322": 1,
+        "src/__tests__/lib-social-ai-draft-service.test.ts TS2353": 3,
+        "src/__tests__/lib-social-ingest-mention.test.ts TS2345": 1,
+        "src/__tests__/lib-social-monitoring-import-fence.test.ts TS2345": 1,
+        "src/__tests__/lib-social-relevance-confidence-policy.test.ts TS2345": 1,
+        "src/__tests__/lib-voice-agent-post-call.test.ts TS2339": 1,
+        "src/__tests__/mtm-module-navigation.test.ts TS2322": 1,
+        "src/__tests__/softphone-end-to-end.test.ts TS2322": 1,
+        "src/app/api/cron/social-poll/route.ts TS2345": 7,
+        "src/app/api/cron/social-web-news/route.ts TS2322": 1,
+        "src/app/api/v1/audit-log/route.ts TS2339": 2,
+        "src/app/api/v1/deal-velocity/route.ts TS2339": 7,
+        "src/app/api/v1/leads/[id]/route.ts TS2339": 1,
+        "src/app/api/v1/mtm/contacts/route.ts TS2322": 1,
+        "src/app/api/v1/mtm/contacts/route.ts TS2339": 8,
+        "src/app/api/v1/mtm/customer-create-requests/[id]/decision/route.ts TS2322": 1,
+        "src/app/api/v1/mtm/kpi/route.ts TS2339": 6,
+        "src/app/api/v1/mtm/kpi/route.ts TS2345": 4,
+        "src/app/api/v1/mtm/mobile/sync/push/route.ts TS2322": 20,
+        "src/app/api/v1/mtm/mobile/sync/push/route.ts TS2339": 1,
+        "src/app/api/v1/mtm/mobile/sync/push/route.ts TS2345": 3,
+        "src/app/api/v1/mtm/mobile/sync/push/route.ts TS2551": 1,
+        "src/app/api/v1/mtm/mobile/tasks/[id]/route.ts TS2339": 1,
+        "src/app/api/v1/mtm/organization-attribute-packages/route.ts TS2322": 1,
+        "src/app/api/v1/mtm/tasks/[id]/route.ts TS2339": 7,
+        "src/app/api/v1/mtm/visits/[id]/actions/route.ts TS2322": 1,
+        "src/app/api/v1/mtm/week/route.ts TS2339": 11,
+        "src/app/api/v1/mtm/week/route.ts TS2345": 1,
+        "src/app/api/v1/social/ingest-envelopes/route.ts TS2322": 1,
+        "src/app/api/v1/social/manual-engagement-tasks/route.ts TS2339": 11,
+        "src/components/mtm/contact-detail.tsx TS2322": 2,
+        "src/components/mtm/contact-duplicate-dialog.tsx TS2322": 2,
+        "src/components/mtm/contact-workplace-dialog.tsx TS2322": 1,
+        "src/components/mtm/operational-week-home.tsx TS2345": 1,
+        "src/components/mtm/organization-detail.tsx TS2322": 1,
+        "src/components/mtm/organization-explorer.tsx TS2322": 1,
+        "src/components/mtm/route-planning-matrix.tsx TS2322": 1,
+        "src/components/mtm/task-form.tsx TS2322": 2,
+        "src/components/mtm/task-workspace.tsx TS2345": 1,
+        "src/components/tasks/task-detail-view.tsx TS2339": 1,
+        "src/lib/ai/voice/execute-read-tool.ts TS2345": 1,
+        "src/lib/commitments/late-callbacks.ts TS2339": 4,
+        "src/lib/inbox/lead-qualification.ts TS2345": 1,
+        "src/lib/inbox/send-conversation-reply.ts TS2339": 6,
+        "src/lib/mtm/contact-bulk-assignment.ts TS2322": 1,
+        "src/lib/mtm/contact-bulk-assignment.ts TS2339": 1,
+        "src/lib/social/automatic-review-backfill.ts TS2339": 1,
+        "src/lib/social/legal-workflow.ts TS2322": 2,
+        "src/lib/social/monitoring-collector.ts TS2322": 1,
+        "src/lib/social/monitoring-import-fence.ts TS2322": 1,
+        "src/lib/social/social-monitoring-pdf.ts TS2345": 1,
+        "src/lib/social/twitter-poller.ts TS2322": 1,
+        "src/lib/social/visual-monitoring-report.ts TS2322": 1,
+        "src/lib/social/visual-monitoring-report.ts TS2339": 7,
+        "src/lib/social/youtube-comments-adapter.ts TS2322": 1,
+        "src/lib/voice-agent/place-callback.ts TS2322": 1,
+        "src/lib/voice-agent/place-callback.ts TS2345": 1
+      },
+      "expectedBaselinePairs": 66,
+      "exactGatedBaselineEquality": true,
+      "selectedTyped13Counts": {
+        "src/__tests__/workforce-reconciliation-job.test.ts": 0,
+        "src/__tests__/workforce-reconciliation.test.ts": 0,
+        "src/lib/format-date.ts": 0,
+        "src/lib/mtm/mobile-week.ts": 0,
+        "src/lib/prisma.ts": 0,
+        "src/lib/rls-context.ts": 0,
+        "src/lib/timezone.ts": 0,
+        "src/lib/workforce/data-classification.ts": 0,
+        "src/lib/workforce/reconciliation-job.ts": 0,
+        "src/lib/workforce/reconciliation.ts": 0,
+        "src/lib/workforce/timesheet-approval.ts": 0,
+        "src/lib/workforce/timesheet-calculation.ts": 0,
+        "src/lib/workforce/timesheet-export.ts": 0
+      },
+      "selectedTypedCount": 13,
+      "allOwnedDiagnosticCount": 0,
+      "claimCompilerClean": false
+    },
+    "tests": {
+      "status": "COMPLETE_NONCLEAN_BASELINE",
+      "baselineKnownFailingFiles": [
+        "src/__tests__/api-social-brand-protection.test.ts",
+        "src/__tests__/api-social-convert-to-lead.test.ts",
+        "src/__tests__/api-social-legal-reports.test.ts",
+        "src/__tests__/lead-ai-call-action-ui.test.ts",
+        "src/__tests__/lib-ai-advisor-query.test.ts",
+        "src/__tests__/lib-mtm-coverage-snapshot.test.ts",
+        "src/__tests__/lib-mtm-location-history.test.ts",
+        "src/__tests__/lib-social-discovery-auto-review-report.test.ts",
+        "src/__tests__/lib-social-discovery-review.test.ts",
+        "src/__tests__/lib-social-relevance-evaluator.test.ts",
+        "src/__tests__/lib-social-subject-relevance.test.ts",
+        "src/__tests__/migration-mtm-task-recurrence-schedule.test.ts",
+        "src/__tests__/mtm-operational-week-base-coverage-ui-contract.test.ts",
+        "src/__tests__/mtm-organization-grid-ui-contract.test.ts",
+        "src/__tests__/mtm-pharmacy-promotion-workspace-role-ux-contract.test.ts",
+        "src/__tests__/mtm-route-builder-filters-ui-contract.test.ts",
+        "src/__tests__/mtm-route-customer-prefill-ui-contract.test.ts",
+        "src/__tests__/zeytunpharm-swissmed-evidence-seed.test.ts"
+      ],
+      "exactBaselineSetGuardPassed": true,
+      "rawPerFileJSONArtifactAvailable": false,
+      "individualSelectedTestCIOutcomesClaimed": false,
+      "claimSuiteClean": false
+    },
+    "independentReview": {
+      "reviewerRole": "Independent authorless current exact PR585 whole hosted reviewer",
+      "status": "GREEN",
+      "findingCounts": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "sourceOnly": false,
+      "currentRuntimeScope": {
+        "currentHostedCompilerAndSuiteAccepted": true,
+        "currentManagerBrowserPostgresNativeArtifactsAccepted": false,
+        "applicableWorkflows": [
+          "pr-checks",
+          "runner-policy",
+          "gitleaks"
+        ],
+        "browserPostgresAndroidLoad": "NOT RUN; not triggered by current scope",
+        "DBAdapterCronLeaseCASCompletePageClosure": "NOT IMPLEMENTED/NOT ACCEPTED",
+        "preCheckpointActualAggregate44": "Historical bounded applied-source proof only, not invented per-file current CI counts",
+        "productionBuild": "SKIPPED allowed for this PR; new own merged-main actual build/release pending",
+        "normalMergedMainRelease": "NOT RUN/PENDING",
+        "historicalRuntimeBorrowed": false
+      },
+      "limits": [
+        "Full current compiler is NONCLEAN: actual diagnostics/families/exit and exact66 baseline derived from this complete log. All four owned and all13 selected typed paths zero across every observed family; entire diagnostic semantic list equals accepted BASE reference, without borrowing execution.",
+        "Current full suite NONCLEAN strict18-of18 baseline accepted; both selected test files are absent from quiet per-file log reporting. Do not invent individual CI35+9 counts. Separate precheckpoint small raw2files/44aggregate passed with exact applied source hashes.",
+        "Only current pr-checks/runner-policy/gitleaks workflows apply; no current Manager/native/browser/Postgres/PNG/Android/load execution or historical browser borrowing.",
+        "PR regular production build SKIPPED is allowed. Own normal merged-main deploy/build/artifact/public proof is pending; build/typevalidation and production RLS/recovery/retention limits must derive from that own release.",
+        "Dormant pure kernel only, no DB adapter/cron/leaseCAS/complete dependency/orphan/approval page closure or concurrency acceptance; no repair writes, row closure or100% claim.",
+        "First original SOURCE packet had a live-stdout descriptor mismatch and remains receipt-invalid. Separate corrected source packet/post-issuance rehash/root acceptance are bound; all first negative and root reader guards remain immutable."
+      ]
+    },
+    "selectedPathScope": {
+      "allCurrentOwnedAndSelectedPathsAllFamiliesZero": true,
+      "fullImportGraphClaim": false
+    },
+    "unavailableRequestedFields": [
+      {
+        "field": "compiler.expectedBaselineFileCodePairCounts",
+        "reason": "Original receipt contains expectedBaselinePairs=66, actual gatedPairCounts and exactGatedBaselineEquality, but no separate expected file/code/count map."
+      },
+      {
+        "field": "compiler.selectedPathPerFamilyCounts",
+        "reason": "Original receipt contains 13 selected-path diagnostic totals and a zero-across-all-families scope claim, but no path-by-family matrix."
+      },
+      {
+        "field": "tests.actualFailingTestFilePaths",
+        "reason": "Original receipt contains baselineKnownFailingFiles and exactBaselineSetGuardPassed, but no separate actual failing-file list. The baseline list is not duplicated as actual."
+      }
+    ]
+  }
+}

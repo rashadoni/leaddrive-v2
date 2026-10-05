@@ -1,0 +1,708 @@
+{
+  "schemaVersion": 1,
+  "status": "ACCEPTED_SCOPED_SYNTHETIC_BROWSER_AND_NAMED_POSTGRES_EVIDENCE_WITH_VISUAL_LIMITS",
+  "observedAtUtc": "2026-10-05T16:54:21.835527+00:00",
+  "reviewer": "/root/pr585_independent_review",
+  "candidateHead": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+  "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+  "run": {
+    "id": 37342693732,
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+    "status": "completed",
+    "conclusion": "success",
+    "jobId": 111873468441,
+    "runner": "ubuntu-24.04",
+    "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37342693732"
+  },
+  "provenance": "Fresh independent rashadoni GitHub connector run/jobs/artifacts metadata. Independently hashed existing ZIP, compared every extracted member byte-for-byte, checked all58 source hashes against local exact integration and Git manifest. Parsed entire sanitized JSON and manually reviewed finite sections; no claim of human line-by-line review of every diagnostic entry.",
+  "artifact": {
+    "id": 11358644908,
+    "name": "workforce-manager-today-browser-ad8cc2ce22f11f18eb6e090ef4264a71def6c350-1",
+    "bytes": 7099556,
+    "sha256": "f9d35d3c115a2e224ef8330e573d879363f1d1e55c4395f365940199fa5b9951",
+    "matchesFreshGitHubDigest": true,
+    "members": 58,
+    "originalPng": 56,
+    "originalJson": [
+      "manager-today-receipt.json",
+      "workflow-context.json"
+    ],
+    "extractedByteMismatches": []
+  },
+  "receipt": {
+    "path": "/tmp/hrm-browser-37342693732/manager-today-receipt.json",
+    "bytes": 257201,
+    "sha256": "420f70b22a187cb7d12429496b8ae8ee80d3c56a56c8d277e10e7d706b03a2f9"
+  },
+  "workflowContext": {
+    "stage": "workflow-preparing",
+    "headSha": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+    "ciSha": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+    "runId": "37342693732",
+    "runAttempt": "1",
+    "runtime": "ephemeral-next-dev",
+    "productionMutation": false
+  },
+  "workflowContextMeaning": "workflow-preparing records initial provenance; terminal success independently verified from API and final scenario receipt",
+  "sourceBindings": [
+    {
+      "path": "scripts/workforce-manager-today-browser-evidence.mjs",
+      "bytes": 62849,
+      "sha256": "dd70ea78d719d521b8ccfd39ec31b93cbf77963a3b8131685aae76a51f40cb16"
+    },
+    {
+      "path": "scripts/workforce-native-browser-zoom.mjs",
+      "bytes": 14287,
+      "sha256": "d7ca00632b2f6730bc5049ca2a897f332d594e0a0377a2f63fc96b7d5f8c24be"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json",
+      "bytes": 228,
+      "sha256": "8684a33b8edce2587e17612e0b7dc7f1b25a85fe2dde08ba642b6f21ba3ec7cb"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-native-zoom-extension/background.js",
+      "bytes": 144,
+      "sha256": "45e33ffc8a0f58560b991a8ef59dd0a31b5e93781850538e94ae03eb67d72c6c"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+      "bytes": 33617,
+      "sha256": "448d08b65048f3692145d1d2d73d1f4b2f5973363172dddb959b4c9daf20a4fb"
+    },
+    {
+      "path": "scripts/_rls.mjs",
+      "bytes": 2250,
+      "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266"
+    },
+    {
+      "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "bytes": 10288,
+      "sha256": "741f5ee020129c6ef98c275b6ad62e2ec61986e04da047cf884533331bc534a1"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+      "bytes": 15243,
+      "sha256": "e0433c3a48370f2b789c03c7749aa1a66611f70544dd76cf8c87a904b397a2eb"
+    },
+    {
+      "path": "src/lib/workforce/snapshot-writer.ts",
+      "bytes": 22831,
+      "sha256": "4698459ee85e3835ab362190f402d67e8dd3b6ab83ef18cccc9d706bd10a6c6b"
+    },
+    {
+      "path": "src/lib/workforce/policy-definition.ts",
+      "bytes": 3207,
+      "sha256": "da7a0767861a80180e6d6183fdd78f9457b8815d67c1eac04459d68f3f96eb40"
+    },
+    {
+      "path": "src/lib/workforce/policy-resolution.ts",
+      "bytes": 7415,
+      "sha256": "e552b0c255e589057fd81fd519a78458f15d6ee1a2371e43a68c1e99695accfb"
+    },
+    {
+      "path": "src/lib/workforce/geofence-evaluation.ts",
+      "bytes": 4509,
+      "sha256": "7510d31959e0f6a8b627f9975a57a60e10b051826fee58841ea1e55155e4bcd4"
+    },
+    {
+      "path": "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
+      "bytes": 48914,
+      "sha256": "fe87338c7318fd0e713223af6905e5d1e7ca9794260fdbeb48e32d521b46681a"
+    },
+    {
+      "path": "prisma/migrations/20260830110000_workforce_shift_default_timeline/migration.sql",
+      "bytes": 7209,
+      "sha256": "9b097c2cee3c48780774cd1c1f7b0392193bcbb1b2717c694da6a6227682500d"
+    },
+    {
+      "path": "prisma/migrations/20260830120000_workforce_workday_schedule_snapshots/migration.sql",
+      "bytes": 6009,
+      "sha256": "c3f2eaee65d95a83cca1f5c4d2e50c781be0fb618a802030fc1c46bb44bb2686"
+    },
+    {
+      "path": "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql",
+      "bytes": 15814,
+      "sha256": "bbc3b8477ca1f6ef62a14c2f83a80b59344fdb1bf3fbf31f468aff385c2166a3"
+    },
+    {
+      "path": "prisma/migrations/20260901080000_workforce_team_default_shift_timeline/migration.sql",
+      "bytes": 12454,
+      "sha256": "d4141d1fb438cadf687e71253ef3bc92d0a5a3c6f24a90e05a95ef7ab44490a8"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 956388,
+      "sha256": "229c57f4cbd9707b77edb5c022edb248036e2f19e755a04d0bf5dcd3869bbf68"
+    },
+    {
+      "path": "src/app/(dashboard)/workforce/page.tsx",
+      "bytes": 175,
+      "sha256": "e28a521670f737ce4087e6eb021079ee5ccdc5dccb8b916d9f1769b5c0f60b89"
+    },
+    {
+      "path": "src/components/workforce/workforce-manager-today.tsx",
+      "bytes": 8677,
+      "sha256": "97aa1ee58b2936e26ed061370f18ff94eeae2217cd354a063fda3610e620f9a1"
+    },
+    {
+      "path": "src/components/workforce/workforce-workbench.tsx",
+      "bytes": 84802,
+      "sha256": "3fd51bd9a372bc2ff141f0a62e58dcdeb69054d415bdb5f3cd45dfddc18faf81"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "bytes": 2099,
+      "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a"
+    },
+    {
+      "path": "src/components/ui/badge.tsx",
+      "bytes": 1746,
+      "sha256": "4a707bb4ddeae36de6d8dbb1d96c0e3ff48ed2cbd4b8d9ca89f99fd55e23506f"
+    },
+    {
+      "path": "src/app/api/v1/workforce/today/route.ts",
+      "bytes": 24487,
+      "sha256": "ff53b9fdb369138dedf815d61cd7be08c4370da27053fd7b295464575ae5f5d3"
+    },
+    {
+      "path": "src/lib/workforce/manager-today.ts",
+      "bytes": 21291,
+      "sha256": "21f501588f7dae24648d3789a07cb660506be69195f3d9653fef4edd1f1973cd"
+    },
+    {
+      "path": "src/lib/workforce/today-read-access.ts",
+      "bytes": 6773,
+      "sha256": "7d2564affea535828a3e5659f2ac5d3e8b4f7c26125927a867730d8fbea5cb74"
+    },
+    {
+      "path": "src/lib/workforce/access-control.ts",
+      "bytes": 10353,
+      "sha256": "b4915d133bb102251dccc94b9ba33a3a65905488135b00cb652f0e299cfa0b9f"
+    },
+    {
+      "path": "src/lib/workforce/access-grant-resolution.ts",
+      "bytes": 5664,
+      "sha256": "1720277ff37308894c9c3e3313a7235150350bcfa254ac4846905a5f9875e2c3"
+    },
+    {
+      "path": "src/lib/workforce/actor.ts",
+      "bytes": 2000,
+      "sha256": "5a2b4a7ead07f3fdf3a570bd5cf65f83446afac234145052bfba632a8f608644"
+    },
+    {
+      "path": "src/lib/workforce/employee-today.ts",
+      "bytes": 19963,
+      "sha256": "4021a3595fe5f9ed506c1e265451847b4487930c94f0ddf78c9d2596ed65e1cc"
+    },
+    {
+      "path": "src/lib/workforce/exception-read-access.ts",
+      "bytes": 2032,
+      "sha256": "adedcbd7844335ff63c2506c82c46fee240a473ba47974e90bcb8a8f62da69ae"
+    },
+    {
+      "path": "src/lib/workforce/exception-case-read-scope.ts",
+      "bytes": 8461,
+      "sha256": "42ff417bb8afc67546b4cc57bfc0b6549a839c2ce293297b1f440e625093f9b5"
+    },
+    {
+      "path": "src/lib/workforce/granular-access-rollout.ts",
+      "bytes": 519,
+      "sha256": "5e2278c1995a9bea0d3aca34f864afaf036e0ce56d409fd4b6d42ea13ae8d93b"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-response.ts",
+      "bytes": 553,
+      "sha256": "4c11bbe1d33bbba582ec7ac18ecd1a650494bfb86896d1ddb23bd359cf790471"
+    },
+    {
+      "path": "src/lib/workforce/team-membership.ts",
+      "bytes": 4282,
+      "sha256": "47fc2f92856ff8e8bc67a31bf9087c73faf673bc741fc58b76a4f5efac7723fb"
+    },
+    {
+      "path": "src/lib/workforce/calendar.ts",
+      "bytes": 8032,
+      "sha256": "d4d31c098c4f54dbfbeca83c0e4e7aff21bb874aad0d7d278dc0c2737ee67da8"
+    },
+    {
+      "path": "src/lib/workforce/shift-definition.ts",
+      "bytes": 5818,
+      "sha256": "f63737ed9c400f8b5d6895aa3654c1acf2ccfc9ec6f0bd1cf41882c606d07602"
+    },
+    {
+      "path": "src/lib/workforce/shift-resolution.ts",
+      "bytes": 10849,
+      "sha256": "fc56776588860d78293286c09e1c010de8fc8b1cff4d2065aaabfac8954b9d5f"
+    },
+    {
+      "path": "src/lib/workforce/timesheet-schedule-snapshot.ts",
+      "bytes": 8140,
+      "sha256": "b4a01de4b538bddc61da0a35f641762c2a4c5967153cd9b95d1ef3bb5f2a1d2e"
+    },
+    {
+      "path": "src/lib/workforce/timesheet-read-model.ts",
+      "bytes": 15268,
+      "sha256": "80dce28ad04af0172fb8419f947790d86ffe72405ed72379dd3d10fb128955c8"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21768,
+      "sha256": "b3353f92fc1350608556a90c6378a3c763deee15133a44e131becab4db89b043"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10371,
+      "sha256": "9707a3842648d8f2615a8401752e5b368b1224584330956fe5c22b856760da74"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26635,
+      "sha256": "cc7ecee26681fb5fa8c2b0f08f064edcc2041ee2ecc845498de4fe851cbc78b7"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 26198,
+      "sha256": "202832eb031fddbd98b96b5b2ed614410b82966ea17623fc47232cd2b20074ca"
+    },
+    {
+      "path": "src/lib/user-module-access.ts",
+      "bytes": 9778,
+      "sha256": "aab31a0abf2e4be7c96df6c6ad9e474c6a2141764a6894882172d16519d12166"
+    },
+    {
+      "path": "src/lib/mtm-settings.ts",
+      "bytes": 11533,
+      "sha256": "41b99a17d0ab846fdfb6ae751667b14acb222c8f053fa81932e92b3a81294ceb"
+    },
+    {
+      "path": "src/lib/mtm/mobile-week.ts",
+      "bytes": 4180,
+      "sha256": "6f557666c7e17161e914696f4d7891ebac9ec2845da4de6e4de9c5b1db864d96"
+    },
+    {
+      "path": "src/lib/timezone.ts",
+      "bytes": 12919,
+      "sha256": "88761f7c31ff4d596f1b0a0c1aa198c5c70a3d2ac4d494818728884cb5b75247"
+    },
+    {
+      "path": "src/lib/modules.ts",
+      "bytes": 23495,
+      "sha256": "08c8d13bebc1d6ba811687ee56f98f2510510c73f196c01f24cfefa521d23c24"
+    },
+    {
+      "path": "src/lib/tenant-capabilities.ts",
+      "bytes": 21507,
+      "sha256": "67720a5f24cf735bf2bf05d72441612ab9a6ccb671bf04cbd72758e34853d9b4"
+    },
+    {
+      "path": "src/proxy.ts",
+      "bytes": 48987,
+      "sha256": "a013772f7d07d11905705596417f57bea000837a29b67fb0048b183606345ef5"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "bytes": 3211,
+      "sha256": "261242a8ef66750a5f296c56dd93ddda08e39eb1560bc4dbc18f58f0ee975625"
+    },
+    {
+      "path": "src/app/(dashboard)/layout.tsx",
+      "bytes": 13392,
+      "sha256": "be2ef432d60a19e8ea930becd30894b76c7bda5875a81246a95cb4cdfe4b6e3f"
+    },
+    {
+      "path": "src/app/globals.css",
+      "bytes": 52755,
+      "sha256": "7ab5a052ade58a3be83771ce412d57b801b57145b9d37fe7947d1c803eaeb019"
+    },
+    {
+      "path": "src/components/providers.tsx",
+      "bytes": 1890,
+      "sha256": "3d82c0cf34677754f2e4d80e0978d2583bded1daa1d476ba59f2e0524242526d"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1345106,
+      "sha256": "a29038688cd841b571bfc637916786c0445a84d4c99e81f3363079e483e7e892"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1985758,
+      "sha256": "3729c69c6c3a6c14abc6527d699c3698b011cd5d4872c4d1b766a56b27f864aa"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1487673,
+      "sha256": "fd02030571c3a9ac0db59687a695a3f8693fd3d376b76828343a74db0f76ac22"
+    }
+  ],
+  "all58SourceBindingsExact": true,
+  "finiteChecks": {
+    "caseCount": 9,
+    "allCasesPassed": true,
+    "cases": [
+      {
+        "name": "manager-ru",
+        "status": "PASS",
+        "firstPage": 25,
+        "secondPage": 1,
+        "finalUniqueOrderedPeople": 26,
+        "readOnlyWorkforceRequests": true,
+        "realSessionPreserved": true
+      },
+      {
+        "name": "manager-az",
+        "status": "PASS",
+        "firstPage": 25,
+        "secondPage": 1,
+        "finalUniqueOrderedPeople": 26,
+        "readOnlyWorkforceRequests": true,
+        "realSessionPreserved": true
+      },
+      {
+        "name": "manager-en",
+        "status": "PASS",
+        "firstPage": 25,
+        "secondPage": 1,
+        "finalUniqueOrderedPeople": 26,
+        "readOnlyWorkforceRequests": true,
+        "realSessionPreserved": true
+      },
+      {
+        "name": "forged-tenant-headers-remain-session-bound",
+        "status": "PASS",
+        "responseStatus": 200,
+        "foreignPeopleExcluded": true,
+        "authenticatedTenantPreserved": true,
+        "noHeaderDerived403Claim": true
+      },
+      {
+        "name": "approver-ru",
+        "status": "PASS",
+        "firstPage": 25,
+        "secondPage": 1,
+        "finalUniqueOrderedPeople": 26,
+        "readOnlyWorkforceRequests": true,
+        "realSessionPreserved": true
+      },
+      {
+        "name": "no-grant-real-session-denied",
+        "status": "PASS",
+        "responseStatus": 403,
+        "code": "WORKFORCE_TODAY_READ_ACCESS_REQUIRED",
+        "namesAndFactsExcluded": true,
+        "noRosterRendered": true,
+        "localizedErrorRendered": true,
+        "readOnlyWorkforceRequests": true,
+        "realSessionPreserved": true
+      },
+      {
+        "name": "manager-en-native-200",
+        "status": "PASS",
+        "firstPage": 25,
+        "secondPage": 1,
+        "finalUniqueOrderedPeople": 26,
+        "readOnlyWorkforceRequests": true,
+        "realSessionPreserved": true
+      },
+      {
+        "name": "manager-ru-native-200",
+        "status": "PASS",
+        "firstPage": 25,
+        "secondPage": 1,
+        "finalUniqueOrderedPeople": 26,
+        "readOnlyWorkforceRequests": true,
+        "realSessionPreserved": true
+      },
+      {
+        "name": "manager-az-native-200",
+        "status": "PASS",
+        "firstPage": 25,
+        "secondPage": 1,
+        "finalUniqueOrderedPeople": 26,
+        "readOnlyWorkforceRequests": true,
+        "realSessionPreserved": true
+      }
+    ],
+    "positiveCurrentSnapshots": {
+      "status": "PASS",
+      "states": [
+        {
+          "ordinal": 1,
+          "status": "STARTED",
+          "sourceHelperCreatedTriplet": true,
+          "replayAlreadyPresent": true,
+          "schemaVersion": 2,
+          "historicalMembershipLinked": true,
+          "canonicalScheduleHashVerified": true,
+          "frozenUtcPlanVerified": true,
+          "remoteSegmentCount": 1
+        },
+        {
+          "ordinal": 2,
+          "status": "PAUSED",
+          "sourceHelperCreatedTriplet": true,
+          "replayAlreadyPresent": true,
+          "schemaVersion": 2,
+          "historicalMembershipLinked": true,
+          "canonicalScheduleHashVerified": true,
+          "frozenUtcPlanVerified": true,
+          "remoteSegmentCount": 1
+        },
+        {
+          "ordinal": 3,
+          "status": "COMPLETED",
+          "sourceHelperCreatedTriplet": true,
+          "replayAlreadyPresent": true,
+          "schemaVersion": 2,
+          "historicalMembershipLinked": true,
+          "canonicalScheduleHashVerified": true,
+          "frozenUtcPlanVerified": true,
+          "remoteSegmentCount": 1
+        }
+      ],
+      "adminFixtureSeedOnly": true,
+      "actualAcceptedStartEventWorkflowTested": false,
+      "physicalPresenceInferred": false,
+      "historicalTemplateDisplayNameImmutabilityTested": false
+    },
+    "missingCurrentSnapshot": {
+      "status": "PASS",
+      "syntheticStartedWorkday": true,
+      "currentPublishedAssignmentExists": true,
+      "allThreeSnapshotRowsAbsent": true,
+      "actualAcceptedStartEventWorkflowTested": false,
+      "physicalPresenceInferred": false,
+      "adminFixtureSeedOnly": true
+    },
+    "namedPostgresGuards": {
+      "status": "PASS",
+      "role": "postgres",
+      "disposableAdminTransactionsOnly": true,
+      "productionMigrationsChanged": false,
+      "appWritePrivilegesAdded": false,
+      "exactNamedGuardScopeOnly": true,
+      "results": [
+        {
+          "name": "workforce_policy_snapshots-UPDATE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_policy_snapshots-DELETE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_shift_snapshots-UPDATE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_shift_snapshots-DELETE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_workday_schedule_snapshots-UPDATE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_workday_schedule_snapshots-DELETE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "policy-workday-employee-link",
+          "status": "PASS",
+          "postgresCode": "23514",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "shift-workday-employee-link",
+          "status": "PASS",
+          "postgresCode": "23514",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "schedule-cross-workday-snapshot-links",
+          "status": "PASS",
+          "postgresCode": "23514",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "schedule-v2-historical-membership",
+          "status": "PASS",
+          "postgresCode": "23514",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        }
+      ]
+    },
+    "factImmutability": {
+      "tables": 20,
+      "allHashesAndCountsUnchanged": true,
+      "tenantCount": 2,
+      "userAuthenticationMetadataExcluded": true
+    },
+    "rlsBeforeAndAfter": {
+      "tables": 21,
+      "populated": 16,
+      "empty": 5,
+      "allUnscopedVisibleRowsZero": true,
+      "forcedRls": true,
+      "appOwnsAnyTable": false,
+      "emptyTablesNotPopulatedIsolationCredit": true
+    },
+    "cleanupActions": [
+      {
+        "action": "context-1",
+        "status": "PASS"
+      },
+      {
+        "action": "context-2",
+        "status": "PASS"
+      },
+      {
+        "action": "context-3",
+        "status": "PASS"
+      },
+      {
+        "action": "context-4",
+        "status": "PASS"
+      },
+      {
+        "action": "context-5",
+        "status": "PASS"
+      },
+      {
+        "action": "native-context-profile-1",
+        "status": "PASS"
+      },
+      {
+        "action": "native-context-profile-2",
+        "status": "PASS"
+      },
+      {
+        "action": "native-context-profile-3",
+        "status": "PASS"
+      },
+      {
+        "action": "browser",
+        "status": "PASS"
+      },
+      {
+        "action": "application-database",
+        "status": "PASS"
+      },
+      {
+        "action": "fixture-database",
+        "status": "PASS"
+      }
+    ],
+    "cleanup": "PASS",
+    "nativeZoom": {
+      "verdict": "PASS",
+      "cases": 3,
+      "factor": 2,
+      "method": "Fixture extension automatic per-tab browser zoom; not human shortcut or AT"
+    }
+  },
+  "originalPngInspected": [
+    {
+      "path": "/tmp/hrm-browser-37342693732/denied-ru-no-grant.png",
+      "bytes": 50164,
+      "sha256": "db6b70e2128029b290af3046811b3f718ce3d6b4b05e0d5ff98112a0bb517389"
+    },
+    {
+      "path": "/tmp/hrm-browser-37342693732/manager-az-native-200-snapshot-paused.png",
+      "bytes": 177770,
+      "sha256": "378ca27e24d95f394d24b1f111f76c0b649bd711c64abe50541efae0987e7d97"
+    },
+    {
+      "path": "/tmp/hrm-browser-37342693732/manager-ru-absent-page-two.png",
+      "bytes": 81837,
+      "sha256": "2044cdb0d5d9e78acd4dee520466f8fc9a01860d536531ae032d018ad8b185f9"
+    },
+    {
+      "path": "/tmp/hrm-browser-37342693732/manager-en-snapshot-completed.png",
+      "bytes": 175229,
+      "sha256": "0dce917e65257931c20f099b8622a9afa3e20a1590ca9f60b3421c0db4e17b09"
+    }
+  ],
+  "visualObservations": [
+    "EN completed screenshot visibly distinguishes Working, Paused and Completed states plus missing published schedule.",
+    "RU page-two screenshot visibly contains Employee26 with scheduled-not-started status; narrow text wraps.",
+    "AZ native200 paused screenshot visibly shows localized paused state and plan/recorded-exception sections.",
+    "Denied RU screenshot excludes roster and shows Russian load-failure heading; explanatory grant detail remains English.",
+    "Red Next development 1 Issue indicator appears in all4 samples and overlaps lower notice text in narrow/native200 screenshots. Issue origin was not diagnosed; no raw logs read."
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "Synthetic disposable data only",
+    "Positive workdays are synthetic admin-seeded facts, not a real accepted START workflow or physical presence",
+    "Frozen UTC plan/hashlinks do not prove historical template display-name immutability",
+    "No human AT/whole-page keyboard/Android/physical/load/pilot acceptance",
+    "Geometry/text checks do not prove pixel occlusion or whole-page accessibility",
+    "Native200 cases are fixture-extension automatic browser zoom, not a human browser-shortcut/AT session",
+    "Read-only manager Today; no production feature/grant activation",
+    "Four of56 originalPNG inspected; no all56 visual-review claim.",
+    "No full-page localization, pixel-occlusion-free UI, WCAG/AT or whole-page keyboard acceptance.",
+    "Named PostgreSQL guards exercise synthetic admin transactions against disposable schema/fixture; not production migrations or deployed permissions.",
+    "RLS proof for5empty tables is configuration/zero-visibility evidence only; no populated isolation credit.",
+    "This evidence is exactad8 integration PR587, not original8a PR585 run, new714 PR588/589 cursor helper, production release or general HRM completion.",
+    "No cursor-store11localPG cases borrowed into this browser run or vice versa.",
+    "No compiler all-family or strict-suite failure-identity acceptance from this artifact."
+  ],
+  "readOnlyReviewer": true,
+  "databaseRerun": false,
+  "rawLogsRead": false,
+  "credentialsRead": false,
+  "remoteWrites": false,
+  "mergeDeployActivation": false,
+  "accounting": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weightedPercent": 59,
+    "newClosures": 0
+  }
+}

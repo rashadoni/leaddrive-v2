@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "status": "ROOT_ACCEPTED_BOUNDED_MANAGER_TODAY_BROWSER_POSTGRES_ARTIFACT",
+  "runId": 37342693732,
+  "runAttempt": 1,
+  "event": "workflow_dispatch",
+  "candidateHead": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+  "checkedCiSha": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+  "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+  "parentMain": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+  "artifact": {
+    "id": 11358644908,
+    "name": "workforce-manager-today-browser-ad8cc2ce22f11f18eb6e090ef4264a71def6c350-1",
+    "zipBytes": 7099556,
+    "sha256": "f9d35d3c115a2e224ef8330e573d879363f1d1e55c4395f365940199fa5b9951",
+    "githubDigestMatched": true,
+    "expiresAt": "2026-10-19T16:49:02Z",
+    "files": 58,
+    "sanitizedJsonFiles": 2,
+    "pngFiles": 56
+  },
+  "originalReceipt": {
+    "bytes": 257201,
+    "sha256": "420f70b22a187cb7d12429496b8ae8ee80d3c56a56c8d277e10e7d706b03a2f9",
+    "fullJsonParsed": true,
+    "allFieldsHumanRead": false,
+    "reviewedSections": [
+      "identity/environment",
+      "all9cases",
+      "58sourcebindings",
+      "positive/missing snapshots",
+      "10namedPGguards",
+      "RLS before/after21tables",
+      "factimmutability20tables",
+      "authentication8responses",
+      "nativezoom3",
+      "nativecapture27status/cleanup",
+      "focus3status/finiteclauses",
+      "cleanup11",
+      "limitations"
+    ]
+  },
+  "sourceBindings": {
+    "count": 58,
+    "rawBytesAndSha256MatchExactIntegrationSource": true,
+    "sourceGitBlobsMatch8731FileManifest": true,
+    "harnessSha256": "dd70ea78d719d521b8ccfd39ec31b93cbf77963a3b8131685aae76a51f40cb16"
+  },
+  "results": {
+    "scenarios": 9,
+    "scenarioPasses": 9,
+    "nativeZoomLocales": [
+      "en",
+      "ru",
+      "az"
+    ],
+    "nativeZoomFactor": 2,
+    "namedPostgresGuardCases": 10,
+    "unchangedFactTables": 20,
+    "unscopedRlsTablesBeforeAndAfter": 21,
+    "realAuthCallbacks": 8,
+    "cleanupActionsPass": 11,
+    "recursiveUnexpectedFailStatusCount": 0,
+    "rlsPopulatedTables": 16,
+    "rlsEmptyTables": 5
+  },
+  "originalPngsVisuallyInspected": [
+    "manager-ru-snapshot-started.png",
+    "manager-en-snapshot-completed.png",
+    "manager-az-native-200-snapshot-paused.png",
+    "manager-ru-native-200-absent-page-two.png",
+    "denied-ru-no-grant.png"
+  ],
+  "visualObservations": [
+    "Selected state/localized headings and denial roster absence visible in inspected originals",
+    "Next development 1 Issue overlay visible and overlaps lower notices in narrow/native200 captures; cause not established from safe artifact",
+    "English denial detail visible beneath localized Russian heading; whole-page localization not accepted"
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "Synthetic disposable data only",
+    "Positive workdays are synthetic admin-seeded facts, not a real accepted START workflow or physical presence",
+    "Frozen UTC plan/hashlinks do not prove historical template display-name immutability",
+    "No human AT/whole-page keyboard/Android/physical/load/pilot acceptance",
+    "Geometry/text checks do not prove pixel occlusion or whole-page accessibility",
+    "Native200 cases are fixture-extension automatic browser zoom, not a human browser-shortcut/AT session",
+    "Read-only manager Today; no production feature/grant activation",
+    "Not a browser test of cursor draft71433bf8; its11PostgreSQLtests remain local evidence",
+    "No production build or release acceptance",
+    "Only5of56 original PNGs visually inspected by root; remaining images hashed, not claimed visually reviewed",
+    "Full original JSON parsed and finite sections reviewed; no human whole257201-byte read claim",
+    "Five empty RLS tables receive configuration/zero-visibility credit only, not populated isolation credit"
+  ],
+  "rawLogsRead": false,
+  "runtimeActivation": false,
+  "mergeDeploy": false,
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted": "59%",
+    "C12_008": "PARTIAL"
+  },
+  "independentReview": {
+    "receipt": "browser-independent.json",
+    "bytes": 24666,
+    "sha256": "b80677e43c07e65edd61c58bcd851f70cdf098b1f72478b797d91363b1882310",
+    "wholeReceiptReadByRoot": true,
+    "status": "ACCEPTED_SCOPED_SYNTHETIC_BROWSER_AND_NAMED_POSTGRES_EVIDENCE_WITH_VISUAL_LIMITS"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "status": "ROOT_ACCEPTED_HISTORICAL_SAFE_PROJECTION_WITH_EXPLICIT_LIMITS",
+  "receivedFrom": "Parent delegated thread via prior read-only coordinator",
+  "sourceOriginal": {
+    "sha256": "653ae40406bdc323c6af7cabd9ffe298b1be56c44d2939fdbbc6eea07c5b3521",
+    "bytes": 21204,
+    "originalBytesReceived": false,
+    "hashProvenance": "Coordinator-reported; not independently rehashed from original bytes"
+  },
+  "projection": {
+    "path": "legacy-full-safe-projection.json",
+    "canonicalSha256": "df66f9d18fea9bd0d5d399990f96ebc63efeb71068be65177db49556842e16fd",
+    "canonicalHashIndependentlyMatched": true,
+    "wholeProjectionRead": true
+  },
+  "bindings": {
+    "prNumber": 585,
+    "candidateHead": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+    "baseSha": "daf05b6030c89c4508f2a999706f4169360ccce2",
+    "testedSynthetic": "2d563c7e5b5a43a824240f5c4fc8e47d02b13698",
+    "candidateTree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+    "candidateAndSyntheticTree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+    "syntheticParents": [
+      "daf05b6030c89c4508f2a999706f4169360ccce2",
+      "8a2439093e6f8fa2bf46f377582aee41b9308dd5"
+    ]
+  },
+  "checks": {
+    "freshConnectorExactFiveIdsNamesApp15368HeadsConclusionsMatched": true,
+    "freshTreeAndSyntheticParentsMatched": true
+  },
+  "compiler": {
+    "source": "Historical projection, not new compiler execution",
+    "actualExitCode": 2,
+    "totalDiagnostics": 1168,
+    "allFamilyCountSumMatched": 1168,
+    "gatedPairs": 66,
+    "projectedActualMapMatchesSeparateExactCandidateBaseline": true,
+    "selectedPaths": 13,
+    "selectedCountsZero": true,
+    "globalClean": false
+  },
+  "tests": {
+    "projectedKnown18MatchesSeparateExactCandidateBaseline": true,
+    "strictBaselineGuardPassed": "Reported by original independent review projection",
+    "separateActualFailureListAvailable": false,
+    "perFileCIOutcomesAvailable": false,
+    "globalClean": false
+  },
+  "unavailableFields": [
+    {
+      "field": "compiler.expectedBaselineFileCodePairCounts",
+      "reason": "Original receipt contains expectedBaselinePairs=66, actual gatedPairCounts and exactGatedBaselineEquality, but no separate expected file/code/count map."
+    },
+    {
+      "field": "compiler.selectedPathPerFamilyCounts",
+      "reason": "Original receipt contains 13 selected-path diagnostic totals and a zero-across-all-families scope claim, but no path-by-family matrix."
+    },
+    {
+      "field": "tests.actualFailingTestFilePaths",
+      "reason": "Original receipt contains baselineKnownFailingFiles and exactBaselineSetGuardPassed, but no separate actual failing-file list. The baseline list is not duplicated as actual."
+    }
+  ],
+  "acceptanceScope": "Historical exact585 safe projection only. No root-original-HOSTED receipt reconstruction; no whole original audit read claim; no new587/589 runtime credit.",
+  "firstReceiptFailure": "Original source live-stdout descriptor mismatch retained; corrected source review accepted separately.",
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted": "59%",
+    "C12_008": "PARTIAL"
+  },
+  "mergeDeployActivationAuthorized": false
+}

@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "status": "ACCEPTED_HISTORICAL_SANITIZED_PROJECTION_CONSISTENCY_ONLY",
+  "observedAtUtc": "2026-10-05T16:47:29.956Z",
+  "reviewer": "/root/pr585_independent_review",
+  "sourceHead": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+  "sourceTree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+  "base": "daf05b6030c89c4508f2a999706f4169360ccce2",
+  "synthetic": "2d563c7e5b5a43a824240f5c4fc8e47d02b13698",
+  "receivedProjectionFile": {
+    "path": "/tmp/hrm-recovery/legacy-full-safe-projection.json",
+    "bytes": 14087,
+    "sha256": "adce8dc515d8b7bfe87da49c847a1aa7ec5231985dfaf2f415ac01fb36d729a7"
+  },
+  "canonicalProjection": {
+    "algorithm": "sha256",
+    "canonicalization": "projection only; recursive sorted object keys; JSON separators comma/colon; ensure_ascii=false; UTF8; no trailing newline",
+    "bytes": 10852,
+    "sha256": "df66f9d18fea9bd0d5d399990f96ebc63efeb71068be65177db49556842e16fd",
+    "independentlyRecomputed": true
+  },
+  "originalReceipt": {
+    "filename": "workforce-pr585-8a2439-current-hosted-green-independent.json",
+    "coordinatorReportedBytes": 21204,
+    "coordinatorReportedSha256": "653ae40406bdc323c6af7cabd9ffe298b1be56c44d2939fdbbc6eea07c5b3521",
+    "bytesReceived": false,
+    "fullRead": false,
+    "hashIndependentlyVerified": false,
+    "oldRootHostedReceiptReceived": false
+  },
+  "checksIndependentlyRefetched": [
+    {
+      "id": 111656480512,
+      "name": "pr-scope",
+      "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277114913/job/111656480512"
+    },
+    {
+      "id": 111656574127,
+      "name": "static-checks",
+      "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277114913/job/111656574127"
+    },
+    {
+      "id": 111656574154,
+      "name": "typecheck",
+      "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277114913/job/111656574154"
+    },
+    {
+      "id": 111656480169,
+      "name": "runner-policy",
+      "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277114937/job/111656480169"
+    },
+    {
+      "id": 111656480930,
+      "name": "scan",
+      "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+      "appId": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277115005/job/111656480930"
+    }
+  ],
+  "runsIndependentlyRefetched": [
+    {
+      "id": 37277114913,
+      "attempt": 1,
+      "event": "pull_request",
+      "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37277114937,
+      "attempt": 1,
+      "event": "pull_request",
+      "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 37277115005,
+      "attempt": 1,
+      "event": "pull_request",
+      "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "verification": {
+    "sourceAndSyntheticTreeFromFreshGitHubMetadata": true,
+    "syntheticParentsMatchBaseAndHead": true,
+    "all35FamilyCountsSumTo1168": true,
+    "compilerExit2": "Projected historical claim; process output not read",
+    "actual66GatedPairMapEqualsSeparatelyVerifiedExactCandidateBaseline": true,
+    "expected66BaselineMapOriginallyEmbedded": false,
+    "expectedMapComparisonMethod": "Used exact candidate typecheck-baseline.json independently bound in source review; did not invent missing original field",
+    "selected13PathKeysMatchExactSourceCatalogue": true,
+    "selected13ProjectionTotalsAllZero": true,
+    "selected13PathByFamilyMatrixAvailable": false,
+    "baselineKnown18MatchesExactCandidateTestBaseline": true,
+    "actualFailingFileListAvailable": false
+  },
+  "scopeLimits": [
+    "Accepts integrity/consistency of the received sanitized projection and fresh GitHub gate identity bindings only.",
+    "Original 21204-byte receipt is not available; its reported hash cannot establish an independent full read or inherited original review/root acceptance.",
+    "Aggregate historical compiler family counts and selected-path totals are projected report claims; no independent replay of complete diagnostics or path-by-family matrix verification.",
+    "Known 18-file test baseline is not the actual failure list. Exact-baseline-pass is a projected claim corroborated only by successful gate metadata; strict failure identities remain unavailable.",
+    "Historical data applies only to exact PR585 head8a/tree4eda and is not borrowed as PR587/589 compiler, suite, browser, PostgreSQL or production proof.",
+    "First invalid source packet mentioned in projection is preserved as historical caveat; corrected original packets/root receipts were not received.",
+    "No global compiler/suite clean claim; no row closure, runtime activation, merge or deploy acceptance."
+  ],
+  "rawLogsRead": false,
+  "remoteWrites": false
+}
