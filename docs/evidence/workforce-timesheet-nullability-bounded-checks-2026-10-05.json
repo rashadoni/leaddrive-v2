@@ -1,0 +1,143 @@
+{
+  "atUtc": "2026-10-05T05:05:15.234983+00:00",
+  "status": "SMALL SEQUENTIAL EXISTING SEMANTIC TESTS AND SCOPED LINT PASS; FRESH HOSTED COMPILER REQUIRED",
+  "branch": "codex/workforce-completion-part45",
+  "executionParent": "5ef5de63502809641deebcba24ca6a22b5cec043",
+  "appliedPath": "src/lib/workforce/timesheet-calculation.ts",
+  "appliedSource": {
+    "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/lib/workforce/timesheet-calculation.ts",
+    "bytes": 12067,
+    "sha256": "1c0e44ed28a9cbde6e317c031ec53cafdb05efd1115d19b0bd3606037ba206e1"
+  },
+  "commands": [
+    {
+      "label": "resources",
+      "command": [
+        "bash",
+        "-c",
+        "free -m\ndf -h .\ncat /proc/pressure/memory\ncat /proc/pressure/io"
+      ],
+      "startedAt": "2026-10-05T05:05:03.761892+00:00",
+      "completedAt": "2026-10-05T05:05:03.828030+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/resources.stdout",
+        "bytes": 544,
+        "sha256": "ac1b6132e2ccf4bc2c1587bef0657f460c54f84122ec2cfbb43e316478f2edb1"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/resources.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "lint-configuration",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--input-type=module",
+        "-e",
+        "import { ESLint } from \"eslint\";const e=new ESLint();const p=\"src/lib/workforce/timesheet-calculation.ts\";const c=await e.calculateConfigForFile(p);const out={path:p,ignored:await e.isPathIgnored(p),configured:!!c,rules:Object.keys(c?.rules??{}).length};console.log(JSON.stringify(out));if(out.ignored||!out.configured||out.rules<1)process.exit(1);"
+      ],
+      "startedAt": "2026-10-05T05:05:03.828478+00:00",
+      "completedAt": "2026-10-05T05:05:09.149805+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/lint-configuration.stdout",
+        "bytes": 100,
+        "sha256": "4a3d59f68d261a9ad851ff0ecd861aa737d65f702ec6ddd1358911f338206519"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/lint-configuration.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "scoped-eslint",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/eslint/bin/eslint.js",
+        "src/lib/workforce/timesheet-calculation.ts"
+      ],
+      "startedAt": "2026-10-05T05:05:09.149944+00:00",
+      "completedAt": "2026-10-05T05:05:11.584375+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/scoped-eslint.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/scoped-eslint.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "existing-calculation-rehydration-semantic-tests",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-timesheet-calculation.test.ts",
+        "src/__tests__/workforce-timesheet-rehydration.test.ts",
+        "src/__tests__/workforce-timesheet-rehydration-property.test.ts",
+        "--maxWorkers=1",
+        "--no-file-parallelism"
+      ],
+      "startedAt": "2026-10-05T05:05:11.584468+00:00",
+      "completedAt": "2026-10-05T05:05:15.208534+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/existing-calculation-rehydration-semantic-tests.stdout",
+        "bytes": 281,
+        "sha256": "f1c3ea4e7b2f9cdefac423bc619f0d26739fc38f33e317019ef396143649baba"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/existing-calculation-rehydration-semantic-tests.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "startedAt": "2026-10-05T05:05:15.208631+00:00",
+      "completedAt": "2026-10-05T05:05:15.234904+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/diff-check.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-timesheet-nullability-part45-bounded-primary/diff-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "actualLintConfiguredTarget": {
+    "path": "src/lib/workforce/timesheet-calculation.ts",
+    "ignored": false,
+    "configured": true,
+    "rules": 113
+  },
+  "targetedTestFiles": [
+    "src/__tests__/workforce-timesheet-calculation.test.ts",
+    "src/__tests__/workforce-timesheet-rehydration.test.ts",
+    "src/__tests__/workforce-timesheet-rehydration-property.test.ts"
+  ],
+  "newTestsAdded": false,
+  "freshCompilerRunLocally": false,
+  "fullSuiteBuildBrowserPostgresAndroidLoad": "NOT RUN locally by Contabo contract",
+  "currentPR583DiagnosticRetroactivelyCleared": false,
+  "newHostedRuntimeAccepted": false,
+  "newRowClosure": false,
+  "DBAdapterOrCronActivated": false
+}
