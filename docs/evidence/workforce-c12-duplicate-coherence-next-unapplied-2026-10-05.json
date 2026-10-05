@@ -1,0 +1,83 @@
+{
+  "atUtc": "2026-10-05T04:38:07.441449+00:00",
+  "status": "UNAPPLIED FUTURE PURE KERNEL DRAFT; CURRENT583 RELEASE AND NULLABILITY SUCCESSOR GATES REMAIN REQUIRED",
+  "candidateBase": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "recipes": [
+    {
+      "repoPath": "src/lib/workforce/reconciliation.ts",
+      "base": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/reconciliation.ts.base",
+        "bytes": 8449,
+        "sha256": "81ea8f447d9724444c79beb7518baedd01c5ea5f2da2f3fc11f5c51049039563"
+      },
+      "draft": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/reconciliation.ts.unapplied-draft",
+        "bytes": 9151,
+        "sha256": "83b0f897de05515a4cfa92068edb6ce32026009e8d0690545b3b7309735fca5c"
+      },
+      "exactReplacements": [
+        {
+          "old": "function bounded(snapshot: WorkforceReconciliationSnapshot) {\n  for (const [kind, rows] of Object.entries(snapshot)) {\n    if (!Array.isArray(rows) || rows.length > MAX_ROWS_PER_KIND) {\n      throw new Error(`WORKFORCE_RECONCILIATION_BATCH_INVALID:${kind}`)\n    }\n  }\n}",
+          "new": "function bounded(snapshot: WorkforceReconciliationSnapshot) {\n  for (const [kind, rows] of Object.entries(snapshot)) {\n    if (!Array.isArray(rows) || rows.length > MAX_ROWS_PER_KIND) {\n      throw new Error(`WORKFORCE_RECONCILIATION_BATCH_INVALID:${kind}`)\n    }\n  }\n  // A duplicated primary key makes reference resolution order-dependent.\n  // Reject the complete page before constructing any lookup or result.\n  const kinds = [\"workdays\", \"events\", \"transitions\", \"evidence\", \"assessments\", \"exceptions\", \"approvals\"] as const\n  for (const kind of kinds) {\n    const ids = new Set<string>()\n    for (const row of snapshot[kind]) {\n      if (ids.has(row.id)) throw new Error(`WORKFORCE_RECONCILIATION_DUPLICATE_ID:${kind}`)\n      ids.add(row.id)\n    }\n  }\n}"
+        },
+        {
+          "old": "    const proofSubject = proof ? evidenceSubject(proof) : undefined\n    if (",
+          "new": "    const proofSubject = proof ? evidenceSubject(proof) : undefined\n    const subjectWorkdayIds = [row.workdayId, event?.workdayId, proofSubject?.workdayId]\n      .filter((id): id is string => typeof id === \"string\" && id.length > 0)\n    if ("
+        },
+        {
+          "old": "      (row.workdayId && (!workday || workday.organizationId !== row.organizationId || workday.agentId !== row.agentId))",
+          "new": "      new Set(subjectWorkdayIds).size > 1\n      || (row.workdayId && (!workday || workday.organizationId !== row.organizationId || workday.agentId !== row.agentId))"
+        }
+      ]
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation.test.ts",
+      "base": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/workforce-reconciliation.test.ts.base",
+        "bytes": 10048,
+        "sha256": "e6eb69cae9f8e6eeb22813350b17d8c10399505d7e3cdc25761a0f04b9ebd895"
+      },
+      "draft": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/workforce-reconciliation.test.ts.unapplied-draft",
+        "bytes": 13558,
+        "sha256": "bb1dedf39a72beb6fe4cff41336b59fa4bdd5faa08d03ecdae7343b20f43ecd8"
+      },
+      "exactReplacements": [
+        {
+          "old": "  it(\"fails closed before processing an unbounded kind\", () => {",
+          "new": "\n  it.each([\"workdays\", \"events\", \"transitions\", \"evidence\", \"assessments\", \"exceptions\", \"approvals\"] as const)(\"rejects duplicate %s primary keys before resolving references\", (kind) => {\n    const source = coherentSnapshot()\n    const rows = source[kind]\n    const duplicate = { ...source, [kind]: [...rows, { ...rows[0] }] }\n    const original = JSON.stringify(duplicate)\n    expect(() => reconcileWorkforceSnapshot(duplicate)).toThrow(`WORKFORCE_RECONCILIATION_DUPLICATE_ID:${kind}`)\n    expect(() => reconcileWorkforceSnapshot({ ...duplicate, [kind]: [...duplicate[kind]].reverse() }))\n      .toThrow(`WORKFORCE_RECONCILIATION_DUPLICATE_ID:${kind}`)\n    expect(JSON.stringify(duplicate)).toBe(original)\n  })\n\n  it(\"allows equal identifiers across separate row kinds without conflating their lookups\", () => {\n    const source = coherentSnapshot()\n    const sharedId = \"shared-private\"\n    const result = reconcileWorkforceSnapshot({\n      ...source,\n      events: [{ ...source.events[0], id: sharedId }],\n      transitions: [{ ...source.transitions[0], id: sharedId }],\n      evidence: [\n        { ...source.evidence[0], workdayEventId: sharedId },\n        { ...source.evidence[1], siteTransitionId: sharedId },\n      ],\n      exceptions: [{ ...source.exceptions[0], workdayEventId: sharedId }],\n    })\n    expect(result.status).toBe(\"MATCHED\")\n    expect(JSON.stringify(result)).not.toContain(sharedId)\n  })\n\n  it.each([\"explicit-workday\", \"event-versus-evidence\", \"transition-versus-workday\"])(\"rejects incoherent %s references to separate workdays of the same employee\", (kind) => {\n    const source = coherentSnapshot()\n    const secondWorkday = { ...source.workdays[0], id: \"second-workday-private\" }\n    const secondEvent = { ...source.events[0], id: \"second-event-private\", workdayId: secondWorkday.id }\n    const secondTransition = { ...source.transitions[0], id: \"second-transition-private\", workdayId: secondWorkday.id }\n    const eventProof = { ...source.evidence[0], id: \"second-proof-private\", workdayEventId: secondEvent.id }\n    const transitionProof = { ...source.evidence[1], id: \"second-transition-proof-private\", siteTransitionId: secondTransition.id }\n    const subject = kind === \"explicit-workday\"\n      ? { ...source.exceptions[0], workdayId: secondWorkday.id }\n      : kind === \"event-versus-evidence\"\n        ? { ...source.exceptions[0], workdayId: null, evidenceId: eventProof.id }\n        : { ...source.exceptions[0], workdayEventId: null, evidenceId: transitionProof.id }\n    const snapshot = {\n      ...source,\n      workdays: [...source.workdays, secondWorkday],\n      events: [...source.events, secondEvent],\n      transitions: [...source.transitions, secondTransition],\n      evidence: [...source.evidence, eventProof, transitionProof],\n      exceptions: [subject],\n    }\n    const original = JSON.stringify(snapshot)\n    const result = reconcileWorkforceSnapshot(snapshot)\n    expect(result).toMatchObject({ status: \"MISMATCH\", mismatchTotal: 1, mismatchCounts: { EXCEPTION_SUBJECT_SCOPE_MISMATCH: 1 }, repair: \"NONE\" })\n    expect(JSON.stringify(result)).not.toMatch(/private|org-1|agent-1|workday-1/)\n    expect(JSON.stringify(snapshot)).toBe(original)\n  })\n\n  it(\"accepts matching event and transition evidence references to the same workday\", () => {\n    const source = coherentSnapshot()\n    expect(reconcileWorkforceSnapshot({\n      ...source,\n      exceptions: [{ ...source.exceptions[0], evidenceId: \"evidence-transition\" }],\n    }).status).toBe(\"MATCHED\")\n  })\n\n  it(\"fails closed before processing an unbounded kind\", () => {"
+        }
+      ]
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "base": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/workforce-reconciliation-job.test.ts.base",
+        "bytes": 5680,
+        "sha256": "deadc0029cee96b51217f5688615a857a018e9acea3ac230758adc16f9742b22"
+      },
+      "draft": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/workforce-reconciliation-job.test.ts.unapplied-draft",
+        "bytes": 7778,
+        "sha256": "8df55e84e2f2aca80633f167659f3a509a5f467e9f4b79ab072728105791db2b"
+      },
+      "exactReplacements": [
+        {
+          "old": "  it(\"reports cursor races and a finite page ceiling without claiming success\", async () => {",
+          "new": "\n  it(\"rejects an ambiguous duplicate page before committing or loading the next page\", async () => {\n    const snapshot = emptySnapshot()\n    const workday = { id: \"workday-private\", organizationId: \"org-private\", agentId: \"agent-private\" }\n    snapshot.workdays = [workday, { ...workday }]\n    const original = JSON.stringify(snapshot)\n    const db = store([{ snapshot, nextCursor: \"page-next-private\", more: true }])\n    await expect(runWorkforceReconciliationJob({ store: db, initialCursor: \"page-before-private\" }))\n      .rejects.toThrow(\"WORKFORCE_RECONCILIATION_DUPLICATE_ID:workdays\")\n    expect(db.loadPage).toHaveBeenCalledTimes(1)\n    expect(db.commitCursor).not.toHaveBeenCalled()\n    expect(JSON.stringify(snapshot)).toBe(original)\n  })\n\n  it(\"leaves a same-employee cross-workday exception page uncommitted\", async () => {\n    const snapshot = emptySnapshot()\n    snapshot.workdays = [\n      { id: \"first-workday-private\", organizationId: \"org-private\", agentId: \"agent-private\" },\n      { id: \"second-workday-private\", organizationId: \"org-private\", agentId: \"agent-private\" },\n    ]\n    snapshot.events = [{ id: \"event-private\", organizationId: \"org-private\", agentId: \"agent-private\", workdayId: \"second-workday-private\" }]\n    snapshot.exceptions = [{ id: \"case-private\", organizationId: \"org-private\", agentId: \"agent-private\", workdayId: \"first-workday-private\", workdayEventId: \"event-private\", evidenceId: null, segmentId: null, expectedWorkDate: null }]\n    const db = store([{ snapshot, nextCursor: \"page-next-private\", more: true }])\n    const original = JSON.stringify(snapshot)\n    const result = await runWorkforceReconciliationJob({ store: db, initialCursor: \"page-before-private\" })\n    expect(result).toMatchObject({ status: \"MISMATCH\", pagesExamined: 1, mismatchTotal: 1, mismatchCounts: { EXCEPTION_SUBJECT_SCOPE_MISMATCH: 1 }, repair: \"NONE\" })\n    expect(db.loadPage).toHaveBeenCalledTimes(1)\n    expect(db.commitCursor).not.toHaveBeenCalled()\n    expect(JSON.stringify(result)).not.toContain(\"private\")\n    expect(JSON.stringify(snapshot)).toBe(original)\n  })\n\n  it(\"reports cursor races and a finite page ceiling without claiming success\", async () => {"
+        }
+      ]
+    }
+  ],
+  "applicationAllowed": false,
+  "appliedSourceCredit": false,
+  "testsRun": false,
+  "compilerRun": false,
+  "runtimeCredit": false,
+  "productionReleaseCredit": false,
+  "currentPR583SourceCredit": false,
+  "currentPR583RuntimeCredit": false,
+  "changes": "Reject ambiguous primary-key duplicates before lookup; require multiple exception subjects to reference the same workday; finite privacy-safe outcomes and uncommitted mismatch page.",
+  "DBAdapterOrCronActivation": false,
+  "newRowClosure": false
+}
