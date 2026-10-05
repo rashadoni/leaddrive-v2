@@ -137,6 +137,87 @@ describe("Workforce reconciliation", () => {
     expect(JSON.stringify(result)).not.toContain("agent-private")
   })
 
+  it.each([
+    { workdayId: "missing-workday", organizationId: "org-1", agentId: "agent-1" },
+    { workdayId: "workday-1", organizationId: "org-other", agentId: "agent-1" },
+    { workdayId: "workday-1", organizationId: "org-1", agentId: "agent-other" },
+  ])("rejects a transition with an absent or different parent scope: %o", (invalid) => {
+    const source = coherentSnapshot()
+    const result = reconcileWorkforceSnapshot({ ...source, transitions: [{ id: "transition-1", ...invalid }] })
+    expect(result).toMatchObject({ status: "MISMATCH", repair: "NONE", mismatchCounts: { WORKDAY_TRANSITION_SCOPE_MISMATCH: 1 } })
+    expect(JSON.stringify(result)).not.toMatch(/missing-workday|org-other|agent-other|transition-1/)
+  })
+
+  it.each(["evidence-event", "evidence-transition"])("binds exception employee through %s without adding an evidence employee field", (evidenceId) => {
+    const source = coherentSnapshot()
+    const subject = { ...source.exceptions[0], workdayId: null, workdayEventId: null, evidenceId }
+    expect(reconcileWorkforceSnapshot({ ...source, exceptions: [subject] }).status).toBe("MATCHED")
+    const result = reconcileWorkforceSnapshot({ ...source, exceptions: [{ ...subject, agentId: "agent-other" }] })
+    expect(result).toMatchObject({ status: "MISMATCH", mismatchTotal: 1, repair: "NONE", mismatchCounts: { EXCEPTION_SUBJECT_SCOPE_MISMATCH: 1 } })
+    expect(JSON.stringify(result)).not.toMatch(/agent-other|evidence-event|evidence-transition/)
+  })
+
+  it.each([
+    { workdayEventId: null, siteTransitionId: null },
+    { workdayEventId: "event-1", siteTransitionId: "transition-1" },
+    { workdayEventId: "missing-event", siteTransitionId: null },
+    { workdayEventId: null, siteTransitionId: "missing-transition" },
+  ])("rejects an exception whose evidence subject cannot be resolved uniquely: %o", (subject) => {
+    const source = coherentSnapshot()
+    const result = reconcileWorkforceSnapshot({
+      ...source,
+      evidence: [{ id: "evidence-event", organizationId: "org-1", ...subject }],
+      exceptions: [{ ...source.exceptions[0], workdayId: null, workdayEventId: null }],
+    })
+    expect(result.status).toBe("MISMATCH")
+    expect(result.mismatchCounts.EXCEPTION_SUBJECT_SCOPE_MISMATCH).toBe(1)
+    expect(result.repair).toBe("NONE")
+  })
+
+  it.each([
+    { segmentId: null, expectedWorkDate: "2028-02-29" },
+    { segmentId: "segment-private", expectedWorkDate: null },
+    { segmentId: "", expectedWorkDate: "2028-02-29" },
+    { segmentId: "  \t", expectedWorkDate: "2028-02-29" },
+    { segmentId: "segment-private", expectedWorkDate: "2026-02-29" },
+    { segmentId: "segment-private", expectedWorkDate: "2026-04-31" },
+    { segmentId: "segment-private", expectedWorkDate: "2028-2-29" },
+    { segmentId: "segment-private", expectedWorkDate: "2028-02-29T00:00:00Z" },
+    { segmentId: "segment-private", expectedWorkDate: " 2028-02-29" },
+  ])("rejects an incomplete or noncanonical schedule-only subject: %o", (subject) => {
+    const source = coherentSnapshot()
+    const result = reconcileWorkforceSnapshot({
+      ...source,
+      exceptions: [{ ...source.exceptions[0], workdayId: null, workdayEventId: null, evidenceId: null, ...subject }],
+    })
+    expect(result).toMatchObject({ status: "MISMATCH", mismatchCounts: { EXCEPTION_SUBJECT_INVALID: 1 }, mismatchTotal: 1, repair: "NONE" })
+    expect(JSON.stringify(result)).not.toContain("segment-private")
+  })
+
+  it("accepts a canonical leap-day schedule-only subject without inventing workday or START facts", () => {
+    const source = coherentSnapshot()
+    const result = reconcileWorkforceSnapshot({
+      workdays: [], events: [], transitions: [], evidence: [], assessments: [], approvals: [], exports: [],
+      exceptions: [{ ...source.exceptions[0], workdayId: null, workdayEventId: null, evidenceId: null, segmentId: "segment-private", expectedWorkDate: "2028-02-29" }],
+    })
+    expect(result).toMatchObject({ status: "MATCHED", mismatchTotal: 0, repair: "NONE", examined: { workdays: 0, events: 0, transitions: 0, exceptions: 1 } })
+    expect(JSON.stringify(result)).not.toMatch(/segment-private|2028-02-29|agent-1/)
+  })
+
+  it("leaves the complete frozen input unchanged when reconciling", () => {
+    const source = coherentSnapshot()
+    const original = JSON.stringify(source)
+    function freeze(value: unknown): void {
+      if (value && typeof value === "object") {
+        for (const child of Object.values(value)) freeze(child)
+        Object.freeze(value)
+      }
+    }
+    freeze(source)
+    expect(reconcileWorkforceSnapshot(source).status).toBe("MATCHED")
+    expect(JSON.stringify(source)).toBe(original)
+  })
+
   it("fails closed before processing an unbounded kind", () => {
     const source = coherentSnapshot()
     expect(() => reconcileWorkforceSnapshot({

@@ -1,0 +1,149 @@
+{
+  "atUtc": "2026-10-05T03:44:35.660585+00:00",
+  "status": "APPLIED STATIC SELECTED CATALOGUE; FRESH CI COMPILER PENDING",
+  "branch": "codex/workforce-completion-part43",
+  "base": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "executionParent": "59f5f5d8c4114602fb396bac1283dca0cd9679c6",
+  "ownedKernelAndTests4": [
+    "src/__tests__/workforce-reconciliation-job.test.ts",
+    "src/__tests__/workforce-reconciliation.test.ts",
+    "src/lib/workforce/reconciliation-job.ts",
+    "src/lib/workforce/reconciliation.ts"
+  ],
+  "selectedImports13": [
+    "src/__tests__/workforce-reconciliation-job.test.ts",
+    "src/__tests__/workforce-reconciliation.test.ts",
+    "src/lib/format-date.ts",
+    "src/lib/mtm/mobile-week.ts",
+    "src/lib/prisma.ts",
+    "src/lib/rls-context.ts",
+    "src/lib/timezone.ts",
+    "src/lib/workforce/data-classification.ts",
+    "src/lib/workforce/reconciliation-job.ts",
+    "src/lib/workforce/reconciliation.ts",
+    "src/lib/workforce/timesheet-approval.ts",
+    "src/lib/workforce/timesheet-calculation.ts",
+    "src/lib/workforce/timesheet-export.ts"
+  ],
+  "sourceBindings": [
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "bytes": 5680,
+      "sha256": "deadc0029cee96b51217f5688615a857a018e9acea3ac230758adc16f9742b22",
+      "changedInCandidate": true,
+      "baseBytes": 3612,
+      "baseSha256": "983b8b8b2f8f9f15dd201ecc0e2845369c68cf002da8a35e48bdf50b0cd28177"
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation.test.ts",
+      "bytes": 10048,
+      "sha256": "e6eb69cae9f8e6eeb22813350b17d8c10399505d7e3cdc25761a0f04b9ebd895",
+      "changedInCandidate": true,
+      "baseBytes": 5384,
+      "baseSha256": "7cc68bdcfc708f597d183020a7a93a4fd3e58c0bb9e6146e5ce316bb4532a80a"
+    },
+    {
+      "repoPath": "src/lib/format-date.ts",
+      "bytes": 9433,
+      "sha256": "ea5422cfdf139f7a536552c08f324e2168cfac53c25ec936d86676ef802f12ae",
+      "changedInCandidate": false,
+      "baseBytes": 9433,
+      "baseSha256": "ea5422cfdf139f7a536552c08f324e2168cfac53c25ec936d86676ef802f12ae"
+    },
+    {
+      "repoPath": "src/lib/mtm/mobile-week.ts",
+      "bytes": 4180,
+      "sha256": "6f557666c7e17161e914696f4d7891ebac9ec2845da4de6e4de9c5b1db864d96",
+      "changedInCandidate": false,
+      "baseBytes": 4180,
+      "baseSha256": "6f557666c7e17161e914696f4d7891ebac9ec2845da4de6e4de9c5b1db864d96"
+    },
+    {
+      "repoPath": "src/lib/prisma.ts",
+      "bytes": 13628,
+      "sha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26",
+      "changedInCandidate": false,
+      "baseBytes": 13628,
+      "baseSha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26"
+    },
+    {
+      "repoPath": "src/lib/rls-context.ts",
+      "bytes": 5099,
+      "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd",
+      "changedInCandidate": false,
+      "baseBytes": 5099,
+      "baseSha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd"
+    },
+    {
+      "repoPath": "src/lib/timezone.ts",
+      "bytes": 12919,
+      "sha256": "88761f7c31ff4d596f1b0a0c1aa198c5c70a3d2ac4d494818728884cb5b75247",
+      "changedInCandidate": false,
+      "baseBytes": 12919,
+      "baseSha256": "88761f7c31ff4d596f1b0a0c1aa198c5c70a3d2ac4d494818728884cb5b75247"
+    },
+    {
+      "repoPath": "src/lib/workforce/data-classification.ts",
+      "bytes": 2849,
+      "sha256": "b01411dd343c40849d6a04e50ab308d2f005baaa3fdf1a85aa9a8d783e72490c",
+      "changedInCandidate": false,
+      "baseBytes": 2849,
+      "baseSha256": "b01411dd343c40849d6a04e50ab308d2f005baaa3fdf1a85aa9a8d783e72490c"
+    },
+    {
+      "repoPath": "src/lib/workforce/reconciliation-job.ts",
+      "bytes": 3722,
+      "sha256": "1fd328013fac465edf3446c834bb3e97fca9f6af27b499f47ee81f2cc4a2cc6f",
+      "changedInCandidate": false,
+      "baseBytes": 3722,
+      "baseSha256": "1fd328013fac465edf3446c834bb3e97fca9f6af27b499f47ee81f2cc4a2cc6f"
+    },
+    {
+      "repoPath": "src/lib/workforce/reconciliation.ts",
+      "bytes": 8449,
+      "sha256": "81ea8f447d9724444c79beb7518baedd01c5ea5f2da2f3fc11f5c51049039563",
+      "changedInCandidate": true,
+      "baseBytes": 7408,
+      "baseSha256": "fbb583fc6d345a9b014210e26cd97fdbc67d9a2983d84e2bab219a03468e39ab"
+    },
+    {
+      "repoPath": "src/lib/workforce/timesheet-approval.ts",
+      "bytes": 6652,
+      "sha256": "edbb6ba108d769f84e81b9c772fa7f7c5ddd99533af214c56f2039ccc86b3ee1",
+      "changedInCandidate": false,
+      "baseBytes": 6652,
+      "baseSha256": "edbb6ba108d769f84e81b9c772fa7f7c5ddd99533af214c56f2039ccc86b3ee1"
+    },
+    {
+      "repoPath": "src/lib/workforce/timesheet-calculation.ts",
+      "bytes": 12026,
+      "sha256": "136fdc44e0fe6e057babd05aa198cbb1dcf30af40de76b219636dc8d8afa3556",
+      "changedInCandidate": false,
+      "baseBytes": 12026,
+      "baseSha256": "136fdc44e0fe6e057babd05aa198cbb1dcf30af40de76b219636dc8d8afa3556"
+    },
+    {
+      "repoPath": "src/lib/workforce/timesheet-export.ts",
+      "bytes": 3893,
+      "sha256": "098ca89d798892d1874521c4ce6cf128ab79f0989dced5ebf82a231d1274ed74",
+      "changedInCandidate": false,
+      "baseBytes": 3893,
+      "baseSha256": "098ca89d798892d1874521c4ce6cf128ab79f0989dced5ebf82a231d1274ed74"
+    }
+  ],
+  "fullCompilerGraphClaim": false,
+  "includesTypeOnlyImports": true,
+  "historicalOnlyDiagnosticObservation": {
+    "sourceHead": "56edf7cebc94b5927b26b125991dc82625f59a3b",
+    "selected13Diagnostics": 1,
+    "path": "src/lib/workforce/timesheet-calculation.ts",
+    "line": 240,
+    "code": "TS18047",
+    "message": "'startedAt' is possibly 'null'.",
+    "current195OrFutureCredit": false
+  },
+  "requireFreshCurrentCompilerAllFamilyOwned4Zero": true,
+  "unchangedSelectedDependencyDiagnosticsMustBeExplicitlyReported": true,
+  "DBAdapterOrCronActivation": false,
+  "newRowClosure": false
+}

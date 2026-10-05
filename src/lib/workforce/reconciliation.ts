@@ -1,9 +1,11 @@
+import { isDateKey } from "@/lib/mtm/mobile-week"
 import { exportStoredWorkforceTimesheetApproval } from "@/lib/workforce/timesheet-export"
 
 const MAX_ROWS_PER_KIND = 1_000
 
 export type WorkforceReconciliationCode =
   | "WORKDAY_EVENT_SCOPE_MISMATCH"
+  | "WORKDAY_TRANSITION_SCOPE_MISMATCH"
   | "EVIDENCE_SUBJECT_INVALID"
   | "EVIDENCE_SUBJECT_SCOPE_MISMATCH"
   | "ASSESSMENT_EVIDENCE_MISMATCH"
@@ -113,13 +115,25 @@ export function reconcileWorkforceSnapshot(
     }
   }
 
+  for (const transition of snapshot.transitions) {
+    const workday = workdays.get(transition.workdayId)
+    if (!workday || workday.organizationId !== transition.organizationId || workday.agentId !== transition.agentId) {
+      mismatch("WORKDAY_TRANSITION_SCOPE_MISMATCH")
+    }
+  }
+
+  const evidenceSubject = (row: WorkforceReconciliationSnapshot["evidence"][number]) => {
+    if (Number(row.workdayEventId !== null) + Number(row.siteTransitionId !== null) !== 1) return undefined
+    return row.workdayEventId !== null ? events.get(row.workdayEventId) : transitions.get(row.siteTransitionId!)
+  }
+
   for (const row of snapshot.evidence) {
     const subjectCount = Number(row.workdayEventId !== null) + Number(row.siteTransitionId !== null)
     if (subjectCount !== 1) {
       mismatch("EVIDENCE_SUBJECT_INVALID")
       continue
     }
-    const subject = row.workdayEventId ? events.get(row.workdayEventId) : transitions.get(row.siteTransitionId!)
+    const subject = evidenceSubject(row)
     if (!subject || subject.organizationId !== row.organizationId) mismatch("EVIDENCE_SUBJECT_SCOPE_MISMATCH")
   }
 
@@ -129,7 +143,10 @@ export function reconcileWorkforceSnapshot(
   }
 
   for (const row of snapshot.exceptions) {
-    const hasNoShowSubject = row.segmentId !== null && row.expectedWorkDate !== null
+    // A segment/date identifies a schedule-only subject, not an accepted START.
+    // Segment existence and ownership require a future authorized store closure.
+    const hasNoShowSubject = typeof row.segmentId === "string" && row.segmentId.trim().length > 0
+      && isDateKey(row.expectedWorkDate)
     if (!row.workdayId && !row.workdayEventId && !row.evidenceId && !hasNoShowSubject) {
       mismatch("EXCEPTION_SUBJECT_INVALID")
       continue
@@ -137,10 +154,14 @@ export function reconcileWorkforceSnapshot(
     const workday = row.workdayId ? workdays.get(row.workdayId) : undefined
     const event = row.workdayEventId ? events.get(row.workdayEventId) : undefined
     const proof = row.evidenceId ? evidence.get(row.evidenceId) : undefined
+    const proofSubject = proof ? evidenceSubject(proof) : undefined
     if (
       (row.workdayId && (!workday || workday.organizationId !== row.organizationId || workday.agentId !== row.agentId))
       || (row.workdayEventId && (!event || event.organizationId !== row.organizationId || event.agentId !== row.agentId))
-      || (row.evidenceId && (!proof || proof.organizationId !== row.organizationId))
+      || (row.evidenceId && (
+        !proof || proof.organizationId !== row.organizationId
+        || !proofSubject || proofSubject.organizationId !== row.organizationId || proofSubject.agentId !== row.agentId
+      ))
     ) mismatch("EXCEPTION_SUBJECT_SCOPE_MISMATCH")
   }
 
