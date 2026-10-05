@@ -1,0 +1,23 @@
+{
+  "atUtc": "2026-10-05T02:25:08.025397+00:00",
+  "actualLintConfiguredAndNotIgnored": {
+    "path": "scripts/workforce-manager-today-browser-evidence.mjs",
+    "ignored": false,
+    "rules": 90,
+    "configured": true
+  },
+  "originals": [
+    {
+      "path": "/tmp/workforce-part41-snapshotless-bounded-primary/lint-configuration.stdout",
+      "bytes": 109,
+      "sha256": "9a870492b188d6553f109a8a86392cc4d3cc43fce61fb7de16422c3467f9161d"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-bounded-primary/lint-configuration.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "scope": "One exact changed harness; confirms no-warn-ignored flag did not conceal ignored lint",
+  "newRuntimeCredit": false
+}

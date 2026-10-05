@@ -1,0 +1,371 @@
+{
+  "atUtc": "2026-10-05T01:23:41.887538+00:00",
+  "prNumber": 581,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/581",
+  "head": "56edf7cebc94b5927b26b125991dc82625f59a3b",
+  "base": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "branch": "codex/workforce-completion-part38",
+  "draft": false,
+  "conditionalDraftRunIds": {},
+  "oldBlockedHead": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+  "oldBlockedReport": {
+    "path": "/tmp/workforce-pr581-c5cf76-current-hosted-first-blocked-independent.json",
+    "bytes": 42179,
+    "sha256": "9883ba21a9574625b4848176121f58123b4af47897bacdf369d208fae9003bac"
+  },
+  "rootSourceAcceptance": {
+    "path": "/tmp/workforce-pr581-56edf-whole-source-root-accepted-primary.json",
+    "bytes": 1943,
+    "sha256": "d6495eb7bd64a37f9f2941cc0cc9d09be297c5deaaab89dbf7fa9ae7350e930f"
+  },
+  "sourceReport": {
+    "path": "/tmp/workforce-pr581-56edf7-whole-source-independent.json",
+    "bytes": 14550,
+    "sha256": "fa6738bc7de95b3a9cafd72e1eb60bc2974b846a79193864c24461a01d80e94a"
+  },
+  "rangeProof": {
+    "path": "/tmp/workforce-pr581-56edf-range-primary/proof.json",
+    "bytes": 6767,
+    "sha256": "8c19c4c764c2eaaae6b7d7e773d6f3c29b9fc374f658588da52305fa4efd5dfb"
+  },
+  "runtimeCredit": false,
+  "normalMergeAllowed": false,
+  "mutationScope": "Original own structured READY metadata and ordinary fastforwardpush completed; separate read-only completion only; no repeated mutation/force/rerun/status/admin/merge/deploy",
+  "testedSyntheticBinding": "ACTUAL own new READY synthetic parents/tree verified",
+  "firstPostPushFrameGuard": {
+    "path": "/tmp/workforce-pr581-56edf-ready-update-readonly-completion-primary/first-immediate-postpush-head-observation-guard.json",
+    "bytes": 1345,
+    "sha256": "01a59a46aa115af65c5fdbe3aeab7dad0849c48878768da40d1ddabdce5002a0"
+  },
+  "originals": [
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/branch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/branch.stdout",
+      "bytes": 34,
+      "sha256": "3a54fd253b912a8e31dd7cb4eab0ca920af41b809995c4787b503422a89dc587"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/cwd.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/cwd.stdout",
+      "bytes": 95,
+      "sha256": "57676c1eb152c85a9a43c371329f19d99d7f02a1a1fc8055edd5baa2f1f9aea8"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/fetch-main.stderr",
+      "bytes": 97,
+      "sha256": "458e1ab101f63684ffd7d5b9579386f2858e5f699ea069ac950a84484df6fbcf"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/fetch-main.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/fresh-main.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/fresh-main.stdout",
+      "bytes": 342,
+      "sha256": "4efb98bdeb087a3b5b40c53c1cd35dcb77d3dd9604d57c48f973fb502403ac5e"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/full-diff.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/full-diff.stdout",
+      "bytes": 353416,
+      "sha256": "e0de93c8da0b5bf2e043259d8c9f6ff991700ea657aee94f7744554384ad5b1d"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/head.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/head.stdout",
+      "bytes": 41,
+      "sha256": "db72ca30d7f6f281c4088435e50a0dcd245aedd75c50efec7f7fbdb8c1b923fb"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/main-before-ordinary-push.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/main-before-ordinary-push.stdout",
+      "bytes": 342,
+      "sha256": "4efb98bdeb087a3b5b40c53c1cd35dcb77d3dd9604d57c48f973fb502403ac5e"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/main-lsremote.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/main-lsremote.stdout",
+      "bytes": 57,
+      "sha256": "00ff64d65a2cae16b0a76a2a91007ef7403968d3a9419a95349c3db9c61e4c5f"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/nonDoc-diff.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/nonDoc-diff.stdout",
+      "bytes": 43906,
+      "sha256": "fff1be8352b33ad841c35f23e2b42086a93548cbd957e685d2ad1a77b7d94668"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/ordinary-own-fastforward-push.stderr",
+      "bytes": 145,
+      "sha256": "c8f1f0d7f833f291cb509c893221f50612c5be33869237e55e223b71b440d471"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/ordinary-own-fastforward-push.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/ordinary-preserved-ancestry-check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/ordinary-preserved-ancestry-check.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/origin-main.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/origin-main.stdout",
+      "bytes": 41,
+      "sha256": "ac12204f4ba9a80ba87a52c5bb46cb1cd88889da5c8257f076794e32348c11fa"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/origin.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/origin.stdout",
+      "bytes": 46,
+      "sha256": "b2691089fa7707098a4840b68076c3722635e79e5ee6950511f670629196a2c8"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/own-pr-after.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/own-pr-after.stdout",
+      "bytes": 17631,
+      "sha256": "e151e19166edc10d0f1be471246a0b51d062d0c401aee2f1a1cd2e41998debdf"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/own-pr-before.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/own-pr-before.stdout",
+      "bytes": 17132,
+      "sha256": "93bf109ce25e775b2813ddc6d468076a462c86b7639c8e380adbeb40d7d64efc"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/own-ready-pr-metadata-request.json",
+      "bytes": 1971,
+      "sha256": "7991c096a0e6cbb27dce317ff1cc5645d0aec27fe08e1f9a2bc41bb06e7884ba"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/own-remote-after.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/own-remote-after.stdout",
+      "bytes": 86,
+      "sha256": "2b7db22389143fef176868d7ce50dc304c08222230691965580f8399038ca9f9"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/own-remote-before.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/own-remote-before.stdout",
+      "bytes": 86,
+      "sha256": "801278f7344006be1e340776f8c889485fe85db0b571c4f25b985c33577c74d8"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/status.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/status.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/structured-own-ready-pr-metadata-patch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-primary/structured-own-ready-pr-metadata-patch.stdout",
+      "bytes": 17629,
+      "sha256": "6e22e5f3e3a8e20ee18ac2c0fca5f5c2c1bca61d848809415bdbad5ab37858ec"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-readonly-completion-primary/converged-own-pr.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-readonly-completion-primary/converged-own-pr.stdout",
+      "bytes": 17632,
+      "sha256": "8188375c8cd57e1a76c6000e883615b3f12b9e8f77b22f4dcb892924bb909f2f"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-readonly-completion-primary/first-immediate-postpush-head-observation-guard.json",
+      "bytes": 1345,
+      "sha256": "01a59a46aa115af65c5fdbe3aeab7dad0849c48878768da40d1ddabdce5002a0"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-readonly-completion-primary/fresh-main-after-publication.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-readonly-completion-primary/fresh-main-after-publication.stdout",
+      "bytes": 342,
+      "sha256": "4efb98bdeb087a3b5b40c53c1cd35dcb77d3dd9604d57c48f973fb502403ac5e"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-update-readonly-completion-primary/own-remote-converged.stdout",
+      "bytes": 86,
+      "sha256": "2b7db22389143fef176868d7ce50dc304c08222230691965580f8399038ca9f9"
+    }
+  ],
+  "ordinaryReadyUpdate": {
+    "path": "/tmp/workforce-pr581-56edf-ready-update-primary/publication-proof.json",
+    "bytes": 11162,
+    "sha256": "97cdd8d26dfabf64d7bdd3ebab273dbf192f862b85c4dbac816a0369d57b9d16"
+  },
+  "testedSynthetic": "f96b22278af5991579504c21e9e3b9e01457f8e7",
+  "testedTree": "0476e94a08d0cf400d36c2b3ec091a57efa7802d",
+  "syntheticParents": [
+    "6dab202bd8fb02cd3d8487724a300dc918505a37",
+    "56edf7cebc94b5927b26b125991dc82625f59a3b"
+  ],
+  "candidateAndSyntheticTreeEqual": true,
+  "readyOriginals": [
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/branch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/branch.stdout",
+      "bytes": 34,
+      "sha256": "3a54fd253b912a8e31dd7cb4eab0ca920af41b809995c4787b503422a89dc587"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/candidate-tree.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/candidate-tree.stdout",
+      "bytes": 41,
+      "sha256": "32aeb121ae31feef310265eec3607114033724237e4336f19b897ac7d6190f9c"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/clean.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/clean.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/exact-own-pr.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/exact-own-pr.stdout",
+      "bytes": 17632,
+      "sha256": "8188375c8cd57e1a76c6000e883615b3f12b9e8f77b22f4dcb892924bb909f2f"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/fetch-tested-merge.stderr",
+      "bytes": 106,
+      "sha256": "605d2667a3386c359f3c960a50ee04c95dfb41cfba37f85f40fee156c6010a27"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/fetch-tested-merge.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/head.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/head.stdout",
+      "bytes": 41,
+      "sha256": "db72ca30d7f6f281c4088435e50a0dcd245aedd75c50efec7f7fbdb8c1b923fb"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/tested-parents.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/tested-parents.stdout",
+      "bytes": 82,
+      "sha256": "8f6f3617b172e132c155b7200538917e5b0dd3d6675a5f247d025bdf54637139"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/tested-synthetic.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/tested-synthetic.stdout",
+      "bytes": 41,
+      "sha256": "caf1e20307e9c20f2a76519bacb7e45c433a1744b82938df03a7faae97ceb8a6"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/tested-tree.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/tested-tree.stdout",
+      "bytes": 41,
+      "sha256": "32aeb121ae31feef310265eec3607114033724237e4336f19b897ac7d6190f9c"
+    }
+  ]
+}
