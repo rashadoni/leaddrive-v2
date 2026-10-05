@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent_read_only_worker",
+  "reviewed_at_utc": "2026-10-05T17:59:08.984229+00:00",
+  "repository": "rashadoni/leaddrive-v2",
+  "decision": "ACCEPTED_EXACT_SOURCE_BOUNDED_DORMANT_EXPORT_AUDIT_ADAPTER",
+  "candidate": {
+    "head_sha": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+    "parent_sha": "f17523372802339a1220e2940b8b8c47a63f187b",
+    "tree_sha": "6f372c91a128a8415c45a02d176a9e0eb312d81c",
+    "release_route": "Existing cumulative PR589 only, with fresh mandatory checks after ref advancement",
+    "local_git_head_is_not_candidate": true
+  },
+  "verification": {
+    "base_blobs": 8737,
+    "candidate_blobs": 8739,
+    "local_candidate_blobs_verified": 8739,
+    "base_tree": "02bb497ae8751d81b520249fb00c59283495326b",
+    "candidate_tree": "6f372c91a128a8415c45a02d176a9e0eb312d81c",
+    "changed_paths": [
+      "docs/workforce-c12-completion-plan-2026-10-05.md",
+      "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+      "src/lib/workforce/reconciliation-export-audit.ts"
+    ],
+    "files": [
+      {
+        "path": "src/lib/workforce/reconciliation-export-audit.ts",
+        "bytes": 6800,
+        "sha256": "83c6868e923aad67ab62d83ad6d3327a095bfbdad5557d31b208e9aae2735082",
+        "git_blob_sha": "388cf7e1c10c0636b7efbbbec6e6de1efd1edf81",
+        "mode": "100644"
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+        "bytes": 17050,
+        "sha256": "6c0905449efc6056247e65429abdbde929612c890845acb35f26cafc0dfe1f6c",
+        "git_blob_sha": "55b37784bae8c3a918060018a97c29f0c2ff9a02",
+        "mode": "100644"
+      },
+      {
+        "path": "docs/workforce-c12-completion-plan-2026-10-05.md",
+        "bytes": 12473,
+        "sha256": "01ad614ad7204113754c673b3a9d99cbf5a275dad583e171732b7e07a22a7713",
+        "git_blob_sha": "3053d383a85681e9cbb85997e5994fa21039dd9a",
+        "mode": "100644"
+      }
+    ]
+  },
+  "connector": {
+    "account": "rashadoni",
+    "link_id": "link_6ac2b60ffee481918919fcce81e5c228",
+    "fresh_reads": [
+      "git commit51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+      "recursive tree6f372c91a128a8415c45a02d176a9e0eb312d81c",
+      "all three changed file contents at exact51fb SHA"
+    ],
+    "tree_truncated": false,
+    "all_three_connector_contents_equal_local_bytes_without_normalization": true,
+    "all_candidate_blob_hashes_and_file_modes_verified": true,
+    "base_manifest_tree_recomputed": true,
+    "candidate_tree_recomputed": true
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [],
+    "unresolved": 0
+  },
+  "source_review": {
+    "full_reads": [
+      "src/lib/workforce/reconciliation-export-audit.ts",
+      "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+      "docs/workforce-c12-completion-plan-2026-10-05.md"
+    ],
+    "dependencies_reviewed": [
+      "src/lib/workforce/reconciliation-approval-group.ts",
+      "src/lib/workforce/reconciliation.ts",
+      "src/lib/workforce/timesheet-export.ts",
+      "src/app/api/v1/workforce/timesheet/approvals/[id]/export/route.ts",
+      "prisma/schema.prisma MtmAuditLog"
+    ],
+    "accepted_contracts": [
+      "Audit roots are selected independently of approvals with action OR metadataKind, tenant equality, half-open UTC window and deterministic createdAt/id order. Sentinel101 refuses more than100 roots without partial output.",
+      "SQL projects only allowlisted fields and bounds each projected JSON record to4096 UTF8 bytes; purpose/IP/userAgent/oldData/raw payload do not cross this projection. Strict source-family/entity/root/data-type/date/revision/hash/format/recipient validation refuses malformed records.",
+      "Ordinary pooled PrismaClient is excluded at type boundary and runtime via $transaction presence. One authorized read-only repeatable-read or serializable interactive transaction remains an explicit caller precondition; SQL settings checks are supplemental.",
+      "Every audit reference is validated, including later roots from cached groups. Repeated downloads remain distinct export references, while complete approval groups are deduplicated. Missing and cross-scope roots refuse. Valid differing hash pairs remain available to the kernel to generate mismatch and prevent cursor advancement.",
+      "All visible ancestor/successor revisions are resolved via the accepted group reader. Union caps enforce1000 approvals and conservative1MiB serialized UTF8 approval-array size; sum of per-group JSON-array lengths conservatively bounds the merged array.",
+      "No cursor/fact mutation, schema change, runtime import/caller or activation added. Error codes are finite and do not forward SQL payload details. Input values and Date milliseconds are captured before first await."
+    ],
+    "runtime_reference_search": "No consumers outside new source and its tests found."
+  },
+  "validation": {
+    "owner_actual_run": {
+      "report": "/tmp/hrm-export-tests.json",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "guard_cases": 2,
+      "actual_disposable_PostgreSQL_cases": 15,
+      "reviewer_action": "Parsed whole sanitized report and all17 named outcomes; reviewed test implementation. Database execution was by owner, not rerun independently.",
+      "cases": [
+        {
+          "name": "export audit input boundary rejects invalid input before querying and contains database errors",
+          "status": "passed"
+        },
+        {
+          "name": "export audit input boundary rejects an ordinary pooled client even with pretend session defaults",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL joins full ancestor/successor groups and preserves repeat downloads without duplicate approvals",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL uses inclusive/exclusive UTC boundaries and deterministic timestamp/id order",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL scopes roots to tenant and source family while retaining malformed family members",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL honors injected RLS and contains parameter strings",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL requires read-only repeatable-read transaction context",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL keeps one snapshot across audit and group reads despite concurrent append",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL refuses every malformed JSON type, date, revision, hash and export descriptor",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL refuses null agent, entity disagreement and a reference outside the recorded subject",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL does not hide missing or cross-tenant approval roots and never commits on refusal",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL checks subsequent cached-group roots and revision/recordKind agreement",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL preserves bad reference hashes for kernel mismatch without cursor commit",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL accepts100 audit roots and refuses101 without a partial window",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL excludes oversized private fields but refuses oversized projected values",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL refuses a deduplicated approval union exceeding1000 rows",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL refuses combined UTF8 approval bytes even when each group fits separately",
+          "status": "passed"
+        }
+      ]
+    },
+    "reviewer_actual_run": {
+      "command": "npx vitest run src/__tests__/workforce-reconciliation-export-audit.test.ts --testNamePattern='export audit input boundary' --reporter=json --outputFile=/tmp/hrm-export-audit-independent-unit-tests.json",
+      "exit_code": 0,
+      "passed": 2,
+      "failed": 0,
+      "PostgreSQL_cases_explicitly_skipped": 15,
+      "database_rerun": false,
+      "report": "/tmp/hrm-export-audit-independent-unit-tests.json"
+    },
+    "bounded_typecheck": {
+      "owner_reported_exit_code": 0,
+      "output_bytes_independently_verified": 0,
+      "output": "/tmp/hrm-export-typecheck.txt",
+      "config": "/tmp/hrm-export-tsconfig.json",
+      "config_read": true,
+      "config_includes_only_two_new_source_test_paths_with_transitive_dependencies": true,
+      "independently_rerun": false
+    },
+    "scoped_lint": {
+      "owner_reported_exit_code": 0,
+      "independently_rerun": false
+    },
+    "diff_check": {
+      "owner_reported_exit_code": 0,
+      "independently_rerun": false
+    },
+    "fixture_cleanup": "Owner reports disposable container/volumes and credential files removed; reviewer did not inspect credentials."
+  },
+  "supporting_files": [
+    {
+      "path": "/tmp/hrm-export-tests.json",
+      "bytes": 6627,
+      "sha256": "9a02e388d850316c910f08b8696d28a6582ab3623a23f5bddaa3b38acd2f8f4f",
+      "summary": {
+        "success": true,
+        "numTotalTests": 17,
+        "numPassedTests": 17,
+        "numFailedTests": 0,
+        "numPendingTests": 0
+      }
+    },
+    {
+      "path": "/tmp/hrm-export-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-export-tsconfig.json",
+      "bytes": 453,
+      "sha256": "91f500e4b6b89d2a1be12e30dc49436d48c5ddbee86f1fe2dfc58d3aa425839c"
+    },
+    {
+      "path": "/tmp/hrm-export-proof.json",
+      "bytes": 1110,
+      "sha256": "d7edae2f316dd9f1bcf51fd11569e58114136ecb804ba7e28eca40675a1aae0d"
+    },
+    {
+      "path": "/tmp/hrm-export-audit-independent-unit-tests.json",
+      "bytes": 6200,
+      "sha256": "77785a7e6ddfbd661592324001857b24110604873d5d7cfbaebea5f4a37d0626",
+      "summary": {
+        "success": true,
+        "numTotalTests": 17,
+        "numPassedTests": 2,
+        "numFailedTests": 0,
+        "numPendingTests": 15
+      }
+    },
+    {
+      "path": "/tmp/hrm-export-independent-binding-proof.json",
+      "bytes": 1270,
+      "sha256": "ae4c4c71fbb600ebb20a80ca28288cc2695dd689e1c34f4b4ae7c2bde792fda1"
+    },
+    {
+      "path": "/tmp/hrm-export-base-tree.json",
+      "bytes": 1147046,
+      "sha256": "500b543335aa2b4b2c3bfaab0316565d67f3554a05198ba49900f1fea6e69702"
+    }
+  ],
+  "limits": [
+    "Acceptance covers the dormant selected-window adapter only. The audit proves a prepared/audited direct-session response, not delivery or receipt by a person.",
+    "Injected transaction ownership and authorized RLS context remain caller responsibilities. The helper does not establish permissions, RLS policy or maintenance visibility; policies may hide rows.",
+    "The output budgets do not bound total database CPU, TOAST decoding, sorting, query memory or all intermediate network transfers. One additional bounded group may be materialized before global union refusal. Operational resource policy remains future work.",
+    "No whole-scan completeness, stable enumeration, late/backdated/update revisit policy, worker/lease composition, staging/scheduler acceptance or production verification is established.",
+    "Fresh hosted gates for51fb are pending a ref advancement and future run; old f175 green results are not borrowed. Standard CI without WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL does not provide hosted credit for the15local PostgreSQL cases.",
+    "The unchanged global baseline may remain nonclean; this receipt makes no full-suite or all-path compiler-diagnostic claim.",
+    "Ledger remains82/161DONE,79open,weighted59%; C12-008 remainsPARTIAL. This is not authorization to merge, deploy or activate."
+  ],
+  "reviewer_actions": {
+    "remote_writes": 0,
+    "source_edits": 0,
+    "database_reruns": 0,
+    "raw_CI_logs_read": 0,
+    "merges_deploys_activations": 0
+  }
+}

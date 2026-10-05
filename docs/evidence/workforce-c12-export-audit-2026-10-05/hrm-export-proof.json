@@ -1,0 +1,39 @@
+{
+  "baseSource": "f17523372802339a1220e2940b8b8c47a63f187b",
+  "localGitHead": "daf05b6030c89c4508f2a999706f4169360ccce2",
+  "reconstructedSourceNotGitHead": true,
+  "files": [
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 6800,
+      "sha256": "83c6868e923aad67ab62d83ad6d3327a095bfbdad5557d31b208e9aae2735082"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+      "bytes": 17050,
+      "sha256": "6c0905449efc6056247e65429abdbde929612c890845acb35f26cafc0dfe1f6c"
+    },
+    {
+      "path": "docs/workforce-c12-completion-plan-2026-10-05.md",
+      "bytes": 12473,
+      "sha256": "01ad614ad7204113754c673b3a9d99cbf5a275dad583e171732b7e07a22a7713"
+    }
+  ],
+  "tests": {
+    "pass": 17,
+    "fail": 0,
+    "skip": 0,
+    "actualPostgresCases": 15,
+    "guards": 2
+  },
+  "boundedTypecheck": {
+    "exitCode": 0,
+    "outputBytes": 0,
+    "config": "/tmp/hrm-export-tsconfig.json"
+  },
+  "lintExitCode": 0,
+  "diffCheckExitCode": 0,
+  "fixtureRemoved": true,
+  "noRuntimeCaller": true,
+  "noReleasedSchemaDependency": true
+}

@@ -1,0 +1,16 @@
+{
+  "extends": "/workspace/hrm-export-audit-draft/tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "typeRoots": [
+      "/workspace/hrm-export-audit-draft/node_modules/@types"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "/workspace/hrm-export-audit-draft/src/lib/workforce/reconciliation-export-audit.ts",
+    "/workspace/hrm-export-audit-draft/src/__tests__/workforce-reconciliation-export-audit.test.ts"
+  ]
+}

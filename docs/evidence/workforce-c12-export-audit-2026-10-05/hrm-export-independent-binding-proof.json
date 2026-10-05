@@ -1,0 +1,35 @@
+{
+  "base_blobs": 8737,
+  "candidate_blobs": 8739,
+  "local_candidate_blobs_verified": 8739,
+  "base_tree": "02bb497ae8751d81b520249fb00c59283495326b",
+  "candidate_tree": "6f372c91a128a8415c45a02d176a9e0eb312d81c",
+  "changed_paths": [
+    "docs/workforce-c12-completion-plan-2026-10-05.md",
+    "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+    "src/lib/workforce/reconciliation-export-audit.ts"
+  ],
+  "files": [
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 6800,
+      "sha256": "83c6868e923aad67ab62d83ad6d3327a095bfbdad5557d31b208e9aae2735082",
+      "git_blob_sha": "388cf7e1c10c0636b7efbbbec6e6de1efd1edf81",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+      "bytes": 17050,
+      "sha256": "6c0905449efc6056247e65429abdbde929612c890845acb35f26cafc0dfe1f6c",
+      "git_blob_sha": "55b37784bae8c3a918060018a97c29f0c2ff9a02",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/workforce-c12-completion-plan-2026-10-05.md",
+      "bytes": 12473,
+      "sha256": "01ad614ad7204113754c673b3a9d99cbf5a275dad583e171732b7e07a22a7713",
+      "git_blob_sha": "3053d383a85681e9cbb85997e5994fa21039dd9a",
+      "mode": "100644"
+    }
+  ]
+}
