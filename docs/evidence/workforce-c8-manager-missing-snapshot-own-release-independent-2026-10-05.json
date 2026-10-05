@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 1,
+  "atUtc": "2026-10-05T03:34:20.446871+00:00",
+  "reviewerRole": "independent authorless own582 merged-main normal-release reviewer",
+  "status": "GREEN",
+  "releaseGreen": true,
+  "independent": true,
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "findings": [],
+  "candidateHead": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "baseSha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "mergedSha": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "mergedParents": [
+    "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+    "195f703add1d2a8d4e694a714b5c3191a6ffefb3"
+  ],
+  "candidateSyntheticMergedTree": "7468183eb406302d12aa032c4beecc3b30fdcf35",
+  "candidateAndMergedTree": "7468183eb406302d12aa032c4beecc3b30fdcf35",
+  "mergeTreeEqualsReviewedTestedCandidate": true,
+  "normalMergeProof": {
+    "path": "/tmp/workforce582-195f703-normal-merge-primary/normal-merge-proof.json",
+    "bytes": 4097,
+    "sha256": "ce9d4eb299921c6964a98e98a3145a281c907bdea102854a72120a034341f9b1"
+  },
+  "rootCurrentHostedAcceptance": {
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-root-accepted-primary.json",
+    "bytes": 2417,
+    "sha256": "5aba3ef390dc2a6f898d36ecf8134a0ffc68c986a72a7d40f86d298eb9d54d1e"
+  },
+  "rootOwnCurrentReleaseProof": {
+    "path": "/tmp/workforce-pr582-b4ad2-own-release-primary/release-proof.json",
+    "bytes": 9823,
+    "sha256": "14c935194d121ef48234a640dc798cc0b27a776ebca08f575c1403ef6eddb361"
+  },
+  "rootAndPeerStrictPinnedCanonicalBracketsWholeVerified": true,
+  "ownDeployRun": {
+    "id": 37258576917,
+    "path": ".github/workflows/deploy.yml",
+    "head_sha": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+    "head_branch": "main",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-05T03:13:38Z",
+    "updated_at": "2026-10-05T03:32:09Z",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37258576917"
+  },
+  "allFourRequiredReleaseJobsSuccess": true,
+  "ownReleaseJobs": [
+    {
+      "id": 111600741805,
+      "name": "Production build & publish artifact",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-05T03:13:41Z",
+      "completed_at": "2026-10-05T03:25:15Z",
+      "wholeLog": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-independent-20261005T031600445463Z/whole-release-job-logs/111600741805.txt",
+        "bytes": 161298,
+        "sha256": "238862a25dc3c4d4e3073131607b074c7cfbbbfec834bf05b25e1d0d73a61fa7"
+      }
+    },
+    {
+      "id": 111600741883,
+      "name": "Quality & security gates",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-05T03:13:42Z",
+      "completed_at": "2026-10-05T03:27:06Z",
+      "wholeLog": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-independent-20261005T031600445463Z/whole-release-job-logs/111600741883.txt",
+        "bytes": 330507,
+        "sha256": "46f34a74b86d63044a8bae59369df7668d6e94e4f422dc58496a71a4707f2bdd"
+      }
+    },
+    {
+      "id": 111603501792,
+      "name": "Deploy to production & post-deploy smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-05T03:27:10Z",
+      "completed_at": "2026-10-05T03:32:01Z",
+      "wholeLog": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-independent-20261005T031600445463Z/whole-release-job-logs/111603501792.txt",
+        "bytes": 116398,
+        "sha256": "3458e02b8b9818cd70c05e01e5c535a2a1a2d5860f55066fb5142c3d08b1dff8"
+      }
+    },
+    {
+      "id": 111604487703,
+      "name": "Cap retained deploy artifacts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-05T03:32:04Z",
+      "completed_at": "2026-10-05T03:32:09Z",
+      "wholeLog": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-independent-20261005T031600445463Z/whole-release-job-logs/111604487703.txt",
+        "bytes": 7209,
+        "sha256": "8e1b35e3444c5a44313e43ea39bab5562aeb03649399f4365691f6663ca14a73"
+      }
+    }
+  ],
+  "ownSHAArtifactMetadata": {
+    "id": 11324182024,
+    "node_id": "MDg6QXJ0aWZhY3QxMTMyNDE4MjAyNA==",
+    "name": "leaddrive-prod-b4ad2db16247705d172cd4e761c079ff1f39d922",
+    "size_in_bytes": 444223852,
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11324182024",
+    "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11324182024/zip",
+    "expired": false,
+    "digest": "sha256:711b5cbe623b9d63549d952deefe012ab738fe3fb82faadbce9bac0a810bd242",
+    "created_at": "2026-10-05T03:25:13Z",
+    "updated_at": "2026-10-05T03:25:13Z",
+    "expires_at": "2026-11-04T03:25:09Z",
+    "workflow_run": {
+      "id": 37258576917,
+      "repository_id": 1362346481,
+      "head_repository_id": 1362346481,
+      "head_branch": "main",
+      "head_sha": "b4ad2db16247705d172cd4e761c079ff1f39d922"
+    }
+  },
+  "artifactUploadAndDownloadDigestMatch": true,
+  "ownFullProductionBuildCompiled": true,
+  "ownBuildQualityWholeProof": {
+    "path": "/tmp/workforce-pr582-b4ad2-own-release-independent-20261005T031600445463Z/own-build-quality-whole-analysis.json",
+    "bytes": 54067,
+    "sha256": "8904bbcdc8ba69b402d1fdbc8725368250b660d47873987c6b79aa10c329fd18"
+  },
+  "ownDeployRetentionWholeProof": {
+    "path": "/tmp/workforce-pr582-b4ad2-own-release-independent-20261005T031600445463Z/own-deploy-retention-whole-analysis.json",
+    "bytes": 12689,
+    "sha256": "07ca23fd35ee7764deeb6ab29c141517505dec6778a11c3edbfb40f22110d12b"
+  },
+  "productionBuildTypeValidationSkipped": true,
+  "compilerGloballyClean": false,
+  "suiteGloballyClean": false,
+  "ownMainFullCompiler": "NOT RUN: Next build skipped type validation; exact unchanged tree retains actual own195 PR1169/35/exit2/66baseline/79zero55typed",
+  "strictPinnedCanonicalPublicBracket": {
+    "path": "/tmp/workforce-pr582-b4ad2-own-release-independent-20261005T031600445463Z/public-bracket-20261005T033248502745Z/whole-public-bracket.json",
+    "bytes": 12219,
+    "sha256": "c2045e2160faa89a55168e77a4b7ab4b25015127136da61a55748c8226d5656b"
+  },
+  "publicEndpoints": {
+    "canonical": "https://app.leaddrivecrm.org",
+    "pinnedIP": "13.140.132.245",
+    "orderedCanonicalRequests": [
+      "build-info-first",
+      "ping",
+      "build-info-confirm"
+    ],
+    "allHTTP200": true,
+    "allTLSVerify0": true,
+    "allNoStore": true,
+    "bothFullArtifactSHA": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+    "bothBuiltAt": "2026-10-05T03:17:27Z",
+    "pingOk": true,
+    "reviewerBusinessWrites": 0
+  },
+  "literalIPStrictTLS": {
+    "curlExit": 60,
+    "httpStatus": 0,
+    "tlsVerifyResult": "1",
+    "actualCause": "Certificate SAN hostname mismatch for literal IP",
+    "primaryPositiveTLSCredit": false,
+    "wholeOriginalStderr": {
+      "path": "/tmp/workforce-pr582-b4ad2-own-release-independent-20261005T031600445463Z/public-bracket-20261005T033248502745Z/literal-ip-strict-tls-diagnostic.stderr.txt",
+      "bytes": 362,
+      "sha256": "bb444196ae8c7ddeb2fab3611068ba2fc224e0f7d83fba0fde655417ba261847"
+    },
+    "insecureOptionUsed": false
+  },
+  "productionRlsScope": {
+    "actualOwnTenantCounts": {
+      "tenantTables": 553,
+      "checked": 553,
+      "enforced": 553,
+      "leaks": 0,
+      "unreadable": 0,
+      "warnings": 0
+    },
+    "actualOwnChildCounts": {
+      "total": 22,
+      "reviewed": 21,
+      "unreviewed": 1
+    },
+    "unreviewedChildOriginalLines": [
+      {
+        "line": 1163,
+        "original": "2026-10-05T03:31:57.9687951Z     ? _ContractToContractTag → parent: contract_tags, contracts",
+        "text": "    ? _ContractToContractTag → parent: contract_tags, contracts",
+        "sourceCommandEcho": false
+      }
+    ],
+    "fullGlobalChildReviewAccepted": false
+  },
+  "recoveryScope": {
+    "mode": "plain",
+    "encryptedCommissioned": false,
+    "fourRecoveryTimers": "stopped",
+    "offBoxLogShipping": "inactive",
+    "enterpriseRecoveryAcceptance": false
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-pr582-b4ad2-own-release-green-input-audit-independent.json",
+    "bytes": 1650171,
+    "sha256": "9c2f87e297fc19b10d0519e89eafe118612228478396db528d1624304002f475"
+  },
+  "inputCounts": {
+    "directOriginals": 2144,
+    "wholeJSONParsed": 711,
+    "wholeUTF8Decoded": 2031,
+    "wholeBinaryRehashed": 113,
+    "explicitGitBindings": 18,
+    "retainedCurrentHostedOriginals": 1735
+  },
+  "wholeCurrentCapture": {
+    "path": "/tmp/workforce-pr582-b4ad2-own-release-independent-20261005T031600445463Z/release-observation-20261005T033231865155Z/whole-release-capture.json",
+    "bytes": 28332,
+    "sha256": "12535269076beb53f7cbe160ed612a914ce67d3335cda6b8f10a58f54d1182ac"
+  },
+  "readProvenance": {
+    "activeApplicationSourceReads": 0,
+    "GitMutations": 0,
+    "GitHubMutations": 0,
+    "CIReRuns": 0,
+    "manualStatusPublications": 0,
+    "SSHOrDirectDeploy": 0,
+    "largeArtifactDownloads": 0,
+    "reviewerBusinessWrites": 0,
+    "productionPublicReadOnlyAttempts": 4,
+    "localApplicationTestsBrowserPostgresCompilerBuilds": 0
+  },
+  "currentReleaseReviewActiveApplicationSourceReads": 0,
+  "previousSourceHostedFailureAndGuardOriginalsPreserved": true,
+  "currentPositiveAndMissingAll3SnapshotHostedRuntimeCredit": true,
+  "futureUnappliedC12KernelApplyOrRuntimeCredit": false,
+  "accounting": {
+    "uniqueCriteriaIds": 161,
+    "historicalRawRows": 169,
+    "DONE": 82,
+    "nonDONE": 79,
+    "statusCounts": {
+      "DONE": 82,
+      "PARTIAL (OWNER ATTESTATION)": 1,
+      "PARTIAL": 55,
+      "OWNER DECISION": 6,
+      "PLANNED": 14,
+      "BLOCKED": 3
+    },
+    "passedGates": 14,
+    "totalGates": 15,
+    "C8Percent": 45,
+    "overallPercent": 59,
+    "newRowClosure": false
+  },
+  "limits": [
+    "Current positive3 and all3-missing snapshots were accepted only in own isolated hosted PostgreSQL/browser fixtures. Production release smoke proves login/assets/public ping/fullSHA; no production fixture/admin writes or legacy-shift-only behavior credit.",
+    "Existing dev Issue badge pixel occlusion, localization/AT and broader Workforce/Android limits remain in immutable hosted visual originals; no global non-occlusion or WCAG acceptance.",
+    "This release proves own582 normal merged-main deploy/build/quality/retention and recorded public observation, without global Workforce/Android/humanAT/pilot/load or additional roadmap-row closure.",
+    "Own Next production build actually compiled; type validation explicitly skipped. Unchanged reviewed195 tree retains actual1169 PR diagnostics/35families/exit2/exact66baseline/all79ownedzero55typed. No new full main compiler or globally clean claim.",
+    "Own merged-main quality ran the full suite with exact18 known failing files and strict no-new/every-baseline-still-fails guard; suite is not globally clean.",
+    "Direct organizationId tenant RLS coverage counts are actual own deploy logs. Parent-only children depend on application guards; unreviewed child exceptions remain, so no full global child-table review claim.",
+    "Actual deployment uses plain uncommissioned recovery mode. Encrypted age/Object-Lock/offline restore certification, four recovery timers and off-box log shipping remain inactive; application release is not enterprise recovery acceptance.",
+    "Own Sentry/dependency/deployment warnings and expected negative PostgreSQL fixture lines remain in whole originals; no warning-free/Sentry-release claim.",
+    "Large artifact binary was not downloaded by reviewer; acceptance binds own GitHub fullSHA metadata, upload/download digests, successful fullSHA embedded-marker steps, compiled own bundle and strict served public constants.",
+    "Strict canonical app.leaddrivecrm.org pinned13.140.132.245 supplies primary TLS release proof; literal-IP strict diagnostic is separate and never uses an insecure option.",
+    "All prior first failure/additive/premerge/schema guards remain immutable. Current195 positive3 and all3-missing fixture executed in accepted hosted CI. Future unapplied dormant C12 draft/preliminary observations provide no current source/runtime/release credit."
+  ],
+  "continuity": {
+    "currentResult": "Ownb4ad2 normal production release accepted independently; allP0-P3zero with existing compiler/suite/RLS/recovery/AT limits retained",
+    "lastCompletedAction": "Whole own first-attempt4deployjobs/logs/SHAartifact/strict canonical public bracket independently verified and immutable packet issued",
+    "stoppingPoint": "Root whole acceptance of this own release packet pending; no reviewer source/Git/GitHub/deploy mutation",
+    "nextAction": "Root whole reparse/hash acceptance and append-only continuity receipt, then authorized successor exact-source work"
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "atUtc": "2026-10-05T03:33:15.273623+00:00",
+  "expectedMergedSha": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "productionHost": "13.140.132.245",
+  "requests": [
+    {
+      "label": "build-info",
+      "startedAt": "2026-10-05T03:33:15.197921+00:00",
+      "completedAt": "2026-10-05T03:33:15.232494+00:00",
+      "command": [
+        "curl",
+        "--disable",
+        "--silent",
+        "--show-error",
+        "--noproxy",
+        "*",
+        "--proto",
+        "=https",
+        "--connect-timeout",
+        "5",
+        "--max-time",
+        "12",
+        "--max-filesize",
+        "16384",
+        "-D",
+        "-",
+        "-o",
+        "/tmp/workforce-pr582-b4ad2-own-release-primary/literal-ip-strict-observation/build-info.body",
+        "--write-out",
+        "\n__SAFE_CURL_METRICS__%{http_code}|%{remote_ip}|%{ssl_verify_result}\n",
+        "https://13.140.132.245/api/v1/public/build-info"
+      ],
+      "curlExit": 60,
+      "httpStatus": "000",
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "1",
+      "classification": "CERTIFICATE_SAN_MISMATCH; NOT ACCEPTED",
+      "strictPositive": false,
+      "noInsecureFlags": true,
+      "stdout": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-primary/literal-ip-strict-observation/build-info.stdout",
+        "bytes": 43,
+        "sha256": "aaa365e52082b02f44faf55768a274ffb85a4ec3c5766c2b935f461b71fa8b8b"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-primary/literal-ip-strict-observation/build-info.stderr",
+        "bytes": 362,
+        "sha256": "bb444196ae8c7ddeb2fab3611068ba2fc224e0f7d83fba0fde655417ba261847"
+      },
+      "body": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-primary/literal-ip-strict-observation/build-info.body",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "ping",
+      "startedAt": "2026-10-05T03:33:15.232647+00:00",
+      "completedAt": "2026-10-05T03:33:15.273517+00:00",
+      "command": [
+        "curl",
+        "--disable",
+        "--silent",
+        "--show-error",
+        "--noproxy",
+        "*",
+        "--proto",
+        "=https",
+        "--connect-timeout",
+        "5",
+        "--max-time",
+        "12",
+        "--max-filesize",
+        "16384",
+        "-D",
+        "-",
+        "-o",
+        "/tmp/workforce-pr582-b4ad2-own-release-primary/literal-ip-strict-observation/ping.body",
+        "--write-out",
+        "\n__SAFE_CURL_METRICS__%{http_code}|%{remote_ip}|%{ssl_verify_result}\n",
+        "https://13.140.132.245/api/v1/ping"
+      ],
+      "curlExit": 60,
+      "httpStatus": "000",
+      "remoteIp": "13.140.132.245",
+      "tlsVerifyResult": "1",
+      "classification": "CERTIFICATE_SAN_MISMATCH; NOT ACCEPTED",
+      "strictPositive": false,
+      "noInsecureFlags": true,
+      "stdout": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-primary/literal-ip-strict-observation/ping.stdout",
+        "bytes": 43,
+        "sha256": "aaa365e52082b02f44faf55768a274ffb85a4ec3c5766c2b935f461b71fa8b8b"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-primary/literal-ip-strict-observation/ping.stderr",
+        "bytes": 362,
+        "sha256": "bb444196ae8c7ddeb2fab3611068ba2fc224e0f7d83fba0fde655417ba261847"
+      },
+      "body": {
+        "path": "/tmp/workforce-pr582-b4ad2-own-release-primary/literal-ip-strict-observation/ping.body",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "literalIpBothStrictPositive": false,
+  "canonicalPinnedBracketIsPrimaryAcceptedProof": true,
+  "insecureFallbackUsed": false,
+  "releaseCreditFromLiteralIPNegative": false
+}
