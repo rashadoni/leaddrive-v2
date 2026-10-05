@@ -1,0 +1,2 @@
+src/lib/workforce/reconciliation-snapshot.ts(55,15): error TS2352: Conversion of type '{ [k: string]: never[]; }' to type 'Record<keyof WorkforceReconciliationSnapshot, Row[]>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ [k: string]: never[]; }' is missing the following properties from type 'Record<keyof WorkforceReconciliationSnapshot, Row[]>': workdays, events, transitions, evidence, and 4 more.

@@ -1,0 +1,72 @@
+{
+  "baseSource": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+  "baseTree": "6f372c91a128a8415c45a02d176a9e0eb312d81c",
+  "localGitHead": "daf05b6030c89c4508f2a999706f4169360ccce2",
+  "reconstructedSourceNotGitHead": true,
+  "unchangedBaseFilesVerified": 8737,
+  "files": [
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 7445,
+      "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409",
+      "gitBlob": "7d3e57bf9fe795674a61dddca63e545701ae4d40"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-snapshot.ts",
+      "bytes": 9545,
+      "sha256": "93d0d010912aae940ad6bf86d9b4a693cdf808659beda00119dcd489636a4fcc",
+      "gitBlob": "6b4dded46f76f1df4e35489bb085462e09681fe4"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-schedule-subject.ts",
+      "bytes": 9921,
+      "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9",
+      "gitBlob": "7e2ca6f1943b35043842b032690e4906b697b938"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-sweep.ts",
+      "bytes": 2719,
+      "sha256": "f82dd0033c8eaf9dd17231a3669b1950f3a53466f32fc72d86c31f1bcf995a27",
+      "gitBlob": "672a076579757bd8554af129bc848689c75b1c34"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-sweep.test.ts",
+      "bytes": 32657,
+      "sha256": "dee11539e82ca8ac9b8b1b10bb7eb0c4985cb97d253491935dbb638d69c2e135",
+      "gitBlob": "77da2f9dd51ad23444407e351487462b207fd550"
+    },
+    {
+      "path": "docs/workforce-c12-completion-plan-2026-10-05.md",
+      "bytes": 18101,
+      "sha256": "239dace6318b595357a8014beed5ae1929a085bea857fbba5978e678bbb1973a",
+      "gitBlob": "caf29c7809409435018a25cfd5dd1aaf94a533e2"
+    },
+    {
+      "path": "docs/workforce-c12-sweep-staging-2026-10-05.md",
+      "bytes": 5677,
+      "sha256": "fca6a3692af9545731a4461a99338e7d2280e2ef85d73d7fd5a0c303feac5cfc",
+      "gitBlob": "7a484414a5bd3758711292c66583b953c6c0d531"
+    }
+  ],
+  "expectedTree": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+  "tests": {
+    "pass": 48,
+    "fail": 0,
+    "skip": 0,
+    "guards": 4,
+    "actualPostgresCases": 44,
+    "newSweepCases": 31,
+    "priorExportCases": 17
+  },
+  "boundedTypecheck": {
+    "exitCode": 0,
+    "outputBytes": 0,
+    "config": "/tmp/hrm-sweep-tsconfig.json"
+  },
+  "lintExitCode": 0,
+  "diffCheckExitCode": 0,
+  "noRuntimeCaller": true,
+  "noReleasedSchemaDependency": true,
+  "fixture": "disposable PostgreSQL16 selected-column synthetic fixture, not full-schema staging",
+  "fixtureRemoved": true
+}

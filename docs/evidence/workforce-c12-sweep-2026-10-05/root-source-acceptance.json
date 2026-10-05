@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "kind": "ROOT_EXACT_SOURCE_ACCEPTANCE",
+  "at": "2026-10-05 18:57:08 UTC",
+  "repository": "rashadoni/leaddrive-v2",
+  "pr": 589,
+  "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+  "tree": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+  "parent": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+  "main": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+  "decision": "ACCEPTED_BOUNDED_SWEEP_SOURCE_HOSTED_PENDING",
+  "independentReceipt": {
+    "path": "independent-exact-source.json",
+    "bytes": 22667,
+    "sha256": "344bfe0306818afd73db11c3bfdc0d059cc02d8db535999613b31593f143f150",
+    "rootReadWhole": true,
+    "all9SupportingHashesRecomputed": true
+  },
+  "sourceProof": {
+    "baseSource": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+    "baseTree": "6f372c91a128a8415c45a02d176a9e0eb312d81c",
+    "localGitHead": "daf05b6030c89c4508f2a999706f4169360ccce2",
+    "reconstructedSourceNotGitHead": true,
+    "unchangedBaseFilesVerified": 8737,
+    "files": [
+      {
+        "path": "src/lib/workforce/reconciliation-export-audit.ts",
+        "bytes": 7445,
+        "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409",
+        "gitBlob": "7d3e57bf9fe795674a61dddca63e545701ae4d40"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-snapshot.ts",
+        "bytes": 9545,
+        "sha256": "93d0d010912aae940ad6bf86d9b4a693cdf808659beda00119dcd489636a4fcc",
+        "gitBlob": "6b4dded46f76f1df4e35489bb085462e09681fe4"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-schedule-subject.ts",
+        "bytes": 9921,
+        "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9",
+        "gitBlob": "7e2ca6f1943b35043842b032690e4906b697b938"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-sweep.ts",
+        "bytes": 2719,
+        "sha256": "f82dd0033c8eaf9dd17231a3669b1950f3a53466f32fc72d86c31f1bcf995a27",
+        "gitBlob": "672a076579757bd8554af129bc848689c75b1c34"
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation-sweep.test.ts",
+        "bytes": 32657,
+        "sha256": "dee11539e82ca8ac9b8b1b10bb7eb0c4985cb97d253491935dbb638d69c2e135",
+        "gitBlob": "77da2f9dd51ad23444407e351487462b207fd550"
+      },
+      {
+        "path": "docs/workforce-c12-completion-plan-2026-10-05.md",
+        "bytes": 18101,
+        "sha256": "239dace6318b595357a8014beed5ae1929a085bea857fbba5978e678bbb1973a",
+        "gitBlob": "caf29c7809409435018a25cfd5dd1aaf94a533e2"
+      },
+      {
+        "path": "docs/workforce-c12-sweep-staging-2026-10-05.md",
+        "bytes": 5677,
+        "sha256": "fca6a3692af9545731a4461a99338e7d2280e2ef85d73d7fd5a0c303feac5cfc",
+        "gitBlob": "7a484414a5bd3758711292c66583b953c6c0d531"
+      }
+    ],
+    "expectedTree": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+    "tests": {
+      "pass": 48,
+      "fail": 0,
+      "skip": 0,
+      "guards": 4,
+      "actualPostgresCases": 44,
+      "newSweepCases": 31,
+      "priorExportCases": 17
+    },
+    "boundedTypecheck": {
+      "exitCode": 0,
+      "outputBytes": 0,
+      "config": "/tmp/hrm-sweep-tsconfig.json"
+    },
+    "lintExitCode": 0,
+    "diffCheckExitCode": 0,
+    "noRuntimeCaller": true,
+    "noReleasedSchemaDependency": true,
+    "fixture": "disposable PostgreSQL16 selected-column synthetic fixture, not full-schema staging",
+    "fixtureRemoved": true
+  },
+  "ownerTests": {
+    "passed": 48,
+    "failed": 0,
+    "skipped": 0,
+    "guards": 4,
+    "actualPostgres": 44
+  },
+  "independentTests": {
+    "passed": 4,
+    "failed": 0,
+    "skippedPostgres": 44
+  },
+  "initialTypecheckFailurePreserved": true,
+  "finalBoundedTypecheckExit": 0,
+  "lintExit": 0,
+  "globalCompilerAndSuiteCleanClaim": false,
+  "hosted": {
+    "state": "PENDING",
+    "runs": [
+      37359691393,
+      37359691391,
+      37359691394
+    ],
+    "noRawLogs": true
+  },
+  "evidenceDurability": {
+    "files": [
+      "owner-postgres-tests.json",
+      "owner-previous-47-test-run.json",
+      "source-binding.json",
+      "bounded-tsconfig.json",
+      "initial-typecheck-failure.txt",
+      "bounded-typecheck.txt",
+      "selected-eslint.txt",
+      "independent-unit-tests.json",
+      "independent-binding-proof.json",
+      "independent-exact-source.json"
+    ],
+    "largeSourceTreeManifest": "Local 1,147,969-byte manifest was independently verified; not copied here. Immutable GitHub tree126d95fddda4eaa15df202e3e320421358f5b0a0 is the durable source manifest; no unpersisted-only acceptance input is concealed."
+  },
+  "historicalAccepted": {
+    "previousHead": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+    "receiptCommit": "9b7750b8775cce76f35ef8714e037c6a706326f5"
+  },
+  "boundsAndRemaining": [
+    "Supported tenant size:1000rows and1MiB projected JSON per root kind,4MiB aggregate root projection,4096bytes per audit projection;100segment-linked cases;64KiB per auxiliary schedule lookup. Oversized tenants explicitly refuse and cannot make incremental progress under this full-restart design.",
+    "SQL payload caps constrain transfer/materialization, not all database CPU/TOAST/sort/query-memory. Auxiliary schedule reads may cumulatively approach6.4MiB in addition to root projection. Timeouts provide finite refusal, not production cost acceptance.",
+    "Completeness means all visible rows in the eight represented kernel families within one supplied authorized MVCC snapshot, not every Workforce model, all tenants, or visibility behind RLS.",
+    "Pinned schedule verification is hash/link/selected-segment membership, not full calendar/site/segment semantic verification. Schedule-only checks use currently visible effective timeline, not an immutable receipt of selection at case creation or no-show employment/calendar eligibility.",
+    "Global opaque completion token does not implement eligible tenant selection, fairness, starvation detection or cross-tenant coverage. Lease ownership/authorization remain caller preconditions and operational scheduling remains absent.",
+    "Staging document is an execution/acceptance plan only. Full migration/RLS compatibility, production-like indexes/query plans, dense-tenant strategy, operational monitoring and activation remain open. No staging/deployment/external-delivery proof is inferred.",
+    "Fresh hosted checks for0a40 are pending ref advancement and new execution; prior51fb green results remain historical. Standard CI without the opt-in DBURLs receives no credit for44local PG cases.",
+    "C12-008 remainsPARTIAL; ledger82/161DONE,79open,weighted59%. No globally clean compiler/suite or full diagnostic-family identity claim. PR589 remains the single cumulative release route; no duplicate source-slice merges.",
+    "Merge/deploy/activation/credentials/grants are outside this source acceptance and require separate scoped authorization."
+  ],
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "gates": "14/15",
+    "C8": "45%",
+    "weighted": "59%",
+    "C12_008": "PARTIAL"
+  },
+  "noMergeDeployActivation": true
+}

@@ -1,0 +1,457 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent_read_only_worker",
+  "reviewed_at_utc": "2026-10-05T18:55:13.185931+00:00",
+  "repository": "rashadoni/leaddrive-v2",
+  "decision": "ACCEPTED_EXACT_SOURCE_BOUNDED_VISIBLE_TENANT_SWEEP_AND_DORMANT_COMPOSITION",
+  "candidate": {
+    "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+    "parent_sha": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+    "tree_sha": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+    "sole_cumulative_release_PR": 589,
+    "local_git_head_is_not_candidate": true
+  },
+  "verification": {
+    "base_blobs": 8739,
+    "candidate_blobs": 8744,
+    "all_candidate_blobs_and_modes_verified": 8744,
+    "unchanged_base_files": 8737,
+    "base_tree_recomputed": "6f372c91a128a8415c45a02d176a9e0eb312d81c",
+    "candidate_tree_recomputed": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+    "files": [
+      {
+        "path": "docs/workforce-c12-completion-plan-2026-10-05.md",
+        "bytes": 18101,
+        "sha256": "239dace6318b595357a8014beed5ae1929a085bea857fbba5978e678bbb1973a",
+        "git_blob_sha": "caf29c7809409435018a25cfd5dd1aaf94a533e2",
+        "mode": "100644",
+        "change": "modified"
+      },
+      {
+        "path": "docs/workforce-c12-sweep-staging-2026-10-05.md",
+        "bytes": 5677,
+        "sha256": "fca6a3692af9545731a4461a99338e7d2280e2ef85d73d7fd5a0c303feac5cfc",
+        "git_blob_sha": "7a484414a5bd3758711292c66583b953c6c0d531",
+        "mode": "100644",
+        "change": "added"
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation-sweep.test.ts",
+        "bytes": 32657,
+        "sha256": "dee11539e82ca8ac9b8b1b10bb7eb0c4985cb97d253491935dbb638d69c2e135",
+        "git_blob_sha": "77da2f9dd51ad23444407e351487462b207fd550",
+        "mode": "100644",
+        "change": "added"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-export-audit.ts",
+        "bytes": 7445,
+        "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409",
+        "git_blob_sha": "7d3e57bf9fe795674a61dddca63e545701ae4d40",
+        "mode": "100644",
+        "change": "modified"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-schedule-subject.ts",
+        "bytes": 9921,
+        "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9",
+        "git_blob_sha": "7e2ca6f1943b35043842b032690e4906b697b938",
+        "mode": "100644",
+        "change": "added"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-snapshot.ts",
+        "bytes": 9545,
+        "sha256": "93d0d010912aae940ad6bf86d9b4a693cdf808659beda00119dcd489636a4fcc",
+        "git_blob_sha": "6b4dded46f76f1df4e35489bb085462e09681fe4",
+        "mode": "100644",
+        "change": "added"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-sweep.ts",
+        "bytes": 2719,
+        "sha256": "f82dd0033c8eaf9dd17231a3669b1950f3a53466f32fc72d86c31f1bcf995a27",
+        "git_blob_sha": "672a076579757bd8554af129bc848689c75b1c34",
+        "mode": "100644",
+        "change": "added"
+      }
+    ]
+  },
+  "connector": {
+    "account": "rashadoni",
+    "link_id": "link_6ac2b60ffee481918919fcce81e5c228",
+    "fresh_exact_commit_parent_tree_verified": true,
+    "recursive_tree_truncated": false,
+    "all_seven_remote_contents_exactly_equal_local_without_normalization": true,
+    "all_8744_local_blob_hashes_and_modes_verified": true,
+    "base_and_candidate_tree_hashes_recomputed": true
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [],
+    "unresolved": 0
+  },
+  "source_review": {
+    "fully_read_changed_files": [
+      "docs/workforce-c12-completion-plan-2026-10-05.md",
+      "docs/workforce-c12-sweep-staging-2026-10-05.md",
+      "src/__tests__/workforce-reconciliation-sweep.test.ts",
+      "src/lib/workforce/reconciliation-export-audit.ts",
+      "src/lib/workforce/reconciliation-schedule-subject.ts",
+      "src/lib/workforce/reconciliation-snapshot.ts",
+      "src/lib/workforce/reconciliation-sweep.ts"
+    ],
+    "additional_dependencies_read": [
+      "prisma/schema.prisma selected eight root tables plus schedule/template/timeline/snapshot dependencies",
+      "src/lib/workforce/reconciliation.ts",
+      "src/lib/workforce/reconciliation-cursor-store.ts",
+      "src/lib/workforce/reconciliation-job.ts",
+      "src/lib/workforce/snapshot-writer.ts selected hash/pinned ownership/writer sections",
+      "src/lib/workforce/timesheet-schedule-snapshot.ts",
+      "src/lib/workforce/exception-case-read-scope.ts",
+      "src/lib/workforce/shift-resolution.ts",
+      "src/lib/workforce/no-show-candidate.ts",
+      "src/lib/workforce/team-membership.ts",
+      "src/lib/workforce/policy-definition.ts",
+      "published template/assignment/default migration guards"
+    ],
+    "accepted_contracts": [
+      "Eight root families independently enumerated by tenant; no temporal filter or dependency inner join can silently omit orphan roots. Exact SQL C-collated comparison/order, 128-row pages, full/empty-page completion and cumulative count/byte guards retain complete visible cross-page dependencies before kernel evaluation.",
+      "All approval revisions are available together. Shared strict audit validator extraction preserves prior window behavior while the sweep uses its separate 1000-root coverage. Missing/cross-scope/malformed audit references refuse; differing syntactically valid hashes reach kernel mismatch.",
+      "Linked schedule subjects resolve exact tenant/workday/agent/date joins to pinned schedule/shift/policy snapshots, canonical payload hash and selected segment membership; mutable assignment selection does not replace pinned history.",
+      "Schedule-only subjects require first-segment/start agreement, immutable template definition/hash/activation/team scope and bounded effective assignment/team/org/default selection. Auxiliary template/team text is length-bounded in SQL before transfer. This is visible-timeline consistency only.",
+      "Caller owns authorized read-only transaction. Sweep observes copied cursor state before reading, uses RepeatableRead with five-second statement and thirty-second interactive-transaction limits, awaits successful transaction finalization, then calls existing lease/version cursor fence. Mismatch/error/overflow/unknown prior protocol cannot advance progress.",
+      "Opaque wf-sweep-v1 random UUID progress is not a row cursor or tenant-coverage token. Full restart sees lower-key/backdated/updated rows on later invocations. Unknown checkpoint acknowledgement is surfaced and safely replayable.",
+      "No business writes, runtime endpoint, scheduler registration, new credentials, grants or schema changes. Source search found no runtime consumers outside new helper composition/tests."
+    ],
+    "resolved_review_points": [
+      "Use pinned schedule membership for linked workdays instead of current assignment selection.",
+      "Auxiliary templateId/teamId SQL bounds added.",
+      "Additional100schedule-case and64KiB auxiliary payload limits and narrow schedule semantics documented."
+    ]
+  },
+  "validation": {
+    "owner_actual_run": {
+      "report": "/tmp/hrm-sweep-tests.json",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "guard_cases": 4,
+      "actual_disposable_PostgreSQL_cases": 44,
+      "new_sweep_cases": 31,
+      "new_sweep_PG_cases": 29,
+      "prior_export_regression_cases": 17,
+      "prior_export_PG_cases": 15,
+      "reviewer_action": "Parsed whole sanitized report, verified all48 named passed outcomes and reviewed test source; actual database run performed by owner, not independently rerun.",
+      "cases": [
+        {
+          "name": "export audit input boundary rejects invalid input before querying and contains database errors",
+          "status": "passed"
+        },
+        {
+          "name": "export audit input boundary rejects an ordinary pooled client even with pretend session defaults",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL joins full ancestor/successor groups and preserves repeat downloads without duplicate approvals",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL uses inclusive/exclusive UTC boundaries and deterministic timestamp/id order",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL scopes roots to tenant and source family while retaining malformed family members",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL honors injected RLS and contains parameter strings",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL requires read-only repeatable-read transaction context",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL keeps one snapshot across audit and group reads despite concurrent append",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL refuses every malformed JSON type, date, revision, hash and export descriptor",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL refuses null agent, entity disagreement and a reference outside the recorded subject",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL does not hide missing or cross-tenant approval roots and never commits on refusal",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL checks subsequent cached-group roots and revision/recordKind agreement",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL preserves bad reference hashes for kernel mismatch without cursor commit",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL accepts100 audit roots and refuses101 without a partial window",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL excludes oversized private fields but refuses oversized projected values",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL refuses a deduplicated approval union exceeding1000 rows",
+          "status": "passed"
+        },
+        {
+          "name": "export audit on isolated PostgreSQL refuses combined UTF8 approval bytes even when each group fits separately",
+          "status": "passed"
+        },
+        {
+          "name": "full sweep input boundaries rejects invalid scope and pooled clients before querying; contains driver errors",
+          "status": "passed"
+        },
+        {
+          "name": "full sweep input boundaries rejects invalid worker input and unknown checkpoint protocol before starting a read",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL enumerates all eight kinds, omits private projections and commits only opaque operational progress",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL requires explicit read-only repeatable-read ownership",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL uses parameterized tenant predicates and excludes foreign roots",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL traverses C-ordered pages and closes references across page boundaries",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL proves exact full pages and accepts1000 roots, then safely refuses1001",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL finds independent orphan roots in every reference family",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL does not let a foreign root satisfy tenant or employee closure",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL retains all approval revisions and refuses gaps, malformed hashes and missing export roots",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL includes repeated, late and backdated audit exports beyond old window limits",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL refuses malformed audit family roots even when only one discriminator matches",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL rejects infinite dates and oversize UTF8 projections without advancing",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL rejects approval byte overflow before transferring a partial result",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL accumulates bytes across individually valid pages instead of resetting the kind budget",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL keeps one MVCC cutoff then restarts to see late inserts and backdated updates",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL does not skip a lower-key backdated append between pages on the next full sweep",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL resolves schedule-only subjects through effective explicit assignments",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL resolves team and organization effective defaults and refuses ambiguous fallback",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL accepts an unambiguous legacy default and rejects competing defaults",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL refuses unavailable, mis-scoped, late-activated and corrupt schedule subjects",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL rejects oversized auxiliary assignment and membership identifiers",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL uses pinned linked-workday schedule despite a changed current assignment",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL refuses corrupt or missing pinned dependencies and conflicting subjects",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL refuses pinned dependency scope mismatch and schedule byte overflow",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL enforces the schedule-case budget before evaluating a truncated subset",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL waits for successful read transaction finalization before any checkpoint write",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL does not checkpoint after callback completion followed by transaction failure",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL reports fenced-out for expiry, takeover and competing progress after its read",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL handles a lost commit acknowledgement by full replay without writing facts",
+          "status": "passed"
+        },
+        {
+          "name": "bounded full sweep on isolated PostgreSQL preserves nullable checkpoint versions and safely stops at version exhaustion",
+          "status": "passed"
+        }
+      ]
+    },
+    "reviewer_actual_run": {
+      "command": "npx vitest run src/__tests__/workforce-reconciliation-sweep.test.ts src/__tests__/workforce-reconciliation-export-audit.test.ts --testNamePattern='full sweep input boundaries|export audit input boundary' --reporter=json --outputFile=/tmp/hrm-sweep-independent-unit-tests.json",
+      "exit_code": 0,
+      "passed": 4,
+      "failed": 0,
+      "PostgreSQL_cases_explicitly_skipped": 44,
+      "database_rerun": false,
+      "report": "/tmp/hrm-sweep-independent-unit-tests.json"
+    },
+    "bounded_typecheck": {
+      "owner_reported_final_exit_code": 0,
+      "final_output_bytes_independently_verified": 0,
+      "config": "/tmp/hrm-sweep-tsconfig.json",
+      "config_read": true,
+      "scope": "four selected source files plus new sweep/prior export tests and their transitive dependencies",
+      "independently_rerun": false,
+      "initial_failure_preserved": {
+        "path": "/tmp/hrm-sweep-typecheck-initial.txt",
+        "diagnostic": "TS2352 generic Object.fromEntries cast did not prove all eight keys",
+        "resolution": "Explicit eight source arrays in finalized snapshot reader",
+        "initial_diagnostic_is_not_final_source_result": true
+      }
+    },
+    "lint": {
+      "owner_reported_exit_code": 0,
+      "output_bytes_independently_verified": 0,
+      "independently_rerun": false
+    },
+    "diff_check": {
+      "owner_reported_exit_code": 0,
+      "independently_rerun": false
+    },
+    "fixture": "Disposable PostgreSQL16 selected-column synthetic fixtures; deliberately omitted foreign keys enable corruption probes. Not complete migrated production schema/RLS. Owner reports container/volumes/env removed; reviewer did not inspect credentials.",
+    "concurrency_scope": "Current sweep tests use real PostgreSQL with deterministic concurrent inserts/updates and hooks changing lease/CAS before checkpoint. They do not newly execute the older cursor-store simultaneous lock-wait tests."
+  },
+  "supporting_files": [
+    {
+      "path": "/tmp/hrm-sweep-tests.json",
+      "bytes": 18124,
+      "sha256": "d998ef0c68cbeacd240fef345ab4cfa03bf3aacc1fb4f7631b6abd4d480218e3",
+      "summary": {
+        "success": true,
+        "numTotalTests": 48,
+        "numPassedTests": 48,
+        "numFailedTests": 0,
+        "numPendingTests": 0
+      }
+    },
+    {
+      "path": "/tmp/hrm-sweep-independent-unit-tests.json",
+      "bytes": 16902,
+      "sha256": "682d96c07a2b2abfbc8cefb81b3005c6d76f5081c62096e624c7031cb00af04c",
+      "summary": {
+        "success": true,
+        "numTotalTests": 48,
+        "numPassedTests": 4,
+        "numFailedTests": 0,
+        "numPendingTests": 44
+      }
+    },
+    {
+      "path": "/tmp/hrm-sweep-typecheck-initial.txt",
+      "bytes": 511,
+      "sha256": "05501d3745f636892a6c83d1841ee748a715b14fbec4b3e29ab614f28f921b2d"
+    },
+    {
+      "path": "/tmp/hrm-sweep-typecheck-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-sweep-tsconfig.json",
+      "bytes": 753,
+      "sha256": "4f28d63dae1658877f3247e2fa435eef2a2e5a16c1b151e1f3b27632d7d271f7"
+    },
+    {
+      "path": "/tmp/hrm-sweep-lint-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-sweep-proof.json",
+      "bytes": 2562,
+      "sha256": "2e02d0d6b488e7e66b5564b6412edf36a8828c1abba8eb6336c367a85f5c10c3"
+    },
+    {
+      "path": "/tmp/hrm-sweep-source-tree.json",
+      "bytes": 1147969,
+      "sha256": "6d8ff913ccf589f5511f6f2a5a1ccdb92030359fcb7817fa8e8ef53bb5bb6f56"
+    },
+    {
+      "path": "/tmp/hrm-sweep-independent-binding-proof.json",
+      "bytes": 2385,
+      "sha256": "c6bcc990064fe909d2461114afecebf5308c3167380f8d891c7dd438cff7fd30"
+    }
+  ],
+  "limits": [
+    "Supported tenant size:1000rows and1MiB projected JSON per root kind,4MiB aggregate root projection,4096bytes per audit projection;100segment-linked cases;64KiB per auxiliary schedule lookup. Oversized tenants explicitly refuse and cannot make incremental progress under this full-restart design.",
+    "SQL payload caps constrain transfer/materialization, not all database CPU/TOAST/sort/query-memory. Auxiliary schedule reads may cumulatively approach6.4MiB in addition to root projection. Timeouts provide finite refusal, not production cost acceptance.",
+    "Completeness means all visible rows in the eight represented kernel families within one supplied authorized MVCC snapshot, not every Workforce model, all tenants, or visibility behind RLS.",
+    "Pinned schedule verification is hash/link/selected-segment membership, not full calendar/site/segment semantic verification. Schedule-only checks use currently visible effective timeline, not an immutable receipt of selection at case creation or no-show employment/calendar eligibility.",
+    "Global opaque completion token does not implement eligible tenant selection, fairness, starvation detection or cross-tenant coverage. Lease ownership/authorization remain caller preconditions and operational scheduling remains absent.",
+    "Staging document is an execution/acceptance plan only. Full migration/RLS compatibility, production-like indexes/query plans, dense-tenant strategy, operational monitoring and activation remain open. No staging/deployment/external-delivery proof is inferred.",
+    "Fresh hosted checks for0a40 are pending ref advancement and new execution; prior51fb green results remain historical. Standard CI without the opt-in DBURLs receives no credit for44local PG cases.",
+    "C12-008 remainsPARTIAL; ledger82/161DONE,79open,weighted59%. No globally clean compiler/suite or full diagnostic-family identity claim. PR589 remains the single cumulative release route; no duplicate source-slice merges.",
+    "Merge/deploy/activation/credentials/grants are outside this source acceptance and require separate scoped authorization."
+  ],
+  "reviewer_actions": {
+    "source_edits": 0,
+    "remote_mutations": 0,
+    "database_reruns": 0,
+    "raw_CI_logs_read": 0,
+    "merges_deploys_activations": 0
+  }
+}
