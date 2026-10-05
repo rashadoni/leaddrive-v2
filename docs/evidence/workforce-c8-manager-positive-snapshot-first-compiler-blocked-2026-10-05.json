@@ -1,0 +1,49 @@
+{
+  "atUtc": "2026-10-05T01:02:31.833673+00:00",
+  "status": "BLOCKED OWNED TS2769; NO MERGE",
+  "candidateHead": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+  "baseSha": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "wholeRootCompilerAnalysis": {
+    "path": "/tmp/workforce-pr581-c5cf76-first-owned-compiler-blocker-primary.json",
+    "bytes": 295494,
+    "sha256": "03a14a570abf6f5344aef1b873cf8c967695417e97ab0aca11a3bd407692f13a"
+  },
+  "wholeCompilerLog": {
+    "path": "/tmp/workforce-part38-positive-current-hosted-originals-primary/whole-logs/111570225230.txt",
+    "bytes": 256725,
+    "sha256": "86792dad27c1c7f68082b2d64c99064a3bd86026b076fbc2baf17cde475fa9c2"
+  },
+  "wholeSuiteLog": {
+    "path": "/tmp/workforce-part38-positive-current-hosted-originals-primary/whole-logs/111570225234.txt",
+    "bytes": 212485,
+    "sha256": "702de23339b18ba9785eef3745b3d6fb342130e57388b7e8098788dcb070bd92"
+  },
+  "actualTotalDiagnostics": 1170,
+  "actualFamilyCount": 35,
+  "actualExitCode": 2,
+  "exactGatedBaselinePairs": 66,
+  "selectedManagerOwned60Typed42AndUnion79Typed55Diagnostic": [
+    {
+      "sourceLogLine": 608,
+      "path": "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts",
+      "line": 47,
+      "column": 9,
+      "code": "TS2769",
+      "message": "No overload matches this call."
+    }
+  ],
+  "allFiveRequiredActionsSuccess": true,
+  "selectedAllFamilyZero": false,
+  "strictSuite18Of18": true,
+  "globallyCleanCompiler": false,
+  "globallyCleanSuite": false,
+  "rootManagerSublaneAccepted": {
+    "path": "/tmp/workforce-pr581-c5cf76-current-manager-sublane-primary.json",
+    "bytes": 28861,
+    "sha256": "e67bc7f29c0b3f426c118d37a9f9471ba2bc9dbf39a35fd866b19363932127cf"
+  },
+  "normalMergeAllowed": false,
+  "releaseAccepted": false,
+  "originalFirstBlockedStatusPreserved": true,
+  "nextAction": "Freeze independent whole FIRST BLOCKED; source-review and apply only ProcessEnv test annotation repair; fresh exact-head source review and hosted execution required"
+}
