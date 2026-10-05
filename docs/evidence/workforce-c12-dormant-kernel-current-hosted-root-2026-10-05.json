@@ -1,0 +1,170 @@
+{
+  "atUtc": "2026-10-05T04:32:41.089114+00:00",
+  "head": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "base": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "testedSynthetic": "d98b5f5a615bb46028abdc5c7bc596fdb5c11ec2",
+  "candidateTree": "24a8b42924bace38b6d46841462ff216680c41b0",
+  "status": "ROOT ACCEPTED CURRENT HOSTED",
+  "report": {
+    "path": "/tmp/workforce-pr583-6ed8e1-current-hosted-green-independent.json",
+    "bytes": 23523,
+    "sha256": "6d07db3507e4b4e1005b806602dbc69fe0ace239870ab2dbfc3aadab315bc32b"
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-pr583-6ed8e1-current-hosted-green-input-audit-independent.json",
+    "bytes": 1446518,
+    "sha256": "053ffed51eb725062366d60313ca35ee76d80a7e6379b1deea298a142b375a1a"
+  },
+  "rootWholeCompilerAnalysis": {
+    "path": "/tmp/workforce-c12-part43-current-compiler-suite-root-analysis-primary.json",
+    "bytes": 318269,
+    "sha256": "5e94c814a87c3c552ef2a6c03fab5cfec51a2b26f1ddfea6b7193086cc82651d"
+  },
+  "normalMergeAllowed": true,
+  "allFiveActions15368Success": true,
+  "allThreeApplicableCurrentWorkflowsSuccess": true,
+  "ownedTyped4AllFamilyZero": true,
+  "unchangedSelectedDependencyCount": 1,
+  "strictSuite18Of18Nonclean": true,
+  "compilerClean": false,
+  "suiteClean": false,
+  "DBAdapterOrCronActivation": false,
+  "requiredChecks": [
+    {
+      "name": "pr-scope",
+      "appId": 15368,
+      "checkId": 111610385788,
+      "jobId": 111610385788,
+      "runId": 37261799128,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799128/job/111610385788"
+    },
+    {
+      "name": "static-checks",
+      "appId": 15368,
+      "checkId": 111610444747,
+      "jobId": 111610444747,
+      "runId": 37261799128,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799128/job/111610444747"
+    },
+    {
+      "name": "typecheck",
+      "appId": 15368,
+      "checkId": 111610444749,
+      "jobId": 111610444749,
+      "runId": 37261799128,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799128/job/111610444749"
+    },
+    {
+      "name": "runner-policy",
+      "appId": 15368,
+      "checkId": 111610385939,
+      "jobId": 111610385939,
+      "runId": 37261799153,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799153/job/111610385939"
+    },
+    {
+      "name": "scan",
+      "appId": 15368,
+      "checkId": 111610386122,
+      "jobId": 111610386122,
+      "runId": 37261799134,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799134/job/111610386122"
+    }
+  ],
+  "currentRunBindings": [
+    {
+      "workflow": "pr-checks",
+      "workflowPath": ".github/workflows/pr-checks.yml",
+      "runId": 37261799128,
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/pr-checks-run.json",
+        "bytes": 12866,
+        "sha256": "c81cb28ad8a412ae7f120ef5095e57db76d07d4322501f81d82c567ef0ee5c23"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/pr-checks-jobs.json",
+        "bytes": 10823,
+        "sha256": "32848f0a9051a7f10b85a1e20693930400851e50eb7cb0acd62341965299a5f6"
+      }
+    },
+    {
+      "workflow": "runner-policy",
+      "workflowPath": ".github/workflows/runner-policy.yml",
+      "runId": 37261799153,
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/runner-policy-run.json",
+        "bytes": 12873,
+        "sha256": "6edc249a81c1ca95f0e80be2d5266164f742363f68a971283d18ab5e89dc8d9a"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/runner-policy-jobs.json",
+        "bytes": 1768,
+        "sha256": "112d4cd6ff6a7bd82d7858116ed50b710b5f281cc57840510faff732eb76c8b3"
+      }
+    },
+    {
+      "workflow": "gitleaks",
+      "workflowPath": ".github/workflows/gitleaks.yml",
+      "runId": 37261799134,
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/gitleaks-run.json",
+        "bytes": 12867,
+        "sha256": "7cbede8e5c3e2b9f243a9daa835b0706037b8e6f026b4ecf463f72cb09868ce2"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/gitleaks-jobs.json",
+        "bytes": 2085,
+        "sha256": "45b96708a2755608903cd4691c0a513f7791b67157123ccbdd51a386b4ecaea2"
+      }
+    }
+  ],
+  "wholeDirectOriginalsRehashed": 641,
+  "wholeJSONParsed": 310,
+  "wholeUTF8Decoded": 635,
+  "wholeBinaryRehashed": 6,
+  "explicitGitBindingsReverified": 59,
+  "protected15Unchanged": true,
+  "rootPeerEntire1169DiagnosticEquality": true,
+  "localTargetedAggregate30PassOnly": true,
+  "individualCurrent23Plus7CIOutcomeCredit": false,
+  "productionReleaseGreen": false,
+  "futureDraftApplied": false,
+  "accounting": {
+    "uniqueCriteriaIds": 161,
+    "historicalRawRows": 169,
+    "DONE": 82,
+    "nonDONE": 79,
+    "passedGates": 14,
+    "totalGates": 15,
+    "C8Percent": 45,
+    "overallPercent": 59,
+    "newRowClosure": false
+  }
+}

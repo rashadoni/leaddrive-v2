@@ -1,0 +1,571 @@
+{
+  "schemaVersion": 1,
+  "issuedAtUtc": "2026-10-05T04:25:00.259868+00:00",
+  "reviewerRole": "Independent authorless exact CURRENT HOSTED reviewer; read-only",
+  "status": "GREEN",
+  "scope": "OWN PR583 current first-attempt three applicable workflows; pure dormant C12 kernel and tests",
+  "prNumber": 583,
+  "prUrl": "https://github.com/rashadoni/leaddrive-v2/pull/583",
+  "candidateHead": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "baseSha": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "testedSynthetic": "d98b5f5a615bb46028abdc5c7bc596fdb5c11ec2",
+  "candidateTree": "24a8b42924bace38b6d46841462ff216680c41b0",
+  "syntheticParents": [
+    "b4ad2db16247705d172cd4e761c079ff1f39d922",
+    "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568"
+  ],
+  "candidateAndTestedSyntheticTreeEqual": true,
+  "fullDiffIdentity": {
+    "paths": 28,
+    "bytes": 293724,
+    "sha256": "a0164450caa5c6608f70e8fdf93bc37540e26a2feae5bf262f754fa89c526b3d"
+  },
+  "nonDocDiffIdentity": {
+    "paths": 3,
+    "bytes": 11601,
+    "sha256": "1fdd8c950414f9cd3b5f1c43e275eaa68433d42664e694fdce3694506ef0b400"
+  },
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "findings": [],
+  "normalMergeAllowed": true,
+  "normalMergeAllowanceLimit": "Exact reviewed candidate on this base after current required checks; coordinator must perform a final fresh-main/protection/current-check guard and ordinary merge. This report performs no GitHub mutation.",
+  "sourceScope": {
+    "nonDocPaths": [
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ],
+    "ownedTyped4": [
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation-job.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ],
+    "selectedTyped13": [
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/format-date.ts",
+      "src/lib/mtm/mobile-week.ts",
+      "src/lib/prisma.ts",
+      "src/lib/rls-context.ts",
+      "src/lib/timezone.ts",
+      "src/lib/workforce/data-classification.ts",
+      "src/lib/workforce/reconciliation-job.ts",
+      "src/lib/workforce/reconciliation.ts",
+      "src/lib/workforce/timesheet-approval.ts",
+      "src/lib/workforce/timesheet-calculation.ts",
+      "src/lib/workforce/timesheet-export.ts"
+    ],
+    "selectedCatalogueIsFullImportGraph": false,
+    "protected15": [
+      ".gitleaks.toml",
+      ".github/workflows/pr-checks.yml",
+      ".github/workflows/runner-policy.yml",
+      "scripts/ci/check-typecheck-gate.sh",
+      "scripts/ci/check-typecheck-baseline.mjs",
+      "scripts/ci/check-github-runner-policy.mjs",
+      ".github/workflows/gitleaks.yml",
+      ".github/workflows/set-social-app-secrets.yml",
+      "scripts/check-test-baseline.mjs",
+      "scripts/workforce-hrm-baseline.sql",
+      "src/__tests__/check-test-baseline-timeout-rendering.test.ts",
+      "src/__tests__/production-test-baseline-gate.test.ts",
+      "test-baseline.json",
+      "typecheck-baseline.json",
+      "next.config.ts"
+    ],
+    "scopeMaximumBytes": 400000
+  },
+  "currentRunBindings": [
+    {
+      "workflow": "pr-checks",
+      "workflowPath": ".github/workflows/pr-checks.yml",
+      "runId": 37261799128,
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/pr-checks-run.json",
+        "bytes": 12866,
+        "sha256": "c81cb28ad8a412ae7f120ef5095e57db76d07d4322501f81d82c567ef0ee5c23"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/pr-checks-jobs.json",
+        "bytes": 10823,
+        "sha256": "32848f0a9051a7f10b85a1e20693930400851e50eb7cb0acd62341965299a5f6"
+      }
+    },
+    {
+      "workflow": "runner-policy",
+      "workflowPath": ".github/workflows/runner-policy.yml",
+      "runId": 37261799153,
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/runner-policy-run.json",
+        "bytes": 12873,
+        "sha256": "6edc249a81c1ca95f0e80be2d5266164f742363f68a971283d18ab5e89dc8d9a"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/runner-policy-jobs.json",
+        "bytes": 1768,
+        "sha256": "112d4cd6ff6a7bd82d7858116ed50b710b5f281cc57840510faff732eb76c8b3"
+      }
+    },
+    {
+      "workflow": "gitleaks",
+      "workflowPath": ".github/workflows/gitleaks.yml",
+      "runId": 37261799134,
+      "event": "pull_request",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/gitleaks-run.json",
+        "bytes": 12867,
+        "sha256": "7cbede8e5c3e2b9f243a9daa835b0706037b8e6f026b4ecf463f72cb09868ce2"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/gitleaks-jobs.json",
+        "bytes": 2085,
+        "sha256": "45b96708a2755608903cd4691c0a513f7791b67157123ccbdd51a386b4ecaea2"
+      }
+    }
+  ],
+  "requiredChecks": [
+    {
+      "name": "pr-scope",
+      "appId": 15368,
+      "checkId": 111610385788,
+      "jobId": 111610385788,
+      "runId": 37261799128,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799128/job/111610385788"
+    },
+    {
+      "name": "static-checks",
+      "appId": 15368,
+      "checkId": 111610444747,
+      "jobId": 111610444747,
+      "runId": 37261799128,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799128/job/111610444747"
+    },
+    {
+      "name": "typecheck",
+      "appId": 15368,
+      "checkId": 111610444749,
+      "jobId": 111610444749,
+      "runId": 37261799128,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799128/job/111610444749"
+    },
+    {
+      "name": "runner-policy",
+      "appId": 15368,
+      "checkId": 111610385939,
+      "jobId": 111610385939,
+      "runId": 37261799153,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799153/job/111610385939"
+    },
+    {
+      "name": "scan",
+      "appId": 15368,
+      "checkId": 111610386122,
+      "jobId": 111610386122,
+      "runId": 37261799134,
+      "headSha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37261799134/job/111610386122"
+    }
+  ],
+  "allFiveRequiredActionsApp15368CurrentSuccess": true,
+  "allThreeApplicableCurrentFirstAttemptRunsSuccess": true,
+  "workflowApplicability": {
+    "applicable": [
+      "pr-checks",
+      "runner-policy",
+      "gitleaks"
+    ],
+    "observedExactlyApplicableThree": true,
+    "conditionalDraftRunIds": {},
+    "managerCalendarReportOrBrowserExecutionCredit": false
+  },
+  "wholeCompiler": {
+    "status": "COMPLETE_NONCLEAN_BASELINE",
+    "wholeLog": {
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/whole-logs/111610444749.txt",
+      "bytes": 256250,
+      "sha256": "a84395a052d69d421d34ca5e5db852c504630ecff6bbc3c514c804a23d6124ba"
+    },
+    "actualExitCode": 2,
+    "exitMarkerCount": 1,
+    "totalDiagnostics": 1169,
+    "allFamilyCounts": {
+      "TS18046": 89,
+      "TS18047": 3,
+      "TS18048": 14,
+      "TS18049": 1,
+      "TS2305": 1,
+      "TS2322": 55,
+      "TS2339": 76,
+      "TS2345": 29,
+      "TS2347": 8,
+      "TS2352": 12,
+      "TS2353": 5,
+      "TS2367": 6,
+      "TS2459": 1,
+      "TS2488": 1,
+      "TS2493": 14,
+      "TS2502": 4,
+      "TS2532": 6,
+      "TS2540": 1,
+      "TS2551": 1,
+      "TS2558": 57,
+      "TS2559": 1,
+      "TS2561": 1,
+      "TS2677": 1,
+      "TS2698": 4,
+      "TS2737": 151,
+      "TS2739": 3,
+      "TS2741": 9,
+      "TS2769": 9,
+      "TS2783": 1,
+      "TS2820": 1,
+      "TS4104": 1,
+      "TS7006": 581,
+      "TS7016": 1,
+      "TS7022": 2,
+      "TS7031": 19
+    },
+    "diagnosticFamilyCount": 35,
+    "unparsedErrorLines": [],
+    "blockingFamilyDiagnostics": [],
+    "gatedPairs": 66,
+    "expectedBaselinePairs": 66,
+    "exactGatedBaselineEquality": true,
+    "baselineActualSummary": [
+      [
+        "66",
+        "66",
+        "1169"
+      ]
+    ],
+    "baselineStrictGatePassed": true,
+    "ownedTyped4Counts": {
+      "src/__tests__/workforce-reconciliation-job.test.ts": 0,
+      "src/__tests__/workforce-reconciliation.test.ts": 0,
+      "src/lib/workforce/reconciliation-job.ts": 0,
+      "src/lib/workforce/reconciliation.ts": 0
+    },
+    "ownedTypedCount": 4,
+    "allOwnedDiagnosticCount": 0,
+    "allOwnedDiagnostics": [],
+    "selectedTyped13Counts": {
+      "src/__tests__/workforce-reconciliation-job.test.ts": 0,
+      "src/__tests__/workforce-reconciliation.test.ts": 0,
+      "src/lib/format-date.ts": 0,
+      "src/lib/mtm/mobile-week.ts": 0,
+      "src/lib/prisma.ts": 0,
+      "src/lib/rls-context.ts": 0,
+      "src/lib/timezone.ts": 0,
+      "src/lib/workforce/data-classification.ts": 0,
+      "src/lib/workforce/reconciliation-job.ts": 0,
+      "src/lib/workforce/reconciliation.ts": 0,
+      "src/lib/workforce/timesheet-approval.ts": 0,
+      "src/lib/workforce/timesheet-calculation.ts": 1,
+      "src/lib/workforce/timesheet-export.ts": 0
+    },
+    "selectedTypedCount": 13,
+    "selectedDiagnostics": [
+      {
+        "sourceLogLine": 1609,
+        "path": "src/lib/workforce/timesheet-calculation.ts",
+        "line": 240,
+        "column": 24,
+        "code": "TS18047",
+        "message": "'startedAt' is possibly 'null'.",
+        "fullMessageLines": [
+          "src/lib/workforce/timesheet-calculation.ts(240,24): error TS18047: 'startedAt' is possibly 'null'."
+        ],
+        "sourceLogLastLine": 1609
+      }
+    ],
+    "unchangedSelectedDependencyExactObserved": true,
+    "claimCompilerClean": false,
+    "allActualTotalsDerivedFresh": true
+  },
+  "wholeSuite": {
+    "status": "COMPLETE_NONCLEAN_BASELINE",
+    "wholeLog": {
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/whole-logs/111610444747.txt",
+      "bytes": 213033,
+      "sha256": "0624c5df69e3bc3f79329740275248e5a23f13b93a282700640196ffee03fd14"
+    },
+    "observedSummary": [
+      [
+        "18",
+        "18"
+      ]
+    ],
+    "baselineKnownFailingFiles": [
+      "src/__tests__/api-social-brand-protection.test.ts",
+      "src/__tests__/api-social-convert-to-lead.test.ts",
+      "src/__tests__/api-social-legal-reports.test.ts",
+      "src/__tests__/lead-ai-call-action-ui.test.ts",
+      "src/__tests__/lib-ai-advisor-query.test.ts",
+      "src/__tests__/lib-mtm-coverage-snapshot.test.ts",
+      "src/__tests__/lib-mtm-location-history.test.ts",
+      "src/__tests__/lib-social-discovery-auto-review-report.test.ts",
+      "src/__tests__/lib-social-discovery-review.test.ts",
+      "src/__tests__/lib-social-relevance-evaluator.test.ts",
+      "src/__tests__/lib-social-subject-relevance.test.ts",
+      "src/__tests__/migration-mtm-task-recurrence-schedule.test.ts",
+      "src/__tests__/mtm-operational-week-base-coverage-ui-contract.test.ts",
+      "src/__tests__/mtm-organization-grid-ui-contract.test.ts",
+      "src/__tests__/mtm-pharmacy-promotion-workspace-role-ux-contract.test.ts",
+      "src/__tests__/mtm-route-builder-filters-ui-contract.test.ts",
+      "src/__tests__/mtm-route-customer-prefill-ui-contract.test.ts",
+      "src/__tests__/zeytunpharm-swissmed-evidence-seed.test.ts"
+    ],
+    "exactBaselineSetGuardPassed": true,
+    "claimSuiteClean": false
+  },
+  "focusedTestEvidence": {
+    "separateFocusedCurrentCIExecutionCredit": false,
+    "currentSuitePerFileOutputObserved": false,
+    "sourceDerivedCaseCounts": {
+      "kernel": 23,
+      "job": 7
+    },
+    "preCheckpointLocalAggregate30PassHistoricalOnly": true,
+    "currentSuiteRelatedOriginalLines": [],
+    "fullStrictSuiteRunnerInvokesUnfilteredVitestCommand": true,
+    "directPerFileCurrentCIOutcomeCredit": false,
+    "limitation": "Full baseline runner uses Vitest JSON, deletes the report, and prints failures only. No per-file PASS or standalone 23+7 CI outcome is invented.",
+    "preCheckpointBoundedProof": {
+      "path": "/tmp/workforce-c12-part43-bounded-primary/proof.json",
+      "bytes": 5837,
+      "sha256": "034fc83921225f2fccd7741b6a0e5482fe500a815d457872ee6b28494fda47ef"
+    },
+    "preCheckpointActual30PassTwoFiles": true,
+    "perFile23Kernel7JobCountsSourceDerived": true,
+    "actualPreCheckpointStdoutPerFileCountLinesPresent": false
+  },
+  "currentWholeLogs": [
+    {
+      "name": "pr-scope",
+      "jobId": 111610385788,
+      "runId": 37261799128,
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/whole-logs/111610385788.txt",
+      "bytes": 78944,
+      "sha256": "cc4d1b89dc920c49b283b4aa7b9b00cddb156232f4d4106ec8edf3f4dfa8d28f",
+      "lineCount": 655,
+      "wholeUtf8Parsed": true,
+      "candidateMention": true,
+      "syntheticMention": true,
+      "checkoutSourceBound": true,
+      "errorAnnotations": 0
+    },
+    {
+      "name": "static-checks",
+      "jobId": 111610444747,
+      "runId": 37261799128,
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/whole-logs/111610444747.txt",
+      "bytes": 213033,
+      "sha256": "0624c5df69e3bc3f79329740275248e5a23f13b93a282700640196ffee03fd14",
+      "lineCount": 2503,
+      "wholeUtf8Parsed": true,
+      "candidateMention": true,
+      "syntheticMention": true,
+      "checkoutSourceBound": true,
+      "errorAnnotations": 0
+    },
+    {
+      "name": "typecheck",
+      "jobId": 111610444749,
+      "runId": 37261799128,
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/whole-logs/111610444749.txt",
+      "bytes": 256250,
+      "sha256": "a84395a052d69d421d34ca5e5db852c504630ecff6bbc3c514c804a23d6124ba",
+      "lineCount": 1674,
+      "wholeUtf8Parsed": true,
+      "candidateMention": true,
+      "syntheticMention": true,
+      "checkoutSourceBound": true,
+      "errorAnnotations": 1169
+    },
+    {
+      "name": "runner-policy",
+      "jobId": 111610385939,
+      "runId": 37261799153,
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/whole-logs/111610385939.txt",
+      "bytes": 11402,
+      "sha256": "a2377e4bb276eaffbac3893fc9bff7064e4cbef578fbc57dc789c7b759294d8f",
+      "lineCount": 145,
+      "wholeUtf8Parsed": true,
+      "candidateMention": true,
+      "syntheticMention": true,
+      "checkoutSourceBound": true,
+      "errorAnnotations": 0
+    },
+    {
+      "name": "scan",
+      "jobId": 111610386122,
+      "runId": 37261799134,
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/whole-logs/111610386122.txt",
+      "bytes": 84082,
+      "sha256": "21e80b078e9d8fbd80762a29264071e62ffc97d197e587fcd8417fb6b5192cf2",
+      "lineCount": 702,
+      "wholeUtf8Parsed": true,
+      "candidateMention": true,
+      "syntheticMention": true,
+      "checkoutSourceBound": true,
+      "errorAnnotations": 0
+    }
+  ],
+  "currentArtifacts": {
+    "actualCount": 0,
+    "wholeZIPCount": 0,
+    "wholeMemberCount": 0,
+    "actualPNGCount": 0,
+    "browserArtifactsApplicable": false
+  },
+  "currentRuntimeAcceptance": {
+    "actualFullCompiler": "ACCEPTED NONCLEAN BASELINE; owned4 all-family zero; one unchanged selected dependency TS18047 explicitly retained",
+    "actualFullSuite": "ACCEPTED NONCLEAN STRICT18 BASELINE",
+    "currentTargetedCISeparate23Plus7Outcomes": "NOT AVAILABLE in quiet full-suite output; source-derived counts and actual precheckpoint aggregate30/2file PASS remain separately bound",
+    "prProductionBuild": "SKIPPED permitted premerge exception",
+    "ownMergedMainProductionBuild": "NOT RUN",
+    "browser": "NOT RUN \u2014 no applicable browser lane",
+    "PG": "NOT RUN for dormant C12 implementation; unrelated hosted PR security/database gates do not activate or prove a C12 production adapter",
+    "DBAdapterCronLeaseCASConcurrency": "NOT IMPLEMENTED/NOT RUN",
+    "AndroidAndLoad": "NOT RUN",
+    "productionPublicRequests": "NOT RUN"
+  },
+  "sourceReport": {
+    "path": "/tmp/workforce-c12-part43-6ed8e1-whole-source-independent.json",
+    "bytes": 15748,
+    "sha256": "0d251b7acac7b1f6e01d26d1bc13612a1eb5fb99b843f6271a4e1553ee41f163"
+  },
+  "rootSourceAcceptance": {
+    "path": "/tmp/workforce-c12-part43-source-root-accepted-primary.json",
+    "bytes": 4579,
+    "sha256": "0b138d644703de629d4fd16a4fcb82dbe7644e08a929b79949f7b558e635dfd3"
+  },
+  "publicationBinding": {
+    "path": "/tmp/workforce-c12-part43-ready-synthetic-primary/ready-publication-proof.json",
+    "bytes": 11909,
+    "sha256": "cb5606fdb7ea4c2086051bd96759f0bb8f10f227c9391e37066bf22f9c1af39c"
+  },
+  "wholeReviewEvidence": {
+    "currentCapture": {
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-hosted-originals/observation-20261005T042224130263Z/whole-capture.json",
+      "bytes": 23644,
+      "sha256": "4887c821ecfadff7f27948b3504ac9496fa2a868f901975ca06b249a5c0cc718"
+    },
+    "currentCompleteAnalysis": {
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/current-compiler-suite-checks-analysis-20261005T042235572623Z.json",
+      "bytes": 598555,
+      "sha256": "509ebf0badea822e23b7b84b91774bd23174884396d84c9c40e29c514c0130ce"
+    },
+    "selectedRetention": {
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/selected-current-source-and-historical-retention.json",
+      "bytes": 50306,
+      "sha256": "4ce51bb7637fa2baa5240f491435dc9b66703720011db10f7094d43b976935b2"
+    },
+    "wholeInputAudit": {
+      "path": "/tmp/workforce-pr583-6ed8e1-current-hosted-green-input-audit-independent.json",
+      "bytes": 1446518,
+      "sha256": "053ffed51eb725062366d60313ca35ee76d80a7e6379b1deea298a142b375a1a"
+    }
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-pr583-6ed8e1-current-hosted-green-input-audit-independent.json",
+    "bytes": 1446518,
+    "sha256": "053ffed51eb725062366d60313ca35ee76d80a7e6379b1deea298a142b375a1a"
+  },
+  "inputCounts": {
+    "directOriginalObservations": 641,
+    "explicitGitObservations": 59,
+    "wholeJSON": 310,
+    "wholeUTF8": 635,
+    "wholeBinary": 6,
+    "currentWholeLogs": 5,
+    "currentWorkflows": 3,
+    "currentRequiredActionsChecks": 5,
+    "currentArtifacts": 0,
+    "currentZIPMembers": 0,
+    "currentPNG": 0,
+    "ownedTyped": 4,
+    "selectedTyped": 13,
+    "protectedPaths": 15,
+    "portableCore9": 9,
+    "portableDirect81": 81
+  },
+  "currentSourceReviewActiveApplicationSourceReads": 0,
+  "readProvenance": {
+    "applicationSource": "Only immutable explicit git show HEAD/BASE originals already independently reviewed/accepted; whole bytes/hash revalidated. No active worktree application reads.",
+    "currentGitHub": "Fresh independent read-only whole API discovery/PR/checks/protection/main/commit/runs/jobs/artifacts and completed whole logs. All original stdout/stderr/request metadata retained.",
+    "priorHistorical": "Selected accepted packets, portable9/direct81 and guards whole hashed/parsed as declared; prior nested archives were not recursively re-opened or manually re-reviewed and grant no new execution credit."
+  },
+  "originalFilesOverwrittenOrDropped": 0,
+  "allPriorFirstFailuresAndGuardsRetainedBySelectedExactReceiptBindings": true,
+  "reviewerFirstAssemblyGuardsPreserved": [
+    {
+      "path": "/tmp/workforce-pr583-6ed8e1-hosted-independent-20261005T040828230353Z/first-publication-synthetic-binding-schema-guard.json",
+      "bytes": 1242,
+      "sha256": "68df6d6eac0f3ea51fcdf971c1d287ba2029bcd0bae7ecaf64bbd4571ad874ef"
+    }
+  ],
+  "publicationSyntheticBindingDescriptiveText": "ACTUAL own new READY synthetic parents/tree verified",
+  "historicalRuntimeBorrowed": false,
+  "sourceOnly": false,
+  "candidateCurrentHostedAcceptanceCredit": true,
+  "productionReleaseAcceptanceCredit": false,
+  "futureNullabilityDraftApplyOrCompilerOrRuntimeCredit": false,
+  "accounting": {
+    "uniqueCriteriaIds": 161,
+    "historicalRawRows": 169,
+    "DONE": 82,
+    "nonDONE": 79,
+    "passedGates": 14,
+    "totalGates": 15,
+    "C8Percent": 45,
+    "overallPercent": 59,
+    "newRowClosure": false
+  },
+  "limits": [
+    "Full compiler is not clean: actual total/families and exit2 remain; unchanged selected timesheet-calculation.ts240:24TS18047 is visible and has not been repaired in this candidate.",
+    "Full suite is not clean: exact18 failing files remain18 frozen baseline entries under strict equality guard.",
+    "Current suite logs omit individual reconciliation PASS lines; no separately observed23+7 current CI outcome is invented.",
+    "Pure source/tests strengthen dormant kernel integrity and return only counts/mismatch codes/repairNONE. No production DB adapter, scheduler, page dependency closure, complete approval chains, lease/version CAS or concurrency proof.",
+    "No UI/browser/AT/WCAG/production feature behavior/Android/load acceptance is granted.",
+    "Future nullability draft is unapplied/source-only; no current selected dependency diagnostic is retroactively cleared.",
+    "Historical accepted source/hosted/release originals and negative packets are retained by whole selected hashes; their runtime executions do not accept this new candidate."
+  ],
+  "continuity": {
+    "currentStatus": "Exact PR583 H6ed CURRENT HOSTED GREEN; allP0-P3zero; compiler/suite remain explicit nonclean baselines.",
+    "lastCompletedAction": "Fresh own whole API/check/run/log capture, all-family diagnostics/owned4 and selected13 reparse, strict18suite and selected historical/core retention audit.",
+    "stoppingPoint": "Before coordinator final fresh-main ordinary merge; production build/release and C12 adapter/cron/runtime NOT RUN.",
+    "nextAction": "Coordinator independently whole-accepts this report/audit, performs final current guards and ordinary merge, then audits this PR own merged-main deploy before release."
+  }
+}
