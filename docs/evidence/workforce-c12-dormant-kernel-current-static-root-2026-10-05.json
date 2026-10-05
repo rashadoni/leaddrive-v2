@@ -1,0 +1,21 @@
+{
+  "atUtc": "2026-10-05T04:19:18.814604+00:00",
+  "head": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "base": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "testedSynthetic": "d98b5f5a615bb46028abdc5c7bc596fdb5c11ec2",
+  "status": "CURRENT STATIC WHOLE LOG/STRICT18 SUITE BASELINE PASS; COMPILER PENDING",
+  "capture": "/tmp/workforce-pr583-6ed8e1-current-hosted-primary/observation-20261005T041835107525Z/whole-capture.json",
+  "wholeLog": {
+    "path": "/tmp/workforce-pr583-6ed8e1-current-hosted-primary/whole-logs/111610444747.txt",
+    "bytes": 213033,
+    "sha256": "0624c5df69e3bc3f79329740275248e5a23f13b93a282700640196ffee03fd14"
+  },
+  "jobId": 111610444747,
+  "strictExactBaseline18": true,
+  "suiteGloballyClean": false,
+  "individualReconciliationCIPassLinesAvailable": false,
+  "targetedLocal30AggregateEvidenceSeparate": true,
+  "compilerAccepted": false,
+  "normalMergeAllowed": false,
+  "newRowClosure": false
+}

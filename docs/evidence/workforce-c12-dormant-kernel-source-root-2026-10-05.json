@@ -1,0 +1,95 @@
+{
+  "atUtc": "2026-10-05T04:01:18.833823+00:00",
+  "status": "EXACT APPLIED DORMANT C12 SOURCE ACCEPTED; FRESH HOSTED REQUIRED",
+  "head": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "base": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "sourceAccepted": true,
+  "runtimeAccepted": false,
+  "normalMergeAllowed": false,
+  "report": {
+    "path": "/tmp/workforce-c12-part43-6ed8e1-whole-source-independent.json",
+    "bytes": 15748,
+    "sha256": "0d251b7acac7b1f6e01d26d1bc13612a1eb5fb99b843f6271a4e1553ee41f163"
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-c12-part43-6ed8e1-whole-source-input-audit-independent.json",
+    "bytes": 1398718,
+    "sha256": "2d4b092ee40af2affac57b09478ad3e499657a60f8665e4cc7da19bc367c70a4"
+  },
+  "rootFrozenPrecheck": {
+    "path": "/tmp/workforce-c12-part43-root-frozen-precheck-primary/precheck-proof.json",
+    "bytes": 3966,
+    "sha256": "2dcd9396bfd969bf6b7ed32fa47c56d01f735696d1b39888927ac3bcdb108552"
+  },
+  "wholeDistinctReferencedOriginals": 974,
+  "actualDirectOriginals": 973,
+  "wholeJSONParsed": 266,
+  "wholeUTF8Decoded": 909,
+  "wholeBinaryRehashed": 64,
+  "explicitGit199Whole": true,
+  "missing25OriginalsRetained": true,
+  "all28PatchReconstructed": true,
+  "allThreeExactDraftsReconstructed": true,
+  "protected15Unchanged": true,
+  "journalPrefixes8Preserved": true,
+  "core9Direct81Rehashed": true,
+  "durableExternal19AndGeneratedCatalogueSeparated": true,
+  "actual30PassedTwoFiles": true,
+  "sourceDerivedPerFileCounts": [
+    23,
+    7
+  ],
+  "perFileLogCountLinesPresent": false,
+  "allThreeApplicableWorkflowsBound": true,
+  "ownedTyped4Selected13": true,
+  "firstFourAuxiliaryGuardsPreserved": true,
+  "DBAdapterOrCronActivation": false,
+  "fullDiff": {
+    "paths": 28,
+    "bytes": 293724,
+    "sha256": "a0164450caa5c6608f70e8fdf93bc37540e26a2feae5bf262f754fa89c526b3d",
+    "repoPaths": [
+      "docs/evidence/workforce-c12-dormant-kernel-application-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-bounded-checks-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-preliminary-review-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-selected-catalogue-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-unapplied-draft-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-current-hosted-review-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-current-hosted-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-current-manager-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-deploy-binding-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-hosted-root-guard-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-literal-ip-strict-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-normal-merge-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-own-build-only-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-own-release-independent-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-own-release-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-range-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-ready-publication-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-root-schema-guard-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-source-review-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-source-root-2026-10-05.json",
+      "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+      "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ]
+  },
+  "nonDocDiff": {
+    "paths": 3,
+    "bytes": 11601,
+    "sha256": "1fdd8c950414f9cd3b5f1c43e275eaa68433d42664e694fdce3694506ef0b400",
+    "repoPaths": [
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ]
+  },
+  "DONE": 82,
+  "nonDONE": 79,
+  "newRowClosure": false
+}

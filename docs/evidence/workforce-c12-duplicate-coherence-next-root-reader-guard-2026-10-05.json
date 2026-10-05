@@ -1,0 +1,19 @@
+{
+  "atUtc": "2026-10-05T04:56:41.963933+00:00",
+  "status": "FIRST INLINE ROOT READER STOPPED BEFORE ANY ACCEPTANCE OR WORKTREE EDIT",
+  "firstError": "KeyError: 'command'",
+  "reason": "Actual nine Git observations use command for4 and gitCommand for5; first inline root reader assumed command for all.",
+  "originalReport": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/preliminary-review.json",
+    "bytes": 8906,
+    "sha256": "442c88587466ed7cec123033f100c81b900717f77c9a99179f5ad06742453f14"
+  },
+  "originalAudit": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/whole-input-audit.json",
+    "bytes": 23533,
+    "sha256": "353325eb22b8395cfd9c104e1fdda16755b8239c3bcdbf6542f417b11625c956"
+  },
+  "rawTrace": "Actual inline exec traceback remains in tool history only; no saved raw trace is invented.",
+  "correctedReader": "Separate file validates either explicit field against exact git show expected tuple, no original rewrite.",
+  "acceptanceIssuedBeforeCorrection": false
+}

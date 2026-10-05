@@ -1,0 +1,53 @@
+{
+  "atUtc": "2026-10-05T04:56:42.111193+00:00",
+  "status": "ROOT ACCEPTED UNAPPLIED PRELIMINARY SOURCE ONLY",
+  "candidateBase": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "report": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/preliminary-review.json",
+    "bytes": 8906,
+    "sha256": "442c88587466ed7cec123033f100c81b900717f77c9a99179f5ad06742453f14"
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/whole-input-audit.json",
+    "bytes": 23533,
+    "sha256": "353325eb22b8395cfd9c104e1fdda16755b8239c3bcdbf6542f417b11625c956"
+  },
+  "wholePreparation": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/unapplied-preparation.json",
+    "bytes": 10778,
+    "sha256": "51f8cfe00225bf65987ef856e3e8bb8e7dcd02d167e2a99b0261d4e05238955b"
+  },
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "wholeOriginalInventory": 32,
+  "explicitGitBindings": 9,
+  "exactThreeRecipesReconstructed": true,
+  "sourceDerivedTestCases": {
+    "baselineKernel": 23,
+    "baselineJob": 7,
+    "draftKernel": 35,
+    "draftJob": 9,
+    "totalDraft": 44,
+    "testsExecuted": false
+  },
+  "peerFirstReaderGuardRetained": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/first-static-literal-case-count-reader-guard.json",
+    "bytes": 975,
+    "sha256": "1f9c54c159ece692049a94e2dc196d556551f1f19f06ad3db0ebefd623e56317"
+  },
+  "rootFirstReaderGuardRetained": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-root-first-command-schema-guard-primary.json",
+    "bytes": 1094,
+    "sha256": "b24c2e98bc16679f20efddfee835022bae39442c43c0b8e5537fecdb94a0cf9f"
+  },
+  "applicationAllowed": false,
+  "testsRun": false,
+  "compilerRun": false,
+  "runtimeCredit": false,
+  "currentPR583AcceptanceCredit": false,
+  "newRowClosure": false
+}

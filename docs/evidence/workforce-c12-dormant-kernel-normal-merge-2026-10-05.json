@@ -1,0 +1,93 @@
+{
+  "atUtc": "2026-10-05T04:33:31.677868+00:00",
+  "head": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "freshMain": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "privateCheckpoint": "32a20d0f2db80910ceec3047cfaeafd9cae0ca78",
+  "clean": true,
+  "allFiveActionsSuccess": true,
+  "allThreeOwnApplicableCurrentWorkflowsSuccess": true,
+  "normalMergeOnly": true,
+  "adminBypass": false,
+  "sourceScope": {
+    "full": {
+      "paths": 28,
+      "bytes": 293724,
+      "sha256": "a0164450caa5c6608f70e8fdf93bc37540e26a2feae5bf262f754fa89c526b3d",
+      "repoPaths": [
+        "docs/evidence/workforce-c12-dormant-kernel-application-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-bounded-checks-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-preliminary-review-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-selected-catalogue-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-unapplied-draft-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-current-hosted-review-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-current-hosted-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-current-manager-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-deploy-binding-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-hosted-root-guard-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-literal-ip-strict-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-normal-merge-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-own-build-only-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-own-release-independent-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-own-release-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-range-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-ready-publication-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-root-schema-guard-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-source-review-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-source-root-2026-10-05.json",
+        "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+        "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "docs/workforce-hrm-session-log.md",
+        "src/__tests__/workforce-reconciliation-job.test.ts",
+        "src/__tests__/workforce-reconciliation.test.ts",
+        "src/lib/workforce/reconciliation.ts"
+      ]
+    },
+    "nonDoc": {
+      "paths": 3,
+      "bytes": 11601,
+      "sha256": "1fdd8c950414f9cd3b5f1c43e275eaa68433d42664e694fdce3694506ef0b400",
+      "repoPaths": [
+        "src/__tests__/workforce-reconciliation-job.test.ts",
+        "src/__tests__/workforce-reconciliation.test.ts",
+        "src/lib/workforce/reconciliation.ts"
+      ]
+    }
+  },
+  "exactHostedReport": {
+    "path": "/tmp/workforce-pr583-6ed8e1-current-hosted-green-independent.json",
+    "bytes": 23523,
+    "sha256": "6d07db3507e4b4e1005b806602dbc69fe0ace239870ab2dbfc3aadab315bc32b"
+  },
+  "rootWholeAccepted": {
+    "path": "/tmp/workforce-c12-part43-current-hosted-root-accepted-primary.json",
+    "bytes": 6506,
+    "sha256": "83c20a7287ffd5644ae48825ad5c13a5927c9766084f26f96b237b51c5316d09"
+  },
+  "exactScan": {
+    "path": "/tmp/workforce-c12-part43-range-primary/proof.json",
+    "bytes": 6608,
+    "sha256": "8915b893f3f2992272446226fb02d7e7689d0ee6b804008e578cb7991f50224e"
+  },
+  "publication": {
+    "path": "/tmp/workforce-c12-part43-ready-synthetic-primary/ready-publication-proof.json",
+    "bytes": 11909,
+    "sha256": "cb5606fdb7ea4c2086051bd96759f0bb8f10f227c9391e37066bf22f9c1af39c"
+  },
+  "compilerClean": false,
+  "suiteClean": false,
+  "unchangedSelectedDependencyCount": 1,
+  "DBAdapterOrCronActivation": false,
+  "ownMergedMainBuildDeployAndPublicArtifactProof": "PENDING",
+  "mergedAt": "2026-10-05T04:33:33Z",
+  "mergedSha": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "mergedParents": [
+    "b4ad2db16247705d172cd4e761c079ff1f39d922",
+    "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568"
+  ],
+  "mergeTreeEqualsTestedCandidate": true,
+  "normalMergeComplete": true,
+  "prNumber": 583,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/583"
+}
