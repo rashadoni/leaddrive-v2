@@ -38,7 +38,10 @@ import {
   type SlaPolicyPriority,
 } from "@/lib/ticketing/sla-policy"
 
+import type { SlaBusinessCalendar } from "@/lib/ticketing/sla-business-calendar"
+
 export interface SlaPolicy {
+  businessCalendar?: SlaBusinessCalendar | null
   id: string
   name: string
   priority: SlaPolicyPriority
@@ -348,7 +351,7 @@ function PolicyTableGroup({ policies, priorityLabel, formatDuration, canWrite, c
           <td className="px-3 py-3"><div className="font-medium">{policy.name}</div><div className="mt-1"><StatusBadge active={policy.isActive} /></div></td>
           <td className="px-3 py-3 font-medium tabular-nums">{formatDuration(policy.firstResponseHours)}</td>
           <td className="px-3 py-3 font-medium tabular-nums">{formatDuration(policy.resolutionHours)}</td>
-          <td className="px-3 py-3 text-xs">{policy.businessHoursOnly ? t("businessSchedule") : t("continuousSchedule")}</td>
+          <td className="px-3 py-3 text-xs">{policy.businessHoursOnly && policy.businessCalendar ? t("workingSchedule", { timezone: policy.businessCalendar.timezone }) : policy.businessHoursOnly ? t("businessSchedule") : t("continuousSchedule")}</td>
           <td className="px-3 py-3 text-xs text-muted-foreground">{t("assignmentCounts", { companies: policy._count?.companies || 0, entitlements: policy._count?.entitlements || 0 })}</td>
           <td className="px-2 py-2"><PolicyActions policy={policy} canWrite={canWrite} canDelete={canDelete} onEdit={onEdit} onDelete={onDelete} /></td>
         </tr>
@@ -374,7 +377,7 @@ function PolicyMobileGroup({ policies, priorityLabel, formatDuration, canWrite, 
                 <div><dt className="text-muted-foreground">{t("firstResponseLabel")}</dt><dd className="mt-0.5 font-medium tabular-nums">{formatDuration(policy.firstResponseHours)}</dd></div>
                 <div><dt className="text-muted-foreground">{t("resolutionLabel")}</dt><dd className="mt-0.5 font-medium tabular-nums">{formatDuration(policy.resolutionHours)}</dd></div>
               </dl>
-              <p className="mt-3 text-xs text-muted-foreground">{policy.businessHoursOnly ? t("businessSchedule") : t("continuousSchedule")}</p>
+              <p className="mt-3 text-xs text-muted-foreground">{policy.businessHoursOnly && policy.businessCalendar ? t("workingSchedule", { timezone: policy.businessCalendar.timezone }) : policy.businessHoursOnly ? t("businessSchedule") : t("continuousSchedule")}</p>
               <p className="mt-1 text-xs text-muted-foreground">{t("assignmentCounts", { companies: policy._count?.companies || 0, entitlements: policy._count?.entitlements || 0 })}</p>
             </article>
           ))}

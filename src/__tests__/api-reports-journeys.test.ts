@@ -414,6 +414,48 @@ describe("GET /api/v1/reports", () => {
     expect(json.data.serviceDesk.filterOptions.slaPolicies).toEqual([{ id: "sla-1", name: "Gold SLA" }])
   })
 
+  it.each([
+    { active: 0, breached: 0, expectedRate: null, expectedMet: 0 },
+    { active: 1, breached: 0, expectedRate: 100, expectedMet: 1 },
+    { active: 4, breached: 1, expectedRate: 75, expectedMet: 3 },
+    { active: 3, breached: 1, expectedRate: 67, expectedMet: 2 },
+    { active: 2, breached: 2, expectedRate: 0, expectedMet: 0 },
+  ])("reports the actual active SLA sample ($active active, $breached breached)", async ({ active, breached, expectedRate, expectedMet }) => {
+    // Empty unrelated domains; only the authorized report's active cohort varies.
+    for (const model of Object.values(prisma)) {
+      if (!model || typeof model !== "object") continue
+      for (const [operation, mock] of Object.entries(model)) {
+        if (!vi.isMockFunction(mock)) continue
+        if (operation === "count") mock.mockReset().mockResolvedValue(0)
+        if (operation === "findMany" || operation === "groupBy") mock.mockReset().mockResolvedValue([])
+      }
+    }
+    vi.mocked(prisma.ticket.aggregate).mockResolvedValue({
+      _avg: { satisfactionRating: null }, _count: { satisfactionRating: 0 },
+    } as never)
+    vi.mocked(prisma.ticket.count)
+      .mockResolvedValueOnce(12) // The organization can contain tickets outside this sample.
+      .mockResolvedValueOnce(9)
+      .mockResolvedValueOnce(active)
+      .mockResolvedValueOnce(breached)
+
+    const response = await GET_REPORTS(makeReq("/api/v1/reports?q=sample-only&period=30d"))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data.serviceDesk.totals).toMatchObject({
+      active, slaBreached: breached, slaComplianceRate: expectedRate,
+      slaComplianceSampleSize: active, slaCompliantTickets: expectedMet,
+    })
+    // The numerator and denominator must use the same organization/search window.
+    const counts = vi.mocked(prisma.ticket.count).mock.calls
+    for (const index of [2, 3]) {
+      const where = counts[index]?.[0]?.where
+      expect(where?.organizationId).toBe("org-1")
+      expect(JSON.stringify(where)).toContain("sample-only")
+      expect(JSON.stringify(where)).toContain("createdAt")
+    }
+  })
+
   it("applies Service Desk query filters to ticket report queries", async () => {
     vi.mocked(prisma.company.count).mockResolvedValue(0)
     vi.mocked(prisma.contact.count).mockResolvedValue(0)

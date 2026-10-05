@@ -23,12 +23,14 @@ import { SupportPageShell } from "@/components/support/support-page-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   complaintChildHref,
   complaintRegistryPath,
   complaintScrollStorageKey,
 } from "@/lib/complaints/workspace-state"
+
+import { complaintDeadlineState } from "@/lib/complaints/deadline-state"
 
 type ComplaintRow = {
   id: string
@@ -39,6 +41,8 @@ type ComplaintRow = {
   source: string | null
   assignedTo: string | null
   assigneeName?: string | null
+  resolvedAt?: string | null
+  closedAt?: string | null
   slaDueAt: string | null
   createdAt: string
   complaintMeta: {
@@ -225,14 +229,16 @@ export default function ComplaintsPage() {
         : value === "closed"
           ? t("statusClosed")
           : value === "escalated" ? t("statusEscalated") : t("unknownStatus")
-  const deadlineLabel = (value: string | null) => {
-    if (!value) return { label: t("noDeadline"), overdue: false }
-    const date = new Date(value)
-    return {
-      label: date.toLocaleDateString(dateLocale),
-      overdue: date.getTime() < Date.now(),
-    }
+  const deadlineLabel = (row: ComplaintRow) => {
+    const state = complaintDeadlineState(row)
+    if (state === "none") return { label: t("noDeadline"), overdue: false }
+    const date = new Date(row.slaDueAt!).toLocaleDateString(dateLocale)
+    const prefix = state === "missed" ? t("deadlineMissedHistorically")
+      : state === "met" ? t("deadlineMetHistorically")
+      : state === "completed_unknown" ? t("deadlineRecorded") : ""
+    return { label: prefix ? `${prefix}: ${date}` : date, overdue: state === "overdue" }
   }
+
   const activeFilters = (Object.entries(filters) as Array<[keyof Filters, string]>).filter(([, value]) => Boolean(value))
   const clearFilters = () => setFilters({ q: "", brand: "", productCategory: "", riskLevel: "", status: "" })
   const columns = [
@@ -265,7 +271,7 @@ export default function ComplaintsPage() {
       key: "riskDeadline",
       label: t("colRiskDeadline"),
       render: (row: ComplaintRow) => {
-        const deadline = deadlineLabel(row.slaDueAt)
+        const deadline = deadlineLabel(row)
         return (
           <div className="space-y-1">
             {row.complaintMeta?.riskLevel
@@ -362,7 +368,11 @@ export default function ComplaintsPage() {
                 {activeFilters.filter(([key]) => key !== "q").length > 0 && <Badge className="ml-1 h-5 min-w-5 px-1">{activeFilters.filter(([key]) => key !== "q").length}</Badge>}
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] space-y-3 motion-reduce:animate-none">
+            <PopoverContent align="end" aria-labelledby="complaints-filter-title" className="w-[min(22rem,calc(100vw-2rem))] space-y-3 motion-reduce:animate-none">
+              <div className="flex items-center justify-between gap-2">
+                <h2 id="complaints-filter-title" className="text-sm font-semibold">{t("filters")}</h2>
+                <PopoverClose asChild><Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("closeFilters")}><X aria-hidden="true" /></Button></PopoverClose>
+              </div>
               <label className="grid gap-1 text-xs"><span>{t("filterBrand")}</span><Input value={filters.brand} onChange={event => setFilters(current => ({ ...current, brand: event.target.value }))} /></label>
               <label className="grid gap-1 text-xs"><span>{t("filterProduct")}</span><Input value={filters.productCategory} onChange={event => setFilters(current => ({ ...current, productCategory: event.target.value }))} /></label>
               <label className="grid gap-1 text-xs"><span>{t("colRisk")}</span><select className="h-11 rounded-md border bg-background px-3 text-sm sm:h-9" value={filters.riskLevel} onChange={event => setFilters(current => ({ ...current, riskLevel: event.target.value }))}><option value="">{t("filterAllRisks")}</option><option value="high">{t("riskHigh")}</option><option value="medium">{t("riskMedium")}</option><option value="low">{t("riskLow")}</option></select></label>
@@ -417,7 +427,7 @@ export default function ComplaintsPage() {
             onRowClick={row => openChild(`/complaints/${(row as unknown as ComplaintRow).id}`)}
             mobileCardRender={rowValue => {
               const row = rowValue as unknown as ComplaintRow
-              const deadline = deadlineLabel(row.slaDueAt)
+              const deadline = deadlineLabel(row)
               return (
                 <article className="rounded-xl border bg-card p-3">
                   <button data-testid="complaint-card-open" type="button" className="min-h-11 w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30" onClick={() => openChild(`/complaints/${row.id}`)}>

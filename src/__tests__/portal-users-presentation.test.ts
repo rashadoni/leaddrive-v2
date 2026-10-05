@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   portalAccessState,
+  portalEnableBlocker,
   selectAllVisible,
   togglePortalSelection,
   visibleSelection,
@@ -22,6 +23,12 @@ const base: PortalContactRecord = {
 }
 
 describe("portal user presentation", () => {
+  it("explains enable preconditions before a request is sent", () => {
+    expect(portalEnableBlocker(base)).toBeNull()
+    expect(portalEnableBlocker({ ...base, email: null })).toBe("email")
+    expect(portalEnableBlocker({ ...base, email: "  " })).toBe("email")
+    expect(portalEnableBlocker({ ...base, isActive: false })).toBe("inactive")
+  })
   it("distinguishes disabled, setup-pending and registered access", () => {
     expect(portalAccessState({ ...base, isActive: false })).toBe("contact_inactive")
     expect(portalAccessState({ ...base, portalAccessEnabled: false })).toBe("disabled")

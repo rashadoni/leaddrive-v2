@@ -2312,6 +2312,7 @@ model Ticket {
   slaDueAt              DateTime?
   slaFirstResponseDueAt DateTime?
   slaPolicyName         String?
+  slaCalendarSnapshot   Json? // Frozen calendar used for the latest explicitly computed SLA window.
   firstResponseAt       DateTime?
   resolvedAt            DateTime?
   closedAt              DateTime?
@@ -2583,6 +2584,7 @@ model SlaPolicy {
   firstResponseHours Float
   resolutionHours    Float
   businessHoursOnly  Boolean  @default(true)
+  businessCalendar   Json? // Explicit versioned work-calendar snapshot; null preserves legacy calendar time.
   isActive           Boolean  @default(true)
   isDefault          Boolean  @default(false)
   createdAt          DateTime @default(now())

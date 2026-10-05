@@ -504,7 +504,7 @@
     "dealVelocity": "Sövdə sürəti",
     "accountEngagement": "Hesab iştirakı",
     "attributionModels": "Atribusiya modelləri",
-    "entitlements": "Dəstək hüquqları",
+    "entitlements": "Dəstək şərtləri",
     "contractLifecycle": "Müqavilə həyat dövrü",
     "conversationInsights": "Söhbət analitikası",
     "customerInsights": "Müştəri analitikası",
@@ -633,7 +633,7 @@
     "financeNotificationsNav": "Maliyyə bildirişləri",
     "ticketCategoriesNav": "Tiket kateqoriyaları",
     "slaPoliciesNav": "SLA siyasətləri",
-    "entitlementTemplatesNav": "Dəstək şablonları",
+    "entitlementTemplatesNav": "Dəstək şərtləri şablonları",
     "portalUsersNav": "Portal istifadəçiləri",
     "supportAiNav": "Dəstək AI",
     "webChatNav": "Veb-çat vidceti",
@@ -2977,7 +2977,10 @@
     "supportLevelStandard": "Standart",
     "supportLevelPremium": "Premium",
     "supportLevelEnterprise": "Korporativ",
-    "supportLevelUnknown": "Dəstək səviyyəsi göstərilməyib"
+    "supportLevelUnknown": "Dəstək səviyyəsi göstərilməyib",
+    "customerContextAction": "Müştəri konteksti",
+    "quickActionsSaveHint": "Status və təyinat üzrə sürətli əməliyyatlar dərhal saxlanılır. Avtomatik təyinat cari yönləndirmə qaydaları ilə agent seçir. Müştəri konteksti əlaqəli qeydləri açır.",
+    "fullControlsSaveHint": "Status və ya agent seçin, sonra uyğun saxlama düyməsini basın. Bu sahələr sürətli əməliyyatlarla eyni müraciəti dəyişir."
   },
   "contracts": {
     "title": "Müqavilələr",
@@ -4453,7 +4456,15 @@
     "colCompany": "Şirkət",
     "colScore": "Bal",
     "colSource": "Mənbə",
-    "funnelViewLeads": "{stage} lidlərə baxmaq üçün klikləyin"
+    "funnelViewLeads": "{stage} lidlərə baxmaq üçün klikləyin",
+    "slaActiveSnapshot": "SLA gecikməsi olmayan aktivlər",
+    "slaSample": "n = {count}; hazırda gecikməyən: {met}",
+    "slaSampleLabel": "SLA seçməsi",
+    "slaScopeLabel": "Hesabatın əhatəsi",
+    "slaMeaningLabel": "Göstəricinin mənası",
+    "slaScope": "Tətbiq olunmuş filtrlərə ({count}) uyğun aktiv biletlər. Yaradılma dövrü: {period}.",
+    "slaEmptySample": "Bu seçmədə aktiv bilet yoxdur. Filtrləri dəyişin və ya sıfırlayın.",
+    "slaSnapshotMeaning": "SLA son tarixi olmayan biletlər də daxil olmaqla cari növbə. Tamamlanmış öhdəliklərin icra faizi deyil."
   },
   "products": {
     "title": "Məhsullar və Xidmətlər",
@@ -4621,7 +4632,7 @@
     "durationHours": "{hours} saat",
     "durationMinutes": "{minutes} dəq",
     "conflictTitle": "Aktiv siyasət ziddiyyəti",
-    "conflictDescription": "Eyni anda birdən çox aktiv siyasət uyğun gəlir: {priorities}. Resolver seçimi birmənalı edə bilmir; dublikatları redaktə və ya deaktiv edin.",
+    "conflictDescription": "Eyni anda birdən çox aktiv siyasət uyğun gəlir: {priorities}. Seçim birmənalı deyil; dublikatları redaktə və ya deaktiv edin.",
     "gapTitle": "Aktiv siyasəti olmayan prioritetlər",
     "gapDescription": "Bu prioritetli biletlər SLA son tarixi almayacaq: {priorities}.",
     "permissionDenied": "SLA siyasətlərinə baxmaq icazəniz yoxdur.",
@@ -4639,18 +4650,18 @@
     "assignmentsLabel": "İstifadə olunur",
     "actionsLabel": "Əməliyyatlar",
     "unconfiguredPriority": "Bu prioritet üçün siyasət qurulmayıb",
-    "businessSchedule": "İş saatları seçimi",
+    "businessSchedule": "Təqvim hesablaması; iş saatları seçimi saxlanılıb",
     "continuousSchedule": "Fasiləsiz təqvim vaxtı",
-    "assignmentCounts": "{companies} şirkət · {entitlements} dəstək hüququ",
+    "assignmentCounts": "{companies} şirkət · {entitlements} dəstək şərti",
     "activeStatus": "Aktiv",
     "inactiveStatus": "Deaktiv",
     "actionsNamed": "{name} siyasəti üçün əməliyyatlar",
     "editAction": "Siyasəti redaktə et",
     "deleteAction": "Siyasəti sil",
-    "deleteBlockedAction": "Dəstək hüququ istifadə edir",
+    "deleteBlockedAction": "Dəstək şərtlərində istifadə olunur",
     "deleteTitle": "SLA siyasətini sil",
-    "deleteDescription": "“{name}” silinsin? Ona bağlı {companies} şirkət bu siyasəti itirəcək. {entitlements} dəstək hüququ ondan asılıdır; asılılığı olan siyasəti silmək olmaz.",
-    "policyInUseError": "Bu siyasət dəstək hüququ tərəfindən istifadə olunur və silinə bilməz.",
+    "deleteDescription": "“{name}” silinsin? Ona bağlı {companies} şirkət bu siyasəti itirəcək. {entitlements} dəstək şərti ondan asılıdır; asılılıq olduğu müddətdə silmək olmaz.",
+    "policyInUseError": "Bu siyasət dəstək şərtlərində istifadə olunur və silinə bilməz.",
     "deleteFailed": "SLA siyasətini silmək mümkün olmadı.",
     "deletedToast": "SLA siyasəti silindi",
     "createTitle": "Yeni SLA siyasəti",
@@ -4658,20 +4669,20 @@
     "nameLabel": "Siyasətin adı",
     "namePlaceholder": "Məsələn, Standart kritik dəstək",
     "priorityHelp": "Hər prioritetə yalnız bir aktiv siyasət uyğun gələ bilər.",
-    "firstResponseHelp": "Müştərinin agentdən ilk cavabı almasına qədər maksimum vaxt.",
-    "resolutionHelp": "Biletin həllinə qədər maksimum vaxt; ilk cavab müddətindən qısa ola bilməz.",
+    "firstResponseHelp": "Gecələr və həftəsonu daxil olmaqla agentin ilk cavabına qədər maksimum təqvim vaxtı.",
+    "resolutionHelp": "Biletin həllinə qədər maksimum təqvim vaxtı; ilk cavab müddətindən qısa ola bilməz.",
     "responseHoursInput": "İlk cavaba qədər saat",
     "responseMinutesInput": "İlk cavaba qədər dəqiqə",
     "resolutionHoursInput": "Həllə qədər saat",
     "resolutionMinutesInput": "Həllə qədər dəqiqə",
     "hourUnit": "Saat",
     "minuteUnit": "Dəqiqə",
-    "businessHoursOnlyLabel": "Yalnız iş saatlarını say",
-    "businessHoursOnlyHelp": "İş saatları seçimini saxlayır. Qrafikə uyğun hesablama aktivləşdirilənədək bilet son tarixləri təqvim vaxtı ilə davam edir.",
-    "activeHelp": "Aktiv siyasəti SLA resolver seçə bilər.",
+    "businessHoursOnlyLabel": "İş saatları seçimi",
+    "businessHoursOnlyHelp": "İş saatları seçimini saxlayır. Aşağıda iş təqvimi seçilməyənədək müddətlər təqvim vaxtı ilə davam edir.",
+    "activeHelp": "Aktiv siyasət bilet prioritetinə görə avtomatik seçilə bilər.",
     "previewTitle": "Siyasətin davranışı",
-    "responsePreview": "İlk cavab {duration} ərzində verilməlidir.",
-    "resolutionPreview": "Bilet {duration} ərzində həll edilməlidir.",
+    "responsePreview": "İlk cavab {duration} təqvim vaxtı ərzində verilməlidir.",
+    "resolutionPreview": "Bilet {duration} təqvim vaxtı ərzində həll edilməlidir.",
     "businessClockPreview": "İş saatları seçimi saxlanılır, lakin cari bilet son tarixləri hələ fasiləsiz irəliləyir.",
     "continuousClockPreview": "Həftəsonu və qeyri-iş saatları da son tarixləri yaxınlaşdırır.",
     "escalationPreview": "Pozuntular SLA hesabatlarına və uyğun eskalasiya qaydalarına daxil olur.",
@@ -4681,7 +4692,26 @@
     "nameRequiredError": "Siyasətin adını daxil edin.",
     "savePermissionDenied": "SLA siyasətlərini saxlamaq icazəniz yoxdur.",
     "saveFailed": "SLA siyasətini saxlamaq mümkün olmadı. Dəyərlər saxlanılıb; yenidən cəhd edin.",
-    "savedToast": "SLA siyasəti saxlanıldı"
+    "savedToast": "SLA siyasəti saxlanıldı",
+    "workingResponsePreview": "İlk cavab {duration} iş vaxtı ərzində verilməlidir.",
+    "workingResolutionPreview": "Həll {duration} iş vaxtı ərzində tamamlanmalıdır.",
+    "workingResponseHelp": "Saxlanmış təqvim üzrə ilk cavabadək iş vaxtı.",
+    "workingResolutionHelp": "Saxlanmış təqvim üzrə həllədək iş vaxtı.",
+    "workingCalendarHint": "Yalnız iş intervalları sayılır; fasilələr, istirahət və bayram günləri çıxılır. Gözləmə statusu saatı dayandırmır.",
+    "calendarSelection": "Yeni müddətlər üçün təqvim",
+    "calendarKeep": "Saxlanmış təqvimi saxla",
+    "calendarLegacy": "Təqvim vaxtı hesablamasını saxla",
+    "calendarCapture": "Təşkilatın cari iş saatlarının surətini istifadə et",
+    "calendarClear": "Fasiləsiz təqvim vaxtını istifadə et",
+    "calendarProspective": "Surət yalnız yeni müddət hesablanarkən tətbiq edilir. Mövcud müraciət və mərhələ müddətləri dəyişmir. Sonrakı qrafik dəyişiklikləri surəti dəyişmir; yeni surət ayrıca seçilməlidir.",
+    "calendarUnavailable": "Əvvəlcə İş saatları bölməsində təşkilat üzrə aktiv «Bütün kanallar» qrafikini qurun. Cari SLA rejimi saxlanılır.",
+    "calendarInvalid": "Təqvim və ya müddət yanlışdır. Saat qurşağını, üst-üstə düşməyən intervalları və bayramları yoxlayın. DST zamanı qeyri-müəyyən və ya mövcud olmayan sərhəd vaxtları qəbul edilmir.",
+    "calendarSourceChanged": "İş qrafiki önbaxışdan sonra dəyişib. Formanı yenidən açıb cari təqvimi yoxlayın.",
+    "calendarSummary": "İş saatlarını və bayramları yoxlayın — {timezone}",
+    "calendarClosed": "Qeyri-iş günü",
+    "calendarRegularDay": "Adi həftəlik qrafik",
+    "calendarHolidays": "Tarix üzrə istisnalar: {count}",
+    "workingSchedule": "İş saatları ({timezone})"
   },
   "supportAiSettings": {
     "title": "Dəstək AI",
@@ -5247,7 +5277,10 @@
     "replyLanguageAuto": "Müştəriyə görə",
     "replyLanguageAz": "Yalnız Azərbaycan dili",
     "replyLanguageRu": "Yalnız rus dili",
-    "replyLanguageEn": "Yalnız ingilis dili"
+    "replyLanguageEn": "Yalnız ingilis dili",
+    "portalAddEmail": "Əvvəlcə e-poçt əlavə edin",
+    "portalEmailReadiness": "Kontakta e-poçt əlavə edin, sonra portal girişini aktivləşdirin.",
+    "portalBulkReadiness": "Seçilmiş {count} kontakt üçün e-poçt və ya aktiv CRM profili lazımdır. Onları dəyişin və ya seçimdən çıxarın."
   },
   "approvalDelegates": {
     "title": "Təsdiqlə Nümayəndəlik",
@@ -7033,7 +7066,7 @@
     },
     "skillRouting": {
       "headerTitle": "Bacarıq marşrutlaşdırması",
-      "headerDesc": "Hansı agentin hansı tiketi götürəcəyini qurun — yuxarıda agent bacarıqları, aşağıda marşrut-qaydası növbələri.",
+      "headerDesc": "Növbəni seçin və uyğun bacarıqları olan agentləri yoxlayın. Dar ekranda «Növbələr» və «Agentlər» bölmələrindən istifadə edin.",
       "agentsTitle": "Agent bacarıqları",
       "agentsDesc": "Hər agentin nəyi gördüyünü çiplərlə işarələyin — dərhal saxlanır. Çiplər növbə bacarıqlarından gəlir, sərbəst mətn yoxdur.",
       "queuesTitle": "Növbələr",
@@ -7679,7 +7712,9 @@
       "planned": "Planlaşdırılıb",
       "registration_open": "Qeydiyyat açıqdır",
       "scheduled": "Planlaşdırılıb"
-    }
+    },
+    "displayTimezone": "Saat qurşağı: {timezone}",
+    "dateKinds": {"sla_due": "SLA son müddəti", "task_due": "Tapşırığın son müddəti", "scheduled": "Planlaşdırılmış vaxt", "event_start": "Tədbirin başlanğıcı", "resolved": "Həll vaxtı", "closed": "Bağlanma vaxtı", "completed": "Tamamlanma vaxtı", "created": "Yaradılma vaxtı", "undated_today": "Tarixsiz; bu gün göstərilir", "unknown": "Tarix növü məlum deyil"}
   },
   "portal": {
     "loyalty": {
@@ -9999,7 +10034,13 @@
     "confirmDelete": "Silməni planlaşdır",
     "applying": "Tətbiq edilir…",
     "appliedSuccess": "{name} uğurla tətbiq edildi.",
-    "applyError": "Makro tətbiq edilmədi. Natamam dəyişiklik saxlanmadı."
+    "applyError": "Makronun nəticəsi təsdiqlənmədi. Təsdiq pəncərəsindəki mesajı yoxlayın.",
+    "confirmEffectsHint": "Təsdiq aşağıdakı bütün əməliyyatları göstərilən ardıcıllıqla müraciətə dərhal saxlayır. Bu, cavab qaralaması deyil.",
+    "audienceHint": "Açıq şərh portalda müştəriyə, daxili qeyd isə komandaya görünür. Makro e-poçt və ya kanal mesajı göndərmir. Cari cavab qaralaması dəyişmir.",
+    "publicComment": "Açıq şərh — müştəriyə görünür",
+    "confirmApply": "Bu əməliyyatları tətbiq et",
+    "previewStale": "Makro önbaxışdan sonra dəyişib. Səhifəni yeniləyin və tətbiqdən əvvəl cari əməliyyatları yoxlayın.",
+    "applyRetrySafe": "Nəticə təsdiqlənmədi. Eyni təsdiqi təkrarlayın: saxlanmış əməliyyatlar təkrar icra edilməyəcək. Yeni tətbiqdən əvvəl müraciətin tarixçəsini yoxlayın."
   },
   "customer360": {
     "title": "Müştəri 360",
@@ -14869,7 +14910,7 @@
     "csatHint": "Müştərinin 1-dən 5-dək düzgün qiymətlərinin ortası; qiymətləndirilməmiş tiketlər daxil edilmir.",
     "viewAll": "Hamısına bax",
     "noOpenCases": "Açıq müraciət yoxdur",
-    "noOpenCasesHint": "Təyin edilmiş açıq tiketlər burada görünəcək.",
+    "noOpenCasesHint": "Rolunuz üçün əlçatan təyin edilməmiş müraciətlərə baxın və ya rəhbərdən iş təyin etməsini istəyin.",
     "colSubject": "Mövzu",
     "colPriority": "Prioritet",
     "colStatus": "Status",
@@ -14897,7 +14938,9 @@
       "closed": "Bağlanıb",
       "escalated": "Eskalasiya edilib",
       "unknown": "Status mövcud deyil"
-    }
+    },
+    "viewUnassigned": "Təyin edilməmiş müraciətlər",
+    "viewMyQueue": "Növbəmi aç"
   },
   "mtmActivity": {
     "title": "Aktivlik jurnalı",
@@ -20484,7 +20527,11 @@
     "noResponses": "Hələ cavab yoxdur",
     "responsePlaceholder": "Cavab yazın…",
     "sending": "Göndərilir…",
-    "send": "Göndər"
+    "send": "Göndər",
+    "closeFilters": "Filtrləri bağla",
+    "deadlineMissedHistorically": "Müddətdən sonra tamamlanıb",
+    "deadlineMetHistorically": "Vaxtında tamamlanıb",
+    "deadlineRecorded": "Qeydə alınmış müddət; tamamlanma vaxtı məlum deyil"
   },
   "slice2": {
     "loyaltyPos": {
@@ -20862,9 +20909,9 @@
       "errorUShapedSum": "Üç çəkinin cəmi 1.0 olmalıdır."
     },
     "entitlementTemplates": {
-      "title": "Dəstək şərti şablonları",
+      "title": "Dəstək şərtləri şablonları",
       "subtitle": "Basic, Standard, Premium və Enterprise üçün təkrar istifadə olunan mərhələ qaydalarını qurun. Agent qaralama dəstək şərti yaradanda bu qaydalar təklif olunur.",
-      "subtitleCompact": "Yeni müştəri dəstək şərtlərinə köçürülən mərhələ müddətlərini qurun.",
+      "subtitleCompact": "Şablon qaydaları ayrıca əməliyyatla müştərinin dəstək şərtlərinə köçürülür. Sonrakı şablon dəyişiklikləri mövcud nüsxələri dəyişmir.",
       "levels": "Dəstək səviyyələri",
       "active": "Aktiv",
       "inactive": "Deaktiv",
@@ -20926,8 +20973,8 @@
       "savedToast": "Dəstək şablonu saxlanıldı."
     },
     "entitlements": {
-      "title": "Müştəri dəstək şərtləri",
-      "subtitle": "Şirkət səviyyəli dəstək şərtləri müştərini SLA siyasəti, dəstək səviyyəsi, etibarlılıq müddəti və tiket mərhələləri ilə bağlayır. Bu şirkət üçün tiket yaradıldıqda LeadDrive bu müddətləri avtomatik tətbiq edə bilər.",
+      "title": "Dəstək şərtləri",
+      "subtitle": "Müştəri üçün dəstək şərtlərinin qaralamasını yaradın, SLA siyasətini seçin, şablon qaydalarını köçürün və ya əlavə edin, sonra aktivləşdirin. Şablonun sonrakı dəyişiklikləri köçürülmüş qaydaları yeniləmir.",
       "subtitleCompact": "Hər şirkət üçün SLA, etibarlılıq və tiket mərhələsi öhdəlikləri vahid iş siyahısında.",
       "kpiActive": "Aktiv",
       "kpiExpiring30d": "30g-də bitir",
@@ -20939,7 +20986,7 @@
       "exceptionSummaryLabel": "Dəstək şərtləri üzrə istisnalar",
       "refreshing": "Yenilənir",
       "retry": "Yenidən cəhd et",
-      "listLabel": "Müştəri dəstək şərtləri",
+      "listLabel": "Dəstək şərtləri",
       "loadFailedTitle": "Dəstək şərtləri əlçatan deyil",
       "permissionApiError": "Bu əməliyyat üçün icazəniz yoxdur.",
       "activeCompanyConflict": "Bu şirkətin artıq aktiv dəstək şərti var.",

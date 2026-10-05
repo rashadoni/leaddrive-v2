@@ -32,6 +32,35 @@ afterEach(() => {
 })
 
 describe("agent calendar API ticket date scope", () => {
+  it("honors explicit viewer-day offsets across UTC midnight", async () => {
+    db.ticket.findMany.mockResolvedValue([
+      ticket("inside", new Date("2026-10-04T20:30:00Z")),
+      ticket("outside", new Date("2026-10-05T20:30:00Z")),
+    ])
+    const from = encodeURIComponent("2026-10-05T00:00:00+04:00")
+    const to = encodeURIComponent("2026-10-05T23:59:59.999+04:00")
+    const body = await (await GET(request(from, to))).json()
+    expect(body.data.items.map((item: { id: string }) => item.id)).toEqual(["inside"])
+    expect(body.data.items[0].dateKind).toBe("sla_due")
+  })
+
+  it("uses resolution time for resolved work and labels undated and creation fallbacks", async () => {
+    db.ticket.findMany.mockResolvedValue([
+      { ...ticket("resolved", null, "resolved"), resolvedAt: new Date("2026-10-01T10:00:00Z") },
+      ticket("undated", null),
+      { ...ticket("legacy", null, "closed"), createdAt: new Date("2026-10-03T11:00:00Z") },
+    ])
+    const body = await (await GET(request("2026-09-28", "2026-10-04"))).json()
+    expect(body.data.items.map((item: { id: string; dateKind: string }) => [item.id, item.dateKind]))
+      .toEqual([["resolved", "resolved"], ["undated", "undated_today"], ["legacy", "created"]])
+  })
+
+  it("rejects invalid or reversed ranges before querying sources", async () => {
+    expect((await GET(request("invalid", "2026-10-04"))).status).toBe(400)
+    expect((await GET(request("2026-10-05", "2026-10-04"))).status).toBe(400)
+    expect(db.ticket.findMany).not.toHaveBeenCalled()
+  })
+
   it("excludes dated open tickets outside the requested week from both items and counts", async () => {
     db.ticket.findMany.mockResolvedValue([
       ticket("past", new Date("2026-09-14T09:00:00Z")),

@@ -430,8 +430,8 @@ export const TOUR_DEFINITIONS: Record<string, TourDef> = {
   ]},
   skillRouting: { steps: [
     { targetId: "sr-header", titleKey: "headerTitle", descKey: "headerDesc" },
-    { targetId: "sr-agents", titleKey: "agentsTitle", descKey: "agentsDesc" },
     { targetId: "sr-queues", titleKey: "queuesTitle", descKey: "queuesDesc" },
+    { targetId: "sr-agents", titleKey: "agentsTitle", descKey: "agentsDesc" },
   ]},
   macros: { steps: [
     { targetId: "macros-header", titleKey: "headerTitle", descKey: "headerDesc" },

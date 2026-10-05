@@ -417,8 +417,8 @@ export default function AgentDesktopPage() {
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
             </Button>
             <Button asChild variant="ghost" size="sm" className="min-h-11">
-              <Link href="/tickets?assignee=me">
-                {t("viewAll")}
+              <Link href={data.queue.total === 0 ? "/tickets?owner=unassigned" : "/tickets?owner=mine"}>
+                {t(data.queue.total === 0 ? "viewUnassigned" : "viewMyQueue")}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </Button>
@@ -430,6 +430,7 @@ export default function AgentDesktopPage() {
             <Check className="mx-auto h-5 w-5 text-muted-foreground" aria-hidden="true" />
             <p className="mt-2 text-sm font-medium">{t("noOpenCases")}</p>
             <p className="mt-1 text-xs text-muted-foreground">{t("noOpenCasesHint")}</p>
+            <Button asChild variant="outline" className="mt-3 min-h-11"><Link href="/tickets?owner=unassigned">{t("viewUnassigned")}<ArrowRight aria-hidden="true" /></Link></Button>
           </div>
         ) : (
           <>
