@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "status": "ACCEPTED_PRECOMMIT_EXACT_SOURCE_BINDINGS_NO_UNRESOLVED_FINDINGS",
+  "observedAtUtc": "2026-10-05T17:18:51.480311+00:00",
+  "reviewer": "/root/pr585_independent_review",
+  "repository": "rashadoni/leaddrive-v2",
+  "base": {
+    "sourceHead": "71433bf827ace3855dedb2bc76942c62867ee4de",
+    "tree": "ec3ff3cfa7f1320458af783c724e83380032a46e",
+    "localGitHead": "daf05b6030c89c4508f2a999706f4169360ccce2",
+    "localGitHeadNotCandidate": true,
+    "independentlyVerifiedBlobsAndModes": 8734,
+    "mismatches": [],
+    "treeIndependentlyRecomputed": true
+  },
+  "candidate": {
+    "head": null,
+    "headMeaning": "Not published/frozen at review; bind future commit to these exact three source hashes and computed tree before acceptance as exactcommit",
+    "computedTree": "02bb497ae8751d81b520249fb00c59283495326b",
+    "filesInComputedTree": 8737,
+    "addedFiles": [
+      {
+        "path": "src/lib/workforce/reconciliation-approval-group.ts",
+        "bytes": 4263,
+        "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05",
+        "blob": "8ecafeb590c05bac26ce71dde0587496309d61ca"
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation-approval-group.test.ts",
+        "bytes": 10992,
+        "sha256": "c7ea1b137f2c5df66aa873b1b67e0326e2bcf1f7aa436ded512f9e6cb984031a",
+        "blob": "5cf1d03670311fe0ed0a5f7ab28c6c20d0bf0b67"
+      },
+      {
+        "path": "docs/workforce-c12-completion-plan-2026-10-05.md",
+        "bytes": 9278,
+        "sha256": "e0a21c48125e839bfdd90b754755d83161029c26ac4926830998da3041e18069",
+        "blob": "302245c453767dbc37b0b5ac82239d972e56c304"
+      }
+    ],
+    "priorBaseFilesUnchanged": true
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [],
+    "unresolvedCount": 0
+  },
+  "sourceConclusions": [
+    "Injected authorized query client only; both imports are type-only. No runtime caller or schema/shared-helper/workflow/baseline change.",
+    "Input organization, agent, root and UTC-midnight periods are validated and captured before awaiting database access; SQL uses bound parameters.",
+    "One MATERIALIZED exact-scope CTE ordered by revision/id includes ancestors and successors with sentinel LIMIT1001; no revision<=root filtering.",
+    "Budget uses uncompressed UTF8 octet_length of each full to_jsonb(row)::text plus2*n for nonempty JSONB array delimiters/separators. CASE returns no approvals payload if count>1000, bytes>1048576, or root missing.",
+    "Input Date periods and stored DATE/TIMESTAMP(3) serialize explicitly to UTC Date values expected by existing kernel, independent of injected session timezone.",
+    "Corrupt revision/hash/supersedes values are retained for the existing kernel. Existing job returns mismatch or propagates refusal before cursor commit.",
+    "Database errors are mapped to fixed identifier-free failure; no stored private payload is exposed in diagnostics.",
+    "Completeness is limited to rows visible through supplied authorization/MVCC snapshot; no whole-table, orphan-enumeration, multi-page or late-append completion claim.",
+    "Completion plan accurately maps remaining criteria and one cumulative589release route without duplicate merging585/587 or588/589."
+  ],
+  "validation": {
+    "ownerExecutedTargetedTests": {
+      "report": {
+        "path": "/tmp/hrm-approval-group-tests.json",
+        "bytes": 5476,
+        "sha256": "d60f480a92d8482cfdbfe79542105dafc361d0fced9340ebae59f81a8d935b50"
+      },
+      "parsedIndependently": true,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "unitGuards": 2,
+      "realPostgresCases": 12,
+      "databaseScope": "Minimal isolated PostgreSQL16 DATE/JSONB/TIMESTAMP fixture; restricted fixture RLS role; concurrent append uses secondconnection; no production schema acceptance"
+    },
+    "reviewerExecutedUnitGuards": {
+      "command": "vitest run src/__tests__/workforce-reconciliation-approval-group.test.ts --testNamePattern=approval-group input boundary --maxWorkers=1 --reporter=json",
+      "report": {
+        "path": "/tmp/hrm-approval-group-independent-unit-tests.json",
+        "bytes": 5139,
+        "sha256": "ae8f255990a0fe47776d492a5e6c9c2c9c65cd86fd0fe85363f0435376467b48"
+      },
+      "passed": 2,
+      "failed": 0,
+      "skipped": 12,
+      "postgresRerun": false
+    },
+    "boundedTypecheck": {
+      "exitCode": 0,
+      "exitCodeProvenance": "Owner report, not reviewer execution",
+      "config": {
+        "path": "/tmp/hrm-approval-group-tsconfig.json",
+        "bytes": 465,
+        "sha256": "89c8b9faeb8a2c8b4512f3cddd4f6e7209969a3d5a8cdb57502798970a6e0141"
+      },
+      "output": {
+        "path": "/tmp/hrm-approval-group-typecheck.txt",
+        "bytes": 208,
+        "sha256": "76162e465989f3f070a9de8db711fbf358e53b74d09ce1bbdb57c727e4c4a16d"
+      },
+      "outputIndependentlyRead": "208bytes npm upgrade notice only; no compiler diagnostics",
+      "scope": "Two selected new paths and imported type dependencies; not full repository compiler"
+    },
+    "lintAndDiff": "PASS owner-reported; not rerun by reviewer",
+    "ownerProof": {
+      "path": "/tmp/hrm-approval-group-proof.json",
+      "bytes": 1348,
+      "sha256": "df14f33cef524e9db9a51bd9d1443d3ec49cd5c5df2340ecd797d91e02e47364"
+    }
+  },
+  "reviewedSources": [
+    "src/lib/workforce/reconciliation-approval-group.ts",
+    "src/__tests__/workforce-reconciliation-approval-group.test.ts",
+    "docs/workforce-c12-completion-plan-2026-10-05.md",
+    "prisma/schema.prisma WorkforceTimesheetApproval",
+    "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql approval types/constraints/trigger",
+    "src/lib/workforce/reconciliation.ts",
+    "src/lib/workforce/reconciliation-job.ts",
+    "src/lib/workforce/timesheet-export.ts",
+    "src/app/api/v1/workforce/timesheet/approvals/[id]/export/route.ts audit block"
+  ],
+  "exportSourceClarification": {
+    "existingAction": "WORKFORCE_TIMESHEET_APPROVED_EXPORT_VIEWED",
+    "entity": "workforce_timesheet_approval",
+    "metadataKind": "workforce_timesheet_export",
+    "recipient": "SESSION_DIRECT_DOWNLOAD",
+    "meaning": "Export response prepared and audit persisted before return; not proof of client/network receipt",
+    "readerImplementedHere": false
+  },
+  "limits": [
+    "1MiB bounds serialized returned approvals array, excluding small SQL metadata envelope; it does not independently cap PostgreSQL CPU/TOAST/materialization for pathological storedJSON. Bounded queryplans/statement resource policy remains future operational work.",
+    "Repeated-read test demonstrates configured transaction snapshot visibility, not global scan completeness.",
+    "RLS fixture proves supplied role honored; no production RLS policy/migration acceptance.",
+    "No independent DB rerun, full compiler/suite/build/browser/load or production/runtime execution for this slice.",
+    "New commit still requires fresh exactcommit/treebinding and hostedmandatorygates; old714green cannot be inherited as newheadexecution.",
+    "No row closure or runtime activation; C12-008PARTIAL,82/161DONE,79open,weighted59%."
+  ],
+  "releaseRoute": {
+    "singleCumulativeCandidate": 589,
+    "narrowReaderDraft": "Review-only stacked on714; same source commit carried by589",
+    "duplicateMergesProhibited": [
+      [
+        585,
+        587
+      ],
+      [
+        588,
+        589
+      ]
+    ],
+    "mergeDeployApproval": "Separate scoped authorization required"
+  },
+  "reviewerActions": {
+    "sourceEdits": false,
+    "remoteWrites": false,
+    "dbRerun": false,
+    "credentialRead": false,
+    "rawCiLogsRead": false,
+    "mergeDeployActivation": false
+  }
+}

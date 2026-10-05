@@ -1,0 +1,43 @@
+{
+  "status": "BOUNDED_CHECKS_PASS",
+  "baseSource": "71433bf827ace3855dedb2bc76942c62867ee4de",
+  "localWorktreeGitHead": "daf05b6030c89c4508f2a999706f4169360ccce2",
+  "reconstructedSourceNotGitHead": true,
+  "files": [
+    {
+      "path": "src/lib/workforce/reconciliation-approval-group.ts",
+      "bytes": 4263,
+      "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05",
+      "blob": "8ecafeb590c05bac26ce71dde0587496309d61ca"
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-approval-group.test.ts",
+      "bytes": 10992,
+      "sha256": "c7ea1b137f2c5df66aa873b1b67e0326e2bcf1f7aa436ded512f9e6cb984031a",
+      "blob": "5cf1d03670311fe0ed0a5f7ab28c6c20d0bf0b67"
+    },
+    {
+      "path": "docs/workforce-c12-completion-plan-2026-10-05.md",
+      "bytes": 9278,
+      "sha256": "e0a21c48125e839bfdd90b754755d83161029c26ac4926830998da3041e18069",
+      "blob": "302245c453767dbc37b0b5ac82239d972e56c304"
+    }
+  ],
+  "tests": {
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "actualPostgresCases": 12,
+    "inputGuards": 2
+  },
+  "boundedTypecheck": {
+    "exitCode": 0,
+    "outputBytes": 208,
+    "memoryMiB": 8192,
+    "externalConfig": "/tmp/hrm-approval-group-tsconfig.json"
+  },
+  "lintExitCode": 0,
+  "noRuntimeCaller": true,
+  "noFullSchemaClaim": true,
+  "ledgerClosure": false
+}

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "status": "ACCEPTED_BOUNDED_IMPLEMENTATION_SOURCE_HOSTED_PENDING",
+  "observedAtUtc": "2026-10-05T17:26:03Z",
+  "owner": "/root",
+  "reviewer": "/root/pr585_independent_review",
+  "repository": "rashadoni/leaddrive-v2",
+  "head": "f17523372802339a1220e2940b8b8c47a63f187b",
+  "tree": "02bb497ae8751d81b520249fb00c59283495326b",
+  "base": "71433bf827ace3855dedb2bc76942c62867ee4de",
+  "main": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+  "sourceAcceptance": {
+    "rootReadFullIndependentExactReceipt": true,
+    "rootRehashedAllListedEvidence": true,
+    "independentUnresolvedFindings": 0,
+    "acceptedSubcriterion": "Complete bounded selected approval revision group reader, dormant",
+    "tests": {
+      "pass": 14,
+      "fail": 0,
+      "skip": 0,
+      "realPostgresCases": 12
+    },
+    "lintExitCode": 0,
+    "boundedTypecheckExitCode": 0
+  },
+  "evidence": [
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-independent-source-20261005.json",
+      "bytes": 7705,
+      "sha256": "354f295c4c45a67011adb1d39484ef6d66f77d90261d28a0236c5b9759b685fd"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-independent-exact-20261005.json",
+      "bytes": 9221,
+      "sha256": "b8bf3304f9f27dbd579ca0eb98745d1298f825d4924cc1d73ddb004ccc46c342"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-tests.json",
+      "bytes": 5476,
+      "sha256": "d60f480a92d8482cfdbfe79542105dafc361d0fced9340ebae59f81a8d935b50"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-independent-unit-tests.json",
+      "bytes": 5139,
+      "sha256": "ae8f255990a0fe47776d492a5e6c9c2c9c65cd86fd0fe85363f0435376467b48"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-proof.json",
+      "bytes": 1348,
+      "sha256": "df14f33cef524e9db9a51bd9d1443d3ec49cd5c5df2340ecd797d91e02e47364"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-tsconfig.json",
+      "bytes": 465,
+      "sha256": "89c8b9faeb8a2c8b4512f3cddd4f6e7209969a3d5a8cdb57502798970a6e0141"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-typecheck.txt",
+      "bytes": 208,
+      "sha256": "76162e465989f3f070a9de8db711fbf358e53b74d09ce1bbdb57c727e4c4a16d"
+    }
+  ],
+  "release": {
+    "singleCumulativeCandidate": 589,
+    "narrowDraft": 590,
+    "mergeDeployActivationAuthorized": false
+  },
+  "limits": [
+    "Hosted f175 checks are still pending; old-head green checks are historical only.",
+    "Local PostgreSQL fixture acceptance is not production-schema/RLS acceptance; standard hosted workflow does not set the two opt-in test DB URLs.",
+    "Complete-group bound does not establish all-source enumeration, scan cutoff/revisit, worker composition or runtime acceptance.",
+    "No raw CI logs, production credentials, production writes, merges, deploys or activation."
+  ],
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weightedPercent": 59,
+    "C12_008": "PARTIAL",
+    "rowClosure": false
+  }
+}
