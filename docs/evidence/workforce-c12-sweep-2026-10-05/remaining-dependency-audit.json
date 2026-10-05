@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "sourceHead": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+  "reviewScope": "Fresh source and ledger lookup; not runtime or staging execution",
+  "implementedSubcriteria": [
+    "Independent enumeration of all visible rows in eight kernel families for a supported-size authorized tenant",
+    "Same-transaction cross-page/reference/approval/export closure and selected schedule subject validation",
+    "Versioned opaque full-restart traversal with later-sweep lower-key/backdated/update detection",
+    "Dormant composition: successful read transaction finalization before lease/version-fenced checkpoint",
+    "Synthetic corruption/refusal/replay coverage and reviewable staging preparation"
+  ],
+  "sourceEvidence": {
+    "noRuntimeConsumers": [
+      "src/lib/workforce/reconciliation-sweep.ts declares/composes only; no src/app caller",
+      "src/lib/workforce/reconciliation-snapshot.ts consumed only by dormant sweep",
+      "src/lib/workforce/reconciliation-cursor-store.ts retains fixed job name"
+    ],
+    "actualStagingPlan": "docs/workforce-c12-sweep-staging-2026-10-05.md",
+    "ledger": "docs/workforce-hrm-completion-roadmap-2026-08-30.md"
+  },
+  "nextDependencies": [
+    {
+      "item": "Dense-tenant strategy",
+      "reason": "Full-restart design refuses more than1000rows/1MiB per kind or100schedule cases; retrying cannot complete an oversized tenant",
+      "acceptance": "Reviewed bounded closure/coverage strategy with no omitted orphan roots or split revision groups; explicit update/revisit semantics and oversize tests"
+    },
+    {
+      "item": "Authorized tenant selection and fairness",
+      "reason": "Injected organizationId and global random completion token provide no tenant enumeration/revisit coverage",
+      "acceptance": "Deterministic authorized eligible-tenant policy, retry/backoff and starvation tests; no raw tenant identifiers in diagnostic or cursor payload"
+    },
+    {
+      "item": "Full-schema/RLS/query-plan staging",
+      "reason": "44realPostgreSQLcases use selected-column disposable fixtures, not full migration/index/RLS deployment",
+      "acceptance": "Isolated authorized production-like synthetic target, schema visibility checks, workload plans and timeout budgets, unchanged fact hashes"
+    },
+    {
+      "item": "Operational wiring and monitoring",
+      "reason": "No new route/cron/scheduler caller exists; C12-006 remains separate",
+      "acceptance": "Dormant reviewed caller/finite metrics/recovery tests followed by separately scoped activation"
+    },
+    {
+      "item": "Historical no-show selection and delivery limits",
+      "reason": "Visible effective schedule timeline is not a creation-time assignment receipt; audit is not client receipt",
+      "acceptance": "Do not claim immutable original selection or external delivery without an accountable source"
+    }
+  ],
+  "legacyRoadmapCaution": {
+    "duplicateRowsObserved": [
+      "WF-C12-006",
+      "WF-C12-008",
+      "WF-C12-009"
+    ],
+    "missingReferencedPlanAtCurrentTree": "docs/workforce-c12-scheduler-operations-plan-2026-08-30.md",
+    "interpretation": "Historical narrative is not evidence that the newly composed reader has a current runtime caller; current source search and exact receipts govern this acceptance. No ledger rewrite or legacy artifact repair performed."
+  },
+  "accounting": {
+    "C12_008": "PARTIAL",
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "gates": "14/15",
+    "C8": "45%",
+    "weighted": "59%"
+  },
+  "separateScope": [
+    "merge",
+    "deploy",
+    "production activation",
+    "credentials",
+    "permissions"
+  ],
+  "noNewHRHubFeatures": true
+}

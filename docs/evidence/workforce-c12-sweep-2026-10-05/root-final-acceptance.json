@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "decision": "ACCEPTED_EXACT_BOUNDED_SOURCE_AND_FIVE_HOSTED_BASELINE_GATES",
+  "at": "2026-10-05 19:16:18 UTC",
+  "owner": "sole root writer; original executor not restarted; independent reviewer read-only",
+  "repository": "rashadoni/leaddrive-v2",
+  "pr": 589,
+  "source": {
+    "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+    "parent": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+    "tree": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+    "main": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+    "synthetic": {
+      "sha": "d81d4f4ebf8cbbf50fd1134156b7060d0172e165",
+      "tree": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+      "parents": [
+        "60ccd403fa172f2fafda31a9d4728c32933d4058",
+        "0a40cd6922affc8c21cc07c655ad5af5df990b19"
+      ]
+    }
+  },
+  "sourceEvidenceCommit": "2dd455e112cc5e4bfecfb0491926bc586c8e273d",
+  "sourceEvidenceReadbackAll11ByteEqual": true,
+  "independent": {
+    "source": {
+      "path": "independent-exact-source.json",
+      "sha256": "344bfe0306818afd73db11c3bfdc0d059cc02d8db535999613b31593f143f150",
+      "rootReadWhole": true,
+      "all9SupportingHashesVerified": true
+    },
+    "durability": {
+      "path": "independent-durability.json",
+      "sha256": "38f0be3f9ec03954570350db0386cf21bd43fcfc82ad10439a62d17b0518342d",
+      "rootReadWhole": true
+    },
+    "hosted": {
+      "path": "independent-hosted-terminal.json",
+      "sha256": "dbcc14195353162b0abe36dc19b9680ca21e3edd91bfd8c42623539c69d17277",
+      "bytes": 29609,
+      "rootReadWhole": true,
+      "receiptAndSourceBindingsRehashed": true,
+      "rootFreshMetadataAgrees": true
+    }
+  },
+  "checks": [
+    {
+      "id": 111932114056,
+      "name": "static-checks",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:59:06Z",
+      "completed": "2026-10-05T19:06:56Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111932114056"
+    },
+    {
+      "id": 111932114050,
+      "name": "typecheck",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:59:04Z",
+      "completed": "2026-10-05T19:12:39Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111932114050"
+    },
+    {
+      "id": 111930874709,
+      "name": "GitHub-hosted Linux production build",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "skipped",
+      "appId": 15368,
+      "started": "2026-10-05T18:56:03Z",
+      "completed": "2026-10-05T18:56:03Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111930874709"
+    },
+    {
+      "id": 111930872880,
+      "name": "runner-policy",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:56:09Z",
+      "completed": "2026-10-05T18:56:32Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691394/job/111930872880"
+    },
+    {
+      "id": 111930872753,
+      "name": "pr-scope",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:58:45Z",
+      "completed": "2026-10-05T18:59:00Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111930872753"
+    },
+    {
+      "id": 111930872707,
+      "name": "scan",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:58:44Z",
+      "completed": "2026-10-05T18:59:01Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691391/job/111930872707"
+    }
+  ],
+  "runIds": [
+    37359691393,
+    37359691394,
+    37359691391
+  ],
+  "allFirstAttemptSuccess": true,
+  "validation": {
+    "ownerSelectedTests": "48PASS/0FAIL/0SKIP =4guards+44actualPostgreSQL",
+    "independentSelectedTests": "4PASS/0FAIL/44PGSKIP; no independent DB rerun",
+    "boundedTypecheckExit": 0,
+    "lintExit": 0,
+    "diffCheckExit": 0,
+    "initialTS2352FailurePreserved": true,
+    "fixtureContainerVolumesAndTemporaryCredentialsRemoved": true,
+    "globalCompilerAndSuiteCleanClaim": false,
+    "fullDiagnosticIdentitiesUnavailable": true,
+    "hostedOptInPGExecutionCredit": false,
+    "productionBuild": "SKIPPED, not accepted"
+  },
+  "acceptedSubcriteria": [
+    "Exact dormant source of eight-family independent visible-tenant enumeration, bounded complete dependency traversal, C-collated keyset pages, and full MVCC restart was accepted in source receipt.",
+    "Bounded selected approval revision closure, strict audit reference projection and schedule subject checks are source-accepted within documented size and visibility limits.",
+    "Dormant one-tenant composition waits for read transaction finalization before existing lease/version-fenced opaque completion token. No partial/mismatch/refused sweep advances progress.",
+    "Owner48PASS contains4guards+44actual local disposable PostgreSQL cases; independent source reviewer executed4guards with44PG cases explicitly skipped. These are separate local validation claims.",
+    "Current exact0a40 App15368 pr-scope/static-checks/typecheck/runner-policy/scan all completedSUCCESS; complete finite metadata is recorded."
+  ],
+  "remaining": {
+    "schemaVersion": 1,
+    "sourceHead": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+    "reviewScope": "Fresh source and ledger lookup; not runtime or staging execution",
+    "implementedSubcriteria": [
+      "Independent enumeration of all visible rows in eight kernel families for a supported-size authorized tenant",
+      "Same-transaction cross-page/reference/approval/export closure and selected schedule subject validation",
+      "Versioned opaque full-restart traversal with later-sweep lower-key/backdated/update detection",
+      "Dormant composition: successful read transaction finalization before lease/version-fenced checkpoint",
+      "Synthetic corruption/refusal/replay coverage and reviewable staging preparation"
+    ],
+    "sourceEvidence": {
+      "noRuntimeConsumers": [
+        "src/lib/workforce/reconciliation-sweep.ts declares/composes only; no src/app caller",
+        "src/lib/workforce/reconciliation-snapshot.ts consumed only by dormant sweep",
+        "src/lib/workforce/reconciliation-cursor-store.ts retains fixed job name"
+      ],
+      "actualStagingPlan": "docs/workforce-c12-sweep-staging-2026-10-05.md",
+      "ledger": "docs/workforce-hrm-completion-roadmap-2026-08-30.md"
+    },
+    "nextDependencies": [
+      {
+        "item": "Dense-tenant strategy",
+        "reason": "Full-restart design refuses more than1000rows/1MiB per kind or100schedule cases; retrying cannot complete an oversized tenant",
+        "acceptance": "Reviewed bounded closure/coverage strategy with no omitted orphan roots or split revision groups; explicit update/revisit semantics and oversize tests"
+      },
+      {
+        "item": "Authorized tenant selection and fairness",
+        "reason": "Injected organizationId and global random completion token provide no tenant enumeration/revisit coverage",
+        "acceptance": "Deterministic authorized eligible-tenant policy, retry/backoff and starvation tests; no raw tenant identifiers in diagnostic or cursor payload"
+      },
+      {
+        "item": "Full-schema/RLS/query-plan staging",
+        "reason": "44realPostgreSQLcases use selected-column disposable fixtures, not full migration/index/RLS deployment",
+        "acceptance": "Isolated authorized production-like synthetic target, schema visibility checks, workload plans and timeout budgets, unchanged fact hashes"
+      },
+      {
+        "item": "Operational wiring and monitoring",
+        "reason": "No new route/cron/scheduler caller exists; C12-006 remains separate",
+        "acceptance": "Dormant reviewed caller/finite metrics/recovery tests followed by separately scoped activation"
+      },
+      {
+        "item": "Historical no-show selection and delivery limits",
+        "reason": "Visible effective schedule timeline is not a creation-time assignment receipt; audit is not client receipt",
+        "acceptance": "Do not claim immutable original selection or external delivery without an accountable source"
+      }
+    ],
+    "legacyRoadmapCaution": {
+      "duplicateRowsObserved": [
+        "WF-C12-006",
+        "WF-C12-008",
+        "WF-C12-009"
+      ],
+      "missingReferencedPlanAtCurrentTree": "docs/workforce-c12-scheduler-operations-plan-2026-08-30.md",
+      "interpretation": "Historical narrative is not evidence that the newly composed reader has a current runtime caller; current source search and exact receipts govern this acceptance. No ledger rewrite or legacy artifact repair performed."
+    },
+    "accounting": {
+      "C12_008": "PARTIAL",
+      "done": 82,
+      "total": 161,
+      "open": 79,
+      "gates": "14/15",
+      "C8": "45%",
+      "weighted": "59%"
+    },
+    "separateScope": [
+      "merge",
+      "deploy",
+      "production activation",
+      "credentials",
+      "permissions"
+    ],
+    "noNewHRHubFeatures": true
+  },
+  "historical": {
+    "acceptedPreviousHead": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+    "previousReceiptCommit": "9b7750b8775cce76f35ef8714e037c6a706326f5",
+    "oldReceiptsNotOverwritten": true,
+    "oldChecksNotSubstituted": true
+  },
+  "scopeLimits": [
+    "Mandatory gates use their normal baseline contract. Successful typecheck metadata does not establish zero TypeScript diagnostics. No full compiler diagnostic-family/path matrix, actual failing-suite identities or globally clean suite/compiler claim.",
+    "All three current runs expose zero artifacts. Hosted per-test outcomes and diagnostic output were not read. Raw logs remain prohibited and unread.",
+    "Standard workflow has no WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL or WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL, so none of44local opt-in PostgreSQL cases receives hosted execution credit. Prior cursor/group local PG proofs are separate evidence.",
+    "Existing standard hosted Workforce shared-lock database gate is recorded as its own successful metadata step, not substituted for new sweep/export/cursor/group opt-in suites.",
+    "Supported tenant size remains1000rows/1MiB per root kind,4MiB total,4096bytes/audit projection,100segment cases,64KiB auxiliary schedule lookup. Dense tenants need another reviewed strategy and cannot progress by repeatedly invoking this bounded full sweep.",
+    "Scope is visible rows in8kernel source families inside authorized supplied MVCC context. No all-Workforce graph, cross-tenant coverage/fairness, original schedule-selection receipt or external export delivery claim.",
+    "Staging plan is preparation only. Full-schema/RLS/index/query-plan staging, eligible-tenant selection/fairness, dense-tenant strategy, scheduler/monitoring and explicit activation remain open.",
+    "Earlier Manager Today browser evidence belongs to ad8cc2ce22f11f18eb6e090ef4264a71def6c350; no new browser or production execution is inferred for0a40.",
+    "PR589 remains the sole cumulative release candidate. No duplicate merges of historic slice PRs. Merge/deploy/activation/credentials/grants require separate scoped authorization."
+  ],
+  "noRawLogs": true,
+  "noNewPaidReviewers": true,
+  "noMacSSH": true,
+  "noMergeDeployActivationOrAccessChanges": true,
+  "terminalForThisBoundedSlice": true,
+  "fullHRMCompletion": false
+}

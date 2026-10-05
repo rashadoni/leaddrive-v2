@@ -1,0 +1,515 @@
+{
+  "schemaVersion": 1,
+  "captured": "2026-10-05 19:14:50 UTC",
+  "repository": "rashadoni/leaddrive-v2",
+  "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+  "main": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+  "sourceTree": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+  "synthetic": {
+    "sha": "d81d4f4ebf8cbbf50fd1134156b7060d0172e165",
+    "tree": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+    "parents": [
+      "60ccd403fa172f2fafda31a9d4728c32933d4058",
+      "0a40cd6922affc8c21cc07c655ad5af5df990b19"
+    ]
+  },
+  "pr": {
+    "number": 589,
+    "state": "open",
+    "draft": false,
+    "merged": false,
+    "mergeable": true,
+    "mergeableState": "clean"
+  },
+  "checks": [
+    {
+      "id": 111932114056,
+      "name": "static-checks",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:59:06Z",
+      "completed": "2026-10-05T19:06:56Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111932114056"
+    },
+    {
+      "id": 111932114050,
+      "name": "typecheck",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:59:04Z",
+      "completed": "2026-10-05T19:12:39Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111932114050"
+    },
+    {
+      "id": 111930874709,
+      "name": "GitHub-hosted Linux production build",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "skipped",
+      "appId": 15368,
+      "started": "2026-10-05T18:56:03Z",
+      "completed": "2026-10-05T18:56:03Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111930874709"
+    },
+    {
+      "id": 111930872880,
+      "name": "runner-policy",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:56:09Z",
+      "completed": "2026-10-05T18:56:32Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691394/job/111930872880"
+    },
+    {
+      "id": 111930872753,
+      "name": "pr-scope",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:58:45Z",
+      "completed": "2026-10-05T18:59:00Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111930872753"
+    },
+    {
+      "id": 111930872707,
+      "name": "scan",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "status": "completed",
+      "conclusion": "success",
+      "appId": 15368,
+      "started": "2026-10-05T18:58:44Z",
+      "completed": "2026-10-05T18:59:01Z",
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691391/job/111930872707"
+    }
+  ],
+  "runs": [
+    {
+      "id": 37359691394,
+      "name": "Runner policy",
+      "path": ".github/workflows/runner-policy.yml",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691394",
+      "jobs": [
+        {
+          "id": 111930872880,
+          "name": "runner-policy",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Reject paid hosted macOS runners",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            }
+          ]
+        }
+      ],
+      "artifacts": []
+    },
+    {
+      "id": 37359691391,
+      "name": "Secret scan",
+      "path": ".github/workflows/gitleaks.yml",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691391",
+      "jobs": [
+        {
+          "id": 111930872707,
+          "name": "scan",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Checkout full history",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Install verified Gitleaks binary",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Select commit range",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Block newly committed secrets",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Post Checkout full history",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11
+            }
+          ]
+        }
+      ],
+      "artifacts": []
+    },
+    {
+      "id": 37359691393,
+      "name": "PR checks",
+      "path": ".github/workflows/pr-checks.yml",
+      "head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393",
+      "jobs": [
+        {
+          "id": 111930872753,
+          "name": "pr-scope",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run set -euo pipefail",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            }
+          ]
+        },
+        {
+          "id": 111930874709,
+          "name": "GitHub-hosted Linux production build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "steps": null
+        },
+        {
+          "id": 111932114050,
+          "name": "typecheck",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Install dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Generate Prisma client",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Prepare bounded GitHub-hosted typecheck memory",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "TypeScript compile-check (advisory diagnostics)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            },
+            {
+              "name": "Syntax, missing-module and undefined-name errors (BLOCKING)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8
+            },
+            {
+              "name": "Defect-shaped type errors vs baseline (BLOCKING)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Cleanup bounded typecheck swap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10
+            },
+            {
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            },
+            {
+              "name": "Post Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21
+            }
+          ]
+        },
+        {
+          "id": 111932114056,
+          "name": "static-checks",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Install dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Support UX read-only readiness diagnostic tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Generate Prisma client",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            },
+            {
+              "name": "Resolve the per-job Postgres port",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8
+            },
+            {
+              "name": "Support UX canary atomic PostgreSQL gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Generate frozen pre-pilot Prisma client",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10
+            },
+            {
+              "name": "Event-platform Kafka and schema asset gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11
+            },
+            {
+              "name": "PostgreSQL maintenance safety unit tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12
+            },
+            {
+              "name": "Event-platform migration and database invariant gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13
+            },
+            {
+              "name": "Event-platform SDK PostgreSQL concurrency gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14
+            },
+            {
+              "name": "Workforce shared-lock PostgreSQL race gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15
+            },
+            {
+              "name": "Demo Center database constraints gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16
+            },
+            {
+              "name": "MTM client categories database gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Previous Prisma client rollback-window gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "PII column-wrap lint guard",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            },
+            {
+              "name": "Unit tests vs baseline (BLOCKING)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20
+            },
+            {
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 38
+            },
+            {
+              "name": "Post Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 39
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 40
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 41
+            }
+          ]
+        }
+      ],
+      "artifacts": []
+    }
+  ],
+  "requiredAll5Pass": true,
+  "normalBaselineContract": true,
+  "fullCompilerDiagnosticIdentities": "Unavailable: no diagnostic artifacts; rawlogs prohibited and not read.",
+  "globalCompilerAndSuiteCleanClaim": false,
+  "hostedOptInPostgresCredit": false,
+  "build": "SKIPPED, no build credit",
+  "mergeDeployActivation": false,
+  "rawLogsRead": 0
+}

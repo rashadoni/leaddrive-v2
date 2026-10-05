@@ -1,0 +1,769 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent_read_only_worker",
+  "reviewed_at_utc": "2026-10-05T19:14:02Z",
+  "repository": "rashadoni/leaddrive-v2",
+  "decision": "ACCEPTED_EXACT_FIVE_HOSTED_BASELINE_GATES_METADATA_ONLY",
+  "scope": "Current exact-head mandatory baseline gates independently accepted, combined with separately accepted bounded source review. Not global compiler/suite cleanness, production staging, release authorization, operational activation or full C12 completion.",
+  "provenance": {
+    "account": "GitHub rashadoni",
+    "link_id": "link_6ac2b60ffee481918919fcce81e5c228",
+    "reads": "Fresh API metadata: PR, branch refs, commit/synthetic provenance, all exact-head runs/checks/jobs/finite steps/artifact listings. No raw CI logs.",
+    "fetch_errors": [],
+    "pagination": {
+      "runs": 3,
+      "checks": 6,
+      "all_jobs_and_artifacts_complete": true
+    },
+    "source_edits": 0,
+    "remote_mutations": 0,
+    "database_reruns": 0
+  },
+  "candidate": {
+    "pull_request": 589,
+    "url": "https://github.com/rashadoni/leaddrive-v2/pull/589",
+    "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+    "branch_ref_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+    "parent_sha": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+    "tree_sha": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+    "base_sha": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+    "fresh_main_sha": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+    "synthetic_merge_sha": "d81d4f4ebf8cbbf50fd1134156b7060d0172e165",
+    "synthetic_tree_sha": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+    "synthetic_parents": [
+      "60ccd403fa172f2fafda31a9d4728c32933d4058",
+      "0a40cd6922affc8c21cc07c655ad5af5df990b19"
+    ],
+    "state": "open",
+    "draft": false,
+    "merged": false
+  },
+  "required_checks": [
+    {
+      "id": 111930872753,
+      "name": "pr-scope",
+      "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "app_id": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-05T18:58:45Z",
+      "completed_at": "2026-10-05T18:59:00Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111930872753"
+    },
+    {
+      "id": 111932114056,
+      "name": "static-checks",
+      "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "app_id": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-05T18:59:06Z",
+      "completed_at": "2026-10-05T19:06:56Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111932114056"
+    },
+    {
+      "id": 111932114050,
+      "name": "typecheck",
+      "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "app_id": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-05T18:59:04Z",
+      "completed_at": "2026-10-05T19:12:39Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393/job/111932114050"
+    },
+    {
+      "id": 111930872880,
+      "name": "runner-policy",
+      "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "app_id": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-05T18:56:09Z",
+      "completed_at": "2026-10-05T18:56:32Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691394/job/111930872880"
+    },
+    {
+      "id": 111930872707,
+      "name": "scan",
+      "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "app_id": 15368,
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-05T18:58:44Z",
+      "completed_at": "2026-10-05T18:59:01Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691391/job/111930872707"
+    }
+  ],
+  "workflow_runs": [
+    {
+      "id": 37359691394,
+      "path": ".github/workflows/runner-policy.yml",
+      "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "event": "pull_request",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "pull_requests": [
+        {
+          "number": 589,
+          "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+          "base_sha": "60ccd403fa172f2fafda31a9d4728c32933d4058"
+        }
+      ],
+      "created_at": "2026-10-05T18:56:02Z",
+      "updated_at": "2026-10-05T18:56:32Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691394",
+      "jobs_total_count": 1,
+      "jobs": [
+        {
+          "id": 111930872880,
+          "name": "runner-policy",
+          "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-05T18:56:09Z",
+          "completed_at": "2026-10-05T18:56:32Z",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:56:10Z",
+              "completed_at": "2026-10-05T18:56:11Z"
+            },
+            {
+              "number": 2,
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:56:11Z",
+              "completed_at": "2026-10-05T18:56:29Z"
+            },
+            {
+              "number": 3,
+              "name": "Reject paid hosted macOS runners",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:56:29Z",
+              "completed_at": "2026-10-05T18:56:29Z"
+            },
+            {
+              "number": 6,
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:56:29Z",
+              "completed_at": "2026-10-05T18:56:29Z"
+            },
+            {
+              "number": 7,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:56:29Z",
+              "completed_at": "2026-10-05T18:56:29Z"
+            }
+          ]
+        }
+      ],
+      "artifacts_total_count": 0,
+      "artifacts": []
+    },
+    {
+      "id": 37359691391,
+      "path": ".github/workflows/gitleaks.yml",
+      "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "event": "pull_request",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "pull_requests": [
+        {
+          "number": 589,
+          "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+          "base_sha": "60ccd403fa172f2fafda31a9d4728c32933d4058"
+        }
+      ],
+      "created_at": "2026-10-05T18:56:02Z",
+      "updated_at": "2026-10-05T18:59:02Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691391",
+      "jobs_total_count": 1,
+      "jobs": [
+        {
+          "id": 111930872707,
+          "name": "scan",
+          "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-05T18:58:44Z",
+          "completed_at": "2026-10-05T18:59:01Z",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:45Z",
+              "completed_at": "2026-10-05T18:58:45Z"
+            },
+            {
+              "number": 2,
+              "name": "Checkout full history",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:45Z",
+              "completed_at": "2026-10-05T18:58:58Z"
+            },
+            {
+              "number": 3,
+              "name": "Install verified Gitleaks binary",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:58Z",
+              "completed_at": "2026-10-05T18:58:59Z"
+            },
+            {
+              "number": 4,
+              "name": "Select commit range",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:59Z",
+              "completed_at": "2026-10-05T18:58:59Z"
+            },
+            {
+              "number": 5,
+              "name": "Block newly committed secrets",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:59Z",
+              "completed_at": "2026-10-05T18:58:59Z"
+            },
+            {
+              "number": 10,
+              "name": "Post Checkout full history",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:59Z",
+              "completed_at": "2026-10-05T18:58:59Z"
+            },
+            {
+              "number": 11,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:59Z",
+              "completed_at": "2026-10-05T18:58:59Z"
+            }
+          ]
+        }
+      ],
+      "artifacts_total_count": 0,
+      "artifacts": []
+    },
+    {
+      "id": 37359691393,
+      "path": ".github/workflows/pr-checks.yml",
+      "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+      "event": "pull_request",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "pull_requests": [
+        {
+          "number": 589,
+          "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+          "base_sha": "60ccd403fa172f2fafda31a9d4728c32933d4058"
+        }
+      ],
+      "created_at": "2026-10-05T18:56:02Z",
+      "updated_at": "2026-10-05T19:12:40Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37359691393",
+      "jobs_total_count": 4,
+      "jobs": [
+        {
+          "id": 111930872753,
+          "name": "pr-scope",
+          "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-05T18:58:45Z",
+          "completed_at": "2026-10-05T18:59:00Z",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:46Z",
+              "completed_at": "2026-10-05T18:58:47Z"
+            },
+            {
+              "number": 2,
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:47Z",
+              "completed_at": "2026-10-05T18:58:58Z"
+            },
+            {
+              "number": 3,
+              "name": "Run set -euo pipefail",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:58Z",
+              "completed_at": "2026-10-05T18:58:58Z"
+            },
+            {
+              "number": 6,
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:58Z",
+              "completed_at": "2026-10-05T18:58:59Z"
+            },
+            {
+              "number": 7,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:58:59Z",
+              "completed_at": "2026-10-05T18:58:59Z"
+            }
+          ]
+        },
+        {
+          "id": 111930874709,
+          "name": "GitHub-hosted Linux production build",
+          "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-10-05T18:56:03Z",
+          "completed_at": "2026-10-05T18:56:03Z",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": []
+        },
+        {
+          "id": 111932114050,
+          "name": "typecheck",
+          "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-05T18:59:04Z",
+          "completed_at": "2026-10-05T19:12:39Z",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:59:05Z",
+              "completed_at": "2026-10-05T18:59:05Z"
+            },
+            {
+              "number": 2,
+              "name": "Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:59:05Z",
+              "completed_at": "2026-10-05T18:59:14Z"
+            },
+            {
+              "number": 3,
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:59:14Z",
+              "completed_at": "2026-10-05T18:59:18Z"
+            },
+            {
+              "number": 4,
+              "name": "Install dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:59:18Z",
+              "completed_at": "2026-10-05T19:01:17Z"
+            },
+            {
+              "number": 5,
+              "name": "Generate Prisma client",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:01:17Z",
+              "completed_at": "2026-10-05T19:02:14Z"
+            },
+            {
+              "number": 6,
+              "name": "Prepare bounded GitHub-hosted typecheck memory",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:14Z",
+              "completed_at": "2026-10-05T19:02:14Z"
+            },
+            {
+              "number": 7,
+              "name": "TypeScript compile-check (advisory diagnostics)",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:14Z",
+              "completed_at": "2026-10-05T19:12:36Z"
+            },
+            {
+              "number": 8,
+              "name": "Syntax, missing-module and undefined-name errors (BLOCKING)",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:12:36Z",
+              "completed_at": "2026-10-05T19:12:36Z"
+            },
+            {
+              "number": 9,
+              "name": "Defect-shaped type errors vs baseline (BLOCKING)",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:12:36Z",
+              "completed_at": "2026-10-05T19:12:36Z"
+            },
+            {
+              "number": 10,
+              "name": "Cleanup bounded typecheck swap",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:12:36Z",
+              "completed_at": "2026-10-05T19:12:36Z"
+            },
+            {
+              "number": 19,
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:12:36Z",
+              "completed_at": "2026-10-05T19:12:36Z"
+            },
+            {
+              "number": 20,
+              "name": "Post Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:12:36Z",
+              "completed_at": "2026-10-05T19:12:36Z"
+            },
+            {
+              "number": 21,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:12:36Z",
+              "completed_at": "2026-10-05T19:12:36Z"
+            }
+          ]
+        },
+        {
+          "id": 111932114056,
+          "name": "static-checks",
+          "head_sha": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-05T18:59:06Z",
+          "completed_at": "2026-10-05T19:06:56Z",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:59:06Z",
+              "completed_at": "2026-10-05T18:59:08Z"
+            },
+            {
+              "number": 2,
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:59:08Z",
+              "completed_at": "2026-10-05T18:59:26Z"
+            },
+            {
+              "number": 3,
+              "name": "Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:59:26Z",
+              "completed_at": "2026-10-05T18:59:36Z"
+            },
+            {
+              "number": 4,
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:59:36Z",
+              "completed_at": "2026-10-05T18:59:40Z"
+            },
+            {
+              "number": 5,
+              "name": "Install dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T18:59:40Z",
+              "completed_at": "2026-10-05T19:01:04Z"
+            },
+            {
+              "number": 6,
+              "name": "Support UX read-only readiness diagnostic tests",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:01:04Z",
+              "completed_at": "2026-10-05T19:01:05Z"
+            },
+            {
+              "number": 7,
+              "name": "Generate Prisma client",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:01:05Z",
+              "completed_at": "2026-10-05T19:01:59Z"
+            },
+            {
+              "number": 8,
+              "name": "Resolve the per-job Postgres port",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:01:59Z",
+              "completed_at": "2026-10-05T19:01:59Z"
+            },
+            {
+              "number": 9,
+              "name": "Support UX canary atomic PostgreSQL gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:01:59Z",
+              "completed_at": "2026-10-05T19:02:00Z"
+            },
+            {
+              "number": 10,
+              "name": "Generate frozen pre-pilot Prisma client",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:00Z",
+              "completed_at": "2026-10-05T19:02:01Z"
+            },
+            {
+              "number": 11,
+              "name": "Event-platform Kafka and schema asset gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:01Z",
+              "completed_at": "2026-10-05T19:02:01Z"
+            },
+            {
+              "number": 12,
+              "name": "PostgreSQL maintenance safety unit tests",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:01Z",
+              "completed_at": "2026-10-05T19:02:02Z"
+            },
+            {
+              "number": 13,
+              "name": "Event-platform migration and database invariant gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:02Z",
+              "completed_at": "2026-10-05T19:02:10Z"
+            },
+            {
+              "number": 14,
+              "name": "Event-platform SDK PostgreSQL concurrency gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:10Z",
+              "completed_at": "2026-10-05T19:02:11Z"
+            },
+            {
+              "number": 15,
+              "name": "Workforce shared-lock PostgreSQL race gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:11Z",
+              "completed_at": "2026-10-05T19:02:21Z"
+            },
+            {
+              "number": 16,
+              "name": "Demo Center database constraints gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:21Z",
+              "completed_at": "2026-10-05T19:02:31Z"
+            },
+            {
+              "number": 17,
+              "name": "MTM client categories database gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:31Z",
+              "completed_at": "2026-10-05T19:02:41Z"
+            },
+            {
+              "number": 18,
+              "name": "Previous Prisma client rollback-window gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:41Z",
+              "completed_at": "2026-10-05T19:02:41Z"
+            },
+            {
+              "number": 19,
+              "name": "PII column-wrap lint guard",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:41Z",
+              "completed_at": "2026-10-05T19:02:41Z"
+            },
+            {
+              "number": 20,
+              "name": "Unit tests vs baseline (BLOCKING)",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:02:41Z",
+              "completed_at": "2026-10-05T19:06:53Z"
+            },
+            {
+              "number": 38,
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:06:53Z",
+              "completed_at": "2026-10-05T19:06:53Z"
+            },
+            {
+              "number": 39,
+              "name": "Post Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:06:53Z",
+              "completed_at": "2026-10-05T19:06:53Z"
+            },
+            {
+              "number": 40,
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:06:53Z",
+              "completed_at": "2026-10-05T19:06:53Z"
+            },
+            {
+              "number": 41,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-05T19:06:53Z",
+              "completed_at": "2026-10-05T19:06:53Z"
+            }
+          ]
+        }
+      ],
+      "artifacts_total_count": 0,
+      "artifacts": []
+    }
+  ],
+  "source_evidence": {
+    "exact_source_receipt": {
+      "path": "/tmp/hrm-sweep-independent-exact-20261005.json",
+      "bytes": 22667,
+      "sha256": "344bfe0306818afd73db11c3bfdc0d059cc02d8db535999613b31593f143f150"
+    },
+    "durability_receipt": {
+      "path": "/tmp/hrm-sweep-durable-independent-20261005.json",
+      "bytes": 6104,
+      "sha256": "38f0be3f9ec03954570350db0386cf21bd43fcfc82ad10439a62d17b0518342d"
+    },
+    "both_local_receipts_rehashed_in_terminal_review": true,
+    "durable_commit": "2dd455e112cc5e4bfecfb0491926bc586c8e273d",
+    "durable_tree": "74951dc366696de2173268726441cb6310ac0cd3",
+    "durable_directory": "docs/evidence/workforce-c12-sweep-2026-10-05",
+    "durable_proof": "Freshly verified in separate durability review:11remote blobs and all10original supporting files byte-equal; root acceptance source/tree/hash/limitations inspected. Large local manifest explicitly qualified; immutable source tree available.",
+    "evidence_commit_is_not_candidate": true,
+    "unresolved_source_findings": {
+      "P0": [],
+      "P1": [],
+      "P2": [],
+      "P3": []
+    }
+  },
+  "accepted_subcriteria": [
+    "Exact dormant source of eight-family independent visible-tenant enumeration, bounded complete dependency traversal, C-collated keyset pages, and full MVCC restart was accepted in source receipt.",
+    "Bounded selected approval revision closure, strict audit reference projection and schedule subject checks are source-accepted within documented size and visibility limits.",
+    "Dormant one-tenant composition waits for read transaction finalization before existing lease/version-fenced opaque completion token. No partial/mismatch/refused sweep advances progress.",
+    "Owner48PASS contains4guards+44actual local disposable PostgreSQL cases; independent source reviewer executed4guards with44PG cases explicitly skipped. These are separate local validation claims.",
+    "Current exact0a40 App15368 pr-scope/static-checks/typecheck/runner-policy/scan all completedSUCCESS; complete finite metadata is recorded."
+  ],
+  "history": {
+    "current_head_cancelled_runs_observed": [],
+    "production_build": {
+      "id": 111930874709,
+      "conclusion": "skipped",
+      "steps": 0,
+      "production_build_accepted": false
+    },
+    "previous_head": "51fb7146cc7fac99bdc62721c89d0ecabc040d09",
+    "previous_hosted_receipt": {
+      "path": "/tmp/hrm-export-audit-hosted-independent-20261005.json",
+      "sha256": "d8576175e94523be872692cf3135bc1610e92d65df859e95a7584188dfd23124"
+    },
+    "previous_results_borrowed_for_current_head": false,
+    "older_cancelled_PR589_714_run": 37342688274,
+    "older_success_PR589_714_run": 37342716530,
+    "older_history": "Earlier714/f175/51fb receipts retain their exact source and cancellation/build-skip histories; no old result substituted here."
+  },
+  "limits": [
+    "Mandatory gates use their normal baseline contract. Successful typecheck metadata does not establish zero TypeScript diagnostics. No full compiler diagnostic-family/path matrix, actual failing-suite identities or globally clean suite/compiler claim.",
+    "All three current runs expose zero artifacts. Hosted per-test outcomes and diagnostic output were not read. Raw logs remain prohibited and unread.",
+    "Standard workflow has no WORKFORCE_RECONCILIATION_SWEEP_TEST_DATABASE_URL or WORKFORCE_EXPORT_AUDIT_TEST_DATABASE_URL, so none of44local opt-in PostgreSQL cases receives hosted execution credit. Prior cursor/group local PG proofs are separate evidence.",
+    "Existing standard hosted Workforce shared-lock database gate is recorded as its own successful metadata step, not substituted for new sweep/export/cursor/group opt-in suites.",
+    "Supported tenant size remains1000rows/1MiB per root kind,4MiB total,4096bytes/audit projection,100segment cases,64KiB auxiliary schedule lookup. Dense tenants need another reviewed strategy and cannot progress by repeatedly invoking this bounded full sweep.",
+    "Scope is visible rows in8kernel source families inside authorized supplied MVCC context. No all-Workforce graph, cross-tenant coverage/fairness, original schedule-selection receipt or external export delivery claim.",
+    "Staging plan is preparation only. Full-schema/RLS/index/query-plan staging, eligible-tenant selection/fairness, dense-tenant strategy, scheduler/monitoring and explicit activation remain open.",
+    "Earlier Manager Today browser evidence belongs to ad8cc2ce22f11f18eb6e090ef4264a71def6c350; no new browser or production execution is inferred for0a40.",
+    "PR589 remains the sole cumulative release candidate. No duplicate merges of historic slice PRs. Merge/deploy/activation/credentials/grants require separate scoped authorization."
+  ],
+  "remaining_C12": {
+    "status": "PARTIAL",
+    "ledger": {
+      "done": 82,
+      "total": 161,
+      "open": 79,
+      "weighted": "59%"
+    },
+    "remaining": [
+      "dense-tenant strategy",
+      "eligible tenant selection and fairness",
+      "production-like full schema/RLS/query plans",
+      "operational lease scheduling/monitoring",
+      "explicit release and activation decisions"
+    ]
+  }
+}

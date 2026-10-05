@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "decision": "ACCEPTED_DURABLE_SOURCE_EVIDENCE_BYTE_BINDINGS_ONLY",
+  "repository": "rashadoni/leaddrive-v2",
+  "evidence_commit": "2dd455e112cc5e4bfecfb0491926bc586c8e273d",
+  "evidence_tree": "74951dc366696de2173268726441cb6310ac0cd3",
+  "evidence_parent": "9b7750b8775cce76f35ef8714e037c6a706326f5",
+  "source_head": "0a40cd6922affc8c21cc07c655ad5af5df990b19",
+  "source_tree": "126d95fddda4eaa15df202e3e320421358f5b0a0",
+  "file_count": 11,
+  "files": [
+    {
+      "name": "bounded-tsconfig.json",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/bounded-tsconfig.json",
+      "bytes": 753,
+      "sha256": "4f28d63dae1658877f3247e2fa435eef2a2e5a16c1b151e1f3b27632d7d271f7",
+      "git_blob_sha": "9a62de0a530fa4a324a28261e72eeefa37ecac0c",
+      "local_original": "/tmp/hrm-sweep-tsconfig.json",
+      "byte_equal_original": true
+    },
+    {
+      "name": "bounded-typecheck.txt",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/bounded-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "local_original": "/tmp/hrm-sweep-typecheck-final.txt",
+      "byte_equal_original": true
+    },
+    {
+      "name": "independent-binding-proof.json",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/independent-binding-proof.json",
+      "bytes": 2385,
+      "sha256": "c6bcc990064fe909d2461114afecebf5308c3167380f8d891c7dd438cff7fd30",
+      "git_blob_sha": "cdc9317d19e3b6eecbd26923e5580ffe86af1684",
+      "local_original": "/tmp/hrm-sweep-independent-binding-proof.json",
+      "byte_equal_original": true
+    },
+    {
+      "name": "independent-exact-source.json",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/independent-exact-source.json",
+      "bytes": 22667,
+      "sha256": "344bfe0306818afd73db11c3bfdc0d059cc02d8db535999613b31593f143f150",
+      "git_blob_sha": "26e96e376675b49c393eb26b18ce460753884f88",
+      "local_original": "/tmp/hrm-sweep-independent-exact-20261005.json",
+      "byte_equal_original": true
+    },
+    {
+      "name": "independent-unit-tests.json",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/independent-unit-tests.json",
+      "bytes": 16902,
+      "sha256": "682d96c07a2b2abfbc8cefb81b3005c6d76f5081c62096e624c7031cb00af04c",
+      "git_blob_sha": "7825825d685478a817e582370972ab29126f0f9d",
+      "local_original": "/tmp/hrm-sweep-independent-unit-tests.json",
+      "byte_equal_original": true
+    },
+    {
+      "name": "initial-typecheck-failure.txt",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/initial-typecheck-failure.txt",
+      "bytes": 511,
+      "sha256": "05501d3745f636892a6c83d1841ee748a715b14fbec4b3e29ab614f28f921b2d",
+      "git_blob_sha": "0f37ea09a273918bfc3353eefbe2f7890747bfac",
+      "local_original": "/tmp/hrm-sweep-typecheck-initial.txt",
+      "byte_equal_original": true
+    },
+    {
+      "name": "owner-postgres-tests.json",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/owner-postgres-tests.json",
+      "bytes": 18124,
+      "sha256": "d998ef0c68cbeacd240fef345ab4cfa03bf3aacc1fb4f7631b6abd4d480218e3",
+      "git_blob_sha": "7b3f950235d6fc5b269303dfeae001ac1ffed4d0",
+      "local_original": "/tmp/hrm-sweep-tests.json",
+      "byte_equal_original": true
+    },
+    {
+      "name": "owner-previous-47-test-run.json",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/owner-previous-47-test-run.json",
+      "bytes": 17765,
+      "sha256": "b788479e9955832e1be1898fdbbec1249a522136a2c13cbc3cfb842b2e648ab7",
+      "git_blob_sha": "f78a96104f4ae7495526ceb710ea1a98c0f1c070",
+      "local_original": "/tmp/hrm-sweep-tests-initial.json",
+      "byte_equal_original": true
+    },
+    {
+      "name": "root-source-acceptance.json",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/root-source-acceptance.json",
+      "bytes": 7052,
+      "sha256": "9f0fc1d15e8f1c221eb201b0eadeab4d82750cdd13c214ea9ad5d7b1e51e26c1",
+      "git_blob_sha": "bb3bf9d0a47be69384fe7a52d2d251e0336abd1e",
+      "local_original": null,
+      "byte_equal_original": null
+    },
+    {
+      "name": "selected-eslint.txt",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/selected-eslint.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "local_original": "/tmp/hrm-sweep-lint-final.txt",
+      "byte_equal_original": true
+    },
+    {
+      "name": "source-binding.json",
+      "remote_path": "docs/evidence/workforce-c12-sweep-2026-10-05/source-binding.json",
+      "bytes": 2562,
+      "sha256": "2e02d0d6b488e7e66b5564b6412edf36a8828c1abba8eb6336c367a85f5c10c3",
+      "git_blob_sha": "d5110b77eabeec885a5aaff1b917b35489aea271",
+      "local_original": "/tmp/hrm-sweep-proof.json",
+      "byte_equal_original": true
+    }
+  ],
+  "verification": {
+    "all11fresh_remote_blobs_and_byte_lengths_verified": true,
+    "all10_original_supporting_files_byte_equal_local": true,
+    "root_source_acceptance": "Full remote JSON read and sourceProof/independentReceipt/sourceSHA/tree/hostedpending/limitations checked; no local-original byte comparison claimed for root-created document.",
+    "large_local_only_manifest": "Explicitly qualified by root; independently verified earlier and bound by immutable source tree126d95fddda4eaa15df202e3e320421358f5b0a0."
+  },
+  "hosted_acceptance": "PENDING; not issued by this durability receipt",
+  "limits": [
+    "Source receipt tests remain48ownerPASS with44realPG versus4independentPASS and44PGskip.",
+    "InitialTS2352failure preserved; empty final boundedtypecheck/lint files are byte-bound without asserting independent execution.",
+    "Staging/production/globalcompiler/fullsuite/C12closure not inferred.",
+    "Evidence commit is distinct from source candidate; no remote writes or merges/deploy/activation by reviewer."
+  ]
+}
