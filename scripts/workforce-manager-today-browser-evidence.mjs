@@ -291,6 +291,38 @@ async function seedCurrentSnapshotWorkdays({ organization, issuer, employees, te
   return currentWorkdays
 }
 
+async function seedSnapshotlessCurrentWorkday({ organization, employees, template }) {
+  currentDate()
+  const employee = employees[9]
+  const startedAt = new Date(Math.max(workDate.getTime(), Date.now() - 300_000))
+  const workday = await admin.$transaction(async tx => {
+    const assignment = await tx.workforceShiftAssignment.findFirstOrThrow({ where: {
+      organizationId: organization.id, agentId: employee.id, templateId: template.id,
+      effectiveFrom: { lte: workDate }, effectiveTo: null,
+    } })
+    assert.equal(assignment.templateId, template.id)
+    // Deliberately omit the snapshot writer. An existing synthetic workday
+    // must never acquire a reconstructed plan from this live assignment.
+    const created = await tx.mtmAgentWorkday.create({ data: {
+      organizationId: organization.id, agentId: employee.id, workDate,
+      status: "STARTED", startedAt, totalPausedSeconds: 0,
+    } })
+    for (const delegate of [tx.workforcePolicySnapshot, tx.workforceShiftSnapshot, tx.workforceWorkdayScheduleSnapshot]) {
+      assert.equal(await delegate.count({ where: { organizationId: organization.id, workdayId: created.id } }), 0)
+    }
+    return created
+  }, { maxWait: 5_000, timeout: 30_000 })
+  receipts.missingCurrentSnapshot = {
+    status: "PASS", syntheticStartedWorkday: true, currentPublishedAssignmentExists: true,
+    allThreeSnapshotRowsAbsent: true, actualAcceptedStartEventWorkflowTested: false,
+    physicalPresenceInferred: false, adminFixtureSeedOnly: true,
+  }
+  currentDate()
+  return { employeeId: employee.id, workday: {
+    id: workday.id, startedAt: workday.startedAt.toISOString(), pausedAt: null, completedAt: null,
+  } }
+}
+
 async function proveCurrentSnapshotDatabaseGuards(fixture) {
   const organizationId = fixture.organization.id
   const organizationIds = [organizationId, fixture.foreign.id]
@@ -305,7 +337,7 @@ async function proveCurrentSnapshotDatabaseGuards(fixture) {
   assert.equal(counts.length, 3)
   assert.ok(counts.every(row => row.count === 3))
   const workdaysBefore = before.find(row => row.table === "mtm_agent_workdays").count
-  assert.equal(workdaysBefore, 4)
+  assert.equal(workdaysBefore, 5)
   const results = []
   async function rejectsAndRollsBack(name, code, attempt) {
     currentDate()
@@ -316,7 +348,7 @@ async function proveCurrentSnapshotDatabaseGuards(fixture) {
         // This separate, vacant employee/date is inserted first in every
         // negative transaction. The following database error must roll it back.
         const workday = await tx.mtmAgentWorkday.create({ data: {
-          organizationId, agentId: fixture.employees[9].id, workDate,
+          organizationId, agentId: fixture.employees[10].id, workDate,
           status: "STARTED", startedAt: new Date(), totalPausedSeconds: 0,
         } })
         assert.equal(await tx.mtmAgentWorkday.count({ where: { organizationId } }), workdaysBefore + 1)
@@ -432,7 +464,8 @@ async function seed() {
   } })
   await admin.mtmAgentWorkday.create({ data: { organizationId: organization.id, agentId: employees[2].id, workDate: earlier(1), status: "STARTED", startedAt: new Date(earlier(1).getTime() + 8 * 3_600_000), totalPausedSeconds: 0 } })
   const currentWorkdays = await seedCurrentSnapshotWorkdays({ organization, issuer, employees, template, jiti })
-  const fixture = { organizations, organization, foreign, manager, approver, denied, employees, sentinels, template, currentWorkdays }
+  const snapshotlessCurrentWorkday = await seedSnapshotlessCurrentWorkday({ organization, employees, template })
+  const fixture = { organizations, organization, foreign, manager, approver, denied, employees, sentinels, template, currentWorkdays, snapshotlessCurrentWorkday }
   await proveCurrentSnapshotDatabaseGuards(fixture)
   currentDate()
   return fixture
@@ -454,7 +487,7 @@ async function checkedRead(response, fixture, { page = 1, exceptions = true } = 
   assert.equal(data.summaryScope, "LOADED_PAGE")
   assert.equal(data.pagination.pageSize, 25)
   assert.equal(data.employeeToday, null)
-  assert.deepEqual(data.summary, { started: page === 1 ? 1 : 0, paused: page === 1 ? 1 : 0, completed: page === 1 ? 1 : 0, notStarted: page === 1 ? 22 : 1, previousOpen: page === 1 ? 1 : 0 })
+  assert.deepEqual(data.summary, { started: page === 1 ? 2 : 0, paused: page === 1 ? 1 : 0, completed: page === 1 ? 1 : 0, notStarted: page === 1 ? 21 : 1, previousOpen: page === 1 ? 1 : 0 })
   const wanted = page === 1 ? fixture.employees.slice(0, 25) : fixture.employees.slice(25)
   assert.deepEqual(data.people.map(person => person.id), wanted.map(person => person.id))
   assert.equal(data.pagination.nextCursor, page === 1 ? fixture.employees[24].id : null)
@@ -477,6 +510,16 @@ async function checkedRead(response, fixture, { page = 1, exceptions = true } = 
       assert.equal(person.attendance.acceptedStartRecorded, true)
       assert.deepEqual(person.plan, positive.plan)
       assert.deepEqual(person.calendar, { state: "SCHEDULED", attendanceExpected: true, noShowEligible: true, excused: false })
+      assert.equal(person.previousOpenWorkday, null)
+    } else if (person.id === fixture.snapshotlessCurrentWorkday.employeeId) {
+      assert.deepEqual(person.workday, fixture.snapshotlessCurrentWorkday.workday)
+      assert.equal(person.status, "STARTED")
+      assert.deepEqual(person.attendance, { state: "STARTED", acceptedStartRecorded: true })
+      assert.deepEqual(person.plan, {
+        state: "UNAVAILABLE", source: "UNAVAILABLE", templateName: null,
+        timezone: null, plannedStartAt: null, plannedEndAt: null,
+      })
+      assert.deepEqual(person.calendar, { state: "UNAVAILABLE", attendanceExpected: false, noShowEligible: false, excused: false })
       assert.equal(person.previousOpenWorkday, null)
     } else {
       assert.equal(person.workday, null)
@@ -673,6 +716,16 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions,
     await article.scrollIntoViewIfNeeded()
     await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-snapshot-${status.toLowerCase()}.png`)
   }
+  stage = `${scenario}-current-workday-without-snapshots`
+  const snapshotlessArticle = articles.nth(9)
+  const snapshotlessText = await snapshotlessArticle.innerText()
+  assert.ok(snapshotlessText.includes(view.ui.managerAttendanceState.STARTED))
+  assert.ok(snapshotlessText.includes(view.ui.managerPlanState.UNAVAILABLE))
+  assert.ok(snapshotlessText.includes(view.ui.managerCalendarState.UNAVAILABLE))
+  assert.ok(snapshotlessText.includes(view.ui.managerPresenceBoundary))
+  assert.equal(snapshotlessText.includes(fixture.template.name), false)
+  await snapshotlessArticle.scrollIntoViewIfNeeded()
+  await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-snapshot-missing.png`)
   const loadMore = section.getByRole("button", { name: view.ui.managerLoadMore, exact: true })
   assert.equal(await loadMore.isEnabled(), true)
   stage = `${scenario}-native-tab`
@@ -711,7 +764,7 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions,
   assert.deepEqual(view.workforceWrites, [])
   stage = `${scenario}-preserved-real-session`
   await assertSession(view.context, principal)
-  receipts.cases.push({ name: caseName, status: "PASS", firstPage: 25, secondPage: 1, finalUniqueOrderedPeople: 26, currentSnapshotStates: ["STARTED", "PAUSED", "COMPLETED"], canonicalSnapshotLinksAndFrozenUtcPlan: true, positiveSnapshotLocalizedDomAndOriginalScreenshots: true, scheduledWithoutWorkdayExplained: true, persistedNoShowAuthority: exceptions, exceptionsNullWithoutAuthority: !exceptions, previousOpenRetained: true, leaveAndHolidayExplained: true, unavailableScheduleExplained: true, nativePaginationTabs: tabs, nativePaginationEnter: true, pageTwoAbsenceGeometry: absenceGeometry, readOnlyWorkforceRequests: true, realSessionPreserved: true, viewport: nativeZoom ? await view.page.evaluate(() => ({ width: innerWidth, height: innerHeight })) : viewport, ...(nativeZoom ? { nativeZoom: view.nativeZoom } : {}) })
+  receipts.cases.push({ name: caseName, status: "PASS", firstPage: 25, secondPage: 1, finalUniqueOrderedPeople: 26, currentSnapshotStates: ["STARTED", "PAUSED", "COMPLETED"], canonicalSnapshotLinksAndFrozenUtcPlan: true, positiveSnapshotLocalizedDomAndOriginalScreenshots: true, missingCurrentSnapshotUnavailableExplained: true, liveAssignmentDoesNotReconstructExistingWorkday: true, scheduledWithoutWorkdayExplained: true, persistedNoShowAuthority: exceptions, exceptionsNullWithoutAuthority: !exceptions, previousOpenRetained: true, leaveAndHolidayExplained: true, unavailableScheduleExplained: true, nativePaginationTabs: tabs, nativePaginationEnter: true, pageTwoAbsenceGeometry: absenceGeometry, readOnlyWorkforceRequests: true, realSessionPreserved: true, viewport: nativeZoom ? await view.page.evaluate(() => ({ width: innerWidth, height: innerHeight })) : viewport, ...(nativeZoom ? { nativeZoom: view.nativeZoom } : {}) })
   if (!nativeZoom && principal.key === "manager" && locale === "en") {
     stage = `${scenario}-forged-tenant-headers`
     // The actual proxy strips caller tenant headers on loopback. The request
@@ -752,7 +805,7 @@ async function verifyUnscopedRls(fixture, phase) {
   assert.equal(counts.find(row => row.table === "users").syntheticRows, 4)
   assert.equal(counts.find(row => row.table === "mtm_agents").syntheticRows, 29)
   assert.equal(counts.find(row => row.table === "workforce_exception_cases").syntheticRows, 1)
-  assert.equal(counts.find(row => row.table === "mtm_agent_workdays").syntheticRows, 4)
+  assert.equal(counts.find(row => row.table === "mtm_agent_workdays").syntheticRows, 5)
   assert.equal(counts.find(row => row.table === "workforce_policies").syntheticRows, 1)
   for (const table of ["workforce_policy_snapshots", "workforce_shift_snapshots", "workforce_workday_schedule_snapshots"]) assert.equal(counts.find(row => row.table === table).syntheticRows, 3)
   currentDate()

@@ -1,0 +1,40 @@
+{
+  "atUtc": "2026-10-05T02:23:42.001394+00:00",
+  "status": "RELEASE-GATED SNAPSHOTLESS HARNESS APPLIED; BOUNDED AND EXACT-HEAD CHECKS PENDING",
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3",
+  "branch": "codex/workforce-completion-part41",
+  "priorPrivateReceiptHead": "cfa4481eac39dfade3f47287361a96f878174b18",
+  "normalIntegratedMain": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "integrationHead": "a63057ec0750a8c47db2af982c2e436925bcabd5",
+  "acceptedOwn581Release": {
+    "path": "/tmp/workforce-pr581-3ddae-root-final-release-accepted-primary.json",
+    "bytes": 13235,
+    "sha256": "692284034fd1ae4d454288c56450a77c856fec9c347f89a9cd6d71c539e761d1"
+  },
+  "unappliedPreparation": {
+    "path": "/tmp/workforce-manager-snapshotless-future-draft-primary/unapplied-draft-preparation.json",
+    "bytes": 6703,
+    "sha256": "646a40f0bcf1a808ea6ce6ffc6d4369c85ec36e7029f7a666b5023305e39d727"
+  },
+  "before": {
+    "path": "/tmp/workforce-manager-snapshotless-future-draft-primary/original-source.mjs",
+    "bytes": 59561,
+    "sha256": "874f61c20dba16e515102d37b12cb485ef84cd24625b179e03c99b6f065bb4d9"
+  },
+  "after": {
+    "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/scripts/workforce-manager-today-browser-evidence.mjs",
+    "bytes": 62849,
+    "sha256": "dd70ea78d719d521b8ccfd39ec31b93cbf77963a3b8131685aae76a51f40cb16"
+  },
+  "nineExactReplacementsVerified": true,
+  "sourceScope": "Only existing manager hosted harness; no product/schema/migration/grants/SQLsidecar/nativehelper/baselines/generalupdate/delete/break/AGENT/Route",
+  "actualFutureBrowserPostgresCompilerSuiteBuild": "NOT RUN; requires new exact applied HEAD source and hosted acceptance",
+  "newRoadmapRowClosure": false,
+  "anticipatedCountsNotRuntimeCredit": {
+    "workdays": 5,
+    "rollbackStaged": 6,
+    "rollbackCommitted": 5,
+    "PNG": 56,
+    "nativeCapture": 27
+  }
+}
