@@ -1,0 +1,300 @@
+{
+  "atUtc": "2026-10-05T02:48:08.238260+00:00",
+  "prNumber": 582,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/582",
+  "head": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "base": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "branch": "codex/workforce-completion-part41",
+  "draft": false,
+  "conditionalDraftRunIds": {},
+  "sourceReport": {
+    "path": "/tmp/workforce-part41-195f703-whole-source-independent.json",
+    "bytes": 14423,
+    "sha256": "865ffe345431ce65154dedd56488f09ddb238f2c144e43f0a1b803a540946f68"
+  },
+  "rootSourceAcceptance": {
+    "path": "/tmp/workforce-part41-snapshotless-source-root-accepted-primary.json",
+    "bytes": 3684,
+    "sha256": "1a6811fb686e838448dba784e45816a428a304906d2c8c2cde85d67df12f392c"
+  },
+  "rangeProof": {
+    "path": "/tmp/workforce-part41-snapshotless-range-primary/proof.json",
+    "bytes": 6277,
+    "sha256": "118eab6e89b26bf47b63fd39de9310a64387fd85edf186df60fb30e3fb286cde"
+  },
+  "ordinaryReadyPublication": true,
+  "runtimeCredit": false,
+  "normalMergeAllowed": false,
+  "allOriginals": [
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/branch-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/branch-stdout.original",
+      "bytes": 34,
+      "sha256": "18351080174057855a5ce90d3959c5cd5b3bf91b9a2fa890860c0084aa90dc6f"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/clean-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/clean-stdout.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/cwd-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/cwd-stdout.original",
+      "bytes": 95,
+      "sha256": "57676c1eb152c85a9a43c371329f19d99d7f02a1a1fc8055edd5baa2f1f9aea8"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/fetch-main-stderr.original",
+      "bytes": 97,
+      "sha256": "458e1ab101f63684ffd7d5b9579386f2858e5f699ea069ac950a84484df6fbcf"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/fetch-main-stdout.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/full-diff-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/full-diff-stdout.original",
+      "bytes": 236676,
+      "sha256": "041454d6680962984981bbdf5eb27bd8458142f2f2363fd99c2abed8e8db3f1a"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/head-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/head-stdout.original",
+      "bytes": 41,
+      "sha256": "3a6a0930a5c7554c04722a8fc8069dd55c9a19bd53331bb68dab1cae708e5a38"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/main-before-push-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/main-before-push-stdout.original",
+      "bytes": 342,
+      "sha256": "b614ff778c1c332d3c0318b40b23ca70d2c7c39d70e56df800093996b9c305dc"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/main-before-ready-create-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/main-before-ready-create-stdout.original",
+      "bytes": 342,
+      "sha256": "b614ff778c1c332d3c0318b40b23ca70d2c7c39d70e56df800093996b9c305dc"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/main-ref-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/main-ref-stdout.original",
+      "bytes": 41,
+      "sha256": "75901f14c9ec28ddc98a0fd497c2787e84fc59297d69b3264f3917dce7a76cad"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/new-own-pr-payload.json",
+      "bytes": 1766,
+      "sha256": "b07079270948c5fc1a5bb8fdd4fabac875d8b587a8330caccb52ac3417099e89"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/new-own-remote-branch-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/new-own-remote-branch-stdout.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/nonDoc-diff-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/nonDoc-diff-stdout.original",
+      "bytes": 10437,
+      "sha256": "6fe9d39299d5f798f0714afd25bb545d043a6a530df14c9c08a27b81e078507b"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/ordinary-own-branch-push-stderr.original",
+      "bytes": 370,
+      "sha256": "28d53f9d4be93f8213a24c8e7ea5b783ab14b396c064417a3882191b268ee8cd"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/ordinary-own-branch-push-stdout.original",
+      "bytes": 103,
+      "sha256": "a87cd13849871ac0702de55c001964c6d4cac906b461179c20b06a5f9a9df115"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/origin-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/origin-stdout.original",
+      "bytes": 46,
+      "sha256": "b2691089fa7707098a4840b68076c3722635e79e5ee6950511f670629196a2c8"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/remote-main-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/remote-main-stdout.original",
+      "bytes": 57,
+      "sha256": "cec8b9c15e8be4ff3d7e5007b76dace671cccb15670b75ecea43e88aea28afc5"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/remote-own-head-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/remote-own-head-stdout.original",
+      "bytes": 86,
+      "sha256": "3df2e2a0db53669e8b0b2338b58fe93fdd6fd31d16f7de4b145d616e848ae0cb"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/structured-new-own-ready-pr-stderr.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/structured-new-own-ready-pr-stdout.original",
+      "bytes": 17311,
+      "sha256": "2b0bfc906a9d1c91b4e1170f09b831f7950b99e40c0629defb8789721ae033a9"
+    }
+  ],
+  "ordinaryReadyUpdate": {
+    "path": "/tmp/workforce-part41-snapshotless-ready-publish-primary/publication-proof.json",
+    "bytes": 8276,
+    "sha256": "0ccb03c3d0f475b095d49f176034084b604a37e30ef1dffd3d249c0cda854f2d"
+  },
+  "testedSynthetic": "229e9d65570c0666f46bbcdb9aeb5ceeef848fa6",
+  "testedTree": "7468183eb406302d12aa032c4beecc3b30fdcf35",
+  "syntheticParents": [
+    "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+    "195f703add1d2a8d4e694a714b5c3191a6ffefb3"
+  ],
+  "candidateAndSyntheticTreeEqual": true,
+  "testedSyntheticBinding": "ACTUAL own new READY synthetic parents/tree verified",
+  "readyOriginals": [
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/branch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/branch.stdout",
+      "bytes": 34,
+      "sha256": "18351080174057855a5ce90d3959c5cd5b3bf91b9a2fa890860c0084aa90dc6f"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/candidate-tree.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/candidate-tree.stdout",
+      "bytes": 41,
+      "sha256": "b1c3dd50eeb102164ba56e3faf268d36cda76ea5668950492cc9583b98043214"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/clean.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/clean.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/exact-own-pr.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/exact-own-pr.stdout",
+      "bytes": 17349,
+      "sha256": "e61074151ad0c8d1e45b376d2f522ddfa39ee1bee82a424c51d486f3022e025b"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/fetch-tested-merge.stderr",
+      "bytes": 106,
+      "sha256": "e129ff4d6cbe6c6ee685ae7759000cb85fb345b8626deb0be674074e2730437f"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/fetch-tested-merge.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/head.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/head.stdout",
+      "bytes": 41,
+      "sha256": "3a6a0930a5c7554c04722a8fc8069dd55c9a19bd53331bb68dab1cae708e5a38"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/tested-parents.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/tested-parents.stdout",
+      "bytes": 82,
+      "sha256": "30c5d7615832a4c446163ca39fb9bf8251eb0ac6ab123c88469d8675df58de8c"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/tested-synthetic.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/tested-synthetic.stdout",
+      "bytes": 41,
+      "sha256": "90a96d246535d33f2ce4f4760c01dc5e0386bb160982f75ae73be3e99e2f8c88"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/tested-tree.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/tested-tree.stdout",
+      "bytes": 41,
+      "sha256": "b1c3dd50eeb102164ba56e3faf268d36cda76ea5668950492cc9583b98043214"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "atUtc": "2026-10-05T02:47:22.545800+00:00",
+  "status": "ROOT READER GUARD; NO ACCEPTANCE ISSUED",
+  "script": {
+    "path": "/tmp/workforce-part41-snapshotless-source-root-accept-primary.py",
+    "bytes": 8405,
+    "sha256": "bf88f800b0951acd96aeda13f193be54b513b74c7849621ca74b7b67d3e672d2"
+  },
+  "failure": "TypeError at line52: protected15 is a list of repository paths, not HEAD/BASE descriptor pairs",
+  "checksCompletedBeforeGuard": "Whole original references, explicit Git314/missing21, range23 and full patch reconstruction, nine replacements, protected15 Git comparisons and source58/catalogues",
+  "originalsUnchanged": true,
+  "sourceAcceptanceIssued": false
+}
