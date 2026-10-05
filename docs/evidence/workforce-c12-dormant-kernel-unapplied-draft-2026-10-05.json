@@ -1,0 +1,104 @@
+{
+  "atUtc": "2026-10-05T02:52:25.345490+00:00",
+  "status": "UNAPPLIED DORMANT C12 KERNEL DRAFT; NO TEST/RUNTIME/ROW CREDIT",
+  "candidateBase": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "releasedMainBase": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "paths": [
+    {
+      "repoPath": "src/lib/workforce/reconciliation.ts",
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "base": {
+        "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/base/src/lib/workforce/reconciliation.ts",
+        "bytes": 7408,
+        "sha256": "fbb583fc6d345a9b014210e26cd97fdbc67d9a2983d84e2bab219a03468e39ab"
+      },
+      "draft": {
+        "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/draft/src/lib/workforce/reconciliation.ts",
+        "bytes": 8449,
+        "sha256": "81ea8f447d9724444c79beb7518baedd01c5ea5f2da2f3fc11f5c51049039563"
+      },
+      "exactReplacements": [
+        {
+          "old": "import { exportStoredWorkforceTimesheetApproval }",
+          "new": "import { isDateKey } from \"@/lib/mtm/mobile-week\"\nimport { exportStoredWorkforceTimesheetApproval }"
+        },
+        {
+          "old": "  | \"WORKDAY_EVENT_SCOPE_MISMATCH\"",
+          "new": "  | \"WORKDAY_EVENT_SCOPE_MISMATCH\"\n  | \"WORKDAY_TRANSITION_SCOPE_MISMATCH\""
+        },
+        {
+          "old": "  for (const row of snapshot.evidence) {",
+          "new": "  for (const transition of snapshot.transitions) {\n    const workday = workdays.get(transition.workdayId)\n    if (!workday || workday.organizationId !== transition.organizationId || workday.agentId !== transition.agentId) {\n      mismatch(\"WORKDAY_TRANSITION_SCOPE_MISMATCH\")\n    }\n  }\n\n  const evidenceSubject = (row: WorkforceReconciliationSnapshot[\"evidence\"][number]) => {\n    if (Number(row.workdayEventId !== null) + Number(row.siteTransitionId !== null) !== 1) return undefined\n    return row.workdayEventId !== null ? events.get(row.workdayEventId) : transitions.get(row.siteTransitionId!)\n  }\n\n  for (const row of snapshot.evidence) {"
+        },
+        {
+          "old": "    const subject = row.workdayEventId ? events.get(row.workdayEventId) : transitions.get(row.siteTransitionId!)",
+          "new": "    const subject = evidenceSubject(row)"
+        },
+        {
+          "old": "    const hasNoShowSubject = row.segmentId !== null && row.expectedWorkDate !== null",
+          "new": "    // A segment/date identifies a schedule-only subject, not an accepted START.\n    // Segment existence and ownership require a future authorized store closure.\n    const hasNoShowSubject = typeof row.segmentId === \"string\" && row.segmentId.trim().length > 0\n      && isDateKey(row.expectedWorkDate)"
+        },
+        {
+          "old": "    const proof = row.evidenceId ? evidence.get(row.evidenceId) : undefined",
+          "new": "    const proof = row.evidenceId ? evidence.get(row.evidenceId) : undefined\n    const proofSubject = proof ? evidenceSubject(proof) : undefined"
+        },
+        {
+          "old": "      || (row.evidenceId && (!proof || proof.organizationId !== row.organizationId))",
+          "new": "      || (row.evidenceId && (\n        !proof || proof.organizationId !== row.organizationId\n        || !proofSubject || proofSubject.organizationId !== row.organizationId || proofSubject.agentId !== row.agentId\n      ))"
+        }
+      ]
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation.test.ts",
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "base": {
+        "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/base/src/__tests__/workforce-reconciliation.test.ts",
+        "bytes": 5384,
+        "sha256": "7cc68bdcfc708f597d183020a7a93a4fd3e58c0bb9e6146e5ce316bb4532a80a"
+      },
+      "draft": {
+        "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/draft/src/__tests__/workforce-reconciliation.test.ts",
+        "bytes": 10048,
+        "sha256": "e6eb69cae9f8e6eeb22813350b17d8c10399505d7e3cdc25761a0f04b9ebd895"
+      },
+      "exactReplacements": [
+        {
+          "old": "  it(\"fails closed before processing an unbounded kind\", () => {",
+          "new": "  it.each([\n    { workdayId: \"missing-workday\", organizationId: \"org-1\", agentId: \"agent-1\" },\n    { workdayId: \"workday-1\", organizationId: \"org-other\", agentId: \"agent-1\" },\n    { workdayId: \"workday-1\", organizationId: \"org-1\", agentId: \"agent-other\" },\n  ])(\"rejects a transition with an absent or different parent scope: %o\", (invalid) => {\n    const source = coherentSnapshot()\n    const result = reconcileWorkforceSnapshot({ ...source, transitions: [{ id: \"transition-1\", ...invalid }] })\n    expect(result).toMatchObject({ status: \"MISMATCH\", repair: \"NONE\", mismatchCounts: { WORKDAY_TRANSITION_SCOPE_MISMATCH: 1 } })\n    expect(JSON.stringify(result)).not.toMatch(/missing-workday|org-other|agent-other|transition-1/)\n  })\n\n  it.each([\"evidence-event\", \"evidence-transition\"])(\"binds exception employee through %s without adding an evidence employee field\", (evidenceId) => {\n    const source = coherentSnapshot()\n    const subject = { ...source.exceptions[0], workdayId: null, workdayEventId: null, evidenceId }\n    expect(reconcileWorkforceSnapshot({ ...source, exceptions: [subject] }).status).toBe(\"MATCHED\")\n    const result = reconcileWorkforceSnapshot({ ...source, exceptions: [{ ...subject, agentId: \"agent-other\" }] })\n    expect(result).toMatchObject({ status: \"MISMATCH\", mismatchTotal: 1, repair: \"NONE\", mismatchCounts: { EXCEPTION_SUBJECT_SCOPE_MISMATCH: 1 } })\n    expect(JSON.stringify(result)).not.toMatch(/agent-other|evidence-event|evidence-transition/)\n  })\n\n  it.each([\n    { workdayEventId: null, siteTransitionId: null },\n    { workdayEventId: \"event-1\", siteTransitionId: \"transition-1\" },\n    { workdayEventId: \"missing-event\", siteTransitionId: null },\n    { workdayEventId: null, siteTransitionId: \"missing-transition\" },\n  ])(\"rejects an exception whose evidence subject cannot be resolved uniquely: %o\", (subject) => {\n    const source = coherentSnapshot()\n    const result = reconcileWorkforceSnapshot({\n      ...source,\n      evidence: [{ id: \"evidence-event\", organizationId: \"org-1\", ...subject }],\n      exceptions: [{ ...source.exceptions[0], workdayId: null, workdayEventId: null }],\n    })\n    expect(result.status).toBe(\"MISMATCH\")\n    expect(result.mismatchCounts.EXCEPTION_SUBJECT_SCOPE_MISMATCH).toBe(1)\n    expect(result.repair).toBe(\"NONE\")\n  })\n\n  it.each([\n    { segmentId: null, expectedWorkDate: \"2028-02-29\" },\n    { segmentId: \"segment-private\", expectedWorkDate: null },\n    { segmentId: \"\", expectedWorkDate: \"2028-02-29\" },\n    { segmentId: \"  \\t\", expectedWorkDate: \"2028-02-29\" },\n    { segmentId: \"segment-private\", expectedWorkDate: \"2026-02-29\" },\n    { segmentId: \"segment-private\", expectedWorkDate: \"2026-04-31\" },\n    { segmentId: \"segment-private\", expectedWorkDate: \"2028-2-29\" },\n    { segmentId: \"segment-private\", expectedWorkDate: \"2028-02-29T00:00:00Z\" },\n    { segmentId: \"segment-private\", expectedWorkDate: \" 2028-02-29\" },\n  ])(\"rejects an incomplete or noncanonical schedule-only subject: %o\", (subject) => {\n    const source = coherentSnapshot()\n    const result = reconcileWorkforceSnapshot({\n      ...source,\n      exceptions: [{ ...source.exceptions[0], workdayId: null, workdayEventId: null, evidenceId: null, ...subject }],\n    })\n    expect(result).toMatchObject({ status: \"MISMATCH\", mismatchCounts: { EXCEPTION_SUBJECT_INVALID: 1 }, mismatchTotal: 1, repair: \"NONE\" })\n    expect(JSON.stringify(result)).not.toContain(\"segment-private\")\n  })\n\n  it(\"accepts a canonical leap-day schedule-only subject without inventing workday or START facts\", () => {\n    const source = coherentSnapshot()\n    const result = reconcileWorkforceSnapshot({\n      workdays: [], events: [], transitions: [], evidence: [], assessments: [], approvals: [], exports: [],\n      exceptions: [{ ...source.exceptions[0], workdayId: null, workdayEventId: null, evidenceId: null, segmentId: \"segment-private\", expectedWorkDate: \"2028-02-29\" }],\n    })\n    expect(result).toMatchObject({ status: \"MATCHED\", mismatchTotal: 0, repair: \"NONE\", examined: { workdays: 0, events: 0, transitions: 0, exceptions: 1 } })\n    expect(JSON.stringify(result)).not.toMatch(/segment-private|2028-02-29|agent-1/)\n  })\n\n  it(\"leaves the complete frozen input unchanged when reconciling\", () => {\n    const source = coherentSnapshot()\n    const original = JSON.stringify(source)\n    function freeze(value: unknown): void {\n      if (value && typeof value === \"object\") {\n        for (const child of Object.values(value)) freeze(child)\n        Object.freeze(value)\n      }\n    }\n    freeze(source)\n    expect(reconcileWorkforceSnapshot(source).status).toBe(\"MATCHED\")\n    expect(JSON.stringify(source)).toBe(original)\n  })\n\n  it(\"fails closed before processing an unbounded kind\", () => {"
+        }
+      ]
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "base": {
+        "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/base/src/__tests__/workforce-reconciliation-job.test.ts",
+        "bytes": 3612,
+        "sha256": "983b8b8b2f8f9f15dd201ecc0e2845369c68cf002da8a35e48bdf50b0cd28177"
+      },
+      "draft": {
+        "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/draft/src/__tests__/workforce-reconciliation-job.test.ts",
+        "bytes": 5680,
+        "sha256": "deadc0029cee96b51217f5688615a857a018e9acea3ac230758adc16f9742b22"
+      },
+      "exactReplacements": [
+        {
+          "old": "  it(\"reports cursor races and a finite page ceiling without claiming success\", async () => {",
+          "new": "  it.each([\"transition\", \"evidence-employee\", \"schedule-date\"])(\"keeps a %s mismatch page uncommitted\", async (kind) => {\n    const snapshot = emptySnapshot()\n    snapshot.workdays = [{ id: \"workday-private\", organizationId: \"org-private\", agentId: \"agent-private\" }]\n    if (kind === \"transition\") {\n      snapshot.transitions = [{ id: \"transition-private\", organizationId: \"org-private\", agentId: \"other-agent-private\", workdayId: \"workday-private\" }]\n    } else if (kind === \"evidence-employee\") {\n      snapshot.events = [{ id: \"event-private\", organizationId: \"org-private\", agentId: \"agent-private\", workdayId: \"workday-private\" }]\n      snapshot.evidence = [{ id: \"evidence-private\", organizationId: \"org-private\", workdayEventId: \"event-private\", siteTransitionId: null }]\n      snapshot.exceptions = [{ id: \"case-private\", organizationId: \"org-private\", agentId: \"other-agent-private\", workdayId: null, workdayEventId: null, evidenceId: \"evidence-private\", segmentId: null, expectedWorkDate: null }]\n    } else {\n      snapshot.exceptions = [{ id: \"case-private\", organizationId: \"org-private\", agentId: \"agent-private\", workdayId: null, workdayEventId: null, evidenceId: null, segmentId: \"segment-private\", expectedWorkDate: \"2026-02-29\" }]\n    }\n    const db = store([{ snapshot, nextCursor: \"page-bad-private\", more: true }])\n    const original = JSON.stringify(snapshot)\n    const result = await runWorkforceReconciliationJob({ store: db, initialCursor: \"page-before-private\" })\n    expect(result).toMatchObject({ status: \"MISMATCH\", pagesExamined: 1, mismatchTotal: 1, repair: \"NONE\" })\n    const expected = kind === \"transition\" ? \"WORKDAY_TRANSITION_SCOPE_MISMATCH\" : kind === \"evidence-employee\" ? \"EXCEPTION_SUBJECT_SCOPE_MISMATCH\" : \"EXCEPTION_SUBJECT_INVALID\"\n    expect(result.mismatchCounts).toEqual({ [expected]: 1 })\n    expect(db.loadPage).toHaveBeenCalledTimes(1)\n    expect(db.commitCursor).not.toHaveBeenCalled()\n    expect(JSON.stringify(snapshot)).toBe(original)\n    expect(JSON.stringify(result)).not.toMatch(/private|2026-02-29/)\n  })\n\n  it(\"reports cursor races and a finite page ceiling without claiming success\", async () => {"
+        }
+      ]
+    }
+  ],
+  "applicationAllowed": false,
+  "testsRun": false,
+  "productionAdapter": false,
+  "productionCronActivation": false,
+  "schemaOrMigrationsChanged": false,
+  "routeOrAgentOrBreakPolicyMutations": false,
+  "limitations": [
+    "Only pure snapshot parent organization/employee integrity and canonical schedule-only subject checks",
+    "Segment existence/ownership requires future authorized dependency closure",
+    "No complete cross-page/orphan/approval/export DB adapter or lease/version CAS claim",
+    "Await own PR582 final accepted release and fresh-main integration before applying"
+  ]
+}

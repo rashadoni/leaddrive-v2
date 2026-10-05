@@ -1,0 +1,82 @@
+{
+  "atUtc": "2026-10-05T03:13:34.062577+00:00",
+  "head": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "freshMain": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "privateCheckpoint": "ef2f4aa81ba8a5e1f2eb5bab69cc16d0afb5d9fb",
+  "clean": true,
+  "allFiveActionsSuccess": true,
+  "allFourOwnApplicableCurrentWorkflowsSuccess": true,
+  "normalMergeOnly": true,
+  "adminBypass": false,
+  "sourceScope": {
+    "full": {
+      "paths": 23,
+      "bytes": 236676,
+      "sha256": "041454d6680962984981bbdf5eb27bd8458142f2f2363fd99c2abed8e8db3f1a",
+      "repoPaths": [
+        "docs/evidence/workforce-c12-dormant-reconciliation-next-plan-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-application-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-bounded-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-lint-config-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-preliminary-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-draft-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-syntax-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-current-sublane-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-hosted-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-range-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-ready-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-source-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-suite-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-main-quality-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-normal-merge-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-release-clarification-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-release-ip-tls-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-release-root-2026-10-05.json",
+        "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "docs/workforce-hrm-session-log.md",
+        "scripts/workforce-manager-today-browser-evidence.mjs"
+      ]
+    },
+    "nonDoc": {
+      "paths": 1,
+      "bytes": 10437,
+      "sha256": "6fe9d39299d5f798f0714afd25bb545d043a6a530df14c9c08a27b81e078507b",
+      "repoPaths": [
+        "scripts/workforce-manager-today-browser-evidence.mjs"
+      ]
+    }
+  },
+  "exactHostedReport": {
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-green-independent.json",
+    "bytes": 40770,
+    "sha256": "424036e8bd66268bedf07fe5874d7359de892675112636329ba67f40f3b9153d"
+  },
+  "rootWholeAccepted": {
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-root-accepted-primary.json",
+    "bytes": 2417,
+    "sha256": "5aba3ef390dc2a6f898d36ecf8134a0ffc68c986a72a7d40f86d298eb9d54d1e"
+  },
+  "exactScan": {
+    "path": "/tmp/workforce-part41-snapshotless-range-primary/proof.json",
+    "bytes": 6277,
+    "sha256": "118eab6e89b26bf47b63fd39de9310a64387fd85edf186df60fb30e3fb286cde"
+  },
+  "publication": {
+    "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/ready-publication-proof.json",
+    "bytes": 12680,
+    "sha256": "b46eb5ccaff5cc859ee81423b0d9220b74c5aed995a077f3e1bfdbfbdb3fa6ef"
+  },
+  "compilerClean": false,
+  "suiteClean": false,
+  "ownMergedMainBuildDeployAndPublicArtifactProof": "PENDING",
+  "mergedAt": "2026-10-05T03:13:36Z",
+  "mergedSha": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "mergedParents": [
+    "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+    "195f703add1d2a8d4e694a714b5c3191a6ffefb3"
+  ],
+  "mergeTreeEqualsTestedCandidate": true,
+  "normalMergeComplete": true
+}

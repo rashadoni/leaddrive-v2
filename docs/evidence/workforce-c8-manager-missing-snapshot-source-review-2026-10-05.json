@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "issuedAtUtc": "2026-10-05T02:37:59.021389+00:00",
+  "reviewerRole": "Independent authorless exact applied source/receipt-integrity reviewer",
+  "status": "GREEN SOURCE ONLY",
+  "scope": "Complete195f703 against mergedBASE3ddae; only existing manager harness gains synthetic current STARTED workday lacking all3 snapshots and exact API/DOM/rollback assertions; all current new durable receipts/journal history preserved",
+  "candidateHead": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "baseSha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "candidateTree": "7468183eb406302d12aa032c4beecc3b30fdcf35",
+  "candidateParents": [
+    "a63057ec0750a8c47db2af982c2e436925bcabd5"
+  ],
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3",
+  "currentSourceReviewActiveApplicationSourceReads": 0,
+  "readProvenance": {
+    "activeApplicationSourceReads": 0,
+    "GitMutations": 0,
+    "GitHubMutations": 0,
+    "CIReRuns": 0,
+    "localTestsBrowserPostgresCompilerBuilds": 0,
+    "productionRequests": 0,
+    "readScope": "ExplicitGit frozenHEAD195/BASE3dd/PARENTa630 only; whole immutable proof graph bytes/JSON/prefix/patch reconstruction. Whole current10437-byte nonDoc patch and one22250-byte BASE journal append manually reviewed; fourequalcopies hash-bound. Accepted earlier whole draft/source semantics reused only through exact nine-replacement/byte parity, no runtime borrowing."
+  },
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "findings": [],
+  "fullDiffIdentity": {
+    "paths": 23,
+    "bytes": 236676,
+    "sha256": "041454d6680962984981bbdf5eb27bd8458142f2f2363fd99c2abed8e8db3f1a"
+  },
+  "nonDocDiffIdentity": {
+    "paths": 1,
+    "bytes": 10437,
+    "sha256": "6fe9d39299d5f798f0714afd25bb545d043a6a530df14c9c08a27b81e078507b"
+  },
+  "sourceScope": {
+    "fullPaths": 23,
+    "nonDocPaths": 1,
+    "scopeMaximumBytes": 400000,
+    "paths": [
+      "docs/evidence/workforce-c12-dormant-reconciliation-next-plan-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-application-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-bounded-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-lint-config-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-preliminary-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-draft-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-syntax-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-current-sublane-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-hosted-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-range-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-ready-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-source-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-suite-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-main-quality-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-normal-merge-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-release-clarification-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-release-ip-tls-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-release-root-2026-10-05.json",
+      "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "scripts/workforce-manager-today-browser-evidence.mjs"
+    ],
+    "nonDocRepoPaths": [
+      "scripts/workforce-manager-today-browser-evidence.mjs"
+    ]
+  },
+  "wholeReviewEvidence": {
+    "wholeCurrentAnalysis": {
+      "path": "/tmp/workforce-part41-195f703-source-independent-20261005T022644380651Z/whole-current-source-analysis.json",
+      "bytes": 418907,
+      "sha256": "f96580d42d9018c17d6fc752d82296dae445059a38f2b99b6acfb239cff29cce"
+    },
+    "wholeSourceSnapshotBinding": {
+      "path": "/tmp/workforce-part41-195f703-source-independent-20261005T022644380651Z/whole-frozen-source-capture.json",
+      "bytes": 362279,
+      "sha256": "f60ed41f821ea390c208ff857236332b298e6eaa8d542b3f6d60361e6bcc1bcb"
+    },
+    "fullPatchReconstructionCount": 23,
+    "wholeAppliedDraft62849ExactNineReplacements": true,
+    "runtimeSource58WatchCoverage": true,
+    "managerOwned60Typed42": true,
+    "combinedOwned79Typed55": true,
+    "bothSelectedTestsRetained": true,
+    "all15ProtectedUnchanged": true,
+    "allProductWriterAuthSqlNativeWorkflowBlobsUnchanged": true,
+    "calendar31Owned25Typed13Report12Unchanged": true
+  },
+  "sourceSemantics": {
+    "snapshotless": "Fifth syntheticSTARTED workday employee9 is admin-fixture-only, no acceptedSTART/physicalpresence claim. Assert all3snapshot rows absent despite existing published fixture assignment; API/DOM unavailable plan+calendar/nullfields/no live reconstructedtemplate, minimal facts/order/presence boundary remain strict.",
+    "rollback": "Vacant employee10 stages sixth workday, existing10 named SQLSTATE probes reject and deepEqual full20 count/hash snapshot after rollback to5. Six validators/seven triggers/threepositive triplets/replay/canonicalhash/schema2 historicalmembership unchanged.",
+    "privacyRlsNative": "20fact/21forcedRLS/authpacing/three native ENRUAZ owncontrols/strictfocus/capture/cleanup11 source unchanged outside exact9 deltas; no grants/product/shared writer/schema/migration/nativehelper or protected baseline change.",
+    "watchOwnership": "Actual runtime58 fully watched via unchanged workflow; manager60typed42 and union79typed55, both existing selectedtest paths preserved; not full importgraph.",
+    "anticipatedCountsOnly": {
+      "functionalCases": 9,
+      "canonicalPositiveSnapshotTriplets": 3,
+      "snapshotlessCurrentWorkday": 1,
+      "negativeSQLSTATEProbes": 10,
+      "factTables": 20,
+      "forcedRlsTables": 21,
+      "currentWorkdayRows": 5,
+      "stagedRows": 6,
+      "rollbackRows": 5,
+      "rawPNG": 56,
+      "nativeCapture": 27,
+      "deriveActualFreshCI": true
+    }
+  },
+  "historicalP2Disposition": {
+    "firstC5OwnedTS2769P2": "OriginalHOSTED BLOCKED P2=1 permanently retained; repaired56 source/actualHOSTED and own581release historicalaccepted; no195 runtime borrowing",
+    "olderFirst1b02NativeP2": "Immutable original negative packet retained via accepted graph; no retroGREEN"
+  },
+  "documentAndReceiptIntegrity": {
+    "fullFourJournalBASEParentPrefixChecks": 8,
+    "newFour2473ByteAppendsEqual": true,
+    "wholeBASEToHeadFour22250ByteAppendsEqual": true,
+    "newDurableCopies18WholeExact": true,
+    "inheritedDurableCopies20Unchanged": true,
+    "core9ParsedDirect81Rehashed": true,
+    "wholePriorOwn581ReleaseAcceptedBeforeApply": true,
+    "legacyFutureKeyClarificationRetained": true,
+    "allEarlierNegativeAndReaderGuardOriginalsPreserved": true
+  },
+  "executionEvidence": {
+    "boundedActualFive": {
+      "proof": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/proof.json",
+        "bytes": 4946,
+        "sha256": "7c6fc957404d8a2ab59afcdc6e0bcdbeb6ff895f6c1b15e72d8af6c61fc5e653"
+      },
+      "application": {
+        "path": "/tmp/workforce-part41-snapshotless-applied-primary.json",
+        "bytes": 1987,
+        "sha256": "6b521923ca85966d2f35e3ab24d25826ea0ff9e27436cdc8fefea913e49c75c9"
+      },
+      "lintConfiguration": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/lint-configuration-proof.json",
+        "bytes": 794,
+        "sha256": "286d66229fe32dfaf6b6413af2cd516fcd8602c2cbff2aaecbeb36344a5020bb"
+      },
+      "executionParent": "a63057ec0750a8c47db2af982c2e436925bcabd5",
+      "appliedWorkingHashEqualsFrozenCandidate": true,
+      "checksRanBeforeCheckpoint": true,
+      "existingPreconnectionGuards12PASS8_64s": true,
+      "allExit0": true,
+      "noIgnoredLint90Rules": true,
+      "exactFrozenHeadFullChecksClaimed": false
+    },
+    "exactRangeScan": {
+      "proof": {
+        "path": "/tmp/workforce-part41-snapshotless-range-primary/proof.json",
+        "bytes": 6277,
+        "sha256": "118eab6e89b26bf47b63fd39de9310a64387fd85edf186df60fb30e3fb286cde"
+      },
+      "exitCode": 0,
+      "findings": 0,
+      "scopeMaximum": 400000,
+      "identities": {
+        "full": {
+          "paths": 23,
+          "bytes": 236676,
+          "sha256": "041454d6680962984981bbdf5eb27bd8458142f2f2363fd99c2abed8e8db3f1a",
+          "repoPaths": [
+            "docs/evidence/workforce-c12-dormant-reconciliation-next-plan-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-missing-snapshot-application-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-missing-snapshot-bounded-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-missing-snapshot-lint-config-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-missing-snapshot-preliminary-root-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-draft-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-syntax-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-current-sublane-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-hosted-root-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-range-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-ready-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-source-root-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-suite-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-main-quality-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-normal-merge-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-release-clarification-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-release-ip-tls-2026-10-05.json",
+            "docs/evidence/workforce-c8-manager-positive-snapshot-release-root-2026-10-05.json",
+            "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+            "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+            "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+            "docs/workforce-hrm-session-log.md",
+            "scripts/workforce-manager-today-browser-evidence.mjs"
+          ]
+        },
+        "nonDoc": {
+          "paths": 1,
+          "bytes": 10437,
+          "sha256": "6fe9d39299d5f798f0714afd25bb545d043a6a530df14c9c08a27b81e078507b",
+          "repoPaths": [
+            "scripts/workforce-manager-today-browser-evidence.mjs"
+          ]
+        }
+      }
+    }
+  },
+  "currentRuntimeAcceptance": {
+    "managerBrowserRealPostgres": "NOT RUN for195; require fresh9cases/3triplets/1snapshotless/10SQLSTATE6→5/full20factrollback21RLS/native3/strictfocus/capture/auth/cleanup",
+    "fullCompiler": "NOT RUN for195; derive whole fresh diagnostic totals/families/exact66 baseline/manager60typed42+combined79typed55 all-family zero, no old1169 assumption or credit",
+    "fullSuite": "NOT RUN for195; require strict18 exact baseline/nonclean guards",
+    "productionBuildRelease": "NOT RUN for195; own normal merged-main workflow/artifact/public fullSHA required after current hosted acceptance",
+    "calendarReport": "UNCHANGED source filters; no old runtime execution borrowed",
+    "humanATPhysicalAndroidWholePageWCAGFullPolicyLifecycleConcurrencyAllMigrationReplay": "NOT RUN",
+    "laterC12Plan": "UNAPPLIED dormant source-only preparation/no implementation or runtime credit"
+  },
+  "sourceOnly": true,
+  "runtimeNoCredit": true,
+  "candidateRuntimeAcceptanceCredit": false,
+  "normalMergeAllowed": false,
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-part41-195f703-whole-source-input-audit-independent.json",
+    "bytes": 1781848,
+    "sha256": "168e980630c3c7bca034c4abb35e7135dbceee92498b028c20428e974594f130"
+  },
+  "inputCounts": {
+    "directOriginalObservations": 1204,
+    "explicitGitObservations": 314,
+    "expectedMissingBaseStderr": 21,
+    "wholeJSON": 299,
+    "wholeUTF8": 1148,
+    "wholeBinary": 56,
+    "portableCore9": 9,
+    "portableDirect81": 81,
+    "prefixChecks": 8,
+    "durableCopies18": 18,
+    "inheritedDurable20": 20
+  },
+  "originalFilesOverwrittenOrDropped": 0,
+  "accounting": {
+    "uniqueCriteriaIds": 161,
+    "historicalRawRows": 169,
+    "DONE": 82,
+    "nonDONE": 79,
+    "statusCounts": {
+      "DONE": 82,
+      "PARTIAL (OWNER ATTESTATION)": 1,
+      "PARTIAL": 55,
+      "OWNER DECISION": 6,
+      "PLANNED": 14,
+      "BLOCKED": 3
+    },
+    "passedGates": 14,
+    "totalGates": 15,
+    "C8Percent": 45,
+    "overallPercent": 59,
+    "newRowClosure": false
+  },
+  "manualReviewScope": "ExplicitGit frozenHEAD195/BASE3dd/PARENTa630 only; whole immutable proof graph bytes/JSON/prefix/patch reconstruction. Whole current10437-byte nonDoc patch and one22250-byte BASE journal append manually reviewed; fourequalcopies hash-bound. Accepted earlier whole draft/source semantics reused only through exact nine-replacement/byte parity, no runtime borrowing.",
+  "nextAction": "Root whole source acceptance then fresh-main ordinary ownREADY publication; fresh first-attempt manager/realPG/compiler/suite/allfive checks required",
+  "continuity": {
+    "currentStatus": "Exact195f703 SOURCE ONLY GREEN/P0-P3zero; all new runtime NOTRUN",
+    "lastCompletedAction": "Whole23 netpatch reconstruction/62849 nine-replacement parity/watch58/ownership60+79/protected15/prefix8/durable18+20/core/accounting review",
+    "stoppingPoint": "No application read/write or Git/GitHub/runtime/production action by reviewer; no publication/merge acceptance",
+    "nextAction": "Root whole acceptance then ordinary publish and fresh exact-head hosted verification"
+  }
+}

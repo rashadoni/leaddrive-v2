@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "atUtc": "2026-10-05T02:56:47.802430+00:00",
+  "status": "PRELIMINARY SOURCE ONLY; UNAPPLIED; NO TEST/RUNTIME CREDIT",
+  "candidateBase": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "preparationOriginal": {
+    "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/unapplied-draft-preparation.json",
+    "bytes": 12866,
+    "sha256": "d8591448b43e39731a43c08a471752878ef7a47295735bd58396c7aa601ba698"
+  },
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "findings": [],
+  "manualReview": "Whole three draft blobs and preparation replacements read. New unique evidence subject resolution binds exception employee to event/transition; new transition parent organization+agent scope; schedule-only nonblank segment and existing canonical Gregorian isDateKey validated. Meaningful unchanged-input/privacy and cursor-not-committed test cases present. No tests/compiler executed by reviewer.",
+  "wholeDraftReconstruction": [
+    {
+      "repoPath": "src/lib/workforce/reconciliation.ts",
+      "wholeExplicitGitBaseExact": true,
+      "wholeDraftReconstructedFromExactReplacements": true,
+      "replacementCount": 7,
+      "draft": {
+        "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/draft/src/lib/workforce/reconciliation.ts",
+        "bytes": 8449,
+        "sha256": "81ea8f447d9724444c79beb7518baedd01c5ea5f2da2f3fc11f5c51049039563"
+      }
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation.test.ts",
+      "wholeExplicitGitBaseExact": true,
+      "wholeDraftReconstructedFromExactReplacements": true,
+      "replacementCount": 1,
+      "draft": {
+        "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/draft/src/__tests__/workforce-reconciliation.test.ts",
+        "bytes": 10048,
+        "sha256": "e6eb69cae9f8e6eeb22813350b17d8c10399505d7e3cdc25761a0f04b9ebd895"
+      }
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "wholeExplicitGitBaseExact": true,
+      "wholeDraftReconstructedFromExactReplacements": true,
+      "replacementCount": 1,
+      "draft": {
+        "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/draft/src/__tests__/workforce-reconciliation-job.test.ts",
+        "bytes": 5680,
+        "sha256": "deadc0029cee96b51217f5688615a857a018e9acea3ac230758adc16f9742b22"
+      }
+    }
+  ],
+  "explicitGitObservations": [
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-preliminary-independent-20261005T025647750450Z/explicit-git/src/lib/workforce/reconciliation.ts",
+      "bytes": 7408,
+      "sha256": "fbb583fc6d345a9b014210e26cd97fdbc67d9a2983d84e2bab219a03468e39ab",
+      "repoPath": "src/lib/workforce/reconciliation.ts",
+      "sha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "returnCode": 0,
+      "originalStderr": {
+        "path": "/tmp/workforce-c12-dormant-kernel-preliminary-independent-20261005T025647750450Z/explicit-git/src/lib/workforce/reconciliation.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-preliminary-independent-20261005T025647750450Z/explicit-git/src/__tests__/workforce-reconciliation.test.ts",
+      "bytes": 5384,
+      "sha256": "7cc68bdcfc708f597d183020a7a93a4fd3e58c0bb9e6146e5ce316bb4532a80a",
+      "repoPath": "src/__tests__/workforce-reconciliation.test.ts",
+      "sha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "returnCode": 0,
+      "originalStderr": {
+        "path": "/tmp/workforce-c12-dormant-kernel-preliminary-independent-20261005T025647750450Z/explicit-git/src/__tests__/workforce-reconciliation.test.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-preliminary-independent-20261005T025647750450Z/explicit-git/src/__tests__/workforce-reconciliation-job.test.ts",
+      "bytes": 3612,
+      "sha256": "983b8b8b2f8f9f15dd201ecc0e2845369c68cf002da8a35e48bdf50b0cd28177",
+      "repoPath": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "sha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "returnCode": 0,
+      "originalStderr": {
+        "path": "/tmp/workforce-c12-dormant-kernel-preliminary-independent-20261005T025647750450Z/explicit-git/src/__tests__/workforce-reconciliation-job.test.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-preliminary-independent-20261005T025647750450Z/explicit-git/src/lib/mtm/mobile-week.ts",
+      "bytes": 4180,
+      "sha256": "6f557666c7e17161e914696f4d7891ebac9ec2845da4de6e4de9c5b1db864d96",
+      "repoPath": "src/lib/mtm/mobile-week.ts",
+      "sha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "returnCode": 0,
+      "originalStderr": {
+        "path": "/tmp/workforce-c12-dormant-kernel-preliminary-independent-20261005T025647750450Z/explicit-git/src/lib/mtm/mobile-week.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "originalDescriptors": [
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/unapplied-draft-preparation.json",
+      "bytes": 12866,
+      "sha256": "d8591448b43e39731a43c08a471752878ef7a47295735bd58396c7aa601ba698"
+    },
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/base/src/lib/workforce/reconciliation.ts",
+      "bytes": 7408,
+      "sha256": "fbb583fc6d345a9b014210e26cd97fdbc67d9a2983d84e2bab219a03468e39ab"
+    },
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/draft/src/lib/workforce/reconciliation.ts",
+      "bytes": 8449,
+      "sha256": "81ea8f447d9724444c79beb7518baedd01c5ea5f2da2f3fc11f5c51049039563"
+    },
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/base/src/__tests__/workforce-reconciliation.test.ts",
+      "bytes": 5384,
+      "sha256": "7cc68bdcfc708f597d183020a7a93a4fd3e58c0bb9e6146e5ce316bb4532a80a"
+    },
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/draft/src/__tests__/workforce-reconciliation.test.ts",
+      "bytes": 10048,
+      "sha256": "e6eb69cae9f8e6eeb22813350b17d8c10399505d7e3cdc25761a0f04b9ebd895"
+    },
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/base/src/__tests__/workforce-reconciliation-job.test.ts",
+      "bytes": 3612,
+      "sha256": "983b8b8b2f8f9f15dd201ecc0e2845369c68cf002da8a35e48bdf50b0cd28177"
+    },
+    {
+      "path": "/tmp/workforce-c12-dormant-kernel-unapplied-primary/draft/src/__tests__/workforce-reconciliation-job.test.ts",
+      "bytes": 5680,
+      "sha256": "deadc0029cee96b51217f5688615a857a018e9acea3ac230758adc16f9742b22"
+    }
+  ],
+  "limits": [
+    "Existing kernel still does not prove complete same-agent cross-subject workday links, duplicate ID integrity, segment existence/ownership, complete page dependency/orphan/approval closure, production DB adapter, cron activation, fenced lease/version CAS or all migration behavior. These are explicitly outside narrow draft acceptance.",
+    "Evidence/assessment models have no invented agentId field; exception agent is resolved through actual event/transition source.",
+    "Existing isDateKey performs full canonical calendar date roundtrip, including impossible February/April date rejection; imported helper remains unchanged.",
+    "No source/application/runtime or roadmap row credit; applied exact future HEAD must be independently reviewed and current own PR582 release accepted first."
+  ],
+  "applicationAllowed": false,
+  "testsRun": false,
+  "runtimeCredit": false,
+  "currentPR582AcceptanceCredit": false,
+  "activeApplicationSourceReads": 0,
+  "GitOrGitHubMutations": 0,
+  "localTestsBrowserPostgresCompilerBuilds": 0,
+  "productionRequests": 0,
+  "originalFilesOverwrittenOrDropped": 0
+}

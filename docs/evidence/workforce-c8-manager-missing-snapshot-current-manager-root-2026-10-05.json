@@ -1,0 +1,822 @@
+{
+  "atUtc": "2026-10-05T02:59:23.238917+00:00",
+  "status": "CURRENT MANAGER SUBLANE WHOLE ACCEPTED; COMPILER/SUITE/WHOLE HOSTED PENDING",
+  "head": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "base": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "synthetic": "229e9d65570c0666f46bbcdb9aeb5ceeef848fa6",
+  "wholeCapture": {
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/observation-20261005T025824539541Z/whole-capture.json",
+    "bytes": 29147,
+    "sha256": "32968a850d3c40d54f3d7b7f1b9407294c0b418bc901ffab6ca428c0740b699c"
+  },
+  "receipt": {
+    "name": "manager-today-receipt.json",
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-today-receipt.json",
+    "bytes": 257201,
+    "sha256": "9d80bd7969a090e62e606c69f3effa6413f2c95d96fde9c59d80eaa7fab72043"
+  },
+  "artifact": {
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377.zip",
+    "bytes": 7099999,
+    "sha256": "cfad3f08900540a17d002ca1ed34345871a511aaab24358eb949318ae3f65a1f"
+  },
+  "whole58ZipMembersVerified": true,
+  "whole56PngCrcIdatProof": [
+    {
+      "original": {
+        "name": "approver-ru-absent-page-two.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/approver-ru-absent-page-two.png",
+        "bytes": 84156,
+        "sha256": "992b345c606376241cbbc6fac106c6391a21ed4890b142f6afe1f56928b9b451"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "approver-ru-first-page.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/approver-ru-first-page.png",
+        "bytes": 50075,
+        "sha256": "0b67b21a8e75f1414df7ea61b0790345548060abf41a99aefb9c61f491cf3a37"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "approver-ru-native-pagination.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/approver-ru-native-pagination.png",
+        "bytes": 82984,
+        "sha256": "2b1939d31160e2ef1ac736e7e647573bea3487511d4f215f91f47f596fbd8043"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "approver-ru-snapshot-completed.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/approver-ru-snapshot-completed.png",
+        "bytes": 80137,
+        "sha256": "2c11b0477a9d62e0cc83e9abd8e1a7456fe89fcd1329c0cfdeeee8f181b6e3dc"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "approver-ru-snapshot-missing.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/approver-ru-snapshot-missing.png",
+        "bytes": 79763,
+        "sha256": "a96bcd1b960b3fd64204011273f6d876711ff893b9aa22b249aea2ccba7c2d9d"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "approver-ru-snapshot-paused.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/approver-ru-snapshot-paused.png",
+        "bytes": 82223,
+        "sha256": "22528ad8ef9af98d01d3cbb6ed1be6f6617b1d0ffe439cdbb8de63cebb6c9d43"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "approver-ru-snapshot-started.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/approver-ru-snapshot-started.png",
+        "bytes": 81042,
+        "sha256": "d3821e81a010dfc6aff13f27d3c5e4e33fb847d574f2f3169fec71156f89eca7"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "denied-ru-no-grant.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/denied-ru-no-grant.png",
+        "bytes": 50208,
+        "sha256": "6870510192e434a8b80e9b204dcbfd43e9638c573acbe4749654af3f56056a44"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-absent-page-two.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-absent-page-two.png",
+        "bytes": 93535,
+        "sha256": "4c88b9c9bc9525b60843dee077ca9963690c04fce927e5e18d757ac41550004a"
+      },
+      "width": 768,
+      "height": 900,
+      "decodedScanlineBytes": 2074500,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-first-page.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-first-page.png",
+        "bytes": 76959,
+        "sha256": "efdf991378be7ef4599ddf2b28b6b6f28d9533aa71280326ac697f52f27000f1"
+      },
+      "width": 768,
+      "height": 900,
+      "decodedScanlineBytes": 2074500,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-native-200-absent-page-two.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-200-absent-page-two.png",
+        "bytes": 186703,
+        "sha256": "3a3d1a12d14c6e126134c155969feb4a1cd9b3d0233f9cb18e534c4683b3b532"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-native-200-first-page.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-200-first-page.png",
+        "bytes": 101960,
+        "sha256": "a0c9a4b752025d0b1d3e327d23fc6ec0803a77d4cb00653d62a8077a28b40744"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-native-200-native-pagination.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-200-native-pagination.png",
+        "bytes": 183867,
+        "sha256": "8f62bde1f77ffbc367ea5f670d16a1493d4d02910e9365521be576d8c7b55e6a"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-native-200-snapshot-completed.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-200-snapshot-completed.png",
+        "bytes": 176905,
+        "sha256": "d9e2da5baf7acc42e9c7db3abc5027bfa530923c65774f3120f51d3f4c40ea8e"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-native-200-snapshot-missing.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-200-snapshot-missing.png",
+        "bytes": 175899,
+        "sha256": "d5a41d7907fe61661a35346bfc02fe7512585858fd73e37d1cc7957ce44b0e16"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-native-200-snapshot-paused.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-200-snapshot-paused.png",
+        "bytes": 177770,
+        "sha256": "378ca27e24d95f394d24b1f111f76c0b649bd711c64abe50541efae0987e7d97"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-native-200-snapshot-started.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-200-snapshot-started.png",
+        "bytes": 175850,
+        "sha256": "b32ffcddc5fb5a102547f853d129da5f0c8fcadacd06fcdf9df98fc490d5571d"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-native-pagination.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-pagination.png",
+        "bytes": 90628,
+        "sha256": "7ec300ee7b6f98a47c2de9224cbe84067da857db6a764869068594aefc67e070"
+      },
+      "width": 768,
+      "height": 900,
+      "decodedScanlineBytes": 2074500,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-snapshot-completed.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-snapshot-completed.png",
+        "bytes": 87159,
+        "sha256": "b6da78ac3d94db6890c8067af647aa0063d49decf041f8b0fb2381a39d83981a"
+      },
+      "width": 768,
+      "height": 900,
+      "decodedScanlineBytes": 2074500,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-snapshot-missing.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-snapshot-missing.png",
+        "bytes": 90307,
+        "sha256": "153f09e3f645e7149bf63ae69410ca6bb827708b343d3cac089a5d381ee77711"
+      },
+      "width": 768,
+      "height": 900,
+      "decodedScanlineBytes": 2074500,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-snapshot-paused.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-snapshot-paused.png",
+        "bytes": 89236,
+        "sha256": "5d03ef81deab89be77e468c4171f26c8c0a92b6925e1917dfc94ee6db5a0cc3a"
+      },
+      "width": 768,
+      "height": 900,
+      "decodedScanlineBytes": 2074500,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-az-snapshot-started.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-snapshot-started.png",
+        "bytes": 85040,
+        "sha256": "f565f56244cd861be3eebc2c4d4b1e0a28e4600d95f1786830fe69f0738b53ba"
+      },
+      "width": 768,
+      "height": 900,
+      "decodedScanlineBytes": 2074500,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-absent-page-two.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-absent-page-two.png",
+        "bytes": 184741,
+        "sha256": "3f61a6dbe933a4931c056606767c83a90284aa5ab5286d9acc1f2f7aa5a860d5"
+      },
+      "width": 1440,
+      "height": 900,
+      "decodedScanlineBytes": 3888900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-first-page.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-first-page.png",
+        "bytes": 151113,
+        "sha256": "39d803e12e1434452c705ffa35bd1cb7e69795ff4feb6248193715f4ac9db019"
+      },
+      "width": 1440,
+      "height": 900,
+      "decodedScanlineBytes": 3888900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-native-200-absent-page-two.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-200-absent-page-two.png",
+        "bytes": 188234,
+        "sha256": "353f7887ceeafa240b9ae501039620e0681e7a09d9fbac1eaf89804df814b663"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-native-200-first-page.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-200-first-page.png",
+        "bytes": 99889,
+        "sha256": "70464a61101825389cc8da0518394a23cd33685d6806dfdfc34ee7fb142be860"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-native-200-native-pagination.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-200-native-pagination.png",
+        "bytes": 186061,
+        "sha256": "1f8add78930c08188d38505a5b5df5ae39e23a023abedc83c8cc0e4ea9eb1bf5"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-native-200-snapshot-completed.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-200-snapshot-completed.png",
+        "bytes": 180872,
+        "sha256": "af4635ced9c86408a8f910d0aab52dcbd411fdf76ae436d0e86df324d5003612"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-native-200-snapshot-missing.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-200-snapshot-missing.png",
+        "bytes": 177944,
+        "sha256": "bb7370629a487b1e85a1039ccfcd36b48339122fee305513317b6b9f88d8057b"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-native-200-snapshot-paused.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-200-snapshot-paused.png",
+        "bytes": 182397,
+        "sha256": "905b980de6849e18f1ce84125b44c3962e05c6c10e796e51edf67caa20e9d2d6"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-native-200-snapshot-started.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-200-snapshot-started.png",
+        "bytes": 179988,
+        "sha256": "0e769c3a7dd406ba0f575ef94789e1694d8f199e18651fcbc5b942702ec9720d"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-native-pagination.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-pagination.png",
+        "bytes": 170136,
+        "sha256": "6300088bfee37385f58528677a78d6d249748e6f2cc6ffcf03c5d992eaa4fd5f"
+      },
+      "width": 1440,
+      "height": 900,
+      "decodedScanlineBytes": 3888900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-snapshot-missing.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-snapshot-missing.png",
+        "bytes": 171673,
+        "sha256": "e83ea433c2130a09b2f7efff61da5e550b5038964f346a4f4f2b8ce6d0aa0d35"
+      },
+      "width": 1440,
+      "height": 900,
+      "decodedScanlineBytes": 3888900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-snapshot-completed.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-snapshot-completed.png",
+        "bytes": 175229,
+        "sha256": "0dce917e65257931c20f099b8622a9afa3e20a1590ca9f60b3421c0db4e17b09"
+      },
+      "width": 1440,
+      "height": 900,
+      "decodedScanlineBytes": 3888900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-snapshot-paused.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-snapshot-paused.png",
+        "bytes": 175229,
+        "sha256": "0dce917e65257931c20f099b8622a9afa3e20a1590ca9f60b3421c0db4e17b09"
+      },
+      "width": 1440,
+      "height": 900,
+      "decodedScanlineBytes": 3888900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-en-snapshot-started.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-snapshot-started.png",
+        "bytes": 175229,
+        "sha256": "0dce917e65257931c20f099b8622a9afa3e20a1590ca9f60b3421c0db4e17b09"
+      },
+      "width": 1440,
+      "height": 900,
+      "decodedScanlineBytes": 3888900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-absent-page-two.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-absent-page-two.png",
+        "bytes": 81843,
+        "sha256": "d3918ab565ad5c36723a5e6ad6e797e1997d9130e1a43e353e9a1e444bd3161e"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-first-page.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-first-page.png",
+        "bytes": 50075,
+        "sha256": "0b67b21a8e75f1414df7ea61b0790345548060abf41a99aefb9c61f491cf3a37"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-native-200-absent-page-two.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-200-absent-page-two.png",
+        "bytes": 186241,
+        "sha256": "ed7ff39b842cafdebdb14464fa88835d2473980c5a12ee0079c577dfe5cf4376"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-native-200-first-page.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-200-first-page.png",
+        "bytes": 106237,
+        "sha256": "e1b965493bf0d76d85d19175c64141072e0281f322d984be8531e281cd8a9e83"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-native-200-native-pagination.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-200-native-pagination.png",
+        "bytes": 176183,
+        "sha256": "b3eb2e195f8504287dab822e04143d3cdeb5e1167c4d87e3ac041ad9f1c060a2"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-native-200-snapshot-completed.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-200-snapshot-completed.png",
+        "bytes": 173529,
+        "sha256": "98512b389f138373de17ec3c73391a6e75b90354853475655745006b125cae6f"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-native-200-snapshot-missing.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-200-snapshot-missing.png",
+        "bytes": 175457,
+        "sha256": "ad229d5a2d7706581c46eaf0253807e7ed46feb18c9d57b61fb6d01eaef83a6e"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-native-200-snapshot-paused.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-200-snapshot-paused.png",
+        "bytes": 183192,
+        "sha256": "02f4d56faf32386f3255a8638b91c257501be69d30ec7053c796c20bb6ff3374"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-native-200-snapshot-started.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-200-snapshot-started.png",
+        "bytes": 173122,
+        "sha256": "ff62b0d98bb66dc270ed6b0abf10bcd1038936868ddbd4da2fbdcf4f2df8a8d0"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-native-pagination.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-pagination.png",
+        "bytes": 80580,
+        "sha256": "016017772a2e3070bacf61a6cab31bc2fe71ad229c67546610b8a186eebdd9ab"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-snapshot-completed.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-snapshot-completed.png",
+        "bytes": 78499,
+        "sha256": "c680ab8c3b659268f3ee8e5bfb2272bef15386ebb9aad995aa8ab1a2eb904147"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-snapshot-missing.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-snapshot-missing.png",
+        "bytes": 79787,
+        "sha256": "d208ebd7c3d6ffe8317dfee6d3ba208ae02d5f9db53c580e3ab013f05ff0f728"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-snapshot-paused.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-snapshot-paused.png",
+        "bytes": 80100,
+        "sha256": "12804e787bdbc940f2a3f9ae4b98c3283a5ed2e5693635fa0f7caeef259a25ec"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "manager-ru-snapshot-started.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-snapshot-started.png",
+        "bytes": 78539,
+        "sha256": "72ee812ab3e42b661a8282015b3fc29ab5d78751cc1552469a08b3e6b4191d12"
+      },
+      "width": 320,
+      "height": 900,
+      "decodedScanlineBytes": 864900,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "native-zoom-az-control-100.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/native-zoom-az-control-100.png",
+        "bytes": 155739,
+        "sha256": "348c4ff064e8498fb2157b33857f5f558ed3737fa26201e0d2682124d25bc961"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "native-zoom-az-observed-200.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/native-zoom-az-observed-200.png",
+        "bytes": 101960,
+        "sha256": "a0c9a4b752025d0b1d3e327d23fc6ec0803a77d4cb00653d62a8077a28b40744"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "native-zoom-en-control-100.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/native-zoom-en-control-100.png",
+        "bytes": 154147,
+        "sha256": "6c685ec1d9dbb8536ceb8dcad912d8cce8d131457477f5b85804db905fa30ad6"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "native-zoom-en-observed-200.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/native-zoom-en-observed-200.png",
+        "bytes": 99889,
+        "sha256": "70464a61101825389cc8da0518394a23cd33685d6806dfdfc34ee7fb142be860"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "native-zoom-ru-control-100.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/native-zoom-ru-control-100.png",
+        "bytes": 157239,
+        "sha256": "0374fae80e171a30150c2229c1271962dff2d2973146673bcd8faf998c4799ca"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    },
+    {
+      "original": {
+        "name": "native-zoom-ru-observed-200.png",
+        "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/native-zoom-ru-observed-200.png",
+        "bytes": 106237,
+        "sha256": "e1b965493bf0d76d85d19175c64141072e0281f322d984be8531e281cd8a9e83"
+      },
+      "width": 640,
+      "height": 1601,
+      "decodedScanlineBytes": 3075521,
+      "allChunkCrcAndIdatPassed": true
+    }
+  ],
+  "actualCases9": true,
+  "actualPositiveTriplets3ReplayCanonicalUtc": true,
+  "actual10SqlstateRollback6To5And20FactHashes": true,
+  "actualMissingAll3SnapshotsUnavailableBesideCurrentAssignment": true,
+  "actualFacts20Rls21BeforeAfter": true,
+  "actualNative3Capture27Focus3": true,
+  "actualAuth8Cleanup11": true,
+  "unroundedFocusRecomputation": [
+    {
+      "polls": 1,
+      "first": {
+        "top": 719.5,
+        "bottom": 767.5,
+        "left": 96.3125,
+        "right": 287.6796875,
+        "width": 191.3671875,
+        "height": 48
+      },
+      "last": {
+        "top": 719.5,
+        "bottom": 767.5,
+        "left": 96.3125,
+        "right": 287.6796875,
+        "width": 191.3671875,
+        "height": 48
+      },
+      "strictUnroundedClausesPassed": true
+    },
+    {
+      "polls": 1,
+      "first": {
+        "top": 709.5,
+        "bottom": 767.5,
+        "left": 76,
+        "right": 308,
+        "width": 232,
+        "height": 58
+      },
+      "last": {
+        "top": 709.5,
+        "bottom": 767.5,
+        "left": 76,
+        "right": 308,
+        "width": 232,
+        "height": 58
+      },
+      "strictUnroundedClausesPassed": true
+    },
+    {
+      "polls": 1,
+      "first": {
+        "top": 719.5,
+        "bottom": 767.5,
+        "left": 88.9765625,
+        "right": 295.015625,
+        "width": 206.0390625,
+        "height": 48
+      },
+      "last": {
+        "top": 719.5,
+        "bottom": 767.5,
+        "left": 88.9765625,
+        "right": 295.015625,
+        "width": 206.0390625,
+        "height": 48
+      },
+      "strictUnroundedClausesPassed": true
+    }
+  ],
+  "rootActuallyViewedOriginalPNGs": [
+    {
+      "name": "manager-en-native-200-snapshot-missing.png",
+      "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-200-snapshot-missing.png",
+      "bytes": 177944,
+      "sha256": "bb7370629a487b1e85a1039ccfcd36b48339122fee305513317b6b9f88d8057b"
+    },
+    {
+      "name": "manager-ru-native-200-snapshot-missing.png",
+      "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-200-snapshot-missing.png",
+      "bytes": 175457,
+      "sha256": "ad229d5a2d7706581c46eaf0253807e7ed46feb18c9d57b61fb6d01eaef83a6e"
+    },
+    {
+      "name": "manager-az-native-200-snapshot-missing.png",
+      "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-200-snapshot-missing.png",
+      "bytes": 175899,
+      "sha256": "d5a41d7907fe61661a35346bfc02fe7512585858fd73e37d1cc7957ce44b0e16"
+    },
+    {
+      "name": "manager-en-native-200-native-pagination.png",
+      "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-en-native-200-native-pagination.png",
+      "bytes": 186061,
+      "sha256": "1f8add78930c08188d38505a5b5df5ae39e23a023abedc83c8cc0e4ea9eb1bf5"
+    },
+    {
+      "name": "manager-ru-native-200-native-pagination.png",
+      "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-ru-native-200-native-pagination.png",
+      "bytes": 176183,
+      "sha256": "b3eb2e195f8504287dab822e04143d3cdeb5e1167c4d87e3ac041ad9f1c060a2"
+    },
+    {
+      "name": "manager-az-native-200-native-pagination.png",
+      "path": "/tmp/workforce-pr582-195f703-current-hosted-primary/whole-artifacts/11322809377-members/manager-az-native-200-native-pagination.png",
+      "bytes": 183867,
+      "sha256": "8f62bde1f77ffbc367ea5f670d16a1493d4d02910e9365521be576d8c7b55e6a"
+    }
+  ],
+  "other50PngVisualReviewByRoot": "NOT RUN: whole bytes/CRC/IDAT only; independent actual views pending",
+  "nextDevIssueBadgeOccludesPartOfPaginationAndSomeBodyCopy": true,
+  "geometryFocusCreditOnlyNoGlobalPixelOcclusionClaim": true,
+  "realAcceptedStartEventWorkflow": false,
+  "physicalPresence": false,
+  "historicalTemplateDisplayNameImmutability": false,
+  "globalZeroDatabaseWrites": false,
+  "wholePageWCAG": false,
+  "fullCompilerAndSuiteAcceptance": false,
+  "normalMergeAllowed": false,
+  "productionReleaseAcceptance": false,
+  "newRoadmapRowClosure": false,
+  "rootActualViewReceipt": {
+    "path": "/tmp/workforce-pr582-195f703-root-actual-png-views-primary.json",
+    "bytes": 2671,
+    "sha256": "c21c4ba74f150673816793a6b90768218dd6af546b990812e4b99872108814fb"
+  }
+}

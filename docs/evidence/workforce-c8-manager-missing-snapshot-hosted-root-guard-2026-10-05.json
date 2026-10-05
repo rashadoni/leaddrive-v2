@@ -1,0 +1,12 @@
+{
+  "atUtc": "2026-10-05T03:12:19.579574+00:00",
+  "status": "ROOT READER GUARD BEFORE ACCEPTANCE",
+  "script": {
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-root-accept-primary.py",
+    "bytes": 8963,
+    "sha256": "1d3f68e317bbc1c3dcefac4c53f55d05135a6dcda6ab3dc0373aad3fca8abb30"
+  },
+  "failure": "Recursive generic file reader requires absolute originals, but actual sourceBindings58 contain repository-relative descriptors routed through explicit current Git.",
+  "acceptanceIssued": false,
+  "originalReportsAuditsProducersUnchanged": true
+}
