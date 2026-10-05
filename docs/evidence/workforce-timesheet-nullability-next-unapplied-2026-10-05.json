@@ -1,0 +1,35 @@
+{
+  "atUtc": "2026-10-05T03:51:18.427230+00:00",
+  "status": "UNAPPLIED SINGLE SHARED DEPENDENCY NULLABILITY DRAFT; NO RUNTIME OR COMPILE CREDIT",
+  "candidateBase": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "repoPath": "src/lib/workforce/timesheet-calculation.ts",
+  "base": {
+    "path": "/tmp/workforce-timesheet-nullability-successor-unapplied-primary/base.ts",
+    "bytes": 12026,
+    "sha256": "136fdc44e0fe6e057babd05aa198cbb1dcf30af40de76b219636dc8d8afa3556"
+  },
+  "draft": {
+    "path": "/tmp/workforce-timesheet-nullability-successor-unapplied-primary/unapplied-draft.ts",
+    "bytes": 12067,
+    "sha256": "1c0e44ed28a9cbde6e317c031ec53cafdb05efd1115d19b0bd3606037ba206e1"
+  },
+  "exactReplacements": [
+    {
+      "old": "    startedAt = instant(\"startedAt\", facts.startedAt)\n",
+      "new": "    const workdayStart = instant(\"startedAt\", facts.startedAt)\n    startedAt = workdayStart\n"
+    },
+    {
+      "old": "      if (pauseStart < startedAt || pauseStart > observationEnd || pauseEnd < pauseStart || pauseEnd > observationEnd) {\n",
+      "new": "      if (pauseStart < workdayStart || pauseStart > observationEnd || pauseEnd < pauseStart || pauseEnd > observationEnd) {\n"
+    }
+  ],
+  "reason": "Actual own582 parent compiler records selected dependency240:24 TS18047 because mutable nullable startedAt is captured by a map callback. Stable local numeric workdayStart comes from the same instant call, then populates the existing outer startedAt fact; callback compares the stable local value.",
+  "applicationAllowed": false,
+  "testsRun": false,
+  "compilerRun": false,
+  "currentPart43SourceOrRuntimeCredit": false,
+  "requiredBeforeFutureApply": "Ownpart43 reviewed current CI, normal merged-main deploy and full artifactSha/public root+peer accepted; then fresh main integration, independent whole draft review, scoped actual semantic existing calculation tests and fresh broader applicable manager CI.",
+  "expectedRuntimeBehaviorChange": false,
+  "baselineModificationAllowed": false,
+  "generalUpdateDeleteBreakAgentRouteMutation": false
+}
