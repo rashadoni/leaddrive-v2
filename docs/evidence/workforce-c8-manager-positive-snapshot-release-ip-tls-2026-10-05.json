@@ -1,0 +1,132 @@
+{
+  "atUtc": "2026-10-05T02:17:33.050795+00:00",
+  "expectedMergedSha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "runId": 37253180738,
+  "productionTarget": "13.140.132.245",
+  "allLiteralIPStrictTLSPositive": false,
+  "allLiteralIPCertificateSANMismatch": true,
+  "requests": [
+    {
+      "label": "build-info",
+      "endpoint": "/api/v1/public/build-info",
+      "curlExit": 60,
+      "metrics": [
+        "000",
+        "13.140.132.245",
+        "1"
+      ],
+      "bodyBytes": 0,
+      "insecureTlsUsed": false,
+      "strictPositive": false,
+      "certificateSANMismatch": true,
+      "command": [
+        "curl",
+        "--disable",
+        "--silent",
+        "--show-error",
+        "--noproxy",
+        "*",
+        "--proto",
+        "=https",
+        "--connect-timeout",
+        "5",
+        "--max-time",
+        "12",
+        "--max-filesize",
+        "16384",
+        "-H",
+        "Cache-Control: no-cache",
+        "-D",
+        "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/build-info-headers.original",
+        "-o",
+        "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/build-info-body.original",
+        "--write-out",
+        "%{http_code}|%{remote_ip}|%{ssl_verify_result}",
+        "https://13.140.132.245/api/v1/public/build-info"
+      ]
+    },
+    {
+      "label": "ping",
+      "endpoint": "/api/v1/ping",
+      "curlExit": 60,
+      "metrics": [
+        "000",
+        "13.140.132.245",
+        "1"
+      ],
+      "bodyBytes": 0,
+      "insecureTlsUsed": false,
+      "strictPositive": false,
+      "certificateSANMismatch": true,
+      "command": [
+        "curl",
+        "--disable",
+        "--silent",
+        "--show-error",
+        "--noproxy",
+        "*",
+        "--proto",
+        "=https",
+        "--connect-timeout",
+        "5",
+        "--max-time",
+        "12",
+        "--max-filesize",
+        "16384",
+        "-H",
+        "Cache-Control: no-cache",
+        "-D",
+        "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/ping-headers.original",
+        "-o",
+        "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/ping-body.original",
+        "--write-out",
+        "%{http_code}|%{remote_ip}|%{ssl_verify_result}",
+        "https://13.140.132.245/api/v1/ping"
+      ]
+    }
+  ],
+  "originals": [
+    {
+      "path": "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/build-info-body.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/build-info-headers.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/build-info-metrics.original",
+      "bytes": 20,
+      "sha256": "503b11afb536e37ce2d875df764928dd3664ec06e0d403ea671fddec37dd9499"
+    },
+    {
+      "path": "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/build-info-stderr.original",
+      "bytes": 362,
+      "sha256": "bb444196ae8c7ddeb2fab3611068ba2fc224e0f7d83fba0fde655417ba261847"
+    },
+    {
+      "path": "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/ping-body.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/ping-headers.original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/ping-metrics.original",
+      "bytes": 20,
+      "sha256": "503b11afb536e37ce2d875df764928dd3664ec06e0d403ea671fddec37dd9499"
+    },
+    {
+      "path": "/tmp/workforce581-3ddae-own-release-primary/literal-ip-strict-observation/ping-stderr.original",
+      "bytes": 362,
+      "sha256": "bb444196ae8c7ddeb2fab3611068ba2fc224e0f7d83fba0fde655417ba261847"
+    }
+  ],
+  "noInsecureFallback": true,
+  "canonicalPinnedHostStrictProofRequired": true
+}
