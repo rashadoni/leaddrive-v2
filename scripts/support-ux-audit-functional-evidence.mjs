@@ -456,9 +456,8 @@ async function main() {
         { type: "add_internal_note", value: "Synthetic internal macro note" },
         { type: "add_tag", value: "audit-confirmed" },
       ]
-      // Create through the public contract: stored shortcuts are Alt+1..9 and
-      // ordering is nonnegative. The existing ticket keyboard handler uses the
-      // active collection's Ctrl ordinal; do not hide that mismatch in fixtures.
+      // Create through the public contract. The earlier seeded macro makes
+      // Alt+1 differ from this fixture's legacy Ctrl ordinal.
       const macro = (await api("POST", "/api/v1/ticket-macros", {
         name: prefix + "-macro", actions, isActive: true, sortOrder: 0, shortcutKey: "Alt+1",
       }, 201)).data
@@ -467,9 +466,19 @@ async function main() {
       const activeMacros = (await api("GET", "/api/v1/ticket-macros")).data.filter(item => item.isActive)
       const shortcutOrdinal = activeMacros.findIndex(item => item.id === macro.id) + 1
       check(shortcutOrdinal >= 1 && shortcutOrdinal <= 9, "MACRO_CTRL_ORDINAL_UNAVAILABLE")
-      report.shortcutCoverage = {
-        stored: "Alt+1", exercised: "Ctrl+" + shortcutOrdinal,
-        limitation: "STORED_ALT_SHORTCUT_NOT_VERIFIED_LEGACY_CTRL_ORDINAL_ONLY",
+      check(shortcutOrdinal !== 1 && activeMacros[shortcutOrdinal - 1].shortcutKey === "Alt+1",
+        "MACRO_STORED_BINDING_NOT_DISTINCT_FROM_ORDINAL")
+      const unboundAlt = Array.from({ length: 9 }, (_, index) => "Alt+" + (index + 1))
+        .find(binding => !activeMacros.some(item => item.shortcutKey === binding))
+      check(Boolean(unboundAlt), "MACRO_UNBOUND_SHORTCUT_UNAVAILABLE")
+      async function noMacroEffects(code) {
+        const stored = await db.ticket.findUnique({ where: { id: row.id } })
+        check(stored.status === row.status && stored.priority === row.priority
+          && JSON.stringify(stored.tags) === JSON.stringify(row.tags)
+          && await db.ticketComment.count({ where: { ticketId: row.id } }) === 0
+          && (await db.ticketMacro.findUnique({ where: { id: macro.id } })).usageCount === 0
+          && await db.auditLog.count({ where: { organizationId: orgId, entityId: row.id,
+            entityType: "ticket_macro_application" } }) === 0, code)
       }
       await open("/tickets/" + row.id, "ticket-detail-workspace")
       const draft = "Synthetic unsent macro draft"
@@ -483,6 +492,7 @@ async function main() {
       await dialog.waitFor({ state: "visible" })
       check(await dialog.locator("ol li").count() === actions.length, "MACRO_ACTION_PREVIEW_INCOMPLETE")
       const previewText = await dialog.innerText()
+      const previewActions = await dialog.locator("ol").innerText()
       check(previewText.includes(actions[1].value) && previewText.includes(actions[2].value)
         && previewText.includes("visible to the customer in the portal") && previewText.includes("internal notes are for your team")
         && previewText.includes("does not send an email"), "MACRO_AUDIENCE_UNCLEAR")
@@ -502,10 +512,39 @@ async function main() {
       await page.keyboard.press("Escape")
       await dialog.waitFor({ state: "hidden" })
       await page.waitForFunction(() => document.activeElement?.getAttribute("data-tour-id") === "ticket-macros")
-      mark("ux07-shortcut-preview")
+      mark("ux07-alt-typing-guard")
+      await page.getByTestId("ticket-comment-composer").focus()
+      await page.keyboard.press("Alt+1")
+      await noMacroEffects("TYPING_SHORTCUT_EXECUTED_MACRO")
+      check(await page.getByRole("dialog").filter({ visible: true }).count() === 0, "TYPING_OPENED_MACRO_PREVIEW")
+      check(await page.getByTestId("ticket-comment-composer").inputValue() === draft, "TYPING_SHORTCUT_LOST_DRAFT")
+      mark("ux07-alt-unbound-guard")
       await page.getByTestId("ticket-quick-actions-hint").click()
+      await page.keyboard.press(unboundAlt)
+      await noMacroEffects("UNBOUND_SHORTCUT_EXECUTED_MACRO")
+      check(await page.getByRole("dialog").filter({ visible: true }).count() === 0, "UNBOUND_OPENED_MACRO_PREVIEW")
+      mark("ux07-ctrl-preview-cancel")
       await page.keyboard.press("Control+" + shortcutOrdinal)
       await dialog.waitFor({ state: "visible" })
+      check(await dialog.locator("ol").innerText() === previewActions, "CTRL_PREVIEW_ACTIONS_CHANGED")
+      await noMacroEffects("CTRL_PREVIEW_EXECUTED_MACRO")
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click()
+      await dialog.waitFor({ state: "hidden" })
+      await noMacroEffects("CTRL_CANCEL_EXECUTED_MACRO")
+      await eventually(() => page.locator("[data-tour-id='ticket-macros']")
+        .evaluate(el => document.activeElement === el), "CTRL_CANCEL_FOCUS_NOT_RESTORED")
+      check(await page.getByTestId("ticket-comment-composer").inputValue() === draft, "CTRL_CANCEL_LOST_DRAFT")
+      mark("ux07-alt-stored-binding-preview")
+      await page.getByTestId("ticket-quick-actions-hint").click()
+      await page.keyboard.press("Alt+1")
+      await dialog.waitFor({ state: "visible" })
+      check(await dialog.locator("ol").innerText() === previewActions, "ALT_PREVIEW_ACTIONS_CHANGED")
+      await noMacroEffects("ALT_PREVIEW_EXECUTED_MACRO")
+      await page.keyboard.press("Alt+1")
+      await noMacroEffects("ALT_EXECUTED_BEHIND_PREVIEW")
+      check(await dialog.isVisible() && await page.getByRole("dialog").filter({ visible: true }).count() === 1,
+        "ALT_REPLACED_OPEN_PREVIEW")
+      check(await page.getByTestId("ticket-comment-composer").inputValue() === draft, "ALT_PREVIEW_LOST_DRAFT")
       mark("ux07-lost-response")
       const sentRequestIds = []
       let intercepted = 0
@@ -534,6 +573,8 @@ async function main() {
       check(await db.auditLog.count({ where: { organizationId: orgId, entityId: row.id, entityType: "ticket_macro_application" } }) === 1,
         "MACRO_RECEIPT_NOT_UNIQUE")
       check(await page.getByTestId("ticket-comment-composer").inputValue() === draft, "APPLY_LOST_DRAFT")
+      report.shortcutCoverage = { stored: "Alt+1", exercised: ["Ctrl+" + shortcutOrdinal, "Alt+1"],
+        nonOrdinalBinding: true, typingGuard: true, unboundGuard: true, openDialogGuard: true }
       await page.getByTestId("ticket-comment-composer").fill("")
     })
 

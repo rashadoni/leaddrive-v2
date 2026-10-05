@@ -668,6 +668,7 @@ export default function TicketDetailPage() {
     onCopyNumber: () => { if (ticket?.ticketNumber) navigator.clipboard.writeText(ticket.ticketNumber) },
     onToggleShortcuts: () => setShowShortcuts(s => !s),
     macros: macros.filter(m => m.isActive).map(m => ({
+      shortcutKey: m.shortcutKey,
       execute: () => {
         previewMacro(m)
       },

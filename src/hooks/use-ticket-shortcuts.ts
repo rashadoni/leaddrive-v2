@@ -13,7 +13,7 @@ interface ShortcutActions {
   onPrevTicket?: () => void
   onCopyNumber?: () => void
   onToggleShortcuts?: () => void
-  macros?: Array<{ execute: () => void }>
+  macros?: Array<{ shortcutKey?: string | null; execute: () => void }>
 }
 
 export interface ShortcutDef {
@@ -30,7 +30,8 @@ export const TICKET_SHORTCUTS: ShortcutDef[] = [
   { keys: "J / →", description: "Next Ticket" },
   { keys: "K / ←", description: "Previous Ticket" },
   { keys: "C", description: "Copy Ticket #" },
-  { keys: "Ctrl+1-9", description: "Apply Macro" },
+  { keys: "Alt+1-9", description: "Preview Macro (saved shortcut)" },
+  { keys: "Ctrl+1-9", description: "Preview Macro (list position)" },
   { keys: "?", description: "Toggle Shortcuts" },
 ]
 
@@ -39,7 +40,7 @@ export function useTicketShortcuts(actions: ShortcutActions) {
     if (actions.enabled === false) return
     // Don't capture when typing in inputs
     const target = e.target as HTMLElement
-    if (target.tagName === "TEXTAREA" || target.tagName === "INPUT" || target.isContentEditable) {
+    if (target.tagName === "TEXTAREA" || target.tagName === "INPUT" || target.tagName === "SELECT" || target.isContentEditable) {
       if (e.key === "Escape") {
         target.blur()
         e.preventDefault()
@@ -54,7 +55,21 @@ export function useTicketShortcuts(actions: ShortcutActions) {
       return
     }
 
-    // Ctrl+1 through Ctrl+9 — apply macro
+    // Alt+1 through Alt+9 follow the saved binding, independent of list order.
+    // Option can change event.key on macOS, so prefer the physical digit code.
+    if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.getModifierState("AltGraph")) {
+      const digit = /^Digit[1-9]$/.test(e.code)
+        ? e.code.slice(-1)
+        : /^[1-9]$/.test(e.key) ? e.key : null
+      const macro = digit ? actions.macros?.find(m => m.shortcutKey === "Alt+" + digit) : undefined
+      if (macro) {
+        e.preventDefault()
+        macro.execute()
+      }
+      return
+    }
+
+    // Ctrl+1 through Ctrl+9 retain the legacy positional preview shortcut.
     if (e.ctrlKey && !e.altKey && !e.metaKey && e.key >= "1" && e.key <= "9") {
       const idx = parseInt(e.key) - 1
       if (actions.macros?.[idx]) {
