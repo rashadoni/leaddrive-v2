@@ -943,24 +943,71 @@ describe("POST /api/v1/mtm/mobile/auth", () => {
 
 // ─── GET /api/v1/mtm/mobile/ping ───────────────────────────
 describe("GET /api/v1/mtm/mobile/ping", () => {
+  // The proxy sets x-tenant-slug from the host; the app host carries none.
+  const ping = (slug?: string) => MobilePing(new NextRequest(
+    new URL("/api/v1/mtm/mobile/ping", "http://localhost:3000"),
+    slug ? { headers: { "x-tenant-slug": slug } } : undefined,
+  ))
+
   it("answers anonymous server discovery without metadata", async () => {
-    const res = await MobilePing()
+    const res = await ping()
     const json = await res.json()
+    expect(res.status).toBe(200)
     expect(json).toEqual({ success: true, data: {} })
   })
 
   // The endpoint is anonymous — the mobile ServerScreen calls it before login.
-  // It therefore may not read a tenant row: it used to return the oldest
-  // organization's name, which the 2026-08 penetration re-test reported as
-  // information disclosure. Asserting on the query, not just the body, is what
-  // stops the convenience of "show the org name here" from creeping back.
-  it("does not touch the database at all", async () => {
+  // It used to return the oldest organization's name, which the 2026-08
+  // penetration re-test reported as information disclosure. On the app host
+  // there is no company name to check, so nothing is read at all.
+  it("does not touch the database on the app host", async () => {
     vi.mocked(prisma.organization.findFirst).mockResolvedValue({ name: "Acme Corp" } as any)
 
-    const res = await MobilePing()
+    const res = await ping()
     const json = await res.json()
 
     expect(prisma.organization.findFirst).not.toHaveBeenCalled()
+    expect(prisma.organization.findUnique).not.toHaveBeenCalled()
     expect(JSON.stringify(json)).not.toContain("Acme Corp")
+  })
+
+  // Emulator E2E of app build 382, 2026-10-05: a company that does not exist
+  // was accepted, the sign-in form opened for it, and the agent would then be
+  // told to check the password. Every released client reads `success`.
+  it("refuses a company name nobody has", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue(null)
+
+    const res = await ping("zeytin-with-a-typo")
+    const json = await res.json()
+
+    expect(res.status).toBe(404)
+    expect(json.success).toBe(false)
+    expect(json.code).toBe("MTM_COMPANY_NOT_FOUND")
+    expect(res.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("accepts a company that exists, asking for that exact name and nothing but its id", async () => {
+    // A stand-in that hands back more than was selected must still leak nothing.
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ id: "org-1", name: "Acme Corp", logo: "acme.png" } as never)
+
+    const res = await ping("acme")
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json).toEqual({ success: true, data: {} })
+    expect(prisma.organization.findUnique).toHaveBeenCalledWith({ where: { slug: "acme" }, select: { id: true } })
+    // Never the old shape: an arbitrary tenant row, whichever comes first.
+    expect(prisma.organization.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("keeps the way in open when the lookup itself fails", async () => {
+    vi.mocked(prisma.organization.findUnique).mockRejectedValue(new Error("connection reset"))
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    const res = await ping("acme")
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ success: true, data: {} })
+    warn.mockRestore()
   })
 })
