@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_ON_RECOVERABLE_ACCEPTANCE_EVIDENCE",
+  "observedAtUtc": "2026-10-05T15:59:30Z",
+  "ownership": {
+    "mode": "sole continuation owner",
+    "authorization": "Explicit delegation in this task",
+    "priorExecutor": "01a0f293-00a4-74d0-b9f5-20f904220194",
+    "priorExecutorState": "User-reported notLoaded/serverOverloaded; not restarted",
+    "priorReviewer": "01a10806-7c94-7500-9201-dcadf16485ee",
+    "priorReviewerState": "User-reported idle/completed; receipts unavailable in this environment",
+    "competingWriterObserved": false,
+    "limits": "Stable remote head/main, clean initial local worktree and no other HRM PR observed; remote session liveness was supplied by delegator and cannot be independently queried with the exposed tools."
+  },
+  "repository": "rashadoni/leaddrive-v2",
+  "pullRequest": 585,
+  "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+  "originalBase": "daf05b6030c89c4508f2a999706f4169360ccce2",
+  "freshMain": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+  "recoveryMethod": "GitHub rashadoni connector only for remote reads/writes; reconstructed source in isolated worktrees from existing local base and GitHub diffs, verified every blob and exact candidate Git tree. No shell GitHub credentials used.",
+  "verification": {
+    "headFileBlobsVerified": 8709,
+    "mainFileBlobsVerified": 8714,
+    "integratedFileBlobsVerified": 8731,
+    "sourceBindingsVerified": 13,
+    "protectedPaths": [
+      {
+        "path": ".gitleaks.toml",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "f2c83316fa50e9f8a7b52dacb30236bc3dc88c9984ab1159cc8dc5ac724ff809"
+      },
+      {
+        "path": ".github/workflows/pr-checks.yml",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "d034cae6f3d5fa64d15ad52686d4b78b46a487d330151907e069e1239f162969"
+      },
+      {
+        "path": ".github/workflows/runner-policy.yml",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "46792e8379ba8c3640d8549a91aa4fc59c778a1f14652e609b4f6fc243ddbf6a"
+      },
+      {
+        "path": "scripts/ci/check-typecheck-gate.sh",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937"
+      },
+      {
+        "path": "scripts/ci/check-typecheck-baseline.mjs",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a"
+      },
+      {
+        "path": "scripts/ci/check-github-runner-policy.mjs",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "d0133dc3d1f3e1642f05209be4436751a69a5bf2dd56c8854bbf256179bed3b0"
+      },
+      {
+        "path": ".github/workflows/gitleaks.yml",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "c5d38a364e21e5b1e3272d54d9d79faaa8b88b2e8390a24efb29414103039e89"
+      },
+      {
+        "path": ".github/workflows/set-social-app-secrets.yml",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "6465745a44f77c04d30642768b8df0342adb4145942390305998e94871dfe3f5"
+      },
+      {
+        "path": "scripts/check-test-baseline.mjs",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e"
+      },
+      {
+        "path": "scripts/workforce-hrm-baseline.sql",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "82fc77ad14844e3a2339063ab267500868be429063a1a9d549fe481361ccba90"
+      },
+      {
+        "path": "src/__tests__/check-test-baseline-timeout-rendering.test.ts",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "eaf638908c02306d8559909cbcbebc74c67c19442bbc80002cc11716cde28a29"
+      },
+      {
+        "path": "src/__tests__/production-test-baseline-gate.test.ts",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "7a6d1d18120475624998b0c0c9827a7bb7c3bc4e4317d42cbcb2b6b45ab09da7"
+      },
+      {
+        "path": "test-baseline.json",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1"
+      },
+      {
+        "path": "typecheck-baseline.json",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "e33fe73cb126f5bf205f317d240af968917a5ce516c8b83a30b8d6e34077001b"
+      },
+      {
+        "path": "next.config.ts",
+        "candidateUnchanged": true,
+        "freshMainUnchanged": true,
+        "sha256": "0c0724cf9386a556257f8d2f104ed35c93d072b9e6debba9e08a1d45582b239f"
+      }
+    ],
+    "typecheckBaselinePairs": 66,
+    "testBaselineFiles": 18,
+    "tests": {
+      "head": {
+        "success": true,
+        "passed": 44,
+        "failed": 0,
+        "files": 2,
+        "kernelCases": 35,
+        "jobCases": 9,
+        "jsonBytes": 17175,
+        "jsonSha256": "ebbc47f6dde365c1ae83342c71c5600aaf0e2d77b237b976457683663d6a3c59"
+      },
+      "integration": {
+        "success": true,
+        "passed": 44,
+        "failed": 0,
+        "files": 2,
+        "kernelCases": 35,
+        "jobCases": 9,
+        "jsonBytes": 17179,
+        "jsonSha256": "59585b338ecd9aaf982d0f0828716dadd45c0df56f8f56e656262b6e281149a5"
+      }
+    },
+    "sourceBindings": [
+      {
+        "path": "src/lib/workforce/reconciliation.ts",
+        "headBlob": "b9bfd9b6e964ed600e64e29e77e14195bc4be01d",
+        "freshMainBlob": "9c36fa47a219f1fac2e84565dbafc72906e92429",
+        "sha256": "83b0f897de05515a4cfa92068edb6ce32026009e8d0690545b3b7309735fca5c"
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-job.ts",
+        "headBlob": "e342cbb36d5aad56b96d4f80b5965195c434dd00",
+        "freshMainBlob": "e342cbb36d5aad56b96d4f80b5965195c434dd00",
+        "sha256": "1fd328013fac465edf3446c834bb3e97fca9f6af27b499f47ee81f2cc4a2cc6f"
+      },
+      {
+        "path": "src/lib/cron/job-cursor.ts",
+        "headBlob": "f9363b4cfefbd6b582c3baa142dd16e127fbbf34",
+        "freshMainBlob": "f9363b4cfefbd6b582c3baa142dd16e127fbbf34",
+        "sha256": "433f99e165fe9236f1c1abe7d4bc6a570e6b6d7d272c07c42115911b64bda6bf"
+      },
+      {
+        "path": "src/lib/cron/job-lease.ts",
+        "headBlob": "1e3a9231ef5b449fc29fa88266576c3b4817315c",
+        "freshMainBlob": "1e3a9231ef5b449fc29fa88266576c3b4817315c",
+        "sha256": "225c1b8d51335d6d9bcef0784b10e89267e4cfd8a99809f25255aa20e40407f7"
+      },
+      {
+        "path": "prisma/schema.prisma",
+        "headBlob": "bd77cf2c6b4d854f01200f17dcd084aec1305761",
+        "freshMainBlob": "0996414dfc1f45d206f6bc0789ef574604837841",
+        "sha256": "b45ab0e72be3e7d8112350f08350935ede365f96f4d411ceb90bc946987b583a"
+      },
+      {
+        "path": "prisma/migrations/20260913063500_system_job_cursors/migration.sql",
+        "headBlob": "5c2d56d09ddc1748fd74bb0c4c68e975a308e8a6",
+        "freshMainBlob": "5c2d56d09ddc1748fd74bb0c4c68e975a308e8a6",
+        "sha256": "881a5ccc2002cfdb490f93f366a421e1ade2572c2b81ef89de245eaf0d232624"
+      },
+      {
+        "path": "src/lib/workforce/timesheet-export.ts",
+        "headBlob": "5c0f6e4a18ef24859cfa2ef38d65ba91acb77bc9",
+        "freshMainBlob": "5c0f6e4a18ef24859cfa2ef38d65ba91acb77bc9",
+        "sha256": "098ca89d798892d1874521c4ce6cf128ab79f0989dced5ebf82a231d1274ed74"
+      }
+    ],
+    "headTree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+    "integrationTree": "3bf40bb433577e885d31dfb26671c86480b3b4f1"
+  },
+  "localChecks": {
+    "targetedHead": "44/44 PASS in two files (35 kernel, 9 job)",
+    "targetedFreshMainIntegration": "44/44 PASS in two files",
+    "scopedEslint": "PASS on three changed TypeScript paths in both trees",
+    "diffCheck": "PASS in both trees",
+    "fullCompiler": "NOT RUN",
+    "fullSuite": "NOT RUN",
+    "build": "NOT RUN",
+    "browserPostgresAndroidLoad": "NOT RUN"
+  },
+  "integration": {
+    "kind": "LOCAL_RECONSTRUCTION_ONLY",
+    "candidatePaths": 26,
+    "supportPaths": 63,
+    "pathOverlap": [],
+    "selectedCore13ChangedBySupport": [],
+    "preservesAllSupportBlobs": true,
+    "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+    "remoteHeadChanged": false,
+    "hostedChecksOnIntegratedTree": "NOT RUN"
+  },
+  "hosted": {
+    "runId": 37277114913,
+    "event": "pull_request",
+    "attempt": 1,
+    "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+    "base": "daf05b6030c89c4508f2a999706f4169360ccce2",
+    "testedSynthetic": "2d563c7e5b5a43a824240f5c4fc8e47d02b13698",
+    "tree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+    "checks": [
+      {
+        "id": 111656574154,
+        "name": "typecheck",
+        "appId": 15368,
+        "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277114913/job/111656574154"
+      },
+      {
+        "id": 111656574127,
+        "name": "static-checks",
+        "appId": 15368,
+        "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277114913/job/111656574127"
+      },
+      {
+        "id": 111656481954,
+        "name": "GitHub-hosted Linux production build",
+        "appId": 15368,
+        "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "skipped",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277114913/job/111656481954"
+      },
+      {
+        "id": 111656480930,
+        "name": "scan",
+        "appId": 15368,
+        "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277115005/job/111656480930"
+      },
+      {
+        "id": 111656480512,
+        "name": "pr-scope",
+        "appId": 15368,
+        "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277114913/job/111656480512"
+      },
+      {
+        "id": 111656480169,
+        "name": "runner-policy",
+        "appId": 15368,
+        "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37277114937/job/111656480169"
+      }
+    ],
+    "rawLogsAccessed": false,
+    "artifactCount": 0,
+    "metadataOnly": true,
+    "compilerDiagnosticIdentityAcceptance": false,
+    "strictSuiteFailureIdentityAcceptance": false,
+    "globalCompilerOrSuiteCleanClaim": false
+  },
+  "acceptanceBlockers": [
+    "Frozen head contains bounded application/check/catalogue receipts but not its own accepted exact-head source/root/hosted review receipts. PR reviews and discussion are empty. Original executor private preparation state is not in the selected workspace or exposed connector tools.",
+    "All five mandatory checks are SUCCESS on original base daf05b60. Fresh Support main is 60ccd403; local integrated tree passes focused checks, but complete hosted acceptance for tree 3bf40bb4 has not run.",
+    "Current compiler full-diagnostic identities and strict suite failure identities cannot be recovered from artifacts (none published). Raw CI logs are explicitly prohibited; inherited PR584 statistics cannot be reused as current proof."
+  ],
+  "recoveryRequest": {
+    "destination": "Existing authorized Contabo appserver/browser owned by delegator",
+    "mode": "READ_ONLY_SANITIZED_JSON_ONLY",
+    "executorThread": "01a0f293-00a4-74d0-b9f5-20f904220194",
+    "reviewerThread": "01a10806-7c94-7500-9201-dcadf16485ee",
+    "doNotRestart": true,
+    "required": [
+      "Exact 8a243909 source independent receipt and matching root acceptance plus immutable source/hash bindings.",
+      "Exact 8a243909 hosted compiler all-family sanitized diagnostic identities and strict suite baseline comparison, independent report/root acceptance if they exist.",
+      "Any private part48 receipt-only checkpoint metadata and sanitized JSON, without CI log bodies."
+    ],
+    "exclude": [
+      "Raw logs",
+      "Credentials",
+      "Personal employee data",
+      "SSH",
+      "Mac"
+    ]
+  },
+  "workflowDispatch": {
+    "capabilityExposed": false,
+    "prChecksSupportsDispatch": false,
+    "payload": null,
+    "reason": "Verified pr-checks.yml declares pull_request and push/main only. A made-up dispatch payload would not be valid. No dispatch attempted."
+  },
+  "nextSlice": "docs/evidence/workforce-c12-cursor-fencing-next-slice-2026-10-05.json",
+  "accounting": {
+    "done": 82,
+    "total": 161,
+    "nonDone": 79,
+    "weightedPercent": 59,
+    "C8Percent": 45,
+    "gates": "14/15",
+    "C12_008": "PARTIAL",
+    "newRowClosures": 0
+  },
+  "forbiddenActionsPerformed": false,
+  "remoteCandidateReadyClaim": false
+}

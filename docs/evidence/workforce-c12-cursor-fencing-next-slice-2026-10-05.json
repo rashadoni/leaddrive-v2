@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "status": "PREPARED_ONLY_NOT_IMPLEMENTED",
+  "roadmapItem": "WF-C12-008",
+  "preparedAtUtc": "2026-10-05T15:57:10Z",
+  "candidateHead": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+  "freshMain": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+  "slice": "Dormant Workforce-specific lease-and-version-fenced cursor store",
+  "reason": "Existing cursor CAS compares cursor value only despite an available version column. The lease wrapper logs loss of renewal/completion but still returns completed. Neither proves stale-worker cursor fencing.",
+  "proposedNewPaths": [
+    "src/lib/workforce/reconciliation-cursor-store.ts",
+    "src/__tests__/workforce-reconciliation-cursor-store.test.ts",
+    "scripts/ci/test-workforce-reconciliation-cursor-store.mjs"
+  ],
+  "noOverlapWithCurrentPR": true,
+  "implementationContract": {
+    "interface": [
+      "read() returns {exists, cursor, version}; an absent row is distinct from an existing null cursor.",
+      "commit(expected state, next cursor, opaque owner token) returns a finite result; do not expose name, cursor, owner, tenant or employee identifiers."
+    ],
+    "atomicity": [
+      "Use the existing SystemJobLease/SystemJobCursor tables without a schema change.",
+      "In a short database transaction, lock the fixed-name lease row, then validate running status, exact owner token and unexpired lease using database wall-clock after lock acquisition.",
+      "Within that transaction compare cursor value AND version AND existence; increment version atomically on a successful update.",
+      "Initial insert is permitted only for an observed absent row with null cursor and an active matching lease; an existing null cursor is not an absent row.",
+      "Serialize lease acquire/complete against cursor commit through the same lease-row lock. Maintain one lock order: lease, then cursor.",
+      "Fail closed on lease expiry/loss, stale version, insert race, version exhaustion, or invalid bounded input; do not repair facts or reset progress."
+    ],
+    "privacy": [
+      "Fixed operational job name; opaque bounded cursor protocol without tenant/employee identifiers.",
+      "Aggregate finite diagnostic codes only; no raw SQL exceptions or free-text payload in published evidence."
+    ],
+    "activation": "Export an unused helper only. No import from a route, cron schedule, deployment workflow, current job or shared cursor/lease helper."
+  },
+  "meaningfulAcceptanceCases": [
+    "Two independent DB clients race from an absent cursor: exactly one insert succeeds.",
+    "ABA cursor sequence A -> B -> A: old version cannot commit even though its value matches again.",
+    "Stale owner after lease takeover cannot commit; new owner can.",
+    "Lease expires while waiting for the row lock: post-lock check rejects the commit.",
+    "Existing null cursor with version > 1 cannot be mistaken for an absent initial row.",
+    "Cursor write rollback or process disconnect before commit leaves progress unchanged.",
+    "Successful commit increments version once; duplicate replay cannot advance twice.",
+    "Expired/completed lease and version-exhausted rows fail without changing cursor or protected fact tables.",
+    "Bounds reject invalid inputs before SQL; result contains only finite codes and counts."
+  ],
+  "dependencyOrder": [
+    "Recover exact #585 source/hosted independent receipts or obtain replacement authorized independent review; current local checks do not supply it.",
+    "Revalidate frozen #585 and fresh main, then satisfy fresh integration hosted checks without changing protected baselines.",
+    "Apply the bounded unused cursor-store slice in a separate draft branch; validate it with targeted tests and real hosted PostgreSQL concurrency cases before source acceptance.",
+    "Separately design stable versioned cutoff/keyset and full dependency page closure for all eight snapshot kinds, including independently scanned orphan sources and entire approval revision groups.",
+    "Resolve a real durable export-delivery source; deriving an export anew from its approval is not delivery reconciliation.",
+    "Only after those dependencies: compose the authorized DB reader/store/job; staging zero-loss and crash/replay rehearsal precedes any separately approved production activation."
+  ],
+  "confirmedOpenGaps": [
+    "Pure kernel/job is dormant: source search finds no production caller.",
+    "Complete page closure, independent orphan scans, approval grouping, segment ownership and stable cutoff are absent.",
+    "Actual durable export-delivery source is not established by the inspected schema/export module.",
+    "Roadmap duplicate C12-008 entry cites docs/workforce-c12-reconciliation-foundation-evidence-2026-08-30.md, which is absent from both recovered trees; its scheduled-worker statement is not accepted runtime evidence.",
+    "Isolated staging reconciliation, alerts and activation evidence remain open."
+  ],
+  "notRun": [
+    "Implementation",
+    "SQL runtime tests",
+    "Full compiler/suite",
+    "Independent review of this future slice",
+    "Deployment or activation"
+  ],
+  "accounting": {
+    "done": 82,
+    "total": 161,
+    "nonDone": 79,
+    "roadmapGates": "14/15",
+    "C8Percent": 45,
+    "weightedPercent": 59,
+    "rowClosure": false
+  },
+  "scopeExclusions": [
+    "Shared lease/cursor behavior changes",
+    "Schema/RLS/permissions/credentials changes",
+    "HRHub or personnel-document features",
+    "Main merge",
+    "Deploy",
+    "Activation",
+    "Paid reviewer",
+    "Mac/SSH",
+    "Raw CI logs"
+  ]
+}
