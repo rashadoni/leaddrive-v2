@@ -1,0 +1,32 @@
+{
+  "status": "DELEGATOR_SAFE_METADATA_PROJECTION_ONLY_NOT_FULL_RECEIPT_ACCEPTANCE",
+  "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+  "base": "daf05b6030c89c4508f2a999706f4169360ccce2",
+  "synthetic": "2d563c7e5b5a43a824240f5c4fc8e47d02b13698",
+  "tree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+  "originals": {
+    "hostedReport": "653ae40406bdc323c6af7cabd9ffe298b1be56c44d2939fdbbc6eea07c5b3521",
+    "hostedInputAudit": "3b6a7286fcb0bdd6e0079dcbb10163bb3d5a88c5150e82512afd459e6f767fd6",
+    "hostedIntegrity": "089eb06dbc8d2fb22b3c2f96b051938f21ff26671aed2614788a275c3fe25c03",
+    "correctedSource": "d52e3b7a61b9d34cee56b52cd6980d46e5e78dda4f974ae4ad9f63747af44d09",
+    "sourceInputAudit": "e7d67d803ff356b251c05ac52d86459d57273d2936e97fd0843cbf2a8523345e",
+    "sourceIntegrity": "e7225ec3b47c515ffbfde6978b0333ee3fb86074f41212b60be2b771d1c72348",
+    "rootSource": "cd13769b980551471cc072e690f7e6abebb2997a692879540b465cabd2bf36f4"
+  },
+  "reportedFacts": {
+    "independentHosted": "GREEN",
+    "findingsP0toP3": 0,
+    "compilerDiagnostics": 1168,
+    "baselinePairs": 66,
+    "selectedPaths": 13,
+    "selectedDiagnostics": 0,
+    "knownFailingSuiteFiles": 18,
+    "rootHostedAcceptance": "NOT CONFIRMED"
+  },
+  "limitations": [
+    "Original report/input audit/integrity bytes were NOT transferred or read by the new owner.",
+    "Old365 descriptors were not re-read in full.",
+    "Narrow sanitized baseline-identity projection requested separately.",
+    "These reported facts are leads; they do not replace current independent source or hosted integration acceptance."
+  ]
+}

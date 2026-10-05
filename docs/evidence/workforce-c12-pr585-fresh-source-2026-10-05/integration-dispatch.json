@@ -1,0 +1,20 @@
+{
+  "workflowUrl": "https://github.com/rashadoni/leaddrive-v2/actions/workflows/workforce-manager-today-browser-evidence.yml",
+  "method": "POST",
+  "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/workflows/workforce-manager-today-browser-evidence.yml/dispatches",
+  "body": {
+    "ref": "codex/hrm-585-integration-20261005",
+    "inputs": {}
+  },
+  "preconditions": {
+    "expectedRefSha": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+    "expectedTree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+    "expectedMain": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+    "abortOnRefChange": true
+  },
+  "execution": "Existing authorized cloud browser only; open workflow, select exact branch, run once. No secret inputs or production environment. Ubuntu24.04 isolated PostgreSQL and Next dev.",
+  "expectedArtifact": "workforce-manager-today-browser-ad8cc2ce22f11f18eb6e090ef4264a71def6c350-1",
+  "readPolicy": "Run/job/artifact metadata and sanitized JSON/PNG only. Do not retrieve raw logs.",
+  "acceptanceScope": "Fresh HRM Manager Today browser/PostgreSQL integration sublane only; does not replace PR compiler/suite or accept C12 DB adapter.",
+  "duplicateGuard": "Search workflow_dispatch runs bound to this SHA first; reuse a matching existing run instead of dispatching twice."
+}

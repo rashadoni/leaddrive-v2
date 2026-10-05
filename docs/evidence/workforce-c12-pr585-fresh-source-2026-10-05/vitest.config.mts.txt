@@ -1,0 +1,2 @@
+import { defineConfig } from "vitest/config";
+export default defineConfig({test:{root:"/tmp/hrm-pr585-independent-20261005",include:["probes.test.ts"],environment:"node",maxWorkers:1},resolve:{alias:{"@":"/workspace/hrm-585-review/src"}}});

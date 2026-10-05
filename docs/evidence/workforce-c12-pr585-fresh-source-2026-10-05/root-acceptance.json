@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "status": "ROOT_ACCEPTED_FRESH_INDEPENDENT_BOUNDED_SOURCE_ONLY",
+  "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+  "tree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+  "independentReceipt": {
+    "sha256": "b6dced09dcdc4754f5908b156269bdcda773bf0222175c3cf5f11da47d1931ca",
+    "bytes": 16163
+  },
+  "rootVerified": [
+    "Whole independent JSON read.",
+    "All five referenced test/probe/config originals rehashed byte-for-byte; whole probe source read.",
+    "All three actual JSON test reports parsed:44,59,44passed,zero failed.",
+    "13 source bindings independently matched before acceptance.",
+    "Both exact Git trees and15protected files verified in root work."
+  ],
+  "independentFindings": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "hostedAcceptance": false,
+  "wholeCompilerOrSuiteAcceptance": false,
+  "productionAcceptance": false,
+  "mergePermission": false,
+  "originalFrozenHeadUnchanged": true,
+  "checkpointCommit": "ece328fa5b2bf6f3965309b587b3faf263f35ab3",
+  "integration": {
+    "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+    "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+    "synthetic": "f9665521fa579ccba41b2f4179d2199130111c43",
+    "pr": 587,
+    "run": 37338427199,
+    "status": "RUNNING; no hosted credit yet"
+  },
+  "accounting": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weightedPercent": 59,
+    "C12_008": "PARTIAL"
+  }
+}

@@ -1,0 +1,397 @@
+{
+  "schemaVersion": 1,
+  "status": "INDEPENDENT_SOURCE_REVIEW_ACCEPTED_WITH_EXPLICIT_LIMITS",
+  "createdAtUtc": "2026-10-05T16:07:34.118250+00:00",
+  "reviewer": {
+    "task": "/root/pr585_independent_review",
+    "role": "fresh independent read-only reviewer",
+    "authorOfCandidate": false,
+    "inheritedReceiptAcceptance": false,
+    "scope": "PR585 bounded duplicate-ID and same-employee workday-coherence source change"
+  },
+  "repository": "rashadoni/leaddrive-v2",
+  "pullRequest": 585,
+  "candidate": {
+    "sourceHead": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+    "tree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+    "originalBase": "daf05b6030c89c4508f2a999706f4169360ccce2",
+    "worktree": "/workspace/hrm-585-review",
+    "localGitHeadIsOriginalBaseNotCandidate": true,
+    "shaProvenance": "Exact source SHA and GitHub manifests supplied by sole owner; reviewer independently verified every candidate blob, file mode and recomputed Git tree. Remote GitHub metadata was not independently refetched by this worker.",
+    "checkpointCommitIsSeparate": "ece328fa5b2bf6f3965309b587b3faf263f35ab3"
+  },
+  "integration": {
+    "freshMain": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+    "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+    "executionKind": "LOCAL_RECONSTRUCTED_TREE",
+    "hostedIntegration": "NOT RUN",
+    "selected13UnchangedFromCandidate": true,
+    "validationPullRequest": {
+      "number": 587,
+      "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+      "parent": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+      "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+      "provenance": "Owner update during review; remote metadata not refetched by reviewer",
+      "hostedAcceptance": "PENDING; no hosted result accepted in this source receipt"
+    }
+  },
+  "integrity": {
+    "head": {
+      "filesVerified": 8709,
+      "failures": [],
+      "tree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+      "expectedTree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+      "treeMatches": true,
+      "manifestSha256": "e3937e35c29b19af2b7c2e8ee8e917ca632f7a5f99847b116d4c4b679d70dda8",
+      "modeMismatches": []
+    },
+    "integration": {
+      "filesVerified": 8731,
+      "failures": [],
+      "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+      "expectedTree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+      "treeMatches": true,
+      "manifestSha256": "efd0b63c29162ac05dd0dd949fd7461abfa8a91e56e49780b1ec92aeacf2c7a7",
+      "modeMismatches": []
+    },
+    "bindings": [
+      {
+        "path": "src/__tests__/workforce-reconciliation-job.test.ts",
+        "bytes": 7778,
+        "sha256": "8df55e84e2f2aca80633f167659f3a509a5f467e9f4b79ab072728105791db2b",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation.test.ts",
+        "bytes": 13558,
+        "sha256": "bb1dedf39a72beb6fe4cff41336b59fa4bdd5faa08d03ecdae7343b20f43ecd8",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/format-date.ts",
+        "bytes": 9433,
+        "sha256": "ea5422cfdf139f7a536552c08f324e2168cfac53c25ec936d86676ef802f12ae",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/mtm/mobile-week.ts",
+        "bytes": 4180,
+        "sha256": "6f557666c7e17161e914696f4d7891ebac9ec2845da4de6e4de9c5b1db864d96",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/prisma.ts",
+        "bytes": 13628,
+        "sha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/rls-context.ts",
+        "bytes": 5099,
+        "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/timezone.ts",
+        "bytes": 12919,
+        "sha256": "88761f7c31ff4d596f1b0a0c1aa198c5c70a3d2ac4d494818728884cb5b75247",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/workforce/data-classification.ts",
+        "bytes": 2849,
+        "sha256": "b01411dd343c40849d6a04e50ab308d2f005baaa3fdf1a85aa9a8d783e72490c",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/workforce/reconciliation-job.ts",
+        "bytes": 3722,
+        "sha256": "1fd328013fac465edf3446c834bb3e97fca9f6af27b499f47ee81f2cc4a2cc6f",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/workforce/reconciliation.ts",
+        "bytes": 9151,
+        "sha256": "83b0f897de05515a4cfa92068edb6ce32026009e8d0690545b3b7309735fca5c",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/workforce/timesheet-approval.ts",
+        "bytes": 6652,
+        "sha256": "edbb6ba108d769f84e81b9c772fa7f7c5ddd99533af214c56f2039ccc86b3ee1",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/workforce/timesheet-calculation.ts",
+        "bytes": 12067,
+        "sha256": "1c0e44ed28a9cbde6e317c031ec53cafdb05efd1115d19b0bd3606037ba206e1",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      },
+      {
+        "path": "src/lib/workforce/timesheet-export.ts",
+        "bytes": 3893,
+        "sha256": "098ca89d798892d1874521c4ce6cf128ab79f0989dced5ebf82a231d1274ed74",
+        "catalogueMatches": true,
+        "integrationIdentical": true
+      }
+    ]
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [],
+    "introducedDefectsFound": false
+  },
+  "sourceConclusions": [
+    "All seven ID-bearing row kinds are validated for duplicate primary keys before any lookup or reconciliation output is constructed; export rows have no id field in this snapshot contract.",
+    "Duplicate IDs with conflicting organizations/agents are rejected identically in either order, with only a fixed row-kind code; equal IDs in separate kinds remain valid.",
+    "Exception explicit workday, event workday, and evidence-subject workday must agree, including evidence attached to either event or site transition and references belonging to the same employee.",
+    "Mismatch produces one finite EXCEPTION_SUBJECT_SCOPE_MISMATCH for the affected exception; coherent same-workday combinations remain accepted.",
+    "Frozen snapshots, including duplicate and cross-workday inputs, remain unchanged. Successful and mismatch outputs contain counts/codes and repair NONE without row or cursor identifiers.",
+    "Unchanged job calls reconciliation before commitCursor; duplicate exceptions reject and mismatches return before cursor advancement or subsequent page load.",
+    "Changes do not introduce a database adapter, scheduler, lease activation, production effects or changes to shared cursor/lease helpers."
+  ],
+  "tests": [
+    {
+      "command": "vitest run src/__tests__/workforce-reconciliation.test.ts src/__tests__/workforce-reconciliation-job.test.ts --maxWorkers=1 --reporter=json",
+      "execution": "RUN_BY_THIS_INDEPENDENT_REVIEWER",
+      "tree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+      "passed": 44,
+      "failed": 0,
+      "success": true,
+      "report": {
+        "path": "/tmp/hrm-pr585-independent-20261005/head-tests.json",
+        "bytes": 17166,
+        "sha256": "863c64163187e1b9ce226169686e696bb467994036f2d202fd80040d337c6cc2"
+      }
+    },
+    {
+      "command": "vitest run --config /tmp/hrm-pr585-independent-20261005/vitest.config.mts --reporter=json",
+      "execution": "RUN_BY_THIS_INDEPENDENT_REVIEWER",
+      "tree": "4edacbce6911d6b7a784eae55d3812bdbebd5763",
+      "passed": 59,
+      "failed": 0,
+      "success": true,
+      "report": {
+        "path": "/tmp/hrm-pr585-independent-20261005/probes.json",
+        "bytes": 13923,
+        "sha256": "722a5ee3e33e015cdb16131d458b41bb43e37fb499caf6d7be37bef43478a5f5"
+      }
+    },
+    {
+      "command": "vitest run src/__tests__/workforce-reconciliation.test.ts src/__tests__/workforce-reconciliation-job.test.ts --maxWorkers=1 --reporter=json",
+      "execution": "RUN_BY_THIS_INDEPENDENT_REVIEWER",
+      "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+      "passed": 44,
+      "failed": 0,
+      "success": true,
+      "report": {
+        "path": "/tmp/hrm-pr585-independent-20261005/integration-tests.json",
+        "bytes": 17182,
+        "sha256": "6fb507999fbe3c9068bbeefd14a02b92066721c05a1ea0e79b3fd56ea52a0c25"
+      }
+    }
+  ],
+  "independentProbes": {
+    "duplicateKinds": 7,
+    "ordersPerKind": 2,
+    "exceptionSubjectCombinations": 45,
+    "total": 59,
+    "fixtures": "synthetic only",
+    "frozenInput": true,
+    "cursorAssertions": true,
+    "source": {
+      "path": "/tmp/hrm-pr585-independent-20261005/probes.test.ts",
+      "bytes": 3411,
+      "sha256": "98e969e5a80171fd43a94f0b31cfb003dc8a245e9b45320d5a4c7c24cb9886f2"
+    },
+    "config": {
+      "path": "/tmp/hrm-pr585-independent-20261005/vitest.config.mts",
+      "bytes": 241,
+      "sha256": "23dde28dec3a27990f4a38f9d82813bafa9e58d4e3859f7d30a9f8194a7eeb38"
+    }
+  },
+  "otherChecks": {
+    "scopedEslint": {
+      "status": "PASS",
+      "exitCode": 0,
+      "paths": [
+        "src/lib/workforce/reconciliation.ts",
+        "src/__tests__/workforce-reconciliation.test.ts",
+        "src/__tests__/workforce-reconciliation-job.test.ts"
+      ]
+    },
+    "candidateDiffCheck": {
+      "status": "PASS",
+      "exitCode": 0
+    },
+    "protectedFiles": [
+      {
+        "path": ".gitleaks.toml",
+        "sha256": "f2c83316fa50e9f8a7b52dacb30236bc3dc88c9984ab1159cc8dc5ac724ff809",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": ".github/workflows/pr-checks.yml",
+        "sha256": "d034cae6f3d5fa64d15ad52686d4b78b46a487d330151907e069e1239f162969",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": ".github/workflows/runner-policy.yml",
+        "sha256": "46792e8379ba8c3640d8549a91aa4fc59c778a1f14652e609b4f6fc243ddbf6a",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "scripts/ci/check-typecheck-gate.sh",
+        "sha256": "a18608d9297c039380481fb27d6200d9ebbcc731e9ec23dd40b5e3a2c5a40937",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "scripts/ci/check-typecheck-baseline.mjs",
+        "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "scripts/ci/check-github-runner-policy.mjs",
+        "sha256": "d0133dc3d1f3e1642f05209be4436751a69a5bf2dd56c8854bbf256179bed3b0",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": ".github/workflows/gitleaks.yml",
+        "sha256": "c5d38a364e21e5b1e3272d54d9d79faaa8b88b2e8390a24efb29414103039e89",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": ".github/workflows/set-social-app-secrets.yml",
+        "sha256": "6465745a44f77c04d30642768b8df0342adb4145942390305998e94871dfe3f5",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "scripts/check-test-baseline.mjs",
+        "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "scripts/workforce-hrm-baseline.sql",
+        "sha256": "82fc77ad14844e3a2339063ab267500868be429063a1a9d549fe481361ccba90",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "src/__tests__/check-test-baseline-timeout-rendering.test.ts",
+        "sha256": "eaf638908c02306d8559909cbcbebc74c67c19442bbc80002cc11716cde28a29",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "src/__tests__/production-test-baseline-gate.test.ts",
+        "sha256": "7a6d1d18120475624998b0c0c9827a7bb7c3bc4e4317d42cbcb2b6b45ab09da7",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "test-baseline.json",
+        "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "typecheck-baseline.json",
+        "sha256": "e33fe73cb126f5bf205f317d240af968917a5ce516c8b83a30b8d6e34077001b",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      },
+      {
+        "path": "next.config.ts",
+        "sha256": "0c0724cf9386a556257f8d2f104ed35c93d072b9e6debba9e08a1d45582b239f",
+        "candidateMatchesOriginalBase": true,
+        "integrationMatchesCandidate": true,
+        "matchesExpected": true
+      }
+    ],
+    "typecheckBaselinePairs": 66,
+    "testBaselineFiles": 18,
+    "baselineMeaning": "Counts and byte identity verified only; no current full compiler or strict-suite diagnostic identity acceptance."
+  },
+  "instructionsRead": [
+    "AGENTS.md",
+    "docs/DELIVERY-ARCHITECTURE.md",
+    "docs/workforce-c12-duplicate-coherence-evidence-2026-10-05.md",
+    "docs/evidence/workforce-c12-duplicate-coherence-selected-catalogue-2026-10-05.json",
+    "docs/workforce-hrm-session-log.md (current PR585 entries)",
+    "docs/workforce-hrm-completion-roadmap-2026-08-30.md (C12-008 entries)"
+  ],
+  "sourceRead": [
+    "src/lib/workforce/reconciliation.ts",
+    "src/lib/workforce/reconciliation-job.ts",
+    "src/__tests__/workforce-reconciliation.test.ts",
+    "src/__tests__/workforce-reconciliation-job.test.ts",
+    "src/lib/workforce/timesheet-export.ts",
+    "src/lib/workforce/timesheet-approval.ts",
+    "src/lib/workforce/data-classification.ts",
+    "src/lib/mtm/mobile-week.ts (date validation)",
+    "src/lib/cron/job-cursor.ts",
+    "src/lib/cron/job-lease.ts"
+  ],
+  "limits": [
+    "Hosted integration NOT RUN.",
+    "Full compiler, strict full suite, build, browser, PostgreSQL, Android and load checks NOT RUN by this reviewer.",
+    "Legacy independent/root/hosted receipts are not inherited or accepted by this receipt.",
+    "No global compiler-clean or full-suite-clean claim.",
+    "Database snapshot reader, complete page closure, approval revision grouping across pages, segment ownership, durable lease/version fencing, export-delivery source and staging acceptance remain open.",
+    "Malformed runtime snapshot validation is outside this bounded typed-input change.",
+    "This source receipt does not authorize merge, deploy or activation; no required GitHub check/status was created."
+  ],
+  "accounting": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weightedPercent": 59,
+    "C12_008": "PARTIAL",
+    "newClosures": 0
+  },
+  "prohibitedActions": {
+    "rawCiLogsRead": false,
+    "credentialsReadOrChanged": false,
+    "macOrSshUsed": false,
+    "codeEdited": false,
+    "commitOrPush": false,
+    "mergeDeployActivation": false
+  }
+}

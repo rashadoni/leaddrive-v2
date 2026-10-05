@@ -1,0 +1,28 @@
+import { it, expect, vi } from "vitest";
+import { reconcileWorkforceSnapshot } from "/workspace/hrm-585-review/src/lib/workforce/reconciliation";
+import { runWorkforceReconciliationJob } from "/workspace/hrm-585-review/src/lib/workforce/reconciliation-job";
+const empty=()=>({workdays:[],events:[],transitions:[],evidence:[],assessments:[],exceptions:[],approvals:[],exports:[]});
+function frozen(x:any):any {if(x&&typeof x==="object"){for(const v of Object.values(x))frozen(v);Object.freeze(x);}return x;}
+for(const kind of ["workdays","events","transitions","evidence","assessments","exceptions","approvals"]){
+ for(const reverse of [false,true])it(`duplicate conflict rejects ${kind} reverse ${reverse} before cursor`,async()=>{
+  const s:any=empty(); const rows=[{id:"duplicate-synthetic",organizationId:"org-synthetic",agentId:"agent-synthetic"},{id:"duplicate-synthetic",organizationId:"different-synthetic",agentId:"different-agent-synthetic"}];
+  s[kind]=reverse?rows.reverse():rows; frozen(s); const before=JSON.stringify(s);
+  let caught:any;try{reconcileWorkforceSnapshot(s);}catch(e){caught=e;}
+  expect(caught?.message).toBe(`WORKFORCE_RECONCILIATION_DUPLICATE_ID:${kind}`);
+  const store={loadPage:vi.fn(async()=>({snapshot:s,nextCursor:"next-synthetic",more:true})),commitCursor:vi.fn(async()=>true)};
+  await expect(runWorkforceReconciliationJob({store,initialCursor:"previous-synthetic"})).rejects.toThrow(`WORKFORCE_RECONCILIATION_DUPLICATE_ID:${kind}`);
+  expect(store.loadPage).toHaveBeenCalledTimes(1);expect(store.commitCursor).not.toHaveBeenCalled();expect(JSON.stringify(s)).toBe(before);
+ });
+}
+for(const explicit of [null,"a","b"])for(const event of [null,"a","b"])for(const proof of [null,"event-a","event-b","transition-a","transition-b"]){
+ it(`same employee coherence ${explicit}/${event}/${proof}`,async()=>{
+  const s:any=empty();const scope={organizationId:"org-synthetic",agentId:"agent-synthetic"};
+  s.workdays=["a","b"].map(id=>({id,...scope}));s.events=["a","b"].map(w=>({id:"event-"+w,workdayId:w,...scope}));s.transitions=["a","b"].map(w=>({id:"transition-"+w,workdayId:w,...scope}));
+  s.evidence=["event-a","event-b","transition-a","transition-b"].map(v=>({id:"proof-"+v,organizationId:scope.organizationId,workdayEventId:v.startsWith("event")?v:null,siteTransitionId:v.startsWith("transition")?v:null}));
+  s.exceptions=[{id:"case-synthetic",...scope,workdayId:explicit,workdayEventId:event?"event-"+event:null,evidenceId:proof?"proof-"+proof:null,segmentId:null,expectedWorkDate:null}];
+  frozen(s);const before=JSON.stringify(s);const days=[explicit,event,proof?.slice(-1)].filter(Boolean);const expected=days.length===0?"EXCEPTION_SUBJECT_INVALID":new Set(days).size>1?"EXCEPTION_SUBJECT_SCOPE_MISMATCH":null;
+  const r=reconcileWorkforceSnapshot(s);expect(r.mismatchCounts).toEqual(expected?{[expected]:1}:{});expect(r.status).toBe(expected?"MISMATCH":"MATCHED");expect(r.repair).toBe("NONE");expect(JSON.stringify(r)).not.toContain("synthetic");expect(JSON.stringify(s)).toBe(before);
+  const store={loadPage:vi.fn(async()=>({snapshot:s,nextCursor:"next-synthetic",more:false})),commitCursor:vi.fn(async()=>true)};
+  const jr=await runWorkforceReconciliationJob({store,initialCursor:null});expect(jr.status).toBe(expected?"MISMATCH":"MATCHED");expect(store.loadPage).toHaveBeenCalledTimes(1);expect(store.commitCursor).toHaveBeenCalledTimes(expected?0:1);
+ });
+}
