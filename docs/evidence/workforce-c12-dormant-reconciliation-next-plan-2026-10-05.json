@@ -1,0 +1,377 @@
+{
+  "atUtc": "2026-10-05T02:09:28.357794+00:00",
+  "status": "FUTURE DORMANT-KERNEL PREPARATION ONLY",
+  "headSha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "sourceOnly": true,
+  "applicationAllowed": false,
+  "implementationOrRuntimeOrDoneCredit": false,
+  "activeApplicationSourceReads": 0,
+  "explicitGitInputs": [
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__cron__job-lease.ts.gitshow",
+      "bytes": 6145,
+      "sha256": "225c1b8d51335d6d9bcef0784b10e89267e4cfd8a99809f25255aa20e40407f7",
+      "repoPath": "src/lib/cron/job-lease.ts",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/lib/cron/job-lease.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__cron__job-lease.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__cron__job-cursor.ts.gitshow",
+      "bytes": 1895,
+      "sha256": "433f99e165fe9236f1c1abe7d4bc6a570e6b6d7d272c07c42115911b64bda6bf",
+      "repoPath": "src/lib/cron/job-cursor.ts",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/lib/cron/job-cursor.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__cron__job-cursor.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce__no-show-review-scheduler.ts.gitshow",
+      "bytes": 15438,
+      "sha256": "47077fbfe7cbc4833db4ca0431eac643894e33f2c279d2d0ac9d15e66d8fbb79",
+      "repoPath": "src/lib/workforce/no-show-review-scheduler.ts",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/lib/workforce/no-show-review-scheduler.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce__no-show-review-scheduler.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__app__api__v1__workforce.gitshow",
+      "bytes": 244,
+      "sha256": "e6a5cdf4dcf2751597fe54a81f461afd6390eb37f42c6abf5274e337cebb7f03",
+      "repoPath": "src/app/api/v1/workforce",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/app/api/v1/workforce"
+      ],
+      "returnCode": 0,
+      "blobContent": false,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__app__api__v1__workforce.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce__reconciliation-job.ts.gitshow",
+      "bytes": 3722,
+      "sha256": "1fd328013fac465edf3446c834bb3e97fca9f6af27b499f47ee81f2cc4a2cc6f",
+      "repoPath": "src/lib/workforce/reconciliation-job.ts",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/lib/workforce/reconciliation-job.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce__reconciliation-job.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce__reconciliation.ts.gitshow",
+      "bytes": 7408,
+      "sha256": "fbb583fc6d345a9b014210e26cd97fdbc67d9a2983d84e2bab219a03468e39ab",
+      "repoPath": "src/lib/workforce/reconciliation.ts",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/lib/workforce/reconciliation.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce__reconciliation.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/prisma__schema.prisma.gitshow",
+      "bytes": 956177,
+      "sha256": "b45ab0e72be3e7d8112350f08350935ede365f96f4d411ceb90bc946987b583a",
+      "repoPath": "prisma/schema.prisma",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:prisma/schema.prisma"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/prisma__schema.prisma.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce.gitshow",
+      "bytes": 3589,
+      "sha256": "214931af99151a9ffba676577eaff57fdbe8c7ab6ed1ec20eaa5fae2420b1ab1",
+      "repoPath": "src/lib/workforce",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/lib/workforce"
+      ],
+      "returnCode": 0,
+      "blobContent": false,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__cron.gitshow",
+      "bytes": 163,
+      "sha256": "30f7e0a95c26c0dcdc3ded6eafd2cf3b586b8516aea9849535b12310fda04cc9",
+      "repoPath": "src/lib/cron",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/lib/cron"
+      ],
+      "returnCode": 0,
+      "blobContent": false,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__cron.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src____tests____workforce-reconciliation-job.test.ts.gitshow",
+      "bytes": 3612,
+      "sha256": "983b8b8b2f8f9f15dd201ecc0e2845369c68cf002da8a35e48bdf50b0cd28177",
+      "repoPath": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/__tests__/workforce-reconciliation-job.test.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src____tests____workforce-reconciliation-job.test.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src____tests____workforce-reconciliation.test.ts.gitshow",
+      "bytes": 5384,
+      "sha256": "7cc68bdcfc708f597d183020a7a93a4fd3e58c0bb9e6146e5ce316bb4532a80a",
+      "repoPath": "src/__tests__/workforce-reconciliation.test.ts",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/__tests__/workforce-reconciliation.test.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src____tests____workforce-reconciliation.test.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__app__api__cron__workforce-no-show-review__route.ts.gitshow",
+      "bytes": 1214,
+      "sha256": "79e20b33700d1f458435393c4bcfb2d08c5b29f1a73d43a9a58ab44141aa5aae",
+      "repoPath": "src/app/api/cron/workforce-no-show-review/route.ts",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/app/api/cron/workforce-no-show-review/route.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__app__api__cron__workforce-no-show-review__route.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce__timesheet-export.ts.gitshow",
+      "bytes": 3893,
+      "sha256": "098ca89d798892d1874521c4ce6cf128ab79f0989dced5ebf82a231d1274ed74",
+      "repoPath": "src/lib/workforce/timesheet-export.ts",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/lib/workforce/timesheet-export.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib__workforce__timesheet-export.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src____tests__.gitshow",
+      "bytes": 72674,
+      "sha256": "82bc057bbe8cefd98098d7cc7b185f67090f3ad38aeefb352125dbeb9366384c",
+      "repoPath": "src/__tests__",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/__tests__"
+      ],
+      "returnCode": 0,
+      "blobContent": false,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src____tests__.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib.gitshow",
+      "bytes": 5287,
+      "sha256": "c9eb056a815e57a39d5698b01d30fd6554da838e44c4fa28d99c1506c60d91a7",
+      "repoPath": "src/lib",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:src/lib"
+      ],
+      "returnCode": 0,
+      "blobContent": false,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/src__lib.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/docs__workforce-c12-reconciliation-foundation-evidence-2026-08-30.md.gitshow",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "repoPath": "docs/workforce-c12-reconciliation-foundation-evidence-2026-08-30.md",
+      "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+      "command": [
+        "git",
+        "show",
+        "3ddae974bd31cf954645972e4de9cc8393a6c8f8:docs/workforce-c12-reconciliation-foundation-evidence-2026-08-30.md"
+      ],
+      "returnCode": 128,
+      "blobContent": false,
+      "wholeStderr": {
+        "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/docs__workforce-c12-reconciliation-foundation-evidence-2026-08-30.md.stderr",
+        "bytes": 143,
+        "sha256": "defbe3a723e4482b65d48401fe8f9457780f875dbce0a99d24e7323fdb53f233"
+      }
+    }
+  ],
+  "historicalEvidencePathActuallyMissing": {
+    "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/docs__workforce-c12-reconciliation-foundation-evidence-2026-08-30.md.gitshow",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "repoPath": "docs/workforce-c12-reconciliation-foundation-evidence-2026-08-30.md",
+    "sha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+    "command": [
+      "git",
+      "show",
+      "3ddae974bd31cf954645972e4de9cc8393a6c8f8:docs/workforce-c12-reconciliation-foundation-evidence-2026-08-30.md"
+    ],
+    "returnCode": 128,
+    "blobContent": false,
+    "wholeStderr": {
+      "path": "/tmp/workforce-c12-reconciliation-exact3ddae-preparation-independent-20261005T020411235431Z/docs__workforce-c12-reconciliation-foundation-evidence-2026-08-30.md.stderr",
+      "bytes": 143,
+      "sha256": "defbe3a723e4482b65d48401fe8f9457780f875dbce0a99d24e7323fdb53f233"
+    }
+  },
+  "firstCandidate": {
+    "paths": [
+      "src/lib/workforce/reconciliation.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/__tests__/workforce-reconciliation-job.test.ts"
+    ],
+    "scope": "Dormant pure-kernel integrity only, no DB adapter/cron/route/writer/migration/shared lease or RLS change",
+    "requiredChanges": [
+      "Validate every transition workday exists and organizationId+agentId match; use an explicit finite transition mismatch code.",
+      "For exception evidence references, resolve the evidence subject (event or transition) and enforce exception agentId matches that subject as well as organizationId. Preserve direct evidence/assessment fields as actual schema; neither model has agentId.",
+      "Treat segment-only subject as valid only with nonempty segment id plus real canonical UTC date-key, no invented accepted START. Segment existence/ownership needs a future authorized dependency closure and remains unproven by this pure snapshot."
+    ],
+    "meaningfulTests": [
+      "Missing/cross-organization/cross-agent transition parent and valid transition, without source identifiers in result.",
+      "Same-organization different-employee event/transition evidence attached to exception; valid employee match and subject invalidity.",
+      "Impossible calendar date/blank segment/null combinations and a valid leap-day segment-only subject.",
+      "Deep frozen input unchanged; bounded MAX1000 rejection unchanged; mismatch keeps cursor uncommitted; CAS conflict/TRUNCATED/privacy existing contracts remain unchanged."
+    ]
+  },
+  "actualSchemaBounds": {
+    "evidenceAgentIdExists": false,
+    "assessmentAgentIdExists": false,
+    "transitionWorkdayRelation": "organizationId+workdayId",
+    "transitionAgentRelation": "organizationId+agentId",
+    "exceptionExpectedWorkDate": "DateTime? @db.Date",
+    "operationalTablesAlreadyExist": [
+      "SystemJobLease",
+      "SystemJobCursor"
+    ]
+  },
+  "laterAdapterPrerequisites": [
+    "Complete authorized dependency closure for all eight snapshot kinds and complete approval revision groups; never omit cross-page parents or truncate a dependency silently. Overflow must fail before cursor commit.",
+    "Scan orphan sources independently as well as workday roots; reverse references cannot be inferred solely from selected valid parents.",
+    "Resolve actual durable export-manifest source before claiming export coverage; current schema has immutable approval rows/hashes but no dedicated Workforce export model identified in inspected schema.",
+    "Stable versioned page cutoff/keyset and crash/replay guarantees with transaction-level tenant authorization; global operational cursor must not expose tenant/employee/proof payload.",
+    "Fence cursor commit by lease owner+valid lease and cursor version, beyond cursor value alone. Existing withJobLease logs failed renew/complete but still returns completed, and generic cursor compareAndSet checks value not version; neither alone supplies this adapter proof.",
+    "No production schedule activation/repair/backfill by this integrity subset; maintenance bypass, enabled tenant filtering, budgets and privacy need their own actual hosted PG review."
+  ],
+  "limits": [
+    "Whole schema bytes rehashed, selected actual models manually reviewed; not all956177 schema bytes manually re-audited.",
+    "Existing job/kernel and two test files read wholly. No test/DB/browser/compiler executed by reviewer.",
+    "Own581 release remains separately pending while build completes; this plan provides no current release or roadmap-row closure."
+  ]
+}
