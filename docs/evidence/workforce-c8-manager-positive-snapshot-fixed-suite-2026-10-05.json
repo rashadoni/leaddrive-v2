@@ -1,0 +1,43 @@
+{
+  "atUtc": "2026-10-05T01:39:37.712454+00:00",
+  "status": "CURRENT STRICT SUITE BASELINE PASS; FULL COMPILER/WHOLE HOSTED PENDING",
+  "head": "56edf7cebc94b5927b26b125991dc82625f59a3b",
+  "base": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "synthetic": "f96b22278af5991579504c21e9e3b9e01457f8e7",
+  "runId": 37251169611,
+  "jobId": 111578988990,
+  "wholeLog": {
+    "path": "/tmp/workforce-pr581-56edf-current-hosted-originals-primary/whole-logs/111578988990.txt",
+    "bytes": 212441,
+    "sha256": "9cd80f0609e84caa92c28859da12594e067ed7dd5250712e68e09380bd78b0b9"
+  },
+  "exactKnownFailingFiles18": [
+    "src/__tests__/api-social-brand-protection.test.ts",
+    "src/__tests__/api-social-convert-to-lead.test.ts",
+    "src/__tests__/api-social-legal-reports.test.ts",
+    "src/__tests__/lead-ai-call-action-ui.test.ts",
+    "src/__tests__/lib-ai-advisor-query.test.ts",
+    "src/__tests__/lib-mtm-coverage-snapshot.test.ts",
+    "src/__tests__/lib-mtm-location-history.test.ts",
+    "src/__tests__/lib-social-discovery-auto-review-report.test.ts",
+    "src/__tests__/lib-social-discovery-review.test.ts",
+    "src/__tests__/lib-social-relevance-evaluator.test.ts",
+    "src/__tests__/lib-social-subject-relevance.test.ts",
+    "src/__tests__/migration-mtm-task-recurrence-schedule.test.ts",
+    "src/__tests__/mtm-operational-week-base-coverage-ui-contract.test.ts",
+    "src/__tests__/mtm-organization-grid-ui-contract.test.ts",
+    "src/__tests__/mtm-pharmacy-promotion-workspace-role-ux-contract.test.ts",
+    "src/__tests__/mtm-route-builder-filters-ui-contract.test.ts",
+    "src/__tests__/mtm-route-customer-prefill-ui-contract.test.ts",
+    "src/__tests__/zeytunpharm-swissmed-evidence-seed.test.ts"
+  ],
+  "observedSummary": [
+    [
+      "18",
+      "18"
+    ]
+  ],
+  "strictExactBaselineSetGuardPassed": true,
+  "claimSuiteClean": false,
+  "normalMergeAllowed": false
+}

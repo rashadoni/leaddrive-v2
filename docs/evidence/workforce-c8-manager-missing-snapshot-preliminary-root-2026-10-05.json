@@ -1,0 +1,33 @@
+{
+  "atUtc": "2026-10-05T01:41:58.370766+00:00",
+  "status": "UNAPPLIED FUTURE PRELIMINARY WHOLE SOURCE REVIEW ACCEPTED; OWN581 RELEASE REQUIRED",
+  "wholeReport": {
+    "path": "/tmp/workforce-manager-snapshotless-future-preliminary-corrected-independent-20261005T013844818367Z/preliminary-review.json",
+    "bytes": 47708,
+    "sha256": "683284422108dfe65c72192072e2d52d8c8b4551307512141e0bce068324748c"
+  },
+  "all68DirectOriginalsWholeRehashed": true,
+  "allNineReplacementsReconstructed": true,
+  "originalExactFrozen56": true,
+  "draft": {
+    "path": "/tmp/workforce-manager-snapshotless-future-draft-primary/unapplied-harness-draft.mjs",
+    "bytes": 62849,
+    "sha256": "dd70ea78d719d521b8ccfd39ec31b93cbf77963a3b8131685aae76a51f40cb16"
+  },
+  "wholePatch": {
+    "path": "/tmp/workforce-manager-snapshotless-future-preliminary-corrected-independent-20261005T013844818367Z/whole-draft.patch",
+    "bytes": 13013,
+    "sha256": "62dfe26cb3656539799aaada03f4c0d83380acc22283d2fbea235e81ac03c675"
+  },
+  "runtime58Manager60Typed42Union79Typed55Preserved": true,
+  "firstWatchReaderGuardRetained": {
+    "path": "/tmp/workforce-manager-snapshotless-future-preliminary-first-watch-reader-guard-independent.json",
+    "bytes": 1074,
+    "sha256": "4b933e7d1a0adeaee7b073b8ba721707e875d0bdbb4773883e3f7350c13f73a3"
+  },
+  "applyAllowed": false,
+  "runtimeCredit": false,
+  "newRowClosure": false,
+  "normalMergeAllowed": false,
+  "prerequisite": "Complete own581 exact56 whole hosted/allfive/freshmainnormalmerge/owndeployall4/fullartifactSha/strictpublic/root+peer release first"
+}
