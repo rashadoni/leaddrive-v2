@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "status": "ACCEPTED_BOUNDED_DORMANT_CANDIDATE_EXACT_SOURCE_AND_FIVE_GATES",
+  "observedAtUtc": "2026-10-05 17:43:23 UTC",
+  "owner": "/root",
+  "reviewer": "/root/pr585_independent_review",
+  "repository": "rashadoni/leaddrive-v2",
+  "head": "f17523372802339a1220e2940b8b8c47a63f187b",
+  "tree": "02bb497ae8751d81b520249fb00c59283495326b",
+  "base": "71433bf827ace3855dedb2bc76942c62867ee4de",
+  "main": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+  "sourceAcceptance": {
+    "rootReadFullIndependentExactReceipt": true,
+    "rootRehashedAllListedEvidence": true,
+    "independentUnresolvedFindings": 0,
+    "acceptedSubcriterion": "Complete bounded selected approval revision group reader, dormant",
+    "tests": {
+      "pass": 14,
+      "fail": 0,
+      "skip": 0,
+      "realPostgresCases": 12
+    },
+    "lintExitCode": 0,
+    "boundedTypecheckExitCode": 0
+  },
+  "evidence": [
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-independent-source-20261005.json",
+      "bytes": 7705,
+      "sha256": "354f295c4c45a67011adb1d39484ef6d66f77d90261d28a0236c5b9759b685fd"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-independent-exact-20261005.json",
+      "bytes": 9221,
+      "sha256": "b8bf3304f9f27dbd579ca0eb98745d1298f825d4924cc1d73ddb004ccc46c342"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-tests.json",
+      "bytes": 5476,
+      "sha256": "d60f480a92d8482cfdbfe79542105dafc361d0fced9340ebae59f81a8d935b50"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-independent-unit-tests.json",
+      "bytes": 5139,
+      "sha256": "ae8f255990a0fe47776d492a5e6c9c2c9c65cd86fd0fe85363f0435376467b48"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-proof.json",
+      "bytes": 1348,
+      "sha256": "df14f33cef524e9db9a51bd9d1443d3ec49cd5c5df2340ecd797d91e02e47364"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-tsconfig.json",
+      "bytes": 465,
+      "sha256": "89c8b9faeb8a2c8b4512f3cddd4f6e7209969a3d5a8cdb57502798970a6e0141"
+    },
+    {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-approval-group-typecheck.txt",
+      "bytes": 208,
+      "sha256": "76162e465989f3f070a9de8db711fbf358e53b74d09ce1bbdb57c727e4c4a16d"
+    }
+  ],
+  "release": {
+    "singleCumulativeCandidate": 589,
+    "narrowDraft": 590,
+    "status": "READY_FOR_SEPARATE_SCOPED_RELEASE_APPROVAL",
+    "mergeDeployActivationAuthorized": false,
+    "productionReadyOrC12ClosureClaim": false,
+    "duplicateReleasePrs": [
+      585,
+      587,
+      588,
+      590
+    ]
+  },
+  "limits": [
+    "All five exact App15368 mandatory contexts are terminal success; finite job and step metadata are included. No raw stdout/stderr or complete suite result/diagnostic artifact was read.",
+    "All four exact-head runs expose zero artifacts. Per-path compiler family matrices, full diagnostic identities, actual failing-suite identities and globally clean compiler/suite status remain unreviewed. A successful baseline-gated typecheck is not a claim of zero compiler diagnostics.",
+    "The standard pr-checks workflow supplies neither WORKFORCE_APPROVAL_GROUP_TEST_DATABASE_URL nor WORKFORCE_CURSOR_TEST_DATABASE_URL. The 12 owner-run local approval-group PostgreSQL cases and 11 owner-run local cursor PostgreSQL cases receive no hosted credit here; individual hosted case outcomes were not inspected.",
+    "Earlier optional Manager Today browser evidence belongs to ad8cc2ce22f11f18eb6e090ef4264a71def6c350, not this f175 run. The added unused reader paths do not match that browser workflow path filter; no new browser dispatch was requested.",
+    "Reader/helper remain dormant and require authorized caller context. Statement-visible bounded approval-group completeness is not a whole-scan closure guarantee. C12-008 remains partial and ledger remains 82/161 done, 79 open, weighted 59%.",
+    "Use one cumulative release candidate PR589. PR585/587/588/590 are source alternatives or stacked slices and should not additionally be merged as duplicate release paths. Any merge/deploy/activation requires separate scoped approval."
+  ],
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weightedPercent": 59,
+    "C12_008": "PARTIAL",
+    "rowClosure": false
+  },
+  "hostedAcceptance": {
+    "rootFullReceiptRead": true,
+    "rootRehashedOriginal": true,
+    "independentReceipt": {
+      "path": "docs/evidence/workforce-c12-approval-group-2026-10-05/hrm-f175-hosted-independent-20261005.json",
+      "bytes": 30008,
+      "sha256": "c9d375c25a7139b610e80e2b46e5b7313f4e009b8f5e86944dbc76aefc7ab1ec"
+    },
+    "rootIndependentlyReadCurrentGitHubMetadata": true,
+    "requiredCheckIds": [
+      111890774931,
+      111890917464,
+      111890917595,
+      111890773978,
+      111890780545
+    ],
+    "allFiveSuccess": true,
+    "appId": 15368,
+    "runIds": [
+      37347818161,
+      37347818127,
+      37347818043
+    ],
+    "attempt": 1,
+    "integration": {
+      "main": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+      "synthetic": "fe124456afc3dc1338622729a00c7a55da6e8856",
+      "tree": "02bb497ae8751d81b520249fb00c59283495326b",
+      "parents": [
+        "60ccd403fa172f2fafda31a9d4728c32933d4058",
+        "f17523372802339a1220e2940b8b8c47a63f187b"
+      ]
+    }
+  },
+  "sourceEvidenceCommit": "ad974cd5287833dd6c2a7913c65c05a53363569d",
+  "sourceEvidenceReadbackByteEqual": true,
+  "frozenSourceHeads": [
+    {
+      "ref": "git/ref/heads/codex/workforce-completion-part47",
+      "sha": "8a2439093e6f8fa2bf46f377582aee41b9308dd5"
+    },
+    {
+      "ref": "git/ref/heads/codex/hrm-585-integration-20261005",
+      "sha": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350"
+    },
+    {
+      "ref": "git/ref/heads/codex/workforce-c12-cursor-fencing-draft",
+      "sha": "71433bf827ace3855dedb2bc76942c62867ee4de"
+    }
+  ],
+  "nextBoundedSlice": "Project existing WORKFORCE_TIMESHEET_APPROVED_EXPORT_VIEWED audit rows and orphan/malformed references into protected export references; no new delivery semantics."
+}
