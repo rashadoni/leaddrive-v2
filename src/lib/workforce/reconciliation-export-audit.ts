@@ -5,7 +5,7 @@ import { readWorkforceReconciliationApprovalGroup } from "@/lib/workforce/reconc
 type ExportSnapshot = Pick<WorkforceReconciliationSnapshot, "approvals" | "exports">
 // Excludes an ordinary pooled PrismaClient at the type boundary as well.
 type ReadTransaction = Pick<Prisma.TransactionClient, "$queryRaw"> & { $transaction?: never }
-type Audit = {
+export type WorkforceExportAuditRecord = {
   agentId: unknown; entityId: unknown; action: unknown; entity: unknown; metadataKind: unknown
   data: Record<string, unknown> | null
 }
@@ -19,6 +19,26 @@ function day(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const date = new Date(`${value}T00:00:00.000Z`)
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
+type ValidatedAudit = WorkforceExportAuditRecord & {
+  agentId: string; entityId: string
+  data: { approvalId: string; periodStart: string; periodEnd: string; revision: number
+    recordKind: "APPROVAL" | "CORRECTION"; rowsHash: string; factsHash: string
+    format: "workforce-approved-timesheet-v1"; recipient: "SESSION_DIRECT_DOWNLOAD" }
+}
+
+/** Shared strict projection contract for window and full-sweep readers. */
+export function assertWorkforceExportAuditRecord(audit: WorkforceExportAuditRecord): asserts audit is ValidatedAudit {
+  const data = audit.data
+  if (audit.action !== ACTION || audit.metadataKind !== KIND || audit.entity !== "workforce_timesheet_approval"
+    || !id(audit.agentId) || !id(audit.entityId) || !data || !id(data.approvalId)
+    || data.approvalId !== audit.entityId || !day(data.periodStart) || !day(data.periodEnd)
+    || data.periodStart > data.periodEnd || !Number.isSafeInteger(data.revision) || (data.revision as number) < 1
+    || !["APPROVAL", "CORRECTION"].includes(data.recordKind as string)
+    || typeof data.rowsHash !== "string" || !/^[a-f0-9]{64}$/.test(data.rowsHash)
+    || typeof data.factsHash !== "string" || !/^[a-f0-9]{64}$/.test(data.factsHash)
+    || data.format !== "workforce-approved-timesheet-v1" || data.recipient !== "SESSION_DIRECT_DOWNLOAD") throw invalid()
 }
 
 /**
@@ -43,7 +63,7 @@ export async function readWorkforceReconciliationExportAuditWindow(
   }
   const startIso = new Date(start).toISOString()
   const endIso = new Date(end).toISOString()
-  let result: Array<{ count: number; context: boolean; records: Audit[] | null }>
+  let result: Array<{ count: number; context: boolean; records: WorkforceExportAuditRecord[] | null }>
   try {
     result = await tx.$queryRaw<typeof result>`
       WITH roots AS MATERIALIZED (
@@ -87,15 +107,8 @@ export async function readWorkforceReconciliationExportAuditWindow(
   const groups = new Map<string, ExportSnapshot["approvals"]>()
   let approvalBytes = 0
   for (const audit of batch.records) {
+    assertWorkforceExportAuditRecord(audit)
     const data = audit.data
-    if (audit.action !== ACTION || audit.metadataKind !== KIND || audit.entity !== "workforce_timesheet_approval"
-      || !id(audit.agentId) || !id(audit.entityId) || !data || !id(data.approvalId)
-      || data.approvalId !== audit.entityId || !day(data.periodStart) || !day(data.periodEnd)
-      || data.periodStart > data.periodEnd || !Number.isSafeInteger(data.revision) || (data.revision as number) < 1
-      || !["APPROVAL", "CORRECTION"].includes(data.recordKind as string)
-      || typeof data.rowsHash !== "string" || !/^[a-f0-9]{64}$/.test(data.rowsHash)
-      || typeof data.factsHash !== "string" || !/^[a-f0-9]{64}$/.test(data.factsHash)
-      || data.format !== "workforce-approved-timesheet-v1" || data.recipient !== "SESSION_DIRECT_DOWNLOAD") throw invalid()
 
     const key = JSON.stringify([audit.agentId, data.periodStart, data.periodEnd])
     let group = groups.get(key)

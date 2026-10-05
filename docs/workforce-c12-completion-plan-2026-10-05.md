@@ -136,3 +136,84 @@ The existing schema suffices for this dormant slice; no released schema is a
 technical dependency. Reuse PR589 for the cumulative candidate, with fresh
 checks for its new head and exact-commit independent review without another
 draft PR. Merge/deploy and runtime activation remain separately scoped.
+
+## Implemented follow-on: bounded full-tenant sweep and dormant composition
+
+`readWorkforceReconciliationSnapshot` independently enumerates the eight kernel
+source families: workdays, events, site transitions, evidence, assessments,
+exception cases, approval revisions and export audit roots. This means all
+visible rows of those families for one authorized tenant, not all Workforce
+models, all tenants or delivery receipts. No date window or inner join removes
+orphan roots. Each stream uses 128-row keyset pages with identical PostgreSQL
+`COLLATE "C"` predicates/order, inside one supplied read-only repeatable-read
+(or serializable) transaction. A full page requires another query, including
+an empty-page proof when the count is an exact multiple. Complete approval
+revision groups and cross-page dependencies reach the existing kernel together.
+The shared strict export validator preserves the selected-window adapter's
+contract while full-sweep export enumeration has its own 1,000-row bound.
+
+Supported size is deliberately finite: at most 1,000 rows and 1 MiB projected
+UTF-8 JSON per source family, 4 MiB across the eight projections, 4,096 bytes
+per export audit projection, and at most 100 cases referencing a schedule
+segment. Limits refuse the entire sweep; no partial result advances progress.
+A tenant exceeding these limits cannot complete through repeated invocations:
+streaming closure or another reviewed strategy is a remaining dependency.
+SQL checks page/payload budgets before transfer, and auxiliary assignment/team
+IDs are limited to 191 characters in SQL. Schedule payloads are separately
+limited to 64 KiB per lookup; up to 100 such lookups may cumulatively read about
+6.4 MiB. These are transfer/materialization bounds, not PostgreSQL CPU, sort,
+TOAST or query-memory guarantees. Root identifier and date validation refuses
+malformed source values without exposing driver messages or row payloads.
+
+Schedule-linked cases resolve to the exact workday/employee and its pinned
+schedule, shift and policy snapshot links. The canonical schedule payload hash
+and selected segment membership must agree. This does not validate every
+calendar, segment or site semantic field. Mutable current assignments never
+replace pinned history. Schedule-only cases must resolve their first segment
+through an effective explicit, team or organization default assignment, or an
+unambiguous legacy default; historical team membership, template scope,
+activation/retirement and definition hash are checked read-only. This proves
+consistency with the currently visible effective timeline, not the original
+creation-time selection or no-show detector eligibility. The case stores no
+immutable assignment/default-selection receipt; that stronger historical claim
+is outside this subcriterion. Missing or ambiguous dependencies fail closed.
+
+`runWorkforceReconciliationSweep` composes the reader, pure kernel and existing
+lease/version-fenced cursor store without a route, cron, scheduler registration
+or global Prisma singleton. The caller supplies an authorized reader, tenant
+and live lease owner. It observes the expected cursor before reading, uses a
+30-second interactive transaction and a five-second statement timeout, and
+awaits successful read-transaction finalization before committing progress.
+Mismatches, read failures, budget overflow and incomplete dependencies never
+advance it. Lease expiry/takeover and competing progress report `FENCED_OUT`;
+version exhaustion does not report success. A lost commit acknowledgement is
+reported as an unknown checkpoint outcome, allowing safe replay.
+
+The `wf-sweep-v1:<random UUID>` cursor is opaque operational progress for the
+existing global job name. It is not a row resume token, tenant-coverage receipt
+or fairness guarantee. Each invocation restarts all streams in a fresh MVCC
+snapshot; late lower-key/backdated inserts and updates are visible on the next
+sweep. No cursor crosses transaction snapshots. Unrecognized cursor protocols
+refuse without resetting previous progress. Business facts are never repaired.
+
+Local acceptance uses an isolated PostgreSQL 16 database with production-shaped
+selected columns and deliberately omitted foreign keys for corruption tests.
+It is not full-schema migration/RLS or production staging acceptance. Tests
+cover all families, cross-page closure, C-order traversal, 128/1,000/1,001 row
+boundaries, UTF-8/multipage budgets, 100/101 schedule cases, pinned/live selection,
+concurrent lower-key append/update, transaction-end failure, lease/CAS races,
+unknown commit acknowledgement, replay and unchanged source fingerprints.
+The earlier 17 export-window tests are rerun after extracting shared validation.
+Exact test counts, independent source receipt and current five hosted gates
+belong to the new head's evidence; historical 51fb acceptance is preserved.
+
+This closes only bounded visible-tenant enumeration/dependency traversal and
+dormant worker composition. C12-008 stays PARTIAL and the ledger stays
+82/161 DONE, 79 open, 14/15 gates, C8 45%, weighted 59%. Remaining implementation
+and operational gates include dense-tenant streaming, multi-tenant selection
+and fairness, authorized production-like schema/RLS/query-plan staging,
+operational lease scheduling/monitoring, and an explicit activation decision.
+The next staging preparation must exercise those dependencies without treating
+this disposable fixture as deployment evidence. No schema change is required
+for this dormant composition. Merge, deploy and production activation remain
+separate scoped actions; PR589 remains the only cumulative release candidate.
