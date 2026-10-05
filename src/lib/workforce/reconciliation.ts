@@ -76,6 +76,16 @@ function bounded(snapshot: WorkforceReconciliationSnapshot) {
       throw new Error(`WORKFORCE_RECONCILIATION_BATCH_INVALID:${kind}`)
     }
   }
+  // A duplicated primary key makes reference resolution order-dependent.
+  // Reject the complete page before constructing any lookup or result.
+  const kinds = ["workdays", "events", "transitions", "evidence", "assessments", "exceptions", "approvals"] as const
+  for (const kind of kinds) {
+    const ids = new Set<string>()
+    for (const row of snapshot[kind]) {
+      if (ids.has(row.id)) throw new Error(`WORKFORCE_RECONCILIATION_DUPLICATE_ID:${kind}`)
+      ids.add(row.id)
+    }
+  }
 }
 
 function dateKey(date: Date): string {
@@ -155,8 +165,11 @@ export function reconcileWorkforceSnapshot(
     const event = row.workdayEventId ? events.get(row.workdayEventId) : undefined
     const proof = row.evidenceId ? evidence.get(row.evidenceId) : undefined
     const proofSubject = proof ? evidenceSubject(proof) : undefined
+    const subjectWorkdayIds = [row.workdayId, event?.workdayId, proofSubject?.workdayId]
+      .filter((id): id is string => typeof id === "string" && id.length > 0)
     if (
-      (row.workdayId && (!workday || workday.organizationId !== row.organizationId || workday.agentId !== row.agentId))
+      new Set(subjectWorkdayIds).size > 1
+      || (row.workdayId && (!workday || workday.organizationId !== row.organizationId || workday.agentId !== row.agentId))
       || (row.workdayEventId && (!event || event.organizationId !== row.organizationId || event.agentId !== row.agentId))
       || (row.evidenceId && (
         !proof || proof.organizationId !== row.organizationId
