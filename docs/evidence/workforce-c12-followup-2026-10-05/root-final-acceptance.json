@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "status": "TERMINAL_BOUNDED_HRM_EVIDENCE_ACCEPTED",
+  "repository": "rashadoni/leaddrive-v2",
+  "soleWriter": "/root",
+  "sourceCandidate": {
+    "pr": 585,
+    "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+    "frozen": true,
+    "freshIndependentSource": "ACCEPTED with0P0-P3 findings",
+    "historicalProjection": "Canonical df66f9d18fea9bd0d5d399990f96ebc63efeb71068be65177db49556842e16fd independently matched; exact bindings and separate candidate baselines cross-checked; original whole21204-byte receipt not received"
+  },
+  "freshMain": {
+    "sha": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+    "Support578Preserved": true
+  },
+  "integration": {
+    "pr": 587,
+    "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+    "tree": "3bf40bb433577e885d31dfb26671c86480b3b4f1",
+    "fiveMandatoryChecks": "SUCCESS, independently/root accepted in earlier immutable receipt",
+    "managerToday": {
+      "runId": 37342693732,
+      "attempt": 1,
+      "status": "SUCCESS",
+      "artifactId": 11358644908,
+      "zipSha256": "f9d35d3c115a2e224ef8330e573d879363f1d1e55c4395f365940199fa5b9951",
+      "sourceBindings": 58,
+      "scenarios": 9,
+      "namedPostgresGuards": 10,
+      "unchangedFactTables": 20,
+      "rlsTables": 21,
+      "populatedRlsTables": 16,
+      "emptyRlsTables": 5,
+      "cleanupActions": 11,
+      "independentReceiptSha256": "b80677e43c07e65edd61c58bcd851f70cdf098b1f72478b797d91363b1882310",
+      "rootAcceptance": "FullJSONparsed, finite sections reviewed, originalJSONandindependentreceipt rehashed, all58sourcebindingschecked,5originalPNGvisuallyreviewed. Same ad8 source only.",
+      "visualLimits": [
+        "Next dev1Issueindicator overlaps lower narrow/native200 notices; cause not diagnosed",
+        "RUdenial heading localized but explanatory detail English",
+        "No whole-page accessibility/localization/pixelocclusion or production acceptance"
+      ]
+    }
+  },
+  "nextSlice": {
+    "pr": 588,
+    "draft": true,
+    "head": "71433bf827ace3855dedb2bc76942c62867ee4de",
+    "tree": "ec3ff3cfa7f1320458af783c724e83380032a46e",
+    "base": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+    "source": "Dormant supplied-client Workforce-specific cursor/version/lease fencing;3changedpaths;no runtimecallers",
+    "independentSourceFindings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "localTests": {
+      "passed": 13,
+      "skipped": 0,
+      "inputGuards": 2,
+      "disposablePostgres16": 11,
+      "productionSchemaMigrationAcceptance": false
+    },
+    "lint": "PASS",
+    "boundedTwoFileTypecheck": "PASS; earlierOOM and missingexternalNodeTypes attempts preserved",
+    "mandatoryHostedValidation": {
+      "pr": 589,
+      "head": "71433bf827ace3855dedb2bc76942c62867ee4de",
+      "base": "60ccd403fa172f2fafda31a9d4728c32933d4058",
+      "synthetic": "42a80f0023270b904b13185a947f399e17ac6317",
+      "syntheticTree": "ec3ff3cfa7f1320458af783c724e83380032a46e",
+      "routing": "Separate unchangedhead validationPR against main because existing prchecks/gitleaks filter base main; no gates changed",
+      "checks": [
+        {
+          "id": 111873725498,
+          "name": "static-checks",
+          "head": "71433bf827ace3855dedb2bc76942c62867ee4de",
+          "appId": 15368,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37342716530/job/111873725498"
+        },
+        {
+          "id": 111873725327,
+          "name": "typecheck",
+          "head": "71433bf827ace3855dedb2bc76942c62867ee4de",
+          "appId": 15368,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37342716530/job/111873725327"
+        },
+        {
+          "id": 111873583057,
+          "name": "pr-scope",
+          "head": "71433bf827ace3855dedb2bc76942c62867ee4de",
+          "appId": 15368,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37342716530/job/111873583057"
+        },
+        {
+          "id": 111873443150,
+          "name": "runner-policy",
+          "head": "71433bf827ace3855dedb2bc76942c62867ee4de",
+          "appId": 15368,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37342688361/job/111873443150"
+        },
+        {
+          "id": 111873442939,
+          "name": "scan",
+          "head": "71433bf827ace3855dedb2bc76942c62867ee4de",
+          "appId": 15368,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37342688382/job/111873442939"
+        }
+      ],
+      "runIds": {
+        "prChecks": 37342716530,
+        "runnerPolicy": 37342688361,
+        "scan": 37342688382
+      },
+      "attempt": 1,
+      "event": "pull_request",
+      "priorCancelledRun": 37342688274,
+      "productionBuild": "SKIPPED",
+      "cursor11PgCases": "NOT RUN by standard workflow; URL not supplied; local evidence not borrowed",
+      "allFamilyCompilerDiagnosticIdentities": "NOT REVIEWED; no safe report artifact",
+      "strictSuiteActualFailureIdentities": "NOT REVIEWED; no safe report artifact",
+      "independentReceipt": {
+        "path": "pr589-hosted-independent.json",
+        "bytes": 27063,
+        "sha256": "df05cb361100824d755f8198d48e8212b3e3711d15fb71a6c07ccfa40179ae79",
+        "status": "ACCEPTED_EXACT_FIVE_HOSTED_GATES_METADATA_ONLY",
+        "wholeReceiptReadByRoot": true,
+        "byteHashVerified": true,
+        "fiveExactChecksMatchedRootFreshApi": true
+      }
+    }
+  },
+  "evidenceParents": {
+    "initialTerminalCommit": "8919450dc51acc3a77258db31e40ca44428835dd",
+    "browserAndHistoricalCommit": "bf3f09d00b5b893461fb8696d8bc83e9c857ba3c",
+    "browserArtifactExpiry": "2026-10-19T16:49:02Z",
+    "durableJsonAndPngManifest": "docs/evidence/workforce-c12-followup-2026-10-05/",
+    "pngPreservation": "OriginalZIPdownloadedlocally;Actions56PNGs expire as above; no all56visualreviewclaim"
+  },
+  "remainingAcceptanceLimits": [
+    "C12-008 complete dependency pages/orphan scans, approval grouping, export delivery source, runtime composition/staging and activation remain open",
+    "No full HRM completion, global compiler/suite clean, production build/release, accepted START workflow, Android/AT/load/pilot acceptance",
+    "Historical original receipt hash reported by coordinator only; projection independently hashverified. Missing actualtestfailurelist/pathfamilymatrix not invented",
+    "Browser ad8, cursor714localPG, original8a and new589hostedgate scopes remain distinct"
+  ],
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "gates": "14/15",
+    "C8": "45%",
+    "weighted": "59%",
+    "C12_008": "PARTIAL",
+    "newClosures": 0
+  },
+  "prohibitedActionsNotPerformed": [
+    "Merge",
+    "Deploy",
+    "Runtime activation",
+    "Credentials/permschanges",
+    "Mac",
+    "SSH",
+    "RawCIlogs",
+    "Paidreviewers"
+  ],
+  "newUnrelatedSlices": 0,
+  "environment": "Connector and local workspace remained usable after parent reported environment disconnect notification",
+  "observedAtUtc": "2026-10-05 17:02:15 UTC"
+}
