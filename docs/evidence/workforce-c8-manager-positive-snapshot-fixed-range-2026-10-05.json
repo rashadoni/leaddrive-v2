@@ -1,0 +1,154 @@
+{
+  "atUtc": "2026-10-05T01:09:36.663225+00:00",
+  "head": "56edf7cebc94b5927b26b125991dc82625f59a3b",
+  "base": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "identities": {
+    "full": {
+      "paths": 28,
+      "bytes": 353416,
+      "sha256": "e0de93c8da0b5bf2e043259d8c9f6ff991700ea657aee94f7744554384ad5b1d",
+      "repoPaths": [
+        ".github/workflows/workforce-manager-today-browser-evidence.yml",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-next-plan-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-native-current-sublane-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-fixed-source-root-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-hosted-root-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-normal-merge-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-old-additive-root-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-release-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-application-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-bounded-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-current-sublane-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-draft-syntax-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-first-blocked-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-first-compiler-blocked-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-guard-isolated-type-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-guard-type-bounded-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-guard-type-draft-review-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-preparation-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-ready-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-selected-catalogue-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-source-root-2026-10-05.json",
+        "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "docs/workforce-hrm-session-log.md",
+        "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+        "scripts/workforce-manager-today-browser-evidence.mjs",
+        "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts"
+      ]
+    },
+    "nonDoc": {
+      "paths": 4,
+      "bytes": 43906,
+      "sha256": "fff1be8352b33ad841c35f23e2b42086a93548cbd957e685d2ad1a77b7d94668",
+      "repoPaths": [
+        ".github/workflows/workforce-manager-today-browser-evidence.yml",
+        "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+        "scripts/workforce-manager-today-browser-evidence.mjs",
+        "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts"
+      ]
+    }
+  },
+  "scopeMaximum": 400000,
+  "protectedPaths": [
+    ".gitleaks.toml",
+    ".github/workflows/pr-checks.yml",
+    ".github/workflows/runner-policy.yml",
+    "scripts/ci/check-typecheck-gate.sh",
+    "scripts/ci/check-typecheck-baseline.mjs",
+    "scripts/ci/check-github-runner-policy.mjs",
+    ".github/workflows/gitleaks.yml",
+    ".github/workflows/set-social-app-secrets.yml",
+    "scripts/check-test-baseline.mjs",
+    "scripts/workforce-hrm-baseline.sql",
+    "src/__tests__/check-test-baseline-timeout-rendering.test.ts",
+    "src/__tests__/production-test-baseline-gate.test.ts",
+    "test-baseline.json",
+    "typecheck-baseline.json",
+    "next.config.ts"
+  ],
+  "protectedCount": 15,
+  "configAndBaselinesUnchanged": true,
+  "exitCode": 0,
+  "findings": 0,
+  "args": [
+    "/tmp/workforce542-gitleaks-8.30.1/gitleaks",
+    "git",
+    "--no-banner",
+    "--redact=100",
+    "--config",
+    "/tmp/workforce-pr581-56edf-range-primary/frozen.gitleaks.toml",
+    "--report-format",
+    "json",
+    "--report-path",
+    "/tmp/workforce-pr581-56edf-range-primary/range-redacted-report.json",
+    "--log-opts",
+    "6dab202bd8fb02cd3d8487724a300dc918505a37..56edf7cebc94b5927b26b125991dc82625f59a3b",
+    "."
+  ],
+  "resources": [
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/ram-original",
+      "bytes": 207,
+      "sha256": "f07e7cf2c5e76268e91239f93000e83e35bb8272535fa0e6c3b45ddd04c85657"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/disk-original",
+      "bytes": 112,
+      "sha256": "a128c310702ef770ad644e9982e2fcf057c7691d09e481eeb385412713557e2c"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/pressure-original",
+      "bytes": 112,
+      "sha256": "f6df31b9c32dbb66ef3f9372a05a6f242eacebae21a94fbde5582e7b12d89bc7"
+    }
+  ],
+  "originals": [
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/disk-original",
+      "bytes": 112,
+      "sha256": "a128c310702ef770ad644e9982e2fcf057c7691d09e481eeb385412713557e2c"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/frozen.gitleaks.toml",
+      "bytes": 2923,
+      "sha256": "f2c83316fa50e9f8a7b52dacb30236bc3dc88c9984ab1159cc8dc5ac724ff809"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/full-binary.diff",
+      "bytes": 353416,
+      "sha256": "e0de93c8da0b5bf2e043259d8c9f6ff991700ea657aee94f7744554384ad5b1d"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/nonDoc-binary.diff",
+      "bytes": 43906,
+      "sha256": "fff1be8352b33ad841c35f23e2b42086a93548cbd957e685d2ad1a77b7d94668"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/pressure-original",
+      "bytes": 112,
+      "sha256": "f6df31b9c32dbb66ef3f9372a05a6f242eacebae21a94fbde5582e7b12d89bc7"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/ram-original",
+      "bytes": 207,
+      "sha256": "f07e7cf2c5e76268e91239f93000e83e35bb8272535fa0e6c3b45ddd04c85657"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/range-redacted-report.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/stderr-original",
+      "bytes": 111,
+      "sha256": "10dea0e2a56b62d849d909107060ca0a11ec381f474b93aecf81889c26a9047b"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf-range-primary/stdout-original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
