@@ -15,7 +15,7 @@ candidate `71433bf827ace3855dedb2bc76942c62867ee4de`. Ledger remains
 | Complete approval revision groups | This slice adds an actual single-statement database reader for a selected exact tenant/employee/period group. Ancestors and successors are included; missing root, >1000 revisions and >1 MiB JSON refuse the group. | Current bounded criterion: real PostgreSQL scope, UTC, RLS, overflow and job no-commit proofs. Full criterion still needs group enumeration, scan-wide snapshot/cutoff policy and batching without splitting a group. |
 | Complete claim/event/transition/evidence/assessment/exception dependency pages | Kernel consumes supplied snapshots; no current database adapter establishes their completeness. Historical roadmap references to a scheduled scanner do not establish implementation of this adapter. | Implement authorized tenant-scoped keyset root scans for every source kind, including independent orphan roots. Resolve all cross-page forward/reverse dependencies and schedule-only segment/date ownership. Refuse overflow before commit; never treat an omitted dependency as an absent database row. Test missing/cross-tenant/cross-agent dependencies and page boundaries on PostgreSQL. |
 | Stable scan and runtime composition | No runtime caller for the new reader or cursor store. | Define versioned opaque progress without employee/tenant payloads; stable cutoff/revisit policy for late dependencies; bounded per-tenant selection and fairness. Compose a supplied authorized transaction reader + pure kernel + lease/version cursor. Prove crash-before/after-commit, replay, takeover, expiry and late append behavior. No route or schedule required to test the composition. |
-| Export source coverage | `timesheet/approvals/[id]/export/route.ts` persists `mtmAuditLog` action `WORKFORCE_TIMESHEET_APPROVED_EXPORT_VIEWED`, entity `workforce_timesheet_approval`, metadata kind `workforce_timesheet_export`, approval ID/revision/hash pair and `SESSION_DIRECT_DOWNLOAD` before returning the response. | Next bounded slice: validate and project only these durable audit records into export references, join complete approval groups, and independently scan orphan/malformed references. Exclude IP/user-agent/purpose and other audit payload from results. Label this prepared/audited direct-download coverage; it cannot prove network receipt. Delivered external exports need a separate accountable receipt source if such delivery is introduced. No payroll/HRIS delivery is inferred. |
+| Export source coverage | `timesheet/approvals/[id]/export/route.ts` persists prepared-download audit records before returning a response. The new dormant `reconciliation-export-audit.ts` reader projects a bounded window of those records, detects orphan/malformed references and joins complete approval groups. | Current bounded implementation: selected-window PostgreSQL tests and independent exact-source review. Full criterion still requires stable traversal of all audit roots, late/backdated/update revisit policy and worker composition. IP/user-agent/purpose are excluded. These records prove prepared/audited direct downloads, not network receipt; external delivery would need its own accountable source. |
 | Operational/staging proof | No current read-only worker deployment/schedule/alert acceptance. | Run the composed worker against an isolated production-like schema with synthetic fault/orphan/replay cases, finite metrics, unchanged fact hashes, bounded query plans and zero-loss accounting. Establish the scheduler/monitoring dependencies of C12-006. C12-003 load and C12-009 rollback remain their own gate work. |
 | Release / activation | Source and test preparation authorized; merge/deploy/activation explicitly withheld. | Parent obtains scoped release approval for the concrete cumulative source below. Revalidate fresh main, exact head and five Actions checks, then normal main/deploy route under that approval. Runtime wiring, tenant capability/grants, production cron or security changes require their own explicitly scoped authorization; releasing dormant helpers does not authorize them. |
 
@@ -71,7 +71,7 @@ none starts a scheduler or changes a user permission.
 ## Next implementation order and accounting
 
 1. Accept the selected approval-group reader with source-bound PostgreSQL tests.
-2. Add the existing direct-download audit projection and orphan export checks.
+2. Accept the implemented direct-download audit projection and orphan export checks below.
 3. Add tenant-scoped source enumeration and complete dependency closure, using
    these two readers; establish scan cutoff/revisit semantics.
 4. Compose the bounded worker with lease/version cursor and exercise isolated
@@ -86,3 +86,53 @@ its stated acceptance is met; do not require a globally clean unrelated
 compiler or suite. New selected source receives bounded all-family typecheck;
 the existing five hosted gates retain their normal baseline contract. Global
 nonclean status and unavailable full diagnostic identities stay qualified.
+
+## Implemented follow-on: selected export-audit window
+
+`readWorkforceReconciliationExportAuditWindow` reads an authorized tenant's
+half-open UTC time window of at most 31 days. Audit roots are selected using
+the export action OR metadata kind, before any validation or approval lookup;
+malformed family members and orphan references cannot disappear through an
+inner join. At most 100 audit records are accepted; sentinel 101 refuses the
+entire window. There is no silent pagination or cursor advancement.
+
+The caller must supply one authorized interactive transaction, read-only and
+repeatable-read (or serializable), covering all queries. The API excludes and
+rejects an ordinary pooled Prisma client; SQL context checks are supplemental,
+not independent proof of transaction ownership. No RLS configuration or bypass
+is installed. A policy that hides rows still limits this reader's visibility.
+
+SQL projects only allowlisted metadata and bounds each projected record to
+4,096 UTF-8 bytes before returning it. Purpose, IP, user agent and old/raw audit
+payload never enter the result. Strict checks cover family/entity agreement,
+entity ID versus approval ID, nullable/deleted agent, actual calendar dates,
+JSON types, revision, hash syntax, format and direct-download recipient.
+Every reference is checked, including subsequent roots in a cached group.
+Repeated downloads remain separate exports; complete approval groups are
+deduplicated. Missing/cross-scope roots refuse; revision/record-kind disagreement
+refuses; differing valid hashes reach the existing kernel and block its cursor.
+
+The union is limited to 1,000 approvals and 1 MiB of serialized UTF-8 approval
+JSON. This bounds the returned approval array; export references have their
+separate 100-record input cap. One additional bounded group can be materialized
+before the union limit is checked. Neither cap bounds total PostgreSQL CPU,
+TOAST decoding, sorting or query memory; operational query-plan/time limits
+remain open. No full-schema or production RLS acceptance is inferred.
+
+Initial evidence: 17/17 tests PASS, zero skipped, comprising two guard cases
+and 15 real disposable PostgreSQL cases. They cover transaction/RLS boundaries,
+UTC window ordering, concurrent append, malformed/orphan references, repeated
+exports, count/UTF-8 budgets, unchanged fact hashes and job cursor refusal.
+Independent source and fresh-head hosted acceptance are recorded separately
+in the evidence branch; prior f175 acceptance stays historical.
+
+This closes only the bounded selected-window audit projection and reference
+closure implementation subcriterion. It does not establish scan-wide coverage,
+late/backdated audit revisits, runtime composition, staging, delivery receipt
+or C12-008 completion. Next implement complete independent source enumeration
+and dependency closure with versioned stable traversal, then compose the worker
+with lease/version progress and isolated crash/replay/late-append proofs.
+The existing schema suffices for this dormant slice; no released schema is a
+technical dependency. Reuse PR589 for the cumulative candidate, with fresh
+checks for its new head and exact-commit independent review without another
+draft PR. Merge/deploy and runtime activation remain separately scoped.
