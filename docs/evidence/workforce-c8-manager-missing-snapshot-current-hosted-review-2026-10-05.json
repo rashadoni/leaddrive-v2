@@ -1,0 +1,910 @@
+{
+  "schemaVersion": 1,
+  "issuedAtUtc": "2026-10-05T03:09:06.282548+00:00",
+  "reviewerRole": "Independent authorless current whole hosted reviewer",
+  "status": "HOSTED GREEN",
+  "scope": "Own PR582 exact READY current195 first attempt; complete new snapshotless/positive manager fixture, PostgreSQL/browser, all-family compiler and strict suite baselines/five required checks",
+  "candidateHead": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "baseSha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "testedSynthetic": "229e9d65570c0666f46bbcdb9aeb5ceeef848fa6",
+  "syntheticParents": [
+    "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+    "195f703add1d2a8d4e694a714b5c3191a6ffefb3"
+  ],
+  "candidateTree": "7468183eb406302d12aa032c4beecc3b30fdcf35",
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3",
+  "prUrl": "https://github.com/rashadoni/leaddrive-v2/pull/582",
+  "currentSourceReviewActiveApplicationSourceReads": 0,
+  "readProvenance": "Fresh complete read-only current GitHub APIs/logs/ZIP/all members/PNG decode and original visual review; exact accepted current Git show copies. Historical accepted proofs retained/rehashed without new execution borrowing.",
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "findings": [],
+  "fullDiffIdentity": {
+    "paths": 23,
+    "bytes": 236676,
+    "sha256": "041454d6680962984981bbdf5eb27bd8458142f2f2363fd99c2abed8e8db3f1a"
+  },
+  "nonDocDiffIdentity": {
+    "paths": 1,
+    "bytes": 10437,
+    "sha256": "6fe9d39299d5f798f0714afd25bb545d043a6a530df14c9c08a27b81e078507b"
+  },
+  "sourceScope": {
+    "fullPaths": 23,
+    "nonDocPaths": 1,
+    "scopeMaximumBytes": 400000,
+    "paths": [
+      "docs/evidence/workforce-c12-dormant-reconciliation-next-plan-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-application-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-bounded-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-lint-config-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-preliminary-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-draft-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-syntax-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-current-sublane-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-hosted-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-range-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-ready-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-source-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-suite-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-main-quality-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-normal-merge-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-release-clarification-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-release-ip-tls-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-release-root-2026-10-05.json",
+      "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "scripts/workforce-manager-today-browser-evidence.mjs"
+    ],
+    "nonDocRepoPaths": [
+      "scripts/workforce-manager-today-browser-evidence.mjs"
+    ]
+  },
+  "sourceAcceptance": {
+    "path": "/tmp/workforce-part41-195f703-whole-source-independent.json",
+    "bytes": 14423,
+    "sha256": "865ffe345431ce65154dedd56488f09ddb238f2c144e43f0a1b803a540946f68"
+  },
+  "rootSourceAcceptance": {
+    "path": "/tmp/workforce-part41-snapshotless-source-root-accepted-primary.json",
+    "bytes": 3684,
+    "sha256": "1a6811fb686e838448dba784e45816a428a304906d2c8c2cde85d67df12f392c"
+  },
+  "readyPublication": {
+    "path": "/tmp/workforce-part41-snapshotless-ready-synthetic-primary/ready-publication-proof.json",
+    "bytes": 12680,
+    "sha256": "b46eb5ccaff5cc859ee81423b0d9220b74c5aed995a077f3e1bfdbfbdb3fa6ef"
+  },
+  "currentRunBindings": [
+    {
+      "workflow": "workforce-manager-today-browser-evidence",
+      "runId": 37256803987,
+      "event": "pull_request",
+      "runAttempt": 1,
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "status": "completed",
+      "conclusion": "success",
+      "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/workforce-manager-today-browser-evidence-run.json",
+        "bytes": 12912,
+        "sha256": "4ed46ce3c27458777a3efad518b40783a3f9766a506d2a667178b255fa7112ee"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/workforce-manager-today-browser-evidence-jobs.json",
+        "bytes": 3577,
+        "sha256": "d92cdffb620c4d890ba02053580d7f5b8fb00c10369b8791dbf4f5d1bcaf8e76"
+      },
+      "jobs": [
+        {
+          "id": 111595522875,
+          "name": "Authenticated Workforce manager Today browser evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "active": [],
+          "failed": [],
+          "wholeLog": {
+            "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-logs/111595522875.txt",
+            "bytes": 100644,
+            "sha256": "d090412ee8ac27a749b98670ef0a1acddee8ba30aad88ca193b936be02c91e4b"
+          }
+        }
+      ],
+      "artifactListingOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/workforce-manager-today-browser-evidence-artifacts.json",
+        "bytes": 808,
+        "sha256": "d2f3d2069253ddfc3cb47e09e511a18f5897776d1b7936164234940fcad30f83"
+      }
+    },
+    {
+      "workflow": "pr-checks",
+      "runId": 37256803977,
+      "event": "pull_request",
+      "runAttempt": 1,
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "status": "completed",
+      "conclusion": "success",
+      "path": ".github/workflows/pr-checks.yml",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/pr-checks-run.json",
+        "bytes": 12852,
+        "sha256": "2dc3cde5f478686176b94c5660c9bf27d45cfa4d52d42e08bbe3261a02729088"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/pr-checks-jobs.json",
+        "bytes": 10823,
+        "sha256": "e69bba02fa2ebf9a598078e47b2da09ba806200795423fd3432c5427572f1b41"
+      },
+      "jobs": [
+        {
+          "id": 111595523184,
+          "name": "pr-scope",
+          "status": "completed",
+          "conclusion": "success",
+          "active": [],
+          "failed": [],
+          "wholeLog": {
+            "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-logs/111595523184.txt",
+            "bytes": 78807,
+            "sha256": "c3fb5e26b832fcae8709a1f6aaba07db2b4d49cad5695f321596429c1ebe0a67"
+          }
+        },
+        {
+          "id": 111595524103,
+          "name": "GitHub-hosted Linux production build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "active": [],
+          "failed": []
+        },
+        {
+          "id": 111595586943,
+          "name": "typecheck",
+          "status": "completed",
+          "conclusion": "success",
+          "active": [],
+          "failed": [],
+          "wholeLog": {
+            "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-logs/111595586943.txt",
+            "bytes": 256251,
+            "sha256": "22fb26bb28137d21e6bc5d15f6db4cad0ff197456faf78fedccccbed92e61c52"
+          }
+        },
+        {
+          "id": 111595587227,
+          "name": "static-checks",
+          "status": "completed",
+          "conclusion": "success",
+          "active": [],
+          "failed": [],
+          "wholeLog": {
+            "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-logs/111595587227.txt",
+            "bytes": 213065,
+            "sha256": "7302dbe32b8ee9a637ba6f2dabd02a90198eb8d0d63ed4759e43486847a36449"
+          }
+        }
+      ],
+      "artifactListingOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/pr-checks-artifacts.json",
+        "bytes": 32,
+        "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c"
+      }
+    },
+    {
+      "workflow": "runner-policy",
+      "runId": 37256803963,
+      "event": "pull_request",
+      "runAttempt": 1,
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "status": "completed",
+      "conclusion": "success",
+      "path": ".github/workflows/runner-policy.yml",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/runner-policy-run.json",
+        "bytes": 12859,
+        "sha256": "7993094b8dda24373515c797936b4abfc5dbc4c368ecbe581ee74c8253731195"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/runner-policy-jobs.json",
+        "bytes": 1768,
+        "sha256": "6e0a4fc362aff408a47f9655848a9fd01a97720ab10b4176cb92b6bbec7c54fd"
+      },
+      "jobs": [
+        {
+          "id": 111595522871,
+          "name": "runner-policy",
+          "status": "completed",
+          "conclusion": "success",
+          "active": [],
+          "failed": [],
+          "wholeLog": {
+            "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-logs/111595522871.txt",
+            "bytes": 11403,
+            "sha256": "4754664199e3d9736a96f79d4c4a82311fa27929fb688254426b277c366ce4d9"
+          }
+        }
+      ],
+      "artifactListingOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/runner-policy-artifacts.json",
+        "bytes": 32,
+        "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c"
+      }
+    },
+    {
+      "workflow": "gitleaks",
+      "runId": 37256803973,
+      "event": "pull_request",
+      "runAttempt": 1,
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "status": "completed",
+      "conclusion": "success",
+      "path": ".github/workflows/gitleaks.yml",
+      "wholeRunOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/gitleaks-run.json",
+        "bytes": 12853,
+        "sha256": "074aaa706498ca8e2dcac8625927470ef1e88c0bb32a4684dca5df4ea3fb91af"
+      },
+      "wholeJobsOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/gitleaks-jobs.json",
+        "bytes": 2085,
+        "sha256": "1728a2aa57442be98299702e616c9321b7fff82b25f6f36403eb4112c9c4b253"
+      },
+      "jobs": [
+        {
+          "id": 111595523100,
+          "name": "scan",
+          "status": "completed",
+          "conclusion": "success",
+          "active": [],
+          "failed": [],
+          "wholeLog": {
+            "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-logs/111595523100.txt",
+            "bytes": 83952,
+            "sha256": "360646c6150a328af17dfb5777930664d0d41952d661b99b14816123558d9cfd"
+          }
+        }
+      ],
+      "artifactListingOriginal": {
+        "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/gitleaks-artifacts.json",
+        "bytes": 32,
+        "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c"
+      }
+    }
+  ],
+  "requiredChecks": [
+    {
+      "name": "pr-scope",
+      "appId": 15368,
+      "checkId": 111595523184,
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37256803977/job/111595523184"
+    },
+    {
+      "name": "static-checks",
+      "appId": 15368,
+      "checkId": 111595587227,
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37256803977/job/111595587227"
+    },
+    {
+      "name": "typecheck",
+      "appId": 15368,
+      "checkId": 111595586943,
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37256803977/job/111595586943"
+    },
+    {
+      "name": "runner-policy",
+      "appId": 15368,
+      "checkId": 111595522871,
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37256803963/job/111595522871"
+    },
+    {
+      "name": "scan",
+      "appId": 15368,
+      "checkId": 111595523100,
+      "headSha": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+      "status": "completed",
+      "conclusion": "success",
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37256803973/job/111595523100"
+    }
+  ],
+  "allFiveCurrentActions15368Success": true,
+  "allFourApplicableFirstAttemptWorkflowsSuccess": true,
+  "preservedConditionalDraftRuns": [],
+  "wholeCurrentCapture": {
+    "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/observation-20261005T030803867687Z/whole-capture.json",
+    "bytes": 35880,
+    "sha256": "dd0c3c11c65360ef91aec3789a0f09f0d4064ac179477eed0d6e3da403023ad3"
+  },
+  "wholeCurrentCompilerSuiteAnalysis": {
+    "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-compiler-suite-checks-analysis-20261005T030821094014Z.json",
+    "bytes": 348362,
+    "sha256": "61088693461b4d8e6cec1b972e112a6cbbae83c33714b0fdf01703087f8776c9"
+  },
+  "compiler": {
+    "status": "COMPLETE_NONCLEAN_BASELINE",
+    "actualExitCode": 2,
+    "totalDiagnostics": 1169,
+    "allFamilyCounts": {
+      "TS18046": 89,
+      "TS18047": 3,
+      "TS18048": 14,
+      "TS18049": 1,
+      "TS2305": 1,
+      "TS2322": 55,
+      "TS2339": 76,
+      "TS2345": 29,
+      "TS2347": 8,
+      "TS2352": 12,
+      "TS2353": 5,
+      "TS2367": 6,
+      "TS2459": 1,
+      "TS2488": 1,
+      "TS2493": 14,
+      "TS2502": 4,
+      "TS2532": 6,
+      "TS2540": 1,
+      "TS2551": 1,
+      "TS2558": 57,
+      "TS2559": 1,
+      "TS2561": 1,
+      "TS2677": 1,
+      "TS2698": 4,
+      "TS2737": 151,
+      "TS2739": 3,
+      "TS2741": 9,
+      "TS2769": 9,
+      "TS2783": 1,
+      "TS2820": 1,
+      "TS4104": 1,
+      "TS7006": 581,
+      "TS7016": 1,
+      "TS7022": 2,
+      "TS7031": 19
+    },
+    "gatedPairs": 66,
+    "expectedBaselinePairs": 66,
+    "exactGatedBaselineEquality": true,
+    "managerOwned60Counts": {
+      ".github/workflows/workforce-manager-today-browser-evidence.yml": 0,
+      "messages/az.json": 0,
+      "messages/en.json": 0,
+      "messages/ru.json": 0,
+      "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql": 0,
+      "prisma/migrations/20260830110000_workforce_shift_default_timeline/migration.sql": 0,
+      "prisma/migrations/20260830120000_workforce_workday_schedule_snapshots/migration.sql": 0,
+      "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql": 0,
+      "prisma/migrations/20260901080000_workforce_team_default_shift_timeline/migration.sql": 0,
+      "prisma/schema.prisma": 0,
+      "scripts/_rls.mjs": 0,
+      "scripts/ci/fixtures/workforce-manager-today-browser.sql": 0,
+      "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql": 0,
+      "scripts/ci/fixtures/workforce-native-zoom-extension/background.js": 0,
+      "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json": 0,
+      "scripts/workforce-manager-today-browser-evidence.mjs": 0,
+      "scripts/workforce-native-browser-zoom.mjs": 0,
+      "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts": 0,
+      "src/__tests__/workforce-timesheet-export-preview-ui-contract.test.ts": 0,
+      "src/app/(dashboard)/layout.tsx": 0,
+      "src/app/(dashboard)/workforce/page.tsx": 0,
+      "src/app/api/v1/workforce/today/route.ts": 0,
+      "src/app/globals.css": 0,
+      "src/app/layout.tsx": 0,
+      "src/components/providers.tsx": 0,
+      "src/components/ui/badge.tsx": 0,
+      "src/components/ui/button.tsx": 0,
+      "src/components/workforce/workforce-manager-today.tsx": 0,
+      "src/components/workforce/workforce-workbench.tsx": 0,
+      "src/lib/api-auth.ts": 0,
+      "src/lib/auth.ts": 0,
+      "src/lib/modules.ts": 0,
+      "src/lib/mtm-settings.ts": 0,
+      "src/lib/mtm/mobile-week.ts": 0,
+      "src/lib/tenant-capabilities.ts": 0,
+      "src/lib/timezone.ts": 0,
+      "src/lib/user-module-access.ts": 0,
+      "src/lib/with-rls.ts": 0,
+      "src/lib/with-workforce-rls-auth.ts": 0,
+      "src/lib/workforce/access-control.ts": 0,
+      "src/lib/workforce/access-grant-resolution.ts": 0,
+      "src/lib/workforce/actor.ts": 0,
+      "src/lib/workforce/calendar.ts": 0,
+      "src/lib/workforce/employee-today.ts": 0,
+      "src/lib/workforce/exception-case-read-scope.ts": 0,
+      "src/lib/workforce/exception-read-access.ts": 0,
+      "src/lib/workforce/geofence-evaluation.ts": 0,
+      "src/lib/workforce/granular-access-rollout.ts": 0,
+      "src/lib/workforce/manager-today.ts": 0,
+      "src/lib/workforce/policy-definition.ts": 0,
+      "src/lib/workforce/policy-resolution.ts": 0,
+      "src/lib/workforce/sensitive-response.ts": 0,
+      "src/lib/workforce/shift-definition.ts": 0,
+      "src/lib/workforce/shift-resolution.ts": 0,
+      "src/lib/workforce/snapshot-writer.ts": 0,
+      "src/lib/workforce/team-membership.ts": 0,
+      "src/lib/workforce/timesheet-read-model.ts": 0,
+      "src/lib/workforce/timesheet-schedule-snapshot.ts": 0,
+      "src/lib/workforce/today-read-access.ts": 0,
+      "src/proxy.ts": 0
+    },
+    "managerTypedCount": 42,
+    "calendarOwned25Counts": {
+      ".github/workflows/workforce-calendar-browser-evidence.yml": 0,
+      ".github/workflows/workforce-policy-employee-impact-evidence.yml": 0,
+      ".github/workflows/workforce-policy-version-browser-evidence.yml": 0,
+      "messages/az.json": 0,
+      "messages/en.json": 0,
+      "messages/ru.json": 0,
+      "scripts/ci/fixtures/workforce-native-zoom-extension/background.js": 0,
+      "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json": 0,
+      "scripts/ci/fixtures/workforce-policy-employee-impact.sql": 0,
+      "scripts/workforce-calendar-browser-evidence.mjs": 0,
+      "scripts/workforce-native-browser-zoom.mjs": 0,
+      "scripts/workforce-policy-employee-impact-browser-evidence.mjs": 0,
+      "src/__tests__/api-workforce-policy-employee-impact.test.ts": 0,
+      "src/__tests__/lib-workforce-policy-employee-impact-postgres.test.ts": 0,
+      "src/__tests__/workforce-policy-employee-impact-preview.test.ts": 0,
+      "src/__tests__/workforce-policy-employee-impact-receipt.test.ts": 0,
+      "src/__tests__/workforce-policy-employee-impact-ui.test.ts": 0,
+      "src/app/api/v1/workforce/configuration/policies/[id]/employee-impact/route.ts": 0,
+      "src/components/workforce/workforce-calendar-configuration.tsx": 0,
+      "src/components/workforce/workforce-policy-employee-impact-preview.tsx": 0,
+      "src/components/workforce/workforce-policy-version-comparison.tsx": 0,
+      "src/lib/workforce/policy-employee-impact-preview.ts": 0,
+      "src/lib/workforce/policy-employee-impact-read.ts": 0,
+      "src/lib/workforce/policy-employee-impact-receipt.ts": 0,
+      "src/lib/workforce/sensitive-operation-log.ts": 0
+    },
+    "calendarTypedCount": 13,
+    "combinedOwned79Counts": {
+      ".github/workflows/workforce-calendar-browser-evidence.yml": 0,
+      ".github/workflows/workforce-manager-today-browser-evidence.yml": 0,
+      ".github/workflows/workforce-policy-employee-impact-evidence.yml": 0,
+      ".github/workflows/workforce-policy-version-browser-evidence.yml": 0,
+      "messages/az.json": 0,
+      "messages/en.json": 0,
+      "messages/ru.json": 0,
+      "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql": 0,
+      "prisma/migrations/20260830110000_workforce_shift_default_timeline/migration.sql": 0,
+      "prisma/migrations/20260830120000_workforce_workday_schedule_snapshots/migration.sql": 0,
+      "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql": 0,
+      "prisma/migrations/20260901080000_workforce_team_default_shift_timeline/migration.sql": 0,
+      "prisma/schema.prisma": 0,
+      "scripts/_rls.mjs": 0,
+      "scripts/ci/fixtures/workforce-manager-today-browser.sql": 0,
+      "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql": 0,
+      "scripts/ci/fixtures/workforce-native-zoom-extension/background.js": 0,
+      "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json": 0,
+      "scripts/ci/fixtures/workforce-policy-employee-impact.sql": 0,
+      "scripts/workforce-calendar-browser-evidence.mjs": 0,
+      "scripts/workforce-manager-today-browser-evidence.mjs": 0,
+      "scripts/workforce-native-browser-zoom.mjs": 0,
+      "scripts/workforce-policy-employee-impact-browser-evidence.mjs": 0,
+      "src/__tests__/api-workforce-policy-employee-impact.test.ts": 0,
+      "src/__tests__/lib-workforce-policy-employee-impact-postgres.test.ts": 0,
+      "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts": 0,
+      "src/__tests__/workforce-policy-employee-impact-preview.test.ts": 0,
+      "src/__tests__/workforce-policy-employee-impact-receipt.test.ts": 0,
+      "src/__tests__/workforce-policy-employee-impact-ui.test.ts": 0,
+      "src/__tests__/workforce-timesheet-export-preview-ui-contract.test.ts": 0,
+      "src/app/(dashboard)/layout.tsx": 0,
+      "src/app/(dashboard)/workforce/page.tsx": 0,
+      "src/app/api/v1/workforce/configuration/policies/[id]/employee-impact/route.ts": 0,
+      "src/app/api/v1/workforce/today/route.ts": 0,
+      "src/app/globals.css": 0,
+      "src/app/layout.tsx": 0,
+      "src/components/providers.tsx": 0,
+      "src/components/ui/badge.tsx": 0,
+      "src/components/ui/button.tsx": 0,
+      "src/components/workforce/workforce-calendar-configuration.tsx": 0,
+      "src/components/workforce/workforce-manager-today.tsx": 0,
+      "src/components/workforce/workforce-policy-employee-impact-preview.tsx": 0,
+      "src/components/workforce/workforce-policy-version-comparison.tsx": 0,
+      "src/components/workforce/workforce-workbench.tsx": 0,
+      "src/lib/api-auth.ts": 0,
+      "src/lib/auth.ts": 0,
+      "src/lib/modules.ts": 0,
+      "src/lib/mtm-settings.ts": 0,
+      "src/lib/mtm/mobile-week.ts": 0,
+      "src/lib/tenant-capabilities.ts": 0,
+      "src/lib/timezone.ts": 0,
+      "src/lib/user-module-access.ts": 0,
+      "src/lib/with-rls.ts": 0,
+      "src/lib/with-workforce-rls-auth.ts": 0,
+      "src/lib/workforce/access-control.ts": 0,
+      "src/lib/workforce/access-grant-resolution.ts": 0,
+      "src/lib/workforce/actor.ts": 0,
+      "src/lib/workforce/calendar.ts": 0,
+      "src/lib/workforce/employee-today.ts": 0,
+      "src/lib/workforce/exception-case-read-scope.ts": 0,
+      "src/lib/workforce/exception-read-access.ts": 0,
+      "src/lib/workforce/geofence-evaluation.ts": 0,
+      "src/lib/workforce/granular-access-rollout.ts": 0,
+      "src/lib/workforce/manager-today.ts": 0,
+      "src/lib/workforce/policy-definition.ts": 0,
+      "src/lib/workforce/policy-employee-impact-preview.ts": 0,
+      "src/lib/workforce/policy-employee-impact-read.ts": 0,
+      "src/lib/workforce/policy-employee-impact-receipt.ts": 0,
+      "src/lib/workforce/policy-resolution.ts": 0,
+      "src/lib/workforce/sensitive-operation-log.ts": 0,
+      "src/lib/workforce/sensitive-response.ts": 0,
+      "src/lib/workforce/shift-definition.ts": 0,
+      "src/lib/workforce/shift-resolution.ts": 0,
+      "src/lib/workforce/snapshot-writer.ts": 0,
+      "src/lib/workforce/team-membership.ts": 0,
+      "src/lib/workforce/timesheet-read-model.ts": 0,
+      "src/lib/workforce/timesheet-schedule-snapshot.ts": 0,
+      "src/lib/workforce/today-read-access.ts": 0,
+      "src/proxy.ts": 0
+    },
+    "combinedTypedCount": 55,
+    "allOwnedDiagnosticCount": 0,
+    "unparsedErrorLines": [],
+    "blockingFamilyDiagnostics": [],
+    "wholeLog": {
+      "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-logs/111595586943.txt",
+      "bytes": 256251,
+      "sha256": "22fb26bb28137d21e6bc5d15f6db4cad0ff197456faf78fedccccbed92e61c52"
+    },
+    "claimCompilerClean": false
+  },
+  "suite": {
+    "status": "COMPLETE_NONCLEAN_BASELINE",
+    "wholeLog": {
+      "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-logs/111595587227.txt",
+      "bytes": 213065,
+      "sha256": "7302dbe32b8ee9a637ba6f2dabd02a90198eb8d0d63ed4759e43486847a36449"
+    },
+    "observedSummary": [
+      [
+        "18",
+        "18"
+      ]
+    ],
+    "baselineKnownFailingFiles": [
+      "src/__tests__/api-social-brand-protection.test.ts",
+      "src/__tests__/api-social-convert-to-lead.test.ts",
+      "src/__tests__/api-social-legal-reports.test.ts",
+      "src/__tests__/lead-ai-call-action-ui.test.ts",
+      "src/__tests__/lib-ai-advisor-query.test.ts",
+      "src/__tests__/lib-mtm-coverage-snapshot.test.ts",
+      "src/__tests__/lib-mtm-location-history.test.ts",
+      "src/__tests__/lib-social-discovery-auto-review-report.test.ts",
+      "src/__tests__/lib-social-discovery-review.test.ts",
+      "src/__tests__/lib-social-relevance-evaluator.test.ts",
+      "src/__tests__/lib-social-subject-relevance.test.ts",
+      "src/__tests__/migration-mtm-task-recurrence-schedule.test.ts",
+      "src/__tests__/mtm-operational-week-base-coverage-ui-contract.test.ts",
+      "src/__tests__/mtm-organization-grid-ui-contract.test.ts",
+      "src/__tests__/mtm-pharmacy-promotion-workspace-role-ux-contract.test.ts",
+      "src/__tests__/mtm-route-builder-filters-ui-contract.test.ts",
+      "src/__tests__/mtm-route-customer-prefill-ui-contract.test.ts",
+      "src/__tests__/zeytunpharm-swissmed-evidence-seed.test.ts"
+    ],
+    "exactBaselineSetGuardPassed": true,
+    "claimSuiteClean": false
+  },
+  "currentManager": {
+    "status": "PASS",
+    "runId": 37256803987,
+    "wholeOriginalReceipt": {
+      "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-artifacts/11322809377-members/manager-today-receipt.json",
+      "bytes": 257201,
+      "sha256": "9d80bd7969a090e62e606c69f3effa6413f2c95d96fde9c59d80eaa7fab72043"
+    },
+    "wholeSemanticVerification": {
+      "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/manager-current-semantic-verification-20261005T025955329333Z.json",
+      "bytes": 311233,
+      "sha256": "e3cb5cbdf332fb721e37276b780a72a9cfc56924f26c94de01515b37ff321706"
+    },
+    "wholeArtifactSourceVerification": {
+      "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/whole-artifact-source-verification-20261005T025907156308Z.json",
+      "bytes": 72179,
+      "sha256": "0a403653df72a0ba3ed5b366d3bf7c0b0e976258e0c629399a1ec40c1d54b6ed"
+    },
+    "artifactId": 11322809377,
+    "wholeZip": {
+      "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/current-hosted-originals/whole-artifacts/11322809377.zip",
+      "bytes": 7099999,
+      "sha256": "cfad3f08900540a17d002ca1ed34345871a511aaab24358eb949318ae3f65a1f"
+    },
+    "actualMembers": 58,
+    "actualPNG": 56,
+    "actualJSON": 2,
+    "actualOriginalPNGsViewed": 56,
+    "visualProof": {
+      "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/actual-original-56-visual-review-20261005T030441039369Z.json",
+      "bytes": 51401,
+      "sha256": "30c49fe8fdc583613e6c7a7d5d4521b80259afe4b04430c2aa3c44de858a994b"
+    },
+    "sourceBindings58": true,
+    "functionalCases9": true,
+    "positiveLocalizedCases7": true,
+    "positiveCurrentSnapshots3": {
+      "status": "PASS",
+      "states": [
+        {
+          "ordinal": 1,
+          "status": "STARTED",
+          "sourceHelperCreatedTriplet": true,
+          "replayAlreadyPresent": true,
+          "schemaVersion": 2,
+          "historicalMembershipLinked": true,
+          "canonicalScheduleHashVerified": true,
+          "frozenUtcPlanVerified": true,
+          "remoteSegmentCount": 1
+        },
+        {
+          "ordinal": 2,
+          "status": "PAUSED",
+          "sourceHelperCreatedTriplet": true,
+          "replayAlreadyPresent": true,
+          "schemaVersion": 2,
+          "historicalMembershipLinked": true,
+          "canonicalScheduleHashVerified": true,
+          "frozenUtcPlanVerified": true,
+          "remoteSegmentCount": 1
+        },
+        {
+          "ordinal": 3,
+          "status": "COMPLETED",
+          "sourceHelperCreatedTriplet": true,
+          "replayAlreadyPresent": true,
+          "schemaVersion": 2,
+          "historicalMembershipLinked": true,
+          "canonicalScheduleHashVerified": true,
+          "frozenUtcPlanVerified": true,
+          "remoteSegmentCount": 1
+        }
+      ],
+      "adminFixtureSeedOnly": true,
+      "actualAcceptedStartEventWorkflowTested": false,
+      "physicalPresenceInferred": false,
+      "historicalTemplateDisplayNameImmutabilityTested": false
+    },
+    "missingCurrentSnapshot": {
+      "status": "PASS",
+      "syntheticStartedWorkday": true,
+      "currentPublishedAssignmentExists": true,
+      "allThreeSnapshotRowsAbsent": true,
+      "actualAcceptedStartEventWorkflowTested": false,
+      "physicalPresenceInferred": false,
+      "adminFixtureSeedOnly": true
+    },
+    "missingCurrentSnapshotLocalizedCases7": true,
+    "legacyShiftOnlyScope": "The current fixture proves all three immutable snapshots absent despite a live assignment. It does not test or reject valid legacy shift-only behavior; product source remains unchanged.",
+    "databaseNegativeGuards10": {
+      "status": "PASS",
+      "role": "postgres",
+      "disposableAdminTransactionsOnly": true,
+      "productionMigrationsChanged": false,
+      "appWritePrivilegesAdded": false,
+      "exactNamedGuardScopeOnly": true,
+      "results": [
+        {
+          "name": "workforce_policy_snapshots-UPDATE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_policy_snapshots-DELETE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_shift_snapshots-UPDATE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_shift_snapshots-DELETE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_workday_schedule_snapshots-UPDATE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "workforce_workday_schedule_snapshots-DELETE",
+          "status": "PASS",
+          "postgresCode": "55000",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "policy-workday-employee-link",
+          "status": "PASS",
+          "postgresCode": "23514",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "shift-workday-employee-link",
+          "status": "PASS",
+          "postgresCode": "23514",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "schedule-cross-workday-snapshot-links",
+          "status": "PASS",
+          "postgresCode": "23514",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        },
+        {
+          "name": "schedule-v2-historical-membership",
+          "status": "PASS",
+          "postgresCode": "23514",
+          "stagedFactCreatedBeforeError": true,
+          "stagedWorkdayCount": 6,
+          "committedWorkdayCountAfter": 5,
+          "allFactHashesAndCountsRestored": true
+        }
+      ]
+    },
+    "negativeTransactionCounts": "Each staged sixth workday is rejected; all20 fact count/hash assertions restore committed5",
+    "nativeLocalesENRUAZ": true,
+    "actualCaptureDiagnostics": 27,
+    "actualFocusDiagnostics": 3,
+    "oldActiveElementAndFourBoundsZeroTolerance": true,
+    "realAuthentication8": true,
+    "factTables20WholeBrowserBeforeAfterCountHashesEqual": true,
+    "forcedPopulatedRLSBeforeAfter21": true,
+    "nativeProfileCleanup3": true,
+    "allCleanupActions11": true,
+    "perNegativeProbeRaw20FactHashPairsUploaded": false,
+    "rollbackEvidenceScope": "Actual ten reached source-bound PostgreSQL assertions deepEqual all20 count+hash snapshots after each rejected staged transaction; receipt stores safe perprobe SQLSTATE/count/pass flags, not private perprobe rawrow/hash pairs. Entire browser BEFORE/AFTER20hash pairs are separately present and rechecked.",
+    "globalZeroDatabaseWritesClaimed": false,
+    "adminFixtureTransactionWritesPresent": true
+  },
+  "ownership": {
+    "managerOwned60": 60,
+    "managerTyped42": 42,
+    "calendarOwned25": 25,
+    "calendarTyped13": 13,
+    "combinedOwned79": 79,
+    "combinedTyped55": 55,
+    "allOwnedAllCompilerFamiliesZero": true,
+    "actualOwnedDiagnosticCount": 0,
+    "bothHistoricalTimesheetUIContractAndCurrentPreconnectionGuardRetained": true,
+    "notFullImportGraph": true
+  },
+  "accounting": {
+    "uniqueCriteriaIds": 161,
+    "historicalRawRows": 169,
+    "DONE": 82,
+    "nonDONE": 79,
+    "statusCounts": {
+      "DONE": 82,
+      "PARTIAL (OWNER ATTESTATION)": 1,
+      "PARTIAL": 55,
+      "OWNER DECISION": 6,
+      "PLANNED": 14,
+      "BLOCKED": 3
+    },
+    "passedGates": 14,
+    "totalGates": 15,
+    "C8Percent": 45,
+    "overallPercent": 59,
+    "newRowClosure": false
+  },
+  "historicalP2Disposition": {
+    "firstC5OwnedTS2769P2": "OriginalHOSTED BLOCKED P2=1 permanently retained; repaired56 source/actualHOSTED and own581release historicalaccepted; no195 runtime borrowing",
+    "olderFirst1b02NativeP2": "Immutable original negative packet retained via accepted graph; no retroGREEN"
+  },
+  "currentReviewerFirstGuardsRetained": [
+    {
+      "path": "/tmp/workforce-pr582-195f703-hosted-independent-20261005T024938299502Z/first-native-capture-uniqueness-reader-guard.json",
+      "bytes": 1213,
+      "sha256": "c3f05626b76bd1f1203140206514d3e7f157c5356d14ab7fd1686807d2762f97"
+    }
+  ],
+  "originalFilesOverwrittenOrDropped": 0,
+  "localTestsBrowserPostgresCompilerBuilds": 0,
+  "GitOrGitHubMutations": 0,
+  "productionRequests": 0,
+  "largeArtifactsDownloaded": 0,
+  "historicalRuntimeBorrowed": false,
+  "calendarAndReport": {
+    "source": "Unchanged frozen BASE source and filters; not applicable to sole changed manager harness",
+    "freshExecution": "NOT RUN for195; no borrowed historical calendar/report runtime credit",
+    "compilerOwnership": "Current whole compiler scan includes unchanged calendar25/13 and union79/55"
+  },
+  "productionBuild": "NOT RUN premerge: regular PRbuild SKIPPED allowed; own normal merged-main deploy build/artifact/public bracket required",
+  "currentRuntimeAcceptance": {
+    "managerBrowserPostgres": "PASS current9/3triplets/1missing snapshot/10realSQLSTATE6→5/20facts21RLS/native3/strict focus3/capture27/auth8/cleanup11",
+    "fullCompiler": "COMPLETE NONCLEAN BASELINE fresh actual1169/35 families/exit2/frozen66 exact; manager60/42+union79/55 all-family zero",
+    "fullSuite": "COMPLETE NONCLEAN BASELINE strict18of18 exact set gate",
+    "calendarReport": "NOT RUN new candidate, source-filter not applicable",
+    "productionBuildRelease": "NOT RUN until own normal merged-main deploy",
+    "humanATPhysicalAndroidWholePageWCAGPolicyLifecycleConcurrencyAllMigrationReplay": "NOT RUN"
+  },
+  "limits": {
+    "actualAcceptedStartEventWorkflowTested": false,
+    "physicalPresenceInferred": false,
+    "historicalTemplateDisplayNameImmutabilityTested": false,
+    "fullPolicyLifecycleDefaultAssignmentTeamTimelineConcurrencyAllMigrationReplay": false,
+    "wholePagePixelNonOcclusion": false,
+    "humanAssistiveTechnology": false,
+    "physicalAndroidDevice": false,
+    "no100PercentOrNewRoadmapRows": true,
+    "selectedRuntime58NotFullGraph": true,
+    "devBadgeObserved": "Existing Next dev issue badge preserved in original images; no global pixel non-occlusion or WCAG acceptance"
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-green-input-audit-independent.json",
+    "bytes": 2033306,
+    "sha256": "899b325537321179ecb88410e6562dbfc0d588a77f6b4dba5deb84baf2ed3a6e"
+  },
+  "inputCounts": {
+    "directOriginalObservations": 1735,
+    "explicitGitObservations": 111,
+    "wholeJSON": 488,
+    "wholeUTF8": 1622,
+    "wholeBinary": 113,
+    "portableCore9": 9,
+    "portableDirect81": 81,
+    "currentArtifactMembers": 58,
+    "currentPNG": 56,
+    "actualPNGViews": 56
+  },
+  "sourceOnly": false,
+  "runtimeNoCredit": false,
+  "candidateRuntimeAcceptanceCredit": true,
+  "normalMergeAllowed": true,
+  "releaseAccepted": false,
+  "nextAction": "Root whole independent acceptance and fresh-main/current-check protection guards before ordinary normal merge; then own exact merged-main build/artifact/public release verification.",
+  "continuity": {
+    "status": "Exact own PR582 HOSTED GREEN; release NOT RUN",
+    "lastCompletedAction": "Fresh four workflows/five Actions/full compiler+suite/whole current manager ZIP+receipt+all original visual review and immutable audit",
+    "stoppingPoint": "Reviewer performed no merge/mutation/production request",
+    "nextAction": "Root whole acceptance and fresh-main ordinary merge, then own merged-main release review"
+  }
+}
