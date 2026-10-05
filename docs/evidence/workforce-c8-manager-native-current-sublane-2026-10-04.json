@@ -1,0 +1,170 @@
+{
+  "atUtc": "2026-10-04T23:11:41.160449+00:00",
+  "status": "CURRENT FIXED MANAGER SUBLANE PASS; GLOBAL HOSTED ACCEPTANCE PENDING",
+  "head": "70a112ef08382ef981ce340bc2394e66c2756b81",
+  "synthetic": "8d3e418b42d5fa0ab1210576628fd4d68c39c630",
+  "receipt": {
+    "path": "/tmp/workforce-part36-pagination-fix-current-hosted-originals-primary/whole-artifacts/11318340097-members/manager-today-receipt.json",
+    "bytes": 174899,
+    "sha256": "d691e54f2415ca0d9b31ea006072fcac080acd2480392d21e6f60f5a0eed0957"
+  },
+  "casesPassed": 9,
+  "nativeZoomLocales": [
+    "en",
+    "ru",
+    "az"
+  ],
+  "nativeCaptureDiagnostics": 15,
+  "strictFocusDiagnostics": 3,
+  "sourceBindingsExact": 48,
+  "facts": {
+    "status": "PASS",
+    "tenantCount": 2,
+    "tables": [
+      {
+        "table": "mtm_teams",
+        "count": 3,
+        "sha256": "329c2b789eaea748e6d4489be1301f5015e464374e29a49a56c7cb6e1eed8858",
+        "afterSha256": "329c2b789eaea748e6d4489be1301f5015e464374e29a49a56c7cb6e1eed8858",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_agents",
+        "count": 29,
+        "sha256": "0a6d838b3c05b91aabf7c0582529931f4d71be723ad3ecf65608986a99b51fdf",
+        "afterSha256": "0a6d838b3c05b91aabf7c0582529931f4d71be723ad3ecf65608986a99b51fdf",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_settings",
+        "count": 1,
+        "sha256": "8fccfbef993217aed4f2161d3e512da4f1d5a3696d19ca7226041cedafd91810",
+        "afterSha256": "8fccfbef993217aed4f2161d3e512da4f1d5a3696d19ca7226041cedafd91810",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_work_calendar_days",
+        "count": 3,
+        "sha256": "eba2b00e96307d658b205594fd80f2e41587aba2f80efad6a13f0723128da74f",
+        "afterSha256": "eba2b00e96307d658b205594fd80f2e41587aba2f80efad6a13f0723128da74f",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_employee_team_memberships",
+        "count": 26,
+        "sha256": "ed2d6a4ff4c64015889e09c79e8e164c8ff05d992d40d18b91d0759f1239833f",
+        "afterSha256": "ed2d6a4ff4c64015889e09c79e8e164c8ff05d992d40d18b91d0759f1239833f",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_agent_workdays",
+        "count": 1,
+        "sha256": "bd16a85b8a052fb405dd38733b978a5f5ce5a025892af603c9c27ecefb266789",
+        "afterSha256": "bd16a85b8a052fb405dd38733b978a5f5ce5a025892af603c9c27ecefb266789",
+        "unchanged": true
+      },
+      {
+        "table": "mtm_agent_workday_events",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_access_grants",
+        "count": 2,
+        "sha256": "9253f259653dffc9426ea6ed7248d09bec5a3fcbf18d1094661efd460906ba9c",
+        "afterSha256": "9253f259653dffc9426ea6ed7248d09bec5a3fcbf18d1094661efd460906ba9c",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_access_grant_revocations",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_templates",
+        "count": 1,
+        "sha256": "59aa9844f0dc096e5449a991b77929590fe2f77820542b40da4d56176bad5f80",
+        "afterSha256": "59aa9844f0dc096e5449a991b77929590fe2f77820542b40da4d56176bad5f80",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_segments",
+        "count": 1,
+        "sha256": "9226be72fea9b62639c35503962c16ff949c1170c268bb4d090eeca1bbc37224",
+        "afterSha256": "9226be72fea9b62639c35503962c16ff949c1170c268bb4d090eeca1bbc37224",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_assignments",
+        "count": 25,
+        "sha256": "2891db1f1f1f6374e2e4832e1e9bdd61d43756306a92af06e45d9cc34ec52c30",
+        "afterSha256": "2891db1f1f1f6374e2e4832e1e9bdd61d43756306a92af06e45d9cc34ec52c30",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_default_assignments",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_team_default_assignments",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_policy_snapshots",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_shift_snapshots",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_workday_schedule_snapshots",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_exception_cases",
+        "count": 1,
+        "sha256": "aedcb193b0346469b7889e8d0f60cc57dd1ac1d773bd23598520b2d8776521a5",
+        "afterSha256": "aedcb193b0346469b7889e8d0f60cc57dd1ac1d773bd23598520b2d8776521a5",
+        "unchanged": true
+      },
+      {
+        "table": "workforce_exception_decisions",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      }
+    ],
+    "userAuthenticationMetadataExcluded": true
+  },
+  "rlsBeforeCount": 20,
+  "rlsAfterCount": 20,
+  "cleanup": "PASS",
+  "actualRootNativePaginationPNGViews": [
+    "en",
+    "ru",
+    "az"
+  ],
+  "normalMergeAllowed": false,
+  "first1b02FailurePreserved": true
+}

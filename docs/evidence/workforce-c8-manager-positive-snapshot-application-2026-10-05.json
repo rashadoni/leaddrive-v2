@@ -1,0 +1,63 @@
+{
+  "atUtc": "2026-10-05T00:11:14.038662+00:00",
+  "status": "THREE REVIEWED DRAFTS APPLIED; NEW RUNTIME NOT RUN",
+  "branch": "codex/workforce-completion-part38",
+  "parent": "f05534af8e61e1d0a12e5937e3f23ddec7e05354",
+  "baseSha": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "rootFinalOwn580Release": {
+    "path": "/tmp/workforce-pr580-6dab-root-final-release-accepted-primary.json",
+    "bytes": 12621,
+    "sha256": "9412369e1fe0f74609744345ba8ec99bcd58c25ec738f3cfe42cdd521c7af013"
+  },
+  "preparation": {
+    "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/unapplied-preparation-proof.json",
+    "bytes": 6727,
+    "sha256": "3cf3c2fc54c89d96e4cd6035c1400cd2a1d8026d1a47493b12a609928cede758"
+  },
+  "appliedDrafts": [
+    {
+      "repoPath": "scripts/workforce-manager-today-browser-evidence.mjs",
+      "draft": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/files/scripts/workforce-manager-today-browser-evidence.mjs",
+        "bytes": 59561,
+        "sha256": "874f61c20dba16e515102d37b12cb485ef84cd24625b179e03c99b6f065bb4d9"
+      },
+      "applied": {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/scripts/workforce-manager-today-browser-evidence.mjs",
+        "bytes": 59561,
+        "sha256": "874f61c20dba16e515102d37b12cb485ef84cd24625b179e03c99b6f065bb4d9"
+      }
+    },
+    {
+      "repoPath": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "draft": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/files/.github/workflows/workforce-manager-today-browser-evidence.yml",
+        "bytes": 10288,
+        "sha256": "741f5ee020129c6ef98c275b6ad62e2ec61986e04da047cf884533331bc534a1"
+      },
+      "applied": {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/.github/workflows/workforce-manager-today-browser-evidence.yml",
+        "bytes": 10288,
+        "sha256": "741f5ee020129c6ef98c275b6ad62e2ec61986e04da047cf884533331bc534a1"
+      }
+    },
+    {
+      "repoPath": "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+      "draft": {
+        "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/files/scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+        "bytes": 15243,
+        "sha256": "e0433c3a48370f2b789c03c7749aa1a66611f70544dd76cf8c87a904b397a2eb"
+      },
+      "applied": {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+        "bytes": 15243,
+        "sha256": "e0433c3a48370f2b789c03c7749aa1a66611f70544dd76cf8c87a904b397a2eb"
+      }
+    }
+  ],
+  "productSourceAndProductionMigrationsChanged": false,
+  "applicationWriteGrantsAdded": false,
+  "localPostgresBrowserCompilerBuildSuite": "NOT RUN by Contabo workload contract",
+  "runtimeCredit": false,
+  "rowClosure": false
+}

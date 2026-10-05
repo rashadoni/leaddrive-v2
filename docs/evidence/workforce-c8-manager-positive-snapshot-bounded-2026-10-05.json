@@ -1,0 +1,138 @@
+{
+  "atUtc": "2026-10-05T00:11:55.113575+00:00",
+  "status": "ALL SIX SMALL SEQUENTIAL CHECKS PASS; NEW HOSTED RUNTIME NOT RUN",
+  "branch": "codex/workforce-completion-part38",
+  "commands": [
+    {
+      "name": "resources",
+      "command": [
+        "bash",
+        "-c",
+        "free -m\ndf -h .\ncat /proc/pressure/memory\ncat /proc/pressure/io"
+      ],
+      "startedAt": "2026-10-05T00:11:55.113613+00:00",
+      "completedAt": "2026-10-05T00:11:55.133442+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/resources.stdout.txt",
+        "bytes": 544,
+        "sha256": "d67fc189e2daed2da0a12b4e042786c71b99c50fb8cfe084af20d05ff3e01c7c"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/resources.stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "node-syntax",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--check",
+        "scripts/workforce-manager-today-browser-evidence.mjs"
+      ],
+      "startedAt": "2026-10-05T00:11:55.133781+00:00",
+      "completedAt": "2026-10-05T00:11:55.170193+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/node-syntax.stdout.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/node-syntax.stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "runner-policy",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "scripts/ci/check-github-runner-policy.mjs"
+      ],
+      "startedAt": "2026-10-05T00:11:55.170598+00:00",
+      "completedAt": "2026-10-05T00:11:55.281149+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/runner-policy.stdout.txt",
+        "bytes": 44,
+        "sha256": "e35e40988499750aae748b49ecad458e59869df92c898b8d29cb340748c3f602"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/runner-policy.stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "guard-and-snapshot-writer-tests",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts",
+        "src/__tests__/workforce-snapshot-writer.test.ts",
+        "--maxWorkers=1",
+        "--no-file-parallelism"
+      ],
+      "startedAt": "2026-10-05T00:11:55.281617+00:00",
+      "completedAt": "2026-10-05T00:12:07.234605+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/guard-and-snapshot-writer-tests.stdout.txt",
+        "bytes": 282,
+        "sha256": "bd2e2ea9456764496edd48fe35cf24dee49183909ca0f2939ebcd463b47d0097"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/guard-and-snapshot-writer-tests.stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "scoped-eslint",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/eslint/bin/eslint.js",
+        "scripts/workforce-manager-today-browser-evidence.mjs"
+      ],
+      "startedAt": "2026-10-05T00:12:07.235059+00:00",
+      "completedAt": "2026-10-05T00:12:11.476793+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/scoped-eslint.stdout.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/scoped-eslint.stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "startedAt": "2026-10-05T00:12:11.477305+00:00",
+      "completedAt": "2026-10-05T00:12:11.515644+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/diff-check.stdout.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part38-positive-snapshot-bounded-primary/diff-check.stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "heavyLocalChecks": "NOT RUN: full compiler/suite/build/browser/PostgreSQL/Android/load by Contabo contract",
+  "newHostedRuntimeAccepted": false
+}

@@ -1,0 +1,54 @@
+{
+  "atUtc": "2026-10-05T01:04:27.133794+00:00",
+  "status": "FIRST CURRENT BLOCKED WHOLE RECEIPTS ACCEPTED; REPAIR REQUIRED",
+  "candidateHead": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+  "baseSha": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "report": {
+    "path": "/tmp/workforce-pr581-c5cf76-current-hosted-first-blocked-independent.json",
+    "bytes": 42179,
+    "sha256": "9883ba21a9574625b4848176121f58123b4af47897bacdf369d208fae9003bac"
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-pr581-c5cf76-current-hosted-first-blocked-input-audit-independent.json",
+    "bytes": 2480761,
+    "sha256": "7d77f8fcce8c2093c46623c2858924ac2a41ada2a0d4aa8180ff2e883807db3b"
+  },
+  "wholeCounts": {
+    "originals": 2239,
+    "git": 217,
+    "json": 454,
+    "utf8": 2183,
+    "members": 51,
+    "png": 49
+  },
+  "rootWholeCompilerAnalysis": {
+    "path": "/tmp/workforce-pr581-c5cf76-first-owned-compiler-blocker-primary.json",
+    "bytes": 295494,
+    "sha256": "03a14a570abf6f5344aef1b873cf8c967695417e97ab0aca11a3bd407692f13a"
+  },
+  "actualTotalDiagnostics": 1170,
+  "actualFamilyCount": 35,
+  "actualExitCode": 2,
+  "frozenGatedPairs66Exact": true,
+  "selectedOwnedDiagnostic": [
+    {
+      "sourceLogLine": 608,
+      "path": "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts",
+      "line": 47,
+      "column": 9,
+      "code": "TS2769",
+      "message": "No overload matches this call."
+    }
+  ],
+  "allFiveActionsSuccess": true,
+  "allFourApplicableWorkflowsSuccess": true,
+  "manager9Positive3Sqlstate10Facts20Rls21Native3Focus3Capture24Cleanup11Pass": true,
+  "strictSuite18Of18Nonclean": true,
+  "rootActualOriginalPNGViews": 6,
+  "peerActualOriginalPNGViews": 49,
+  "wholePagePixelNonOcclusion": false,
+  "normalMergeAllowed": false,
+  "productionReleaseAccepted": false,
+  "noPriorOriginalsOverwritten": true,
+  "repairScope": "Only two type annotations in existing preconnection guard test; same catalogue/baselines/source and runtime semantics; fresh exact-head review and hosted execution required"
+}
