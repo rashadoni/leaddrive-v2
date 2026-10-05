@@ -345,6 +345,9 @@ export default function PortalUsersPage() {
       restoreProfileFocusRef.current = true
       setRefreshing(true)
       setEditDialog(null)
+      // Fold pending search input into this refresh. A later debounce refresh
+      // would disable the restored action and discard its keyboard focus.
+      setDebouncedSearch(searchInput.trim())
       setReloadToken((value) => value + 1)
     } catch {
       setEditError(t("portalActionFailed"))
