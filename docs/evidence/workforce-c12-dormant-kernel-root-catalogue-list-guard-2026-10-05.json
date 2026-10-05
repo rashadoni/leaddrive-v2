@@ -1,0 +1,18 @@
+{
+  "atUtc": "2026-10-05T04:01:16.282493+00:00",
+  "head": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "status": "FIRST ROOT READER GUARD; NO ACCEPTANCE ISSUED",
+  "originalReader": {
+    "path": "/tmp/workforce-c12-part43-source-root-accept-primary.py",
+    "bytes": 5285,
+    "sha256": "a030d441ee1b269c2ce9ac0456fbc12240fea326d221015d07c38a663fd1d2ad"
+  },
+  "actualToolExit": 1,
+  "actualFailure": "AssertionError at reader line34: all13HEADBaseBindingsExact is list of13 complete bindings, incorrectly compared with booleanTrue.",
+  "priorWhole973And199GitChecksCompleted": true,
+  "actualToolTraceRetainedInConversation": true,
+  "rawStdoutStderrFilesNotInvented": true,
+  "originalIndependentReportAndAuditUnchanged": true,
+  "sourceOrBaselineMutation": false,
+  "correctedSeparateReader": "/tmp/workforce-c12-part43-source-root-accept-catalogue-list-corrected-primary.py"
+}
