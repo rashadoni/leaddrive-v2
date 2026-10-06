@@ -1,0 +1,6 @@
+src/lib/api-auth.ts(237,42): error TS2339: Property 'role' does not exist on type 'User'.
+src/lib/api-auth.ts(239,30): error TS2339: Property 'organizationId' does not exist on type 'User'.
+src/lib/api-auth.ts(245,60): error TS2339: Property 'hiddenModules' does not exist on type 'User'.
+src/lib/api-auth.ts(514,40): error TS2339: Property 'role' does not exist on type 'User'.
+src/lib/api-auth.ts(516,28): error TS2339: Property 'organizationId' does not exist on type 'User'.
+src/lib/api-auth.ts(522,58): error TS2339: Property 'hiddenModules' does not exist on type 'User'.

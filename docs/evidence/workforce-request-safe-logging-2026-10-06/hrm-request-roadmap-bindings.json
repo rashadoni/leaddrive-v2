@@ -1,0 +1,26 @@
+{
+  "canonical": "/workspace/hrm-request-logging/docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+  "sha256": "d403ef692cf7775a940e8b5be104d72032a52ca407935d71d27083526d664045",
+  "unique_ids": 161,
+  "statuses": {
+    "DONE": 82,
+    "PARTIAL (OWNER ATTESTATION)": 1,
+    "PARTIAL": 55,
+    "OWNER DECISION": 6,
+    "PLANNED": 14,
+    "BLOCKED": 3
+  },
+  "selected": {
+    "WF-C10-011": {
+      "line": 1030,
+      "status": "PLANNED",
+      "row": "| WF-C10-011 | P2 | PLANNED | Privacy/Analytics | Use aggregated/minimized operational metrics; forbid raw location/reasons in general analytics | Schema/log scanners and dashboard review |"
+    },
+    "WF-C12-002": {
+      "line": 1066,
+      "status": "PARTIAL",
+      "row": "| WF-C12-002 | P0 | PARTIAL | Backend/SRE | Emit tenant-safe metrics by stream/app/schema/policy result without high-cardinality employee/location data | [`bounded mobile-sync telemetry evidence`](./workforce-c12-mobile-sync-telemetry-evidence-2026-09-13.md): current pull telemetry maps all runtime dimensions to finite allowlists/bounds before logging; dashboard ingestion, paging and end-to-end cardinality/privacy review remain open |"
+    }
+  },
+  "status_changes": false
+}

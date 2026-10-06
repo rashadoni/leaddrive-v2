@@ -1,0 +1,32 @@
+[
+  {
+    "path": "src/app/api/v1/workforce/requests/[id]/cancel/route.ts",
+    "bytes": 2309,
+    "sha256": "378746b9b0fd3d4a9d7a65587e1c7335c113002a55570ab39e78b39028799803"
+  },
+  {
+    "path": "src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+    "bytes": 3533,
+    "sha256": "fb807168efc5587060a061d11de88f183d50ef3aa53b74b1ae961b04484b07cc"
+  },
+  {
+    "path": "src/app/api/v1/workforce/requests/route.ts",
+    "bytes": 15035,
+    "sha256": "b08d91889c6428afb3c0e8fcd5298070f064803f6c3945a018fab3a4ef3e6f19"
+  },
+  {
+    "path": "src/lib/workforce/sensitive-operation-log.ts",
+    "bytes": 2258,
+    "sha256": "5e906dd58bfcd26323705ef9e15b8a666f6b9818d5f99c885323a720bfa15368"
+  },
+  {
+    "path": "src/__tests__/api-workforce-request-failure-logging.test.ts",
+    "bytes": 11013,
+    "sha256": "95e0c357510e772971bdc337ae9da72b45f3d7ea5701505ec7b1a6e787401fe2"
+  },
+  {
+    "path": "docs/workforce-request-safe-logging-2026-10-06.md",
+    "bytes": 6921,
+    "sha256": "e4200b21896d7101f1d880624819f01f47c27b3d513f8a7d16e12b0dbf0befbd"
+  }
+]

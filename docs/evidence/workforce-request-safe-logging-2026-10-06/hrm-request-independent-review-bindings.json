@@ -1,0 +1,32 @@
+[
+  {
+    "path": "src/lib/workforce/sensitive-operation-log.ts",
+    "bytes": 2258,
+    "sha256": "5e906dd58bfcd26323705ef9e15b8a666f6b9818d5f99c885323a720bfa15368",
+    "git_blob_sha": "178f184bdd9d9284918915180a5f41d8a5b3d3d6"
+  },
+  {
+    "path": "src/app/api/v1/workforce/requests/route.ts",
+    "bytes": 15035,
+    "sha256": "b08d91889c6428afb3c0e8fcd5298070f064803f6c3945a018fab3a4ef3e6f19",
+    "git_blob_sha": "a20652361e52b6767abd3afc975b8ab2c523cdf1"
+  },
+  {
+    "path": "src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+    "bytes": 3533,
+    "sha256": "fb807168efc5587060a061d11de88f183d50ef3aa53b74b1ae961b04484b07cc",
+    "git_blob_sha": "6799ed2b4720f19b8429fdefea2102b10d7f2f8e"
+  },
+  {
+    "path": "src/app/api/v1/workforce/requests/[id]/cancel/route.ts",
+    "bytes": 2309,
+    "sha256": "378746b9b0fd3d4a9d7a65587e1c7335c113002a55570ab39e78b39028799803",
+    "git_blob_sha": "b48d9fe1e78acd3706cb91e048ec032ed8ca6031"
+  },
+  {
+    "path": "src/__tests__/api-workforce-request-failure-logging.test.ts",
+    "bytes": 11013,
+    "sha256": "95e0c357510e772971bdc337ae9da72b45f3d7ea5701505ec7b1a6e787401fe2",
+    "git_blob_sha": "fec0f66706b6ebdf8c369c8f431bfafbe5921ab0"
+  }
+]

@@ -1,0 +1,83 @@
+{
+  "commit": {
+    "sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+    "node_id": "C_kwDOUTPB8doAKGVmNWQ5MDAxMGQ5YjMxN2E0OTNkZmU3YWU1NzRiMTg2M2YzYzgzZmI",
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+    "author": {
+      "name": "rashadoni",
+      "email": "rashadrahimsoy@gmail.com",
+      "date": "2026-10-06T10:15:21Z"
+    },
+    "committer": {
+      "name": "rashadoni",
+      "email": "rashadrahimsoy@gmail.com",
+      "date": "2026-10-06T10:15:21Z"
+    },
+    "tree": {
+      "sha": "5b94c2111dbe51ceb74b1e803e142fff74e66cbc",
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/trees/5b94c2111dbe51ceb74b1e803e142fff74e66cbc"
+    },
+    "message": "fix(workforce): minimize request failure logs and preserve warning severity",
+    "parents": [
+      {
+        "sha": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+        "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/2c5a6a4b35cb96988f9f3c417b122d788498c3a7"
+      }
+    ],
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "pr": {
+    "head": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+    "base": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "synthetic": "7b517816410e29d84a03f368954541ca180b79f6"
+  },
+  "synthetic": {
+    "sha": "7b517816410e29d84a03f368954541ca180b79f6",
+    "node_id": "C_kwDOUTPB8doAKDdiNTE3ODE2NDEwZTI5ZDg0YTAzZjM2ODk1NDU0MWNhMTgwYjc5ZjY",
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/7b517816410e29d84a03f368954541ca180b79f6",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/7b517816410e29d84a03f368954541ca180b79f6",
+    "author": {
+      "name": "rashadoni",
+      "email": "rashadrahimsoy@gmail.com",
+      "date": "2026-10-06T10:15:34Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-10-06T10:15:34Z"
+    },
+    "tree": {
+      "sha": "5b94c2111dbe51ceb74b1e803e142fff74e66cbc",
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/trees/5b94c2111dbe51ceb74b1e803e142fff74e66cbc"
+    },
+    "message": "Merge ef5d90010d9b317a493dfe7ae574b1863f3c83fb into 86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "parents": [
+      {
+        "sha": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+        "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/86cba428d39e3ce4be13245bdb8e34e49dccf8d4"
+      },
+      {
+        "sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+      }
+    ],
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJqxMpGCRC1aQ7uu5UhlAAA3OEQAF1LMX6138oCZ1P6WeUbMWIW\n7KiFySyU/D1g7jgOSmR4EEEpyfc7fGUvfYQC+dW7nSmsVew2F5lTIbAMJj6bHFKI\nOKGuV14BDIWKDEaUOG2yN7m1Cb5m3+l8RLoRGY/1D7gVQi2Ribe7bJnLvV6tkBWU\ngVjUQFvv0ZlCGhRGw5RgHLXluyrtvdOz1VTN6AdrB4oWrwzLhl7kIzF/MiV/ftDf\nf5vkIOLGoTHfrvz8Q39xBEU5jHYeLjXHhsY7g8enKbfHR2gmPcgK+3QJMRaPsSOg\n66ZSNQMkO5Zo9K/mHvv4pxgmR6awEfDRFVVGPCxH/N3YO1Z3w0ua11UoRr2LOQ4g\nEOQF9upxybacythOFjssSq/K004iMvuNtBePpNyvvWmG9xMzcZ3RAe3jQfSc1gEY\nUA9Mu54qKhXQ+pakN5OkMWJHUIkGr6aHijcO2v3N6GfWyRsz0BqsFlJH/GfEBAfh\nuWZGX12vWCkq1lTBFn0lQbayrk3khxmjqgzLmvcAPXgLom0d33pCA6bYmjd4c0W9\nVsggREyD3qYKRfuFAt3JVro1pO3XHyjdeuidsJZZKkX6QZz/pl3uuRZHu+R/V6tn\nVMCzaikpGpwIQ1OnwA+LgmxSywsTSlm6K2h9FXkPVlFdZu7GB65OtzuKzrdonGrW\nII+9rQotONJri9lSwXwt\n=n2v/\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree 5b94c2111dbe51ceb74b1e803e142fff74e66cbc\nparent 86cba428d39e3ce4be13245bdb8e34e49dccf8d4\nparent ef5d90010d9b317a493dfe7ae574b1863f3c83fb\nauthor rashadoni <rashadrahimsoy@gmail.com> 1791281734 +0000\ncommitter GitHub <noreply@github.com> 1791281734 +0000\n\nMerge ef5d90010d9b317a493dfe7ae574b1863f3c83fb into 86cba428d39e3ce4be13245bdb8e34e49dccf8d4\n",
+      "verified_at": "2026-10-06T10:15:35Z"
+    }
+  }
+}

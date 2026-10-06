@@ -1,0 +1,41 @@
+{
+  "scope": "Isolatedcompilerreproductiononly;nosourcechanges",
+  "files": [
+    {
+      "name": "constructor-tsconfig.json",
+      "bytes": 134,
+      "sha256": "a671a060b9da5935a18b5c61b5e6ffc3ece526de697e463a431178b4f8ea485e",
+      "content": "{\"compilerOptions\": {\"target\": \"ES2017\", \"lib\": [\"esnext\"], \"types\": [], \"noEmit\": true, \"strict\": true}, \"files\": [\"constructor.ts\"]}"
+    },
+    {
+      "name": "constructor.ts",
+      "bytes": 42,
+      "sha256": "ce93c65cd7b8a0a90f8e542433ca408ed64decb9252be9ded190ee2a7a5120e8",
+      "content": "export const revision: bigint = BigInt(1)\n"
+    },
+    {
+      "name": "constructor.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "content": ""
+    },
+    {
+      "name": "literal-tsconfig.json",
+      "bytes": 130,
+      "sha256": "a9e488b4043d54584d4beffab328a097f53e73b375578d04e63825da1efc275e",
+      "content": "{\"compilerOptions\": {\"target\": \"ES2017\", \"lib\": [\"esnext\"], \"types\": [], \"noEmit\": true, \"strict\": true}, \"files\": [\"literal.ts\"]}"
+    },
+    {
+      "name": "literal.ts",
+      "bytes": 27,
+      "sha256": "d57b033ee10323ec6c3a5ff13a72e72380f0e314b3ec6569c053842422c1848a",
+      "content": "export const revision = 1n\n"
+    },
+    {
+      "name": "literal.txt",
+      "bytes": 140,
+      "sha256": "9ef642908f350afb572374b04dbaf302b3808cba411ca416e6802bfe6c16b6cb",
+      "content": "../../tmp/hrm-request-ts2737-diagnostic/literal.ts(1,25): error TS2737: BigInt literals are not available when targeting lower than ES2020.\n"
+    }
+  ]
+}

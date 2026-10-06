@@ -1,0 +1,25 @@
+{
+  "extends": "/workspace/hrm-request-logging/tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "typeRoots": [
+      "/workspace/hrm-request-logging/node_modules/@types"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "/workspace/hrm-request-logging/src/lib/workforce/sensitive-operation-log.ts",
+    "/workspace/hrm-request-logging/src/app/api/v1/workforce/requests/route.ts",
+    "/workspace/hrm-request-logging/src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+    "/workspace/hrm-request-logging/src/app/api/v1/workforce/requests/[id]/cancel/route.ts",
+    "/workspace/hrm-request-logging/src/__tests__/api-workforce-request-failure-logging.test.ts",
+    "/workspace/hrm-request-logging/src/__tests__/api-workforce-requests.test.ts",
+    "/workspace/hrm-request-logging/src/__tests__/api-workforce-self-requests.test.ts",
+    "/workspace/hrm-request-logging/src/__tests__/workforce-request-decision.test.ts",
+    "/workspace/hrm-request-logging/src/__tests__/workforce-self-request.test.ts",
+    "/workspace/hrm-request-logging/src/__tests__/workforce-request-read-access.test.ts",
+    "/workspace/hrm-request-logging/src/__tests__/fixtures/workforce-log-failures.ts"
+  ]
+}

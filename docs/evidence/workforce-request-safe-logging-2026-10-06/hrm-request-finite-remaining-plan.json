@@ -1,0 +1,550 @@
+{
+  "head": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+  "scope": "READ_ONLY_FINITE_REMAINING_SOURCE_PREPARATION",
+  "canonical_ids": [
+    "WF-C10-011",
+    "WF-C12-002"
+  ],
+  "canonical_statuses_unchanged": true,
+  "remaining_direct_calls": 46,
+  "groups": {
+    "attendance": [
+      {
+        "path": "src/app/api/v1/workforce/attendance/devices/[id]/approve/route.ts",
+        "line": 39,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/attendance/devices/:id/approve POST]\"",
+          "error"
+        ],
+        "sourceSha256": "3a110030a1afcb20e7271745662afc382b30f4c40d2ed2ba528313772552972f"
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/devices/[id]/revoke/route.ts",
+        "line": 38,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/attendance/devices/:id/revoke POST]\"",
+          "error"
+        ],
+        "sourceSha256": "f273772c0fa12112cbe4f42463e31a0bc9d8384c31f0382af29a77121947818d"
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/devices/route.ts",
+        "line": 30,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/attendance/devices GET]\"",
+          "error"
+        ],
+        "sourceSha256": "cf284b6c406ab3bd3161cde4a237918d48d73872a44de95ccd9f9f8184694d95"
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/security-triage/route.ts",
+        "line": 135,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/attendance/security-triage GET]\"",
+          "error"
+        ],
+        "sourceSha256": "77a444abd011e33fc42ece4b0328fb62640da2e276eafc7d46c022cfe4308815"
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/[id]/disable/route.ts",
+        "line": 39,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/attendance/stations/:id/disable POST]\"",
+          "error"
+        ],
+        "sourceSha256": "b1482c64e763803b50063a866ac43a25b71ffb71374adccac356bb2173a60918"
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/[id]/qr/route.ts",
+        "line": 69,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/attendance/stations/:id/qr POST]\"",
+          "error"
+        ],
+        "sourceSha256": "67460597db7f93af7398b8211364cb75d1e7a6899511b367b95f9f7f5dcc3150"
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/[id]/replace/route.ts",
+        "line": 49,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/attendance/stations/:id/replace POST]\"",
+          "error"
+        ],
+        "sourceSha256": "82fcd189eb8a0dc7ca6bddda6bef211b2734046ddcef0db6a901ebc8559a8276"
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/route.ts",
+        "line": 40,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/attendance/stations GET]\"",
+          "error"
+        ],
+        "sourceSha256": "d1dd6cd814d732f4ef8f20d1eece1d2bd38cc1afb50b51533349b420c0529f76"
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/route.ts",
+        "line": 67,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/attendance/stations POST]\"",
+          "error"
+        ],
+        "sourceSha256": "d1dd6cd814d732f4ef8f20d1eece1d2bd38cc1afb50b51533349b420c0529f76"
+      }
+    ],
+    "configuration": [
+      {
+        "path": "src/app/api/v1/workforce/configuration/assignments/bulk/publish/route.ts",
+        "line": 51,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/assignments/bulk/publish POST]\"",
+          "error"
+        ],
+        "sourceSha256": "05efa78b3648f2afca3f12da9e329d780b271e80bf3e53171ec659a140d7cae4"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/assignments/preview/route.ts",
+        "line": 35,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/assignments/preview POST]\"",
+          "error"
+        ],
+        "sourceSha256": "dc93fe9ed4a35fe544442fb04e12cdf45964522eb69c627df277ec6d37253dd2"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/assignments/route.ts",
+        "line": 178,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/assignments GET]\"",
+          "error"
+        ],
+        "sourceSha256": "a95cc153a90369810b1e40ae0c5db3a5915e0986a49c91e7715f93f6c27d5381"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/assignments/route.ts",
+        "line": 210,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/assignments POST]\"",
+          "error"
+        ],
+        "sourceSha256": "a95cc153a90369810b1e40ae0c5db3a5915e0986a49c91e7715f93f6c27d5381"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+        "line": 144,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/calendar GET]\"",
+          "error"
+        ],
+        "sourceSha256": "e4237011e31ed76e7099d19156ded1110be5e672feb5bf4198f418971b59bf65"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+        "line": 218,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/calendar POST]\"",
+          "error"
+        ],
+        "sourceSha256": "e4237011e31ed76e7099d19156ded1110be5e672feb5bf4198f418971b59bf65"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/employment-events/route.ts",
+        "line": 42,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/employment-events GET]\"",
+          "error"
+        ],
+        "sourceSha256": "abaae2df70ca1d5d0971a9d8825487c0cd94859bc53e6d4e5e07f0e990a76c5e"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/employment-events/route.ts",
+        "line": 66,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/employment-events POST]\"",
+          "error"
+        ],
+        "sourceSha256": "abaae2df70ca1d5d0971a9d8825487c0cd94859bc53e6d4e5e07f0e990a76c5e"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+        "line": 45,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/mobile-write-fence/cohorts PUT]\"",
+          "error"
+        ],
+        "sourceSha256": "4c078a78c5bce38905c0f93caea4d2b45efea3636062246c9cf833175c41ef71"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+        "line": 75,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/mobile-write-fence/cohorts DELETE]\"",
+          "error"
+        ],
+        "sourceSha256": "4c078a78c5bce38905c0f93caea4d2b45efea3636062246c9cf833175c41ef71"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+        "line": 35,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/mobile-write-fence GET]\"",
+          "error"
+        ],
+        "sourceSha256": "65972d7c6aa9bcd2f0491c9894312732cbfa08d91f96a31f9f70d0e96223dc8a"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+        "line": 72,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/mobile-write-fence PUT]\"",
+          "error"
+        ],
+        "sourceSha256": "65972d7c6aa9bcd2f0491c9894312732cbfa08d91f96a31f9f70d0e96223dc8a"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/[id]/activate/route.ts",
+        "line": 38,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/policies activate]\"",
+          "error"
+        ],
+        "sourceSha256": "c0dddc81500b02ef02a56f238d8d945913d4d969c87414cb26c93a4128a2730e"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/[id]/route.ts",
+        "line": 32,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/policies PATCH]\"",
+          "error"
+        ],
+        "sourceSha256": "8235e1f7ee4ed3da8a0d4c87f84d6dc9858506992992c12948bd56ed2b2af38f"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/route.ts",
+        "line": 37,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/policies GET]\"",
+          "error"
+        ],
+        "sourceSha256": "f9a8be02776285e41d1726aeb343d49ce2d9b3b41bb44e84c47f177f582108f2"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/route.ts",
+        "line": 60,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/policies POST]\"",
+          "error"
+        ],
+        "sourceSha256": "f9a8be02776285e41d1726aeb343d49ce2d9b3b41bb44e84c47f177f582108f2"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/[id]/activate/route.ts",
+        "line": 31,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/shifts activate]\"",
+          "error"
+        ],
+        "sourceSha256": "f1ec99b5f58e56ec9fa3345e50ef6587ed4fd046e5f856a9272f0fffc33822ba"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/[id]/route.ts",
+        "line": 32,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/shifts PATCH]\"",
+          "error"
+        ],
+        "sourceSha256": "f8fee2cb976b9d2801223a3baedf689a156f98063cc6141cd7a125c29901d0ef"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/default/route.ts",
+        "line": 46,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/shifts/default GET]\"",
+          "error"
+        ],
+        "sourceSha256": "bb23f8436450dd372b9b129132d6e806106e1058e74ba44d6855045219ac5889"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/default/route.ts",
+        "line": 80,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/shifts/default POST]\"",
+          "error"
+        ],
+        "sourceSha256": "bb23f8436450dd372b9b129132d6e806106e1058e74ba44d6855045219ac5889"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/route.ts",
+        "line": 52,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/shifts GET]\"",
+          "error"
+        ],
+        "sourceSha256": "39e33e1aa270fd2c0847c466ccc6490cea4a25800ba0d7d3c7932ba5a9dd1883"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/route.ts",
+        "line": 75,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/shifts POST]\"",
+          "error"
+        ],
+        "sourceSha256": "39e33e1aa270fd2c0847c466ccc6490cea4a25800ba0d7d3c7932ba5a9dd1883"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/team-default/route.ts",
+        "line": 48,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/shifts/team-default GET]\"",
+          "error"
+        ],
+        "sourceSha256": "cb313eb1309a0432bf95627a8b0e5ef7b09adff78e1785ab3eecece7feefddb5"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/team-default/route.ts",
+        "line": 85,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/shifts/team-default POST]\"",
+          "error"
+        ],
+        "sourceSha256": "cb313eb1309a0432bf95627a8b0e5ef7b09adff78e1785ab3eecece7feefddb5"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/site-assignments/bulk/publish/route.ts",
+        "line": 47,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/site-assignments/bulk/publish POST]\"",
+          "error"
+        ],
+        "sourceSha256": "3c44e046bdc9bca68c3dd821728c67c2dc55e155d3621dcd3b6afab46b153f8d"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/site-assignments/preview/route.ts",
+        "line": 32,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/site-assignments/preview POST]\"",
+          "error"
+        ],
+        "sourceSha256": "4e0e9c6656b4ecf26dc0002633ee8e3db8d3054ecc9a67182239d2270d32e225"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/site-assignments/route.ts",
+        "line": 35,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/site-assignments GET]\"",
+          "error"
+        ],
+        "sourceSha256": "6478217e8932fbc93525d2e50d1ceeb2a8137be249f3e2c58444d3b855355cec"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/site-assignments/route.ts",
+        "line": 65,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/site-assignments POST]\"",
+          "error"
+        ],
+        "sourceSha256": "6478217e8932fbc93525d2e50d1ceeb2a8137be249f3e2c58444d3b855355cec"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/[id]/archive/route.ts",
+        "line": 33,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/sites archive]\"",
+          "error"
+        ],
+        "sourceSha256": "52a5422cb41dba775b3693bc1f889e6a60c817c9aef943f3ebec835995737032"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/[id]/geofences/route.ts",
+        "line": 42,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/sites geofences GET]\"",
+          "error"
+        ],
+        "sourceSha256": "0eee85912a3dff40842ebec0faa0efeb3ff7bfe183b01f926bcae2b375268022"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/[id]/geofences/route.ts",
+        "line": 71,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/sites geofences POST]\"",
+          "error"
+        ],
+        "sourceSha256": "0eee85912a3dff40842ebec0faa0efeb3ff7bfe183b01f926bcae2b375268022"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/route.ts",
+        "line": 34,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/sites GET]\"",
+          "error"
+        ],
+        "sourceSha256": "778ba5b69312f0cadf97af2d06071cf8e09d75dbafdb991b1f4c2ef2585db6b2"
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/route.ts",
+        "line": 57,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/configuration/sites POST]\"",
+          "error"
+        ],
+        "sourceSha256": "778ba5b69312f0cadf97af2d06071cf8e09d75dbafdb991b1f4c2ef2585db6b2"
+      }
+    ],
+    "today_timesheet_exceptions": [
+      {
+        "path": "src/app/api/v1/workforce/exceptions/mine/route.ts",
+        "line": 157,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/exceptions/mine GET]\"",
+          "error"
+        ],
+        "sourceSha256": "38714a1ef7ab562732e0be84e0cef5a647b4d872da36ea67ffd9be7cb3199403"
+      },
+      {
+        "path": "src/app/api/v1/workforce/timesheet/approvals/route.ts",
+        "line": 66,
+        "method": "error",
+        "classification": "ERROR_DERIVED_NAME",
+        "arguments": [
+          "\"[workforce/timesheet approvals POST]\"",
+          "{\n      name: error instanceof Error ? error.name : \"UnknownError\",\n    }"
+        ],
+        "sourceSha256": "b2ca7f4375e7a380a192dd9145bf463d80664e6efdb353b264c98d623ab0aedb"
+      },
+      {
+        "path": "src/app/api/v1/workforce/timesheet/route.ts",
+        "line": 527,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/timesheet GET]\"",
+          "error"
+        ],
+        "sourceSha256": "15015c5c18897bf4876837d6ac37dd04e764a94a218cb743ccd4dca7d3731501"
+      },
+      {
+        "path": "src/app/api/v1/workforce/today/route.ts",
+        "line": 654,
+        "method": "error",
+        "classification": "RAW_THROWN_VALUE",
+        "arguments": [
+          "\"[workforce/today GET]\"",
+          "error"
+        ],
+        "sourceSha256": "ff53b9fdb369138dedf815d61cd7be08c4370da27053fd7b295464575ae5f5d3"
+      }
+    ]
+  },
+  "sequence": [
+    "today_timesheet_exceptions",
+    "attendance",
+    "configuration",
+    "consolidated_alias_shared_framework_destination_coverage_matrix"
+  ],
+  "exit_rule": "After finite inventory and boundary audit, assess whole canonical criterion. If destination/SLO proof is missing, report exact blocker and proceed independentWF-C12-004/005,WF-C13-006; no repeated accepted-catch churn or automatic status credit.",
+  "next_batch_boundaries": [
+    "Preserve existing401/403/503/500 mapping and selectedresponseheaders",
+    "Timesheetapprovalscatch readsError.name and must stop inspecting thrownvalues",
+    "Today/timesheet extensive read projection and Route boundaries stayunchanged",
+    "Selfexceptions ownership/privacy and approvedreport access remainunchanged",
+    "Today typed WorkforceManagerTodayBoundsError deliberately suppresses logging and returns unavailable; preserve this branch",
+    "Timesheet typed WorkforceTimesheetReadModelError returns409 with finite code before generic500; preserve exact typed-error handling rather than deleting the catch binding"
+  ],
+  "operations_not_performed": [
+    "No source changes for nextbatch",
+    "No telemetrydestination/schedule/activation",
+    "No historicalbaseline or Supportchanges"
+  ],
+  "next_selected_test_sources": [
+    "src/__tests__/api-workforce-timesheet-approvals.test.ts",
+    "src/__tests__/api-workforce-my-exceptions.test.ts",
+    "src/__tests__/workforce-manager-today.test.ts",
+    "src/__tests__/workforce-timesheet-read-model.test.ts"
+  ]
+}

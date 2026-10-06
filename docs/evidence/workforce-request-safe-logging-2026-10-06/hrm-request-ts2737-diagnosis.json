@@ -1,0 +1,32 @@
+{
+  "status": "DIAGNOSED_HISTORICAL_SHARED_MTM_TEST_FIXTURE_NOT_REQUEST_API_PRODUCT_CODE",
+  "path": "src/__tests__/mocks/mtm-prisma.ts",
+  "lines": [
+    482,
+    483
+  ],
+  "cause": "BigInt literal1n with unchanged project targetES2017; libesnext providesBigInt API but does not enable literal lowering",
+  "mock_sha256": "ddbeeacabfb75fe20d70c355d3f4d92efd3b7a82c686d553d92c01bf67b13bee",
+  "local_parent_main_byte_exact": true,
+  "parent": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "reproduction": [
+    {
+      "case": "literal",
+      "exit_code": 2,
+      "output": "../../tmp/hrm-request-ts2737-diagnostic/literal.ts(1,25): error TS2737: BigInt literals are not available when targeting lower than ES2020.\n"
+    },
+    {
+      "case": "constructor",
+      "exit_code": 0,
+      "output": ""
+    }
+  ],
+  "constructor_runtime_same_bigint_value": true,
+  "safe_followup": "Shared MTM test-fixture owner can replace only these two1n values with BigInt(1), preserving bigint semantics; requires path-scoped review/regressions. Not a request API logging change.",
+  "action": "NO source/mock/target/baseline edit",
+  "current_test_inclusive_diagnostics": "src/__tests__/mocks/mtm-prisma.ts(482,73): error TS2737: BigInt literals are not available when targeting lower than ES2020.\nsrc/__tests__/mocks/mtm-prisma.ts(483,72): error TS2737: BigInt literals are not available when targeting lower than ES2020.\n",
+  "parent_diagnostics_byte_equal": true,
+  "current_bounded_config": "Includes the existing src/types/next-auth.d.ts used by normal project compilation; initial local config omitted it and produced6false missingaugmentationTS2339. Corrected config actual rerun leavesonly2historicalTS2737.",
+  "compiler_output_sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8"
+}

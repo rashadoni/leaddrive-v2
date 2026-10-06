@@ -1,0 +1,19 @@
+{
+  "extends": "/workspace/hrm-request-logging/tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "typeRoots": [
+      "/workspace/hrm-request-logging/node_modules/@types"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "/workspace/hrm-request-logging/src/lib/workforce/sensitive-operation-log.ts",
+    "/workspace/hrm-request-logging/src/app/api/v1/workforce/requests/route.ts",
+    "/workspace/hrm-request-logging/src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+    "/workspace/hrm-request-logging/src/app/api/v1/workforce/requests/[id]/cancel/route.ts",
+    "/workspace/hrm-request-logging/src/types/next-auth.d.ts"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "status": "PASS",
+  "head": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+  "tree": "5b94c2111dbe51ceb74b1e803e142fff74e66cbc",
+  "parent": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "7b517816410e29d84a03f368954541ca180b79f6",
+  "synthetic_parents": [
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+  ],
+  "all_local_blobs_modes_verified": 8762,
+  "recomputed_tree_objects": 2809,
+  "unchanged_parent_blobs": 8756,
+  "changed_paths": [
+    "src/app/api/v1/workforce/requests/[id]/cancel/route.ts",
+    "src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+    "src/app/api/v1/workforce/requests/route.ts",
+    "src/lib/workforce/sensitive-operation-log.ts"
+  ],
+  "added_paths": [
+    "docs/workforce-request-safe-logging-2026-10-06.md",
+    "src/__tests__/api-workforce-request-failure-logging.test.ts"
+  ],
+  "removed_paths": [],
+  "remote_contents_byte_equal": 6,
+  "preliminary5bindings_unchanged": true,
+  "mock_main_parent_candidate_byte_equal": true,
+  "mock_sha256": "ddbeeacabfb75fe20d70c355d3f4d92efd3b7a82c686d553d92c01bf67b13bee",
+  "canonical_roadmap_statuses": {
+    "DONE": 82,
+    "PARTIAL (OWNER ATTESTATION)": 1,
+    "PARTIAL": 55,
+    "OWNER DECISION": 6,
+    "PLANNED": 14,
+    "BLOCKED": 3
+  },
+  "selected_roadmap_tasks": {
+    "WF-C10-011": {
+      "line": 1030,
+      "status": "PLANNED"
+    },
+    "WF-C12-002": {
+      "line": 1066,
+      "status": "PARTIAL"
+    }
+  },
+  "compiler_outputs_comparison": "TwoexistingTS2737byteequal;productionemptyoutput;originaltarget/baselines/augmentationunchanged"
+}

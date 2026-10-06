@@ -1,0 +1,132 @@
+{
+  "status": "PASS_BOUNDED_SOURCE_WITH_TWO_HISTORICAL_SHARED_MOCK_DIAGNOSTICS",
+  "parent": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "changed_paths": 6,
+  "focused_tests_pass": 76,
+  "new_handler_tests_pass": 27,
+  "private_failure_variants_pass": 16,
+  "regression_tests_pass": 225,
+  "production_bounded_typecheck": "PASS",
+  "targeted_lint": "PASS",
+  "test_inclusive_typecheck": "Exactly2historicalTS2737; byte-identical parent; no owned-code diagnostic",
+  "config_correction": "Initial boundedconfig omittednormalnext-authaugmentation, producing6TS2339; actualcorrectedrerun recorded. Source/compiler target/baselinesunchanged.",
+  "initial_test_history": "Newtestparsefailuremissingbrace,0newcasesexecuted; fixedtestonly andretainedoriginalJSON.",
+  "auth_boundary": "Handlerprivacytests mockauthwrappers/domainservices; notendtoendDB/auth proof. Existingdomain testsrun separately.",
+  "roadmap": {
+    "WF-C10-011": "PLANNED",
+    "WF-C12-002": "PARTIAL",
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted_percent": 59,
+    "status_changes": false
+  },
+  "remaining_direct_calls": {
+    "raw": 45,
+    "name_derived": 1,
+    "batches": {
+      "today_timesheet_exceptions": 4,
+      "attendance": 9,
+      "configuration": 33
+    }
+  },
+  "activation": false,
+  "support_files": [
+    {
+      "path": "/tmp/hrm-request-targeted-tests.json",
+      "bytes": 30917,
+      "sha256": "b1f445d2f6c1b82e1c1887e4f9b288f03779a15eb44327d2e2e6a88d39dcceb0"
+    },
+    {
+      "path": "/tmp/hrm-request-initial-targeted-tests.json",
+      "bytes": 21178,
+      "sha256": "06b965644d71a06c24c86a9c5d2bc821bf35c988b73515b39b39686412edf9ff"
+    },
+    {
+      "path": "/tmp/hrm-request-regressions.json",
+      "bytes": 75102,
+      "sha256": "8487e69969c837165b4dbe3c301318733705f30315ff1e80cd6711edcec5ef3d"
+    },
+    {
+      "path": "/tmp/hrm-request-production-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-request-test-inclusive-typecheck.txt",
+      "bytes": 250,
+      "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8"
+    },
+    {
+      "path": "/tmp/hrm-request-base-typecheck.txt",
+      "bytes": 250,
+      "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8"
+    },
+    {
+      "path": "/tmp/hrm-request-production-tsconfig.json",
+      "bytes": 671,
+      "sha256": "f4f200fd5b2fbf0abc5661acd26f0afbefa99a5256375c3216d5705e098bb233"
+    },
+    {
+      "path": "/tmp/hrm-request-test-inclusive-tsconfig.json",
+      "bytes": 1287,
+      "sha256": "85f1b5e5ec479cb4f8219f8fdba2e65504b6a314f972b0e7c6f7f8d5a0f99f9c"
+    },
+    {
+      "path": "/tmp/hrm-request-base-tsconfig.json",
+      "bytes": 1150,
+      "sha256": "da6505463f78d263e34695b90bd70ca6458bf946ed78a3a9c7e3ae8ea2ab62bb"
+    },
+    {
+      "path": "/tmp/hrm-request-production-typecheck-initial.txt",
+      "bytes": 578,
+      "sha256": "5eaadaf37a64f7e9ad2ff02d8521972ec1f44a0326933a678af3cbe351b0acfc"
+    },
+    {
+      "path": "/tmp/hrm-request-test-inclusive-typecheck-initial.txt",
+      "bytes": 828,
+      "sha256": "7fdefa3f767d81811e0e54fba795b8975167edc62565427d66b5d2be3b19efdc"
+    },
+    {
+      "path": "/tmp/hrm-request-production-tsconfig-initial.json",
+      "bytes": 608,
+      "sha256": "5c9f050fabf7b1777a8087c5ab86a2c906ddf52351684148d3a32618d511ca77"
+    },
+    {
+      "path": "/tmp/hrm-request-test-inclusive-tsconfig-initial.json",
+      "bytes": 1224,
+      "sha256": "3361f8cfc7de71b507445304266a6118a8fc279724be748dc15122d19b89574f"
+    },
+    {
+      "path": "/tmp/hrm-request-lint.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-request-ts2737-diagnosis.json",
+      "bytes": 1862,
+      "sha256": "b05c5fa419b1be85dd0b0d37ca96147bdd19e7b997ab4a4a64f881ad964e6b20"
+    },
+    {
+      "path": "/tmp/hrm-request-roadmap-bindings.json",
+      "bytes": 1214,
+      "sha256": "9f29fe20dc4cf57458134bdb7e689236884c4a41ee3664f4ff5028cd8d5712c5"
+    },
+    {
+      "path": "/tmp/hrm-request-remaining-console-inventory.json",
+      "bytes": 18638,
+      "sha256": "7fc5461f1a90acd4daf6cd299f1dc3c995f6fad6a97c21d418e5e701124a5380"
+    },
+    {
+      "path": "/tmp/hrm-request-inventory.mjs",
+      "bytes": 2282,
+      "sha256": "5d537098ec8354483bbc4254abfa36bb6523569324fa43d8549b9629a955c036"
+    },
+    {
+      "path": "/tmp/hrm-request-source-bindings.json",
+      "bytes": 1059,
+      "sha256": "6f0b67eaaac9b33d49c945fa0808e42f5af59314d182045d8da28f6e6f599469"
+    }
+  ]
+}
