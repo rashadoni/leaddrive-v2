@@ -11485,7 +11485,13 @@
     "colVisits7d": "Ziyarətlər, 7 gün",
     "colPlan": "Plan",
     "colApp": "Tətbiq",
-    "colContacts": "Əlaqə"
+    "colContacts": "Əlaqə",
+    "deleteConfirm": "{name} müştərilərə təyinatları ilə birlikdə həmişəlik silinəcək. Yalnız iş tarixçəsi olmayan əməkdaşı belə silmək olar — tarixçə varsa, onu qeyri-aktiv etməyi təklif edəcəyik.",
+    "deleteKeptTitle": "Bu əməkdaşı silmək olmur",
+    "deleteKeptBody": "{name} adlı əməkdaşın artıq iş tarixçəsi var — ziyarətlər, marşrutlar, tapşırıqlar və ya iş vaxtı uçotu, və o saxlanmalıdır. Əməkdaşı qeyri-aktiv edin: o, tətbiqə daxil ola bilməyəcək, bütün tarixçə isə qalacaq.",
+    "deleteKeptAlreadyInactive": "{name} adlı əməkdaşın iş tarixçəsi var, ona görə onu silmək olmur. Əməkdaş artıq işləmir: tətbiqə daxil ola bilmir, tarixçə saxlanılıb.",
+    "deleteKeptAction": "Qeyri-aktiv et",
+    "deleteKeptClose": "Aydındır"
   },
   "mtmContactExplorer": {
     "filterSpecialties": "İxtisas",

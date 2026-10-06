@@ -707,6 +707,73 @@ describe("DELETE /api/v1/mtm/agents/[id]", () => {
     const json = await res.json()
     expect(json.success).toBe(true)
   })
+
+  // Owner, 2026-10-06: an employee without work history is deleted, one with
+  // history is not. Before, the delete cascaded through visits and routes — or
+  // stopped at a foreign key and put the constraint's name on the screen. What
+  // the database really does is proved in mtm-contact-categories-postgres.test.ts.
+  it("keeps an employee who has a visit and deletes nothing", async () => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Agent One", email: "agent@example.com", role: "AGENT" } as never)
+    mockAgentWorkforceRetentionClear()
+    vi.mocked(prisma.mtmVisit.count).mockResolvedValue(3)
+
+    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
+
+    expect(res.status).toBe(409)
+    const json = await res.json()
+    expect(json.code).toBe("MTM_AGENT_HAS_HISTORY")
+    expect(json.data.kinds).toEqual(["MtmVisit.agentId"])
+    expect(prisma.mtmAgent.deleteMany).not.toHaveBeenCalled()
+    vi.mocked(prisma.mtmVisit.count).mockReset()
+  })
+
+  it("does not count the clients an employee is attached to as work history", async () => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Agent One", email: "agent@example.com", role: "AGENT" } as never)
+    mockAgentWorkforceRetentionClear()
+    vi.mocked(prisma.mtmContactAgentAssignment.count).mockResolvedValue(2)
+    vi.mocked(prisma.mtmAgent.deleteMany).mockResolvedValue({ count: 1 })
+
+    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
+
+    expect(res.status).toBe(200)
+    expect(prisma.mtmAgent.deleteMany).toHaveBeenCalledTimes(1)
+    vi.mocked(prisma.mtmContactAgentAssignment.count).mockReset()
+  })
+
+  it("answers a database refusal with words, never with the constraint", async () => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Agent One", email: "agent@example.com", role: "AGENT" } as never)
+    mockAgentWorkforceRetentionClear()
+    // What production answered on 2026-10-06.
+    vi.mocked(prisma.mtmAgent.deleteMany).mockRejectedValue(new Error(
+      "Invalid `prisma.mtmAgent.deleteMany()` invocation: Foreign key constraint violated on the constraint: `workforce_employee_team_memberships_agent_fkey`",
+    ))
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
+
+    expect(res.status).toBe(409)
+    const json = await res.json()
+    expect(json.code).toBe("MTM_AGENT_HAS_HISTORY")
+    expect(JSON.stringify(json)).not.toMatch(/prisma|constraint|fkey/i)
+    warn.mockRestore()
+  })
+
+  it("answers an unexpected failure without the error's own text", async () => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", name: "Agent One", email: "agent@example.com", role: "AGENT" } as never)
+    mockAgentWorkforceRetentionClear()
+    vi.mocked(prisma.mtmAgent.deleteMany).mockRejectedValue(new Error("connection terminated unexpectedly at 10.0.0.5:5432"))
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    const res = await DeleteAgent(makeReq("/api/v1/mtm/agents/a1"), makeParams("a1"))
+
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: "Failed to delete", code: "MTM_AGENT_DELETE_FAILED" })
+    error.mockRestore()
+  })
 })
 
 // ─── Web field scope for employee cards (audit 2026-09-14) ──
