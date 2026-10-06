@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from "@prisma/client"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { runWorkforceReconciliationSweep } from "@/lib/workforce/reconciliation-sweep"
 import { workforceReconciliationCursorStore } from "@/lib/workforce/reconciliation-cursor-store"
+import { readWorkforceEligibleRosterHealth } from "@/lib/workforce/reconciliation-roster-health"
 
 const JOB="workforce-claim-reconciliation-v1"
 type Control=Pick<PrismaClient,"$transaction"|"$queryRaw">
@@ -23,6 +24,7 @@ async function fence(tx:Tx,ownerToken:string):Promise<boolean> {
 /** Supplied control client must already be authorized for cross-tenant operations. */
 export function workforceReconciliationOperationsStore(db:Control) {
   return {
+    eligibleRosterHealth: () => readWorkforceEligibleRosterHealth(db),
     async claim(ownerToken:string):Promise<{status:"CLAIMED";claim:Claim;eligible:number}|{status:"IDLE"|"FENCED_OUT";eligible:number}> {
       if (!validId(ownerToken)) throw refused()
       try {
