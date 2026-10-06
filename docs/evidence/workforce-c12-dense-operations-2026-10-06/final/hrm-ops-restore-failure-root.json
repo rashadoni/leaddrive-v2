@@ -1,0 +1,39 @@
+{
+  "candidate": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "synthetic": "10e4c2b06e68262285dcf6b132364c440e94b649",
+  "workflowRun": 37428839234,
+  "attempt": 1,
+  "job": 112154857935,
+  "artifact": 11396513919,
+  "zipBytes": 1000740,
+  "zipSha256": "3de7da1dcb7cc7d4bd47c9646ec4124cee5d463062bab60d1d36021fbc833105",
+  "onlyExtractedMember": "restore-rendered-ui-receipt.json",
+  "receiptSha256": "acc8166ba5e393b081f34acadb443361616afb7765ff754e1dd04a8096423751",
+  "sanitizedReceiptReadWhole": true,
+  "boundSourceFiles": 34,
+  "casesPassed": 10,
+  "casesRequired": 15,
+  "failure": {
+    "stage": "lost-real-201-same-body-replay",
+    "name": "Error",
+    "sourcePosition": {
+      "line": 240,
+      "column": 79
+    },
+    "diagnostic": "Fixed category/position only; no raw error, stack, credentials, tokens, cookies or response body"
+  },
+  "classification": "route.fetch failed before response status assertion; exact cause NOT_ESTABLISHED",
+  "cleanup": [
+    {
+      "action": "scoped-row-removal-and-four-guards-restored",
+      "status": "PASS"
+    },
+    {
+      "action": "disconnect",
+      "status": "PASS"
+    }
+  ],
+  "rawLogsOpened": false,
+  "screenshotsOpened": false,
+  "retryPolicy": "one same-head failed-job retry; preserve first failure; no workflow or baseline edits"
+}

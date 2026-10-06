@@ -1,0 +1,175 @@
+{
+  "kind": "independent_additional_workflow_failure_metadata",
+  "at": "2026-10-06 07:31:17 UTC",
+  "head": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "synthetic": "10e4c2b06e68262285dcf6b132364c440e94b649",
+  "run": {
+    "id": 37428839234,
+    "name": "Workforce policy restore writer evidence",
+    "path": ".github/workflows/workforce-policy-restore-evidence.yml",
+    "event": "pull_request",
+    "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-06T07:18:24Z",
+    "updated_at": "2026-10-06T07:30:25Z",
+    "run_started_at": "2026-10-06T07:18:24Z"
+  },
+  "jobs": [
+    {
+      "id": 112154857935,
+      "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+      "head_sha": "6843cc24428a181cf80c57fe358a4944a9439ded",
+      "run_id": 37428839234,
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-06T07:19:07Z",
+      "completed_at": "2026-10-06T07:30:24Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:19:07Z",
+          "completed_at": "2026-10-06T07:19:08Z"
+        },
+        {
+          "number": 2,
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:19:08Z",
+          "completed_at": "2026-10-06T07:19:20Z"
+        },
+        {
+          "number": 3,
+          "name": "Checkout candidate merge and exact base",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:19:20Z",
+          "completed_at": "2026-10-06T07:19:32Z"
+        },
+        {
+          "number": 4,
+          "name": "Resolve fenced ephemeral ports and masked secrets",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:19:32Z",
+          "completed_at": "2026-10-06T07:19:32Z"
+        },
+        {
+          "number": 5,
+          "name": "Setup Node",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:19:32Z",
+          "completed_at": "2026-10-06T07:19:39Z"
+        },
+        {
+          "number": 6,
+          "name": "Install candidate dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:19:39Z",
+          "completed_at": "2026-10-06T07:22:28Z"
+        },
+        {
+          "number": 7,
+          "name": "Apply selected base schema, canonical guards and actual additive migration",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:22:28Z",
+          "completed_at": "2026-10-06T07:27:28Z"
+        },
+        {
+          "number": 8,
+          "name": "Execute mandatory real PostgreSQL restore concurrency and rollback tests",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:27:28Z",
+          "completed_at": "2026-10-06T07:27:30Z"
+        },
+        {
+          "number": 9,
+          "name": "Execute real credentials and authorized restore API scenarios",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:27:30Z",
+          "completed_at": "2026-10-06T07:27:47Z"
+        },
+        {
+          "number": 10,
+          "name": "Install Chromium on hosted Ubuntu",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:27:47Z",
+          "completed_at": "2026-10-06T07:28:11Z"
+        },
+        {
+          "number": 11,
+          "name": "Execute real rendered manual restore UI, session, retry and rollback scenarios",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-10-06T07:28:11Z",
+          "completed_at": "2026-10-06T07:30:21Z"
+        },
+        {
+          "number": 12,
+          "name": "Upload complete non-secret restore receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:30:21Z",
+          "completed_at": "2026-10-06T07:30:22Z"
+        },
+        {
+          "number": 22,
+          "name": "Post Setup Node",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-10-06T07:30:22Z",
+          "completed_at": "2026-10-06T07:30:22Z"
+        },
+        {
+          "number": 23,
+          "name": "Post Checkout candidate merge and exact base",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:30:22Z",
+          "completed_at": "2026-10-06T07:30:22Z"
+        },
+        {
+          "number": 24,
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:30:22Z",
+          "completed_at": "2026-10-06T07:30:23Z"
+        },
+        {
+          "number": 25,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-06T07:30:23Z",
+          "completed_at": "2026-10-06T07:30:23Z"
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 11396513919,
+      "name": "workforce-policy-restore-10e4c2b06e68262285dcf6b132364c440e94b649-1",
+      "size_in_bytes": 1000740,
+      "digest": "sha256:3de7da1dcb7cc7d4bd47c9646ec4124cee5d463062bab60d1d36021fbc833105",
+      "expired": false,
+      "created_at": "2026-10-06T07:30:22Z",
+      "expires_at": "2026-10-20T07:30:21Z"
+    }
+  ],
+  "outcome": "FAILURE_IN_RENDERED_UI_STEP; ROOT_CAUSE_NOT_KNOWN_FROM_METADATA",
+  "scope": "Metadata only, no raw logs or artifact payload inspected. Schema/PG/API steps succeeded; do not infer browser assertion details, regression cause or global readiness."
+}

@@ -1,0 +1,58 @@
+{
+  "kind": "independent_safe_restore_failure_receipt_review",
+  "at": "2026-10-06T07:33:19.999954+00:00",
+  "head": "6843cc24428a181cf80c57fe358a4944a9439ded",
+  "synthetic": "10e4c2b06e68262285dcf6b132364c440e94b649",
+  "run_id": 37428839234,
+  "attempt": 1,
+  "artifact_id": 11396513919,
+  "zip_digest_owner_verified": "sha256:3de7da1dcb7cc7d4bd47c9646ec4124cee5d463062bab60d1d36021fbc833105",
+  "reviewer_payload_scope": "One explicitly authorized sanitized JSON receipt only; no PNG, raw logs, raw error or response bodies.",
+  "source_bindings_verified": 34,
+  "binding_mismatches": [],
+  "recorded_pass_cases": 10,
+  "required_cases": 15,
+  "cleanup_passes": 2,
+  "failure": {
+    "stage": "lost-real-201-same-body-replay",
+    "name": "Error",
+    "sourcePosition": {
+      "line": 240,
+      "column": 79
+    },
+    "diagnostic": "Fixed category/position only; no raw error, stack, credentials, tokens, cookies or response body"
+  },
+  "source_callsite": {
+    "path": "scripts/workforce-policy-restore-browser-evidence.mjs",
+    "line": 240,
+    "column": 79,
+    "operation": "await route.fetch({ timeout: 120000 })",
+    "following_assertion_column": 107,
+    "following_assertion": "response.status() equals201"
+  },
+  "classification": "INCOMPLETE_ADDITIONAL_BROWSER_EVIDENCE; CAUSE_UNDETERMINED",
+  "uncertainty": [
+    "Generic Error is not an asserted TimeoutError; configured timeout is not proof the timeout elapsed.",
+    "No confirmed response status or created/replayed write outcome for this interrupted scenario.",
+    "Five remaining required scenarios lack completed PASS records, not five known failing assertions.",
+    "Cannot classify transient flake, product regression or transport/root cause from safe receipt alone."
+  ],
+  "next_evidence": "A single same-head failed-job rerun may distinguish repeatability; preserve attempt1 failure and receipt regardless of later result. No source, workflow or gate changes justified solely by this metadata.",
+  "supports": [
+    {
+      "path": "/tmp/hrm-ops-restore-failure-sanitized.json",
+      "bytes": 14215,
+      "sha256": "acc8166ba5e393b081f34acadb443361616afb7765ff754e1dd04a8096423751"
+    },
+    {
+      "path": "/workspace/hrm-ops-draft/scripts/workforce-policy-restore-browser-evidence.mjs",
+      "bytes": 33364,
+      "sha256": "52bbe381303e0adf2631713bbcb49af795e62d81647d4d24a9fc237200abe530"
+    },
+    {
+      "path": "/tmp/hrm-ops-6843-restore-failure-metadata-20261006.json",
+      "bytes": 6056,
+      "sha256": "cfb36314e14e4ecf9d1484ce2637071a537101b0b4fdbfd69a6b95b1e43049af"
+    }
+  ]
+}
