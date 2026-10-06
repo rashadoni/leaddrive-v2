@@ -11,10 +11,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   buildForgivingUrl,
   buildGeocodeUrl,
+  buildReverseUrl,
   geocodeAddress,
   parseForgivingResponse,
   parseGeocodeResponse,
+  parseReverseResponse,
   resetGeocodeStateForTests,
+  reverseGeocode,
   simplifyAddressQuery,
   type GeocodeDeps,
 } from "@/lib/mtm/geocode"
@@ -292,5 +295,80 @@ describe("address search — when a service is not there", () => {
     clock += 5_000
     await geocodeAddress({ query: "yyyy wwww", language: "az" }, deps)
     expect(calls).toHaveLength(6)
+  })
+})
+
+/**
+ * Owner, 2026-10-07, after moving an organization's pin with «Моё
+ * местоположение»: «я тут изменил адрес, но в отображении всё ещё старый
+ * адрес». The picker now names the address under the pin.
+ */
+describe("the address under a pin", () => {
+  /** What the service answers for a point on a building. */
+  const building = {
+    display_name: "Milli Onkologiya Mərkəzi, 79B, Həsən bəy Zərdabi prospekti, Yasamal rayonu, Bakı, 1012, Azərbaycan",
+    address: {
+      amenity: "Milli Onkologiya Mərkəzi", house_number: "79B", road: "Həsən bəy Zərdabi prospekti",
+      city_district: "Yasamal rayonu", city: "Bakı", postcode: "1012", country: "Azərbaycan",
+    },
+  }
+  const pin = { latitude: 40.3999291, longitude: 49.8052254, language: "az" }
+
+  it("asks for the building under the point, in the manager's language", () => {
+    const url = new URL(buildReverseUrl(pin))
+    expect(url.origin + url.pathname).toBe("https://nominatim.openstreetmap.org/reverse")
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      format: "jsonv2", lat: "40.399929", lon: "49.805225", zoom: "18", addressdetails: "1", "accept-language": "az",
+    })
+  })
+
+  it("is the street and house for the address field, the district and the city for theirs", () => {
+    expect(parseReverseResponse(building)).toEqual({
+      address: "Həsən bəy Zərdabi prospekti 79B",
+      district: "Yasamal rayonu",
+      city: "Bakı",
+      label: "Həsən bəy Zərdabi prospekti 79B, Yasamal rayonu, Bakı",
+    })
+    // A street without a house number is still an address; a town is a city.
+    expect(parseReverseResponse({ address: { road: "Nizami küçəsi", town: "Xırdalan" } }))
+      .toEqual({ address: "Nizami küçəsi", district: "", city: "Xırdalan", label: "Nizami küçəsi, Xırdalan" })
+  })
+
+  it("is nothing when the point is on no street: a district alone is not an address", () => {
+    const none = [null, "x", {}, { address: null }, { address: { city: "Bakı", city_district: "Yasamal rayonu" } }, { error: "Unable to geocode" }]
+    expect(none.map((raw) => parseReverseResponse(raw))).toEqual(none.map(() => null))
+  })
+
+  it("names the application, and does not ask twice for a pin moved less than a metre", async () => {
+    answer = () => json(building)
+    const first = await reverseGeocode(pin, deps)
+    expect(first).toEqual({ ok: true, place: parseReverseResponse(building) })
+    expect(calls.map((call) => [call.url.pathname, call.headers["User-Agent"]]))
+      .toEqual([["/reverse", "LeadDriveCRM/1.0 (+https://leaddrivecrm.org)"]])
+
+    await reverseGeocode({ ...pin, latitude: pin.latitude + 0.000002 }, deps)
+    expect(calls).toHaveLength(1)
+    // A hundred metres away is another building.
+    await reverseGeocode({ ...pin, latitude: pin.latitude + 0.001 }, deps)
+    expect(calls).toHaveLength(2)
+  })
+
+  it("shares the exact service's one-a-second line with the address search", async () => {
+    answer = () => json(building)
+    await Promise.all([
+      geocodeAddress({ query: "Tbilisi prospekti", language: "az" }, { ...deps, fetch: (async () => json(upstream)) as unknown as typeof fetch }),
+      reverseGeocode(pin, deps),
+    ])
+    expect(slept).toEqual([1_100])
+  })
+
+  it("says it could not look when the service is down, and remembers «no street here»", async () => {
+    answer = down
+    expect(await reverseGeocode(pin, deps)).toEqual({ ok: false })
+    answer = () => json({ address: { city: "Bakı" } })
+    clock += 5_000
+    expect(await reverseGeocode(pin, deps)).toEqual({ ok: true, place: null })
+    await reverseGeocode(pin, deps)
+    expect(calls).toHaveLength(2)
   })
 })

@@ -14513,6 +14513,9 @@
     "locating": "Locating…",
     "hintEmpty": "Search for an address, press “My location”, or just click the map.",
     "hintSet": "You can correct the pin: drag it, or click the map where it should be.",
+    "pinAddressUnknown": "No address was found for this point — the card keeps the one it has.",
+    "pinAddress": "Address under the pin:",
+    "addressWritten": "written into the card",
     "resultsTitle": "Choose an address:",
     "noResults": "Nothing found. Try it shorter — street and house number, or the organization's name — or place the pin on the map by hand.",
     "searchFailed": "Address search is unavailable right now. Place the pin on the map by hand.",
@@ -14597,6 +14600,7 @@
     "thisVisit": "this visit",
     "visitTo": "visit to {name}",
     "placeholderCode": "e.g. C-001",
+    "addressFromMapHint": "appears once you set the place on the map",
     "placeholderLatitude": "Latitude",
     "placeholderLongitude": "Longitude",
     "location": "Location"
