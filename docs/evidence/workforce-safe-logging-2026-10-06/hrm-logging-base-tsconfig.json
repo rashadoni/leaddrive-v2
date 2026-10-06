@@ -1,0 +1,24 @@
+{
+  "extends": "/workspace/hrm-c12-monitoring/tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "typeRoots": [
+      "/workspace/hrm-c12-monitoring/node_modules/@types"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "/workspace/hrm-c12-monitoring/src/lib/workforce/sensitive-operation-log.ts",
+    "/workspace/hrm-c12-monitoring/src/lib/workforce/today-read-access.ts",
+    "/workspace/hrm-c12-monitoring/src/lib/workforce/timesheet-read-access.ts",
+    "/workspace/hrm-c12-monitoring/src/lib/workforce/request-decision.ts",
+    "/workspace/hrm-c12-monitoring/src/app/api/cron/workforce-no-show-review/route.ts",
+    "/workspace/hrm-c12-monitoring/src/__tests__/lib-workforce-today-read-access.test.ts",
+    "/workspace/hrm-c12-monitoring/src/__tests__/lib-workforce-timesheet-read-access.test.ts",
+    "/workspace/hrm-c12-monitoring/src/__tests__/workforce-request-decision.test.ts",
+    "/workspace/hrm-c12-monitoring/src/__tests__/api-cron-workforce-no-show-review.test.ts",
+    "/workspace/hrm-c12-monitoring/src/__tests__/fixtures/workforce-log-failures.ts"
+  ]
+}

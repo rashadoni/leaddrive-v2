@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "head": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "tree": "1bdd3a8c6a8b222cb9dbf193e9c019ef55460aa5",
+  "all_local_blobs_modes_verified": 8760,
+  "recomputed_tree_objects": 2809,
+  "base_head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "base_tree": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+  "unchanged_base_blobs": 8749,
+  "changed_paths": [
+    "src/__tests__/api-cron-workforce-no-show-review.test.ts",
+    "src/__tests__/lib-workforce-timesheet-read-access.test.ts",
+    "src/__tests__/lib-workforce-today-read-access.test.ts",
+    "src/__tests__/workforce-request-decision.test.ts",
+    "src/app/api/cron/workforce-no-show-review/route.ts",
+    "src/lib/workforce/request-decision.ts",
+    "src/lib/workforce/sensitive-operation-log.ts",
+    "src/lib/workforce/timesheet-read-access.ts",
+    "src/lib/workforce/today-read-access.ts"
+  ],
+  "added_paths": [
+    "docs/workforce-safe-failure-logging-2026-10-06.md",
+    "src/__tests__/fixtures/workforce-log-failures.ts"
+  ],
+  "removed_paths": [],
+  "remote_changed_contents_byte_equal": 11,
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "aabc561784979d9867d5b35c370135e58792c8fe",
+  "synthetic_parents": [
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "2c5a6a4b35cb96988f9f3c417b122d788498c3a7"
+  ]
+}

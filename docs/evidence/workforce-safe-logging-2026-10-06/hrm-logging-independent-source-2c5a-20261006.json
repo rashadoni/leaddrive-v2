@@ -1,0 +1,358 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent_read_only_worker",
+  "reviewed_at": "2026-10-06T09:41:05.316233+00:00",
+  "status": "ACCEPTED_BOUNDED_EXACT_SOURCE_HOSTED_PENDING",
+  "repository": "rashadoni/leaddrive-v2",
+  "pr": 589,
+  "head": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "tree": "1bdd3a8c6a8b222cb9dbf193e9c019ef55460aa5",
+  "parent": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "aabc561784979d9867d5b35c370135e58792c8fe",
+  "synthetic_parents": [
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "2c5a6a4b35cb96988f9f3c417b122d788498c3a7"
+  ],
+  "synthetic_tree_equals_candidate": true,
+  "tree_verification": {
+    "status": "PASS",
+    "head": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+    "tree": "1bdd3a8c6a8b222cb9dbf193e9c019ef55460aa5",
+    "all_local_blobs_modes_verified": 8760,
+    "recomputed_tree_objects": 2809,
+    "base_head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+    "base_tree": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+    "unchanged_base_blobs": 8749,
+    "changed_paths": [
+      "src/__tests__/api-cron-workforce-no-show-review.test.ts",
+      "src/__tests__/lib-workforce-timesheet-read-access.test.ts",
+      "src/__tests__/lib-workforce-today-read-access.test.ts",
+      "src/__tests__/workforce-request-decision.test.ts",
+      "src/app/api/cron/workforce-no-show-review/route.ts",
+      "src/lib/workforce/request-decision.ts",
+      "src/lib/workforce/sensitive-operation-log.ts",
+      "src/lib/workforce/timesheet-read-access.ts",
+      "src/lib/workforce/today-read-access.ts"
+    ],
+    "added_paths": [
+      "docs/workforce-safe-failure-logging-2026-10-06.md",
+      "src/__tests__/fixtures/workforce-log-failures.ts"
+    ],
+    "removed_paths": [],
+    "remote_changed_contents_byte_equal": 11,
+    "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "synthetic": "aabc561784979d9867d5b35c370135e58792c8fe",
+    "synthetic_parents": [
+      "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "2c5a6a4b35cb96988f9f3c417b122d788498c3a7"
+    ]
+  },
+  "source_bindings": [
+    {
+      "path": "docs/workforce-safe-failure-logging-2026-10-06.md",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 4759,
+      "sha256": "8bff3f24ef39c6357b7fb632eda8f133c098b353f43bc52e16f12d8e56f8441d",
+      "git_blob": "06001830f9e03380f1225d4e1c48a06673b39e96"
+    },
+    {
+      "path": "src/__tests__/workforce-request-decision.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 20250,
+      "sha256": "9b1ee72deaf37b651ecf7212479116737aa230a3c23b6d46156b210e338e5ef9",
+      "git_blob": "3ba1c9f4fab5077bc2e53bc7193977f7b428a511"
+    },
+    {
+      "path": "src/__tests__/lib-workforce-today-read-access.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 5768,
+      "sha256": "09c91ee64dd76e989e86b168fae92b38b4ec495a730dbeaa694b1c922a6db574",
+      "git_blob": "ba9a64fb3799b1710d38724cb78650d618cbd53b"
+    },
+    {
+      "path": "src/__tests__/lib-workforce-timesheet-read-access.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 4352,
+      "sha256": "63ccda1364fcf177f8d16a99bf7f291314c1d4c738363295a82d8a62cad647c0",
+      "git_blob": "a85515933c234532288b8181c6825ee2999a19fb"
+    },
+    {
+      "path": "src/__tests__/api-cron-workforce-no-show-review.test.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 3704,
+      "sha256": "068f39d3ee6d86e88be1dc83f4c8e65a7ea0573bb895838053e920aa89cb8e91",
+      "git_blob": "cb2b366bf33c6ca225938ee23d48c7d07cafbae5"
+    },
+    {
+      "path": "src/lib/workforce/timesheet-read-access.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 2508,
+      "sha256": "49b826d022d418cf7a962aaf7d78a17f87eeabaaf7ec630606430de25e7ba59b",
+      "git_blob": "50a97e1e5455edbfa5c2829a259a99d82b996660"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-operation-log.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 1873,
+      "sha256": "5f107684fdbf03d2184e09db3ef746ca50a0d23650a6a91f9d1e5fd510ff494e",
+      "git_blob": "1424d3b89d7954cb6019d7a4fa6caa678d777e02"
+    },
+    {
+      "path": "src/lib/workforce/request-decision.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 25591,
+      "sha256": "b8fe7a06e1143d4f0290eeb9a6a9570167a8d6972e5030e34c081c76d094fdf4",
+      "git_blob": "a062e84febca4ce366a025becb4a6896071f6746"
+    },
+    {
+      "path": "src/lib/workforce/today-read-access.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 6868,
+      "sha256": "fc3d9a7dc72989844cd8d236f084610af5b4f0495f9f5612286dd0f55fac9620",
+      "git_blob": "d39b846583b99bf53dd7a258ecf0bcbd1e8db201"
+    },
+    {
+      "path": "src/app/api/cron/workforce-no-show-review/route.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 1261,
+      "sha256": "7574b840d08ec6287e27454076c4b509b6220c93e9a8aaa354f565c67e9dbc24",
+      "git_blob": "6babc9edaeb853961b4a85b237da7432d1f855fd"
+    },
+    {
+      "path": "src/__tests__/fixtures/workforce-log-failures.ts",
+      "mode": "100644",
+      "type": "blob",
+      "bytes": 1023,
+      "sha256": "b7ce5c407e3f7cbece3c8f57c7e52fd812709607b2e2367e9bd4bd0ab018a113",
+      "git_blob": "2eb498ac8b5d59849bdce3e3a0980d9ba190959c"
+    }
+  ],
+  "review": {
+    "production_delta": "Verified exact base-to-candidate transforms for four selected catch/import replacements and four helper TypeScript union members. Shared logger runtime unchanged; all other bytes in the five production files unchanged.",
+    "failure_privacy": "Changed catches discard thrown value without inspecting, serializing or forwarding Error name/message/stack/cause, string, opaque getters or null. Four operation arguments are literals. Shared helper union is compile-time only; no global runtime validation claim.",
+    "behavior": "Existing Today503 private/no-store, timesheet503 response, request forbidden before writes/notifications/Route read, and cron500 no-store/nosniff responses retained. Authorization, historical membership, transactions/fences, cron authentication, worker scheduling/tenant rollout and success paths unchanged.",
+    "doc": "Whole scope document read and verified against exact remote bytes; preserves ledger/C12 statuses, initial test failure, compiler limitation, remaining logging inventory and next bounded scope.",
+    "protected_paths": "Full delta proves schema, migrations, existing workflows, tsconfig, both baselines and all unrelated application paths unchanged from accepted parent."
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "resolved_history": [
+    {
+      "scope": "New test assertion only",
+      "initial_independent_tests": {
+        "pass": 38,
+        "fail": 4
+      },
+      "cause": "Today new expectation used no-store, while unchanged response uses private, no-store.",
+      "resolution": "Corrected test expectation only; production response unchanged."
+    }
+  ],
+  "tests_actual_independent": {
+    "command": "vitest run four changed test files --reporter=json --outputFile=/tmp/hrm-safe-logging-independent-final-tests.json",
+    "files": 4,
+    "pass": 42,
+    "fail": 0,
+    "skip": 0,
+    "new_privacy_cases": 16,
+    "exit_code": 0,
+    "same_bytes_as_immutable_head": true,
+    "database": "Mocked dependencies; no actual PG claim"
+  },
+  "owner_validation_reviewed": {
+    "owner_receipt": {
+      "path": "/tmp/hrm-logging-owner-validation.json",
+      "bytes": 2008,
+      "sha256": "62c91022bd08b5dc2c1d2357893e419d80764fde1a917634bfb183577228d402"
+    },
+    "focused_tests_pass": 50,
+    "regression_capability_isolation_tests_pass": 225,
+    "both_reports_whole_parsed": true,
+    "lint": "Owner reports PASS; reviewer did not rerun",
+    "production_bounded_typecheck": "Owner reports exit0; empty output and bounded configuration inspected, not independently executed",
+    "test_inclusive_bounded_typecheck": {
+      "production_typecheck": {
+        "exit_code": 0,
+        "config": "hrm-logging-production-tsconfig.json"
+      },
+      "test_inclusive_candidate": {
+        "exit_code": 2,
+        "config": "hrm-logging-tsconfig.json",
+        "diagnostics": [
+          "src/__tests__/mocks/mtm-prisma.ts(482,73): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+          "src/__tests__/mocks/mtm-prisma.ts(483,72): error TS2737: BigInt literals are not available when targeting lower than ES2020."
+        ]
+      },
+      "test_inclusive_base": {
+        "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "exit_code": 2,
+        "config": "hrm-logging-base-tsconfig.json",
+        "diagnostics": [
+          "src/__tests__/mocks/mtm-prisma.ts(482,73): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+          "src/__tests__/mocks/mtm-prisma.ts(483,72): error TS2737: BigInt literals are not available when targeting lower than ES2020."
+        ]
+      },
+      "diagnostics_byte_equal": true,
+      "new_diagnostics": 0,
+      "repository_target_and_baselines_changed": false,
+      "limitation": "Bounded test-inclusive compiler is not clean; two existing TS2737 diagnostics in unchanged mtm-prisma mock. No global clean compile claim."
+    },
+    "compiler_comparison_verified": "Both actual output files are byte-equal with exactly two TS2737 lines at unchanged mock482/483; equivalent configs apart from workspace root; mock, target and baselines unchanged. No global compiler clean claim."
+  },
+  "remaining_inventory": {
+    "scope": "Syntactic console calls across210 TS files, not transitive logging/data-flow audit",
+    "raw_thrown_value_calls": 49,
+    "error_name_derived_calls": 1,
+    "shared_sink": 1,
+    "all51_call_source_hashes_verified": true,
+    "independent_direct_raw_error_scan": 49,
+    "limitations": [
+      "Aliases, framework/driver logging, client/MTM/shared platform surfaces excluded.",
+      "Source exposure sites do not prove an actual runtime leak.",
+      "Other error propagation/logging sites remain; no full privacy/logging acceptance."
+    ]
+  },
+  "hosted_validation": {
+    "status": "PENDING_SEPARATE_EXACT_HEAD_REVIEW",
+    "no_prior_head_CI_reused": true
+  },
+  "roadmap": {
+    "done": 82,
+    "unique_tasks": 161,
+    "open": 79,
+    "weighted_percent": 59,
+    "C12_008": "PARTIAL",
+    "WF_C12_002_and_WF_C10_011": "Advanced bounded source work only; statuses unchanged"
+  },
+  "remaining_limits": [
+    "Authentic historical api_keys baseline/provenance and full staging remain separate open work. No backup/restored copy/Contabo operations.",
+    "No telemetry destination, operational cadence, alert delivery, permission/credential change, deployment or activation.",
+    "No broad privacy or global clean compiler/suite/build claim.",
+    "Full remote tree and decoded source-content response kept local; immutable Git identities provide recovery. Their local hashes are included separately."
+  ],
+  "support_files": [
+    {
+      "path": "/tmp/hrm-logging-independent-tree-proof.json",
+      "bytes": 1320,
+      "sha256": "bea286ac9d4bf8284e785ebf79272b82d443529ccd830c8c1dc4a51cf7d50c89"
+    },
+    {
+      "path": "/tmp/hrm-logging-independent-remote-guard.json",
+      "bytes": 4597,
+      "sha256": "db1d9851854b54fa87ab2459f586f531fe94c16f6bbc57778e029b73aece515f"
+    },
+    {
+      "path": "/tmp/hrm-logging-source-bindings.json",
+      "bytes": 3023,
+      "sha256": "1c2b8917ec9a4332cfb484756aa25c727b80d6beca4041b1a9b61a91b5921486"
+    },
+    {
+      "path": "/tmp/hrm-safe-logging-independent-preliminary-20261006.json",
+      "bytes": 11979,
+      "sha256": "2e340f123370f6942e638e8b9e6377a28de1f3654f3e9a2127bb1ecaacda0de9"
+    },
+    {
+      "path": "/tmp/hrm-safe-logging-independent-review-bindings.json",
+      "bytes": 3019,
+      "sha256": "76dc0c495c82ff24d34a99cca9a1815af4b777df4835581fb0f8d89cf0e13027"
+    },
+    {
+      "path": "/tmp/hrm-safe-logging-independent-tests.json",
+      "bytes": 18665,
+      "sha256": "0be79cb5eea95f2f17f03be02b0549f8df07f86c1d7a38c42b43cb936fbe87b7"
+    },
+    {
+      "path": "/tmp/hrm-safe-logging-independent-final-tests.json",
+      "bytes": 17255,
+      "sha256": "f48cd06a2b5995f80a4d49c9c9b9374f5d2b1ad1c75839d4bd0eab41f94922ba"
+    },
+    {
+      "path": "/tmp/hrm-logging-owner-validation.json",
+      "bytes": 2008,
+      "sha256": "62c91022bd08b5dc2c1d2357893e419d80764fde1a917634bfb183577228d402"
+    },
+    {
+      "path": "/tmp/hrm-logging-targeted-tests.json",
+      "bytes": 20573,
+      "sha256": "98bc3b177ecc50fac69a2002c8b0c94fc4a094fc9d93ee8b4ef9f72e8fd0affb"
+    },
+    {
+      "path": "/tmp/hrm-logging-regressions.json",
+      "bytes": 75076,
+      "sha256": "f2faab59641afd05428ce518ca4a8c7c1e15f1fbc41188547b38a0b79b7de5cf"
+    },
+    {
+      "path": "/tmp/hrm-logging-typecheck-comparison.json",
+      "bytes": 1221,
+      "sha256": "90f44a2a9c5814a7cf3bc65b2444235cbbed27b5326ddd4924dbc5953f27ea96"
+    },
+    {
+      "path": "/tmp/hrm-logging-base-typecheck.txt",
+      "bytes": 250,
+      "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8"
+    },
+    {
+      "path": "/tmp/hrm-logging-typecheck.txt",
+      "bytes": 250,
+      "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8"
+    },
+    {
+      "path": "/tmp/hrm-logging-production-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-logging-base-tsconfig.json",
+      "bytes": 1106,
+      "sha256": "9fe9edc69c13cbbdd2eba7848346768f1b5baae2c6c1bbfbf2422d4a7e6547f5"
+    },
+    {
+      "path": "/tmp/hrm-logging-tsconfig.json",
+      "bytes": 1082,
+      "sha256": "37ffa9aaab18215d749b36a39242124a50fcdb14421e8c2528944214d969ba15"
+    },
+    {
+      "path": "/tmp/hrm-logging-production-tsconfig.json",
+      "bytes": 641,
+      "sha256": "f41c8b79ab9ffacf36dc52983aa0b93e386b7fefd35f2c0dd2f41c0c1f5ad92a"
+    },
+    {
+      "path": "/tmp/hrm-logging-remaining-console-inventory.json",
+      "bytes": 19688,
+      "sha256": "1b32b706cd52ecf71cbffff9e547e05e8b20f96ea459ea8f9857f0f61605ffe9"
+    }
+  ],
+  "local_only_large_evidence": [
+    {
+      "path": "/tmp/hrm-logging-independent-remote-tree.json",
+      "bytes": 3623008,
+      "sha256": "479106aaeda6525ed35999ec53f42e486e7bc09ccf8a8b6dcf20d3d9a5ccff3a"
+    },
+    {
+      "path": "/tmp/hrm-logging-independent-remote-contents.json",
+      "bytes": 81968,
+      "sha256": "23c7bffea5d7afcd6346ae2e130d8cb6f76c4804ca2c822b10b1594e7fcfccdd"
+    }
+  ],
+  "reviewer_actions": {
+    "source_edits": false,
+    "remote_writes": false,
+    "raw_ci_logs_read": false,
+    "production_or_database_operations": false,
+    "tests_repeated_after_final_byte_binding": false
+  }
+}

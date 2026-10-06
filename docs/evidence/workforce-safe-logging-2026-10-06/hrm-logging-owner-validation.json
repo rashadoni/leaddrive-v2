@@ -1,0 +1,64 @@
+{
+  "head": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "tree": "1bdd3a8c6a8b222cb9dbf193e9c019ef55460aa5",
+  "parent": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "status": "OWNER_BOUNDED_SOURCE_VALIDATION_PASS_HOSTED_PENDING",
+  "focused_tests": {
+    "pass": 50,
+    "fail": 0,
+    "skip": 0,
+    "new_privacy_cases": 16
+  },
+  "regression_tests": {
+    "pass": 225,
+    "fail": 0,
+    "skip": 0
+  },
+  "production_typecheck": "PASS",
+  "test_inclusive_typecheck": "Two unchanged TS2737 BigInt diagnostics in parent and candidate; comparison byte-equal; no new diagnostics; no global clean claim",
+  "targeted_lint": "PASS",
+  "whitespace": "PASS",
+  "support592_overlap": false,
+  "historical_migration_and_baseline_changes": false,
+  "runtime_activation": false,
+  "remaining_direct_calls": {
+    "raw_thrown_values": 49,
+    "error_name_derived": 1,
+    "scope": "210 TypeScript files, syntactic console calls only"
+  },
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted_percent": 59,
+    "C12_008": "PARTIAL"
+  },
+  "support_files": [
+    {
+      "path": "/tmp/hrm-logging-targeted-tests.json",
+      "bytes": 20573,
+      "sha256": "98bc3b177ecc50fac69a2002c8b0c94fc4a094fc9d93ee8b4ef9f72e8fd0affb"
+    },
+    {
+      "path": "/tmp/hrm-logging-regressions.json",
+      "bytes": 75076,
+      "sha256": "f2faab59641afd05428ce518ca4a8c7c1e15f1fbc41188547b38a0b79b7de5cf"
+    },
+    {
+      "path": "/tmp/hrm-logging-typecheck-comparison.json",
+      "bytes": 1221,
+      "sha256": "90f44a2a9c5814a7cf3bc65b2444235cbbed27b5326ddd4924dbc5953f27ea96"
+    },
+    {
+      "path": "/tmp/hrm-logging-remaining-console-inventory.json",
+      "bytes": 19688,
+      "sha256": "1b32b706cd52ecf71cbffff9e547e05e8b20f96ea459ea8f9857f0f61605ffe9"
+    },
+    {
+      "path": "/tmp/hrm-logging-source-bindings.json",
+      "bytes": 3023,
+      "sha256": "1c2b8917ec9a4332cfb484756aa25c727b80d6beca4041b1a9b61a91b5921486"
+    }
+  ]
+}

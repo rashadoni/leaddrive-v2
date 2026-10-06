@@ -1,0 +1,90 @@
+[
+  {
+    "path": "docs/workforce-safe-failure-logging-2026-10-06.md",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 4759,
+    "sha256": "8bff3f24ef39c6357b7fb632eda8f133c098b353f43bc52e16f12d8e56f8441d",
+    "git_blob": "06001830f9e03380f1225d4e1c48a06673b39e96"
+  },
+  {
+    "path": "src/__tests__/workforce-request-decision.test.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 20250,
+    "sha256": "9b1ee72deaf37b651ecf7212479116737aa230a3c23b6d46156b210e338e5ef9",
+    "git_blob": "3ba1c9f4fab5077bc2e53bc7193977f7b428a511"
+  },
+  {
+    "path": "src/__tests__/lib-workforce-today-read-access.test.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 5768,
+    "sha256": "09c91ee64dd76e989e86b168fae92b38b4ec495a730dbeaa694b1c922a6db574",
+    "git_blob": "ba9a64fb3799b1710d38724cb78650d618cbd53b"
+  },
+  {
+    "path": "src/__tests__/lib-workforce-timesheet-read-access.test.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 4352,
+    "sha256": "63ccda1364fcf177f8d16a99bf7f291314c1d4c738363295a82d8a62cad647c0",
+    "git_blob": "a85515933c234532288b8181c6825ee2999a19fb"
+  },
+  {
+    "path": "src/__tests__/api-cron-workforce-no-show-review.test.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 3704,
+    "sha256": "068f39d3ee6d86e88be1dc83f4c8e65a7ea0573bb895838053e920aa89cb8e91",
+    "git_blob": "cb2b366bf33c6ca225938ee23d48c7d07cafbae5"
+  },
+  {
+    "path": "src/lib/workforce/timesheet-read-access.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 2508,
+    "sha256": "49b826d022d418cf7a962aaf7d78a17f87eeabaaf7ec630606430de25e7ba59b",
+    "git_blob": "50a97e1e5455edbfa5c2829a259a99d82b996660"
+  },
+  {
+    "path": "src/lib/workforce/sensitive-operation-log.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 1873,
+    "sha256": "5f107684fdbf03d2184e09db3ef746ca50a0d23650a6a91f9d1e5fd510ff494e",
+    "git_blob": "1424d3b89d7954cb6019d7a4fa6caa678d777e02"
+  },
+  {
+    "path": "src/lib/workforce/request-decision.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 25591,
+    "sha256": "b8fe7a06e1143d4f0290eeb9a6a9570167a8d6972e5030e34c081c76d094fdf4",
+    "git_blob": "a062e84febca4ce366a025becb4a6896071f6746"
+  },
+  {
+    "path": "src/lib/workforce/today-read-access.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 6868,
+    "sha256": "fc3d9a7dc72989844cd8d236f084610af5b4f0495f9f5612286dd0f55fac9620",
+    "git_blob": "d39b846583b99bf53dd7a258ecf0bcbd1e8db201"
+  },
+  {
+    "path": "src/app/api/cron/workforce-no-show-review/route.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 1261,
+    "sha256": "7574b840d08ec6287e27454076c4b509b6220c93e9a8aaa354f565c67e9dbc24",
+    "git_blob": "6babc9edaeb853961b4a85b237da7432d1f855fd"
+  },
+  {
+    "path": "src/__tests__/fixtures/workforce-log-failures.ts",
+    "mode": "100644",
+    "type": "blob",
+    "bytes": 1023,
+    "sha256": "b7ce5c407e3f7cbece3c8f57c7e52fd812709607b2e2367e9bd4bd0ab018a113",
+    "git_blob": "2eb498ac8b5d59849bdce3e3a0980d9ba190959c"
+  }
+]

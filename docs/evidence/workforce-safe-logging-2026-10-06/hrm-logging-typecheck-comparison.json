@@ -1,0 +1,27 @@
+{
+  "production_typecheck": {
+    "exit_code": 0,
+    "config": "hrm-logging-production-tsconfig.json"
+  },
+  "test_inclusive_candidate": {
+    "exit_code": 2,
+    "config": "hrm-logging-tsconfig.json",
+    "diagnostics": [
+      "src/__tests__/mocks/mtm-prisma.ts(482,73): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+      "src/__tests__/mocks/mtm-prisma.ts(483,72): error TS2737: BigInt literals are not available when targeting lower than ES2020."
+    ]
+  },
+  "test_inclusive_base": {
+    "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+    "exit_code": 2,
+    "config": "hrm-logging-base-tsconfig.json",
+    "diagnostics": [
+      "src/__tests__/mocks/mtm-prisma.ts(482,73): error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+      "src/__tests__/mocks/mtm-prisma.ts(483,72): error TS2737: BigInt literals are not available when targeting lower than ES2020."
+    ]
+  },
+  "diagnostics_byte_equal": true,
+  "new_diagnostics": 0,
+  "repository_target_and_baselines_changed": false,
+  "limitation": "Bounded test-inclusive compiler is not clean; two existing TS2737 diagnostics in unchanged mtm-prisma mock. No global clean compile claim."
+}

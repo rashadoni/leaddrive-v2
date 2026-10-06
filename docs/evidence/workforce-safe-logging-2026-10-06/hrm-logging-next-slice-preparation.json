@@ -1,0 +1,74 @@
+{
+  "head": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "scope": "NEXT_REQUEST_API_LOGGING_SLICE_PREPARATION_ONLY",
+  "roadmap": [
+    "WF-C12-002",
+    "WF-C10-011"
+  ],
+  "selected_calls": [
+    {
+      "path": "src/app/api/v1/workforce/requests/route.ts",
+      "line": 380,
+      "method": "error",
+      "behavior": "preserve generic submit500 and request/idempotency boundaries"
+    },
+    {
+      "path": "src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+      "line": 30,
+      "method": "warn",
+      "behavior": "preserve warning severity and fail-open enrichment false; HRM decision remains available without Route preview"
+    },
+    {
+      "path": "src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+      "line": 86,
+      "method": "error",
+      "behavior": "preserve generic decision500 and all mapped business outcomes"
+    },
+    {
+      "path": "src/app/api/v1/workforce/requests/[id]/cancel/route.ts",
+      "line": 57,
+      "method": "error",
+      "behavior": "preserve generic cancel500, exact self scope and immutable cancellation behavior"
+    }
+  ],
+  "validation_plan": [
+    "Use real request route handlers and real logger with controlled mocked dependency failures; reuse the four synthetic thrown-value factories.",
+    "Assert fixed finite payload only, including private name/stack/cause/metadata and opaque accessor rejection cases.",
+    "Do not convert the current entitlement warning into an error-severity event accidentally; shared helper currently emits error only.",
+    "Prove an entitlement lookup failure still calls the decision with includeRouteConflicts=false; no Route reads or writes are introduced.",
+    "Preserve response status/body/header behavior, authorization denial, idempotency and notification boundaries using existing api-workforce-requests tests."
+  ],
+  "dependencies": [
+    "Fresh ref/ownership and Support path guard",
+    "No historical api_keys baseline needed",
+    "No schema, grant, schedule or activation change",
+    "Exact-head review and hosted gates before acceptance"
+  ],
+  "source_bindings": [
+    {
+      "path": "src/app/api/v1/workforce/requests/route.ts",
+      "bytes": 15017,
+      "sha256": "b0a06e268e963c057d317de433ee5df9ac3aa38b39206ed0736c56923f7c008d"
+    },
+    {
+      "path": "src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+      "bytes": 3406,
+      "sha256": "21c98d1116d66d5e52938b78cbb164700c41c60764363399184eba746876dd2d"
+    },
+    {
+      "path": "src/app/api/v1/workforce/requests/[id]/cancel/route.ts",
+      "bytes": 2202,
+      "sha256": "37bab29612e996798063299269fd978ec0e10444b3e176f3a5d536ba0b33dc1d"
+    },
+    {
+      "path": "src/__tests__/api-workforce-requests.test.ts",
+      "bytes": 11710,
+      "sha256": "6e4128297bf7e0f44ff5b1cbb35cdc93d00b7713d1f892bf4318996239212c77"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-operation-log.ts",
+      "bytes": 1873,
+      "sha256": "5f107684fdbf03d2184e09db3ef746ca50a0d23650a6a91f9d1e5fd510ff494e"
+    }
+  ]
+}

@@ -1,0 +1,333 @@
+{
+  "status": "BOUNDED_LOCAL_SOURCE_REVIEW_PASS_PENDING_IMMUTABLE_HEAD",
+  "reviewed_at": "2026-10-06T09:36:21.391112+00:00",
+  "base_head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "reviewer": "independent_read_only_worker",
+  "source_bindings": [
+    {
+      "path": "src/lib/workforce/today-read-access.ts",
+      "bytes": 6868,
+      "sha256": "fc3d9a7dc72989844cd8d236f084610af5b4f0495f9f5612286dd0f55fac9620",
+      "git_blob_sha": "d39b846583b99bf53dd7a258ecf0bcbd1e8db201",
+      "verified_base_blob": "8e62adb19ea5116fa8ed24d07e338fcc1649895a"
+    },
+    {
+      "path": "src/lib/workforce/timesheet-read-access.ts",
+      "bytes": 2508,
+      "sha256": "49b826d022d418cf7a962aaf7d78a17f87eeabaaf7ec630606430de25e7ba59b",
+      "git_blob_sha": "50a97e1e5455edbfa5c2829a259a99d82b996660",
+      "verified_base_blob": "b867ff0cd110a9ecd400e100dad75904fb22132f"
+    },
+    {
+      "path": "src/lib/workforce/request-decision.ts",
+      "bytes": 25591,
+      "sha256": "b8fe7a06e1143d4f0290eeb9a6a9570167a8d6972e5030e34c081c76d094fdf4",
+      "git_blob_sha": "a062e84febca4ce366a025becb4a6896071f6746",
+      "verified_base_blob": "16c561c323a4ec49f6689962d2178f2b73bdf2b7"
+    },
+    {
+      "path": "src/app/api/cron/workforce-no-show-review/route.ts",
+      "bytes": 1261,
+      "sha256": "7574b840d08ec6287e27454076c4b509b6220c93e9a8aaa354f565c67e9dbc24",
+      "git_blob_sha": "6babc9edaeb853961b4a85b237da7432d1f855fd",
+      "verified_base_blob": "b4cd794d844d6de44bd47326dcfc39d16f44d537"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-operation-log.ts",
+      "bytes": 1873,
+      "sha256": "5f107684fdbf03d2184e09db3ef746ca50a0d23650a6a91f9d1e5fd510ff494e",
+      "git_blob_sha": "1424d3b89d7954cb6019d7a4fa6caa678d777e02",
+      "verified_base_blob": "bc83ae6dd32dede798e618e8cfded9d86125f857"
+    },
+    {
+      "path": "src/__tests__/lib-workforce-today-read-access.test.ts",
+      "bytes": 5768,
+      "sha256": "09c91ee64dd76e989e86b168fae92b38b4ec495a730dbeaa694b1c922a6db574",
+      "git_blob_sha": "ba9a64fb3799b1710d38724cb78650d618cbd53b",
+      "verified_base_blob": "ebf81cbb694234511bbfb9a30d08f8828fc7d1ff"
+    },
+    {
+      "path": "src/__tests__/lib-workforce-timesheet-read-access.test.ts",
+      "bytes": 4352,
+      "sha256": "63ccda1364fcf177f8d16a99bf7f291314c1d4c738363295a82d8a62cad647c0",
+      "git_blob_sha": "a85515933c234532288b8181c6825ee2999a19fb",
+      "verified_base_blob": "e95a4121392dc17982a518f89e2c8271de486e6b"
+    },
+    {
+      "path": "src/__tests__/workforce-request-decision.test.ts",
+      "bytes": 20250,
+      "sha256": "9b1ee72deaf37b651ecf7212479116737aa230a3c23b6d46156b210e338e5ef9",
+      "git_blob_sha": "3ba1c9f4fab5077bc2e53bc7193977f7b428a511",
+      "verified_base_blob": "b8ed17920c65b75a0debd74857caf6a374a2e1e4"
+    },
+    {
+      "path": "src/__tests__/api-cron-workforce-no-show-review.test.ts",
+      "bytes": 3704,
+      "sha256": "068f39d3ee6d86e88be1dc83f4c8e65a7ea0573bb895838053e920aa89cb8e91",
+      "git_blob_sha": "cb2b366bf33c6ca225938ee23d48c7d07cafbae5",
+      "verified_base_blob": "2c8ed8b9e40c2f897241c4c7ee35fd35a6fae1a2"
+    },
+    {
+      "path": "src/__tests__/fixtures/workforce-log-failures.ts",
+      "bytes": 1023,
+      "sha256": "b7ce5c407e3f7cbece3c8f57c7e52fd812709607b2e2367e9bd4bd0ab018a113",
+      "git_blob_sha": "2eb498ac8b5d59849bdce3e3a0980d9ba190959c",
+      "new_file": true
+    }
+  ],
+  "production_delta_proof": "Four selected files equal base exactly after adding helper import and replacing only the selected catch binding/log statement. Helper equals base exactly after four union members added. No other production byte changes within these five files.",
+  "review_scope": [
+    "Thrown Error/string/opaque accessor/null values are neither inspected nor forwarded in four changed catches. Exact log payload contains fixed operation label only.",
+    "Today503/private,no-store response retained; timesheet503 existing response retained without inventing new response headers; request decision returns forbidden before route reads or writes; cron500/no-store/nosniff retained.",
+    "Existing auth, granular rollout, historical membership, transaction fences, cron authentication and scheduler calls remain unchanged. Helper runtime implementation unchanged."
+  ],
+  "tests": {
+    "initial": {
+      "passed": 38,
+      "failed": 4,
+      "reason": "New Today test expected no-store rather than existing private, no-store; test-only expectation corrected."
+    },
+    "final": {
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "new_privacy_cases": 16,
+      "suite_files": 4
+    }
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "resolved_history": [
+    "New Today cache-control assertion corrected; production headers unchanged."
+  ],
+  "remaining_raw_error_inventory": {
+    "method": "Bounded lexical scan of src/app/api/v1/workforce console.error/warn lines directly passing error; examples are actual remaining source sites, not exhaustive transitive logging audit.",
+    "count": 49,
+    "sites": [
+      {
+        "path": "src/app/api/v1/workforce/attendance/devices/[id]/approve/route.ts",
+        "line": 39
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/devices/[id]/revoke/route.ts",
+        "line": 38
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/devices/route.ts",
+        "line": 30
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/security-triage/route.ts",
+        "line": 135
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/[id]/disable/route.ts",
+        "line": 39
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/[id]/qr/route.ts",
+        "line": 69
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/[id]/replace/route.ts",
+        "line": 49
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/route.ts",
+        "line": 40
+      },
+      {
+        "path": "src/app/api/v1/workforce/attendance/stations/route.ts",
+        "line": 67
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/assignments/bulk/publish/route.ts",
+        "line": 51
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/assignments/preview/route.ts",
+        "line": 35
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/assignments/route.ts",
+        "line": 178
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/assignments/route.ts",
+        "line": 210
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+        "line": 144
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+        "line": 218
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/employment-events/route.ts",
+        "line": 42
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/employment-events/route.ts",
+        "line": 66
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+        "line": 45
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+        "line": 75
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+        "line": 35
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+        "line": 72
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/[id]/activate/route.ts",
+        "line": 38
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/[id]/route.ts",
+        "line": 32
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/route.ts",
+        "line": 37
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/policies/route.ts",
+        "line": 60
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/[id]/activate/route.ts",
+        "line": 31
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/[id]/route.ts",
+        "line": 32
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/default/route.ts",
+        "line": 46
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/default/route.ts",
+        "line": 80
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/route.ts",
+        "line": 52
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/route.ts",
+        "line": 75
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/team-default/route.ts",
+        "line": 48
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/shifts/team-default/route.ts",
+        "line": 85
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/site-assignments/bulk/publish/route.ts",
+        "line": 47
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/site-assignments/preview/route.ts",
+        "line": 32
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/site-assignments/route.ts",
+        "line": 35
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/site-assignments/route.ts",
+        "line": 65
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/[id]/archive/route.ts",
+        "line": 33
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/[id]/geofences/route.ts",
+        "line": 42
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/[id]/geofences/route.ts",
+        "line": 71
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/route.ts",
+        "line": 34
+      },
+      {
+        "path": "src/app/api/v1/workforce/configuration/sites/route.ts",
+        "line": 57
+      },
+      {
+        "path": "src/app/api/v1/workforce/exceptions/mine/route.ts",
+        "line": 157
+      },
+      {
+        "path": "src/app/api/v1/workforce/requests/[id]/cancel/route.ts",
+        "line": 57
+      },
+      {
+        "path": "src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+        "line": 30
+      },
+      {
+        "path": "src/app/api/v1/workforce/requests/[id]/decision/route.ts",
+        "line": 86
+      },
+      {
+        "path": "src/app/api/v1/workforce/requests/route.ts",
+        "line": 380
+      },
+      {
+        "path": "src/app/api/v1/workforce/timesheet/route.ts",
+        "line": 527
+      },
+      {
+        "path": "src/app/api/v1/workforce/today/route.ts",
+        "line": 654
+      }
+    ]
+  },
+  "limits": [
+    "Scope document and immutable head not yet supplied at review time; this receipt is preliminary local-byte acceptance only.",
+    "No global logging/privacy/C12 closure. Broader route catch logging, transitively propagated errors and caller console behavior are outside these four changed catches.",
+    "Tests mock database/auth/worker dependencies; no new actual PostgreSQL, hosted CI, staging or production evidence claimed.",
+    "No source edits, remote writes, raw logs, backups or Contabo operations performed."
+  ],
+  "support_files": [
+    {
+      "path": "/tmp/hrm-safe-logging-independent-review-bindings.json",
+      "bytes": 3019,
+      "sha256": "76dc0c495c82ff24d34a99cca9a1815af4b777df4835581fb0f8d89cf0e13027"
+    },
+    {
+      "path": "/tmp/hrm-safe-logging-independent-tests.json",
+      "bytes": 18665,
+      "sha256": "0be79cb5eea95f2f17f03be02b0549f8df07f86c1d7a38c42b43cb936fbe87b7"
+    },
+    {
+      "path": "/tmp/hrm-safe-logging-independent-final-tests.json",
+      "bytes": 17255,
+      "sha256": "f48cd06a2b5995f80a4d49c9c9b9374f5d2b1ad1c75839d4bd0eab41f94922ba"
+    }
+  ]
+}
