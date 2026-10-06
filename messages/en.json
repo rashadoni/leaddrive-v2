@@ -13274,6 +13274,8 @@
     "inlineAssignmentLoadFailed": "We could not load existing records. Try again.",
     "inlineAssignmentNoResults": "No record can be assigned for this search.",
     "inlineAssignmentOwnedBy": "Currently assigned to {agent}",
+    "inlineAssignmentSharedWith": "Now with “{agent}” — they stay, and this employee is added beside them",
+    "inlineAssignmentShareAction": "Attach and add to the route",
     "inlineAssignmentUnassigned": "Not assigned to anyone yet",
     "inlineAssignmentAddAction": "Assign and add to route",
     "inlineAssignmentTransferAction": "Transfer and add to route",

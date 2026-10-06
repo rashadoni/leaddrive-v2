@@ -353,6 +353,40 @@ pgDescribe("client categories on a real Postgres", () => {
       expect(await employeesOf(ids.vuqar)).toEqual(["Leyla:PRIMARY"])
     })
 
+    // The route builder's «assign and add to the route» used to TRANSFER a
+    // client of another employee to the route's employee.
+    it("puts another employee's client into a route without taking the client away", async () => {
+      const { PUT } = await import("@/app/api/v1/mtm/field-assignments/route")
+      const attach = async (contactId: string, agentId: string) => {
+        const response = await PUT(send("PUT", "/api/v1/mtm/field-assignments", {
+          subjectType: "CONTACT", subjectId: contactId, agentId, keepOthers: true, effectiveFrom: today, reason: `Route builder: ${today}`,
+        }))
+        return response.status
+      }
+      const [taken, free] = await bypass(async () => {
+        const created: string[] = []
+        for (const [firstName, lastName] of [["Elçin", "Quliyev"], ["Fidan", "Rzayeva"]] as const) {
+          created.push((await prisma.mtmContact.create({
+            data: { organizationId: ORG, firstName, lastName, displayName: `${lastName} ${firstName}`, type: "DOCTOR" },
+            select: { id: true },
+          })).id)
+        }
+        await prisma.mtmContactAgentAssignment.create({
+          data: { organizationId: ORG, contactId: created[0], agentId: ids.seymur, role: "PRIMARY", effectiveFrom: new Date("2026-01-01T00:00:00.000Z") },
+        })
+        return created
+      })
+
+      expect(await attach(taken, ids.leyla)).toBe(200)
+      expect(await employeesOf(taken)).toEqual(["Seymur:PRIMARY", "Leyla:SECONDARY"])
+      // Asked twice — by a retry or a second route — it stays one attachment.
+      expect(await attach(taken, ids.leyla)).toBe(200)
+      expect(await employeesOf(taken)).toEqual(["Seymur:PRIMARY", "Leyla:SECONDARY"])
+      // A client nobody has gets a responsible employee, as before.
+      expect(await attach(free, ids.leyla)).toBe(200)
+      expect(await employeesOf(free)).toEqual(["Leyla:PRIMARY"])
+    })
+
     it("detaches one employee and leaves the other; the one who stays becomes responsible", async () => {
       const body = { contactIds: [ids.aydin], mode: "UNASSIGN", targetAgentId: null, sourceAgentId: ids.seymur, effectiveFrom: today }
       const { status } = await change(await assignments(), body, "detach-responsible")
