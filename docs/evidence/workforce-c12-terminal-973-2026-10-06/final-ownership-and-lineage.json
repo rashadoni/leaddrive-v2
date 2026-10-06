@@ -1,0 +1,214 @@
+{
+  "sourceHead": "973241bacc296b71fe817d1af11187c32e8126af",
+  "soleWriter": "existing delegated HRM executor",
+  "priorC12Drafts588And590": "unchanged frozen historical source; not new writers",
+  "observations": [
+    {
+      "endpoint": "pulls/608",
+      "value": {
+        "n": 608,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af",
+        "base": "bf6ed11f2bba8c93e828fb044315794b44224741",
+        "baseRef": "codex/hrm-c8-pagination-at-20261006",
+        "draft": true,
+        "merged": false,
+        "mergeable": true,
+        "syntheticMerge": "1223bf3496c11bb9846b5c596b156ec3204072a7"
+      }
+    },
+    {
+      "endpoint": "pulls/609",
+      "value": {
+        "n": 609,
+        "head": "973241bacc296b71fe817d1af11187c32e8126af",
+        "base": "cb5a0453e7ead310e0515e265efee209be1c272b",
+        "baseRef": "main",
+        "draft": false,
+        "merged": false,
+        "mergeable": true,
+        "syntheticMerge": "ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51"
+      }
+    },
+    {
+      "endpoint": "git/ref/heads/main",
+      "value": {
+        "ref": "refs/heads/main",
+        "sha": "cb5a0453e7ead310e0515e265efee209be1c272b"
+      }
+    },
+    {
+      "endpoint": "git/ref/heads/codex/hrm-588-validation-20261005",
+      "value": {
+        "ref": "refs/heads/codex/hrm-588-validation-20261005",
+        "sha": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226"
+      }
+    },
+    {
+      "endpoint": "git/ref/heads/codex/hrm-c8-pagination-at-20261006",
+      "value": {
+        "ref": "refs/heads/codex/hrm-c8-pagination-at-20261006",
+        "sha": "bf6ed11f2bba8c93e828fb044315794b44224741"
+      }
+    },
+    {
+      "endpoint": "git/ref/heads/codex/hrm-c8-acceptance-evidence-bf6-20261006",
+      "value": {
+        "ref": "refs/heads/codex/hrm-c8-acceptance-evidence-bf6-20261006",
+        "sha": "382b6e75d8de68e0ec4825aa7a2977b000674587"
+      }
+    },
+    {
+      "endpoint": "pulls?state=open&per_page=100",
+      "value": [
+        {
+          "n": 609,
+          "ref": "codex/hrm-c12-reader-profile-20261006",
+          "head": "973241bacc296b71fe817d1af11187c32e8126af",
+          "base": "main",
+          "updated": "2026-10-06T22:49:39Z"
+        },
+        {
+          "n": 608,
+          "ref": "codex/hrm-c12-reader-profile-20261006",
+          "head": "973241bacc296b71fe817d1af11187c32e8126af",
+          "base": "codex/hrm-c8-pagination-at-20261006",
+          "updated": "2026-10-06T22:49:35Z"
+        },
+        {
+          "n": 606,
+          "ref": "codex/hrm-c8-pagination-at-20261006",
+          "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+          "base": "main",
+          "updated": "2026-10-06T22:07:51Z"
+        },
+        {
+          "n": 605,
+          "ref": "codex/hrm-c8-pagination-at-20261006",
+          "head": "bf6ed11f2bba8c93e828fb044315794b44224741",
+          "base": "codex/hrm-588-validation-20261005",
+          "updated": "2026-10-06T22:07:45Z"
+        },
+        {
+          "n": 590,
+          "ref": "codex/workforce-c12-approval-group-draft",
+          "head": "f17523372802339a1220e2940b8b8c47a63f187b",
+          "base": "codex/workforce-c12-cursor-fencing-draft",
+          "updated": "2026-10-05T17:45:08Z"
+        },
+        {
+          "n": 589,
+          "ref": "codex/hrm-588-validation-20261005",
+          "head": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+          "base": "main",
+          "updated": "2026-10-06T18:00:45Z"
+        },
+        {
+          "n": 588,
+          "ref": "codex/workforce-c12-cursor-fencing-draft",
+          "head": "71433bf827ace3855dedb2bc76942c62867ee4de",
+          "base": "codex/hrm-585-integration-20261005",
+          "updated": "2026-10-05T17:04:20Z"
+        },
+        {
+          "n": 587,
+          "ref": "codex/hrm-585-integration-20261005",
+          "head": "ad8cc2ce22f11f18eb6e090ef4264a71def6c350",
+          "base": "main",
+          "updated": "2026-10-05T16:57:49Z"
+        },
+        {
+          "n": 586,
+          "ref": "dependabot/npm_and_yarn/routine-697143bedd",
+          "head": "0d6ee26e5b2bc26e8954365bbf55daf04095b6cb",
+          "base": "main",
+          "updated": "2026-10-05T11:06:20Z"
+        },
+        {
+          "n": 585,
+          "ref": "codex/workforce-completion-part47",
+          "head": "8a2439093e6f8fa2bf46f377582aee41b9308dd5",
+          "base": "main",
+          "updated": "2026-10-05T16:59:15Z"
+        },
+        {
+          "n": 558,
+          "ref": "claude/mtm-contacts-excel-import",
+          "head": "05f7c41079140f193a79f567940c604a7c645f0d",
+          "base": "main",
+          "updated": "2026-10-06T07:57:50Z"
+        },
+        {
+          "n": 526,
+          "ref": "claude/google-alerts-cursor-null-params",
+          "head": "02bb5f53953a798d2d26ede34e5a1de1b36f31c9",
+          "base": "main",
+          "updated": "2026-10-02T15:41:31Z"
+        },
+        {
+          "n": 266,
+          "ref": "claude/drop-unused-csv-parse",
+          "head": "f45b9da71ef8b57c66542a56c091a37caf5dfa53",
+          "base": "main",
+          "updated": "2026-09-20T13:49:46Z"
+        },
+        {
+          "n": 264,
+          "ref": "claude/social-secrets-facebook-keys",
+          "head": "c92aa055dbe71519c0af4498a94e1581c6075e45",
+          "base": "main",
+          "updated": "2026-09-20T13:44:14Z"
+        },
+        {
+          "n": 224,
+          "ref": "claude/require-2fa-toggle",
+          "head": "3f46755d274c49d84d44f9372b0895529b69f2e5",
+          "base": "main",
+          "updated": "2026-09-15T22:28:55Z"
+        },
+        {
+          "n": 201,
+          "ref": "dependabot/github_actions/actions-1d928e8337",
+          "head": "d5a75114b50c516a9b53584fd30d24e89c874a1e",
+          "base": "main",
+          "updated": "2026-10-05T10:59:48Z"
+        },
+        {
+          "n": 65,
+          "ref": "claude/correct-artifact-storage-claim",
+          "head": "b1c5ace92fd249ea3c424b82edbcbac5d44e9c02",
+          "base": "main",
+          "updated": "2026-09-11T07:10:58Z"
+        },
+        {
+          "n": 7,
+          "ref": "dependabot/npm_and_yarn/eslint-10.10.0",
+          "head": "773efc124e358fb1e2c3d6c067a32d99571cce69",
+          "base": "main",
+          "updated": "2026-09-20T13:53:02Z"
+        },
+        {
+          "n": 6,
+          "ref": "dependabot/npm_and_yarn/types/node-26.4.1",
+          "head": "91c8cf78919ed7414f5eb0015caad263fe06fcc3",
+          "base": "main",
+          "updated": "2026-09-20T13:51:40Z"
+        },
+        {
+          "n": 4,
+          "ref": "dependabot/npm_and_yarn/csv-parse-7.0.2",
+          "head": "835e5683247df0cb1dfa938a5b91188639ac8044",
+          "base": "main",
+          "updated": "2026-09-20T13:51:39Z"
+        },
+        {
+          "n": 3,
+          "ref": "dependabot/npm_and_yarn/multi-54f77fb17b",
+          "head": "3fd2a62301c9ee652cde3e3b4b56212a3efc5b10",
+          "base": "main",
+          "updated": "2026-09-20T13:51:38Z"
+        }
+      ]
+    }
+  ],
+  "mergeDeployActivation": false
+}

@@ -1,0 +1,50 @@
+{
+  "status": "PASS",
+  "candidateHead": "973241bacc296b71fe817d1af11187c32e8126af",
+  "checkedMergeSha": "ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51",
+  "completedAt": "2026-10-06T23:05:37.726Z",
+  "cases": [
+    "coherent-repeatable-read-concurrent-owner-commit",
+    "real-100-positive-101-fail-closed-no-partial-result",
+    "populated-two-tenant-select-only-rls",
+    "integrity-rejection-read-transaction-rollback-facts-unchanged"
+  ],
+  "requiredCases": 4,
+  "sourceBindings": [
+    {
+      "path": "src/__tests__/lib-workforce-policy-future-window-postgres.test.ts",
+      "bytes": 15540,
+      "sha256": "a5ea4d1906c86cb9de6e49de282cb9a6798f8fbe3139dcebba05c4ea02a1f434"
+    },
+    {
+      "path": "src/lib/workforce/policy-future-window-read.ts",
+      "bytes": 2052,
+      "sha256": "74471519bb29334e6f57726ba4e9ae5e10a4955cace6cf485e0139ddc6b1f96a"
+    },
+    {
+      "path": "src/lib/workforce/policy-future-window-preview.ts",
+      "bytes": 5799,
+      "sha256": "13c480618ca3ba91837e8cd87f2111fb9723080bc5dd53971b023e52b4839483"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/[id]/window-preview/route.ts",
+      "bytes": 2256,
+      "sha256": "7f26fb379a07b90e6aeaef2a63c160b535d96933b54d01b4297d0112fd94f5d2"
+    }
+  ],
+  "cleanup": [
+    {
+      "action": "isolated-owner-fixture-removal-and-absence",
+      "status": "PASS"
+    },
+    {
+      "action": "app-disconnect",
+      "status": "PASS"
+    },
+    {
+      "action": "owner-disconnect",
+      "status": "PASS"
+    }
+  ],
+  "boundary": "Disposable real PostgreSQL loader/RR/SELECT-only/RLS only; owner fixture replacement/removal is not a canonical policy writer or production mutation."
+}

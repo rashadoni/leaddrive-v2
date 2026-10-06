@@ -1,0 +1,8 @@
+{
+  "status": "FAILED",
+  "headSha": "973241bacc296b71fe817d1af11187c32e8126af",
+  "ciSha": "ea2a86be4ca8b4b89aa4c067f9835d2e09f90c51",
+  "runId": "37542951424",
+  "runAttempt": "1",
+  "runtime": "ephemeral-next-dev"
+}

@@ -1,0 +1,40 @@
+{
+  "source": "973241bacc296b71fe817d1af11187c32e8126af",
+  "knownFailingTestFiles": 18,
+  "gatedTypecheckPairs": 64,
+  "allUnchangedFromC8Base": true,
+  "bindings": [
+    {
+      "path": "test-baseline.json",
+      "bytes": 1139,
+      "sha256": "8f0fc568274f9fd8c0c741db618d6e4d81025de7112a315cd93e6b92bbd5a4b1"
+    },
+    {
+      "path": "typecheck-baseline.json",
+      "bytes": 3907,
+      "sha256": "919fa9d0212b18ee685af4f08680ebbc34e8c4969294054447df03147bf0fc53"
+    },
+    {
+      "path": ".github/workflows/pr-checks.yml",
+      "bytes": 19641,
+      "sha256": "d034cae6f3d5fa64d15ad52686d4b78b46a487d330151907e069e1239f162969"
+    },
+    {
+      "path": ".github/workflows/gitleaks.yml",
+      "bytes": 2379,
+      "sha256": "c5d38a364e21e5b1e3272d54d9d79faaa8b88b2e8390a24efb29414103039e89"
+    },
+    {
+      "path": "scripts/ci/check-typecheck-baseline.mjs",
+      "bytes": 5909,
+      "sha256": "8b8a2472a1c813e85c4177c24c6df5fb5907d981b5b43e6870a04cbbba2b812a"
+    },
+    {
+      "path": "scripts/check-test-baseline.mjs",
+      "bytes": 10188,
+      "sha256": "6c3380718fd71061d2efe4aa396fcb9cc998336c5c95a3bbd2de05230058027e"
+    }
+  ],
+  "compilerGloballyCleanClaim": false,
+  "rawCiLogsRead": false
+}
