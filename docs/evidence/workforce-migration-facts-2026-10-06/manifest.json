@@ -1,0 +1,276 @@
+{
+  "head": "31d9eab5ea11e0eae3a0454efceae32af7f64ba4",
+  "tree": "f237fa90199a36375ddf5c8298d6fc3685450793",
+  "parent": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+  "priorEvidence": "aa0082a57502fb7d401353a434b34b73b524c5b8",
+  "bundleFile": "support-bundle.json",
+  "bundleBytes": 1410093,
+  "bundleSha256": "565059ebeb87e9e4e8e9bba43fe8a5b41868a2985ae2fc27513a13eb395974b6",
+  "originals": [
+    {
+      "originalPath": "/tmp/hrm-migration-accept-terminal.py",
+      "member": "hrm-migration-accept-terminal.py",
+      "bytes": 3613,
+      "sha256": "9d2a1521735d20f0f4fda51c5b018f2c05ae525a8d027c11c8eac5fa7759d77a"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-archive.py",
+      "member": "hrm-migration-archive.py",
+      "bytes": 4875,
+      "sha256": "83f03496a0ac6e1e05f4c4186004a8dc40670c884318b2c082184d060660d20c"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-corrected-tests.json",
+      "member": "hrm-migration-independent-corrected-tests.json",
+      "bytes": 19639,
+      "sha256": "a06ebddf18256f68b3379a18ee8b51f3c4598918b9b361939b43a52b74da2da3"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-hosted-history.json",
+      "member": "hrm-migration-independent-hosted-history.json",
+      "bytes": 103010,
+      "sha256": "fd01d575f3bbb060d49ae4591a07c8ec6905de65ad2efcf8f6df69e7ac6e7937"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-hosted-terminal-31d9-20261006.json",
+      "member": "hrm-migration-independent-hosted-terminal-31d9-20261006.json",
+      "bytes": 11153,
+      "sha256": "eb2c18c5cbf802ac776311d65e9bae5e5acb5b2f3cc1ca496125dcd637e7f084"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-probes.cjs",
+      "member": "hrm-migration-independent-probes.cjs",
+      "bytes": 3243,
+      "sha256": "eb52c353defc328049c5288b861b14d77e7de79f8b21891ccdf73b19513163d2"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-probes.json",
+      "member": "hrm-migration-independent-probes.json",
+      "bytes": 2171,
+      "sha256": "1f7ce7a1a39e8edb834a43964e4b07c7f595fd1c7cb635218d2348ce8167c6c7"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-remote-0.json",
+      "member": "hrm-migration-independent-remote-0.json",
+      "bytes": 1168,
+      "sha256": "9e891ff0271e47372146e628356b064da55ed0c0c464a6260062a4cecf62e05e"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-remote-1.json",
+      "member": "hrm-migration-independent-remote-1.json",
+      "bytes": 2985536,
+      "sha256": "0154fc1e4239e018bdffa25c028802fb97ea04a0f5c1ef36412790eea9a0716d"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-remote-2.json",
+      "member": "hrm-migration-independent-remote-2.json",
+      "bytes": 343,
+      "sha256": "44b5cd8dc88e5a5ae206471516053cbcb752b67635e9900661cb5327aecaddd9"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-remote-3.json",
+      "member": "hrm-migration-independent-remote-3.json",
+      "bytes": 18265,
+      "sha256": "a8fbffff4dfeba47a72e4fb3672634641a18862cc3d796f2dba1213259b9d3d6"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-remote-4.json",
+      "member": "hrm-migration-independent-remote-4.json",
+      "bytes": 68051,
+      "sha256": "f56dd7b15989f5f33546a55a78ccb173b44688fc2a9fc3461e360be9bd7e7401"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-remote-5.json",
+      "member": "hrm-migration-independent-remote-5.json",
+      "bytes": 219185,
+      "sha256": "6efd3a5fe2849ddfea609451d5974f4aea73ddb3620bf044f7f0ac9d2afaaaa7"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-remote-6.json",
+      "member": "hrm-migration-independent-remote-6.json",
+      "bytes": 2644,
+      "sha256": "223892d8a3b344ba88622916c6ebda98e1f3e68fbbdec86f8bc0841c83349ad6"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-remote-check.py",
+      "member": "hrm-migration-independent-remote-check.py",
+      "bytes": 3026,
+      "sha256": "c31813e2eed0654f2afb3c7c9eabb8fc9997720f3bc198d37c0e7f123a8ab784"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-resolved-probes.cjs",
+      "member": "hrm-migration-independent-resolved-probes.cjs",
+      "bytes": 3252,
+      "sha256": "c83f50787b8863dc5c700f446be88b4e9a5362bc75bfd29069db70680bc305ad"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-resolved-probes.json",
+      "member": "hrm-migration-independent-resolved-probes.json",
+      "bytes": 2184,
+      "sha256": "4cf32858bfab6ab08ad34769ad70e043fe352d76467088871cc8c5cc5094cc1c"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-source-31d9-20261006.json",
+      "member": "hrm-migration-independent-source-31d9-20261006.json",
+      "bytes": 4271,
+      "sha256": "5af766ae89b9e0b988f034cc2180c9b30fefbfb2c27b2dd322fd52036262762a"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-source-f237-20261006.json",
+      "member": "hrm-migration-independent-source-f237-20261006.json",
+      "bytes": 11984,
+      "sha256": "625126397c18e8f1d45824cd65888026bbe17ca29b422b719f7d0aa8763c0f50"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-terminal-check.py",
+      "member": "hrm-migration-independent-terminal-check.py",
+      "bytes": 7216,
+      "sha256": "61757dc3eb6f38653db851fd5b724fd69d3b7eab4593845e8e141e94c29f8403"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-terminal-metadata.json",
+      "member": "hrm-migration-independent-terminal-metadata.json",
+      "bytes": 390707,
+      "sha256": "ffdbf80f0a2ba2c3e10d8121494b1a73a1e8792be97d49cd2e8a56967f80f4e5"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-tests.json",
+      "member": "hrm-migration-independent-tests.json",
+      "bytes": 18249,
+      "sha256": "f74b74ee225a88e5f19e4a023870f53b975fabd8179950ab06e5d5610a850e99"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-tree-check.py",
+      "member": "hrm-migration-independent-tree-check.py",
+      "bytes": 1995,
+      "sha256": "fd8ac67dc7e2a9bdf1c455633459efe163ea951c6e06490f86b57b691d4f8c93"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-independent-tree-proof.json",
+      "member": "hrm-migration-independent-tree-proof.json",
+      "bytes": 1231,
+      "sha256": "af502711151dfc6b31a6d2e9554ba840b6bc9615605c712cebaa454f3f51a4d9"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-lint-corrected.txt",
+      "member": "hrm-migration-lint-corrected.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-other-artifacts-metadata.json",
+      "member": "hrm-migration-other-artifacts-metadata.json",
+      "bytes": 5257,
+      "sha256": "dfcabfa56ad4db88d04703fa19e2ae9c3b54928636301964394345ef64a341b5"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-published.json",
+      "member": "hrm-migration-published.json",
+      "bytes": 548,
+      "sha256": "16014cb3294c09ea66c903f13abe0e107d22c121ac8f987f6a6b3791946c55c0"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-regression-corrected.json",
+      "member": "hrm-migration-regression-corrected.json",
+      "bytes": 43992,
+      "sha256": "b52fe6e4f5b489c10a448b95e45010af0548dabdffa69ec3bbc207c1bba2155d"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-restore-artifact-metadata.json",
+      "member": "hrm-migration-restore-artifact-metadata.json",
+      "bytes": 802,
+      "sha256": "e39a27ca300d64d159b7e271872b32bfb21f4db79f9a7383c8d46952226e5249"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-restore-attempt1-root.json",
+      "member": "hrm-migration-restore-attempt1-root.json",
+      "bytes": 1609,
+      "sha256": "aee558351e89ed31235642903a98ac037f45aed6babfb8a58e12c80842997409"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-restore-attempt1-sanitized.json",
+      "member": "hrm-migration-restore-attempt1-sanitized.json",
+      "bytes": 15958,
+      "sha256": "6c8c27b50872913a973186342677d67ab6525a0f608a2209e68e2f9234eb1714"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-restore-independent-check.py",
+      "member": "hrm-migration-restore-independent-check.py",
+      "bytes": 4163,
+      "sha256": "869461459ce7690c599860c41e2906738a4a32c9dfa9ca2b78f1b1a34b4aed12"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-restore-independent-metadata.json",
+      "member": "hrm-migration-restore-independent-metadata.json",
+      "bytes": 17565,
+      "sha256": "bd40fa1c49e0717e76cf24a50e051471aa865783138d52e75dff65b2461cc6b8"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-restore-independent-review-20261006.json",
+      "member": "hrm-migration-restore-independent-review-20261006.json",
+      "bytes": 8934,
+      "sha256": "a1c481e9c298d3bcad3bc6a3f0c339909be46da9007705ae20f8aad09f0d0ad6"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-root-final-local-checks.json",
+      "member": "hrm-migration-root-final-local-checks.json",
+      "bytes": 2735,
+      "sha256": "1944d5d12a2838a10d6ca584a487a4464916eb52c563b1a58515c99e92b3df07"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-root-terminal.json",
+      "member": "hrm-migration-root-terminal.json",
+      "bytes": 4128,
+      "sha256": "5be7146f16b6df79a47e346873eeac59a87ec37c6c7b2de077a7ae3b2b6ea49b"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-source-freeze.json",
+      "member": "hrm-migration-source-freeze.json",
+      "bytes": 1482,
+      "sha256": "089b772b1f4e7561403c3b94d6f134e28ea7d291d1d8716bae483de29e62bfe6"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-terminal-metadata.json",
+      "member": "hrm-migration-terminal-metadata.json",
+      "bytes": 27203,
+      "sha256": "46c60b4cf96627433921a5dacfddccbc223dd2426fc16b463e0d5a4874f027ed"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-tsc-corrected.txt",
+      "member": "hrm-migration-tsc-corrected.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-tsconfig.json",
+      "member": "hrm-migration-tsconfig.json",
+      "bytes": 435,
+      "sha256": "e3d656221682f31e299d75a2881ee6ce7520cb96df241c31d71399af8356e90a"
+    },
+    {
+      "originalPath": "/tmp/hrm-migration-validate-restore.py",
+      "member": "hrm-migration-validate-restore.py",
+      "bytes": 2629,
+      "sha256": "29fd2cdcde803d926d27aa1b5a5cf7a820b265519e76a6963816e99c32e63e4f"
+    },
+    {
+      "originalPath": "/tmp/hrm-next-criterion-independent-assessment-20261006.json",
+      "member": "hrm-next-criterion-independent-assessment-20261006.json",
+      "bytes": 9900,
+      "sha256": "c5eff5a53b3e4392ba85b3bc74c3203c97a6f1e0b59309f5326c348bf2369b80"
+    },
+    {
+      "originalPath": "/tmp/hrm-readonly-collectors-20261006.json",
+      "member": "hrm-readonly-collectors-20261006.json",
+      "bytes": 11113,
+      "sha256": "894b027cef3e503e0622a5f004feb23214aa774ee8c613a3c5d283fc4063c925"
+    },
+    {
+      "originalPath": "/tmp/hrm-shared-corrected-independent-remote-1.json",
+      "member": "hrm-shared-corrected-independent-remote-1.json",
+      "bytes": 3635478,
+      "sha256": "c52b8fff696ebcef1b1d12ab0f270e59a0c7f16d2e5cb5c3dc916089edd23eca"
+    }
+  ],
+  "scope": "Sanitized JSON, GitHub metadata and validation source only; no raw CI logs, credentials, screenshots or production data. Initial negative probes retained separately."
+}

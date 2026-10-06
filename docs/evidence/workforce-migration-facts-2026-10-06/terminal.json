@@ -1,0 +1,124 @@
+{
+  "status": "ROOT_ACCEPTED_BOUNDED_SOURCE_AND_EXACT_HEAD_HOSTED",
+  "at": "2026-10-06T14:28:34.412738+00:00",
+  "head": "31d9eab5ea11e0eae3a0454efceae32af7f64ba4",
+  "tree": "f237fa90199a36375ddf5c8298d6fc3685450793",
+  "main": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+  "synthetic": "3540ccf2167d21dda8a48e3b604a4b1590ef8ec1",
+  "source": "8800blobs;8797parentpreserved;3additions;independentlyaccepted",
+  "local": "121PASS59new+62compat;scopedTypeScript/lint0",
+  "hosted": "5required+8additional+Linuxproductionbuild=14PASS;10currentattempt1workflowsSUCCESS",
+  "required": {
+    "pr-scope": 112313174440,
+    "static-checks": 112313318850,
+    "typecheck": 112313318947,
+    "runner-policy": 112312433902,
+    "scan": 112312433295
+  },
+  "currentJobs": [
+    {
+      "id": 112315216941,
+      "name": "Browser close, cron takeover & durable recovery"
+    },
+    {
+      "id": 112313318947,
+      "name": "typecheck"
+    },
+    {
+      "id": 112313318850,
+      "name": "static-checks"
+    },
+    {
+      "id": 112313174440,
+      "name": "pr-scope"
+    },
+    {
+      "id": 112313174020,
+      "name": "GitHub-hosted Linux production build"
+    },
+    {
+      "id": 112312684286,
+      "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence"
+    },
+    {
+      "id": 112312669780,
+      "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence"
+    },
+    {
+      "id": 112312667670,
+      "name": "Authenticated Workforce policy version browser evidence"
+    },
+    {
+      "id": 112312667626,
+      "name": "Authenticated Workforce exception report browser evidence"
+    },
+    {
+      "id": 112312666987,
+      "name": "Authenticated Workforce calendar browser evidence"
+    },
+    {
+      "id": 112312666815,
+      "name": "Authenticated Workforce manager Today browser evidence"
+    },
+    {
+      "id": 112312433902,
+      "name": "runner-policy"
+    },
+    {
+      "id": 112312433344,
+      "name": "Blocking Social Monitoring regression suite"
+    },
+    {
+      "id": 112312433295,
+      "name": "scan"
+    }
+  ],
+  "history": "17runs/24checkrecords;6draftWFskips+supersededcancelledPR4jobs retained",
+  "restore": "actualsafeJSON15uniquePASS/10auth/2cleanup/34bindings;artifact11420465476;nootherZIPmembercontents",
+  "baseline": "Existingbaselinegatespassed;nochangeorrelabel;notglobalzerodiagnostics",
+  "canonical": "82/161DONE;79open;weighted59%;C13-009PLANNED",
+  "limits": [
+    "Only providedboundedworkday/eventfacts;authoritativeextraction and historicalcompletenessnotestablished",
+    "Approvals/reports/snapshotcontent/correctionledgersNOT_COVERED",
+    "CollectorACL/retention/runtimeegressNOT_PROVED;noauthorizedsafereceipt",
+    "Historicalapi_keys/staging/signed-device/loadnotclosed"
+  ],
+  "productionActions": false,
+  "supports": [
+    {
+      "path": "/tmp/hrm-migration-terminal-metadata.json",
+      "bytes": 27203,
+      "sha256": "46c60b4cf96627433921a5dacfddccbc223dd2426fc16b463e0d5a4874f027ed"
+    },
+    {
+      "path": "/tmp/hrm-migration-root-final-local-checks.json",
+      "bytes": 2735,
+      "sha256": "1944d5d12a2838a10d6ca584a487a4464916eb52c563b1a58515c99e92b3df07"
+    },
+    {
+      "path": "/tmp/hrm-migration-independent-source-f237-20261006.json",
+      "bytes": 11984,
+      "sha256": "625126397c18e8f1d45824cd65888026bbe17ca29b422b719f7d0aa8763c0f50"
+    },
+    {
+      "path": "/tmp/hrm-migration-independent-source-31d9-20261006.json",
+      "bytes": 4271,
+      "sha256": "5af766ae89b9e0b988f034cc2180c9b30fefbfb2c27b2dd322fd52036262762a"
+    },
+    {
+      "path": "/tmp/hrm-migration-restore-independent-review-20261006.json",
+      "bytes": 8934,
+      "sha256": "a1c481e9c298d3bcad3bc6a3f0c339909be46da9007705ae20f8aad09f0d0ad6"
+    },
+    {
+      "path": "/tmp/hrm-readonly-collectors-20261006.json",
+      "bytes": 11113,
+      "sha256": "894b027cef3e503e0622a5f004feb23214aa774ee8c613a3c5d283fc4063c925"
+    },
+    {
+      "path": "/tmp/hrm-migration-restore-attempt1-root.json",
+      "bytes": 1609,
+      "sha256": "aee558351e89ed31235642903a98ac037f45aed6babfb8a58e12c80842997409"
+    }
+  ]
+}
