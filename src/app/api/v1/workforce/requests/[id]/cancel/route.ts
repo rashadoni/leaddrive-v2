@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { cancelWorkforceSelfRequest } from "@/lib/workforce/self-request"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -53,8 +54,8 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req: 
       data: result.data,
       idempotent: result.idempotent,
     })
-  } catch (error) {
-    console.error("[workforce/requests cancel POST]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "cancel-self-request" })
     return NextResponse.json({ error: "Failed to cancel Workforce request" }, { status: 500 })
   }
 })

@@ -43,6 +43,16 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "authorize-timesheet-read"
     | "authorize-request-decision"
     | "run-no-show-review"
+    | "submit-self-request"
+    | "decide-request"
+    | "cancel-self-request"
 }): void {
   console.error("[workforce/privacy] sensitive operation failed", { operation: input.operation })
+}
+
+/** Optional enrichment failure: keep warning severity and discard private errors. */
+export function logWorkforceSensitiveOperationWarning(input: {
+  operation: "request-route-entitlement"
+}): void {
+  console.warn("[workforce/privacy] sensitive operation unavailable", { operation: input.operation })
 }
