@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 
 const JOB_NAME = "workforce-claim-reconciliation-v1"
 const MAX_VERSION = 2_147_483_647
@@ -28,7 +28,10 @@ function validState(state: WorkforceReconciliationCursorState): boolean {
  * null state means no row; an existing row with a null cursor retains its version.
  * All writers for this fixed job name must use this store and the lease protocol.
  */
-export function workforceReconciliationCursorStore(db: CursorDatabase) {
+export function workforceReconciliationCursorStore(db: CursorDatabase, attempt?: { organizationId: string; attemptToken: string }) {
+  const claim = attempt ? { ...attempt } : null
+  if (claim && (typeof claim.organizationId !== "string" || !claim.organizationId.trim() || claim.organizationId.length > 191
+    || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(claim.attemptToken))) throw new Error("WORKFORCE_CURSOR_ATTEMPT_INVALID")
   return {
     async read(): Promise<WorkforceReconciliationCursorState | null> {
       const rows = await db.$queryRaw<WorkforceReconciliationCursorState[]>`
@@ -67,6 +70,15 @@ export function workforceReconciliationCursorStore(db: CursorDatabase) {
           FOR UPDATE
         `
         if (lease.length !== 1) return "FENCED_OUT"
+        if (claim) {
+          await tx.$queryRaw`SELECT "organizationId" FROM workforce_reconciliation_tenant_states WHERE "organizationId"=${claim.organizationId} FOR UPDATE`
+          const current = await tx.$queryRaw<Array<{ valid: boolean }>>`
+            SELECT true AS valid FROM workforce_reconciliation_tenant_states WHERE "organizationId"=${claim.organizationId}
+              AND "attemptToken"=${claim.attemptToken}::uuid AND "lastOutcome"='RUNNING' AND "dueAt">clock_timestamp()
+          `
+          if (current.length !== 1) return "FENCED_OUT"
+        }
+
 
         // clock_timestamp is evaluated in a later statement, after the lock
         // wait, not at transaction start. Every write also checks the lease.
@@ -79,6 +91,9 @@ export function workforceReconciliationCursorStore(db: CursorDatabase) {
               AND "ownerToken" = ${ownerToken}
               AND "status" = 'running'
               AND "leaseUntil" > clock_timestamp()
+              ${claim ? Prisma.sql`AND EXISTS (SELECT 1 FROM workforce_reconciliation_tenant_states
+                WHERE "organizationId"=${claim.organizationId} AND "attemptToken"=${claim.attemptToken}::uuid
+                  AND "lastOutcome"='RUNNING' AND "dueAt">clock_timestamp())` : Prisma.empty}
             ON CONFLICT ("name") DO NOTHING
             RETURNING "version"
           `
@@ -106,6 +121,9 @@ export function workforceReconciliationCursorStore(db: CursorDatabase) {
                 AND "status" = 'running'
                 AND "leaseUntil" > clock_timestamp()
             )
+            ${claim ? Prisma.sql`AND EXISTS (SELECT 1 FROM workforce_reconciliation_tenant_states
+              WHERE "organizationId"=${claim.organizationId} AND "attemptToken"=${claim.attemptToken}::uuid
+                AND "lastOutcome"='RUNNING' AND "dueAt">clock_timestamp())` : Prisma.empty}
           RETURNING "version"
         `
         return updated.length === 1 ? "COMMITTED" : "FENCED_OUT"

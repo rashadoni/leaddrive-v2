@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
-import type { PrismaClient } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
 import { reconcileWorkforceSnapshot } from "@/lib/workforce/reconciliation"
+import { reconcileWorkforceDenseSnapshot } from "@/lib/workforce/reconciliation-dense"
 import { readWorkforceReconciliationSnapshot } from "@/lib/workforce/reconciliation-snapshot"
 import { workforceReconciliationCursorStore } from "@/lib/workforce/reconciliation-cursor-store"
 
@@ -13,9 +14,9 @@ type Cursor = ReturnType<typeof workforceReconciliationCursorStore>
  * sweeps, not tenant coverage or row resume position. Every run starts over.
  */
 export async function runWorkforceReconciliationSweep(input: {
-  reader: Reader; cursor: Cursor; organizationId: string; ownerToken: string
+  reader: Reader; cursor: Cursor; organizationId: string; ownerToken: string; dense?: boolean; authorizeSnapshot?: (tx: Prisma.TransactionClient) => Promise<void>
 }) {
-  const { reader, cursor, organizationId, ownerToken } = input
+  const { reader, cursor, organizationId, ownerToken, dense, authorizeSnapshot } = input
   if (typeof organizationId !== "string" || !organizationId.trim() || organizationId.length > 191
     || typeof ownerToken !== "string" || !ownerToken.trim() || ownerToken.length > 191) throw new Error("WORKFORCE_SWEEP_INPUT_INVALID")
   let expected: Awaited<ReturnType<Cursor["read"]>>
@@ -32,7 +33,10 @@ export async function runWorkforceReconciliationSweep(input: {
     result = await reader.$transaction(async tx => {
       await tx.$executeRaw`SET TRANSACTION READ ONLY`
       await tx.$executeRaw`SET LOCAL statement_timeout = '5s'`
-      return reconcileWorkforceSnapshot(await readWorkforceReconciliationSnapshot(tx, organizationId))
+      await authorizeSnapshot?.(tx)
+      return dense === true
+        ? reconcileWorkforceDenseSnapshot(tx, organizationId)
+        : reconcileWorkforceSnapshot(await readWorkforceReconciliationSnapshot(tx, organizationId))
     }, { isolationLevel: "RepeatableRead", maxWait: 5000, timeout: 30000 })
   } catch { throw new Error("WORKFORCE_SWEEP_INCOMPLETE") }
   if (result.status === "MISMATCH") return { ...result, checkpoint: "NOT_COMMITTED" as const }

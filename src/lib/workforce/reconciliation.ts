@@ -103,12 +103,14 @@ function approvalScope(row: WorkforceReconciliationSnapshot["approvals"][number]
  * Results contain only finite mismatch codes and counts; row/tenant/employee
  * identifiers and source payloads never cross the diagnostic boundary.
  */
-export function reconcileWorkforceSnapshot(
+function reconcile(
   snapshot: WorkforceReconciliationSnapshot,
+  rootKind?: keyof WorkforceReconciliationSnapshot,
 ): WorkforceReconciliationResult {
   bounded(snapshot)
   const counts: Partial<Record<WorkforceReconciliationCode, number>> = {}
-  const mismatch = (code: WorkforceReconciliationCode) => {
+  const mismatch = (code: WorkforceReconciliationCode, kind: keyof WorkforceReconciliationSnapshot) => {
+    if (rootKind !== undefined && rootKind !== kind) return
     counts[code] = (counts[code] ?? 0) + 1
   }
 
@@ -121,14 +123,14 @@ export function reconcileWorkforceSnapshot(
   for (const event of snapshot.events) {
     const workday = workdays.get(event.workdayId)
     if (!workday || workday.organizationId !== event.organizationId || workday.agentId !== event.agentId) {
-      mismatch("WORKDAY_EVENT_SCOPE_MISMATCH")
+      mismatch("WORKDAY_EVENT_SCOPE_MISMATCH", "events")
     }
   }
 
   for (const transition of snapshot.transitions) {
     const workday = workdays.get(transition.workdayId)
     if (!workday || workday.organizationId !== transition.organizationId || workday.agentId !== transition.agentId) {
-      mismatch("WORKDAY_TRANSITION_SCOPE_MISMATCH")
+      mismatch("WORKDAY_TRANSITION_SCOPE_MISMATCH", "transitions")
     }
   }
 
@@ -140,16 +142,16 @@ export function reconcileWorkforceSnapshot(
   for (const row of snapshot.evidence) {
     const subjectCount = Number(row.workdayEventId !== null) + Number(row.siteTransitionId !== null)
     if (subjectCount !== 1) {
-      mismatch("EVIDENCE_SUBJECT_INVALID")
+      mismatch("EVIDENCE_SUBJECT_INVALID", "evidence")
       continue
     }
     const subject = evidenceSubject(row)
-    if (!subject || subject.organizationId !== row.organizationId) mismatch("EVIDENCE_SUBJECT_SCOPE_MISMATCH")
+    if (!subject || subject.organizationId !== row.organizationId) mismatch("EVIDENCE_SUBJECT_SCOPE_MISMATCH", "evidence")
   }
 
   for (const row of snapshot.assessments) {
     const source = evidence.get(row.evidenceId)
-    if (!source || source.organizationId !== row.organizationId) mismatch("ASSESSMENT_EVIDENCE_MISMATCH")
+    if (!source || source.organizationId !== row.organizationId) mismatch("ASSESSMENT_EVIDENCE_MISMATCH", "assessments")
   }
 
   for (const row of snapshot.exceptions) {
@@ -158,7 +160,7 @@ export function reconcileWorkforceSnapshot(
     const hasNoShowSubject = typeof row.segmentId === "string" && row.segmentId.trim().length > 0
       && isDateKey(row.expectedWorkDate)
     if (!row.workdayId && !row.workdayEventId && !row.evidenceId && !hasNoShowSubject) {
-      mismatch("EXCEPTION_SUBJECT_INVALID")
+      mismatch("EXCEPTION_SUBJECT_INVALID", "exceptions")
       continue
     }
     const workday = row.workdayId ? workdays.get(row.workdayId) : undefined
@@ -175,7 +177,7 @@ export function reconcileWorkforceSnapshot(
         !proof || proof.organizationId !== row.organizationId
         || !proofSubject || proofSubject.organizationId !== row.organizationId || proofSubject.agentId !== row.agentId
       ))
-    ) mismatch("EXCEPTION_SUBJECT_SCOPE_MISMATCH")
+    ) mismatch("EXCEPTION_SUBJECT_SCOPE_MISMATCH", "exceptions")
   }
 
   const approvalGroups = new Map<string, typeof snapshot.approvals[number][]>()
@@ -186,7 +188,7 @@ export function reconcileWorkforceSnapshot(
     try {
       exportStoredWorkforceTimesheetApproval(row)
     } catch {
-      mismatch("APPROVAL_HASH_INVALID")
+      mismatch("APPROVAL_HASH_INVALID", "approvals")
     }
   }
   for (const group of approvalGroups.values()) {
@@ -197,7 +199,7 @@ export function reconcileWorkforceSnapshot(
       const validFirst = index === 0 && row.revision === 1 && row.recordKind === "APPROVAL" && row.supersedesId === null
       const validNext = index > 0 && row.revision === previous.revision + 1
         && row.recordKind === "CORRECTION" && row.supersedesId === previous.id
-      if (!validFirst && !validNext) mismatch("APPROVAL_REVISION_INVALID")
+      if (!validFirst && !validNext) mismatch("APPROVAL_REVISION_INVALID", "approvals")
     }
   }
 
@@ -209,24 +211,42 @@ export function reconcileWorkforceSnapshot(
       || approval.agentId !== row.agentId
       || approval.rowsHash !== row.approvalRowsHash
       || approval.factsHash !== row.approvalFactsHash
-    ) mismatch("EXPORT_APPROVAL_MISMATCH")
+    ) mismatch("EXPORT_APPROVAL_MISMATCH", "exports")
   }
 
   const mismatchTotal = Object.values(counts).reduce((sum, count) => sum + (count ?? 0), 0)
   return {
     status: mismatchTotal === 0 ? "MATCHED" : "MISMATCH",
     examined: {
-      workdays: snapshot.workdays.length,
-      events: snapshot.events.length,
-      transitions: snapshot.transitions.length,
-      evidence: snapshot.evidence.length,
-      assessments: snapshot.assessments.length,
-      exceptions: snapshot.exceptions.length,
-      approvals: snapshot.approvals.length,
-      exports: snapshot.exports.length,
+      workdays: rootKind === undefined || rootKind === "workdays" ? snapshot.workdays.length : 0,
+      events: rootKind === undefined || rootKind === "events" ? snapshot.events.length : 0,
+      transitions: rootKind === undefined || rootKind === "transitions" ? snapshot.transitions.length : 0,
+      evidence: rootKind === undefined || rootKind === "evidence" ? snapshot.evidence.length : 0,
+      assessments: rootKind === undefined || rootKind === "assessments" ? snapshot.assessments.length : 0,
+      exceptions: rootKind === undefined || rootKind === "exceptions" ? snapshot.exceptions.length : 0,
+      approvals: rootKind === undefined || rootKind === "approvals" ? snapshot.approvals.length : 0,
+      exports: rootKind === undefined || rootKind === "exports" ? snapshot.exports.length : 0,
     },
     mismatchCounts: counts,
     mismatchTotal,
     repair: "NONE",
   }
+}
+
+/** Full bounded snapshot contract retained for existing callers. */
+export function reconcileWorkforceSnapshot(snapshot: WorkforceReconciliationSnapshot): WorkforceReconciliationResult {
+  return reconcile(snapshot)
+}
+
+/**
+ * Internal streaming composition: dependencies are still resolved/validated,
+ * but each invariant/count belongs to its independently enumerated root kind.
+ * Caller must complete every kind in the SAME MVCC transaction before success.
+ */
+export function reconcileWorkforceSourceKind(
+  snapshot: WorkforceReconciliationSnapshot,
+  rootKind: keyof WorkforceReconciliationSnapshot,
+): WorkforceReconciliationResult {
+  if (!Object.prototype.hasOwnProperty.call(snapshot, rootKind)) throw new Error("WORKFORCE_RECONCILIATION_ROOT_KIND_INVALID")
+  return reconcile(snapshot, rootKind)
 }

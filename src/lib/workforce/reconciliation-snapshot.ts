@@ -134,3 +134,6 @@ export async function readWorkforceReconciliationSnapshot(
   await assertWorkforceReconciliationScheduleSubjects(tx, organizationId, complete)
   return complete
 }
+
+// Fixed SQL projections shared by the dense reader; never caller-supplied SQL.
+export { sources as workforceReconciliationSources }

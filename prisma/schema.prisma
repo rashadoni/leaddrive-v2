@@ -563,6 +563,8 @@ model Organization {
   contractIntakeSubmissions ContractIntakeSubmission[]
   callEvents                CallEvent[]
 
+  workforceReconciliationState WorkforceReconciliationTenantState?
+
   @@index([plan])
   @@map("organizations")
 }
@@ -7519,6 +7521,8 @@ model MtmAgentWorkday {
   @@unique([organizationId, id])
   @@index([organizationId, workDate])
   @@index([organizationId, agentId, status])
+  // SQL migration pins id collation to C for deterministic reconciliation traversal.
+  @@index([organizationId, id], map: "wf_recon_workdays_c_idx")
   @@map("mtm_agent_workdays")
 }
 
@@ -7573,6 +7577,8 @@ model MtmAgentWorkdayEvent {
   @@index([organizationId, agentId, serverReceivedAt])
   @@index([organizationId, agentId, attendanceReviewState, serverReceivedAt])
   @@index([workdayId, occurredAt])
+  // SQL migration pins id collation to C for deterministic reconciliation traversal.
+  @@index([organizationId, id], map: "wf_recon_events_c_idx")
   @@map("mtm_agent_workday_events")
 }
 
@@ -7644,6 +7650,8 @@ model WorkforceExceptionCase {
   @@index([organizationId, evidenceId])
   @@index([organizationId, segmentId])
   @@index([organizationId, expectedWorkDate])
+  // SQL migration pins id collation to C for deterministic reconciliation traversal.
+  @@index([organizationId, id], map: "wf_recon_exceptions_c_idx")
   @@map("workforce_exception_cases")
 }
 
@@ -8409,6 +8417,8 @@ model WorkforceSiteTransition {
   @@index([organizationId, workdayId, claimedAt])
   @@index([organizationId, segmentId, claimedAt])
   @@index([organizationId, agentId, attendanceReviewState, serverReceivedAt])
+  // SQL migration pins id collation to C for deterministic reconciliation traversal.
+  @@index([organizationId, id], map: "wf_recon_transitions_c_idx")
   @@map("workforce_site_transitions")
 }
 
@@ -8820,6 +8830,10 @@ model WorkforceTimesheetApproval {
   @@index([organizationId, agentId, periodStart, periodEnd])
   @@index([organizationId, approvedByUserId, approvedAt])
   @@index([organizationId, correctionActorUserId, approvedAt])
+  // SQL migration pins id collation to C for deterministic reconciliation traversal.
+  @@index([organizationId, id], map: "wf_recon_approvals_c_idx")
+  // SQL migration pins agentId/id to C for complete-group keyset traversal.
+  @@index([organizationId, agentId, periodStart, periodEnd, id], map: "wf_recon_approval_group_c_idx")
   @@map("workforce_timesheet_approvals")
 }
 
@@ -9017,6 +9031,8 @@ model WorkforceAttendanceEvidence {
   @@index([organizationId, workdayEventId, capturedAt])
   @@index([organizationId, siteTransitionId, capturedAt])
   @@index([organizationId, rawExpiresAt, rawPurgedAt])
+  // SQL migration pins id collation to C for deterministic reconciliation traversal.
+  @@index([organizationId, id], map: "wf_recon_evidence_c_idx")
   @@map("workforce_attendance_evidence")
 }
 
@@ -9043,6 +9059,8 @@ model WorkforceEvidenceAssessment {
   @@unique([organizationId, evidenceId, kind, assessorVersion])
   @@index([organizationId, evidenceId, assessedAt])
   @@index([organizationId, kind, verdict, assessedAt])
+  // SQL migration pins id collation to C for deterministic reconciliation traversal.
+  @@index([organizationId, id], map: "wf_recon_assessments_c_idx")
   @@map("workforce_evidence_assessments")
 }
 
@@ -9396,6 +9414,8 @@ model MtmAuditLog {
   @@index([agentId])
   @@index([createdAt])
   @@index([organizationId, metadataKind])
+  // SQL migration pins id collation to C for deterministic reconciliation traversal.
+  @@index([organizationId, id], map: "wf_recon_exports_c_idx")
   @@map("mtm_audit_logs")
 }
 
@@ -21735,4 +21755,23 @@ model DemoAccessEvent {
   @@index([grantId, occurredAt], map: "demo_access_events_grant_time_idx")
   @@index([eventType, occurredAt], map: "demo_access_events_type_time_idx")
   @@map("demo_access_events")
+}
+
+// Operational attempts belong to a tenant; the global cursor remains payload-free.
+model WorkforceReconciliationTenantState {
+  organizationId String @id
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  attemptToken String? @db.Uuid
+  lastAttemptAt DateTime?
+  lastCompletedAt DateTime?
+  dueAt DateTime @default(now())
+  consecutiveFailures Int @default(0)
+  lastOutcome String @default("NEVER")
+  examinedCount Int @default(0)
+  mismatchCount Int @default(0)
+  durationMs Int @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@index([dueAt, lastAttemptAt, organizationId], map: "wf_reconciliation_due_attempt_org_idx")
+  @@map("workforce_reconciliation_tenant_states")
 }
