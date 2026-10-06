@@ -1,3 +1,4 @@
+import { logOperationalFailure } from "./telemetry/operational-failure"
 import { NextRequest, NextResponse } from "next/server"
 import {
   getOrgId,
@@ -126,11 +127,11 @@ export function withRls<C = unknown>(
         const orgId = session?.orgId ?? (await getOrgId(req))
         return orgId ? { orgId, session } : null
       })
-    } catch (e) {
+    } catch {
       // getSession/getOrgId mobile/api-key paths can reject; any resolve failure → 401
       // rather than letting it bubble to a 500 past the !resolved guard. Logged so an
       // auth-infra outage (e.g. DB down during the user lookup) isn't invisible.
-      console.error("[withRls] auth resolve threw:", e)
+      logOperationalFailure("auth-rls-resolve")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     if (!resolved) {
@@ -185,10 +186,10 @@ export function withRlsAuth<C = unknown>(
       auth = await runWithRlsBypass(() => options
         ? requireAuth(req, module, action, options)
         : requireAuth(req, module, action))
-    } catch (e) {
+    } catch {
       // requireAuth itself only throws on infra failure (its denials are returned
       // NextResponses, handled below). Log so a 278-route auth outage isn't masked.
-      console.error("[withRlsAuth] requireAuth threw:", e)
+      logOperationalFailure("auth-rls-permission")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     // requireAuth returns a NextResponse for every denial (401/403/2FA/cross-tenant).
@@ -215,8 +216,8 @@ export function withRlsSessionAuth<C = unknown>(
     let session: AuthResult | NextResponse
     try {
       session = await runWithRlsBypass(() => requireSessionAuth(req))
-    } catch (e) {
-      console.error("[withRlsSessionAuth] requireSessionAuth threw:", e)
+    } catch {
+      logOperationalFailure("auth-rls-session")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     if (isAuthError(session)) return session
