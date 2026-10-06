@@ -283,11 +283,20 @@ describe("MTM contacts and organizations", () => {
     const response = await getContacts(request(`/api/v1/mtm/contacts?ownerAgentId=${ownerId}`))
     expect(response.status).toBe(200)
     const args = vi.mocked(prisma.mtmContact.findMany).mock.calls[0][0] as any
-    expect(args.where.AND).toContainEqual({
-      agentAssignments: {
-        some: expect.objectContaining({ agentId: ownerId, role: "PRIMARY" }),
-      },
-    })
+    // «Whose client» is every employee attached today (owner, 2026-10-06: a
+    // client may have several), so the filter no longer names the role.
+    const filter = args.where.AND.find((item: any) => item.agentAssignments?.some?.agentId === ownerId)
+    expect(filter.agentAssignments.some).toMatchObject({ agentId: ownerId, deletedAt: null })
+    expect(filter.agentAssignments.some).not.toHaveProperty("role")
+  })
+
+  it("offers an employee everyone they are not attached to yet", async () => {
+    const agentId = "cm000000000000000000101"
+    const response = await getContacts(request(`/api/v1/mtm/contacts?notAgentId=${agentId}`))
+    expect(response.status).toBe(200)
+    const args = vi.mocked(prisma.mtmContact.findMany).mock.calls[0][0] as any
+    const filter = args.where.AND.find((item: any) => item.agentAssignments?.none?.agentId === agentId)
+    expect(filter.agentAssignments.none).toMatchObject({ agentId, deletedAt: null })
   })
 
   it("separates assigned and unassigned contacts without changing master records", async () => {

@@ -34,6 +34,8 @@ export interface ContactTransferPreviewRow {
   contactId: string
   displayName: string | null
   currentAssignmentId: string | null
+  /** The role the source employee holds for this client; the target takes it over. */
+  currentRole: "PRIMARY" | "SECONDARY" | "OBSERVER" | null
   issues: ContactTransferIssue[]
   transferable: boolean
   openVisitCount: number
@@ -181,20 +183,24 @@ export async function buildContactTransferPreview(
     const assignments = contact?.agentAssignments ?? []
     const activeAssignments = assignments.filter((assignment) => isActiveAt(assignment, input.effectiveFrom))
     const activePrimary = activeAssignments.filter((assignment) => assignment.role === "PRIMARY")
-    const current = activePrimary[0] ?? null
+    // A client may be attached to several employees (owner, 2026-10-06). The
+    // transfer hands over the SOURCE employee's place — responsible or one of
+    // the others — and leaves the client's remaining employees where they are.
+    const current = activeAssignments.find((assignment) => assignment.agentId === input.sourceAgentId) ?? null
     const future = assignments.find((assignment) => assignment.role === "PRIMARY" && assignment.effectiveFrom > input.effectiveFrom) ?? null
     const targetExisting = activeAssignments.find((assignment) => assignment.agentId === input.targetAgentId) ?? null
-    if (contact && current?.agentId !== input.sourceAgentId) issues.push("OWNER_CHANGED")
+    if (contact && !current) issues.push("OWNER_CHANGED")
     if (activePrimary.length > 1) issues.push("MULTIPLE_PRIMARY_OWNERS")
     if (contact && targetExisting && targetExisting.id !== current?.id) issues.push("TARGET_ALREADY_ASSIGNED")
-    if (contact && future) issues.push("FUTURE_ASSIGNMENT_CONFLICT")
+    if (contact && future && current?.role === "PRIMARY") issues.push("FUTURE_ASSIGNMENT_CONFLICT")
     if (openVisitCount > 0) issues.push("OPEN_VISIT_CONFLICT")
     if (plannedRouteCount > 0) issues.push("ROUTE_PLAN_CONFLICT")
 
     return {
       contactId,
       displayName: contact?.displayName ?? null,
-      currentAssignmentId: current?.agentId === input.sourceAgentId ? current.id : null,
+      currentAssignmentId: current?.id ?? null,
+      currentRole: current?.role ?? null,
       issues,
       transferable: issues.length === 0,
       openVisitCount,
@@ -222,9 +228,10 @@ export async function buildContactTransferPreview(
     effectiveFrom,
     sourceAgent: sourceAgent && { id: sourceAgent.id, status: sourceAgent.status, role: sourceAgent.role },
     targetAgent: targetAgent && { id: targetAgent.id, status: targetAgent.status, role: targetAgent.role },
-    rows: rows.map(({ contactId, currentAssignmentId, issues, openVisitCount, plannedRouteCount, openTaskCount }) => ({
+    rows: rows.map(({ contactId, currentAssignmentId, currentRole, issues, openVisitCount, plannedRouteCount, openTaskCount }) => ({
       contactId,
       currentAssignmentId,
+      currentRole,
       issues,
       openVisitCount,
       plannedRouteCount,

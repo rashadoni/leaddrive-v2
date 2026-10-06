@@ -53,8 +53,6 @@
     "src/lib/commitments/late-callbacks.ts TS2339": 4,
     "src/lib/inbox/lead-qualification.ts TS2345": 1,
     "src/lib/inbox/send-conversation-reply.ts TS2339": 6,
-    "src/lib/mtm/contact-bulk-assignment.ts TS2322": 1,
-    "src/lib/mtm/contact-bulk-assignment.ts TS2339": 1,
     "src/lib/social/automatic-review-backfill.ts TS2339": 1,
     "src/lib/social/legal-workflow.ts TS2322": 2,
     "src/lib/social/monitoring-collector.ts TS2322": 1,
