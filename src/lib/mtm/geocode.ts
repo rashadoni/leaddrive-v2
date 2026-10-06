@@ -53,8 +53,16 @@ const FORGIVING_ENDPOINT = "https://photon.komoot.io/api/"
 /** A forgiving match further than this from the map is a coincidence of words. */
 const FORGIVING_MAX_DISTANCE_KM = 1_000
 const USER_AGENT = "LeadDriveCRM/1.0 (+https://leaddrivecrm.org)"
-const TIMEOUT_MS = 6_000
-/** The public service asks for no more than one request a second. */
+/**
+ * How long each service gets. The exact one answers in half a second. The
+ * forgiving one is slow from the production server — 2.3 to 4 s measured on
+ * 2026-10-06, and past 6 s on the first live search, which is how «nothing
+ * found» came back for an address it knows. It is asked only when the exact
+ * search found nothing, so waiting for it costs nobody who did not need it.
+ */
+const TIMEOUT_MS = { exact: 6_000, forgiving: 12_000 } as const
+type Service = keyof typeof TIMEOUT_MS
+/** Each public service asks for no more than one request a second — of itself. */
 const MIN_SPACING_MS = 1_100
 const CACHE_TTL_MS = 24 * 60 * 60 * 1_000
 const CACHE_MAX = 500
@@ -62,8 +70,11 @@ const CACHE_MAX = 500
 const NEAR_BOX_DEGREES = 0.5
 
 const cache = new Map<string, { at: number; hits: GeocodeHit[] }>()
-let queue: Promise<void> = Promise.resolve()
-let lastRequestAt = 0
+const freshTurns = (): Record<Service, { queue: Promise<void>; lastRequestAt: number }> => ({
+  exact: { queue: Promise.resolve(), lastRequestAt: 0 },
+  forgiving: { queue: Promise.resolve(), lastRequestAt: 0 },
+})
+let turns = freshTurns()
 
 export function isValidCoordinate(latitude: unknown, longitude: unknown): boolean {
   return typeof latitude === "number" && typeof longitude === "number"
@@ -212,14 +223,18 @@ function cacheKey({ query, language, near }: GeocodeQuery): string {
   return `${language}|${area}|${query.toLowerCase()}`
 }
 
-/** One request at a time, a second apart — whoever asks. */
-function takeTurn(now: () => number, sleep: (ms: number) => Promise<void>): Promise<void> {
-  const turn = queue.then(async () => {
-    const wait = lastRequestAt + MIN_SPACING_MS - now()
+/**
+ * One request to a service at a time, a second apart — whoever asks. The two
+ * services do not wait for each other: the rule is each one's own.
+ */
+function takeTurn(service: Service, now: () => number, sleep: (ms: number) => Promise<void>): Promise<void> {
+  const line = turns[service]
+  const turn = line.queue.then(async () => {
+    const wait = line.lastRequestAt + MIN_SPACING_MS - now()
     if (wait > 0) await sleep(wait)
-    lastRequestAt = now()
+    line.lastRequestAt = now()
   })
-  queue = turn.catch(() => undefined)
+  line.queue = turn.catch(() => undefined)
   return turn
 }
 
@@ -227,25 +242,28 @@ export interface GeocodeDeps {
   fetch: typeof fetch
   now: () => number
   sleep: (ms: number) => Promise<void>
+  /** The signal that gives up on a request after this long. */
+  timeout: (ms: number) => AbortSignal
 }
 
 const defaultDeps: GeocodeDeps = {
   fetch: (...args) => fetch(...args),
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  timeout: (ms) => AbortSignal.timeout(ms),
 }
 
 /** One question to one service. `null` = it did not answer. */
-async function ask(url: string, deps: GeocodeDeps): Promise<unknown | null> {
+async function ask(service: Service, url: string, deps: GeocodeDeps): Promise<unknown | null> {
   try {
-    await takeTurn(deps.now, deps.sleep)
+    await takeTurn(service, deps.now, deps.sleep)
     const response = await deps.fetch(url, {
       headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: deps.timeout(TIMEOUT_MS[service]),
     })
     return response.ok ? await response.json() : null
   } catch (error) {
-    console.warn("[MTM/geocode] address search failed", error instanceof Error ? error.name : "unknown")
+    console.warn(`[MTM/geocode] ${service} address search failed`, error instanceof Error ? error.name : "unknown")
     return null
   }
 }
@@ -265,14 +283,14 @@ export async function geocodeAddress(input: GeocodeQuery, deps: GeocodeDeps = de
   }
 
   // The address as typed, read exactly.
-  const exact = await ask(buildGeocodeUrl(input), deps)
+  const exact = await ask("exact", buildGeocodeUrl(input), deps)
   const exactHits = exact === null ? [] : parseGeocodeResponse(exact)
   if (exactHits.length > 0) return remember(exactHits)
 
   // Nothing — or no answer: what identifies the address, read forgivingly.
   const simpler = simplifyAddressQuery(input.query)
   const forgiving = simpler.length >= GEOCODE_QUERY_MIN
-    ? await ask(buildForgivingUrl({ query: simpler, near: input.near }), deps)
+    ? await ask("forgiving", buildForgivingUrl({ query: simpler, near: input.near }), deps)
     : null
   const forgivingHits = forgiving === null ? [] : parseForgivingResponse(forgiving, input.near)
   if (forgivingHits.length > 0) return remember(forgivingHits)
@@ -286,6 +304,5 @@ export async function geocodeAddress(input: GeocodeQuery, deps: GeocodeDeps = de
 /** Tests only: forget what was asked and when. */
 export function resetGeocodeStateForTests(): void {
   cache.clear()
-  queue = Promise.resolve()
-  lastRequestAt = 0
+  turns = freshTurns()
 }

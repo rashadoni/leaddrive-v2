@@ -47,6 +47,8 @@ const down = (): Answer => ({ ok: false, status: 503, json: async () => ({}) })
 
 let clock = 1_000_000
 let slept: number[] = []
+/** How long each request was given before the library would give up on it. */
+let patience: number[] = []
 let calls: { url: URL; headers: Record<string, string> }[] = []
 /** The exact service; the forgiving one answers «nothing» unless a test says otherwise. */
 let answer: () => Answer
@@ -56,6 +58,7 @@ const asked = () => calls.map((call) => call.url.hostname)
 const deps: GeocodeDeps = {
   now: () => clock,
   sleep: async (ms) => { slept.push(ms); clock += ms },
+  timeout: (ms) => { patience.push(ms); return new AbortController().signal },
   fetch: (async (input: string, init?: { headers?: Record<string, string> }) => {
     const url = new URL(String(input))
     calls.push({ url, headers: init?.headers ?? {} })
@@ -67,6 +70,7 @@ beforeEach(() => {
   resetGeocodeStateForTests()
   clock = 1_000_000
   slept = []
+  patience = []
   calls = []
   answer = () => json(upstream)
   forgivingAnswer = () => json({ type: "FeatureCollection", features: [] })
@@ -193,10 +197,32 @@ describe("address search — an address the map spells differently", () => {
       { label: "Milli Onkologiya Mərkəzi, Həsən bəy Zərdabi prospekti 79B, Yasamal rayonu, Bakı, Azərbaycan", latitude: 40.399929, longitude: 49.805225 },
       { label: "Həsən bəy Zərdabi pr. 79b, Bakı, Azərbaycan", latitude: 40.40019, longitude: 49.80475 },
     ] })
-    // Both go through the same one-a-second gate, and the pair is remembered as one answer.
-    expect(slept).toEqual([1_100])
+    // The second service is not kept waiting for the first one's sake, and
+    // the pair is remembered as one answer.
+    expect(slept).toEqual([])
     await geocodeAddress({ query: asWritten, language: "az", near: BAKU }, deps)
     expect(calls).toHaveLength(2)
+  })
+
+  // Production, the same evening: the forgiving service took longer than six
+  // seconds from the server, the library gave up, and the address it knows
+  // came back as «nothing found».
+  it("gives the slow forgiving service twice as long as the exact one", async () => {
+    answer = () => json([])
+    forgivingAnswer = () => json(forgivingUpstream)
+    await geocodeAddress({ query: asWritten, language: "az", near: BAKU }, deps)
+    expect(patience).toEqual([6_000, 12_000])
+  })
+
+  it("keeps a second between two requests to the forgiving service too", async () => {
+    answer = () => json([])
+    await Promise.all([
+      geocodeAddress({ query: "aaaa bbbb", language: "az" }, deps),
+      geocodeAddress({ query: "cccc dddd", language: "az" }, deps),
+    ])
+    expect(asked().filter((host) => host === "photon.komoot.io")).toHaveLength(2)
+    // One wait in each service's own line: the second exact request, the second forgiving one.
+    expect(slept).toEqual([1_100, 1_100])
   })
 
   it("does not bother the forgiving search when the exact one found the address", async () => {
