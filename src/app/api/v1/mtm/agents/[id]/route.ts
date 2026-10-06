@@ -6,6 +6,7 @@ import { getMobileAuth } from "@/lib/mobile-auth"
 import bcrypt from "bcryptjs"
 import { AgentUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
+import { agentHistory } from "@/lib/mtm/agent-deletion"
 import { resolveAgentScope, isValidMtmAgentRole, resolveTerritoryTeamIds } from "@/lib/mtm/territory-scope"
 import { mtmFieldScopeRequiredResponse, resolveMtmFieldScope } from "@/lib/mtm/field-access"
 import {
@@ -67,6 +68,19 @@ function workforceRetentionBlocked() {
   return NextResponse.json({
     error: "This employee has Workforce time history and must be archived instead of permanently deleted.",
     code: "WORKFORCE_RETENTION_BLOCKED",
+  }, { status: 409 })
+}
+
+/**
+ * An employee with work history is deactivated, not deleted (owner,
+ * 2026-10-06). `kinds` names the tables that hold the history — model names,
+ * not their content — so the screen can say what stands in the way.
+ */
+function agentHasHistory(kinds: string[] = []) {
+  return NextResponse.json({
+    error: "This employee has work history and cannot be permanently deleted. Deactivate them instead.",
+    code: "MTM_AGENT_HAS_HISTORY",
+    data: { kinds },
   }, { status: 409 })
 }
 
@@ -314,6 +328,12 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
       if (retentionCounts.some((count) => count > 0)) {
         return { kind: "retention_blocked" as const }
       }
+      // Visits, routes, tasks, photos, promotions… — whatever else points at
+      // the employee. Without this the delete cascaded through their visits
+      // and routes, or stopped at a foreign key with the constraint's name
+      // for an answer.
+      const history = await agentHistory(tx, orgId, id)
+      if (history.length > 0) return { kind: "has_history" as const, history }
 
       const deleted = await tx.mtmAgent.deleteMany({
         where: { id, organizationId: orgId },
@@ -323,6 +343,7 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
     })
     if (deletion.kind === "not_found") return NextResponse.json({ error: "Not found" }, { status: 404 })
     if (deletion.kind === "retention_blocked") return workforceRetentionBlocked()
+    if (deletion.kind === "has_history") return agentHasHistory(deletion.history)
     if (deletion.kind === "role_forbidden") return mtmScopedAgentRoleForbidden()
 
     await writeMtmAudit({
@@ -341,6 +362,17 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
     if (e instanceof Error && /Workforce workday facts cannot be deleted/i.test(e.message)) {
       return workforceRetentionBlocked()
     }
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to delete" }, { status: 400 })
+    // The database refused: a row this handler does not know about still
+    // points at the employee, or an append-only table would lose a fact. That
+    // is history too — and never the constraint's name on the user's screen.
+    if (
+      (e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2003" || e.code === "P2014"))
+      || (e instanceof Error && /foreign key constraint|is immutable|cannot be deleted/i.test(e.message))
+    ) {
+      console.warn("[MTM/agents/[id] DELETE] refused by the database", e)
+      return agentHasHistory()
+    }
+    console.error("[MTM/agents/[id] DELETE]", e)
+    return NextResponse.json({ error: "Failed to delete", code: "MTM_AGENT_DELETE_FAILED" }, { status: 500 })
   }
 })

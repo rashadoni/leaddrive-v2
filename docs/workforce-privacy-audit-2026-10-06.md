@@ -111,3 +111,12 @@ are unchanged. Hosted mandatory gates remain required for the new exact SHA.
 
 No Support paths, credentials, permissions, migrations, canonical statuses,
 merge, deployment or production activation are changed.
+
+## Subsequent bounded follow-up
+
+The [fault/fairness matrix](./workforce-c12-fault-fairness-matrix-2026-10-06.md)
+records the later PR594–596 integration and auxiliary GPS/media/census runtime
+normalization, including primitive-string protection against object coercion.
+The counts and source-gap table above describe the earlier 8053 checkpoint.
+Its original receipts remain unchanged; shared sinks and operational privacy
+acceptance remain open under the same canonical statuses.

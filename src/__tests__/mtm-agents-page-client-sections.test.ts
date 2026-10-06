@@ -30,7 +30,7 @@ vi.mock("next-auth/react", () => ({ useSession: () => session }))
 vi.mock("@/hooks/use-mtm-org-settings", () => ({ useMtmFeature: () => ({ enabled: feature.enabled, ready: true }) }))
 vi.mock("@/components/help/help-button", () => ({ HelpButton: () => null }))
 vi.mock("@/components/mtm/agent-form", () => ({ MtmAgentForm: () => null }))
-vi.mock("@/components/delete-confirm-dialog", () => ({ DeleteConfirmDialog: () => null }))
+vi.mock("@/components/delete-confirm-dialog", () => ({ DeleteConfirmDialog: () => null, ConfirmDialog: () => null }))
 
 const IntlProvider = NextIntlClientProvider as FunctionComponent<
   Omit<ComponentProps<typeof NextIntlClientProvider>, "children"> & { children?: ReactNode }

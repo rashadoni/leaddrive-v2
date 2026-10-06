@@ -116,10 +116,11 @@ vi.mock("@/lib/whatsapp", () => ({
 
 import { GET, POST } from "@/app/api/v1/tickets/route"
 import { GET as GET_BY_ID, PUT, DELETE, PATCH } from "@/app/api/v1/tickets/[id]/route"
-import { prisma } from "@/lib/prisma"
+import { prisma, logAudit } from "@/lib/prisma"
 import { getSession, getOrgId, requireAuth } from "@/lib/api-auth"
 import { autoAssignTicket } from "@/lib/auto-assign"
 import { fireWebhooks } from "@/lib/webhooks"
+import { executeWorkflows } from "@/lib/workflow-engine"
 import { createNotification } from "@/lib/notifications"
 
 const SESSION = { orgId: "org-1", userId: "user-1", role: "admin", email: "a@b.com", name: "Test" }
@@ -226,6 +227,66 @@ describe("GET /api/v1/tickets", () => {
     const call = vi.mocked(prisma.ticket.findMany).mock.calls[0][0] as any
     expect(call.where.status).toBe("open")
     expect(call.where.companyId).toBe("comp-1")
+  })
+
+  it("searches on the server, resolving company and assignee names to ids", async () => {
+    vi.mocked(getSession).mockResolvedValue(SESSION as any)
+    vi.mocked(prisma.ticket.findMany).mockResolvedValue([])
+    vi.mocked(prisma.ticket.count).mockResolvedValue(0)
+    vi.mocked(prisma.company.findMany).mockResolvedValueOnce([{ id: "comp-zeta" }] as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValueOnce([{ id: "user-ayla" }] as any)
+
+    // `search` is what the task "link a ticket" picker sends; it used to be ignored.
+    const res = await GET(makeRequest("http://localhost/api/v1/tickets?search=zeta&limit=10"))
+    expect(res.status).toBe(200)
+
+    expect(vi.mocked(prisma.company.findMany).mock.calls[0][0]).toMatchObject({
+      where: { organizationId: "org-1", name: { contains: "zeta", mode: "insensitive" } },
+    })
+    const call = vi.mocked(prisma.ticket.findMany).mock.calls[0][0] as any
+    expect(call.take).toBe(10)
+    expect(call.where.AND[0]).toMatchObject({ organizationId: "org-1" })
+    const alternatives = call.where.AND[1].OR as Record<string, unknown>[]
+    expect(alternatives).toContainEqual({ ticketNumber: { contains: "zeta", mode: "insensitive" } })
+    expect(alternatives).toContainEqual({ companyId: { in: ["comp-zeta"] } })
+    expect(alternatives).toContainEqual({ assignedTo: { in: ["user-ayla"] } })
+    // The total next to the result count is the number of matches, not the page.
+    expect(vi.mocked(prisma.ticket.count).mock.calls[0][0]).toEqual({ where: call.where })
+  })
+
+  it("returns whole-queue counters that a search on the same request does not change", async () => {
+    vi.mocked(getSession).mockResolvedValue(SESSION as any)
+    vi.mocked(prisma.ticket.findMany).mockResolvedValue([])
+    vi.mocked(prisma.ticket.count).mockImplementation((async (args: any) => {
+      const text = JSON.stringify(args.where)
+      if (text.includes("contains")) return 0 // the searched page total
+      if (text.includes("escalationLevel")) return 5
+      if (text.includes("slaDueAt")) return 4
+      if (text.includes('"assignedTo"')) return 3
+      if (text.includes('"status":"new"')) return 2
+      return 1
+    }) as any)
+
+    const res = await GET(makeRequest("http://localhost/api/v1/tickets?scope=active&q=nothing-matches&counts=1"))
+    const body = await res.json()
+
+    expect(body.data.total).toBe(0)
+    expect(body.data.queueCounts).toEqual({ open: 1, new: 2, unassigned: 3, slaBreached: 4, escalated: 5 })
+    const countWheres = vi.mocked(prisma.ticket.count).mock.calls.map((call) => JSON.stringify((call[0] as any).where))
+    expect(countWheres.filter((where) => where.includes("nothing-matches"))).toHaveLength(1)
+  })
+
+  it("leaves the counters out unless they are asked for and caps the page size", async () => {
+    vi.mocked(getSession).mockResolvedValue(SESSION as any)
+    vi.mocked(prisma.ticket.findMany).mockResolvedValue([])
+    vi.mocked(prisma.ticket.count).mockResolvedValue(0)
+
+    const res = await GET(makeRequest("http://localhost/api/v1/tickets?limit=999999"))
+    const body = await res.json()
+
+    expect(body.data.queueCounts).toBeUndefined()
+    expect((vi.mocked(prisma.ticket.findMany).mock.calls[0][0] as any).take).toBe(500)
+    expect(prisma.ticket.count).toHaveBeenCalledTimes(1)
   })
 
   it("resolves companyName and assigneeName", async () => {
@@ -559,6 +620,48 @@ describe("PUT /api/v1/tickets/:id", () => {
 
     const updateCall = vi.mocked(prisma.ticket.updateMany).mock.calls[0][0] as any
     expect(updateCall.data.resolvedAt).toBeInstanceOf(Date)
+  })
+
+  it("stores the card stopwatch without treating it as an edit of the ticket", async () => {
+    // Leaving a ticket page sends its stopwatch reading. It used to be dropped
+    // by the schema while the request still wrote an audit entry, ran the
+    // "ticket updated" workflows and fired the webhook — on every page view.
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1" } as any)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as any)
+
+    const res = await PUT(
+      makeRequest("http://localhost/api/v1/tickets/tk1", { method: "PUT", body: JSON.stringify({ handleTimeSeconds: 95 }) }),
+      makeParams("tk1")
+    )
+
+    expect(res.status).toBe(200)
+    expect(vi.mocked(prisma.ticket.updateMany).mock.calls).toEqual([[{
+      where: { id: "tk1", organizationId: "org-1", handleTimeSeconds: { lt: 95 } },
+      data: { handleTimeSeconds: 95 },
+    }]])
+    expect(prisma.ticket.findFirst).not.toHaveBeenCalled()
+    expect(fireWebhooks).not.toHaveBeenCalled()
+    expect(executeWorkflows).not.toHaveBeenCalled()
+    expect(logAudit).not.toHaveBeenCalled()
+  })
+
+  it("does not take a stopwatch reading mixed with real changes as stopwatch-only", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1" } as any)
+    vi.mocked(getSession).mockResolvedValue(SESSION as any)
+    const original = { id: "tk1", subject: "Old", status: "open", priority: "medium", organizationId: "org-1", tags: [] }
+    vi.mocked(prisma.ticket.findFirst)
+      .mockResolvedValueOnce(original as any)
+      .mockResolvedValueOnce({ ...original, status: "resolved" } as any)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as any)
+
+    const res = await PUT(
+      makeRequest("http://localhost/api/v1/tickets/tk1", { method: "PUT", body: JSON.stringify({ handleTimeSeconds: 95, status: "resolved" }) }),
+      makeParams("tk1")
+    )
+
+    expect(res.status).toBe(200)
+    expect((vi.mocked(prisma.ticket.updateMany).mock.calls[0][0] as any).data.status).toBe("resolved")
+    expect(fireWebhooks).toHaveBeenCalled()
   })
 
   it("increments escalationLevel when priority changed to critical", async () => {

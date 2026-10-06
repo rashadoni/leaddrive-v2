@@ -7631,3 +7631,18 @@ Compact durable whole-review bindings and actual receipts: docs/evidence/workfor
 Supersedes the earlier future-duplicate UNAPPLIED state only after own584 root+independent full release acceptance. Fresh fetch/API/remote main=daf05b6030c89c4508f2a999706f4169360ccce2 allowed ordinary successor47 integration and exact three draft recipes/five chunks. Seven ID-bearing kinds reject duplicate keys before lookup; exception subjects must resolve to one workday, even for the same employee. Existing job implementation unchanged. Actual two files/44 aggregate meaningful tests PASS, scoped three-target ESLint113rules/notignored and diffcheck PASS; serial one-worker checks after18115MiBavailable/332GiBdisk/memoryfullavg10zero. New evidence docs/workforce-c12-duplicate-coherence-evidence-2026-10-05.md and apply/bounded/current-base finite4owned/core13 catalogue JSON.
 
 Fresh exact-head independent source/current PR compiler/suite/required5 and own normal release PENDING; no earlier Manager/browser/PG/compiler result borrowed. Full compiler/suite/build/browser/PG/Android/load NOT RUN locally. No schema/DB reader/durablelease-versionadapter/cron/generalupdate-delete/break/AGENT/Route changes; no complete page closure/approval grouping/exportsource claim. WF-C12-008 staysPARTIAL;82/161DONE/79non-DONE/14of15gates/C845%/overall59%, no rowclosure/no100. Next freeze logical source checkpoint, unchanged400000scope/protected15/range scan/current workflow applicability and independent exact-head review.
+
+
+### 2026-10-06 — PR589 fault/fairness and fresh main integration
+
+The sole HRM writer continues from8053702 after explicit authorization to integrate
+new main changes routinely. PR594 deletion/history semantics are preserved;
+PR595/596 and accepted Support PR597 are integrated as exact main blobs at5c741226. Bounded work covers
+eight prepared fault/fairness scenarios, previously missing512KiB/64KiB push
+admission, four entitlement modes for API/nav/jobs, and GPS/media/census runtime
+privacy guards. See[qualified matrix](./workforce-c12-fault-fairness-matrix-2026-10-06.md).
+Original8053 receipts retain their exact earlier base; new immutable source and
+hosted acceptance are recorded separately, without borrowing previous green.
+No production activation, merge/deploy, migration-history/baseline edits, raw
+CI logs, credentials or Support changes. Accounting82/161DONE,79open,59%,14/15
+gates unchanged; canonical C10-011PLANNED and C12-002/004/005/008/C13-006PARTIAL.

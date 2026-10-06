@@ -25,6 +25,7 @@ import {
 import {
   markTicketMilestonesMet,
   type RuntimeMilestoneDefinition,
+  milestoneTypesForStatusChange,
 } from "@/lib/entitlement-process/ticket-milestones"
 import type { MilestoneType } from "@/lib/entitlement-process/types"
 
@@ -123,13 +124,7 @@ function milestoneTypesForTicketUpdate(
   newStatus: string | undefined,
   isEscalation: boolean,
 ): MilestoneType[] {
-  const types = new Set<MilestoneType>()
-  if (newStatus && newStatus !== oldStatus) {
-    if (newStatus === "in_progress") types.add("problem_identified")
-    if (newStatus === "waiting") types.add("workaround_delivered")
-    if (newStatus === "resolved") types.add("resolution")
-    if (newStatus === "escalated") types.add("escalation")
-  }
+  const types = new Set<MilestoneType>(milestoneTypesForStatusChange(oldStatus, newStatus))
   if (isEscalation) types.add("escalation")
   return [...types]
 }
@@ -145,6 +140,14 @@ const updateTicketSchema = z.object({
   category: z.enum(LEGACY_TICKET_CATEGORY_SLUGS).optional(),
   categoryId: z.string().nullable().optional(),
 })
+
+// The ticket card reports its stopwatch when the agent leaves the page. That is
+// a reading, not an edit: it must not write an audit entry, start workflows or
+// fire the "ticket updated" webhook.
+const HANDLE_TIME_MAX_SECONDS = 60 * 60 * 24 * 30
+const handleTimeReadingSchema = z.object({
+  handleTimeSeconds: z.number().int().min(0).max(HANDLE_TIME_MAX_SECONDS),
+}).strict()
 
 export const GET = withRls(async (_req: NextRequest, { orgId, session }, { params }: { params: Promise<{ id: string }> }) => {
   const role = session?.role || "admin"
@@ -273,6 +276,17 @@ export const PUT = withRlsAuth("tickets", "write", async (req: NextRequest, auth
   const role = authResult.role
   const { id } = await params
   const body = await req.json()
+
+  const handleTimeReading = handleTimeReadingSchema.safeParse(body)
+  if (handleTimeReading.success) {
+    // Only ever moves forward, so two open cards cannot rewind each other.
+    await prisma.ticket.updateMany({
+      where: { id, organizationId: orgId, handleTimeSeconds: { lt: handleTimeReading.data.handleTimeSeconds } },
+      data: { handleTimeSeconds: handleTimeReading.data.handleTimeSeconds },
+    })
+    return NextResponse.json({ success: true })
+  }
+
   const preFieldPerms = await getFieldPermissions(orgId, role, "ticket")
   const filteredBody = filterWritableFields(body, preFieldPerms, role)
   const parsed = updateTicketSchema.safeParse(filteredBody)

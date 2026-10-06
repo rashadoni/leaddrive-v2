@@ -132,7 +132,9 @@ export function RouteBuilderInlineAssignmentPanel({
           subjectType: candidate.subjectType,
           subjectId: candidate.id,
           agentId,
-          role: "PRIMARY",
+          // A client keeps the employee they have and gets this one too
+          // (owner, 2026-10-06); an organization is still handed over.
+          ...(candidate.subjectType === "CONTACT" ? { keepOthers: true } : { role: "PRIMARY" }),
           effectiveFrom: date,
           reason: `Route builder: ${date}`,
         }),
@@ -151,8 +153,12 @@ export function RouteBuilderInlineAssignmentPanel({
     }
   }
 
+  /** Taking the record away from its employee: an organization owned by someone else. A client is shared, not taken. */
+  const takesOver = (candidate: RouteBuilderInlineAssignable) =>
+    candidate.subjectType !== "CONTACT" && Boolean(candidate.currentOwner && candidate.currentOwner.id !== agentId)
+
   function requestAssignment(candidate: RouteBuilderInlineAssignable) {
-    if (candidate.currentOwner && candidate.currentOwner.id !== agentId) {
+    if (takesOver(candidate)) {
       setConfirming(candidate)
       return
     }
@@ -243,7 +249,8 @@ export function RouteBuilderInlineAssignmentPanel({
         <div className="mt-2 divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-card dark:divide-zinc-700 dark:border-zinc-700">
           {items.map((candidate) => {
             const identity = candidateIdentity(candidate)
-            const transferring = Boolean(candidate.currentOwner && candidate.currentOwner.id !== agentId)
+            const transferring = takesOver(candidate)
+            const shared = candidate.subjectType === "CONTACT" && Boolean(candidate.currentOwner && candidate.currentOwner.id !== agentId)
             return (
               <div
                 key={identity}
@@ -257,7 +264,7 @@ export function RouteBuilderInlineAssignmentPanel({
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {candidate.currentOwner
-                      ? t("inlineAssignmentOwnedBy", { agent: candidate.currentOwner.name })
+                      ? t(shared ? "inlineAssignmentSharedWith" : "inlineAssignmentOwnedBy", { agent: candidate.currentOwner.name })
                       : t("inlineAssignmentUnassigned")}
                   </p>
                 </div>
@@ -270,7 +277,7 @@ export function RouteBuilderInlineAssignmentPanel({
                   disabled={Boolean(assigningId)}
                 >
                   {assigningId === identity ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : transferring ? <UserPlus className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                  {transferring ? t("inlineAssignmentTransferAction") : t("inlineAssignmentAddAction")}
+                  {transferring ? t("inlineAssignmentTransferAction") : shared ? t("inlineAssignmentShareAction") : t("inlineAssignmentAddAction")}
                 </Button>
               </div>
             )

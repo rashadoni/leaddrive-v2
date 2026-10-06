@@ -353,6 +353,40 @@ pgDescribe("client categories on a real Postgres", () => {
       expect(await employeesOf(ids.vuqar)).toEqual(["Leyla:PRIMARY"])
     })
 
+    // The route builder's «assign and add to the route» used to TRANSFER a
+    // client of another employee to the route's employee.
+    it("puts another employee's client into a route without taking the client away", async () => {
+      const { PUT } = await import("@/app/api/v1/mtm/field-assignments/route")
+      const attach = async (contactId: string, agentId: string) => {
+        const response = await PUT(send("PUT", "/api/v1/mtm/field-assignments", {
+          subjectType: "CONTACT", subjectId: contactId, agentId, keepOthers: true, effectiveFrom: today, reason: `Route builder: ${today}`,
+        }))
+        return response.status
+      }
+      const [taken, free] = await bypass(async () => {
+        const created: string[] = []
+        for (const [firstName, lastName] of [["Elçin", "Quliyev"], ["Fidan", "Rzayeva"]] as const) {
+          created.push((await prisma.mtmContact.create({
+            data: { organizationId: ORG, firstName, lastName, displayName: `${lastName} ${firstName}`, type: "DOCTOR" },
+            select: { id: true },
+          })).id)
+        }
+        await prisma.mtmContactAgentAssignment.create({
+          data: { organizationId: ORG, contactId: created[0], agentId: ids.seymur, role: "PRIMARY", effectiveFrom: new Date("2026-01-01T00:00:00.000Z") },
+        })
+        return created
+      })
+
+      expect(await attach(taken, ids.leyla)).toBe(200)
+      expect(await employeesOf(taken)).toEqual(["Seymur:PRIMARY", "Leyla:SECONDARY"])
+      // Asked twice — by a retry or a second route — it stays one attachment.
+      expect(await attach(taken, ids.leyla)).toBe(200)
+      expect(await employeesOf(taken)).toEqual(["Seymur:PRIMARY", "Leyla:SECONDARY"])
+      // A client nobody has gets a responsible employee, as before.
+      expect(await attach(free, ids.leyla)).toBe(200)
+      expect(await employeesOf(free)).toEqual(["Leyla:PRIMARY"])
+    })
+
     it("detaches one employee and leaves the other; the one who stays becomes responsible", async () => {
       const body = { contactIds: [ids.aydin], mode: "UNASSIGN", targetAgentId: null, sourceAgentId: ids.seymur, effectiveFrom: today }
       const { status } = await change(await assignments(), body, "detach-responsible")
@@ -394,6 +428,111 @@ pgDescribe("client categories on a real Postgres", () => {
 
       expect(await employeesOf(ids.xalid)).toEqual([])
       expect(Object.keys(await listed("assignmentState=UNASSIGNED"))).toEqual(["Abbasov Xalid"])
+    })
+  })
+
+  // Prod, 2026-10-06, owner's screenshot of «Удалить агента»: «Invalid
+  // `prisma.mtmAgent.deleteMany()` invocation: Foreign key constraint violated
+  // on the constraint: `workforce_employee_team_memberships_agent_fkey`». Since
+  // 2026-08-30 a trigger gives every new employee a team-membership row that
+  // can be neither changed nor deleted, so nobody could be deleted at all. His
+  // decision: an employee without work history can be; one with it cannot.
+  // Triggers and cascades are what decide this, and a mocked Prisma has neither.
+  describe("deleting an employee", () => {
+    const params = (id: string) => ({ params: Promise.resolve({ id }) })
+
+    /** The handler is a privileged web operation: it wants a browser session. */
+    async function remove(agentId: string) {
+      const { getSession } = await import("@/lib/api-auth")
+      vi.mocked(getSession).mockResolvedValueOnce({ orgId: ORG, userId: "admin-user", role: "admin", email: "admin@example.com", name: "Admin" } as never)
+      const { DELETE } = await import("@/app/api/v1/mtm/agents/[id]/route")
+      const response = await DELETE(new NextRequest(`http://localhost:3000/api/v1/mtm/agents/${agentId}`, { method: "DELETE" }), params(agentId))
+      return { status: response.status, body: await response.json() }
+    }
+    const hire = (name: string) => bypass(() => prisma.mtmAgent.create({ data: { organizationId: ORG, name }, select: { id: true } }))
+    const teamHistory = (agentId: string) => bypass(() => prisma.workforceEmployeeTeamMembership.count({ where: { agentId } }))
+
+    beforeAll(async () => {
+      const run = (sql: string) => prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, sql)
+      const original = readFileSync(path.join(ROOT, "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql"), "utf8")
+      const follows = readFileSync(path.join(ROOT, "prisma/migrations/20261006120000_workforce_team_membership_follows_deleted_agent/migration.sql"), "utf8")
+
+      // 1. Production as it stood. `db push` builds the key from schema.prisma
+      //    under its own name and knows no triggers: put back the restricting
+      //    key under the name production has, and the triggers of 2026-08-30.
+      run(`DO $$ DECLARE existing text; BEGIN
+        SELECT conname INTO existing FROM pg_constraint
+        WHERE conrelid = '"workforce_employee_team_memberships"'::regclass AND confrelid = '"mtm_agents"'::regclass;
+        EXECUTE format('ALTER TABLE "workforce_employee_team_memberships" DROP CONSTRAINT %I', existing);
+      END $$;`)
+      run(`ALTER TABLE "workforce_employee_team_memberships"
+        ADD CONSTRAINT "workforce_employee_team_memberships_agent_fkey"
+        FOREIGN KEY ("organizationId", "agentId") REFERENCES "mtm_agents"("organizationId", "id") ON DELETE RESTRICT ON UPDATE CASCADE;`)
+      for (const pattern of [
+        /CREATE OR REPLACE FUNCTION workforce_capture_employee_team_membership\(\)[\s\S]*?\$\$;/,
+        /CREATE TRIGGER workforce_capture_employee_team_membership_after_change[\s\S]*?;/,
+        /CREATE OR REPLACE FUNCTION workforce_reject_employee_team_membership_mutation\(\)[\s\S]*?\$\$;/,
+        /CREATE TRIGGER workforce_employee_team_memberships_immutable[\s\S]*?;/,
+      ]) {
+        const statement = original.match(pattern)
+        if (!statement) throw new Error(`not found in the 2026-08-30 migration: ${pattern}`)
+        run(statement[0])
+      }
+      // That state is the bug: an employee nobody has ever worked with cannot be deleted.
+      const stuck = await hire("Undeletable before the migration")
+      await expect(bypass(() => prisma.mtmAgent.delete({ where: { id: stuck.id } }))).rejects.toThrow(/workforce_employee_team_memberships_agent_fkey|Foreign key/i)
+
+      // 2. The migration, exactly as production will run it.
+      run(follows)
+    }, 120_000)
+
+    it("deletes an employee who has not worked, with the team history the database wrote for them", async () => {
+      const agent = await hire("Created by mistake")
+      expect(await teamHistory(agent.id)).toBe(1)
+      // Clients attached to them are an arrangement, not work history.
+      const client = await bypass(() => prisma.mtmContact.create({
+        data: { organizationId: ORG, firstName: "Kamran", lastName: "Hüseynov", displayName: "Hüseynov Kamran", type: "DOCTOR" },
+        select: { id: true },
+      }))
+      await bypass(() => prisma.mtmContactAgentAssignment.create({
+        data: { organizationId: ORG, contactId: client.id, agentId: agent.id, role: "PRIMARY", effectiveFrom: new Date("2026-01-01T00:00:00.000Z") },
+      }))
+
+      const { status, body } = await remove(agent.id)
+
+      expect([status, body]).toEqual([200, { success: true }])
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id } }))).toBe(0)
+      expect(await teamHistory(agent.id)).toBe(0)
+      expect(await bypass(() => prisma.mtmContactAgentAssignment.count({ where: { agentId: agent.id } }))).toBe(0)
+      // The client is nobody's now, not gone.
+      expect(await bypass(() => prisma.mtmContact.count({ where: { id: client.id } }))).toBe(1)
+    })
+
+    it("keeps an employee who has a visit, and says so instead of naming a constraint", async () => {
+      const agent = await hire("Has been in the field")
+      const visit = await bypass(async () => {
+        const customer = await prisma.mtmCustomer.create({ data: { organizationId: ORG, name: "Mərkəzi Klinika" }, select: { id: true } })
+        return prisma.mtmVisit.create({ data: { organizationId: ORG, agentId: agent.id, customerId: customer.id }, select: { id: true } })
+      })
+
+      const { status, body } = await remove(agent.id)
+
+      expect(status).toBe(409)
+      expect(body.code).toBe("MTM_AGENT_HAS_HISTORY")
+      expect(body.data.kinds).toContain("MtmVisit.agentId")
+      expect(JSON.stringify(body)).not.toMatch(/prisma|constraint|fkey/i)
+      // Before this check the delete cascaded through the employee's visits.
+      expect(await bypass(() => prisma.mtmAgent.count({ where: { id: agent.id } }))).toBe(1)
+      expect(await bypass(() => prisma.mtmVisit.count({ where: { id: visit.id } }))).toBe(1)
+    })
+
+    it("still refuses to rewrite or erase the team history of an employee who exists", async () => {
+      const agent = await hire("Still employed")
+      const erase = bypass(() => prisma.$executeRaw`DELETE FROM "workforce_employee_team_memberships" WHERE "agentId" = ${agent.id}`)
+      await expect(erase).rejects.toThrow(/immutable/i)
+      const rewrite = bypass(() => prisma.$executeRaw`UPDATE "workforce_employee_team_memberships" SET "source" = 'TAMPERED' WHERE "agentId" = ${agent.id}`)
+      await expect(rewrite).rejects.toThrow(/immutable/i)
+      expect(await teamHistory(agent.id)).toBe(1)
     })
   })
 

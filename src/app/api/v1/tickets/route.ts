@@ -8,6 +8,13 @@ import { applyRecordFilter } from "@/lib/sharing-rules"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { LEGACY_TICKET_CATEGORY_SLUGS } from "@/lib/ticketing/categories"
 import { TicketingValidationError } from "@/lib/ticketing/category-service"
+import {
+  parseTicketListParams,
+  ticketQueueCountWheres,
+  ticketScopeWhere,
+  ticketSearchWhere,
+  type TicketQueueCounts,
+} from "@/lib/ticketing/ticket-list-query"
 
 const createTicketSchema = z.object({
   subject: z.string().min(1).max(300),
@@ -43,19 +50,56 @@ type UserNameRow = { id: string; name: string | null; email: string | null }
 export const GET = withRls(async (req, { orgId, session }) => {
   const role = session?.role || "admin"
 
-  const { searchParams } = new URL(req.url)
-  const status = searchParams.get("status") || ""
-  const companyId = searchParams.get("companyId") || ""
-  const page = parseInt(searchParams.get("page") || "1")
-  const limit = parseInt(searchParams.get("limit") || "50")
+  const { status, companyId, page, limit, scope, query, withCounts } = parseTicketListParams(new URL(req.url).searchParams)
 
   try {
-    let where: Prisma.TicketWhereInput = {
+    const userId = session?.userId || ""
+    let where = await applyRecordFilter(orgId, userId, role, "ticket", {
       organizationId: orgId,
       ...(status ? { status } : {}),
       ...(companyId ? { companyId } : {}),
+    }) as Prisma.TicketWhereInput
+
+    if (scope) where = { AND: [where, ticketScopeWhere(scope)] }
+
+    if (query) {
+      // Company and assignee are id columns on the ticket, so a name typed
+      // into the search box is resolved to ids first.
+      const [companies, assignees] = await Promise.all([
+        prisma.company.findMany({
+          where: { organizationId: orgId, name: { contains: query, mode: "insensitive" } },
+          select: { id: true },
+          take: 50,
+        }),
+        prisma.user.findMany({
+          where: { organizationId: orgId, name: { contains: query, mode: "insensitive" } },
+          select: { id: true },
+          take: 50,
+        }),
+      ])
+      where = {
+        AND: [where, ticketSearchWhere(query, {
+          companyIds: companies.map((company) => company.id),
+          assigneeIds: assignees.map((user) => user.id),
+        })],
+      }
     }
-    where = await applyRecordFilter(orgId, session?.userId || "", role, "ticket", where)
+
+    // The queue counters describe everything this caller may see in the
+    // tenant, so a search or a status filter on the request never changes them.
+    let queueCounts: TicketQueueCounts | undefined
+    if (withCounts) {
+      const visible = await applyRecordFilter(orgId, userId, role, "ticket", { organizationId: orgId }) as Prisma.TicketWhereInput
+      const countWheres = ticketQueueCountWheres(visible, new Date())
+      const [open, fresh, unassigned, slaBreached, escalated] = await Promise.all([
+        prisma.ticket.count({ where: countWheres.open }),
+        prisma.ticket.count({ where: countWheres.new }),
+        prisma.ticket.count({ where: countWheres.unassigned }),
+        prisma.ticket.count({ where: countWheres.slaBreached }),
+        prisma.ticket.count({ where: countWheres.escalated }),
+      ])
+      queueCounts = { open, new: fresh, unassigned, slaBreached, escalated }
+    }
 
     const [rawTicketRows, total] = await Promise.all([
       prisma.ticket.findMany({
@@ -102,7 +146,10 @@ export const GET = withRls(async (req, { orgId, session }) => {
     const fieldPerms = await getFieldPermissions(orgId, role, "ticket")
     const filteredTickets = tickets.map((t: Record<string, unknown>) => filterEntityFields(t, fieldPerms, role))
 
-    return NextResponse.json({ success: true, data: { tickets: filteredTickets, total, page, limit } })
+    return NextResponse.json({
+      success: true,
+      data: { tickets: filteredTickets, total, page, limit, ...(queueCounts ? { queueCounts } : {}) },
+    })
   } catch (e) {
     console.error("Tickets GET error:", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

@@ -176,6 +176,20 @@ export async function createTicketEntitlementMilestones(
   }
 }
 
+/**
+ * Which process milestones a status change completes. Shared by every path
+ * that moves a ticket between statuses (the ticket card and macros), so a
+ * macro is accounted for exactly like a manual change.
+ */
+export function milestoneTypesForStatusChange(oldStatus: string, newStatus: string | undefined): MilestoneType[] {
+  if (!newStatus || newStatus === oldStatus) return []
+  if (newStatus === "in_progress") return ["problem_identified"]
+  if (newStatus === "waiting") return ["workaround_delivered"]
+  if (newStatus === "resolved") return ["resolution"]
+  if (newStatus === "escalated") return ["escalation"]
+  return []
+}
+
 export async function markTicketMilestonesMet(
   db: EntitlementDb,
   input: {
