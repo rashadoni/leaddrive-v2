@@ -60,6 +60,8 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/demo-call-retention/ { next }
   /cron-trigger\.sh \/api\/cron\/campaign-scheduled-send/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-demo-pulse/ { next }
+  /cron-trigger\.sh \/api\/cron\/sla-escalation/ { next }
+  /cron-trigger\.sh \/api\/cron\/ticket-closure-requests/ { next }
   { print }
 ' "$CURRENT" > "$CLEAN"
 
@@ -121,6 +123,17 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # every tenant without the hand-set `mtm-demo-pulse` flag; keyed writes make
   # a repeated or late tick harmless, and the endpoint holds its own lease.
   printf '%s\n' "*/10 * * * * $TRIGGER /api/cron/mtm-demo-pulse >> $LOG 2>&1"
+  # Support escalation rules and support-term milestones act only when this
+  # endpoint is called. The schedule was not carried over when production moved
+  # hosts in September 2026: rules could still be edited and previewed, and
+  # none had fired since. Every five minutes is the cadence the handler was
+  # written for; it applies at most one rule per ticket per run and leaves
+  # thirty minutes between two escalations of the same ticket.
+  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/sla-escalation >> $LOG 2>&1"
+  # A resolved ticket asks the customer to confirm; unanswered, it closes after
+  # seven days, and the ticket card says so. Without this sweep it never did.
+  # Hourly is plenty for a seven-day promise, and a request is closed once.
+  printf '%s\n' "37 * * * * $TRIGGER /api/cron/ticket-closure-requests >> $LOG 2>&1"
   # The durable queue drain is required for user-started jobs and is safe to
   # run independently. Keep the legacy marker and all other social workers
   # behind their existing opt-in state. Retaining the marker also ensures an
