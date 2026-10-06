@@ -1,0 +1,47 @@
+{
+  "schema": "hrm-c7-final-evidence/v1",
+  "status": "ACCEPTED_EXACT_HEAD_WITH_RECORDED_P3_EVIDENCE_LIMIT",
+  "head": "a856a9e533c4f3cec6f2313e69f5be0d5b4d4226",
+  "tree": "a50243196992bf8c91af48b10ed0674669f7756b",
+  "main": "4eb451bb62bac71860bbe47e576f2be506eab860",
+  "syntheticMerge": "16f440b587dc22ad961955651e2ee8e2ada87941",
+  "parentArchive": "f6a4d6ebf5d2326420d29eefc59eff627c218eaf",
+  "preservedPriorBlobs": 9259,
+  "exactOriginalReceipts": 43,
+  "priorArchiveExactOriginalReceipts": 55,
+  "acceptedOriginalC7Zips": 3,
+  "currentChecks": 15,
+  "currentWorkflows": 11,
+  "allCurrentRunAttempts": 1,
+  "ledger": {
+    "done": 83,
+    "total": 161,
+    "open": 78,
+    "weightedPercent": 60,
+    "closedOnly": "WF-C7-007"
+  },
+  "nextPrepared": "WF-C8-002",
+  "files": [
+    {
+      "name": "README.md",
+      "bytes": 6263,
+      "sha256": "7779a718bcdd8ccc8c568dac31e8050f3203817799b18db07ce54e163a2902ce"
+    },
+    {
+      "name": "final-minimized-receipts.json",
+      "bytes": 386585,
+      "sha256": "a49233655f4066929478d07e5443b18651829cf106f2fd4939f87c3c85d88550"
+    },
+    {
+      "name": "accepted-artifact-zips.json",
+      "bytes": 25526,
+      "sha256": "e0412e7cd1c4310d006269ebae1a9560bf04fa97254ef34649a2a2f01686d109"
+    }
+  ],
+  "qualifications": [
+    "Read README and independent contrast disposition: 24 sampled ratios pass; hover pseudo-class not asserted.",
+    "Historical pending snapshots remain original; final a856 CI and independent terminal receipts supersede their current-state claims.",
+    "Prior restore timeout cause unknown; current a856 restore first-attempt PASS.",
+    "Baseline-qualified CI; full HRM not accepted. No merge/deploy/activation."
+  ]
+}
