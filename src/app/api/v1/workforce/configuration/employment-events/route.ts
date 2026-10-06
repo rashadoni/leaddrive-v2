@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { isDateKey } from "@/lib/mtm/mobile-week"
 import { prisma } from "@/lib/prisma"
@@ -38,8 +39,8 @@ export const GET = withWorkforceSessionEmploymentConfigurationAuth(async (req: N
     })
     if (!assignment) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json({ success: true, data: { assignment } })
-  } catch (error) {
-    console.error("[workforce/configuration/employment-events GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-employment-events-get" })
     return NextResponse.json({ error: "Failed to resolve Workforce employment history" }, { status: 500 })
   }
 })
@@ -63,7 +64,7 @@ export const POST = withWorkforceSessionEmploymentConfigurationAuth(async (req: 
       const status = error.code === "WORKFORCE_EMPLOYMENT_AGENT_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/employment-events POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-employment-events-post" })
     return NextResponse.json({ error: "Failed to record Workforce employment event" }, { status: 500 })
   }
 })

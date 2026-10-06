@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -31,8 +32,8 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
       select: assignmentSelect,
     })
     return NextResponse.json({ success: true, data: { assignments } })
-  } catch (error) {
-    console.error("[workforce/configuration/site-assignments GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-site-assignments-get" })
     return NextResponse.json({ error: "Failed to load Workforce site assignments" }, { status: 500 })
   }
 })
@@ -62,7 +63,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SITE_ASSIGNME
         : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/site-assignments POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-site-assignments-post" })
     return NextResponse.json({ error: "Failed to schedule Workforce site assignment" }, { status: 500 })
   }
 })

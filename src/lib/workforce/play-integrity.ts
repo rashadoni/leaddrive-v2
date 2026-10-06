@@ -77,7 +77,7 @@ function validPolicy(policy: WorkforcePlayIntegrityPolicy): boolean {
     && policy.certificateSha256Digest.length > 0
     && policy.certificateSha256Digest.every((value) => SHA256_BASE64URL.test(value))
     && new Set(policy.certificateSha256Digest).size === policy.certificateSha256Digest.length
-    && policy.minimumVersionCode >= 0n
+    && policy.minimumVersionCode >= BigInt(0)
     && (policy.minimumDeviceIntegrity === "MEETS_DEVICE_INTEGRITY" || policy.minimumDeviceIntegrity === "MEETS_STRONG_INTEGRITY")
     && Number.isSafeInteger(policy.maxVerdictAgeSeconds)
     && policy.maxVerdictAgeSeconds >= 0
@@ -239,7 +239,7 @@ export function assessWorkforcePlayIntegrity(input: {
   const timestampMillis = input.verdict.requestDetails.timestampMillis == null
     ? null
     : verdictTimestampMillis(input.verdict.requestDetails.timestampMillis)
-  const maximumAgeMillis = BigInt(input.policy.maxVerdictAgeSeconds) * 1_000n
+  const maximumAgeMillis = BigInt(input.policy.maxVerdictAgeSeconds) * BigInt(1_000)
   const nowMillis = BigInt(now.getTime())
   if (timestampMillis == null || timestampMillis > nowMillis || nowMillis - timestampMillis > maximumAgeMillis) {
     return {
@@ -261,7 +261,7 @@ export function assessWorkforcePlayIntegrity(input: {
   }
   let versionCode: bigint
   try {
-    versionCode = input.verdict.appIntegrity.versionCode == null ? -1n : BigInt(input.verdict.appIntegrity.versionCode)
+    versionCode = input.verdict.appIntegrity.versionCode == null ? BigInt(-1) : BigInt(input.verdict.appIntegrity.versionCode)
   } catch {
     return { status: "REJECTED", code: "WORKFORCE_PLAY_INTEGRITY_APP_VERSION_UNSUPPORTED" }
   }

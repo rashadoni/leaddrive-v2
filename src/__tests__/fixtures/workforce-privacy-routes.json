@@ -1,0 +1,370 @@
+[
+  {
+    "group": "attendance",
+    "path": "src/app/api/v1/workforce/attendance/devices/[id]/approve/route.ts",
+    "method": "POST",
+    "operation": "attendance-devices-item-approve-post",
+    "oldLine": 39,
+    "faultTarget": "approveWorkforceAttendanceDeviceEnrollment"
+  },
+  {
+    "group": "attendance",
+    "path": "src/app/api/v1/workforce/attendance/devices/[id]/revoke/route.ts",
+    "method": "POST",
+    "operation": "attendance-devices-item-revoke-post",
+    "oldLine": 38,
+    "faultTarget": "revokeWorkforceAttendanceDeviceEnrollment"
+  },
+  {
+    "group": "attendance",
+    "path": "src/app/api/v1/workforce/attendance/devices/route.ts",
+    "method": "GET",
+    "operation": "attendance-devices-get",
+    "oldLine": 30,
+    "faultTarget": "prisma.workforceAttendanceDeviceEnrollment.findMany"
+  },
+  {
+    "group": "attendance",
+    "path": "src/app/api/v1/workforce/attendance/security-triage/route.ts",
+    "method": "GET",
+    "operation": "attendance-security-triage-get",
+    "oldLine": 135,
+    "faultTarget": "prisma.mtmAgent.findMany"
+  },
+  {
+    "group": "attendance",
+    "path": "src/app/api/v1/workforce/attendance/stations/[id]/disable/route.ts",
+    "method": "POST",
+    "operation": "attendance-stations-item-disable-post",
+    "oldLine": 39,
+    "faultTarget": "disableWorkforceAttendanceQrStation"
+  },
+  {
+    "group": "attendance",
+    "path": "src/app/api/v1/workforce/attendance/stations/[id]/qr/route.ts",
+    "method": "POST",
+    "operation": "attendance-stations-item-qr-post",
+    "oldLine": 69,
+    "faultTarget": "issueWorkforceAttendanceQr"
+  },
+  {
+    "group": "attendance",
+    "path": "src/app/api/v1/workforce/attendance/stations/[id]/replace/route.ts",
+    "method": "POST",
+    "operation": "attendance-stations-item-replace-post",
+    "oldLine": 49,
+    "faultTarget": "replaceWorkforceAttendanceQrStation"
+  },
+  {
+    "group": "attendance",
+    "path": "src/app/api/v1/workforce/attendance/stations/route.ts",
+    "method": "GET",
+    "operation": "attendance-stations-get",
+    "oldLine": 40,
+    "faultTarget": "prisma.workforceAttendanceQrStation.findMany"
+  },
+  {
+    "group": "attendance",
+    "path": "src/app/api/v1/workforce/attendance/stations/route.ts",
+    "method": "POST",
+    "operation": "attendance-stations-post",
+    "oldLine": 67,
+    "faultTarget": "createWorkforceAttendanceQrStation"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/assignments/bulk/publish/route.ts",
+    "method": "POST",
+    "operation": "configuration-assignments-bulk-publish-post",
+    "oldLine": 51,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/assignments/preview/route.ts",
+    "method": "POST",
+    "operation": "configuration-assignments-preview-post",
+    "oldLine": 35,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/assignments/route.ts",
+    "method": "GET",
+    "operation": "configuration-assignments-get",
+    "oldLine": 178,
+    "faultTarget": "prisma.workforceShiftAssignment.findMany"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/assignments/route.ts",
+    "method": "POST",
+    "operation": "configuration-assignments-post",
+    "oldLine": 210,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+    "method": "GET",
+    "operation": "configuration-calendar-get",
+    "oldLine": 144,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+    "method": "POST",
+    "operation": "configuration-calendar-post",
+    "oldLine": 218,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/employment-events/route.ts",
+    "method": "GET",
+    "operation": "configuration-employment-events-get",
+    "oldLine": 42,
+    "faultTarget": "resolveWorkforceHistoricalAssignment"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/employment-events/route.ts",
+    "method": "POST",
+    "operation": "configuration-employment-events-post",
+    "oldLine": 66,
+    "faultTarget": "recordWorkforceEmploymentEvent"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+    "method": "PUT",
+    "operation": "configuration-mobile-write-fence-cohorts-put",
+    "oldLine": 45,
+    "faultTarget": "upsertWorkforceMobileWriteCohort"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+    "method": "DELETE",
+    "operation": "configuration-mobile-write-fence-cohorts-delete",
+    "oldLine": 75,
+    "faultTarget": "disableWorkforceMobileWriteCohort"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+    "method": "GET",
+    "operation": "configuration-mobile-write-fence-get",
+    "oldLine": 35,
+    "faultTarget": "getWorkforceMobileWriteFenceConfiguration"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+    "method": "PUT",
+    "operation": "configuration-mobile-write-fence-put",
+    "oldLine": 72,
+    "faultTarget": "setWorkforceMobileWriteFence"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/policies/[id]/activate/route.ts",
+    "method": "POST",
+    "operation": "configuration-policies-item-activate-post",
+    "oldLine": 38,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/policies/[id]/route.ts",
+    "method": "PATCH",
+    "operation": "configuration-policies-item-patch",
+    "oldLine": 32,
+    "faultTarget": "updateWorkforcePolicyDraft"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/policies/route.ts",
+    "method": "GET",
+    "operation": "configuration-policies-get",
+    "oldLine": 37,
+    "faultTarget": "prisma.workforcePolicy.findMany"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/policies/route.ts",
+    "method": "POST",
+    "operation": "configuration-policies-post",
+    "oldLine": 60,
+    "faultTarget": "createWorkforcePolicyDraft"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/shifts/[id]/activate/route.ts",
+    "method": "POST",
+    "operation": "configuration-shifts-item-activate-post",
+    "oldLine": 31,
+    "faultTarget": "activateWorkforceShiftTemplateDraft"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/shifts/[id]/route.ts",
+    "method": "PATCH",
+    "operation": "configuration-shifts-item-patch",
+    "oldLine": 32,
+    "faultTarget": "updateWorkforceShiftTemplateDraft"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/shifts/default/route.ts",
+    "method": "GET",
+    "operation": "configuration-shifts-default-get",
+    "oldLine": 46,
+    "faultTarget": "prisma.workforceShiftDefaultAssignment.findMany"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/shifts/default/route.ts",
+    "method": "POST",
+    "operation": "configuration-shifts-default-post",
+    "oldLine": 80,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/shifts/route.ts",
+    "method": "GET",
+    "operation": "configuration-shifts-get",
+    "oldLine": 52,
+    "faultTarget": "prisma.workforceShiftTemplate.findMany"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/shifts/route.ts",
+    "method": "POST",
+    "operation": "configuration-shifts-post",
+    "oldLine": 75,
+    "faultTarget": "createWorkforceShiftTemplateDraft"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/shifts/team-default/route.ts",
+    "method": "GET",
+    "operation": "configuration-shifts-team-default-get",
+    "oldLine": 48,
+    "faultTarget": "prisma.workforceShiftTeamDefaultAssignment.findMany"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/shifts/team-default/route.ts",
+    "method": "POST",
+    "operation": "configuration-shifts-team-default-post",
+    "oldLine": 85,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/site-assignments/bulk/publish/route.ts",
+    "method": "POST",
+    "operation": "configuration-site-assignments-bulk-publish-post",
+    "oldLine": 47,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/site-assignments/preview/route.ts",
+    "method": "POST",
+    "operation": "configuration-site-assignments-preview-post",
+    "oldLine": 32,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/site-assignments/route.ts",
+    "method": "GET",
+    "operation": "configuration-site-assignments-get",
+    "oldLine": 35,
+    "faultTarget": "prisma.workforceSiteAssignment.findMany"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/site-assignments/route.ts",
+    "method": "POST",
+    "operation": "configuration-site-assignments-post",
+    "oldLine": 65,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/sites/[id]/archive/route.ts",
+    "method": "POST",
+    "operation": "configuration-sites-item-archive-post",
+    "oldLine": 33,
+    "faultTarget": "archiveWorkforceSite"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/sites/[id]/geofences/route.ts",
+    "method": "GET",
+    "operation": "configuration-sites-item-geofences-get",
+    "oldLine": 42,
+    "faultTarget": "prisma.workforceSiteGeofenceRevision.findMany"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/sites/[id]/geofences/route.ts",
+    "method": "POST",
+    "operation": "configuration-sites-item-geofences-post",
+    "oldLine": 71,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/sites/route.ts",
+    "method": "GET",
+    "operation": "configuration-sites-get",
+    "oldLine": 34,
+    "faultTarget": "prisma.workforceSite.findMany"
+  },
+  {
+    "group": "configuration",
+    "path": "src/app/api/v1/workforce/configuration/sites/route.ts",
+    "method": "POST",
+    "operation": "configuration-sites-post",
+    "oldLine": 57,
+    "faultTarget": "createWorkforceSite"
+  },
+  {
+    "group": "today_timesheet_exceptions",
+    "path": "src/app/api/v1/workforce/exceptions/mine/route.ts",
+    "method": "GET",
+    "operation": "exceptions-mine-get",
+    "oldLine": 157,
+    "faultTarget": "prisma.organization.findUnique"
+  },
+  {
+    "group": "today_timesheet_exceptions",
+    "path": "src/app/api/v1/workforce/timesheet/approvals/route.ts",
+    "method": "POST",
+    "operation": "timesheet-approvals-post",
+    "oldLine": 66,
+    "faultTarget": "approveWorkforceTimesheet"
+  },
+  {
+    "group": "today_timesheet_exceptions",
+    "path": "src/app/api/v1/workforce/timesheet/route.ts",
+    "method": "GET",
+    "operation": "timesheet-get",
+    "oldLine": 527,
+    "faultTarget": "getMtmSettings"
+  },
+  {
+    "group": "today_timesheet_exceptions",
+    "path": "src/app/api/v1/workforce/today/route.ts",
+    "method": "GET",
+    "operation": "today-get",
+    "oldLine": 654,
+    "faultTarget": "getMtmSettings"
+  }
+]

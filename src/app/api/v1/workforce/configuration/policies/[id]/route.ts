@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { withWorkforceSessionPolicyConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
@@ -29,7 +30,7 @@ export const PATCH = withWorkforceSessionPolicyConfigurationAuth<RouteContext>(a
       const status = error.code === "WORKFORCE_CONFIGURATION_POLICY_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/policies PATCH]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-policies-item-patch" })
     return NextResponse.json({ error: "Failed to update Workforce policy draft" }, { status: 500 })
   }
 })

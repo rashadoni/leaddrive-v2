@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
@@ -35,7 +36,7 @@ export const POST = withWorkforceRlsAuth<RouteContext>("write", async (req: Next
     if (error instanceof WorkforceAttendanceManagementError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: 409 })
     }
-    console.error("[workforce/attendance/devices/:id/revoke POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "attendance-devices-item-revoke-post" })
     return NextResponse.json({ error: "Failed to revoke attendance device" }, { status: 500 })
   }
 })

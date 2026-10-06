@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionPolicyConfigurationAuth } from "@/lib/with-workforce-rls-auth"
@@ -33,8 +34,8 @@ export const GET = withWorkforceSessionPolicyConfigurationAuth(async (_req: Next
       select: policySelect,
     })
     return NextResponse.json({ success: true, data: { policies } })
-  } catch (error) {
-    console.error("[workforce/configuration/policies GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-policies-get" })
     return NextResponse.json({ error: "Failed to load Workforce policies" }, { status: 500 })
   }
 })
@@ -57,7 +58,7 @@ export const POST = withWorkforceSessionPolicyConfigurationAuth(async (req: Next
     if (error instanceof WorkforceConfigurationManagementError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: 409 })
     }
-    console.error("[workforce/configuration/policies POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-policies-post" })
     return NextResponse.json({ error: "Failed to create Workforce policy draft" }, { status: 500 })
   }
 })

@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
@@ -29,7 +30,7 @@ export const PATCH = withWorkforceSessionScheduleConfigurationAuth<RouteContext>
       const status = error.code === "WORKFORCE_CONFIGURATION_SHIFT_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/shifts PATCH]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-shifts-item-patch" })
     return NextResponse.json({ error: "Failed to update Workforce shift draft" }, { status: 500 })
   }
 })

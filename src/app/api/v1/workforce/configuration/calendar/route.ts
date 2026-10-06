@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
@@ -141,7 +142,7 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
     })
   } catch (error) {
     if (error instanceof WorkforceCalendarConfigurationError) return configurationError(error)
-    console.error("[workforce/configuration/calendar GET]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-calendar-get" })
     return NextResponse.json({ error: "Failed to load Workforce calendar configuration" }, { status: 500 })
   }
 })
@@ -215,7 +216,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRIT
     }, { status: result.created ? 201 : 200 })
   } catch (error) {
     if (error instanceof WorkforceCalendarConfigurationError) return configurationError(error)
-    console.error("[workforce/configuration/calendar POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-calendar-post" })
     return NextResponse.json({ error: "Failed to create Workforce calendar override" }, { status: 500 })
   }
 })

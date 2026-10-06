@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -32,7 +33,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ
       const status = error.code === "WORKFORCE_CONFIGURATION_ASSIGNMENT_TEMPLATE_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/assignments/preview POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-assignments-preview-post" })
     return NextResponse.json({ error: "Failed to preview Workforce shift assignments" }, { status: 500 })
   }
 })

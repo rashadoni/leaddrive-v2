@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
@@ -30,7 +31,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth<RouteContext>(
       const status = error.code === "WORKFORCE_SITE_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/sites archive]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-sites-item-archive-post" })
     return NextResponse.json({ error: "Failed to archive Workforce site" }, { status: 500 })
   }
 })

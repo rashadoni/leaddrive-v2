@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { clientIp } from "@/lib/request-ip"
 import { prisma } from "@/lib/prisma"
@@ -62,10 +63,8 @@ export const POST = withWorkforceSessionAuth("write", async (req: NextRequest, a
       }, 409)
     }
     return approvalJson({ success: true, idempotent: result.idempotent, data: result.data }, 201)
-  } catch (error) {
-    console.error("[workforce/timesheet approvals POST]", {
-      name: error instanceof Error ? error.name : "UnknownError",
-    })
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "timesheet-approvals-post" })
     return approvalJson({ error: "Failed to approve Workforce timesheet" }, 500)
   }
 })
