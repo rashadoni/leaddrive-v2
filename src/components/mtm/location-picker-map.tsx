@@ -127,7 +127,13 @@ function FullScreenMap({ latitude, longitude, onChange, onClose, address, onAddr
   const center: [number, number] = hasPosition ? [latitude!, longitude!] : DEFAULT_CENTER
   const centerRef = useRef<[number, number]>(center)
 
-  const [query, setQuery] = useState(address?.trim() ?? "")
+  // The card's address is offered as the first search only while there is no
+  // pin to find. Over a pin that already stands, the same text in the search
+  // box read as «the address chosen on the map» — and on the first card the
+  // owner opened (2026-10-07) it named a clinic while the pin stood elsewhere:
+  // «это не тот адрес, который выбран на карте». The pin's own address is the
+  // line under the search.
+  const [query, setQuery] = useState(hasPosition ? "" : address?.trim() ?? "")
   const [searching, setSearching] = useState(false)
   const [locating, setLocating] = useState(false)
   const [hits, setHits] = useState<SearchHit[]>([])

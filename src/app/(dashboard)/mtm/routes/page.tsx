@@ -13,6 +13,7 @@ import type { WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { MtmRouteWeekPlan } from "@/components/mtm/route-week-plan"
 import { MtmRoutePlanningMatrix } from "@/components/mtm/route-planning-matrix"
 import { MtmRouteApprovalQueue } from "@/components/mtm/route-approval-queue"
+import { MtmRoutesAwaitingPublish } from "@/components/mtm/routes-awaiting-publish"
 import { MtmRouteTravelPanel } from "@/components/mtm/route-travel-panel"
 import { MtmCustomerCreateRequestPanel } from "@/components/mtm/customer-create-request-panel"
 import { MtmCustomerRequestQueue } from "@/components/mtm/customer-request-queue"
@@ -916,6 +917,14 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           </div>
         </div>
       </header>
+
+      <MtmRoutesAwaitingPublish
+        routes={routes}
+        todayKey={todayKey}
+        canPublish={capabilities.canPublish}
+        onOpen={(route) => setSelectedRoute(route)}
+        onPublish={publishRoute}
+      />
 
       {!capabilities.canCreateRoute ? (
         <p data-testid="mtm-route-self-planning-disabled" role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
