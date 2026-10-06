@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { logOperationalFailure } from "@/lib/telemetry/operational-failure"
 
 export default function Error({
   error,
@@ -10,7 +11,7 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error(error)
+    logOperationalFailure("application-render")
   }, [error])
 
   return (

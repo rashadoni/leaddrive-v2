@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
@@ -153,8 +154,8 @@ export const GET = withWorkforceSessionAuth("read", async (_req: NextRequest, au
         }),
       },
     }, { headers: { "cache-control": "private, no-store", "x-content-type-options": "nosniff" } })
-  } catch (error) {
-    console.error("[workforce/exceptions/mine GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "exceptions-mine-get" })
     return NextResponse.json({ error: "Failed to load personal Workforce exceptions" }, { status: 500 })
   }
 })

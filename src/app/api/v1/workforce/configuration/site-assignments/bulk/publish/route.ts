@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -44,7 +45,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SITE_ASSIGNME
       const status = error.code === "WORKFORCE_SITE_ASSIGNMENT_SITE_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/site-assignments/bulk/publish POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-site-assignments-bulk-publish-post" })
     return NextResponse.json({ error: "Failed to publish Workforce bulk site assignments" }, { status: 500 })
   }
 })

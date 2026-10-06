@@ -1796,12 +1796,6 @@ export async function publishWorkforceShiftAssignments(input: {
       "Workforce configuration current date is invalid",
     )
   }
-  if (input.publish.effectiveFrom <= input.currentDateKey) {
-    throw new WorkforceConfigurationManagementError(
-      "WORKFORCE_CONFIGURATION_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
-      "A Workforce bulk shift assignment must begin after the organization current date",
-    )
-  }
 
   const db: PrismaClient = input.db ?? prisma
   const requestHash = bulkShiftAssignmentRequestHash(input)

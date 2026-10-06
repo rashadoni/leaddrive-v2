@@ -72,10 +72,10 @@ async function workforceCapabilityResponse(organizationId: string): Promise<Next
       return workforceCapabilityDisabled()
     }
     return null
-  } catch (error) {
+  } catch {
     // Fail closed: a transient entitlement lookup failure must never turn an
     // HRM endpoint into an unscoped, best-effort read/write path.
-    console.error("[withWorkforceRlsAuth] capability lookup failed", error)
+    logWorkforceSensitiveOperationFailure({ operation: "auth-workforce-capability" })
     return NextResponse.json({
       error: "Unable to verify Workforce capability.",
       code: "WORKFORCE_CAPABILITY_UNAVAILABLE",
@@ -226,8 +226,8 @@ export function withWorkforceSessionScheduleConfigurationAuth<C = unknown>(
         resource: { organizationId: auth.orgId },
       })
       return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
-    } catch (error) {
-      console.error("[withWorkforceSessionScheduleConfigurationAuth] authorization lookup failed", error)
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "auth-workforce-schedule" })
       return NextResponse.json({
         error: "Unable to verify Workforce schedule configuration access.",
         code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
@@ -315,8 +315,8 @@ export function withWorkforceSessionPilotFenceAuth<C = unknown>(
         resource: { organizationId: auth.orgId },
       })
       return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
-    } catch (error) {
-      console.error("[withWorkforceSessionPilotFenceAuth] authorization lookup failed", error)
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "auth-workforce-pilot-fence" })
       return NextResponse.json({
         error: "Unable to verify Workforce pilot-fence access.",
         code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
@@ -358,8 +358,8 @@ export function withWorkforceSessionRetentionReadAuth<C = unknown>(
         resource: { organizationId: auth.orgId },
       })
       return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
-    } catch (error) {
-      console.error("[withWorkforceSessionRetentionReadAuth] authorization lookup failed", error)
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "auth-workforce-retention" })
       return NextResponse.json({
         error: "Unable to verify Workforce retention access.",
         code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
@@ -400,8 +400,8 @@ export function withWorkforceSessionEmploymentConfigurationAuth<C = unknown>(
         resource: { organizationId: auth.orgId },
       })
       return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
-    } catch (error) {
-      console.error("[withWorkforceSessionEmploymentConfigurationAuth] authorization lookup failed", error)
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "auth-workforce-employment" })
       return NextResponse.json({
         error: "Unable to verify Workforce employment-history access.",
         code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
@@ -455,9 +455,9 @@ export function withWorkforceSessionExceptionQueueAuth<C = unknown>(
         if (!access.allowed) return workforceGranularAccessDenied()
         authorized = true
       }
-    } catch (error) {
+    } catch {
       // A failed grant lookup cannot silently restore broad CRM-admin access.
-      console.error("[withWorkforceSessionExceptionQueueAuth] authorization lookup failed", error)
+      logWorkforceSensitiveOperationFailure({ operation: "auth-workforce-exception-queue" })
       return NextResponse.json({
         error: "Unable to verify Workforce exception queue access.",
         code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
@@ -493,8 +493,8 @@ export function withWorkforceSessionExceptionDecisionAuth<C = unknown>(
         return workforceGranularAccessDenied()
       }
       return handler(req, auth, ctx)
-    } catch (error) {
-      console.error("[withWorkforceSessionExceptionDecisionAuth] authorization lookup failed", error)
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "auth-workforce-exception-decision" })
       return NextResponse.json({
         error: "Unable to verify Workforce exception-decision access.",
         code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",

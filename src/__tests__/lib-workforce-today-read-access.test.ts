@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { workforceLogFailures } from "./fixtures/workforce-log-failures"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/workforce/access-grant-resolution", () => ({
   readPersistedWorkforceAccessGrants: vi.fn(),
@@ -41,6 +42,20 @@ const teamGrant = {
 beforeEach(() => vi.clearAllMocks())
 
 describe("Workforce Today granular read access", () => {
+  it.each(workforceLogFailures)("logs only a fixed event for $kind and keeps access unavailable", async ({ make }) => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.mocked(workforceGranularAccessEnabled).mockReturnValue(true)
+    vi.mocked(readPersistedWorkforceAccessGrants).mockRejectedValueOnce(make())
+    const result = await requireWorkforceTodayReadAccess(input)
+    expect(result).toBeInstanceOf(Response)
+    const response = result as Response
+    expect(response.status).toBe(503)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    await expect(response.json()).resolves.toEqual({ error: "Unable to verify Workforce Today access.", code: "WORKFORCE_TODAY_READ_ACCESS_UNAVAILABLE" })
+    expect(log.mock.calls).toEqual([["[workforce/privacy] sensitive operation failed", { operation: "authorize-today-read" }]])
+    expect(JSON.stringify(log.mock.calls)).not.toContain("WORKFORCE_PRIVATE_CANARY")
+  })
+
   it("preserves the established route roster before the explicit granular cutover", async () => {
     vi.mocked(workforceGranularAccessEnabled).mockReturnValue(false)
 
@@ -121,3 +136,5 @@ describe("Workforce Today granular read access", () => {
     })
   })
 })
+
+afterEach(() => vi.restoreAllMocks())

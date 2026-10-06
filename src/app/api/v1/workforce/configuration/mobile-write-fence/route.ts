@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { withWorkforceSessionPilotFenceAuth } from "@/lib/with-workforce-rls-auth"
 import {
@@ -32,7 +33,7 @@ export const GET = withWorkforceSessionPilotFenceAuth(async (_req: NextRequest, 
         code: "WORKFORCE_MOBILE_WRITE_FENCE_UNAVAILABLE",
       }, { status: 503 })
     }
-    console.error("[workforce/configuration/mobile-write-fence GET]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-mobile-write-fence-get" })
     return NextResponse.json({ error: "Failed to load Workforce mobile write fence" }, { status: 500 })
   }
 })
@@ -69,7 +70,7 @@ export const PUT = withWorkforceSessionPilotFenceAuth(async (req: NextRequest, a
         code: "WORKFORCE_MOBILE_WRITE_FENCE_UNAVAILABLE",
       }, { status: 503 })
     }
-    console.error("[workforce/configuration/mobile-write-fence PUT]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-mobile-write-fence-put" })
     return NextResponse.json({ error: "Failed to update Workforce mobile write fence" }, { status: 500 })
   }
 })

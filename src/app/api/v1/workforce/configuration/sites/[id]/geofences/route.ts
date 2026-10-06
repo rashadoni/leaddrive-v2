@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -38,8 +39,8 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth<RouteContext>("
       select: revisionSelect,
     })
     return NextResponse.json({ success: true, data: { revisions } })
-  } catch (error) {
-    console.error("[workforce/configuration/sites geofences GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-sites-item-geofences-get" })
     return NextResponse.json({ error: "Failed to load Workforce site geofences" }, { status: 500 })
   }
 })
@@ -68,7 +69,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth<RouteContext>(
       const status = error.code === "WORKFORCE_SITE_GEOFENCE_SITE_NOT_FOUND" ? 404 : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/sites geofences POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-sites-item-geofences-post" })
     return NextResponse.json({ error: "Failed to create Workforce site geofence" }, { status: 500 })
   }
 })

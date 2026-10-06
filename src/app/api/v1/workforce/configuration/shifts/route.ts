@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
@@ -48,8 +49,8 @@ export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ"
       select: shiftTemplateSelect,
     })
     return NextResponse.json({ success: true, data: { shifts } })
-  } catch (error) {
-    console.error("[workforce/configuration/shifts GET]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-shifts-get" })
     return NextResponse.json({ error: "Failed to load Workforce shift templates" }, { status: 500 })
   }
 })
@@ -72,7 +73,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRIT
     if (error instanceof WorkforceConfigurationManagementError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: 409 })
     }
-    console.error("[workforce/configuration/shifts POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-shifts-post" })
     return NextResponse.json({ error: "Failed to create Workforce shift draft" }, { status: 500 })
   }
 })

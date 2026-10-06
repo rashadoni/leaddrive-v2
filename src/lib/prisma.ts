@@ -1,3 +1,4 @@
+import { logOperationalFailure } from "./telemetry/operational-failure"
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
@@ -133,8 +134,8 @@ export function __rlsPerOpWrap(txOpener: any) {
       // silently returns wrong data if a caller has a no-context fallback (e.g.
       // cost-model loadAndCompute). The static route/gate scans are blind to queries
       // delegated THROUGH helpers, so this runtime guard is the only thing that
-      // catches every depth. Logs the call path once per model.operation so the gap
-      // can be traced and wrapped. In dev/prod it observe-only warns (safe); in the
+      // catches every depth. Logs only the model.operation once so the gap
+      // can be identified and wrapped without logging request data or a stack. In dev/prod it observe-only warns (safe); in the
       // test env it THROWS for org-scoped model ops (Phase 3 CI guardrail below).
       if (!ctx) {
         // model op on an org-scoped table, OR a raw query (model===undefined for
@@ -142,22 +143,22 @@ export function __rlsPerOpWrap(txOpener: any) {
         // ALL no-context raw queries to verify tenant scope). Either is a candidate
         // fail-close / silent-empty under RLS.
         const orgModel = model && ORG_SCOPED_MODELS.has(model)
-        const rawOp = !model && /^\$(?:queryRaw|executeRaw)/.test(operation || "")
+        const rawOp = !model && ["$queryRaw", "$executeRaw", "$queryRawUnsafe", "$executeRawUnsafe"].includes(operation)
+        const safeOperation = ["findUnique", "findUniqueOrThrow", "findFirst", "findFirstOrThrow", "findMany", "create", "createMany", "createManyAndReturn", "update", "updateMany", "updateManyAndReturn", "upsert", "delete", "deleteMany", "count", "aggregate", "groupBy", "$queryRaw", "$executeRaw", "$queryRawUnsafe", "$executeRawUnsafe"].includes(operation) ? operation : "unknown"
         if (orgModel || rawOp) {
-          const key = orgModel ? `${model}.${operation}` : `raw.${operation}`
+          const key = orgModel ? `${model}.${safeOperation}` : `raw.${safeOperation}`
           // Phase 3: an org-scoped model op with no context is a CI FAILURE in the
           // test env (RLS_GUARD_THROW). Otherwise warn once per key. Raw ops are
           // always warn-only — the guard can't prove the table is org-scoped.
           const willThrow = !!orgModel && RLS_GUARD_THROW
           if (willThrow || !rlsGuardSeen.has(key)) {
-            const stack = (new Error().stack ?? "").split("\n").slice(2, 7).map((s) => s.trim()).join(" <- ")
             const what = orgModel
               ? `org-scoped ${key}`
               : `${key} (table unknown — if org-scoped it fail-closes under RLS)`
-            const msg = `[RLS-GUARD] ${what} ran with NO RLS context — wrap the call path in runWithTenant/runWithRlsBypass. ${stack}`
+            const msg = `[RLS-GUARD] ${what} ran with NO RLS context — wrap the call path in runWithTenant/runWithRlsBypass.`
             if (willThrow) throw new Error(msg)
             rlsGuardSeen.add(key)
-            console.warn(msg)
+            try { console.warn(msg) } catch { /* observation must not block the query */ }
           }
         }
       }
@@ -309,12 +310,7 @@ export async function logAudit(
         userAgent: extra?.userAgent || undefined,
       },
     }))
-  } catch (error) {
-    console.error("[audit] failed to persist audit log", {
-      action,
-      entityType,
-      entityId,
-      error,
-    })
+  } catch {
+    logOperationalFailure("audit-persist")
   }
 }

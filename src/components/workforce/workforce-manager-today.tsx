@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo } from "react"
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, CalendarClock, Check, Clock3, Pause, ShieldAlert } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -70,6 +70,14 @@ export type WorkforceManagerTodayData = {
   summaryScope: "LOADED_PAGE"
   pagination: { pageSize: number; nextCursor: string | null }
   people: WorkforceManagerTodayPerson[]
+  paginationResult?: WorkforceManagerTodayPaginationResult
+}
+
+export type WorkforceManagerTodayPaginationResult = {
+  requestId: string
+  added: number
+  total: number
+  hasMore: boolean
 }
 
 function attendanceTone(state: WorkforceManagerTodayPerson["attendance"]["state"]): "default" | "secondary" | "outline" | "destructive" | "warning" | "success" {
@@ -88,10 +96,45 @@ export function WorkforceManagerToday({
 }: {
   data: WorkforceManagerTodayData
   loadingMore: boolean
-  onLoadMore: () => void
+  onLoadMore: (requestId: string) => void | Promise<void>
 }) {
   const locale = useLocale()
   const t = useTranslations("workforcePage")
+  const paginationId = useId()
+  const requestSequence = useRef(0)
+  const activeRequest = useRef<string | null>(null)
+  const paginationControl = useRef<HTMLButtonElement>(null)
+  const [pending, setPending] = useState(false)
+  const [hasRequested, setHasRequested] = useState(false)
+  const [completedRequest, setCompletedRequest] = useState<string | null>(null)
+  useEffect(() => () => { activeRequest.current = null }, [])
+  async function loadMore() {
+    if (activeRequest.current || pending || loadingMore || !data.pagination.nextCursor) return
+    const requestId = `${paginationId}-${++requestSequence.current}`
+    activeRequest.current = requestId
+    setPending(true)
+    setHasRequested(true)
+    setCompletedRequest(null)
+    try {
+      await onLoadMore(requestId)
+    } catch {
+      // The owner presents fetch errors; only an accepted append can announce success.
+    } finally {
+      if (activeRequest.current === requestId) {
+        activeRequest.current = null
+        setPending(false)
+        setCompletedRequest(requestId)
+      }
+    }
+  }
+  const paginationResult = data.paginationResult?.requestId === completedRequest ? data.paginationResult : null
+  useLayoutEffect(() => {
+    const control = paginationControl.current
+    if (paginationResult && control && document.activeElement === control) {
+      control.scrollIntoView({ block: "nearest", inline: "nearest" })
+    }
+  }, [paginationResult])
+  const busy = pending || loadingMore
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }), [locale])
   const summary = [
     { key: "started", label: t("started"), value: data.summary.started, icon: Clock3 },
@@ -177,9 +220,12 @@ export function WorkforceManagerToday({
         })}
         {data.people.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{t("noPeople")}</p> : null}
       </div>
-      {data.pagination.nextCursor ? <div className="border-t border-zinc-200 py-5 text-center dark:border-zinc-700">
-        <Button type="button" variant="outline" className="h-auto min-h-12 max-w-full whitespace-normal text-center" disabled={loadingMore} onClick={onLoadMore}>
-          {loadingMore ? t("managerLoadingMore") : t("managerLoadMore")}
+      <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {paginationResult ? `${t("managerLoadMoreResult", { added: paginationResult.added, total: paginationResult.total })}${paginationResult.hasMore ? "" : ` ${t("managerListComplete")}`}` : ""}
+      </p>
+      {data.pagination.nextCursor || hasRequested ? <div className="border-t border-zinc-200 py-5 text-center dark:border-zinc-700">
+        <Button ref={paginationControl} type="button" variant="outline" className="h-auto min-h-12 max-w-full whitespace-normal text-center aria-disabled:opacity-50" aria-disabled={busy || !data.pagination.nextCursor} onClick={loadMore}>
+          {busy ? t("managerLoadingMore") : data.pagination.nextCursor ? t("managerLoadMore") : t("managerListComplete")}
         </Button>
       </div> : null}
     </section>

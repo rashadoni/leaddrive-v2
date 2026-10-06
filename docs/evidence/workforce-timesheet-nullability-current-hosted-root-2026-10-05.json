@@ -1,0 +1,254 @@
+{
+  "atUtc": "2026-10-05T06:11:08.465081+00:00",
+  "status": "CURRENT HOSTED WHOLE GREEN; FRESH MAIN/NORMAL MERGE/OWN RELEASE PENDING",
+  "head": "a490c963c17d3c5cda1814943ef31cc5347fd8d6",
+  "base": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "testedSynthetic": "867625bbef6cc2401eba4d0f6ebe18d61e328a73",
+  "testedTree": "cde2e15d16858c2d9e6c1bc4f2f7ec17ba270c82",
+  "report": {
+    "path": "/tmp/workforce-pr584-a490c9-current-hosted-green-independent.json",
+    "bytes": 65664,
+    "sha256": "f4508161bdb7827b1284c28a4c374e15d38aab2bcadcb4c479b5770c6781106b"
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-pr584-a490c9-current-hosted-green-input-audit-independent.json",
+    "bytes": 1065415,
+    "sha256": "ec61749b1bfde9c610be773f8c3f46b6cd9ecd2a333b98fce62413d9b05f59cc"
+  },
+  "independentCurrentHostedWholeAccepted": true,
+  "normalMergeAllowed": true,
+  "allFiveActions15368Success": true,
+  "allFourApplicableCurrentWorkflowsSuccess": true,
+  "ownedTyped4AllFamilyZero": true,
+  "selected74AllFamilyZero": true,
+  "selectedTyped56AllFamilyZero": true,
+  "actualSelectedTS18047Removed": true,
+  "strictSuite18Of18Nonclean": true,
+  "compilerClean": false,
+  "suiteClean": false,
+  "DBAdapterOrCronActivation": false,
+  "requiredChecks": [
+    {
+      "name": "pr-scope",
+      "checkId": 111630295190,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503297/job/111630295190",
+      "runId": 37268503297
+    },
+    {
+      "name": "runner-policy",
+      "checkId": 111630294410,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503298/job/111630294410",
+      "runId": 37268503298
+    },
+    {
+      "name": "scan",
+      "checkId": 111630294220,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503312/job/111630294220",
+      "runId": 37268503312
+    },
+    {
+      "name": "static-checks",
+      "checkId": 111630370696,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503297/job/111630370696",
+      "runId": 37268503297
+    },
+    {
+      "name": "typecheck",
+      "checkId": 111630370570,
+      "appId": 15368,
+      "detailsUrl": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37268503297/job/111630370570",
+      "runId": 37268503297
+    }
+  ],
+  "currentRunBindings": [
+    {
+      "workflow": "workforce-manager-today-browser-evidence",
+      "runId": 37268503329
+    },
+    {
+      "workflow": "pr-checks",
+      "runId": 37268503297
+    },
+    {
+      "workflow": "runner-policy",
+      "runId": 37268503298
+    },
+    {
+      "workflow": "gitleaks",
+      "runId": 37268503312
+    }
+  ],
+  "wholeRevalidatedCounts": {
+    "directOriginalObservations": 821,
+    "explicitGitObservations": 108,
+    "explicitGitMetadataObservations": 3,
+    "wholeJSON": 278,
+    "wholeUTF8": 758,
+    "wholeBinary": 63,
+    "portableCore9": 9,
+    "portableDirect81": 81,
+    "currentArtifactMembers": 58,
+    "currentPNG": 56,
+    "actualPNGViews": 56,
+    "selectedPaths": 74,
+    "selectedTyped": 56
+  },
+  "rootCompilerWhole": {
+    "path": "/tmp/workforce-pr584-a490c9-current-compiler-suite-root-analysis-primary.json",
+    "bytes": 333107,
+    "sha256": "60f3a134b878d423959632315b497fe0a581119d03102f7f6417b2f11d6ef7d3"
+  },
+  "rootManagerWhole": {
+    "path": "/tmp/workforce-pr584-a490c9-current-manager-sublane-primary.json",
+    "bytes": 31618,
+    "sha256": "bd4f25201812cd31a073a011f932c8a8736071cf18ca2f218a8ab408e5d247c4"
+  },
+  "actualManagerRLS": {
+    "forcedProbes": 21,
+    "populatedTables": 16,
+    "emptyStructuralTables": 5,
+    "populatedIsolationCreditForEmptyFive": false,
+    "clarification": {
+      "path": "/tmp/workforce-pr584-a490c9-hosted-independent-20261005T053852159172Z/current-rls-population-scope-additive-clarification.json",
+      "bytes": 4624,
+      "sha256": "438773826395f9a2fc0874553d3077c2081ff95ec41b0f84a3f26b358d91a6e3"
+    }
+  },
+  "actualManagerArchive": {
+    "id": 11327129498,
+    "members": 58,
+    "PNG": 56,
+    "JSON": 2,
+    "independentActualViews": 56,
+    "rootActualViews": 6,
+    "distinctPNGHashes": 51
+  },
+  "sourceReport": {
+    "path": "/tmp/workforce-timesheet-part45-a490c9-whole-source-independent.json",
+    "bytes": 34671,
+    "sha256": "3b1dc5356719b833806d2540e95862c3561d0d12506983ae99c52a02620d9267"
+  },
+  "rootSource": {
+    "path": "/tmp/workforce-timesheet-part45-source-root-accepted-primary.json",
+    "bytes": 25286,
+    "sha256": "1e318daf5b64acb19e2aee57054df0c28c3c27de49bdcef7c6afb5a9379064ff"
+  },
+  "fullDiffIdentity": {
+    "paths": 30,
+    "bytes": 310645,
+    "sha256": "417ac6912348d047b2c9a978c83ff15c1fe5a26efbc00e1529a1f1c331b56d82",
+    "repoPaths": [
+      "docs/evidence/workforce-c12-dormant-kernel-current-hosted-independent-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-current-hosted-root-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-current-static-root-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-literal-ip-strict-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-normal-merge-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-own-release-independent-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-own-release-root-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-own-release-whole-log-root-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-range-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-ready-publication-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-root-catalogue-list-guard-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-source-review-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-source-root-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-next-preliminary-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-next-preliminary-root-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-next-root-reader-guard-2026-10-05.json",
+      "docs/evidence/workforce-c12-duplicate-coherence-next-unapplied-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-application-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-bounded-checks-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-next-preliminary-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-next-preliminary-root-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-next-unapplied-2026-10-05.json",
+      "docs/evidence/workforce-timesheet-nullability-selected-catalogue-2026-10-05.json",
+      "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+      "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "docs/workforce-timesheet-nullability-evidence-2026-10-05.md",
+      "src/lib/workforce/timesheet-calculation.ts"
+    ]
+  },
+  "nonDocDiffIdentity": {
+    "paths": 1,
+    "bytes": 1420,
+    "sha256": "3084fd67bbe5c55153a9fd61c1b5b3ef3ff3e8331fef91fb9dae8182056d2ab4",
+    "repoPaths": [
+      "src/lib/workforce/timesheet-calculation.ts"
+    ]
+  },
+  "currentCompilerActual": {
+    "diagnostics": 1168,
+    "families": 35,
+    "exit": 2,
+    "gatedPairs": 66,
+    "selectedDiagnostics": 0,
+    "wholeOrderedDiagnosticDelta": {
+      "path": "/tmp/workforce-pr584-a490c9-hosted-independent-20261005T053852159172Z/current-prior-compiler-delta-20261005T060704353668Z.json",
+      "bytes": 2221,
+      "sha256": "edd2bf5cee4a6aa6c8e110d3f33359df6f8ff56b48782b4fd0d54fcbe6ddc438"
+    }
+  },
+  "productionReleaseAccepted": false,
+  "futureDuplicateCoherenceApplyOrRuntimeCredit": false,
+  "accounting": {
+    "uniqueCriteriaIds": 161,
+    "historicalRawRows": 169,
+    "DONE": 82,
+    "nonDONE": 79,
+    "statusCounts": {
+      "DONE": 82,
+      "PARTIAL (OWNER ATTESTATION)": 1,
+      "PARTIAL": 55,
+      "OWNER DECISION": 6,
+      "PLANNED": 14,
+      "BLOCKED": 3
+    },
+    "passedGates": 14,
+    "totalGates": 15,
+    "C8Percent": 45,
+    "overallPercent": 59,
+    "newRowClosure": false
+  },
+  "limits": [
+    "Actual current 21 FORCE-RLS probes comprise16 populated-table probes and5 empty structural-table probes; no populated-row isolation credit for empty mtm_agent_workday_events, workforce_access_grant_revocations, workforce_exception_decisions, workforce_shift_default_assignments or workforce_shift_team_default_assignments. Legacy immutable semantic-proof Populated...21 field labels are clarified by a separate additive whole-original statement.",
+    "Actual current full compiler and strict suite remain globally NONCLEAN; frozen66 and18 baselines match. No globally clean compiler/suite claim.",
+    "Changed calc and unchanged semantic tests3 are explicitly selected across all compiler families outside preserved manager runtime58; manager screenshots do not prove calc runtime coverage or a full import graph.",
+    "Quiet full suite supplies strict baseline set acceptance, not invented separate per-file21 or dormant23+7 CI counts. Actual bounded local21 over3files remains precheckpoint separately source-bound.",
+    "Current fixture contains three positive snapshot states and a STARTED workday with ALL3 immutable snapshots absent despite a current assignment. Valid legacy shift-only behavior is neither tested nor rejected by this fixture.",
+    "Negative PG guards are exact ten reached disposable admin transactions; receipt has sanitized SQLSTATE/count/pass flags, not raw per-probe20 hash pairs. Whole browser before/after20 hash pairs are present and independently checked. Global zero DB writes is not claimed.",
+    "All56 current original named PNGs actually viewed (51 distinct bytes). Existing Next dev issue badge occludes portions of lower control/body; no global pixel non-occlusion/WCAG/AT/physical Android/accepted START/presence/historical-template-display-name credit.",
+    "Current manager uses Next dev. PR production build SKIPPED is allowed; actual own normal merged-main build, immutable fullSHA artifact and strict pinned13 canonical bracket required separately before release acceptance. No production calls here.",
+    "Historical source/HOSTED/releases/BLOCKED/reader guards retained by selected whole receipt hashes plus core9/direct81; no recursively repeated historical archive review or borrowed runtime. Future duplicate/coherence draft UNAPPLIED.",
+    "Prior own583 automatic additional main typecheck actually SUCCESS by metadata, outside prior release audit whole diagnostic acceptance. No claim GitHub never ran it; no PR584 compiler or release credit borrowed.",
+    "169 historical raw rows/161unique/82DONE/79nonDONE/14of15/C845/overall59 unchanged; no roadmap rowclosure/no100."
+  ],
+  "originalGuardsRetained": [
+    {
+      "path": "/tmp/workforce-pr584-a490c9-hosted-independent-20261005T053852159172Z/first-all-rls-table-populated-assumption-guard.json",
+      "bytes": 947,
+      "sha256": "fe3d2cb6dcc2e4ea870126b252fa4d603d1526c21b8820735567214a66755444"
+    },
+    {
+      "path": "/tmp/workforce-pr584-a490c9-hosted-independent-20261005T053852159172Z/first-current-collector-interrupted-143-guard.json",
+      "bytes": 670,
+      "sha256": "9a9678ac0b015a30e8893bec5e19349175101c01820f0067bef91ccd26bd922e"
+    },
+    {
+      "path": "/tmp/workforce-pr584-a490c9-hosted-independent-20261005T053852159172Z/first-current-issuer-worktree-field-schema-guard.json",
+      "bytes": 568,
+      "sha256": "768b2a0b1d16abdc4014bf411d9160ac9db6e2483d09041f45c2bddd9231e1e2"
+    },
+    {
+      "path": "/tmp/workforce-pr584-a490c9-hosted-independent-20261005T053852159172Z/first-prior-compiler-field-reader-guard.json",
+      "bytes": 532,
+      "sha256": "d5dd7674ced00abb47847473153cb7ea644284a4558bf124627cba55eebaa668"
+    }
+  ],
+  "originalFilesOverwrittenOrDropped": false
+}

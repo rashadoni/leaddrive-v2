@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs"
-import { scrubDemoTokens } from "./src/lib/demo-center/telemetry"
+import { privateSentryOptions } from "./src/lib/telemetry/sentry-privacy"
 
 function isPrivateDemoHref(href?: string): boolean {
   if (typeof window === "undefined") return false
@@ -15,14 +15,10 @@ Sentry.init({
   environment: process.env.NODE_ENV,
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
   debug: false,
-  beforeSend: scrubDemoTokens,
-  beforeSendTransaction: scrubDemoTokens,
-  integrations: [
-    Sentry.browserTracingIntegration(),
-    ...(!isPrivateDemoHref() ? [Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true })] : []),
-  ],
+  ...privateSentryOptions,
+  // Keep default browser tracing; Replay has no reviewed payload contract.
   replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 1.0,
+  replaysOnErrorSampleRate: 0,
 })
 
 export function onRouterTransitionStart(href: string, navigationType: string) {

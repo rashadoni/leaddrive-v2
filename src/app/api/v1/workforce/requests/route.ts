@@ -376,8 +376,8 @@ export const POST = withWorkforceSessionAuth("write", async (req: NextRequest, a
       status: result.idempotent ? 200 : 201,
       headers: workforceSensitiveResponseHeaders,
     })
-  } catch (error) {
-    console.error("[workforce/requests POST]", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "submit-self-request" })
     return NextResponse.json({ error: "Failed to submit Workforce request" }, { status: 500 })
   }
 })

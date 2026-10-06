@@ -25156,6 +25156,8 @@
     "managerPresenceBoundary": "Schedule and server-recorded work-time facts do not prove continuous physical presence.",
     "managerLoadMore": "Load more employees",
     "managerLoadingMore": "Loading more employees…",
+    "managerLoadMoreResult": "Added: {added}. Loaded: {total}.",
+    "managerListComplete": "End of employee list",
     "managerAttendanceState": {
       "STARTED": "Working",
       "PAUSED": "Paused",
@@ -25578,6 +25580,7 @@
     "empty": "You have no attendance exceptions available for self-service review."
   },
   "workforceConfigurationPage": {
+    "bulkPublishOutcomeUnknown": "The publish result is not confirmed. Retry to check the same operation. Editing or discarding this local draft does not undo assignments that may already have been saved.",
     "comparePolicyVersions": "Compare recorded policy versions",
     "title": "Work-time configuration",
     "subtitle": "Prepare auditable policies and shift templates. Publishing is future-only, so completed workdays never change.",

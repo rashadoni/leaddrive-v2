@@ -1,3 +1,4 @@
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
@@ -48,7 +49,7 @@ export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRIT
         : 409
       return NextResponse.json({ error: error.message, code: error.code }, { status })
     }
-    console.error("[workforce/configuration/assignments/bulk/publish POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-assignments-bulk-publish-post" })
     return NextResponse.json({ error: "Failed to publish Workforce bulk shift assignments" }, { status: 500 })
   }
 })

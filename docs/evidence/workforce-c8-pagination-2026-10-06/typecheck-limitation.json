@@ -1,0 +1,8 @@
+{
+  "status": "BLOCKED",
+  "exit": 134,
+  "reason": "Node default4GiB heap exhausted during full TypeScript program diagnostics",
+  "completeDiagnosticsProduced": false,
+  "baselineComparison": "NOT RUN",
+  "sourceChangedByCheck": false
+}

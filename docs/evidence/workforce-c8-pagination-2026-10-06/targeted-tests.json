@@ -1,0 +1,486 @@
+{
+  "tests": 100,
+  "pass": 100,
+  "failed": 0,
+  "skipped": 0,
+  "files": [
+    {
+      "name": "api-mtm-geocode.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "GET /api/v1/mtm/geocode finds an address and answers with points the picker can place",
+          "status": "passed"
+        },
+        {
+          "name": "GET /api/v1/mtm/geocode tidies what was typed and falls back to English for a language it does not offer",
+          "status": "passed"
+        },
+        {
+          "name": "GET /api/v1/mtm/geocode finds an address the map spells differently, through the forgiving search",
+          "status": "passed"
+        },
+        {
+          "name": "GET /api/v1/mtm/geocode refuses a search that is no address, without asking anyone",
+          "status": "passed"
+        },
+        {
+          "name": "GET /api/v1/mtm/geocode is for signed-in people of an organization that has the module",
+          "status": "passed"
+        },
+        {
+          "name": "GET /api/v1/mtm/geocode says the search is unavailable when the outside service is, instead of an empty list",
+          "status": "passed"
+        },
+        {
+          "name": "GET /api/v1/mtm/geocode answers \u00abnothing found\u00bb as an empty list, not as a failure",
+          "status": "passed"
+        },
+        {
+          "name": "GET /api/v1/mtm/geocode stops one person from searching more than twenty times a minute",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "api-workforce-requests.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Workforce self-request API does not treat a missing workday as a successful submission",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce granular request-list fence denies an ungranted manager before querying request content",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce granular request-list fence contains grant lookup failures without logging private identifiers",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce granular request-list fence contains authorized detail-read failures without logging private identifiers",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce granular request-list fence loads a historical-team leave detail only after metadata authorization",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce granular request-list fence accepts an explicit grant without requiring a legacy actor",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce granular request-list fence does not let an employee actor suppress a separate review grant",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce granular request-list fence does not turn team-request access into correction review",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce granular request-list fence makes an inaccessible cursor indistinguishable from an invalid cursor",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce granular request-list fence preserves exact self-history without a manager grant",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "lib-mtm-geocode.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "address search \u2014 what is asked asks for the typed address, in the manager's language, at most five places",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 what is asked prefers places near what the manager is looking at, without fencing the search in",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 what is asked does not search \u00abnear\u00bb a pair that is no place: unset, or off the globe",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 what comes back turns the answer into points the picker can place",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 what comes back drops whatever is not a named point on the globe, and stops at five",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 the rules of the free service names the application on every request",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 the rules of the free service does not ask twice for the same address in the same area",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 the rules of the free service forgets an answer after a day",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 the rules of the free service keeps a second between two requests, whoever makes them",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 an address the map spells differently keeps what identifies the address and drops the words that only say what kind of thing it is",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 an address the map spells differently asks the forgiving search only after the exact one found nothing, and with the simpler words",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 an address the map spells differently gives the slow forgiving service twice as long as the exact one",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 an address the map spells differently keeps a second between two requests to the forgiving service too",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 an address the map spells differently does not bother the forgiving search when the exact one found the address",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 an address the map spells differently does not take a forgiving match on the other side of the continent for the address",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 an address the map spells differently reads only well-formed places out of a forgiving answer",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 when a service is not there says it could not search only when neither answered, and does not remember the failure",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 when a service is not there still finds the address through the forgiving search when the exact one is down",
+          "status": "passed"
+        },
+        {
+          "name": "address search \u2014 when a service is not there remembers \u00abnothing found\u00bb only when both said so",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "mtm-location-picker-ui.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "map picker \u2014 by the address the manager types searches when asked, offers what was found, and puts the pin on the chosen address",
+          "status": "passed"
+        },
+        {
+          "name": "map picker \u2014 by the address the manager types starts from the address already typed in the organization's form, and searches near the map",
+          "status": "passed"
+        },
+        {
+          "name": "map picker \u2014 by the address the manager types searches on Enter without submitting the form it sits in",
+          "status": "passed"
+        },
+        {
+          "name": "map picker \u2014 by the address the manager types says in words when nothing was found, when the search is down, and when there is too little to search",
+          "status": "passed"
+        },
+        {
+          "name": "map picker \u2014 by where the manager is now puts the pin where the browser says, and says how sure the browser is",
+          "status": "passed"
+        },
+        {
+          "name": "map picker \u2014 by where the manager is now says what to do when the browser refuses, and sets nothing",
+          "status": "passed"
+        },
+        {
+          "name": "map picker \u2014 correcting the pin lets the pin be dragged, and a click on the map moves it too",
+          "status": "passed"
+        },
+        {
+          "name": "map picker \u2014 correcting the pin speaks the reader's language everywhere, the closed preview included",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "workforce-manager-today-localization.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Manager Today with real EN/RU/AZ next-intl catalogs renders every supported exception type and status without missing keys in en",
+          "status": "passed"
+        },
+        {
+          "name": "Manager Today with real EN/RU/AZ next-intl catalogs renders every supported exception type and status without missing keys in ru",
+          "status": "passed"
+        },
+        {
+          "name": "Manager Today with real EN/RU/AZ next-intl catalogs renders every supported exception type and status without missing keys in az",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "workforce-manager-today-ui.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Workforce manager Today UI has complete EN/RU/AZ copy for manager states and boundaries",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce manager Today UI renders schedule, calendar and authorized exceptions without private identifiers",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "workforce-manager-today.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Workforce manager Today read model accepts only a hash-verified immutable snapshot for an existing workday",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce manager Today read model uses only a hash-verified immutable calendar for an existing workday",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce manager Today read model shows no-show only from an authorized persisted case",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce manager Today read model does not let ambiguous lower-priority defaults invalidate a personal assignment",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce manager Today read model uses one explicit append-only membership-at-read-time context for an unfactored live row",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce manager Today read model reconstructs a persisted no-show plan only from its validated case scope",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "workforce-request-read-access.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Workforce request historical read authorization uses historical team scope and never permits self-decision",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce request historical read authorization does not substitute current team or generic request authority for a correction",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce request historical read authorization keeps correction review with the separate time-approver grant",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "workforce-timesheet-approval-blockers-ui-contract.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Workforce timesheet approval blocker UI contract validates and renders server-derived blocking rows",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce timesheet approval blocker UI contract labels every blocker, exception type and lifecycle stage in all supported locales",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "workforce-timesheet-complete-ui-contract.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Workforce complete timesheet UI contract renders plan, fact, evidence review, exceptions and verified immutable revisions",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce complete timesheet UI contract keeps approval readiness bound to final reproducible server facts",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce complete timesheet UI contract uses minimized tenant-scoped reads and excludes sensitive revision fields from the response model",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce complete timesheet UI contract refreshes the verified revision history after a successful approval write",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce complete timesheet UI contract keeps the approval panel only for its exact tagged background refresh",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce complete timesheet UI contract blocks competing navigation, reload and filter work from approval submit through refresh settlement",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce complete timesheet UI contract has equivalent finite review and revision labels in every supported locale",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "workforce-timesheet-export-preview-ui-contract.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Workforce approved-export preview UI boundary loads only a just-recorded immutable approval with the fixed HR purpose",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce approved-export preview UI boundary does not infer export permission from a browser role",
+          "status": "passed"
+        },
+        {
+          "name": "Workforce approved-export preview UI boundary allowlist-parses the bounded scope, correction revision, rows and warnings",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "workforce-timesheet-refresh-lifecycle.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "timesheet approval refresh lifecycle blocks competing work synchronously from submission through the tagged refresh",
+          "status": "passed"
+        },
+        {
+          "name": "timesheet approval refresh lifecycle keeps the current approval panel only for the exact tagged request",
+          "status": "passed"
+        },
+        {
+          "name": "timesheet approval refresh lifecycle survives a Strict Mode abort/restart but consumes the tag after live settlement",
+          "status": "passed"
+        },
+        {
+          "name": "timesheet approval refresh lifecycle retains data after a tagged failure, then hides it for the next ordinary filter load",
+          "status": "passed"
+        },
+        {
+          "name": "timesheet approval refresh lifecycle renders replacement data and closes the preserve window after a tagged success",
+          "status": "passed"
+        },
+        {
+          "name": "timesheet approval refresh lifecycle discards an approval tag when a different query replaces an aborted refresh",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "workforce-today-session-isolation-ui.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "clears protected rows before new principal response and then renders replacement",
+          "status": "passed"
+        },
+        {
+          "name": "clears protected rows before new role response and then renders replacement",
+          "status": "passed"
+        },
+        {
+          "name": "clears protected rows before new organization response and then renders replacement",
+          "status": "passed"
+        },
+        {
+          "name": "clears rows during loading, sends no fetch, and reloads after authenticated return",
+          "status": "passed"
+        },
+        {
+          "name": "clears rows during unauthenticated, sends no fetch, and reloads after authenticated return",
+          "status": "passed"
+        },
+        {
+          "name": "rejects old initial response using distinct deferred old/new requests",
+          "status": "passed"
+        },
+        {
+          "name": "rejects late old pagination and cannot reset new principal pending pagination",
+          "status": "passed"
+        },
+        {
+          "name": "suppresses a late old pagination error toast after principal switch",
+          "status": "passed"
+        },
+        {
+          "name": "same-scope pagination appends once and retains exhausted control",
+          "status": "passed"
+        },
+        {
+          "name": "same-scope refresh replaces rather than appends prior rows",
+          "status": "passed"
+        },
+        {
+          "name": "role change and return each receive fresh isolated response",
+          "status": "passed"
+        },
+        {
+          "name": "same authenticated identity rerender does not reset loaded data",
+          "status": "passed"
+        },
+        {
+          "name": "fresh same-scope refresh can paginate without waiting for abandoned old page",
+          "status": "passed"
+        },
+        {
+          "name": "old page finally cannot unlock newer page after same-scope refresh",
+          "status": "passed"
+        },
+        {
+          "name": "keeps native focus on a fast exhausted control and announces committed counts without names",
+          "status": "passed"
+        },
+        {
+          "name": "guards synchronous double activation and preserves focus while a page is pending",
+          "status": "passed"
+        },
+        {
+          "name": "does not steal focus when a user leaves the pagination control before completion",
+          "status": "passed"
+        },
+        {
+          "name": "releases a failed request for retry without announcing a successful result",
+          "status": "passed"
+        },
+        {
+          "name": "never announces an incompatible page that the current read rejects",
+          "status": "passed"
+        },
+        {
+          "name": "announces unique added rows, including accepted empty exhaustion, rather than page size",
+          "status": "passed"
+        },
+        {
+          "name": "clears accepted pagination announcements across refresh and principal changes",
+          "status": "passed"
+        },
+        {
+          "name": "deduplicates repeated new IDs inside one page and derives the summary from accepted rows",
+          "status": "passed"
+        },
+        {
+          "name": "does not count an already loaded working employee twice in the summary",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

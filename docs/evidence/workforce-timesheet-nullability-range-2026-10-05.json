@@ -1,0 +1,153 @@
+{
+  "atUtc": "2026-10-05T05:09:29.097562+00:00",
+  "head": "a490c963c17d3c5cda1814943ef31cc5347fd8d6",
+  "base": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "identities": {
+    "full": {
+      "paths": 30,
+      "bytes": 310645,
+      "sha256": "417ac6912348d047b2c9a978c83ff15c1fe5a26efbc00e1529a1f1c331b56d82",
+      "repoPaths": [
+        "docs/evidence/workforce-c12-dormant-kernel-current-hosted-independent-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-current-hosted-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-current-static-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-literal-ip-strict-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-normal-merge-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-own-release-independent-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-own-release-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-own-release-whole-log-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-range-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-ready-publication-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-root-catalogue-list-guard-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-source-review-2026-10-05.json",
+        "docs/evidence/workforce-c12-dormant-kernel-source-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-preliminary-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-preliminary-root-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-root-reader-guard-2026-10-05.json",
+        "docs/evidence/workforce-c12-duplicate-coherence-next-unapplied-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-application-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-bounded-checks-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-next-preliminary-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-next-preliminary-root-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-next-unapplied-2026-10-05.json",
+        "docs/evidence/workforce-timesheet-nullability-selected-catalogue-2026-10-05.json",
+        "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+        "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "docs/workforce-hrm-session-log.md",
+        "docs/workforce-timesheet-nullability-evidence-2026-10-05.md",
+        "src/lib/workforce/timesheet-calculation.ts"
+      ]
+    },
+    "nonDoc": {
+      "paths": 1,
+      "bytes": 1420,
+      "sha256": "3084fd67bbe5c55153a9fd61c1b5b3ef3ff3e8331fef91fb9dae8182056d2ab4",
+      "repoPaths": [
+        "src/lib/workforce/timesheet-calculation.ts"
+      ]
+    }
+  },
+  "scopeMaximum": 400000,
+  "protectedPaths": [
+    ".gitleaks.toml",
+    ".github/workflows/pr-checks.yml",
+    ".github/workflows/runner-policy.yml",
+    "scripts/ci/check-typecheck-gate.sh",
+    "scripts/ci/check-typecheck-baseline.mjs",
+    "scripts/ci/check-github-runner-policy.mjs",
+    ".github/workflows/gitleaks.yml",
+    ".github/workflows/set-social-app-secrets.yml",
+    "scripts/check-test-baseline.mjs",
+    "scripts/workforce-hrm-baseline.sql",
+    "src/__tests__/check-test-baseline-timeout-rendering.test.ts",
+    "src/__tests__/production-test-baseline-gate.test.ts",
+    "test-baseline.json",
+    "typecheck-baseline.json",
+    "next.config.ts"
+  ],
+  "protectedCount": 15,
+  "configAndBaselinesUnchanged": true,
+  "exitCode": 0,
+  "findings": 0,
+  "args": [
+    "/tmp/workforce542-gitleaks-8.30.1/gitleaks",
+    "git",
+    "--no-banner",
+    "--redact=100",
+    "--config",
+    "/tmp/workforce-timesheet-part45-range-primary/frozen.gitleaks.toml",
+    "--report-format",
+    "json",
+    "--report-path",
+    "/tmp/workforce-timesheet-part45-range-primary/range-redacted-report.json",
+    "--log-opts",
+    "e26cb0a85168b623ea092fb3e81ece922de20718..a490c963c17d3c5cda1814943ef31cc5347fd8d6",
+    "."
+  ],
+  "resources": [
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/ram-original",
+      "bytes": 207,
+      "sha256": "4e4b30a7b3722b9d7212ef3d7af82b78a0a771df1ff1fae53cc131ef2827b384"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/disk-original",
+      "bytes": 112,
+      "sha256": "a128c310702ef770ad644e9982e2fcf057c7691d09e481eeb385412713557e2c"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/pressure-original",
+      "bytes": 112,
+      "sha256": "133982d718bab319962c2799d17700a021c67f7f5fef77d7ac2a5b7d600eb95a"
+    }
+  ],
+  "originals": [
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/disk-original",
+      "bytes": 112,
+      "sha256": "a128c310702ef770ad644e9982e2fcf057c7691d09e481eeb385412713557e2c"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/frozen.gitleaks.toml",
+      "bytes": 2923,
+      "sha256": "f2c83316fa50e9f8a7b52dacb30236bc3dc88c9984ab1159cc8dc5ac724ff809"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/full-binary.diff",
+      "bytes": 310645,
+      "sha256": "417ac6912348d047b2c9a978c83ff15c1fe5a26efbc00e1529a1f1c331b56d82"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/nonDoc-binary.diff",
+      "bytes": 1420,
+      "sha256": "3084fd67bbe5c55153a9fd61c1b5b3ef3ff3e8331fef91fb9dae8182056d2ab4"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/pressure-original",
+      "bytes": 112,
+      "sha256": "133982d718bab319962c2799d17700a021c67f7f5fef77d7ac2a5b7d600eb95a"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/ram-original",
+      "bytes": 207,
+      "sha256": "4e4b30a7b3722b9d7212ef3d7af82b78a0a771df1ff1fae53cc131ef2827b384"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/range-redacted-report.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/stderr-original",
+      "bytes": 111,
+      "sha256": "f3e59004deed1a99511a2cd1da4ff3bba43c0d70945598c8f90cd9c0b15ac154"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-part45-range-primary/stdout-original",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
