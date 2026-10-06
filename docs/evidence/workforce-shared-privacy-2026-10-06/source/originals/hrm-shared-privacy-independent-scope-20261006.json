@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "status": "READ_ONLY_MINIMAL_SHARED_PRIVACY_SCOPE_RECOMMENDATION",
+  "reviewedAt": "2026-10-06T12:43:16.674730+00:00",
+  "head": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+  "tree": "56054b2aaf225d54668c7c99b19d6f276c81f02b",
+  "sourceBindings": [
+    {
+      "path": "src/lib/logger.ts",
+      "bytes": 1125,
+      "sha256": "0c1cd91068f7585ff94051efbdc5f256ac1108836a7b27fef7ab318147560792",
+      "gitBlob": "8e6da360e46974ae6c4cbfb8d4f38092849c7077"
+    },
+    {
+      "path": "src/lib/support-ux-observation.ts",
+      "bytes": 6599,
+      "sha256": "46816ab04cc36bcbee96030bb8ec4884fd196e954c152d430b7609c21d812c37",
+      "gitBlob": "69231048164e22ec0b4702c79df7636bff97bb97"
+    },
+    {
+      "path": "src/lib/mtm/route-observability.ts",
+      "bytes": 6141,
+      "sha256": "3f7961e3891533dbeca31c38ea5cbef713c2353bef5286bd811ff296f3ee5875",
+      "gitBlob": "5ce1d6c03c89c0a6e53f48a71ccf23fec7134134"
+    },
+    {
+      "path": "src/lib/integrations/erp/provider.ts",
+      "bytes": 12896,
+      "sha256": "299fc2ca0b0c2ca2937686bd923bc03d78a040294c03e7f2bce8c373629b1b18",
+      "gitBlob": "a720e1b372108df12c0fefd234d73c4f4064ce8f"
+    },
+    {
+      "path": "src/lib/social/discovery-auto-review-apply.ts",
+      "bytes": 45553,
+      "sha256": "a4b556642f6483d0a439c3a373ad0fe1c4c9fb7b69f226fb8c907e4cd5db06ad",
+      "gitBlob": "7309d458d3c3fde50ae3a7daf058a7db097f3ab6"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10371,
+      "sha256": "9707a3842648d8f2615a8401752e5b368b1224584330956fe5c22b856760da74",
+      "gitBlob": "7827fd688c4852a5cb2a4fc9bf1e4517282e3fc8"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "gitBlob": "fc6e31b5380acc3d7e34e51a71b5f02b6dca7676"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 26198,
+      "sha256": "202832eb031fddbd98b96b5b2ed614410b82966ea17623fc47232cd2b20074ca",
+      "gitBlob": "e83d8eb215f8ba26707656ff6e624c5ea891b3cf"
+    },
+    {
+      "path": "src/lib/prisma.ts",
+      "bytes": 13628,
+      "sha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26",
+      "gitBlob": "de9cd5e4e2d3e1732518e89b689cd87002a90935"
+    },
+    {
+      "path": "src/lib/demo-center/telemetry.ts",
+      "bytes": 905,
+      "sha256": "e25058c393c011aad88185856c8536600ed87dcfe013d59caca15d8e93ab91f3",
+      "gitBlob": "cb3d70bbce871acd8254f1fe9e5557b8a2f6bf77"
+    },
+    {
+      "path": "sentry.server.config.ts",
+      "bytes": 436,
+      "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9",
+      "gitBlob": "d3a2f4d6625dae056db021c280cbdab22251b48a"
+    },
+    {
+      "path": "sentry.edge.config.ts",
+      "bytes": 436,
+      "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9",
+      "gitBlob": "d3a2f4d6625dae056db021c280cbdab22251b48a"
+    },
+    {
+      "path": "instrumentation-client.ts",
+      "bytes": 1217,
+      "sha256": "ba6b8a0420aee965032426e57d2b87047598ada07eee675a62f1da17be0c17e7",
+      "gitBlob": "a499f50471bf18d65f38e1a608e1f92e4135c414"
+    },
+    {
+      "path": "src/instrumentation.ts",
+      "bytes": 618,
+      "sha256": "0678d20a1b52f6ec83e63b1e693fcb2b829647b327175b726afcdf59e3e2e551",
+      "gitBlob": "b56b80da87b4530f950d701bff62c15c22f22249"
+    },
+    {
+      "path": "src/app/global-error.tsx",
+      "bytes": 1387,
+      "sha256": "bd222d0b1e567e623f0e3a40041d52cb1c6861bc8d2fff0509c2f1480ecbd435",
+      "gitBlob": "f8dcc0016c87a4c9a3ba67b08ed798a629cd5123"
+    },
+    {
+      "path": "next.config.ts",
+      "bytes": 8010,
+      "sha256": "0c0724cf9386a556257f8d2f104ed35c93d072b9e6debba9e08a1d45582b239f",
+      "gitBlob": "88e50c680d5035c2f301f091decf13a301e8c1bb"
+    },
+    {
+      "path": "src/__tests__/support-ux-observation.test.ts",
+      "bytes": 13617,
+      "sha256": "55822debc69d24da5db1ea7cd342203e6aeb1a135cdd9634d6c77619220a1c03",
+      "gitBlob": "542e85b3c1551427a72e727fd4d5bbacfebf18f5"
+    },
+    {
+      "path": "src/__tests__/lib-mtm-route-observability.test.ts",
+      "bytes": 3435,
+      "sha256": "004d0b6f22c64be4f0e1e33f645c20f556ea35feedf892323500b2990fc05715",
+      "gitBlob": "3a3cc3e9743e60cd1de1232e4e775c870f2d9001"
+    },
+    {
+      "path": "src/__tests__/lib-with-rls.test.ts",
+      "bytes": 4952,
+      "sha256": "a8b248ff43a7b28975c57b10d891aadafe55e18ce434025969265587cd7e42d5",
+      "gitBlob": "2188ef8d80b1b8b8ee4eeb1c4c330482d25a6f11"
+    },
+    {
+      "path": "src/__tests__/lib-with-rls-authorization.test.ts",
+      "bytes": 6062,
+      "sha256": "6c1bb6c1b6cc8afa9d00192aef5adc257f77b3467655b66824ad0fd2be81e2a2",
+      "gitBlob": "e6e336093a06d62dac9002caf73dde6841e2927e"
+    },
+    {
+      "path": "src/__tests__/lib-prisma-rls-extension.test.ts",
+      "bytes": 5181,
+      "sha256": "74d16032d8b9081ac0178b162aa13666c4b3543a266f0093bcb641dd9d323d5e",
+      "gitBlob": "4b9fedced2f22279ebfb039ac50f10ce2e367d6a"
+    },
+    {
+      "path": "src/__tests__/lib-erp-provider.test.ts",
+      "bytes": 14563,
+      "sha256": "8cf9c7413328e7389ade34b3d41864fa2c79cf91860349a419fb7c27ae707e6e",
+      "gitBlob": "1115424daaa788233e42b3954f3b788bc12983a9"
+    },
+    {
+      "path": "src/__tests__/demo-center.test.ts",
+      "bytes": 7974,
+      "sha256": "d1d9d077f3d3ea78de992bce40f3d594a86031c2b1be4fed03112a4eabe40110",
+      "gitBlob": "5e4583a2ef316967b0a78cd3971a0edce0b11b7b"
+    },
+    {
+      "path": "src/__tests__/lib-crash-page-locale.test.ts",
+      "bytes": 3316,
+      "sha256": "ac581875551ef13e1e5df547c99411fa623b02d126c181f3e7734e3c9bdcfcd6",
+      "gitBlob": "843bb05047c181da4e1520db62cdc4051d489fcc"
+    }
+  ],
+  "priorProbeUnchangedBindings": 6,
+  "sourceEdits": 0,
+  "newTestsExecuted": 0,
+  "remoteWrites": 0,
+  "minimalPolicy": [
+    {
+      "boundary": "Shared auth/RLS catch sinks",
+      "keep": [
+        "existing401/403/2FA/cross-tenant decisions",
+        "handler invocation/no-invocation and async return semantics",
+        "runWithTenant/runWithRlsBypass/auditactor behavior",
+        "log severity"
+      ],
+      "remove": [
+        "raw thrown value including Error message/stack/cause/name",
+        "mobile agentId and raw pathname in rejection warnings"
+      ],
+      "safeReplacement": "Finite literal operation codes and fixed message; do not inspect thrown properties or coerce unknown values."
+    },
+    {
+      "boundary": "Prisma logAudit fallback",
+      "keep": [
+        "exact audit record fields and tenant context",
+        "existing persistence attempt timing",
+        "existing catch-and-resolve behavior"
+      ],
+      "remove": [
+        "action/entityType/entityId/rawerror from fallback output"
+      ],
+      "safeReplacement": "One fixed audit-persistence-failed label; do not change swallowed error into throw/rollback under cover of privacy work."
+    },
+    {
+      "boundary": "Prisma RLS guard diagnostics",
+      "keep": [
+        "test-only throw BEFORE query for org-scoped model operation",
+        "production/dev warn-only behavior",
+        "raw operations warn-only",
+        "per-model/operation dedup and context semantics"
+      ],
+      "remove": [
+        "stack trace and arbitrary dynamic operation/model strings from emitted diagnostic"
+      ],
+      "safeReplacement": "Schema-derived finite model and known operation vocabulary, fixed RLS-GUARD marker; omit args/SQL/tenant identifiers. Preserve test mode rejection and no-context behavior."
+    },
+    {
+      "boundary": "Pino central structured event sink",
+      "keep": [
+        "Support support_ux_observation and unavailable exact schema",
+        "Support64hex HMACtenant_key and compiledartifact_sha for existing collector join",
+        "Support operation/mode/status/outcome/time/duration and unsampled count semantics",
+        "Route mtm_route_observability finite event shape",
+        "level and fixed codes for generic legacy diagnostics"
+      ],
+      "remove": [
+        "freeform msg interpolation",
+        "Error/stack/cause and object traversal",
+        "raw org_id/user_id/request_id bindings",
+        "unknown event keys and dynamic child context"
+      ],
+      "safeReplacement": "Project known finite event contracts into newly allocated plain objects before serialization; generic/unrecognized messages get a fixed minimal event. Do not stringify or invoke toJSON/getters on rejected input. Child and format-string forms must pass the same policy; key redaction alone is insufficient."
+    },
+    {
+      "boundary": "Sentry event and transaction hooks",
+      "keep": [
+        "captureException/captureRequestError route behavior and crash page",
+        "approved finite severity/platform/outcome and explicitly selected opaque correlation/release metadata",
+        "existing demo-token protection",
+        "SDK hook return contract and fail-closed behavior"
+      ],
+      "remove": [
+        "request headers/cookies/body/query/rawURL",
+        "user/context/extra raw values",
+        "exception value/stack/cause/breadcrumb free text",
+        "transaction/span names/descriptions/tags carrying unbounded private strings",
+        "attachments or nested unexpected payloads"
+      ],
+      "safeReplacement": "Fresh allowlisted projection, finite bounded nested collections, reject cycles/proxies/getters safely. Preserve only explicitly justified SDK fields; generic bounded strings or arbitrary tag names are not privacy protection. No silent claim that raw stack debug context is retained after deliberate removal."
+    },
+    {
+      "boundary": "Sentry Replay and independent transport",
+      "keep": [
+        "application navigation/session behavior"
+      ],
+      "remove": [
+        "unreviewed replay data from the claimed safe telemetry scope"
+      ],
+      "safeReplacement": "Ordinary beforeSend hooks do not certify Replay envelopes. Explicit source-only restriction/disable until safe replay transport contract exists is a valid data-reduction option; otherwise leave this as a named blocker and avoid claiming closure."
+    }
+  ],
+  "concreteCompatibilityPitfalls": [
+    "Support observation tests mock logger or inject sink: existing tests do not prove real Pino serialization retains accepted observation schema. Real-Pino composed memory-sink tests are necessary.",
+    "Global remove-all-fields filters could destroy Support tenant_key/artifact_sha matching and unsampled coverage. Preserve exact known schema, do not turn invalid/missing evidence into success/zero.",
+    "ERP provider uses dynamic org/invoice strings in six generic warnings; social finalizer builds a regex-admitted error-derived code and raw IDs in context. Their business result/skip/retry behavior must remain while log content becomes finite.",
+    "A Pino logMethod hook alone can miss child bindings, mixins, serialization or later interpolated arguments. Do not expose an unsanitized child/logger route as proof of full boundary protection.",
+    "Object spread, Object.entries, JSON.stringify or regex coercion can invoke getters/toJSON. Input projection must avoid unknown accessor evaluation and contain policy/destination exceptions.",
+    "RLS test guard marker is asserted by existing lib-prisma-rls-extension tests; eliminating the throw or issuing the query would weaken safety. Stack removal does not justify altering query/transaction order.",
+    "Current logAudit documentation mentions awaited security writes but implementation catches and resolves; fixing this semantic discrepancy is outside the privacy slice.",
+    "Browser replayOnErrorSampleRate1.0 and replayIntegration exist independently of six event hooks. maskAllText/blockAllMedia are not proof for URL/network/context privacy.",
+    "next.config Sentry sourcemap upload is a separate build destination. Do not change credentials/organization/project or claim retention/access verified from repository configuration."
+  ],
+  "meaningfulProofCases": [
+    "Actual withRls/withRlsAuth/withRlsSessionAuth with Error/private-name/stack/cause, string, null, opaque getters: fixedsink, same401, no handler calls; auth deny and successful tenant path unchanged.",
+    "Actual Prisma logAudit with rejected create: same insert payload/context and resolved return, fixed fallback; logging sink throws without changing audit outcome. RLS no-context test throws before query; prod warns once; context/batch/interactive transaction ordering unaffected.",
+    "Actual Support observeSupportUxOperation -> actual logger -> real Pino memory destination: every schema key/value preserved, exactly one event, unchanged Response/thrown identity; no raw synthetic values. Route observability equivalent composed projection.",
+    "Pino all supported invocation forms including child bindings, Error objects, formatting placeholders, nestedunknown/eventspoof/toJSON/getters/cycles and destination exceptions. Test final serialized bytes, not only sanitizer return values.",
+    "Actual three Sentry config modules with inert SDK init and synthetic event/transaction inputs: request, user, exception, breadcrumb, spans, tags and hostile object canaries absent; approved metadata retained; original input unmodified if projection contract promises immutability.",
+    "Explicit Replay configuration/transport case, separate from event hook tests; route transitions and global crash page remain functional. Existing demo-center token redaction regression must continue.",
+    "Source contract enumerates supported sinks and unknown-field fallback; no real network/DSN/collector or external configuration needed for these synthetic proofs."
+  ],
+  "sourceControlledVersusExternal": {
+    "sourceControlled": [
+      "raw auth/RLS/Prisma fallback arguments",
+      "Pino serialization/bindings and known event allowlists",
+      "Sentry configured event/transaction hooks and client Replay inclusion",
+      "runtime input projection and finite operation diagnostics"
+    ],
+    "externalNotVerified": [
+      "actual enabled DSNs/collector deployment",
+      "destination retention/deletion and ACLs",
+      "operator access audit or region/provider commitments",
+      "dashboard approved release aggregation and stored principal cardinality",
+      "production emitted data or historical leak incidence"
+    ]
+  },
+  "scopeDecision": "User authorization now permits a concrete shared-privacy slice. No same-file competing writer or separate permission blocker is established by this review. Preserve known Support operations and test contracts; external destination claims remain blocked without their separately authorized evidence. Existing source probes are a regression baseline, not new production findings.",
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-privacy-shared-synthetic-probe.cjs",
+      "bytes": 5306,
+      "sha256": "f558a0913a6ff2a01ad53e2600f9493286f187800d20b026e4c2ec651bd78e07"
+    },
+    {
+      "path": "/tmp/hrm-privacy-shared-synthetic-probe.json",
+      "bytes": 3628,
+      "sha256": "481bc9cf78e44b9f2548d2dd41b14a7d4528c2a40845883c706a2ea5410e8ec4"
+    },
+    {
+      "path": "/tmp/hrm-fault-shared-privacy-independent-review-20261006.json",
+      "bytes": 8268,
+      "sha256": "ab713590539ea8723f1595d0a1824131b6b5b2a0e9bf3aeda61e402cecd4d6be"
+    },
+    {
+      "path": "/tmp/hrm-fault-independent-source-b896-20261006.json",
+      "bytes": 29691,
+      "sha256": "4070cb483ea38cc6740fa36a6a55dfb4c1fe5be8c3f3f333c153bb4ae1d0f7a7"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "scope": "ACTUAL_SENTRY_CORE_CLIENT_TO_SYNTHETIC_IN_MEMORY_TRANSPORT",
+  "sdkVersion": "10.65.0",
+  "sourceBindings": [
+    {
+      "path": "src/lib/telemetry/safe-fields.ts",
+      "sha256": "7f63972f69f50aa4dd216973ef2ed52e6c5aab5246a7c917cc35081a5ebdab96"
+    },
+    {
+      "path": "src/lib/telemetry/sentry-privacy.ts",
+      "sha256": "08e35bf539274277c844c2cb29c4680b0ffe6efb4a913487d47af194d817b0a2"
+    }
+  ],
+  "transportCalls": 1,
+  "privateCanaryRetained": false,
+  "itemTypes": [
+    "event"
+  ],
+  "idempotentProjection": true,
+  "networkCalls": 0,
+  "credentials": "fixedsyntheticpublickey_not_secret"
+}

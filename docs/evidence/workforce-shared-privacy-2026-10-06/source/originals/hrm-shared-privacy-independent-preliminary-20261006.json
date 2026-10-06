@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "status": "PRELIMINARY_SHARED_PRIVACY_REVIEW_BLOCKER_RESOLVED_FINAL_FREEZE_PENDING",
+  "reviewedAt": "2026-10-06T12:58:46.729498+00:00",
+  "workspace": "/workspace/hrm-shared-privacy",
+  "base": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+  "immutableCandidate": null,
+  "sourceBindings": [
+    {
+      "path": "src/lib/telemetry/operational-failure.ts",
+      "bytes": 963,
+      "sha256": "60c75c5892aa5d574795dedde19350d004243555eb129bab7a79f9ee33b6009d"
+    },
+    {
+      "path": "src/lib/telemetry/safe-fields.ts",
+      "bytes": 1062,
+      "sha256": "7f63972f69f50aa4dd216973ef2ed52e6c5aab5246a7c917cc35081a5ebdab96"
+    },
+    {
+      "path": "src/lib/telemetry/pino-privacy.ts",
+      "bytes": 5053,
+      "sha256": "01b5eadface990731ffffaeb952561ff961d614d2060e0a36b0985ef567074a2"
+    },
+    {
+      "path": "src/lib/telemetry/sentry-privacy.ts",
+      "bytes": 6236,
+      "sha256": "08e35bf539274277c844c2cb29c4680b0ffe6efb4a913487d47af194d817b0a2"
+    },
+    {
+      "path": "src/lib/logger.ts",
+      "bytes": 2535,
+      "sha256": "60356b6327504b49d443786ad950eb03477bbf15cce44dcdeefe47983f929eb8"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26606,
+      "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 25973,
+      "sha256": "1bd273786679f9b59718a4eec9314f51ae19efcddd6455cae8d562d88d1c8f84"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10390,
+      "sha256": "533dfc91f795970fe7abaf1aedc37e7ea82d175257b33a0d84c864e791618e38"
+    },
+    {
+      "path": "src/lib/prisma.ts",
+      "bytes": 14015,
+      "sha256": "e13b0a9561945eef531b4dbabc9193bb5b6fbcfc3297dfce54fbf219ee3275a1"
+    },
+    {
+      "path": "src/app/error.tsx",
+      "bytes": 1811,
+      "sha256": "cae515878ab18a01b375d8a34a241a47607caa0cc0fff4d9989f58d413a13094"
+    },
+    {
+      "path": "sentry.server.config.ts",
+      "bytes": 490,
+      "sha256": "e948fadb50c5f468e7a559f9a37602b17fa784b980de1683a0b9e22338019f4c"
+    },
+    {
+      "path": "sentry.edge.config.ts",
+      "bytes": 490,
+      "sha256": "e948fadb50c5f468e7a559f9a37602b17fa784b980de1683a0b9e22338019f4c"
+    },
+    {
+      "path": "instrumentation-client.ts",
+      "bytes": 1243,
+      "sha256": "571af702a4ed82eeed2891f20b26ea34dc095e4afa67c3b1c4c602cca659ccbb"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-pino.test.ts",
+      "bytes": 5003,
+      "sha256": "f430a7353789845418ff1ed332b7c1e1bc230285f3c8f42c647613ccb377c507"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-sentry.test.ts",
+      "bytes": 4415,
+      "sha256": "126a9f68fbfe34dc58f229541043c19b2b1bf45b7c3d99749dde3b9e87c2d6e8"
+    }
+  ],
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-shared-pino-independent-probe.cjs",
+      "bytes": 1765,
+      "sha256": "8b388b8238941e1237d8286b4eb2e88a250f06d22ff52b97843cda9db6f6adcd"
+    },
+    {
+      "path": "/tmp/hrm-shared-pino-independent-probe.json",
+      "bytes": 870,
+      "sha256": "8e71a16a3157b2ecd3d84fc41504f16328347ca475f3c08b84393c50a5476ff0"
+    },
+    {
+      "path": "/tmp/hrm-shared-pino-independent-resolved-probe.cjs",
+      "bytes": 1774,
+      "sha256": "a963928fe28ea94966e83958bcf657b276cdfee42aab7ffe4cec7c2bdcbc48e0"
+    },
+    {
+      "path": "/tmp/hrm-shared-pino-independent-resolved-probe.json",
+      "bytes": 872,
+      "sha256": "bd54b6e1300f182ffde3b36c854af27cb824857f7ca69e09c1a8776e3125c282"
+    },
+    {
+      "path": "/tmp/hrm-shared-sentry-independent-probe.cjs",
+      "bytes": 2526,
+      "sha256": "a27cdd9b8146ecfbc869c8b25a70a6f58680e3d57086357e3ecc3010667a1d5b"
+    },
+    {
+      "path": "/tmp/hrm-shared-sentry-independent-probe.json",
+      "bytes": 623,
+      "sha256": "5071db109abea568a1a3dea1a54409591a1b30e40de5adcea78427504610ad73"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-pino-sentry-tests.json",
+      "bytes": 5390,
+      "sha256": "5ddb142c9e0c3e162fff35bdf7bc74c0d25a3cf5cca0833833678249ddfc251c"
+    },
+    {
+      "path": "/tmp/hrm-shared-privacy-independent-scope-20261006.json",
+      "bytes": 15526,
+      "sha256": "adadc98a30d44e40f41f3bb12763d16f69b931a9e8a788d59f820234f390b04d"
+    }
+  ],
+  "findings": {
+    "unresolvedBlocking": [],
+    "resolved": [
+      {
+        "id": "PINO_CHILD_BINDINGS_BYPASS",
+        "severity": "P2",
+        "mechanism": "Installed Pino child() resets parent bindings formatter to identity. Initial actual serializer repro retained synthetic org_id both through defaultchild and existing logError(context).",
+        "fix": "Constrained PrivacyLogger facade sanitizes before child serialization and wraps nestedchildren. Rawinstance/setBindings/arbitrarychildoptions not exposed. Current source-only consumer signatures remain info/warn/error/debug+child.",
+        "independentResolution": "ActualPino in-memory serializer repeated on fixeddraft; both original scenarios now omit raworg/private message. Initial failing source-bound evidence preserved."
+      }
+    ]
+  },
+  "independentTests": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "suites": [
+      "shared-privacy-pino.test.ts",
+      "shared-privacy-sentry.test.ts"
+    ],
+    "actualPinoMemorySerializer": true,
+    "actualSentryNodeClientEnvelopeSerialization": true,
+    "networkDestinationsUsed": false
+  },
+  "additionalIndependentProbes": {
+    "pino": "RealPino defaultchild and existinglogError wrapper before/after synthetic canary; no actualdestination/network.",
+    "sentry": "Actual @sentry/core10.65.0 Client.sendEnvelope with replacedmemorytransport; beforeEnvelope retains minimizedevent and removes attachment/replay/session/logitems plus unsafeheaderfields; no privatecanary remains; idempotent eventprojection."
+  },
+  "compatibilityReviewed": [
+    "Known Support observation and Route observability contracts are preserved by finite projection; composed new tests coveractualhelpers\u2192actualPino output, normalresponses, thrownidentity and source-defineddimensions.",
+    "Auth/RLS substitutions preserve existing401/null/failclosed paths; operational logger ignores thrown values and contains console errors.",
+    "Prisma logAudit catch continues resolving; no inserted auditpayload/tenant/transactionchanges. RLSguard retains throw-before-query in test, productionwarn/rawquery behavior and dedup; removesstack and usesfinite operationnames.",
+    "Pino facade closes demonstrated childformatter bypass; current consumers do not require logger mutation/fatal/trace/options APIs. Generic old ERP/social message text is intentionally reduced; Support approvedfields remain.",
+    "Installed SDK core Client.sendEnvelope emits beforeEnvelope immediately before _transport.send; callback mutates sameenvelope. Thus realSDK coverage exceeds plain helper-returntests.",
+    "Source frame caching/idempotence and dataCollection false options reviewed. Replay inclusion is disabled and envelope-onlychannels refused, a deliberate telemetry-data reduction."
+  ],
+  "finalReviewNeeds": [
+    "Fresh frozen source/tree/commit identity and broader compatibility evidence onceownerfinishes.",
+    "Actual composed server/edge/client config wiring tests should prove registered beforeEnvelope and privacyoptions; NodeClient tests manually attach hook, so they do not alone proveentrypointregistration.",
+    "Final docs must describe reduced generic messages/stack detail and Replay/session/profile/channel removal as deliberate behavior; do not call those unchangeddiagnostics."
+  ],
+  "limits": [
+    "Mutable draft, not immutable source acceptance or hostedreadiness. Tests bind their actual source snapshot; later codechanges require scoped reassessment.",
+    "No source/remote writes by reviewer; only/tmp artifacts.",
+    "No rawCIlogs/screenshots/productiondata/credentials or realSentry endpoint accessed.",
+    "This receipt does not repeat or resolve externalretention/staging blockers; only currentimplementation privacy/compatibility reviewed."
+  ]
+}

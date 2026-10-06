@@ -1,0 +1,182 @@
+{
+  "parent": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+  "parentTree": "56054b2aaf225d54668c7c99b19d6f276c81f02b",
+  "main": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+  "tree": "083fb93cafc007996a1015facd4c4654323b1016",
+  "allLocalBlobsVerified": 8797,
+  "allTreesRecomputed": 2811,
+  "unchangedParentBlobs": 8776,
+  "changed": [
+    "docs/workforce-shared-privacy-2026-10-06.md",
+    "instrumentation-client.ts",
+    "sentry.edge.config.ts",
+    "sentry.server.config.ts",
+    "src/__tests__/shared-privacy-api-auth.test.ts",
+    "src/__tests__/shared-privacy-auth-callbacks.test.ts",
+    "src/__tests__/shared-privacy-auth-rls.test.ts",
+    "src/__tests__/shared-privacy-pino.test.ts",
+    "src/__tests__/shared-privacy-prisma.test.ts",
+    "src/__tests__/shared-privacy-sentry-config.test.ts",
+    "src/__tests__/shared-privacy-sentry.test.ts",
+    "src/app/error.tsx",
+    "src/lib/api-auth.ts",
+    "src/lib/auth.ts",
+    "src/lib/logger.ts",
+    "src/lib/prisma.ts",
+    "src/lib/telemetry/operational-failure.ts",
+    "src/lib/telemetry/pino-privacy.ts",
+    "src/lib/telemetry/safe-fields.ts",
+    "src/lib/telemetry/sentry-privacy.ts",
+    "src/lib/with-rls.ts"
+  ],
+  "bindings": [
+    {
+      "path": "docs/workforce-shared-privacy-2026-10-06.md",
+      "bytes": 8354,
+      "sha256": "827a7b27b4b8d741da13c2b8239e42b130525ebe65a555e0710203b5d4ed50bf",
+      "blob": "7c91edd5e2c642b96c7248e38e717194da9654c6",
+      "mode": "100644"
+    },
+    {
+      "path": "instrumentation-client.ts",
+      "bytes": 1243,
+      "sha256": "571af702a4ed82eeed2891f20b26ea34dc095e4afa67c3b1c4c602cca659ccbb",
+      "blob": "2b799359c49ca8de77d5288097c33089f4aad81b",
+      "mode": "100644"
+    },
+    {
+      "path": "sentry.edge.config.ts",
+      "bytes": 490,
+      "sha256": "e948fadb50c5f468e7a559f9a37602b17fa784b980de1683a0b9e22338019f4c",
+      "blob": "60eed50a003a2eda24236730c708ec1bd6691f29",
+      "mode": "100644"
+    },
+    {
+      "path": "sentry.server.config.ts",
+      "bytes": 490,
+      "sha256": "e948fadb50c5f468e7a559f9a37602b17fa784b980de1683a0b9e22338019f4c",
+      "blob": "60eed50a003a2eda24236730c708ec1bd6691f29",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-api-auth.test.ts",
+      "bytes": 1508,
+      "sha256": "56b82791a9fe52a6de9b878d7ae623cf7737147c004eacdd81f7a7d296890425",
+      "blob": "823c0bbfd1a75e8d186b17b56c15c95b7c2deba4",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-auth-callbacks.test.ts",
+      "bytes": 3584,
+      "sha256": "ffb8aa8d0a240f2c769e8b09bc1e4411f358139c3d955975d7dbe955d09e377a",
+      "blob": "c132eeb99d3f0dd63c2c452c11d8d28e34b5edee",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-auth-rls.test.ts",
+      "bytes": 3170,
+      "sha256": "b27a2ab6d77cef2922e6e57048846b52dd3e3cb09482b5133979dda24269449c",
+      "blob": "1f41d8da90ea5978c4580c97a9b67883294baac4",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-pino.test.ts",
+      "bytes": 5003,
+      "sha256": "f430a7353789845418ff1ed332b7c1e1bc230285f3c8f42c647613ccb377c507",
+      "blob": "ace7ac7d985c5f22775a7b8f83620414cf0bde63",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-prisma.test.ts",
+      "bytes": 2914,
+      "sha256": "4a2d935339fac33d9a415cfbf05aeb995a199efb52027b821d3478d99e2a1d98",
+      "blob": "09488c0c474aeccdd4fd74ad6dd3308e6efc3d5a",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-sentry-config.test.ts",
+      "bytes": 1321,
+      "sha256": "ffd4b6c03010e0bbd8ffc22edab2ccd725a91929d66b609f76596ade559abe7e",
+      "blob": "070d7a00976397484ee39eefa280e6fdbcef04ba",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-sentry.test.ts",
+      "bytes": 4423,
+      "sha256": "a72c39c575d5798cd0c7b9aa07bd6a0a43e35c7341e2d79e437c3cc9cbcdbf9e",
+      "blob": "c2e2cd1b7c8ae48e7ab33ae054c3a1c89db0a8a4",
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/error.tsx",
+      "bytes": 1811,
+      "sha256": "cae515878ab18a01b375d8a34a241a47607caa0cc0fff4d9989f58d413a13094",
+      "blob": "9746975b68383ad269c069f181c6dd790a37cd22",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 25973,
+      "sha256": "1bd273786679f9b59718a4eec9314f51ae19efcddd6455cae8d562d88d1c8f84",
+      "blob": "bd7f1c670a28a42421f2e25b473759cc41b2b6b7",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26606,
+      "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd",
+      "blob": "18a21aba542ef0d6aa601c97a664c976c20901e1",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/logger.ts",
+      "bytes": 2535,
+      "sha256": "60356b6327504b49d443786ad950eb03477bbf15cce44dcdeefe47983f929eb8",
+      "blob": "aa50ef96866d3fac815350c48081e0809ffcefa9",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/prisma.ts",
+      "bytes": 14015,
+      "sha256": "e13b0a9561945eef531b4dbabc9193bb5b6fbcfc3297dfce54fbf219ee3275a1",
+      "blob": "369b92e69257bad78d6417ba573c6b7fb46854e5",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/telemetry/operational-failure.ts",
+      "bytes": 963,
+      "sha256": "60c75c5892aa5d574795dedde19350d004243555eb129bab7a79f9ee33b6009d",
+      "blob": "65f8db269b488d076aecc5a1ebdb624f3626f21f",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/telemetry/pino-privacy.ts",
+      "bytes": 5053,
+      "sha256": "01b5eadface990731ffffaeb952561ff961d614d2060e0a36b0985ef567074a2",
+      "blob": "d0cbfc00bb81a0aa50f04e5a85d378cebe4778b7",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/telemetry/safe-fields.ts",
+      "bytes": 1062,
+      "sha256": "7f63972f69f50aa4dd216973ef2ed52e6c5aab5246a7c917cc35081a5ebdab96",
+      "blob": "e9569988302a52525f25d8003e100ac222d3565e",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/telemetry/sentry-privacy.ts",
+      "bytes": 6246,
+      "sha256": "4676cecfc3d02b477e279086a12689fbbd6d7d1a57b8583dc154863e68cc6ca7",
+      "blob": "b669e547f9a6316de77488ef742aaa210f901688",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10390,
+      "sha256": "533dfc91f795970fe7abaf1aedc37e7ea82d175257b33a0d84c864e791618e38",
+      "blob": "3eda367b68e0ec44b2021ebc96d6d0f4493c8fad",
+      "mode": "100644"
+    }
+  ],
+  "scope": "Entire candidate bytes/modes; only bounded shared privacy paths; prior source, baselines, workflows, schema and Support/Routes producers unchanged"
+}

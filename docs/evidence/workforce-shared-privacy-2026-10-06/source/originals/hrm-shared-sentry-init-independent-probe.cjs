@@ -1,0 +1,10 @@
+const fs=require('node:fs');
+global.document={visibilityState:'hidden',addEventListener(){},removeEventListener(){}};
+global.addEventListener=()=>{}; global.removeEventListener=()=>{};
+const root='/workspace/hrm-shared-privacy/';
+const browser=require(root+'node_modules/@sentry/browser');
+const envelopes=[];let returned=false;
+const client=browser.init({dsn:'https://public@synthetic.invalid/1',release:'a'.repeat(40),environment:'test',defaultIntegrations:[browser.browserSessionIntegration()],dataCollection:{userInfo:false},sendDefaultPii:false,transport:()=>({send:async e=>{envelopes.push({beforeInitReturn:!returned,itemTypes:e[1].map(x=>x[0].type)});return{statusCode:200}},flush:async()=>true})});
+returned=true;client.on('beforeEnvelope',e=>{e[1]=[]});
+const result={scope:'actual_browser_init_with_actual_default_BrowserSession_integration_hidden_document_memory_transport',sdk:require(root+'node_modules/@sentry/browser/package.json').version,networkCalls:0,envelopes};
+fs.writeFileSync('/tmp/hrm-shared-sentry-init-independent-probe.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));

@@ -1,0 +1,118 @@
+{
+  "remoteTree": "5d1f81a8c306e1d07f22f25f248b206882aabc5e",
+  "blobCount": 8797,
+  "treesRecomputed": 2811,
+  "localMatching": 8797,
+  "mismatch": [],
+  "changed": [
+    "docs/workforce-shared-privacy-2026-10-06.md",
+    "instrumentation-client.ts",
+    "sentry.edge.config.ts",
+    "sentry.server.config.ts",
+    "src/__tests__/shared-privacy-api-auth.test.ts",
+    "src/__tests__/shared-privacy-auth-callbacks.test.ts",
+    "src/__tests__/shared-privacy-auth-rls.test.ts",
+    "src/__tests__/shared-privacy-pino.test.ts",
+    "src/__tests__/shared-privacy-prisma.test.ts",
+    "src/__tests__/shared-privacy-sentry-config.test.ts",
+    "src/__tests__/shared-privacy-sentry.test.ts",
+    "src/app/error.tsx",
+    "src/lib/api-auth.ts",
+    "src/lib/auth.ts",
+    "src/lib/logger.ts",
+    "src/lib/prisma.ts",
+    "src/lib/telemetry/operational-failure.ts",
+    "src/lib/telemetry/pino-privacy.ts",
+    "src/lib/telemetry/safe-fields.ts",
+    "src/lib/telemetry/sentry-privacy.ts",
+    "src/lib/with-rls.ts"
+  ],
+  "removed": [],
+  "unchanged": 8776,
+  "bindingMatches": [
+    {
+      "path": "docs/workforce-shared-privacy-2026-10-06.md",
+      "matches": true
+    },
+    {
+      "path": "instrumentation-client.ts",
+      "matches": true
+    },
+    {
+      "path": "sentry.edge.config.ts",
+      "matches": true
+    },
+    {
+      "path": "sentry.server.config.ts",
+      "matches": true
+    },
+    {
+      "path": "src/__tests__/shared-privacy-api-auth.test.ts",
+      "matches": true
+    },
+    {
+      "path": "src/__tests__/shared-privacy-auth-callbacks.test.ts",
+      "matches": true
+    },
+    {
+      "path": "src/__tests__/shared-privacy-auth-rls.test.ts",
+      "matches": true
+    },
+    {
+      "path": "src/__tests__/shared-privacy-pino.test.ts",
+      "matches": true
+    },
+    {
+      "path": "src/__tests__/shared-privacy-prisma.test.ts",
+      "matches": true
+    },
+    {
+      "path": "src/__tests__/shared-privacy-sentry-config.test.ts",
+      "matches": true
+    },
+    {
+      "path": "src/__tests__/shared-privacy-sentry.test.ts",
+      "matches": true
+    },
+    {
+      "path": "src/app/error.tsx",
+      "matches": true
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "matches": true
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "matches": true
+    },
+    {
+      "path": "src/lib/logger.ts",
+      "matches": true
+    },
+    {
+      "path": "src/lib/prisma.ts",
+      "matches": true
+    },
+    {
+      "path": "src/lib/telemetry/operational-failure.ts",
+      "matches": true
+    },
+    {
+      "path": "src/lib/telemetry/pino-privacy.ts",
+      "matches": true
+    },
+    {
+      "path": "src/lib/telemetry/safe-fields.ts",
+      "matches": true
+    },
+    {
+      "path": "src/lib/telemetry/sentry-privacy.ts",
+      "matches": true
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "matches": true
+    }
+  ]
+}

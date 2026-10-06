@@ -1,0 +1,35 @@
+{
+  "sha": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+  "node_id": "C_kwDOUTPB8doAKDJkNzIzZTAyNjI3ZDI5ODNkYjkxYjFkMjM2MGZkNzU5MmY4ODZlOGI",
+  "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/2d723e02627d2983db91b1d2360fd7592f886e8b",
+  "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/2d723e02627d2983db91b1d2360fd7592f886e8b",
+  "author": {
+    "name": "rashadoni",
+    "email": "rashadrahimsoy@gmail.com",
+    "date": "2026-10-06T13:09:36Z"
+  },
+  "committer": {
+    "name": "rashadoni",
+    "email": "rashadrahimsoy@gmail.com",
+    "date": "2026-10-06T13:09:36Z"
+  },
+  "tree": {
+    "sha": "5d1f81a8c306e1d07f22f25f248b206882aabc5e",
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/trees/5d1f81a8c306e1d07f22f25f248b206882aabc5e"
+  },
+  "message": "fix(privacy): install Sentry boundary before SDK initialization sends",
+  "parents": [
+    {
+      "sha": "0fdeeb23e903fcbe873624509631f16989326d0c",
+      "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/git/commits/0fdeeb23e903fcbe873624509631f16989326d0c",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/commit/0fdeeb23e903fcbe873624509631f16989326d0c"
+    }
+  ],
+  "verification": {
+    "verified": false,
+    "reason": "unsigned",
+    "signature": null,
+    "payload": null,
+    "verified_at": null
+  }
+}

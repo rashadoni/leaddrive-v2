@@ -1,0 +1,576 @@
+{
+  "schemaVersion": 1,
+  "head": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+  "tree": "5d1f81a8c306e1d07f22f25f248b206882aabc5e",
+  "priorEvidence": "2d7c8c90e7d385f021cb8f13de31c383b005aca4",
+  "status": "SOURCE_ACCEPTED_HOSTED_PENDING",
+  "members": [
+    {
+      "original": "/tmp/hrm-shared-local-validation.json",
+      "bytes": 3460,
+      "sha256": "92a149b8ed1b5858c91105a440e9ec5731325ec3405005ba7725518b2948bc5f",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-local-validation.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-source-freeze.json",
+      "bytes": 6596,
+      "sha256": "bfb76fdc3bf05f224fbf7f589a86e28c2156fcff414f84ca677dec81aa1562d2",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-source-freeze.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-initial-source-freeze-0fde.json",
+      "bytes": 6596,
+      "sha256": "c79b5bf434d8913173f7a045902d20c0b9cae9c10cf250cdc878b245dd5287ec",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-initial-source-freeze-0fde.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-initial-tests.json",
+      "bytes": 7302,
+      "sha256": "5b88a7c062c08be959907d138bbfa1de2e4bf3164ab7584406c6e5f028f4f513",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-initial-tests.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-lifecycle-final-tests.json",
+      "bytes": 17131,
+      "sha256": "c7791ad83b9587372d63d3258a253d1300385a0983a041eef018bc114cf22536",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-lifecycle-final-tests.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-regression-accepted.json",
+      "bytes": 130140,
+      "sha256": "c0167dbed97c2897cb7a984c0aacfedf38036bea33d4afb271f08c4bd6dcf5b4",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-regression-accepted.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-source-2d723-20261006.json",
+      "bytes": 17466,
+      "sha256": "dd11e532b620b8ad88fde5a9c3e03e35a6f67a416018af1458bdf46fedc5d8b6",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-source-2d723-20261006.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-privacy-independent-preliminary-20261006.json",
+      "bytes": 8026,
+      "sha256": "44d3eaac9e82e6764e204fb33a4ac250890916166759ad1cb2d86a4c445be2c4",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-privacy-independent-preliminary-20261006.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-privacy-independent-scope-20261006.json",
+      "bytes": 15526,
+      "sha256": "adadc98a30d44e40f41f3bb12763d16f69b931a9e8a788d59f820234f390b04d",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-privacy-independent-scope-20261006.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-regression-final.json",
+      "bytes": 129362,
+      "sha256": "5884af6497f2b57947f7e798de07c1b2ccd6d945eb69f226a9a5af888e0010cc",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-regression-final.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-existing-lint.json",
+      "bytes": 68813,
+      "sha256": "b455e1d543ab954e87e11941a57c428172158a5d0688459e14354960a657ba9e",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-existing-lint.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-existing-lint-baseline.json",
+      "bytes": 68411,
+      "sha256": "ae88fe4f9ee9fdd9bd4e11f353850c8db1c192b97b9a702fc0f3cfd252ae9419",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-existing-lint-baseline.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-baseline-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-baseline-typecheck.txt"
+    },
+    {
+      "original": "/tmp/hrm-shared-tests-typecheck-lifecycle.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-tests-typecheck-lifecycle.txt"
+    },
+    {
+      "original": "/tmp/hrm-shared-owned-lint-lifecycle.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-owned-lint-lifecycle.txt"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-corrected-tests.json",
+      "bytes": 17152,
+      "sha256": "e24d34f6d89020a9c74d63e99b8fc507fd226cc195c9f0be8ff2af892c30215e",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-corrected-tests.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-compat-tests.json",
+      "bytes": 36060,
+      "sha256": "1e689b3dae960532ded876f8637e279b726759e3050e11d589ca99c8f22016d5",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-compat-tests.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-corrected-independent-remote-0.json",
+      "bytes": 1345,
+      "sha256": "ba04d93fac3e8e3aca109b228e43afc5a44bc1320fbc7b0f14f96b184d2fe86b",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-corrected-independent-remote-0.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-corrected-independent-remote-2.json",
+      "bytes": 381,
+      "sha256": "f507b1eb68d127c88f9d97ac0e3649731ce48578adac315c9ca751e29c2de73c",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-corrected-independent-remote-2.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-corrected-independent-remote-3.json",
+      "bytes": 480,
+      "sha256": "b05ebd61ef6193b15684c61787bff645ec6f7f8e0208a5bdcad87ca795dad7c8",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-corrected-independent-remote-3.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-tree-proof-2d723.json",
+      "bytes": 2865,
+      "sha256": "618c10e46b24291e0f46b470a4868b1c00d9a2d7d2576e77cd765ec1cacb8914",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-tree-proof-2d723.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-verify-corrected-tree.py",
+      "bytes": 2148,
+      "sha256": "d7d39375db87f46be024ebff8fbf296bb1e0a7ad33fddad1c9d1ca764a2a1894",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-verify-corrected-tree.py"
+    },
+    {
+      "original": "/tmp/hrm-shared-sentry-init-resolved-independent-probe.cjs",
+      "bytes": 2592,
+      "sha256": "4c236dfc2ef4ae6f7f5eeb608a395b6206c7836e8db3ba83927d661583d5c608",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-sentry-init-resolved-independent-probe.cjs"
+    },
+    {
+      "original": "/tmp/hrm-shared-sentry-init-resolved-independent-probe.json",
+      "bytes": 962,
+      "sha256": "74637a41e682d6959fe9b82a24cdd9ed60cf5700e280da7cdee39478cf2c907b",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-sentry-init-resolved-independent-probe.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-source-blocked-0fde-20261006.json",
+      "bytes": 3435,
+      "sha256": "d2ed0dd1ea052f86645797db0a9f29dc77fe7f9d65dd837857aea12158ae1738",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-source-blocked-0fde-20261006.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-sentry-init-independent-probe.cjs",
+      "bytes": 1126,
+      "sha256": "5a4003e30779175fb91046c58cc8c89c74e7bcb6163d7a5f39eca661b06f8424",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-sentry-init-independent-probe.cjs"
+    },
+    {
+      "original": "/tmp/hrm-shared-sentry-init-independent-probe.json",
+      "bytes": 271,
+      "sha256": "34ad3c94ce73475941c66a94465b5bd6fafea45a46b62b239a765f533a51447c",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-sentry-init-independent-probe.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-pino-independent-probe.cjs",
+      "bytes": 1765,
+      "sha256": "8b388b8238941e1237d8286b4eb2e88a250f06d22ff52b97843cda9db6f6adcd",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-pino-independent-probe.cjs"
+    },
+    {
+      "original": "/tmp/hrm-shared-pino-independent-probe.json",
+      "bytes": 870,
+      "sha256": "8e71a16a3157b2ecd3d84fc41504f16328347ca475f3c08b84393c50a5476ff0",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-pino-independent-probe.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-pino-independent-resolved-probe.cjs",
+      "bytes": 1774,
+      "sha256": "a963928fe28ea94966e83958bcf657b276cdfee42aab7ffe4cec7c2bdcbc48e0",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-pino-independent-resolved-probe.cjs"
+    },
+    {
+      "original": "/tmp/hrm-shared-pino-independent-resolved-probe.json",
+      "bytes": 872,
+      "sha256": "bd54b6e1300f182ffde3b36c854af27cb824857f7ca69e09c1a8776e3125c282",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-pino-independent-resolved-probe.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-sdk-lifecycle-bindings.json",
+      "bytes": 1288,
+      "sha256": "c70502362f86df64bbb940341f5910862a45166118c3adb8f770cdeb447909fb",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-sdk-lifecycle-bindings.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-sentry-independent-probe.cjs",
+      "bytes": 2526,
+      "sha256": "a27cdd9b8146ecfbc869c8b25a70a6f58680e3d57086357e3ecc3010667a1d5b",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-sentry-independent-probe.cjs"
+    },
+    {
+      "original": "/tmp/hrm-shared-sentry-independent-probe.json",
+      "bytes": 623,
+      "sha256": "5071db109abea568a1a3dea1a54409591a1b30e40de5adcea78427504610ad73",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-sentry-independent-probe.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-pino-sentry-tests.json",
+      "bytes": 5390,
+      "sha256": "5ddb142c9e0c3e162fff35bdf7bc74c0d25a3cf5cca0833833678249ddfc251c",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-pino-sentry-tests.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-remote-2.json",
+      "bytes": 1340,
+      "sha256": "c819a2a0854d7fc0cc6ad4714d1de124eddce3f28b5859c8f08348c5e4125dbe",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-remote-2.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-remote-4.json",
+      "bytes": 381,
+      "sha256": "f507b1eb68d127c88f9d97ac0e3649731ce48578adac315c9ca751e29c2de73c",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-remote-4.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-remote-5.json",
+      "bytes": 480,
+      "sha256": "b05ebd61ef6193b15684c61787bff645ec6f7f8e0208a5bdcad87ca795dad7c8",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-remote-5.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-tree-proof-0fde.json",
+      "bytes": 2872,
+      "sha256": "63671725db950481b3b6e5f31828671d68189a7aa3a31f9f75ab3aa7cb4d888d",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-tree-proof-0fde.json"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-final-tests.json",
+      "bytes": 16355,
+      "sha256": "5c1c8a88dcd4603214961cc81d2ac22ec1d57986c79c08d139c95e45874a2b2f",
+      "status": "ARCHIVED_BYTE_EXACT",
+      "path": "docs/evidence/workforce-shared-privacy-2026-10-06/source/originals/hrm-shared-independent-final-tests.json"
+    }
+  ],
+  "preservedPriorArchive": [
+    {
+      "original": "/tmp/hrm-privacy-shared-synthetic-probe.cjs",
+      "bytes": 5306,
+      "sha256": "f558a0913a6ff2a01ad53e2600f9493286f187800d20b026e4c2ec651bd78e07",
+      "status": "PRESERVED_PRIOR_ARCHIVE",
+      "path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-shared-synthetic-probe.cjs",
+      "commit": "2d7c8c90e7d385f021cb8f13de31c383b005aca4"
+    },
+    {
+      "original": "/tmp/hrm-privacy-shared-synthetic-probe.json",
+      "bytes": 3628,
+      "sha256": "481bc9cf78e44b9f2548d2dd41b14a7d4528c2a40845883c706a2ea5410e8ec4",
+      "status": "PRESERVED_PRIOR_ARCHIVE",
+      "path": "docs/evidence/workforce-privacy-audit-2026-10-06/hrm-privacy-shared-synthetic-probe.json",
+      "commit": "2d7c8c90e7d385f021cb8f13de31c383b005aca4"
+    },
+    {
+      "original": "/tmp/hrm-fault-shared-privacy-independent-review-20261006.json",
+      "bytes": 8268,
+      "sha256": "ab713590539ea8723f1595d0a1824131b6b5b2a0e9bf3aeda61e402cecd4d6be",
+      "status": "PRESERVED_PRIOR_ARCHIVE",
+      "path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-shared-privacy-independent-review-20261006.json",
+      "commit": "2d7c8c90e7d385f021cb8f13de31c383b005aca4"
+    },
+    {
+      "original": "/tmp/hrm-fault-independent-source-b896-20261006.json",
+      "bytes": 29691,
+      "sha256": "4070cb483ea38cc6740fa36a6a55dfb4c1fe5be8c3f3f333c153bb4ae1d0f7a7",
+      "status": "PRESERVED_PRIOR_ARCHIVE",
+      "path": "docs/evidence/workforce-fault-fairness-2026-10-06/hrm-fault-independent-source-b896-20261006.json",
+      "commit": "2d7c8c90e7d385f021cb8f13de31c383b005aca4"
+    }
+  ],
+  "sourceBindingsOnly": [
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-pino.test.ts",
+      "bytes": 5003,
+      "sha256": "f430a7353789845418ff1ed332b7c1e1bc230285f3c8f42c647613ccb377c507",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-sentry.test.ts",
+      "bytes": 7762,
+      "sha256": "d4cb6230c02784e724fc33aa4305abb4c3ce80e66f58ab867b2fd4d090cab117",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-api-auth.test.ts",
+      "bytes": 1508,
+      "sha256": "56b82791a9fe52a6de9b878d7ae623cf7737147c004eacdd81f7a7d296890425",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-auth-callbacks.test.ts",
+      "bytes": 3584,
+      "sha256": "ffb8aa8d0a240f2c769e8b09bc1e4411f358139c3d955975d7dbe955d09e377a",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-auth-rls.test.ts",
+      "bytes": 3170,
+      "sha256": "b27a2ab6d77cef2922e6e57048846b52dd3e3cb09482b5133979dda24269449c",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-prisma.test.ts",
+      "bytes": 2914,
+      "sha256": "4a2d935339fac33d9a415cfbf05aeb995a199efb52027b821d3478d99e2a1d98",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/shared-privacy-sentry-config.test.ts",
+      "bytes": 1733,
+      "sha256": "85cd01c96a67b81aad78a8684e36d04aeca5f8d0a17791528990571ecae2b76c",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/api-auth-totp.test.ts",
+      "bytes": 26222,
+      "sha256": "41540a9348fc39bd0c3acde74546c3622345207353e26b721d8b879dc87b5e18",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/api-auth.test.ts",
+      "bytes": 13730,
+      "sha256": "f93168bb1d5a9b0304f255bc56e64d27b5dd1c1b2e5529a17cd63d4051db4281",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/auth-session-invalidation.test.ts",
+      "bytes": 13857,
+      "sha256": "21e005809200d25b7c0d457ccea35093d233f7bda7ad920c296f4ebda089e98e",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/demo-center.test.ts",
+      "bytes": 7974,
+      "sha256": "d1d9d077f3d3ea78de992bce40f3d594a86031c2b1be4fed03112a4eabe40110",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-api-auth.test.ts",
+      "bytes": 36636,
+      "sha256": "270943d74069da878c6a2adc8cc3e0268ce9be2ce737733975ef979f6f66a4f8",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-auth-tenant-scope.test.ts",
+      "bytes": 8233,
+      "sha256": "42ad6f6f125b99035de66f9ba84ac0b175676b0be8a8fc0eaba7c41f8e962da4",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-mtm-route-observability.test.ts",
+      "bytes": 3435,
+      "sha256": "004d0b6f22c64be4f0e1e33f645c20f556ea35feedf892323500b2990fc05715",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-prisma-decimal-a12.test.ts",
+      "bytes": 7052,
+      "sha256": "c237d7384f7f13c627e030c425513a79d2b8062428507a41bc48b9dca2af5da7",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-prisma-rls-extension.test.ts",
+      "bytes": 5181,
+      "sha256": "74d16032d8b9081ac0178b162aa13666c4b3543a266f0093bcb641dd9d323d5e",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-prisma-soft-delete.test.ts",
+      "bytes": 1608,
+      "sha256": "fd08a6fa375b5cc72e05b68e71e696ebe22853719991cd8602d33bef8497bd7b",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-with-rls-authorization.test.ts",
+      "bytes": 6062,
+      "sha256": "6c1bb6c1b6cc8afa9d00192aef5adc257f77b3467655b66824ad0fd2be81e2a2",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/lib-with-rls.test.ts",
+      "bytes": 4952,
+      "sha256": "a8b248ff43a7b28975c57b10d891aadafe55e18ce434025969265587cd7e42d5",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/mobile-auth-scope.test.ts",
+      "bytes": 29763,
+      "sha256": "a0f43b6fca0c43b0455cf80bb384f959f4d2f92da027abd41f9abc94a43d24d1",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/support-ux-observation-api.test.ts",
+      "bytes": 7278,
+      "sha256": "7e705720d84baf220df9e29b8a894528f0b98b8ce47451434b44d34f0c954434",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/support-ux-observation.test.ts",
+      "bytes": 13617,
+      "sha256": "55822debc69d24da5db1ea7cd342203e6aeb1a135cdd9634d6c77619220a1c03",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/__tests__/workforce-privacy-source-audit.test.ts",
+      "bytes": 6025,
+      "sha256": "0c7a3982ffa52b28f5351c175502e45b5a860b653ccdca7fe66c2de0dadaca87",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/lib/auth.ts",
+      "bytes": 26606,
+      "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-shared-privacy/src/lib/prisma.ts",
+      "bytes": 14015,
+      "sha256": "e13b0a9561945eef531b4dbabc9193bb5b6fbcfc3297dfce54fbf219ee3275a1",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-integration-fault/src/lib/auth.ts",
+      "bytes": 26635,
+      "sha256": "cc7ecee26681fb5fa8c2b0f08f064edcc2041ee2ecc845498de4fe851cbc78b7",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    },
+    {
+      "original": "/workspace/hrm-integration-fault/src/lib/prisma.ts",
+      "bytes": 13628,
+      "sha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26",
+      "status": "SOURCE_BINDING_ONLY",
+      "reason": "Immutable repository/source or pinned installed dependency; not duplicated as evidence bytes"
+    }
+  ],
+  "localOnly": [
+    {
+      "original": "/tmp/hrm-shared-corrected-independent-remote-1.json",
+      "bytes": 3635478,
+      "sha256": "c52b8fff696ebcef1b1d12ab0f270e59a0c7f16d2e5cb5c3dc916089edd23eca",
+      "status": "LOCAL_ONLY",
+      "reason": "Large GitHub transport copy with immutable tree provenance, or local verifier text not promoted as raw logs"
+    },
+    {
+      "original": "/tmp/hrm-shared-independent-remote-3.json",
+      "bytes": 3635478,
+      "sha256": "497a9fc6f62fde0d16987d2a386b189f18a957df4e0e8408a1319ccef00e9268",
+      "status": "LOCAL_ONLY",
+      "reason": "Large GitHub transport copy with immutable tree provenance, or local verifier text not promoted as raw logs"
+    }
+  ],
+  "verifiedRecursiveBindings": [
+    "/tmp/hrm-fault-independent-source-b896-20261006.json",
+    "/tmp/hrm-fault-shared-privacy-independent-review-20261006.json",
+    "/tmp/hrm-privacy-shared-synthetic-probe.cjs",
+    "/tmp/hrm-privacy-shared-synthetic-probe.json",
+    "/tmp/hrm-shared-baseline-typecheck.txt",
+    "/tmp/hrm-shared-corrected-independent-remote-0.json",
+    "/tmp/hrm-shared-corrected-independent-remote-1.json",
+    "/tmp/hrm-shared-corrected-independent-remote-2.json",
+    "/tmp/hrm-shared-corrected-independent-remote-3.json",
+    "/tmp/hrm-shared-existing-lint-baseline.json",
+    "/tmp/hrm-shared-existing-lint.json",
+    "/tmp/hrm-shared-independent-compat-tests.json",
+    "/tmp/hrm-shared-independent-corrected-tests.json",
+    "/tmp/hrm-shared-independent-final-tests.json",
+    "/tmp/hrm-shared-independent-pino-sentry-tests.json",
+    "/tmp/hrm-shared-independent-remote-2.json",
+    "/tmp/hrm-shared-independent-remote-3.json",
+    "/tmp/hrm-shared-independent-remote-4.json",
+    "/tmp/hrm-shared-independent-remote-5.json",
+    "/tmp/hrm-shared-independent-sdk-lifecycle-bindings.json",
+    "/tmp/hrm-shared-independent-source-blocked-0fde-20261006.json",
+    "/tmp/hrm-shared-independent-tree-proof-0fde.json",
+    "/tmp/hrm-shared-independent-tree-proof-2d723.json",
+    "/tmp/hrm-shared-independent-verify-corrected-tree.py",
+    "/tmp/hrm-shared-initial-source-freeze-0fde.json",
+    "/tmp/hrm-shared-initial-tests.json",
+    "/tmp/hrm-shared-lifecycle-final-tests.json",
+    "/tmp/hrm-shared-owned-lint-lifecycle.txt",
+    "/tmp/hrm-shared-pino-independent-probe.cjs",
+    "/tmp/hrm-shared-pino-independent-probe.json",
+    "/tmp/hrm-shared-pino-independent-resolved-probe.cjs",
+    "/tmp/hrm-shared-pino-independent-resolved-probe.json",
+    "/tmp/hrm-shared-privacy-independent-scope-20261006.json",
+    "/tmp/hrm-shared-regression-accepted.json",
+    "/tmp/hrm-shared-regression-final.json",
+    "/tmp/hrm-shared-sentry-independent-probe.cjs",
+    "/tmp/hrm-shared-sentry-independent-probe.json",
+    "/tmp/hrm-shared-sentry-init-independent-probe.cjs",
+    "/tmp/hrm-shared-sentry-init-independent-probe.json",
+    "/tmp/hrm-shared-sentry-init-resolved-independent-probe.cjs",
+    "/tmp/hrm-shared-sentry-init-resolved-independent-probe.json",
+    "/tmp/hrm-shared-source-freeze.json",
+    "/tmp/hrm-shared-tests-typecheck-lifecycle.txt"
+  ],
+  "policy": "Only selected source/synthetic JSON/metadata originals; no raw CI logs, production data or screenshots. Old evidence preserved. Initial Pino and Sentry-init failures are historical failures, not relabeled."
+}

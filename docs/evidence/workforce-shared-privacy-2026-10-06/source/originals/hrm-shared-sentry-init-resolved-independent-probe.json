@@ -1,0 +1,40 @@
+{
+  "scope": "actual_browser_init_hidden_document_actual_BrowserSession_default_and_synthetic_pre_setup_emitter_then_captureEvent_memory_transport",
+  "sdk": "10.65.0",
+  "bindings": [
+    {
+      "path": "src/lib/telemetry/safe-fields.ts",
+      "sha256": "7f63972f69f50aa4dd216973ef2ed52e6c5aab5246a7c917cc35081a5ebdab96"
+    },
+    {
+      "path": "src/lib/telemetry/sentry-privacy.ts",
+      "sha256": "055dadc6db169ba32eb7820806bc2c2876384bf1630e6ce6a129278972e433d3"
+    }
+  ],
+  "networkCalls": 0,
+  "browserSessionRemoved": true,
+  "privacyIntegrationPresent": true,
+  "transportCalls": 2,
+  "events": [
+    {
+      "beforeInitReturn": true,
+      "itemTypes": [
+        "event"
+      ],
+      "inferIp": [
+        "never"
+      ],
+      "privateCanaryRetained": false
+    },
+    {
+      "beforeInitReturn": false,
+      "itemTypes": [
+        "event"
+      ],
+      "inferIp": [
+        "never"
+      ],
+      "privateCanaryRetained": false
+    }
+  ]
+}

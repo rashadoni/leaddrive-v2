@@ -1,0 +1,32 @@
+{
+  "scope": "DIRECT_REAL_PINO_TO_SYNTHETIC_MEMORY_DESTINATION",
+  "sourceBindings": [
+    {
+      "path": "src/lib/telemetry/safe-fields.ts",
+      "sha256": "7f63972f69f50aa4dd216973ef2ed52e6c5aab5246a7c917cc35081a5ebdab96"
+    },
+    {
+      "path": "src/lib/telemetry/pino-privacy.ts",
+      "sha256": "01b5eadface990731ffffaeb952561ff961d614d2060e0a36b0985ef567074a2"
+    },
+    {
+      "path": "src/lib/logger.ts",
+      "sha256": "60356b6327504b49d443786ad950eb03477bbf15cce44dcdeefe47983f929eb8"
+    }
+  ],
+  "cases": [
+    {
+      "name": "defaultChildBindings",
+      "privateOrgRetained": false,
+      "privateMessageRetained": false,
+      "event": "application_log"
+    },
+    {
+      "name": "existingLogErrorWrapper",
+      "privateOrgRetained": false,
+      "privateMessageRetained": false,
+      "event": "application_log"
+    }
+  ],
+  "network": false
+}

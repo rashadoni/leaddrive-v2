@@ -1,0 +1,13 @@
+{
+  "scope": "actual_browser_init_with_actual_default_BrowserSession_integration_hidden_document_memory_transport",
+  "sdk": "10.65.0",
+  "networkCalls": 0,
+  "envelopes": [
+    {
+      "beforeInitReturn": true,
+      "itemTypes": [
+        "session"
+      ]
+    }
+  ]
+}

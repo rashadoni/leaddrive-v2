@@ -1,0 +1,92 @@
+{
+  "createdAt": "2026-10-06T13:08:03.653063+00:00",
+  "status": "EXACT_SOURCE_BLOCKED_PENDING_LIFECYCLE_FIX",
+  "commit": "0fdeeb23e903fcbe873624509631f16989326d0c",
+  "tree": "083fb93cafc007996a1015facd4c4654323b1016",
+  "parent": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+  "remoteBranchAtRead": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+  "main": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+  "identity": {
+    "all8797LocalBlobsAndModesMatchRemote": true,
+    "all2811GitTreesRecomputed": true,
+    "unchangedParentBlobs": 8776,
+    "delta": 21,
+    "removed": 0
+  },
+  "independentTests": {
+    "passed": 39,
+    "failed": 0,
+    "skipped": 0,
+    "files": 7,
+    "doesNotCoverInitialHiddenDocumentLifecycle": true
+  },
+  "findings": [
+    {
+      "severity": "P2",
+      "id": "SENTRY_INITIAL_HIDDEN_SESSION",
+      "status": "OPEN_ON_THIS_COMMIT",
+      "description": "BrowserSession setupOnce calls whenIdleOrHidden synchronously for an initially hidden document, sending session before init returns and before post-init beforeEnvelope hook registration. Actual browser SDK memory-transport reproduction confirms one session envelope before init return.",
+      "required": "Register filtering before integrations initialize and test actual hidden browser startup.",
+      "networkCalls": 0
+    }
+  ],
+  "limits": [
+    "No collector or production traffic observed",
+    "New candidate corrections under way, this immutable commit not accepted",
+    "Earlier Pino bypass resolved but initial failure originals retained",
+    "No source or remote writes by reviewer",
+    "Hosted build and checks pending"
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-shared-independent-remote-2.json",
+      "bytes": 1340,
+      "sha256": "c819a2a0854d7fc0cc6ad4714d1de124eddce3f28b5859c8f08348c5e4125dbe"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-remote-3.json",
+      "bytes": 3635478,
+      "sha256": "497a9fc6f62fde0d16987d2a386b189f18a957df4e0e8408a1319ccef00e9268"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-remote-4.json",
+      "bytes": 381,
+      "sha256": "f507b1eb68d127c88f9d97ac0e3649731ce48578adac315c9ca751e29c2de73c"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-remote-5.json",
+      "bytes": 480,
+      "sha256": "b05ebd61ef6193b15684c61787bff645ec6f7f8e0208a5bdcad87ca795dad7c8"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-tree-proof-0fde.json",
+      "bytes": 2872,
+      "sha256": "63671725db950481b3b6e5f31828671d68189a7aa3a31f9f75ab3aa7cb4d888d"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-final-tests.json",
+      "bytes": 16355,
+      "sha256": "5c1c8a88dcd4603214961cc81d2ac22ec1d57986c79c08d139c95e45874a2b2f"
+    },
+    {
+      "path": "/tmp/hrm-shared-sentry-init-independent-probe.cjs",
+      "bytes": 1126,
+      "sha256": "5a4003e30779175fb91046c58cc8c89c74e7bcb6163d7a5f39eca661b06f8424"
+    },
+    {
+      "path": "/tmp/hrm-shared-sentry-init-independent-probe.json",
+      "bytes": 271,
+      "sha256": "34ad3c94ce73475941c66a94465b5bd6fafea45a46b62b239a765f533a51447c"
+    },
+    {
+      "path": "/tmp/hrm-shared-pino-independent-probe.cjs",
+      "bytes": 1765,
+      "sha256": "8b388b8238941e1237d8286b4eb2e88a250f06d22ff52b97843cda9db6f6adcd"
+    },
+    {
+      "path": "/tmp/hrm-shared-pino-independent-probe.json",
+      "bytes": 870,
+      "sha256": "8e71a16a3157b2ecd3d84fc41504f16328347ca475f3c08b84393c50a5476ff0"
+    }
+  ]
+}

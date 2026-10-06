@@ -1,0 +1,109 @@
+{
+  "head": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+  "tree": "5d1f81a8c306e1d07f22f25f248b206882aabc5e",
+  "base": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+  "main": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+  "priorEvidence": "2d7c8c90e7d385f021cb8f13de31c383b005aca4",
+  "sourceCount": 8797,
+  "unchangedBaseBlobs": 8776,
+  "changedPaths": 21,
+  "compiler": {
+    "baselineProduction": {
+      "exit": 0,
+      "diagnostics": 0
+    },
+    "candidateProductionAndTests": {
+      "exit": 0,
+      "diagnostics": 0
+    },
+    "initialErrorsFixed": [
+      "SpanJSON requires an empty data object",
+      "hostile fixture getter needed declared string type"
+    ],
+    "baselineFilesEdited": false
+  },
+  "lint": {
+    "newAndOtherTouchedPaths": {
+      "exit": 0,
+      "diagnostics": 0
+    },
+    "authAndPrisma": {
+      "sameParentRuleMessageFileIdentities": true,
+      "diagnostics": 6
+    }
+  },
+  "boundaries": [
+    "local synthetic data only",
+    "no real database/provider/collector calls in new tests",
+    "memory transport replaces network in SDK probes",
+    "Prisma audit write intercepted without schema assumptions",
+    "global repository cleanliness not claimed"
+  ],
+  "bindings": [
+    {
+      "path": "/tmp/hrm-shared-source-freeze.json",
+      "bytes": 6596,
+      "sha256": "bfb76fdc3bf05f224fbf7f589a86e28c2156fcff414f84ca677dec81aa1562d2"
+    },
+    {
+      "path": "/tmp/hrm-shared-initial-source-freeze-0fde.json",
+      "bytes": 6596,
+      "sha256": "c79b5bf434d8913173f7a045902d20c0b9cae9c10cf250cdc878b245dd5287ec"
+    },
+    {
+      "path": "/tmp/hrm-shared-initial-tests.json",
+      "bytes": 7302,
+      "sha256": "5b88a7c062c08be959907d138bbfa1de2e4bf3164ab7584406c6e5f028f4f513"
+    },
+    {
+      "path": "/tmp/hrm-shared-lifecycle-final-tests.json",
+      "bytes": 17131,
+      "sha256": "c7791ad83b9587372d63d3258a253d1300385a0983a041eef018bc114cf22536"
+    },
+    {
+      "path": "/tmp/hrm-shared-regression-final.json",
+      "bytes": 129362,
+      "sha256": "5884af6497f2b57947f7e798de07c1b2ccd6d945eb69f226a9a5af888e0010cc"
+    },
+    {
+      "path": "/tmp/hrm-shared-existing-lint.json",
+      "bytes": 68813,
+      "sha256": "b455e1d543ab954e87e11941a57c428172158a5d0688459e14354960a657ba9e"
+    },
+    {
+      "path": "/tmp/hrm-shared-existing-lint-baseline.json",
+      "bytes": 68411,
+      "sha256": "ae88fe4f9ee9fdd9bd4e11f353850c8db1c192b97b9a702fc0f3cfd252ae9419"
+    },
+    {
+      "path": "/tmp/hrm-shared-baseline-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classification": "empty local verifier output"
+    },
+    {
+      "path": "/tmp/hrm-shared-tests-typecheck-lifecycle.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classification": "empty local verifier output"
+    },
+    {
+      "path": "/tmp/hrm-shared-owned-lint-lifecycle.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classification": "empty local verifier output"
+    },
+    {
+      "path": "/tmp/hrm-shared-regression-accepted.json",
+      "bytes": 130140,
+      "sha256": "c0167dbed97c2897cb7a984c0aacfedf38036bea33d4afb271f08c4bd6dcf5b4"
+    }
+  ],
+  "finalRegression": {
+    "passed": 386,
+    "failed": 0,
+    "skipped": 0,
+    "files": 23,
+    "sourceHead": "2d723e02627d2983db91b1d2360fd7592f886e8b"
+  }
+}

@@ -1,0 +1,424 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T13:11:43.240231+00:00",
+  "status": "EXACT_IMMUTABLE_SOURCE_BOUNDED_ACCEPTED_READY_FOR_OWNED_PR_PUSH",
+  "source": {
+    "commit": "2d723e02627d2983db91b1d2360fd7592f886e8b",
+    "tree": "5d1f81a8c306e1d07f22f25f248b206882aabc5e",
+    "immediateParent": "0fdeeb23e903fcbe873624509631f16989326d0c",
+    "acceptedBase": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+    "main": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+    "branchAtFreshIndependentRead": "b896cdb35246c22bcaddb176774a5c1b528190f9",
+    "publishedCandidateAtRead": false,
+    "syntheticNewMerge": "NOT_YET_AVAILABLE_BRANCH_NOT_ADVANCED",
+    "correctConnector": "rashadoni",
+    "all8797RemoteBlobIdentitiesAndLocalModesVerified": true,
+    "all2811TreesIndependentlyReconstructed": true,
+    "unchangedParentBlobs": 8776,
+    "deltaPaths": 21,
+    "removedPaths": 0
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": [],
+    "unresolved": 0,
+    "resolved": [
+      {
+        "id": "PINO_CHILD_BINDINGS",
+        "severity": "P2",
+        "resolution": "Constrained recursively sanitizing facade; actual installed Pino/default helper repro no longer retains synthetic org identifier. Initial failing probe preserved."
+      },
+      {
+        "id": "SENTRY_INITIAL_HIDDEN_SESSION",
+        "severity": "P2",
+        "resolution": "First integration beforeSetup registers envelope boundary before all default integration setup. BrowserSession omitted. Actual BrowserClient hidden-document and setup-time emitter probe verifies both startup and later capture. Initial immutable 0fde remains blocked historical evidence."
+      },
+      {
+        "id": "SDK_PRIVACY_DIRECTIVE_PROJECTION",
+        "severity": "P2_REVIEW_CONCERN_RESOLVED",
+        "resolution": "Projection forces fixed sdk.settings.infer_ip=never, surviving event and envelope processing. Actual BrowserClient memory transport confirms instruction remains; actual collector inference behavior not tested."
+      }
+    ]
+  },
+  "independentVerification": {
+    "correctedSevenNewSuites": {
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "files": 7,
+      "report": "/tmp/hrm-shared-independent-corrected-tests.json"
+    },
+    "compatibility": {
+      "passed": 98,
+      "failed": 0,
+      "skipped": 0,
+      "files": 6,
+      "report": "/tmp/hrm-shared-independent-compat-tests.json",
+      "subjects": [
+        "Support observation helper/API",
+        "Routes observation",
+        "with-RLS",
+        "RLS authorization",
+        "Prisma RLS extension"
+      ],
+      "reuseQualification": "Compatibility run occurred while lifecycle-only Sentry correction was being finalized; all exercised Support/Routes/auth/Prisma production files unchanged and verified in final frozen tree."
+    },
+    "configurationWiring": "Three actual source config modules imported with mocked @sentry/nextjs.init; options callback exercised and actual private integration registration asserted. Separately actual NodeClient and BrowserClient SDK processing and serialization exercised with memory transports; not a live Next.js browser collector test.",
+    "sdkStartupProbe": {
+      "sdk": "10.65.0",
+      "networkCalls": 0,
+      "browserSessionRemoved": true,
+      "beforeInitReturn": {
+        "allowedItems": [
+          "event"
+        ],
+        "inferIp": "never",
+        "canaryRetained": false
+      },
+      "afterInitCaptureEvent": {
+        "allowedItems": [
+          "event"
+        ],
+        "inferIp": "never",
+        "canaryRetained": false
+      }
+    },
+    "sourceReview": [
+      "All 21 code/test/doc paths read; auth success/denial and downstream rejection semantics preserved.",
+      "Audit persistence arguments remain tenant scoped and unchanged; historical best-effort catch resolution retained.",
+      "RLS guard retains test fail-closed model operations and production raw-query warn-only behavior; finite labels eliminate captured stack.",
+      "Pino Support/Routes finite contract retains valid unsampled observations, statuses, durations and pseudonymous identifiers; arbitrary ERP/social messages deliberately reduced.",
+      "Pino facade exposes only info/warn/error/debug/recursively sanitized child, no configuration mutation escape.",
+      "Sentry drops unsupported item channels and raw text/user/request/arbitrary span fields; fixed reduced grouping/observability explicitly documented.",
+      "Existing traces sampling, destination DSN configuration, source map build configuration and credentials untouched.",
+      "Baselines, schema, migrations, workflow gates, canonical roadmap and prior evidence files unchanged."
+    ]
+  },
+  "ownerEvidenceReviewed": {
+    "regressionBeforeFinalLifecycleCorrection": {
+      "passed": 384,
+      "failed": 0,
+      "skipped": 0,
+      "files": 23,
+      "qualification": "Owner run, independently parsed full JSON; not reviewer execution and not claimed as one final post-correction broad run."
+    },
+    "correctedNewTests": {
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "files": 7
+    },
+    "scopedParentProductionTypecheck": "Owner reports exit0; empty output verified; not whole repository compiler proof",
+    "correctedTestInclusiveTypecheck": "Owner reports exit0; empty output verified; reviewer did not rerun compiler",
+    "scopedNewFilesLint": "Owner reports exit0; empty output verified",
+    "existingTouchedLint": "6 parent-identical rule/message/file diagnostics, Prisma line offset +1 only; no new rule suppression",
+    "initialFailures": "Initial Pino privacy repro and hidden session repro retained; initial owned SpanJSON/fixture type errors corrected, historical output not erased",
+    "finalPostLifecycleRegression": {
+      "passed": 386,
+      "failed": 0,
+      "skipped": 0,
+      "files": 23,
+      "qualification": "Owner execution after final lifecycle correction; complete result JSON independently parsed, not reviewer execution."
+    }
+  },
+  "sourceBindings": [
+    {
+      "path": "docs/workforce-shared-privacy-2026-10-06.md",
+      "bytes": 9223,
+      "sha256": "dd84424246f5c3ba9f87717f9deacddb42b589a9e43e31c79cdebe5fe85cc798",
+      "blob": "9e8e77e4ad91d8884ecc139fa4db38da817195ae",
+      "mode": "100644"
+    },
+    {
+      "path": "instrumentation-client.ts",
+      "bytes": 1081,
+      "sha256": "bad6c5e0d666f0a4e7a6c5a45fb2eac3024ac58b06c2fdd708b2868f31c7690a",
+      "blob": "14794607a0dd5392fd245021009a8b18788864d1",
+      "mode": "100644"
+    },
+    {
+      "path": "sentry.edge.config.ts",
+      "bytes": 398,
+      "sha256": "5bb937bc7a34ae882c21df21b0f816279c074cf5207c77eea3a24e50341f09d2",
+      "blob": "b52950c92941df5e2a865709a57cbd9dec808267",
+      "mode": "100644"
+    },
+    {
+      "path": "sentry.server.config.ts",
+      "bytes": 398,
+      "sha256": "5bb937bc7a34ae882c21df21b0f816279c074cf5207c77eea3a24e50341f09d2",
+      "blob": "b52950c92941df5e2a865709a57cbd9dec808267",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-api-auth.test.ts",
+      "bytes": 1508,
+      "sha256": "56b82791a9fe52a6de9b878d7ae623cf7737147c004eacdd81f7a7d296890425",
+      "blob": "823c0bbfd1a75e8d186b17b56c15c95b7c2deba4",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-auth-callbacks.test.ts",
+      "bytes": 3584,
+      "sha256": "ffb8aa8d0a240f2c769e8b09bc1e4411f358139c3d955975d7dbe955d09e377a",
+      "blob": "c132eeb99d3f0dd63c2c452c11d8d28e34b5edee",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-auth-rls.test.ts",
+      "bytes": 3170,
+      "sha256": "b27a2ab6d77cef2922e6e57048846b52dd3e3cb09482b5133979dda24269449c",
+      "blob": "1f41d8da90ea5978c4580c97a9b67883294baac4",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-pino.test.ts",
+      "bytes": 5003,
+      "sha256": "f430a7353789845418ff1ed332b7c1e1bc230285f3c8f42c647613ccb377c507",
+      "blob": "ace7ac7d985c5f22775a7b8f83620414cf0bde63",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-prisma.test.ts",
+      "bytes": 2914,
+      "sha256": "4a2d935339fac33d9a415cfbf05aeb995a199efb52027b821d3478d99e2a1d98",
+      "blob": "09488c0c474aeccdd4fd74ad6dd3308e6efc3d5a",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-sentry-config.test.ts",
+      "bytes": 1733,
+      "sha256": "85cd01c96a67b81aad78a8684e36d04aeca5f8d0a17791528990571ecae2b76c",
+      "blob": "1de3a5e368943d0b054d805b92592b4221b8d839",
+      "mode": "100644"
+    },
+    {
+      "path": "src/__tests__/shared-privacy-sentry.test.ts",
+      "bytes": 7762,
+      "sha256": "d4cb6230c02784e724fc33aa4305abb4c3ce80e66f58ab867b2fd4d090cab117",
+      "blob": "6a4f844435a2172d7a3241a1ce00250b53664ff4",
+      "mode": "100644"
+    },
+    {
+      "path": "src/app/error.tsx",
+      "bytes": 1811,
+      "sha256": "cae515878ab18a01b375d8a34a241a47607caa0cc0fff4d9989f58d413a13094",
+      "blob": "9746975b68383ad269c069f181c6dd790a37cd22",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 25973,
+      "sha256": "1bd273786679f9b59718a4eec9314f51ae19efcddd6455cae8d562d88d1c8f84",
+      "blob": "bd7f1c670a28a42421f2e25b473759cc41b2b6b7",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26606,
+      "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd",
+      "blob": "18a21aba542ef0d6aa601c97a664c976c20901e1",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/logger.ts",
+      "bytes": 2535,
+      "sha256": "60356b6327504b49d443786ad950eb03477bbf15cce44dcdeefe47983f929eb8",
+      "blob": "aa50ef96866d3fac815350c48081e0809ffcefa9",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/prisma.ts",
+      "bytes": 14015,
+      "sha256": "e13b0a9561945eef531b4dbabc9193bb5b6fbcfc3297dfce54fbf219ee3275a1",
+      "blob": "369b92e69257bad78d6417ba573c6b7fb46854e5",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/telemetry/operational-failure.ts",
+      "bytes": 963,
+      "sha256": "60c75c5892aa5d574795dedde19350d004243555eb129bab7a79f9ee33b6009d",
+      "blob": "65f8db269b488d076aecc5a1ebdb624f3626f21f",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/telemetry/pino-privacy.ts",
+      "bytes": 5053,
+      "sha256": "01b5eadface990731ffffaeb952561ff961d614d2060e0a36b0985ef567074a2",
+      "blob": "d0cbfc00bb81a0aa50f04e5a85d378cebe4778b7",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/telemetry/safe-fields.ts",
+      "bytes": 1062,
+      "sha256": "7f63972f69f50aa4dd216973ef2ed52e6c5aab5246a7c917cc35081a5ebdab96",
+      "blob": "e9569988302a52525f25d8003e100ac222d3565e",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/telemetry/sentry-privacy.ts",
+      "bytes": 6802,
+      "sha256": "055dadc6db169ba32eb7820806bc2c2876384bf1630e6ce6a129278972e433d3",
+      "blob": "5a534d369e41caa57ff11377a511a9b82f5122b1",
+      "mode": "100644"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10390,
+      "sha256": "533dfc91f795970fe7abaf1aedc37e7ea82d175257b33a0d84c864e791618e38",
+      "blob": "3eda367b68e0ec44b2021ebc96d6d0f4493c8fad",
+      "mode": "100644"
+    }
+  ],
+  "limits": [
+    "Source-only acceptance authorizes readiness for normal owned PR publication; no hosted gate or build acceptance yet.",
+    "Production Next.js build NOT RUN by independent reviewer; requested through existing hosted label gate, pending exact candidate result.",
+    "No global privacy/whole-program taint guarantee, no real collector/destination inspection, no network sends, no credential acquisition.",
+    "No complete native Prisma driver/framework output, historical log deletion/retention, collector ACL, dashboard/SLO or shipper acceptance.",
+    "No live RLS database writes in new mocked privacy tests, no staging or signed-device credit.",
+    "SDK event/trace/span IDs and Support HMACs remain pseudonymous, not anonymous.",
+    "Historical api_keys migration baseline and full historical staging blockers remain.",
+    "WF-C10-011 PLANNED; WF-C12-002 and WF-C12-008 PARTIAL; ledger82/161DONE79openweighted59 unchanged.",
+    "No source edits, GitHub writes, merge/deploy/activation or permission change performed by independent reviewer."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-shared-corrected-independent-remote-0.json",
+      "bytes": 1345,
+      "sha256": "ba04d93fac3e8e3aca109b228e43afc5a44bc1320fbc7b0f14f96b184d2fe86b"
+    },
+    {
+      "path": "/tmp/hrm-shared-corrected-independent-remote-1.json",
+      "bytes": 3635478,
+      "sha256": "c52b8fff696ebcef1b1d12ab0f270e59a0c7f16d2e5cb5c3dc916089edd23eca"
+    },
+    {
+      "path": "/tmp/hrm-shared-corrected-independent-remote-2.json",
+      "bytes": 381,
+      "sha256": "f507b1eb68d127c88f9d97ac0e3649731ce48578adac315c9ca751e29c2de73c"
+    },
+    {
+      "path": "/tmp/hrm-shared-corrected-independent-remote-3.json",
+      "bytes": 480,
+      "sha256": "b05ebd61ef6193b15684c61787bff645ec6f7f8e0208a5bdcad87ca795dad7c8"
+    },
+    {
+      "path": "/tmp/hrm-shared-source-freeze.json",
+      "bytes": 6596,
+      "sha256": "bfb76fdc3bf05f224fbf7f589a86e28c2156fcff414f84ca677dec81aa1562d2"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-tree-proof-2d723.json",
+      "bytes": 2865,
+      "sha256": "618c10e46b24291e0f46b470a4868b1c00d9a2d7d2576e77cd765ec1cacb8914"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-verify-corrected-tree.py",
+      "bytes": 2148,
+      "sha256": "d7d39375db87f46be024ebff8fbf296bb1e0a7ad33fddad1c9d1ca764a2a1894"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-corrected-tests.json",
+      "bytes": 17152,
+      "sha256": "e24d34f6d89020a9c74d63e99b8fc507fd226cc195c9f0be8ff2af892c30215e"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-compat-tests.json",
+      "bytes": 36060,
+      "sha256": "1e689b3dae960532ded876f8637e279b726759e3050e11d589ca99c8f22016d5"
+    },
+    {
+      "path": "/tmp/hrm-shared-sentry-init-resolved-independent-probe.cjs",
+      "bytes": 2592,
+      "sha256": "4c236dfc2ef4ae6f7f5eeb608a395b6206c7836e8db3ba83927d661583d5c608"
+    },
+    {
+      "path": "/tmp/hrm-shared-sentry-init-resolved-independent-probe.json",
+      "bytes": 962,
+      "sha256": "74637a41e682d6959fe9b82a24cdd9ed60cf5700e280da7cdee39478cf2c907b"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-source-blocked-0fde-20261006.json",
+      "bytes": 3435,
+      "sha256": "d2ed0dd1ea052f86645797db0a9f29dc77fe7f9d65dd837857aea12158ae1738"
+    },
+    {
+      "path": "/tmp/hrm-shared-sentry-init-independent-probe.cjs",
+      "bytes": 1126,
+      "sha256": "5a4003e30779175fb91046c58cc8c89c74e7bcb6163d7a5f39eca661b06f8424"
+    },
+    {
+      "path": "/tmp/hrm-shared-sentry-init-independent-probe.json",
+      "bytes": 271,
+      "sha256": "34ad3c94ce73475941c66a94465b5bd6fafea45a46b62b239a765f533a51447c"
+    },
+    {
+      "path": "/tmp/hrm-shared-pino-independent-probe.cjs",
+      "bytes": 1765,
+      "sha256": "8b388b8238941e1237d8286b4eb2e88a250f06d22ff52b97843cda9db6f6adcd"
+    },
+    {
+      "path": "/tmp/hrm-shared-pino-independent-probe.json",
+      "bytes": 870,
+      "sha256": "8e71a16a3157b2ecd3d84fc41504f16328347ca475f3c08b84393c50a5476ff0"
+    },
+    {
+      "path": "/tmp/hrm-shared-pino-independent-resolved-probe.cjs",
+      "bytes": 1774,
+      "sha256": "a963928fe28ea94966e83958bcf657b276cdfee42aab7ffe4cec7c2bdcbc48e0"
+    },
+    {
+      "path": "/tmp/hrm-shared-pino-independent-resolved-probe.json",
+      "bytes": 872,
+      "sha256": "bd54b6e1300f182ffde3b36c854af27cb824857f7ca69e09c1a8776e3125c282"
+    },
+    {
+      "path": "/tmp/hrm-shared-independent-sdk-lifecycle-bindings.json",
+      "bytes": 1288,
+      "sha256": "c70502362f86df64bbb940341f5910862a45166118c3adb8f770cdeb447909fb"
+    },
+    {
+      "path": "/tmp/hrm-shared-regression-final.json",
+      "bytes": 129362,
+      "sha256": "5884af6497f2b57947f7e798de07c1b2ccd6d945eb69f226a9a5af888e0010cc"
+    },
+    {
+      "path": "/tmp/hrm-shared-lifecycle-final-tests.json",
+      "bytes": 17131,
+      "sha256": "c7791ad83b9587372d63d3258a253d1300385a0983a041eef018bc114cf22536"
+    },
+    {
+      "path": "/tmp/hrm-shared-tests-typecheck-lifecycle.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-shared-owned-lint-lifecycle.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-shared-existing-lint-baseline.json",
+      "bytes": 68411,
+      "sha256": "ae88fe4f9ee9fdd9bd4e11f353850c8db1c192b97b9a702fc0f3cfd252ae9419"
+    },
+    {
+      "path": "/tmp/hrm-shared-existing-lint.json",
+      "bytes": 68813,
+      "sha256": "b455e1d543ab954e87e11941a57c428172158a5d0688459e14354960a657ba9e"
+    },
+    {
+      "path": "/tmp/hrm-shared-baseline-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-shared-regression-accepted.json",
+      "bytes": 130140,
+      "sha256": "c0167dbed97c2897cb7a984c0aacfedf38036bea33d4afb271f08c4bd6dcf5b4"
+    }
+  ],
+  "archivalScope": "Receipt and supports currently local. Large remote-tree transport JSON may remain LOCAL_ONLY if immutable tree provenance retained; do not claim remote archival without readback."
+}

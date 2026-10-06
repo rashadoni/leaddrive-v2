@@ -1,0 +1,37 @@
+[
+  {
+    "path": "node_modules/@sentry/browser/build/npm/cjs/dev/integrations/browsersession.js",
+    "bytes": 1836,
+    "sha256": "5eb47af3e05816ba7bb7a5af216103e42ac8eb31b24fe8e819ea5606b0796db6"
+  },
+  {
+    "path": "node_modules/@sentry/browser-utils/build/cjs/metrics/web-vitals/lib/whenIdleOrHidden.js",
+    "bytes": 911,
+    "sha256": "d2dd0ba3dc649cd282010124507b14aa6c6b864cf7ca8882d8ac4ee403d66f36"
+  },
+  {
+    "path": "node_modules/@sentry/core/build/cjs/sdk.js",
+    "bytes": 951,
+    "sha256": "4fac52611895410e01f69daa8d524e85d656b4ae17dc8e4b62c196b0356f2b66"
+  },
+  {
+    "path": "node_modules/@sentry/core/build/cjs/integration.js",
+    "bytes": 4891,
+    "sha256": "8228dab2cdc0b01a01eb97d3644c62b473259749f0f735903cca8af110d1e34b"
+  },
+  {
+    "path": "node_modules/@sentry/browser/build/npm/cjs/dev/client.js",
+    "bytes": 2659,
+    "sha256": "e3ef6edc2dab07b696b9a717d0c882d6b1e22eb623540f7db3450e33fef581be"
+  },
+  {
+    "path": "node_modules/@sentry/core/build/cjs/envelope.js",
+    "bytes": 4042,
+    "sha256": "639b53c57c50e7fc150952b8f4ce1a6afc3cbde2716ec8e2dbfb99ed91696d3b"
+  },
+  {
+    "path": "node_modules/@sentry/nextjs/build/cjs/client/index.js",
+    "bytes": 8669,
+    "sha256": "ab789bf83ba9aec8fb97b6b1a3f4bbb5d8ad88d52d9f9527e6738b115b0945b6"
+  }
+]
