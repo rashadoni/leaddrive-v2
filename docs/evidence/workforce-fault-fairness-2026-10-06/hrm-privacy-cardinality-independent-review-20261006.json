@@ -1,0 +1,80 @@
+{
+  "status": "ACCEPTED_BOUNDED_SOURCE_CHARACTERIZATION_NOT_PRIVACY_CLOSURE",
+  "at": "2026-10-06T11:23:58.481015+00:00",
+  "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "sourceTree": "678503f2dc2a5a5d0c52d41156caee8bf100494b",
+  "reviewerExecution": "Read complete probe script/report and all4source files; verified hashes/Git blobs. Did not rerun owner probe.",
+  "sourceBindings": [
+    {
+      "path": "src/lib/secure-token.ts",
+      "bytes": 3582,
+      "sha256": "1390764bd0e5a4a6d87102624c91fc3754e23a1a150580ba4455cda41540dd41"
+    },
+    {
+      "path": "src/lib/mtm/mobile-sync-telemetry.ts",
+      "bytes": 8447,
+      "sha256": "46abe748d8047dc5d3cad1a11478b8d7b01bfef8dde2d85149627da1bbaee1ec"
+    },
+    {
+      "path": "src/lib/mtm/mobile-gps-telemetry.ts",
+      "bytes": 1154,
+      "sha256": "7a1dd05743661c77d282d830acf6d2153309fe6cde90de663e2848c6a72b4a30"
+    },
+    {
+      "path": "src/lib/mtm/mobile-media-telemetry.ts",
+      "bytes": 1704,
+      "sha256": "c31564cba4a95cab33927d5fcd5db2cf0d7e455da61f617dc4937e847842ee09"
+    }
+  ],
+  "review": {
+    "validApkVersions": "500 distinct syntactically valid1.2.3+integer library inputs produce500 distinct version dimensions in500observations, under explicit synthetic successSampleRate1. This demonstrates absence of finite release-ledger mapping inside this emitter; not500 actual deployed versions.",
+    "principalCardinality": "500 distinct synthetic agent inputs produce500 distinct64-bit-truncated HMAC principal values under fixed synthetic HMAC key; raw agent strings omitted. This observed sample preserves cardinality and pseudonymous linkability, not anonymity. No mathematical claim that truncation is globally collision-free.",
+    "tenant": "The500version observations use one synthetic tenant and produce one tenant pseudonym. This does not bound population cardinality across tenants.",
+    "invalidJsInputs": "GPS/media direct JavaScript calls bypass declared TypeScript unions; endpoint/result canaries and media contractVersion9999 retained. The library lacks runtime normalization for these fields; route callsites were not exercised, so this is not proof attacker values reach those fields through actual routes.",
+    "sink": "Actual source functions, HMAC implementation and JSON serialization run under VM-injected synthetic env into memory console. No remote collector/dashboard ingest or retention observed.",
+    "existingContract": "mobile-sync telemetry comments explicitly delegate approved-release mapping to an operations query/release-artifact ledger; this experiment does not inspect whether any destination performs that mapping."
+  },
+  "ownerReportedObservations": {
+    "validVersions": {
+      "events": 500,
+      "distinct_syntactically_valid_versions": 500,
+      "distinct_tenant_pseudonyms": 1
+    },
+    "apkCensus": {
+      "events": 500,
+      "distinct_principal_pseudonyms": 500,
+      "raw_agent_ids_omitted": true
+    },
+    "invalidRuntimeLibraryInputs": {
+      "gps_unchecked_fields_retain_synthetic_value": true,
+      "media_unchecked_fields_retain_synthetic_value": true,
+      "media_unchecked_contract_version": 9999
+    }
+  },
+  "findings": [],
+  "limits": [
+    "Source characterization only; these fourfiles are unchanged in8053.",
+    "No sourcefix or productionroute/input exploit verified.",
+    "Productioncredentials not requested; source VM env fixedsynthetic. General dependency internals were not audited for process.env reads.",
+    "No actual users/releases/productionlogs/networkcollector/staging/load/pilot evidence.",
+    "WF-C10-011 PLANNED/WF-C12-002 PARTIAL remain unchanged; cardinality/privacy/destination acceptance remains open.",
+    "Current exact-head mandatory terminalCI remains a separate review."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-privacy-cardinality-probe.cjs",
+      "bytes": 4328,
+      "sha256": "d8c122a71f55c965cf8b45c91001c2a7ffc629cd1ac2701083ac6738f9380bc1"
+    },
+    {
+      "path": "/tmp/hrm-privacy-cardinality-probe.json",
+      "bytes": 2086,
+      "sha256": "885a9fa960bb3294a32ebbb4facf5d394e2b5a71b918f9f86dc51c6c142e7fdd"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-source-8053-20261006.json",
+      "bytes": 26639,
+      "sha256": "bb3f3e4624f059bb981b5be8ee197df4771b118df5fbf10a6a0d4904dffd80cf"
+    }
+  ]
+}

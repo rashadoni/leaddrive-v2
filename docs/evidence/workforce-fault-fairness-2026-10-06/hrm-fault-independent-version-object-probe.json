@@ -1,0 +1,15 @@
+{
+  "scope": "DIRECT_INVALID_JS_LIBRARY_ARGUMENT_NOT_ROUTE_EXPLOIT",
+  "events": [
+    {
+      "path": "src/lib/mtm/mobile-gps-telemetry.ts",
+      "versionType": "object",
+      "syntheticCanaryRetained": true
+    },
+    {
+      "path": "src/lib/mtm/mobile-media-telemetry.ts",
+      "versionType": "object",
+      "syntheticCanaryRetained": true
+    }
+  ]
+}

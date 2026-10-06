@@ -1,0 +1,35 @@
+{
+  "repository": "rashadoni/leaddrive-v2",
+  "number": 592,
+  "state": "open",
+  "head": "4a308753bcbc1dbcdf031aa9474b4a973b7cd141",
+  "base": "0dad3e4cc2bc1704e6be5258ee5e0874418ab1d4",
+  "files": [
+    {
+      "path": "docs/support-audit-acceptance-checklist-2026-10-06.md",
+      "sha": "1256ab36c1df7f143a65f5c0d5ae6b2fe04352c8",
+      "status": "added"
+    },
+    {
+      "path": "messages/az.json",
+      "sha": "5e9cc1d0232c9abbebc2fa1d1da35a828ae413f0",
+      "status": "modified"
+    },
+    {
+      "path": "messages/en.json",
+      "sha": "5ff666ddf77f5b8a154189fec145e3c8c5164496",
+      "status": "modified"
+    },
+    {
+      "path": "messages/ru.json",
+      "sha": "91939f9b3d3c3c0f0f48c0f19ce3642c977485a4",
+      "status": "modified"
+    },
+    {
+      "path": "src/app/(dashboard)/tickets/page.tsx",
+      "sha": "286ce672b0aa45091a13651c7529a61bbee73c1c",
+      "status": "modified"
+    }
+  ],
+  "scope": "Read-only PR metadata; no Support source mutation"
+}

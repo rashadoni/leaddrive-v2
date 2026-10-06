@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-06T12:12:16.215352+00:00",
+  "ownedContainers": [
+    "hrm-fault-pg-20261006",
+    "hrm-fault-redis-20261006"
+  ],
+  "stoppedAndRemoved": true,
+  "storage": "--rm containers, PostgreSQL and Redis data mounted tmpfs; no persistent data volumes created",
+  "remainingOwnedContainers": 0,
+  "productionConnections": false,
+  "cleanupDetail": "Redis auto-removed; PostgreSQL transiently Dead after stop, then auto-removed before an explicit by-name removal attempt (No such container). Final task-label query empty."
+}

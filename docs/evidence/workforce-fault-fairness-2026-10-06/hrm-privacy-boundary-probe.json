@@ -1,0 +1,14 @@
+{
+  "scope": "Pure synthetic local scrubber call only; no SDK, network, production data or credentials",
+  "source": "src/lib/demo-center/telemetry.ts",
+  "source_sha256": "e25058c393c011aad88185856c8536600ed87dcfe013d59caca15d8e93ab91f3",
+  "checks": {
+    "demo_bearer_path_scrubbed": true,
+    "workforce_request_path_canary_retained": true,
+    "request_reason_coordinates_retained": true,
+    "exception_canary_retained": true,
+    "breadcrumb_canary_retained": true,
+    "context_canary_retained": true
+  },
+  "interpretation": "Existing beforeSend hook is demo-path specific and does not establish Workforce event privacy. Constructed event acceptance is not proof this exact payload is captured or exported in production."
+}

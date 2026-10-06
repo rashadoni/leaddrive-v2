@@ -1,0 +1,436 @@
+{
+  "parent": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "main": "5c7412266c29a53e12963621b090c4f1aee95a3a",
+  "tree": "56054b2aaf225d54668c7c99b19d6f276c81f02b",
+  "allLocalBlobsVerified": 8785,
+  "allTreesRecomputed": 2810,
+  "unchangedParentBlobs": 8738,
+  "changed": [
+    "docs/support-audit-acceptance-checklist-2026-10-06.md",
+    "docs/workforce-c12-fault-fairness-matrix-2026-10-06.md",
+    "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+    "docs/workforce-hrm-session-log.md",
+    "docs/workforce-privacy-audit-2026-10-06.md",
+    "messages/az.json",
+    "messages/en.json",
+    "messages/ru.json",
+    "prisma/migrations/20261006120000_workforce_team_membership_follows_deleted_agent/migration.sql",
+    "prisma/schema.prisma",
+    "src/__tests__/api-mtm-agents.test.ts",
+    "src/__tests__/api-mtm-mobile-sync-v2-fault-fairness.test.ts",
+    "src/__tests__/api-ticket-extras.test.ts",
+    "src/__tests__/api-tickets.test.ts",
+    "src/__tests__/lib-ticket-list-query.test.ts",
+    "src/__tests__/mtm-agent-form-password-readable-ui.test.ts",
+    "src/__tests__/mtm-agents-page-client-sections.test.ts",
+    "src/__tests__/mtm-agents-page-delete.test.ts",
+    "src/__tests__/mtm-contact-categories-postgres.test.ts",
+    "src/__tests__/mtm-route-builder-inline-assignment-share.test.ts",
+    "src/__tests__/support-ux-performance-contract.test.ts",
+    "src/__tests__/ticket-macro-confirmed-apply.test.ts",
+    "src/__tests__/workforce-aux-telemetry-privacy.test.ts",
+    "src/__tests__/workforce-entitlement-failure-matrix.test.ts",
+    "src/__tests__/workforce-pr594-membership-postgres.test.ts",
+    "src/__tests__/workforce-pr594-retention-compatibility.test.ts",
+    "src/__tests__/workforce-sync-fairness.test.ts",
+    "src/__tests__/workforce-sync-push-bounds.test.ts",
+    "src/app/(dashboard)/mtm/agents/page.tsx",
+    "src/app/(dashboard)/tickets/[id]/page.tsx",
+    "src/app/(dashboard)/tickets/page.tsx",
+    "src/app/api/v1/mtm/agents/[id]/route.ts",
+    "src/app/api/v1/mtm/field-assignments/route.ts",
+    "src/app/api/v1/mtm/mobile/sync/push/route.ts",
+    "src/app/api/v1/ticket-macros/[id]/apply/route.ts",
+    "src/app/api/v1/tickets/[id]/route.ts",
+    "src/app/api/v1/tickets/route.ts",
+    "src/components/mtm/agent-form.tsx",
+    "src/components/mtm/route-builder-inline-assignment-panel.tsx",
+    "src/lib/entitlement-process/ticket-milestones.ts",
+    "src/lib/mtm-validators.ts",
+    "src/lib/mtm/agent-deletion.ts",
+    "src/lib/mtm/mobile-gps-telemetry.ts",
+    "src/lib/mtm/mobile-media-telemetry.ts",
+    "src/lib/mtm/mobile-sync-push-bounds.ts",
+    "src/lib/mtm/mobile-sync-telemetry.ts",
+    "src/lib/ticketing/ticket-list-query.ts"
+  ],
+  "bindings": [
+    {
+      "path": "docs/support-audit-acceptance-checklist-2026-10-06.md",
+      "bytes": 21159,
+      "sha256": "bb57e866fff853a4c311402cf0dcd73b5d16ed250eb4933606ec5b0d0a986198",
+      "blob": "1256ab36c1df7f143a65f5c0d5ae6b2fe04352c8",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "docs/workforce-c12-fault-fairness-matrix-2026-10-06.md",
+      "bytes": 9281,
+      "sha256": "0e063efb3182aaf13389e8c73483ee5804d6ecc2329319afb7016397babef2e4",
+      "blob": "b1ee0f6477e9a99a8444fad751fc5ac097728e8c",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "bytes": 1160738,
+      "sha256": "600d629336a422651aeaf0df72d4fc13d53b3a5968fd5b8da4839793e745f35d",
+      "blob": "0a30988cbfb582ea241f378c8cbfb4b6959d72b4",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "docs/workforce-hrm-session-log.md",
+      "bytes": 1149964,
+      "sha256": "6db18a8783f103c355e6691f3970faa7a92d1022661429d1e5a0d8811ddc9d63",
+      "blob": "82478210a271a3f0376c251f23353897686cb78a",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "docs/workforce-privacy-audit-2026-10-06.md",
+      "bytes": 11336,
+      "sha256": "04b1c39ddc9c6e9ba95f2feab4628ef2947a919dde58475b2232e754b923b6c9",
+      "blob": "b97715dc405596a32f83b6004473a99c24ec733f",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1490146,
+      "sha256": "a98714ba3c8d165e1fcfe69f30d6384ef69b7ef4f0514114426343b53eb3a01d",
+      "blob": "31259216bcb35e1c510419e515885f337a2db257",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1347269,
+      "sha256": "8f458fd2a1af033233a545c3a7a47ee60c108ce37f00b5a5aeef86e697499b16",
+      "blob": "87e5360bc273073a217782962934d17de586ac25",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 1989016,
+      "sha256": "53131da4507f5cd65da9de307e234de3e345d4ac6285876d4ec7e8b692bb58f2",
+      "blob": "aa38ec00207b9dacc4deb1f2caa8757d5e0c5dc2",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "prisma/migrations/20261006120000_workforce_team_membership_follows_deleted_agent/migration.sql",
+      "bytes": 2368,
+      "sha256": "9117b8b3bef541fb4321dbc25d8c5e1e9974a724b8a90c900130578cc5b980c6",
+      "blob": "558e47643e1c13d134754011827b35f625936776",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958757,
+      "sha256": "2a4696f87d878452a22a44f4d385265fcccf75f8da90b2b417d5d045c53910d1",
+      "blob": "34e2d86a8c3baf3a4a78bd90b0979718b06a0315",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/api-mtm-agents.test.ts",
+      "bytes": 69595,
+      "sha256": "1786c8a984df98fcd1cb5bae2b1d5e62a7f8e8d1b621bcdf2444c1eeffd0806d",
+      "blob": "9e8ae77e3815f86edfcf22dd2f4a2bcfba41d96b",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/api-mtm-mobile-sync-v2-fault-fairness.test.ts",
+      "bytes": 10320,
+      "sha256": "651c6e1cb225b6952ddb03f1b1f915d418ad004b54c4c0cf9c8dfdbc9c283379",
+      "blob": "bdecc8a7231bc4c21992920020addf6b909a73dc",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/__tests__/api-ticket-extras.test.ts",
+      "bytes": 20441,
+      "sha256": "467cff064156d1318dce1a2b8d3b44c4d3adb01eb4bc0b00fb478eea31d2e35d",
+      "blob": "87672b4c1616ac418b172cd2bcf60f8f53851d69",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/api-tickets.test.ts",
+      "bytes": 31966,
+      "sha256": "757ebbc8309db72a4c130fd34bba2f0c62b39a68e5f6c64435aa484d7951a4b2",
+      "blob": "ec9efb55767e59607a4dd2984f321e04aa5b669a",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/lib-ticket-list-query.test.ts",
+      "bytes": 7750,
+      "sha256": "6849cfe5f2b15b500dcc04528629c97c7f57c8fd0a4961394bd480a160dac335",
+      "blob": "20893124ded51db808dffef119f441d6fb54d050",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/mtm-agent-form-password-readable-ui.test.ts",
+      "bytes": 7526,
+      "sha256": "9b8c7f9a4b9b5bb99ffbc87596a25fd01988b2d94dea5778757e59fbdade6f12",
+      "blob": "74700faf66b4c29bcf3296522378710edec93ef2",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/mtm-agents-page-client-sections.test.ts",
+      "bytes": 5261,
+      "sha256": "122bc771906a6dd34bb13bc04bb4c3d1165728af714fa079686a502ffc1b2e70",
+      "blob": "ece3321fdbe33e605675d3732dcc41c5dd62ebda",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/mtm-agents-page-delete.test.ts",
+      "bytes": 9798,
+      "sha256": "086c8b2dddf90fdc44e8fc799b0dc67ee97418eb9644043f0329a44d1f212032",
+      "blob": "93de36936dd1d42aa275f6dc50609e7d502fd290",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/mtm-contact-categories-postgres.test.ts",
+      "bytes": 35625,
+      "sha256": "46438f5b9076c7c538c72154eeb6b04f9457c6926114e6f9e16c8c009ef2d594",
+      "blob": "65327b6df3b327229fdd53dbbd56af2dccfd694b",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/mtm-route-builder-inline-assignment-share.test.ts",
+      "bytes": 6604,
+      "sha256": "46ed995127c4defa586169d22a27de723cbb1a4339c565d14a38fe336a8c7685",
+      "blob": "8c68d76e3ab3aad2d0fc53e36749a17191e953b5",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/support-ux-performance-contract.test.ts",
+      "bytes": 2402,
+      "sha256": "4eaad1979f69d282c6b8ac874b48645b950fab3d0b70109c580886df7fb553ae",
+      "blob": "4baa020415c211a0ad074410922c1e8a253ee16b",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/ticket-macro-confirmed-apply.test.ts",
+      "bytes": 8346,
+      "sha256": "9b540c846acfa28ddbc40d2c4b0086c7da4dbd778c304b6aecfa5dfcc9d97e06",
+      "blob": "2897a3329cf2422ae541ff067b193a7064033218",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/__tests__/workforce-aux-telemetry-privacy.test.ts",
+      "bytes": 6646,
+      "sha256": "61143cf8b299531e6a5aa85e8dfb7bbbd14eef79da942b263f98e2cb3e584b9b",
+      "blob": "a87732c8abe5fa8626bfc1f3a365cd026d5398e0",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/__tests__/workforce-entitlement-failure-matrix.test.ts",
+      "bytes": 3926,
+      "sha256": "a3387cbc0b4ec272561e5dc23d65a9dcd5fc4982db302369eda2e6556284495f",
+      "blob": "9fbf6c904391b406719919ff1e2cf9aafe926e3d",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/__tests__/workforce-pr594-membership-postgres.test.ts",
+      "bytes": 9149,
+      "sha256": "57e6da508aa6c85065c6d20dc79309cf5ef27fecb2371c1c48959c4c041110f6",
+      "blob": "8fbdaf7f14be5f4587321f1b7cb3809ae6358a08",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/__tests__/workforce-pr594-retention-compatibility.test.ts",
+      "bytes": 4348,
+      "sha256": "5b20cea14ba4339a1dfe7a2c5d851f243fe4864d22456a877b9777e5460d82de",
+      "blob": "939efe3bb3ae2d9d596ebeb3f7cba43c93d2202e",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/__tests__/workforce-sync-fairness.test.ts",
+      "bytes": 4917,
+      "sha256": "e0fc4f0ab715dab757a21f4260be874e5c44e593bf682fc259d902464e2fffae",
+      "blob": "bebfa504959193041fcb9035595163afc4aa6c55",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/__tests__/workforce-sync-push-bounds.test.ts",
+      "bytes": 7402,
+      "sha256": "1c13824f892ff76c7b555a88814daac5d7dc1a15d7269f9cb31f6804d86e9ec0",
+      "blob": "6605bd8a450bd29227c9c2c61e0c092f06d2dfe3",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/app/(dashboard)/mtm/agents/page.tsx",
+      "bytes": 39647,
+      "sha256": "dc98898eea83fad675ea2568c20b7725295208ca301921dbd6911d323c354d84",
+      "blob": "119df2017935bb526123d4bf4d31c62caf3c8751",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/app/(dashboard)/tickets/[id]/page.tsx",
+      "bytes": 117231,
+      "sha256": "81a1a07c9bfdd4f4f69fbc2578b480031f1d5724a5d62122de0e823af03bb273",
+      "blob": "a9837e894fb07ba69cc694c2c6e41e7e3ecf4e8a",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/app/(dashboard)/tickets/page.tsx",
+      "bytes": 62115,
+      "sha256": "1cbc7ea39d9c787ccdfe4132db1b82fa6f24c6bbc4a7e41ec361106887bf74ca",
+      "blob": "bf24f6a4db15b4f8e7f32b945c743e37fdeb5fe1",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/app/api/v1/mtm/agents/[id]/route.ts",
+      "bytes": 16097,
+      "sha256": "a31d505cd76f6fe70d842064e2e68c158ff8ca7377bb00e721ac084224f76ae0",
+      "blob": "2a5fc09a6fa7727557ab00758c9ae6c1344e3158",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/app/api/v1/mtm/field-assignments/route.ts",
+      "bytes": 14807,
+      "sha256": "cae90d81e4a9a13f130db642b692028a29c080ec489a5ebfae3540f3bae85f9e",
+      "blob": "2cb116482e30040fff6be725ef888ba8133f9650",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/app/api/v1/mtm/mobile/sync/push/route.ts",
+      "bytes": 139341,
+      "sha256": "d486429f49e92031b2bbb38e9d384f220dda0393d09418743c0e7cd1057212ac",
+      "blob": "a2410bd9f27a2b047a01d8b4f3f71a1e8f0617e5",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/app/api/v1/ticket-macros/[id]/apply/route.ts",
+      "bytes": 8838,
+      "sha256": "a37e782963fa1f787f178335c3f8608e422ed004863b56f779af6074e078ed74",
+      "blob": "39c4a6a132427ca0868a26620e80841fccc923cc",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/app/api/v1/tickets/[id]/route.ts",
+      "bytes": 31245,
+      "sha256": "2c6ba222e82610d01bf9b3f6ebb976096b8470ac076aabeb90da0879b94213dc",
+      "blob": "1882aef1dfd54456ca4345f018822fe673949292",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/app/api/v1/tickets/route.ts",
+      "bytes": 7971,
+      "sha256": "4f3ae0cd4c0df29318416ce0849c6e83db014f3762c8d1f17e434219ec4c914f",
+      "blob": "2227ec54e55b8d2895dcd0113e4c1ce496cba2c1",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/components/mtm/agent-form.tsx",
+      "bytes": 10651,
+      "sha256": "80e50c06bd8277e598392cfc3b693c32a66e1285e0bb12ab5f616dc61db6d731",
+      "blob": "b8632adced660a93865ae08063ffc0b9c976e745",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/components/mtm/route-builder-inline-assignment-panel.tsx",
+      "bytes": 11572,
+      "sha256": "beb69dd4c358fdc4a860dc792cb488e415bdc7d17a41f304516746cedf2e0718",
+      "blob": "904004c87c18bb3495e3b343a66081a6a2aef177",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/lib/entitlement-process/ticket-milestones.ts",
+      "bytes": 8337,
+      "sha256": "ed581ae8087b6fab9ef5e20d8da5f9ca2d808c3317bff17e2a2383f10e1dac54",
+      "blob": "7549131d093e64a288a78f94f85c7bfdae54aa99",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/lib/mtm-validators.ts",
+      "bytes": 44197,
+      "sha256": "cbcd10556a4185821785921f19fea67ce9e7cb7da1b7ca46775436bdb5379af2",
+      "blob": "25b94c1fe5674b3c9bdaaa56b3cbd7c78f981026",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/lib/mtm/agent-deletion.ts",
+      "bytes": 3819,
+      "sha256": "543bfb1adb4e12233e722f4194f8a73d054045dfd78f3e116f1d1134e6b716b2",
+      "blob": "f4f01a7445f52fea337907ac491138cfdab21170",
+      "mode": "100644",
+      "origin": "integration"
+    },
+    {
+      "path": "src/lib/mtm/mobile-gps-telemetry.ts",
+      "bytes": 1506,
+      "sha256": "cee94058548df85f6c28404edf46b054e86a81499ad6d9fa7beac8f837b1dd3c",
+      "blob": "c38c5e856edf2e2abdeebac6ead0eeef338f9fc7",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/lib/mtm/mobile-media-telemetry.ts",
+      "bytes": 2107,
+      "sha256": "fde2fe86df1f74989be37d054efa9071e3562749f5eac657ae5e0d35481831f2",
+      "blob": "09035fd6d34a5da30b940d6850bb6106db1d6183",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/lib/mtm/mobile-sync-push-bounds.ts",
+      "bytes": 1893,
+      "sha256": "59aa4858a8b9479e12ad501ad4fc31f2f95517ff54e907ae5c7e19d34367cedb",
+      "blob": "891ab1bd62c1d1c3595110733ad0b10613e652c0",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/lib/mtm/mobile-sync-telemetry.ts",
+      "bytes": 8864,
+      "sha256": "69671911fa6c5cafc72f42a026269426250b7f43c99e6cc1caeb01222614e2fd",
+      "blob": "c6142ed478ab5549e4cb86525e04381bfaf34988",
+      "mode": "100644",
+      "origin": "own"
+    },
+    {
+      "path": "src/lib/ticketing/ticket-list-query.ts",
+      "bytes": 3887,
+      "sha256": "1f3d98d5a5fa8ed96f8994c2e85e420ba3b5be77a03d3eae478eb3f11a2023d2",
+      "blob": "06b21fb4dbf3b32976b54cb43a1618005a0426c9",
+      "mode": "100644",
+      "origin": "integration"
+    }
+  ],
+  "scope": "entire candidate bytes/modes; incoming migration unchanged; schema clean three-way integration; no baseline/Support changes"
+}

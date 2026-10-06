@@ -1,0 +1,56 @@
+{
+  "extends": "/workspace/hrm-fault-integrated-baseline/tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "typeRoots": [
+      "/workspace/hrm-fault-integrated-baseline/node_modules/@types"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "/workspace/hrm-fault-integrated-baseline/src/lib/with-workforce-rls-auth.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/lib/workforce/sensitive-operation-log.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/timesheet/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/today/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/attendance/stations/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/attendance/devices/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/attendance/security-triage/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/attendance/stations/[id]/qr/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/attendance/stations/[id]/disable/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/attendance/stations/[id]/replace/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/attendance/devices/[id]/revoke/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/attendance/devices/[id]/approve/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/site-assignments/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/shifts/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/employment-events/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/assignments/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/sites/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/calendar/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/policies/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/site-assignments/preview/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/site-assignments/bulk/publish/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/shifts/[id]/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/shifts/team-default/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/shifts/default/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/shifts/[id]/activate/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/assignments/preview/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/assignments/bulk/publish/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/sites/[id]/archive/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/sites/[id]/geofences/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/policies/[id]/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/configuration/policies/[id]/activate/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/exceptions/mine/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/workforce/timesheet/approvals/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/types/next-auth.d.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/lib/workforce/play-integrity.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/mtm/mobile/sync/push/route.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/lib/mtm/mobile-gps-telemetry.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/lib/mtm/mobile-media-telemetry.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/lib/mtm/mobile-sync-telemetry.ts",
+    "/workspace/hrm-fault-integrated-baseline/src/app/api/v1/mtm/agents/[id]/route.ts"
+  ]
+}

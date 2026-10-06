@@ -1,0 +1,81 @@
+src/app/api/v1/mtm/agents/[id]/route.ts(270,55): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(771,62): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(773,66): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(984,55): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(993,19): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmRoutePoint"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1043,19): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmCustomer"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1067,31): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmContactWorkplace"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1130,21): error TS2322: Type '{ messageKey: MtmAlertMessageKey; messageParams: MtmAlertMessageParams; customerId: unknown; routeId: string | null; ... 4 more ...; actorRole: string; }' is not assignable to type 'InputJsonValue | NullableJsonNullValueInput | undefined'.
+  Types of property 'customerId' are incompatible.
+    Type 'unknown' is not assignable to type 'InputJsonValue | null | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1160,21): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmRoutePoint"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1195,21): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1196,21): error TS2322: Type '{} | null' is not assignable to type 'string | null | undefined'.
+  Type '{}' is not assignable to type 'string'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1201,21): error TS2322: Type '{} | null' is not assignable to type 'number | null | undefined'.
+  Type '{}' is not assignable to type 'number'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1202,21): error TS2322: Type '{} | null' is not assignable to type 'number | null | undefined'.
+  Type '{}' is not assignable to type 'number'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1204,21): error TS2322: Type '{} | null' is not assignable to type 'string | null | undefined'.
+  Type '{}' is not assignable to type 'string'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1227,19): error TS2322: Type 'unknown' is not assignable to type 'string | null | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1243,51): error TS2551: Property 'route' does not exist on type '{ deletedAt: Date | null; organizationId: string; status: MtmPointStatus; id: string; version: number; updatedAt: Date; routeId: string; customerId: string; contactId: string | null; orderIndex: number; plannedTime: Date | null; visitedAt: Date | null; notes: string | null; }'. Did you mean 'routeId'?
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1243,77): error TS7006: Parameter 'assignment' implicitly has an 'any' type.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1246,47): error TS7006: Parameter 'assignment' implicitly has an 'any' type.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1266,22): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmVisit"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1276,105): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1283,19): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmVisit"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1309,19): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1311,58): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1312,19): error TS2322: Type 'unknown' is not assignable to type 'number | null | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1313,19): error TS2322: Type 'unknown' is not assignable to type 'number | null | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1361,19): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmVisit"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1369,64): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1384,28): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmVisit"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1401,15): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmVisit"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1411,15): error TS2322: Type 'unknown' is not assignable to type 'string | StringFilter<"MtmVisit"> | undefined'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1425,38): error TS2339: Property 'requirementSnapshot' does not exist on type '{ deletedAt: Date | null; organizationId: string; status: MtmVisitStatus; id: string; createdAt: Date; updatedAt: Date; agentId: string; outcome: MtmVisitOutcome | null; ... 19 more ...; tasksTotal: number; }'.
+src/app/api/v1/mtm/mobile/sync/push/route.ts(1704,69): error TS2367: This comparison appears to be unintentional because the types '"IN_PROGRESS" | "PENDING" | "OVERDUE"' and '"COMPLETED"' have no overlap.
+src/app/api/v1/workforce/attendance/security-triage/route.ts(49,34): error TS7006: Parameter 'agent' implicitly has an 'any' type.
+src/app/api/v1/workforce/attendance/security-triage/route.ts(96,43): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/app/api/v1/workforce/attendance/security-triage/route.ts(97,35): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/app/api/v1/workforce/exceptions/mine/route.ts(99,31): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(394,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(420,37): error TS2347: Untyped function calls may not accept type arguments.
+src/lib/workforce/calendar-configuration.ts(493,41): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(497,30): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(499,32): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(636,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(645,36): error TS2347: Untyped function calls may not accept type arguments.
+src/lib/workforce/calendar-configuration.ts(679,60): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/calendar-configuration.ts(719,30): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/lib/workforce/mobile-write-fence.ts(218,37): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/mobile-write-fence.ts(292,37): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/mobile-write-fence.ts(372,37): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(378,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(437,33): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(515,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(659,46): error TS7006: Parameter 'agent' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(748,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/site-management.ts(925,41): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/lib/workforce/timesheet-approval-service.ts(512,15): error TS2352: Conversion of type 'TransactionClient' to type 'WorkforceAccessGrantReaderDb' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  The types of 'workforceAccessGrant.findMany' are incompatible between these types.
+    Type '<T extends WorkforceAccessGrantFindManyArgs>(args?: SelectSubset<T, WorkforceAccessGrantFindManyArgs<DefaultArgs>> | undefined) => PrismaPromise<...>' is not comparable to type '(args: { where: { organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }; orderBy: readonly [{ effectiveFrom: "desc"; }, { ...; }]; take: number; select: Record<...>; }) => Promise<...>'.
+      Types of parameters 'args' and 'args' are incompatible.
+        Type '{ where: { organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }; orderBy: readonly [{ effectiveFrom: "desc"; }, { ...; }]; take: number; select: Record<...>; }' is not comparable to type 'SelectSubset<any, WorkforceAccessGrantFindManyArgs<DefaultArgs>> | undefined'.
+          Type '{ where: { organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }; orderBy: readonly [{ effectiveFrom: "desc"; }, { ...; }]; take: number; select: Record<...>; }' is not comparable to type '{ [x: string]: never; } & "Please either choose `select` or `omit`."'.
+            Type '{ where: { organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }; orderBy: readonly [{ effectiveFrom: "desc"; }, { ...; }]; take: number; select: Record<...>; }' is not comparable to type '{ [x: string]: never; }'.
+              Property 'where' is incompatible with index signature.
+                Type '{ organizationId: string; principalUserId: string; effectiveFrom: { lte: Date; }; OR: readonly [{ effectiveUntil: null; }, { effectiveUntil: { gt: Date; }; }]; }' is not comparable to type 'never'.

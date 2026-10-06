@@ -1,0 +1,79 @@
+{
+  "status": "REAL_PUSH_BOUND_GAP_CONFIRMED_NARROW_FIX_RECOMMENDED",
+  "at": {
+    "current_time": "2026-10-06 11:44:48 UTC"
+  },
+  "review": "Actual server, bounded body helper, Android API and outbox source inspected; no source edits or signed-device/DB execution.",
+  "gap": [
+    "Push uses unbounded req.json() and only100operation ceiling.",
+    "Server emits neither quarantine code although Android maps them and roadmap claims bounds.",
+    "Referenced push-bounds2026-08-30doc is absent8053tree; existing2026-09-13doc describes pull bounds and source-only recovery mapping."
+  ],
+  "clientContract": [
+    "Android sends one operation, reads results[0].serverData.code; per-op error is nonrecoverable.",
+    "Persisted terminal state is REQUIRES_REVIEW. QUARANTINED_OPERATION is a recovery hint, not stored state.",
+    "Encrypted row retained; break current domain pass; other domains continue. Later same-domain eligible rows can run on a subsequent drain.",
+    "Non2xx reads top-levelcode;413 is nonrecoverable. No signed-device evidence."
+  ],
+  "recommended": [
+    "Use existing readJsonRequestWithinLimit512KiB raw-byte cap; fixed400/413body errors, no writes.",
+    "Under admitted body preserve mixedHTTP200 ordered results. Full parsed-envelope UTF8serialized64KiB cap; per-op code in serverData; valid bounded operationId orquestionmark; no payload echo.",
+    "Catch per-envelope JSON.stringify RangeError for deep nesting; healthy sibling must proceed.",
+    "Preclassify invalid/oversize envelopes before unnecessary settings selection so poison operation cannot starve unrelated healthy stream.",
+    "Preserve existing legacyRoute403/privilegedforce branch, valid replay/hash/storedentity permissions, writefences and transaction/idempotency semantics.",
+    "Never pin rejected invalid/oversized operation; do not convert transient downstream errors into terminal sizing codes."
+  ],
+  "meaningfulTests": [
+    "512KiBexact/over rawbytes, absent/lyingcontentlength, chunked/invalidUTF8/JSON, zero writes.",
+    "64KiBexact/over multibyte fullenvelope and deepnesting with healthy sibling.",
+    "MixedRoute/Workforce poison isolation, including poison settings-dependent entity.",
+    "Valid duplicate/replay and duplicatepoison behavior with no rejected pin; preserve storedentity/fence/hash guards.",
+    "Reuse legacyRoutefieldsession, attendance/release/fence regressions.",
+    "Client code placement plus REQUIRES_REVIEW/hint distinction; source test not physicalexecution."
+  ],
+  "productChoice": "Fixed512KiB/64KiB aligns with explicitly requested bounded-workload contract; no new product choice identified. Changing these values, valid domain behavior, permissions or activation would require separate scope. Newly rejected oversized legacy batches are a real admission change and must be documented; oldRoute automatic splitting/quarantine remains unproven.",
+  "bodyOverflowBoundary": "Cannot return per-operation disposition without parsing complete body/identities. Use separate finite batch-level error semantics.",
+  "limits": [
+    "No sourcefix or globalprivacy/compiler/fullsuite claim.",
+    "No historical bound acceptance invented.",
+    "No migration/prod/credentials/Support changes."
+  ],
+  "sourceBindings": [
+    {
+      "path": "src/app/api/v1/mtm/mobile/sync/push/route.ts",
+      "bytes": 138579,
+      "sha256": "edfc87033c91a213a18a73a464aa21bbe2bcd3a3fbb965d863d6275dc0357ae4",
+      "matches8053": true
+    },
+    {
+      "path": "src/lib/request-body-limit.ts",
+      "bytes": 3069,
+      "sha256": "359165aa4ba8522a658fae77eaf06b68afa88e6af8c8a94ade6e0b479f4c1c13",
+      "matches8053": true
+    },
+    {
+      "path": "apps/workforce-android/app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt",
+      "bytes": 68332,
+      "sha256": "7c08f3f30179d0f915786ba51beaa06377a8bed1a0f3c25e530339434687f4cd",
+      "matches8053": true
+    },
+    {
+      "path": "apps/workforce-android/app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt",
+      "bytes": 27248,
+      "sha256": "2936ad99b951db5954f51aabdd2ec6ab56923ea121b6a5142a07e2cea0a964ca",
+      "matches8053": true
+    },
+    {
+      "path": "src/__tests__/workforce-android-foundation.test.ts",
+      "bytes": 49580,
+      "sha256": "b8d9f492689ea4890e84bbe95df848f84f391699d242038587867a02edccf5cc",
+      "matches8053": true
+    },
+    {
+      "path": "docs/workforce-c12-server-workload-bounds-evidence-2026-09-13.md",
+      "bytes": 2700,
+      "sha256": "b0b447581e87dcbf3b30048df7e395c8bdd690010fef10315ea78f85c9f0bccd",
+      "matches8053": true
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "status": "PASS",
+  "remoteBlobsIndependentlyRehashed": 8782,
+  "blobOrModeErrors": [],
+  "schemaMerge": {
+    "incomingMainSchemaBlobVerified": true,
+    "candidateVsMainOnlyInsertions": 10,
+    "allAcceptedInsertionsRemovedFrom8053ReconstructOldMainSchema": "0996414dfc1f45d206f6bc0789ef574604837841",
+    "retentionCascadePreserved": true
+  },
+  "canonicalStatusesEqual": true,
+  "uniqueIds": 161,
+  "done": 82,
+  "open": 79,
+  "ownerReportsRehashedAndCountsParsed": [
+    {
+      "path": "/tmp/hrm-fault-broad-final.json",
+      "passed": 2728,
+      "failed": 18,
+      "skipped": 168,
+      "sha256": "6f0c8ccef5564648144653d418871d89bdd4d42673b8f2c93657604813cc23c0"
+    },
+    {
+      "path": "/tmp/hrm-fault-browser-guards-retry.json",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "45aedc724918cc3111d637ea43ce94f33d5865a22d259024f4e237291dc81693"
+    },
+    {
+      "path": "/tmp/hrm-fault-main594-fullschema-tests.json",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "f0dfcdaa8ee9c1760fc84423d15e59c672e5e238bd2f666cfd125f9ca96c00c6"
+    },
+    {
+      "path": "/tmp/hrm-fault-main595596-tests.json",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "2f6ffa74f237be124875c736f3ad42a184cdbd673ac997528e77a6ea2989e82a"
+    },
+    {
+      "path": "/tmp/hrm-fault-pg-sweep-roster.json",
+      "passed": 64,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "61fbfb4bff750d77448a421228083086853a8f1bca0a1ce5d68b626cd2b35c3b"
+    },
+    {
+      "path": "/tmp/hrm-fault-membership-and-cursors.json",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "9d7af66223c6dbb94c2c71e10ab945389c835671e45425e780eb395b3d2d6361"
+    },
+    {
+      "path": "/tmp/hrm-fault-push-initial.json",
+      "passed": 124,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "891d783fecd8276d1cd6d64ef4344d22b704614d485b51577678907d71190ea0"
+    },
+    {
+      "path": "/tmp/hrm-fault-retention-api-tests.json",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "51c7308bf005e7369e13ebbf44b575d5a77646415996dc8ce9441ee70e7581e6"
+    },
+    {
+      "path": "/tmp/hrm-fault-aux-and-matrix.json",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "436b782aef4dc5bcdf057532db659511b028c1fc4efbb1ae057324582d06490a"
+    },
+    {
+      "path": "/tmp/hrm-fault-final-owned-retest.json",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "58a86a756ede1c18fab1b4e47cfea5526eb5d216e5e27c3a66f458c3696ff1b8"
+    }
+  ],
+  "canonicalStatusCounts": {
+    "DONE": 82,
+    "PARTIAL (OWNER ATTESTATION)": 1,
+    "PARTIAL": 55,
+    "OWNER DECISION": 6,
+    "PLANNED": 14,
+    "BLOCKED": 3
+  },
+  "compilerNormalizedFileCodeMessageEqualsIntegratedBaseline": true,
+  "compilerProductionDiagnostics": 55,
+  "compilerFinalTestAdditionalDiagnostics": [
+    "src/__tests__/mocks/mtm-prisma.ts: error TS2737: BigInt literals are not available when targeting lower than ES2020.",
+    "src/__tests__/mocks/mtm-prisma.ts: error TS2737: BigInt literals are not available when targeting lower than ES2020."
+  ],
+  "historicalScope": "This proof binds a2481/f802 against be924 before subsequent mainPR597 integration. New freeze acceptance pending.",
+  "compilerNormalization": "Strip absolute/relative integrated-baseline workspace prefix and source line/column; preserve file, diagnostic code, full first-line message and multiplicity."
+}

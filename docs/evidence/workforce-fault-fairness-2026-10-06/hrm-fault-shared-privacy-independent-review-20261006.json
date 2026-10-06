@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "status": "SOURCE_BOUND_SHARED_PRIVACY_GAPS_RECONFIRMED_NO_DIRECT_SUPPORT_FILE_COLLISION",
+  "reviewedAt": "2026-10-06T12:04:20.007313+00:00",
+  "workspace": "/workspace/hrm-integration-fault",
+  "immutableCandidate": null,
+  "ownerReportedIntegratedMain": "be924d52b6f8e2800d7220ceff163204baf52ff1",
+  "sourceBindings": [
+    {
+      "path": "src/lib/demo-center/telemetry.ts",
+      "bytes": 905,
+      "sha256": "e25058c393c011aad88185856c8536600ed87dcfe013d59caca15d8e93ab91f3"
+    },
+    {
+      "path": "sentry.server.config.ts",
+      "bytes": 436,
+      "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9"
+    },
+    {
+      "path": "sentry.edge.config.ts",
+      "bytes": 436,
+      "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9"
+    },
+    {
+      "path": "instrumentation-client.ts",
+      "bytes": 1217,
+      "sha256": "ba6b8a0420aee965032426e57d2b87047598ada07eee675a62f1da17be0c17e7"
+    },
+    {
+      "path": "src/lib/logger.ts",
+      "bytes": 1125,
+      "sha256": "0c1cd91068f7585ff94051efbdc5f256ac1108836a7b27fef7ab318147560792"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10371,
+      "sha256": "9707a3842648d8f2615a8401752e5b368b1224584330956fe5c22b856760da74"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 26198,
+      "sha256": "202832eb031fddbd98b96b5b2ed614410b82966ea17623fc47232cd2b20074ca"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff"
+    },
+    {
+      "path": "src/lib/support-ux-observation.ts",
+      "bytes": 6599,
+      "sha256": "46816ab04cc36bcbee96030bb8ec4884fd196e954c152d430b7609c21d812c37"
+    },
+    {
+      "path": "src/lib/mtm/route-observability.ts",
+      "bytes": 6141,
+      "sha256": "3f7961e3891533dbeca31c38ea5cbef713c2353bef5286bd811ff296f3ee5875"
+    },
+    {
+      "path": "src/app/api/v1/tickets/route.ts",
+      "bytes": 6096,
+      "sha256": "b421ebceab88fc6df4432128c66517bc62592e921ec4d0149dcfae7bc008a012"
+    },
+    {
+      "path": "src/app/api/v1/tickets/take-next/route.ts",
+      "bytes": 3222,
+      "sha256": "9bab56620bf4376f8303fffbd942b57dac0fc6106db257ffc512895ffb74bf78"
+    },
+    {
+      "path": "src/app/api/v1/support/agent-desktop/route.ts",
+      "bytes": 3124,
+      "sha256": "2d63fbb01ed83251311d7d720f8bb8bebb1da6735c09a528d63011ee1e4cd761"
+    },
+    {
+      "path": "src/instrumentation.ts",
+      "bytes": 618,
+      "sha256": "0678d20a1b52f6ec83e63b1e693fcb2b829647b327175b726afcdf59e3e2e551"
+    }
+  ],
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-fault-shared-privacy-support-metadata.json",
+      "bytes": 979,
+      "sha256": "51368b4049c46a02c5a060048b355b88940f65ea181120976aef2014103e7691"
+    },
+    {
+      "path": "/tmp/hrm-privacy-shared-synthetic-probe.cjs",
+      "bytes": 5306,
+      "sha256": "f558a0913a6ff2a01ad53e2600f9493286f187800d20b026e4c2ec651bd78e07"
+    },
+    {
+      "path": "/tmp/hrm-privacy-shared-synthetic-probe.json",
+      "bytes": 3628,
+      "sha256": "481bc9cf78e44b9f2548d2dd41b14a7d4528c2a40845883c706a2ea5410e8ec4"
+    },
+    {
+      "path": "/tmp/hrm-privacy-shared-probe-and-plan-independent-review-20261006.json",
+      "bytes": 5721,
+      "sha256": "8126b67fe90b7a33d1e0b968b9b93c2b31539eb6c72d0952f6bdfcce85111098"
+    },
+    {
+      "path": "/tmp/hrm-privacy-cardinality-independent-review-20261006.json",
+      "bytes": 4333,
+      "sha256": "a5279b1863de3ac56c25ea45c706edb78941183a764d77870e5020ee496e2d47"
+    }
+  ],
+  "supportCoordination": {
+    "pr": 592,
+    "state": "open",
+    "head": "4a308753bcbc1dbcdf031aa9474b4a973b7cd141",
+    "changedPaths": [
+      "docs/support-audit-acceptance-checklist-2026-10-06.md",
+      "messages/az.json",
+      "messages/en.json",
+      "messages/ru.json",
+      "src/app/(dashboard)/tickets/page.tsx"
+    ],
+    "sharedSinkDirectChangedPathOverlap": [],
+    "actualRuntimeCoupling": [
+      "Ticket/support routes call withRls, withRlsAuth and withRlsSessionAuth; Workforce wraps the same shared functions.",
+      "support-ux-observation.ts sends its finite event schema through the shared Pino logger. Route/Field observability also uses that sink.",
+      "Sentry server/edge/client configuration and capture hooks apply across application domains."
+    ],
+    "boundary": "Shared runtime/output-policy coordination is warranted for edits affecting these consumers. No current same-file Support writer conflict is observed. This does not require halting independent owned HRM work."
+  },
+  "confirmedGaps": [
+    {
+      "id": "SHARED_AUTH_RAW_ERROR",
+      "scope": "Three catch sites in with-rls.ts",
+      "evidence": "Existing actual-wrapper synthetic tests return401 while forwarding raw Error to console; all tested source bytes match current draft.",
+      "consequence": "Owned Workforce wrapper catches cannot remove values already logged below them; shared wrapper returns401 instead of propagating the original exception.",
+      "neededScope": "Shared auth logging change preserving authorization/RLS/401 behavior and cross-domain regression coverage."
+    },
+    {
+      "id": "SHARED_AUTH_IDENTIFIERS",
+      "scope": "api-auth.ts mobile rejection warnings",
+      "evidence": "Source contains raw agentId and pathname interpolation on getOrgId/requireAuth rejection branches.",
+      "neededScope": "Explicit finite safe diagnostic contract; preserve deny decision and existing response semantics."
+    },
+    {
+      "id": "GENERIC_PINO_CONTENT",
+      "scope": "logger.ts",
+      "evidence": "Existing real-Pino memory serializer probe retains private synthetic message/context/error. All source bytes unchanged.",
+      "neededScope": "Event-specific policy preserving sanctioned Support/Route observation schemas; do not blindly remove their finite operational dimensions."
+    },
+    {
+      "id": "SENTRY_WORKFORCE_SCRUB",
+      "scope": "Three configurations/six composed hooks",
+      "evidence": "Existing SDK-stub synthetic hooks redact demo tokens but retain Workforce canaries. Six source bindings unchanged.",
+      "neededScope": "Cross-domain request/error/breadcrumb/context policy plus replay/transport coverage. No claim of actual production transmission."
+    },
+    {
+      "id": "CARDINALITY_AND_DESTINATION",
+      "scope": "Approved releases, principal pseudonyms, deployed collectors",
+      "evidence": "Prior library characterization of syntactically valid version and HMAC-principal cardinality remains separate from newly fixed invalid-input fields.",
+      "neededScope": "Document approved dimension/retention policy and independently verify intended consumer; production collection remains outside this task."
+    }
+  ],
+  "safeIndependentWorkRemaining": [
+    "Finish exact frozen candidate binding and finite F1-F8/PR594/595/596 evidence matrix. Use existing synthetic shared-boundary results with six verified unchanged bindings; do not relabel them production evidence.",
+    "Keep shared-output contract proposals and narrow regression specifications reviewable without changing shared auth, global Pino or Sentry configuration in this slice.",
+    "A future separately owned shared-auth logging slice can be narrow: fixed labels, unchanged401/403/denial responses, authorization/RLS tests for Workforce and Support. Global collector policy requires separate cross-domain review.",
+    "No further repeated probe run is necessary merely to rediscover unchanged gaps; current task can finish bounded source and hosted acceptance while canonical global privacy criteria remain partial."
+  ],
+  "limits": [
+    "No new tests executed for this receipt; prior synthetic execution is reused only after six byte-identity checks.",
+    "No production transport, active DSN, retention, live log content, backup, credentials or screenshots inspected.",
+    "PR592 metadata was freshly fetched via authorized GitHub connector; no remote mutation and no source edit.",
+    "Current draft not frozen: exact candidate acceptance and compiler outcomes remain separate.",
+    "WF-C10-011/WF-C12-002 and other canonical row statuses are not promoted. No full privacy/C12 completion claim."
+  ]
+}

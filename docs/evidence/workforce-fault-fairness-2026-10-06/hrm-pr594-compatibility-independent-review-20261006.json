@@ -1,0 +1,135 @@
+{
+  "status": "COMPATIBILITY_REVIEW_NO_PRODUCT_CONFLICT_REPRODUCED_FOCUSED_REGRESSIONS_RECOMMENDED",
+  "at": {
+    "current_time": "2026-10-06 11:37:21 UTC"
+  },
+  "authorization": "User explicitly resumed integration of0562 and confirmed solePR589writer. The previous stop condition no longer blocks this authorized work.",
+  "sourceHead": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "incomingMain": "0562b7ceb56b256b5fd9728b44dc17c4a4617865",
+  "execution": "Source-only independent review. No database, migration application, source edits or remote writes. Integrated final source/test review pending.",
+  "findings": [],
+  "reasoning": [
+    "Membership-only setup history may now follow authorized deletion. The incoming behavior must be preserved.",
+    "Existing13retention checks and employee FOR UPDATE remain before delete; retained time/request/location/snapshot/approval facts still block deletion.",
+    "WorkforceExceptionCase.agent remains RESTRICT. New actual DMMF enumeration includes it because its agentId is not excluded as setup. Thus schedule-only exception subjects should block employee deletion without requiring an accepted workday.",
+    "Schedule-only reconciliation checks agent existence and effective membership. Missing agent refuses; linked subjects use pinned snapshots rather than current directory assignment.",
+    "Roster health and attempt state depend on organizations, not employee counts. Setup-only employee deletion should not remove eligible tenant coverage or reset tenant operational state.",
+    "No inherent conflict was reproduced; no change to the foreign fix is recommended merely because it touches HRM history."
+  ],
+  "focusedRegressions": [
+    {
+      "id": "K1",
+      "case": "Schedule-only WorkforceExceptionCase exists; all13explicit retention counts zero.",
+      "expected": "Actual agentHistory with actual generatedDMMF discovers the case; actual handler returns409MTM_AGENT_HAS_HISTORY and never calls deleteMany or success audit.",
+      "limit": "Controlled delegates verify composition, not PostgreSQL FK execution."
+    },
+    {
+      "id": "K2",
+      "case": "Existing workday/request/transition-audit retention plus approval-only history.",
+      "expected": "409WORKFORCE_RETENTION_BLOCKED before delete. Reuse existing cases and add only any missing approval branch."
+    },
+    {
+      "id": "K3",
+      "case": "Setup-only membership/device/client assignments without work facts.",
+      "expected": "Allowed handler200 preserved; actualDMMF exclusions prevent false history block.",
+      "limit": "Mocks do not prove cascade/trigger/RLS semantics."
+    },
+    {
+      "id": "K4",
+      "case": "History count throws or schema relation discovery is unavailable.",
+      "expected": "No delete; finite failure response, never treat failed discovery as no history."
+    },
+    {
+      "id": "K5",
+      "case": "Schedule-only orphan agent; separate linked subject with changed current assignment.",
+      "expected": "Orphan safely refuses before cursor commit; linked subject still relies on pinned snapshot.",
+      "limit": "Reuse existing pinned-source test and add absent-agent case if missing."
+    },
+    {
+      "id": "K6",
+      "case": "Eligible organization and prior tenant state after setup-only employee removal.",
+      "expected": "Coverage denominator/state semantics unchanged; reader has no agent-table dependency.",
+      "limit": "Source dependency evidence may suffice; avoid redundant implementation-text tests."
+    }
+  ],
+  "databaseBoundary": [
+    "Real FK/key-share concurrency and cascade/immutability behavior require actual PostgreSQL evidence; no such new execution in this task.",
+    "No migrations applied; PR594 existing test evidence is not inherited as an independent execution.",
+    "Historical api_keys baseline blocks clean migration replay, not authorized pure compatibility or fault/fairness work."
+  ],
+  "preservation": [
+    "Preserve all12incoming PR594 paths and translations.",
+    "Combined Prisma schema must retain membership Cascade plus cumulative PR589 operation model and indices.",
+    "No Support, foreignMTMmock, baseline, permission or activation changes."
+  ],
+  "sourceBindings": [
+    {
+      "head": "0562b7ceb56b256b5fd9728b44dc17c4a4617865",
+      "path": "src/lib/mtm/agent-deletion.ts",
+      "bytes": 3819,
+      "sha256": "543bfb1adb4e12233e722f4194f8a73d054045dfd78f3e116f1d1134e6b716b2"
+    },
+    {
+      "head": "0562b7ceb56b256b5fd9728b44dc17c4a4617865",
+      "path": "src/app/api/v1/mtm/agents/[id]/route.ts",
+      "bytes": 16097,
+      "sha256": "a31d505cd76f6fe70d842064e2e68c158ff8ca7377bb00e721ac084224f76ae0"
+    },
+    {
+      "head": "0562b7ceb56b256b5fd9728b44dc17c4a4617865",
+      "path": "prisma/migrations/20261006120000_workforce_team_membership_follows_deleted_agent/migration.sql",
+      "bytes": 2368,
+      "sha256": "9117b8b3bef541fb4321dbc25d8c5e1e9974a724b8a90c900130578cc5b980c6"
+    },
+    {
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "path": "src/lib/workforce/reconciliation-schedule-subject.ts",
+      "bytes": 9921,
+      "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9"
+    },
+    {
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "path": "src/lib/workforce/reconciliation-roster-health.ts",
+      "bytes": 6396,
+      "sha256": "896fb07c70b918714ca5c5cd7685fbdd9655811a06c0fd3a41dd095de2f911e9"
+    },
+    {
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "path": "src/lib/workforce/reconciliation-sweep.ts",
+      "bytes": 3049,
+      "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c"
+    },
+    {
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11588,
+      "sha256": "514eb7cc12e5d89dabb5cd03ccddadefd7bec50c682620bc1cccca6bdb5c6576"
+    },
+    {
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "path": "src/__tests__/workforce-reconciliation-sweep.test.ts",
+      "bytes": 49872,
+      "sha256": "276a6bd5077d31d883fba6e1499cb9e4b95016ec36f1932ad02759b903a338ea"
+    },
+    {
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "path": "src/__tests__/workforce-reconciliation-roster-health.test.ts",
+      "bytes": 9333,
+      "sha256": "e803c41369667d110419ab5f15c22e4524a6b385e97bb54a7aa19710c16a351b"
+    },
+    {
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "path": "src/__tests__/api-mtm-agents.test.ts",
+      "bytes": 66124,
+      "sha256": "e952c7be020ec3f1141d03b57e6bffa792ce3cd07b002c4194ad98f8f31df071"
+    },
+    {
+      "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+      "path": "prisma/schema.prisma",
+      "bytes": 958605,
+      "sha256": "a2cf656923aa83241d8601b3e4577402a4ec5e5ad4cde8e302ed6e03d8156e0f"
+    }
+  ],
+  "sourceMetadata": "/tmp/hrm-pr594-compatibility-independent-source.json",
+  "preparationOnly": true
+}

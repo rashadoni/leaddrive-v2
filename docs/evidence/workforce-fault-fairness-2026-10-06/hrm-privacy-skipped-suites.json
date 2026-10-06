@@ -1,0 +1,74 @@
+[
+  {
+    "file": "src/__tests__/lib-workforce-calendar-configuration-lock-postgres.test.ts",
+    "statuses": {
+      "skipped": 12
+    }
+  },
+  {
+    "file": "src/__tests__/lib-workforce-exception-lock-postgres.test.ts",
+    "statuses": {
+      "skipped": 15
+    }
+  },
+  {
+    "file": "src/__tests__/lib-workforce-exception-policy-revision-postgres.test.ts",
+    "statuses": {
+      "skipped": 6
+    }
+  },
+  {
+    "file": "src/__tests__/lib-workforce-exception-report-postgres.test.ts",
+    "statuses": {
+      "skipped": 9
+    }
+  },
+  {
+    "file": "src/__tests__/lib-workforce-policy-employee-impact-postgres.test.ts",
+    "statuses": {
+      "skipped": 7
+    }
+  },
+  {
+    "file": "src/__tests__/lib-workforce-policy-future-window-postgres.test.ts",
+    "statuses": {
+      "skipped": 4
+    }
+  },
+  {
+    "file": "src/__tests__/lib-workforce-policy-restore-postgres.test.ts",
+    "statuses": {
+      "skipped": 11
+    }
+  },
+  {
+    "file": "src/__tests__/workforce-reconciliation-approval-group.test.ts",
+    "statuses": {
+      "skipped": 12
+    }
+  },
+  {
+    "file": "src/__tests__/workforce-reconciliation-cursor-store.test.ts",
+    "statuses": {
+      "skipped": 11
+    }
+  },
+  {
+    "file": "src/__tests__/workforce-reconciliation-export-audit.test.ts",
+    "statuses": {
+      "skipped": 15
+    }
+  },
+  {
+    "file": "src/__tests__/workforce-reconciliation-roster-health.test.ts",
+    "statuses": {
+      "skipped": 14
+    }
+  },
+  {
+    "file": "src/__tests__/workforce-reconciliation-sweep.test.ts",
+    "statuses": {
+      "skipped": 47
+    }
+  }
+]

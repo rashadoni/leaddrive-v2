@@ -1,0 +1,262 @@
+{
+  "status": "LOCAL_CANDIDATE_VERIFIED_NOT_HOSTED_ACCEPTANCE",
+  "at": "2026-10-06T11:05:13.782686+00:00",
+  "parent": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "modified_production_files": 36,
+  "new_paths": 6,
+  "delta_paths": 42,
+  "privacy_sinks_fixed": {
+    "routes": 46,
+    "hrm_auth": 7
+  },
+  "actual_validation": {
+    "broad_final": {
+      "pass": 2307,
+      "fail": 0,
+      "skip": 163,
+      "test_files": 265,
+      "exit": 0
+    },
+    "new_tests_included_in_broad": {
+      "actual_route": 202,
+      "actual_wrapper": 35,
+      "telemetry": 11,
+      "source_guard": 3
+    },
+    "lint_exit": 0,
+    "whitespace": "PASS",
+    "compiler": {
+      "parent_production_diagnostics": 26,
+      "current_production_diagnostics": 23,
+      "current_tests_diagnostics": 25,
+      "removed": [
+        {
+          "file": "src/lib/workforce/play-integrity.ts",
+          "code": "TS2737",
+          "message": "BigInt literals are not available when targeting lower than ES2020.",
+          "count": 3
+        }
+      ],
+      "new": [],
+      "test_extra": [
+        {
+          "file": "src/__tests__/mocks/mtm-prisma.ts",
+          "code": "TS2737",
+          "count": 2
+        }
+      ],
+      "historical_remaining": [
+        {
+          "file": "src/app/api/v1/workforce/attendance/security-triage/route.ts",
+          "code": "TS7006",
+          "message": "Parameter 'agent' implicitly has an 'any' type.",
+          "count": 1
+        },
+        {
+          "file": "src/app/api/v1/workforce/attendance/security-triage/route.ts",
+          "code": "TS7006",
+          "message": "Parameter 'row' implicitly has an 'any' type.",
+          "count": 2
+        },
+        {
+          "file": "src/app/api/v1/workforce/exceptions/mine/route.ts",
+          "code": "TS7006",
+          "message": "Parameter 'item' implicitly has an 'any' type.",
+          "count": 1
+        },
+        {
+          "file": "src/lib/workforce/calendar-configuration.ts",
+          "code": "TS7006",
+          "message": "Parameter 'tx' implicitly has an 'any' type.",
+          "count": 2
+        },
+        {
+          "file": "src/lib/workforce/calendar-configuration.ts",
+          "code": "TS2347",
+          "message": "Untyped function calls may not accept type arguments.",
+          "count": 2
+        },
+        {
+          "file": "src/lib/workforce/calendar-configuration.ts",
+          "code": "TS7006",
+          "message": "Parameter 'candidate' implicitly has an 'any' type.",
+          "count": 5
+        },
+        {
+          "file": "src/lib/workforce/mobile-write-fence.ts",
+          "code": "TS7006",
+          "message": "Parameter 'tx' implicitly has an 'any' type.",
+          "count": 3
+        },
+        {
+          "file": "src/lib/workforce/site-management.ts",
+          "code": "TS7006",
+          "message": "Parameter 'tx' implicitly has an 'any' type.",
+          "count": 5
+        },
+        {
+          "file": "src/lib/workforce/site-management.ts",
+          "code": "TS7006",
+          "message": "Parameter 'agent' implicitly has an 'any' type.",
+          "count": 1
+        },
+        {
+          "file": "src/lib/workforce/timesheet-approval-service.ts",
+          "code": "TS2352",
+          "message": "Conversion of type 'TransactionClient' to type 'WorkforceAccessGrantReaderDb' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+          "count": 1
+        }
+      ],
+      "baselines_and_target_unchanged": true,
+      "all_compile_exit_codes": 2
+    }
+  },
+  "initial_failures_preserved": [
+    "Auth downstream rejection case used legacy mode for exception-decision; corrected synthetic entitlement fixture, no source auth change",
+    "Source guard initially rejected private two-literal-caller forwarding; trace refined without production change"
+  ],
+  "supporting_files": [
+    {
+      "path": "/tmp/hrm-privacy-source-proof.json",
+      "bytes": 14582,
+      "sha256": "90e274536e8c616975118bf103ff8c8b2737577895fe54011919894d8827f868"
+    },
+    {
+      "path": "/tmp/hrm-privacy-verify-scope.cjs",
+      "bytes": 4947,
+      "sha256": "ff863e2d012bc3aa93d933abbacad9215aba2dacbba8b4eea6f3551f5ab83ecb"
+    },
+    {
+      "path": "/tmp/hrm-privacy-compiler-comparison.json",
+      "bytes": 2604,
+      "sha256": "95cc79fe4b0b6ec0c180f07f5b2eee68605cd6452d2f3c5d36525c52c7895523"
+    },
+    {
+      "path": "/tmp/hrm-privacy-regressions-final.json",
+      "bytes": 966204,
+      "sha256": "1d8a9ed44067fe6bf4b4ddf4b665c50998f6c2ad9cd85f0cac805686ca246c84"
+    },
+    {
+      "path": "/tmp/hrm-privacy-regressions.json",
+      "bytes": 967155,
+      "sha256": "7c1d2e12ad03673fb3b87151d0c7fc1ef8bf1a23137649d590b827305fa413f0"
+    },
+    {
+      "path": "/tmp/hrm-privacy-focused-tests.json",
+      "bytes": 98518,
+      "sha256": "3b5c189e94bf326139bc910d4fd04793131f98f463047fa293faa54a5a3c9f24"
+    },
+    {
+      "path": "/tmp/hrm-privacy-initial-tests.json",
+      "bytes": 70089,
+      "sha256": "92fbe9aaa7b2a43802ab78bed8ac8103ee43742ca75c7f119fcb7b9ca28ad6e2"
+    },
+    {
+      "path": "/tmp/hrm-privacy-auth-tests.json",
+      "bytes": 30285,
+      "sha256": "7011e6361b365468e554175023a119054301b71301179a6de30a250872c975ef"
+    },
+    {
+      "path": "/tmp/hrm-privacy-audit-integrity-tests.json",
+      "bytes": 6116,
+      "sha256": "32222c5390d8c2a34e477762ede2366f5d67e81e82a2817138c08f8d838b664e"
+    },
+    {
+      "path": "/tmp/hrm-privacy-skipped-suites.json",
+      "bytes": 1571,
+      "sha256": "b6bc57a4753906168dc443fa467dd8d7d0a486e1f1b982e9c366126a06fb6c93"
+    },
+    {
+      "path": "/tmp/hrm-privacy-lint-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-privacy-production-typecheck.txt",
+      "bytes": 5225,
+      "sha256": "8e008c962d1890ccb596a4632f960aaa026de6a53ef6623ad07e97e5f93d5ffa"
+    },
+    {
+      "path": "/tmp/hrm-privacy-production-typecheck-final.txt",
+      "bytes": 4845,
+      "sha256": "c60b348d3daa0000151e12036ba1bb3739dc10c135be2dc888b8a89cd8d2af70"
+    },
+    {
+      "path": "/tmp/hrm-privacy-parent-production-typecheck.txt",
+      "bytes": 5823,
+      "sha256": "3c82da4dca27171587f897c2a5ce4076b92051c42a4ea68382f915a8d75ec273"
+    },
+    {
+      "path": "/tmp/hrm-privacy-tests-typecheck.txt",
+      "bytes": 5475,
+      "sha256": "667797209c810b0da000f7ef3fc72b19128222b9656727a5b6fde85df73181d4"
+    },
+    {
+      "path": "/tmp/hrm-privacy-tests-typecheck-final.txt",
+      "bytes": 5095,
+      "sha256": "a04b6dffcd360dbfe752fddafcb8363697496372ddcf32bc471f88e5c7cc9b8d"
+    },
+    {
+      "path": "/tmp/hrm-privacy-production-tsconfig.json",
+      "bytes": 3784,
+      "sha256": "75a895e8f95ac03b5d3f93c262f5a6eb2ba0d17a5b78cf46299795ed30836f1f"
+    },
+    {
+      "path": "/tmp/hrm-privacy-parent-production-tsconfig.json",
+      "bytes": 3788,
+      "sha256": "0263f02458b86eb6e41fac68440363db4efb2f66ab3db00ec0e450ae665e6f99"
+    },
+    {
+      "path": "/tmp/hrm-privacy-tests-tsconfig.json",
+      "bytes": 4134,
+      "sha256": "0a0720169ec21ba6b9e36aa07195b21c5ce46e4b03dcda5e6448304b8a3eb6d7"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-independent-audit-20261006.json",
+      "bytes": 20927,
+      "sha256": "f45d35ba0fdf83a5f186cb18688da37ce90c915cc3656ea2754af8bc3e300b95"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-probe.json",
+      "bytes": 733,
+      "sha256": "b5a6074962cbcea43eef78fd045c223e07a2cb386ab0859ada3cb6112d7ddf83"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-probe.cjs",
+      "bytes": 2284,
+      "sha256": "fdc51a4e0ca50d59949efc10e64c50166a4e1c928d81e2da12bece5d1677a449"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-root-probe.json",
+      "bytes": 733,
+      "sha256": "b5a6074962cbcea43eef78fd045c223e07a2cb386ab0859ada3cb6112d7ddf83"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-root-probe.cjs",
+      "bytes": 2285,
+      "sha256": "69dbb50c42f5b44c7168b8d31dea34299f59ea5fdfa1bff41206f82b467446db"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-preliminary-20261006.json",
+      "bytes": 22369,
+      "sha256": "6958c45c78483fee8b0566469263233b040c5d810f2ee041340a9ba565fab7ea"
+    }
+  ],
+  "canonical_statuses_unchanged": {
+    "WF-C10-011": "PLANNED",
+    "WF-C12-002": "PARTIAL",
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted_percent": 59
+  },
+  "not_performed": [
+    "No Support changes",
+    "No merge/deploy/activation",
+    "No raw CI logs/screenshots/PII/credentials",
+    "No backup/export production operations",
+    "No baseline changes"
+  ],
+  "independent_exact_head_and_hosted_checks": "PENDING_BEFORE_PUSH"
+}

@@ -1,0 +1,50 @@
+{
+  "status": "SOURCE_TO_SYNTHETIC_MEMORY_SINK_CHARACTERIZATION",
+  "head": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "source_bindings": [
+    {
+      "path": "src/lib/secure-token.ts",
+      "bytes": 3582,
+      "sha256": "1390764bd0e5a4a6d87102624c91fc3754e23a1a150580ba4455cda41540dd41"
+    },
+    {
+      "path": "src/lib/mtm/mobile-sync-telemetry.ts",
+      "bytes": 8447,
+      "sha256": "46abe748d8047dc5d3cad1a11478b8d7b01bfef8dde2d85149627da1bbaee1ec"
+    },
+    {
+      "path": "src/lib/mtm/mobile-gps-telemetry.ts",
+      "bytes": 1154,
+      "sha256": "7a1dd05743661c77d282d830acf6d2153309fe6cde90de663e2848c6a72b4a30"
+    },
+    {
+      "path": "src/lib/mtm/mobile-media-telemetry.ts",
+      "bytes": 1704,
+      "sha256": "c31564cba4a95cab33927d5fcd5db2cf0d7e455da61f617dc4937e847842ee09"
+    }
+  ],
+  "pull_valid_version_claims": {
+    "events": 500,
+    "distinct_syntactically_valid_versions": 500,
+    "distinct_tenant_pseudonyms": 1
+  },
+  "apk_census": {
+    "events": 500,
+    "distinct_principal_pseudonyms": 500,
+    "raw_agent_ids_omitted": true
+  },
+  "invalid_runtime_library_inputs": {
+    "gps_unchecked_fields_retain_synthetic_value": true,
+    "media_unchecked_fields_retain_synthetic_value": true,
+    "media_unchecked_contract_version": 9999
+  },
+  "network_calls": 0,
+  "production_credentials_used": false,
+  "real_hmac_with_fixed_synthetic_vm_env": true,
+  "limits": [
+    "Valid APK format is not a finite approved-release allowlist. These500 versions are library observations, not500 real client releases.",
+    "Census principal HMAC retains principal cardinality; pseudonymization is not anonymity. Destination could aggregate/drop fields, which is not inspected here.",
+    "Invalid GPS/media labels are direct JavaScript library inputs outside TypeScript union. No claim that route callsites allow adversarial values to reach these arguments.",
+    "No collector/dashboard transport, real identities, logs, backup, activation or production environment accessed. Actualsource emitter/serializer/HMAC ran into an in-memory stubconsole."
+  ]
+}

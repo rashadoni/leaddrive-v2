@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "status": "BOUNDED_PRELIMINARY_SOURCE_REVIEW_PASS_PENDING_FREEZE_AND_EXACT_HEAD",
+  "reviewedAt": "2026-10-06T11:59:10.504306+00:00",
+  "reviewer": "independent /root/pr585_independent_review",
+  "workspace": "/workspace/hrm-integration-fault",
+  "candidateCommit": null,
+  "acceptedParent": "8053702bbde2a43da537e263630f8a81ded2b659",
+  "integrationBase": "0562b7ceb56b256b5fd9728b44dc17c4a4617865",
+  "sourceBindings": [
+    {
+      "path": "src/lib/mtm/mobile-sync-push-bounds.ts",
+      "bytes": 1893,
+      "sha256": "59aa4858a8b9479e12ad501ad4fc31f2f95517ff54e907ae5c7e19d34367cedb"
+    },
+    {
+      "path": "src/app/api/v1/mtm/mobile/sync/push/route.ts",
+      "bytes": 139341,
+      "sha256": "d486429f49e92031b2bbb38e9d384f220dda0393d09418743c0e7cd1057212ac"
+    },
+    {
+      "path": "src/lib/mtm/mobile-gps-telemetry.ts",
+      "bytes": 1506,
+      "sha256": "cee94058548df85f6c28404edf46b054e86a81499ad6d9fa7beac8f837b1dd3c"
+    },
+    {
+      "path": "src/lib/mtm/mobile-media-telemetry.ts",
+      "bytes": 2107,
+      "sha256": "fde2fe86df1f74989be37d054efa9071e3562749f5eac657ae5e0d35481831f2"
+    },
+    {
+      "path": "src/lib/mtm/mobile-sync-telemetry.ts",
+      "bytes": 8864,
+      "sha256": "69671911fa6c5cafc72f42a026269426250b7f43c99e6cc1caeb01222614e2fd"
+    },
+    {
+      "path": "src/__tests__/workforce-sync-push-bounds.test.ts",
+      "bytes": 7402,
+      "sha256": "1c13824f892ff76c7b555a88814daac5d7dc1a15d7269f9cb31f6804d86e9ec0"
+    },
+    {
+      "path": "src/__tests__/api-mtm-mobile-sync-v2-fault-fairness.test.ts",
+      "bytes": 10259,
+      "sha256": "f954ccf9ba3523c39d9bb03f554ca2c5e097be9cb08fea742cad1d96cbdddb87"
+    },
+    {
+      "path": "src/__tests__/workforce-sync-fairness.test.ts",
+      "bytes": 4917,
+      "sha256": "e0fc4f0ab715dab757a21f4260be874e5c44e593bf682fc259d902464e2fffae"
+    },
+    {
+      "path": "src/__tests__/workforce-pr594-retention-compatibility.test.ts",
+      "bytes": 4348,
+      "sha256": "5b20cea14ba4339a1dfe7a2c5d851f243fe4864d22456a877b9777e5460d82de"
+    },
+    {
+      "path": "src/__tests__/workforce-pr594-membership-postgres.test.ts",
+      "bytes": 9149,
+      "sha256": "57e6da508aa6c85065c6d20dc79309cf5ef27fecb2371c1c48959c4c041110f6"
+    },
+    {
+      "path": "src/__tests__/workforce-aux-telemetry-privacy.test.ts",
+      "bytes": 6637,
+      "sha256": "7457b860ea0201460b58c0f45324e95d2ed1f8f4d477c6d7d3ef3535d685de3f"
+    },
+    {
+      "path": "src/__tests__/lib-mtm-mobile-sync-telemetry.test.ts",
+      "bytes": 7598,
+      "sha256": "f0d903d0e4ea7aeff95c3fb0371ef89c618ce66c32b6ae2256485c0604957d63"
+    }
+  ],
+  "supportBindings": [
+    {
+      "path": "/tmp/hrm-fault-independent-selected-tests.json",
+      "bytes": 11725,
+      "sha256": "cfc6c27cc3ab5b8227ce1d777d40f5687341b893401d62ba8c88935e4ae78724"
+    },
+    {
+      "path": "/tmp/hrm-fault-independent-retention-tests.json",
+      "bytes": 2409,
+      "sha256": "b604a1b25fbbe9dc372d6f3676bb9530d7824400737ce1acffa55bc4c0ea1a94"
+    },
+    {
+      "path": "/tmp/hrm-fault-independent-telemetry-tests.json",
+      "bytes": 9320,
+      "sha256": "3e54900365ad24fbd7d9e2783db4be8276ba7780481fc0fdc787f8e81c54fc8e"
+    },
+    {
+      "path": "/tmp/hrm-fault-independent-version-object-probe.json",
+      "bytes": 360,
+      "sha256": "f17003a8c4ed5a0099083cb8bf44c149b1d5220a8f29ff3635288e763c7f2cfb"
+    },
+    {
+      "path": "/tmp/hrm-pr594-compatibility-independent-review-20261006.json",
+      "bytes": 6978,
+      "sha256": "45a5323a510646b264bd4a7cd44054652aaf94d6df777ceaccaef5f14a9eb647"
+    },
+    {
+      "path": "/tmp/hrm-push-bounds-independent-contract-review-20261006.json",
+      "bytes": 4639,
+      "sha256": "3c74a52557ab6b50a75341779b2995d60ee3511da0d6be8aa6b5c6fe97b0717f"
+    }
+  ],
+  "findings": {
+    "unresolvedP0": [],
+    "unresolvedP1": [],
+    "unresolvedP2": [],
+    "unresolvedP3": [],
+    "resolved": [
+      {
+        "id": "TELEMETRY_VERSION_OBJECT_COERCION",
+        "severity": "P2",
+        "evidence": "Initial independent direct-JavaScript VM probe reproduced object retention by GPS/media version regex coercion; not a demonstrated route exploit.",
+        "resolution": "GPS/media and existing sync safeApkVersion/safeBuildSha now require typeof string before regex. New coercible/toJSON/symbol cases pass and assert no coercion/serialization calls. Invalid census/cohort/v1 endpoint normalization also reviewed."
+      }
+    ]
+  },
+  "independentExecution": {
+    "total": 54,
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "reports": [
+      {
+        "path": "/tmp/hrm-fault-independent-selected-tests.json",
+        "tests": 27,
+        "includesActualRedisLuaCases": 5
+      },
+      {
+        "path": "/tmp/hrm-fault-independent-retention-tests.json",
+        "tests": 4
+      },
+      {
+        "path": "/tmp/hrm-fault-independent-telemetry-tests.json",
+        "tests": 23,
+        "auxiliary": 14,
+        "existingSync": 9
+      }
+    ],
+    "postgresCasesRunByReviewer": 0,
+    "sourceEdits": 0,
+    "remoteWrites": 0
+  },
+  "reviewConclusions": [
+    "Push reads at most 512KiB raw request bytes and classifies each canonical parsed operation envelope at 64KiB including unknown properties. Oversize body yields 413; rejected operation yields fixed metadata-only per-operation result in normal batch response. Invalid oversized correlation IDs use question mark fallback without changing valid operation admission.",
+    "Rejected operations are excluded from settings and idempotency prefetch. A poison Workforce envelope cannot force a healthy Route replay through its settings dependency. Existing processing after admission preserves replay, capability, lock/fence and request-hash paths.",
+    "Actual selected handler tests establish scoped ordering, burst recovery and cursor behavior with mocked persistence/auth; actual memory/Redis rate-limit tests establish isolated bucket accounting and window behavior. They are not production latency or load measurements.",
+    "PR594 compatibility source and four actual-handler mocked-persistence regressions preserve history/retention refusal, setup-only deletion and failure refusal. No product conflict reproduced in these scopes.",
+    "Runtime telemetry categorical guards minimize invalid direct JavaScript fields; syntactically valid version counts and HMAC principal cardinality remain separate open boundaries."
+  ],
+  "limits": [
+    "Mutable local draft only: no immutable candidate/tree, fresh remote, compiler, final documents or hosted CI acceptance in this receipt.",
+    "Owner five membership PostgreSQL cases use disposable minimal schema plus selected historical triggers and the exact incoming migration; they do not prove full historical migrations, FORCE RLS, or production state. Reviewer did not rerun them.",
+    "Eight fault/fairness labels are bounded scenarios. Deferred-promise tests do not demonstrate a timeout mechanism; mocked 503/429 bursts are not real network/queue outages; artificial huge identifiers are not representative performance samples.",
+    "Android source uses REQUIRES_REVIEW persisted state and QUARANTINED_OPERATION recovery hint, retaining encrypted operations. No actual signed APK/device execution or automatic oversized batch chunking proof.",
+    "Shared auth, Pino, Sentry and production collectors remain outside this owned change. No blanket privacy/cardinality closure, roadmap status promotion, staging readiness, deployment or activation.",
+    "Valid bounded legacy operations retain behavior; previously accepted oversized bodies/envelopes are deliberately newly rejected. Raw-body cap and canonical JSON envelope cap have distinct byte semantics.",
+    "Initial finding evidence remains unchanged. Independent test scripts exercised synthetic fixtures only; no raw CI logs, screenshots or production data read."
+  ]
+}

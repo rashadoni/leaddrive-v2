@@ -1,0 +1,494 @@
+{
+  "status": "FROZEN_LOCAL_SCOPE_ACCEPTED_PENDING_IMMUTABLE_REMOTE_AND_HOSTED_REVIEW",
+  "reviewedAt": "2026-10-06T11:06:03.362488+00:00",
+  "base": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+  "mainExpected": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "sourceBindings": [
+    {
+      "path": "src/app/api/v1/workforce/attendance/devices/[id]/approve/route.ts",
+      "mode": "100644",
+      "bytes": 2036,
+      "sha256": "374b03976e23f03faa90133f8e597ae56bc578a285b7cdb662b58d1fb2bfe27a",
+      "git_blob_sha": "f7c5bf503aa91fd57ebcc6a14674b9712a01dbef"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/devices/[id]/revoke/route.ts",
+      "mode": "100644",
+      "bytes": 1955,
+      "sha256": "de428d5ece794f81c3732391bce752ae96cbd2e1083e170c870cbcb2a7da660f",
+      "git_blob_sha": "54b1df25d9ea1742754630ec9237503e29e8e328"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/devices/route.ts",
+      "mode": "100644",
+      "bytes": 1431,
+      "sha256": "5cc6e7c150e63991ccec3a27b2d09729b961c76efaaf8b0da2e2eff7a4e72753",
+      "git_blob_sha": "5b52d27ff3a30a4e0103338a783e10719f4bd95a"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/security-triage/route.ts",
+      "mode": "100644",
+      "bytes": 5741,
+      "sha256": "d529b87de04eebf133e81563f43633081c00968124c1f40a3d5de681f15edf98",
+      "git_blob_sha": "921d5441239b55a12370270e8eaf94aea8d0b561"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/stations/[id]/disable/route.ts",
+      "mode": "100644",
+      "bytes": 2012,
+      "sha256": "3ae5b791597b14a5c6051296bb34d3f0acd5058ba747e092e355d94baab38662",
+      "git_blob_sha": "076af8bca852c59d4505308758b4a79f11f985e0"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/stations/[id]/qr/route.ts",
+      "mode": "100644",
+      "bytes": 3220,
+      "sha256": "6515cdcab984e121fc5fee3aadbfd766bccc49365e48f7ed5f7517058251e5ac",
+      "git_blob_sha": "4af7f2030500dc69773fce5660e8a758bd471f83"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/stations/[id]/replace/route.ts",
+      "mode": "100644",
+      "bytes": 2474,
+      "sha256": "8b72d10f399861d288d324e06d9aea36f4698d86c23d5ce56d4e9ed568d1ab82",
+      "git_blob_sha": "1e7b3e84f57d41f7df1ebc51635200a6dad0ba6f"
+    },
+    {
+      "path": "src/app/api/v1/workforce/attendance/stations/route.ts",
+      "mode": "100644",
+      "bytes": 3018,
+      "sha256": "2fd8aee349ef35b0a0a09bb8ac1b50b8fe7a570040e3d5ccdb5051b84e211657",
+      "git_blob_sha": "7c4a879492aa4d3e8223070782ffddaedb6a01b0"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/assignments/bulk/publish/route.ts",
+      "mode": "100644",
+      "bytes": 2810,
+      "sha256": "2a0d2e7b0718cab1e843063cc8f44f673b1a932b93901342b205d2f13241449d",
+      "git_blob_sha": "9ed5a29551afb5d7d0682c68ad5405d25a397f82"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/assignments/preview/route.ts",
+      "mode": "100644",
+      "bytes": 2026,
+      "sha256": "8b889bce62a6f97f5c982812cf3edcf698a88c96bb5ae46b854b3271a20e80d9",
+      "git_blob_sha": "f839a0809542dc8c8a2fdb9344540e91f1572376"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/assignments/route.ts",
+      "mode": "100644",
+      "bytes": 8296,
+      "sha256": "cec32163b7d64bc027c9392c1e648c7caf09e8e1dcb94e5e2f1e8c18fa35ec3b",
+      "git_blob_sha": "ba7a8ff619f9a72bd3a68069218a5e4f5a821128"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+      "mode": "100644",
+      "bytes": 9445,
+      "sha256": "72a2ed0cf250b979624a0f9de828390795f760aeee04760a9a1ada564af38379",
+      "git_blob_sha": "ebc8d415de2cdb2069e129b1068d07b94a369760"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/employment-events/route.ts",
+      "mode": "100644",
+      "bytes": 3581,
+      "sha256": "09926ea665ba72fdc4041823d3fc77a25fbef603afd02fe04b05c4a07caaba94",
+      "git_blob_sha": "5c72f0efa535ed6281b825e0cb01083ea085582b"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+      "mode": "100644",
+      "bytes": 3767,
+      "sha256": "8150c082a79c0a3555ca82638175d1da4c697fbe4a37665485762b039b2ff798",
+      "git_blob_sha": "44c70a03c0b7e20909690e2f3bd8b7a05d03d0ff"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+      "mode": "100644",
+      "bytes": 3477,
+      "sha256": "19a338804b0895cb9ffb829468c125bdc9025a9d76994391d3b4d6088d180556",
+      "git_blob_sha": "9927c0f9db6e004ee9fcef782b03b5de28635bfa"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/[id]/activate/route.ts",
+      "mode": "100644",
+      "bytes": 2058,
+      "sha256": "b0145d0416687c243c28614899bd84169253bceed89155df0d401da7cb3610c1",
+      "git_blob_sha": "3569cbdf9e3cfc5370ba110cb70af0251df66e37"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/[id]/route.ts",
+      "mode": "100644",
+      "bytes": 1814,
+      "sha256": "031e4d56cc779b98cb6726b1787335e82fff87de7975336337a6302924abeee9",
+      "git_blob_sha": "2328b4e8d2bdeca52ba0c88be7fae663764c8264"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/policies/route.ts",
+      "mode": "100644",
+      "bytes": 2627,
+      "sha256": "780d37e9101f567486ea33d7a0f71f706de4fcacdd7962f5efb7c08b5b707c65",
+      "git_blob_sha": "b5096f169df5f685c051f1eab175e86e3c4708a8"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/[id]/activate/route.ts",
+      "mode": "100644",
+      "bytes": 1682,
+      "sha256": "2ca725d0b3cf2db45ef102f0bcb74928583707454f2a10d4bf152c4287015367",
+      "git_blob_sha": "1574d8202f4bbdd5479f38009e5eafd41a87e2aa"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/[id]/route.ts",
+      "mode": "100644",
+      "bytes": 1857,
+      "sha256": "f8cce781b33db073c5c19dc722f4234e828e71b6d491c5137bbd914e1f39819d",
+      "git_blob_sha": "00c01a4829d5a3fccf82bfce88c78ceb5b30908f"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/default/route.ts",
+      "mode": "100644",
+      "bytes": 3480,
+      "sha256": "24b35759e3c4c507c2773f27050184ec43b54d1a086735f825b6d6f892c5404b",
+      "git_blob_sha": "61f617469aef6ff7197fba801c59cd94f940c09e"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/route.ts",
+      "mode": "100644",
+      "bytes": 2981,
+      "sha256": "2f6e5aaad6b18d9713d2bd0f8ee0d8bb28106a8163d9411fe5abffa56a116c91",
+      "git_blob_sha": "43f425101ce1e1fc27b5290fdfb642ba20c90b3e"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/shifts/team-default/route.ts",
+      "mode": "100644",
+      "bytes": 3798,
+      "sha256": "f20a21d85729be098a275554a6a16b1c92cc0db528468c0f08484a99dbd90f50",
+      "git_blob_sha": "2dd22c80cc4fb2ea29fb97bb2d2c3042ea3ece78"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/site-assignments/bulk/publish/route.ts",
+      "mode": "100644",
+      "bytes": 2658,
+      "sha256": "34455cf3ccb27d28f395b11c77b02d2d41f8cd5f3a6befee0506e9c72f7fb666",
+      "git_blob_sha": "56c70a4d218e3c8e790bf50c347ebc8f2be89032"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/site-assignments/preview/route.ts",
+      "mode": "100644",
+      "bytes": 1927,
+      "sha256": "16eb56255a9c01d85bd8b5063c6941a27fa06bdae4971aa09048699a099396bb",
+      "git_blob_sha": "f8df2afeeb23c3c2d04a7de53ac882ded7d6d35d"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/site-assignments/route.ts",
+      "mode": "100644",
+      "bytes": 3176,
+      "sha256": "e6c0bff7ab926a8d09048d28f2ed90357872460eb4554b6feffa60c3f11d42d6",
+      "git_blob_sha": "c6f737c0169ea7ad560041aebe2411bc60ad456e"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/sites/[id]/archive/route.ts",
+      "mode": "100644",
+      "bytes": 1818,
+      "sha256": "7dbca51676800e6bd78cf2727d795af4c200ba9b21fe559129e23206cb75682e",
+      "git_blob_sha": "0358de74ca5d768d3bcde3b104d6ef41b3e9f6f4"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/sites/[id]/geofences/route.ts",
+      "mode": "100644",
+      "bytes": 3374,
+      "sha256": "7980057fb68076d0dceab368a0f06c388c8dfd318575fe2b2507c06c19c3ec24",
+      "git_blob_sha": "8d393d0e708b77fca23b35898e98cadc44af136d"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/sites/route.ts",
+      "mode": "100644",
+      "bytes": 2492,
+      "sha256": "92bf0d8f2c0fae3f8f52bfbf20277cbd52f74a82f1219586fac3c66a581f395a",
+      "git_blob_sha": "788142db59b5b1473ebbf42c139b2344656cfd40"
+    },
+    {
+      "path": "src/app/api/v1/workforce/exceptions/mine/route.ts",
+      "mode": "100644",
+      "bytes": 6717,
+      "sha256": "73d00c82a0ba3febdd74d0894d7e47f634337d708332be3591e223f3ba8a76db",
+      "git_blob_sha": "95c1166288d1695bf1b1a5f563fd4a534ed1305a"
+    },
+    {
+      "path": "src/app/api/v1/workforce/timesheet/approvals/route.ts",
+      "mode": "100644",
+      "bytes": 2672,
+      "sha256": "c7b6864a1faf666c17485bc90d6bb00e9bf1f8a9752ef74b85753387fa13ae91",
+      "git_blob_sha": "52128ecb59f87bfc6a5700c4c351192c3ac8e2aa"
+    },
+    {
+      "path": "src/app/api/v1/workforce/timesheet/route.ts",
+      "mode": "100644",
+      "bytes": 22266,
+      "sha256": "54cafe3d87cbc7de785feaf920a74f8c5bb4f0b258b816319abdeb72faaf3ec9",
+      "git_blob_sha": "bfee5a4f4bca9dfd0baaaac3ecd0ffbc6cc5e7bd"
+    },
+    {
+      "path": "src/app/api/v1/workforce/today/route.ts",
+      "mode": "100644",
+      "bytes": 24603,
+      "sha256": "13f6524a645b52444f33dd172eebdd6154b497b15c5b69aa89089f4e2dbab0a6",
+      "git_blob_sha": "e1573c33693279631597ce5cebfde9ab2aad42b7"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "mode": "100644",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff",
+      "git_blob_sha": "fc6e31b5380acc3d7e34e51a71b5f02b6dca7676"
+    },
+    {
+      "path": "src/lib/workforce/play-integrity.ts",
+      "mode": "100644",
+      "bytes": 11984,
+      "sha256": "420fbefa35870ca749e1c7b4d4742921ec0f10ae37afa807144892c03192dfe0",
+      "git_blob_sha": "e07a57a8abdd4e856871260f70c6c7ff5f420c82"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-operation-log.ts",
+      "mode": "100644",
+      "bytes": 4396,
+      "sha256": "808c955586869d7005fdb60f76cd25b03106937e15778aef7056375f9e93d89b",
+      "git_blob_sha": "58ff8ccb5f4b40b3c0fd0a7a2da1219a951e0335"
+    },
+    {
+      "path": "src/__tests__/api-workforce-privacy-audit.test.ts",
+      "mode": "100644",
+      "bytes": 24796,
+      "sha256": "540f61d2936c44a02fbedaa36e94598e1687f93502e53578723a17f44f4e582e",
+      "git_blob_sha": "b596c6d88f9b388fb9f6e63a13c7ac743a4c3348"
+    },
+    {
+      "path": "src/__tests__/workforce-auth-failure-logging.test.ts",
+      "mode": "100644",
+      "bytes": 3792,
+      "sha256": "059b46eda996b5fd87afdac4e7d2cbb988e09eca92fc9c415bf0676aad0bd408",
+      "git_blob_sha": "ee41bcfcab611e16092e9c2e918daf1c68999a05"
+    },
+    {
+      "path": "src/__tests__/workforce-privacy-telemetry.test.ts",
+      "mode": "100644",
+      "bytes": 3172,
+      "sha256": "568da0d4eee425cc7b6aea83c8202b989a36bf352216a38d9b326094ebe3b69a",
+      "git_blob_sha": "d22e5b6662518e8390568affa23ed16fd756711b"
+    },
+    {
+      "path": "src/__tests__/workforce-privacy-source-audit.test.ts",
+      "mode": "100644",
+      "bytes": 6025,
+      "sha256": "0c7a3982ffa52b28f5351c175502e45b5a860b653ccdca7fe66c2de0dadaca87",
+      "git_blob_sha": "b39c3b5814b41ed936126fddd8e25c9e6ddacba5"
+    },
+    {
+      "path": "src/__tests__/fixtures/workforce-privacy-routes.json",
+      "mode": "100644",
+      "bytes": 12009,
+      "sha256": "65f700be1c0deac70902e06cf9a0566eaffb58926214f36bcae7b37402dd15f6",
+      "git_blob_sha": "324ce614a0fed1d6b7dc2e5dc5301f6ce082a1a4"
+    },
+    {
+      "path": "docs/workforce-privacy-audit-2026-10-06.md",
+      "mode": "100644",
+      "bytes": 10851,
+      "sha256": "e59b2370ba5d9d200cbc4de8b7ce05bbdb6ee27149393c624dc2aae8fb1e5b16",
+      "git_blob_sha": "187a6d38fd28090e9a11cc77f1e61438bcbbd8c2"
+    }
+  ],
+  "verifiedSupportCount": 25,
+  "verifiedBindingsCount": 42,
+  "unchangedSincePreliminary": "All36modified production paths and5new tests/catalog are byte-identical to independent preliminary delta; only new reviewed doc added.",
+  "documentReview": [
+    "Whole document read. Correctly separates finite53call cleanup from canonical privacy/observability criteria and external boundaries.",
+    "82/161 DONE,79open,weighted59%; WF-C10-011 PLANNED,WF-C12-002 PARTIAL,C12-008 PARTIAL unchanged.",
+    "Ten matrix rows distinguish source exposures/synthetic probes from live data or destinations; direct AST limitations and hostile code-getter boundary expressly disclosed.",
+    "Actual handlers/logger with mocked auth/schema/services/Prisma accurately disclosed; separate regressions not live production proof.",
+    "Archive preservation sentence describes intended final evidence publication; not independently durable until archive readback."
+  ],
+  "ownerTestReportIndependentlyParsed": {
+    "testFiles": 265,
+    "passed": 2307,
+    "failed": 0,
+    "skipped": 163,
+    "skippedOptInSuites": 12,
+    "newTests": 251,
+    "execution": "Owner run; reviewer parsed all assertion records, did not repeat full suite or run PG."
+  },
+  "compiler": {
+    "productionRemaining": 23,
+    "testInclusiveRemaining": 25,
+    "codesProduction": {
+      "TS7006": 20,
+      "TS2347": 2,
+      "TS2352": 1
+    },
+    "extraTestInclusive": "Two unchanged foreign MTM mock TS2737",
+    "parentComparison": "Exactly3ownedPlayIntegrityTS2737removed; normalized file/code/message multiset otherwise equal.",
+    "status": "NONZERO_HISTORICAL_DIAGNOSTICS_NOT_CLEAN_COMPILE"
+  },
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": [],
+    "P3": []
+  },
+  "limits": [
+    "No immutable candidate/source-tree/fresh-main acceptance yet.",
+    "No hosted acceptance yet.",
+    "No merge/deploy/activation or source/remote writes by reviewer.",
+    "Prior preliminary and boundary audit limitations remain applicable."
+  ],
+  "supports": [
+    {
+      "path": "/tmp/hrm-privacy-owner-validation.json",
+      "bytes": 8817,
+      "sha256": "3e3064913ab1504ff73d9ca1dbcf225383a013923b8adf1c47b6fad2e0ad81de"
+    },
+    {
+      "path": "/tmp/hrm-privacy-source-proof.json",
+      "bytes": 14582,
+      "sha256": "90e274536e8c616975118bf103ff8c8b2737577895fe54011919894d8827f868"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-preliminary-20261006.json",
+      "bytes": 22369,
+      "sha256": "6958c45c78483fee8b0566469263233b040c5d810f2ee041340a9ba565fab7ea"
+    },
+    {
+      "path": "/workspace/hrm-privacy-audit/docs/workforce-privacy-audit-2026-10-06.md",
+      "bytes": 10851,
+      "sha256": "e59b2370ba5d9d200cbc4de8b7ce05bbdb6ee27149393c624dc2aae8fb1e5b16"
+    }
+  ],
+  "ownerSupportsVerified": [
+    {
+      "path": "/tmp/hrm-privacy-source-proof.json",
+      "bytes": 14582,
+      "sha256": "90e274536e8c616975118bf103ff8c8b2737577895fe54011919894d8827f868"
+    },
+    {
+      "path": "/tmp/hrm-privacy-verify-scope.cjs",
+      "bytes": 4947,
+      "sha256": "ff863e2d012bc3aa93d933abbacad9215aba2dacbba8b4eea6f3551f5ab83ecb"
+    },
+    {
+      "path": "/tmp/hrm-privacy-compiler-comparison.json",
+      "bytes": 2604,
+      "sha256": "95cc79fe4b0b6ec0c180f07f5b2eee68605cd6452d2f3c5d36525c52c7895523"
+    },
+    {
+      "path": "/tmp/hrm-privacy-regressions-final.json",
+      "bytes": 966204,
+      "sha256": "1d8a9ed44067fe6bf4b4ddf4b665c50998f6c2ad9cd85f0cac805686ca246c84"
+    },
+    {
+      "path": "/tmp/hrm-privacy-regressions.json",
+      "bytes": 967155,
+      "sha256": "7c1d2e12ad03673fb3b87151d0c7fc1ef8bf1a23137649d590b827305fa413f0"
+    },
+    {
+      "path": "/tmp/hrm-privacy-focused-tests.json",
+      "bytes": 98518,
+      "sha256": "3b5c189e94bf326139bc910d4fd04793131f98f463047fa293faa54a5a3c9f24"
+    },
+    {
+      "path": "/tmp/hrm-privacy-initial-tests.json",
+      "bytes": 70089,
+      "sha256": "92fbe9aaa7b2a43802ab78bed8ac8103ee43742ca75c7f119fcb7b9ca28ad6e2"
+    },
+    {
+      "path": "/tmp/hrm-privacy-auth-tests.json",
+      "bytes": 30285,
+      "sha256": "7011e6361b365468e554175023a119054301b71301179a6de30a250872c975ef"
+    },
+    {
+      "path": "/tmp/hrm-privacy-audit-integrity-tests.json",
+      "bytes": 6116,
+      "sha256": "32222c5390d8c2a34e477762ede2366f5d67e81e82a2817138c08f8d838b664e"
+    },
+    {
+      "path": "/tmp/hrm-privacy-skipped-suites.json",
+      "bytes": 1571,
+      "sha256": "b6bc57a4753906168dc443fa467dd8d7d0a486e1f1b982e9c366126a06fb6c93"
+    },
+    {
+      "path": "/tmp/hrm-privacy-lint-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/hrm-privacy-production-typecheck.txt",
+      "bytes": 5225,
+      "sha256": "8e008c962d1890ccb596a4632f960aaa026de6a53ef6623ad07e97e5f93d5ffa"
+    },
+    {
+      "path": "/tmp/hrm-privacy-production-typecheck-final.txt",
+      "bytes": 4845,
+      "sha256": "c60b348d3daa0000151e12036ba1bb3739dc10c135be2dc888b8a89cd8d2af70"
+    },
+    {
+      "path": "/tmp/hrm-privacy-parent-production-typecheck.txt",
+      "bytes": 5823,
+      "sha256": "3c82da4dca27171587f897c2a5ce4076b92051c42a4ea68382f915a8d75ec273"
+    },
+    {
+      "path": "/tmp/hrm-privacy-tests-typecheck.txt",
+      "bytes": 5475,
+      "sha256": "667797209c810b0da000f7ef3fc72b19128222b9656727a5b6fde85df73181d4"
+    },
+    {
+      "path": "/tmp/hrm-privacy-tests-typecheck-final.txt",
+      "bytes": 5095,
+      "sha256": "a04b6dffcd360dbfe752fddafcb8363697496372ddcf32bc471f88e5c7cc9b8d"
+    },
+    {
+      "path": "/tmp/hrm-privacy-production-tsconfig.json",
+      "bytes": 3784,
+      "sha256": "75a895e8f95ac03b5d3f93c262f5a6eb2ba0d17a5b78cf46299795ed30836f1f"
+    },
+    {
+      "path": "/tmp/hrm-privacy-parent-production-tsconfig.json",
+      "bytes": 3788,
+      "sha256": "0263f02458b86eb6e41fac68440363db4efb2f66ab3db00ec0e450ae665e6f99"
+    },
+    {
+      "path": "/tmp/hrm-privacy-tests-tsconfig.json",
+      "bytes": 4134,
+      "sha256": "0a0720169ec21ba6b9e36aa07195b21c5ce46e4b03dcda5e6448304b8a3eb6d7"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-independent-audit-20261006.json",
+      "bytes": 20927,
+      "sha256": "f45d35ba0fdf83a5f186cb18688da37ce90c915cc3656ea2754af8bc3e300b95"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-probe.json",
+      "bytes": 733,
+      "sha256": "b5a6074962cbcea43eef78fd045c223e07a2cb386ab0859ada3cb6112d7ddf83"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-probe.cjs",
+      "bytes": 2284,
+      "sha256": "fdc51a4e0ca50d59949efc10e64c50166a4e1c928d81e2da12bece5d1677a449"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-root-probe.json",
+      "bytes": 733,
+      "sha256": "b5a6074962cbcea43eef78fd045c223e07a2cb386ab0859ada3cb6112d7ddf83"
+    },
+    {
+      "path": "/tmp/hrm-privacy-boundary-root-probe.cjs",
+      "bytes": 2285,
+      "sha256": "69dbb50c42f5b44c7168b8d31dea34299f59ea5fdfa1bff41206f82b467446db"
+    },
+    {
+      "path": "/tmp/hrm-privacy-independent-preliminary-20261006.json",
+      "bytes": 22369,
+      "sha256": "6958c45c78483fee8b0566469263233b040c5d810f2ee041340a9ba565fab7ea"
+    }
+  ]
+}

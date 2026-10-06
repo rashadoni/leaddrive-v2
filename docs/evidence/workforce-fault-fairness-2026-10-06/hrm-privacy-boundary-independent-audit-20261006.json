@@ -1,0 +1,399 @@
+{
+  "schema_version": 1,
+  "status": "READ_ONLY_BASELINE_BOUNDARY_AUDIT_COMPLETE_NOT_NEW_CANDIDATE_ACCEPTANCE",
+  "reviewer": "independent_read_only_worker",
+  "reviewed_at": "2026-10-06T10:55:06.048055+00:00",
+  "head": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+  "tree": "5b94c2111dbe51ceb74b1e803e142fff74e66cbc",
+  "scope": "Source-only boundary audit beyond46directroutecalls; parent implements46+7ownedwrappers separately. No newcandidate source reviewed oraccepted here.",
+  "canonical": {
+    "WF-C10-011": "PLANNED; fullmetricsminimization/schema-logscanners+dashboardreview stillrequired",
+    "WF-C12-002": "PARTIAL; finiteemissionnotendtoendcardinality/privacy/ingestion/paging/SLOdelivery",
+    "ledger": "82/161DONE79openweighted59%; C12-008PARTIAL"
+  },
+  "boundaries": [
+    {
+      "id": "B1",
+      "scope": "HRM-owned auth wrappers",
+      "source": "src/lib/with-workforce-rls-auth.ts",
+      "lines": [
+        78,
+        230,
+        319,
+        362,
+        404,
+        460,
+        497
+      ],
+      "finding": "Seven additional raw caught-value console.error sinks outside46routecalls. Parentplansinclude them. Preserve503finitebodies/capability/grant distinctions and handler callstructure.",
+      "test": "For each of7lookupfailurebranches, rejectwith four syntheticprivatevalues; actualwrapper+logger, mockonlyauth/DBdependency; assert generic503, unchangedheaders, nohandler/noextraDBwrite. Add allowed, denied, disabledcapability and granularlegacy branches."
+    },
+    {
+      "id": "B2",
+      "scope": "Shared RLS/auth infrastructure",
+      "source": [
+        "src/lib/with-rls.ts",
+        "src/lib/api-auth.ts",
+        "src/lib/auth.ts"
+      ],
+      "finding": "withRls/withRlsAuth/withRlsSessionAuth log rawexception onauthresolutionfailure; api-auth mobile-rejectionwarns includeagentId+rawpathname; Auth rawlogs SMSdispatch/login/sessionfailure. Inheritedcross-domain boundarynotfixedbyHRMroutecatches.",
+      "test": "Mockauthlookup rejection withprivatecanary; assert401and nohandler/contextescape. Testmobile-scope rejection with syntheticagent/pathcanary and fixed401withouttokenacceptance. Verify runWithRlsBypass resolvesidentitythen runWithTenant restoration remainsunchanged. Cross-domainowner scope requiredbeforechanges."
+    },
+    {
+      "id": "B3",
+      "scope": "Prisma/shared audit",
+      "source": "src/lib/prisma.ts",
+      "lines": [
+        150,
+        160,
+        313
+      ],
+      "finding": "RLSguard emits model/operationand freshcallstack, notqueryargs in inspectedbranch. logAudit failure forwards action/entityType/entityId+rawerror. basePrisma constructor suppliesnoexplicitqueryloggeroptions; absenceofexplicitquerylogconfig isnotproofdrivercannotemiterrors. Workforce domainwriters mostlyuse tx.mtmAuditLog.create directly; cannotassume logAudit usedfor eachHRMmutation.",
+      "test": "Localstubclient failauditcreate and captureconsole, withoutDB; asserttenantcontext restored and existingbest-effort/no-rethrow semantics. CaptureRLSguard with privateargs tocheckargsnotlogged and guardthrow/warn behaviorpreserved. Do not changeawaitedtransactionalauditrollback tobest-effort or viceversa."
+    },
+    {
+      "id": "B4",
+      "scope": "Shared structured logger",
+      "source": "src/lib/logger.ts",
+      "finding": "Pino constructor haslevel/transport butnoredact orcustomserializers; logError forwardsError; contextincludesorg_id,user_id,request_id. No directimport from scopedWorkforce library/routes/components found. MTMrouteobservability andotherdomains importlogger. This iscross-domainpolicygap, notproofeachHRMerrorflows throughPino.",
+      "test": "Capturelogger output with syntheticnestedError.cause/name/stack/objectextras, identifiersandmessage; independentlyvalidate exactallowlist/redactionifsharedowneradoptschange; retainseverity andnonthrowingobservability expectations."
+    },
+    {
+      "id": "B5",
+      "scope": "Sentry server/edge/client/globalerror",
+      "source": [
+        "src/instrumentation.ts",
+        "sentry.server.config.ts",
+        "sentry.edge.config.ts",
+        "instrumentation-client.ts",
+        "src/app/global-error.tsx",
+        "src/lib/demo-center/telemetry.ts"
+      ],
+      "finding": "onRequestError/captureException captureframework/globalerrors; allthreeconfigs use demo-token-onlyscrubber. Clientreplay maskAllText/blockAllMedia andonErrorSampleRate1.0 areconfigured; Workforce isnot excludedlikeprivatedemopath. RawURL/error/breadcrumb/context privacyisnotestablishedbyDOMmasking. DSNpresence/actualcapture/export notchecked.",
+      "actual_probe": "Purelocal synthetic event through exactscrubDemoTokens: demobearerpathremoved, Workforcepath/reason/coordinates/exception/breadcrumb/contextcanariesretained. NoSDK/network/destinationread.",
+      "test": "TestcomposedbeforeSend/beforeSendTransaction/breadcrumb/span/requestURL hooks with nestedcanaries andprivateactiontokens; capturewithmocktransportonly. Include genericglobalerrorsandrouteprefix cases, preservationofdemotokenredaction, cycles/nonplainvalues/accessors. Separatebrowserreplayprivacyconfigurationreview; do notclaimeventprooffromDOMmasking."
+    },
+    {
+      "id": "B6",
+      "scope": "Workforce client surface/marketing analytics",
+      "source": [
+        "src/components/workforce",
+        "src/app/(dashboard)/workforce",
+        "src/components/marketing/google-analytics.tsx",
+        "src/app/(marketing)/layout.tsx"
+      ],
+      "finding": "Scopedsearch found no directconsole/Sentry/gtag/logger sinks in Workforcecomponents/pages; multiplecaught servererror messagesdisplayedtoast/state. They areUIoutputs, not automaticallyanalytics. Globalerror/Sentryroute/replayboundary stillapplies. GAcomponent referencedonlymarketinglayout in inspectedsource, notdirectWorkforcepath.",
+      "test": "Sourceimport/ASTscan plus controlledclientfailure usingfakefetch/capturetransport; prevent rawservererror/autodatafrom enteringglobaltelemetry whilepreservinguserresponses/localizedfallback. Do notclaimGAexportsWorkforceevents withoutcallpath."
+    },
+    {
+      "id": "B7",
+      "scope": "Metrics/cardinality",
+      "source": [
+        "src/lib/mtm/mobile-sync-telemetry.ts",
+        "src/lib/mtm/mobile-gps-telemetry.ts",
+        "src/lib/mtm/mobile-media-telemetry.ts"
+      ],
+      "finding": "Syncpull uses finiteallowlists/bounded duration/aggregatecounts, HMACtenant. APKcensus includesHMACprincipal/buildSha/validatedversion forcorrelation; pseudonymization isnotanonymization or boundedfleetcardinality. Versionformatallowsmanyvalues; releaseledger/destinationaggregation remainneeded. GPS/media typedruntime dimensions lacksamecompleteallowlist; broaderMTMscope. Logger exceptionscaught toavoidchangingresponse.",
+      "test": "Syntheticinvalidruntime stream/endpoint/result/version,NaN/Infinity/negativecounts; payloadgetter/toJSONthrow; frozeninputs; loggerthrows mustnotchangesyncresult. Destinationdedup/bucket tests mustdistinguishrawcorrelationlogs frommetriclabels; no productioncensus export."
+    },
+    {
+      "id": "B8",
+      "scope": "Log destinations/retention",
+      "source": [
+        "ecosystem.config.cjs",
+        "ops/logrotate/leaddrive-v2",
+        "scripts/backup/ship-logs.sh",
+        "ops/systemd/leaddrive-log-ship.timer"
+      ],
+      "finding": "Sourceconfig sendsappstdout/error tofiles; reviewedlogrotate daily/14rotations/50M/copytruncate. Shipper sourceincludesapp/nginx/Postgreslogs andmin400dayencryptedretention, hourlytimer. Encryption+immutability are notminimization or proofrecipientaccess/privacyapproval. Readsourceonly; liveinstallation/config/credentials/contents NOTREAD.",
+      "test": "Offlinefixturetransformation forselectedlogformat beforearchive, canaryabsence withfailure/rotationcase, onlyifoperationalowner authorizesseparateimplementation. Needactualsanitized destination/retention/access/ingestion provenance toclosecriterion; no historicaldeletion/backfill orbackupactions authorized."
+    },
+    {
+      "id": "B9",
+      "scope": "Data classification/dormant roster",
+      "source": [
+        "src/lib/workforce/data-classification.ts",
+        "src/lib/workforce/reconciliation-roster-health.ts"
+      ],
+      "finding": "All7Workforcedataclasses markgeneralTelemetryfalse; metadata-onlycontractdoesnot enforceallsinks. Dormantaggregaterosterhealth andretentionlabels do notestablishcollection/dashboard/pagingdelivery or alltenantSLOcoverage.",
+      "test": "Matrixclass-to-emitterallowlists +fixtureassertions atactualsink; seedboundedaggregaterosterexistingtestseparately withoutclaimnewactivepipeline."
+    }
+  ],
+  "dangerous_behavior_interactions": [
+    {
+      "case": "Today bounds",
+      "rule": "Keep WorkforceManagerTodayBoundsError deliberatelysilent and existing unavailable503; genericfailureonefixedlog. Do notmaketypedbounds produceerrorlog or changeclientresult."
+    },
+    {
+      "case": "Timesheet read model",
+      "rule": "Retain WorkforceTimesheetReadModelError409finitecode beforegeneric500; catchbindingneeded. Do notblanketreplace catch(error) with catch."
+    },
+    {
+      "case": "Typed attendance/configuration/site/employment",
+      "rule": "Preserve all404vs409vs400codemappings andunchangedtypedmessage/codebody. Domainerrorlegitimateresponsenotgeneraltelemetry. Fixedlogonlyunexpectedgenericbranch."
+    },
+    {
+      "case": "Bulk assignments",
+      "rule": "Preserve typed409 previewpayload and pairedroute/snapshotrollback semantics; noextra servicecallorwrite onerror."
+    },
+    {
+      "case": "Fence schema",
+      "rule": "Keep P2021=>503 andtypedfence409/404. Existing isMissingFenceSchema inspects arbitrary code using in/property, sohostilecodegetter/proxycanthrowbeforelogging. Plainfixtureonlyname/message/stack/cause/toJSON misses this. Scopeunknownvalue-noninspectionclaim tologger, notentiretypedcatch; hardeningdetectorrequires explicitbehaviorreview."
+    },
+    {
+      "case": "Async wrapper boundary",
+      "rule": "return handler(...) inside try intentionally differs fromreturn await handler(...): lattercatches downstreamasyncfailures andcanremap toauth503. Do notaddawait or movetry boundaries whilechanginglogging. Testsync throw vsasync rejection separately ifwrapperchanged."
+    },
+    {
+      "case": "Security gates",
+      "rule": "MFA/role/session/granular/tenantcapability denials beforewrite/log mustremain. Include nohandlerassertions and unchanged cacheheaders; do notcollapse401/403/503."
+    },
+    {
+      "case": "Audit/observability",
+      "rule": "Do notconvert transactional domain audit into best-effortlog orchange sharedlogAudit swallowedfailure/responseflow. Existinghelpers consolecouldthrowifpatched; testsmustnotinvent newnonthrowingguarantee unlessimplemented."
+    }
+  ],
+  "source_bindings": [
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21768,
+      "sha256": "b3353f92fc1350608556a90c6378a3c763deee15133a44e131becab4db89b043",
+      "git_blob_sha": "0f8830742e7445f9f48e265a185cdb3c6fea5df5"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10371,
+      "sha256": "9707a3842648d8f2615a8401752e5b368b1224584330956fe5c22b856760da74",
+      "git_blob_sha": "7827fd688c4852a5cb2a4fc9bf1e4517282e3fc8"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 26198,
+      "sha256": "202832eb031fddbd98b96b5b2ed614410b82966ea17623fc47232cd2b20074ca",
+      "git_blob_sha": "e83d8eb215f8ba26707656ff6e624c5ea891b3cf"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26635,
+      "sha256": "cc7ecee26681fb5fa8c2b0f08f064edcc2041ee2ecc845498de4fe851cbc78b7",
+      "git_blob_sha": "d0b7526ab93c1538271c18903148197513712d41"
+    },
+    {
+      "path": "src/lib/prisma.ts",
+      "bytes": 13628,
+      "sha256": "65dda4d278f8deb6310af5f4fe57e60bc8bcda776459f8bfed31daae945dbd26",
+      "git_blob_sha": "de9cd5e4e2d3e1732518e89b689cd87002a90935"
+    },
+    {
+      "path": "src/lib/logger.ts",
+      "bytes": 1125,
+      "sha256": "0c1cd91068f7585ff94051efbdc5f256ac1108836a7b27fef7ab318147560792",
+      "git_blob_sha": "8e6da360e46974ae6c4cbfb8d4f38092849c7077"
+    },
+    {
+      "path": "src/lib/rls-context.ts",
+      "bytes": 5099,
+      "sha256": "3ca4e34c3d94ba361fc2452b56f2b9a500b7487ee2402d436bc476786e3a53fd",
+      "git_blob_sha": "7b53e45c2ffc82b90d3e44baec3541f4db5a205a"
+    },
+    {
+      "path": "src/lib/workforce/sensitive-operation-log.ts",
+      "bytes": 2258,
+      "sha256": "5e906dd58bfcd26323705ef9e15b8a666f6b9818d5f99c885323a720bfa15368",
+      "git_blob_sha": "178f184bdd9d9284918915180a5f41d8a5b3d3d6"
+    },
+    {
+      "path": "src/lib/workforce/data-classification.ts",
+      "bytes": 2849,
+      "sha256": "b01411dd343c40849d6a04e50ab308d2f005baaa3fdf1a85aa9a8d783e72490c",
+      "git_blob_sha": "68d764d54d7193720474537afb635e8df1d0b196"
+    },
+    {
+      "path": "src/lib/mtm/mobile-sync-telemetry.ts",
+      "bytes": 8447,
+      "sha256": "46abe748d8047dc5d3cad1a11478b8d7b01bfef8dde2d85149627da1bbaee1ec",
+      "git_blob_sha": "09f1519a90b13a8672d3697e49c64d95e7a29d74"
+    },
+    {
+      "path": "src/lib/mtm/mobile-gps-telemetry.ts",
+      "bytes": 1154,
+      "sha256": "7a1dd05743661c77d282d830acf6d2153309fe6cde90de663e2848c6a72b4a30",
+      "git_blob_sha": "60fb49ffba1364631c211b27ffe90916f3619adf"
+    },
+    {
+      "path": "src/lib/mtm/mobile-media-telemetry.ts",
+      "bytes": 1704,
+      "sha256": "c31564cba4a95cab33927d5fcd5db2cf0d7e455da61f617dc4937e847842ee09",
+      "git_blob_sha": "ee98fd673eb6da52c20ad40d0cceea3d64907310"
+    },
+    {
+      "path": "src/instrumentation.ts",
+      "bytes": 618,
+      "sha256": "0678d20a1b52f6ec83e63b1e693fcb2b829647b327175b726afcdf59e3e2e551",
+      "git_blob_sha": "b56b80da87b4530f950d701bff62c15c22f22249"
+    },
+    {
+      "path": "instrumentation-client.ts",
+      "bytes": 1217,
+      "sha256": "ba6b8a0420aee965032426e57d2b87047598ada07eee675a62f1da17be0c17e7",
+      "git_blob_sha": "a499f50471bf18d65f38e1a608e1f92e4135c414"
+    },
+    {
+      "path": "sentry.server.config.ts",
+      "bytes": 436,
+      "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9",
+      "git_blob_sha": "d3a2f4d6625dae056db021c280cbdab22251b48a"
+    },
+    {
+      "path": "sentry.edge.config.ts",
+      "bytes": 436,
+      "sha256": "2a5232c614fa2e485386e4362229f1867dba359e2ef9de39a657ed9cf11fd1f9",
+      "git_blob_sha": "d3a2f4d6625dae056db021c280cbdab22251b48a"
+    },
+    {
+      "path": "src/lib/demo-center/telemetry.ts",
+      "bytes": 905,
+      "sha256": "e25058c393c011aad88185856c8536600ed87dcfe013d59caca15d8e93ab91f3",
+      "git_blob_sha": "cb3d70bbce871acd8254f1fe9e5557b8a2f6bf77"
+    },
+    {
+      "path": "src/app/global-error.tsx",
+      "bytes": 1387,
+      "sha256": "bd222d0b1e567e623f0e3a40041d52cb1c6861bc8d2fff0509c2f1480ecbd435",
+      "git_blob_sha": "f8dcc0016c87a4c9a3ba67b08ed798a629cd5123"
+    },
+    {
+      "path": "src/components/marketing/google-analytics.tsx",
+      "bytes": 600,
+      "sha256": "c46e256873d36d75e67b879c93fea8a7597282e65dc7311060b5ff426167a405",
+      "git_blob_sha": "e669672a42a8bfcf90d981cc2485e2eefbe1dd32"
+    },
+    {
+      "path": "src/app/(marketing)/layout.tsx",
+      "bytes": 2306,
+      "sha256": "62358411a5c4868443d8045bf14acb3c43f61c66b4f0c757b80078bace5c7a05",
+      "git_blob_sha": "676fa5fd2e1d436bb65a9fba4075987f50397b49"
+    },
+    {
+      "path": "src/components/workforce/workforce-workbench.tsx",
+      "bytes": 84802,
+      "sha256": "3fd51bd9a372bc2ff141f0a62e58dcdeb69054d415bdb5f3cd45dfddc18faf81",
+      "git_blob_sha": "491624e609b8a5f3ad0f5429ffe8c30f5862416a"
+    },
+    {
+      "path": "src/components/workforce/workforce-attendance-administration.tsx",
+      "bytes": 26348,
+      "sha256": "0dc7f0b48cffb67b7461ca6a56a83660a5afd99476a4148fde597fb7f2c16a4a",
+      "git_blob_sha": "3cc1c3b26a163194f33076d4633c43e4dba911e6"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/route.ts",
+      "bytes": 3341,
+      "sha256": "65972d7c6aa9bcd2f0491c9894312732cbfa08d91f96a31f9f70d0e96223dc8a",
+      "git_blob_sha": "19946b6b77b5004bd3049879be9307d235696b12"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route.ts",
+      "bytes": 3631,
+      "sha256": "4c078a78c5bce38905c0f93caea4d2b45efea3636062246c9cf833175c41ef71",
+      "git_blob_sha": "65bd9e9c5c622811d5cf2efcb1a855bf1437df7d"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+      "bytes": 9309,
+      "sha256": "e4237011e31ed76e7099d19156ded1110be5e672feb5bf4198f418971b59bf65",
+      "git_blob_sha": "8536e2fb6739f7d4343c7d07767e40e2d3c30b05"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/assignments/bulk/publish/route.ts",
+      "bytes": 2694,
+      "sha256": "05efa78b3648f2afca3f12da9e329d780b271e80bf3e53171ec659a140d7cae4",
+      "git_blob_sha": "80a324c482b9b767b0455d33677e8875890a6dab"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/site-assignments/bulk/publish/route.ts",
+      "bytes": 2542,
+      "sha256": "3c44e046bdc9bca68c3dd821728c67c2dc55e155d3621dcd3b6afab46b153f8d",
+      "git_blob_sha": "54b4a56cd014f12eca8d984b814b856d48b93ef8"
+    },
+    {
+      "path": "src/app/api/v1/workforce/today/route.ts",
+      "bytes": 24487,
+      "sha256": "ff53b9fdb369138dedf815d61cd7be08c4370da27053fd7b295464575ae5f5d3",
+      "git_blob_sha": "0df59ab77879e227f0a176cd9e88036bd7cf61ac"
+    },
+    {
+      "path": "src/app/api/v1/workforce/timesheet/route.ts",
+      "bytes": 22150,
+      "sha256": "15015c5c18897bf4876837d6ac37dd04e764a94a218cb743ccd4dca7d3731501",
+      "git_blob_sha": "ca1a49f789c38fe8554249f217ee61942a459240"
+    },
+    {
+      "path": "ecosystem.config.cjs",
+      "bytes": 5229,
+      "sha256": "6c2f04b080a06f01ea2b82d1e32e5c6de845414576b640fe419c81737d1bfa13",
+      "git_blob_sha": "e7e43508e0deafe58d8b5ea33bc0b7a100ec936b"
+    },
+    {
+      "path": "ops/logrotate/leaddrive-v2",
+      "bytes": 948,
+      "sha256": "122a012ca7e84951b4862c78cc0c1989e8118da839c591f4d2ace7f4d38f165b",
+      "git_blob_sha": "a44e2f57478dedfde56e8e34c7ecdc95f69cfc69"
+    },
+    {
+      "path": "scripts/backup/ship-logs.sh",
+      "bytes": 94956,
+      "sha256": "e23e9fc7c241a10b669b9bca1a71079533f914b579a17a868eacca2c9af5a331",
+      "git_blob_sha": "1221458228972ff510cd511a3fbdeba2051a2434"
+    },
+    {
+      "path": "ops/systemd/leaddrive-log-ship.timer",
+      "bytes": 409,
+      "sha256": "191f83e0e347cf4133a6feabf13cafa68398a2b8ac7968f3a7053fc1dd281b35",
+      "git_blob_sha": "b82f53474340e3d68b328000cfdf32260b53ae31"
+    },
+    {
+      "path": "docs/workforce-c12-mobile-sync-telemetry-evidence-2026-09-13.md",
+      "bytes": 1727,
+      "sha256": "6c25d63492d5595342067d09d3fc2d94e354bce458fca4fe9e5da4fdc876af02",
+      "git_blob_sha": "162872ca23861ab83ff79f23fa53ce40db269073"
+    },
+    {
+      "path": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "bytes": 1160539,
+      "sha256": "d403ef692cf7775a940e8b5be104d72032a52ca407935d71d27083526d664045",
+      "git_blob_sha": "7d5f07745aee11de0a61f4c66fd243ef894e053d"
+    }
+  ],
+  "actual_execution": {
+    "probe": {
+      "path": "/tmp/hrm-privacy-boundary-probe.json",
+      "bytes": 733,
+      "sha256": "b5a6074962cbcea43eef78fd045c223e07a2cb386ab0859ada3cb6112d7ddf83"
+    },
+    "script": {
+      "path": "/tmp/hrm-privacy-boundary-probe.cjs",
+      "bytes": 2284,
+      "sha256": "fdc51a4e0ca50d59949efc10e64c50166a4e1c928d81e2da12bece5d1677a449"
+    },
+    "final_exit_code": 0,
+    "first_harness_attempt": "Reviewer localprobe initiallyused reservedCommonJS moduleidentifier and failedparse beforeexecution; renamedlocalvariable, no sourcechange.",
+    "existing_tests_rerun": false,
+    "test_proposals": "All matrixproposals unexecuted unless explicitlylistedprobe; parentwillprovideactualcandidate tests."
+  },
+  "acceptance_blockers": [
+    "Cross-domainauth/RLS/Pino/Prisma/globalSentryprivacy boundariesremain concreteinheritedsourcegaps outside46+7ownedcalls.",
+    "Destinationcollector/retention/access/ingestion andhistoricaldatahandlingnotverified; sourceconfigurationnotliveproof.",
+    "Cardinality pseudonymization/aggregatepipeline andapprovedpaging/SLOdelivery notproven.",
+    "Fullalias/transitiveframework/client/driver boundarymatrix andtypedbranchregression evidence needed; shrinkingdirectcallcountalone doesnotclosecriteria."
+  ],
+  "actions": {
+    "source_edits": false,
+    "remote_writes": false,
+    "new_agents": false,
+    "raw_logs_PII_credentials_read": false,
+    "production_backup_Contabo_access": false,
+    "activation": false
+  },
+  "limitations": "Findings are source exposure opportunities and synthetic sanitizerbehavior, not assertionofobservedproductionleak or actualdestination enablement. Backupshipper readassourceonly; no executions/access. No legalretentiondetermination."
+}
