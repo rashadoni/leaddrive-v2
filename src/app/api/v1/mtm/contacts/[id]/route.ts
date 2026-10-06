@@ -6,6 +6,7 @@ import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { ContactDirectUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { buildContactUpdateData, utcDate } from "@/lib/mtm/contact-master-data"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import {
@@ -245,9 +246,22 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
       oldData: true,
       newData: true,
       createdAt: true,
+      actorUserId: true,
       agent: { select: { id: true, name: true } },
     },
   })
+  // Who acted, by name. `agent` covers people with an employee card; an office
+  // user without one is only in `actorUserId`, and without this the log signed
+  // their changes «System».
+  const actorUserIds = [...new Set(history.map((event: { actorUserId: string | null }) => event.actorUserId).filter((value): value is string => Boolean(value)))]
+  const actorUsers = actorUserIds.length > 0
+    ? await prisma.user.findMany({ where: { organizationId: auth.orgId, id: { in: actorUserIds } }, select: { id: true, name: true } })
+    : []
+  const actorNames = new Map(actorUsers.map((user: { id: string; name: string | null }) => [user.id, user.name]))
+  const historyWithActors = history.map(({ actorUserId, ...event }: { actorUserId: string | null } & Record<string, unknown>) => ({
+    ...event,
+    actorName: (actorUserId ? actorNames.get(actorUserId) : null) ?? null,
+  }))
 
   const activeAssignments = contact.agentAssignments.filter((assignment: { effectiveFrom: Date; effectiveTo: Date | null }) => {
     return assignment.effectiveFrom <= asOf && (!assignment.effectiveTo || assignment.effectiveTo > asOf)
@@ -287,7 +301,7 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
     success: true,
     data: {
       contact: contactWithDuplicateTargets,
-      history,
+      history: historyWithActors,
       activeAssignments,
       eligibleBrandPotentialVisits,
       brandPotentialAgents,
@@ -308,7 +322,8 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
         actorAgentId: actor.agentId,
         actorRole: actor.role,
         canManage: canManageFieldMasterData(actor),
-        canRequestChanges: actor.role === "AGENT" && actor.agentId !== null,
+        canRequestChanges: actor.role === "AGENT" && actor.agentId !== null
+          && agentPermissionEnabled(settings, "contactChangeRequest"),
         canRecordBrandPotential: actor.agentId !== null || actor.role === "ADMIN",
         canReviewBrandPotential: canManageFieldMasterData(actor),
         brandPotentialPerAgent: settings.brandPotentialPerAgentEnabled,

@@ -1,0 +1,127 @@
+{
+  "atUtc": "2026-10-05T02:24:38.691380+00:00",
+  "status": "SMALL SEQUENTIAL APPLIED-SOURCE CHECKS COMPLETE; FRESH EXACT-HEAD HOSTED CHECKS REQUIRED",
+  "branch": "codex/workforce-completion-part41",
+  "executionParent": "a63057ec0750a8c47db2af982c2e436925bcabd5",
+  "appliedSource": {
+    "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/scripts/workforce-manager-today-browser-evidence.mjs",
+    "bytes": 62849,
+    "sha256": "dd70ea78d719d521b8ccfd39ec31b93cbf77963a3b8131685aae76a51f40cb16"
+  },
+  "commands": [
+    {
+      "name": "resources",
+      "command": [
+        "bash",
+        "-c",
+        "free -m\ndf -h .\ncat /proc/pressure/memory\ncat /proc/pressure/io"
+      ],
+      "startedAt": "2026-10-05T02:24:24.412952+00:00",
+      "completedAt": "2026-10-05T02:24:24.435678+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/resources.stdout",
+        "bytes": 544,
+        "sha256": "8d40ea9d8d127cd24137487ebd97b82e03f996cbaca359bccbdcf89aab5d5eb1"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/resources.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "syntax",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--check",
+        "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/scripts/workforce-manager-today-browser-evidence.mjs"
+      ],
+      "startedAt": "2026-10-05T02:24:24.435755+00:00",
+      "completedAt": "2026-10-05T02:24:24.701806+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/syntax.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/syntax.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "scoped-eslint",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/eslint/bin/eslint.js",
+        "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/scripts/workforce-manager-today-browser-evidence.mjs",
+        "--no-warn-ignored"
+      ],
+      "startedAt": "2026-10-05T02:24:24.701887+00:00",
+      "completedAt": "2026-10-05T02:24:29.272014+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/scoped-eslint.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/scoped-eslint.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "preconnection-guards12",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts",
+        "--maxWorkers=1",
+        "--no-file-parallelism"
+      ],
+      "startedAt": "2026-10-05T02:24:29.272139+00:00",
+      "completedAt": "2026-10-05T02:24:38.674736+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/preconnection-guards12.stdout",
+        "bytes": 279,
+        "sha256": "dc12a629ceb72e589fed437ae76334b25f0eaf84ad87773c8d175f8db7da2944"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/preconnection-guards12.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "startedAt": "2026-10-05T02:24:38.674817+00:00",
+      "completedAt": "2026-10-05T02:24:38.691293+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/diff-check.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part41-snapshotless-bounded-primary/diff-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "exactAppliedHeadClaim": false,
+  "checksRanBeforeSourceCheckpoint": true,
+  "fullCompilerSuiteBuildBrowserPostgresAndroidLoad": "NOT RUN locally by Contabo contract",
+  "newHostedRuntimeAccepted": false,
+  "newRoadmapRowClosure": false
+}

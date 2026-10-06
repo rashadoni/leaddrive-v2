@@ -1,0 +1,309 @@
+{
+  "schemaVersion": 1,
+  "issuedAtUtc": "2026-10-05T03:58:09.389167+00:00",
+  "reviewerRole": "Independent authorless exact applied dormant C12 source/receipt-integrity reviewer",
+  "status": "GREEN SOURCE ONLY",
+  "scope": "Whole6ed8e1 vs accepted normal mergedBASEb4ad2, three applied pure reconciliation/test files; current receipt/journal/catalogue integrity",
+  "candidateHead": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "baseSha": "b4ad2db16247705d172cd4e761c079ff1f39d922",
+  "candidateTree": "24a8b42924bace38b6d46841462ff216680c41b0",
+  "candidateParents": [
+    "59f5f5d8c4114602fb396bac1283dca0cd9679c6"
+  ],
+  "worktree": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3",
+  "currentSourceReviewActiveApplicationSourceReads": 0,
+  "readProvenance": {
+    "activeApplicationSourceReads": 0,
+    "GitMutations": 0,
+    "GitHubMutations": 0,
+    "CIReRuns": 0,
+    "manualStatusPublications": 0,
+    "localTestsBrowserPostgresCompilerBuilds": 0,
+    "productionRequests": 0,
+    "largeArtifactDownloads": 0,
+    "readScope": "Explicit frozen HEAD6ed/BASEb4ad2/PARENT59f5 objects and whole immutable/tmp source proofs only. Whole three applied files and11601-byte nonDoc patch/18939-byte BASE journal append/new evidence manually reviewed. Whole13 selected/protected15/all46workflows byte-covered, relevant date/job/import/startedAt dependency source read. Accepted prior582 source/hosted/release receipts whole-rehashed; no repeated manual old thousands archive review or runtime borrowing."
+  },
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "findings": [],
+  "fullDiffIdentity": {
+    "paths": 28,
+    "bytes": 293724,
+    "sha256": "a0164450caa5c6608f70e8fdf93bc37540e26a2feae5bf262f754fa89c526b3d"
+  },
+  "nonDocDiffIdentity": {
+    "paths": 3,
+    "bytes": 11601,
+    "sha256": "1fdd8c950414f9cd3b5f1c43e275eaa68433d42664e694fdce3694506ef0b400"
+  },
+  "sourceScope": {
+    "fullPaths": 28,
+    "nonDocPaths": 3,
+    "scopeMaximumBytes": 400000,
+    "paths": [
+      "docs/evidence/workforce-c12-dormant-kernel-application-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-bounded-checks-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-preliminary-review-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-selected-catalogue-2026-10-05.json",
+      "docs/evidence/workforce-c12-dormant-kernel-unapplied-draft-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-current-hosted-review-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-current-hosted-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-current-manager-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-deploy-binding-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-hosted-root-guard-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-literal-ip-strict-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-normal-merge-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-own-build-only-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-own-release-independent-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-own-release-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-range-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-ready-publication-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-root-schema-guard-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-source-review-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-source-root-2026-10-05.json",
+      "docs/workforce-c12-dormant-kernel-integrity-evidence-2026-10-05.md",
+      "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ],
+    "nonDocRepoPaths": [
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ]
+  },
+  "wholeReviewEvidence": {
+    "wholeCurrentAnalysis": {
+      "path": "/tmp/workforce-c12-part43-6ed8e1-source-independent-20261005T034704493765Z/whole-current-source-analysis.json",
+      "bytes": 227623,
+      "sha256": "ac20662d68c11d2abe2eb3be5780dd804a650d9326de8f488cdd4c0c450736aa"
+    },
+    "wholeSourceSnapshotBinding": {
+      "path": "/tmp/workforce-c12-part43-6ed8e1-source-independent-20261005T034704493765Z/schema-corrected-freeze/whole-frozen-source-capture.json",
+      "bytes": 249674,
+      "sha256": "34428135ed231d8372d143fb4ee536db47c1e67528e4bae41324092f52d1ba9e"
+    },
+    "fullPatchReconstructionCount": 28,
+    "threeAppliedWholeDraftsExact7Plus1Plus1Replacements": true,
+    "ownedTyped4": [
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation-job.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ],
+    "selectedTyped13": [
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/format-date.ts",
+      "src/lib/mtm/mobile-week.ts",
+      "src/lib/prisma.ts",
+      "src/lib/rls-context.ts",
+      "src/lib/timezone.ts",
+      "src/lib/workforce/data-classification.ts",
+      "src/lib/workforce/reconciliation-job.ts",
+      "src/lib/workforce/reconciliation.ts",
+      "src/lib/workforce/timesheet-approval.ts",
+      "src/lib/workforce/timesheet-calculation.ts",
+      "src/lib/workforce/timesheet-export.ts"
+    ],
+    "all15ProtectedUnchanged": true,
+    "all46WorkflowBlobsUnchanged": true,
+    "exactThreeApplicableWorkflows": [
+      ".github/workflows/gitleaks.yml",
+      ".github/workflows/pr-checks.yml",
+      ".github/workflows/runner-policy.yml"
+    ],
+    "noProductWriterAuthRlsSqlSchemaMigrationNativeDbAdapterCronChange": true,
+    "jobImplementationWholeUnchanged": true
+  },
+  "sourceSemantics": {
+    "transitionScope": "Reject absent or different organization/employee workday parent via finite transition mismatch code.",
+    "evidenceSubjectScope": "Resolve exactly one actual event/transition, bind exception organization+employee; ambiguous/missing proof fails closed with no fabricated evidence agent field.",
+    "scheduleOnly": "Require nonblank segment identifier plus existing canonical real date helper; valid leap-day schedule-only subject needs no invented workday orSTART. Real segment existence/ownership still open.",
+    "meaningfulTests": "Exact unskipped declarations enumerate23 kernel+7job cases; actual current precheckpoint two-file aggregate30PASS/lint113/diff/resources receipts; no-cursor-commit/privacy/deepinputimmutability checks present."
+  },
+  "documentAndReceiptIntegrity": {
+    "fullFourJournalBASEParentPrefixChecks": 8,
+    "newFour1969ByteAppendsEqual": true,
+    "baseToHeadFour18939ByteAppendsEqual": true,
+    "newDurableExternalCopies19WholeExact": true,
+    "newGeneratedCatalogue13Bindings4OwnedExact": true,
+    "core9ParsedDirect81Rehashed": true,
+    "own582ReleaseRootAcceptedBeforeApply": true,
+    "priorFirstC5And1bNegativeGuardsPreserved": true
+  },
+  "executionEvidence": {
+    "application": {
+      "path": "/tmp/workforce-c12-part43-release-gated-apply-primary/application-proof.json",
+      "bytes": 3233,
+      "sha256": "dbf65594aa0cc35f624654cc1c6ae331d869977baca370bfe8fa2824536a45b7"
+    },
+    "bounded": {
+      "path": "/tmp/workforce-c12-part43-bounded-primary/proof.json",
+      "bytes": 5837,
+      "sha256": "034fc83921225f2fccd7741b6a0e5482fe500a815d457872ee6b28494fda47ef"
+    },
+    "executionParent": "59f5f5d8c4114602fb396bac1283dca0cd9679c6",
+    "appliedWorkingHashesMatchFrozenCandidate": true,
+    "preCheckpointActual30PassTwoFiles": true,
+    "perFile23Kernel7JobCountsSourceDerived": true,
+    "actualStdoutPerFileCountLinesPresent": false,
+    "targetedActualStdout": {
+      "path": "/tmp/workforce-c12-part43-bounded-primary/kernel-job-meaningful-tests.stdout",
+      "bytes": 281,
+      "sha256": "24f8297fc09be803743d7417a5497fd27545ba3ebc51f4850d006e7ca9abb714"
+    },
+    "lint113RulesThreeTargetsNotIgnored": [
+      {
+        "path": "src/lib/workforce/reconciliation.ts",
+        "ignored": false,
+        "configured": true,
+        "rules": 113
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation.test.ts",
+        "ignored": false,
+        "configured": true,
+        "rules": 113
+      },
+      {
+        "path": "src/__tests__/workforce-reconciliation-job.test.ts",
+        "ignored": false,
+        "configured": true,
+        "rules": 113
+      }
+    ],
+    "allFourSequentialCommandsExit0": true,
+    "exactFrozenHeadFullChecksClaimed": false,
+    "range": {
+      "path": "/tmp/workforce-c12-part43-range-primary/proof.json",
+      "bytes": 6608,
+      "sha256": "8915b893f3f2992272446226fb02d7e7689d0ee6b804008e578cb7991f50224e"
+    },
+    "rangeExitCode": 0,
+    "rangeFindings": 0,
+    "scopeMaximum": 400000
+  },
+  "sourceCatalogue": {
+    "ownedTyped4": [
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/workforce/reconciliation-job.ts",
+      "src/lib/workforce/reconciliation.ts"
+    ],
+    "selectedTyped13": [
+      "src/__tests__/workforce-reconciliation-job.test.ts",
+      "src/__tests__/workforce-reconciliation.test.ts",
+      "src/lib/format-date.ts",
+      "src/lib/mtm/mobile-week.ts",
+      "src/lib/prisma.ts",
+      "src/lib/rls-context.ts",
+      "src/lib/timezone.ts",
+      "src/lib/workforce/data-classification.ts",
+      "src/lib/workforce/reconciliation-job.ts",
+      "src/lib/workforce/reconciliation.ts",
+      "src/lib/workforce/timesheet-approval.ts",
+      "src/lib/workforce/timesheet-calculation.ts",
+      "src/lib/workforce/timesheet-export.ts"
+    ],
+    "fullImportGraphClaim": false,
+    "generatedCurrentCatalogue": {
+      "path": "/tmp/workforce-c12-part43-6ed8e1-source-independent-20261005T034704493765Z/schema-corrected-freeze/explicit-git/HEAD/docs/evidence/workforce-c12-dormant-kernel-selected-catalogue-2026-10-05.json",
+      "bytes": 5884,
+      "sha256": "10bf01f0e6319b10f80bf201db95891594b209e55b907d9be267255ac4b748ab",
+      "repoPath": "docs/evidence/workforce-c12-dormant-kernel-selected-catalogue-2026-10-05.json",
+      "label": "HEAD",
+      "sha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "command": [
+        "git",
+        "show",
+        "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568:docs/evidence/workforce-c12-dormant-kernel-selected-catalogue-2026-10-05.json"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "originalStderr": {
+        "path": "/tmp/workforce-c12-part43-6ed8e1-source-independent-20261005T034704493765Z/schema-corrected-freeze/explicit-git/HEAD/docs/evidence/workforce-c12-dormant-kernel-selected-catalogue-2026-10-05.json.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "unchangedSelectedDependencyDiagnostic": "Historical/preparation timesheet-calculation.ts240:24TS18047; fresh new CI must explicitly report it, own4all-family0 required"
+  },
+  "currentRuntimeAcceptance": {
+    "fullCompiler": "NOT RUN for6ed; fresh every-diagnostic/family/actualexit/exact66 baseline/own4all-familyzero plus explicit selected13 diagnostics required",
+    "fullSuite": "NOT RUN for6ed; strict18exact known failing baseline, not globally clean",
+    "browserPostgresAndroidProductionJobAdapterCronLeaseVersionConcurrency": "NOT RUN/NOT IMPLEMENTED; dormant pure snapshot kernel only",
+    "productionBuildRelease": "NOT RUN for6ed; own normal main4job/fullSHA artifact/public proof separately required",
+    "current582RuntimeOrReleaseBorrowed": false
+  },
+  "sourceOnly": true,
+  "runtimeNoCredit": true,
+  "candidateRuntimeAcceptanceCredit": false,
+  "normalMergeAllowed": false,
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-c12-part43-6ed8e1-whole-source-input-audit-independent.json",
+    "bytes": 1398718,
+    "sha256": "2d4b092ee40af2affac57b09478ad3e499657a60f8665e4cc7da19bc367c70a4"
+  },
+  "inputCounts": {
+    "directOriginalObservations": 973,
+    "explicitGitObservations": 199,
+    "expectedMissingPathStderr": 25,
+    "wholeJSON": 266,
+    "wholeUTF8": 909,
+    "wholeBinary": 64,
+    "portableCore9": 9,
+    "portableDirect81": 81,
+    "prefixChecks": 8,
+    "durableExternalCopies": 19,
+    "generatedSelectedCatalogue": 1,
+    "wholeWorkflowSources": 46,
+    "applicableWorkflows": 3,
+    "ownedTyped": 4,
+    "selectedTyped": 13
+  },
+  "originalFilesOverwrittenOrDropped": 0,
+  "accounting": {
+    "uniqueCriteriaIds": 161,
+    "historicalRawRows": 169,
+    "DONE": 82,
+    "nonDONE": 79,
+    "statusCounts": {
+      "DONE": 82,
+      "PARTIAL (OWNER ATTESTATION)": 1,
+      "PARTIAL": 55,
+      "OWNER DECISION": 6,
+      "PLANNED": 14,
+      "BLOCKED": 3
+    },
+    "passedGates": 14,
+    "totalGates": 15,
+    "C8Percent": 45,
+    "overallPercent": 59,
+    "newRowClosure": false
+  },
+  "limits": [
+    "Dormant pure snapshot kernel integrity only. No DB page-store adapter, cron/scheduler, real durable cursor/lease-version fencing, production reconciliation or complete dependency/orphan/approval page closure.",
+    "No complete duplicate-ID or same-agent cross-subject workday coherence, real segment existence/ownership, global migration/concurrency/load acceptance.",
+    "Evidence/assessment gain no invented agentId; exception subject resolves through exactly one event/transition. Canonical schedule-only subject may match with zero workday/events and creates no acceptedSTART fact.",
+    "Actual bounded raw stdout confirms2files/30tests; per-file23+7 are derived from exact unskipped source declarations, not separate raw-log count lines. Checks executed at parent with applied bytes matching exact candidate before source checkpoint.",
+    "Fresh current compiler/suite/build/release NOTRUN; existing selected timesheet-calculation.ts240TS18047 must be explicitly disclosed from actual new CI and own4 all-family zero required, without baseline/file exclusion or prior1169 count borrowing.",
+    "Earlier582 release/root acceptance remains historical only for this new exact head. Source-only GREEN grants no runtime/merge/release or new roadmap row credit.",
+    "Four auxiliary reader/discovery guards are preserved with separate corrected readers; raw first inline traces remain tool-history-only where no standalone raw files existed."
+  ],
+  "nextAction": "Root whole exact source acceptance, fresh-main ordinaryREADY publication, new applicable3workflows/fiveActions and whole compiler/suite review",
+  "continuity": {
+    "currentStatus": "Exact6ed8e1 SOURCE ONLY GREEN/P0-P3zero; new runtimeNOTRUN",
+    "lastCompletedAction": "Whole28 reconstructed patches/three draft recipes/selected13own4/protected15/prefix8/durable19+generatedcatalogue/core9direct81/accounting checked",
+    "stoppingPoint": "No publication/merge/runtime/release credit; independent reviewer mutations0",
+    "nextAction": "Root whole source acceptance then ordinary publication and fresh current hosted3workflow verification"
+  }
+}

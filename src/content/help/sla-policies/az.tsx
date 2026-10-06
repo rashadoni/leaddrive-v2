@@ -47,7 +47,7 @@ export default function SlaPoliciesHelpAz() {
           <HelpDef term="Prioritet">Rəngli nişan — <strong>Kritik</strong> (qırmızı), <strong>Yüksək</strong> (narıncı), <strong>Orta</strong> (sarı), <strong>Aşağı</strong> (yaşıl). Bu siyasətin hansı prioritetli biletlərə aid olduğunu göstərir.</HelpDef>
           <HelpDef term="İlk cavab">Komandanın biletə ilk dəfə cavab verməsi üçün hədəf vaxt, «4s 30d» formatında (saat və dəqiqə).</HelpDef>
           <HelpDef term="Həll">Biletin tam bağlanması üçün hədəf vaxt, eyni «saat dəqiqə» formatında.</HelpDef>
-          <HelpDef term="İş saatları">«Bəli» olarsa, hədəf yalnız iş saatları sayılır; «Xeyr» olarsa, vaxt fasiləsiz (24/7) sayılır.</HelpDef>
+          <HelpDef term="İş saatları">Saxlanmış iş təqvimi və aktiv seçim olduqda yalnız iş intervalları sayılır. Təqvim seçilməyibsə, müddətlər fasiləsiz təqvim vaxtı ilə hesablanır.</HelpDef>
           <HelpDef term="Status">Siyasətin <strong>Aktiv</strong> (mavi nişan) və ya <strong>Qeyri-aktiv</strong> (boz nişan) olması.</HelpDef>
         </dl>
         <p>
@@ -66,7 +66,7 @@ export default function SlaPoliciesHelpAz() {
             «Yeni SLA siyasəti» başlıqlı pəncərə açılır. İçində bu sahələr olur: <strong>Siyasət adı *</strong>,{" "}
             <strong>Prioritet</strong> açılan siyahısı, <strong>Cavab müddəti (saat) *</strong> və{" "}
             <strong>Həll müddəti (saat) *</strong> üçün hər birində <em>s</em> (saat) və <em>d</em> (dəqiqə)
-            xanaları, həmçinin <strong>Yalnız iş saatları</strong> və <strong>Aktiv</strong> qeyd qutuları.
+            xanaları, həmçinin <strong>İş saatları seçimi</strong> və <strong>Aktiv</strong> qeyd qutuları.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -103,12 +103,12 @@ export default function SlaPoliciesHelpAz() {
         </HelpStep>
         <HelpStep n={5}>
           <p>
-            İstəyə görə <HelpKey>Yalnız iş saatları</HelpKey> qutusunu işarələyin (standart olaraq
+            İstəyə görə <HelpKey>İş saatları seçimi</HelpKey> qutusunu işarələyin (standart olaraq
             işarələnmiş) və <HelpKey>Aktiv</HelpKey> qutusunu lazım gəldikdə açıb-bağlayın (standart
             olaraq işarələnmiş).
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            «Yalnız iş saatları» işarələnəndə hədəf yalnız iş saatlarına görə hesablanır. «Aktiv»
+            İş vaxtı hesablaması üçün təşkilat təqviminin surətini seçin, saat qurşağını, intervalları və bayramları yoxlayın. «Aktiv»
             işarəsini götürsəniz, siyasət cədvəldə <strong>Qeyri-aktiv</strong> kimi görünəcək.
           </HelpCallout>
         </HelpStep>
@@ -120,7 +120,7 @@ export default function SlaPoliciesHelpAz() {
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             Düymə yadda saxlanarkən <strong>Saxlanılır...</strong> yazısına keçir, sonra pəncərə bağlanır
             və yeni siyasət cədvəldə peyda olur — adı, rəngli prioritet nişanı, «saat dəqiqə» formatında
-            iki hədəfi, iş saatları üçün Bəli/Xeyr və status nişanı ilə.
+            iki hədəfi, seçilmiş hesablama rejiminin izahı və status nişanı ilə.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
@@ -160,8 +160,7 @@ export default function SlaPoliciesHelpAz() {
       <HelpCallout kind="tip">
         <p>
           Adətən hər prioritet üçün bir siyasət qurulur: kritik biletlərə qısa cavab/həll hədəfi, aşağı
-          prioritetli biletlərə daha geniş. «Yalnız iş saatları» seçimi gecə və həftəsonu vaxtının hədəfə
-          sayılmamasını təmin edir — 24/7 dəstək vəd etmirsinizsə, bunu işarəli saxlayın.
+          prioritetli biletlərə daha geniş. Təqvim surəti yalnız yeni hesablamalara aiddir. Mövcud müraciət və mərhələ müddətləri dəyişmir; gözləmə statusu saatı dayandırmır.
         </p>
       </HelpCallout>
 

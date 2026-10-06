@@ -1278,7 +1278,10 @@ export const GET = withRls(async (req, { orgId }) => {
             pendingClosure,
             reopened: reopenedTickets,
             autoClosedLast30,
-            slaComplianceRate: filteredActiveTickets > 0 ? Math.max(0, Math.round(((filteredActiveTickets - slaBreached) / filteredActiveTickets) * 100)) : 100,
+            // This is the filtered active-queue snapshot, not historical SLA fulfilment.
+            slaComplianceSampleSize: filteredActiveTickets,
+            slaCompliantTickets: Math.max(0, filteredActiveTickets - slaBreached),
+            slaComplianceRate: filteredActiveTickets > 0 ? Math.max(0, Math.round(((filteredActiveTickets - slaBreached) / filteredActiveTickets) * 100)) : null,
             avgResolutionHours: roundOne(average(resolutionHours)),
             avgFirstResponseMinutes: roundOne(average(firstResponseMinutes)),
           },

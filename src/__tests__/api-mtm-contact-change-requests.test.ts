@@ -158,6 +158,55 @@ describe("GAP-003 contact master-data review", () => {
     }))
   })
 
+  // The change log used to sign an office user's change «System»: only the
+  // employee card (`agent`) was looked at, and an administrator has none.
+  it("names the office user behind a change that no employee card made", async () => {
+    vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue({
+      id: CONTACT_ID,
+      organizationId: ORG,
+      displayName: "Doctor One",
+      workplaces: [{
+        id: "workplace-1",
+        customerId: "customer-1",
+        isPrimary: true,
+        endedOn: null,
+        customer: { id: "customer-1", name: "Clinic One" },
+      }],
+      agentAssignments: [],
+      fieldPotentials: [],
+      doctorAssessments: [],
+      dictionaryAssignments: [],
+      changeRequests: [],
+      duplicateOfContact: null,
+    } as never)
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([
+      { id: "audit-2", action: "CONTACT_UPDATE", entity: "contact", metadataKind: "contact_update", oldData: { category: "B" }, newData: { category: "VIP" }, createdAt: new Date("2026-10-04T10:00:00Z"), actorUserId: "office-user", agent: null },
+      { id: "audit-1", action: "CONTACT_CREATE", entity: "contact", metadataKind: "contact_create", oldData: null, newData: {}, createdAt: new Date("2026-10-03T10:00:00Z"), actorUserId: null, agent: { id: "agent-9", name: "Seymur" } },
+    ] as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "office-user", name: "Saida Qojayeva" }] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([])
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: AGENT_ID, name: "Field Agent", role: "AGENT" },
+    ] as never)
+
+
+    const response = await getContact(
+      new NextRequest(`http://localhost:3000/api/v1/mtm/contacts/${CONTACT_ID}`),
+      { params: Promise.resolve({ id: CONTACT_ID }) },
+    )
+    const history = (await response.json()).data.history as Array<Record<string, unknown>>
+
+    expect(history.map((event) => [event.action, event.actorName, (event.agent as { name: string } | null)?.name ?? null])).toEqual([
+      ["CONTACT_UPDATE", "Saida Qojayeva", null],
+      ["CONTACT_CREATE", null, "Seymur"],
+    ])
+    // The raw user id is not sent to the browser; the name is.
+    expect(history.every((event) => !("actorUserId" in event))).toBe(true)
+    expect(vi.mocked(prisma.user.findMany).mock.calls[0][0]).toMatchObject({
+      where: { organizationId: ORG, id: { in: ["office-user"] } },
+    })
+  })
+
   it("keeps an Agent field edit pending instead of changing the contact", async () => {
     vi.mocked(requireAuth).mockResolvedValue(AGENT_AUTH)
     vi.mocked(prisma.mtmAgent.findFirst)
@@ -201,6 +250,41 @@ describe("GAP-003 contact master-data review", () => {
         payload: { mobilePhone: "+994501112233", contactPreference: "WHATSAPP" },
       }),
     }))
+  })
+
+  it("refuses an Agent proposal once the organization switches change requests off", async () => {
+    vi.mocked(requireAuth).mockResolvedValue(AGENT_AUTH)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "agentContactChangeRequests", value: false },
+    ] as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID, role: "AGENT" } as never)
+    vi.mocked(prisma.mtmContactChangeRequest.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue({
+      id: CONTACT_ID,
+      firstName: "One",
+      lastName: "Doctor",
+      displayName: "Doctor One",
+      updatedAt: UPDATED_AT,
+    } as never)
+
+    const response = await submitChange(
+      jsonRequest(`/api/v1/mtm/contacts/${CONTACT_ID}/change-requests`, "POST", {
+        idempotencyKey: "device-op-123456",
+        reason: "Phone confirmed during visit",
+        expectedContactUpdatedAt: UPDATED_AT.toISOString(),
+        kind: "CONTACT_UPDATE",
+        payload: { mobilePhone: "+994501112233" },
+      }),
+      { params: Promise.resolve({ id: CONTACT_ID }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      code: "MTM_AGENT_PERMISSION_DISABLED",
+      permission: "contactChangeRequest",
+    })
+    expect(prisma.mtmContactChangeRequest.create).not.toHaveBeenCalled()
+    expect(prisma.mtmContact.updateMany).not.toHaveBeenCalled()
   })
 
   it("accepts a proposal when the only empty required field is one the tenant switched off", async () => {

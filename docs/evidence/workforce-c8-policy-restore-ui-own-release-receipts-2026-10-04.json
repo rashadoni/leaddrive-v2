@@ -1,0 +1,908 @@
+{
+  "schemaVersion": 1,
+  "scope": "Own PR571 abda release receipts; public unauthenticated only",
+  "completePublication": false,
+  "proofs": {
+    "root": {
+      "review": "Root primary own PR571 merged-SHA normal release proof",
+      "independent": false,
+      "completedAt": "2026-10-04T13:28:28.067947+00:00",
+      "releaseGreen": true,
+      "normalRunSuccessStillRequired": false,
+      "findings": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "mergedSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+      "parents": [
+        "81cb5b5e85b456167a0e552a96a243829157c582",
+        "8ccbabb7d3c4bed1ecab0d74cdd14ceeb6950c62"
+      ],
+      "normalDeploy": {
+        "id": 37204148155,
+        "run_attempt": 1,
+        "event": "push",
+        "head_branch": "main",
+        "head_sha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+        "path": ".github/workflows/deploy.yml",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-04T13:01:28Z",
+        "updated_at": "2026-10-04T13:25:44Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37204148155"
+      },
+      "requiredJobs": {
+        "Production build & publish artifact": {
+          "id": 111441715568,
+          "name": "Production build & publish artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-04T13:01:32Z",
+          "completed_at": "2026-10-04T13:18:10Z"
+        },
+        "Quality & security gates": {
+          "id": 111441715639,
+          "name": "Quality & security gates",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-04T13:01:32Z",
+          "completed_at": "2026-10-04T13:13:19Z"
+        },
+        "Deploy to production & post-deploy smoke": {
+          "id": 111444643074,
+          "name": "Deploy to production & post-deploy smoke",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-04T13:18:14Z",
+          "completed_at": "2026-10-04T13:25:37Z"
+        },
+        "Cap retained deploy artifacts": {
+          "id": 111445951744,
+          "name": "Cap retained deploy artifacts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-04T13:25:40Z",
+          "completed_at": "2026-10-04T13:25:44Z"
+        }
+      },
+      "artifact": {
+        "id": 11304591968,
+        "node_id": "MDg6QXJ0aWZhY3QxMTMwNDU5MTk2OA==",
+        "name": "leaddrive-prod-abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+        "size_in_bytes": 444164588,
+        "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11304591968",
+        "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11304591968/zip",
+        "expired": false,
+        "digest": "sha256:57c734155439213942d25d027895ae783856dd08708af7fb44d91d8abc00a14e",
+        "created_at": "2026-10-04T13:18:09Z",
+        "updated_at": "2026-10-04T13:18:09Z",
+        "expires_at": "2026-11-03T13:18:06Z",
+        "workflow_run": {
+          "id": 37204148155,
+          "repository_id": 1362346481,
+          "head_repository_id": 1362346481,
+          "head_branch": "main",
+          "head_sha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15"
+        }
+      },
+      "publicProof": {
+        "observedAt": "2026-10-04T13:28:27.992120+00:00",
+        "expectedMergedSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+        "runId": 37204148155,
+        "productionHost": "13.140.132.245",
+        "tlsHostname": "app.leaddrivecrm.org",
+        "strictPinnedBracketPositive": true,
+        "requests": {
+          "build-info-first": {
+            "label": "build-info-first",
+            "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+            "startedAt": "2026-10-04T13:28:27.722233+00:00",
+            "completedAt": "2026-10-04T13:28:27.809996+00:00",
+            "curlExit": 0,
+            "httpStatus": 200,
+            "remoteIp": "13.140.132.245",
+            "tlsVerifyResult": "0",
+            "cacheControlNoStore": true,
+            "bytes": 112,
+            "sha256": "54b4524fb5ed48d4c25668d0cefd3243e664c5b0df72004c01065b1160b922c1",
+            "bodyMatchesPublicContract": true,
+            "original": {
+              "path": "/tmp/workforce571-abda-own-release-primary/public-20261004T132827722022Z/build-info-first.json",
+              "bytes": 112,
+              "sha256": "54b4524fb5ed48d4c25668d0cefd3243e664c5b0df72004c01065b1160b922c1"
+            },
+            "sha": "abda8aa024f6",
+            "artifactSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+            "builtAt": "2026-10-04T13:08:03Z"
+          },
+          "ping": {
+            "label": "ping",
+            "url": "https://app.leaddrivecrm.org/api/v1/ping",
+            "startedAt": "2026-10-04T13:28:27.819933+00:00",
+            "completedAt": "2026-10-04T13:28:27.908739+00:00",
+            "curlExit": 0,
+            "httpStatus": 200,
+            "remoteIp": "13.140.132.245",
+            "tlsVerifyResult": "0",
+            "cacheControlNoStore": true,
+            "bytes": 11,
+            "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+            "bodyMatchesPublicContract": true,
+            "original": {
+              "path": "/tmp/workforce571-abda-own-release-primary/public-20261004T132827722022Z/ping.json",
+              "bytes": 11,
+              "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+            },
+            "ok": true
+          },
+          "build-info-confirm": {
+            "label": "build-info-confirm",
+            "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+            "startedAt": "2026-10-04T13:28:27.909321+00:00",
+            "completedAt": "2026-10-04T13:28:27.991488+00:00",
+            "curlExit": 0,
+            "httpStatus": 200,
+            "remoteIp": "13.140.132.245",
+            "tlsVerifyResult": "0",
+            "cacheControlNoStore": true,
+            "bytes": 112,
+            "sha256": "54b4524fb5ed48d4c25668d0cefd3243e664c5b0df72004c01065b1160b922c1",
+            "bodyMatchesPublicContract": true,
+            "original": {
+              "path": "/tmp/workforce571-abda-own-release-primary/public-20261004T132827722022Z/build-info-confirm.json",
+              "bytes": 112,
+              "sha256": "54b4524fb5ed48d4c25668d0cefd3243e664c5b0df72004c01065b1160b922c1"
+            },
+            "sha": "abda8aa024f6",
+            "artifactSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+            "builtAt": "2026-10-04T13:08:03Z"
+          }
+        },
+        "normalRunSuccessStillRequired": false
+      },
+      "originals": [
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/github-20261004T132824497344Z/artifacts.json",
+          "bytes": 762,
+          "sha256": "41dd28e545554bcbd288a9d86865c96aa3031a46ed46adc54fc35d89e7404b13"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/github-20261004T132824497344Z/candidate-commit.json",
+          "bytes": 1185,
+          "sha256": "159349c1a0fd82551e6a6267e341c81c35996a72900390bf438950b8019b156d"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/github-20261004T132824497344Z/jobs.json",
+          "bytes": 20375,
+          "sha256": "01fdb0f62315da4f21ddf004b33acfd504b81f0706d2770e472359c7b4332893"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/github-20261004T132824497344Z/main-at-observation.json",
+          "bytes": 342,
+          "sha256": "2a048111e67d23863c8017d9346cf205053f887cd6f016f8be66ab0f13d93002"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/github-20261004T132824497344Z/merged-commit.json",
+          "bytes": 2729,
+          "sha256": "4d63b2c3666962251177da3083b830e6b6ac7fc466ba009d85f6ee5fe97bee4f"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/github-20261004T132824497344Z/pr.json",
+          "bytes": 18288,
+          "sha256": "460fb0cb7c3de1707cd26ef44ac544c373e46dc1a8df8a29ea1598a9d30210de"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/github-20261004T132824497344Z/run.json",
+          "bytes": 12400,
+          "sha256": "ec1c57a69180062af086b89d435c043da5fdbbbbc3b5da33f8620e8b39ce1463"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/github-proof-latest.json",
+          "bytes": 4644,
+          "sha256": "54a1dac3f857b4e69cb5100c72f284a35a973c429ee0418d654f07737fe6e1e3"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/public-proof.json",
+          "bytes": 2942,
+          "sha256": "1d0397b154d95c6fcb1334f115bd60c9a9cbe1c7dcde6119f1eae98d22fc79e8"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/build-info-first.json",
+          "bytes": 112,
+          "sha256": "54b4524fb5ed48d4c25668d0cefd3243e664c5b0df72004c01065b1160b922c1"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/ping.json",
+          "bytes": 11,
+          "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+        },
+        {
+          "path": "/tmp/workforce571-abda-own-release-primary/build-info-confirm.json",
+          "bytes": 112,
+          "sha256": "54b4524fb5ed48d4c25668d0cefd3243e664c5b0df72004c01065b1160b922c1"
+        }
+      ],
+      "limits": [
+        "Root primary verification only; no independent reviewer status is claimed.",
+        "Only unauthenticated public build-info/ping were requested; no business mutations.",
+        "Large production artifact was not downloaded; exact-SHA artifact metadata and own normal workflow inspected.",
+        "TLS proof uses app.leaddrivecrm.org pinned to 13.140.132.245. Literal IP TLS certificate SAN limitation is separate; no insecure IP result is used as primary TLS proof.",
+        "Any earlier pending public flag is historical and is superseded only by actual complete own normal workflow success here."
+      ],
+      "priorObservationIntegrity": {
+        "allAttemptProofsPreserved": true,
+        "attemptCount": 1,
+        "httpOrTransportFailureCount": 0,
+        "publicContractGuardRejectionCount": 0,
+        "nonMatchingArtifactShaCount": 0,
+        "attemptProofs": [
+          {
+            "path": "/tmp/workforce571-abda-own-release-primary/public-20261004T132827722022Z/attempt-proof.json",
+            "bytes": 2942,
+            "sha256": "1d0397b154d95c6fcb1334f115bd60c9a9cbe1c7dcde6119f1eae98d22fc79e8"
+          }
+        ],
+        "historicalPr540HelperGuardIssueDoesNotApplyToThisRun": true,
+        "noFailureCauseInferred": true
+      }
+    },
+    "independent": {
+      "schemaVersion": 1,
+      "issuedAtUtc": "2026-10-04T13:35:20.305746+00:00",
+      "status": "GREEN",
+      "scope": "CURRENT_OWN_PR571_MAIN_RELEASE_ONLY",
+      "independent": true,
+      "pr": {
+        "number": 571,
+        "url": "https://github.com/rashadoni/leaddrive-v2/pull/571",
+        "candidateHead": "8ccbabb7d3c4bed1ecab0d74cdd14ceeb6950c62",
+        "actualPreMergeBase": "81cb5b5e85b456167a0e552a96a243829157c582",
+        "mergedSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+        "mergedAt": "2026-10-04T13:01:26Z"
+      },
+      "head": "8ccbabb7d3c4bed1ecab0d74cdd14ceeb6950c62",
+      "base": "81cb5b5e85b456167a0e552a96a243829157c582",
+      "mergedSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+      "tree": "5b0c25f3b4f35706dc9da9aa4733531b7ea50078",
+      "parents": [
+        "81cb5b5e85b456167a0e552a96a243829157c582",
+        "8ccbabb7d3c4bed1ecab0d74cdd14ceeb6950c62"
+      ],
+      "independence": {
+        "repositoryMutations": false,
+        "sourceFixtureAuthoredByReviewer": false,
+        "testsRunByReviewer": false,
+        "ciTriggeredOrRerunByReviewer": false,
+        "pushMergeDeployByReviewer": false,
+        "productionRequests": "Only strict unauthenticated public build-info/ping GET after own all4/run success; no authentication or business mutation."
+      },
+      "severity": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "findings": [],
+      "identities": {
+        "fullBinaryDiff": {
+          "path": "/tmp/workforce571-abda-ci-independent/source-snapshots/fullBinaryDiff.diff",
+          "bytes": 399629,
+          "sha256": "6f453c1d67d6e2c5adc399161626906e65885dd30a63c578df75ddfdb6ace199",
+          "paths": 19
+        },
+        "nonDocBinaryDiff": {
+          "path": "/tmp/workforce571-abda-ci-independent/source-snapshots/nonDocBinaryDiff.diff",
+          "bytes": 114536,
+          "sha256": "c7c336641ae20f05af31ee52bbc25b9ed5007eb611689f533ec502a1704042fa",
+          "paths": 13
+        }
+      },
+      "scopeCap": {
+        "bytes": 399629,
+        "maximum": 400000,
+        "margin": 371,
+        "unchanged": true
+      },
+      "mergeProof": {
+        "actualNormalTwoParentMerge": true,
+        "candidateAndSyntheticAndActualMergeTreeExact": true,
+        "syntheticReviewedMerge": "eda9234537743459a7f207fbfd5ae6ec410a930a",
+        "actualParents": [
+          "81cb5b5e85b456167a0e552a96a243829157c582",
+          "8ccbabb7d3c4bed1ecab0d74cdd14ceeb6950c62"
+        ],
+        "rootGuard": {
+          "path": "/tmp/workforce571-8cc-release-primary/final-guard-before-normal-merge.json",
+          "bytes": 1007,
+          "sha256": "802262e96b4c94f1345b262bf6a5c50a55bffa8029fb34f110de005204d90136"
+        },
+        "rootMergeReceipt": {
+          "path": "/tmp/workforce571-8cc-release-primary/merged-tree-proof.json",
+          "bytes": 365,
+          "sha256": "09cf8d23d80b46d7da399c9e2957296f7b98ba2b505fe639d79e8b178ea225d0"
+        },
+        "chronology": "Root merged after delivered completed reviewer overall GREEN/allzero plus issued source acceptance and actual root gates/parity. The formal final hosted packet root-whole-read was explicitly PENDING at merge. Root whole-read/parity of issued final hosted v2 was completed 13:06:48 after merge. No backdated formal packet acceptance is claimed.",
+        "postMergeFormalPacketRootParity": {
+          "path": "/tmp/workforce571-8cc-release-primary/root-issued-current-hosted-v2-parity.json",
+          "bytes": 900,
+          "sha256": "264a99040f05309d3f2ab7eb6e34589586be7689ad9089f095934b499679fb3c"
+        }
+      },
+      "actualOwnDeploy": {
+        "run": {
+          "id": 37204148155,
+          "run_attempt": 1,
+          "event": "push",
+          "head_branch": "main",
+          "head_sha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+          "path": ".github/workflows/deploy.yml",
+          "status": "completed",
+          "conclusion": "success",
+          "created_at": "2026-10-04T13:01:28Z",
+          "updated_at": "2026-10-04T13:25:44Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37204148155"
+        },
+        "wholeRunAndAllFourMandatoryJobs": "SUCCESS",
+        "requiredJobs": {
+          "Production build & publish artifact": {
+            "id": 111441715568,
+            "name": "Production build & publish artifact",
+            "status": "completed",
+            "conclusion": "success",
+            "started_at": "2026-10-04T13:01:32Z",
+            "completed_at": "2026-10-04T13:18:10Z"
+          },
+          "Quality & security gates": {
+            "id": 111441715639,
+            "name": "Quality & security gates",
+            "status": "completed",
+            "conclusion": "success",
+            "started_at": "2026-10-04T13:01:32Z",
+            "completed_at": "2026-10-04T13:13:19Z"
+          },
+          "Deploy to production & post-deploy smoke": {
+            "id": 111444643074,
+            "name": "Deploy to production & post-deploy smoke",
+            "status": "completed",
+            "conclusion": "success",
+            "started_at": "2026-10-04T13:18:14Z",
+            "completed_at": "2026-10-04T13:25:37Z"
+          },
+          "Cap retained deploy artifacts": {
+            "id": 111445951744,
+            "name": "Cap retained deploy artifacts",
+            "status": "completed",
+            "conclusion": "success",
+            "started_at": "2026-10-04T13:25:40Z",
+            "completed_at": "2026-10-04T13:25:44Z"
+          }
+        },
+        "observedBeforePublic": true,
+        "historicalEarlySnapshotsPreserved": true,
+        "normalRoute": "own reviewed PR571 -> main -> deploy.yml push/main -> SHA-bound immutable artifact -> registered Contabo13.140.132.245:/opt/leaddrive-v2 -> post-deploy smoke",
+        "conditionalSkippedJobs": [
+          "Validate manual deployment inputs",
+          "Recover verified retained production artifact",
+          "Approve historical bootstrap-resume build"
+        ],
+        "wholeLogBindings": {
+          "build": {
+            "runId": 37204148155,
+            "jobId": 111441715568,
+            "jobName": "Production build & publish artifact",
+            "conclusion": "SUCCESS",
+            "wholeLog": {
+              "path": "/tmp/workforce571-abda-ci-independent/build-complete-20261004T132050657136Z/whole-job.log",
+              "bytes": 161261,
+              "sha256": "f03960dd8d42eff384e636c8128ee69ac1c0e1b45fb6a72369f0bf5eb6cd7054"
+            },
+            "captureProof": {
+              "path": "/tmp/workforce571-abda-ci-independent/build-complete-20261004T132050657136Z/capture-proof.json",
+              "bytes": 3746,
+              "sha256": "322cc351a06133ac1f5b1d97fa9edc54bec89081b6dbd192956e23451070a8b3"
+            },
+            "runOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/build-complete-20261004T132050657136Z/run.json",
+              "bytes": 12397,
+              "sha256": "844df341727657feab05eb26df002334efce20f24b6e1451be692e3422af4177"
+            },
+            "jobsOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/build-complete-20261004T132050657136Z/jobs.json",
+              "bytes": 18215,
+              "sha256": "2478b14804702b24deed24373e6e161232f2ecfd1b85187798f678d58e154ded"
+            },
+            "captureWholeRunStatus": "in_progress",
+            "captureWholeRunConclusion": null
+          },
+          "quality": {
+            "runId": 37204148155,
+            "jobId": 111441715639,
+            "jobName": "Quality & security gates",
+            "conclusion": "SUCCESS",
+            "wholeLog": {
+              "path": "/tmp/workforce571-abda-ci-independent/quality-complete-20261004T131550754657Z/whole-job.log",
+              "bytes": 330540,
+              "sha256": "154f965a7ff76b2e02223b55fca8bfaf093e5c2cbb47de27879770c47b872da1"
+            },
+            "captureProof": {
+              "path": "/tmp/workforce571-abda-ci-independent/quality-complete-20261004T131550754657Z/capture-proof.json",
+              "bytes": 3157,
+              "sha256": "16ae35738e76fe0752e3cb97d33df36819397cf186dd46f191fd2155f9184f3b"
+            },
+            "runOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/quality-complete-20261004T131550754657Z/run.json",
+              "bytes": 12397,
+              "sha256": "df002e85baf230f6724f1ff8ca7640f620034af8a70323bf246e4c9cc6de5c3e"
+            },
+            "jobsOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/quality-complete-20261004T131550754657Z/jobs.json",
+              "bytes": 12799,
+              "sha256": "50ff0445105ac0291ea75012af8f651b2f56cd3493b4ff6698e5ba0d1569eb75"
+            },
+            "captureWholeRunStatus": "in_progress",
+            "captureWholeRunConclusion": null
+          },
+          "deploy": {
+            "runId": 37204148155,
+            "jobId": 111444643074,
+            "jobName": "Deploy to production & post-deploy smoke",
+            "conclusion": "SUCCESS",
+            "wholeLog": {
+              "path": "/tmp/workforce571-abda-ci-independent/deploy-complete-20261004T132705173019Z/whole-job.log",
+              "bytes": 116413,
+              "sha256": "82263193b319b5a4fa1927536cb6440a307a4646eca5b74253f658e8ada2e01b"
+            },
+            "captureProof": {
+              "path": "/tmp/workforce571-abda-ci-independent/deploy-complete-20261004T132705173019Z/capture-proof.json",
+              "bytes": 3758,
+              "sha256": "a087900342996f03eacebae0a5648a6ad34c840e967a4d94a111b7306f76c81f"
+            },
+            "runOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/deploy-complete-20261004T132705173019Z/run.json",
+              "bytes": 12400,
+              "sha256": "ec1c57a69180062af086b89d435c043da5fdbbbbc3b5da33f8620e8b39ce1463"
+            },
+            "jobsOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/deploy-complete-20261004T132705173019Z/jobs.json",
+              "bytes": 20375,
+              "sha256": "01fdb0f62315da4f21ddf004b33acfd504b81f0706d2770e472359c7b4332893"
+            },
+            "captureWholeRunStatus": "completed",
+            "captureWholeRunConclusion": "success"
+          },
+          "retention": {
+            "runId": 37204148155,
+            "jobId": 111445951744,
+            "jobName": "Cap retained deploy artifacts",
+            "conclusion": "SUCCESS",
+            "wholeLog": {
+              "path": "/tmp/workforce571-abda-ci-independent/retention-complete-20261004T132705179286Z/whole-job.log",
+              "bytes": 7217,
+              "sha256": "070cce3e4bb7c658ba69a280b9ebbc8b5b0f40f6ae030334fa3a6e3eb7993cd0"
+            },
+            "captureProof": {
+              "path": "/tmp/workforce571-abda-ci-independent/retention-complete-20261004T132705179286Z/capture-proof.json",
+              "bytes": 3783,
+              "sha256": "e4e2c67beaffeaac77fbea7433f486e2ab9963712396edffa86b56ab4bff513f"
+            },
+            "runOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/retention-complete-20261004T132705179286Z/run.json",
+              "bytes": 12400,
+              "sha256": "ec1c57a69180062af086b89d435c043da5fdbbbbc3b5da33f8620e8b39ce1463"
+            },
+            "jobsOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/retention-complete-20261004T132705179286Z/jobs.json",
+              "bytes": 20375,
+              "sha256": "01fdb0f62315da4f21ddf004b33acfd504b81f0706d2770e472359c7b4332893"
+            },
+            "captureWholeRunStatus": "completed",
+            "captureWholeRunConclusion": "success"
+          },
+          "mainType": {
+            "runId": 37204148176,
+            "jobId": 111441765825,
+            "jobName": "typecheck",
+            "conclusion": "SUCCESS",
+            "wholeLog": {
+              "path": "/tmp/workforce571-abda-ci-independent/type-complete-20261004T132049491307Z/whole-job.log",
+              "bytes": 256546,
+              "sha256": "8272429ba9a5b5fa1f7f706c64cbc55d56d16dc505bb43167b1d25c92d398909"
+            },
+            "captureProof": {
+              "path": "/tmp/workforce571-abda-ci-independent/type-complete-20261004T132049491307Z/capture-proof.json",
+              "bytes": 3135,
+              "sha256": "aa356784f3c96390d2ee4cf7c78c44f1abc73710764671fb8dfe052810fd5fd1"
+            },
+            "runOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/type-complete-20261004T132049491307Z/run.json",
+              "bytes": 12393,
+              "sha256": "0a5001819c47f884c9b6551d41698d79d2a5684bd2fcf5089e01ec4af6192d16"
+            },
+            "jobsOriginal": {
+              "path": "/tmp/workforce571-abda-ci-independent/type-complete-20261004T132049491307Z/jobs.json",
+              "bytes": 6554,
+              "sha256": "c0e883e3e68f63770429f090019c67a197277a150a3854f8ecd882f085b43e8e"
+            },
+            "captureWholeRunStatus": "completed",
+            "captureWholeRunConclusion": "success"
+          }
+        }
+      },
+      "artifact": {
+        "id": 11304591968,
+        "name": "leaddrive-prod-abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+        "bytes": 444164588,
+        "digest": "sha256:57c734155439213942d25d027895ae783856dd08708af7fb44d91d8abc00a14e",
+        "workflowRunId": 37204148155,
+        "fullSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+        "expired": false,
+        "buildUploadAndDeployDownloadDigestMatch": true,
+        "digestIsGitHubUploadedArtifactZipNotInventedTarDigest": true,
+        "reviewerDownloadedProductionArtifact": false,
+        "validation": "Whole own build log records successful fullSHA-named artifact publication and exact size/digest. Whole deploy log records metadata-selected download, matching digest, normal-mode SHA binding, immutable artifact revision validation and exact live fullSHA check."
+      },
+      "actualMainCompiler": {
+        "runId": 37204148176,
+        "jobId": 111441765825,
+        "wholeRunAndJob": "SUCCESS",
+        "underlyingTscExitReportedByGate": 2,
+        "diagnostics": 1174,
+        "ownedPaths": [
+          ".github/workflows/workforce-policy-restore-evidence.yml",
+          ".github/workflows/workforce-policy-version-browser-evidence.yml",
+          "messages/az.json",
+          "messages/en.json",
+          "messages/ru.json",
+          "scripts/ci/workforce-policy-restore-fixture.mjs",
+          "scripts/ci/workforce-policy-restore-pre-anchor.mjs",
+          "scripts/workforce-policy-restore-browser-evidence.mjs",
+          "src/__tests__/workforce-policy-restore-draft-ui.test.ts",
+          "src/__tests__/workforce-policy-restore-receipt.test.ts",
+          "src/components/workforce/workforce-policy-restore-draft.tsx",
+          "src/components/workforce/workforce-policy-version-comparison.tsx",
+          "src/lib/workforce/policy-restore-receipt.ts"
+        ],
+        "ownedDiagnostics": 0,
+        "gatedPairs": 66,
+        "baselinePairs": 66,
+        "allGatedPairCountsMatchExactMainBaseline": true,
+        "blockingFamilies": [],
+        "wholeCompilerClean": false,
+        "parsedWholeLog": {
+          "path": "/tmp/workforce571-abda-ci-independent/main-compiler-owned-parsed-v2.json",
+          "bytes": 259056,
+          "sha256": "830b75c8ff6c2cc183c198f98a27d054c890690374b9247f38febced394965ff"
+        },
+        "parseCorrection": "An initial unissued audit parser retained CI ##[error] in paths and its baseline-pair assertion stopped. The corrected parser strips timestamp/ANSI/annotation and preserves full route-group/dynamic filenames before count/ownership matching. Raw compiler log is unchanged; no source/compiler failure is inferred from this audit-tool mistake."
+      },
+      "actualMainPostgres": {
+        "source": "own abda deploy quality whole log",
+        "reportTestsPassed": 9,
+        "reportTestsSkipped": 0,
+        "sharedGateTestsPassed": 42,
+        "sharedGateFilesPassed": 4,
+        "runtimeBoundary": "Mandatory current own-main four-file PostgreSQL gate executed, not skipped. The separate pre-anchor13/restorePG11/realAPI9/rendered15/futurePG4/browser regressions passed at exact reviewed candidate/synthetic tree as documented in prior current-hosted receipt; those separate lanes were not rerun inside this main deploy quality job."
+      },
+      "actualMainFullSuiteBaseline": {
+        "failingFiles": 18,
+        "baselineFiles": 18,
+        "noNewFailures": true,
+        "everyBaselineEntryStillFails": true,
+        "wholeSuiteClean": false,
+        "gate": "SUCCESS",
+        "missingTransientVitestJsonNotInvented": true
+      },
+      "actualPostDeploySmoke": {
+        "wholeJob": "SUCCESS",
+        "exactLiveFullSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+        "loggedSummary": {
+          "health": 200,
+          "cssCheck": 200,
+          "databaseProbe": 200
+        },
+        "publicLoginAndCssJsAssets": {
+          "page": "/login",
+          "pageStatus": 200,
+          "cssStatus": 200,
+          "jsStatus": 200
+        },
+        "existingConfiguredCronSmokes": "Whole workflow configured smokes completed; reviewer did not invoke authenticated or mutating production endpoints.",
+        "manualRestoreAuthenticatedProductionFeature": "NOT RUN"
+      },
+      "actualRetention": {
+        "jobId": 111445951744,
+        "conclusion": "SUCCESS",
+        "keepLatest": 20,
+        "liveBefore": 21,
+        "deleted": 1,
+        "failedDeletes": 0,
+        "retainedAfter": 20,
+        "ownArtifactStillListedNotExpired": true
+      },
+      "strictIndependentPublicProof": {
+        "proof": {
+          "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/public-independent-proof.json",
+          "bytes": 5945,
+          "sha256": "55e6652b70cc7c1dc72c62fae10c11cd9b715008b6d341e68f7b0e9c9d132553"
+        },
+        "startedAt": "2026-10-04T13:28:02.164749+00:00",
+        "completedAt": "2026-10-04T13:28:04.120430+00:00",
+        "sequence": [
+          "build-info-first",
+          "ping",
+          "build-info-confirm"
+        ],
+        "bothArtifactSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+        "pingOk": true,
+        "allHttp200": true,
+        "allCurl0": true,
+        "allTlsVerify0": true,
+        "allNoStore": true,
+        "allRemoteIp": "13.140.132.245",
+        "tlsHostname": "app.leaddrivecrm.org",
+        "curlDisableFirst": true,
+        "noProxy": true,
+        "insecureFallback": false,
+        "allRawHeadersBodiesMetricsStderrPreserved": true,
+        "requests": [
+          {
+            "label": "build-info-first",
+            "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+            "startedAt": "2026-10-04T13:28:02.164749+00:00",
+            "completedAt": "2026-10-04T13:28:03.340527+00:00",
+            "curlExit": 0,
+            "httpStatus": 200,
+            "remoteIp": "13.140.132.245",
+            "tlsVerifyResult": "0",
+            "cacheControl": [
+              "no-store"
+            ],
+            "cacheControlNoStore": true,
+            "bodyMatchesPublicContract": true,
+            "positive": true,
+            "publicData": {
+              "sha": "abda8aa024f6",
+              "artifactSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+              "builtAt": "2026-10-04T13:08:03Z"
+            },
+            "originals": [
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/build-info-first.body.json",
+                "bytes": 112,
+                "sha256": "54b4524fb5ed48d4c25668d0cefd3243e664c5b0df72004c01065b1160b922c1"
+              },
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/build-info-first.headers",
+                "bytes": 2547,
+                "sha256": "018c2143acf0158c80a9678412847f380989d53676dfb63016da2d3711b226e5"
+              },
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/build-info-first.curl.stdout",
+                "bytes": 75,
+                "sha256": "26e56515424d406cc4b60522b7fa63e988c3d7071392556fb7909339d6087b79"
+              },
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/build-info-first.curl.stderr",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              }
+            ]
+          },
+          {
+            "label": "ping",
+            "url": "https://app.leaddrivecrm.org/api/v1/ping",
+            "startedAt": "2026-10-04T13:28:03.340552+00:00",
+            "completedAt": "2026-10-04T13:28:03.961023+00:00",
+            "curlExit": 0,
+            "httpStatus": 200,
+            "remoteIp": "13.140.132.245",
+            "tlsVerifyResult": "0",
+            "cacheControl": [
+              "no-store"
+            ],
+            "cacheControlNoStore": true,
+            "bodyMatchesPublicContract": true,
+            "positive": true,
+            "publicData": {
+              "ok": true
+            },
+            "originals": [
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/ping.body.json",
+                "bytes": 11,
+                "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+              },
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/ping.headers",
+                "bytes": 2547,
+                "sha256": "bf4065b698f23296396137ed623201711f9f2a1f95f2644dc8b1300741f608bf"
+              },
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/ping.curl.stdout",
+                "bytes": 62,
+                "sha256": "2489c9eb01af5193e8e5ac90469e5ecef545559014f514cfb567742c900e036c"
+              },
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/ping.curl.stderr",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              }
+            ]
+          },
+          {
+            "label": "build-info-confirm",
+            "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+            "startedAt": "2026-10-04T13:28:03.961057+00:00",
+            "completedAt": "2026-10-04T13:28:04.120430+00:00",
+            "curlExit": 0,
+            "httpStatus": 200,
+            "remoteIp": "13.140.132.245",
+            "tlsVerifyResult": "0",
+            "cacheControl": [
+              "no-store"
+            ],
+            "cacheControlNoStore": true,
+            "bodyMatchesPublicContract": true,
+            "positive": true,
+            "publicData": {
+              "sha": "abda8aa024f6",
+              "artifactSha": "abda8aa024f6e8fd52527cdbc9e85b42192fdc15",
+              "builtAt": "2026-10-04T13:08:03Z"
+            },
+            "originals": [
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/build-info-confirm.body.json",
+                "bytes": 112,
+                "sha256": "54b4524fb5ed48d4c25668d0cefd3243e664c5b0df72004c01065b1160b922c1"
+              },
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/build-info-confirm.headers",
+                "bytes": 2547,
+                "sha256": "3a77b74d0896776a78a1b82c9ebcbc83931ff2f465db1b14bb150dd58a1ee2c3"
+              },
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/build-info-confirm.curl.stdout",
+                "bytes": 75,
+                "sha256": "26e56515424d406cc4b60522b7fa63e988c3d7071392556fb7909339d6087b79"
+              },
+              {
+                "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/build-info-confirm.curl.stderr",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              }
+            ]
+          }
+        ]
+      },
+      "latestMainObservation": {
+        "at": "2026-10-04T13:27:08.493559+00:00",
+        "sha": "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173",
+        "differsFromOwnReleasedSha": true,
+        "meaning": "Own abda release observation is GREEN. Latest main was already different; no latest-main deployment or future-currentness credit is claimed. Successor source requires separate fresh-main integration."
+      },
+      "historicalIntegrity": {
+        "firstEfFailures": {
+          "path": "/tmp/workforce571-ef-first-hosted-failures-independent.json",
+          "bytes": 34676,
+          "sha256": "ae2f63c881b7f72bd4eff30e937503e36c089743ee39734ec198b45b037b75b2"
+        },
+        "firstEfStatus": "BLOCKED/P2=2; rendered0/15 receipt nesting and Today0/6 original Google-font internal-module Build Error; mechanism not proven.",
+        "fbFirstFailure": {
+          "path": "/tmp/workforce571-fb3-first-restore-failure-independent.json",
+          "bytes": 33617,
+          "sha256": "5a3fa592c3eeb8ff56d25aaa2c5fc3b3b57c014a3e1bad32c9947b117bd039bd"
+        },
+        "fbStatus": "BLOCKED/P2=1; rendered14/15 provider visibility-refresh oracle; actual focus setting false. Native next-auth channel correction and current15/15 are separate later observations.",
+        "originalSourceReviewMissesRetained": true,
+        "unissuedParentRunnerCountMistake": "Parent unissued builder assumed41 tests; assertion stopped before issue. Current issued parent report correctly records44 workflow files. It is not relabeled as an observed runtime failure or a41-test pass.",
+        "noOlderP2P3RetroactiveGreen": true
+      },
+      "originalBindings": {
+        "inputAudit": {
+          "path": "/tmp/workforce571-abda-production-independent-input-audit.json",
+          "bytes": 45474,
+          "sha256": "146b1be721ed86a7af06f29bcf2ca5f958b62f468ca86353cfba571be915f8d5"
+        },
+        "finalGithubProof": {
+          "path": "/tmp/workforce571-abda-own-release-independent/github-20261004T132705174904Z/github-proof.json",
+          "bytes": 4672,
+          "sha256": "bc6e3d63d9d6b27e7ce748fa26e8dca806baf77e9428a6bc7ffa52bd921e60ee"
+        },
+        "publicProof": {
+          "path": "/tmp/workforce571-abda-own-release-independent/public-raw-20261004T132802164384Z/public-independent-proof.json",
+          "bytes": 5945,
+          "sha256": "55e6652b70cc7c1dc72c62fae10c11cd9b715008b6d341e68f7b0e9c9d132553"
+        },
+        "wholeLogs": {
+          "build": {
+            "path": "/tmp/workforce571-abda-ci-independent/build-complete-20261004T132050657136Z/whole-job.log",
+            "bytes": 161261,
+            "sha256": "f03960dd8d42eff384e636c8128ee69ac1c0e1b45fb6a72369f0bf5eb6cd7054"
+          },
+          "quality": {
+            "path": "/tmp/workforce571-abda-ci-independent/quality-complete-20261004T131550754657Z/whole-job.log",
+            "bytes": 330540,
+            "sha256": "154f965a7ff76b2e02223b55fca8bfaf093e5c2cbb47de27879770c47b872da1"
+          },
+          "deploy": {
+            "path": "/tmp/workforce571-abda-ci-independent/deploy-complete-20261004T132705173019Z/whole-job.log",
+            "bytes": 116413,
+            "sha256": "82263193b319b5a4fa1927536cb6440a307a4646eca5b74253f658e8ada2e01b"
+          },
+          "retention": {
+            "path": "/tmp/workforce571-abda-ci-independent/retention-complete-20261004T132705179286Z/whole-job.log",
+            "bytes": 7217,
+            "sha256": "070cce3e4bb7c658ba69a280b9ebbc8b5b0f40f6ae030334fa3a6e3eb7993cd0"
+          },
+          "mainType": {
+            "path": "/tmp/workforce571-abda-ci-independent/type-complete-20261004T132049491307Z/whole-job.log",
+            "bytes": 256546,
+            "sha256": "8272429ba9a5b5fa1f7f706c64cbc55d56d16dc505bb43167b1d25c92d398909"
+          }
+        },
+        "issuedCurrentSource": {
+          "path": "/tmp/workforce571-8cc-source-independent.json",
+          "bytes": 12036,
+          "sha256": "4ecf35a71ba8f6ce7909be7fdbafa9c1218922f151d47827536fb05e74993e64"
+        },
+        "issuedCurrentHostedV2": {
+          "path": "/tmp/workforce571-8cc-current-hosted-independent-v2.json",
+          "bytes": 43675,
+          "sha256": "a26f8d4aa4f9740c7910f53752b39cf166f1914f3f4751b338a5d37827549015"
+        },
+        "issuedCurrentHostedInputAudit": {
+          "path": "/tmp/workforce571-8cc-current-hosted-independent-input-audit.json",
+          "bytes": 146012,
+          "sha256": "4a4b5a23045161ee061d531b425caf404935ae598c554d5f92b5099fa08fcb77"
+        }
+      },
+      "limits": [
+        "Core own-SHA release proof only; no current private employee-impact source, PostgreSQL, renderedUI or release credit.",
+        "Full compiler and suite have preserved known baselines and are not clean. Owned13 diagnostics are zero in actual own-main compiler, independently parsed.",
+        "The444164588-byte production artifact was not downloaded by reviewer. Exact metadata/digest/size and whole build/deploy checks inspected.",
+        "No authenticated production feature, canonical policy activation, employment prediction, payroll/attendance/Android/load/pilot/human-AT or DONE credit.",
+        "Primary TLS proof uses registered hostname pinned to registered IP. Reviewer made no literal-IP request here; any root strict SAN rejection is separate and cannot be labeled TLS passed.",
+        "Public bracket proves ownSHA only during its observed times; latest main differs and may deploy later.",
+        "Reviewer performed no repository or CI mutation, no heavy local check, and no source/test/fixture/workflow authoring."
+      ]
+    },
+    "rootAcceptance": {
+      "observedAt": "2026-10-04T13:37:55.594006+00:00",
+      "wholeIssuedReportRead": true,
+      "wholeDeclaredAuditParsed": true,
+      "reportBytes": 27627,
+      "reportSha256": "92b53f31471c1e17433d9fb0c3c2150a784457fedf4df08f3bcc863ad6234ac5",
+      "originalDescriptorObservations": 252,
+      "uniqueOriginals": 201,
+      "exactGitIdentityChecks": 3,
+      "activeWorktreeBindings": 0,
+      "status": "PASS",
+      "releaseOnly": true,
+      "latestMainSeparatelyAdvanced": "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173"
+    },
+    "literalIpNegative": {
+      "atUtc": "2026-10-04T13:28:27.646785+00:00",
+      "ownAll4SucceededBeforeRequest": true,
+      "results": [
+        {
+          "endpoint": "/api/v1/ping",
+          "curlExit": 60,
+          "metrics": "000|13.140.132.245|1",
+          "strictTls": true,
+          "insecureUsed": false
+        },
+        {
+          "endpoint": "/api/v1/public/build-info",
+          "curlExit": 60,
+          "metrics": "000|13.140.132.245|1",
+          "strictTls": true,
+          "insecureUsed": false
+        }
+      ],
+      "boundary": "Literal IP TLS observation separate from hostname-pinned registered-host proof; no insecure fallback or alternate host"
+    }
+  },
+  "originalsBoundary": "Whole original receipts below are preserved verbatim as JSON values. Their external absolute-path descriptors remain references; complete logs/artifacts/screenshots/audits are retained outside this selected portable core, not claimed as fully published. Literal IP certificate failure is separate from positive registered hostname pinned to the same IP. Latest main has advanced; own-SHA observation has no permanence claim."
+}

@@ -12,7 +12,7 @@ const appURL = "postgresql://wf_manager_today_browser:fixture-dummy@127.0.0.1:1/
 // No production credentials, ambient environment, PostgreSQL or browser are
 // admitted. Every subprocess must fail a preconnection guard before creating
 // its output directory or constructing the disposable database clients.
-const baseline: Record<string, string> = {
+const baseline: NodeJS.ProcessEnv = {
   GITHUB_ACTIONS: "true", CI: "true", NODE_ENV: "development",
   WF_MANAGER_TODAY_BROWSER: "1",
   WF_MANAGER_TODAY_BROWSER_BASE_URL: "http://localhost:1/",
@@ -23,7 +23,7 @@ const baseline: Record<string, string> = {
   GITHUB_SHA: "b".repeat(40),
 }
 
-const rejected: Array<{ name: string; patch: Record<string, string>; error: string }> = [
+const rejected: Array<{ name: string; patch: Partial<NodeJS.ProcessEnv>; error: string }> = [
   { name: "non-hosted execution", patch: { GITHUB_ACTIONS: "false" }, error: "Hosted Actions required" },
   { name: "missing explicit CI", patch: { CI: "false" }, error: "Explicit CI required" },
   { name: "missing fixture opt-in", patch: { WF_MANAGER_TODAY_BROWSER: "0" }, error: "Fixture opt-in required" },

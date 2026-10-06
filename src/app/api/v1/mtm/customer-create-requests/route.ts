@@ -12,6 +12,8 @@ import {
 import { MTM_ROUTE_AUDIT_ACTION } from "@/lib/mtm/route-audit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { enqueueMtmRouteNotification } from "@/lib/mtm/route-notification-outbox"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { agentPermissionDeniedBody, agentPermissionEnabled } from "@/lib/mtm/agent-permissions"
 
 const duplicateSelect = {
   id: true,
@@ -98,6 +100,11 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
     agentId: auth.agentId,
   })
   if (!actor?.agentId) return forbidden()
+  // The organization may switch the request off for its agents ("what an
+  // agent may do"). Managers and supervisors are not affected.
+  if (actor.role === "AGENT" && !agentPermissionEnabled(await getMtmSettings(auth.orgId), "customerCreateRequest")) {
+    return NextResponse.json(agentPermissionDeniedBody("customerCreateRequest"), { status: 403 })
+  }
 
   const parsed = parseBody(CustomerCreateRequestSchema, await req.json().catch(() => null))
   if (!parsed.ok) return parsed.response

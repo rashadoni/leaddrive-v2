@@ -6,6 +6,8 @@ describe("MTM contact duplicate approval UI contract", () => {
     const detail = readFileSync("src/components/mtm/contact-detail.tsx", "utf8")
     const dialog = readFileSync("src/components/mtm/contact-duplicate-dialog.tsx", "utf8")
     const submitRoute = readFileSync("src/app/api/v1/mtm/contacts/[id]/change-requests/route.ts", "utf8")
+    // The request core is shared with the field app's entry point.
+    const submitCore = readFileSync("src/lib/mtm/contact-change-request-submit.ts", "utf8")
     const decisionRoute = readFileSync("src/app/api/v1/mtm/contact-change-requests/[id]/decision/route.ts", "utf8")
 
     expect(detail).toContain("MtmContactDuplicateReportDialog")
@@ -21,7 +23,8 @@ describe("MTM contact duplicate approval UI contract", () => {
     expect(dialog).toContain("/decision`")
     expect(dialog).not.toContain("method: \"PUT\"")
 
-    expect(submitRoute).toContain('status: { notIn: ["DUPLICATE", "MERGED"] }')
+    expect(submitRoute).toContain("return submitMtmContactChangeRequest({")
+    expect(submitCore).toContain('status: { notIn: ["DUPLICATE", "MERGED"] }')
     expect(decisionRoute).toContain('status: { notIn: ["DUPLICATE", "MERGED"] }')
     expect(decisionRoute).toContain('data: { status: "DUPLICATE", duplicateOfContactId: target.id }')
   })

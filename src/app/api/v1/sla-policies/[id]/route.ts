@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
+import { prepareSlaCalendar } from "@/lib/ticketing/sla-calendar-policy"
+import { SlaCalendarError } from "@/lib/ticketing/sla-business-calendar"
 import { prisma } from "@/lib/prisma"
 import { SLA_POLICY_PRIORITIES, validateSlaTargets } from "@/lib/ticketing/sla-policy"
 import { withRls } from "@/lib/with-rls"
 
 const updateSlaPolicySchema = z.object({
+  businessCalendarAction: z.enum(["preserve", "capture", "clear"]).optional(),
+  expectedCalendarUpdatedAt: z.string().datetime().optional(),
   name: z.string().trim().min(1).max(200).optional(),
   priority: z.enum(SLA_POLICY_PRIORITIES).optional(),
   firstResponseHours: z.number().min(1 / 60, "First response must be at least 1 minute").max(8760).optional(),
@@ -57,9 +61,11 @@ export const PUT = withRls(async (req, { orgId }, { params }: { params: Promise<
         if (conflict) return { kind: "conflict" as const }
       }
 
+      const { businessCalendarAction, expectedCalendarUpdatedAt, ...policyData } = parsed.data
+      const businessCalendar = await prepareSlaCalendar(tx, orgId, businessCalendarAction, policyData.businessHoursOnly ?? existing.businessHoursOnly, firstResponseHours, resolutionHours, expectedCalendarUpdatedAt, existing.businessCalendar)
       const result = await tx.slaPolicy.updateMany({
         where: { id, organizationId: orgId },
-        data: parsed.data,
+        data: { ...policyData, ...(businessCalendar !== undefined ? { businessCalendar } : {}) },
       })
       if (result.count === 0) return { kind: "not_found" as const }
       const updated = await tx.slaPolicy.findFirst({
@@ -78,6 +84,7 @@ export const PUT = withRls(async (req, { orgId }, { params }: { params: Promise<
     }
     return NextResponse.json({ success: true, data: outcome.updated })
   } catch (error) {
+    if (error instanceof SlaCalendarError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 })
     if ((error as { code?: string }).code === "P2034") {
       return NextResponse.json({ error: "Concurrent SLA policy conflict", code: "ACTIVE_PRIORITY_CONFLICT" }, { status: 409 })
     }

@@ -1,0 +1,121 @@
+{
+  "atUtc": "2026-10-04T22:41:39.563705+00:00",
+  "branch": "codex/workforce-completion-part37-preparation",
+  "beforeHead": "8e4ea9ec7efad53d545e274b7adfe85568b66b0e",
+  "productSource": {
+    "path": "src/components/workforce/workforce-manager-today.tsx",
+    "bytes": 8677,
+    "sha256": "97aa1ee58b2936e26ed061370f18ff94eeae2217cd354a063fda3610e620f9a1"
+  },
+  "firstFailurePreservation": {
+    "path": "/tmp/workforce-part36-first-failure-draft-preservation-primary/failure-preservation-proof.json",
+    "bytes": 7362,
+    "sha256": "225cb68c2a9fcc3558123df686c88afb8f1b48eb2766ec108dd1909e481be8c3"
+  },
+  "scope": "Single pagination Button class change; small sequential checks only. Full compiler/suite/build/browser/PostgreSQL/Android/load NOT RUN locally. No current hosted runtime acceptance.",
+  "commands": [
+    {
+      "label": "resources",
+      "command": [
+        "bash",
+        "-c",
+        "free -m\ndf -h .\ncat /proc/pressure/memory"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/resources.stdout",
+        "bytes": 431,
+        "sha256": "2e3f21ed940c0bcf377e70eb39e764c8e64711915dc184eb5b4c032a833c951d"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/resources.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "manager-ui",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--max-old-space-size=384",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-manager-today-ui.test.ts",
+        "--maxWorkers=1"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/manager-ui.stdout",
+        "bytes": 281,
+        "sha256": "5e3d7166c4939a2457425b78aa04624e7ce0a84e4abd2661a7212bdff910b718"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/manager-ui.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "manager-preconnection-guards",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--max-old-space-size=384",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts",
+        "--maxWorkers=1"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/manager-preconnection-guards.stdout",
+        "bytes": 279,
+        "sha256": "1ae94d774ca4a017ece937dc7ed4108052552b41a2a8462daba8ffbb63ecf3dd"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/manager-preconnection-guards.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "scoped-eslint",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "--max-old-space-size=512",
+        "node_modules/eslint/bin/eslint.js",
+        "src/components/workforce/workforce-manager-today.tsx"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/scoped-eslint.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/scoped-eslint.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/diff-check.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-part36-pagination-fix-bounded-originals-primary/diff-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "allRequestedPassed": true
+}

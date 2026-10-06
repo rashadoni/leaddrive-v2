@@ -470,6 +470,52 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(json.data.policies).toMatchObject({ fieldContactsEnabled: true, canPlanOwnRoutes: true })
   })
 
+  it("sends the client classes the tenant grades with, A–D for one that never chose", async () => {
+    const classes = async () => (await (await GET(request())).json()).data.policies.contactClasses
+    expect(await classes()).toEqual(["A", "B", "C", "D"])
+
+    // Stored in whatever order the settings form sent; delivered in the order
+    // the web card offers them, so the app and the web list the same sequence.
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "contactClasses", value: ["VIP", "C", "A", "B"] },
+    ] as never)
+    expect(await classes()).toEqual(["A", "B", "C", "VIP"])
+
+    // A damaged setting must not leave the app with nothing to choose from.
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "contactClasses", value: ["Z"] },
+    ] as never)
+    expect(await classes()).toEqual(["A", "B", "C", "D"])
+  })
+
+  it("tells the app which functions the organization allows its agents", async () => {
+    const permissions = async () => (await (await GET(request())).json()).data.policies.agentPermissions
+    // Nothing configured: exactly what agents could do before the matrix existed.
+    expect(await permissions()).toEqual({
+      routeSelfPublish: false,
+      teamSchedule: false,
+      contactCreateRequest: true,
+      contactChangeRequest: true,
+      customerCreateRequest: true,
+      taskSelfCreate: true,
+      taskSelfRecurring: true,
+    })
+
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "agentContactCreateRequests", value: false },
+      { key: "taskSelfCreate", value: false },
+      { key: "routeSelfPublish", value: true },
+    ] as never)
+    expect(await permissions()).toMatchObject({
+      contactCreateRequest: false,
+      contactChangeRequest: true,
+      routeSelfPublish: true,
+      taskSelfCreate: false,
+      // Recurring own tasks mean nothing without own tasks.
+      taskSelfRecurring: false,
+    })
+  })
+
   it("advertises enabled attendance add-ons without claiming an enforcement policy", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...mobileAuth("AGENT"),

@@ -39,3 +39,10 @@ export function togglePortalSelection(selected: ReadonlySet<string>, id: string)
 export function selectAllVisible(contacts: readonly PortalContactRecord[]): Set<string> {
   return new Set(contacts.map((contact) => contact.id))
 }
+
+/** Existing API preconditions for enabling access; disabling remains available. */
+export function portalEnableBlocker(contact: Pick<PortalContactRecord, "isActive" | "email">): "inactive" | "email" | null {
+  if (!contact.isActive) return "inactive"
+  if (!contact.email?.trim()) return "email"
+  return null
+}

@@ -1,0 +1,333 @@
+{
+  "atUtc": "2026-10-03T23:35:54.090502+00:00",
+  "status": "PREPARED_TWO_NARROW_FIXES_CORE_ORIGINALS_NEW_EXACT_HOSTED_REQUIRED",
+  "failedHead": "74976c9e808581fe9c224b20c72a03841a32a1eb",
+  "base": "2b6ca9b0390c2ea5bfa738c68428bab2cea59ecd",
+  "actualFailure": {
+    "ownPr": 563,
+    "run": 37160839072,
+    "job": 111313754286,
+    "syntheticSha": "05954bd6859a2791c58d85c51610a1a87b088c16",
+    "conclusion": "FAILURE",
+    "stage": "historical-fixture-seeding",
+    "safeName": "PrismaClientValidationError",
+    "sourcePosition": "184:21",
+    "completedCases": 0,
+    "authenticationDiagnostics": 0,
+    "clientCleanup": "2DBclientsPASS",
+    "containerDisposal": "ActionsStopcontainersSUCCESS",
+    "actualSetupSql": "SUCCESS; not populated controls or browser proof",
+    "artifact": 11287004854,
+    "artifactBytes": 2412,
+    "artifactSha256": "db172ee92c84e17c3eafd409994413e9181cfe28b9efec155b2a330a853f381a"
+  },
+  "independentBeforeFix": "P2=1 fixture blocker; immutable source-only95/749 reviews retain their missed required-field limitation and never count as runtimeGREEN",
+  "fix": "Only historical workday fixture adds required startedAt2025Jan1T08:00Z and coherent optionalcompletedAt17:00Z. All report scenario assertions, SQL/schema, role/grant policy, workflow, business writers and baselines unchanged.",
+  "actualLocalChecks": {
+    "atUtc": "2026-10-03T23:20:14.317883+00:00",
+    "checks": [
+      {
+        "name": "syntax",
+        "command": [
+          "node",
+          "--check",
+          "scripts/workforce-exception-report-browser-evidence.mjs"
+        ],
+        "startedAt": "2026-10-03T23:19:55.114920+00:00",
+        "completedAt": "2026-10-03T23:19:55.361691+00:00",
+        "exitCode": 0,
+        "log": "/tmp/workforce563-report-required-start-time-fix-syntax.log"
+      },
+      {
+        "name": "eslint",
+        "command": [
+          "npx",
+          "--no-install",
+          "eslint",
+          "scripts/workforce-exception-report-browser-evidence.mjs"
+        ],
+        "startedAt": "2026-10-03T23:19:55.362029+00:00",
+        "completedAt": "2026-10-03T23:20:03.561582+00:00",
+        "exitCode": 0,
+        "log": "/tmp/workforce563-report-required-start-time-fix-eslint.log"
+      },
+      {
+        "name": "guards",
+        "command": [
+          "npx",
+          "--no-install",
+          "vitest",
+          "run",
+          "src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "--reporter=dot"
+        ],
+        "startedAt": "2026-10-03T23:20:03.562851+00:00",
+        "completedAt": "2026-10-03T23:20:14.317552+00:00",
+        "exitCode": 0,
+        "log": "/tmp/workforce563-report-required-start-time-fix-guards.log"
+      }
+    ],
+    "node": "v20.20.2",
+    "localDatabaseBrowserRuntime": "NOT RUN per Contabo contract; actual new hosted execution still required"
+  },
+  "archive": {
+    "path": "docs/evidence/workforce-c6-report-browser-2026-10-03-required-start-time-originals.tar.xz",
+    "bytes": 12956,
+    "sha256": "ab755b29f9d8a3cce9ab1ea3eb94544c9791e659457de6826b49dc92114cc922",
+    "format": "Deterministic tar.xz; ordinary file members only, named originals/<rawsha256>; inspect/read without extracting to arbitrary filesystem",
+    "uniqueRawMembers": 19,
+    "losslessAllMemberByteParityVerified": true
+  },
+  "originalBindings": 28,
+  "originals": [
+    {
+      "source": "/tmp/workforce563-report-failed-primary/artifact-11287004854.zip",
+      "bytes": 2412,
+      "sha256": "db172ee92c84e17c3eafd409994413e9181cfe28b9efec155b2a330a853f381a",
+      "member": "originals/db172ee92c84e17c3eafd409994413e9181cfe28b9efec155b2a330a853f381a"
+    },
+    {
+      "source": "/tmp/workforce563-report-failed-primary/artifacts.json",
+      "bytes": 808,
+      "sha256": "e7cdbdcb69fb9b65be4a1fd04392730d6047eeef29107bfbda465be6ac4bdf62",
+      "member": "originals/e7cdbdcb69fb9b65be4a1fd04392730d6047eeef29107bfbda465be6ac4bdf62"
+    },
+    {
+      "source": "/tmp/workforce563-report-failed-primary/exception-report-receipt.json",
+      "bytes": 3827,
+      "sha256": "e9dd629298a487ed422450802e369c10abe3c3ce3532b4d5f8132cb05588f543",
+      "member": "originals/e9dd629298a487ed422450802e369c10abe3c3ce3532b4d5f8132cb05588f543"
+    },
+    {
+      "source": "/tmp/workforce563-report-failed-primary/jobs.json",
+      "bytes": 3589,
+      "sha256": "91cf2af9427db20e84036000ff0a21cf75967734992685669b661998e72e2704",
+      "member": "originals/91cf2af9427db20e84036000ff0a21cf75967734992685669b661998e72e2704"
+    },
+    {
+      "source": "/tmp/workforce563-report-failed-primary/run.json",
+      "bytes": 12905,
+      "sha256": "4e9706c15a06bd9a98e5604b2755811b9002734b8b16e01609d3dfdf8be3c535",
+      "member": "originals/4e9706c15a06bd9a98e5604b2755811b9002734b8b16e01609d3dfdf8be3c535"
+    },
+    {
+      "source": "/tmp/workforce563-report-failed-primary/workflow-context.json",
+      "bytes": 261,
+      "sha256": "44ab8fff3bde4098b301b7b3abc1a3feafaf5690ef7fc3d74c32b807ef378a93",
+      "member": "originals/44ab8fff3bde4098b301b7b3abc1a3feafaf5690ef7fc3d74c32b807ef378a93"
+    },
+    {
+      "source": "/tmp/workforce563-report-failed-primary/workflow-failure.json",
+      "bytes": 219,
+      "sha256": "2bb76e9468a88b51eda3a7b7445fc8572ec2524077b75320c95b7d1ed29e4cda",
+      "member": "originals/2bb76e9468a88b51eda3a7b7445fc8572ec2524077b75320c95b7d1ed29e4cda"
+    },
+    {
+      "source": "/tmp/workforce563-749-report-browser-failure-independent.json",
+      "bytes": 15136,
+      "sha256": "5b6be9a8b709cd2b5f67c27b1156b426c247e1266ab04d42b11b2966f84c6633",
+      "member": "originals/5b6be9a8b709cd2b5f67c27b1156b426c247e1266ab04d42b11b2966f84c6633"
+    },
+    {
+      "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/artifact-exception-report-receipt.json",
+      "bytes": 3827,
+      "sha256": "e9dd629298a487ed422450802e369c10abe3c3ce3532b4d5f8132cb05588f543",
+      "member": "originals/e9dd629298a487ed422450802e369c10abe3c3ce3532b4d5f8132cb05588f543"
+    },
+    {
+      "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/artifact-workflow-context.json",
+      "bytes": 261,
+      "sha256": "44ab8fff3bde4098b301b7b3abc1a3feafaf5690ef7fc3d74c32b807ef378a93",
+      "member": "originals/44ab8fff3bde4098b301b7b3abc1a3feafaf5690ef7fc3d74c32b807ef378a93"
+    },
+    {
+      "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/artifact-workflow-failure.json",
+      "bytes": 219,
+      "sha256": "2bb76e9468a88b51eda3a7b7445fc8572ec2524077b75320c95b7d1ed29e4cda",
+      "member": "originals/2bb76e9468a88b51eda3a7b7445fc8572ec2524077b75320c95b7d1ed29e4cda"
+    },
+    {
+      "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/candidate-commit.json",
+      "bytes": 1175,
+      "sha256": "79a84d21bcd615aeecd2c38b606dafc9d66354c3b070f1d20d5d36bc77d9b20e",
+      "member": "originals/79a84d21bcd615aeecd2c38b606dafc9d66354c3b070f1d20d5d36bc77d9b20e"
+    },
+    {
+      "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/report-artifact-11287004854.zip",
+      "bytes": 2412,
+      "sha256": "db172ee92c84e17c3eafd409994413e9181cfe28b9efec155b2a330a853f381a",
+      "member": "originals/db172ee92c84e17c3eafd409994413e9181cfe28b9efec155b2a330a853f381a"
+    },
+    {
+      "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/report-artifacts.json",
+      "bytes": 808,
+      "sha256": "e7cdbdcb69fb9b65be4a1fd04392730d6047eeef29107bfbda465be6ac4bdf62",
+      "member": "originals/e7cdbdcb69fb9b65be4a1fd04392730d6047eeef29107bfbda465be6ac4bdf62"
+    },
+    {
+      "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/report-jobs.json",
+      "bytes": 3589,
+      "sha256": "91cf2af9427db20e84036000ff0a21cf75967734992685669b661998e72e2704",
+      "member": "originals/91cf2af9427db20e84036000ff0a21cf75967734992685669b661998e72e2704"
+    },
+    {
+      "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/report-run.json",
+      "bytes": 12905,
+      "sha256": "4e9706c15a06bd9a98e5604b2755811b9002734b8b16e01609d3dfdf8be3c535",
+      "member": "originals/4e9706c15a06bd9a98e5604b2755811b9002734b8b16e01609d3dfdf8be3c535"
+    },
+    {
+      "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/tested-merge-commit.json",
+      "bytes": 2643,
+      "sha256": "d46dd925356fb33b16bf4cd6a2a3177d75ca8759d0ac7d8bcce9761286a57d82",
+      "member": "originals/d46dd925356fb33b16bf4cd6a2a3177d75ca8759d0ac7d8bcce9761286a57d82"
+    },
+    {
+      "source": "/tmp/workforce563-report-required-start-time-fix-syntax.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "member": "originals/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/workforce563-report-required-start-time-fix-eslint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "member": "originals/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/workforce563-report-required-start-time-fix-guards.log",
+      "bytes": 296,
+      "sha256": "d544028c11a7445ac3593cc0a8709a7f6671a86374cd2c516d2e5aaac462f11e",
+      "member": "originals/d544028c11a7445ac3593cc0a8709a7f6671a86374cd2c516d2e5aaac462f11e"
+    },
+    {
+      "source": "/tmp/workforce563-report-required-start-time-fix-checks.json",
+      "bytes": 1481,
+      "sha256": "fb050f94a9179f179ddcf8f9dc55b02b4eea08a01f3129737857435c871a6fd7",
+      "member": "originals/fb050f94a9179f179ddcf8f9dc55b02b4eea08a01f3129737857435c871a6fd7"
+    },
+    {
+      "source": "/tmp/workforce563-report-seed-fix-originals-scan.log",
+      "bytes": 80,
+      "sha256": "6e8be8aa2c3b3296f29e6ca12535c37187264915fea26e50ab99af2a18532e83",
+      "member": "originals/6e8be8aa2c3b3296f29e6ca12535c37187264915fea26e50ab99af2a18532e83"
+    },
+    {
+      "source": "/tmp/workforce563-749-new-owned-type-independent.json",
+      "bytes": 3804,
+      "sha256": "c93ae3e86516012c2dd9fc2b8c7570c7b329419c36115958dd87ed7cfa2f19b4",
+      "member": "originals/c93ae3e86516012c2dd9fc2b8c7570c7b329419c36115958dd87ed7cfa2f19b4"
+    },
+    {
+      "source": "/tmp/workforce563-env-type-fix-eslint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "member": "originals/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/workforce563-env-type-fix-guards.log",
+      "bytes": 296,
+      "sha256": "e347fdca7affeffd4440ae9195177317ffe141e22cf5423d889fb0ef730cb50e",
+      "member": "originals/e347fdca7affeffd4440ae9195177317ffe141e22cf5423d889fb0ef730cb50e"
+    },
+    {
+      "source": "/tmp/workforce563-env-type-fix-checks.json",
+      "bytes": 1234,
+      "sha256": "dc69c7083245655469a85e0d33f54f2550b04bcca4c3dc15449b291577e9158a",
+      "member": "originals/dc69c7083245655469a85e0d33f54f2550b04bcca4c3dc15449b291577e9158a"
+    },
+    {
+      "source": "/tmp/workforce563-405094-unpublished-draft/preservation.json",
+      "bytes": 527,
+      "sha256": "2b03f253c45746f4cc07c07891b06fed744551b43f9482bbcbc57f8fae5f69a9",
+      "member": "originals/2b03f253c45746f4cc07c07891b06fed744551b43f9482bbcbc57f8fae5f69a9"
+    },
+    {
+      "source": "/tmp/workforce563-both-fixes-core-originals-scan.log",
+      "bytes": 78,
+      "sha256": "40e2bfd241dd68596001faeee41d89be34e6257b918787df64af10365899c678",
+      "member": "originals/40e2bfd241dd68596001faeee41d89be34e6257b918787df64af10365899c678"
+    }
+  ],
+  "rawOriginalScanExit": 0,
+  "zipPrivacy": "Only3safeJSON members, no screenshots/auth/business rawpayload. Entire2412-byte downloaded ZIP original is included unchanged.",
+  "newHostedRuntime": "NOT RUN; exact current successor workflow nine real scenarios required; local refusal9PASS does not execute seed or browser",
+  "progress": "DONE81/161,GATES14/15,C836%,overall59%,80nonDONE unchanged",
+  "scopeCorrection": {
+    "unpublishedFirstDraft": {
+      "path": "/tmp/workforce563-405094-unpublished-draft",
+      "fullDiffBytes": 405094,
+      "fullDiffSha256": "5afaf7e3b04ac16c8845cc81ae9354f3dd6a9ab98886c6bcd6f33133edb9f690",
+      "committedOrPushed": false
+    },
+    "unchangedCap": 400000,
+    "repositoryScope": "CORE: all named smaller originals plus full failed artifactZIP/immutable two P2 reports/newchecks. Full failed89626joblog and261668typejoblog are retained at exact tmp paths and hosted; not embedded in this bounded repository packet. Full future receipt publication remains outstanding.",
+    "externalFullFailedLogBindings": [
+      {
+        "source": "/tmp/workforce563-report-failed-primary/job-111313754286.log",
+        "bytes": 89626,
+        "sha256": "d6060b13687e27bd5ea82449e13d4dd871996b051d79fa2152803d1de849b3de",
+        "member": "originals/d6060b13687e27bd5ea82449e13d4dd871996b051d79fa2152803d1de849b3de"
+      },
+      {
+        "source": "/tmp/workforce563-ci-independent/report-failure-20261003T231726127261Z/report-job-whole.log",
+        "bytes": 89626,
+        "sha256": "d6060b13687e27bd5ea82449e13d4dd871996b051d79fa2152803d1de849b3de",
+        "member": "originals/d6060b13687e27bd5ea82449e13d4dd871996b051d79fa2152803d1de849b3de"
+      }
+    ],
+    "externalFullTypeLog": {
+      "path": "/tmp/workforce563-ci-independent/post-failure-current-20261003T232258613767Z/job-111313803028.log",
+      "bytes": 261668,
+      "sha256": "bf76237e100e5b9c687aee5970ae5dd221b2001e95a2c45835300960a2d7cdf9"
+    }
+  },
+  "additionalTypeP2BeforeFix": {
+    "report": "/tmp/workforce563-749-new-owned-type-independent.json",
+    "bytes": 3804,
+    "sha256": "c93ae3e86516012c2dd9fc2b8c7570c7b329419c36115958dd87ed7cfa2f19b4",
+    "nativeTypeConclusion": "SUCCESS by selected baseline; actual compilerEXIT2/1194errors/66pairs and1newownedTS2769; notclean",
+    "fix": "Only contextualNodeJS.ProcessEnv on guard environment; runtime inputs/refusal assertions unchanged; no cast/baseline/check relaxation. Fresh actual hosted disappearance required."
+  },
+  "actualLocalBothFixesChecks": {
+    "atUtc": "2026-10-03T23:28:21.519935+00:00",
+    "checks": [
+      {
+        "name": "eslint",
+        "startedAt": "2026-10-03T23:28:12.248009+00:00",
+        "completedAt": "2026-10-03T23:28:14.899684+00:00",
+        "exitCode": 0,
+        "command": [
+          "npx",
+          "--no-install",
+          "eslint",
+          "scripts/workforce-exception-report-browser-evidence.mjs",
+          "src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts"
+        ],
+        "log": "/tmp/workforce563-env-type-fix-eslint.log"
+      },
+      {
+        "name": "guards",
+        "startedAt": "2026-10-03T23:28:14.899970+00:00",
+        "completedAt": "2026-10-03T23:28:21.519367+00:00",
+        "exitCode": 0,
+        "command": [
+          "npx",
+          "--no-install",
+          "vitest",
+          "run",
+          "src/__tests__/workforce-exception-report-browser-evidence-guard.test.ts",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "--reporter=dot"
+        ],
+        "log": "/tmp/workforce563-env-type-fix-guards.log"
+      }
+    ],
+    "runtimeInputsRefusalAssertionsUnchanged": true,
+    "localCompiler": "NOT RUN per Contabo placement contract; actual next hosted owned diagnostic disappearance required",
+    "newBrowser": "NOT RUN for new fix"
+  }
+}

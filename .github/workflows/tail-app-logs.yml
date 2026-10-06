@@ -107,7 +107,7 @@ jobs:
         run: PYTHONDONTWRITEBYTECODE=1 python3 -I .github/scripts/test_inspect_support_ux_rollout.py
       - name: Verify Support observation diagnostic before production access
         if: ${{ inputs.view == 'support-ux-observation' }}
-        run: node --test .github/scripts/test-inspect-support-ux-observation.mjs
+        run: node --test .github/scripts/test-inspect-support-ux-observation.mjs .github/scripts/test-support-ux-observation-artifact.mjs
       - name: Verify Support readiness diagnostic before production access
         if: ${{ inputs.view == 'support-ux-readiness' }}
         run: node --test .github/scripts/test-inspect-support-ux-readiness.mjs
@@ -169,6 +169,7 @@ jobs:
         env:
           SUPPORT_UX_TENANT: ${{ inputs.support_tenant }}
           SUPPORT_UX_DAY: ${{ inputs.support_day }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
         run: |
           set -euo pipefail
           SLUG_RE='^[a-z0-9]([a-z0-9-]{0,78}[a-z0-9])?$'
@@ -188,11 +189,23 @@ jobs:
           DIAGNOSTIC_STATUS=$?
           set -e
           printf '%s' "$DIAGNOSTIC_OUTPUT" \
-            | node .github/scripts/inspect-support-ux-observation.mjs --validate-output
+            | node .github/scripts/inspect-support-ux-observation.mjs --validate-output > "$RUNNER_TEMP/support-ux-observation-validated.json"
           [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
             echo "::error::Read-only Support observation collection failed"
             exit "$DIAGNOSTIC_STATUS"
           }
+          # Only the existing strict validator's projection reaches this helper.
+          # Never upload DIAGNOSTIC_OUTPUT, process environment or any log file.
+          node .github/scripts/support-ux-observation-artifact.mjs \
+            < "$RUNNER_TEMP/support-ux-observation-validated.json"
+      - name: Retain sanitized Support observation evidence
+        if: ${{ success() && inputs.view == 'support-ux-observation' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-ux-observation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/support-ux-observation-evidence/result.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Tail PM2 logs
         if: ${{ inputs.view == 'logs' }}
         env:

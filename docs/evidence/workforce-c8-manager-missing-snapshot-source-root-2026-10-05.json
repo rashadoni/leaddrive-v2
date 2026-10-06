@@ -1,0 +1,75 @@
+{
+  "atUtc": "2026-10-05T02:47:26.929846+00:00",
+  "status": "EXACT APPLIED SNAPSHOTLESS SOURCE ACCEPTED; FRESH HOSTED REQUIRED",
+  "head": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "base": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "sourceAccepted": true,
+  "runtimeAccepted": false,
+  "normalMergeAllowed": false,
+  "report": {
+    "path": "/tmp/workforce-part41-195f703-whole-source-independent.json",
+    "bytes": 14423,
+    "sha256": "865ffe345431ce65154dedd56488f09ddb238f2c144e43f0a1b803a540946f68"
+  },
+  "audit": {
+    "path": "/tmp/workforce-part41-195f703-whole-source-input-audit-independent.json",
+    "bytes": 1781848,
+    "sha256": "168e980630c3c7bca034c4abb35e7135dbceee92498b028c20428e974594f130"
+  },
+  "wholeDistinctReferencedOriginals": 1206,
+  "actualDirectOriginals": 1204,
+  "actualWholeJSON": 299,
+  "actualWholeUTF8": 1148,
+  "actualWholeBinary": 56,
+  "explicitGit314Whole": true,
+  "missing21OriginalsRetained": true,
+  "all23PatchReconstructed": true,
+  "allNineExactReplacementsReconstructed": true,
+  "protected15Unchanged": true,
+  "runtime58Watched": true,
+  "journalPrefixes8Preserved": true,
+  "core9Direct81Rehashed": true,
+  "bounded5PrecheckpointAndLint90Rules": true,
+  "fullDiff": {
+    "paths": 23,
+    "bytes": 236676,
+    "sha256": "041454d6680962984981bbdf5eb27bd8458142f2f2363fd99c2abed8e8db3f1a",
+    "repoPaths": [
+      "docs/evidence/workforce-c12-dormant-reconciliation-next-plan-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-application-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-bounded-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-lint-config-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-preliminary-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-draft-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-missing-snapshot-unapplied-syntax-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-current-sublane-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-hosted-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-range-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-ready-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-source-root-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-fixed-suite-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-main-quality-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-normal-merge-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-release-clarification-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-release-ip-tls-2026-10-05.json",
+      "docs/evidence/workforce-c8-manager-positive-snapshot-release-root-2026-10-05.json",
+      "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+      "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+      "docs/workforce-hrm-session-log.md",
+      "scripts/workforce-manager-today-browser-evidence.mjs"
+    ]
+  },
+  "nonDocDiff": {
+    "paths": 1,
+    "bytes": 10437,
+    "sha256": "6fe9d39299d5f798f0714afd25bb545d043a6a530df14c9c08a27b81e078507b",
+    "repoPaths": [
+      "scripts/workforce-manager-today-browser-evidence.mjs"
+    ]
+  },
+  "DONE": 82,
+  "nonDONE": 79,
+  "newRowClosure": false,
+  "firstC5AndAllOriginalFailuresPreserved": true
+}

@@ -1,0 +1,229 @@
+{
+  "atUtc": "2026-10-05T04:59:28.578109+00:00",
+  "mergedSha": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "runId": 37264051738,
+  "status": "ACTUAL OWN FOUR LOGS ACCEPTED; PUBLIC/PEER FINAL ACCEPTANCE SEPARATE",
+  "inputs": [
+    {
+      "jobName": "Production build & publish artifact",
+      "jobId": 111617006164,
+      "wholeLog": {
+        "path": "/tmp/workforce-pr583-own-release-primary/whole-logs/111617006164.txt",
+        "bytes": 161407,
+        "sha256": "b4e79054005d9c473ae02fc7dfa2705f12fd0e2fa09e9abb705bc70a21c77924"
+      },
+      "lineCount": 2272
+    },
+    {
+      "jobName": "Quality & security gates",
+      "jobId": 111617006088,
+      "wholeLog": {
+        "path": "/tmp/workforce-pr583-own-release-primary/whole-logs/111617006088.txt",
+        "bytes": 331581,
+        "sha256": "1098d9c29c93dae1056a76877d8b37fdebe256eb86d397deb75f59e9294486e4"
+      },
+      "lineCount": 3275
+    },
+    {
+      "jobName": "Deploy to production & post-deploy smoke",
+      "jobId": 111620636035,
+      "wholeLog": {
+        "path": "/tmp/workforce-pr583-own-release-primary/whole-logs/111620636035.txt",
+        "bytes": 116402,
+        "sha256": "77a20196095b033bc82c4e0b202da79ec251fba9580b9b63c836a63524649b65"
+      },
+      "lineCount": 1373
+    },
+    {
+      "jobName": "Cap retained deploy artifacts",
+      "jobId": 111622164414,
+      "wholeLog": {
+        "path": "/tmp/workforce-pr583-own-release-primary/whole-logs/111622164414.txt",
+        "bytes": 7210,
+        "sha256": "6d98f02976eaff6994e070b26991f045e2af179dac6917053b7e5f613bfaf59c"
+      },
+      "lineCount": 94
+    }
+  ],
+  "buildStamp": {
+    "line": 284,
+    "original": "2026-10-05T04:39:26.6020610Z export const DEPLOY_SHA = \"e26cb0a85168b623ea092fb3e81ece922de20718\"",
+    "text": "export const DEPLOY_SHA = \"e26cb0a85168b623ea092fb3e81ece922de20718\""
+  },
+  "builtAtStamp": {
+    "line": 285,
+    "original": "2026-10-05T04:39:26.6021307Z export const BUILT_AT = \"2026-10-05T04:39:26Z\"",
+    "text": "export const BUILT_AT = \"2026-10-05T04:39:26Z\""
+  },
+  "builtAt": "2026-10-05T04:39:26Z",
+  "compiled": {
+    "line": 331,
+    "original": "2026-10-05T04:47:40.0414646Z \u2713 Compiled successfully in 7.7min",
+    "text": "\u2713 Compiled successfully in 7.7min"
+  },
+  "typeValidationSkipped": {
+    "line": 332,
+    "original": "2026-10-05T04:47:40.0541502Z   Skipping validation of types",
+    "text": "  Skipping validation of types"
+  },
+  "uploadedArtifact": {
+    "line": 2226,
+    "original": "2026-10-05T04:50:58.3621970Z Artifact leaddrive-prod-e26cb0a85168b623ea092fb3e81ece922de20718 has been successfully uploaded! Final size is 444225272 bytes. Artifact ID is 11326231387",
+    "text": "Artifact leaddrive-prod-e26cb0a85168b623ea092fb3e81ece922de20718 has been successfully uploaded! Final size is 444225272 bytes. Artifact ID is 11326231387"
+  },
+  "artifact": {
+    "id": 11326231387,
+    "node_id": "MDg6QXJ0aWZhY3QxMTMyNjIzMTM4Nw==",
+    "name": "leaddrive-prod-e26cb0a85168b623ea092fb3e81ece922de20718",
+    "size_in_bytes": 444225272,
+    "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11326231387",
+    "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11326231387/zip",
+    "expired": false,
+    "digest": "sha256:8dc374a09d61f95088956f408d41f71104b3bd6230a2fe1e832aa587d1f391bd",
+    "created_at": "2026-10-05T04:50:58Z",
+    "updated_at": "2026-10-05T04:50:58Z",
+    "expires_at": "2026-11-04T04:50:55Z",
+    "workflow_run": {
+      "id": 37264051738,
+      "repository_id": 1362346481,
+      "head_repository_id": 1362346481,
+      "head_branch": "main",
+      "head_sha": "e26cb0a85168b623ea092fb3e81ece922de20718"
+    }
+  },
+  "strictSuite18": {
+    "line": 1580,
+    "original": "2026-10-05T04:44:54.7761337Z check-test-baseline: 18 failing file(s), 18 in baseline.",
+    "text": "check-test-baseline: 18 failing file(s), 18 in baseline."
+  },
+  "strictSuiteGuard": {
+    "line": 1581,
+    "original": "2026-10-05T04:44:54.7765311Z \u2705 No new failures, and every baseline entry still fails. Gate passed.",
+    "text": "\u2705 No new failures, and every baseline entry still fails. Gate passed."
+  },
+  "rlsContextGaps": {
+    "line": 693,
+    "original": "2026-10-05T04:37:22.4703244Z RLS-CONTEXT GAPS: 0",
+    "text": "RLS-CONTEXT GAPS: 0"
+  },
+  "workflowFullShaMatches": [
+    {
+      "line": 1298,
+      "original": "2026-10-05T04:58:37.4103420Z attempt 1/3: live revision 'e26cb0a85168b623ea092fb3e81ece922de20718', expected 'e26cb0a85168b623ea092fb3e81ece922de20718'",
+      "text": "attempt 1/3: live revision 'e26cb0a85168b623ea092fb3e81ece922de20718', expected 'e26cb0a85168b623ea092fb3e81ece922de20718'"
+    }
+  ],
+  "workflowPing": [
+    {
+      "line": 1269,
+      "original": "2026-10-05T04:58:37.0194720Z attempt 1/5: /api/v1/ping -> 200",
+      "text": "attempt 1/5: /api/v1/ping -> 200"
+    }
+  ],
+  "featureSmoke": {
+    "line": 1339,
+    "original": "2026-10-05T04:58:37.9479402Z Feature smoke passed: page 200, CSS + JS assets 200",
+    "text": "Feature smoke passed: page 200, CSS + JS assets 200"
+  },
+  "productionDirectRls": {
+    "line": 1155,
+    "original": "2026-10-05T04:58:35.5046490Z [rls-coverage] role: hermes \u00b7 tenant tables: 553 \u00b7 checked: 553 \u00b7 enforced: 553 \u00b7 leaks: 0 \u00b7 unreadable: 0 \u00b7 warnings: 0",
+    "text": "[rls-coverage] role: hermes \u00b7 tenant tables: 553 \u00b7 checked: 553 \u00b7 enforced: 553 \u00b7 leaks: 0 \u00b7 unreadable: 0 \u00b7 warnings: 0"
+  },
+  "productionRlsCounts": {
+    "tenantTables": 553,
+    "checked": 553,
+    "enforced": 553,
+    "leaks": 0,
+    "unreadable": 0,
+    "warnings": 0
+  },
+  "productionChildRls": {
+    "line": 1157,
+    "original": "2026-10-05T04:58:35.5049887Z [rls-coverage] child tables with no organizationId (isolated by application code only): 22 \u00b7 reviewed: 21 \u00b7 NOT YET REVIEWED: 1",
+    "text": "[rls-coverage] child tables with no organizationId (isolated by application code only): 22 \u00b7 reviewed: 21 \u00b7 NOT YET REVIEWED: 1"
+  },
+  "childCounts": {
+    "total": 22,
+    "reviewed": 21,
+    "unreviewed": 1
+  },
+  "fullGlobalChildReviewAccepted": false,
+  "recoveryPlainObservations": [
+    {
+      "line": 596,
+      "original": "2026-10-05T04:57:37.5173040Z [06:57:37] Recovery gate: plain mode \u2014 encrypted recovery-point commissioning (BACKUP_ENCRYPTION=age) is not active on this host; a Fund cutover will use a verified plain pg_dump recovery point instead of the reviewed age/Object-Lock ceremony",
+      "text": "[06:57:37] Recovery gate: plain mode \u2014 encrypted recovery-point commissioning (BACKUP_ENCRYPTION=age) is not active on this host; a Fund cutover will use a verified plain pg_dump recovery point instead of the reviewed age/Object-Lock ceremony"
+    },
+    {
+      "line": 669,
+      "original": "2026-10-05T04:58:19.6955458Z [06:58:19] Recovery gate: plain mode \u2014 installing release-owned operations without an offline commissioning certificate; recovery programs remain inert until docs/BACKUP_RUNBOOK.md is completed",
+      "text": "[06:58:19] Recovery gate: plain mode \u2014 installing release-owned operations without an offline commissioning certificate; recovery programs remain inert until docs/BACKUP_RUNBOOK.md is completed"
+    },
+    {
+      "line": 920,
+      "original": "2026-10-05T04:58:28.5942671Z [06:58:28] Recovery gate: plain mode \u2014 skipping the immutable log-evidence genesis; off-box log shipping stays inactive until docs/BACKUP_RUNBOOK.md is completed",
+      "text": "[06:58:28] Recovery gate: plain mode \u2014 skipping the immutable log-evidence genesis; off-box log shipping stays inactive until docs/BACKUP_RUNBOOK.md is completed"
+    }
+  ],
+  "stoppedRecoveryTimers": [
+    {
+      "line": 891,
+      "original": "2026-10-05T04:58:27.8964824Z [06:58:27] Installed immutable release-owned operations for full-recovery; the backup subsystem is not commissioned on this host, so its four timers stay stopped (docs/BACKUP_RUNBOOK.md commissions them)",
+      "text": "[06:58:27] Installed immutable release-owned operations for full-recovery; the backup subsystem is not commissioned on this host, so its four timers stay stopped (docs/BACKUP_RUNBOOK.md commissions them)"
+    }
+  ],
+  "offBoxInactive": [
+    {
+      "line": 920,
+      "original": "2026-10-05T04:58:28.5942671Z [06:58:28] Recovery gate: plain mode \u2014 skipping the immutable log-evidence genesis; off-box log shipping stays inactive until docs/BACKUP_RUNBOOK.md is completed",
+      "text": "[06:58:28] Recovery gate: plain mode \u2014 skipping the immutable log-evidence genesis; off-box log shipping stays inactive until docs/BACKUP_RUNBOOK.md is completed"
+    }
+  ],
+  "enterpriseRecoveryAccepted": false,
+  "retentionObservations": [
+    {
+      "line": 92,
+      "original": "2026-10-05T04:58:46.2379494Z ##[notice]\u0436\u0438\u0432\u044b\u0445 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u043e\u0432 \u0432\u044b\u043a\u0430\u0442\u043a\u0438: 21, \u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u043c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 20",
+      "text": "##[notice]\u0436\u0438\u0432\u044b\u0445 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u043e\u0432 \u0432\u044b\u043a\u0430\u0442\u043a\u0438: 21, \u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u043c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 20"
+    },
+    {
+      "line": 93,
+      "original": "2026-10-05T04:58:46.8036973Z ##[notice]\u0443\u0434\u0430\u043b\u0435\u043d\u043e 1, \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c 0, \u043e\u0441\u0442\u0430\u043b\u043e\u0441\u044c 20",
+      "text": "##[notice]\u0443\u0434\u0430\u043b\u0435\u043d\u043e 1, \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c 0, \u043e\u0441\u0442\u0430\u043b\u043e\u0441\u044c 20"
+    }
+  ],
+  "retentionCounts": {
+    "observedBefore": 21,
+    "keep": 20,
+    "deleted": 1,
+    "failed": 0,
+    "remaining": 20
+  },
+  "manualLanes": [
+    {
+      "id": 111617006260,
+      "name": "Validate manual deployment inputs",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 111617006909,
+      "name": "Recover verified retained production artifact",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 111617040847,
+      "name": "Approve historical bootstrap-resume build",
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  ],
+  "noRecoverySubstitution": true,
+  "ownMainFullCompiler": "NOT RUN \u2014 production build skips type validation",
+  "compilerGloballyClean": false,
+  "suiteGloballyClean": false,
+  "DBAdapterOrCronActivation": false,
+  "newRowClosure": false
+}

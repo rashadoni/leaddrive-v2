@@ -1,0 +1,71 @@
+{
+  "atUtc": "2026-10-05T03:12:24.053966+00:00",
+  "status": "CURRENT EXACT195 SNAPSHOTLESS HOSTED WHOLE RECEIPTS ACCEPTED",
+  "head": "195f703add1d2a8d4e694a714b5c3191a6ffefb3",
+  "base": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "report": {
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-green-independent.json",
+    "bytes": 40770,
+    "sha256": "424036e8bd66268bedf07fe5874d7359de892675112636329ba67f40f3b9153d"
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-pr582-195f703-current-hosted-green-input-audit-independent.json",
+    "bytes": 2033306,
+    "sha256": "899b325537321179ecb88410e6562dbfc0d588a77f6b4dba5deb84baf2ed3a6e"
+  },
+  "wholeCounts": {
+    "originals": 1735,
+    "git": 111,
+    "json": 488,
+    "utf8": 1622,
+    "members": 58,
+    "png": 56
+  },
+  "rootCurrentManager": {
+    "path": "/tmp/workforce-pr582-195f703-current-manager-sublane-primary.json",
+    "bytes": 31742,
+    "sha256": "66446b830dfe24da0c5f792a53dfca3c5cf72bd73e3ac89feba46ea592237fca"
+  },
+  "actualTotalDiagnostics": 1169,
+  "actualFamilyCount": 35,
+  "actualExitCode": 2,
+  "frozenGatedPairs66Exact": true,
+  "allSelectedOwned79AllFamilyDiagnosticsZero": true,
+  "managerOwned60Typed42": true,
+  "combinedOwned79Typed55": true,
+  "allFiveActions15368Success": true,
+  "allFourApplicableCurrentWorkflowsSuccess": true,
+  "manager9Positive3Sqlstate10Facts20Rls21Native3Focus3Capture27Cleanup11Pass": true,
+  "currentMissingAll3SnapshotsUnavailableAccepted": true,
+  "strictSuite18Of18Nonclean": true,
+  "rootActualOriginalPNGViews": 6,
+  "peerActualOriginalPNGViews": 56,
+  "wholePagePixelNonOcclusion": false,
+  "normalMergeAllowed": true,
+  "productionReleaseAccepted": false,
+  "historicalFirstC5BlockedPreserved": true,
+  "noPriorOriginalsOverwritten": true,
+  "core9Direct81Prefix8Preserved": true,
+  "compilerClean": false,
+  "suiteClean": false,
+  "accounting": {
+    "uniqueCriteriaIds": 161,
+    "historicalRawRows": 169,
+    "DONE": 82,
+    "nonDONE": 79,
+    "statusCounts": {
+      "DONE": 82,
+      "PARTIAL (OWNER ATTESTATION)": 1,
+      "PARTIAL": 55,
+      "OWNER DECISION": 6,
+      "PLANNED": 14,
+      "BLOCKED": 3
+    },
+    "passedGates": 14,
+    "totalGates": 15,
+    "C8Percent": 45,
+    "overallPercent": 59,
+    "newRowClosure": false
+  },
+  "nextAction": "Fresh-main ordinary exact-head normal merge; own merged-main deploy.yml/fullSHA artifact/strict public proof required"
+}

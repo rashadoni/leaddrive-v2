@@ -7,8 +7,9 @@ export default function EntitlementsHelpAz() {
   return (
     <div className="space-y-6">
       <HelpScenario persona="Siz dəstək meneceri və ya administratorsunuz" goal="Müştərinin şərtlərini tapmaq, riskləri yoxlamaq və müqaviləni aktivləşdirməyə hazırlamaq">
-        Dəstək → Müştəri dəstək şərtləri bölməsini açın. Şərt şirkəti SLA siyasəti, dəstək səviyyəsi, qüvvədəolma müddəti və mərhələ qaydaları ilə əlaqələndirir. Siyahı yalnız təşkilatınıza aiddir.
+        Dəstək → Dəstək şərtləri bölməsini açın. Şərt şirkəti SLA siyasəti, dəstək səviyyəsi, qüvvədəolma müddəti və mərhələ qaydaları ilə əlaqələndirir. Siyahı yalnız təşkilatınıza aiddir.
       </HelpScenario>
+      <HelpCallout kind="tip"><p>Məsələn: müştəri üçün şərtlərin qaralamasını yaradın, SLA siyasətini seçin, mərhələ qaydalarını köçürmək üçün şablonu tətbiq edin, nüsxəni yoxlayın, sonra şərtləri aktivləşdirin. Şablonun sonrakı dəyişiklikləri köçürülmüş qaydaları yeniləmir. SLA siyasəti cavab və həll hədəflərini, şərtlər isə əlavə mərhələ qaydalarını müəyyən edir.</p></HelpCallout>
       <HelpSection title="Lazımi şərtləri tapın">
         <HelpStep n={1}>
           <p>Yığcam xülasədə 30 gün ərzində bitən şərtlər, diqqət tələb edən mərhələlər və əhatəsi olmayan aktiv şirkətlər göstərilir. Müvafiq risk filtrini tətbiq etmək üçün bitmə və ya diqqət göstəricisinə basın.</p>

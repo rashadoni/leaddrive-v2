@@ -82,7 +82,9 @@ interface ReportData {
       pendingClosure: number
       reopened: number
       autoClosedLast30: number
-      slaComplianceRate: number
+      slaComplianceRate: number | null
+      slaComplianceSampleSize: number
+      slaCompliantTickets: number
       avgResolutionHours: number
       avgFirstResponseMinutes: number
     }
@@ -506,9 +508,21 @@ export default function ReportsPage() {
     return "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300"
   }
 
+  const slaValue = !serviceDesk || serviceDesk.totals.slaComplianceRate === null
+    ? t("noData")
+    : `${serviceDesk.totals.slaComplianceRate}%`
+  const slaSample = serviceDesk ? t("slaSample", {
+    count: serviceDesk.totals.slaComplianceSampleSize,
+    met: serviceDesk.totals.slaCompliantTickets,
+  }) : ""
+  const slaScope = t("slaScope", { period: t("allTime"), count: 0 })
+  const slaHint = serviceDesk?.totals.slaComplianceSampleSize === 0
+    ? t("slaEmptySample")
+    : t("slaSnapshotMeaning")
+
   const serviceDeskMetrics = serviceDesk ? [
     { label: t("activeTickets"), value: serviceDesk.totals.active.toLocaleString(), icon: <Inbox className="h-4 w-4" />, tone: "text-blue-600" },
-    { label: t("slaCompliance"), value: `${serviceDesk.totals.slaComplianceRate}%`, icon: <ShieldCheck className="h-4 w-4" />, tone: "text-green-600" },
+    { label: t("slaActiveSnapshot"), value: slaValue, hint: `${slaSample}. ${slaHint}`, icon: <ShieldCheck className="h-4 w-4" />, tone: "text-foreground" },
     { label: t("slaBreached"), value: serviceDesk.totals.slaBreached.toLocaleString(), icon: <AlertTriangle className="h-4 w-4" />, tone: "text-red-600" },
     { label: t("slaAtRisk"), value: serviceDesk.totals.slaAtRisk.toLocaleString(), icon: <Clock className="h-4 w-4" />, tone: "text-amber-600" },
     { label: t("firstResponseBreached"), value: serviceDesk.totals.firstResponseBreached.toLocaleString(), icon: <FileText className="h-4 w-4" />, tone: "text-red-600" },
@@ -525,7 +539,10 @@ export default function ReportsPage() {
     const rows = [
       [t("serviceDeskOps"), ""],
       [t("activeTickets"), serviceDesk.totals.active],
-      [t("slaCompliance"), `${serviceDesk.totals.slaComplianceRate}%`],
+      [t("slaActiveSnapshot"), slaValue],
+      [t("slaSampleLabel"), slaSample],
+      [t("slaScopeLabel"), slaScope],
+      [t("slaMeaningLabel"), slaHint],
       [t("slaBreached"), serviceDesk.totals.slaBreached],
       [t("slaAtRisk"), serviceDesk.totals.slaAtRisk],
       [t("firstResponseBreached"), serviceDesk.totals.firstResponseBreached],
@@ -859,14 +876,16 @@ export default function ReportsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              <p data-testid="reports-sla-scope" className="text-xs text-muted-foreground">{slaScope}</p>
               <div className="grid overflow-hidden rounded-md border bg-background sm:grid-cols-2 lg:grid-cols-5">
                 {serviceDeskMetrics.map(metric => (
                   <div key={metric.label} className="min-h-[82px] border-b border-r p-3 last:border-r-0">
                     <div className={cn("mb-2 flex items-center gap-1.5 text-xs font-medium", metric.tone)}>
                       {metric.icon}
-                      <span className="truncate">{metric.label}</span>
+                      <span className="min-w-0 break-words">{metric.label}</span>
                     </div>
                     <div className="text-xl font-bold tracking-tight">{metric.value}</div>
+                    {metric.hint && <p data-testid="reports-sla-sample" className="mt-1 text-xs text-muted-foreground">{metric.hint}</p>}
                   </div>
                 ))}
               </div>

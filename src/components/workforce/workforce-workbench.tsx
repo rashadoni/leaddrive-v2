@@ -299,7 +299,7 @@ function parseTimesheetExportRow(value: unknown): TimesheetExportPreviewRow | nu
 
 function parseTimesheetExportPreview(value: unknown): TimesheetExportPreview | null {
   if (!isRecord(value) || !isRecord(value.approval) || !isRecord(value.scope) || !isRecord(value.delivery)) return null
-  const { approval, scope, delivery } = value
+  const { approval, scope, delivery, warningCodes } = value
   if (
     typeof approval.id !== "string"
     || (approval.recordKind !== "APPROVAL" && approval.recordKind !== "CORRECTION")
@@ -322,21 +322,24 @@ function parseTimesheetExportPreview(value: unknown): TimesheetExportPreview | n
     || delivery.purpose !== "HR_RECORD_REVIEW"
     || delivery.recipient !== "SESSION_DIRECT_DOWNLOAD"
     || delivery.artifactPersistence !== "NONE"
-    || !Array.isArray(value.warningCodes)
-    || value.warningCodes.length !== TIMESHEET_EXPORT_WARNING_CODES.size
-    || value.warningCodes.some((code) => typeof code !== "string" || !TIMESHEET_EXPORT_WARNING_CODES.has(code as TimesheetExportWarningCode))
-    || [...TIMESHEET_EXPORT_WARNING_CODES].some((code) => !value.warningCodes.includes(code))
+    || !Array.isArray(warningCodes)
+    || warningCodes.length !== TIMESHEET_EXPORT_WARNING_CODES.size
+    || warningCodes.some((code) => typeof code !== "string" || !TIMESHEET_EXPORT_WARNING_CODES.has(code as TimesheetExportWarningCode))
+    || [...TIMESHEET_EXPORT_WARNING_CODES].some((code) => !warningCodes.includes(code))
     || !Array.isArray(value.rows)
     || value.rows.length !== scope.rowCount
   ) return null
+  const employeeId = scope.employee.id
+  const periodStart = scope.periodStart
+  const periodEnd = scope.periodEnd
   const rows = value.rows.map(parseTimesheetExportRow)
   if (rows.some((row) => row == null)) return null
   const safeRows = rows as TimesheetExportPreviewRow[]
   if (
     safeRows.some((row) => (
-      row.agentId !== scope.employee.id
-      || row.workDate < scope.periodStart
-      || row.workDate > scope.periodEnd
+      row.agentId !== employeeId
+      || row.workDate < periodStart
+      || row.workDate > periodEnd
     ))
     || new Set(safeRows.map((row) => row.workdayId)).size !== safeRows.length
   ) return null
@@ -360,7 +363,7 @@ function parseTimesheetExportPreview(value: unknown): TimesheetExportPreview | n
       recipient: delivery.recipient,
       artifactPersistence: delivery.artifactPersistence,
     },
-    warningCodes: value.warningCodes as TimesheetExportWarningCode[],
+    warningCodes: warningCodes as TimesheetExportWarningCode[],
     rows: safeRows,
   }
 }

@@ -41,11 +41,13 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
   const parsed = parseBody(ContactBulkAssignmentExecuteSchema, await req.json().catch(() => null))
   if (!parsed.ok) return parsed.response
   const body = parsed.data
-  if (body.targetAgentId && !isAgentInRouteScope(actor, body.targetAgentId)) {
-    return NextResponse.json({
-      error: "Agent is outside your scope",
-      code: "MTM_CONTACT_ASSIGNMENT_SCOPE_DENIED",
-    }, { status: 403 })
+  for (const agentId of [body.targetAgentId, body.sourceAgentId]) {
+    if (agentId && !isAgentInRouteScope(actor, agentId)) {
+      return NextResponse.json({
+        error: "Agent is outside your scope",
+        code: "MTM_CONTACT_ASSIGNMENT_SCOPE_DENIED",
+      }, { status: 403 })
+    }
   }
   const requestHash = contactAssignmentRequestHash(body)
   const prior = await prisma.mtmContactAssignmentOperation.findUnique({

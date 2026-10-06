@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { CheckCircle2, CircleAlert, Clock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,10 @@ import {
   type SlaPolicySummaryInput,
 } from "@/lib/ticketing/sla-policy"
 
+import type { SlaBusinessCalendar } from "@/lib/ticketing/sla-business-calendar"
+
 interface SlaPolicyInitial {
+  businessCalendar?: SlaBusinessCalendar | null
   id?: string
   name?: string
   priority?: SlaPolicyPriority
@@ -62,6 +65,7 @@ export function SlaPolicyForm({
   orgId,
 }: SlaPolicyFormProps) {
   const t = useTranslations("slaPolicyUi")
+  const locale = useLocale()
   const tc = useTranslations("common")
   const isEdit = Boolean(initialData?.id)
   const [form, setForm] = useState<SlaFormState>({
@@ -74,6 +78,26 @@ export function SlaPolicyForm({
     businessHoursOnly: true,
     isActive: true,
   })
+  const [calendarAction, setCalendarAction] = useState<"preserve" | "capture" | "clear">("preserve")
+  const [calendarSource, setCalendarSource] = useState<SlaBusinessCalendar | null>(null)
+  const [calendarLoading, setCalendarLoading] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    const controller = new AbortController()
+    setCalendarLoading(true)
+    setCalendarSource(null)
+    fetch("/api/v1/sla-policies/calendar", {
+      headers: orgId ? { "x-organization-id": orgId } : {},
+      signal: controller.signal,
+    }).then(async response => {
+      const payload = await response.json()
+      if (!controller.signal.aborted && response.ok && payload.success) setCalendarSource(payload.data)
+    }).catch(() => {}).finally(() => { if (!controller.signal.aborted) setCalendarLoading(false) })
+    return () => controller.abort()
+  }, [open, orgId])
+  const selectedCalendar = calendarAction === "capture" ? calendarSource
+    : calendarAction === "preserve" ? initialData?.businessCalendar : null
+  const workingClock = Boolean(form.businessHoursOnly && selectedCalendar)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
 
@@ -92,8 +116,10 @@ export function SlaPolicyForm({
       isActive: initialData?.isActive ?? true,
     })
     setSaveError("")
+    setCalendarAction("preserve")
   }, [
     initialData?.businessHoursOnly,
+    initialData?.businessCalendar,
     initialData?.firstResponseHours,
     initialData?.id,
     initialData?.isActive,
@@ -126,9 +152,9 @@ export function SlaPolicyForm({
   }
 
   const previewItems = [
-    { text: t("responsePreview", { duration: durationLabel(responseHoursDecimal) }), warning: false },
-    { text: t("resolutionPreview", { duration: durationLabel(resolutionHoursDecimal) }), warning: false },
-    { text: form.businessHoursOnly ? t("businessClockPreview") : t("continuousClockPreview"), warning: form.businessHoursOnly },
+    { text: workingClock ? t("workingResponsePreview", { duration: durationLabel(responseHoursDecimal) }) : t("responsePreview", { duration: durationLabel(responseHoursDecimal) }), warning: false },
+    { text: workingClock ? t("workingResolutionPreview", { duration: durationLabel(resolutionHoursDecimal) }) : t("resolutionPreview", { duration: durationLabel(resolutionHoursDecimal) }), warning: false },
+    { text: workingClock ? t("workingCalendarHint") : form.businessHoursOnly ? t("businessClockPreview") : t("continuousClockPreview"), warning: form.businessHoursOnly && !workingClock },
     { text: t("escalationPreview"), warning: false },
   ]
 
@@ -149,6 +175,10 @@ export function SlaPolicyForm({
       return
     }
 
+    if (calendarAction === "capture" && (!calendarSource || !form.businessHoursOnly)) {
+      setSaveError(t("calendarUnavailable"))
+      return
+    }
     setSaving(true)
     try {
       const response = await fetch(isEdit ? `/api/v1/sla-policies/${initialData!.id}` : "/api/v1/sla-policies", {
@@ -163,12 +193,16 @@ export function SlaPolicyForm({
           firstResponseHours: responseHoursDecimal,
           resolutionHours: resolutionHoursDecimal,
           businessHoursOnly: form.businessHoursOnly,
+          businessCalendarAction: calendarAction,
+          ...(calendarAction === "capture" && calendarSource ? { expectedCalendarUpdatedAt: calendarSource.sourceUpdatedAt } : {}),
           isActive: form.isActive,
         }),
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
-        const message = payload?.code === "ACTIVE_PRIORITY_CONFLICT"
+        const message = payload?.code === "SLA_CALENDAR_SOURCE_CHANGED" ? t("calendarSourceChanged")
+          : String(payload?.code || "").startsWith("SLA_CALENDAR_") ? t("calendarInvalid")
+          : payload?.code === "ACTIVE_PRIORITY_CONFLICT"
           ? t("priorityConflictError", { priority: t(`priority.${form.priority}`) })
           : payload?.code === "RESOLUTION_BEFORE_RESPONSE"
             ? t("targetOrderError")
@@ -220,7 +254,7 @@ export function SlaPolicyForm({
             <div className="grid gap-4 md:grid-cols-2">
               <TimeTarget
                 title={t("firstResponseLabel")}
-                help={t("firstResponseHelp")}
+                help={t(workingClock ? "workingResponseHelp" : "firstResponseHelp")}
                 hours={form.responseHours}
                 minutes={form.responseMinutes}
                 hoursLabel={t("responseHoursInput")}
@@ -233,7 +267,7 @@ export function SlaPolicyForm({
               />
               <TimeTarget
                 title={t("resolutionLabel")}
-                help={t("resolutionHelp")}
+                help={t(workingClock ? "workingResolutionHelp" : "resolutionHelp")}
                 hours={form.resolutionHours}
                 minutes={form.resolutionMinutes}
                 hoursLabel={t("resolutionHoursInput")}
@@ -264,6 +298,30 @@ export function SlaPolicyForm({
                 <span><span className="block text-sm font-medium">{t("activeStatus")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("activeHelp")}</span></span>
               </label>
             </div>
+
+            <section className="space-y-2 rounded-lg border p-3" aria-labelledby="sla-calendar-title">
+              <Label id="sla-calendar-title" htmlFor="sla-calendar-selection">{t("calendarSelection")}</Label>
+              <Select id="sla-calendar-selection" value={calendarAction} onChange={event => {
+                const value = event.target.value as "preserve" | "capture" | "clear"
+                setCalendarAction(value)
+                if (value === "capture") update("businessHoursOnly", true)
+              }} className="min-h-11">
+                <option value="preserve">{initialData?.businessCalendar ? t("calendarKeep") : t("calendarLegacy")}</option>
+                <option value="capture" disabled={!calendarSource || calendarLoading}>{t("calendarCapture")}</option>
+                <option value="clear">{t("calendarClear")}</option>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t("calendarProspective")}</p>
+              {!calendarSource && !calendarLoading && <p className="text-xs text-muted-foreground">{t("calendarUnavailable")}</p>}
+              {selectedCalendar && <details className="rounded border p-2 text-sm">
+                <summary className="min-h-11 cursor-pointer rounded-md py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("calendarSummary", { timezone: selectedCalendar.timezone })}</summary>
+                <dl className="space-y-1">{(["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const).map((key, index) => {
+                  const day = selectedCalendar.schedule[key]
+                  return <div key={key} className="flex flex-wrap justify-between gap-2"><dt>{new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 7 + index)))}</dt><dd>{day?.enabled ? day.intervals.map(interval => `${interval.start}–${interval.end}`).join(", ") || t("calendarClosed") : t("calendarClosed")}</dd></div>
+                })}</dl>
+                <p className="mt-2 text-xs">{t("calendarHolidays", { count: selectedCalendar.holidays.length })}</p>
+                <ul className="mt-1 space-y-1 text-xs">{selectedCalendar.holidays.map(holiday => <li key={holiday.date}>{holiday.date}{holiday.name ? ` — ${holiday.name}` : ""}: {holiday.intervals?.length ? holiday.intervals.map(interval => `${interval.start}–${interval.end}`).join(", ") : holiday.closed !== false ? t("calendarClosed") : t("calendarRegularDay")}</li>)}</ul>
+              </details>}
+            </section>
 
             <section data-testid="sla-policy-preview" aria-labelledby="sla-preview-title" className="rounded-xl border bg-muted/20 p-3">
               <h3 id="sla-preview-title" className="flex items-center gap-2 text-sm font-semibold"><Clock className="h-4 w-4 text-muted-foreground" />{t("previewTitle")}</h3>

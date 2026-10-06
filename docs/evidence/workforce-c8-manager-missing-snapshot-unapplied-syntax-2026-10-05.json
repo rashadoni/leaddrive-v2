@@ -1,0 +1,34 @@
+{
+  "atUtc": "2026-10-05T01:27:44.412717+00:00",
+  "status": "PREPARATION SYNTAX PASS; APPLICATION/EXECUTION NOT RUN",
+  "draft": {
+    "path": "/tmp/workforce-manager-snapshotless-future-draft-primary/unapplied-harness-draft.mjs",
+    "bytes": 62849,
+    "sha256": "dd70ea78d719d521b8ccfd39ec31b93cbf77963a3b8131685aae76a51f40cb16"
+  },
+  "resources": {
+    "path": "/tmp/workforce-manager-snapshotless-future-draft-primary/syntax-resources-original.txt",
+    "bytes": 431,
+    "sha256": "40885eb33b4bc713dc230f50d7169b3e52a76f4203256aba17c99821fc740cc9"
+  },
+  "command": [
+    "/home/codex-alt/.local/bin/node",
+    "--check",
+    "/tmp/workforce-manager-snapshotless-future-draft-primary/unapplied-harness-draft.mjs"
+  ],
+  "exitCode": 0,
+  "stdout": {
+    "path": "/tmp/workforce-manager-snapshotless-future-draft-primary/syntax-stdout-original",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "path": "/tmp/workforce-manager-snapshotless-future-draft-primary/syntax-stderr-original",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "harnessExecuted": false,
+  "applicationSourceMutated": false,
+  "realPostgresBrowserCompilerSuiteBuild": "NOT RUN for future draft",
+  "applyRequiresOwn581Release": true
+}

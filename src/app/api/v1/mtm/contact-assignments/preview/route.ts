@@ -22,8 +22,10 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
   }
   const parsed = parseBody(ContactBulkAssignmentPreviewSchema, await req.json().catch(() => null))
   if (!parsed.ok) return parsed.response
-  if (parsed.data.targetAgentId && !isAgentInRouteScope(actor, parsed.data.targetAgentId)) {
-    return NextResponse.json({ error: "Agent is outside your scope", code: "MTM_CONTACT_ASSIGNMENT_SCOPE_DENIED" }, { status: 403 })
+  for (const agentId of [parsed.data.targetAgentId, parsed.data.sourceAgentId]) {
+    if (agentId && !isAgentInRouteScope(actor, agentId)) {
+      return NextResponse.json({ error: "Agent is outside your scope", code: "MTM_CONTACT_ASSIGNMENT_SCOPE_DENIED" }, { status: 403 })
+    }
   }
   const preview = await buildContactAssignmentPreview(prisma, {
     organizationId: auth.orgId,

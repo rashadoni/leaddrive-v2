@@ -9,7 +9,7 @@ import { SupportPageShell } from "@/components/support/support-page-shell"
 import { AgentSkillsManager } from "@/components/support/agent-skills-manager"
 import { QueueManager } from "@/components/support/queue-manager"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
-import { useAutoTour } from "@/components/tour/tour-provider"
+import { useAutoTour, useTour } from "@/components/tour/tour-provider"
 import { Button } from "@/components/ui/button"
 import {
   normalizeRoutingSkills,
@@ -23,10 +23,11 @@ type MobileView = "queues" | "agents"
 export default function SkillRoutingPage() {
   const t = useTranslations("skillRouting")
   useAutoTour("skillRouting")
+  const { activeTour, currentStep } = useTour()
   const [queues, setQueues] = useState<RoutingQueue[]>([])
   const [agents, setAgents] = useState<RoutingAgent[]>([])
   const [selectedQueueId, setSelectedQueueId] = useState<string | null>(null)
-  const [mobileView, setMobileView] = useState<MobileView>("queues")
+  const [preferredMobileView, setMobileView] = useState<MobileView>("queues")
   const [queuesLoading, setQueuesLoading] = useState(true)
   const [agentsLoading, setAgentsLoading] = useState(true)
   const [queuesError, setQueuesError] = useState("")
@@ -103,6 +104,11 @@ export default function SkillRoutingPage() {
     ...agents.flatMap((agent) => agent.skills),
   ]), [agents, queues])
   const partial = Boolean(queuesError) !== Boolean(agentsError) && !queuesLoading && !agentsLoading
+
+  // Reveal the target panel during the tour, without overwriting the user's selected tab.
+  const mobileView = activeTour === "skillRouting" && currentStep > 0
+    ? currentStep === 1 ? "queues" : "agents"
+    : preferredMobileView
 
   const selectQueue = (id: string) => {
     setSelectedQueueId(id)

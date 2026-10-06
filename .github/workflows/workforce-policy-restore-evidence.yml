@@ -1,0 +1,194 @@
+name: Workforce policy restore writer evidence
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/workforce-policy-restore-evidence.yml"
+      - "scripts/_rls.mjs"
+      - "scripts/ci/workforce-policy-restore-fixture.mjs"
+      - "scripts/ci/workforce-policy-restore-base-row.mjs"
+      - "scripts/ci/workforce-policy-restore-pre-anchor.mjs"
+      - "scripts/ci/fixtures/workforce-policy-restore-writer.sql"
+      - "scripts/ci/fixtures/workforce-manager-today-browser.sql"
+      - "scripts/ci/fixtures/workforce-policy-version-browser.sql"
+      - "scripts/workforce-policy-restore-api-evidence.mjs"
+      - "scripts/workforce-policy-restore-browser-evidence.mjs"
+      - "src/__tests__/*workforce-policy-restore*.test.ts"
+      - "src/components/workforce/workforce-policy-restore-draft.tsx"
+      - "src/components/workforce/workforce-policy-version-comparison.tsx"
+      - "src/components/workforce/workforce-policy-future-window-preview.tsx"
+      - "src/app/(dashboard)/workforce/configuration/policy-versions/page.tsx"
+      - "src/app/(dashboard)/layout.tsx"
+      - "src/components/providers.tsx"
+      - "src/components/ui/button.tsx"
+      - "src/components/ui/input.tsx"
+      - "src/components/ui/select.tsx"
+      - "messages/*.json"
+      - "src/app/api/v1/workforce/configuration/policies/search/route.ts"
+      - "src/app/api/v1/workforce/configuration/policies/compare/route.ts"
+      - "src/lib/rate-limit.ts"
+      - "src/lib/workforce/policy*.ts"
+      - "src/lib/workforce/configuration-management.ts"
+      - "src/lib/workforce/configuration-route.ts"
+      - "src/lib/workforce/access*.ts"
+      - "src/lib/workforce/granular-access-rollout.ts"
+      - "src/lib/workforce/sensitive-operation-log.ts"
+      - "src/lib/workforce/sensitive-response.ts"
+      - "src/app/api/v1/workforce/configuration/policies/*/restore-draft/route.ts"
+      - "src/lib/prisma.ts"
+      - "src/lib/rls-context.ts"
+      - "src/lib/with-workforce-rls-auth.ts"
+      - "src/lib/with-rls.ts"
+      - "src/lib/api-auth.ts"
+      - "src/lib/auth.ts"
+      - "src/lib/permissions.ts"
+      - "src/lib/tenant-capabilities.ts"
+      - "src/lib/request-ip.ts"
+      - "src/lib/mtm-settings.ts"
+      - "src/lib/mtm/mobile-week.ts"
+      - "src/lib/timezone.ts"
+      - "src/proxy.ts"
+      - "prisma/schema.prisma"
+      - "prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql"
+      - "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql"
+      - "prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql"
+      - "prisma/migrations/20260829140000_workforce_system_provisioning_defaults/migration.sql"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+concurrency:
+  group: workforce-policy-restore-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  restore-writer:
+    name: Real PostgreSQL, authorized API and rendered policy restore UI evidence
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CI: "true"
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_TELEMETRY_DISABLED: "1"
+      LEADDRIVE_DISABLE_SERVICE_WORKER: "1"
+      WF_POLICY_RESTORE_POSTGRES: "1"
+      WF_POLICY_RESTORE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      WF_POLICY_RESTORE_BASE_SHA: ${{ github.event.pull_request.base.sha || 'c735c1be23cf19a4a948aed4b855e6070b084187' }}
+      WF_POLICY_RESTORE_OUTPUT_DIR: artifacts/workforce-policy-restore
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: workforce_manager_today_browser
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: [5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d workforce_manager_today_browser"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - name: Checkout candidate merge and exact base
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Resolve fenced ephemeral ports and masked secrets
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PG_PORT"
+          [[ "$WF_POLICY_RESTORE_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$WF_POLICY_RESTORE_BASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          WF_RESTORE_PASSWORD="$(openssl rand -hex 24)"
+          WF_READ_PASSWORD="$(openssl rand -hex 24)"
+          WF_AUTH_SECRET="$(openssl rand -hex 32)"
+          WF_PII_SECRET="$(openssl rand -hex 32)"
+          APP_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
+          for value in "$WF_RESTORE_PASSWORD" "$WF_READ_PASSWORD" "$WF_AUTH_SECRET" "$WF_PII_SECRET"; do echo "::add-mask::$value"; done
+          {
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_manager_today_browser"
+            echo "DATABASE_URL=postgresql://wf_policy_restore:${WF_RESTORE_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_manager_today_browser?connection_limit=4"
+            echo "WF_RESTORE_PASSWORD=$WF_RESTORE_PASSWORD"
+            echo "WF_READ_PASSWORD=$WF_READ_PASSWORD"
+            echo "APP_PORT=$APP_PORT"
+            echo "WF_POLICY_RESTORE_BASE_URL=http://localhost:${APP_PORT}"
+            echo "NEXTAUTH_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_URL=http://localhost:${APP_PORT}"
+            echo "APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_SECRET=$WF_AUTH_SECRET"
+            echo "NEXTAUTH_SECRET=$WF_AUTH_SECRET"
+            echo "TENANT_PII_MASTER_KEY=$WF_PII_SECRET"
+          } >> "$GITHUB_ENV"
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install candidate dependencies
+        run: npm ci
+      - name: Apply selected base schema, canonical guards and actual additive migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$WF_POLICY_RESTORE_OUTPUT_DIR"
+          git show "$WF_POLICY_RESTORE_BASE_SHA:prisma/schema.prisma" > prisma/workforce-restore-base.prisma
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/workforce-restore-base.prisma --skip-generate
+          npx prisma generate
+          node scripts/ci/workforce-policy-restore-pre-anchor.mjs
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$WF_READ_PASSWORD" -f scripts/ci/fixtures/workforce-manager-today-browser.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/ci/fixtures/workforce-policy-version-browser.sql
+          node scripts/ci/workforce-policy-restore-fixture.mjs
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f "$WF_POLICY_RESTORE_OUTPUT_DIR/selected-canonical-guards.sql"
+          node scripts/ci/workforce-policy-restore-base-row.mjs before
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=restore_password="$WF_RESTORE_PASSWORD" -f scripts/ci/fixtures/workforce-policy-restore-writer.sql
+          npx prisma validate
+          npx prisma generate
+          node scripts/ci/workforce-policy-restore-base-row.mjs after
+      - name: Execute mandatory real PostgreSQL restore concurrency and rollback tests
+        run: npx vitest run src/__tests__/lib-workforce-policy-restore-postgres.test.ts --maxWorkers=1
+      - name: Execute real credentials and authorized restore API scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$APP_PORT" > "$RUNNER_TEMP/workforce-restore-app.log" 2>&1 &
+          WF_APP_PID=$!
+          cleanup() { kill "$WF_APP_PID" 2>/dev/null || true; wait "$WF_APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "${WF_POLICY_RESTORE_BASE_URL}/api/v1/ping" >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then exit 1; fi
+            sleep 2
+          done
+          node scripts/workforce-policy-restore-api-evidence.mjs
+      - name: Install Chromium on hosted Ubuntu
+        run: npx playwright install --with-deps chromium
+      - name: Execute real rendered manual restore UI, session, retry and rollback scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$APP_PORT" > "$RUNNER_TEMP/workforce-restore-ui-app.log" 2>&1 &
+          WF_APP_PID=$!
+          cleanup() { kill "$WF_APP_PID" 2>/dev/null || true; wait "$WF_APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "${WF_POLICY_RESTORE_BASE_URL}/api/v1/ping" >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$WF_APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then exit 1; fi
+            sleep 2
+          done
+          node scripts/workforce-policy-restore-browser-evidence.mjs
+      - name: Upload complete non-secret restore receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workforce-policy-restore-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/workforce-policy-restore
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,1913 @@
+{
+  "schemaVersion": 1,
+  "scope": "Own PR575 exact409e release, currentf1 hosted/source acceptance and printed011criterion; public unauthenticated only",
+  "completePublication": false,
+  "proofs": {
+    "rootRelease": {
+      "review": "Root primary own PR575 merged-SHA normal release proof",
+      "independent": false,
+      "completedAt": "2026-10-04T15:54:43.868798+00:00",
+      "releaseGreen": true,
+      "normalRunSuccessStillRequired": false,
+      "findings": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "mergedSha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+      "parents": [
+        "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173",
+        "f1e9747cd8f3532fbf39dc38022f8cef26e7e739"
+      ],
+      "normalDeploy": {
+        "id": 37212825990,
+        "run_attempt": 1,
+        "event": "push",
+        "head_branch": "main",
+        "head_sha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+        "path": ".github/workflows/deploy.yml",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-04T15:23:39Z",
+        "updated_at": "2026-10-04T15:51:28Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37212825990"
+      },
+      "requiredJobs": {
+        "Production build & publish artifact": {
+          "id": 111467277829,
+          "name": "Production build & publish artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-04T15:23:43Z",
+          "completed_at": "2026-10-04T15:44:09Z"
+        },
+        "Quality & security gates": {
+          "id": 111467277637,
+          "name": "Quality & security gates",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-04T15:23:43Z",
+          "completed_at": "2026-10-04T15:35:14Z"
+        },
+        "Deploy to production & post-deploy smoke": {
+          "id": 111471030321,
+          "name": "Deploy to production & post-deploy smoke",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-04T15:44:14Z",
+          "completed_at": "2026-10-04T15:51:19Z"
+        },
+        "Cap retained deploy artifacts": {
+          "id": 111472351082,
+          "name": "Cap retained deploy artifacts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-04T15:51:23Z",
+          "completed_at": "2026-10-04T15:51:27Z"
+        }
+      },
+      "artifact": {
+        "id": 11306934664,
+        "node_id": "MDg6QXJ0aWZhY3QxMTMwNjkzNDY2NA==",
+        "name": "leaddrive-prod-409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+        "size_in_bytes": 444208366,
+        "url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11306934664",
+        "archive_download_url": "https://api.github.com/repos/rashadoni/leaddrive-v2/actions/artifacts/11306934664/zip",
+        "expired": false,
+        "digest": "sha256:ccf9445c5453fe3c52122b2343347493d8254f59e89e329beeb8d887ee657612",
+        "created_at": "2026-10-04T15:44:05Z",
+        "updated_at": "2026-10-04T15:44:05Z",
+        "expires_at": "2026-11-03T15:44:00Z",
+        "workflow_run": {
+          "id": 37212825990,
+          "repository_id": 1362346481,
+          "head_repository_id": 1362346481,
+          "head_branch": "main",
+          "head_sha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13"
+        }
+      },
+      "publicProof": {
+        "observedAt": "2026-10-04T15:54:43.799709+00:00",
+        "expectedMergedSha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+        "runId": 37212825990,
+        "productionHost": "13.140.132.245",
+        "tlsHostname": "app.leaddrivecrm.org",
+        "strictPinnedBracketPositive": true,
+        "requests": {
+          "build-info-first": {
+            "label": "build-info-first",
+            "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+            "startedAt": "2026-10-04T15:54:43.612966+00:00",
+            "completedAt": "2026-10-04T15:54:43.672820+00:00",
+            "curlExit": 0,
+            "httpStatus": 200,
+            "remoteIp": "13.140.132.245",
+            "tlsVerifyResult": "0",
+            "cacheControlNoStore": true,
+            "bytes": 112,
+            "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206",
+            "bodyMatchesPublicContract": true,
+            "original": {
+              "path": "/tmp/workforce575-409e-own-release-primary/public-20261004T155443612775Z/build-info-first.json",
+              "bytes": 112,
+              "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206"
+            },
+            "sha": "409e4fc98f15",
+            "artifactSha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+            "builtAt": "2026-10-04T15:31:35Z"
+          },
+          "ping": {
+            "label": "ping",
+            "url": "https://app.leaddrivecrm.org/api/v1/ping",
+            "startedAt": "2026-10-04T15:54:43.673668+00:00",
+            "completedAt": "2026-10-04T15:54:43.740848+00:00",
+            "curlExit": 0,
+            "httpStatus": 200,
+            "remoteIp": "13.140.132.245",
+            "tlsVerifyResult": "0",
+            "cacheControlNoStore": true,
+            "bytes": 11,
+            "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+            "bodyMatchesPublicContract": true,
+            "original": {
+              "path": "/tmp/workforce575-409e-own-release-primary/public-20261004T155443612775Z/ping.json",
+              "bytes": 11,
+              "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+            },
+            "ok": true
+          },
+          "build-info-confirm": {
+            "label": "build-info-confirm",
+            "url": "https://app.leaddrivecrm.org/api/v1/public/build-info",
+            "startedAt": "2026-10-04T15:54:43.742394+00:00",
+            "completedAt": "2026-10-04T15:54:43.799173+00:00",
+            "curlExit": 0,
+            "httpStatus": 200,
+            "remoteIp": "13.140.132.245",
+            "tlsVerifyResult": "0",
+            "cacheControlNoStore": true,
+            "bytes": 112,
+            "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206",
+            "bodyMatchesPublicContract": true,
+            "original": {
+              "path": "/tmp/workforce575-409e-own-release-primary/public-20261004T155443612775Z/build-info-confirm.json",
+              "bytes": 112,
+              "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206"
+            },
+            "sha": "409e4fc98f15",
+            "artifactSha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+            "builtAt": "2026-10-04T15:31:35Z"
+          }
+        },
+        "normalRunSuccessStillRequired": false
+      },
+      "originals": [
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/artifacts.json",
+          "bytes": 762,
+          "sha256": "34a6560a70021a9e55dcf3562f8476b9e444960352e6637c7afba62950a6b526"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/candidate-commit.json",
+          "bytes": 1177,
+          "sha256": "3c71e75d23651d71c13f58c40260822387a37e6188d16c9acc2dc97d4b01d587"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/jobs.json",
+          "bytes": 20375,
+          "sha256": "f29dd0b552740e2648c802291c26c3990a219bb0f100adabd20558351d14a744"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/main-at-observation.json",
+          "bytes": 342,
+          "sha256": "1cb3560c1cccfcb2731552e291024d3af0b961e3d1c1d335e007fdd350c0a050"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/merged-commit.json",
+          "bytes": 2717,
+          "sha256": "0e9f306f9e611956ee4afe5d011dd2ea54bef32e55f809b1f10250ab077a7bf3"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/pr.json",
+          "bytes": 18881,
+          "sha256": "e8fec356257fb0382943235e95e9ff3d5a8f587546bd37f6907ec1b73e0b12a6"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/run.json",
+          "bytes": 12394,
+          "sha256": "bb7ed3d3be6868413fb8fecd69553ba5895359da3c48e6a264228957a7edaa7b"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/github-proof-latest.json",
+          "bytes": 4644,
+          "sha256": "4d891fa64a7b183b324532f9f62bcd731efac255066a5a6e881532d3f2112b9e"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/public-proof.json",
+          "bytes": 2942,
+          "sha256": "504d567137fb0bb6a3913600104bf600cfeab423c48a08e5e8bcdaa7c42ac96e"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/build-info-first.json",
+          "bytes": 112,
+          "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/ping.json",
+          "bytes": 11,
+          "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/build-info-confirm.json",
+          "bytes": 112,
+          "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206"
+        }
+      ],
+      "limits": [
+        "Root primary verification only; no independent reviewer status is claimed.",
+        "Only unauthenticated public build-info/ping were requested; no business mutations.",
+        "Large production artifact was not downloaded; exact-SHA artifact metadata and own normal workflow inspected.",
+        "TLS proof uses app.leaddrivecrm.org pinned to 13.140.132.245. Literal IP TLS certificate SAN limitation is separate; no insecure IP result is used as primary TLS proof.",
+        "Any earlier pending public flag is historical and is superseded only by actual complete own normal workflow success here."
+      ],
+      "priorObservationIntegrity": {
+        "allAttemptProofsPreserved": true,
+        "attemptCount": 1,
+        "httpOrTransportFailureCount": 0,
+        "publicContractGuardRejectionCount": 0,
+        "nonMatchingArtifactShaCount": 0,
+        "attemptProofs": [
+          {
+            "path": "/tmp/workforce575-409e-own-release-primary/public-20261004T155443612775Z/attempt-proof.json",
+            "bytes": 2942,
+            "sha256": "504d567137fb0bb6a3913600104bf600cfeab423c48a08e5e8bcdaa7c42ac96e"
+          }
+        ],
+        "historicalPr540HelperGuardIssueDoesNotApplyToThisRun": true,
+        "noFailureCauseInferred": true
+      }
+    },
+    "independentRelease": {
+      "version": 1,
+      "issuedAtUtc": "2026-10-04T16:00:36.660857+00:00",
+      "status": "GREEN — OWN NORMAL PR575 RELEASE AND STRICT REGISTERED CANONICAL PUBLIC FULL-SHA ACCEPTANCE",
+      "reviewerAuthorless": true,
+      "repository": "https://github.com/rashadoni/leaddrive-v2.git",
+      "pr": 575,
+      "candidateHead": "f1e9747cd8f3532fbf39dc38022f8cef26e7e739",
+      "baseSha": "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173",
+      "normalMergedSha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+      "normalMergeParents": [
+        "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173",
+        "f1e9747cd8f3532fbf39dc38022f8cef26e7e739"
+      ],
+      "mergedTree": "b70fdf2ae9f3fa84de726280762971cd28001cac",
+      "mergeTreeEqualsPreviouslyTestedCandidate": true,
+      "freshMainAfterPublicBracket": {
+        "sha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+        "observation": "/tmp/workforce575-409e-release-independent-inputs/observations/20261004T155704Z",
+        "mainRef": {
+          "path": "/tmp/workforce575-409e-release-independent-inputs/observations/20261004T155704Z/main-ref.json",
+          "bytes": 342,
+          "sha256": "1cb3560c1cccfcb2731552e291024d3af0b961e3d1c1d335e007fdd350c0a050",
+          "read": "WHOLE"
+        },
+        "mergedPR": {
+          "path": "/tmp/workforce575-409e-release-independent-inputs/observations/20261004T155704Z/pr575.json",
+          "bytes": 18881,
+          "sha256": "e8fec356257fb0382943235e95e9ff3d5a8f587546bd37f6907ec1b73e0b12a6",
+          "read": "WHOLE"
+        },
+        "mergeCommit": {
+          "path": "/tmp/workforce575-409e-release-independent-inputs/observations/20261004T155704Z/merge-commit.json",
+          "bytes": 2717,
+          "sha256": "0e9f306f9e611956ee4afe5d011dd2ea54bef32e55f809b1f10250ab077a7bf3",
+          "read": "WHOLE"
+        }
+      },
+      "findingCounts": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "inputAudit": {
+        "path": "/tmp/workforce575-409e-own-release-input-audit-independent.json",
+        "bytes": 29737,
+        "sha256": "8a217c10533d85fc896366eaeb55a23401f4366dfa2692f09c494e7369809efd",
+        "read": "WHOLE"
+      },
+      "sourceBindings": {
+        "directMergedBlobCount": 12,
+        "directMergedBindingPacket": {
+          "path": "/tmp/workforce575-409e-release-independent-inputs/source-bindings-direct-merged-first.json",
+          "bytes": 3247,
+          "sha256": "f7511c5c69ff2ebade6879f81719cd5d8e52057672a2647e01d630b5b30d4174",
+          "read": "WHOLE"
+        },
+        "publicRouteBindingPacket": {
+          "path": "/tmp/workforce575-409e-release-independent-inputs/source-bindings-public-routes-first.json",
+          "bytes": 912,
+          "sha256": "25ee9c34d17cae989a4a7cd015128dd81d213c6a758f9b72af17af1aad4a4e76",
+          "read": "WHOLE"
+        },
+        "noActiveApplicationFileReads": true
+      },
+      "normalOwnDeploy": {
+        "runId": 37212825990,
+        "url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37212825990",
+        "event": "push",
+        "headBranch": "main",
+        "headSha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+        "runAttempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "allFourSuccessBeforePublicRequests": true,
+        "jobs": [
+          {
+            "id": 111467277637,
+            "name": "Quality & security gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-04T15:23:43Z",
+            "completedAt": "2026-10-04T15:35:14Z",
+            "allStepsComplete": true
+          },
+          {
+            "id": 111467277829,
+            "name": "Production build & publish artifact",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-04T15:23:43Z",
+            "completedAt": "2026-10-04T15:44:09Z",
+            "allStepsComplete": true
+          },
+          {
+            "id": 111471030321,
+            "name": "Deploy to production & post-deploy smoke",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-04T15:44:14Z",
+            "completedAt": "2026-10-04T15:51:19Z",
+            "allStepsComplete": true
+          },
+          {
+            "id": 111472351082,
+            "name": "Cap retained deploy artifacts",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-04T15:51:23Z",
+            "completedAt": "2026-10-04T15:51:27Z",
+            "allStepsComplete": true
+          }
+        ],
+        "normalSkippedAlternatives": [
+          {
+            "id": 111467277714,
+            "name": "Validate manual deployment inputs",
+            "conclusion": "skipped"
+          },
+          {
+            "id": 111467278052,
+            "name": "Recover verified retained production artifact",
+            "conclusion": "skipped"
+          },
+          {
+            "id": 111467298132,
+            "name": "Approve historical bootstrap-resume build",
+            "conclusion": "skipped"
+          }
+        ],
+        "wholeOriginalLogs": {
+          "111467277637": {
+            "path": "/tmp/workforce575-409e-release-independent-inputs/whole-logs/111467277637.txt",
+            "bytes": 330440,
+            "sha256": "08cb545faba18e014f3a1a2beb9c5e8890e748ef18038d4a9f0f01370b9fdb5a",
+            "read": "WHOLE"
+          },
+          "111467277829": {
+            "path": "/tmp/workforce575-409e-release-independent-inputs/whole-logs/111467277829.txt",
+            "bytes": 161402,
+            "sha256": "483a441771e67c4186c42853b0e42e7b5e4848ff8b83e7d1c2b13179431202a9",
+            "read": "WHOLE"
+          },
+          "111471030321": {
+            "path": "/tmp/workforce575-409e-release-independent-inputs/whole-logs/111471030321.txt",
+            "bytes": 116483,
+            "sha256": "2893b1008aeff11046fdf1f5f33b51d99d519c1080b395430a0a4707ccb90307",
+            "read": "WHOLE"
+          },
+          "111472351082": {
+            "path": "/tmp/workforce575-409e-release-independent-inputs/whole-logs/111472351082.txt",
+            "bytes": 7210,
+            "sha256": "1e04880a5a4ac3e6744a694f923cf8295de45ff9a953690a9d2723f2150bbf75",
+            "read": "WHOLE"
+          }
+        },
+        "metadataObservation": "/tmp/workforce575-409e-release-independent-inputs/observations/20261004T155430Z",
+        "mode": "normal; no manual/recovery/historical-bootstrap substitute"
+      },
+      "artifact": {
+        "id": 11306934664,
+        "name": "leaddrive-prod-409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+        "bytes": 444208366,
+        "digest": "sha256:ccf9445c5453fe3c52122b2343347493d8254f59e89e329beeb8d887ee657612",
+        "workflowRun": {
+          "id": 37212825990,
+          "repository_id": 1362346481,
+          "head_repository_id": 1362346481,
+          "head_branch": "main",
+          "head_sha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13"
+        },
+        "expired": false,
+        "actualUploadDigest": "2026-10-04T15:44:05.3261542Z SHA256 digest of uploaded artifact is ccf9445c5453fe3c52122b2343347493d8254f59e89e329beeb8d887ee657612",
+        "actualDownloadDigest": "2026-10-04T15:44:36.1769554Z SHA256 digest of downloaded artifact is ccf9445c5453fe3c52122b2343347493d8254f59e89e329beeb8d887ee657612",
+        "actualServerBinding": "2026-10-04T15:48:07.2788089Z [17:48:07] Artifact invocation bound before recovery handling: mode=normal sha=409e4fc98f15",
+        "actualServerRevision": "2026-10-04T15:49:56.5329454Z [17:49:56] Artifact revision verified: 409e4fc98f15",
+        "independentlyDownloadedByReviewer": false,
+        "bound": "Exact artifact API identity/digest plus whole actual upload/download/marker checks. The444208366-byte payload was not independently downloaded or enumerated by reviewer."
+      },
+      "ownQualityAndBuild": {
+        "wholeSemanticPacket": {
+          "path": "/tmp/workforce575-409e-release-independent-inputs/quality-build-semantic-verification-first.json",
+          "bytes": 4478,
+          "sha256": "a980fccaf95716a81183f7191efa9c31987605d197fd8b6b9fda3a6e294cd4fb",
+          "read": "WHOLE"
+        },
+        "fullSuite": "Actual ownquality gate reports18 failing files/18baseline/no new/everybaselineentry still fails; fullsuite NOT CLEAN. No independent per-file rawVitestJSON receipt retained in these logs.",
+        "fullCompiler": "No full tsc execution in ownquality/build logs. Build actually says Skipping validation of types. Compiler acceptance is the separately issued first actual current f1 PR compiler1174diagnostics/all19owned ALLFAMILYzero/all66baselinecounts EXACT/exit2, carried by409e whole-tree parity; never call ownmain zero-diagnostic log a clean compiler run.",
+        "build": "Actual Next.js16.2.11 webpack compiled successfully in8.7min.",
+        "preservedWarnings": [
+          "Sentry Node/Edge/Client no auth token: no Sentry release created.",
+          "Traced-files ENOENT for (dashboard)/page_client-reference-manifest.js, followed by actual Copied1535 client-reference-manifest files. No clean/warning-free build claim.",
+          "Downloaded action deprecation warnings/Node20 forcedNode24 retained."
+        ],
+        "priorExactHostedAcceptance": [
+          {
+            "path": "/tmp/workforce575-f1e9-hosted-independent.json",
+            "bytes": 22474,
+            "sha256": "1186a6be6ce56d97f8bbcae7dd0edbebea542da820e0610d11214985d5aa6f28",
+            "read": "WHOLE"
+          },
+          {
+            "path": "/tmp/workforce575-f1e9-hosted-input-audit-independent.json",
+            "bytes": 334648,
+            "sha256": "169b92c25bf55f39fedb76754f02f368810fdba57c3e81ead34d3ad765aa406b",
+            "read": "WHOLE"
+          },
+          {
+            "path": "/tmp/workforce-part34-f1e9-exact-source-independent.json",
+            "bytes": 8799,
+            "sha256": "43825a5571c22e9622073343e1882fb26a5673c9c873254baef2607643387f4f",
+            "read": "WHOLE"
+          },
+          {
+            "path": "/tmp/workforce575-f1e9-011-criterion-independent.json",
+            "bytes": 6687,
+            "sha256": "e7d9bf02bfad754cc81eef167e051d803cf10d2c995c1e4c772bcfa7624a1964",
+            "read": "WHOLE"
+          },
+          {
+            "path": "/tmp/workforce575-f1e9-normal-merge-primary/normal-merge-proof.json",
+            "bytes": 1524,
+            "sha256": "9c6aeb7cc0089503bafe7ae619e8d3dc0b59ef7c80347ff0d040f082281df1e5",
+            "read": "WHOLE"
+          }
+        ]
+      },
+      "actualHostedDeployBounds": {
+        "wholeSemanticPacket": {
+          "path": "/tmp/workforce575-409e-release-independent-inputs/deploy-retention-semantic-verification-first.json",
+          "bytes": 57618,
+          "sha256": "ee0017cc3a2d42a0e193abb7d3d6872692829f2b9d9c4c59d80aeb9634140b40",
+          "read": "WHOLE"
+        },
+        "registeredTarget": "13.140.132.245:/opt/leaddrive-v2 through main/.github/workflows/deploy.yml",
+        "summary": "2026-10-04T15:51:11.5267771Z [17:51:11] SUMMARY commit=409e4fc backup=backup-20261004-174919 css_files=5 js_files=2361 prisma_engine=libquery_engine-debian-openssl-3.0.x.so.node health=200 css_check=200 db_probe=200",
+        "completion": "2026-10-04T15:51:11.5325766Z [17:51:11] Deploy complete! App running on http://localhost:3001",
+        "pipelinePublicPing": "2026-10-04T15:51:15.9304453Z attempt 1/5: /api/v1/ping -> 200",
+        "pipelineFullSha": "2026-10-04T15:51:16.3258866Z attempt 1/3: live revision '409e4fc98f1522bf7f60a30941f26c9e36a2eb13', expected '409e4fc98f1522bf7f60a30941f26c9e36a2eb13'",
+        "pipelineLoginAssets": "2026-10-04T15:51:16.7432662Z Feature smoke passed: page 200, CSS + JS assets 200",
+        "rlsTenantTables": "2026-10-04T15:51:14.6332012Z [rls-coverage] role: hermes · tenant tables: 553 · checked: 553 · enforced: 553 · leaks: 0 · unreadable: 0 · warnings: 0",
+        "rlsChildTableBound": "22 application-isolated child tables;21reviewed/1NOT YET REVIEWED(_ContractToContractTag). This retained output is not a claim that every transitive child query was reviewed.",
+        "recoveryCommissioningBound": "Actual normalroute log states encrypted recovery-point commissioning is not active on this host; retained, no age/Object-Lock commissioning credit.",
+        "migrationBound": "Precheck logged a pending named migration; actual Prismaapply output reports510migrations and No pending migrations to apply. No zero-DML production claim.",
+        "productionBusinessSmokes": "Normal pipeline ran its repository-defined existing cron/RLS/asset smokes. Reviewer made only approved public build-info/ping requests.",
+        "retention": "2026-10-04T15:51:26.2414359Z ##[notice]удалено 1, не удалось 0, осталось 20"
+      },
+      "strictPublicAcceptance": {
+        "proof": {
+          "path": "/tmp/workforce575-409e-release-independent-inputs/public-first/strict-public-bracket-first.json",
+          "bytes": 61235,
+          "sha256": "7500c4f264416509d45ad91dd7fa282881f261afab776fe2a5118e7947c2b024",
+          "read": "WHOLE"
+        },
+        "sequence": [
+          "canonical-build-info-before",
+          "canonical-ping",
+          "canonical-build-info-after"
+        ],
+        "canonicalHost": "app.leaddrivecrm.org",
+        "pinnedIP": "13.140.132.245",
+        "curlDisableFirst": true,
+        "noProxy": true,
+        "noInsecureTLS": true,
+        "redirectCount": 0,
+        "allHTTP200": true,
+        "allTLSVerificationResultZero": true,
+        "allRemoteIpRegisteredTarget": true,
+        "allNoStore": true,
+        "bothFullArtifactSha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+        "bothBuiltAt": "2026-10-04T15:31:35Z",
+        "pingBody": {
+          "ok": true
+        },
+        "observedStartUtc": "2026-10-04T15:55:38.408283+00:00",
+        "observedFinishUtc": "2026-10-04T15:55:38.624169+00:00",
+        "literalIPTLSObservationSeparate": {
+          "status": "BLOCKED_LITERAL_IP_TLS; NOT A CANONICAL SUCCESS",
+          "exitCode": 60,
+          "httpCode": 0,
+          "sslVerifyResult": 1,
+          "remoteIP": "13.140.132.245",
+          "stderr": {
+            "path": "/tmp/workforce575-409e-release-independent-inputs/public-first/literal-ip-build-info.stderr",
+            "bytes": 362,
+            "sha256": "bb444196ae8c7ddeb2fab3611068ba2fc224e0f7d83fba0fde655417ba261847",
+            "read": "WHOLE"
+          },
+          "reason": "Certificate subject alternative name does not match literal13.140.132.245. No -k retry, no alternate production host, no substitution of literalIP success."
+        }
+      },
+      "accountingAndScope": {
+        "WF_C8_011": "Bounded source/currenthosted/runtime/ownrelease evidence complete for coordinator criterion reconciliation. Reviewer does not mark roadmap DONE or modify accounting.",
+        "native200ZoomSuccessor": "Preparation source only; next native browser200% execution NOT RUN/unpublished, no runtime credit.",
+        "historicalD3BlockedCompiler": "The first actual historicald3 six-owned-diagnostic BLOCKED record remains immutable; no retrospective conversion to GREEN.",
+        "priorF1NarrowLocalProof": "Precommit210tests/8files proof ran before f1 commit on pred3 recordedrunHEAD; not an invented f1 test invocation.",
+        "reviewerMutations": 0,
+        "releaseProductCreditAssignedByReviewer": 0
+      }
+    },
+    "exactSourceReview": {
+      "version": 1,
+      "atUtc": "2026-10-04T14:43:42.183983+00:00",
+      "status": "GREEN — EXACT SOURCE AND RECEIPT INTEGRITY ONLY",
+      "reviewerAuthorless": true,
+      "candidateHead": "f1e9747cd8f3532fbf39dc38022f8cef26e7e739",
+      "baseSha": "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173",
+      "parentHistoricalBlockedHead": "d3b0db577a29018ac4b9fd7ec72b570bd43b309d",
+      "pr": "https://github.com/rashadoni/leaddrive-v2/pull/575",
+      "findingCounts": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "scope": "Independent precise source closure of the three P2 findings/six actual d3 compiler diagnostics; complete intended source continuity and actual bounded-check receipts. Current hosted compiler, real PostgreSQL/browser, production build and release are NOT RUN for f1.",
+      "fullDiffIdentity": {
+        "paths": 24,
+        "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/full-binary.diff",
+        "bytes": 330206,
+        "sha256": "b5be5b3cd645a18c6bb6644a81a3205356b9a0678767b95857e44815156e6b42"
+      },
+      "nonDocDiffIdentity": {
+        "paths": 19,
+        "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/non-doc-binary.diff",
+        "bytes": 162465,
+        "sha256": "517a8565c861e19f8e66f73689146e847d258c71bf9883eb2391944801eba8e2"
+      },
+      "correctionOnlyDiff": {
+        "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/compiler-correction-only.diff",
+        "bytes": 17924,
+        "sha256": "4af537cd3a205ff90bf1f5cfdc12636fecb66faaa94448884314d4402aa9748b"
+      },
+      "scopeCap": {
+        "unchangedLimit": 400000,
+        "fullDiffBytes": 330206,
+        "margin": 69794
+      },
+      "closures": [
+        {
+          "historicalP2": "ES2017 BigInt literal compiler mismatch",
+          "currentFile": "src/__tests__/lib-workforce-policy-employee-impact-postgres.test.ts",
+          "currentLines": [
+            152,
+            153,
+            154,
+            155
+          ],
+          "sourceConclusion": "Four zero-bigint values now use BigInt(0), supported by the existing esnext library type and actual Node runtime. Both positive populated counts and exact foreign/unscoped zero comparisons are retained; source assertions and realPGcase count remain unchanged.",
+          "compilerConclusion": "Correction is clear from source. Fresh actual full compiler and realPG execution still required."
+        },
+        {
+          "historicalP2": "NULL-only fixture inferred type cast mismatch",
+          "currentFile": "src/__tests__/workforce-policy-employee-impact-preview.test.ts",
+          "currentLines": [
+            2,
+            6,
+            66
+          ],
+          "sourceConclusion": "Fixture explicitly uses exported WorkforcePolicySnapshotValues plus the opaque metadata shape; actual dependency defines longPauseThresholdSeconds:number|null. Zero has its valid type; unsafe false cast removed; before0/afternull/deltaNull and opaque assertions unchanged.",
+          "compilerConclusion": "Correction is clear from source. Fresh actual full compiler still required."
+        },
+        {
+          "historicalP2": "Nullable predecessor not narrowed inside map callback",
+          "currentFile": "src/lib/workforce/policy-employee-impact-preview.ts",
+          "currentLines": [
+            109,
+            110,
+            111
+          ],
+          "sourceConclusion": "Captures predecessor in const and requires its truthiness before comparing id and reading projectedEffectiveTo in the same conditional branch. No predecessor means original record retained; present matching predecessor copies/closes only hypothetical memory. Existing hashes/dates/caps/selection/privacy/minimalDTO/transaction behavior unchanged.",
+          "compilerConclusion": "Correction is clear from source. Fresh actual full compiler still required."
+        }
+      ],
+      "wholeIntendedSourceContinuity": {
+        "originalFullSourcePacket": {
+          "path": "/tmp/workforce-part34-d3b-exact-source-independent.json",
+          "bytes": 11812,
+          "sha256": "11cb4aa7928c057f0cee241b2aaf7ca40ea6dbd2f611462ea5e241450b3c9ab6"
+        },
+        "currentWholeGitBlobParity": {
+          "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/current-whole-source-parity.json",
+          "bytes": 27869,
+          "sha256": "9885a8982ae411b168aae1026aaf5772944052fdcf662cd2a22bf6611005872d"
+        },
+        "sourceBlobs": 74,
+        "byteIdentical": 68,
+        "changedCodeBlobs": 3,
+        "changedJournalBlobs": 3,
+        "allThreeJournalsAppendOnly": true,
+        "other16NonDocChangedFromBaseBlobsUnchangedFromD3": true,
+        "fullSourceDiffScopeUnchanged": true,
+        "noTestsOrAssertionsWeakened": true,
+        "tsconfigTarget": "ES2017 unchanged",
+        "baselineAndGateConfigs": "Exact byte-identical f1/d3/a0 for tsconfig/typecheck-baseline/test-baseline/pr-checks/compiler gates/testgate/gitleaks config",
+        "runtimeInputsNewHeadMustRerun": "Owned code/projector/PG fixture bindings changed; d3 raw7/9/17 receipts cannot count current-head runtime."
+      },
+      "actualBoundedVerification": {
+        "rootOriginalProof": {
+          "path": "/tmp/workforce-part34-compiler-correction-primary/first-original-proof.json",
+          "bytes": 5309,
+          "sha256": "9996958e940ea93b37a91ffcb190fc253fc96e5a90f746d324be3cd8e97048d4"
+        },
+        "preCorrectionHead": "d3b0db577a29018ac4b9fd7ec72b570bd43b309d",
+        "sourceBindings": "All three actual tested working-source hashes independently match f1 Git blobs. Tests ran before the checkpoint, not with f1 as run HEAD.",
+        "tests": {
+          "files": 8,
+          "passed": 210,
+          "durationSeconds": 19.0,
+          "actualWholeOriginal": {
+            "path": "/tmp/workforce-part34-compiler-correction-primary/focused-tests-stdout-original.txt",
+            "bytes": 287,
+            "sha256": "ac11e7fd44bdd277e8e81a848963ad257b0a2006c5949be7028b8a26c31a6b9d"
+          }
+        },
+        "lint": {
+          "files": 3,
+          "exit": 0,
+          "warnings": 0,
+          "errors": 0
+        },
+        "diff": {
+          "exit": 0
+        },
+        "placement": "One targeted command at a time after actual original RAM/disk/pressure checks; reviewer ran no tests."
+      },
+      "firstFailurePreserved": {
+        "originalBlockedPacket": {
+          "path": "/tmp/workforce575-d3b-compiler-blocked-independent.json",
+          "bytes": 17001,
+          "sha256": "e14cd93735d56b9a61298125459bf6e20385888c62dcd6faddf6b9b0c7c0648e"
+        },
+        "originalAudit": {
+          "path": "/tmp/workforce575-d3b-compiler-blocked-input-audit-independent.json",
+          "bytes": 285673,
+          "sha256": "3a0a1dcf3aed6eb6bb435587a0f55132d15c12b10d4fac59b37a98723f636ccf"
+        },
+        "additiveAuditCountClarification": {
+          "path": "/tmp/workforce575-d3b-blocked-audit-tsconfig-count-clarification-independent.json",
+          "bytes": 1071,
+          "sha256": "a65c18ccf2147620de8df12b6067275bb1cd200e1256c3295cf7580a6416dde8"
+        },
+        "wholeOriginalCompiler": {
+          "path": "/tmp/workforce575-d3b-hosted-independent-inputs/whole-logs/111452923638.txt",
+          "bytes": 259197,
+          "sha256": "70d08e779a20d4336091b6e25ff74fa7b2d5cfe297245d062da2b915f47608a7"
+        },
+        "actualHistoricalOwnedDiagnostics": 6,
+        "allFiveHistoricalMachineGatesSuccess": true,
+        "actualHistoricalRuntimeSuccess": "Original d3 real7PG/9labels/17browser, restore13catalog/11PG/9API/15UI, futureWindow4PG/version18,Today6/report9/calendar12/36contrast retained, no retrofail.",
+        "earlierSourceReviewMiss": "Historical d3 source-only GREEN missed these three source type issues before actual compiler. First BLOCKED and successful raw runtime history are preserved."
+      },
+      "currentHeadRuntime": {
+        "fullCompiler": "NOT RUN; mandatory actual owned19paths all-family zero and unchanged66baseline required",
+        "hostedPostgres": "NOT RUN",
+        "hostedBrowser": "NOT RUN",
+        "fullSuite": "NOT RUN",
+        "productionBuild": "NOT RUN",
+        "ownDeployAndFullShaProduction": "NOT RUN",
+        "androidPhysicalHumanLoadPilot": "NOT RUN"
+      },
+      "inputAudit": {
+        "path": "/tmp/workforce-part34-f1e9-exact-source-input-audit-independent.json",
+        "bytes": 69046,
+        "sha256": "283d6318fe40e6f8da6a2c9a42b67d3ec9354f8b3ab7646c97741931f180dcff"
+      },
+      "authorizationAndNext": "Ordinary same-PR publication may proceed after root unchanged-config current range scan/fresh-main. This source-only receipt does not authorize merging based on stale d3 runtime. Fresh current gates/whole originals plus exact source/receipt acceptance and fresh main required before normal merge.",
+      "taskAccounting": "No classification change: wholeWF-C8-011NON-DONE,59%,DONE81/161,GATES14/15,C836%,80non-DONE.",
+      "reviewerActions": {
+        "sourceEdits": 0,
+        "tests": 0,
+        "ciTriggersOrReruns": 0,
+        "gitMutations": 0,
+        "productionActions": 0
+      },
+      "auditNote": "One initial unpublished f1 capture used explicit full-index diff rather than the established binary-only identity recipe, and stopped on parent-diff parity. Its snapshots remain; v2 uses exact established git diff --binary recipe, verified against immutable d3 identity. No report issued from that stopped attempt."
+    },
+    "currentHostedReview": {
+      "version": 1,
+      "atUtc": "2026-10-04T15:19:17.067810+00:00",
+      "status": "GREEN — EXACT CURRENT HOSTED SOURCE, COMPILER AND RUNTIME ACCEPTANCE ONLY",
+      "reviewerAuthorless": true,
+      "repository": "rashadoni/leaddrive-v2",
+      "pr": "https://github.com/rashadoni/leaddrive-v2/pull/575",
+      "candidateHead": "f1e9747cd8f3532fbf39dc38022f8cef26e7e739",
+      "baseSha": "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173",
+      "checkedMergeSha": "a87ebf98e3e8f5337a8edde9158c51b4168b9cea",
+      "testedTree": "b70fdf2ae9f3fa84de726280762971cd28001cac",
+      "candidateTreeMatchesTestedSyntheticTree": true,
+      "findingCounts": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "scope": "Actual first f1 hosted compiler/all19owned-all-family zero/exact66baseline, mandatory5Actions gates and six disposable real runtime workflows. No production/release/whole-row-DONE acceptance.",
+      "sourceClosure": {
+        "path": "/tmp/workforce-part34-f1e9-exact-source-independent.json",
+        "bytes": 8799,
+        "sha256": "43825a5571c22e9622073343e1882fb26a5673c9c873254baef2607643387f4f"
+      },
+      "diffIdentities": {
+        "full": {
+          "paths": 24,
+          "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/full-binary.diff",
+          "bytes": 330206,
+          "sha256": "b5be5b3cd645a18c6bb6644a81a3205356b9a0678767b95857e44815156e6b42"
+        },
+        "nonDoc": {
+          "paths": 19,
+          "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/non-doc-binary.diff",
+          "bytes": 162465,
+          "sha256": "517a8565c861e19f8e66f73689146e847d258c71bf9883eb2391944801eba8e2"
+        }
+      },
+      "compiler": {
+        "runId": 37210411462,
+        "jobId": 111460323124,
+        "machineConclusion": "success",
+        "wholeOriginalLog": {
+          "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460323124.txt",
+          "bytes": 257392,
+          "sha256": "5936cd188e23b3a5b88c64181a5d037ffb258afa79864fb18f89b357f5fd230c"
+        },
+        "parsedWholeOriginal": {
+          "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/actual-compiler-parsed-first.json",
+          "bytes": 266475,
+          "sha256": "b21424183aefd32bf14b9f46c83a7948ddf3423a199d8d041ba6960fd630d041"
+        },
+        "normalization": "Whole original ANSI removal then timestamp and GitHub error annotation removal; all TS code families considered for owned paths.",
+        "numericActualCompilerExit": 2,
+        "wholeDiagnostics": 1174,
+        "ownedNonDocPaths": 19,
+        "ownedTypedPaths": 12,
+        "allOwnedAllFamilyDiagnostics": 0,
+        "exactAll66FileCodeCountsMatched": true,
+        "allBaselinesAndGatesUnchanged": true,
+        "fullCompilerClean": false
+      },
+      "mandatoryMachineGates": {
+        "originalChecks": {
+          "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/binding-api-20261004T150948963460Z/check-runs.json",
+          "bytes": 43009,
+          "sha256": "a078d74514799634b67614e5277e6caf6e3218249fe4c6f9fdb426612afd59c0"
+        },
+        "originalProtection": {
+          "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/binding-api-20261004T150948963460Z/main-protection.json",
+          "bytes": 1488,
+          "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76"
+        },
+        "required": [
+          "pr-scope",
+          "static-checks",
+          "typecheck",
+          "runner-policy",
+          "scan"
+        ],
+        "allFiveExactHeadActionsApp15368Success": true,
+        "normalPrProductionBuild": "SKIPPED",
+        "hostedProductionBuild": "NOT RUN for this candidate; own main deploy not started"
+      },
+      "fullSuite": {
+        "wholeOriginal": {
+          "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460323109.txt",
+          "bytes": 212181,
+          "sha256": "e27778fe928a1f00efb82068eb7441357782b7a1ed1da19259174a64e793ed0f"
+        },
+        "actualFailingFiles": 18,
+        "unchangedBaselineFiles": 18,
+        "newFailures": 0,
+        "everyBaselineEntryStillFails": true,
+        "fullSuiteClean": false,
+        "evidence": "Actual unchanged check-test-baseline gate reads complete hosted test output and reports exact failing-file baseline preservation."
+      },
+      "originalHostedRuns": [
+        {
+          "run": "impact",
+          "runId": 37210411458,
+          "status": "success",
+          "jobs": [
+            {
+              "id": 111460269801,
+              "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460269801.txt",
+                "bytes": 109316,
+                "sha256": "fe866098796f5b082f983f77bb4b3f3cdaa3f45c0afa377b472bf0830f220dae"
+              }
+            }
+          ],
+          "artifacts": [
+            {
+              "id": 11306397777,
+              "wholeZip": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306397777.zip",
+                "bytes": 829976,
+                "sha256": "5d15f79ea9fbb49a2239e6ade472a5c29e7a5f48aa31d8534cbe74649d64a2b4"
+              },
+              "githubDigest": "sha256:5d15f79ea9fbb49a2239e6ade472a5c29e7a5f48aa31d8534cbe74649d64a2b4",
+              "members": 12
+            }
+          ]
+        },
+        {
+          "run": "native",
+          "runId": 37210411462,
+          "status": "success",
+          "jobs": [
+            {
+              "id": 111460270175,
+              "name": "pr-scope",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270175.txt",
+                "bytes": 77859,
+                "sha256": "5247b1cf024824c199c958018a09d23b2bb0502582b6b3bbc3264200b902bfc3"
+              }
+            },
+            {
+              "id": 111460270974,
+              "name": "GitHub-hosted Linux production build",
+              "conclusion": "skipped",
+              "wholeLog": null
+            },
+            {
+              "id": 111460323109,
+              "name": "static-checks",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460323109.txt",
+                "bytes": 212181,
+                "sha256": "e27778fe928a1f00efb82068eb7441357782b7a1ed1da19259174a64e793ed0f"
+              }
+            },
+            {
+              "id": 111460323124,
+              "name": "typecheck",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460323124.txt",
+                "bytes": 257392,
+                "sha256": "5936cd188e23b3a5b88c64181a5d037ffb258afa79864fb18f89b357f5fd230c"
+              }
+            }
+          ],
+          "artifacts": []
+        },
+        {
+          "run": "restore",
+          "runId": 37210411467,
+          "status": "success",
+          "jobs": [
+            {
+              "id": 111460269868,
+              "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460269868.txt",
+                "bytes": 189815,
+                "sha256": "01ed15022d18be7075acd915d25212ef368bb0ffe825ef4368af438e677012a8"
+              }
+            }
+          ],
+          "artifacts": [
+            {
+              "id": 11306487483,
+              "wholeZip": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306487483.zip",
+                "bytes": 882596,
+                "sha256": "36cdfdb6ee20860d9c747c03022730c64af63574db8e45771deb6e3b4fbe76b9"
+              },
+              "githubDigest": "sha256:36cdfdb6ee20860d9c747c03022730c64af63574db8e45771deb6e3b4fbe76b9",
+              "members": 17
+            }
+          ]
+        },
+        {
+          "run": "policy",
+          "runId": 37210411496,
+          "status": "success",
+          "jobs": [
+            {
+              "id": 111460269941,
+              "name": "Authenticated Workforce policy version browser evidence",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460269941.txt",
+                "bytes": 100218,
+                "sha256": "86dc799fb1d6634432f88e1d60d7b7e81a98a06de6f8ef344de541e5c4b0f33e"
+              }
+            }
+          ],
+          "artifacts": [
+            {
+              "id": 11306717100,
+              "wholeZip": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306717100.zip",
+                "bytes": 910043,
+                "sha256": "28f30d5b5196cc0ca3192815001bdaab897a74aa1820b74a9d0be8421a901805"
+              },
+              "githubDigest": "sha256:28f30d5b5196cc0ca3192815001bdaab897a74aa1820b74a9d0be8421a901805",
+              "members": 13
+            }
+          ]
+        },
+        {
+          "run": "report",
+          "runId": 37210411486,
+          "status": "success",
+          "jobs": [
+            {
+              "id": 111460270083,
+              "name": "Authenticated Workforce exception report browser evidence",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270083.txt",
+                "bytes": 88913,
+                "sha256": "b4b0c125590ee55fba8ec827c059a8511423a784e039e17038bf458fae5d0614"
+              }
+            }
+          ],
+          "artifacts": [
+            {
+              "id": 11306427364,
+              "wholeZip": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306427364.zip",
+                "bytes": 650475,
+                "sha256": "52f76c40934b0f6b58a42da9ab77c65bdd493687da36f4e78221e1f901e0b614"
+              },
+              "githubDigest": "sha256:52f76c40934b0f6b58a42da9ab77c65bdd493687da36f4e78221e1f901e0b614",
+              "members": 11
+            }
+          ]
+        },
+        {
+          "run": "today",
+          "runId": 37210411500,
+          "status": "success",
+          "jobs": [
+            {
+              "id": 111460270637,
+              "name": "Authenticated Workforce manager Today browser evidence",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270637.txt",
+                "bytes": 90478,
+                "sha256": "f3f7dd8b6a1442cc96bc12e111cdbb932764fdd08b63bf04f8966f24b6b2882f"
+              }
+            }
+          ],
+          "artifacts": [
+            {
+              "id": 11306182896,
+              "wholeZip": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306182896.zip",
+                "bytes": 1218731,
+                "sha256": "3411a22cf19534f3467ffd4ea766b27dd440cf186db0ff55e27031bd298ad4bd"
+              },
+              "githubDigest": "sha256:3411a22cf19534f3467ffd4ea766b27dd440cf186db0ff55e27031bd298ad4bd",
+              "members": 15
+            }
+          ]
+        },
+        {
+          "run": "calendar",
+          "runId": 37210411565,
+          "status": "success",
+          "jobs": [
+            {
+              "id": 111460270147,
+              "name": "Authenticated Workforce calendar browser evidence",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270147.txt",
+                "bytes": 83345,
+                "sha256": "b6c6235d3335044a64e9cda08782ef9f4943f3b967da12316ab83d4f780d161a"
+              }
+            }
+          ],
+          "artifacts": [
+            {
+              "id": 11307090980,
+              "wholeZip": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11307090980.zip",
+                "bytes": 3411474,
+                "sha256": "a423de0299a25e787372427b4a93e78606e6aae1cecf2aa78935df335aefe80e"
+              },
+              "githubDigest": "sha256:a423de0299a25e787372427b4a93e78606e6aae1cecf2aa78935df335aefe80e",
+              "members": 46
+            }
+          ]
+        },
+        {
+          "run": "runner",
+          "runId": 37210411471,
+          "status": "success",
+          "jobs": [
+            {
+              "id": 111460270068,
+              "name": "runner-policy",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270068.txt",
+                "bytes": 11403,
+                "sha256": "de40db29ae988a038bf2ce46d91413acb17e7152b593ffca8dac68e5d8bf5e02"
+              }
+            }
+          ],
+          "artifacts": []
+        },
+        {
+          "run": "scan",
+          "runId": 37210411490,
+          "status": "success",
+          "jobs": [
+            {
+              "id": 111460270004,
+              "name": "scan",
+              "conclusion": "success",
+              "wholeLog": {
+                "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270004.txt",
+                "bytes": 83024,
+                "sha256": "ffcb71a87032a44c0224604af44b975405c2f8c2dfd9c7b8c9a298225d1151f6"
+              }
+            }
+          ],
+          "artifacts": []
+        }
+      ],
+      "actualCurrentRuntime": {
+        "employeeImpact": {
+          "realPostgresTests": 7,
+          "requiredReceiptLabels": 9,
+          "browserCases": 17,
+          "allPASS": true,
+          "serializedWholeBusinessTableFingerprintTables": 554,
+          "allSevenBeforeAfterPairsEqual": true,
+          "realCredentialSessions": 16,
+          "workforceRequests": 50,
+          "allWorkforceRequestsGET": true,
+          "actualCookie403Responses": 2,
+          "allRecordedResponsesPrivateNoStoreNosniffCookieVaryToken": true,
+          "heldOld200": "Actual DELIVERED transport after real tenant/principal session refresh; parent state cleared and obsolete aggregate not rendered",
+          "cleanup": "PASS; scoped absence, named guards restored and reader/owner disconnect",
+          "bounds": "Real disposable SELECT-only loader/RR/RLS/limits. Owner setup/replacements/guard-disabled cleanup are fixture maintenance, not canonical writers, employment prediction, activation or production mutation. Disposable hosted Chromium, real credentials/session/authorized aggregate GET. Current ACTIVE directory all roles, recorded membership only, no employee identities/full definition. Explicit what-if is not future employment eligibility or activation guarantee. Controlled transport loss/corruption and native AuthJS notification are fixture drivers distinct from server/auth mocks or end-user tenant switching. Owner setup/status replacements/guard-disabled scoped cleanup are fixture maintenance, not canonical writers. Bounded native controls/geometry are not full WCAG, pixel occlusion, human AT, native zoom, Android, load or production feature/activation/pilot acceptance."
+        },
+        "restore": {
+          "catalogCases": 13,
+          "realPostgresTests": 11,
+          "authorizedApiCases": 9,
+          "renderedUiCases": 15,
+          "allPASS": true,
+          "selectedCatalogPreservation": "Only two restore-anchor columns and exact dependent unique index removed in EMPTY selected conversion; identity/RLS/constraints/triggers/policies/all other catalog fields preserved. Four existing whole rows preserved by additive migration.",
+          "anonymousApiObservation": "Actual unchanged proxy307 redirect, not private handler401 credit",
+          "httpVary": "Cookie token verified; full Vary equality false retained with framework tokens",
+          "bounds": "Real hosted Chromium/credentials/session/canonical restore writer and PostgreSQL on disposable data. EN/RU/AZ at320/768/1440, bounded native controls/reflow, real201 loss/replay200, audit rollback503/retry201 and session/grant changes. Controlled transport loss is distinct from server failure. Existing policy read-only-role lane unchanged. Geometry is not pixel occlusion/whole-page WCAG/AT/native zoom. No production authenticated write/activation/employee impact/Android/load/pilot credit. Auth metadata and explicitly expected new draft/audit writes are excluded from preserved source/employee facts."
+        },
+        "policyVersionAndWindow": {
+          "browserCases": 18,
+          "futureWindowRealPostgresTests": 4,
+          "allPASS": true,
+          "policyReadPrivilege": "SELECT only; INSERT/UPDATE/DELETE false",
+          "all20BusinessTableFingerprintsEqual": true,
+          "canonicalActivationWriter": "NOT RUN; historical owner-import fixtures distinct",
+          "anonymousProxyNoStore": "False retained; private unauthenticated route headers NOT RUN because unchanged proxy returns first",
+          "latePendingRequestAcceptance": "Mocked unit scope retained; not real-browser credit"
+        },
+        "today": {
+          "browserCases": 6,
+          "allPASS": true,
+          "all19BusinessTableFingerprintsEqual": true,
+          "positiveTwoTenantSessionAndDenialBoundaries": true
+        },
+        "report": {
+          "browserCases": 9,
+          "allPASS": true,
+          "all22BusinessTableFingerprintsEqual": true,
+          "actualViewAudit": {
+            "results": [
+              {
+                "tenant": "a",
+                "auditedViews": 13,
+                "observedSuccessful200": 11,
+                "observedGetAttempts": 18,
+                "metadataWhitelist": true,
+                "everyAuditMatchesKnownAggregate": true
+              },
+              {
+                "tenant": "b",
+                "auditedViews": 2,
+                "observedSuccessful200": 2,
+                "observedGetAttempts": 3,
+                "metadataWhitelist": true,
+                "everyAuditMatchesKnownAggregate": true
+              }
+            ],
+            "appendOnlyAuditPrivilegeOnly": true,
+            "cancelledDevReadsMayCompleteTheirViewAudit": true,
+            "globallyZeroDatabaseWritesClaimed": false
+          },
+          "azDurationDiagnostic": "One intermediate equality false retained; localized rendering/count cases separately PASS",
+          "globallyZeroDML": false
+        },
+        "calendar": {
+          "functionalCases": 12,
+          "defaultLightTextContrastTargets": 36,
+          "allPASS": true,
+          "contrastSummary": {
+            "criterion": "WCAG2.2 SC1.4.3 (bounded default-light text only)",
+            "requiredTargets": 36,
+            "passedTargets": 36,
+            "lowContrastTargets": 0,
+            "notProvenTargets": 0,
+            "allTwelveFunctionalCasesPassed": true,
+            "populatedRlsGuardReached": true
+          },
+          "bounds": [
+            "Development bundle, not production build",
+            "No production business data",
+            "No Android/AT/load/pilot evidence",
+            "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI",
+            "No whole-page keyboard or zoom acceptance",
+            "320 CSS reflow allows vertical reading scroll; no native browser zoom proof",
+            "Contrast covers thirty-six default-light enabled/normal/native-focused text targets only; no dark/forced-color/hover/pressed/non-text/focus-ring or overall WCAG compliance claim"
+          ]
+        }
+      },
+      "runtimeSourceParity": {
+        "declaredBindingsChecked": 186,
+        "semanticGitBlobChecks": 96,
+        "totalParityObservations": 202,
+        "uniqueGitBlobsChecked": 128,
+        "allMatched": true,
+        "wholeJsonCaseReceiptsParsed": 11,
+        "wholeArtifactZips": 6,
+        "allMembersCapturedAndBound": 114,
+        "calendarBinding": "Actual candidate/tested tree equality plus explicit current workflow, harness/contrast helpers/fixture Git snapshots; calendar receipt does not declare per-source hashes.",
+        "generatedRestoreBaseSchema": "Explicit copy of a0:prisma/schema.prisma matched; not an invented tracked path"
+      },
+      "semanticVerification": {
+        "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/semantic-verification-current-complete.json",
+        "bytes": 128801,
+        "sha256": "aaebc8a478a464f97b343dbb01bfd9c2906bd96d14a3ed23eff667ae2b4b3557"
+      },
+      "earlierPendingSemanticObservationRetained": {
+        "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/semantic-verification-first.json",
+        "bytes": 127711,
+        "sha256": "761accd508a16d0651aac62f7e98cbfb94b7576b03d5c39ffcf22f84b3fee992"
+      },
+      "visualEvidence": {
+        "actualPngsViewed": 14,
+        "impact": 9,
+        "representativeRegressionScreenshots": 5,
+        "scope": "Actual hosted artifacts only. EN320 expected native ArrowRight local table first-column partial view; native disclosure focus/local scroll and explicit scenario bounds viewed. Dev1Issue badge observed, cause UNPROVEN. No pixel/full-pageWCAG/nativezoom/AT/production claim."
+      },
+      "historicalContinuity": {
+        "firstD3Blocked": {
+          "path": "/tmp/workforce575-d3b-compiler-blocked-independent.json",
+          "bytes": 17001,
+          "sha256": "e14cd93735d56b9a61298125459bf6e20385888c62dcd6faddf6b9b0c7c0648e"
+        },
+        "firstD3Audit": {
+          "path": "/tmp/workforce575-d3b-compiler-blocked-input-audit-independent.json",
+          "bytes": 285673,
+          "sha256": "3a0a1dcf3aed6eb6bb435587a0f55132d15c12b10d4fac59b37a98723f636ccf"
+        },
+        "historicalOwnedCompilerDiagnostics": 6,
+        "earlierSourceOnlyReviewMissPreserved": true,
+        "historicalSuccessfulRuntimeNotRetrofailed": true,
+        "f1PrecommitBoundedChecks": "Original actual210tests/8files/19s proof retains pred3 runHEAD; three working-source hashes match f1; no invented f1 runHEAD.",
+        "reviewerInspectionHelperStops": "Exploratory print wrongly assumed workforceRequests list rather than actual count/allGet object; initial report helper compared a three-field digest to a four-field diff identity including paths and stopped before issuance. Both corrected read-only; no tests/CI failure or earlier PASS packet."
+      },
+      "currentMainReadOnly": {
+        "original": {
+          "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/binding-api-20261004T150948963460Z/main-git.json",
+          "bytes": 342,
+          "sha256": "2a048111e67d23863c8017d9346cf205053f887cd6f016f8be66ab0f13d93002"
+        },
+        "sha": "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173",
+        "freshCheckNeededBeforeFutureMerge": true
+      },
+      "releaseAndProductLimits": {
+        "productionBuild": "NOT RUN; normal PR job SKIPPED",
+        "normalMerge": "NOT RUN by reviewer",
+        "ownDeployAndStrictFullShaProduction": "NOT RUN",
+        "productionAuthenticatedBusinessOrGrantActivation": "NOT RUN",
+        "humanATNativeZoomWholePageKeyboardAndroidPhysicalLoadPilot": "NOT RUN"
+      },
+      "taskAccounting": "WF-C8-011 remains NON-DONE; overall59%, DONE81/161, GATES14/15, C836%,80non-DONE unchanged. CI alone adds no release or whole-product credit.",
+      "requiredNext": "Root whole-read/hash/parity acceptance of this exact packet, fresh-main check and authorized normal merge/deploy through main/deploy.yml, own strict registered-host fullSHA production verification, then explicit row-scope acceptance.",
+      "inputAudit": {
+        "path": "/tmp/workforce575-f1e9-hosted-input-audit-independent.json",
+        "bytes": 334648,
+        "sha256": "169b92c25bf55f39fedb76754f02f368810fdba57c3e81ead34d3ad765aa406b"
+      },
+      "currentCapture": {
+        "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/observation-20261004T151114256144Z/whole-capture.json",
+        "bytes": 57213,
+        "sha256": "25db0787460a51779516eb0c8cf207e393d41690bbc4a3bef8957567788bb7cf"
+      },
+      "reviewerActions": {
+        "sourceEdits": 0,
+        "tests": 0,
+        "ciTriggersOrReruns": 0,
+        "gitMutations": 0,
+        "productionActions": 0
+      }
+    },
+    "printedCriterionAssessment": {
+      "version": 1,
+      "atUtc": "2026-10-04T15:21:40.023342+00:00",
+      "status": "BOUNDED PRINTED-ROW CRITERIA ASSESSED — WHOLE WF-C8-011 REMAINS NON-DONE",
+      "candidateHead": "f1e9747cd8f3532fbf39dc38022f8cef26e7e739",
+      "baseSha": "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173",
+      "checkedMergeSha": "a87ebf98e3e8f5337a8edde9158c51b4168b9cea",
+      "reviewerAuthorless": true,
+      "printedCriterion": {
+        "source": "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "line": 981,
+        "row": "| WF-C8-011 | P2 | PLANNED | Web | Add policy/version diff, effective-date impact preview and safe rollback-to-new-version | No direct historical mutation |",
+        "declaredStatus": "PLANNED"
+      },
+      "hostedReview": {
+        "path": "/tmp/workforce575-f1e9-hosted-independent.json",
+        "bytes": 22474,
+        "sha256": "1186a6be6ce56d97f8bbcae7dd0edbebea542da820e0610d11214985d5aa6f28"
+      },
+      "assessment": [
+        {
+          "criterion": "Policy/version diff",
+          "actualEvidence": "Recorded same-scope organization/team versions compare all five interpreted numeric settings with NULL/0 distinct, signed forward/reverse delta and opaque metadata presence; full-definition integrity is verified without treating hashes as approval. Actual current18 browser cases and source-parity receipts cover selected version catalogs, 20-choice lookahead, retention, invalid pairs, grants and session boundaries.",
+          "limits": "Comparison uses recorded definitions; opaque metadata is not semantically interpreted, no digital signature/approval or publication guarantee.",
+          "gapWithinDocumentedBoundedCriterion": "No additional source feature gap identified."
+        },
+        {
+          "criterion": "Effective-date impact preview",
+          "actualEvidence": "Existing future-window preview models predecessor close/new window at organization-localdate. Current employee-impact lane evaluates the selected future open-ended DRAFT at organization-local midnight, projecting recorded policy selection for every currently ACTIVE directory role using recorded membership, preserving organization fallback without mutable current-team substitution. UI shows aggregate coverage counts and grouped five-field deltas on demand with explicit what-if bounds. Actual7 PostgreSQL tests/9labels/17browser cases, positive100/fail-closed101 bounds, RR, SELECT-only populatedRLS, 554-table serialized fingerprints, denial/session clearing and delivered obsolete-response suppression are current-candidate evidence.",
+          "limits": "Current ACTIVE cohort is not a prediction of future employment eligibility; workday start times and later edits can change results. No attendance/payroll recalculation, real future activation or approval guarantee.",
+          "gapWithinDocumentedBoundedCriterion": "No additional source feature gap identified; these explicit bounds are the documented feature contract."
+        },
+        {
+          "criterion": "Safe rollback-to-new-version",
+          "actualEvidence": "Documented UI restores a recorded ACTIVE/RETIRED full canonical definition into a separate future TENANT_ADMIN DRAFT with monotonic same-scope version, manual review/edit/create, operation-bound replay, one atomic creation audit, conflict/integrity/date denial and real concurrency/rollback tests. Current13catalog/11PostgreSQL/9authorizedAPI/15renderedUI cases pass. Source row creator only inserts new policy and the restore service audit; current source exposes no direct historical edit/delete.",
+          "limits": "Restoring creates a new DRAFT. It is not immediate replacement of an ACTIVE policy. Existing canonical edit/activation compatibility is tested in disposable PostgreSQL, while end-to-end canonical activation/publication is NOT RUN and not a new control in this slice.",
+          "gapWithinDocumentedBoundedCriterion": "No additional source gap identified for the explicitly documented restore-as-new-DRAFT flow. Do not describe that flow as an executed active-policy rollback."
+        },
+        {
+          "criterion": "No direct historical mutation",
+          "actualEvidence": "Read previews project predecessor close/activation only in memory with real SELECT-only/fingerprint evidence. Restore creates a distinct new draft and audit with published-source/scope/fact preservation assertions, durable insert-only anchors and real rollback/replay tests.",
+          "limits": "Expected new draft/audit/auth metadata writes exist; no globally-zero-DML claim. Owner fixture maintenance is separate from production mutation.",
+          "gapWithinDocumentedBoundedCriterion": "No direct historical-mutation defect identified."
+        }
+      ],
+      "remainingAcceptanceActions": [
+        {
+          "action": "Complete normal release and exact own production identity verification",
+          "reason": "Current hosted GREEN and normal PR production-build SKIPPED do not establish production build/deploy or public full-SHA acceptance. Root must fresh-check main and candidate, then use main/deploy.yml and validate the registered host before release credit."
+        },
+        {
+          "action": "Reconcile the printed row with the documented bounded semantics and accepted release evidence",
+          "reason": "Printed row remains PLANNED and accepted accounting unchanged. The row can only be reclassified through explicit criterion acceptance; this review issues no DONE count or gate change."
+        }
+      ],
+      "separateRequirements": {
+        "native200percentZoom": "Explicitly belongs to WF-C8-010 and WF-C14-003; current14viewed PNGs and320CSSreflow do not satisfy it. Do not add nativezoom/physicalAndroid/humanAT/load/pilot to the literal WF-C8-011 task or claim broader C8/C14 completion.",
+        "canonicalActivation": "No separate activation control was requested in the bounded row implementation. Preserve explicit DRAFT semantics. Actual policy activation/publication or an immediate rollback of active behavior would require its own actual writer/end-to-end acceptance; no such credit here."
+      },
+      "taskAccounting": "Overall59%, DONE81/161, GATES14/15, C836%,80non-DONE unchanged; WF-C8-011 NON-DONE until root acceptance.",
+      "preciseNext": "Root accepts whole exact current hosted packet, performs authorized fresh-main normal release/fullSHA verification, then decides the row under these printed bounded criteria. Continue independent remaining C8-010/C14 gates without using this row as full-product completion.",
+      "inputAudit": {
+        "path": "/tmp/workforce575-f1e9-011-criterion-input-audit-independent.json",
+        "bytes": 5672,
+        "sha256": "8bd1c4433829290f372b92a11e8e6417f751bc06d8fcd958d3abc258bf72046d"
+      },
+      "reviewerActions": {
+        "sourceEdits": 0,
+        "tests": 0,
+        "ciTriggersOrReruns": 0,
+        "gitMutations": 0,
+        "productionActions": 0
+      }
+    },
+    "rootIssuedHostedParity": {
+      "atUtc": "2026-10-04T15:20:35.877383+00:00",
+      "head": "f1e9747cd8f3532fbf39dc38022f8cef26e7e739",
+      "base": "a0f971ed71bfb6ff355cdf1b6947eb17c7d9e173",
+      "report": {
+        "path": "/tmp/workforce575-f1e9-hosted-independent.json",
+        "bytes": 22474,
+        "sha256": "1186a6be6ce56d97f8bbcae7dd0edbebea542da820e0610d11214985d5aa6f28"
+      },
+      "audit": {
+        "path": "/tmp/workforce575-f1e9-hosted-input-audit-independent.json",
+        "bytes": 334648,
+        "sha256": "169b92c25bf55f39fedb76754f02f368810fdba57c3e81ead34d3ad765aa406b"
+      },
+      "wholeIssuedReportRead": true,
+      "wholeDeclaredAuditParsed": true,
+      "descriptorObservations": 931,
+      "uniqueOriginals": 684,
+      "explicitGitObservations": 202,
+      "uniqueGitBlobs": 128,
+      "exactBinaryDiffChecks": 2,
+      "activeWorktreeBindings": 0,
+      "parity": "PASS",
+      "status": "CURRENT_HOSTED_GREEN_ACCEPTED_BEFORE_NORMAL_MERGE",
+      "ownedAllFamilyDiagnostics": 0,
+      "wholeCompilerClean": false,
+      "wholeSuiteClean": false,
+      "freshMainMergeAndOwnRelease": "PENDING"
+    },
+    "rootIssuedReleaseParity": {
+      "atUtc": "2026-10-04T16:02:52.979684+00:00",
+      "mergedSha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+      "report": {
+        "path": "/tmp/workforce575-409e-own-release-independent.json",
+        "bytes": 14422,
+        "sha256": "352189910cc64e9ce615b716c5bec0c9b562e58ba1d70a0fb3a4e3ffc2fee7b6"
+      },
+      "audit": {
+        "path": "/tmp/workforce575-409e-own-release-input-audit-independent.json",
+        "bytes": 29737,
+        "sha256": "8a217c10533d85fc896366eaeb55a23401f4366dfa2692f09c494e7369809efd"
+      },
+      "wholeIssuedReportRead": true,
+      "wholeAuditAndActualPublicProofParsed": true,
+      "descriptorObservations": 130,
+      "uniqueOriginals": 100,
+      "explicitMergedGitChecks": 12,
+      "activeWorktreeBindings": 0,
+      "allFourOwnJobsAndIndependentPinnedPublicFullShaAccepted": true,
+      "literalIpTlsNegativeRetained": true,
+      "parity": "PASS",
+      "productRowAcceptance": "Coordinator reconciliation follows; packet itself assigned no DONE"
+    },
+    "rootOwnBuildQualitySemantics": {
+      "atUtc": "2026-10-04T15:49:04.107149+00:00",
+      "mergedSha": "409e4fc98f1522bf7f60a30941f26c9e36a2eb13",
+      "candidateHead": "f1e9747cd8f3532fbf39dc38022f8cef26e7e739",
+      "wholeOwnBuildAndQualityOriginalsRead": true,
+      "originals": [
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/whole-completed-logs/build-111467277829.txt",
+          "bytes": 161402,
+          "sha256": "483a441771e67c4186c42853b0e42e7b5e4848ff8b83e7d1c2b13179431202a9"
+        },
+        {
+          "path": "/tmp/workforce575-409e-own-release-primary/whole-completed-logs/quality-111467277637.txt",
+          "bytes": 330440,
+          "sha256": "08cb545faba18e014f3a1a2beb9c5e8890e748ef18038d4a9f0f01370b9fdb5a"
+        }
+      ],
+      "standaloneBuildSuccessObserved": true,
+      "buildDiagnosticLines": [
+        "✓ Compiled successfully in 8.7min",
+        "Skipping validation of types",
+        "⚠ Failed to copy traced files for /home/runner/work/leaddrive-v2/leaddrive-v2/.next/server/app/(dashboard)/page.js Error: ENOENT: no such file or directory, copyfile '/home/runner/work/leaddrive-v2/leaddrive-v2/.next/server/app/(dashboard)/page_client-reference-manifest.js' -> '/home/runner/work/leaddrive-v2/leaddrive-v2/.next/standalone/.next/server/app/(dashboard)/page_client-reference-manifest.js'",
+        "code: 'ENOENT',",
+        "path: '/home/runner/work/leaddrive-v2/leaddrive-v2/.next/server/app/(dashboard)/page_client-reference-manifest.js',",
+        "dest: '/home/runner/work/leaddrive-v2/leaddrive-v2/.next/standalone/.next/server/app/(dashboard)/page_client-reference-manifest.js'",
+        "##[notice]Copied 1535 client-reference-manifest file(s)"
+      ],
+      "ownFullSuiteBaseline": {
+        "knownFailingFiles": 18,
+        "newFailures": 0,
+        "everyBaselineEntryStillFails": true,
+        "wholeSuiteClean": false,
+        "evidence": "Actual unchanged gate output; full per-file JSON not independently supplied"
+      },
+      "ownFullTscExecution": "NOT RUN in these two logs; no invented main full compiler run",
+      "separateActualPrCompiler": {
+        "candidateHead": "f1e9747cd8f3532fbf39dc38022f8cef26e7e739",
+        "rootProof": {
+          "path": "/tmp/workforce575-f1e9-runtime-primary/root-current-whole-compiler-owned-baseline-parsed.json",
+          "bytes": 2283,
+          "sha256": "1ff9e80cea1a2924587221268fcce6ee161d3bf07835f861bd128823f959a14c"
+        },
+        "1174ExistingDiagnostics": true,
+        "all19OwnedAllFamilyZero": true,
+        "all66ExactBaseline": true,
+        "treeEqualsOwnMergedTree": true
+      },
+      "deployRetentionPublicProof": "PENDING"
+    },
+    "literalIpStrictNegative": {
+      "startedAt": "2026-10-04T15:54:42.475310+00:00",
+      "completedAt": "2026-10-04T15:54:43.549216+00:00",
+      "url": "https://13.140.132.245/api/v1/ping",
+      "curlExit": 60,
+      "metrics": [
+        "000",
+        "13.140.132.245",
+        "1"
+      ],
+      "tlsVerificationEnabled": true,
+      "insecureFlagUsed": false,
+      "defaultCurlConfigDisabled": true,
+      "bodyBytes": 0,
+      "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publicContractBody": null,
+      "literalIpStrictTlsPositive": false,
+      "boundedTransportDiagnostic": "curl: (60) SSL: no alternative certificate subject name matches target host name '13.140.132.245'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.\n",
+      "primaryRegisteredHostVerification": "Separate strict canonical-hostname bracket pinned13.140.132.245 afterwholeowndeploySUCCESS"
+    }
+  },
+  "originalPacketBindings": {
+    "rootRelease": {
+      "path": "/tmp/workforce575-409e-own-release-primary/release-proof.json",
+      "bytes": 9759,
+      "sha256": "e91b79371050ad3d567402ef1218ad73a5d80b78e6bc137af0349c477d0536aa"
+    },
+    "independentRelease": {
+      "path": "/tmp/workforce575-409e-own-release-independent.json",
+      "bytes": 14422,
+      "sha256": "352189910cc64e9ce615b716c5bec0c9b562e58ba1d70a0fb3a4e3ffc2fee7b6"
+    },
+    "exactSourceReview": {
+      "path": "/tmp/workforce-part34-f1e9-exact-source-independent.json",
+      "bytes": 8799,
+      "sha256": "43825a5571c22e9622073343e1882fb26a5673c9c873254baef2607643387f4f"
+    },
+    "currentHostedReview": {
+      "path": "/tmp/workforce575-f1e9-hosted-independent.json",
+      "bytes": 22474,
+      "sha256": "1186a6be6ce56d97f8bbcae7dd0edbebea542da820e0610d11214985d5aa6f28"
+    },
+    "printedCriterionAssessment": {
+      "path": "/tmp/workforce575-f1e9-011-criterion-independent.json",
+      "bytes": 6687,
+      "sha256": "e7d9bf02bfad754cc81eef167e051d803cf10d2c995c1e4c772bcfa7624a1964"
+    },
+    "rootIssuedHostedParity": {
+      "path": "/tmp/workforce575-f1e9-runtime-primary/root-issued-current-hosted-parity.json",
+      "bytes": 1004,
+      "sha256": "41b8409589a0fcbf84563c607e6cddda99eea4bb2a25acde285f4a2f1498e13e"
+    },
+    "rootIssuedReleaseParity": {
+      "path": "/tmp/workforce575-409e-own-release-primary/root-issued-release-parity.json",
+      "bytes": 921,
+      "sha256": "ec176b8c6a6581299f0ecfd502c4bde59029ed8ab47b2464beb899eaab62bea2"
+    },
+    "rootOwnBuildQualitySemantics": {
+      "path": "/tmp/workforce575-409e-own-release-primary/root-whole-own-build-quality-semantics.json",
+      "bytes": 2477,
+      "sha256": "3ff7d74c5e3b5f461b667f1d4ccee56a64de4591191a95a99f7a2bc8738b4a4a"
+    },
+    "literalIpStrictNegative": {
+      "path": "/tmp/workforce575-409e-own-release-primary/literal-ip-strict-first-observation/proof.json",
+      "bytes": 1041,
+      "sha256": "a5eb40d42c620bf17cc0182c32a0f4baa69c4fdd86c77e2628da5f3774af759a"
+    }
+  },
+  "selectedOriginalBindings": [
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/public-20261004T155443612775Z/build-info-first.json",
+      "bytes": 112,
+      "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/public-20261004T155443612775Z/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/public-20261004T155443612775Z/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/artifacts.json",
+      "bytes": 762,
+      "sha256": "34a6560a70021a9e55dcf3562f8476b9e444960352e6637c7afba62950a6b526"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/candidate-commit.json",
+      "bytes": 1177,
+      "sha256": "3c71e75d23651d71c13f58c40260822387a37e6188d16c9acc2dc97d4b01d587"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/jobs.json",
+      "bytes": 20375,
+      "sha256": "f29dd0b552740e2648c802291c26c3990a219bb0f100adabd20558351d14a744"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/main-at-observation.json",
+      "bytes": 342,
+      "sha256": "1cb3560c1cccfcb2731552e291024d3af0b961e3d1c1d335e007fdd350c0a050"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/merged-commit.json",
+      "bytes": 2717,
+      "sha256": "0e9f306f9e611956ee4afe5d011dd2ea54bef32e55f809b1f10250ab077a7bf3"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/pr.json",
+      "bytes": 18881,
+      "sha256": "e8fec356257fb0382943235e95e9ff3d5a8f587546bd37f6907ec1b73e0b12a6"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/github-20261004T155329060925Z/run.json",
+      "bytes": 12394,
+      "sha256": "bb7ed3d3be6868413fb8fecd69553ba5895359da3c48e6a264228957a7edaa7b"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/github-proof-latest.json",
+      "bytes": 4644,
+      "sha256": "4d891fa64a7b183b324532f9f62bcd731efac255066a5a6e881532d3f2112b9e"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/public-proof.json",
+      "bytes": 2942,
+      "sha256": "504d567137fb0bb6a3913600104bf600cfeab423c48a08e5e8bcdaa7c42ac96e"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/build-info-first.json",
+      "bytes": 112,
+      "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/ping.json",
+      "bytes": 11,
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/build-info-confirm.json",
+      "bytes": 112,
+      "sha256": "c9cf0ef3f4f41dff940ab09cd4c4430f54a1dfab6feabfe5ccd4062f0edbe206"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/public-20261004T155443612775Z/attempt-proof.json",
+      "bytes": 2942,
+      "sha256": "504d567137fb0bb6a3913600104bf600cfeab423c48a08e5e8bcdaa7c42ac96e"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/observations/20261004T155704Z/main-ref.json",
+      "bytes": 342,
+      "sha256": "1cb3560c1cccfcb2731552e291024d3af0b961e3d1c1d335e007fdd350c0a050"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/observations/20261004T155704Z/pr575.json",
+      "bytes": 18881,
+      "sha256": "e8fec356257fb0382943235e95e9ff3d5a8f587546bd37f6907ec1b73e0b12a6"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/observations/20261004T155704Z/merge-commit.json",
+      "bytes": 2717,
+      "sha256": "0e9f306f9e611956ee4afe5d011dd2ea54bef32e55f809b1f10250ab077a7bf3"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-input-audit-independent.json",
+      "bytes": 29737,
+      "sha256": "8a217c10533d85fc896366eaeb55a23401f4366dfa2692f09c494e7369809efd"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/source-bindings-direct-merged-first.json",
+      "bytes": 3247,
+      "sha256": "f7511c5c69ff2ebade6879f81719cd5d8e52057672a2647e01d630b5b30d4174"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/source-bindings-public-routes-first.json",
+      "bytes": 912,
+      "sha256": "25ee9c34d17cae989a4a7cd015128dd81d213c6a758f9b72af17af1aad4a4e76"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/whole-logs/111467277637.txt",
+      "bytes": 330440,
+      "sha256": "08cb545faba18e014f3a1a2beb9c5e8890e748ef18038d4a9f0f01370b9fdb5a"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/whole-logs/111467277829.txt",
+      "bytes": 161402,
+      "sha256": "483a441771e67c4186c42853b0e42e7b5e4848ff8b83e7d1c2b13179431202a9"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/whole-logs/111471030321.txt",
+      "bytes": 116483,
+      "sha256": "2893b1008aeff11046fdf1f5f33b51d99d519c1080b395430a0a4707ccb90307"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/whole-logs/111472351082.txt",
+      "bytes": 7210,
+      "sha256": "1e04880a5a4ac3e6744a694f923cf8295de45ff9a953690a9d2723f2150bbf75"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/quality-build-semantic-verification-first.json",
+      "bytes": 4478,
+      "sha256": "a980fccaf95716a81183f7191efa9c31987605d197fd8b6b9fda3a6e294cd4fb"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent.json",
+      "bytes": 22474,
+      "sha256": "1186a6be6ce56d97f8bbcae7dd0edbebea542da820e0610d11214985d5aa6f28"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-input-audit-independent.json",
+      "bytes": 334648,
+      "sha256": "169b92c25bf55f39fedb76754f02f368810fdba57c3e81ead34d3ad765aa406b"
+    },
+    {
+      "path": "/tmp/workforce-part34-f1e9-exact-source-independent.json",
+      "bytes": 8799,
+      "sha256": "43825a5571c22e9622073343e1882fb26a5673c9c873254baef2607643387f4f"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-011-criterion-independent.json",
+      "bytes": 6687,
+      "sha256": "e7d9bf02bfad754cc81eef167e051d803cf10d2c995c1e4c772bcfa7624a1964"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-normal-merge-primary/normal-merge-proof.json",
+      "bytes": 1524,
+      "sha256": "9c6aeb7cc0089503bafe7ae619e8d3dc0b59ef7c80347ff0d040f082281df1e5"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/deploy-retention-semantic-verification-first.json",
+      "bytes": 57618,
+      "sha256": "ee0017cc3a2d42a0e193abb7d3d6872692829f2b9d9c4c59d80aeb9634140b40"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/public-first/strict-public-bracket-first.json",
+      "bytes": 61235,
+      "sha256": "7500c4f264416509d45ad91dd7fa282881f261afab776fe2a5118e7947c2b024"
+    },
+    {
+      "path": "/tmp/workforce575-409e-release-independent-inputs/public-first/literal-ip-build-info.stderr",
+      "bytes": 362,
+      "sha256": "bb444196ae8c7ddeb2fab3611068ba2fc224e0f7d83fba0fde655417ba261847"
+    },
+    {
+      "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/full-binary.diff",
+      "bytes": 330206,
+      "sha256": "b5be5b3cd645a18c6bb6644a81a3205356b9a0678767b95857e44815156e6b42"
+    },
+    {
+      "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/non-doc-binary.diff",
+      "bytes": 162465,
+      "sha256": "517a8565c861e19f8e66f73689146e847d258c71bf9883eb2391944801eba8e2"
+    },
+    {
+      "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/compiler-correction-only.diff",
+      "bytes": 17924,
+      "sha256": "4af537cd3a205ff90bf1f5cfdc12636fecb66faaa94448884314d4402aa9748b"
+    },
+    {
+      "path": "/tmp/workforce-part34-d3b-exact-source-independent.json",
+      "bytes": 11812,
+      "sha256": "11cb4aa7928c057f0cee241b2aaf7ca40ea6dbd2f611462ea5e241450b3c9ab6"
+    },
+    {
+      "path": "/tmp/workforce-part34-f1e9-independent-inputs-v2/current-whole-source-parity.json",
+      "bytes": 27869,
+      "sha256": "9885a8982ae411b168aae1026aaf5772944052fdcf662cd2a22bf6611005872d"
+    },
+    {
+      "path": "/tmp/workforce-part34-compiler-correction-primary/first-original-proof.json",
+      "bytes": 5309,
+      "sha256": "9996958e940ea93b37a91ffcb190fc253fc96e5a90f746d324be3cd8e97048d4"
+    },
+    {
+      "path": "/tmp/workforce-part34-compiler-correction-primary/focused-tests-stdout-original.txt",
+      "bytes": 287,
+      "sha256": "ac11e7fd44bdd277e8e81a848963ad257b0a2006c5949be7028b8a26c31a6b9d"
+    },
+    {
+      "path": "/tmp/workforce575-d3b-compiler-blocked-independent.json",
+      "bytes": 17001,
+      "sha256": "e14cd93735d56b9a61298125459bf6e20385888c62dcd6faddf6b9b0c7c0648e"
+    },
+    {
+      "path": "/tmp/workforce575-d3b-compiler-blocked-input-audit-independent.json",
+      "bytes": 285673,
+      "sha256": "3a0a1dcf3aed6eb6bb435587a0f55132d15c12b10d4fac59b37a98723f636ccf"
+    },
+    {
+      "path": "/tmp/workforce575-d3b-blocked-audit-tsconfig-count-clarification-independent.json",
+      "bytes": 1071,
+      "sha256": "a65c18ccf2147620de8df12b6067275bb1cd200e1256c3295cf7580a6416dde8"
+    },
+    {
+      "path": "/tmp/workforce575-d3b-hosted-independent-inputs/whole-logs/111452923638.txt",
+      "bytes": 259197,
+      "sha256": "70d08e779a20d4336091b6e25ff74fa7b2d5cfe297245d062da2b915f47608a7"
+    },
+    {
+      "path": "/tmp/workforce-part34-f1e9-exact-source-input-audit-independent.json",
+      "bytes": 69046,
+      "sha256": "283d6318fe40e6f8da6a2c9a42b67d3ec9354f8b3ab7646c97741931f180dcff"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460323124.txt",
+      "bytes": 257392,
+      "sha256": "5936cd188e23b3a5b88c64181a5d037ffb258afa79864fb18f89b357f5fd230c"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/actual-compiler-parsed-first.json",
+      "bytes": 266475,
+      "sha256": "b21424183aefd32bf14b9f46c83a7948ddf3423a199d8d041ba6960fd630d041"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/binding-api-20261004T150948963460Z/check-runs.json",
+      "bytes": 43009,
+      "sha256": "a078d74514799634b67614e5277e6caf6e3218249fe4c6f9fdb426612afd59c0"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/binding-api-20261004T150948963460Z/main-protection.json",
+      "bytes": 1488,
+      "sha256": "94ff741b8943f63ab310fba375af5e9750114361b5fc10e5ff98c29f8e8c6f76"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460323109.txt",
+      "bytes": 212181,
+      "sha256": "e27778fe928a1f00efb82068eb7441357782b7a1ed1da19259174a64e793ed0f"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460269801.txt",
+      "bytes": 109316,
+      "sha256": "fe866098796f5b082f983f77bb4b3f3cdaa3f45c0afa377b472bf0830f220dae"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306397777.zip",
+      "bytes": 829976,
+      "sha256": "5d15f79ea9fbb49a2239e6ade472a5c29e7a5f48aa31d8534cbe74649d64a2b4"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270175.txt",
+      "bytes": 77859,
+      "sha256": "5247b1cf024824c199c958018a09d23b2bb0502582b6b3bbc3264200b902bfc3"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460269868.txt",
+      "bytes": 189815,
+      "sha256": "01ed15022d18be7075acd915d25212ef368bb0ffe825ef4368af438e677012a8"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306487483.zip",
+      "bytes": 882596,
+      "sha256": "36cdfdb6ee20860d9c747c03022730c64af63574db8e45771deb6e3b4fbe76b9"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460269941.txt",
+      "bytes": 100218,
+      "sha256": "86dc799fb1d6634432f88e1d60d7b7e81a98a06de6f8ef344de541e5c4b0f33e"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306717100.zip",
+      "bytes": 910043,
+      "sha256": "28f30d5b5196cc0ca3192815001bdaab897a74aa1820b74a9d0be8421a901805"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270083.txt",
+      "bytes": 88913,
+      "sha256": "b4b0c125590ee55fba8ec827c059a8511423a784e039e17038bf458fae5d0614"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306427364.zip",
+      "bytes": 650475,
+      "sha256": "52f76c40934b0f6b58a42da9ab77c65bdd493687da36f4e78221e1f901e0b614"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270637.txt",
+      "bytes": 90478,
+      "sha256": "f3f7dd8b6a1442cc96bc12e111cdbb932764fdd08b63bf04f8966f24b6b2882f"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11306182896.zip",
+      "bytes": 1218731,
+      "sha256": "3411a22cf19534f3467ffd4ea766b27dd440cf186db0ff55e27031bd298ad4bd"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270147.txt",
+      "bytes": 83345,
+      "sha256": "b6c6235d3335044a64e9cda08782ef9f4943f3b967da12316ab83d4f780d161a"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-artifacts/11307090980.zip",
+      "bytes": 3411474,
+      "sha256": "a423de0299a25e787372427b4a93e78606e6aae1cecf2aa78935df335aefe80e"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270068.txt",
+      "bytes": 11403,
+      "sha256": "de40db29ae988a038bf2ce46d91413acb17e7152b593ffca8dac68e5d8bf5e02"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/whole-logs/111460270004.txt",
+      "bytes": 83024,
+      "sha256": "ffcb71a87032a44c0224604af44b975405c2f8c2dfd9c7b8c9a298225d1151f6"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/semantic-verification-current-complete.json",
+      "bytes": 128801,
+      "sha256": "aaebc8a478a464f97b343dbb01bfd9c2906bd96d14a3ed23eff667ae2b4b3557"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/semantic-verification-first.json",
+      "bytes": 127711,
+      "sha256": "761accd508a16d0651aac62f7e98cbfb94b7576b03d5c39ffcf22f84b3fee992"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/binding-api-20261004T150948963460Z/main-git.json",
+      "bytes": 342,
+      "sha256": "2a048111e67d23863c8017d9346cf205053f887cd6f016f8be66ab0f13d93002"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-hosted-independent-inputs/observation-20261004T151114256144Z/whole-capture.json",
+      "bytes": 57213,
+      "sha256": "25db0787460a51779516eb0c8cf207e393d41690bbc4a3bef8957567788bb7cf"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-011-criterion-input-audit-independent.json",
+      "bytes": 5672,
+      "sha256": "8bd1c4433829290f372b92a11e8e6417f751bc06d8fcd958d3abc258bf72046d"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-independent.json",
+      "bytes": 14422,
+      "sha256": "352189910cc64e9ce615b716c5bec0c9b562e58ba1d70a0fb3a4e3ffc2fee7b6"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/whole-completed-logs/build-111467277829.txt",
+      "bytes": 161402,
+      "sha256": "483a441771e67c4186c42853b0e42e7b5e4848ff8b83e7d1c2b13179431202a9"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/whole-completed-logs/quality-111467277637.txt",
+      "bytes": 330440,
+      "sha256": "08cb545faba18e014f3a1a2beb9c5e8890e748ef18038d4a9f0f01370b9fdb5a"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-runtime-primary/root-current-whole-compiler-owned-baseline-parsed.json",
+      "bytes": 2283,
+      "sha256": "1ff9e80cea1a2924587221268fcce6ee161d3bf07835f861bd128823f959a14c"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/release-proof.json",
+      "bytes": 9759,
+      "sha256": "e91b79371050ad3d567402ef1218ad73a5d80b78e6bc137af0349c477d0536aa"
+    },
+    {
+      "path": "/tmp/workforce575-f1e9-runtime-primary/root-issued-current-hosted-parity.json",
+      "bytes": 1004,
+      "sha256": "41b8409589a0fcbf84563c607e6cddda99eea4bb2a25acde285f4a2f1498e13e"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/root-issued-release-parity.json",
+      "bytes": 921,
+      "sha256": "ec176b8c6a6581299f0ecfd502c4bde59029ed8ab47b2464beb899eaab62bea2"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/root-whole-own-build-quality-semantics.json",
+      "bytes": 2477,
+      "sha256": "3ff7d74c5e3b5f461b667f1d4ccee56a64de4591191a95a99f7a2bc8738b4a4a"
+    },
+    {
+      "path": "/tmp/workforce575-409e-own-release-primary/literal-ip-strict-first-observation/proof.json",
+      "bytes": 1041,
+      "sha256": "a5eb40d42c620bf17cc0182c32a0f4baa69c4fdd86c77e2628da5f3774af759a"
+    }
+  ],
+  "originalsBoundary": "This portable core preserves full parsed JSON values of the named packets and selected verified direct original byte/hash references. It is not a byte-for-byte copy of the original JSON serialization and does not publish complete audits, raw logs, six runtime artifactZIP/114members/PNG or the444208366-byte production artifact. Those originals remain externally bound in /tmp and source audits, already whole-read/parity verified. Individual packets retain their original status/time; later row acceptance does not rewrite an earlier NON-DONE, BLOCKED or NOT RUN observation."
+}

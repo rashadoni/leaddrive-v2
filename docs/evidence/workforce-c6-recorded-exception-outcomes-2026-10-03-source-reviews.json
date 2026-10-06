@@ -1,0 +1,116 @@
+{
+  "atUtc": "2026-10-03T20:24:07.143948+00:00",
+  "sourceBeforeThisReceipt": "39390a2f42d9585e44aa7c4c3b1a78c46693c4ae",
+  "plannedDocsBase": "7bbb857ca4b1a976b3b4945f9bbd3c11f349c06f",
+  "historicalSourceReview": {
+    "head": "1907fd823f6024e6a356b6acf4c5da6eccaae261",
+    "base": "4040b4f5a70b1557f51cce7df69f948ad4994539",
+    "status": "GREEN_SOURCE_REVIEW_ONLY",
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "historicalIntegrationClosure": {
+    "head": "39390a2f42d9585e44aa7c4c3b1a78c46693c4ae",
+    "base": "7bbb857ca4b1a976b3b4945f9bbd3c11f349c06f",
+    "status": "GREEN_SOURCE_INTEGRATION_ONLY",
+    "paths": 9,
+    "bytes": 74670,
+    "sha256": "e0b5ab2a397d78461c9e539cbd6e8eb7f3d43841d1a6ab5cfd441ed2c173b911",
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "fixtureReviewerAuthorship": "Prior reviewer authored prepared PG fixture. These original reviews explicitly do not constitute an authorless independent review of that fixture. Different reviewer still required before code publication.",
+  "actualTargeted": {
+    "tests": 85,
+    "files": 5,
+    "workerCount": 1,
+    "externalWallSeconds": 5.643,
+    "vitestReportedSeconds": 3.09,
+    "executedBefore4eeCheckpoint": true,
+    "sevenCurrentAppAndTestBlobsByteExactValidatedSource": true
+  },
+  "hostedPg": "NOT RUN; nine actual cases required in both mandatory existing targeted lanes",
+  "nativeC6Gates": "NOT RUN",
+  "newReceiptHeadReview": "PENDING",
+  "productionC6": "NOT RUN",
+  "originals": [
+    {
+      "source": "/tmp/workforce-part23-source-independent.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-source-reviews-original-00.gz",
+      "bytes": 14097,
+      "sha256": "4f505e4b7d0d9e85ddb765c0eba9d957a17628cd12b6f403e14cb22e6235dce6",
+      "gzipBytes": 5589,
+      "gzipSha256": "3e5963884edd5973706bad62098c2aa6bdb22b94ac181e7b86164be5d6929840",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-source-integrity-audit.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-source-reviews-original-01.gz",
+      "bytes": 72210,
+      "sha256": "4d5fa605cbbc617993e8b9aa52ce836e97fcf141f807ecfb71fca8bcd38ca260",
+      "gzipBytes": 9913,
+      "gzipSha256": "b3022ea44fd459ecc6cfdfe3fde6e287c8697a0894f96927ddfbda83b03d8aff",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-integrated-independent.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-source-reviews-original-02.gz",
+      "bytes": 4597,
+      "sha256": "1640274359098bbfebbe86f2a341a247654f864b2828079edfa1f9c9c81ee650",
+      "gzipBytes": 1974,
+      "gzipSha256": "7647e36626eb3c095abacf522f80af4bf2775cb86627fc134c7da96da3458bcd",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-integrated-source-identity.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-source-reviews-original-03.gz",
+      "bytes": 960,
+      "sha256": "d88b6b3bea3d97a562ea14845bfe0faf3dde53ae93d5b57021a61e5e29b2294e",
+      "gzipBytes": 483,
+      "gzipSha256": "4b3b09bc9f0bef9f7ed567ee5e5e4c4eb9bd5750cb86e62dd7db5be782a3b08b",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-integrated-runner-policy.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-source-reviews-original-04.gz",
+      "bytes": 44,
+      "sha256": "73576c5e5c928d8da7eec52b821fcceb9a1096a935209271300b906b27db852d",
+      "gzipBytes": 64,
+      "gzipSha256": "943293d11a1b12908c1bd6c15e762f061284c273d3db37b7471c741e3556bc90",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-source-gitleaks.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-source-reviews-original-05.gz",
+      "bytes": 176,
+      "sha256": "ee222440f4cc8214e543cebf9f61e434ba7e4bf248eac60307eea8ce3671032f",
+      "gzipBytes": 142,
+      "gzipSha256": "cf279d22444d82fc991e9959a064b76158d94509d3fd29bae0699552a21dfee4",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part24-docs-gitleaks.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-source-reviews-original-06.gz",
+      "bytes": 178,
+      "sha256": "b280603d6a7056a51f0170e5234e4771395a1ff79eeb85e1b651fe75c27e37b5",
+      "gzipBytes": 142,
+      "gzipSha256": "de25a3e890ffe19bff75f2ec5c79966ad5632aae3550dc7c43ec578c87132b6d",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-source-reviews-scan.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-source-reviews-original-07.gz",
+      "bytes": 145,
+      "sha256": "253d8167e963506147777bc7c6b5989bbe56c683610696ad43db73f8cb64fbb1",
+      "gzipBytes": 127,
+      "gzipSha256": "224308e4c4062945488528a4be3f14561983ce97e3efaddb3ded28a30078223a",
+      "losslessDecompressionVerified": true
+    }
+  ],
+  "rawScanBytes": 92262,
+  "rawScanExit": 0
+}

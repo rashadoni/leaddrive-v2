@@ -324,11 +324,18 @@ export type MtmContactExplorerAgentScope = {
   onChanged?: () => void
 }
 
+/** «Nobody's clients» in the attach tab's «whose clients» field; an agent id otherwise. */
+const WHOSE_NOBODY = "__nobody__"
+
 function scopeBaseFilters(scope: MtmContactExplorerAgentScope | undefined): ContactExplorerFilters {
   if (!scope) return EMPTY_CONTACT_FILTERS
+  // Attaching opens on every client the employee does not have yet (owner,
+  // 2026-10-06: «нужно, чтобы были все клиенты, но в списке уже было указано,
+  // какому агенту привязан клиент»). It used to open on clients nobody had —
+  // an empty list wherever every client already had someone.
   return scope.view === "assigned"
     ? { ...EMPTY_CONTACT_FILTERS, specialties: [], ownerAgentId: scope.agent.id }
-    : { ...EMPTY_CONTACT_FILTERS, specialties: [], assignmentState: "UNASSIGNED" }
+    : { ...EMPTY_CONTACT_FILTERS, specialties: [] }
 }
 
 export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExplorerAgentScope } = {}) {
@@ -349,9 +356,6 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
   const scopeAgentId = agentScope?.agent.id
   const scopeView = agentScope?.view
   const baseFilters = useMemo(() => scopeBaseFilters(agentScope), [scopeAgentId, scopeView]) // eslint-disable-line react-hooks/exhaustive-deps
-  // In an employee's own list every row has the same owner — the column would
-  // only push the phone number out of a 1440 px screen.
-  const showOwner = scopeView !== "assigned"
   const initial = useMemo(() => (agentScope
     ? { filters: baseFilters, page: 1, limit: 50 }
     : contactExplorerStateFromSearchParams(new URLSearchParams(searchParams.toString()))), []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -424,8 +428,21 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
   // Fields the tenant switched off are not columns, card lines or filters here.
   const shows = useMemo(() => contactFieldVisibility(facets?.hiddenFields), [facets?.hiddenFields])
   const showsProfession = shows("specialtyName") || shows("qualificationCategory") || shows("profile")
+  // Owner, 2026-10-04, in front of an employee's own list of 321 clients: «не
+  // понятно, кому привязаны». Every row of a section therefore names the
+  // employee, right after the client. The room comes from the coverage column,
+  // which stays on the Clients page — a section answers «whose client is it».
+  const showsCoverage = shows("coverage") && !scoped
+  const ownerLabel = scoped ? t("agentScope.ownerColumn") : t("owner")
+  const noOwnerLabel = scoped ? t("agentScope.noOwner") : t("unassigned")
 
-  const query = useMemo(() => contactQuery(filters, page, limit), [filters, page, limit])
+  // The attach tab never offers a client the employee already has.
+  const scopedQuery = useCallback((forPage: number, forLimit: number) => {
+    const params = contactQuery(filters, forPage, forLimit)
+    if (scopeView === "candidates" && scopeAgentId) params.set("notAgentId", scopeAgentId)
+    return params
+  }, [filters, scopeAgentId, scopeView])
+  const query = useMemo(() => scopedQuery(page, limit), [scopedQuery, page, limit])
   const queryString = query.toString()
   const routeAwareQueryString = useMemo(
     () => appendMtmRouteAssignmentHandoff(new URLSearchParams(queryString), routeAssignmentHandoff).toString(),
@@ -621,6 +638,12 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     .filter((key) => !(scoped && key === "assignmentState") && filterIsActive(key)).length
   const hasActiveFilters = (Object.keys(EMPTY_CONTACT_FILTERS) as (keyof ContactExplorerFilters)[])
     .some(filterIsActive)
+  // «Найдено: 321» over an employee's list did not say whose clients they were.
+  const resultLabel = !agentScope || !payload
+    ? tf("found", { count: total })
+    : agentScope.view === "assigned"
+      ? t(hasActiveFilters ? "agentScope.assignedFound" : "agentScope.assignedTotal", { name: agentScope.agent.name, count: total })
+      : hasActiveFilters ? tf("found", { count: total }) : t("agentScope.candidatesTotal", { name: agentScope.agent.name, count: total })
   const loadedTotal = payload?.total
   const reportTotal = agentScope?.onTotal
   useEffect(() => {
@@ -631,6 +654,21 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
 
   const updateFilter = (key: ContactTextFilterKey, value: string) => {
     setFilters((current) => ({ ...current, [key]: value }))
+    setPage(1)
+    setSelected(new Set())
+    setActiveSavedViewId("")
+  }
+
+  // The attach tab's single «whose clients» field over the two filters the
+  // list API knows: nobody's, one colleague's, or everyone's.
+  const otherAgents = (payload?.availableAgents ?? []).filter((agent) => agent.id !== scopeAgentId)
+  const whoseValue = filters.ownerAgentId || (filters.assignmentState === "UNASSIGNED" ? WHOSE_NOBODY : "")
+  const updateWhose = (value: string) => {
+    setFilters((current) => ({
+      ...current,
+      ownerAgentId: value === WHOSE_NOBODY ? "" : value,
+      assignmentState: value === WHOSE_NOBODY ? "UNASSIGNED" : "",
+    }))
     setPage(1)
     setSelected(new Set())
     setActiveSavedViewId("")
@@ -733,7 +771,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
     }
     setSelectingAll(true)
     try {
-      const allQuery = contactQuery(filters, 1, MTM_CONTACT_BULK_LIMIT)
+      const allQuery = scopedQuery(1, MTM_CONTACT_BULK_LIMIT)
       const response = await fetch(`/api/v1/mtm/contacts?${allQuery}`, { headers: { Accept: "application/json" } })
       const body = await response.json().catch(() => null) as {
         success?: boolean
@@ -823,6 +861,22 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       </div>
       )}
 
+      {/* What this list is, in a sentence, before anything else on the tab —
+          and how to change it only for someone who may. */}
+      {agentScope ? (
+        <section data-testid="mtm-agent-scope-explainer" className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
+          {agentScope.view === "assigned"
+            ? <UsersRound className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+            : <UserPlus className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />}
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold [overflow-wrap:anywhere]">{t(`agentScope.${agentScope.view}Title`, { name: agentScope.agent.name })}</h2>
+            {payload?.capabilities.canTransfer ? (
+              <p className="mt-1 text-sm text-muted-foreground">{t(`agentScope.${agentScope.view}How`, { name: agentScope.agent.name })}</p>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       {isRouteDoctorFlow && routeAssignmentHandoff ? (
         <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -848,16 +902,21 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       <section data-testid="mtm-contact-filters" className="space-y-3">
         <MtmFilterGrid>
           {/* In an employee's own list the owner is that employee: nothing to choose.
-              When attaching, the question is whose client it is now — so the
-              assignment state stands next to the owner, not behind «more». */}
-          {scopeView === "assigned" ? null : (
-            <MtmFilterSelectField testId="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)} allLabel={t("allAccessible")}
-              options={(payload?.availableAgents ?? []).filter((agent) => agent.id !== scopeAgentId).map((agent) => ({ value: agent.id, label: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }))} />
-          )}
+              When attaching, the question is whose clients to look through, and
+              it is one question: nobody's, or a named colleague's. Two fields
+              («owner» and «assignment state») could contradict each other —
+              a colleague chosen while the state still said «nobody's» found
+              nothing. */}
           {scopeView === "candidates" ? (
-            <MtmFilterSelectField testId="mtm-contact-assignment-state" label={t("assignmentState")} value={filters.assignmentState} onChange={(value) => updateFilter("assignmentState", value)} allLabel={t("all")}
-              options={[{ value: "ASSIGNED", label: t("assigned") }, { value: "UNASSIGNED", label: t("unassigned") }]} />
-          ) : null}
+            <MtmFilterSelectField testId="mtm-contact-whose" label={t("agentScope.whichClients")} value={whoseValue} onChange={updateWhose} allLabel={t("agentScope.whichClientsAll")}
+              options={[
+                { value: WHOSE_NOBODY, label: t("agentScope.whichClientsFree") },
+                ...otherAgents.map((agent) => ({ value: agent.id, label: t("agentScope.whichClientsOf", { name: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }) })),
+              ]} />
+          ) : scoped ? null : (
+            <MtmFilterSelectField testId="mtm-contact-owner" label={t("owner")} value={filters.ownerAgentId} onChange={(value) => updateFilter("ownerAgentId", value)} allLabel={t("allAccessible")}
+              options={otherAgents.map((agent) => ({ value: agent.id, label: agent.status !== "ACTIVE" ? `${agent.name} · ${t("agentInactive")}` : agent.name }))} />
+          )}
           {shows("specialtyName") || filters.specialties.length > 0 ? (
             <MtmFilterMultiField testId="mtm-contact-specialties" label={t("filterSpecialties")} values={filters.specialties} onChange={updateSpecialties} allLabel={t("all")}
               searchPlaceholder={t("filterSpecialtySearch")} emptyLabel={t("filterNothingFound")} clearLabel={tf("clear")}
@@ -915,12 +974,12 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
           <MtmFilterReset testId="mtm-contact-clear-filters" show={hasActiveFilters} onReset={clearFilters} label={tf("reset")} />
         </MtmFilterActions>
         <MtmResultLine
-          aside={<>
+          aside={scoped ? undefined : <>
             {t("asOf", { date: payload?.asOf ?? "—" })}
             {payload?.coveragePeriod ? ` · ${t("coveragePeriodRange", { start: payload.coveragePeriod.start, end: payload.coveragePeriod.end })}` : ""}
           </>}
         >
-          <span className="font-medium text-foreground">{tf("found", { count: total })}</span>
+          <span data-testid="mtm-contact-result-count" className="font-medium text-foreground">{resultLabel}</span>
         </MtmResultLine>
       </section>
 
@@ -943,8 +1002,8 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
       {selected.size > 0 ? (
         <section className="sticky top-2 z-20 flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-background/95 p-3 shadow-lg backdrop-blur">
           <div>
-            <p className="text-sm font-semibold">{t("selectionCount", { count: selected.size })}</p>
-            <p className="text-xs text-muted-foreground">{selectionScope} · {t("assignmentBoundary")}</p>
+            <p className="text-sm font-semibold">{t(scoped ? "agentScope.selected" : "selectionCount", { count: selected.size })}</p>
+            <p className="text-xs text-muted-foreground">{scoped ? t("agentScope.selectionNote") : `${selectionScope} · ${t("assignmentBoundary")}`}</p>
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {selected.size < total && total <= MTM_CONTACT_BULK_LIMIT ? (
@@ -1024,13 +1083,15 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                 visitDateTime={visitDateTime}
                 categoryLabel={categoryLabel(contact)}
                 shows={shows}
-                showOwner={showOwner}
+                showsCoverage={showsCoverage}
+                ownerLabel={ownerLabel}
+                noOwnerLabel={noOwnerLabel}
                 t={t}
               />
             ))}
           </div>
           <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 lg:block">
-            <table className={`${showOwner ? "min-w-[1320px]" : "min-w-[1100px]"} w-full text-sm`}>
+            <table className={`${scoped ? "min-w-[1100px]" : "min-w-[1320px]"} w-full text-sm`}>
               <thead className="bg-muted/60 text-left text-xs text-muted-foreground">
                 <tr>
                   <th scope="col" className="w-12">
@@ -1042,22 +1103,33 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                     />
                   </th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("contact")}</th>
+                  {scoped ? <th scope="col" className="px-3 py-3 font-medium">{ownerLabel}</th> : null}
                   {showsProfession ? <th scope="col" className="px-3 py-3 font-medium">{t("professional")}</th> : null}
-                  {shows("coverage") ? <th scope="col" className="px-3 py-3 font-medium">{t("coverage")}</th> : null}
+                  {showsCoverage ? <th scope="col" className="px-3 py-3 font-medium">{t("coverage")}</th> : null}
                   <th scope="col" className="px-3 py-3 font-medium">{t("workplace")}</th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("visitContext")}</th>
                   <th scope="col" className="px-3 py-3 font-medium">{t("communication")}</th>
-                  {showOwner ? <th scope="col" className="px-3 py-3 font-medium">{t("owner")}</th> : null}
+                  {scoped ? null : <th scope="col" className="px-3 py-3 font-medium">{ownerLabel}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
                 {contacts.map((contact) => {
                   const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
-                  const owner = contact.agentAssignments.find((assignment) => assignment.role === "PRIMARY")?.agent
+                  const owners = contactEmployees(contact)
                   const phone = visiblePhone(contact, shows)
                   const email = shows("email") ? contact.email : null
                   const lastVisit = contact.visits[0]
                   const nextPoint = contact.routePoints[0]
+                  const ownerCell = (
+                    <td className="px-3 py-3" data-testid={`mtm-contact-owner-${contact.id}`}>
+                      {owners.length > 0 ? owners.map((owner) => (
+                        <p key={owner.id} className="font-medium [&+p]:mt-1.5">
+                          {owner.name}
+                          {owner.status !== "ACTIVE" ? <span className="mt-0.5 block text-xs font-normal text-amber-700 dark:text-amber-300">{t("agentInactive")}</span> : null}
+                        </p>
+                      )) : <span className="text-muted-foreground">{noOwnerLabel}</span>}
+                    </td>
+                  )
                   return (
                     <tr key={contact.id} className="align-top hover:bg-muted/25">
                       <td>
@@ -1082,15 +1154,14 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                         </div>
                         {contact.externalCode && shows("externalCode") ? <p className="mt-1 text-xs text-muted-foreground">{contact.externalCode}</p> : null}
                       </td>
+                      {scoped ? ownerCell : null}
                       {showsProfession ? (
                         <td className="px-3 py-3">
                           <p className="font-medium">{specialtyLine(contact, shows) || "—"}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {[shows("profile") && contact.profile, shows("qualificationCategory") && contact.qualificationCategory].filter(Boolean).join(" · ") || "—"}
-                          </p>
+                          {professionDetail(contact, shows) ? <p className="mt-1 text-xs text-muted-foreground">{professionDetail(contact, shows)}</p> : null}
                         </td>
                       ) : null}
-                      {shows("coverage") ? (
+                      {showsCoverage ? (
                         <td className="px-3 py-3">
                           <ContactCoverageCell coverage={contact.coverage} t={t} />
                         </td>
@@ -1137,16 +1208,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
                         {email ? <a href={`mailto:${email}`} className="mt-1 flex items-center gap-1.5 hover:text-primary"><Mail className="h-3.5 w-3.5" />{email}</a> : null}
                         {!phone && !email ? <span className="text-muted-foreground">—</span> : null}
                       </td>
-                      {showOwner ? (
-                        <td className="px-3 py-3">
-                          {owner ? (
-                            <>
-                              <p className="font-medium">{owner.name}</p>
-                              {owner.status !== "ACTIVE" ? <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{t("agentInactive")}</p> : null}
-                            </>
-                          ) : <span className="text-muted-foreground">{t("unassigned")}</span>}
-                        </td>
-                      ) : null}
+                      {scoped ? null : ownerCell}
                     </tr>
                   )
                 })}
@@ -1209,6 +1271,9 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
         agents={payload?.availableAgents ?? []}
         asOf={payload?.asOf ?? ""}
         initialTargetAgentId={agentScope?.view === "candidates" ? agentScope.agent.id : isRouteDoctorFlow ? routeAssignmentHandoff?.agentId : undefined}
+        // In a section «detach» means this employee; on the Clients page the
+        // employee the list is narrowed to, or — with none chosen — everyone.
+        sourceAgentId={agentScope ? agentScope.agent.id : filters.ownerAgentId || undefined}
         lockTargetAgent={agentScope?.view === "candidates"}
         defaultReason={agentScope
           ? t(assignmentMode === "ASSIGN" ? "agentScope.assignReason" : "agentScope.unassignReason", { name: agentScope.agent.name })
@@ -1291,6 +1356,23 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
   )
 }
 
+/**
+ * Everyone the client is attached to today, the responsible one first. A
+ * client may have several employees (owner, 2026-10-06), and the list said one.
+ */
+function contactEmployees(contact: ContactRow): ContactAssignment["agent"][] {
+  const seen = new Set<string>()
+  return [...contact.agentAssignments]
+    .sort((left, right) => Number(right.role === "PRIMARY") - Number(left.role === "PRIMARY"))
+    .map((assignment) => assignment.agent)
+    .filter((agent) => !seen.has(agent.id) && Boolean(seen.add(agent.id)))
+}
+
+/** Profile and qualification under the specialty; empty for most tenants, and then not a dash in every row. */
+function professionDetail(contact: ContactRow, shows: FieldVisibility): string {
+  return [shows("profile") && contact.profile, shows("qualificationCategory") && contact.qualificationCategory].filter(Boolean).join(" · ")
+}
+
 function ContactCard({
   contact,
   checked,
@@ -1300,7 +1382,9 @@ function ContactCard({
   visitDateTime,
   categoryLabel,
   shows,
-  showOwner,
+  showsCoverage,
+  ownerLabel,
+  noOwnerLabel,
   t,
 }: {
   contact: ContactRow
@@ -1311,11 +1395,13 @@ function ContactCard({
   visitDateTime: DateFormatter
   categoryLabel: string
   shows: FieldVisibility
-  showOwner: boolean
+  showsCoverage: boolean
+  ownerLabel: string
+  noOwnerLabel: string
   t: ReturnType<typeof useTranslations>
 }) {
   const workplace = contact.workplaces.find((item) => item.isPrimary) ?? contact.workplaces[0]
-  const owner = contact.agentAssignments.find((assignment) => assignment.role === "PRIMARY")?.agent
+  const owners = contactEmployees(contact)
   const phone = visiblePhone(contact, shows)
   const email = shows("email") ? contact.email : null
   const lastVisit = contact.visits[0]
@@ -1350,13 +1436,11 @@ function ContactCard({
             <dd className="mt-1">{specialtyLine(contact, shows) || "—"}</dd>
           </div>
         ) : null}
-        {showOwner ? (
-          <div>
-            <dt className="text-xs text-muted-foreground">{t("owner")}</dt>
-            <dd className="mt-1">{owner?.name || t("unassigned")}</dd>
-          </div>
-        ) : null}
-        {shows("coverage") ? (
+        <div>
+          <dt className="text-xs text-muted-foreground">{ownerLabel}</dt>
+          <dd className="mt-1">{owners.map((owner) => owner.name).join(", ") || noOwnerLabel}</dd>
+        </div>
+        {showsCoverage ? (
           <div className="sm:col-span-2">
             <dt className="text-xs text-muted-foreground">{t("coverage")}</dt>
             <dd className="mt-1"><ContactCoverageCell coverage={contact.coverage} t={t} /></dd>

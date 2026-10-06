@@ -3,6 +3,11 @@ name: Support UX evidence
 on:
   workflow_dispatch:
     inputs:
+      audit_acceptance:
+        description: Run independent audit UI/API and PostgreSQL upgrade/transaction checks in disposable fixtures (ephemeral only)
+        required: false
+        type: boolean
+        default: false
       historical_layout:
         description: Run the independent matched historical layout measurement instead of the regular capture
         required: false
@@ -95,6 +100,78 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+
+  audit-unit-diagnostics:
+    permissions:
+      contents: read
+      pull-requests: read
+    if: ${{ inputs.audit_acceptance && inputs.target_mode == 'ephemeral' && inputs.historical_layout != true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    env:
+      SUPPORT_EVIDENCE_TARGET_MODE: ephemeral
+      SUPPORT_AUDIT_ACCEPTANCE: ephemeral-audit-20261004-v1
+      DATABASE_URL: postgresql://postgres:synthetic-only@127.0.0.1:5432/support_ux_evidence
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Resolve exact pull request merge tree
+        id: merge-tree
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr_number="$(gh pr view "$GITHUB_REF_NAME" --json number --jq '.number')"
+          [[ "$pr_number" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$pr_number" > "$RUNNER_TEMP/support-audit-pr.json"
+          node --input-type=module <<'NODE'
+          import { readFileSync, appendFileSync } from "node:fs"
+          const pr = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/support-audit-pr.json", "utf8"))
+          if (pr.head.sha !== process.env.GITHUB_SHA || !/^[a-f0-9]{40}$/.test(pr.merge_commit_sha || "")
+            || pr.base.repo.full_name !== process.env.GITHUB_REPOSITORY
+            || pr.head.repo.full_name !== process.env.GITHUB_REPOSITORY) throw new Error("AUDIT_PR_TREE_MISMATCH")
+          appendFileSync(process.env.GITHUB_OUTPUT, "merge_sha=" + pr.merge_commit_sha + "\n")
+          NODE
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.merge-tree.outputs.merge_sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --include=dev
+      - run: npx prisma generate --schema prisma/schema.prisma
+      - run: npx prisma generate --schema scripts/ci/fixtures/event-platform-legacy-client/schema.prisma
+      - name: Prepare bounded diagnostics memory
+        run: bash scripts/ci/prepare-hosted-build-runner.sh
+        env:
+          LEADDRIVE_BUILD_MIN_BUDGET_KIB: "18874368"
+      - name: Reproduce baselines with sanitized diagnostics
+        env:
+          SUPPORT_AUDIT_CHECKOUT_SHA: ${{ steps.merge-tree.outputs.merge_sha }}
+        run: |
+          unit_status=0
+          type_status=0
+          node scripts/support-ux-audit-unit-diagnostics.mjs || unit_status=$?
+          node scripts/support-ux-audit-type-diagnostics.mjs || type_status=$?
+          test "$unit_status" -eq 0
+          test "$type_status" -eq 0
+      - name: Upload sanitized unit diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-ux-unit-diagnostics-${{ github.sha }}
+          path: |
+            artifacts/support-ux-unit/${{ github.sha }}/unit-diagnostics.json
+            artifacts/support-ux-unit/${{ github.sha }}/type-diagnostics.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Cleanup bounded diagnostics swap
+        if: always()
+        run: bash scripts/ci/prepare-hosted-build-runner.sh cleanup
+
   historical-layout:
     if: ${{ inputs.historical_layout == true }}
     uses: ./.github/workflows/support-ux-historical-layout.yml
@@ -121,6 +198,7 @@ jobs:
           --health-retries 20
     env:
       SUPPORT_EVIDENCE_TARGET_MODE: ${{ inputs.target_mode }}
+      SUPPORT_AUDIT_ACCEPTANCE: ${{ inputs.audit_acceptance && 'ephemeral-audit-20261004-v1' || '' }}
       SUPPORT_EVIDENCE_APP_MODE: ${{ inputs.target_mode == 'ephemeral' && 'production' || 'remote' }}
       SCREENSHOT_BASE_URL: ${{ inputs.target_mode == 'ephemeral' && 'http://localhost:3000' || secrets.SUPPORT_EVIDENCE_BASE_URL }}
       CONFIRM_REMOTE_SCREENSHOT: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_HOST }}
@@ -164,15 +242,33 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      - name: Validate independent audit scope
+        if: ${{ inputs.audit_acceptance }}
+        shell: bash
+        run: |
+          test "$SUPPORT_EVIDENCE_TARGET_MODE" = ephemeral
+          test "$GITHUB_REPOSITORY" = rashadoni/leaddrive-v2
+          test "$SUPPORT_EVIDENCE_COMMIT" = "$GITHUB_SHA"
+          test "$SUPPORT_AUDIT_ACCEPTANCE" = ephemeral-audit-20261004-v1
+
       - name: Prepare bounded GitHub-hosted build memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
 
       - run: npm ci
+
+      - name: Validate independent audit harness
+        if: ${{ inputs.audit_acceptance }}
+        run: |
+          node --check scripts/support-ux-audit-functional-evidence.mjs
+          node --check scripts/support-ux-audit-postgres-evidence.mjs
+          npx eslint scripts/support-ux-audit-functional-evidence.mjs scripts/support-ux-audit-postgres-evidence.mjs
+          node --test scripts/ci/tests/support-ux-audit-postgres-guards.test.mjs
 
       - name: Validate optional capture dimensions
         run: |
@@ -1333,7 +1429,12 @@ jobs:
           LEADDRIVE_LOG_DIR: ${{ runner.temp }}/leaddrive-support-ux-logs-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           app_pid=""
+          audit_stage=APP_STARTING
           cleanup() {
+            audit_exit_status=$?
+            if [ "$SUPPORT_AUDIT_ACCEPTANCE" = "ephemeral-audit-20261004-v1" ]; then
+              node scripts/support-ux-audit-startup-evidence.mjs "$audit_stage" "$audit_exit_status" "${audit_acceptance_status:-0}" "${capture_status:-0}" || true
+            fi
             if [ -n "$app_pid" ]; then
               kill "$app_pid" 2>/dev/null || true
               wait "$app_pid" 2>/dev/null || true
@@ -1342,7 +1443,12 @@ jobs:
           trap cleanup EXIT
 
           if [ "$SUPPORT_EVIDENCE_TARGET_MODE" = "ephemeral" ]; then
-            HOSTNAME=127.0.0.1 PORT=3000 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+            audit_node_options="${NODE_OPTIONS:-}"
+            if [ "$SUPPORT_AUDIT_ACCEPTANCE" = "ephemeral-audit-20261004-v1" ]; then
+              export SUPPORT_BACKEND_NETWORK_LOG="${RUNNER_TEMP}/support-audit-network-events.txt"
+              audit_node_options="$audit_node_options --import=$GITHUB_WORKSPACE/scripts/support-backend-network-guard.mjs"
+            fi
+            NODE_OPTIONS="$audit_node_options" HOSTNAME=127.0.0.1 PORT=3000 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
               node .next/standalone/server.js > /tmp/support-ux-evidence-app.log 2>&1 &
             app_pid=$!
             for attempt in $(seq 1 90); do
@@ -1488,7 +1594,24 @@ jobs:
               esac
             fi
           fi
-          node scripts/support-ux-browser-evidence.mjs || capture_status=$?
+          audit_stage=APP_READY
+          audit_acceptance_status=0
+          if [ "$SUPPORT_AUDIT_ACCEPTANCE" = "ephemeral-audit-20261004-v1" ]; then
+            audit_stage=HARNESS_RUNNING
+            node --import ./scripts/support-ux-audit-bootstrap-evidence.mjs scripts/support-ux-audit-functional-evidence.mjs > "$RUNNER_TEMP/support-audit-harness.log" 2>&1 || audit_acceptance_status=$?
+            audit_stage=HARNESS_FINISHED
+          fi
+          audit_stage=CAPTURE_RUNNING
+          if [ "$SUPPORT_AUDIT_ACCEPTANCE" = "ephemeral-audit-20261004-v1" ]; then
+            node --import ./scripts/support-ux-audit-bootstrap-evidence.mjs scripts/support-ux-browser-evidence.mjs > "$RUNNER_TEMP/support-audit-capture.log" 2>&1 || capture_status=$?
+          else
+            node scripts/support-ux-browser-evidence.mjs || capture_status=$?
+          fi
+          audit_stage=CAPTURE_FINISHED
+          if [ "$audit_acceptance_status" -ne 0 ]; then
+            echo "Independent audit acceptance failed; inspect the sanitized audit evidence artifact."
+            exit 1
+          fi
           if [ "$capture_status" -ne 0 ] || [ "$service_desk_flow_status" -ne 0 ] || [ "$complaint_flow_status" -ne 0 ] || [ "$agent_desktop_flow_status" -ne 0 ] || [ "$voip_flow_status" -ne 0 ] || [ "$knowledge_base_flow_status" -ne 0 ] || [ "$ticket_categories_flow_status" -ne 0 ] || [ "$sla_policies_flow_status" -ne 0 ] || [ "$entitlements_flow_status" -ne 0 ] || [ "$entitlement_templates_flow_status" -ne 0 ] || [ "$skill_routing_flow_status" -ne 0 ] || [ "$agent_calendar_flow_status" -ne 0 ] || [ "$escalation_rules_flow_status" -ne 0 ] || [ "$macros_flow_status" -ne 0 ] || [ "$portal_users_flow_status" -ne 0 ] || [ "$support_ai_settings_flow_status" -ne 0 ] || [ "$customer_portal_flow_status" -ne 0 ] || [ "$support_navigation_flow_status" -ne 0 ]; then
             if [ "$SUPPORT_EVIDENCE_TARGET_MODE" = "ephemeral" ]; then
               tail -n 400 /tmp/support-ux-evidence-app.log

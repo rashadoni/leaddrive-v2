@@ -1,0 +1,13 @@
+{
+  "atUtc": "2026-10-05T02:07:35.704937+00:00",
+  "mergedSha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "jobId": 111584824581,
+  "wholeLog": {
+    "path": "/tmp/workforce581-3ddae-own-release-primary/whole-logs/111584824581.txt",
+    "bytes": 331293,
+    "sha256": "c9a62d063d57dd0d040bc2af73d92feefef9e6dae5e8c577e8b76da4206d9cd7"
+  },
+  "strict18BaselinePass": true,
+  "suiteClean": false,
+  "wholeReleaseAccepted": false
+}

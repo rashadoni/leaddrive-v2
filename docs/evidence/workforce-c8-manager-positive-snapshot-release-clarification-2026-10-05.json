@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "issuedAtUtc": "2026-10-05T02:20:37.436832+00:00",
+  "status": "ADDITIVE LEGACY FIELD SCOPE CLARIFICATION ONLY",
+  "candidateHead": "56edf7cebc94b5927b26b125991dc82625f59a3b",
+  "baseSha": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "mergedSha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "candidateSyntheticMergedTree": "0476e94a08d0cf400d36c2b3ec091a57efa7802d",
+  "originalReleaseReport": {
+    "path": "/tmp/workforce-pr581-3ddae9-own-release-green-independent.json",
+    "bytes": 11704,
+    "sha256": "b5d1ade3eb3eca72ab557269f52daafaec0f7c2ce8a60eb4c6556726c6186126"
+  },
+  "originalReleaseWholeAudit": {
+    "path": "/tmp/workforce-pr581-3ddae9-own-release-green-input-audit-independent.json",
+    "bytes": 1924891,
+    "sha256": "0e0b140dd809e202d36c5988b138961dcdad69fc8e8d2021ac4703dba389504d"
+  },
+  "originalReleaseGreenAndAllFindingCountsUnchanged": true,
+  "originalReleaseFilesByteExact": true,
+  "legacyKey": "futurePositiveSnapshotApplyOrRuntimeCredit",
+  "retainedOriginalValue": false,
+  "explicitMeaning": "No source-application or runtime acceptance credit for an unimplemented successor draft. The now-planned next draft is SNAPSHOTLESS; the retained key name predates that successor naming and is not a negation of accepted current positive-snapshot coverage.",
+  "current56ActualPositiveSnapshotHostedExecutionAccepted": true,
+  "currentHostedPositiveStates": [
+    "STARTED",
+    "PAUSED",
+    "COMPLETED"
+  ],
+  "currentHostedRunId": 37251169612,
+  "currentHostedArtifactId": 11320754358,
+  "currentHostedPositiveStatesEvidence": {
+    "status": "PASS",
+    "states": [
+      {
+        "ordinal": 1,
+        "status": "STARTED",
+        "sourceHelperCreatedTriplet": true,
+        "replayAlreadyPresent": true,
+        "schemaVersion": 2,
+        "historicalMembershipLinked": true,
+        "canonicalScheduleHashVerified": true,
+        "frozenUtcPlanVerified": true,
+        "remoteSegmentCount": 1
+      },
+      {
+        "ordinal": 2,
+        "status": "PAUSED",
+        "sourceHelperCreatedTriplet": true,
+        "replayAlreadyPresent": true,
+        "schemaVersion": 2,
+        "historicalMembershipLinked": true,
+        "canonicalScheduleHashVerified": true,
+        "frozenUtcPlanVerified": true,
+        "remoteSegmentCount": 1
+      },
+      {
+        "ordinal": 3,
+        "status": "COMPLETED",
+        "sourceHelperCreatedTriplet": true,
+        "replayAlreadyPresent": true,
+        "schemaVersion": 2,
+        "historicalMembershipLinked": true,
+        "canonicalScheduleHashVerified": true,
+        "frozenUtcPlanVerified": true,
+        "remoteSegmentCount": 1
+      }
+    ],
+    "adminFixtureSeedOnly": true,
+    "actualAcceptedStartEventWorkflowTested": false,
+    "physicalPresenceInferred": false,
+    "historicalTemplateDisplayNameImmutabilityTested": false
+  },
+  "actualNamedPostgresNegativeGuards10Accepted": true,
+  "futureUnappliedDraftScope": "SNAPSHOTLESS manager fixture/read-only browser evidence successor",
+  "futureSnapshotlessSourceApplicationCredit": false,
+  "futureSnapshotlessRuntimeAcceptanceCredit": false,
+  "productionPositiveFixtureWritesOrBrowserReplayClaimed": false,
+  "productionFeatureDataChangedByReviewer": false,
+  "releasePublicBracketAndArtifactAcceptanceUnchanged": true,
+  "wholeReferencedOriginalsRehashed": [
+    {
+      "path": "/tmp/workforce-pr581-3ddae9-own-release-green-independent.json",
+      "bytes": 11704,
+      "sha256": "b5d1ade3eb3eca72ab557269f52daafaec0f7c2ce8a60eb4c6556726c6186126"
+    },
+    {
+      "path": "/tmp/workforce-pr581-3ddae9-own-release-green-input-audit-independent.json",
+      "bytes": 1924891,
+      "sha256": "0e0b140dd809e202d36c5988b138961dcdad69fc8e8d2021ac4703dba389504d"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf7-current-hosted-green-independent.json",
+      "bytes": 40240,
+      "sha256": "fe2eeaec9e433aa6303ab6fe4c57100fa4e87e26543cc2d847793f3abdd1fc2a"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf7-hosted-independent-20261005T012354508523Z/current-hosted-originals/whole-artifacts/11320754358-members/manager-today-receipt.json",
+      "bytes": 237961,
+      "sha256": "a5acecd657c24f155fad55b184c837032c63dbca711a18ca73d93202ddded3ac"
+    },
+    {
+      "path": "/tmp/workforce-pr581-56edf7-hosted-independent-20261005T012354508523Z/manager-current-semantic-verification-20261005T013059568888Z.json",
+      "bytes": 285158,
+      "sha256": "7c924a23e1a14887d5d02c695edf3353782a5e9bcd0dc8c5ff82f1a97edfee8c"
+    }
+  ],
+  "readProvenance": {
+    "activeApplicationSourceReads": 0,
+    "sourceEdits": 0,
+    "GitMutations": 0,
+    "GitHubMutations": 0,
+    "CIReRuns": 0,
+    "localTestsBrowserPostgresCompilerBuilds": 0,
+    "additionalProductionRequests": 0
+  },
+  "originalFilesOverwrittenOrDropped": 0,
+  "nextExactAppliedCheckpointReview": "Pending root frozen successor HEAD; preliminary/unapplied review provides no exact-applied-source or runtime credit"
+}

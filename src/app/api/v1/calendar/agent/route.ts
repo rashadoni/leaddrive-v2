@@ -13,6 +13,7 @@ interface TicketCalendarRow {
   createdAt: Date
   assignedTo: string | null
   closedAt: Date | null
+  resolvedAt?: Date | null
 }
 
 interface TaskCalendarRow {
@@ -63,11 +64,15 @@ export const GET = withRls(async (req, { orgId }) => {
 
   const dateFrom = new Date(from)
   const dateTo = new Date(to)
-  dateTo.setHours(23, 59, 59, 999)
+  // Legacy date-only callers use UTC days; the UI sends explicit boundary instants.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(to)) dateTo.setUTCHours(23, 59, 59, 999)
+  if (!Number.isFinite(dateFrom.getTime()) || !Number.isFinite(dateTo.getTime())
+    || dateTo < dateFrom || dateTo.getTime() - dateFrom.getTime() > 366 * 86400000) {
+    return NextResponse.json({ error: "Invalid calendar range", code: "CALENDAR_RANGE_INVALID" }, { status: 400 })
+  }
 
-  // Today at start of day (for placing open tickets on today)
+  // Undated work belongs to the viewer's current day, not an invented appointment.
   const todayStart = new Date()
-  todayStart.setHours(9, 0, 0, 0) // Default to 9:00 AM
 
   const items: CalendarItem[] = []
   const sources = {
@@ -83,7 +88,7 @@ export const GET = withRls(async (req, { orgId }) => {
       where: { organizationId: orgId },
       select: {
         id: true, subject: true, status: true, priority: true,
-        slaDueAt: true, createdAt: true, assignedTo: true, closedAt: true,
+        slaDueAt: true, createdAt: true, assignedTo: true, closedAt: true, resolvedAt: true,
       },
       take: PAGE_SIZE.CALENDAR_AGENT,
     }) as TicketCalendarRow[]
@@ -101,6 +106,7 @@ export const GET = withRls(async (req, { orgId }) => {
             type: "ticket",
             title: t.subject || "",
             date: displayDate.toISOString(),
+            dateKind: hasSpecificTime ? "sla_due" : "undated_today",
             hour: hasSpecificTime ? new Date(displayDate).getHours() : -1,
             allDay: !hasSpecificTime,
             status: t.status,
@@ -109,14 +115,16 @@ export const GET = withRls(async (req, { orgId }) => {
           })
         }
       } else {
-        // Closed tickets: show on closedAt or createdAt date
-        const d = t.closedAt || t.createdAt
+        // Use the lifecycle timestamp; label the creation fallback explicitly.
+        const d = t.status === "resolved" ? t.resolvedAt || t.closedAt || t.createdAt : t.closedAt || t.resolvedAt || t.createdAt
+        const dateKind = d === t.resolvedAt ? "resolved" : d === t.closedAt ? "closed" : "created"
         if (d >= dateFrom && d <= dateTo) {
           items.push({
             id: t.id,
             type: "ticket",
             title: t.subject || "",
             date: d.toISOString(),
+            dateKind,
             hour: d.getHours(),
             status: t.status,
             priority: t.priority,
@@ -153,6 +161,7 @@ export const GET = withRls(async (req, { orgId }) => {
             type: "task",
             title: t.title || "",
             date: d.toISOString(),
+            dateKind: hasDueDate ? "task_due" : "undated_today",
             hour: hasDueDate ? new Date(d).getHours() : -1,
             allDay: !hasDueDate,
             status: t.status,
@@ -165,6 +174,7 @@ export const GET = withRls(async (req, { orgId }) => {
             type: "task",
             title: t.title || "",
             date: todayStart.toISOString(),
+            dateKind: "undated_today",
             hour: -1,
             allDay: true,
             status: t.status,
@@ -180,6 +190,7 @@ export const GET = withRls(async (req, { orgId }) => {
             type: "task",
             title: t.title || "",
             date: d.toISOString(),
+            dateKind: t.completedAt ? "completed" : t.dueDate ? "task_due" : "created",
             hour: new Date(d).getHours(),
             status: t.status,
             priority: t.priority,
@@ -215,6 +226,7 @@ export const GET = withRls(async (req, { orgId }) => {
         type: "event",
         title: ev.name,
         date: d.toISOString(),
+        dateKind: "event_start",
         endDate: endD?.toISOString(),
         hour: d.getHours(),
         endHour: endD ? endD.getHours() : d.getHours() + 1,
@@ -247,6 +259,7 @@ export const GET = withRls(async (req, { orgId }) => {
         items.push({
           id: a.id,
           type: `activity_${a.type || "note"}`,
+          dateKind: a.scheduledAt ? "scheduled" : "created",
           title: a.subject || "",
           date: d.toISOString(),
           hour: d.getHours(),

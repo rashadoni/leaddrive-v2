@@ -1,0 +1,317 @@
+{
+  "atUtc": "2026-10-05T00:36:32.145228+00:00",
+  "prNumber": 581,
+  "url": "https://github.com/rashadoni/leaddrive-v2/pull/581",
+  "head": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+  "base": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "branch": "codex/workforce-completion-part38",
+  "draft": false,
+  "sourceReport": {
+    "path": "/tmp/workforce-part38-c5cf76-whole-source-independent.json",
+    "bytes": 13440,
+    "sha256": "e3cf9e5789533df32e23518f589394f4b2632879e82468f4d226cbf04abe5691"
+  },
+  "rootSourceAcceptance": {
+    "path": "/tmp/workforce-part38-c5cf76-root-source-accepted-primary.json",
+    "bytes": 1662,
+    "sha256": "01eca1a3f22ad2b3d02149a3898b79107669f2e10ecc2416f2a6a338ae71b13f"
+  },
+  "rangeProof": {
+    "path": "/tmp/workforce-part38-positive-snapshot-range-primary/proof.json",
+    "bytes": 5216,
+    "sha256": "c080c25cd63b1cd4f3603a3c760b83639884a3fbbaaa44014fbeb525acb9d491"
+  },
+  "runtimeCredit": false,
+  "normalMergeAllowed": false,
+  "attachment": "PENDING app bridge call after successful creation",
+  "mutationScope": "Own draft to READY only; no rerun/manualstatus/admin/force/merge/deploy",
+  "originals": [
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/branch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/branch.stdout",
+      "bytes": 34,
+      "sha256": "3a54fd253b912a8e31dd7cb4eab0ca920af41b809995c4787b503422a89dc587"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/clean-status.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/clean-status.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/create-own-draft-pr.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/create-own-draft-pr.stdout",
+      "bytes": 17095,
+      "sha256": "1c42a36ef65eb1a968aade2dd8f4e51886ee3b8e11eeea4c39293c55d235809f"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/create-pr-request.json",
+      "bytes": 1562,
+      "sha256": "dc71c3d756074c405912349bdaf99c0e5b9ce5f13fd9f6699e4857c49bc9a758"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/fetch-main.stderr",
+      "bytes": 97,
+      "sha256": "458e1ab101f63684ffd7d5b9579386f2858e5f699ea069ac950a84484df6fbcf"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/fetch-main.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/head.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/head.stdout",
+      "bytes": 41,
+      "sha256": "8bfea98a7a4f32f37c3ad7fd7dee48f9c68f80b11875162d3ad43e12eda2defb"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/main-api.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/main-api.stdout",
+      "bytes": 342,
+      "sha256": "4efb98bdeb087a3b5b40c53c1cd35dcb77d3dd9604d57c48f973fb502403ac5e"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/main-lsremote.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/main-lsremote.stdout",
+      "bytes": 57,
+      "sha256": "00ff64d65a2cae16b0a76a2a91007ef7403968d3a9419a95349c3db9c61e4c5f"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/main-ref.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/main-ref.stdout",
+      "bytes": 41,
+      "sha256": "ac12204f4ba9a80ba87a52c5bb46cb1cd88889da5c8257f076794e32348c11fa"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/ordinary-push.stderr",
+      "bytes": 370,
+      "sha256": "548fbb0f07df6f6bf1273d85b5f9d735acfc83aacf2db05eb1cdd0ba9f5e8103"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/ordinary-push.stdout",
+      "bytes": 103,
+      "sha256": "2ef08bdee7ddaadd79b7ad056ed59eff787f97d2942e9683ccd99eeeed751f74"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/own-pr-before.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/own-pr-before.stdout",
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/own-remote-after.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/own-remote-after.stdout",
+      "bytes": 86,
+      "sha256": "801278f7344006be1e340776f8c889485fe85db0b571c4f25b985c33577c74d8"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/own-remote-before.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/own-remote-before.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "conditionalDraftRunIds": {
+    "workforce-manager-today-browser-evidence": [
+      37248075094
+    ],
+    "pr-checks": [
+      37248075130
+    ]
+  },
+  "testedSynthetic": "2366856599e7f23ea51a6c1eaac4314ed74f968d",
+  "testedTree": "9b4b5297119ca1a622c0a1f451b8766049ae7905",
+  "draftPublication": {
+    "path": "/tmp/workforce-part38-positive-snapshot-draft-publication-primary/publication-proof.json",
+    "bytes": 6635,
+    "sha256": "bcb1fcfc4d578d63d6d0dae6e47db2fa5a01b2eaa90dba5a49d81a98f857c33d"
+  },
+  "completedDraftCapture": {
+    "path": "/tmp/workforce-part38-positive-current-hosted-originals-primary/observation-20261005T003541515743Z/whole-capture.json",
+    "bytes": 7587,
+    "sha256": "a48b0b6d0b84d6364f84cfa7d5c275363d37089e829f0b4f41e783f472e63469"
+  },
+  "readyOriginals": [
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/branch.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/branch.stdout",
+      "bytes": 34,
+      "sha256": "3a54fd253b912a8e31dd7cb4eab0ca920af41b809995c4787b503422a89dc587"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/candidate-tree.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/candidate-tree.stdout",
+      "bytes": 41,
+      "sha256": "006e6cae87ab5f384976598f6e4303651f84efd21c133c2fa6fe2297b6faf8f5"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/fetch-main.stderr",
+      "bytes": 97,
+      "sha256": "458e1ab101f63684ffd7d5b9579386f2858e5f699ea069ac950a84484df6fbcf"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/fetch-main.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/fetch-tested-merge.stderr",
+      "bytes": 106,
+      "sha256": "605d2667a3386c359f3c960a50ee04c95dfb41cfba37f85f40fee156c6010a27"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/fetch-tested-merge.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/head.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/head.stdout",
+      "bytes": 41,
+      "sha256": "8bfea98a7a4f32f37c3ad7fd7dee48f9c68f80b11875162d3ad43e12eda2defb"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/main-api.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/main-api.stdout",
+      "bytes": 342,
+      "sha256": "4efb98bdeb087a3b5b40c53c1cd35dcb77d3dd9604d57c48f973fb502403ac5e"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/mark-own-ready.stderr",
+      "bytes": 54,
+      "sha256": "710dfdeba43ab66299193f2eb74ce8072d7f71f96aa0a3a5c0b077ea61dae524"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/mark-own-ready.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/pr-after-api.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/pr-after-api.stdout",
+      "bytes": 17132,
+      "sha256": "93bf109ce25e775b2813ddc6d468076a462c86b7639c8e380adbeb40d7d64efc"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/pr-before-api.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/pr-before-api.stdout",
+      "bytes": 17131,
+      "sha256": "0bb431b1be2f9ab9f81716341b68a198cab2c4cbab99e8d785c478c5774cbd9f"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/remote-main.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/remote-main.stdout",
+      "bytes": 57,
+      "sha256": "00ff64d65a2cae16b0a76a2a91007ef7403968d3a9419a95349c3db9c61e4c5f"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/status.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/status.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/synthetic-parents.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/synthetic-parents.stdout",
+      "bytes": 82,
+      "sha256": "2fe03d481a51082d3a1b7bab3990083eceff5b3299c685a88bf07216645bb141"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/synthetic-tree.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/synthetic-tree.stdout",
+      "bytes": 41,
+      "sha256": "006e6cae87ab5f384976598f6e4303651f84efd21c133c2fa6fe2297b6faf8f5"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/synthetic.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-part38-positive-snapshot-ready-primary/synthetic.stdout",
+      "bytes": 41,
+      "sha256": "d2c017428c67529b42ea3fd97a8cd78fab3fc4c7c8184726f421a56b97325a6a"
+    }
+  ]
+}

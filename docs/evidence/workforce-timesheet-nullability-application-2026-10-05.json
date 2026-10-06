@@ -1,0 +1,35 @@
+{
+  "atUtc": "2026-10-05T05:05:03.662009+00:00",
+  "status": "RELEASE-GATED SINGLE NULLABILITY DRAFT APPLIED; BOUNDED CHECKS/EXACTHEAD REVIEW PENDING",
+  "branch": "codex/workforce-completion-part45",
+  "previousPrivateHead": "1db8b60a1b0eb89597424468bc289fef754fdf6c",
+  "integrationParent": "5ef5de63502809641deebcba24ca6a22b5cec043",
+  "acceptedOwnMergedMain": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "acceptedOwnRelease": {
+    "path": "/tmp/workforce-pr583-root-final-release-accepted-primary.json",
+    "bytes": 13860,
+    "sha256": "f5766da3f4b8c44045956f45ec77c84eb31eadb1de6802f96d4175f0d61cc495"
+  },
+  "unappliedPreparation": {
+    "path": "/tmp/workforce-timesheet-nullability-successor-unapplied-primary/unapplied-preparation.json",
+    "bytes": 2080,
+    "sha256": "67267fbb88f905faa0d8ba3bfe5bf793b688af46e1fa6191dd6e29c816c806e0"
+  },
+  "independentUnappliedPreliminary": {
+    "path": "/tmp/workforce-timesheet-nullability-unapplied-preliminary-independent-20261005T041319833054Z/preliminary-review-line-count-corrected.json",
+    "bytes": 7399,
+    "sha256": "8b86fa3d0cf9e402eb83f48d77cb5304021b415931ea92e37813e4e28adecb05"
+  },
+  "appliedPath": "src/lib/workforce/timesheet-calculation.ts",
+  "appliedSource": {
+    "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/lib/workforce/timesheet-calculation.ts",
+    "bytes": 12067,
+    "sha256": "1c0e44ed28a9cbde6e317c031ec53cafdb05efd1115d19b0bd3606037ba206e1"
+  },
+  "testsRun": false,
+  "freshCompilerAccepted": false,
+  "runtimeCredit": false,
+  "newRowClosure": false,
+  "baselineModification": false,
+  "generalUpdateDeleteBreakAgentRouteMutation": false
+}

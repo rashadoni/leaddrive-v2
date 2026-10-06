@@ -307,8 +307,11 @@ describe("GET /api/v1/mtm/agents", () => {
 
   it("counts each card's clients the way the employee's own section lists them", async () => {
     // Owner 2026-10-02: a manager opens an employee to see and change their
-    // clients. The card says how many there are; the number must be today's
-    // PRIMARY assignments of active clients, not every row ever written.
+    // clients. The card says how many there are; the number must be the active
+    // clients attached to them today, not every row ever written. Since
+    // 2026-10-06 a client may have several employees, so it counts for each of
+    // them — not only for the responsible one (proved on a real Postgres in
+    // mtm-contact-categories-postgres.test.ts).
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
       { id: "a1", name: "Anar" },
@@ -325,10 +328,10 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(where).toMatchObject({
       organizationId: ORG,
       agentId: { in: ["a1", "a2"] },
-      role: "PRIMARY",
       deletedAt: null,
       contact: { deletedAt: null, status: "ACTIVE" },
     })
+    expect(where).not.toHaveProperty("role")
     // Current assignments only: started by today and not ended before tomorrow.
     expect(where.effectiveFrom.lte).toBeInstanceOf(Date)
     expect(where.OR).toEqual([{ effectiveTo: null }, { effectiveTo: { gt: where.effectiveFrom.lte } }])

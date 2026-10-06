@@ -1,0 +1,228 @@
+{
+  "atUtc": "2026-10-05T04:54:05.743857+00:00",
+  "status": "GREEN PRELIMINARY UNAPPLIED SOURCE ONLY",
+  "candidateBase": "e26cb0a85168b623ea092fb3e81ece922de20718",
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "findings": [],
+  "wholePreparation": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/unapplied-preparation.json",
+    "bytes": 10778,
+    "sha256": "51f8cfe00225bf65987ef856e3e8bb8e7dcd02d167e2a99b0261d4e05238955b"
+  },
+  "wholeInputAudit": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/whole-input-audit.json",
+    "bytes": 23533,
+    "sha256": "353325eb22b8395cfd9c104e1fdda16755b8239c3bcdbf6542f417b11625c956"
+  },
+  "inputCounts": {
+    "immutableOriginalInventory": 32,
+    "explicitGit": 9,
+    "wholeUTF8": 32,
+    "wholeJSON": 4
+  },
+  "threeWholeDraftBaseChecks": [
+    {
+      "repoPath": "src/lib/workforce/reconciliation.ts",
+      "wholeBase": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/reconciliation.ts.base",
+        "bytes": 8449,
+        "sha256": "81ea8f447d9724444c79beb7518baedd01c5ea5f2da2f3fc11f5c51049039563"
+      },
+      "wholeDraft": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/reconciliation.ts.unapplied-draft",
+        "bytes": 9151,
+        "sha256": "83b0f897de05515a4cfa92068edb6ce32026009e8d0690545b3b7309735fca5c"
+      },
+      "baseEqualsExplicitGitM": true,
+      "uniqueReplacementCounts": [
+        1,
+        1,
+        1
+      ],
+      "entireRecipeReconstructsDraft": true,
+      "wholeDiff": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/reconciliation.ts.whole.diff",
+        "bytes": 1759,
+        "sha256": "29d5bb40e220f9b3ad235be7a25d3786b48c5b09deb30e3ff09083b0bc99db71"
+      },
+      "baseTestSource": null,
+      "draftTestSource": null
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation.test.ts",
+      "wholeBase": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/workforce-reconciliation.test.ts.base",
+        "bytes": 10048,
+        "sha256": "e6eb69cae9f8e6eeb22813350b17d8c10399505d7e3cdc25761a0f04b9ebd895"
+      },
+      "wholeDraft": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/workforce-reconciliation.test.ts.unapplied-draft",
+        "bytes": 13558,
+        "sha256": "bb1dedf39a72beb6fe4cff41336b59fa4bdd5faa08d03ecdae7343b20f43ecd8"
+      },
+      "baseEqualsExplicitGitM": true,
+      "uniqueReplacementCounts": [
+        1
+      ],
+      "entireRecipeReconstructsDraft": true,
+      "wholeDiff": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/workforce-reconciliation.test.ts.whole.diff",
+        "bytes": 3920,
+        "sha256": "aaefb664369a7dd935a4a1b06de6915dcefe60502e8eeb3da495f886c052065e"
+      },
+      "baseTestSource": {
+        "plainLiteralTests": 5,
+        "itEachLiteralArrays": [
+          {
+            "line": 140,
+            "literalCases": 3
+          },
+          {
+            "line": 151,
+            "literalCases": 2
+          },
+          {
+            "line": 160,
+            "literalCases": 4
+          },
+          {
+            "line": 177,
+            "literalCases": 9
+          }
+        ],
+        "totalSourceDerivedCases": 23,
+        "executionCredit": false
+      },
+      "draftTestSource": {
+        "plainLiteralTests": 7,
+        "itEachLiteralArrays": [
+          {
+            "line": 140,
+            "literalCases": 3
+          },
+          {
+            "line": 151,
+            "literalCases": 2
+          },
+          {
+            "line": 160,
+            "literalCases": 4
+          },
+          {
+            "line": 177,
+            "literalCases": 9
+          },
+          {
+            "line": 222,
+            "literalCases": 7
+          },
+          {
+            "line": 250,
+            "literalCases": 3
+          }
+        ],
+        "totalSourceDerivedCases": 35,
+        "executionCredit": false
+      }
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "wholeBase": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/workforce-reconciliation-job.test.ts.base",
+        "bytes": 5680,
+        "sha256": "deadc0029cee96b51217f5688615a857a018e9acea3ac230758adc16f9742b22"
+      },
+      "wholeDraft": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-successor-unapplied-primary/workforce-reconciliation-job.test.ts.unapplied-draft",
+        "bytes": 7778,
+        "sha256": "8df55e84e2f2aca80633f167659f3a509a5f467e9f4b79ab072728105791db2b"
+      },
+      "baseEqualsExplicitGitM": true,
+      "uniqueReplacementCounts": [
+        1
+      ],
+      "entireRecipeReconstructsDraft": true,
+      "wholeDiff": {
+        "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/workforce-reconciliation-job.test.ts.whole.diff",
+        "bytes": 2656,
+        "sha256": "48a00cb380b9fe3eea702cc33940817f4c38a57aabf9d1fc3d4ba5534a2d86b7"
+      },
+      "baseTestSource": {
+        "plainLiteralTests": 4,
+        "itEachLiteralArrays": [
+          {
+            "line": 50,
+            "literalCases": 3
+          }
+        ],
+        "totalSourceDerivedCases": 7,
+        "executionCredit": false
+      },
+      "draftTestSource": {
+        "plainLiteralTests": 6,
+        "itEachLiteralArrays": [
+          {
+            "line": 50,
+            "literalCases": 3
+          }
+        ],
+        "totalSourceDerivedCases": 9,
+        "executionCredit": false
+      }
+    }
+  ],
+  "unchangedJobImplementation": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/explicit-git/BASE/src/lib/workforce/reconciliation-job.ts",
+    "bytes": 3722,
+    "sha256": "1fd328013fac465edf3446c834bb3e97fca9f6af27b499f47ee81f2cc4a2cc6f"
+  },
+  "allFiveReplacementChunksExact": true,
+  "sourceReview": [
+    "Duplicate IDs are rejected per fixed id-bearing kind before lookups/results; same ID across different kinds remains valid; multiple distinct same-kind rows remain valid.",
+    "Exception workday/event/resolved evidence pointers must resolve to one workday in addition to existing org/employee/subject guards; fixed mismatch code and counts preserve privacy.",
+    "Meaningful source-derived tests include seven kinds in both orders, cross-kind equality, three same-employee different-workday conflicts, matching same-workday pointers, immutability, and job failure before cursor commit/next load.",
+    "The existing model carries independently tenant-scoped nullable links; the persistence primitive canonicalizes/authenticates/deduplicates the immutable envelope. The existing subject-integrity migration documents one employee/day context and checks explicit workday versus event/evidence, but its shown body does not compare event versus evidence when workdayId is null. Draft pure-kernel coherence is consistent with that documented intent and is not a DB enforcement or writer repair claim."
+  ],
+  "sourceDerivedTestCases": {
+    "baselineKernel": 23,
+    "baselineJob": 7,
+    "draftKernel": 35,
+    "draftJob": 9,
+    "totalDraft": 44,
+    "testsExecuted": false
+  },
+  "privacyRetained": true,
+  "jobImplementationUnchanged": true,
+  "DBAdapterOrCronActivation": false,
+  "applicationAllowed": false,
+  "appliedSourceCredit": false,
+  "testsRun": false,
+  "compilerRun": false,
+  "runtimeCredit": false,
+  "productionReleaseCredit": false,
+  "currentPR583SourceCredit": false,
+  "currentPR583RuntimeCredit": false,
+  "newRowClosure": false,
+  "prerequisites": [
+    "Own PR583 root plus independent release acceptance",
+    "Planned nullability successor gates and fresh actual applied HEAD/source review",
+    "Fresh scoped tests and applicable CI compiler/suite/baseline checks on actual successor"
+  ],
+  "limits": [
+    "No blanket malformed/blank identifier validation, complete dependency or approval-chain closure, orphan coverage, schedule segment ownership, DB adapter, lease/CAS, concurrency, cron, PG/browser execution or full graph claim.",
+    "Current exact-tree PR583 selected timesheet-calculation TS18047 remains actual; this future draft does not repair or clear it.",
+    "All test counts are static literal source derivations; no test/compiler execution occurred."
+  ],
+  "firstDataOnlyReaderGuardPreserved": {
+    "path": "/tmp/workforce-c12-duplicate-coherence-preliminary-independent-20261005T044622935330Z/first-static-literal-case-count-reader-guard.json",
+    "bytes": 975,
+    "sha256": "1f9c54c159ece692049a94e2dc196d556551f1f19f06ad3db0ebefd623e56317"
+  },
+  "originalFilesOverwrittenOrDropped": 0,
+  "activeApplicationSourceReads": 0
+}

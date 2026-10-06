@@ -1,0 +1,20 @@
+{
+  "atUtc": "2026-10-05T04:14:57.911594+00:00",
+  "status": "UNAPPLIED ONE-FILE PRELIMINARY WHOLE ACCEPTED; OWN583 RELEASE GATE PENDING",
+  "candidateBase": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "report": {
+    "path": "/tmp/workforce-timesheet-nullability-unapplied-preliminary-independent-20261005T041319833054Z/preliminary-review-line-count-corrected.json",
+    "bytes": 7399,
+    "sha256": "8b86fa3d0cf9e402eb83f48d77cb5304021b415931ea92e37813e4e28adecb05"
+  },
+  "wholeOriginals": 8,
+  "wholeTwoReplacementsReconstructed": true,
+  "actualBaseLines": 313,
+  "actualDraftLines": 314,
+  "firstGuessedLineCountPacketAndAdditiveCorrectionPreserved": true,
+  "applicationAllowed": false,
+  "testsRun": false,
+  "compilerRun": false,
+  "currentPR583SourceOrRuntimeCredit": false,
+  "newRowClosure": false
+}

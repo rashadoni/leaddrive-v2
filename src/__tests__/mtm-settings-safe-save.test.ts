@@ -228,6 +228,33 @@ describe("PUT /api/v1/mtm/settings — safe save", () => {
     expect((await res.json()).data.ignoredKeys).toEqual(["fieldContactsEnabled", "pharmacyPromotionsEnabled"])
   })
 
+  it("lets only an administrator change what an agent may ask for", async () => {
+    const switches = {
+      agentContactCreateRequests: false,
+      agentContactChangeRequests: false,
+      agentCustomerCreateRequests: false,
+    }
+    as("manager")
+    const res = await UpdateSettings(put({ ...switches, taskSelfCreate: false }))
+    expect(res.status).toBe(200)
+    // The older agent switches keep their rule: a manager may change them.
+    expect(upsertedKeys()).toEqual(["taskSelfCreate"])
+    expect((await res.json()).data.ignoredKeys).toEqual(Object.keys(switches))
+
+    vi.mocked(prisma.mtmSetting.upsert).mockClear()
+    as("admin")
+    const adminRes = await UpdateSettings(put(switches))
+    expect(upsertedKeys()).toEqual(Object.keys(switches))
+    expect((await adminRes.json()).data.ignoredKeys).toEqual([])
+  })
+
+  it("refuses a non-boolean value for an agent switch", async () => {
+    const res = await UpdateSettings(put({ agentContactCreateRequests: "no" }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ key: "agentContactCreateRequests", code: "MTM_SETTING_INVALID_TYPE" })
+    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
+  })
+
   it("drops advanced GPS thresholds from a manager and writes them for an administrator", async () => {
     as("manager")
     const res = await UpdateSettings(put({ gpsInterval: 60, historyStopRadiusMeters: 80 }))

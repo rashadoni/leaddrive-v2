@@ -6,6 +6,7 @@ import { createJiti } from "jiti"
 import bcrypt from "bcryptjs"
 import { chromium } from "playwright"
 import { makeRlsTestPrisma } from "./_rls.mjs"
+import { captureNativeViewport, createNativeZoomContext, isNativeZoomPage, proveNative200Zoom } from "./workforce-native-browser-zoom.mjs"
 
 // Disposable hosted browser proof only; this is never a production seed tool.
 assert.equal(process.env.GITHUB_ACTIONS, "true", "Hosted Actions required")
@@ -58,17 +59,87 @@ const receipts = {
   environment: "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
   authentication: "real CSRF, credentials provider and session; no auth mocks",
   authenticationDiagnostics: [],
+  nativeZoomDiagnostics: [],
+  nativeCaptureDiagnostics: [],
+  focusGeometryDiagnostics: [],
+  nativeZoomVerdict: "NOT RUN",
   cases: [],
   status: "RUNNING",
-  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "No positive immutable current-workday snapshot rendering acceptance", "No human AT/native zoom/whole-page keyboard/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Read-only manager Today; no production feature/grant activation"],
+  limitations: ["Development bundle, not production build", "Synthetic disposable data only", "Positive workdays are synthetic admin-seeded facts, not a real accepted START workflow or physical presence", "Frozen UTC plan/hashlinks do not prove historical template display-name immutability", "No human AT/whole-page keyboard/Android/physical/load/pilot acceptance", "Geometry/text checks do not prove pixel occlusion or whole-page accessibility", "Native200 cases are fixture-extension automatic browser zoom, not a human browser-shortcut/AT session", "Read-only manager Today; no production feature/grant activation"],
 }
+// Selected raw checkout bindings; independently verified against exact candidate Git.
+const sourcePaths = [
+  "scripts/workforce-manager-today-browser-evidence.mjs",
+  "scripts/workforce-native-browser-zoom.mjs",
+  "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json",
+  "scripts/ci/fixtures/workforce-native-zoom-extension/background.js",
+  "scripts/ci/fixtures/workforce-manager-today-browser.sql",
+  "scripts/_rls.mjs",
+  ".github/workflows/workforce-manager-today-browser-evidence.yml",
+  "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+  "src/lib/workforce/snapshot-writer.ts",
+  "src/lib/workforce/policy-definition.ts",
+  "src/lib/workforce/policy-resolution.ts",
+  "src/lib/workforce/geofence-evaluation.ts",
+  "prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql",
+  "prisma/migrations/20260830110000_workforce_shift_default_timeline/migration.sql",
+  "prisma/migrations/20260830120000_workforce_workday_schedule_snapshots/migration.sql",
+  "prisma/migrations/20260830130000_workforce_employee_team_membership_history/migration.sql",
+  "prisma/migrations/20260901080000_workforce_team_default_shift_timeline/migration.sql",
+  "prisma/schema.prisma",
+  "src/app/(dashboard)/workforce/page.tsx",
+  "src/components/workforce/workforce-manager-today.tsx",
+  "src/components/workforce/workforce-workbench.tsx",
+  "src/components/ui/button.tsx",
+  "src/components/ui/badge.tsx",
+  "src/app/api/v1/workforce/today/route.ts",
+  "src/lib/workforce/manager-today.ts",
+  "src/lib/workforce/today-read-access.ts",
+  "src/lib/workforce/access-control.ts",
+  "src/lib/workforce/access-grant-resolution.ts",
+  "src/lib/workforce/actor.ts",
+  "src/lib/workforce/employee-today.ts",
+  "src/lib/workforce/exception-read-access.ts",
+  "src/lib/workforce/exception-case-read-scope.ts",
+  "src/lib/workforce/granular-access-rollout.ts",
+  "src/lib/workforce/sensitive-response.ts",
+  "src/lib/workforce/team-membership.ts",
+  "src/lib/workforce/calendar.ts",
+  "src/lib/workforce/shift-definition.ts",
+  "src/lib/workforce/shift-resolution.ts",
+  "src/lib/workforce/timesheet-schedule-snapshot.ts",
+  "src/lib/workforce/timesheet-read-model.ts",
+  "src/lib/with-workforce-rls-auth.ts",
+  "src/lib/with-rls.ts",
+  "src/lib/auth.ts",
+  "src/lib/api-auth.ts",
+  "src/lib/user-module-access.ts",
+  "src/lib/mtm-settings.ts",
+  "src/lib/mtm/mobile-week.ts",
+  "src/lib/timezone.ts",
+  "src/lib/modules.ts",
+  "src/lib/tenant-capabilities.ts",
+  "src/proxy.ts",
+  "src/app/layout.tsx",
+  "src/app/(dashboard)/layout.tsx",
+  "src/app/globals.css",
+  "src/components/providers.tsx",
+  "messages/en.json",
+  "messages/ru.json",
+  "messages/az.json"
+]
+receipts.sourceBindings = await Promise.all(sourcePaths.map(async path => {
+  const bytes = await readFile(new URL(`../${path}`, import.meta.url))
+  return { path, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") }
+}))
 const contexts = []
+const nativeZoomContexts = []
 const authenticationPostTimes = []
 let browser
 let activePage
 let stage = "fixture-preparing"
 const factTables = [
-  "mtm_teams", "mtm_agents", "mtm_settings", "mtm_work_calendar_days",
+  "mtm_teams", "mtm_agents", "mtm_settings", "mtm_work_calendar_days", "workforce_policies",
   "workforce_employee_team_memberships", "mtm_agent_workdays", "mtm_agent_workday_events",
   "workforce_access_grants", "workforce_access_grant_revocations",
   "workforce_shift_templates", "workforce_shift_segments", "workforce_shift_assignments",
@@ -139,6 +210,184 @@ async function authenticate(context, principal) {
   assert.equal(redirect.searchParams.get("error"), null)
   assert.ok((await context.cookies()).some(cookie => cookie.name.endsWith("authjs.session-token")))
   await assertSession(context, principal)
+}
+
+async function seedCurrentSnapshotWorkdays({ organization, issuer, employees, template, jiti }) {
+  const { workforcePolicyDefinitionHash } = await jiti.import("../src/lib/workforce/policy-definition.ts")
+  const { writeWorkforceSnapshotsInTransaction } = await jiti.import("../src/lib/workforce/snapshot-writer.ts")
+  const { verifyWorkforceTimesheetScheduleSnapshot } = await jiti.import("../src/lib/workforce/timesheet-schedule-snapshot.ts")
+  const definition = { expectedWorkSeconds: 28_800, lateGraceSeconds: 0, undertimeToleranceSeconds: 0, overtimeThresholdSeconds: 0, longPauseThresholdSeconds: null }
+  const policy = await admin.workforcePolicy.create({ data: {
+    organizationId: organization.id, teamId: null, version: 1, status: "ACTIVE",
+    name: "Today disposable calculation fixture", effectiveFrom: earlier(2), effectiveTo: null,
+    definition, definitionHash: workforcePolicyDefinitionHash(definition), provenance: "TENANT_ADMIN",
+    createdByUserId: issuer.id, activatedByUserId: issuer.id, activatedAt: earlier(2), createdAt: earlier(3),
+  } })
+  const startedAt = new Date(Math.max(workDate.getTime(), Date.now() - 300_000))
+  const stateAt = new Date()
+  const currentWorkdays = new Map()
+  const proofs = []
+  for (const [offset, status] of ["STARTED", "PAUSED", "COMPLETED"].entries()) {
+    currentDate()
+    const employee = employees[6 + offset]
+    const created = await admin.$transaction(async tx => {
+      const workday = await tx.mtmAgentWorkday.create({ data: {
+        organizationId: organization.id, agentId: employee.id, workDate, status, startedAt,
+        pausedAt: status === "PAUSED" ? stateAt : null,
+        completedAt: status === "COMPLETED" ? stateAt : null, totalPausedSeconds: 0,
+      } })
+      // Pass the fenced admin transaction. The global application client is
+      // intentionally read-only and must never be used for fixture seeding.
+      const snapshot = await writeWorkforceSnapshotsInTransaction(tx, {
+        organizationId: organization.id, workdayId: workday.id, resolutionAt: stateAt,
+      })
+      assert.equal(snapshot.kind, "created")
+      const replay = await writeWorkforceSnapshotsInTransaction(tx, {
+        organizationId: organization.id, workdayId: workday.id, resolutionAt: stateAt,
+      })
+      assert.deepEqual(replay, { ...snapshot, kind: "already_present" })
+      const [policySnapshot, shiftSnapshot, scheduleSnapshot, membership] = await Promise.all([
+        tx.workforcePolicySnapshot.findUniqueOrThrow({ where: { id: snapshot.policySnapshotId } }),
+        tx.workforceShiftSnapshot.findUniqueOrThrow({ where: { id: snapshot.shiftSnapshotId } }),
+        tx.workforceWorkdayScheduleSnapshot.findUniqueOrThrow({ where: { id: snapshot.scheduleSnapshotId } }),
+        tx.workforceEmployeeTeamMembership.findFirstOrThrow({ where: { organizationId: organization.id, agentId: employee.id, effectiveAt: { lte: workday.startedAt } }, orderBy: [{ effectiveAt: "desc" }, { id: "desc" }] }),
+      ])
+      assert.equal(policySnapshot.policyId, policy.id)
+      assert.equal(shiftSnapshot.templateId, template.id)
+      for (const row of [policySnapshot, shiftSnapshot, scheduleSnapshot]) {
+        assert.equal(row.organizationId, organization.id)
+        assert.equal(row.workdayId, workday.id)
+        assert.equal(row.agentId, employee.id)
+        assert.equal(row.workDate.toISOString(), workDate.toISOString())
+      }
+      assert.equal(scheduleSnapshot.schemaVersion, 2)
+      assert.deepEqual(scheduleSnapshot.calendarSnapshot.teamMembership, { id: membership.id, teamId: membership.teamId })
+      assert.equal(shiftSnapshot.plannedStartAt.toISOString(), `${date}T00:00:00.000Z`)
+      assert.equal(shiftSnapshot.plannedEndAt.toISOString(), `${date}T23:59:00.000Z`)
+      const verified = verifyWorkforceTimesheetScheduleSnapshot({
+        snapshot: scheduleSnapshot, workDate: date, policySnapshotId: policySnapshot.id,
+        policyDefinitionHash: policySnapshot.definitionHash, shiftSnapshotId: shiftSnapshot.id,
+        shiftDefinitionHash: shiftSnapshot.definitionHash, shiftDefinition: shiftSnapshot.definition,
+      })
+      assert.equal(verified.scheduleSnapshotId, scheduleSnapshot.id)
+      assert.equal(verified.calendarState, "SCHEDULED")
+      assert.equal(verified.segmentCount, 1)
+      assert.deepEqual(verified.segmentModes, ["REMOTE"])
+      return { workday, snapshot, shiftSnapshot }
+    }, { maxWait: 5_000, timeout: 30_000 })
+    currentWorkdays.set(employee.id, {
+      status, workday: { id: created.workday.id, startedAt: created.workday.startedAt.toISOString(), pausedAt: created.workday.pausedAt?.toISOString() ?? null, completedAt: created.workday.completedAt?.toISOString() ?? null },
+      plan: { state: "ASSIGNED", source: "IMMUTABLE_WORKDAY_SNAPSHOT", templateName: template.name, timezone: "UTC", plannedStartAt: created.shiftSnapshot.plannedStartAt.toISOString(), plannedEndAt: created.shiftSnapshot.plannedEndAt.toISOString() },
+      snapshotIds: created.snapshot,
+    })
+    proofs.push({ ordinal: offset + 1, status, sourceHelperCreatedTriplet: true, replayAlreadyPresent: true, schemaVersion: 2, historicalMembershipLinked: true, canonicalScheduleHashVerified: true, frozenUtcPlanVerified: true, remoteSegmentCount: 1 })
+  }
+  receipts.positiveCurrentSnapshots = {
+    status: "PASS", states: proofs, adminFixtureSeedOnly: true,
+    actualAcceptedStartEventWorkflowTested: false, physicalPresenceInferred: false,
+    historicalTemplateDisplayNameImmutabilityTested: false,
+  }
+  currentDate()
+  return currentWorkdays
+}
+
+async function seedSnapshotlessCurrentWorkday({ organization, employees, template }) {
+  currentDate()
+  const employee = employees[9]
+  const startedAt = new Date(Math.max(workDate.getTime(), Date.now() - 300_000))
+  const workday = await admin.$transaction(async tx => {
+    const assignment = await tx.workforceShiftAssignment.findFirstOrThrow({ where: {
+      organizationId: organization.id, agentId: employee.id, templateId: template.id,
+      effectiveFrom: { lte: workDate }, effectiveTo: null,
+    } })
+    assert.equal(assignment.templateId, template.id)
+    // Deliberately omit the snapshot writer. An existing synthetic workday
+    // must never acquire a reconstructed plan from this live assignment.
+    const created = await tx.mtmAgentWorkday.create({ data: {
+      organizationId: organization.id, agentId: employee.id, workDate,
+      status: "STARTED", startedAt, totalPausedSeconds: 0,
+    } })
+    for (const delegate of [tx.workforcePolicySnapshot, tx.workforceShiftSnapshot, tx.workforceWorkdayScheduleSnapshot]) {
+      assert.equal(await delegate.count({ where: { organizationId: organization.id, workdayId: created.id } }), 0)
+    }
+    return created
+  }, { maxWait: 5_000, timeout: 30_000 })
+  receipts.missingCurrentSnapshot = {
+    status: "PASS", syntheticStartedWorkday: true, currentPublishedAssignmentExists: true,
+    allThreeSnapshotRowsAbsent: true, actualAcceptedStartEventWorkflowTested: false,
+    physicalPresenceInferred: false, adminFixtureSeedOnly: true,
+  }
+  currentDate()
+  return { employeeId: employee.id, workday: {
+    id: workday.id, startedAt: workday.startedAt.toISOString(), pausedAt: null, completedAt: null,
+  } }
+}
+
+async function proveCurrentSnapshotDatabaseGuards(fixture) {
+  const organizationId = fixture.organization.id
+  const organizationIds = [organizationId, fixture.foreign.id]
+  const before = await facts(organizationIds)
+  const reference = fixture.currentWorkdays.get(fixture.employees[6].id)
+  const snapshotTables = [
+    ["workforce_policy_snapshots", reference.snapshotIds.policySnapshotId],
+    ["workforce_shift_snapshots", reference.snapshotIds.shiftSnapshotId],
+    ["workforce_workday_schedule_snapshots", reference.snapshotIds.scheduleSnapshotId],
+  ]
+  const counts = before.filter(row => snapshotTables.some(([table]) => table === row.table))
+  assert.equal(counts.length, 3)
+  assert.ok(counts.every(row => row.count === 3))
+  const workdaysBefore = before.find(row => row.table === "mtm_agent_workdays").count
+  assert.equal(workdaysBefore, 5)
+  const results = []
+  async function rejectsAndRollsBack(name, code, attempt) {
+    currentDate()
+    let staged = false
+    let postgresCode
+    try {
+      await admin.$transaction(async tx => {
+        // This separate, vacant employee/date is inserted first in every
+        // negative transaction. The following database error must roll it back.
+        const workday = await tx.mtmAgentWorkday.create({ data: {
+          organizationId, agentId: fixture.employees[10].id, workDate,
+          status: "STARTED", startedAt: new Date(), totalPausedSeconds: 0,
+        } })
+        assert.equal(await tx.mtmAgentWorkday.count({ where: { organizationId } }), workdaysBefore + 1)
+        staged = true
+        await attempt(tx, workday)
+      }, { maxWait: 5_000, timeout: 30_000 })
+    } catch (error) {
+      if (error?.code !== "P2010") throw error
+      postgresCode = error.meta?.code
+    }
+    assert.equal(staged, true)
+    assert.equal(postgresCode, code)
+    const after = await facts(organizationIds)
+    assert.deepEqual(after, before, "Snapshot guard rejection must roll back every captured fixture fact")
+    results.push({ name, status: "PASS", postgresCode, stagedFactCreatedBeforeError: true, stagedWorkdayCount: workdaysBefore + 1, committedWorkdayCountAfter: workdaysBefore, allFactHashesAndCountsRestored: true })
+  }
+  for (const [table, id] of snapshotTables) {
+    assert.ok(["workforce_policy_snapshots", "workforce_shift_snapshots", "workforce_workday_schedule_snapshots"].includes(table))
+    await rejectsAndRollsBack(`${table}-UPDATE`, "55000", tx => tx.$executeRawUnsafe(`UPDATE public."${table}" SET "resolvedAt" = "resolvedAt" WHERE "organizationId" = $1 AND id = $2`, organizationId, id))
+    await rejectsAndRollsBack(`${table}-DELETE`, "55000", tx => tx.$executeRawUnsafe(`DELETE FROM public."${table}" WHERE "organizationId" = $1 AND id = $2`, organizationId, id))
+  }
+  await rejectsAndRollsBack("policy-workday-employee-link", "23514", (tx, staged) => tx.$executeRawUnsafe(
+    `INSERT INTO public.workforce_policy_snapshots (id,"organizationId","policyId","workdayId","agentId","workDate","policyVersion",definition,"definitionHash","expectedWorkSeconds","lateGraceSeconds","undertimeToleranceSeconds","overtimeThresholdSeconds","longPauseThresholdSeconds","resolvedAt","createdAt") SELECT $1,"organizationId","policyId",$2,"agentId","workDate","policyVersion",definition,"definitionHash","expectedWorkSeconds","lateGraceSeconds","undertimeToleranceSeconds","overtimeThresholdSeconds","longPauseThresholdSeconds","resolvedAt","createdAt" FROM public.workforce_policy_snapshots WHERE "organizationId"=$3 AND id=$4`,
+    randomUUID(), staged.id, organizationId, reference.snapshotIds.policySnapshotId,
+  ))
+  await rejectsAndRollsBack("shift-workday-employee-link", "23514", (tx, staged) => tx.$executeRawUnsafe(
+    `INSERT INTO public.workforce_shift_snapshots (id,"organizationId","templateId","assignmentId","defaultAssignmentId","teamDefaultAssignmentId","workdayId","agentId","workDate","templateVersion",timezone,definition,"definitionHash","plannedStartAt","plannedEndAt","resolvedAt","createdAt") SELECT $1,"organizationId","templateId","assignmentId","defaultAssignmentId","teamDefaultAssignmentId",$2,"agentId","workDate","templateVersion",timezone,definition,"definitionHash","plannedStartAt","plannedEndAt","resolvedAt","createdAt" FROM public.workforce_shift_snapshots WHERE "organizationId"=$3 AND id=$4`,
+    randomUUID(), staged.id, organizationId, reference.snapshotIds.shiftSnapshotId,
+  ))
+  await rejectsAndRollsBack("schedule-cross-workday-snapshot-links", "23514", (tx, staged) => tx.$executeRawUnsafe(
+    `INSERT INTO public.workforce_workday_schedule_snapshots (id,"organizationId","workdayId","agentId","workDate","policySnapshotId","shiftSnapshotId","schemaVersion","calendarState","calendarSnapshot",segments,sites,"snapshotHash","resolvedAt","createdAt") SELECT $1,"organizationId",$2,$3,"workDate","policySnapshotId","shiftSnapshotId","schemaVersion","calendarState","calendarSnapshot",segments,sites,"snapshotHash","resolvedAt","createdAt" FROM public.workforce_workday_schedule_snapshots WHERE "organizationId"=$4 AND id=$5`,
+    randomUUID(), staged.id, staged.agentId, organizationId, reference.snapshotIds.scheduleSnapshotId,
+  ))
+  await rejectsAndRollsBack("schedule-v2-historical-membership", "23514", tx => tx.$executeRawUnsafe(
+    `INSERT INTO public.workforce_workday_schedule_snapshots (id,"organizationId","workdayId","agentId","workDate","policySnapshotId","shiftSnapshotId","schemaVersion","calendarState","calendarSnapshot",segments,sites,"snapshotHash","resolvedAt","createdAt") SELECT $1,"organizationId","workdayId","agentId","workDate","policySnapshotId","shiftSnapshotId","schemaVersion","calendarState",jsonb_set("calendarSnapshot",'{teamMembership}','{"id":null,"teamId":null}'::jsonb,false),segments,sites,"snapshotHash","resolvedAt","createdAt" FROM public.workforce_workday_schedule_snapshots WHERE "organizationId"=$2 AND id=$3`,
+    randomUUID(), organizationId, reference.snapshotIds.scheduleSnapshotId,
+  ))
+  assert.equal(results.length, 10)
+  receipts.snapshotDatabaseGuards = { status: "PASS", role: "postgres", disposableAdminTransactionsOnly: true, productionMigrationsChanged: false, appWritePrivilegesAdded: false, exactNamedGuardScopeOnly: true, results }
 }
 
 async function seed() {
@@ -214,8 +463,12 @@ async function seed() {
     workdayId: null, workdayEventId: null, evidenceId: null, segmentId: draft.links.segmentId, expectedWorkDate: workDate,
   } })
   await admin.mtmAgentWorkday.create({ data: { organizationId: organization.id, agentId: employees[2].id, workDate: earlier(1), status: "STARTED", startedAt: new Date(earlier(1).getTime() + 8 * 3_600_000), totalPausedSeconds: 0 } })
+  const currentWorkdays = await seedCurrentSnapshotWorkdays({ organization, issuer, employees, template, jiti })
+  const snapshotlessCurrentWorkday = await seedSnapshotlessCurrentWorkday({ organization, employees, template })
+  const fixture = { organizations, organization, foreign, manager, approver, denied, employees, sentinels, template, currentWorkdays, snapshotlessCurrentWorkday }
+  await proveCurrentSnapshotDatabaseGuards(fixture)
   currentDate()
-  return { organizations, organization, foreign, manager, approver, denied, employees, sentinels, template }
+  return fixture
 }
 
 async function checkedRead(response, fixture, { page = 1, exceptions = true } = {}) {
@@ -234,11 +487,11 @@ async function checkedRead(response, fixture, { page = 1, exceptions = true } = 
   assert.equal(data.summaryScope, "LOADED_PAGE")
   assert.equal(data.pagination.pageSize, 25)
   assert.equal(data.employeeToday, null)
-  assert.deepEqual(data.summary, { started: 0, paused: 0, completed: 0, notStarted: page === 1 ? 25 : 1, previousOpen: page === 1 ? 1 : 0 })
+  assert.deepEqual(data.summary, { started: page === 1 ? 2 : 0, paused: page === 1 ? 1 : 0, completed: page === 1 ? 1 : 0, notStarted: page === 1 ? 21 : 1, previousOpen: page === 1 ? 1 : 0 })
   const wanted = page === 1 ? fixture.employees.slice(0, 25) : fixture.employees.slice(25)
   assert.deepEqual(data.people.map(person => person.id), wanted.map(person => person.id))
   assert.equal(data.pagination.nextCursor, page === 1 ? fixture.employees[24].id : null)
-  const forbidden = ["latitude", "longitude", "coordinates", "evidenceId", "caseId", "actorUserId", "reason", "reasonText"]
+  const forbidden = ["latitude", "longitude", "coordinates", "evidenceId", "caseId", "actorUserId", "reason", "reasonText", "policySnapshotId", "shiftSnapshotId", "scheduleSnapshotId", "definition", "definitionHash", "snapshotHash", "calendarSnapshot", "segments", "sites"]
   function minimized(value) {
     if (value == null || typeof value !== "object") return
     for (const [key, nested] of Object.entries(value)) {
@@ -249,9 +502,30 @@ async function checkedRead(response, fixture, { page = 1, exceptions = true } = 
   minimized(data)
   for (const sentinel of fixture.sentinels) assert.ok(!JSON.stringify(result).includes(sentinel.id) && !JSON.stringify(result).includes(sentinel.name))
   for (const person of data.people) {
-    assert.equal(person.workday, null)
-    assert.equal(person.status, "NOT_STARTED")
-    assert.equal(person.attendance.acceptedStartRecorded, false)
+    const positive = fixture.currentWorkdays.get(person.id)
+    if (positive) {
+      assert.deepEqual(person.workday, positive.workday)
+      assert.equal(person.status, positive.status)
+      assert.equal(person.attendance.state, positive.status)
+      assert.equal(person.attendance.acceptedStartRecorded, true)
+      assert.deepEqual(person.plan, positive.plan)
+      assert.deepEqual(person.calendar, { state: "SCHEDULED", attendanceExpected: true, noShowEligible: true, excused: false })
+      assert.equal(person.previousOpenWorkday, null)
+    } else if (person.id === fixture.snapshotlessCurrentWorkday.employeeId) {
+      assert.deepEqual(person.workday, fixture.snapshotlessCurrentWorkday.workday)
+      assert.equal(person.status, "STARTED")
+      assert.deepEqual(person.attendance, { state: "STARTED", acceptedStartRecorded: true })
+      assert.deepEqual(person.plan, {
+        state: "UNAVAILABLE", source: "UNAVAILABLE", templateName: null,
+        timezone: null, plannedStartAt: null, plannedEndAt: null,
+      })
+      assert.deepEqual(person.calendar, { state: "UNAVAILABLE", attendanceExpected: false, noShowEligible: false, excused: false })
+      assert.equal(person.previousOpenWorkday, null)
+    } else {
+      assert.equal(person.workday, null)
+      assert.equal(person.status, "NOT_STARTED")
+      assert.equal(person.attendance.acceptedStartRecorded, false)
+    }
     assert.deepEqual(person.boundaries, { rawEvidence: "EXCLUDED", location: "EXCLUDED", reasons: "EXCLUDED", actors: "EXCLUDED", caseIdentifiers: "EXCLUDED", presenceConclusion: "NOT_INFERRED" })
     if (exceptions) assert.ok(Array.isArray(person.exceptions))
     else assert.equal(person.exceptions, null)
@@ -298,10 +572,76 @@ async function tabTo(page, locator) {
   }
   throw new Error("Native Tab could not reach Today pagination")
 }
-async function openToday(principal, locale, viewport) {
+async function until(check, description, timeout = 30_000) {
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    if (await check()) return
+    await delay(100)
+  }
+  throw new Error(`Timed out: ${description}`)
+}
+async function focusedInViewport(locator, description) {
+  const diagnostic = { description, status: "FAIL", polls: 0 }
+  try {
+    await until(async () => {
+      const sample = await locator.evaluate(element => {
+        const bounds = element.getBoundingClientRect()
+        const container = element.closest("main")?.getBoundingClientRect()
+        // Keep the original predicate and timeout exactly. Diagnostics read
+        // unrounded coordinates; they never focus, scroll or change styles.
+        const pass = document.activeElement === element
+          && bounds.top >= Math.max(0, container?.top ?? 0)
+          && bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight)
+          && bounds.left >= Math.max(0, container?.left ?? 0)
+          && bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth)
+        const rect = box => box ? Object.fromEntries(["top", "bottom", "left", "right", "width", "height"]
+          .map(key => [key, Number.isFinite(box[key]) ? box[key] : null])) : null
+        const dimensions = node => ({ clientWidth: node.clientWidth, clientHeight: node.clientHeight,
+          scrollWidth: node.scrollWidth, scrollHeight: node.scrollHeight, offsetWidth: node.offsetWidth,
+          offsetHeight: node.offsetHeight, scrollLeft: node.scrollLeft, scrollTop: node.scrollTop })
+        const ancestors = []
+        for (let node = element.parentElement; node && ancestors.length < 8; node = node.parentElement) {
+          const style = getComputedStyle(node)
+          const overflow = value => ["visible", "hidden", "clip", "auto", "scroll", "overlay"].includes(value) ? value : "OTHER"
+          ancestors.push({ tag: node.tagName, bounds: rect(node.getBoundingClientRect()), ...dimensions(node),
+            overflowX: overflow(style.overflowX), overflowY: overflow(style.overflowY) })
+        }
+        return { pass, focused: document.activeElement === element, focusVisible: element.matches(":focus-visible"),
+          connected: element.isConnected, disabled: element.matches(":disabled"),
+          clauses: { top: bounds.top >= Math.max(0, container?.top ?? 0),
+            bottom: bounds.bottom <= Math.min(window.innerHeight, container?.bottom ?? window.innerHeight),
+            left: bounds.left >= Math.max(0, container?.left ?? 0),
+            right: bounds.right <= Math.min(window.innerWidth, container?.right ?? window.innerWidth) },
+          target: rect(bounds), main: rect(container),
+          viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio,
+            visualWidth: window.visualViewport?.width, visualHeight: window.visualViewport?.height,
+            visualScale: window.visualViewport?.scale, scrollX: window.scrollX, scrollY: window.scrollY },
+          root: dimensions(document.documentElement), body: dimensions(document.body), ancestors }
+      })
+      diagnostic.polls++
+      diagnostic.first ??= sample
+      diagnostic.last = sample
+      return sample.pass
+    }, description)
+    diagnostic.status = "PASS"
+  } finally {
+    receipts.focusGeometryDiagnostics.push(diagnostic)
+  }
+}
+
+async function evidenceScreenshot(page, path, fullPage) {
+  if (isNativeZoomPage(page)) {
+    await captureNativeViewport(page, path, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+  } else {
+    await page.screenshot({ path, fullPage })
+  }
+}
+async function openToday(principal, locale, viewport, nativeZoom = false) {
   currentDate()
-  const context = await browser.newContext({ baseURL, locale: "en-US", viewport, serviceWorkers: "block" })
-  contexts.push(context)
+  const native = nativeZoom ? await createNativeZoomContext(baseURL, "manager-today") : null
+  if (native) nativeZoomContexts.push(native)
+  const context = native?.context ?? await browser.newContext({ baseURL, locale: "en-US", viewport, serviceWorkers: "block" })
+  if (!native) contexts.push(context)
   await context.addCookies([{ name: "NEXT_LOCALE", value: locale, url: baseURL }])
   await authenticate(context, principal)
   const page = await context.newPage()
@@ -317,12 +657,13 @@ async function openToday(principal, locale, viewport) {
   await page.goto("/workforce", { waitUntil: "domcontentloaded" })
   const response = await firstResponse
   assert.notEqual(new URL(page.url()).pathname, "/login")
-  return { context, page, response, workforceWrites, ui: await copy(locale) }
+  return { context, page, response, workforceWrites, ui: await copy(locale), ...(native ? { worker: native.worker } : {}) }
 }
-async function managerScenario(fixture, principal, locale, viewport, exceptions) {
-  const scenario = `today-${principal.key}-${locale}`
+async function managerScenario(fixture, principal, locale, viewport, exceptions, nativeZoom = false) {
+  const caseName = `${principal.key}-${locale}${nativeZoom ? "-native-200" : ""}`
+  const scenario = `today-${caseName}`
   stage = `${scenario}-real-authentication`
-  const view = await openToday(principal, locale, viewport)
+  const view = await openToday(principal, locale, viewport, nativeZoom)
   stage = `${scenario}-first-response`
   const first = await checkedRead(view.response, fixture, { exceptions })
   stage = `${scenario}-localized-first-page`
@@ -330,6 +671,12 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
   const articles = section.locator("article")
   await articles.nth(24).waitFor()
   assert.equal(await articles.count(), 25)
+  if (nativeZoom) {
+    stage = `${scenario}-native-zoom-proof`
+    await view.page.evaluate(() => document.fonts.ready)
+    view.nativeZoom = await proveNative200Zoom(view, outputDirectory, locale, diagnostic => receipts.nativeCaptureDiagnostics.push(diagnostic))
+    receipts.nativeZoomDiagnostics.push({ locale, status: "PASS", ...view.nativeZoom })
+  }
   for (let index = 0; index < 25; index++) {
     const article = articles.nth(index)
     const person = first.people[index]
@@ -351,13 +698,41 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
     assert.equal((await section.innerText()).includes(view.ui.timesheetApprovalException.NO_SHOW), false)
   }
   assert.equal(await section.getByText(fixture.employees[25].name, { exact: true }).count(), 0)
-  await view.page.screenshot({ path: `${outputDirectory}/${principal.key}-${locale}-first-page.png`, fullPage: true })
+  await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-first-page.png`, true)
+  for (const [index, status] of [[6, "STARTED"], [7, "PAUSED"], [8, "COMPLETED"]]) {
+    stage = `${scenario}-positive-snapshot-${status.toLowerCase()}`
+    const article = articles.nth(index)
+    const person = first.people[index]
+    assert.equal(person.attendance.state, status)
+    const expectedWindow = await view.page.evaluate(({ locale, message, plan }) => {
+      const formatter = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", timeZone: plan.timezone })
+      return message.replace("{start}", formatter.format(new Date(plan.plannedStartAt)))
+        .replace("{end}", formatter.format(new Date(plan.plannedEndAt))).replace("{timezone}", plan.timezone)
+    }, { locale, message: view.ui.managerPlannedWindow, plan: person.plan })
+    assert.ok((await article.innerText()).includes(expectedWindow))
+    assert.ok((await article.innerText()).includes(view.ui.managerAttendanceState[status]))
+    assert.ok((await article.innerText()).includes(view.ui.managerCalendarState.SCHEDULED))
+    assert.ok((await article.innerText()).includes(view.ui.managerPresenceBoundary))
+    await article.scrollIntoViewIfNeeded()
+    await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-snapshot-${status.toLowerCase()}.png`)
+  }
+  stage = `${scenario}-current-workday-without-snapshots`
+  const snapshotlessArticle = articles.nth(9)
+  const snapshotlessText = await snapshotlessArticle.innerText()
+  assert.ok(snapshotlessText.includes(view.ui.managerAttendanceState.STARTED))
+  assert.ok(snapshotlessText.includes(view.ui.managerPlanState.UNAVAILABLE))
+  assert.ok(snapshotlessText.includes(view.ui.managerCalendarState.UNAVAILABLE))
+  assert.ok(snapshotlessText.includes(view.ui.managerPresenceBoundary))
+  assert.equal(snapshotlessText.includes(fixture.template.name), false)
+  await snapshotlessArticle.scrollIntoViewIfNeeded()
+  await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-snapshot-missing.png`)
   const loadMore = section.getByRole("button", { name: view.ui.managerLoadMore, exact: true })
   assert.equal(await loadMore.isEnabled(), true)
   stage = `${scenario}-native-tab`
   const tabs = await tabTo(view.page, loadMore)
   assert.equal(await loadMore.evaluate(element => element.matches(":focus-visible")), true)
-  await view.page.screenshot({ path: `${outputDirectory}/${principal.key}-${locale}-native-pagination.png` })
+  if (nativeZoom) await focusedInViewport(loadMore, "native200 Today pagination visible focus")
+  await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-native-pagination.png`)
   const nextResponse = view.page.waitForResponse(response => responseForToday(response) && new URL(response.url()).searchParams.get("cursor") === fixture.employees[24].id)
   stage = `${scenario}-native-enter-second-response`
   await view.page.keyboard.press("Enter")
@@ -385,12 +760,12 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
   }, view.ui.managerAttendanceState[second.people[0].attendance.state])
   assert.equal(absenceGeometry.length, 2)
   for (const geometry of absenceGeometry) assert.deepEqual(geometry, { positive: true, withinViewport: true, untruncated: true, displayed: true, stateTextMatched: true })
-  await view.page.screenshot({ path: `${outputDirectory}/${principal.key}-${locale}-absent-page-two.png` })
+  await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-absent-page-two.png`)
   assert.deepEqual(view.workforceWrites, [])
   stage = `${scenario}-preserved-real-session`
   await assertSession(view.context, principal)
-  receipts.cases.push({ name: `${principal.key}-${locale}`, status: "PASS", firstPage: 25, secondPage: 1, finalUniqueOrderedPeople: 26, scheduledWithoutWorkdayExplained: true, persistedNoShowAuthority: exceptions, exceptionsNullWithoutAuthority: !exceptions, previousOpenRetained: true, leaveAndHolidayExplained: true, unavailableScheduleExplained: true, nativePaginationTabs: tabs, nativePaginationEnter: true, pageTwoAbsenceGeometry: absenceGeometry, readOnlyWorkforceRequests: true, realSessionPreserved: true, viewport })
-  if (principal.key === "manager" && locale === "en") {
+  receipts.cases.push({ name: caseName, status: "PASS", firstPage: 25, secondPage: 1, finalUniqueOrderedPeople: 26, currentSnapshotStates: ["STARTED", "PAUSED", "COMPLETED"], canonicalSnapshotLinksAndFrozenUtcPlan: true, positiveSnapshotLocalizedDomAndOriginalScreenshots: true, missingCurrentSnapshotUnavailableExplained: true, liveAssignmentDoesNotReconstructExistingWorkday: true, scheduledWithoutWorkdayExplained: true, persistedNoShowAuthority: exceptions, exceptionsNullWithoutAuthority: !exceptions, previousOpenRetained: true, leaveAndHolidayExplained: true, unavailableScheduleExplained: true, nativePaginationTabs: tabs, nativePaginationEnter: true, pageTwoAbsenceGeometry: absenceGeometry, readOnlyWorkforceRequests: true, realSessionPreserved: true, viewport: nativeZoom ? await view.page.evaluate(() => ({ width: innerWidth, height: innerHeight })) : viewport, ...(nativeZoom ? { nativeZoom: view.nativeZoom } : {}) })
+  if (!nativeZoom && principal.key === "manager" && locale === "en") {
     stage = `${scenario}-forged-tenant-headers`
     // The actual proxy strips caller tenant headers on loopback. The request
     // therefore remains bound to its authenticated tenant rather than 403.
@@ -399,7 +774,7 @@ async function managerScenario(fixture, principal, locale, viewport, exceptions)
     await assertSession(view.context, principal)
     receipts.cases.push({ name: "forged-tenant-headers-remain-session-bound", status: "PASS", responseStatus: 200, foreignPeopleExcluded: true, authenticatedTenantPreserved: true, noHeaderDerived403Claim: true })
   }
-  await view.context.close()
+  if (!nativeZoom) await view.context.close()
 }
 
 async function verifyUnscopedRls(fixture, phase) {
@@ -412,7 +787,8 @@ async function verifyUnscopedRls(fixture, phase) {
   assert.notEqual(role.bypass, "on")
   const tables = ["users", ...factTables].sort()
   const metadata = await app.$queryRawUnsafe(`SELECT c.relname AS name, c.relrowsecurity AS enabled, c.relforcerowsecurity AS forced, pg_get_userbyid(c.relowner) AS owner, EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid AND p.polname = 'wf_manager_today_tenant') AS policy FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relname = ANY($1::text[]) ORDER BY c.relname`, tables)
-  assert.equal(metadata.length, 20)
+  assert.equal(metadata.length, tables.length)
+  assert.equal(tables.length, 21)
   assert.deepEqual(metadata.map(table => table.name), tables)
   const counts = []
   for (const table of metadata) {
@@ -429,7 +805,9 @@ async function verifyUnscopedRls(fixture, phase) {
   assert.equal(counts.find(row => row.table === "users").syntheticRows, 4)
   assert.equal(counts.find(row => row.table === "mtm_agents").syntheticRows, 29)
   assert.equal(counts.find(row => row.table === "workforce_exception_cases").syntheticRows, 1)
-  assert.equal(counts.find(row => row.table === "mtm_agent_workdays").syntheticRows, 1)
+  assert.equal(counts.find(row => row.table === "mtm_agent_workdays").syntheticRows, 5)
+  assert.equal(counts.find(row => row.table === "workforce_policies").syntheticRows, 1)
+  for (const table of ["workforce_policy_snapshots", "workforce_shift_snapshots", "workforce_workday_schedule_snapshots"]) assert.equal(counts.find(row => row.table === table).syntheticRows, 3)
   currentDate()
   return { phase, role: role.name, tenantContextAbsent: true, bypassAbsent: true, unsafeRolePrivilegesAbsent: true, counts }
 }
@@ -484,12 +862,18 @@ try {
   for (const [locale, width] of [["ru", 320], ["az", 768], ["en", 1440]]) await managerScenario(fixture, fixture.manager, locale, { width, height: 900 }, true)
   await managerScenario(fixture, fixture.approver, "ru", { width: 320, height: 900 }, false)
   await deniedScenario(fixture)
+  assert.equal(receipts.cases.length, 6, "All original Today cases must pass before native zoom")
+  for (const locale of ["en", "ru", "az"]) await managerScenario(fixture, fixture.manager, locale, { width: 320, height: 900 }, true, true)
+  assert.equal(receipts.nativeZoomDiagnostics.length, 3)
+  assert.ok(receipts.nativeZoomDiagnostics.every(row => row.status === "PASS" && row.fixture === "manager-today" && row.factor === 2))
+  receipts.nativeZoomVerdict = "PASS"
   stage = "read-only-facts-after"
   const after = await facts(organizationIds)
   assert.deepEqual(after, before, "Every captured Workforce fact must remain byte-identical after real authenticated reads")
   receipts.factImmutability = { status: "PASS", tenantCount: 2, tables: before.map((row, index) => ({ ...row, afterSha256: after[index].sha256, unchanged: true })), userAuthenticationMetadataExcluded: true }
   receipts.rlsAfter = await verifyUnscopedRls(fixture, "AFTER_AUTHENTICATED_READS")
-  assert.equal(receipts.cases.length, 6)
+  assert.equal(receipts.cases.length, 9)
+  assert.equal(new Set(receipts.cases.map(row => row.name)).size, 9)
   currentDate()
   receipts.status = "PASS"
 } catch (error) {
@@ -510,17 +894,18 @@ try {
     diagnostic: "Original hosted assertion failed; no raw payload, stack, token or credentials uploaded",
   }
   if (activePage && !activePage.isClosed()) {
-    try { await activePage.screenshot({ path: `${outputDirectory}/failure-original.png`, fullPage: true }); receipts.failure.screenshot = "failure-original.png" } catch { receipts.failure.screenshot = "NOT_CAPTURED" }
+    try { await evidenceScreenshot(activePage, `${outputDirectory}/failure-original.png`, true); receipts.failure.screenshot = "failure-original.png" } catch { receipts.failure.screenshot = "NOT_CAPTURED" }
   }
   process.exitCode = 1
 } finally {
   // A browser must outlive its contexts' request/channel disposal. Keep each
   // rejection fatal, and record only fixed action labels and safe error types.
   const contextCleanup = await Promise.allSettled(contexts.map(context => context.close()))
+  const nativeCleanup = await Promise.allSettled(nativeZoomContexts.map(view => view.dispose()))
   const browserCleanup = browser ? await Promise.allSettled([browser.close()]) : []
   const databaseCleanup = await Promise.allSettled([app.$disconnect(), admin.$disconnect()])
-  const cleanup = [...contextCleanup, ...browserCleanup, ...databaseCleanup]
-  const labels = [...contexts.map((_, index) => `context-${index + 1}`), ...(browser ? ["browser"] : []), "application-database", "fixture-database"]
+  const cleanup = [...contextCleanup, ...nativeCleanup, ...browserCleanup, ...databaseCleanup]
+  const labels = [...contexts.map((_, index) => `context-${index + 1}`), ...nativeZoomContexts.map((_, index) => `native-context-profile-${index + 1}`), ...(browser ? ["browser"] : []), "application-database", "fixture-database"]
   receipts.cleanupActions = cleanup.map((result, index) => ({
     action: labels[index],
     status: result.status === "fulfilled" ? "PASS" : "FAIL",

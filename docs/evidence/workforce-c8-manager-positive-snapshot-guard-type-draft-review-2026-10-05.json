@@ -1,0 +1,67 @@
+{
+  "issuedAtUtc": "2026-10-05T01:03:07.700138+00:00",
+  "status": "PRELIMINARY SOURCE-ONLY GREEN",
+  "frozenOriginalCandidate": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+  "baseSha": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "unappliedDraft": {
+    "path": "/tmp/workforce-pr581-owned-guard-process-env-draft-primary.ts",
+    "bytes": 3979,
+    "sha256": "9c843a4a6976b3abfe052fccf84a31d08ff0f545264505d5e43904191d379899"
+  },
+  "wholeFrozenExplicitGitOriginal": {
+    "path": "/tmp/workforce-pr581-c5cf76-hosted-independent-20261005T003800806736Z/frozen-git/HEAD/src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts",
+    "bytes": 3980,
+    "sha256": "e370358c6ca3d15ecde5c567af9ed2846aecae1a9a966aaaf4f979192d9fd639"
+  },
+  "wholeDiff": "--- frozen c5 guard\n+++ unapplied type-only draft\n@@ -12,7 +12,7 @@\n // No production credentials, ambient environment, PostgreSQL or browser are\n // admitted. Every subprocess must fail a preconnection guard before creating\n // its output directory or constructing the disposable database clients.\n-const baseline: Record<string, string> = {\n+const baseline: NodeJS.ProcessEnv = {\n   GITHUB_ACTIONS: \"true\", CI: \"true\", NODE_ENV: \"development\",\n   WF_MANAGER_TODAY_BROWSER: \"1\",\n   WF_MANAGER_TODAY_BROWSER_BASE_URL: \"http://localhost:1/\",\n@@ -23,7 +23,7 @@\n   GITHUB_SHA: \"b\".repeat(40),\n }\n \n-const rejected: Array<{ name: string; patch: Record<string, string>; error: string }> = [\n+const rejected: Array<{ name: string; patch: Partial<NodeJS.ProcessEnv>; error: string }> = [\n   { name: \"non-hosted execution\", patch: { GITHUB_ACTIONS: \"false\" }, error: \"Hosted Actions required\" },\n   { name: \"missing explicit CI\", patch: { CI: \"false\" }, error: \"Explicit CI required\" },\n   { name: \"missing fixture opt-in\", patch: { WF_MANAGER_TODAY_BROWSER: \"0\" }, error: \"Fixture opt-in required\" },\n",
+  "exactExpectedTypeOnlyReplacements": true,
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "findings": [],
+  "actualTrigger": {
+    "wholeCurrentCompilerLog": {
+      "path": "/tmp/workforce-pr581-c5cf76-hosted-independent-20261005T003800806736Z/current-hosted-originals/whole-logs/111570225230.txt",
+      "bytes": 256725,
+      "sha256": "86792dad27c1c7f68082b2d64c99064a3bd86026b076fbc2baf17cde475fa9c2"
+    },
+    "sourceLogLines": [
+      608,
+      609,
+      610
+    ],
+    "code": "TS2769",
+    "testLine": 47,
+    "testColumn": 9,
+    "underlyingCompilerMessage": "Property 'NODE_ENV' is missing in type '{ WF_MANAGER_TODAY_BROWSER_OUTPUT_DIR: string; }' but required in type 'ProcessEnv'."
+  },
+  "review": [
+    "NodeJS.ProcessEnv preserves the compiler-visible required NODE_ENV property on baseline; Partial<NodeJS.ProcessEnv> models deliberate per-case patches without pretending each partial object contains NODE_ENV.",
+    "These two type annotations erase during normal TypeScript execution. Every12 case entry, its environment values and expected rejection, closed literal baseline, env spread order, output fence, timeout, maxBuffer and every assertion remain byte-identical.",
+    "No process.env read, ambient credential spread, type cast, any, ignored diagnostic, owned selection exclusion, baseline edit, app/harness writer or guard predicate change is introduced."
+  ],
+  "sourceOnly": true,
+  "unapplied": true,
+  "compiledOrTestedByReviewer": false,
+  "fullCompilerAcceptanceCredit": false,
+  "currentC5FirstBlockedRetained": {
+    "path": "/tmp/workforce-pr581-c5cf76-current-hosted-first-blocked-independent.json",
+    "bytes": 42179,
+    "sha256": "9883ba21a9574625b4848176121f58123b4af47897bacdf369d208fae9003bac"
+  },
+  "normalMergeAllowed": false,
+  "nextExactHeadRequirements": [
+    "Frozen applied diff contains only expected two annotation edits plus authorized append-only receipt/docs; capture whole explicit HEAD/BASE/PARENT source and reconstruct full net patch.",
+    "Root current bounded preconnection12 and scopedlint/isolated actual ambient ProcessEnv typing checks bind the exact applied source; reviewer does not run tests.",
+    "Protected15/current frozen66baseline and full suite18 baseline unchanged; preserve source60/42+union79/55 including both tests.",
+    "Fresh first-attempt compiler must derive total/families and observe zero every owned path across all families; no old1170 acceptance or current c5 retro-GREEN.",
+    "New exact current hosted manager positive/negative/native/facts/RLS originals required before own full runtime GREEN; previous managerPASS remains historical."
+  ],
+  "activeApplicationSourceReads": 0,
+  "GitOrGitHubMutations": 0,
+  "localTestsBrowserPostgresCompilerBuilds": 0,
+  "productionRequests": 0
+}

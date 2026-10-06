@@ -1,0 +1,51 @@
+{
+  "atUtc": "2026-10-05T00:34:26.958300+00:00",
+  "status": "EXACT SOURCE-ONLY GREEN WHOLE ACCEPTED; NEW RUNTIME NOT RUN",
+  "head": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+  "base": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "sourceOnlyGreenAccepted": true,
+  "runtimeCredit": false,
+  "normalMergeAllowed": false,
+  "report": {
+    "path": "/tmp/workforce-part38-c5cf76-whole-source-independent.json",
+    "bytes": 13440,
+    "sha256": "e3cf9e5789533df32e23518f589394f4b2632879e82468f4d226cbf04abe5691"
+  },
+  "audit": {
+    "path": "/tmp/workforce-part38-c5cf76-whole-source-input-audit-independent.json",
+    "bytes": 1642406,
+    "sha256": "4dcd1efae64f47d3f0454ba9b105a04643fe89c796dc0f204451d7c8125e30eb"
+  },
+  "wholeDistinctReferencedOriginals": 1552,
+  "directOriginals": 1551,
+  "explicitGit": 217,
+  "missingBaseOriginalsRetained": 11,
+  "wholeJSON": 219,
+  "wholeUTF8": 1545,
+  "ownFull17PatchReconstruction": true,
+  "threeDraftParity": true,
+  "protected15": true,
+  "watchedRuntime58": true,
+  "managerOwned60Typed42": true,
+  "unionOwned79Typed55": true,
+  "earlier59CataloguePreservedSuperseded": true,
+  "journalPrefixes8": true,
+  "durable10": true,
+  "core9Direct81": true,
+  "fullDiff": {
+    "paths": 17,
+    "bytes": 215310,
+    "sha256": "f16d812dd29fd09fb72d05523247d9b5ce6204aefdbc11069b1cd64972fe3966"
+  },
+  "nonDocDiff": {
+    "paths": 3,
+    "bytes": 42587,
+    "sha256": "7f937bcd3306187c58c1e7959a13ecaa72504ef2deb57541a57061860b69815f"
+  },
+  "actualBounded6PassWithPrecheckpointExecutionLimit": true,
+  "rangeFindings": 0,
+  "originalsOverwrittenOrDropped": 0,
+  "DONE": 82,
+  "nonDONE": 79,
+  "newRowClosure": false
+}

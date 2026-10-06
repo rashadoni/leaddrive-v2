@@ -1,0 +1,89 @@
+{
+  "atUtc": "2026-10-05T00:44:52.329745+00:00",
+  "status": "UNAPPLIED FUTURE BOUNDED PLAN; CURRENT PR581 RUNTIME PENDING",
+  "frozenSourceHead": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+  "sourceOriginals": [
+    {
+      "repoPath": "scripts/workforce-manager-today-browser-evidence.mjs",
+      "sha": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+      "path": "/tmp/workforce-manager-missing-current-snapshot-next-plan-primary/explicit-git/scripts/workforce-manager-today-browser-evidence.mjs",
+      "bytes": 59561,
+      "sha256": "874f61c20dba16e515102d37b12cb485ef84cd24625b179e03c99b6f065bb4d9"
+    },
+    {
+      "repoPath": "src/lib/workforce/manager-today.ts",
+      "sha": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+      "path": "/tmp/workforce-manager-missing-current-snapshot-next-plan-primary/explicit-git/src/lib/workforce/manager-today.ts",
+      "bytes": 21291,
+      "sha256": "21f501588f7dae24648d3789a07cb660506be69195f3d9653fef4edd1f1973cd"
+    },
+    {
+      "repoPath": "src/app/api/v1/workforce/today/route.ts",
+      "sha": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+      "path": "/tmp/workforce-manager-missing-current-snapshot-next-plan-primary/explicit-git/src/app/api/v1/workforce/today/route.ts",
+      "bytes": 24487,
+      "sha256": "ff53b9fdb369138dedf815d61cd7be08c4370da27053fd7b295464575ae5f5d3"
+    },
+    {
+      "repoPath": "src/components/workforce/workforce-manager-today.tsx",
+      "sha": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+      "path": "/tmp/workforce-manager-missing-current-snapshot-next-plan-primary/explicit-git/src/components/workforce/workforce-manager-today.tsx",
+      "bytes": 8677,
+      "sha256": "97aa1ee58b2936e26ed061370f18ff94eeae2217cd354a063fda3610e620f9a1"
+    },
+    {
+      "repoPath": "src/__tests__/workforce-manager-today.test.ts",
+      "sha": "c5cf76b1e9809a9c3a2279bcb2a795dff0a173f9",
+      "path": "/tmp/workforce-manager-missing-current-snapshot-next-plan-primary/explicit-git/src/__tests__/workforce-manager-today.test.ts",
+      "bytes": 8620,
+      "sha256": "2ed98ff871fe397a45b3d8ff49da8a94acc7b74bf7f544a3cd8f58e477a2c742"
+    }
+  ],
+  "prerequisite": "OwnPR581 current firstattempt PG/browser/compiler/suite/fiveActions exact-head acceptance, freshmain normalmerge, own deploy.yml all4SUCCESS/fullartifactSHA strict13 public/root+peer release acceptance before apply",
+  "targetCriteria": [
+    "WF-C8-002",
+    "WF-C8-010"
+  ],
+  "proposedBehavior": "Add one synthetic current STARTED workday without any snapshots, while its published live assignment exists. Verify STARTED/minimal workday facts, plan UNAVAILABLE/sourceUNAVAILABLE/allplanvaluesnull, calendar UNAVAILABLE and conservativefalse flags, presenceNOT_INFERRED, no live reconstructed UTC plan. Keep three canonical triplets and firstsix roster explanations unchanged.",
+  "fixtureScope": {
+    "newMissingSnapshotEmployeeIndex": 9,
+    "negativeRollbackVacantEmployeeIndex": 10,
+    "currentWorkdaysExpected": 5,
+    "threeTripletsRemain": 3,
+    "factTablesRemain": 20,
+    "forcedRlsTablesRemain": 21,
+    "page1Summary": {
+      "started": 2,
+      "paused": 1,
+      "completed": 1,
+      "notStarted": 21,
+      "previousOpen": 1
+    },
+    "page2SummaryUnchanged": true,
+    "originalCaseCountRemains": 9
+  },
+  "plannedEvidence": {
+    "localizedMissingSnapshotCardAcrossSevenManagerScenarios": true,
+    "native200AcrossThreeLocales": true,
+    "extraRawPNGsExpected": 7,
+    "totalPNGsAnticipated": 56,
+    "nativeCapturesAnticipated": 27,
+    "actualCountsMustDeriveFromNewCI": true,
+    "tenGuardTransactionsExpectedStagedWorkdayCount": 6,
+    "committedWorkdayCountAfter": 5,
+    "all20FactHashRollbackRequired": true
+  },
+  "sourceScope": "Manager hosted harness only unless actual review exposes additional necessary scope; SQLsidecar/nativehelper/productwriter/routes/schema/grants/baselines/currentPRhead unchanged",
+  "limits": [
+    "Synthetic administrative workday is not actual acceptedSTART event workflow or physicalpresence evidence",
+    "No calendar reconstruction from mutable configuration for existing snapshotless workday",
+    "No legacy-pair acceptance invented; current shift-only snapshot plan may still be valid while calendarUNAVAILABLE under released source",
+    "No runtime/globalcompletion/rowclosure credit from preparation",
+    "No generalupdate/delete/breakpolicy/AGENTmoves/Route mutation"
+  ],
+  "applicationSourceMutated": false,
+  "productionMutated": false,
+  "checks": "NOT RUN: plan only; no future PostgreSQL/browser/compiler/suite/build execution",
+  "runtimeCredit": false,
+  "newRowClosure": false
+}

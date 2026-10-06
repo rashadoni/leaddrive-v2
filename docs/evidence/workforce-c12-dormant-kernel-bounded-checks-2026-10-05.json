@@ -1,0 +1,159 @@
+{
+  "atUtc": "2026-10-05T03:43:09.050834+00:00",
+  "status": "SMALL SEQUENTIAL DORMANT KERNEL CHECKS PASS; FRESH EXACTHEAD HOSTED REQUIRED",
+  "executionParent": "59f5f5d8c4114602fb396bac1283dca0cd9679c6",
+  "branch": "codex/workforce-completion-part43",
+  "appliedPaths": [
+    {
+      "repoPath": "src/lib/workforce/reconciliation.ts",
+      "original": {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/lib/workforce/reconciliation.ts",
+        "bytes": 8449,
+        "sha256": "81ea8f447d9724444c79beb7518baedd01c5ea5f2da2f3fc11f5c51049039563"
+      }
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation.test.ts",
+      "original": {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/__tests__/workforce-reconciliation.test.ts",
+        "bytes": 10048,
+        "sha256": "e6eb69cae9f8e6eeb22813350b17d8c10399505d7e3cdc25761a0f04b9ebd895"
+      }
+    },
+    {
+      "repoPath": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "original": {
+        "path": "/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-workforce-android-foundation-part3/src/__tests__/workforce-reconciliation-job.test.ts",
+        "bytes": 5680,
+        "sha256": "deadc0029cee96b51217f5688615a857a018e9acea3ac230758adc16f9742b22"
+      }
+    }
+  ],
+  "commands": [
+    {
+      "label": "resources",
+      "command": [
+        "bash",
+        "-c",
+        "free -m\ndf -h .\ncat /proc/pressure/memory\ncat /proc/pressure/io"
+      ],
+      "startedAt": "2026-10-05T03:42:58.074805+00:00",
+      "completedAt": "2026-10-05T03:42:58.101556+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-c12-part43-bounded-primary/resources.stdout",
+        "bytes": 544,
+        "sha256": "da741862e47884c75af532729263bd6f757b3764a915bdda92f9c9651212f19a"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-c12-part43-bounded-primary/resources.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "scoped-eslint",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/eslint/bin/eslint.js",
+        "src/lib/workforce/reconciliation.ts",
+        "src/__tests__/workforce-reconciliation.test.ts",
+        "src/__tests__/workforce-reconciliation-job.test.ts"
+      ],
+      "startedAt": "2026-10-05T03:42:58.102166+00:00",
+      "completedAt": "2026-10-05T03:43:04.653343+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-c12-part43-bounded-primary/scoped-eslint.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-c12-part43-bounded-primary/scoped-eslint.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "kernel-job-meaningful-tests",
+      "command": [
+        "/home/codex-alt/.local/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/workforce-reconciliation.test.ts",
+        "src/__tests__/workforce-reconciliation-job.test.ts",
+        "--maxWorkers=1",
+        "--no-file-parallelism"
+      ],
+      "startedAt": "2026-10-05T03:43:04.653430+00:00",
+      "completedAt": "2026-10-05T03:43:07.413587+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-c12-part43-bounded-primary/kernel-job-meaningful-tests.stdout",
+        "bytes": 281,
+        "sha256": "24f8297fc09be803743d7417a5497fd27545ba3ebc51f4850d006e7ca9abb714"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-c12-part43-bounded-primary/kernel-job-meaningful-tests.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "startedAt": "2026-10-05T03:43:07.413671+00:00",
+      "completedAt": "2026-10-05T03:43:07.430115+00:00",
+      "exitCode": 0,
+      "stdout": {
+        "path": "/tmp/workforce-c12-part43-bounded-primary/diff-check.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "/tmp/workforce-c12-part43-bounded-primary/diff-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "actualLintConfiguredTargets": [
+    {
+      "path": "src/lib/workforce/reconciliation.ts",
+      "ignored": false,
+      "configured": true,
+      "rules": 113
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation.test.ts",
+      "ignored": false,
+      "configured": true,
+      "rules": 113
+    },
+    {
+      "path": "src/__tests__/workforce-reconciliation-job.test.ts",
+      "ignored": false,
+      "configured": true,
+      "rules": 113
+    }
+  ],
+  "lintConfigurationStdout": {
+    "path": "/tmp/workforce-c12-part43-bounded-primary/lint-configuration.stdout",
+    "bytes": 307,
+    "sha256": "fe2328d5d80616888e0e2ae6a335cf148738d554e853a164a36b4d8fa07e8cff"
+  },
+  "lintConfigurationStderr": {
+    "path": "/tmp/workforce-c12-part43-bounded-primary/lint-configuration.stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "testsExecutedBeforeSourceCheckpoint": true,
+  "fullCompilerSuiteBuildBrowserPostgresAndroidLoad": "NOT RUN locally by Contabo contract; no DB adapter implemented",
+  "newHostedRuntimeAccepted": false,
+  "DBAdapterOrCronActivated": false,
+  "newRowClosure": false
+}

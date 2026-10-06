@@ -205,7 +205,7 @@ pgDescribe("client import from Excel on a real Postgres", () => {
     // `db push` built the scratch enum from schema.prisma, so the migration
     // file itself would otherwise never meet a database. Here it runs, as
     // written, against the enum as the original migration left it.
-    const migration = readFileSync(path.join(ROOT, "prisma/migrations/20261004120000_mtm_import_type_contacts/migration.sql"), "utf8")
+    const migration = readFileSync(path.join(ROOT, "prisma/migrations/20261006120000_mtm_import_type_contacts/migration.sql"), "utf8")
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, [
       `CREATE SCHEMA migration_probe;`,
       `CREATE TYPE migration_probe."MtmImportType" AS ENUM ('CUSTOMERS', 'ROUTES', 'SALES_FACTS', 'VISIT_RESULTS', 'PLAN_FACT');`,
@@ -346,31 +346,42 @@ pgDescribe("client import from Excel on a real Postgres", () => {
     expect((await counts()).contacts).toBe(before.contacts + 5)
   })
 
-  it("hands an imported client to another agent through the assignment screen's own endpoints", async () => {
+  it("gives an imported client a second employee, then lets the first one go, through the assignment screen's own endpoints", async () => {
+    // Since 2026-10-06 a client may have several employees: attaching adds one
+    // and ends nobody's assignment. The import and this screen write through
+    // the same function, so an imported owner has to behave like any other.
     const { POST: preview } = await import("@/app/api/v1/mtm/contact-assignments/preview/route")
     const { POST: execute } = await import("@/app/api/v1/mtm/contact-assignments/route")
     const contact = await bypass(() => prisma.mtmContact.findFirstOrThrow({ where: { organizationId: ORG, externalCode: "TRP.001" }, select: { id: true } }))
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Baku" }).format(new Date())
-    const request = { contactIds: [contact.id], mode: "ASSIGN", targetAgentId: otherTeamAgentId, effectiveFrom: today, reason: "Ərazi dəyişdi" }
     const post = (url: string, body: unknown) => new NextRequest(`http://localhost:3000${url}`, {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
     })
-
-    const previewed = await (await preview(post("/api/v1/mtm/contact-assignments/preview", request))).json()
-    expect(previewed.data.summary).toMatchObject({ selected: 1, assignable: 1 })
-    const executed = await execute(post("/api/v1/mtm/contact-assignments", { ...request, previewToken: previewed.data.previewToken, idempotencyKey: "move-dte-001" }))
-    expect(await executed.json()).toMatchObject({ success: true, data: { summary: { changed: 1 } } })
-
-    const assignments = await bypass(() => prisma.mtmContactAgentAssignment.findMany({
-      where: { contactId: contact.id },
-      orderBy: { createdAt: "asc" },
-      select: { agentId: true, source: true, effectiveTo: true },
+    const change = async (request: Record<string, unknown>, idempotencyKey: string) => {
+      const previewed = await (await preview(post("/api/v1/mtm/contact-assignments/preview", request))).json()
+      expect(previewed.data.summary).toMatchObject({ selected: 1, assignable: 1 })
+      const executed = await execute(post("/api/v1/mtm/contact-assignments", { ...request, previewToken: previewed.data.previewToken, idempotencyKey }))
+      expect(await executed.json()).toMatchObject({ success: true, data: { summary: { changed: 1 } } })
+    }
+    const active = () => bypass(() => prisma.mtmContactAgentAssignment.findMany({
+      where: { contactId: contact.id, effectiveTo: null },
+      orderBy: { role: "asc" },
+      select: { agentId: true, role: true, source: true },
     }))
-    expect(assignments).toMatchObject([
-      { agentId: elvinId, source: "EXCEL_IMPORT" },
-      { agentId: otherTeamAgentId, source: "BULK_ASSIGNMENT", effectiveTo: null },
+
+    await change({ contactIds: [contact.id], mode: "ASSIGN", targetAgentId: otherTeamAgentId, effectiveFrom: today, reason: "İkinci əməkdaş" }, "second-employee-trp-001")
+    expect(await active()).toEqual([
+      { agentId: elvinId, role: "PRIMARY", source: "EXCEL_IMPORT" },
+      { agentId: otherTeamAgentId, role: "SECONDARY", source: "BULK_ASSIGNMENT" },
     ])
-    expect(assignments[0].effectiveTo).toBeInstanceOf(Date)
+
+    // The responsible one leaves; the colleague who stays becomes responsible.
+    await change({ contactIds: [contact.id], mode: "UNASSIGN", sourceAgentId: elvinId, effectiveFrom: today, reason: "Ərazi dəyişdi" }, "first-leaves-trp-001")
+    expect(await active()).toEqual([
+      { agentId: otherTeamAgentId, role: "PRIMARY", source: "BULK_ASSIGNMENT_PROMOTION" },
+    ])
+    await signInAs(FIELD_AGENT)
+    expect((await clientList()).sort()).toEqual(["TRP.002", "TRP.004"])
   })
 
   it("writes nothing at all when the base changed between the check and the apply", async () => {

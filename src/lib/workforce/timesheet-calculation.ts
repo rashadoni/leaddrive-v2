@@ -216,7 +216,8 @@ export function calculateWorkforceTimesheetDay(
       throw new WorkforceTimesheetCalculationError("workday status is invalid")
     }
     status = facts.status
-    startedAt = instant("startedAt", facts.startedAt)
+    const workdayStart = instant("startedAt", facts.startedAt)
+    startedAt = workdayStart
     if (startedAt > asOf) throw new WorkforceTimesheetCalculationError("startedAt cannot be after asOf")
 
     completedAt = facts.completedAt == null ? null : instant("completedAt", facts.completedAt)
@@ -237,7 +238,7 @@ export function calculateWorkforceTimesheetDay(
       const pauseEnd = pause.endedAt == null
         ? observationEnd
         : instant(`pauseIntervals[${index}].endedAt`, pause.endedAt)
-      if (pauseStart < startedAt || pauseStart > observationEnd || pauseEnd < pauseStart || pauseEnd > observationEnd) {
+      if (pauseStart < workdayStart || pauseStart > observationEnd || pauseEnd < pauseStart || pauseEnd > observationEnd) {
         throw new WorkforceTimesheetCalculationError(`pauseIntervals[${index}] is outside the workday`)
       }
       return { start: pauseStart, end: pauseEnd, open: pause.endedAt == null }

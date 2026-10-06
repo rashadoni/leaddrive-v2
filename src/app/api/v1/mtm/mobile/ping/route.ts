@@ -1,5 +1,28 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { runWithRlsBypass } from "@/lib/rls-context"
 import { withMobileRls } from "@/lib/with-mobile-rls"
+
+const NO_STORE = { "Cache-Control": "no-store" }
+
+/**
+ * Whether a company answers to this subdomain. True unless the organization
+ * table says, definitely, that it does not: a database that blinked must not
+ * close the way in for every agent — sign-in itself still checks the company.
+ */
+async function companyExists(slug: string): Promise<boolean> {
+  try {
+    // RLS: pre-login lookup. `organizations` is a global table (no policy);
+    // the explicit bypass documents intent, as in public/tenant-branding.
+    const organization = await runWithRlsBypass(() =>
+      prisma.organization.findUnique({ where: { slug }, select: { id: true } }),
+    )
+    return organization !== null
+  } catch (error) {
+    console.warn("[MTM/mobile/ping] company lookup failed; answering as an existing company", error)
+    return true
+  }
+}
 
 /**
  * GET /api/v1/mtm/mobile/ping
@@ -15,12 +38,29 @@ import { withMobileRls } from "@/lib/with-mobile-rls"
  * a static version string is unnecessary reconnaissance data on a public
  * endpoint. The released Android client already treats the optional display
  * name as a convenience and falls back to the entered host.
-  */
-export function GET() {
-  return NextResponse.json(
-    { success: true, data: {} },
-    { headers: { "Cache-Control": "no-store" } },
-  )
+ *
+ * What it does answer is the one question the app asks here: is there a
+ * company under the name the agent typed? Until 2026-10-05 it said «success»
+ * under any `*.leaddrivecrm.org` name, so a misspelt company opened the sign-in
+ * form and the agent was then told to check the password (found by the
+ * emulator E2E of build 382; owner: «принимаю, делай»). Every released client
+ * reads `success` and shows «Company not found. Check the spelling…» when it
+ * is false. Whether a company exists is not a secret this endpoint adds: the
+ * web login page asks `public/tenant-branding` the same thing and gets the
+ * name and the logo too. The lookup is by the exact host slug and selects the
+ * id alone — still no tenant row leaves the server.
+ */
+export async function GET(req: NextRequest) {
+  // Set by the proxy from the request host, never by the caller. Absent on the
+  // app host and on a tenant's own domain: there is no name to check there.
+  const slug = req.headers.get("x-tenant-slug")
+  if (slug && !(await companyExists(slug))) {
+    return NextResponse.json(
+      { success: false, error: "Company not found", code: "MTM_COMPANY_NOT_FOUND" },
+      { status: 404, headers: NO_STORE },
+    )
+  }
+  return NextResponse.json({ success: true, data: {} }, { headers: NO_STORE })
 }
 
 /**

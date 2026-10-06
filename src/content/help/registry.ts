@@ -1085,9 +1085,9 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
   },
   entitlements: {
     title: {
-      en: "Customer support terms",
-      ru: "Условия поддержки клиентов",
-      az: "Müştəri dəstək şərtləri",
+      en: "Support terms",
+      ru: "Условия поддержки",
+      az: "Dəstək şərtləri",
     },
     subtitle: {
       en: "Create customer-level support terms, bind companies to SLA policies, and monitor granular milestone health beyond the headline first-response and resolution clocks.",

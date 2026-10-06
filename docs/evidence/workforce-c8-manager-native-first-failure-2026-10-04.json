@@ -1,0 +1,149 @@
+{
+  "atUtc": "2026-10-04T22:41:04.954733+00:00",
+  "status": "FIRST REAL MANAGER NATIVE FAILURE PRESERVED; PR DRAFT; NO FIX APPLIED",
+  "head": "1b02c68bf6a19ada33c6f62f779728a1ecffbdeb",
+  "base": "1181d28e63352531db4de75851dd35825376a540",
+  "pr": 580,
+  "draftOriginal": {
+    "path": "/tmp/workforce-part36-first-failure-draft-preservation-primary/draft-pr-original.json",
+    "bytes": 17225,
+    "sha256": "79b8b8b6744dcf74d94d944916b868196b767c0e139f1fb89784cac5f500a38e"
+  },
+  "zipOriginal": {
+    "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328.zip",
+    "bytes": 2479557,
+    "sha256": "b8012db0757e6efaae6112464b448e9ed68ae305aeb1ae9dc9227c480fd5d4fc"
+  },
+  "memberCount": 25,
+  "memberOriginals": [
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/approver-ru-absent-page-two.png",
+      "bytes": 84150,
+      "sha256": "ba7ee51d55f22fa1e0995bc30a60ea03f5f01c809e1f90329100274ee2657db1"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/approver-ru-first-page.png",
+      "bytes": 50855,
+      "sha256": "932df8a9f3fa7d95857cfc3ca0778adf8712bc260372279127bfb21f6c2a8cd0"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/approver-ru-native-pagination.png",
+      "bytes": 83114,
+      "sha256": "8bd79c2ad5cd3f73ea8a73d6a1905ea4a38f42dd293f8a3f716a05b3b9f3c0d7"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/denied-ru-no-grant.png",
+      "bytes": 50135,
+      "sha256": "3c46429597b9f789c0cf5eb9dd1bf8fe06022d1a43f16ea54ba988851da1fd6c"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/failure-original.png",
+      "bytes": 175753,
+      "sha256": "7580b0fc55938412a87a5dc81c956f6957bec40672d14e2a3e3333ff33678405"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-az-absent-page-two.png",
+      "bytes": 93535,
+      "sha256": "4c88b9c9bc9525b60843dee077ca9963690c04fce927e5e18d757ac41550004a"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-az-first-page.png",
+      "bytes": 77409,
+      "sha256": "7c3fa3b37950bf60c09ed27ca4aa8d40002c0e02f442b77e29ca94004a9a960a"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-az-native-pagination.png",
+      "bytes": 90628,
+      "sha256": "7ec300ee7b6f98a47c2de9224cbe84067da857db6a764869068594aefc67e070"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-en-absent-page-two.png",
+      "bytes": 184741,
+      "sha256": "3f61a6dbe933a4931c056606767c83a90284aa5ab5286d9acc1f2f7aa5a860d5"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-en-first-page.png",
+      "bytes": 151252,
+      "sha256": "a0fc88b6a613a629c7c2c3efcf284f9fe3e320bcc798440875902ae5b04839bf"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-en-native-200-absent-page-two.png",
+      "bytes": 188284,
+      "sha256": "be44f998574da40b4f93c72c1e5ffe763feac3ef0c25beaad1d117edd0f5e21b"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-en-native-200-first-page.png",
+      "bytes": 102168,
+      "sha256": "1554f43a8c04c145a32d9b806e073e38d6ad98c06000647de0fcdbf69ef080fe"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-en-native-200-native-pagination.png",
+      "bytes": 186063,
+      "sha256": "1d0db32828ace5c9c1e66590739699a62a61dd35c36cf75f1629b07fcccf9d5b"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-en-native-pagination.png",
+      "bytes": 170136,
+      "sha256": "6300088bfee37385f58528677a78d6d249748e6f2cc6ffcf03c5d992eaa4fd5f"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-ru-absent-page-two.png",
+      "bytes": 81849,
+      "sha256": "188bb12d739a6abab7bb0b212b0ca871e3aba83927c82cc08397144bdd061a20"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-ru-first-page.png",
+      "bytes": 50855,
+      "sha256": "932df8a9f3fa7d95857cfc3ca0778adf8712bc260372279127bfb21f6c2a8cd0"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-ru-native-200-first-page.png",
+      "bytes": 108505,
+      "sha256": "e595225342e20fda91bfbfa225047052eded0a5620858f774623204444eb2974"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-ru-native-pagination.png",
+      "bytes": 80964,
+      "sha256": "95678766590057283ec0afb47136b6b61434580335ddf0b33bd8bfff4791131d"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/manager-today-receipt.json",
+      "bytes": 109021,
+      "sha256": "24caaa3caaabab78fdf19953e054ac36b2ea8e7ad4036a70e3e5857dee450612"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/native-zoom-en-control-100.png",
+      "bytes": 155062,
+      "sha256": "7078827e0796144e1489ee645e1d4b1150adfadf73ecbdd8ba6cee94b3b23e6b"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/native-zoom-en-observed-200.png",
+      "bytes": 102161,
+      "sha256": "86f3e228d44666dc1df132ef3afb4a5359f4cecba3585bf69e6a74850e5acff9"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/native-zoom-ru-control-100.png",
+      "bytes": 158028,
+      "sha256": "ba3d0dd586b0064236a8addeb7d274f76c907511ef55c113a921d9d29d92cd50"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/native-zoom-ru-observed-200.png",
+      "bytes": 108495,
+      "sha256": "eb705b96fad98b53c1ebc8560a434e4bb38068dab4d27322f14dcc8382441ec1"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/workflow-context.json",
+      "bytes": 261,
+      "sha256": "4936244d51affbf83ede7b8d854a437524a6f8ed13cb807dd74b393bb3c4a1ad"
+    },
+    {
+      "path": "/tmp/workforce-part36-current-hosted-originals-primary/whole-artifacts/11317526328-members/workflow-failure.json",
+      "bytes": 219,
+      "sha256": "b0a428126928076538340235e3863666300e5d23bd3687a68ad13c13db21734d"
+    }
+  ],
+  "rootOriginalFailurePngViewedAtUtc": "2026-10-04 22:40:13 UTC",
+  "firstFailureNotCleared": true,
+  "syntheticRuntimeNotAccepted": true,
+  "noHarnessPredicateWeakening": true
+}

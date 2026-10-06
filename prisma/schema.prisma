@@ -2312,6 +2312,7 @@ model Ticket {
   slaDueAt              DateTime?
   slaFirstResponseDueAt DateTime?
   slaPolicyName         String?
+  slaCalendarSnapshot   Json? // Frozen calendar used for the latest explicitly computed SLA window.
   firstResponseAt       DateTime?
   resolvedAt            DateTime?
   closedAt              DateTime?
@@ -2583,6 +2584,7 @@ model SlaPolicy {
   firstResponseHours Float
   resolutionHours    Float
   businessHoursOnly  Boolean  @default(true)
+  businessCalendar   Json? // Explicit versioned work-calendar snapshot; null preserves legacy calendar time.
   isActive           Boolean  @default(true)
   isDefault          Boolean  @default(false)
   createdAt          DateTime @default(now())
@@ -8267,6 +8269,9 @@ model WorkforcePolicy {
   effectiveTo       DateTime?                @db.Date
   definition        Json
   definitionHash    String                   @db.VarChar(64)
+  /// Server-only consumed restore operation, retained through draft edits/publication.
+  restoreOperationId String?
+  restoreRequestHash String?                 @db.VarChar(64)
   provenance        WorkforceDefinitionProvenance @default(TENANT_ADMIN)
   /// Non-null only for an explicit system-provisioned default profile.
   systemProfileVersion String?
@@ -8285,6 +8290,7 @@ model WorkforcePolicy {
   attendanceVerifications WorkforceAttendanceVerification[]
 
   @@unique([organizationId, id])
+  @@unique([organizationId, restoreOperationId])
   @@index([organizationId, teamId, status, effectiveFrom])
   @@index([organizationId, provenance])
   @@index([organizationId, createdByUserId])

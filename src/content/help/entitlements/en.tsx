@@ -7,8 +7,9 @@ export default function EntitlementsHelpEn() {
   return (
     <div className="space-y-6">
       <HelpScenario persona="You are a support manager or administrator" goal="Find a customer’s terms, review risk and prepare a contract for activation">
-        Open Support → Customer support terms. A term links a company to an SLA policy, support level, validity period and milestone rules. The list is scoped to your organization.
+        Open Support → Support terms. A term links a company to an SLA policy, support level, validity period and milestone rules. The list is scoped to your organization.
       </HelpScenario>
+      <HelpCallout kind="tip"><p>For example: create draft support terms for a customer, select an SLA policy, apply a template to copy its milestone rules, review the copy, then activate the terms. Later template edits do not change copied rules. The SLA policy sets response and resolution targets; the terms add their own milestone rules.</p></HelpCallout>
       <HelpSection title="Find the relevant terms">
         <HelpStep n={1}>
           <p>The compact summary shows terms expiring within 30 days, milestones needing attention and active companies without coverage. Select the expiry or attention count to apply its risk filter.</p>

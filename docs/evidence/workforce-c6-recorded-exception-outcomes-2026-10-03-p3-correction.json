@@ -1,0 +1,48 @@
+{
+  "atUtc": "2026-10-03T20:47:00.347314+00:00",
+  "originalP3Report": {
+    "head": "13f8c18b5a6375086ea6114f33e5cd7666172a6c",
+    "bytes": 41897,
+    "sha256": "7cf39c282988937fc0a5ff29509674dd28c7d41f1b724067b656d4dc8a92ec68",
+    "severityCounts": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 1
+    },
+    "preservedBeforeFixAt": "c82dc910a"
+  },
+  "correction": "Only fixture lookup-index comment narrowed; later response-cycle unique index explicitly outside selected fixture; duplicate-cycle acceptance not claimed. No DDL/test behavior change.",
+  "correctedPgSource": {
+    "bytes": 35091,
+    "sha256": "8f01824c1c43ea5c882d378afa7762504aa8a2547e4ea9c3195b11dee1e49c0d"
+  },
+  "actualScopedLint": {
+    "exitCode": 0,
+    "atUtc": "2026-10-03T20:46:01.523081+00:00"
+  },
+  "allExecutableFixtureBytesUnchanged": true,
+  "exactCorrectedHeadIndependentClosure": "PENDING",
+  "actual9Pg": "NOT RUN",
+  "currentC6Ci": "NOT RUN",
+  "originals": [
+    {
+      "source": "/tmp/workforce-part23-p3-comment-eslint.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-p3-correction-original-00.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gzipBytes": 20,
+      "gzipSha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-p3-comment-eslint-result.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-p3-correction-original-01.gz",
+      "bytes": 445,
+      "sha256": "2bbd4bbfc4a2ef670b97e668808328e5dc5ead725ace6d0bd6f2e24673b20399",
+      "gzipBytes": 289,
+      "gzipSha256": "a49c4d4139e1d3ca0f6dee8fc556b12dbe6c96dc72c2bac61997330f4df83eaa",
+      "losslessDecompressionVerified": true
+    }
+  ]
+}

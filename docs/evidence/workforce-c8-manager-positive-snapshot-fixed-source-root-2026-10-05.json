@@ -1,0 +1,56 @@
+{
+  "atUtc": "2026-10-05T01:21:57.383294+00:00",
+  "status": "EXACT56 SOURCE ONLY GREEN WHOLE ACCEPTED; FRESH RUNTIME REQUIRED",
+  "head": "56edf7cebc94b5927b26b125991dc82625f59a3b",
+  "base": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "tree": "0476e94a08d0cf400d36c2b3ec091a57efa7802d",
+  "sourceOnlyGreenAccepted": true,
+  "runtimeCredit": false,
+  "normalMergeAllowed": false,
+  "report": {
+    "path": "/tmp/workforce-pr581-56edf7-whole-source-independent.json",
+    "bytes": 14550,
+    "sha256": "fa6738bc7de95b3a9cafd72e1eb60bc2974b846a79193864c24461a01d80e94a"
+  },
+  "audit": {
+    "path": "/tmp/workforce-pr581-56edf7-whole-source-input-audit-independent.json",
+    "bytes": 1824144,
+    "sha256": "0fb57976b46b46767a03d65bb05794b88927814c6ee98e8afb1afe975099a9a5"
+  },
+  "wholeDistinctReferencedOriginals": 1456,
+  "directOriginals": 1080,
+  "explicitGit": 291,
+  "missingBaseOriginalsRetained": 21,
+  "wholeJSON": 248,
+  "wholeUTF8": 1023,
+  "wholeBinary": 57,
+  "rootIndependent28PatchReconstruction": true,
+  "bothIndexRepresentationsIdenticalOutsideIndexPrefixes": true,
+  "guardExactlyTwoAnnotationsRuntimeByteIdentical": true,
+  "original3SourcesExactlyOldBlockedC5": true,
+  "protected15": true,
+  "watchedRuntime58": true,
+  "managerOwned60Typed42": true,
+  "unionOwned79Typed55": true,
+  "journalPrefixes12": true,
+  "durable20": true,
+  "core9Direct81": true,
+  "fullDiff": {
+    "paths": 28,
+    "bytes": 353416,
+    "sha256": "e0de93c8da0b5bf2e043259d8c9f6ff991700ea657aee94f7744554384ad5b1d"
+  },
+  "nonDocDiff": {
+    "paths": 4,
+    "bytes": 43906,
+    "sha256": "fff1be8352b33ad841c35f23e2b42086a93548cbd957e685d2ad1a77b7d94668"
+  },
+  "actualBounded5AppliedSourcePrecheckpointOnly": true,
+  "isolatedActualType166ZeroFullGuardCompileNotClaimed": true,
+  "rangeFindings": 0,
+  "firstC5HostedBlockedP2Preserved": true,
+  "originalsOverwrittenOrDropped": 0,
+  "DONE": 82,
+  "nonDONE": 79,
+  "newRowClosure": false
+}

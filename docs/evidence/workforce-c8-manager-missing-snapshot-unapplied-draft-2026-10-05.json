@@ -1,0 +1,63 @@
+{
+  "atUtc": "2026-10-05T01:19:19.129867+00:00",
+  "status": "UNAPPLIED FUTURE SNAPSHOTLESS HARNESS DRAFT; NO EXECUTION CREDIT",
+  "frozenSourceHead": "56edf7cebc94b5927b26b125991dc82625f59a3b",
+  "original": {
+    "path": "/tmp/workforce-manager-snapshotless-future-draft-primary/original-source.mjs",
+    "bytes": 59561,
+    "sha256": "874f61c20dba16e515102d37b12cb485ef84cd24625b179e03c99b6f065bb4d9"
+  },
+  "draft": {
+    "path": "/tmp/workforce-manager-snapshotless-future-draft-primary/unapplied-harness-draft.mjs",
+    "bytes": 62849,
+    "sha256": "dd70ea78d719d521b8ccfd39ec31b93cbf77963a3b8131685aae76a51f40cb16"
+  },
+  "exactReplacements": [
+    {
+      "old": "async function proveCurrentSnapshotDatabaseGuards(fixture) {",
+      "new": "async function seedSnapshotlessCurrentWorkday({ organization, employees, template }) {\n  currentDate()\n  const employee = employees[9]\n  const startedAt = new Date(Math.max(workDate.getTime(), Date.now() - 300_000))\n  const workday = await admin.$transaction(async tx => {\n    const assignment = await tx.workforceShiftAssignment.findFirstOrThrow({ where: {\n      organizationId: organization.id, agentId: employee.id, templateId: template.id,\n      effectiveFrom: { lte: workDate }, effectiveTo: null,\n    } })\n    assert.equal(assignment.templateId, template.id)\n    // Deliberately omit the snapshot writer. An existing synthetic workday\n    // must never acquire a reconstructed plan from this live assignment.\n    const created = await tx.mtmAgentWorkday.create({ data: {\n      organizationId: organization.id, agentId: employee.id, workDate,\n      status: \"STARTED\", startedAt, totalPausedSeconds: 0,\n    } })\n    for (const delegate of [tx.workforcePolicySnapshot, tx.workforceShiftSnapshot, tx.workforceWorkdayScheduleSnapshot]) {\n      assert.equal(await delegate.count({ where: { organizationId: organization.id, workdayId: created.id } }), 0)\n    }\n    return created\n  }, { maxWait: 5_000, timeout: 30_000 })\n  receipts.missingCurrentSnapshot = {\n    status: \"PASS\", syntheticStartedWorkday: true, currentPublishedAssignmentExists: true,\n    allThreeSnapshotRowsAbsent: true, actualAcceptedStartEventWorkflowTested: false,\n    physicalPresenceInferred: false, adminFixtureSeedOnly: true,\n  }\n  currentDate()\n  return { employeeId: employee.id, workday: {\n    id: workday.id, startedAt: workday.startedAt.toISOString(), pausedAt: null, completedAt: null,\n  } }\n}\n\nasync function proveCurrentSnapshotDatabaseGuards(fixture) {"
+    },
+    {
+      "old": "assert.equal(workdaysBefore, 4)",
+      "new": "assert.equal(workdaysBefore, 5)"
+    },
+    {
+      "old": "organizationId, agentId: fixture.employees[9].id, workDate,",
+      "new": "organizationId, agentId: fixture.employees[10].id, workDate,"
+    },
+    {
+      "old": "  const fixture = { organizations, organization, foreign, manager, approver, denied, employees, sentinels, template, currentWorkdays }",
+      "new": "  const snapshotlessCurrentWorkday = await seedSnapshotlessCurrentWorkday({ organization, employees, template })\n  const fixture = { organizations, organization, foreign, manager, approver, denied, employees, sentinels, template, currentWorkdays, snapshotlessCurrentWorkday }"
+    },
+    {
+      "old": "started: page === 1 ? 1 : 0, paused: page === 1 ? 1 : 0, completed: page === 1 ? 1 : 0, notStarted: page === 1 ? 22 : 1",
+      "new": "started: page === 1 ? 2 : 0, paused: page === 1 ? 1 : 0, completed: page === 1 ? 1 : 0, notStarted: page === 1 ? 21 : 1"
+    },
+    {
+      "old": "      assert.equal(person.previousOpenWorkday, null)\n    } else {\n      assert.equal(person.workday, null)",
+      "new": "      assert.equal(person.previousOpenWorkday, null)\n    } else if (person.id === fixture.snapshotlessCurrentWorkday.employeeId) {\n      assert.deepEqual(person.workday, fixture.snapshotlessCurrentWorkday.workday)\n      assert.equal(person.status, \"STARTED\")\n      assert.deepEqual(person.attendance, { state: \"STARTED\", acceptedStartRecorded: true })\n      assert.deepEqual(person.plan, {\n        state: \"UNAVAILABLE\", source: \"UNAVAILABLE\", templateName: null,\n        timezone: null, plannedStartAt: null, plannedEndAt: null,\n      })\n      assert.deepEqual(person.calendar, { state: \"UNAVAILABLE\", attendanceExpected: false, noShowEligible: false, excused: false })\n      assert.equal(person.previousOpenWorkday, null)\n    } else {\n      assert.equal(person.workday, null)"
+    },
+    {
+      "old": "  const loadMore = section.getByRole(\"button\", { name: view.ui.managerLoadMore, exact: true })",
+      "new": "  stage = `${scenario}-current-workday-without-snapshots`\n  const snapshotlessArticle = articles.nth(9)\n  const snapshotlessText = await snapshotlessArticle.innerText()\n  assert.ok(snapshotlessText.includes(view.ui.managerAttendanceState.STARTED))\n  assert.ok(snapshotlessText.includes(view.ui.managerPlanState.UNAVAILABLE))\n  assert.ok(snapshotlessText.includes(view.ui.managerCalendarState.UNAVAILABLE))\n  assert.ok(snapshotlessText.includes(view.ui.managerPresenceBoundary))\n  assert.equal(snapshotlessText.includes(fixture.template.name), false)\n  await snapshotlessArticle.scrollIntoViewIfNeeded()\n  await evidenceScreenshot(view.page, `${outputDirectory}/${caseName}-snapshot-missing.png`)\n  const loadMore = section.getByRole(\"button\", { name: view.ui.managerLoadMore, exact: true })"
+    },
+    {
+      "old": "positiveSnapshotLocalizedDomAndOriginalScreenshots: true, scheduledWithoutWorkdayExplained: true",
+      "new": "positiveSnapshotLocalizedDomAndOriginalScreenshots: true, missingCurrentSnapshotUnavailableExplained: true, liveAssignmentDoesNotReconstructExistingWorkday: true, scheduledWithoutWorkdayExplained: true"
+    },
+    {
+      "old": "assert.equal(counts.find(row => row.table === \"mtm_agent_workdays\").syntheticRows, 4)",
+      "new": "assert.equal(counts.find(row => row.table === \"mtm_agent_workdays\").syntheticRows, 5)"
+    }
+  ],
+  "applicationSourceMutated": false,
+  "prerequisite": "Own PR581 repaired exact head full source/current-hosted/five gates/root+peer/freshmain normalmerge and own deploy.yml all4/fullartifactSHA/public release accepted before applying",
+  "anticipatedCurrentWorkdays": 5,
+  "anticipatedRollbackStaged6Committed5": true,
+  "anticipatedRawPNG": 56,
+  "anticipatedNativeCapture": 27,
+  "actualCountsMustDeriveFromFreshCI": true,
+  "sourceScope": "Only manager hosted harness; no product/schema/migration/grant/nativehelper/SQLsidecar/baseline/generalupdate/delete/break/AGENT/Route change",
+  "actualPostgresBrowserCompilerSuiteBuild": "NOT RUN: preparation only",
+  "newRoadmapRowClosure": false
+}

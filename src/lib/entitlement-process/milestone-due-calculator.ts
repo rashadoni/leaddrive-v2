@@ -12,12 +12,11 @@
  *
  * Pure function: no DB, no clock.
  *
- * NOTE: Slice-1 uses naive 24x7 wall-clock math. Slice-2 will wire the
- * existing `SlaPolicy.businessHoursOnly` flag — when set, the math
- * needs a business-hours calendar (Mon-Fri 9-18 or per-tenant config)
- * and `dueAt` becomes "now + N business seconds". Documented here as
- * an explicit slice-2 deferral.
+ * Calendar time remains the legacy default. A versioned businessCalendar snapshot
+ * opts a new obligation into working-time calculation; stored historical dueAt is never recomputed.
  */
+
+import { addSlaWorkingMilliseconds, readSlaBusinessCalendar } from "@/lib/ticketing/sla-business-calendar"
 
 import {
   SEVERITY_DUE_MULTIPLIERS,
@@ -63,7 +62,9 @@ export function calculateMilestoneDue(
   }
 
   const effectiveDueWithinSeconds = Math.round(baseSeconds * multiplier)
-  const dueAt = new Date(anchor.getTime() + effectiveDueWithinSeconds * 1000)
+  const dueAt = input.businessCalendar
+    ? addSlaWorkingMilliseconds(anchor, effectiveDueWithinSeconds * 1000, readSlaBusinessCalendar(input.businessCalendar))
+    : new Date(anchor.getTime() + effectiveDueWithinSeconds * 1000)
 
   const appliesTo =
     definition.severityTier === null ||

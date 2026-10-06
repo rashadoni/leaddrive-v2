@@ -1,0 +1,126 @@
+{
+  "atUtc": "2026-10-03T20:59:16.638847+00:00",
+  "correctedReview": {
+    "head": "2c7be266e353238700a5b39afaaf8802dca79f54",
+    "base": "10d81ee294062aa491bd0d235bbabb2e855224ba",
+    "verdict": "GREEN_SOURCE_ONLY",
+    "severityCounts": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    }
+  },
+  "freshMain": "111fea485a59c2525d140770132ab7840f64ed7b",
+  "integratedHead": "d983a5c3c3c28c4878780386e1a53d9242232c52",
+  "own33BlobsAndFullDiffUnchanged": true,
+  "foreign26BlobsRetained": true,
+  "overlap": [],
+  "actualTargeted": {
+    "tests": 85,
+    "files": 5,
+    "exitCode": 0,
+    "externalWallSeconds": 2.848,
+    "vitestSeconds": 2.09,
+    "atUtc": "2026-10-03T20:56:42.902665+00:00"
+  },
+  "actualRunnerPolicy": "41 workflows PASS",
+  "actualI18n": "24167 leaves; RU/AZ missing=0 extra=0 PASS",
+  "freshIntegratedExactHeadReview": "PENDING",
+  "actualNinePg": "NOT RUN",
+  "currentC6NativeCi": "NOT RUN",
+  "currentC6Production": "NOT RUN",
+  "historicalP3": "Original report P3=1 retained; separate corrected source review resolves it without relabeling original.",
+  "originals": [
+    {
+      "source": "/tmp/workforce-part23-pg-authorless-corrected-independent.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-00.gz",
+      "bytes": 27738,
+      "sha256": "2afcc0bd6943889f665038f777342e85ba3780fb2572e90b2dd8a3b078490d9f",
+      "gzipBytes": 7197,
+      "gzipSha256": "3f78f3c46dc1b51fe1fce85e18d11ff6dc929639769c5d259f0ed1a9900d5d07",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-pg-authorless-corrected-input-audit.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-01.gz",
+      "bytes": 27893,
+      "sha256": "930fa069680642192c0634d4845519f9a0cd908911844af624382de5671aac6c",
+      "gzipBytes": 5227,
+      "gzipSha256": "11355cf444455dcaa900e3bfa81fd41a5a29c2ebe817a0cd846802cab1ca4d4e",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fresh111-integration-audit.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-02.gz",
+      "bytes": 479,
+      "sha256": "d17fd3be880aef4afa6c260e94ce62aaeb8cf84f82ba824e1709b4dc7963c725",
+      "gzipBytes": 328,
+      "gzipSha256": "dde9d5cb8073e23e89ba3dc5f676d9525b96198ba3c51d57ac2a8ee7b89c8211",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fresh111-targeted.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-03.gz",
+      "bytes": 281,
+      "sha256": "7c2ffbcb49a8ab938c0a4e81bec7e962a804325647bd169e128278ef71946777",
+      "gzipBytes": 227,
+      "gzipSha256": "a531797f420824374650f4d9d9bb292685cb161aceec5ade8dcdb8ac5be132d9",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fresh111-targeted-result.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-04.gz",
+      "bytes": 743,
+      "sha256": "e1ae77df093500d60754368284d8bf01d94df514aea944517c5be177291ca229",
+      "gzipBytes": 396,
+      "gzipSha256": "24042d7c61245ee0fa41fd26017f18e8864cfbfa743c09a7edbab6bc9004b008",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fresh111-runner-policy.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-05.gz",
+      "bytes": 44,
+      "sha256": "73576c5e5c928d8da7eec52b821fcceb9a1096a935209271300b906b27db852d",
+      "gzipBytes": 64,
+      "gzipSha256": "943293d11a1b12908c1bd6c15e762f061284c273d3db37b7471c741e3556bc90",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fresh111-runner-policy-result.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-06.gz",
+      "bytes": 401,
+      "sha256": "c29cec0ddc886b4ddeee1ce029848a93d4f3e4f0ce3574f1ef1cae476356e628",
+      "gzipBytes": 297,
+      "gzipSha256": "5f2be4c7a42935ad3aacba8f01f91b6b7b5d2500509163e28776c222d850b2b3",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fresh111-i18n.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-07.gz",
+      "bytes": 192,
+      "sha256": "bf0b1ad679f0b6c117c9914cb651d9752d280192d14fbef8d18fb57a1ec33502",
+      "gzipBytes": 168,
+      "gzipSha256": "3ede010bb0d50cf16d81ee1efc52119a3c4978200b1b3beb0d15f1b2fc5e6a6f",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fresh111-i18n-result.json",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-08.gz",
+      "bytes": 374,
+      "sha256": "162efe98fee6f85b16d2471ae8e799878c08edf6cc10a0c4dadc8870e9fccc4b",
+      "gzipBytes": 279,
+      "gzipSha256": "56bd298cf8a9479d2ab0dbe28154f2d0eb17223ede9f018ea2242ef170b19722",
+      "losslessDecompressionVerified": true
+    },
+    {
+      "source": "/tmp/workforce-part23-fresh111-originals-scan.log",
+      "preserved": "docs/evidence/workforce-c6-recorded-exception-outcomes-2026-10-03-fresh-main-original-09.gz",
+      "bytes": 145,
+      "sha256": "64159190bae3cffa2da9f82b9bb437bdb2de679c38c00fe7fa2703b47592a134",
+      "gzipBytes": 127,
+      "gzipSha256": "a73fab9fbf281d75945aa1f1d999d4eae148f4f7791dcbd5d7996f7945dacd9d",
+      "losslessDecompressionVerified": true
+    }
+  ]
+}

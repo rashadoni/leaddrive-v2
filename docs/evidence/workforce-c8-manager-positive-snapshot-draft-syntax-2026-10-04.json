@@ -1,0 +1,31 @@
+{
+  "atUtc": "2026-10-04T23:47:45.959817+00:00",
+  "status": "UNAPPLIED DRAFT NODE20 SYNTAX ONLY",
+  "source": {
+    "path": "/tmp/workforce-manager-positive-snapshot-three-draft-primary/files/scripts/workforce-manager-today-browser-evidence.mjs",
+    "bytes": 59561,
+    "sha256": "874f61c20dba16e515102d37b12cb485ef84cd24625b179e03c99b6f065bb4d9"
+  },
+  "command": [
+    "/home/codex-alt/.local/bin/node",
+    "--check",
+    "/tmp/workforce-manager-positive-snapshot-three-draft-primary/files/scripts/workforce-manager-today-browser-evidence.mjs"
+  ],
+  "exitCode": 0,
+  "stdout": {
+    "path": "/tmp/workforce-manager-positive-snapshot-unapplied-syntax-primary/stdout",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "path": "/tmp/workforce-manager-positive-snapshot-unapplied-syntax-primary/stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "PG": "NOT RUN",
+  "browser": "NOT RUN",
+  "fullCompilerSuiteBuild": "NOT RUN",
+  "sourceApplied": false,
+  "applicationSourceMutated": false,
+  "resourceInspection": "Actual preceding tool output:18250MiB available/332GiB disk/zero pressure; source syntax only"
+}

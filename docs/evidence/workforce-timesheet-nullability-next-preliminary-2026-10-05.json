@@ -1,0 +1,143 @@
+{
+  "issuedAtUtc": "2026-10-05T04:13:51.502426+00:00",
+  "status": "GREEN PRELIMINARY UNAPPLIED SOURCE ONLY",
+  "candidateBase": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+  "repoPath": "src/lib/workforce/timesheet-calculation.ts",
+  "findingCounts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "findings": [],
+  "wholePreparation": {
+    "path": "/tmp/workforce-timesheet-nullability-successor-unapplied-primary/unapplied-preparation.json",
+    "bytes": 2080,
+    "sha256": "67267fbb88f905faa0d8ba3bfe5bf793b688af46e1fa6191dd6e29c816c806e0"
+  },
+  "wholeBase": {
+    "path": "/tmp/workforce-timesheet-nullability-successor-unapplied-primary/base.ts",
+    "bytes": 12026,
+    "sha256": "136fdc44e0fe6e057babd05aa198cbb1dcf30af40de76b219636dc8d8afa3556"
+  },
+  "wholeDraft": {
+    "path": "/tmp/workforce-timesheet-nullability-successor-unapplied-primary/unapplied-draft.ts",
+    "bytes": 12067,
+    "sha256": "1c0e44ed28a9cbde6e317c031ec53cafdb05efd1115d19b0bd3606037ba206e1"
+  },
+  "wholeDiff": {
+    "path": "/tmp/workforce-timesheet-nullability-unapplied-preliminary-independent-20261005T041319833054Z/whole-base-draft.diff",
+    "bytes": 1199,
+    "sha256": "2f133ed66600ad7d3c58beb98ce779e6c69feae4abacffb8e31d16add9abe68f"
+  },
+  "explicitGitBaseBinding": {
+    "path": "/tmp/workforce-c12-part43-6ed8e1-source-independent-20261005T034704493765Z/schema-corrected-freeze/explicit-git/HEAD/src/lib/workforce/timesheet-calculation.ts",
+    "bytes": 12026,
+    "sha256": "136fdc44e0fe6e057babd05aa198cbb1dcf30af40de76b219636dc8d8afa3556",
+    "repoPath": "src/lib/workforce/timesheet-calculation.ts",
+    "label": "HEAD",
+    "sha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+    "command": [
+      "git",
+      "show",
+      "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568:src/lib/workforce/timesheet-calculation.ts"
+    ],
+    "returnCode": 0,
+    "blobContent": true,
+    "originalStderr": {
+      "path": "/tmp/workforce-c12-part43-6ed8e1-source-independent-20261005T034704493765Z/schema-corrected-freeze/explicit-git/HEAD/src/lib/workforce/timesheet-calculation.ts.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "wholeTwoReplacementReconstructionExact": true,
+  "manualReview": "Read both complete 313/314-line source blobs and whole diff. instant() returns a validated finite number. workdayStart takes exactly the previous instant call; the existing mutable startedAt receives that same value. The synchronous pause-map compares its stable local number. Timestamp validation, all numeric bounds, sorting, overlap/open-tail rules, statuses, arithmetic, returned v1 shape, exports, input mutation behavior, policy thresholds and privacy/error messages are unchanged. No cast, non-null assertion or baseline weakening is introduced. The annotation issue is addressed in source; actual future compiler acceptance remains unrun.",
+  "semanticRiskFinding": null,
+  "applicationAllowed": false,
+  "appliedSourceCredit": false,
+  "testsRun": false,
+  "compilerRun": false,
+  "runtimeCredit": false,
+  "currentPR583SourceOrRuntimeCredit": false,
+  "currentSelectedDependencyDiagnosticNotRetroactivelyCleared": true,
+  "futureRequiredChecks": [
+    "Own583 current HOSTED, normal merge and its own merged-main release accepted before application.",
+    "Freeze actual applied successor HEAD and bind whole exact one-file bytes to this draft; preserve private journal prefixes and original current compiler diagnostic.",
+    "Run narrow existing timesheet-calculation semantic tests and scoped lint on actual applied source, plus applicable manager harness dependency regression gates hosted.",
+    "Fresh actual full compiler must derive all families/counts and show this exact TS18047 eliminated without excluding the selected file or changing baselines.",
+    "Keep output/replay/date/policy/snapshot privacy contracts and protected15/frozen400000 unchanged."
+  ],
+  "zeroActiveApplicationSourceReads": 0,
+  "repositoryMutations": false,
+  "wholeOriginalDescriptors": [
+    {
+      "path": "/tmp/workforce-timesheet-nullability-successor-unapplied-primary/unapplied-preparation.json",
+      "bytes": 2080,
+      "sha256": "67267fbb88f905faa0d8ba3bfe5bf793b688af46e1fa6191dd6e29c816c806e0"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-nullability-successor-unapplied-primary/base.ts",
+      "bytes": 12026,
+      "sha256": "136fdc44e0fe6e057babd05aa198cbb1dcf30af40de76b219636dc8d8afa3556"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-nullability-successor-unapplied-primary/unapplied-draft.ts",
+      "bytes": 12067,
+      "sha256": "1c0e44ed28a9cbde6e317c031ec53cafdb05efd1115d19b0bd3606037ba206e1"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-nullability-unapplied-preliminary-independent-20261005T041319833054Z/whole-base-draft.diff",
+      "bytes": 1199,
+      "sha256": "2f133ed66600ad7d3c58beb98ce779e6c69feae4abacffb8e31d16add9abe68f"
+    },
+    {
+      "path": "/tmp/workforce-c12-part43-6ed8e1-source-independent-20261005T034704493765Z/schema-corrected-freeze/explicit-git/HEAD/src/lib/workforce/timesheet-calculation.ts",
+      "bytes": 12026,
+      "sha256": "136fdc44e0fe6e057babd05aa198cbb1dcf30af40de76b219636dc8d8afa3556",
+      "repoPath": "src/lib/workforce/timesheet-calculation.ts",
+      "label": "HEAD",
+      "sha": "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568",
+      "command": [
+        "git",
+        "show",
+        "6ed8e1d8d84fc4eeb405293ab7c49631c6ec3568:src/lib/workforce/timesheet-calculation.ts"
+      ],
+      "returnCode": 0,
+      "blobContent": true,
+      "originalStderr": {
+        "path": "/tmp/workforce-c12-part43-6ed8e1-source-independent-20261005T034704493765Z/schema-corrected-freeze/explicit-git/HEAD/src/lib/workforce/timesheet-calculation.ts.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/tmp/workforce-c12-part43-6ed8e1-source-independent-20261005T034704493765Z/schema-corrected-freeze/explicit-git/HEAD/src/lib/workforce/timesheet-calculation.ts.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-nullability-unapplied-preliminary-independent-20261005T041319833054Z/preliminary-review.json",
+      "bytes": 6233,
+      "sha256": "20d42492cc9fc38a65d3b042687b20cc002c46c6eacaffd5315c66af42dbb639"
+    },
+    {
+      "path": "/tmp/workforce-timesheet-nullability-unapplied-preliminary-independent-20261005T041319833054Z/first-source-line-count-clarification.json",
+      "bytes": 686,
+      "sha256": "7e1219ec811e71a621e67f06f841bda55b4bb96efa4724e108b36ed3885483b4"
+    }
+  ],
+  "actualWholeSourceLineCounts": {
+    "wholeBase": 313,
+    "wholeDraft": 314
+  },
+  "firstReviewPreserved": {
+    "path": "/tmp/workforce-timesheet-nullability-unapplied-preliminary-independent-20261005T041319833054Z/preliminary-review.json",
+    "bytes": 6233,
+    "sha256": "20d42492cc9fc38a65d3b042687b20cc002c46c6eacaffd5315c66af42dbb639"
+  },
+  "additiveLineCountClarification": {
+    "path": "/tmp/workforce-timesheet-nullability-unapplied-preliminary-independent-20261005T041319833054Z/first-source-line-count-clarification.json",
+    "bytes": 686,
+    "sha256": "7e1219ec811e71a621e67f06f841bda55b4bb96efa4724e108b36ed3885483b4"
+  }
+}

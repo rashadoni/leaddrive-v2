@@ -1,0 +1,89 @@
+{
+  "atUtc": "2026-10-05T01:53:09.739020+00:00",
+  "head": "56edf7cebc94b5927b26b125991dc82625f59a3b",
+  "freshMain": "6dab202bd8fb02cd3d8487724a300dc918505a37",
+  "clean": true,
+  "allFiveActionsSuccess": true,
+  "allFourOwnApplicableCurrentWorkflowsSuccess": true,
+  "normalMergeOnly": true,
+  "adminBypass": false,
+  "sourceScope": {
+    "full": {
+      "paths": 28,
+      "bytes": 353416,
+      "sha256": "e0de93c8da0b5bf2e043259d8c9f6ff991700ea657aee94f7744554384ad5b1d",
+      "repoPaths": [
+        ".github/workflows/workforce-manager-today-browser-evidence.yml",
+        "docs/evidence/workforce-c8-manager-missing-snapshot-next-plan-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-native-current-sublane-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-fixed-source-root-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-hosted-root-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-normal-merge-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-old-additive-root-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-native-release-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-application-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-bounded-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-current-sublane-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-draft-syntax-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-first-blocked-root-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-first-compiler-blocked-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-guard-isolated-type-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-guard-type-bounded-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-guard-type-draft-review-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-preparation-2026-10-04.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-ready-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-selected-catalogue-2026-10-05.json",
+        "docs/evidence/workforce-c8-manager-positive-snapshot-source-root-2026-10-05.json",
+        "docs/workforce-c8-calendar-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-c8-manager-today-native-zoom-evidence-2026-10-04.md",
+        "docs/workforce-hrm-completion-roadmap-2026-08-30.md",
+        "docs/workforce-hrm-session-log.md",
+        "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+        "scripts/workforce-manager-today-browser-evidence.mjs",
+        "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts"
+      ]
+    },
+    "nonDoc": {
+      "paths": 4,
+      "bytes": 43906,
+      "sha256": "fff1be8352b33ad841c35f23e2b42086a93548cbd957e685d2ad1a77b7d94668",
+      "repoPaths": [
+        ".github/workflows/workforce-manager-today-browser-evidence.yml",
+        "scripts/ci/fixtures/workforce-manager-today-snapshot-browser.sql",
+        "scripts/workforce-manager-today-browser-evidence.mjs",
+        "src/__tests__/workforce-manager-today-browser-evidence-guard.test.ts"
+      ]
+    }
+  },
+  "exactHostedReport": {
+    "path": "/tmp/workforce-pr581-56edf7-current-hosted-green-independent.json",
+    "bytes": 40240,
+    "sha256": "fe2eeaec9e433aa6303ab6fe4c57100fa4e87e26543cc2d847793f3abdd1fc2a"
+  },
+  "rootWholeAccepted": {
+    "path": "/tmp/workforce-pr581-56edf-current-hosted-root-accepted-primary.json",
+    "bytes": 2342,
+    "sha256": "9c467db9432c86ae3815f938dbf40f16369ef7e45e6b01ab0c6714b89d6eb02b"
+  },
+  "exactScan": {
+    "path": "/tmp/workforce-pr581-56edf-range-primary/proof.json",
+    "bytes": 6767,
+    "sha256": "8c19c4c764c2eaaae6b7d7e773d6f3c29b9fc374f658588da52305fa4efd5dfb"
+  },
+  "publication": {
+    "path": "/tmp/workforce-pr581-56edf-ready-synthetic-primary/ready-publication-proof.json",
+    "bytes": 15332,
+    "sha256": "2cc65220d48c3aac8dc64761efd1a72cbbff3a1e38bb76b6e5982c6314726b4e"
+  },
+  "compilerClean": false,
+  "suiteClean": false,
+  "ownMergedMainBuildDeployAndPublicArtifactProof": "PENDING",
+  "mergedAt": "2026-10-05T01:53:11Z",
+  "mergedSha": "3ddae974bd31cf954645972e4de9cc8393a6c8f8",
+  "mergedParents": [
+    "6dab202bd8fb02cd3d8487724a300dc918505a37",
+    "56edf7cebc94b5927b26b125991dc82625f59a3b"
+  ],
+  "mergeTreeEqualsTestedCandidate": true,
+  "normalMergeComplete": true
+}
