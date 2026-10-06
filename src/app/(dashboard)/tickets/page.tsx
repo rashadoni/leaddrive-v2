@@ -776,7 +776,7 @@ export default function TicketsPage() {
           </div>
           <div className="mt-1 flex items-center justify-between gap-3 px-1 text-xs text-muted-foreground" aria-live="polite">
             <span>{t("filteredResults", { visible: filteredTickets.length, total: tickets.length })}</span>
-            {lastUpdatedAt && <span className="hidden sm:inline">{t("updatedAt", { time: lastUpdatedAt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) })}</span>}
+            {lastUpdatedAt && <span className="hidden sm:inline">{t("updatedAt", { time: lastUpdatedAt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", timeZoneName: "shortOffset" }) })}</span>}
           </div>
           {activeFilterChips.length > 0 && (
             <div className="mt-2 flex gap-1.5 overflow-x-auto" aria-label={t("activeFilters")}>
