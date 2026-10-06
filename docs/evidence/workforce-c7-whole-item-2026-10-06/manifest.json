@@ -1,0 +1,33 @@
+{
+  "status": "EXACT_RUNTIME_ACCEPTED_NOT_DEPLOYED",
+  "at": "2026-10-06T16:41:42.999767+00:00",
+  "head": "d303ae3aac6a2ddb62439e433c08bca29c0befb9",
+  "tree": "d0b39cd92c5078b22438bc7249cde9701843ee35",
+  "main": "d2fd13aab5c85841ccab723dfc9d784ca7c7fb09",
+  "priorArchive": "095ef3ef4b0de33e0170aca2766555e5c28d5632",
+  "priorBlobsToPreserve": 9255,
+  "originalMinimizedReceipts": 55,
+  "sanitizedLocalTestReports": 15,
+  "checks": 15,
+  "postgresReact": 52,
+  "browserCases": 26,
+  "contrastMeasurements": 24,
+  "mergeDeployActivation": false,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 4322,
+      "sha256": "65227b73bcce9ac51e623c500fa16a9e3258b4505763404e3f4f5b47d654c188"
+    },
+    {
+      "path": "prior-minimized-receipts.json",
+      "bytes": 547912,
+      "sha256": "0e350354e7d6646c2fcd617d4df412e7dbc0c0e225b094387127023265e2bd96"
+    },
+    {
+      "path": "local-test-outcomes.json",
+      "bytes": 385195,
+      "sha256": "3160ec50815ae715ebaa63b608568732fb4f86cf6d875db020bcb775ef76e72d"
+    }
+  ]
+}
