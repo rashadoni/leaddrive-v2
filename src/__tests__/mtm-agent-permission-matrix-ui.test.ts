@@ -35,17 +35,21 @@ const card = (
 ): AccessCard => ({
   id, name: id, email: null, role, status: "ACTIVE", userId: null, createdAt: "2026-10-01T00:00:00Z", ...flags,
 })
-const cards = [
+const initialCards = (): AccessCard[] => [
   card("a1", "AGENT", { canPlanOwnRoutes: true, canSelfPublishRoutes: true }),
   card("a2", "AGENT", { canPlanOwnRoutes: false, canSelfPublishRoutes: false }),
   card("m1", "MANAGER"),
 ]
+/** The employee cards the server holds; a per-agent grant written here changes them. */
+let cards: AccessCard[] = initialCards()
 
 /** What the server holds. A write changes it unless the server ignores the key. */
 let stored: Record<string, unknown> = {}
 let writes: Record<string, unknown>[] = []
+let cardWrites: { id: string; body: Record<string, unknown> }[] = []
 let ignoreWrites = false
 let refuseWrites = false
+let refuseCardWrites = false
 
 let root: Root
 let container: HTMLDivElement
@@ -59,21 +63,44 @@ const press = async (id: string) => {
   await settle()
 }
 
+const agentBox = (rowId: string, name: string) => [...row(rowId).querySelectorAll("label")]
+  .find((label) => label.textContent === name)?.querySelector('input[type="checkbox"]') as HTMLInputElement | undefined
+const tick = async (rowId: string, name: string) => {
+  await act(async () => { agentBox(rowId, name)?.click() })
+  await settle()
+}
+
+/** The page re-reads the cards after a grant and hands the matrix what the server now holds. */
+function draw() {
+  root.render(createElement(MtmAgentPermissionMatrix, { cards, onCardsChanged: async () => { draw() } }))
+}
+
 async function open(settings: Record<string, unknown> = {}) {
   stored = { ...MTM_SETTING_DEFAULTS, ...settings }
-  await act(async () => { root.render(createElement(MtmAgentPermissionMatrix, { cards })) })
+  await act(async () => { draw() })
   await settle()
 }
 
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   writes = []
+  cardWrites = []
+  cards = initialCards()
   ignoreWrites = false
   refuseWrites = false
-  vi.stubGlobal("fetch", vi.fn(async (_input: string, init?: { method?: string; body?: string }) => {
+  refuseCardWrites = false
+  vi.stubGlobal("fetch", vi.fn(async (input: string, init?: { method?: string; body?: string }) => {
     const reply = (status: number, body: unknown) => ({ ok: status < 400, status, json: async () => body })
     if ((init?.method ?? "GET") === "GET") return reply(200, { success: true, data: stored })
     const body = JSON.parse(init?.body ?? "{}") as Record<string, unknown>
+    // A per-agent grant is the employee card's own update, not a setting.
+    const cardId = /^\/api\/v1\/mtm\/agents\/([^/?]+)$/.exec(String(input))?.[1]
+    if (cardId) {
+      cardWrites.push({ id: cardId, body })
+      if (refuseCardWrites) return reply(403, { error: "Forbidden" })
+      cards = cards.map((item) => (item.id === cardId ? { ...item, ...body } : item))
+      return reply(200, { success: true })
+    }
     writes.push(body)
     if (refuseWrites) return reply(403, { error: "Forbidden" })
     if (ignoreWrites) return reply(200, { success: true, data: { ignoredKeys: Object.keys(body) } })
@@ -126,9 +153,62 @@ describe("«Что может агент»", () => {
   it("counts per-agent grants over the organization's agents", async () => {
     await open()
     expect(row("routePlanOwn").textContent).toContain("Могут: 1 из 2")
-    expect(row("routePlanOwn").querySelector('a[href="/mtm/agents"]')).not.toBeNull()
+    // The grant is given in this row now; it no longer sends anyone to «Агенты».
+    expect(["routePlanOwn", "routeSelfPublish"].filter((id) => row(id).querySelector('a[href="/mtm/agents"]'))).toEqual([])
     // The organization-wide switch is not enough on its own, and the row says so.
     expect(row("routeSelfPublish").textContent).toContain("Сейчас она есть у 1 из 2")
+  })
+
+  it("gives a per-agent grant in the row that names it — no other page to find", async () => {
+    await open({ routeSelfPublish: true })
+    // Active agents by name; a manager's card is not an agent.
+    expect([...row("routeSelfPublish").querySelectorAll("label")].map((label) => label.textContent)).toEqual(["a1", "a2"])
+    expect([agentBox("routeSelfPublish", "a1")?.checked, agentBox("routeSelfPublish", "a2")?.checked]).toEqual([true, false])
+
+    await tick("routeSelfPublish", "a2")
+    expect(cardWrites).toEqual([{ id: "a2", body: { canSelfPublishRoutes: true } }])
+    // The organization's switch was not touched by a tick.
+    expect(writes).toEqual([])
+    expect(agentBox("routeSelfPublish", "a2")?.checked).toBe(true)
+    expect(row("routeSelfPublish").textContent).toContain("Сейчас она есть у 2 из 2")
+  })
+
+  it("takes the right to plan away from one agent, in the row about planning", async () => {
+    await open()
+    expect([agentBox("routePlanOwn", "a1")?.checked, agentBox("routePlanOwn", "a2")?.checked]).toEqual([true, false])
+
+    await tick("routePlanOwn", "a1")
+    expect(cardWrites).toEqual([{ id: "a1", body: { canPlanOwnRoutes: false } }])
+    expect(row("routePlanOwn").textContent).toContain("Могут: 0 из 2")
+    // Planning has no organization switch above it: a tick there never waits.
+    expect(row("routePlanOwn").textContent).not.toContain("Галочки начнут действовать")
+  })
+
+  it("says the ticks wait while the organization's switch is off, and stops once it is on", async () => {
+    await open()
+    expect(toggleOf("routeSelfPublish").getAttribute("aria-checked")).toBe("false")
+    expect(row("routeSelfPublish").textContent).toContain("Галочки начнут действовать, когда включён переключатель этой строки")
+
+    await press("routeSelfPublish")
+    expect(writes).toEqual([{ routeSelfPublish: true }])
+    expect(row("routeSelfPublish").textContent).not.toContain("Галочки начнут действовать")
+    // Turning the switch on ticked nobody.
+    expect(cardWrites).toEqual([])
+    expect([agentBox("routeSelfPublish", "a1")?.checked, agentBox("routeSelfPublish", "a2")?.checked]).toEqual([true, false])
+  })
+
+  it("says so when a grant was refused, and keeps showing what the card holds", async () => {
+    await open({ routeSelfPublish: true })
+    refuseCardWrites = true
+    await tick("routeSelfPublish", "a2")
+    expect(row("routeSelfPublish").textContent).toContain("Не удалось сохранить: Forbidden")
+    expect(agentBox("routeSelfPublish", "a2")?.checked).toBe(false)
+  })
+
+  it("offers names only where the grant lives on the employee card", async () => {
+    await open()
+    const withNames = AGENT_PERMISSION_ROWS.filter((item) => row(item.id).querySelector('input[type="checkbox"]')).map((item) => item.id)
+    expect(withNames).toEqual(["routePlanOwn", "routeSelfPublish"])
   })
 
   it("writes one setting when a switch is pressed and shows what the server now holds", async () => {

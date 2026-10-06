@@ -59,6 +59,14 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
   const [passwordHidden, setPasswordHidden] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  // Self-publishing needs two things: this card's tick and the organization's
+  // switch. The switch lived on another page and the tick alone did nothing,
+  // silently (owner, 2026-10-06: settings «должны быть интуитивные, а не
+  // прятаться где-то»). The form now reads the switch, says under the tick
+  // whether it works, and can turn the switch on from here. `null` = not read.
+  const [companySelfPublish, setCompanySelfPublish] = useState<boolean | null>(null)
+  const [enablingCompany, setEnablingCompany] = useState(false)
+  const [companyError, setCompanyError] = useState("")
 
   useEffect(() => {
     if (open) {
@@ -76,14 +84,47 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
       })
       setError("")
       setPasswordHidden(false)
+      setCompanySelfPublish(null)
+      setCompanyError("")
       fetch("/api/v1/mtm/agents?limit=200", {
         headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
       })
         .then(r => r.json())
         .then(json => { if (json.success) setManagers(json.data.agents || []) })
         .catch(() => {})
+      fetch("/api/v1/mtm/settings", {
+        headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
+      })
+        .then(r => r.json())
+        .then(json => {
+          const value = json?.data?.routeSelfPublish
+          if (typeof value === "boolean") setCompanySelfPublish(value)
+        })
+        .catch(() => {})
     }
   }, [open, initialData, orgId])
+
+  const enableCompanySelfPublish = async () => {
+    setEnablingCompany(true)
+    setCompanyError("")
+    try {
+      const res = await fetch("/api/v1/mtm/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(orgId ? { "x-organization-id": orgId } : {} as Record<string, string>),
+        },
+        body: JSON.stringify({ routeSelfPublish: true }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(typeof json?.error === "string" ? json.error : String(res.status))
+      setCompanySelfPublish(true)
+    } catch (err: unknown) {
+      setCompanyError(tf("selfPublishCompanyFailed", { reason: err instanceof Error ? err.message : String(err) }))
+    } finally {
+      setEnablingCompany(false)
+    }
+  }
 
   const update = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }))
 
@@ -223,6 +264,25 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
                     <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{tf("allowSelfRoutePublishHint")}</span>
                   </span>
                 </label>
+                {form.canSelfPublishRoutes && companySelfPublish === false ? (
+                  <div
+                    className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/40"
+                    data-testid="mtm-agent-self-publish-company-off"
+                    role="status"
+                  >
+                    <p className="font-medium">{tf("selfPublishCompanyOffTitle")}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{tf("selfPublishCompanyOffBody")}</p>
+                    <Button type="button" size="sm" className="mt-2" disabled={enablingCompany} onClick={enableCompanySelfPublish}>
+                      {enablingCompany ? tc("saving") : tf("selfPublishCompanyEnable")}
+                    </Button>
+                    {companyError && <p className="mt-2 text-xs text-red-500">{companyError}</p>}
+                  </div>
+                ) : null}
+                {form.canSelfPublishRoutes && companySelfPublish === true ? (
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300" data-testid="mtm-agent-self-publish-company-on">
+                    {tf("selfPublishCompanyOn")}
+                  </p>
+                ) : null}
               </div>
             ) : null}
             <div>

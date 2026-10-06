@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Check, Lock, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -10,6 +9,7 @@ import {
   AGENT_PERMISSION_ROWS,
   AGENT_SWITCH_ROWS,
   agentCardFlagCount,
+  type AgentCardFlag,
   type AgentPermissionRow,
   type AgentPermissionSettingKey,
   type AgentPermissionSettings,
@@ -27,12 +27,21 @@ import type { AccessCard } from "@/lib/mtm/access-roster"
  * what the click hoped for. A row without a switch states a rule of the system
  * in words; nothing can be stored for it.
  */
-export function MtmAgentPermissionMatrix({ cards }: { cards: readonly AccessCard[] }) {
+export function MtmAgentPermissionMatrix({
+  cards,
+  onCardsChanged,
+}: {
+  cards: readonly AccessCard[]
+  /** Re-read the employee cards after a per-agent grant was written here. */
+  onCardsChanged?: () => Promise<void> | void
+}) {
   const t = useTranslations("mtmAccess")
   const [settings, setSettings] = useState<Partial<AgentPermissionSettings> | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [busy, setBusy] = useState<AgentPermissionSettingKey | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [cardBusy, setCardBusy] = useState<string | null>(null)
+  const [cardErrors, setCardErrors] = useState<Partial<Record<AgentCardFlag, string>>>({})
 
   const load = useCallback(async () => {
     const response = await fetch("/api/v1/mtm/settings", { headers: { Accept: "application/json" } })
@@ -72,6 +81,31 @@ export function MtmAgentPermissionMatrix({ cards }: { cards: readonly AccessCard
     setBusy(null)
   }
 
+  // A grant that lives on the employee card is given in the row that names it.
+  // It used to be a count and a link to another page: the owner was told to
+  // flip a switch here and tick a box in «Агенты», and said settings must not
+  // hide (2026-10-06). The write is the card's own audited update; the row
+  // re-reads the cards afterwards and shows what the server now holds.
+  const grant = async (cardId: string, flag: AgentCardFlag, next: boolean) => {
+    setCardBusy(cardId)
+    setCardErrors((current) => ({ ...current, [flag]: "" }))
+    try {
+      const response = await fetch(`/api/v1/mtm/agents/${cardId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [flag]: next }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        throw new Error(t("saveFailed", { reason: typeof body?.error === "string" ? body.error : String(response.status) }))
+      }
+    } catch (error) {
+      setCardErrors((current) => ({ ...current, [flag]: error instanceof Error ? error.message : String(error) }))
+    }
+    try { await onCardsChanged?.() } catch { /* the boxes keep showing the last read */ }
+    setCardBusy(null)
+  }
+
   const title = (id: string) => t(`perm_${id}` as never)
 
   return (
@@ -105,6 +139,9 @@ export function MtmAgentPermissionMatrix({ cards }: { cards: readonly AccessCard
                     error={row.kind === "switch" ? errors[row.setting] ?? "" : ""}
                     title={title}
                     onToggle={toggle}
+                    cardBusy={cardBusy !== null}
+                    cardError={"cardFlag" in row && row.cardFlag ? cardErrors[row.cardFlag] ?? "" : ""}
+                    onGrant={grant}
                   />
                 ))}
               </ul>
@@ -117,7 +154,7 @@ export function MtmAgentPermissionMatrix({ cards }: { cards: readonly AccessCard
 }
 
 function MatrixRow({
-  row, settings, cards, busy, error, title, onToggle,
+  row, settings, cards, busy, error, title, onToggle, cardBusy, cardError, onGrant,
 }: {
   row: AgentPermissionRow
   settings: Partial<AgentPermissionSettings>
@@ -126,6 +163,9 @@ function MatrixRow({
   error: string
   title: (id: string) => string
   onToggle: (setting: AgentPermissionSettingKey, next: boolean) => void
+  cardBusy: boolean
+  cardError: string
+  onGrant: (cardId: string, flag: AgentCardFlag, next: boolean) => void
 }) {
   const t = useTranslations("mtmAccess")
   const name = title(row.id)
@@ -138,6 +178,13 @@ function MatrixRow({
   const on = row.kind === "switch" && settings[row.setting] === true && !blocked
   const cardFlag = row.kind === "perAgent" || row.kind === "switch" ? row.cardFlag : undefined
   const count = cardFlag ? agentCardFlagCount(cards, cardFlag) : null
+  // The same people the count is about: active agents, by name.
+  const agents = cardFlag ? cards.filter((card) => card.role === "AGENT" && card.status === "ACTIVE") : []
+  const granted = (card: AccessCard) => (
+    cardFlag === "canPlanOwnRoutes" ? card.canPlanOwnRoutes !== false : card.canSelfPublishRoutes === true
+  )
+  // A tick under an organization switch that is off changes nothing yet.
+  const ticksWait = row.kind === "switch" && cardFlag !== undefined && !on
 
   return (
     <li
@@ -151,15 +198,33 @@ function MatrixRow({
           <p className="mt-0.5 text-xs text-muted-foreground">{t(`surface_${row.surfaces.join("_")}` as never)}</p>
         )}
         {row.kind === "switch" && count && count.total > 0 && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {t("alsoPerAgent", count)}{" "}
-            <Link href="/mtm/agents" className="underline">{t("openAgents")}</Link>
-          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("alsoPerAgent", count)}</p>
         )}
         {blocked && requiredRow && (
           <p className="mt-0.5 text-xs text-muted-foreground">{t("requiresHint", { name: title(requiredRow.id) })}</p>
         )}
         {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+        {cardFlag && agents.length > 0 && (
+          <fieldset className="mt-2" data-testid={`mtm-agent-permission-${row.id}-agents`}>
+            <legend className="text-xs font-medium">{t("perAgentPick")}</legend>
+            <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1">
+              {agents.map((card) => (
+                <label key={card.id} className="flex min-h-9 cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-zinc-200 dark:border-zinc-700"
+                    checked={granted(card)}
+                    disabled={cardBusy}
+                    onChange={(event) => onGrant(card.id, cardFlag, event.target.checked)}
+                  />
+                  {card.name}
+                </label>
+              ))}
+            </div>
+            {ticksWait && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{t("perAgentTicksWait")}</p>}
+            {cardError && <p className="mt-1 text-xs text-red-500">{cardError}</p>}
+          </fieldset>
+        )}
       </div>
 
       <div className="min-w-0">
@@ -185,10 +250,6 @@ function MatrixRow({
           <>
             <p className="text-sm font-medium">
               {count && count.total > 0 ? t("perAgentCount", count) : t("perAgentNoAgents")}
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t("perAgentWhere")}{" "}
-              <Link href="/mtm/agents" className="underline">{t("openAgents")}</Link>
             </p>
           </>
         ) : (
