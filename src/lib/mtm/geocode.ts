@@ -49,6 +49,7 @@ export const GEOCODE_QUERY_MAX = 200
 export const GEOCODE_MAX_HITS = 5
 
 const ENDPOINT = "https://nominatim.openstreetmap.org/search"
+const REVERSE_ENDPOINT = "https://nominatim.openstreetmap.org/reverse"
 const FORGIVING_ENDPOINT = "https://photon.komoot.io/api/"
 /** A forgiving match further than this from the map is a coincidence of words. */
 const FORGIVING_MAX_DISTANCE_KM = 1_000
@@ -301,8 +302,85 @@ export async function geocodeAddress(input: GeocodeQuery, deps: GeocodeDeps = de
   return exact !== null && forgiving !== null ? remember([]) : { ok: true, hits: [] }
 }
 
+/**
+ * The address under a pin.
+ *
+ * Owner, 2026-10-07, after moving an organization's pin with «Моё
+ * местоположение»: «я тут изменил адрес, но в отображении всё ещё старый
+ * адрес». The pin and the address are two fields of the card; the picker
+ * changed the first and said nothing about the second. It now names the
+ * address under the pin and offers to write it into the card — offers, because
+ * an address a manager typed by hand (a floor, an entrance) must not be
+ * replaced for nudging the pin five metres.
+ */
+export interface PinAddress {
+  /** Street and house, as the card's address field holds them. */
+  address: string
+  district: string
+  city: string
+  /** The three together, for showing. */
+  label: string
+}
+
+export type ReverseResult = { ok: true; place: PinAddress | null } | { ok: false }
+
+const reverseCache = new Map<string, { at: number; place: PinAddress | null }>()
+
+export function buildReverseUrl(input: { latitude: number; longitude: number; language: string }): string {
+  const url = new URL(REVERSE_ENDPOINT)
+  url.searchParams.set("format", "jsonv2")
+  url.searchParams.set("lat", input.latitude.toFixed(6))
+  url.searchParams.set("lon", input.longitude.toFixed(6))
+  // Building level: the street and the house, not the country.
+  url.searchParams.set("zoom", "18")
+  url.searchParams.set("addressdetails", "1")
+  url.searchParams.set("accept-language", input.language)
+  return url.toString()
+}
+
+/** A street the pin stands on, or nothing: a district alone is not an address. */
+export function parseReverseResponse(raw: unknown): PinAddress | null {
+  const parts = raw && typeof raw === "object" ? (raw as { address?: unknown }).address : null
+  if (!parts || typeof parts !== "object") return null
+  const source = parts as Record<string, unknown>
+  const first = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = source[key]
+      if (typeof value === "string" && value.trim()) return value.trim().slice(0, 200)
+    }
+    return ""
+  }
+  const road = first("road", "pedestrian", "residential", "footway")
+  if (!road) return null
+  const address = [road, first("house_number")].filter(Boolean).join(" ")
+  const district = first("city_district", "suburb", "borough", "neighbourhood")
+  const city = first("city", "town", "village", "municipality")
+  return { address, district, city, label: [address, district, city].filter(Boolean).join(", ") }
+}
+
+export async function reverseGeocode(
+  input: { latitude: number; longitude: number; language: string },
+  deps: GeocodeDeps = defaultDeps,
+): Promise<ReverseResult> {
+  // A pin dragged a metre is the same building: one answer per ~1 m square.
+  const key = `${input.language}|${input.latitude.toFixed(5)},${input.longitude.toFixed(5)}`
+  const cached = reverseCache.get(key)
+  if (cached && deps.now() - cached.at < CACHE_TTL_MS) return { ok: true, place: cached.place }
+
+  const answer = await ask("exact", buildReverseUrl(input), deps)
+  if (answer === null) return { ok: false }
+  const place = parseReverseResponse(answer)
+  if (reverseCache.size >= CACHE_MAX) {
+    const oldest = reverseCache.keys().next().value
+    if (oldest !== undefined) reverseCache.delete(oldest)
+  }
+  reverseCache.set(key, { at: deps.now(), place })
+  return { ok: true, place }
+}
+
 /** Tests only: forget what was asked and when. */
 export function resetGeocodeStateForTests(): void {
   cache.clear()
+  reverseCache.clear()
   turns = freshTurns()
 }
