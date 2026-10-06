@@ -149,7 +149,6 @@ export function MtmCustomerForm({
               <div><Label htmlFor="contactPerson">{tf("contactPerson")}</Label><Input id="contactPerson" value={form.contactPerson} onChange={e => update("contactPerson", e.target.value)} /></div>
               <div><Label htmlFor="phone">{tc("phone")}</Label><Input id="phone" value={form.phone} onChange={e => update("phone", e.target.value)} /></div>
             </div>
-            <div><Label htmlFor="address">{tc("address")}</Label><Input id="address" value={form.address} onChange={e => update("address", e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label htmlFor="city">{tc("city")}</Label><Input id="city" value={form.city} onChange={e => update("city", e.target.value)} /></div>
               <div><Label htmlFor="district">{tf("district")}</Label><Input id="district" value={form.district} onChange={e => update("district", e.target.value)} /></div>
@@ -163,7 +162,22 @@ export function MtmCustomerForm({
                 // The address if the form has one; otherwise the name — a
                 // clinic or a pharmacy is usually on the map under its name.
                 address={[form.address, form.district, form.city].map((part) => part.trim()).filter(Boolean).join(", ") || form.name.trim()}
+                // The address is not typed (owner, 2026-10-07: «адрес поле
+                // убери из заполнений, пусть он добавляется через поиск на
+                // карте»): it is what stands under the pin the manager set.
+                // Nothing is saved until the form itself is.
+                onAddress={(place) => {
+                  update("address", place.address)
+                  if (place.district) update("district", place.district)
+                  if (place.city) update("city", place.city)
+                }}
               />
+              <p className="mt-2 text-sm" data-testid="mtm-customer-form-address">
+                <span className="text-muted-foreground">{tc("address")}:</span>{" "}
+                {form.address.trim()
+                  ? <span className="font-medium">{form.address}</span>
+                  : <span className="text-muted-foreground">{tf("addressFromMapHint")}</span>}
+              </p>
               <div className="grid grid-cols-2 gap-3 mt-2">
                 <div><Input id="latitude" type="number" step="any" placeholder={tf("placeholderLatitude")} value={form.latitude} onChange={e => update("latitude", e.target.value)} className="text-xs" /></div>
                 <div><Input id="longitude" type="number" step="any" placeholder={tf("placeholderLongitude")} value={form.longitude} onChange={e => update("longitude", e.target.value)} className="text-xs" /></div>

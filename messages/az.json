@@ -14509,6 +14509,9 @@
     "locating": "Müəyyən edilir…",
     "hintEmpty": "Ünvanı axtarın, «Mənim yerim» düyməsini basın və ya sadəcə xəritəyə basın.",
     "hintSet": "Nişanı düzəltmək olar: onu sürüşdürün və ya xəritədə lazım olan yerə basın.",
+    "pinAddressUnknown": "Bu nöqtə üçün ünvan tapılmadı — kartda əvvəlki qalacaq.",
+    "pinAddress": "Nişanın ünvanı:",
+    "addressWritten": "karta yazıldı",
     "resultsTitle": "Ünvanı seçin:",
     "noResults": "Heç nə tapılmadı. Daha qısa yazın — küçə və ev nömrəsi və ya təşkilatın adı — yaxud nişanı xəritədə əl ilə qoyun.",
     "searchFailed": "Ünvan axtarışı hazırda əlçatan deyil. Nişanı xəritədə əl ilə qoyun.",
@@ -14593,6 +14596,7 @@
     "thisVisit": "bu ziyarət",
     "visitTo": "{name} ziyarəti",
     "placeholderCode": "məs. C-001",
+    "addressFromMapHint": "xəritədə yeri göstərdikdə görünəcək",
     "placeholderLatitude": "Enlik",
     "placeholderLongitude": "Uzunluq",
     "location": "Yerləşmə"
@@ -25152,6 +25156,9 @@
     "managerPresenceBoundary": "Cədvəl və serverdə qeydə alınmış iş vaxtı faktları fasiləsiz fiziki iştirakı sübut etmir.",
     "managerLoadMore": "Daha çox əməkdaş yüklə",
     "managerLoadingMore": "Əməkdaşlar yüklənir…",
+    "managerReadSessionExpired": "İş vaxtı məlumatlarını yükləmək üçün yenidən daxil olun.",
+    "managerReadDenied": "İstifadəçi hesabınızın bu iş vaxtı məlumatlarına girişi yoxdur.",
+    "managerReadUnavailable": "İş vaxtı məlumatları müvəqqəti olaraq əlçatan deyil. Yenidən cəhd edin.",
     "managerLoadMoreResult": "Əlavə edildi: {added}. Yüklənib: {total}.",
     "managerListComplete": "Əməkdaş siyahısının sonu",
     "managerAttendanceState": {

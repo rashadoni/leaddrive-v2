@@ -42,6 +42,16 @@ import {
 type WorkforceView = "today" | "timesheet" | "requests"
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
 
+class TodayReadError extends Error {
+  readonly messageKey: "managerReadSessionExpired" | "managerReadDenied" | "managerReadUnavailable"
+
+  constructor(status: number) {
+    super("Workforce Today read failed")
+    this.messageKey = status === 401 ? "managerReadSessionExpired"
+      : status === 403 ? "managerReadDenied" : "managerReadUnavailable"
+  }
+}
+
 type TodayData = {
   date: string
   timezone: string
@@ -565,7 +575,10 @@ function ScopedWorkforceWorkbench({ view, session }: {
     })
       .then(async (response) => {
         const result = await response.json().catch(() => ({}))
-        if (!response.ok || !result.success) throw new Error(result.error || `HTTP ${response.status}`)
+        if (!response.ok || !result.success) {
+          if (view === "today") throw new TodayReadError(response.status)
+          throw new Error(result.error || `HTTP ${response.status}`)
+        }
         if (!cancelled) {
           setData(result.data)
           setDataLoadIdentity(activeLoadIdentity)
@@ -587,7 +600,9 @@ function ScopedWorkforceWorkbench({ view, session }: {
             toast.error(t("loadFailed"))
           }
           else {
-            setError(cause instanceof Error ? cause.message : t("loadFailed"))
+            setError(view === "today"
+              ? t(cause instanceof TodayReadError ? cause.messageKey : "managerReadUnavailable")
+              : cause instanceof Error ? cause.message : t("loadFailed"))
             setData(null)
             setDataLoadIdentity(null)
           }
@@ -734,7 +749,7 @@ function ScopedWorkforceWorkbench({ view, session }: {
         headers: organizationId ? { "x-organization-id": organizationId } : {},
       })
       const result = await response.json().catch(() => ({}))
-      if (!response.ok || !result.success) throw new Error(result.error || `HTTP ${response.status}`)
+      if (!response.ok || !result.success) throw new TodayReadError(response.status)
       if (activeLoadIdentityRef.current !== requestedIdentity) return
       const page = result.data as TodayData
       setData((current) => {
@@ -774,7 +789,7 @@ function ScopedWorkforceWorkbench({ view, session }: {
       })
     } catch (cause) {
       if (activeLoadIdentityRef.current === requestedIdentity) {
-        toast.error(cause instanceof Error ? cause.message : t("loadFailed"))
+        toast.error(t(cause instanceof TodayReadError ? cause.messageKey : "managerReadUnavailable"))
       }
     } finally {
       if (activeLoadIdentityRef.current === requestedIdentity) setLoadingMore(false)
@@ -944,7 +959,7 @@ function ScopedWorkforceWorkbench({ view, session }: {
       {loading && !taggedApprovalRefresh ? <div className="h-48 animate-pulse border-y border-zinc-200 bg-muted/40 motion-reduce:animate-none dark:border-zinc-700" aria-label={t("loading")} role="status" /> : null}
       {!loading && error ? (
         <section className="flex flex-col gap-3 border-y border-zinc-200 bg-card py-5 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
-          <div><p className="font-medium">{t("loadFailed")}</p><p className="mt-1 text-sm text-muted-foreground">{error}</p></div>
+          <div><p className="font-medium">{t("loadFailed")}</p><p className={view === "today" ? "mt-1 text-sm text-zinc-700 dark:text-zinc-300" : "mt-1 text-sm text-muted-foreground"}>{error}</p></div>
           <Button type="button" variant="outline" className="min-h-12" onClick={() => requestReload()}>{t("tryAgain")}</Button>
         </section>
       ) : null}

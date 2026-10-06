@@ -163,8 +163,8 @@ export function WorkforceManagerToday({
   return <>
     <section className="grid gap-px overflow-hidden rounded-xl border border-zinc-200 bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-700 sm:grid-cols-2 xl:grid-cols-4" aria-label={t("dailySummary")}>
       {summary.map(({ key, label, value, icon: Icon }) => <div key={key} className="flex min-h-28 flex-col justify-between bg-card p-5">
-        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-        <div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-sm text-muted-foreground">{label}</p></div>
+        <Icon className="h-4 w-4 text-zinc-600 dark:text-zinc-300" aria-hidden="true" />
+        <div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-sm text-zinc-600 dark:text-zinc-300">{label}</p></div>
       </div>)}
     </section>
 
@@ -172,11 +172,11 @@ export function WorkforceManagerToday({
       <div className="flex flex-col gap-1 px-1 py-5 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
           <h3 id="workforce-manager-today-list" className="text-base font-semibold">{t("teamToday")}</h3>
-          <p className="text-sm text-muted-foreground">{dateFormatter.format(new Date(`${data.date}T12:00:00`))} · {data.timezone}</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">{dateFormatter.format(new Date(`${data.date}T12:00:00`))} · {data.timezone}</p>
         </div>
-        <span className="text-sm text-muted-foreground">{t("managerLoadedPeople", { count: data.people.length })}</span>
+        <span className="text-sm text-zinc-600 dark:text-zinc-300">{t("managerLoadedPeople", { count: data.people.length })}</span>
       </div>
-      <p className="border-t border-zinc-200 px-1 py-3 text-xs leading-5 text-muted-foreground dark:border-zinc-700">
+      <p className="border-t border-zinc-200 px-1 py-3 text-xs leading-5 text-zinc-600 dark:text-zinc-300 dark:border-zinc-700">
         {t("managerSummaryBoundary")}
       </p>
       <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -185,7 +185,7 @@ export function WorkforceManagerToday({
           return <article key={person.id} className="grid gap-4 px-1 py-5 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(15rem,1fr)_minmax(14rem,0.8fr)] lg:items-start">
             <div className="min-w-0">
               <p className="truncate font-medium">{person.name}</p>
-              <p className="text-sm text-muted-foreground">{person.role}</p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-300">{person.role}</p>
               <Badge className="mt-3" variant={attendanceTone(person.attendance.state)}>
                 {t(`managerAttendanceState.${person.attendance.state}`)}
               </Badge>
@@ -193,11 +193,11 @@ export function WorkforceManagerToday({
 
             <div>
               <p className="inline-flex items-center gap-2 text-sm font-medium"><CalendarClock className="h-4 w-4" aria-hidden="true" />{t("managerPlanTitle")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
                 {person.plan.templateName ?? t(`managerPlanState.${person.plan.state}`)}
               </p>
-              {window ? <p className="mt-1 text-sm text-muted-foreground">{window}</p> : null}
-              <p className="mt-2 text-xs text-muted-foreground">{t(`managerCalendarState.${person.calendar.state}`)}</p>
+              {window ? <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{window}</p> : null}
+              <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">{t(`managerCalendarState.${person.calendar.state}`)}</p>
               {person.previousOpenWorkday ? <p className="mt-3 inline-flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 {t("previousOpen", { date: person.previousOpenWorkday.workDate.slice(0, 10) })}
@@ -206,25 +206,25 @@ export function WorkforceManagerToday({
 
             <div>
               <p className="inline-flex items-center gap-2 text-sm font-medium"><ShieldAlert className="h-4 w-4" aria-hidden="true" />{t("managerExceptionsTitle")}</p>
-              {person.exceptions == null ? <p className="mt-1 text-sm text-muted-foreground">{t("managerExceptionsRestricted")}</p> : person.exceptions.length === 0 ? <p className="mt-1 text-sm text-muted-foreground">{t("managerExceptionsNone")}</p> : <div className="mt-2 flex flex-wrap gap-2">
+              {person.exceptions == null ? <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{t("managerExceptionsRestricted")}</p> : person.exceptions.length === 0 ? <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{t("managerExceptionsNone")}</p> : <div className="mt-2 flex flex-wrap gap-2">
                 {person.exceptions.map((exception) => <Badge key={`${exception.type}-${exception.status}`} variant={exception.status === "RESOLVED" ? "outline" : "warning"}>
                   {t(`timesheetApprovalException.${exception.type}`)} · {t(`timesheetExceptionStatus.${exception.status}`)}
                 </Badge>)}
               </div>}
-              {person.exceptions?.length ? <Button asChild variant="link" className="mt-2 min-h-12 px-0">
+              {person.exceptions?.length ? <Button asChild variant="link" className="mt-2 min-h-12 px-0 text-orange-700 dark:text-orange-300">
                 <Link href="/workforce/exceptions">{t("managerOpenExceptionQueue")}</Link>
               </Button> : null}
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">{t("managerPresenceBoundary")}</p>
+              <p className="mt-2 text-xs leading-5 text-zinc-600 dark:text-zinc-300">{t("managerPresenceBoundary")}</p>
             </div>
           </article>
         })}
-        {data.people.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{t("noPeople")}</p> : null}
+        {data.people.length === 0 ? <p className="py-10 text-center text-sm text-zinc-600 dark:text-zinc-300">{t("noPeople")}</p> : null}
       </div>
       <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {paginationResult ? `${t("managerLoadMoreResult", { added: paginationResult.added, total: paginationResult.total })}${paginationResult.hasMore ? "" : ` ${t("managerListComplete")}`}` : ""}
       </p>
       {data.pagination.nextCursor || hasRequested ? <div className="border-t border-zinc-200 py-5 text-center dark:border-zinc-700">
-        <Button ref={paginationControl} type="button" variant="outline" className="h-auto min-h-12 max-w-full whitespace-normal text-center aria-disabled:opacity-50" aria-disabled={busy || !data.pagination.nextCursor} onClick={loadMore}>
+        <Button ref={paginationControl} type="button" variant="outline" className="h-auto min-h-12 max-w-full scroll-my-2 whitespace-normal text-center aria-disabled:opacity-50" aria-disabled={busy || !data.pagination.nextCursor} onClick={loadMore}>
           {busy ? t("managerLoadingMore") : data.pagination.nextCursor ? t("managerLoadMore") : t("managerListComplete")}
         </Button>
       </div> : null}

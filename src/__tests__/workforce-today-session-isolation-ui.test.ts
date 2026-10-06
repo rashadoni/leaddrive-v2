@@ -31,6 +31,30 @@ async function settle(d: ReturnType<typeof deferred>, value: ReturnType<typeof r
 function button(text: string) { const b = Array.from(element.querySelectorAll('button')).find(x => x.textContent === text); expect(b).toBeTruthy(); return b!; }
 async function click(text: string) { await act(async () => { button(text).click(); await new Promise(r => setTimeout(r, 0)); }); }
 function noOld() { expect(element.textContent).not.toContain('Synthetic A-only employee'); expect(element.textContent).not.toContain('Synthetic late A-only employee'); }
+it.each([[401, 'managerReadSessionExpired'], [403, 'managerReadDenied'], [500, 'managerReadUnavailable'], [200, 'managerReadUnavailable']])('localizes Today read failure %s without rendering server details', async (status, expected) => {
+    fetchMock.mockResolvedValue({ ok: status === 200, status, json: async () => ({ success: false, error: 'Synthetic private server detail', code: 'untrusted-code' }) });
+    await render();
+    expect(element.querySelector('[role=alert]')?.textContent).toContain(expected);
+    expect(element.textContent).not.toContain('Synthetic private server detail');
+    expect(element.textContent).not.toContain('untrusted-code');
+    expect(element.querySelector('article')).toBeNull();
+});
+it('localizes a Today transport failure without rendering exception details', async () => {
+    fetchMock.mockRejectedValue(new Error('Synthetic private transport detail'));
+    await render();
+    expect(element.querySelector('[role=alert]')?.textContent).toContain('managerReadUnavailable');
+    expect(element.textContent).not.toContain('Synthetic private transport detail');
+});
+it.each([[403, 'managerReadDenied'], [503, 'managerReadUnavailable']])('localizes pagination failure %s while preserving retry and current rows', async (status, expected) => {
+    fetchMock.mockResolvedValueOnce(response('Synthetic A-only employee', 'cursor'));
+    await render();
+    fetchMock.mockResolvedValue({ ok: false, status, json: async () => ({ error: 'Synthetic private pagination detail' }) });
+    await click('managerLoadMore');
+    expect(toast.error).toHaveBeenCalledWith(expected);
+    expect(element.textContent).toContain('Synthetic A-only employee');
+    expect(button('managerLoadMore').getAttribute('aria-disabled')).toBe('false');
+    expect(element.textContent).not.toContain('Synthetic private pagination detail');
+});
 it.each(['principal', 'role', 'organization'])('clears protected rows before new %s response and then renders replacement', async (kind) => {
     await render();
     expect(element.textContent).toContain('Synthetic A-only employee');
