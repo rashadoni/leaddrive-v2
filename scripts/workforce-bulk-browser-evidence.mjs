@@ -66,18 +66,18 @@ async function mixedConflict(view,kind,pair,target,oldTarget){
  record(`${kind}-named-mixed-conflict-report-blocks-whole-draft`)
 }
 async function scopeSwitch(view,kind,pair,target,nextPrincipal){
- const f=await prepare(view,kind,pair,target);const gate=latch();let held=false
- await view.page.route('**'+f.endpoint+'/preview',async route=>{const response=await route.fetch();held=true;await gate.promise;await route.fulfill({response})})
+ const f=await prepare(view,kind,pair,target);const gate=latch();let held=false;let delivered=false;let routeFailed=false
+ await view.page.route('**'+f.endpoint+'/preview',async route=>{try{const response=await route.fetch();held=true;await gate.promise;await route.fulfill({response});delivered=true}catch{routeFailed=true;events.push('scope-switch-route-failed')}})
  await f.form.getByRole('button',{name:f.review,exact:true}).click();await wait(()=>held)
  await auth(view.context,nextPrincipal);await view.page.bringToFront()
  const session=view.page.waitForResponse(r=>r.url().endsWith('/api/auth/session'))
  // Auth.js broadcasts this same session event after another tab signs in.
  await view.page.evaluate(()=>{const channel=new BroadcastChannel('next-auth');channel.postMessage({event:'session',data:{trigger:'getSession'}});channel.close()})
- assert.equal((await session).status(),200)
+ const switched=await session;assert.equal(switched.status(),200);assert.equal((await switched.json()).user.id,nextPrincipal.id)
  await wait(async()=>await f.form.locator(`#${f.prefix}-employee-${pair[0].id}`).count()===0)
- await f.form.locator(`#${f.prefix}-effective-from`).waitFor()
- assert.equal(await f.form.locator(`#${f.prefix}-effective-from`).inputValue(),'')
- gate.release();await view.page.unroute('**'+f.endpoint+'/preview')
+ gate.release();await wait(()=>delivered||routeFailed);assert.equal(routeFailed,false)
+ await view.page.unroute('**'+f.endpoint+'/preview')
+ if(await f.form.count())assert.equal(await f.form.locator(`#${f.prefix}-effective-from`).inputValue(),'')
  assert.equal(await view.page.locator(`[id="${f.prefix}-publish-confirm"]`).count(),0)
  record(`${kind}-real-session-switch-discards-held-preview`)
 }
