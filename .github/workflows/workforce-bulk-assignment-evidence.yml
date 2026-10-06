@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/workforce-bulk-assignment-evidence.yml'
       - 'scripts/workforce-bulk-*.mjs'
+      - 'scripts/_rls.mjs'
       - 'scripts/ci/fixtures/workforce-native-zoom-extension/**'
       - 'src/components/providers.tsx'
       - 'src/__tests__/workforce-bulk-assignment-*.test.ts'
@@ -86,6 +87,7 @@ jobs:
           echo "::add-mask::$WF_PII_SECRET"
           {
             echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_bulk_browser"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_bulk_browser"
             echo "WF_BULK_ADMIN_TEST_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/workforce_bulk_browser"
             echo "DATABASE_URL=postgresql://wf_bulk_browser:${WF_BULK_DATABASE_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_bulk_browser"
             echo "WF_BULK_APP_TEST_URL=postgresql://wf_bulk_browser:${WF_BULK_DATABASE_PASSWORD}@127.0.0.1:${PG_PORT}/workforce_bulk_browser"

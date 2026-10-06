@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { PrismaClient } from '@prisma/client'
+import { makeRlsTestPrisma } from './_rls.mjs'
 
 // Explicit disposable fixture: never a production migration/recovery entrypoint.
 assert.equal(process.env.WF_BULK_TEST, '1')
@@ -13,10 +13,11 @@ assert.equal(target.pathname, '/workforce_bulk_browser')
 assert.equal(target.username, 'postgres')
 const password = process.env.WF_BULK_DATABASE_PASSWORD
 assert.match(password, /^[a-f0-9]{48}$/)
-const db = new PrismaClient({ datasourceUrl: target.toString() })
+const db = makeRlsTestPrisma(target.toString())
 const sources = []
 function source(path) { const bytes=readFileSync(path);sources.push({path,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});return bytes.toString() }
 function exact(text, pattern) { const match=text.match(pattern);assert.ok(match,'Required candidate SQL block missing');return match[0] }
+source('scripts/_rls.mjs')
 const foundation=source('prisma/migrations/20260828223000_workforce_h3_foundation/migration.sql')
 const lifecycle=source('prisma/migrations/20260829114500_workforce_future_only_lifecycle/migration.sql')
 const site=source('prisma/migrations/20260830050000_workforce_site_assignments/migration.sql')
