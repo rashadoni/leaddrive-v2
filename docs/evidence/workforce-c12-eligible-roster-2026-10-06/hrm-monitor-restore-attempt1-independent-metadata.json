@@ -1,0 +1,182 @@
+{
+  "observed_at": "2026-10-06 09:08:54 UTC",
+  "run": {
+    "id": 37439083751,
+    "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+    "event": "pull_request",
+    "run_attempt": 2,
+    "status": "in_progress",
+    "conclusion": null,
+    "created_at": "2026-10-06T08:52:48Z",
+    "updated_at": "2026-10-06T09:07:56Z",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083751"
+  },
+  "failed_attempt": {
+    "id": 112188072766,
+    "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+    "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "started_at": "2026-10-06T08:52:52Z",
+    "completed_at": "2026-10-06T09:06:27Z",
+    "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083751/job/112188072766",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:53Z",
+        "completed_at": "2026-10-06T08:52:54Z"
+      },
+      {
+        "number": 2,
+        "name": "Initialize containers",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:54Z",
+        "completed_at": "2026-10-06T08:53:07Z"
+      },
+      {
+        "number": 3,
+        "name": "Checkout candidate merge and exact base",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:53:07Z",
+        "completed_at": "2026-10-06T08:53:19Z"
+      },
+      {
+        "number": 4,
+        "name": "Resolve fenced ephemeral ports and masked secrets",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:53:19Z",
+        "completed_at": "2026-10-06T08:53:19Z"
+      },
+      {
+        "number": 5,
+        "name": "Setup Node",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:53:19Z",
+        "completed_at": "2026-10-06T08:53:26Z"
+      },
+      {
+        "number": 6,
+        "name": "Install candidate dependencies",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:53:26Z",
+        "completed_at": "2026-10-06T08:56:15Z"
+      },
+      {
+        "number": 7,
+        "name": "Apply selected base schema, canonical guards and actual additive migration",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:56:15Z",
+        "completed_at": "2026-10-06T09:02:03Z"
+      },
+      {
+        "number": 8,
+        "name": "Execute mandatory real PostgreSQL restore concurrency and rollback tests",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T09:02:03Z",
+        "completed_at": "2026-10-06T09:02:05Z"
+      },
+      {
+        "number": 9,
+        "name": "Execute real credentials and authorized restore API scenarios",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T09:02:05Z",
+        "completed_at": "2026-10-06T09:02:20Z"
+      },
+      {
+        "number": 10,
+        "name": "Install Chromium on hosted Ubuntu",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T09:02:20Z",
+        "completed_at": "2026-10-06T09:02:48Z"
+      },
+      {
+        "number": 11,
+        "name": "Execute real rendered manual restore UI, session, retry and rollback scenarios",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-10-06T09:02:48Z",
+        "completed_at": "2026-10-06T09:06:24Z"
+      },
+      {
+        "number": 12,
+        "name": "Upload complete non-secret restore receipts",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T09:06:24Z",
+        "completed_at": "2026-10-06T09:06:25Z"
+      },
+      {
+        "number": 22,
+        "name": "Post Setup Node",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-06T09:06:25Z",
+        "completed_at": "2026-10-06T09:06:25Z"
+      },
+      {
+        "number": 23,
+        "name": "Post Checkout candidate merge and exact base",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T09:06:25Z",
+        "completed_at": "2026-10-06T09:06:25Z"
+      },
+      {
+        "number": 24,
+        "name": "Stop containers",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T09:06:25Z",
+        "completed_at": "2026-10-06T09:06:25Z"
+      },
+      {
+        "number": 25,
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T09:06:25Z",
+        "completed_at": "2026-10-06T09:06:25Z"
+      }
+    ]
+  },
+  "retry_snapshot": [
+    {
+      "id": 112193903402,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "run_attempt": 2,
+      "status": "in_progress",
+      "conclusion": null,
+      "started_at": "2026-10-06T09:07:55Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 11401037156,
+      "name": "workforce-policy-restore-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-1",
+      "digest": "sha256:a097c9d16371fce471afdcf01367118d0e18027d3956b2d9532e0d821f766fb8",
+      "size_in_bytes": 100833,
+      "expired": false,
+      "created_at": "2026-10-06T09:06:25Z",
+      "workflow_run": {
+        "id": 37439083751,
+        "repository_id": 1362346481,
+        "head_repository_id": 1362346481,
+        "head_branch": "codex/hrm-588-validation-20261005",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+      }
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "status": "READY_BOUNDED_DORMANT_CANDIDATE_INDEPENDENTLY_ACCEPTED",
+  "repository": "rashadoni/leaddrive-v2",
+  "pr": 589,
+  "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "tree": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a",
+  "required_checks_pass": 5,
+  "additional_checks_pass": 6,
+  "optional_build": "SKIPPED",
+  "workflows_success": 9,
+  "restore": {
+    "attempt1": "FAIL before any of 15 cases, initial UI locator TimeoutError, cause UNKNOWN, retained",
+    "attempt2": "PASS 15 unique cases, 2 cleanup checks, 34 source bindings verified; no code changes between attempts"
+  },
+  "owner_validation": {
+    "hrm_pass": 138,
+    "exporter_pure_pass": 9,
+    "exporter_synthetic_pg_checks_pass": 11,
+    "mtm_regression_pass": 191,
+    "bounded_typecheck": "PASS",
+    "targeted_eslint": "PASS"
+  },
+  "independent_source_validation": {
+    "status": "ACCEPTED",
+    "source_files": 8758,
+    "changed_paths": 9,
+    "exporter_pure_pass": 9,
+    "roster_guard_pass": 1,
+    "optional_roster_pg_skipped": 14,
+    "plan_rows_verified": 79
+  },
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted_percent": 59,
+    "c12_008": "PARTIAL"
+  },
+  "next_slice": "Prepared source-bound finite telemetry/redaction proposal, no implementation changes in this candidate",
+  "backup_coordination": "User coordinates existing backup owner and isolated restored copy. Ordinary already-authorized read does not require a new blanket approval. Agent has not initiated Contabo actions; exporter installs no grants/services and exports no application rows or credentials.",
+  "not_established": [
+    "Authoritative historical api_keys creation/baseline and full replay",
+    "External PGSERVICE resolution",
+    "Operational monitoring schedule, delivery, SLO or activation",
+    "Representative load/restore and signed physical Android/pilot acceptance"
+  ],
+  "scope_restrictions": [
+    "No merge/deploy/activation",
+    "Support592 untouched",
+    "Migration history unchanged",
+    "No raw CI logs/screenshots or actual backup dump accessed"
+  ],
+  "independent_terminal_receipt": {
+    "file": "hrm-monitor-independent-hosted-terminal-dc91-20261006.json",
+    "sha256": "bd8ac5abffa7f5248d468414221df142f834eb9348b36a61f094e31d8c0aa531"
+  }
+}

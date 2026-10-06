@@ -1,0 +1,338 @@
+{
+  "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "tree": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a",
+  "checks": [
+    {
+      "id": 112193903402,
+      "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T09:07:55Z",
+      "completed_at": "2026-10-06T09:19:46Z"
+    },
+    {
+      "id": 112188184591,
+      "name": "typecheck",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:53:09Z",
+      "completed_at": "2026-10-06T09:11:22Z"
+    },
+    {
+      "id": 112188184547,
+      "name": "static-checks",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:53:09Z",
+      "completed_at": "2026-10-06T09:04:36Z"
+    },
+    {
+      "id": 112188077725,
+      "name": "scan",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:52:54Z",
+      "completed_at": "2026-10-06T08:53:12Z"
+    },
+    {
+      "id": 112188075185,
+      "name": "GitHub-hosted Linux production build",
+      "status": "completed",
+      "conclusion": "skipped",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:52:49Z",
+      "completed_at": "2026-10-06T08:52:49Z"
+    },
+    {
+      "id": 112188073867,
+      "name": "pr-scope",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:52:52Z",
+      "completed_at": "2026-10-06T08:53:06Z"
+    },
+    {
+      "id": 112188073468,
+      "name": "Authenticated Workforce policy version browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:52:53Z",
+      "completed_at": "2026-10-06T08:59:38Z"
+    },
+    {
+      "id": 112188072848,
+      "name": "Authenticated Workforce calendar browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:52:52Z",
+      "completed_at": "2026-10-06T09:01:31Z"
+    },
+    {
+      "id": 112188072618,
+      "name": "Authenticated Workforce manager Today browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:52:53Z",
+      "completed_at": "2026-10-06T09:01:06Z"
+    },
+    {
+      "id": 112188072592,
+      "name": "runner-policy",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:52:51Z",
+      "completed_at": "2026-10-06T08:53:39Z"
+    },
+    {
+      "id": 112188072522,
+      "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:52:52Z",
+      "completed_at": "2026-10-06T09:00:36Z"
+    },
+    {
+      "id": 112188072112,
+      "name": "Authenticated Workforce exception report browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "started_at": "2026-10-06T08:52:52Z",
+      "completed_at": "2026-10-06T08:58:21Z"
+    }
+  ],
+  "runs": [
+    {
+      "id": 37439083707,
+      "name": "Runner policy",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "event": "pull_request",
+      "path": ".github/workflows/runner-policy.yml"
+    },
+    {
+      "id": 37439083965,
+      "name": "Secret scan",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "event": "pull_request",
+      "path": ".github/workflows/gitleaks.yml"
+    },
+    {
+      "id": 37439083760,
+      "name": "Workforce policy version browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "event": "pull_request",
+      "path": ".github/workflows/workforce-policy-version-browser-evidence.yml"
+    },
+    {
+      "id": 37439083770,
+      "name": "Workforce policy employee impact evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "event": "pull_request",
+      "path": ".github/workflows/workforce-policy-employee-impact-evidence.yml"
+    },
+    {
+      "id": 37439083738,
+      "name": "Workforce calendar browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "event": "pull_request",
+      "path": ".github/workflows/workforce-calendar-browser-evidence.yml"
+    },
+    {
+      "id": 37439083802,
+      "name": "Workforce manager Today browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "event": "pull_request",
+      "path": ".github/workflows/workforce-manager-today-browser-evidence.yml"
+    },
+    {
+      "id": 37439083722,
+      "name": "Workforce exception report browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "event": "pull_request",
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml"
+    },
+    {
+      "id": 37439083798,
+      "name": "PR checks",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "event": "pull_request",
+      "path": ".github/workflows/pr-checks.yml"
+    },
+    {
+      "id": 37439083751,
+      "name": "Workforce policy restore writer evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 2,
+      "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "event": "pull_request",
+      "path": ".github/workflows/workforce-policy-restore-evidence.yml"
+    }
+  ],
+  "artifactMetadata": [
+    {
+      "run": 37439083760,
+      "name": "Workforce policy version browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "artifacts": [
+        {
+          "id": 11400034498,
+          "name": "workforce-policy-version-browser-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-1",
+          "size": 909492,
+          "digest": "sha256:461dfa7626126f7fca9fa767490d700925da1018fd776e20161d35e4f92b2e9f",
+          "expired": false,
+          "workflowHead": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+        }
+      ]
+    },
+    {
+      "run": 37439083770,
+      "name": "Workforce policy employee impact evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "artifacts": [
+        {
+          "id": 11400687215,
+          "name": "workforce-policy-employee-impact-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-1",
+          "size": 830034,
+          "digest": "sha256:d5f89f691b6eb6b39dece88e7d87d1fffea4a17bc8b0601c475a58f9d097e171",
+          "expired": false,
+          "workflowHead": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+        }
+      ]
+    },
+    {
+      "run": 37439083738,
+      "name": "Workforce calendar browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "artifacts": [
+        {
+          "id": 11401026497,
+          "name": "workforce-calendar-browser-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-1",
+          "size": 8540364,
+          "digest": "sha256:a44a7a8625e77604cc6ebf8db3dafa47a9f350ccc1d9ead35f3f4eeeb974df7c",
+          "expired": false,
+          "workflowHead": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+        }
+      ]
+    },
+    {
+      "run": 37439083802,
+      "name": "Workforce manager Today browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "artifacts": [
+        {
+          "id": 11401042922,
+          "name": "workforce-manager-today-browser-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-1",
+          "size": 7096975,
+          "digest": "sha256:0f804f78859521b7d8bfee302ead627733e4931d8a89408db9d11a2b627cd2b5",
+          "expired": false,
+          "workflowHead": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+        }
+      ]
+    },
+    {
+      "run": 37439083722,
+      "name": "Workforce exception report browser evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "artifacts": [
+        {
+          "id": 11400238690,
+          "name": "workforce-exception-report-browser-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-1",
+          "size": 650644,
+          "digest": "sha256:9b78518515f13fb3041baef7a75bd0b9f64b0883a62ebdcba8a6ea9be853c298",
+          "expired": false,
+          "workflowHead": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+        }
+      ]
+    },
+    {
+      "run": 37439083751,
+      "name": "Workforce policy restore writer evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 2,
+      "artifacts": [
+        {
+          "id": 11401188491,
+          "name": "workforce-policy-restore-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-2",
+          "size": 883985,
+          "expired": false,
+          "digest": "sha256:e2e982b6547b44f23127e0e41f52bcd8c5ef883a5e95807cda493f9cbbba4b65",
+          "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+        },
+        {
+          "id": 11401037156,
+          "name": "workforce-policy-restore-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-1",
+          "size": 100833,
+          "expired": false,
+          "digest": "sha256:a097c9d16371fce471afdcf01367118d0e18027d3956b2d9532e0d821f766fb8",
+          "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+        }
+      ]
+    }
+  ],
+  "restoreArtifacts": [
+    {
+      "id": 11401188491,
+      "name": "workforce-policy-restore-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-2",
+      "size": 883985,
+      "expired": false,
+      "digest": "sha256:e2e982b6547b44f23127e0e41f52bcd8c5ef883a5e95807cda493f9cbbba4b65",
+      "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+    },
+    {
+      "id": 11401037156,
+      "name": "workforce-policy-restore-e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a-1",
+      "size": 100833,
+      "expired": false,
+      "digest": "sha256:a097c9d16371fce471afdcf01367118d0e18027d3956b2d9532e0d821f766fb8",
+      "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+    }
+  ]
+}

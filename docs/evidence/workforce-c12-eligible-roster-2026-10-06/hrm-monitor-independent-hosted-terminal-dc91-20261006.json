@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent_read_only_worker",
+  "reviewed_at": "2026-10-06T09:25:59.938606+00:00",
+  "status": "ACCEPTED_BOUNDED_SOURCE_AND_BASELINE_QUALIFIED_HOSTED_GATES",
+  "repository": "rashadoni/leaddrive-v2",
+  "pr": 589,
+  "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "parent": "5f87cc94a684d5083804f0dae23116384dda24b4",
+  "tree": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a",
+  "synthetic_parents": [
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+  ],
+  "synthetic_tree_equals_candidate": true,
+  "fresh_guard": {
+    "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "pr": {
+      "number": 589,
+      "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+      "base": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "synthetic": "e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a"
+    },
+    "synthetic": {
+      "sha": "e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a",
+      "tree": "6f0779e839c6c684107a17314798dbcb0ac1b339",
+      "parents": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+        "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e"
+      ]
+    }
+  },
+  "source_acceptance": {
+    "receipt": {
+      "path": "/tmp/hrm-monitor-independent-source-dc91-20261006.json",
+      "bytes": 11473,
+      "sha256": "d6dcd75d951450ff5d36ab197d2a809fcf9e80a4cb9eaa0365a07e6f28924413"
+    },
+    "remote_blobs_verified": 8758,
+    "delta_paths": 9,
+    "base_files_unchanged": 8749,
+    "findings": {
+      "P0": [],
+      "P1": [],
+      "P2": [],
+      "P3": []
+    },
+    "resolved_preliminary_findings_preserved_in_source_receipt": true
+  },
+  "hosted": {
+    "mandatory_checks": [
+      {
+        "id": 112188184591,
+        "name": "typecheck",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:53:09Z",
+        "completed_at": "2026-10-06T09:11:22Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083798/job/112188184591",
+        "app_id": 15368
+      },
+      {
+        "id": 112188184547,
+        "name": "static-checks",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:53:09Z",
+        "completed_at": "2026-10-06T09:04:36Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083798/job/112188184547",
+        "app_id": 15368
+      },
+      {
+        "id": 112188077725,
+        "name": "scan",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:54Z",
+        "completed_at": "2026-10-06T08:53:12Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083965/job/112188077725",
+        "app_id": 15368
+      },
+      {
+        "id": 112188073867,
+        "name": "pr-scope",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:52Z",
+        "completed_at": "2026-10-06T08:53:06Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083798/job/112188073867",
+        "app_id": 15368
+      },
+      {
+        "id": 112188072592,
+        "name": "runner-policy",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:51Z",
+        "completed_at": "2026-10-06T08:53:39Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083707/job/112188072592",
+        "app_id": 15368
+      }
+    ],
+    "additional_latest_checks": [
+      {
+        "id": 112193903402,
+        "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T09:07:55Z",
+        "completed_at": "2026-10-06T09:19:46Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083751/job/112193903402",
+        "app_id": 15368
+      },
+      {
+        "id": 112188073468,
+        "name": "Authenticated Workforce policy version browser evidence",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:53Z",
+        "completed_at": "2026-10-06T08:59:38Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083760/job/112188073468",
+        "app_id": 15368
+      },
+      {
+        "id": 112188072848,
+        "name": "Authenticated Workforce calendar browser evidence",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:52Z",
+        "completed_at": "2026-10-06T09:01:31Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083738/job/112188072848",
+        "app_id": 15368
+      },
+      {
+        "id": 112188072618,
+        "name": "Authenticated Workforce manager Today browser evidence",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:53Z",
+        "completed_at": "2026-10-06T09:01:06Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083802/job/112188072618",
+        "app_id": 15368
+      },
+      {
+        "id": 112188072522,
+        "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:52Z",
+        "completed_at": "2026-10-06T09:00:36Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083770/job/112188072522",
+        "app_id": 15368
+      },
+      {
+        "id": 112188072112,
+        "name": "Authenticated Workforce exception report browser evidence",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T08:52:52Z",
+        "completed_at": "2026-10-06T08:58:21Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083722/job/112188072112",
+        "app_id": 15368
+      }
+    ],
+    "optional_build": [
+      {
+        "id": 112188075185,
+        "name": "GitHub-hosted Linux production build",
+        "head_sha": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-06T08:52:49Z",
+        "completed_at": "2026-10-06T08:52:49Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37439083798/job/112188075185",
+        "app_id": 15368
+      }
+    ],
+    "run_count": 9,
+    "latest_success_checks": 11,
+    "all_attempt_jobs_count": 13,
+    "artifact_count": 7,
+    "all_current_runs_success": true,
+    "restore_only_run_with_attempt2": true,
+    "metadata_snapshot": {
+      "path": "/tmp/hrm-monitor-independent-terminal-metadata.json",
+      "bytes": 71090,
+      "sha256": "f4fc65c95cf8ff912116c05c2cf270bd27ae375dd63583e8ef90f92ed08a6d86"
+    },
+    "all_jobs_steps_and_artifacts_metadata_reviewed": true,
+    "other_five_browser_artifacts": "METADATA_ONLY; payloads not inspected"
+  },
+  "restore": {
+    "attempt1": "FAIL before first case: 0/15 completed, 2 cleanup PASS; TimeoutError at query locator; cause UNKNOWN",
+    "attempt2": "PASS 15 unique cases, 2 cleanup PASS, 10 successful authentication records; all 34 source bindings independently verified against exact head",
+    "review": {
+      "path": "/tmp/hrm-monitor-restore-attempt2-independent-review-20261006.json",
+      "bytes": 20772,
+      "sha256": "12cedcbdc2dc9c78920bf55490ae79df1eb79e124394db50d5b063ff101116e8"
+    },
+    "historical_heads": "Prior 6843 failed/retried restore and prior 5f87 first-attempt success remain separate historical evidence; neither substitutes for dc91."
+  },
+  "baseline_qualification": {
+    "typecheck_baseline_pairs": 64,
+    "baseline_preserved_from_main": true,
+    "test_baseline_known_files": 18,
+    "interpretation": "Hosted syntax/missing-module/undefined-name and defect-shaped baseline gates plus test-baseline gate succeeded. Advisory global compiler diagnostics may remain. No raw logs read; no current all-family diagnostic counts, per-path family matrix, actual failed suite identities or full global clean compiler/suite claim inferred from job success."
+  },
+  "test_credit_boundaries": {
+    "independent_local": "9 exporter node tests PASS; roster 1 pure PASS and 14 PG SKIP, as preserved in source receipt. No tests rerun for terminal metadata review.",
+    "owner_local": "138 HRM tests PASS = 87 actual synthetic PG +51 pure; exporter synthetic PG safety checks and191 MTM tests owner-run. These are source-bound owner evidence, not independently executed or automatic hosted credit.",
+    "hosted_opt_in": "Standard PR workflow does not provide WORKFORCE_ROSTER_HEALTH_TEST_DATABASE_URL and does not directly invoke exporter node tests. No hosted credit inferred for 14 new roster PG cases, prior opt-in reconciliation PG cases, exporter tests or all87 local PG cases."
+  },
+  "durability": {
+    "source_archive_commit": "4856226e0fc42bc2c50c2cf6fc8a72c1654c56e9",
+    "source_archive_files_independently_verified": 17,
+    "latest_failure_archive_commit_owner_reported": "712058654c72064214033fb9840cce483abb94aa",
+    "final_terminal_receipt": "LOCAL_ONLY pending owner archival; no claim already durable"
+  },
+  "remaining_scope": {
+    "C12_008": "PARTIAL",
+    "roadmap_unique_ids": 161,
+    "done": 82,
+    "open": 79,
+    "weighted_progress": "59%",
+    "blockers": [
+      "Historical clean migration remains blocked by missing api_keys at20260811150000_zapier_webhook_api_key_provenance; schema-only exporter is dormant and does not supply authentic historical provenance or a full executable baseline.",
+      "Representative full staging, remaining density/churn/query-plan/SLO coverage, delivery/alert wiring and separately approved activation remain open.",
+      "Eligible-roster aggregate is bounded and dormant; zero/unknown and overlapping counts retain documented meaning. Catalog-only export omits application data and is not a complete historical schema reconstruction."
+    ],
+    "no_global_completion_or_release_authorization": true
+  },
+  "actions": {
+    "source_changes": false,
+    "remote_writes": false,
+    "raw_logs_read": false,
+    "screenshots_read": false,
+    "database_reruns": false,
+    "merge_deploy_activation": false
+  },
+  "support_files": [
+    {
+      "path": "/tmp/hrm-monitor-independent-terminal-metadata.json",
+      "bytes": 71090,
+      "sha256": "f4fc65c95cf8ff912116c05c2cf270bd27ae375dd63583e8ef90f92ed08a6d86"
+    },
+    {
+      "path": "/tmp/hrm-monitor-restore-attempt2-independent-review-20261006.json",
+      "bytes": 20772,
+      "sha256": "12cedcbdc2dc9c78920bf55490ae79df1eb79e124394db50d5b063ff101116e8"
+    },
+    {
+      "path": "/tmp/hrm-monitor-restore-attempt2-sanitized.json",
+      "bytes": 15958,
+      "sha256": "94779113e2b90899944040c023db5e67e042e84042b1a21b899db02273dc043d"
+    },
+    {
+      "path": "/tmp/hrm-monitor-restore-attempt2-root.json",
+      "bytes": 754,
+      "sha256": "29575c4bc805b63d5d4529b92a399682f73d2971e79ddb891aae827a362d2022"
+    },
+    {
+      "path": "/tmp/hrm-monitor-restore-attempt1-independent-review-20261006.json",
+      "bytes": 3041,
+      "sha256": "efad530fbc6e6e55119c3f37f0c7054d159ca0734ebe06eddc886d55fb4a582a"
+    },
+    {
+      "path": "/tmp/hrm-monitor-restore-attempt1-sanitized.json",
+      "bytes": 7471,
+      "sha256": "d2cea788176f62117ee5a8e9d73c40e7a792b0bf74c91407f2d67ed77f812a94"
+    },
+    {
+      "path": "/tmp/hrm-monitor-independent-source-dc91-20261006.json",
+      "bytes": 11473,
+      "sha256": "d6dcd75d951450ff5d36ab197d2a809fcf9e80a4cb9eaa0365a07e6f28924413"
+    },
+    {
+      "path": "/tmp/hrm-monitor-independent-durable-4856-20261006.json",
+      "bytes": 6841,
+      "sha256": "29bd8216d24ab21ad7c35f65ccf37816d5da7e5a6b65763e361a6039541f8592"
+    },
+    {
+      "path": "/tmp/hrm-monitor-owner-validation.json",
+      "bytes": 5148,
+      "sha256": "0e098602552660d11618ce162c0752239c8ce2e0f4988614db805f208d7df07c"
+    }
+  ]
+}

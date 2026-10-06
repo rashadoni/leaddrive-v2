@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent /root/pr585_independent_review",
+  "reviewed_at": "2026-10-06T09:08:55.354284+00:00",
+  "status": "CONFIRMED_FAILED_ATTEMPT_HISTORY_RETRY_PENDING",
+  "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "synthetic": "e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a",
+  "run_id": 37439083751,
+  "failed_attempt": 1,
+  "failed_job_id": 112188072766,
+  "artifact_id": 11401037156,
+  "artifact_size": 100833,
+  "artifact_api_digest": "sha256:a097c9d16371fce471afdcf01367118d0e18027d3956b2d9532e0d821f766fb8",
+  "receipt_whole_read": true,
+  "source_bindings_verified": 34,
+  "source_binding_method": "Local exact bytes/length/SHA256 and GitblobSHA1 against independently fetched immutable dc91 tree; no oldhead binding inheritance.",
+  "failed_finite_evidence": {
+    "stage_label": "seed",
+    "failure": {
+      "stage": "seed",
+      "name": "TimeoutError",
+      "sourcePosition": {
+        "line": 127,
+        "column": 57
+      },
+      "diagnostic": "Fixed category/position only; no raw error, stack, credentials, tokens, cookies or response body"
+    },
+    "completed_cases": 0,
+    "required_cases": 15,
+    "cleanup_pass": 2,
+    "authentication": [
+      {
+        "csrfStatus": 200,
+        "callbackStatus": 200,
+        "actualPrincipalAndTenant": true
+      }
+    ]
+  },
+  "source_location": {
+    "path": "scripts/workforce-policy-restore-browser-evidence.mjs",
+    "line": 127,
+    "column": 57,
+    "operation": "await page.locator(\"#workforce-policy-version-query\").waitFor()",
+    "context": "After page.goto(...domcontentloaded); before first UI case. Defaulttimeout120000 configured atline121."
+  },
+  "classification": "TimeoutError waiting for initial policy-version query locator. Generic stage label seed does not prove database seeding failed. None of15cases completed; not15known assertion failures. Authentication finite records and precedingPG/API steps pass but do not establish rendered page success. Underlying cause UNKNOWN; no product/flaky/network/infra diagnosis inferred.",
+  "retry": "Owner requested one unchanged-head failed-job rerun; fresh metadata shows attempt2/job112193903402 IN_PROGRESS. No success inferred. No retry initiated by reviewer.",
+  "support": [
+    {
+      "path": "/tmp/hrm-monitor-restore-attempt1-sanitized.json",
+      "bytes": 7471,
+      "sha256": "d2cea788176f62117ee5a8e9d73c40e7a792b0bf74c91407f2d67ed77f812a94"
+    },
+    {
+      "path": "/tmp/hrm-monitor-restore-attempt1-independent-metadata.json",
+      "bytes": 5803,
+      "sha256": "58fe0611722b987a15278b0fd5a38fbf88ef6af5dc6dd1e2a4d5a5e1886c3a62"
+    }
+  ],
+  "limits": [
+    "Only owner-supplied sanitizedJSON and freshGitHub metadata/source inspected. Artifact ZIP/PNG/rawlogs not opened by reviewer.",
+    "No production/activation/wholeUI/a11y claim.",
+    "Prior6843restorefailure and5f87success remain distinct historical runs, not explanation of this failure.",
+    "Exactdc91 terminal hostedacceptance withheld until remaining checks/retry terminal."
+  ]
+}

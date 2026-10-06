@@ -1,0 +1,24 @@
+{
+  "head": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "synthetic": "e6d9e7a1fe1245a7009e9bd0a01c3dc00473ec1a",
+  "run": 37439083751,
+  "attempt": 2,
+  "job": 112193903402,
+  "artifact": 11401188491,
+  "zipBytes": 883985,
+  "zipSha256": "e2e982b6547b44f23127e0e41f52bcd8c5ef883a5e95807cda493f9cbbba4b65",
+  "onlyReadMember": "restore-rendered-ui-receipt.json",
+  "safeReceiptBytes": 15958,
+  "safeReceiptSha256": "94779113e2b90899944040c023db5e67e042e84042b1a21b899db02273dc043d",
+  "status": "PASS",
+  "casesPassed": 15,
+  "cleanupPassed": 2,
+  "sourceBindingsVerifiedLocal": 34,
+  "attempt1Preserved": {
+    "status": "FAIL",
+    "completedCases": 0,
+    "requiredCases": 15,
+    "rootCause": "UNKNOWN"
+  },
+  "noRawLogsOrScreenshotsOpened": true
+}

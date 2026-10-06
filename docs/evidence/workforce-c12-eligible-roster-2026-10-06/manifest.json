@@ -73,5 +73,65 @@
     "name": "hrm-monitor-mtm-regression.json",
     "bytes": 63147,
     "sha256": "ba32e7d4c450d334bad2fb75048e77509178152dd47920ccd5ff76f0388a0b83"
+  },
+  {
+    "name": "hrm-monitor-independent-durable-4856-20261006.json",
+    "bytes": 6841,
+    "sha256": "29bd8216d24ab21ad7c35f65ccf37816d5da7e5a6b65763e361a6039541f8592"
+  },
+  {
+    "name": "hrm-monitor-restore-attempt1-sanitized.json",
+    "bytes": 7471,
+    "sha256": "d2cea788176f62117ee5a8e9d73c40e7a792b0bf74c91407f2d67ed77f812a94"
+  },
+  {
+    "name": "hrm-monitor-restore-attempt1-root.json",
+    "bytes": 1046,
+    "sha256": "9fc01b540d9be56b546b2cde049034c88da5be46c67c0a13e7c9543e4cd28e20"
+  },
+  {
+    "name": "hrm-monitor-restore-attempt1-independent-metadata.json",
+    "bytes": 5803,
+    "sha256": "58fe0611722b987a15278b0fd5a38fbf88ef6af5dc6dd1e2a4d5a5e1886c3a62"
+  },
+  {
+    "name": "hrm-monitor-restore-attempt1-independent-review-20261006.json",
+    "bytes": 3041,
+    "sha256": "efad530fbc6e6e55119c3f37f0c7054d159ca0734ebe06eddc886d55fb4a582a"
+  },
+  {
+    "name": "hrm-monitor-root-terminal-metadata.json",
+    "bytes": 11309,
+    "sha256": "11ce2ab422cfdd303b60643f257740c4c2bca8dc774826068c5260f14e25bd8e"
+  },
+  {
+    "name": "hrm-monitor-root-terminal-acceptance.json",
+    "bytes": 2409,
+    "sha256": "1aa46e930abf7008346e4c180d9bae0f396135480dd3a15e36bb6f0290e67f07"
+  },
+  {
+    "name": "hrm-monitor-independent-terminal-metadata.json",
+    "bytes": 71090,
+    "sha256": "f4fc65c95cf8ff912116c05c2cf270bd27ae375dd63583e8ef90f92ed08a6d86"
+  },
+  {
+    "name": "hrm-monitor-independent-hosted-terminal-dc91-20261006.json",
+    "bytes": 12888,
+    "sha256": "bd8ac5abffa7f5248d468414221df142f834eb9348b36a61f094e31d8c0aa531"
+  },
+  {
+    "name": "hrm-monitor-restore-attempt2-independent-review-20261006.json",
+    "bytes": 20772,
+    "sha256": "12cedcbdc2dc9c78920bf55490ae79df1eb79e124394db50d5b063ff101116e8"
+  },
+  {
+    "name": "hrm-monitor-restore-attempt2-sanitized.json",
+    "bytes": 15958,
+    "sha256": "94779113e2b90899944040c023db5e67e042e84042b1a21b899db02273dc043d"
+  },
+  {
+    "name": "hrm-monitor-restore-attempt2-root.json",
+    "bytes": 754,
+    "sha256": "29575c4bc805b63d5d4529b92a399682f73d2971e79ddb891aae827a362d2022"
   }
 ]
