@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "status": "READY_BOUNDED_DORMANT_REQUEST_LOGGING_CANDIDATE_INDEPENDENTLY_ACCEPTED",
+  "repository": "rashadoni/leaddrive-v2",
+  "pr": 589,
+  "head": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+  "tree": "5b94c2111dbe51ceb74b1e803e142fff74e66cbc",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "7b517816410e29d84a03f368954541ca180b79f6",
+  "parent": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "fixed_request_catches": 4,
+  "changed_paths": 6,
+  "checks": {
+    "mandatory_pass": 5,
+    "additional_pass": 6,
+    "optional_build": "SKIPPED",
+    "successful_workflows": 9,
+    "all_attempts": 1
+  },
+  "restore": {
+    "unique_cases_pass": 15,
+    "cleanup_pass": 2,
+    "authentication_records": 10,
+    "exact_source_bindings": 34,
+    "attempt": 1
+  },
+  "owner_validation": {
+    "focused_pass": 76,
+    "new_handler_cases": 27,
+    "privacy_cases": 16,
+    "regression_pass": 225,
+    "lint": "PASS",
+    "production_bounded_typecheck": "PASS",
+    "test_inclusive_typecheck": "2historicalTS2737sameasparent; no owned-code diagnostics; no globalcleanclaim"
+  },
+  "independent_source_validation": {
+    "tests_pass": 57,
+    "privacy_cases": 16,
+    "blobs_verified": 8762,
+    "changed_paths": 6,
+    "unchanged_parent_blobs": 8756,
+    "unresolved_findings": 0
+  },
+  "hosted_qualification": {
+    "typecheck_baseline_pairs": 64,
+    "test_baseline_known_files": 18,
+    "baselines_unchanged": true,
+    "no_globalcleancompiler_or_zerofailedsuite_claim": true,
+    "other_five_browser_payloads": "METADATA_ONLY"
+  },
+  "criteria_progress": {
+    "WF-C10-011": {
+      "status": "PLANNED",
+      "advance": "Fourrequestfailurepaths bounded with16privatecanaries",
+      "remaining": "45raw+1name directcalls,thenalias/shared/framework/destinationcoverage andanalytics/dashboardreview"
+    },
+    "WF-C12-002": {
+      "status": "PARTIAL",
+      "advance": "Threefiniteerrorlabels andonefinitewarninglabel, no highcardinalitydata",
+      "remaining": "Endtoendcardinality/privacy,collection/dashboardingestion,paging/SLO/delivery"
+    }
+  },
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted_percent": 59,
+    "C12_008": "PARTIAL"
+  },
+  "finite_remaining_batches": {
+    "today_timesheet_exceptions": 4,
+    "attendance": 9,
+    "configuration": 33
+  },
+  "exit_rule": "Consolidatecoverage/destinationmatrix afterfinitebatches. Closeonlywholecriterion; otherwise nameexactoperationalblocker and proceedindependentfault/fairness thenentitlementmatrix.",
+  "TS2737": "SharedMTMmock main/parent/candidatebyteequal;1nES2017reprofails,BigInt(1)passesandsamevalue; foreignfixtureuntouched,target/baselineunchanged",
+  "initial_history": "Newtestmissingbraceandboundedconfigomittednormalaugmentationcorrected; originalreportsretained",
+  "source_archive": "3cacbb4f6c273c22e55d258b0b0cb82f586ae05e",
+  "source_archive_files_verified": 31,
+  "backup_track": "Authenticapi_keysbaseline separatelycoordinated; noContabo action",
+  "restrictions": [
+    "No merge/deploy/activation",
+    "No appliedmigration/baseline/grant/credential edit",
+    "Support592unchanged",
+    "No rawCIlogs/screenshots/Mac/SSH"
+  ],
+  "test_limits": "Mockedauthwrappers/domainservices/Prisma; no endtoendauth/localPG claim",
+  "independent_terminal_receipt": {
+    "name": "hrm-request-independent-hosted-terminal-ef5d-20261006.json",
+    "bytes": 13918,
+    "sha256": "c6fb9ac26988a7b1c173423646c17e63018a75303e3593f969ae3512b403c67c"
+  }
+}

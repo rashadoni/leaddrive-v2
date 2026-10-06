@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "status": "PASS_SOURCE_ARCHIVE_DURABILITY_HOSTED_PENDING",
+  "reviewer": "independent_read_only_worker",
+  "reviewed_at": "2026-10-06T10:20:31.995160+00:00",
+  "archive_commit": "3cacbb4f6c273c22e55d258b0b0cb82f586ae05e",
+  "archive_tree": "1cb8100c88230a10643123bca5d5ca43f6d7eebe",
+  "archive_parent": "ef7b84f49da5ff899fc6ffa9b2eb26979c1a297f",
+  "directory": "docs/evidence/workforce-request-safe-logging-2026-10-06",
+  "source_head": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+  "verified_remote_files": 31,
+  "manifest_originals": 29,
+  "all_file_blob_hashes_and_manifest_localbytes_match": true,
+  "all_root_archive_elements_byte_equal": true,
+  "source_receipt_sha256": "65f981a14bace50c340530d6155cdeff5938b813c0a34c3094e18b20d534940b",
+  "source_support_files_exact": 26,
+  "prior34_safe_logging_blob_ids_preserved": true,
+  "prior29_eligible_roster_blob_ids_preserved": true,
+  "reproduction_bundle_nested_files_hash_verified": 6,
+  "README_whole_read": true,
+  "README_qualification": [
+    "Exactsource accepted; newheadhostedPENDING, parentchecksnotused.",
+    "Independent57 vsowner76+225, mockedauth/domainboundaries explicit.",
+    "TwohistoricalTS2737 and initialparse/augmentationconfig failures preserved; no globalcleancompiler or target/baselinechange.",
+    "Canonicalstatusesunchanged,C12PARTIAL82/161DONE79open59%; remaining45raw+1name calls notclosed.",
+    "No backup/Contabo/grant/credential/Support/merge/deploy/activation changes."
+  ],
+  "next_plan_qualification": {
+    "scope": "Preparation only; no nextbatchimplementation or activationcredit",
+    "groups": {
+      "today_timesheet_exceptions": 4,
+      "attendance": 9,
+      "configuration": 33
+    },
+    "typed_today_suppressed_log_branch_preserved_in_plan": true,
+    "typed_timesheet409_branch_preserved_in_plan": true,
+    "finite_exit_rule_preserved": true
+  },
+  "local_only_limit": "Three source/tree/mainmock responses remain localhashbound; immutableGitidentities permit recovery.",
+  "file_proof": [
+    {
+      "name": "README.md",
+      "bytes": 2051,
+      "sha256": "813da18598860c208accc29c10e64a175ac628281191989d223085ff85a71735",
+      "git_blob_sha": "26d782dd58362b012db207cdd9b7acaae0a14c78",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-base-tsconfig.json",
+      "bytes": 1150,
+      "sha256": "da6505463f78d263e34695b90bd70ca6458bf946ed78a3a9c7e3ae8ea2ab62bb",
+      "git_blob_sha": "aea37be484edf5e0e5da64d97fc5fb36f86054af",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-base-typecheck.txt",
+      "bytes": 250,
+      "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8",
+      "git_blob_sha": "bb9d15b6b7d8d06e09577039d837eab4486e173c",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-finite-remaining-plan.json",
+      "bytes": 20169,
+      "sha256": "949b85c5ec8b6120622e10f3b24a97281192f2cd3510516a9a630ae012ea0edb",
+      "git_blob_sha": "59413c4a2df636156e3bb86d94508b3fcea40ede",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-independent-final-bindings.json",
+      "bytes": 1575,
+      "sha256": "14c4090547cd21a9c9174e728fe45629632c6daa25dba03c5820a354e7d9bdee",
+      "git_blob_sha": "26a3f6542758b958d544c43bc107e9cb26ffa61d",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-independent-preliminary-20261006.json",
+      "bytes": 5196,
+      "sha256": "005042d3e51e01841a3cc5f699d995037f9e33ded363cb70588e7380dd1e42e6",
+      "git_blob_sha": "f7cca466de10739415b69bd3ef3e417548a03bfa",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-independent-remote-guard.json",
+      "bytes": 4616,
+      "sha256": "585e9a24a4be81157888f01db2a94476178b8fe64276fc5d5cf0bbfb7fe75cdc",
+      "git_blob_sha": "d09ad76ddbd38319518a3b97c2f6c60db9267d84",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-independent-review-bindings.json",
+      "bytes": 1205,
+      "sha256": "0547f661e11e501d4dee5ba4ae283a0094bc2a49440b80b673ddb32a0bc6d187",
+      "git_blob_sha": "5f72ea01088c80072d7fa8720a204222003d4d79",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-independent-source-ef5d-20261006.json",
+      "bytes": 14045,
+      "sha256": "65f981a14bace50c340530d6155cdeff5938b813c0a34c3094e18b20d534940b",
+      "git_blob_sha": "f68e0c03f4cab36ce341e09a9c8fee78143cdaf0",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-independent-tests.json",
+      "bytes": 23578,
+      "sha256": "29d4653649e2c1819dacd089ffef0016ad01e54a201e1684b50793b52f8aa9cf",
+      "git_blob_sha": "113ed86c7c9ee2c790951cad9db8a010356ef444",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-independent-tree-proof.json",
+      "bytes": 1655,
+      "sha256": "e11d39e268b13793ab19da0f173fa52353e547fac6de3f929a505b7b2340b641",
+      "git_blob_sha": "510af067bef7131871e2eede361467da8fc97174",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-initial-targeted-tests.json",
+      "bytes": 21178,
+      "sha256": "06b965644d71a06c24c86a9c5d2bc821bf35c988b73515b39b39686412edf9ff",
+      "git_blob_sha": "a10e5760db44fc8d8941eea6b6ea791624c38943",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-inventory.mjs",
+      "bytes": 2282,
+      "sha256": "5d537098ec8354483bbc4254abfa36bb6523569324fa43d8549b9629a955c036",
+      "git_blob_sha": "286966ac98fa329c434d12e1c85c7a4445c4077f",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-lint.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-owner-validation.json",
+      "bytes": 4702,
+      "sha256": "53e59f68f9c2578d6f1faeff1f8962bccdf8c322c629af8d41e3086c10f53023",
+      "git_blob_sha": "5cd3dbd5e82292c8d0a4e24993d235aa7a562d89",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-production-tsconfig-initial.json",
+      "bytes": 608,
+      "sha256": "5c9f050fabf7b1777a8087c5ab86a2c906ddf52351684148d3a32618d511ca77",
+      "git_blob_sha": "dade52fe84d16869da9ad847e0be9e3aeae4098d",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-production-tsconfig.json",
+      "bytes": 671,
+      "sha256": "f4f200fd5b2fbf0abc5661acd26f0afbefa99a5256375c3216d5705e098bb233",
+      "git_blob_sha": "8936dbf4aa1f7bc6cd1ab02523a31989614d16e9",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-production-typecheck-initial.txt",
+      "bytes": 578,
+      "sha256": "5eaadaf37a64f7e9ad2ff02d8521972ec1f44a0326933a678af3cbe351b0acfc",
+      "git_blob_sha": "4388f791977ee416b207b761762ac8c6bc5f2e7c",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-production-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-regressions.json",
+      "bytes": 75102,
+      "sha256": "8487e69969c837165b4dbe3c301318733705f30315ff1e80cd6711edcec5ef3d",
+      "git_blob_sha": "6d462339a569814a867cc7c914fc5a1a75975b60",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-remaining-console-inventory.json",
+      "bytes": 18638,
+      "sha256": "7fc5461f1a90acd4daf6cd299f1dc3c995f6fad6a97c21d418e5e701124a5380",
+      "git_blob_sha": "9de80d8a58d36a56c7fd497164b71d26ffdca6ca",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-roadmap-bindings.json",
+      "bytes": 1214,
+      "sha256": "9f29fe20dc4cf57458134bdb7e689236884c4a41ee3664f4ff5028cd8d5712c5",
+      "git_blob_sha": "08036f5fc096162beab4d8de803aaf9676b6fde5",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-source-bindings.json",
+      "bytes": 1059,
+      "sha256": "6f0b67eaaac9b33d49c945fa0808e42f5af59314d182045d8da28f6e6f599469",
+      "git_blob_sha": "9b176c01e6f781ae42dd2c9c4c576060049e6a5f",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-targeted-tests.json",
+      "bytes": 30917,
+      "sha256": "b1f445d2f6c1b82e1c1887e4f9b288f03779a15eb44327d2e2e6a88d39dcceb0",
+      "git_blob_sha": "b1f6ff27cf3218e97ab4681e307c3b08f79ea01a",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-test-inclusive-tsconfig-initial.json",
+      "bytes": 1224,
+      "sha256": "3361f8cfc7de71b507445304266a6118a8fc279724be748dc15122d19b89574f",
+      "git_blob_sha": "b420f8820caf64de907fb24e60d7fb1a9ce54fae",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-test-inclusive-tsconfig.json",
+      "bytes": 1287,
+      "sha256": "85f1b5e5ec479cb4f8219f8fdba2e65504b6a314f972b0e7c6f7f8d5a0f99f9c",
+      "git_blob_sha": "ffd3cf580dd380ebfdcb971dd478afbbef18a0e4",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-test-inclusive-typecheck-initial.txt",
+      "bytes": 828,
+      "sha256": "7fdefa3f767d81811e0e54fba795b8975167edc62565427d66b5d2be3b19efdc",
+      "git_blob_sha": "89cbecb33c8aa031e6938c8d425a5d165ecc8779",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-test-inclusive-typecheck.txt",
+      "bytes": 250,
+      "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8",
+      "git_blob_sha": "bb9d15b6b7d8d06e09577039d837eab4486e173c",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-ts2737-diagnosis.json",
+      "bytes": 1862,
+      "sha256": "b05c5fa419b1be85dd0b0d37ca96147bdd19e7b997ab4a4a64f881ad964e6b20",
+      "git_blob_sha": "3290cbe6090472ec984bbdd562ddf47b59cc52cf",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-request-ts2737-reproduction-files.json",
+      "bytes": 1621,
+      "sha256": "3c4941e1ec09fdc08a1bcec275eaf4cff83201718da9a78d8e1f9241af0c9983",
+      "git_blob_sha": "a88edcad589b6447b9e31b31ee66fc39426ccb37",
+      "original_byte_equal": true
+    },
+    {
+      "name": "manifest.json",
+      "bytes": 4716,
+      "sha256": "a5e22a05bbb369fc364447a5786f1daac2a68d4b1f1753072ddd58a28d5508d5",
+      "git_blob_sha": "20e8e7de60f752a7a06538793de5f813bdbe9a8a",
+      "original_byte_equal": true
+    }
+  ],
+  "actions": {
+    "source_or_remote_writes": false,
+    "tests_or_source_review_or_CI_repeated": false,
+    "raw_logs_read": false
+  },
+  "remaining_blockers": "No archive durability blocker; hosted exacthead acceptance separately pending."
+}

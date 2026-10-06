@@ -1,63 +1,8 @@
 [
   {
-    "name": "hrm-request-independent-tree-proof.json",
-    "bytes": 1655,
-    "sha256": "e11d39e268b13793ab19da0f173fa52353e547fac6de3f929a505b7b2340b641"
-  },
-  {
-    "name": "hrm-request-independent-remote-guard.json",
-    "bytes": 4616,
-    "sha256": "585e9a24a4be81157888f01db2a94476178b8fe64276fc5d5cf0bbfb7fe75cdc"
-  },
-  {
-    "name": "hrm-request-independent-final-bindings.json",
-    "bytes": 1575,
-    "sha256": "14c4090547cd21a9c9174e728fe45629632c6daa25dba03c5820a354e7d9bdee"
-  },
-  {
-    "name": "hrm-request-independent-preliminary-20261006.json",
-    "bytes": 5196,
-    "sha256": "005042d3e51e01841a3cc5f699d995037f9e33ded363cb70588e7380dd1e42e6"
-  },
-  {
-    "name": "hrm-request-independent-review-bindings.json",
-    "bytes": 1205,
-    "sha256": "0547f661e11e501d4dee5ba4ae283a0094bc2a49440b80b673ddb32a0bc6d187"
-  },
-  {
-    "name": "hrm-request-independent-tests.json",
-    "bytes": 23578,
-    "sha256": "29d4653649e2c1819dacd089ffef0016ad01e54a201e1684b50793b52f8aa9cf"
-  },
-  {
-    "name": "hrm-request-owner-validation.json",
-    "bytes": 4702,
-    "sha256": "53e59f68f9c2578d6f1faeff1f8962bccdf8c322c629af8d41e3086c10f53023"
-  },
-  {
-    "name": "hrm-request-targeted-tests.json",
-    "bytes": 30917,
-    "sha256": "b1f445d2f6c1b82e1c1887e4f9b288f03779a15eb44327d2e2e6a88d39dcceb0"
-  },
-  {
-    "name": "hrm-request-initial-targeted-tests.json",
-    "bytes": 21178,
-    "sha256": "06b965644d71a06c24c86a9c5d2bc821bf35c988b73515b39b39686412edf9ff"
-  },
-  {
-    "name": "hrm-request-regressions.json",
-    "bytes": 75102,
-    "sha256": "8487e69969c837165b4dbe3c301318733705f30315ff1e80cd6711edcec5ef3d"
-  },
-  {
-    "name": "hrm-request-production-typecheck.txt",
-    "bytes": 0,
-    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-  },
-  {
-    "name": "hrm-request-test-inclusive-typecheck.txt",
-    "bytes": 250,
-    "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8"
+    "name": "hrm-request-base-tsconfig.json",
+    "bytes": 1150,
+    "sha256": "da6505463f78d263e34695b90bd70ca6458bf946ed78a3a9c7e3ae8ea2ab62bb"
   },
   {
     "name": "hrm-request-base-typecheck.txt",
@@ -65,69 +10,39 @@
     "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8"
   },
   {
-    "name": "hrm-request-production-tsconfig.json",
-    "bytes": 671,
-    "sha256": "f4f200fd5b2fbf0abc5661acd26f0afbefa99a5256375c3216d5705e098bb233"
+    "name": "hrm-request-finite-remaining-plan.json",
+    "bytes": 20169,
+    "sha256": "949b85c5ec8b6120622e10f3b24a97281192f2cd3510516a9a630ae012ea0edb"
   },
   {
-    "name": "hrm-request-test-inclusive-tsconfig.json",
-    "bytes": 1287,
-    "sha256": "85f1b5e5ec479cb4f8219f8fdba2e65504b6a314f972b0e7c6f7f8d5a0f99f9c"
+    "name": "hrm-request-independent-final-bindings.json",
+    "bytes": 1575,
+    "sha256": "14c4090547cd21a9c9174e728fe45629632c6daa25dba03c5820a354e7d9bdee"
   },
   {
-    "name": "hrm-request-base-tsconfig.json",
-    "bytes": 1150,
-    "sha256": "da6505463f78d263e34695b90bd70ca6458bf946ed78a3a9c7e3ae8ea2ab62bb"
+    "name": "hrm-request-independent-hosted-terminal-ef5d-20261006.json",
+    "bytes": 13918,
+    "sha256": "c6fb9ac26988a7b1c173423646c17e63018a75303e3593f969ae3512b403c67c"
   },
   {
-    "name": "hrm-request-production-typecheck-initial.txt",
-    "bytes": 578,
-    "sha256": "5eaadaf37a64f7e9ad2ff02d8521972ec1f44a0326933a678af3cbe351b0acfc"
+    "name": "hrm-request-independent-preliminary-20261006.json",
+    "bytes": 5196,
+    "sha256": "005042d3e51e01841a3cc5f699d995037f9e33ded363cb70588e7380dd1e42e6"
   },
   {
-    "name": "hrm-request-test-inclusive-typecheck-initial.txt",
-    "bytes": 828,
-    "sha256": "7fdefa3f767d81811e0e54fba795b8975167edc62565427d66b5d2be3b19efdc"
+    "name": "hrm-request-independent-remote-guard.json",
+    "bytes": 4616,
+    "sha256": "585e9a24a4be81157888f01db2a94476178b8fe64276fc5d5cf0bbfb7fe75cdc"
   },
   {
-    "name": "hrm-request-production-tsconfig-initial.json",
-    "bytes": 608,
-    "sha256": "5c9f050fabf7b1777a8087c5ab86a2c906ddf52351684148d3a32618d511ca77"
+    "name": "hrm-request-independent-review-bindings.json",
+    "bytes": 1205,
+    "sha256": "0547f661e11e501d4dee5ba4ae283a0094bc2a49440b80b673ddb32a0bc6d187"
   },
   {
-    "name": "hrm-request-test-inclusive-tsconfig-initial.json",
-    "bytes": 1224,
-    "sha256": "3361f8cfc7de71b507445304266a6118a8fc279724be748dc15122d19b89574f"
-  },
-  {
-    "name": "hrm-request-lint.txt",
-    "bytes": 0,
-    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-  },
-  {
-    "name": "hrm-request-ts2737-diagnosis.json",
-    "bytes": 1862,
-    "sha256": "b05c5fa419b1be85dd0b0d37ca96147bdd19e7b997ab4a4a64f881ad964e6b20"
-  },
-  {
-    "name": "hrm-request-roadmap-bindings.json",
-    "bytes": 1214,
-    "sha256": "9f29fe20dc4cf57458134bdb7e689236884c4a41ee3664f4ff5028cd8d5712c5"
-  },
-  {
-    "name": "hrm-request-remaining-console-inventory.json",
-    "bytes": 18638,
-    "sha256": "7fc5461f1a90acd4daf6cd299f1dc3c995f6fad6a97c21d418e5e701124a5380"
-  },
-  {
-    "name": "hrm-request-inventory.mjs",
-    "bytes": 2282,
-    "sha256": "5d537098ec8354483bbc4254abfa36bb6523569324fa43d8549b9629a955c036"
-  },
-  {
-    "name": "hrm-request-source-bindings.json",
-    "bytes": 1059,
-    "sha256": "6f0b67eaaac9b33d49c945fa0808e42f5af59314d182045d8da28f6e6f599469"
+    "name": "hrm-request-independent-source-durable-20261006.json",
+    "bytes": 10701,
+    "sha256": "4450b53e6916fd514e99dff832c61c51e8ef5574c158bee05908b41c22436aa5"
   },
   {
     "name": "hrm-request-independent-source-ef5d-20261006.json",
@@ -135,13 +50,153 @@
     "sha256": "65f981a14bace50c340530d6155cdeff5938b813c0a34c3094e18b20d534940b"
   },
   {
-    "name": "hrm-request-finite-remaining-plan.json",
-    "bytes": 20169,
-    "sha256": "949b85c5ec8b6120622e10f3b24a97281192f2cd3510516a9a630ae012ea0edb"
+    "name": "hrm-request-independent-terminal-metadata.json",
+    "bytes": 65021,
+    "sha256": "8c0416a46d8bc14c9c4e8555a5642789cf183af93a47e3254cbb7f60140dd0dd"
+  },
+  {
+    "name": "hrm-request-independent-tests.json",
+    "bytes": 23578,
+    "sha256": "29d4653649e2c1819dacd089ffef0016ad01e54a201e1684b50793b52f8aa9cf"
+  },
+  {
+    "name": "hrm-request-independent-tree-proof.json",
+    "bytes": 1655,
+    "sha256": "e11d39e268b13793ab19da0f173fa52353e547fac6de3f929a505b7b2340b641"
+  },
+  {
+    "name": "hrm-request-initial-targeted-tests.json",
+    "bytes": 21178,
+    "sha256": "06b965644d71a06c24c86a9c5d2bc821bf35c988b73515b39b39686412edf9ff"
+  },
+  {
+    "name": "hrm-request-inventory.mjs",
+    "bytes": 2282,
+    "sha256": "5d537098ec8354483bbc4254abfa36bb6523569324fa43d8549b9629a955c036"
+  },
+  {
+    "name": "hrm-request-lint.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "hrm-request-owner-validation.json",
+    "bytes": 4702,
+    "sha256": "53e59f68f9c2578d6f1faeff1f8962bccdf8c322c629af8d41e3086c10f53023"
+  },
+  {
+    "name": "hrm-request-production-tsconfig-initial.json",
+    "bytes": 608,
+    "sha256": "5c9f050fabf7b1777a8087c5ab86a2c906ddf52351684148d3a32618d511ca77"
+  },
+  {
+    "name": "hrm-request-production-tsconfig.json",
+    "bytes": 671,
+    "sha256": "f4f200fd5b2fbf0abc5661acd26f0afbefa99a5256375c3216d5705e098bb233"
+  },
+  {
+    "name": "hrm-request-production-typecheck-initial.txt",
+    "bytes": 578,
+    "sha256": "5eaadaf37a64f7e9ad2ff02d8521972ec1f44a0326933a678af3cbe351b0acfc"
+  },
+  {
+    "name": "hrm-request-production-typecheck.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "hrm-request-regressions.json",
+    "bytes": 75102,
+    "sha256": "8487e69969c837165b4dbe3c301318733705f30315ff1e80cd6711edcec5ef3d"
+  },
+  {
+    "name": "hrm-request-remaining-console-inventory.json",
+    "bytes": 18638,
+    "sha256": "7fc5461f1a90acd4daf6cd299f1dc3c995f6fad6a97c21d418e5e701124a5380"
+  },
+  {
+    "name": "hrm-request-restore-artifact-metadata.json",
+    "bytes": 264,
+    "sha256": "af7392a6da6f0ca2f7abfc72704373d29bc71dbc8af8a07c22143cb37f037135"
+  },
+  {
+    "name": "hrm-request-restore-attempt1-root.json",
+    "bytes": 1609,
+    "sha256": "02c611c2586829d41da8a7e49a171488adf8296c3de8245a323d52b49a4a9109"
+  },
+  {
+    "name": "hrm-request-restore-attempt1-sanitized.json",
+    "bytes": 15958,
+    "sha256": "74039f7e8c135a90bd76b8ce8bbbd35581f8fe3e4090d5bd7f1f641e5540ae4b"
+  },
+  {
+    "name": "hrm-request-restore-independent-metadata.json",
+    "bytes": 5842,
+    "sha256": "c29fe06f0afeb425835c27598e6a3f03e694db7489f55d47e3891e3c327fe6b8"
+  },
+  {
+    "name": "hrm-request-restore-independent-review-20261006.json",
+    "bytes": 21705,
+    "sha256": "4d189edb85d565c205b3d8796b3d5e09957ffbd6aff5550014a5272a8631ff1e"
+  },
+  {
+    "name": "hrm-request-roadmap-bindings.json",
+    "bytes": 1214,
+    "sha256": "9f29fe20dc4cf57458134bdb7e689236884c4a41ee3664f4ff5028cd8d5712c5"
+  },
+  {
+    "name": "hrm-request-root-terminal-acceptance.json",
+    "bytes": 3496,
+    "sha256": "533fb2c5ae04a89a9e6fcaffe30a1130d77a173e94bff4baf7f4253b7ea4a587"
+  },
+  {
+    "name": "hrm-request-root-terminal-metadata.json",
+    "bytes": 61679,
+    "sha256": "1ab144b6113db6c5841b70496dde6f1505877641ad4cfe00f93b50e0de84935a"
+  },
+  {
+    "name": "hrm-request-source-bindings.json",
+    "bytes": 1059,
+    "sha256": "6f0b67eaaac9b33d49c945fa0808e42f5af59314d182045d8da28f6e6f599469"
+  },
+  {
+    "name": "hrm-request-targeted-tests.json",
+    "bytes": 30917,
+    "sha256": "b1f445d2f6c1b82e1c1887e4f9b288f03779a15eb44327d2e2e6a88d39dcceb0"
+  },
+  {
+    "name": "hrm-request-test-inclusive-tsconfig-initial.json",
+    "bytes": 1224,
+    "sha256": "3361f8cfc7de71b507445304266a6118a8fc279724be748dc15122d19b89574f"
+  },
+  {
+    "name": "hrm-request-test-inclusive-tsconfig.json",
+    "bytes": 1287,
+    "sha256": "85f1b5e5ec479cb4f8219f8fdba2e65504b6a314f972b0e7c6f7f8d5a0f99f9c"
+  },
+  {
+    "name": "hrm-request-test-inclusive-typecheck-initial.txt",
+    "bytes": 828,
+    "sha256": "7fdefa3f767d81811e0e54fba795b8975167edc62565427d66b5d2be3b19efdc"
+  },
+  {
+    "name": "hrm-request-test-inclusive-typecheck.txt",
+    "bytes": 250,
+    "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8"
+  },
+  {
+    "name": "hrm-request-ts2737-diagnosis.json",
+    "bytes": 1862,
+    "sha256": "b05c5fa419b1be85dd0b0d37ca96147bdd19e7b997ab4a4a64f881ad964e6b20"
   },
   {
     "name": "hrm-request-ts2737-reproduction-files.json",
     "bytes": 1621,
     "sha256": "3c4941e1ec09fdc08a1bcec275eaf4cff83201718da9a78d8e1f9241af0c9983"
+  },
+  {
+    "name": "hrm-request-validate-restore.py",
+    "bytes": 2625,
+    "sha256": "eb8ac8eade32580cf3ef677d9dc0b724bb0bc89386ce101bc9e24beabfa98378"
   }
 ]

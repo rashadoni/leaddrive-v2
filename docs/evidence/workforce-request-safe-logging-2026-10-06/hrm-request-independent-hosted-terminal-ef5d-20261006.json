@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "reviewer": "independent_read_only_worker",
+  "reviewed_at": "2026-10-06T10:42:51.708092+00:00",
+  "status": "ACCEPTED_BOUNDED_SOURCE_AND_BASELINE_QUALIFIED_HOSTED_GATES",
+  "repository": "rashadoni/leaddrive-v2",
+  "pr": 589,
+  "head": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+  "tree": "5b94c2111dbe51ceb74b1e803e142fff74e66cbc",
+  "parent": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "7b517816410e29d84a03f368954541ca180b79f6",
+  "synthetic_parents": [
+    "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+  ],
+  "synthetic_tree_equals_candidate": true,
+  "fresh_guard": {
+    "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "pr": {
+      "number": 589,
+      "head": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "base": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "synthetic": "7b517816410e29d84a03f368954541ca180b79f6"
+    },
+    "synthetic": {
+      "sha": "7b517816410e29d84a03f368954541ca180b79f6",
+      "tree": "5b94c2111dbe51ceb74b1e803e142fff74e66cbc",
+      "parents": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+        "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+      ]
+    }
+  },
+  "source_acceptance": {
+    "receipt": {
+      "path": "/tmp/hrm-request-independent-source-ef5d-20261006.json",
+      "bytes": 14045,
+      "sha256": "65f981a14bace50c340530d6155cdeff5938b813c0a34c3094e18b20d534940b"
+    },
+    "all8762blobs_modes_verified": true,
+    "fulltree_recomputed": true,
+    "delta_paths": 6,
+    "unchanged_parent_blobs": 8756,
+    "findings": {
+      "P0": [],
+      "P1": [],
+      "P2": [],
+      "P3": []
+    },
+    "scope": "Fourrequestcatch replacements across3routes;3errorlabels and1dedicatedwarninglabel; runtimeerrorhelper and auth/response/idempotency/notification/Route-enrichment semantics preserved."
+  },
+  "hosted": {
+    "mandatory_checks": [
+      {
+        "id": 112219417260,
+        "name": "static-checks",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:59Z",
+        "completed_at": "2026-10-06T10:29:08Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219417260",
+        "app_id": 15368
+      },
+      {
+        "id": 112219417124,
+        "name": "typecheck",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:59Z",
+        "completed_at": "2026-10-06T10:40:28Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219417124",
+        "app_id": 15368
+      },
+      {
+        "id": 112219296564,
+        "name": "runner-policy",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:40Z",
+        "completed_at": "2026-10-06T10:15:51Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588425/job/112219296564",
+        "app_id": 15368
+      },
+      {
+        "id": 112219296117,
+        "name": "scan",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:40Z",
+        "completed_at": "2026-10-06T10:16:02Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588481/job/112219296117",
+        "app_id": 15368
+      },
+      {
+        "id": 112219295863,
+        "name": "pr-scope",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:40Z",
+        "completed_at": "2026-10-06T10:15:56Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219295863",
+        "app_id": 15368
+      }
+    ],
+    "additional_checks": [
+      {
+        "id": 112219296779,
+        "name": "Authenticated Workforce calendar browser evidence",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:40Z",
+        "completed_at": "2026-10-06T10:23:24Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588460/job/112219296779",
+        "app_id": 15368
+      },
+      {
+        "id": 112219296342,
+        "name": "Authenticated Workforce exception report browser evidence",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:40Z",
+        "completed_at": "2026-10-06T10:21:09Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588354/job/112219296342",
+        "app_id": 15368
+      },
+      {
+        "id": 112219296296,
+        "name": "Authenticated Workforce manager Today browser evidence",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:40Z",
+        "completed_at": "2026-10-06T10:21:43Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588429/job/112219296296",
+        "app_id": 15368
+      },
+      {
+        "id": 112219296145,
+        "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:16:16Z",
+        "completed_at": "2026-10-06T10:24:19Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588405/job/112219296145",
+        "app_id": 15368
+      },
+      {
+        "id": 112219295289,
+        "name": "Authenticated Workforce policy version browser evidence",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:40Z",
+        "completed_at": "2026-10-06T10:22:24Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588098/job/112219295289",
+        "app_id": 15368
+      },
+      {
+        "id": 112219295145,
+        "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-06T10:15:40Z",
+        "completed_at": "2026-10-06T10:27:27Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588032/job/112219295145",
+        "app_id": 15368
+      }
+    ],
+    "optional_build": [
+      {
+        "id": 112219297294,
+        "name": "GitHub-hosted Linux production build",
+        "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-06T10:15:37Z",
+        "completed_at": "2026-10-06T10:15:37Z",
+        "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219297294",
+        "app_id": 15368
+      }
+    ],
+    "summary": {
+      "checks": 12,
+      "success_checks": 11,
+      "skipped_build": 1,
+      "workflows": 9,
+      "all_workflows_attempt1_success": true,
+      "jobs": 12,
+      "artifact_metadata": 6,
+      "all_steps_success_or_expected_skip": true
+    },
+    "metadata": {
+      "path": "/tmp/hrm-request-independent-terminal-metadata.json",
+      "bytes": 65021,
+      "sha256": "8c0416a46d8bc14c9c4e8555a5642789cf183af93a47e3254cbb7f60140dd0dd"
+    },
+    "payload_scope": "Only restore safeJSON payload inspected. Other5 browser artifacts METADATA_ONLY; no detailed hidden assertions/counts inferred."
+  },
+  "restore": {
+    "run": 37448588032,
+    "job": 112219295145,
+    "attempt": 1,
+    "artifact": 11406620524,
+    "unique_pass_cases": 15,
+    "cleanup_pass": 2,
+    "authentication_records": 10,
+    "exact_source_bindings": 34,
+    "receipt": {
+      "path": "/tmp/hrm-request-restore-independent-review-20261006.json",
+      "bytes": 21705,
+      "sha256": "4d189edb85d565c205b3d8796b3d5e09957ffbd6aff5550014a5272a8631ff1e"
+    },
+    "provenance": "Whole safeJSONread,byte/SHA256and34local/Gitblobbindings verified; ownerZIPdownload/digest verification independently matchedAPI metadata.",
+    "limits": "No screenshots, otherZIPcontents,wholevisual/WCAG/AT/nativezoom,load,Android,pilot orproductionclaim. Restore doesnot replace requesthandlerprivacy/authmocklimitations."
+  },
+  "baseline_qualification": {
+    "compiler_pairs": 64,
+    "known_test_files": 18,
+    "unchanged_from_main_and_parent": true,
+    "accepted": "Exacthead syntax/missingmodule/undefinedname gate, defectbaseline gate and testbaseline gate SUCCESS metadata.",
+    "not_inferred": [
+      "Globalcleancompiler or zerofailedfullsuite",
+      "Allfamily diagnosticcounts/perpathmatrix/currentactualfailedsuiteidentity",
+      "Successfulproductionbuild whenoptionalbuildSKIPPED",
+      "Hostedexecution of all previouslocaloptinPG cases"
+    ]
+  },
+  "local_validation_qualification": {
+    "independent": "57PASS0FAIL0SKIP;27newhandlercasesincluding16privacyvariants plus30existingdomaincases, exactbytesbound.",
+    "owner": "76focused+225regressionPASS;lint and boundedproductiontscPASS ownerexecution.",
+    "test_inclusive": "TwoTS2737 unchangedsharedMTMmock482/483 byteequalmain/parent/candidate; compileroutputsbase/candidatebyteequal. No source/target/baselinefix or globalcleanclaim.",
+    "initial_history": [
+      "Missingbrace initialnewtestparsefailure0newcasesexecuted retained; fixedbeforeindependentreview.",
+      "Initialboundedconfig omitted normal next-auth.d.ts producing6TS2339; fixedconfigurationonly, initialconfigs/outputs preserved,actualrerun leaves2historicalTS2737."
+    ],
+    "auth_scope": "Handler tests mockauthwrappers/domainservices and Prisma; notendtoendauthorization/realDBproof."
+  },
+  "history": "Currentef5drestoreattempt1PASS. Prior2c5aPASS and dc91attempt1timeout/retryPASS remain separatelysourcebound; unknownpriorcause not explained or erased, no priorheadchecks substituted.",
+  "durability": {
+    "source_archive_commit": "3cacbb4f6c273c22e55d258b0b0cb82f586ae05e",
+    "source_archive_files_independently_verified": 31,
+    "prior34logging_and29roster_preserved": true,
+    "terminal_receipt": "LOCAL_ONLY pending ownerfinalarchive"
+  },
+  "criteria_and_remaining": {
+    "WF-C10-011": "PLANNED",
+    "WF-C12-002": "PARTIAL",
+    "C12-008": "PARTIAL",
+    "ledger": {
+      "done": 82,
+      "total": 161,
+      "open": 79,
+      "weighted_percent": 59
+    },
+    "inventory": "45raw+1name-derivedcalls remain;3finitebatches4Today/timesheet/exceptions,9attendance,33configuration;2reviewedsinks. Syntacticinventorynottransitiveaudit or runtimeleakproof.",
+    "next_plan": "Preparationonly; preserveTodaytypedBoundsErrorlogsuppression andtimesheetReadModelError409mapping. Thenalias/shared/framework/destinationcoverage matrix; wholecriterionmustbeevidenced or exactoperationalblockernamed beforeindependentfault/fairness/entitlementwork. No endlessacceptedcatchchurn/statuscreditfromcallcount.",
+    "open": [
+      "Authentichistoricalapi_keysbaseline/provenance via separatebackup-ownertrack",
+      "Fullhistoricalstaging, analytics/destination/cardinality/privacycoverage, dashboardingestion/paging/SLO/delivery",
+      "Separatelyapprovedactivation; greenchecksnotmerge/deployapproval"
+    ]
+  },
+  "support_files": [
+    {
+      "path": "/tmp/hrm-request-independent-terminal-metadata.json",
+      "bytes": 65021,
+      "sha256": "8c0416a46d8bc14c9c4e8555a5642789cf183af93a47e3254cbb7f60140dd0dd"
+    },
+    {
+      "path": "/tmp/hrm-request-independent-source-ef5d-20261006.json",
+      "bytes": 14045,
+      "sha256": "65f981a14bace50c340530d6155cdeff5938b813c0a34c3094e18b20d534940b"
+    },
+    {
+      "path": "/tmp/hrm-request-independent-source-durable-20261006.json",
+      "bytes": 10701,
+      "sha256": "4450b53e6916fd514e99dff832c61c51e8ef5574c158bee05908b41c22436aa5"
+    },
+    {
+      "path": "/tmp/hrm-request-restore-independent-review-20261006.json",
+      "bytes": 21705,
+      "sha256": "4d189edb85d565c205b3d8796b3d5e09957ffbd6aff5550014a5272a8631ff1e"
+    },
+    {
+      "path": "/tmp/hrm-request-restore-independent-metadata.json",
+      "bytes": 5842,
+      "sha256": "c29fe06f0afeb425835c27598e6a3f03e694db7489f55d47e3891e3c327fe6b8"
+    },
+    {
+      "path": "/tmp/hrm-request-restore-attempt1-sanitized.json",
+      "bytes": 15958,
+      "sha256": "74039f7e8c135a90bd76b8ce8bbbd35581f8fe3e4090d5bd7f1f641e5540ae4b"
+    },
+    {
+      "path": "/tmp/hrm-request-restore-attempt1-root.json",
+      "bytes": 1609,
+      "sha256": "02c611c2586829d41da8a7e49a171488adf8296c3de8245a323d52b49a4a9109"
+    },
+    {
+      "path": "/tmp/hrm-request-owner-validation.json",
+      "bytes": 4702,
+      "sha256": "53e59f68f9c2578d6f1faeff1f8962bccdf8c322c629af8d41e3086c10f53023"
+    },
+    {
+      "path": "/tmp/hrm-request-ts2737-diagnosis.json",
+      "bytes": 1862,
+      "sha256": "b05c5fa419b1be85dd0b0d37ca96147bdd19e7b997ab4a4a64f881ad964e6b20"
+    },
+    {
+      "path": "/tmp/hrm-request-finite-remaining-plan.json",
+      "bytes": 20169,
+      "sha256": "949b85c5ec8b6120622e10f3b24a97281192f2cd3510516a9a630ae012ea0edb"
+    }
+  ],
+  "reviewer_actions": {
+    "source_edits": false,
+    "remote_writes": false,
+    "tests_workflow_rerun": false,
+    "raw_logs": false,
+    "screenshots": false,
+    "database_backup_Contabo_operations": false
+  }
+}

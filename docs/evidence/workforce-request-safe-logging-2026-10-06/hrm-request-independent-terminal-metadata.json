@@ -1,0 +1,1753 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-10-06 10:42:01 UTC",
+  "source": "Authorized rashadoni GitHub connector; metadata only",
+  "guard": {
+    "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+    "pr": {
+      "number": 589,
+      "head": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "base": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+      "synthetic": "7b517816410e29d84a03f368954541ca180b79f6"
+    },
+    "synthetic": {
+      "sha": "7b517816410e29d84a03f368954541ca180b79f6",
+      "tree": "5b94c2111dbe51ceb74b1e803e142fff74e66cbc",
+      "parents": [
+        "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+        "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": 112219417260,
+      "name": "static-checks",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:59Z",
+      "completed_at": "2026-10-06T10:29:08Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219417260",
+      "app_id": 15368
+    },
+    {
+      "id": 112219417124,
+      "name": "typecheck",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:59Z",
+      "completed_at": "2026-10-06T10:40:28Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219417124",
+      "app_id": 15368
+    },
+    {
+      "id": 112219297294,
+      "name": "GitHub-hosted Linux production build",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-06T10:15:37Z",
+      "completed_at": "2026-10-06T10:15:37Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219297294",
+      "app_id": 15368
+    },
+    {
+      "id": 112219296779,
+      "name": "Authenticated Workforce calendar browser evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:40Z",
+      "completed_at": "2026-10-06T10:23:24Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588460/job/112219296779",
+      "app_id": 15368
+    },
+    {
+      "id": 112219296564,
+      "name": "runner-policy",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:40Z",
+      "completed_at": "2026-10-06T10:15:51Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588425/job/112219296564",
+      "app_id": 15368
+    },
+    {
+      "id": 112219296342,
+      "name": "Authenticated Workforce exception report browser evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:40Z",
+      "completed_at": "2026-10-06T10:21:09Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588354/job/112219296342",
+      "app_id": 15368
+    },
+    {
+      "id": 112219296296,
+      "name": "Authenticated Workforce manager Today browser evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:40Z",
+      "completed_at": "2026-10-06T10:21:43Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588429/job/112219296296",
+      "app_id": 15368
+    },
+    {
+      "id": 112219296145,
+      "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:16:16Z",
+      "completed_at": "2026-10-06T10:24:19Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588405/job/112219296145",
+      "app_id": 15368
+    },
+    {
+      "id": 112219296117,
+      "name": "scan",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:40Z",
+      "completed_at": "2026-10-06T10:16:02Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588481/job/112219296117",
+      "app_id": 15368
+    },
+    {
+      "id": 112219295863,
+      "name": "pr-scope",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:40Z",
+      "completed_at": "2026-10-06T10:15:56Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219295863",
+      "app_id": 15368
+    },
+    {
+      "id": 112219295289,
+      "name": "Authenticated Workforce policy version browser evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:40Z",
+      "completed_at": "2026-10-06T10:22:24Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588098/job/112219295289",
+      "app_id": 15368
+    },
+    {
+      "id": 112219295145,
+      "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:15:40Z",
+      "completed_at": "2026-10-06T10:27:27Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588032/job/112219295145",
+      "app_id": 15368
+    }
+  ],
+  "runs": [
+    {
+      "id": 37448588524,
+      "name": "PR checks",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "run_number": 1599,
+      "created_at": "2026-10-06T10:15:37Z",
+      "updated_at": "2026-10-06T10:40:29Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524",
+      "path": ".github/workflows/pr-checks.yml",
+      "jobs": [
+        {
+          "id": 112219295863,
+          "name": "pr-scope",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:40Z",
+          "completed_at": "2026-10-06T10:15:56Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219295863",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:41Z"
+            },
+            {
+              "number": 2,
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:54Z"
+            },
+            {
+              "number": 3,
+              "name": "Run set -euo pipefail",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:54Z",
+              "completed_at": "2026-10-06T10:15:54Z"
+            },
+            {
+              "number": 6,
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:54Z",
+              "completed_at": "2026-10-06T10:15:54Z"
+            },
+            {
+              "number": 7,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:54Z",
+              "completed_at": "2026-10-06T10:15:54Z"
+            }
+          ]
+        },
+        {
+          "id": 112219297294,
+          "name": "GitHub-hosted Linux production build",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "skipped",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:37Z",
+          "completed_at": "2026-10-06T10:15:37Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219297294",
+          "steps": []
+        },
+        {
+          "id": 112219417124,
+          "name": "typecheck",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:59Z",
+          "completed_at": "2026-10-06T10:40:28Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219417124",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:00Z",
+              "completed_at": "2026-10-06T10:16:01Z"
+            },
+            {
+              "number": 2,
+              "name": "Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:01Z",
+              "completed_at": "2026-10-06T10:16:10Z"
+            },
+            {
+              "number": 3,
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:10Z",
+              "completed_at": "2026-10-06T10:16:14Z"
+            },
+            {
+              "number": 4,
+              "name": "Install dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:14Z",
+              "completed_at": "2026-10-06T10:19:21Z"
+            },
+            {
+              "number": 5,
+              "name": "Generate Prisma client",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:19:21Z",
+              "completed_at": "2026-10-06T10:21:44Z"
+            },
+            {
+              "number": 6,
+              "name": "Prepare bounded GitHub-hosted typecheck memory",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:44Z",
+              "completed_at": "2026-10-06T10:21:44Z"
+            },
+            {
+              "number": 7,
+              "name": "TypeScript compile-check (advisory diagnostics)",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:44Z",
+              "completed_at": "2026-10-06T10:40:24Z"
+            },
+            {
+              "number": 8,
+              "name": "Syntax, missing-module and undefined-name errors (BLOCKING)",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:40:24Z",
+              "completed_at": "2026-10-06T10:40:24Z"
+            },
+            {
+              "number": 9,
+              "name": "Defect-shaped type errors vs baseline (BLOCKING)",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:40:24Z",
+              "completed_at": "2026-10-06T10:40:24Z"
+            },
+            {
+              "number": 10,
+              "name": "Cleanup bounded typecheck swap",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:40:24Z",
+              "completed_at": "2026-10-06T10:40:24Z"
+            },
+            {
+              "number": 19,
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:40:24Z",
+              "completed_at": "2026-10-06T10:40:24Z"
+            },
+            {
+              "number": 20,
+              "name": "Post Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:40:24Z",
+              "completed_at": "2026-10-06T10:40:25Z"
+            },
+            {
+              "number": 21,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:40:25Z",
+              "completed_at": "2026-10-06T10:40:25Z"
+            }
+          ]
+        },
+        {
+          "id": 112219417260,
+          "name": "static-checks",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:59Z",
+          "completed_at": "2026-10-06T10:29:08Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588524/job/112219417260",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:00Z",
+              "completed_at": "2026-10-06T10:16:00Z"
+            },
+            {
+              "number": 2,
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:00Z",
+              "completed_at": "2026-10-06T10:16:15Z"
+            },
+            {
+              "number": 3,
+              "name": "Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:15Z",
+              "completed_at": "2026-10-06T10:16:24Z"
+            },
+            {
+              "number": 4,
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:24Z",
+              "completed_at": "2026-10-06T10:16:28Z"
+            },
+            {
+              "number": 5,
+              "name": "Install dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:28Z",
+              "completed_at": "2026-10-06T10:19:32Z"
+            },
+            {
+              "number": 6,
+              "name": "Support UX read-only readiness diagnostic tests",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:19:32Z",
+              "completed_at": "2026-10-06T10:19:33Z"
+            },
+            {
+              "number": 7,
+              "name": "Generate Prisma client",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:19:33Z",
+              "completed_at": "2026-10-06T10:21:02Z"
+            },
+            {
+              "number": 8,
+              "name": "Resolve the per-job Postgres port",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:02Z",
+              "completed_at": "2026-10-06T10:21:02Z"
+            },
+            {
+              "number": 9,
+              "name": "Support UX canary atomic PostgreSQL gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:02Z",
+              "completed_at": "2026-10-06T10:21:04Z"
+            },
+            {
+              "number": 10,
+              "name": "Generate frozen pre-pilot Prisma client",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:04Z",
+              "completed_at": "2026-10-06T10:21:06Z"
+            },
+            {
+              "number": 11,
+              "name": "Event-platform Kafka and schema asset gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:06Z",
+              "completed_at": "2026-10-06T10:21:06Z"
+            },
+            {
+              "number": 12,
+              "name": "PostgreSQL maintenance safety unit tests",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:06Z",
+              "completed_at": "2026-10-06T10:21:06Z"
+            },
+            {
+              "number": 13,
+              "name": "Event-platform migration and database invariant gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:06Z",
+              "completed_at": "2026-10-06T10:21:19Z"
+            },
+            {
+              "number": 14,
+              "name": "Event-platform SDK PostgreSQL concurrency gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:19Z",
+              "completed_at": "2026-10-06T10:21:21Z"
+            },
+            {
+              "number": 15,
+              "name": "Workforce shared-lock PostgreSQL race gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:21Z",
+              "completed_at": "2026-10-06T10:21:37Z"
+            },
+            {
+              "number": 16,
+              "name": "Demo Center database constraints gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:37Z",
+              "completed_at": "2026-10-06T10:21:54Z"
+            },
+            {
+              "number": 17,
+              "name": "MTM client categories database gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:54Z",
+              "completed_at": "2026-10-06T10:22:10Z"
+            },
+            {
+              "number": 18,
+              "name": "Previous Prisma client rollback-window gate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:22:10Z",
+              "completed_at": "2026-10-06T10:22:10Z"
+            },
+            {
+              "number": 19,
+              "name": "PII column-wrap lint guard",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:22:10Z",
+              "completed_at": "2026-10-06T10:22:11Z"
+            },
+            {
+              "number": 20,
+              "name": "Unit tests vs baseline (BLOCKING)",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:22:11Z",
+              "completed_at": "2026-10-06T10:29:06Z"
+            },
+            {
+              "number": 38,
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:29:06Z",
+              "completed_at": "2026-10-06T10:29:06Z"
+            },
+            {
+              "number": 39,
+              "name": "Post Checkout code",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:29:06Z",
+              "completed_at": "2026-10-06T10:29:06Z"
+            },
+            {
+              "number": 40,
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:29:06Z",
+              "completed_at": "2026-10-06T10:29:07Z"
+            },
+            {
+              "number": 41,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:29:07Z",
+              "completed_at": "2026-10-06T10:29:07Z"
+            }
+          ]
+        }
+      ],
+      "artifacts": []
+    },
+    {
+      "id": 37448588354,
+      "name": "Workforce exception report browser evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "run_number": 53,
+      "created_at": "2026-10-06T10:15:36Z",
+      "updated_at": "2026-10-06T10:21:10Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588354",
+      "path": ".github/workflows/workforce-exception-report-browser-evidence.yml",
+      "jobs": [
+        {
+          "id": 112219296342,
+          "name": "Authenticated Workforce exception report browser evidence",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:40Z",
+          "completed_at": "2026-10-06T10:21:09Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588354/job/112219296342",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:42Z"
+            },
+            {
+              "number": 2,
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:42Z",
+              "completed_at": "2026-10-06T10:15:56Z"
+            },
+            {
+              "number": 3,
+              "name": "Checkout candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:56Z",
+              "completed_at": "2026-10-06T10:16:06Z"
+            },
+            {
+              "number": 4,
+              "name": "Resolve isolated ports and masked application secrets",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:06Z",
+              "completed_at": "2026-10-06T10:16:06Z"
+            },
+            {
+              "number": 5,
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:06Z",
+              "completed_at": "2026-10-06T10:16:18Z"
+            },
+            {
+              "number": 6,
+              "name": "Install candidate dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:18Z",
+              "completed_at": "2026-10-06T10:18:14Z"
+            },
+            {
+              "number": 7,
+              "name": "Create candidate schema and restricted application role",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:18:14Z",
+              "completed_at": "2026-10-06T10:19:47Z"
+            },
+            {
+              "number": 8,
+              "name": "Install Chromium on hosted Ubuntu",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:19:47Z",
+              "completed_at": "2026-10-06T10:20:12Z"
+            },
+            {
+              "number": 9,
+              "name": "Run real authenticated aggregate report scenarios",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:20:12Z",
+              "completed_at": "2026-10-06T10:21:04Z"
+            },
+            {
+              "number": 10,
+              "name": "Preserve non-secret workflow failure receipt",
+              "status": "completed",
+              "conclusion": "skipped",
+              "started_at": "2026-10-06T10:21:04Z",
+              "completed_at": "2026-10-06T10:21:04Z"
+            },
+            {
+              "number": 11,
+              "name": "Upload sanitized exception report evidence",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:04Z",
+              "completed_at": "2026-10-06T10:21:06Z"
+            },
+            {
+              "number": 20,
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:06Z",
+              "completed_at": "2026-10-06T10:21:06Z"
+            },
+            {
+              "number": 21,
+              "name": "Post Checkout candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:06Z",
+              "completed_at": "2026-10-06T10:21:06Z"
+            },
+            {
+              "number": 22,
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:06Z",
+              "completed_at": "2026-10-06T10:21:07Z"
+            },
+            {
+              "number": 23,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:07Z",
+              "completed_at": "2026-10-06T10:21:07Z"
+            }
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "id": 11404393588,
+          "name": "workforce-exception-report-browser-7b517816410e29d84a03f368954541ca180b79f6-1",
+          "size_in_bytes": 650649,
+          "digest": "sha256:7757d3e59c01bc8c12acb142d0d1c44cd88f681170b8312fb059785ad6fc132b",
+          "expired": false,
+          "created_at": "2026-10-06T10:21:06Z",
+          "expires_at": "2026-10-20T10:21:04Z",
+          "workflow_run": {
+            "id": 37448588354,
+            "repository_id": 1362346481,
+            "head_repository_id": 1362346481,
+            "head_branch": "codex/hrm-588-validation-20261005",
+            "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+          }
+        }
+      ]
+    },
+    {
+      "id": 37448588425,
+      "name": "Runner policy",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "run_number": 979,
+      "created_at": "2026-10-06T10:15:36Z",
+      "updated_at": "2026-10-06T10:15:52Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588425",
+      "path": ".github/workflows/runner-policy.yml",
+      "jobs": [
+        {
+          "id": 112219296564,
+          "name": "runner-policy",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:40Z",
+          "completed_at": "2026-10-06T10:15:51Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588425/job/112219296564",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:41Z"
+            },
+            {
+              "number": 2,
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:50Z"
+            },
+            {
+              "number": 3,
+              "name": "Reject paid hosted macOS runners",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:50Z",
+              "completed_at": "2026-10-06T10:15:50Z"
+            },
+            {
+              "number": 6,
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:50Z",
+              "completed_at": "2026-10-06T10:15:50Z"
+            },
+            {
+              "number": 7,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:50Z",
+              "completed_at": "2026-10-06T10:15:50Z"
+            }
+          ]
+        }
+      ],
+      "artifacts": []
+    },
+    {
+      "id": 37448588481,
+      "name": "Secret scan",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "run_number": 1469,
+      "created_at": "2026-10-06T10:15:36Z",
+      "updated_at": "2026-10-06T10:16:03Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588481",
+      "path": ".github/workflows/gitleaks.yml",
+      "jobs": [
+        {
+          "id": 112219296117,
+          "name": "scan",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:40Z",
+          "completed_at": "2026-10-06T10:16:02Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588481/job/112219296117",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:42Z"
+            },
+            {
+              "number": 2,
+              "name": "Checkout full history",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:42Z",
+              "completed_at": "2026-10-06T10:15:57Z"
+            },
+            {
+              "number": 3,
+              "name": "Install verified Gitleaks binary",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:57Z",
+              "completed_at": "2026-10-06T10:15:58Z"
+            },
+            {
+              "number": 4,
+              "name": "Select commit range",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:58Z",
+              "completed_at": "2026-10-06T10:15:58Z"
+            },
+            {
+              "number": 5,
+              "name": "Block newly committed secrets",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:58Z",
+              "completed_at": "2026-10-06T10:15:59Z"
+            },
+            {
+              "number": 10,
+              "name": "Post Checkout full history",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:59Z",
+              "completed_at": "2026-10-06T10:15:59Z"
+            },
+            {
+              "number": 11,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:59Z",
+              "completed_at": "2026-10-06T10:15:59Z"
+            }
+          ]
+        }
+      ],
+      "artifacts": []
+    },
+    {
+      "id": 37448588429,
+      "name": "Workforce manager Today browser evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "run_number": 73,
+      "created_at": "2026-10-06T10:15:36Z",
+      "updated_at": "2026-10-06T10:21:44Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588429",
+      "path": ".github/workflows/workforce-manager-today-browser-evidence.yml",
+      "jobs": [
+        {
+          "id": 112219296296,
+          "name": "Authenticated Workforce manager Today browser evidence",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:40Z",
+          "completed_at": "2026-10-06T10:21:43Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588429/job/112219296296",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:42Z"
+            },
+            {
+              "number": 2,
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:42Z",
+              "completed_at": "2026-10-06T10:15:55Z"
+            },
+            {
+              "number": 3,
+              "name": "Checkout candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:55Z",
+              "completed_at": "2026-10-06T10:16:04Z"
+            },
+            {
+              "number": 4,
+              "name": "Resolve isolated ports and masked application secrets",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:04Z",
+              "completed_at": "2026-10-06T10:16:04Z"
+            },
+            {
+              "number": 5,
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:04Z",
+              "completed_at": "2026-10-06T10:16:12Z"
+            },
+            {
+              "number": 6,
+              "name": "Install candidate dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:12Z",
+              "completed_at": "2026-10-06T10:18:01Z"
+            },
+            {
+              "number": 7,
+              "name": "Create candidate schema and restricted application role",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:18:01Z",
+              "completed_at": "2026-10-06T10:20:20Z"
+            },
+            {
+              "number": 8,
+              "name": "Install Chromium on hosted Ubuntu",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:20:20Z",
+              "completed_at": "2026-10-06T10:20:42Z"
+            },
+            {
+              "number": 9,
+              "name": "Run real authenticated manager Today scenarios",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:20:42Z",
+              "completed_at": "2026-10-06T10:21:37Z"
+            },
+            {
+              "number": 10,
+              "name": "Preserve non-secret workflow failure receipt",
+              "status": "completed",
+              "conclusion": "skipped",
+              "started_at": "2026-10-06T10:21:37Z",
+              "completed_at": "2026-10-06T10:21:37Z"
+            },
+            {
+              "number": 11,
+              "name": "Upload sanitized manager Today evidence",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:37Z",
+              "completed_at": "2026-10-06T10:21:39Z"
+            },
+            {
+              "number": 20,
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:39Z",
+              "completed_at": "2026-10-06T10:21:39Z"
+            },
+            {
+              "number": 21,
+              "name": "Post Checkout candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:39Z",
+              "completed_at": "2026-10-06T10:21:39Z"
+            },
+            {
+              "number": 22,
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:39Z",
+              "completed_at": "2026-10-06T10:21:41Z"
+            },
+            {
+              "number": 23,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:41Z",
+              "completed_at": "2026-10-06T10:21:41Z"
+            }
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "id": 11403859596,
+          "name": "workforce-manager-today-browser-7b517816410e29d84a03f368954541ca180b79f6-1",
+          "size_in_bytes": 7096593,
+          "digest": "sha256:e312efacfe2f51ba18363eb00ce16cb62e23bc0e89ecd780b879178c7901c452",
+          "expired": false,
+          "created_at": "2026-10-06T10:21:39Z",
+          "expires_at": "2026-10-20T10:21:38Z",
+          "workflow_run": {
+            "id": 37448588429,
+            "repository_id": 1362346481,
+            "head_repository_id": 1362346481,
+            "head_branch": "codex/hrm-588-validation-20261005",
+            "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+          }
+        }
+      ]
+    },
+    {
+      "id": 37448588098,
+      "name": "Workforce policy version browser evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "run_number": 43,
+      "created_at": "2026-10-06T10:15:36Z",
+      "updated_at": "2026-10-06T10:22:25Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588098",
+      "path": ".github/workflows/workforce-policy-version-browser-evidence.yml",
+      "jobs": [
+        {
+          "id": 112219295289,
+          "name": "Authenticated Workforce policy version browser evidence",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:40Z",
+          "completed_at": "2026-10-06T10:22:24Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588098/job/112219295289",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:42Z"
+            },
+            {
+              "number": 2,
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:42Z",
+              "completed_at": "2026-10-06T10:15:57Z"
+            },
+            {
+              "number": 3,
+              "name": "Checkout candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:57Z",
+              "completed_at": "2026-10-06T10:16:06Z"
+            },
+            {
+              "number": 4,
+              "name": "Resolve isolated ports and masked application secrets",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:06Z",
+              "completed_at": "2026-10-06T10:16:06Z"
+            },
+            {
+              "number": 5,
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:06Z",
+              "completed_at": "2026-10-06T10:16:14Z"
+            },
+            {
+              "number": 6,
+              "name": "Install candidate dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:14Z",
+              "completed_at": "2026-10-06T10:18:13Z"
+            },
+            {
+              "number": 7,
+              "name": "Create candidate schema and restricted application role",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:18:13Z",
+              "completed_at": "2026-10-06T10:20:38Z"
+            },
+            {
+              "number": 8,
+              "name": "Install Chromium on hosted Ubuntu",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:20:38Z",
+              "completed_at": "2026-10-06T10:20:59Z"
+            },
+            {
+              "number": 9,
+              "name": "Verify real future-window PostgreSQL snapshots and bounds",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:20:59Z",
+              "completed_at": "2026-10-06T10:21:02Z"
+            },
+            {
+              "number": 10,
+              "name": "Run real authenticated policy version scenarios",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:02Z",
+              "completed_at": "2026-10-06T10:22:21Z"
+            },
+            {
+              "number": 11,
+              "name": "Preserve non-secret workflow failure receipt",
+              "status": "completed",
+              "conclusion": "skipped",
+              "started_at": "2026-10-06T10:22:21Z",
+              "completed_at": "2026-10-06T10:22:21Z"
+            },
+            {
+              "number": 12,
+              "name": "Upload sanitized policy version evidence",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:22:21Z",
+              "completed_at": "2026-10-06T10:22:22Z"
+            },
+            {
+              "number": 22,
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:22:22Z",
+              "completed_at": "2026-10-06T10:22:22Z"
+            },
+            {
+              "number": 23,
+              "name": "Post Checkout candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:22:22Z",
+              "completed_at": "2026-10-06T10:22:22Z"
+            },
+            {
+              "number": 24,
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:22:22Z",
+              "completed_at": "2026-10-06T10:22:23Z"
+            },
+            {
+              "number": 25,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:22:23Z",
+              "completed_at": "2026-10-06T10:22:23Z"
+            }
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "id": 11404449236,
+          "name": "workforce-policy-version-browser-7b517816410e29d84a03f368954541ca180b79f6-1",
+          "size_in_bytes": 908074,
+          "digest": "sha256:0c617b1323ad2413f6013baeb98022244a574f3d19ecc8561aa6c8e001730c71",
+          "expired": false,
+          "created_at": "2026-10-06T10:22:22Z",
+          "expires_at": "2026-10-20T10:22:21Z",
+          "workflow_run": {
+            "id": 37448588098,
+            "repository_id": 1362346481,
+            "head_repository_id": 1362346481,
+            "head_branch": "codex/hrm-588-validation-20261005",
+            "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+          }
+        }
+      ]
+    },
+    {
+      "id": 37448588460,
+      "name": "Workforce calendar browser evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "run_number": 108,
+      "created_at": "2026-10-06T10:15:36Z",
+      "updated_at": "2026-10-06T10:23:25Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588460",
+      "path": ".github/workflows/workforce-calendar-browser-evidence.yml",
+      "jobs": [
+        {
+          "id": 112219296779,
+          "name": "Authenticated Workforce calendar browser evidence",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:40Z",
+          "completed_at": "2026-10-06T10:23:24Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588460/job/112219296779",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:44Z"
+            },
+            {
+              "number": 2,
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:44Z",
+              "completed_at": "2026-10-06T10:15:58Z"
+            },
+            {
+              "number": 3,
+              "name": "Checkout candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:58Z",
+              "completed_at": "2026-10-06T10:16:08Z"
+            },
+            {
+              "number": 4,
+              "name": "Resolve isolated ports and masked application secrets",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:08Z",
+              "completed_at": "2026-10-06T10:16:08Z"
+            },
+            {
+              "number": 5,
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:08Z",
+              "completed_at": "2026-10-06T10:16:17Z"
+            },
+            {
+              "number": 6,
+              "name": "Install candidate dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:17Z",
+              "completed_at": "2026-10-06T10:18:35Z"
+            },
+            {
+              "number": 7,
+              "name": "Create candidate schema and restricted application role",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:18:35Z",
+              "completed_at": "2026-10-06T10:20:37Z"
+            },
+            {
+              "number": 8,
+              "name": "Install Chromium on hosted Ubuntu",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:20:37Z",
+              "completed_at": "2026-10-06T10:21:01Z"
+            },
+            {
+              "number": 9,
+              "name": "Run real authenticated calendar browser scenarios",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:01Z",
+              "completed_at": "2026-10-06T10:23:18Z"
+            },
+            {
+              "number": 10,
+              "name": "Preserve non-secret workflow failure receipt",
+              "status": "completed",
+              "conclusion": "skipped",
+              "started_at": "2026-10-06T10:23:18Z",
+              "completed_at": "2026-10-06T10:23:18Z"
+            },
+            {
+              "number": 11,
+              "name": "Upload sanitized calendar evidence",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:23:18Z",
+              "completed_at": "2026-10-06T10:23:20Z"
+            },
+            {
+              "number": 20,
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:23:20Z",
+              "completed_at": "2026-10-06T10:23:20Z"
+            },
+            {
+              "number": 21,
+              "name": "Post Checkout candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:23:20Z",
+              "completed_at": "2026-10-06T10:23:20Z"
+            },
+            {
+              "number": 22,
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:23:20Z",
+              "completed_at": "2026-10-06T10:23:21Z"
+            },
+            {
+              "number": 23,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:23:21Z",
+              "completed_at": "2026-10-06T10:23:21Z"
+            }
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "id": 11405670207,
+          "name": "workforce-calendar-browser-7b517816410e29d84a03f368954541ca180b79f6-1",
+          "size_in_bytes": 8510808,
+          "digest": "sha256:d71ede2a320191a2c9bcf5354ded94381a5b49ef6320286519156c153554677b",
+          "expired": false,
+          "created_at": "2026-10-06T10:23:20Z",
+          "expires_at": "2026-10-20T10:23:18Z",
+          "workflow_run": {
+            "id": 37448588460,
+            "repository_id": 1362346481,
+            "head_repository_id": 1362346481,
+            "head_branch": "codex/hrm-588-validation-20261005",
+            "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+          }
+        }
+      ]
+    },
+    {
+      "id": 37448588405,
+      "name": "Workforce policy employee impact evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "run_number": 31,
+      "created_at": "2026-10-06T10:15:36Z",
+      "updated_at": "2026-10-06T10:24:20Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588405",
+      "path": ".github/workflows/workforce-policy-employee-impact-evidence.yml",
+      "jobs": [
+        {
+          "id": 112219296145,
+          "name": "Real PostgreSQL SELECT-only and authenticated employee impact browser evidence",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:16:16Z",
+          "completed_at": "2026-10-06T10:24:19Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588405/job/112219296145",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:16Z",
+              "completed_at": "2026-10-06T10:16:17Z"
+            },
+            {
+              "number": 2,
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:17Z",
+              "completed_at": "2026-10-06T10:16:30Z"
+            },
+            {
+              "number": 3,
+              "name": "Checkout candidate merge",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:30Z",
+              "completed_at": "2026-10-06T10:16:42Z"
+            },
+            {
+              "number": 4,
+              "name": "Resolve isolated masked database credentials",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:42Z",
+              "completed_at": "2026-10-06T10:16:42Z"
+            },
+            {
+              "number": 5,
+              "name": "Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:42Z",
+              "completed_at": "2026-10-06T10:16:49Z"
+            },
+            {
+              "number": 6,
+              "name": "Install exact candidate dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:49Z",
+              "completed_at": "2026-10-06T10:19:39Z"
+            },
+            {
+              "number": 7,
+              "name": "Prepare current schema and separate SELECT-only role",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:19:39Z",
+              "completed_at": "2026-10-06T10:21:12Z"
+            },
+            {
+              "number": 8,
+              "name": "Verify populated real PostgreSQL snapshots, locks, RLS and bounds",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:12Z",
+              "completed_at": "2026-10-06T10:21:21Z"
+            },
+            {
+              "number": 9,
+              "name": "Install Chromium on hosted Ubuntu",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:21:21Z",
+              "completed_at": "2026-10-06T10:22:12Z"
+            },
+            {
+              "number": 10,
+              "name": "Verify real authenticated on-demand aggregate UI and session boundaries",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:22:12Z",
+              "completed_at": "2026-10-06T10:24:15Z"
+            },
+            {
+              "number": 11,
+              "name": "Preserve safe workflow outcome",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:24:15Z",
+              "completed_at": "2026-10-06T10:24:15Z"
+            },
+            {
+              "number": 12,
+              "name": "Upload complete non-secret PostgreSQL and browser evidence",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:24:15Z",
+              "completed_at": "2026-10-06T10:24:17Z"
+            },
+            {
+              "number": 22,
+              "name": "Post Setup Node.js",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:24:17Z",
+              "completed_at": "2026-10-06T10:24:17Z"
+            },
+            {
+              "number": 23,
+              "name": "Post Checkout candidate merge",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:24:17Z",
+              "completed_at": "2026-10-06T10:24:17Z"
+            },
+            {
+              "number": 24,
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:24:17Z",
+              "completed_at": "2026-10-06T10:24:17Z"
+            },
+            {
+              "number": 25,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:24:17Z",
+              "completed_at": "2026-10-06T10:24:17Z"
+            }
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "id": 11405880004,
+          "name": "workforce-policy-employee-impact-7b517816410e29d84a03f368954541ca180b79f6-1",
+          "size_in_bytes": 829712,
+          "digest": "sha256:474afee6fd03c9d8d0f88be586042c61e1668c0db2842e829e111b8f6b331164",
+          "expired": false,
+          "created_at": "2026-10-06T10:24:16Z",
+          "expires_at": "2026-10-20T10:24:16Z",
+          "workflow_run": {
+            "id": 37448588405,
+            "repository_id": 1362346481,
+            "head_repository_id": 1362346481,
+            "head_branch": "codex/hrm-588-validation-20261005",
+            "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+          }
+        }
+      ]
+    },
+    {
+      "id": 37448588032,
+      "name": "Workforce policy restore writer evidence",
+      "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+      "head_branch": "codex/hrm-588-validation-20261005",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "run_number": 37,
+      "created_at": "2026-10-06T10:15:36Z",
+      "updated_at": "2026-10-06T10:27:28Z",
+      "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588032",
+      "path": ".github/workflows/workforce-policy-restore-evidence.yml",
+      "jobs": [
+        {
+          "id": 112219295145,
+          "name": "Real PostgreSQL, authorized API and rendered policy restore UI evidence",
+          "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb",
+          "status": "completed",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "started_at": "2026-10-06T10:15:40Z",
+          "completed_at": "2026-10-06T10:27:27Z",
+          "html_url": "https://github.com/rashadoni/leaddrive-v2/actions/runs/37448588032/job/112219295145",
+          "steps": [
+            {
+              "number": 1,
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:41Z",
+              "completed_at": "2026-10-06T10:15:42Z"
+            },
+            {
+              "number": 2,
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:42Z",
+              "completed_at": "2026-10-06T10:15:55Z"
+            },
+            {
+              "number": 3,
+              "name": "Checkout candidate merge and exact base",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:15:55Z",
+              "completed_at": "2026-10-06T10:16:06Z"
+            },
+            {
+              "number": 4,
+              "name": "Resolve fenced ephemeral ports and masked secrets",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:06Z",
+              "completed_at": "2026-10-06T10:16:06Z"
+            },
+            {
+              "number": 5,
+              "name": "Setup Node",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:06Z",
+              "completed_at": "2026-10-06T10:16:14Z"
+            },
+            {
+              "number": 6,
+              "name": "Install candidate dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:16:14Z",
+              "completed_at": "2026-10-06T10:19:07Z"
+            },
+            {
+              "number": 7,
+              "name": "Apply selected base schema, canonical guards and actual additive migration",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:19:07Z",
+              "completed_at": "2026-10-06T10:23:55Z"
+            },
+            {
+              "number": 8,
+              "name": "Execute mandatory real PostgreSQL restore concurrency and rollback tests",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:23:55Z",
+              "completed_at": "2026-10-06T10:23:58Z"
+            },
+            {
+              "number": 9,
+              "name": "Execute real credentials and authorized restore API scenarios",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:23:58Z",
+              "completed_at": "2026-10-06T10:24:15Z"
+            },
+            {
+              "number": 10,
+              "name": "Install Chromium on hosted Ubuntu",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:24:15Z",
+              "completed_at": "2026-10-06T10:24:39Z"
+            },
+            {
+              "number": 11,
+              "name": "Execute real rendered manual restore UI, session, retry and rollback scenarios",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:24:39Z",
+              "completed_at": "2026-10-06T10:27:24Z"
+            },
+            {
+              "number": 12,
+              "name": "Upload complete non-secret restore receipts",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:27:24Z",
+              "completed_at": "2026-10-06T10:27:25Z"
+            },
+            {
+              "number": 22,
+              "name": "Post Setup Node",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:27:25Z",
+              "completed_at": "2026-10-06T10:27:25Z"
+            },
+            {
+              "number": 23,
+              "name": "Post Checkout candidate merge and exact base",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:27:25Z",
+              "completed_at": "2026-10-06T10:27:25Z"
+            },
+            {
+              "number": 24,
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:27:25Z",
+              "completed_at": "2026-10-06T10:27:25Z"
+            },
+            {
+              "number": 25,
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "started_at": "2026-10-06T10:27:25Z",
+              "completed_at": "2026-10-06T10:27:25Z"
+            }
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "id": 11406620524,
+          "name": "workforce-policy-restore-7b517816410e29d84a03f368954541ca180b79f6-1",
+          "size_in_bytes": 883999,
+          "digest": "sha256:1b1ba00d93912d14a2b611d363c751f3a85efa77c7887dfc1ec512b0e5107adb",
+          "expired": false,
+          "created_at": "2026-10-06T10:27:25Z",
+          "expires_at": "2026-10-20T10:27:24Z",
+          "workflow_run": {
+            "id": 37448588032,
+            "repository_id": 1362346481,
+            "head_repository_id": 1362346481,
+            "head_branch": "codex/hrm-588-validation-20261005",
+            "head_sha": "ef5d90010d9b317a493dfe7ae574b1863f3c83fb"
+          }
+        }
+      ]
+    }
+  ]
+}
