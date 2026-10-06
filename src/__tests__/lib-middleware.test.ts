@@ -589,12 +589,12 @@ describe("middleware", async () => {
 
     const posResponse = await authMiddleware(makeReq({ pathname: "/loyalty/pos", auth: session }))
     expect(posResponse.headers.get("permissions-policy")).toBe(
-      "camera=(self), microphone=(self), geolocation=()",
+      "camera=(self), microphone=(self), geolocation=(self)",
     )
 
     const dashboardResponse = await authMiddleware(makeReq({ pathname: "/dashboard", auth: session }))
     expect(dashboardResponse.headers.get("permissions-policy")).toBe(
-      "camera=(), microphone=(self), geolocation=()",
+      "camera=(), microphone=(self), geolocation=(self)",
     )
   })
 
@@ -605,19 +605,19 @@ describe("middleware", async () => {
 
     const voiceResponse = await authMiddleware(makeReq({ pathname: "/ai/voice", auth: session }))
     expect(voiceResponse.headers.get("permissions-policy")).toBe(
-      "camera=(), microphone=(self), geolocation=()",
+      "camera=(), microphone=(self), geolocation=(self)",
     )
 
     // Nested paths under the console keep the grant …
     const nestedResponse = await authMiddleware(makeReq({ pathname: "/ai/voice/history", auth: session }))
     expect(nestedResponse.headers.get("permissions-policy")).toBe(
-      "camera=(), microphone=(self), geolocation=()",
+      "camera=(), microphone=(self), geolocation=(self)",
     )
 
     // A sibling dashboard page gets the same persistent-orb grant.
     const siblingResponse = await authMiddleware(makeReq({ pathname: "/ai/voicemail", auth: session }))
     expect(siblingResponse.headers.get("permissions-policy")).toBe(
-      "camera=(), microphone=(self), geolocation=()",
+      "camera=(), microphone=(self), geolocation=(self)",
     )
 
     // Public `/contact` must not capture the authenticated `/contacts` route.
@@ -625,13 +625,13 @@ describe("middleware", async () => {
     // every later SPA navigation, so this exact response must opt in.
     const contactsResponse = await authMiddleware(makeReq({ pathname: "/contacts", auth: session }))
     expect(contactsResponse.headers.get("permissions-policy")).toBe(
-      "camera=(), microphone=(self), geolocation=()",
+      "camera=(), microphone=(self), geolocation=(self)",
     )
 
     // /inbox also hosts the same signed-in app shell.
     const inboxResponse = await authMiddleware(makeReq({ pathname: "/inbox", auth: session }))
     expect(inboxResponse.headers.get("permissions-policy")).toBe(
-      "camera=(), microphone=(self), geolocation=()",
+      "camera=(), microphone=(self), geolocation=(self)",
     )
 
     // API responses must never carry the grant, even under the same prefix.
@@ -639,6 +639,27 @@ describe("middleware", async () => {
     expect(apiResponse.headers.get("permissions-policy")).toBe(
       "camera=(), microphone=(), geolocation=()",
     )
+  })
+
+  // «Моё местоположение» in the organization's map picker (owner, 2026-10-06).
+  // The first document loaded decides for every later in-app navigation, so
+  // the grant covers the signed-in app, exactly as the microphone's does — and
+  // nothing that is not the signed-in app.
+  it("lets a signed-in page ask for the browser's location, and nothing else", async () => {
+    const session = { user: { id: "u1", organizationId: "org-1", role: "manager" } }
+    const policy = async (pathname: string, auth: typeof session | null) =>
+      (await authMiddleware(makeReq({ pathname, auth }))).headers.get("permissions-policy") ?? ""
+
+    const signedIn = ["/mtm/customers/c-1", "/mtm", "/dashboard"]
+    expect(await Promise.all(signedIn.map((pathname) => policy(pathname, session))))
+      .toEqual(signedIn.map(() => "camera=(), microphone=(self), geolocation=(self)"))
+
+    const elsewhere = [
+      await policy("/api/v1/mtm/geocode", session),
+      await policy("/login", null),
+      await policy("/portal/login", null),
+    ]
+    expect(elsewhere.filter((value) => !value.includes("geolocation=()"))).toEqual([])
   })
 
   // ─── Rate limiting ────────────────────────────────────────

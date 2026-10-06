@@ -7667,3 +7667,24 @@ Prepared next whole task: [C8-002 manager Today](./workforce-c8-whole-item-accep
 Actual isolated Linux AT tooling is not yet implemented; available AT-SPI/GI
 groundwork makes it a technical next step, not a proven external/human-only gate.
 The same sole writer retains PR589; no duplicate branch or candidate workspace.
+
+
+### 2026-10-06 — preserve incoming MTM PR600 after C7 acceptance
+
+The documentation successor a9fdf5b3c04459d454ad0e1bf3254251b23a8320 completed all
+15 applicable checks on tested main d2fd13aab5c85841ccab723dfc9d784ca7c7fb09.
+Policy restore attempt 1 timed out before its first UI scenario; one unchanged
+job retry passed all 15 scenarios. The original safe FAIL remains preserved and
+its cause is UNKNOWN; the retry is not a claimed source fix.
+
+Fresh main then advanced to4eb451bb62bac71860bbe47e576f2be506eab860 (MTM PR600).
+Its nine non-message files are integrated as exact main blobs; EN/RU/AZ messages
+use conflict-free three-way merges preserving both incoming namespace and the
+accepted HRM delta. The incoming proxy deliberately permits geolocation=(self)
+for signed-in app documents. This is inherited reviewed-main header behavior;
+no HRM geolocation call, actual browser permission grant or production activation
+is introduced by this integration. The resulting head needs its own exact CI
+and independent integration review; prior green is not reused as its result.
+
+Only C7 remains newly closed:83/161 DONE,78 open,14/15 gates,weighted60%.
+The separate prepared C8 whole-item/AT plan and all other open rows are unchanged.
