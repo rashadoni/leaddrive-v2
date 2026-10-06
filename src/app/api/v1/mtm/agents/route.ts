@@ -273,7 +273,7 @@ export const GET = withRls(async (req, auth) => {
     }
 
     // How many clients each card holds today — the rows the employee's own
-    // section lists (active clients with a current PRIMARY assignment). An
+    // section lists (active clients attached to them today, in any role). An
     // enrichment like the two above: a failure costs the figure, not the list.
     const clientsByAgent = new Map<string, number>()
     let clientsAvailable = false
@@ -287,7 +287,6 @@ export const GET = withRls(async (req, auth) => {
           where: {
             organizationId: orgId,
             agentId: { in: agents.map((agent) => agent.id) },
-            role: "PRIMARY",
             ...activeFieldAssignmentWindow(asOf),
             contact: { deletedAt: null, status: "ACTIVE" },
           },

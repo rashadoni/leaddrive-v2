@@ -44,6 +44,8 @@ type AssignmentPreview = {
     assignable: number
     excluded: number
     unassigned: number
+    /** Clients who keep the employee they have and get one more. Absent from an older server. */
+    additional?: number
     openVisitConflicts: number
     routePlanConflicts: number
     changed?: number
@@ -73,6 +75,7 @@ export function ContactAssignmentDialog({
   asOf,
   initialTargetAgentId,
   lockTargetAgent = false,
+  sourceAgentId,
   defaultReason,
   onCompleted,
 }: {
@@ -85,6 +88,8 @@ export function ContactAssignmentDialog({
   initialTargetAgentId?: string
   /** The employee's own section assigns to that employee only: show the name, not a list to choose from. */
   lockTargetAgent?: boolean
+  /** Detaching: the one employee to detach. Without it every employee of the client is detached. */
+  sourceAgentId?: string
   defaultReason?: string
   onCompleted: (result: ContactAssignmentResult) => void
 }) {
@@ -103,6 +108,7 @@ export function ContactAssignmentDialog({
     () => agents.filter((agent) => agent.status === "ACTIVE"),
     [agents],
   )
+  const sourceAgent = sourceAgentId ? agents.find((agent) => agent.id === sourceAgentId) ?? null : null
 
   const reset = () => {
     setStep("PARAMETERS")
@@ -152,6 +158,7 @@ export function ContactAssignmentDialog({
           contactIds,
           mode,
           targetAgentId: mode === "ASSIGN" ? targetAgentId : null,
+          ...(mode === "UNASSIGN" && sourceAgentId ? { sourceAgentId } : {}),
           effectiveFrom,
           reason: reason.trim(),
         }),
@@ -186,6 +193,7 @@ export function ContactAssignmentDialog({
           contactIds,
           mode,
           targetAgentId: mode === "ASSIGN" ? targetAgentId : null,
+          ...(mode === "UNASSIGN" && sourceAgentId ? { sourceAgentId } : {}),
           effectiveFrom,
           reason: reason.trim(),
           previewToken: preview.previewToken,
@@ -306,8 +314,21 @@ export function ContactAssignmentDialog({
               <div className="rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
                 {t("newOwner")}: <span className="font-medium">{preview.targetAgent?.name || "—"}</span>
                 <span className="float-right text-xs text-muted-foreground">{preview.effectiveFrom}</span>
+                {/* Attaching takes the client from nobody — said in words, because it used to. */}
+                {(preview.summary.additional ?? 0) > 0 ? (
+                  <p data-testid="contact-assignment-additional" className="mt-2 text-muted-foreground">
+                    {t("additionalNote", { count: preview.summary.additional ?? 0, name: preview.targetAgent?.name || "—" })}
+                  </p>
+                ) : null}
               </div>
-            ) : null}
+            ) : (
+              <div data-testid="contact-assignment-detach-from" className="rounded-lg border border-zinc-200 bg-muted/30 p-3 text-sm dark:border-zinc-700">
+                {sourceAgent
+                  ? <>{t("detachFrom")}: <span className="font-medium">{sourceAgent.name}</span></>
+                  : t("detachFromAll")}
+                <span className="float-right text-xs text-muted-foreground">{preview.effectiveFrom}</span>
+              </div>
+            )}
             {preview.summary.excluded > 0 ? (
               <div>
                 <h3 className="text-sm font-semibold">{t("excludedContacts")}</h3>

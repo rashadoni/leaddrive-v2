@@ -74,6 +74,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const organizationKind = params.get("organizationKind")
   const objectType = params.get("objectType")
   const ownerAgentId = params.get("ownerAgentId")
+  const notAgentId = params.get("notAgentId")
   const assignmentState = params.get("assignmentState")
   const coveragePeriod = contactCoveragePeriod(params.get("coveragePeriod"), asOf.toISOString().slice(0, 10))
   const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1)
@@ -81,18 +82,29 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
 
   const and: Prisma.MtmContactWhereInput[] = []
   if (actor.role !== "ADMIN") and.push(contactScopeForActor(actor, asOf))
+  // A client may be attached to several employees (owner, 2026-10-06), so
+  // «whose client» is every employee attached today, not the PRIMARY alone.
   if (ownerAgentId) {
     if (!isAgentInRouteScope(actor, ownerAgentId)) return forbidden()
     and.push({
       agentAssignments: {
-        some: { agentId: ownerAgentId, role: "PRIMARY", ...activeFieldAssignmentWindow(asOf) },
+        some: { agentId: ownerAgentId, ...activeFieldAssignmentWindow(asOf) },
+      },
+    })
+  }
+  // The attach tab of an employee's section: everyone they do not have yet.
+  if (notAgentId) {
+    if (!isAgentInRouteScope(actor, notAgentId)) return forbidden()
+    and.push({
+      agentAssignments: {
+        none: { agentId: notAgentId, ...activeFieldAssignmentWindow(asOf) },
       },
     })
   }
   if (assignmentState === "UNASSIGNED") {
-    and.push({ agentAssignments: { none: { role: "PRIMARY", ...activeFieldAssignmentWindow(asOf) } } })
+    and.push({ agentAssignments: { none: activeFieldAssignmentWindow(asOf) } })
   } else if (assignmentState === "ASSIGNED") {
-    and.push({ agentAssignments: { some: { role: "PRIMARY", ...activeFieldAssignmentWindow(asOf) } } })
+    and.push({ agentAssignments: { some: activeFieldAssignmentWindow(asOf) } })
   }
   if (search) {
     and.push({

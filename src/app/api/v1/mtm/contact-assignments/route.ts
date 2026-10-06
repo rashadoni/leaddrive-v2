@@ -43,11 +43,13 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
   const parsed = parseBody(ContactBulkAssignmentExecuteSchema, await req.json().catch(() => null))
   if (!parsed.ok) return parsed.response
   const body = parsed.data
-  if (body.targetAgentId && !isAgentInRouteScope(actor, body.targetAgentId)) {
-    return NextResponse.json({
-      error: "Agent is outside your scope",
-      code: "MTM_CONTACT_ASSIGNMENT_SCOPE_DENIED",
-    }, { status: 403 })
+  for (const agentId of [body.targetAgentId, body.sourceAgentId]) {
+    if (agentId && !isAgentInRouteScope(actor, agentId)) {
+      return NextResponse.json({
+        error: "Agent is outside your scope",
+        code: "MTM_CONTACT_ASSIGNMENT_SCOPE_DENIED",
+      }, { status: 403 })
+    }
   }
   const requestHash = contactAssignmentRequestHash(body)
   const prior = await prisma.mtmContactAssignmentOperation.findUnique({
@@ -83,6 +85,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
         contactIds: body.contactIds,
         mode: body.mode,
         targetAgentId: body.targetAgentId,
+        sourceAgentId: body.sourceAgentId,
         effectiveFrom,
         actor,
       })
@@ -95,32 +98,57 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
         endedAssignmentIds: string[]
         assignmentId: string | null
       }> = []
+      // Ends one assignment that the preview saw active; a row somebody
+      // changed in between makes the whole batch stale, not half-applied.
+      const endAssignment = async (contactId: string, assignmentId: string) => {
+        const ended = await tx.mtmContactAgentAssignment.updateMany({
+          where: {
+            id: assignmentId,
+            organizationId: auth.orgId,
+            contactId,
+            deletedAt: null,
+            effectiveFrom: { lte: effectiveFrom },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gt: effectiveFrom } }],
+          },
+          data: { effectiveTo: effectiveFrom, reason: body.reason },
+        })
+        if (ended.count !== 1) throw new Error("STALE_PREVIEW")
+      }
       for (const row of eligible) {
         const endedAssignmentIds: string[] = []
-        for (const currentAssignmentId of row.currentAssignmentIds) {
-          const ended = await tx.mtmContactAgentAssignment.updateMany({
-            where: {
-              id: currentAssignmentId,
+        // Attaching ends nobody's assignment; detaching ends those the
+        // preview listed — one employee's, or everyone's.
+        for (const endAssignmentId of row.endAssignmentIds) {
+          await endAssignment(row.contactId, endAssignmentId)
+          endedAssignmentIds.push(endAssignmentId)
+        }
+        if (row.promote) {
+          // The responsible employee left and others stay: the one attached
+          // longest takes over, as a new dated row — the history keeps both.
+          await endAssignment(row.contactId, row.promote.assignmentId)
+          endedAssignmentIds.push(row.promote.assignmentId)
+          await tx.mtmContactAgentAssignment.create({
+            data: {
               organizationId: auth.orgId,
               contactId: row.contactId,
+              agentId: row.promote.agentId,
               role: "PRIMARY",
-              deletedAt: null,
-              effectiveFrom: { lte: effectiveFrom },
-              OR: [{ effectiveTo: null }, { effectiveTo: { gt: effectiveFrom } }],
+              effectiveFrom,
+              source: "BULK_ASSIGNMENT_PROMOTION",
+              assignedBy: auth.userId || null,
+              reason: body.reason,
             },
-            data: { effectiveTo: effectiveFrom, reason: body.reason },
+            select: { id: true },
           })
-          if (ended.count !== 1) throw new Error("STALE_PREVIEW")
-          endedAssignmentIds.push(currentAssignmentId)
         }
         let assignmentId: string | null = null
-        if (body.mode === "ASSIGN" && body.targetAgentId) {
+        if (body.mode === "ASSIGN" && body.targetAgentId && row.newRole) {
           const assignment = await tx.mtmContactAgentAssignment.create({
             data: {
               organizationId: auth.orgId,
               contactId: row.contactId,
               agentId: body.targetAgentId,
-              role: "PRIMARY",
+              role: row.newRole,
               effectiveFrom,
               source: "BULK_ASSIGNMENT",
               assignedBy: auth.userId || null,
@@ -167,6 +195,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
           newData: {
             mode: body.mode,
             targetAgentId: body.targetAgentId ?? null,
+            sourceAgentId: body.sourceAgentId ?? null,
             effectiveFrom: body.effectiveFrom,
             reason: body.reason,
             changed: changed.length,
