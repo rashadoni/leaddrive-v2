@@ -1,0 +1,43 @@
+{
+  "head": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "synthetic": "aabc561784979d9867d5b35c370135e58792c8fe",
+  "artifact_id": 11402718678,
+  "artifact_digest_verified": "sha256:6a080af6bac01b8d1c521e560217f1c674fb3457490667d96c80a9c63f61a716",
+  "safe_member": "restore-rendered-ui-receipt.json",
+  "other_zip_member_contents_read": false,
+  "status": "PASS",
+  "required_cases": 15,
+  "completed_cases": 15,
+  "unique_case_names": 15,
+  "case_statuses": [
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS",
+    "PASS"
+  ],
+  "cleanup": [
+    {
+      "action": "scoped-row-removal-and-four-guards-restored",
+      "status": "PASS"
+    },
+    {
+      "action": "disconnect",
+      "status": "PASS"
+    }
+  ],
+  "authentication_records": 10,
+  "source_bindings_verified": 34,
+  "receipt_sha256": "06e636c2fe4d2627882c80523154b6fb185bfd5e2896af037b31cef33268de8a",
+  "boundary": "Real hosted Chromium/credentials/session/canonical restore writer and PostgreSQL on disposable data. EN/RU/AZ at320/768/1440, bounded native controls/reflow, real201 loss/replay200, audit rollback503/retry201 and session/grant changes. Controlled transport loss is distinct from server failure. Existing policy read-only-role lane unchanged. Geometry is not pixel occlusion/whole-page WCAG/AT/native zoom. No production authenticated write/activation/employee impact/Android/load/pilot credit. Auth metadata and explicitly expected new draft/audit writes are excluded from preserved source/employee facts."
+}

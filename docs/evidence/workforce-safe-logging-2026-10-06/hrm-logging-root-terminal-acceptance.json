@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "status": "READY_BOUNDED_DORMANT_LOGGING_CANDIDATE_INDEPENDENTLY_ACCEPTED",
+  "repository": "rashadoni/leaddrive-v2",
+  "pr": 589,
+  "head": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "tree": "1bdd3a8c6a8b222cb9dbf193e9c019ef55460aa5",
+  "main": "86cba428d39e3ce4be13245bdb8e34e49dccf8d4",
+  "synthetic": "aabc561784979d9867d5b35c370135e58792c8fe",
+  "parent": "dc91bd039cf25f9f30b9580471e0f409ebf6eb2e",
+  "fixed_catches": 4,
+  "changed_paths": 11,
+  "checks": {
+    "mandatory_pass": 5,
+    "additional_pass": 6,
+    "optional_build": "SKIPPED",
+    "successful_workflows": 9,
+    "all_attempts": 1
+  },
+  "restore": {
+    "unique_cases_pass": 15,
+    "cleanup_pass": 2,
+    "authentication_records": 10,
+    "exact_source_bindings": 34,
+    "attempt": 1
+  },
+  "owner_validation": {
+    "focused_pass": 50,
+    "privacy_cases": 16,
+    "regression_pass": 225,
+    "lint": "PASS",
+    "production_bounded_typecheck": "PASS",
+    "test_inclusive_typecheck": "Exactly two existing TS2737 diagnostics, byte-identical to accepted parent; no global clean compiler claim"
+  },
+  "independent_source_validation": {
+    "tests_pass": 42,
+    "privacy_cases": 16,
+    "blobs_verified": 8760,
+    "changed_paths": 11,
+    "unchanged_parent_blobs": 8749,
+    "unresolved_findings": 0
+  },
+  "hosted_qualification": {
+    "typecheck_baseline_file_code_pairs": 64,
+    "test_baseline_known_files": 18,
+    "both_baselines_unchanged": true,
+    "no_global_clean_compiler_or_zero_failed_suites_claim": true,
+    "other_five_browser_payloads": "METADATA_ONLY"
+  },
+  "ledger": {
+    "done": 82,
+    "total": 161,
+    "open": 79,
+    "weighted_percent": 59,
+    "C12_008": "PARTIAL"
+  },
+  "remaining_logging": {
+    "raw_thrown_value_calls": 49,
+    "name_derived_calls": 1,
+    "scope": "Syntactic direct-console inventory; not a transitive audit or proof of actual runtime leakage"
+  },
+  "next_slice": "Four request API logging calls, preserving warn severity and optional Route enrichment; preparation only",
+  "backup_track": "Authentic historical api_keys baseline remains with the separately designated backup owner; no Contabo action here",
+  "restrictions_preserved": [
+    "No applied migration/baseline edits",
+    "Support592 unchanged",
+    "No merge/deployment/activation",
+    "No grants/credentials changes",
+    "No raw CI logs/screenshots"
+  ],
+  "source_archive": "542e22351963f4e3b2d17f42fa7b3fd399ca69e2",
+  "source_archive_files_verified": 23,
+  "independent_terminal_receipt": {
+    "name": "hrm-logging-independent-hosted-terminal-2c5a-20261006.json",
+    "bytes": 13549,
+    "sha256": "666c9ff5dfb0c0c21121177970bdc7db7247d5876206bf9d043bcc034d85845e"
+  }
+}

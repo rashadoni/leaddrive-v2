@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "status": "PASS_SOURCE_ARCHIVE_DURABILITY_HOSTED_PENDING",
+  "reviewer": "independent_read_only_worker",
+  "reviewed_at": "2026-10-06T09:47:13.466304+00:00",
+  "archive_commit": "542e22351963f4e3b2d17f42fa7b3fd399ca69e2",
+  "archive_tree": "3fa3dd22d0143149b1a3811c20f97756ed6fac47",
+  "archive_parent": "5a1150f06d4a57b0b9ae9d5b7b114ab47d2f01bf",
+  "directory": "docs/evidence/workforce-safe-logging-2026-10-06",
+  "source_head": "2c5a6a4b35cb96988f9f3c417b122d788498c3a7",
+  "source_receipt_sha256": "2070afc5c923ea53f750d3f558599745d68247493060d14fe81e10feffc2418e",
+  "remote_files_verified": 23,
+  "manifest_originals": 21,
+  "source_support_files_archived_byte_exact": 18,
+  "all_file_git_blob_hashes_verified": true,
+  "all_manifest_original_hashes_and_local_bytes_match": true,
+  "root_archive_elements_all23_byte_equal": true,
+  "readme_whole_read": true,
+  "readme_qualification": [
+    "Exact-source accepted; newhead hostedpending, no parentCI substituted.",
+    "Independent42 vsowner50+225 tests distinguished; initialtestexpectationfailure preserved.",
+    "TwoexistingTS2737, no global clean compile; no baseline/targetchange.",
+    "49remainingraw+1name-derivedcall; syntacticnottransitiveaudit, no proven runtimeleak claim.",
+    "C12PARTIAL82/161DONE79open59%; backupbaseline separate; no activation/merge/deployment."
+  ],
+  "previous_archive_preservation": {
+    "commit": "5a1150f06d4a57b0b9ae9d5b7b114ab47d2f01bf",
+    "directory": "docs/evidence/workforce-c12-eligible-roster-2026-10-06",
+    "files": 29,
+    "all_blob_ids_equal_prior_independent_readback": true
+  },
+  "local_only_limit": "Two large source/tree responses remain explicitly local-only and hash-bound; immutable source identities permit recovery.",
+  "files": [
+    {
+      "name": "README.md",
+      "bytes": 1972,
+      "sha256": "da30fe3e4905b8124a37bdc6874394c1ed41b623ceaf084c31aee982d7a36245",
+      "git_blob_sha": "eab399f13939d80e18420e08ae5112605143e3d5",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-base-tsconfig.json",
+      "bytes": 1106,
+      "sha256": "9fe9edc69c13cbbdd2eba7848346768f1b5baae2c6c1bbfbf2422d4a7e6547f5",
+      "git_blob_sha": "881b0e514a26a3d9044034e63e0989c8bc46b362",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-base-typecheck.txt",
+      "bytes": 250,
+      "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8",
+      "git_blob_sha": "bb9d15b6b7d8d06e09577039d837eab4486e173c",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-independent-remote-guard.json",
+      "bytes": 4597,
+      "sha256": "db1d9851854b54fa87ab2459f586f531fe94c16f6bbc57778e029b73aece515f",
+      "git_blob_sha": "ca6f0a95978f55f91e69f404ace118b99685cccb",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-independent-source-2c5a-20261006.json",
+      "bytes": 14831,
+      "sha256": "2070afc5c923ea53f750d3f558599745d68247493060d14fe81e10feffc2418e",
+      "git_blob_sha": "62d29f35d42f8100a0e5791f59faf730bea68838",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-independent-tree-proof.json",
+      "bytes": 1320,
+      "sha256": "bea286ac9d4bf8284e785ebf79272b82d443529ccd830c8c1dc4a51cf7d50c89",
+      "git_blob_sha": "92fd3b264ff7642887c1e37ca22ef6cdf950803c",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-inventory.mjs",
+      "bytes": 2276,
+      "sha256": "a130df14c476831dac2962190ecfcdb5840fbc7fffc59a8919eac1a508d426b8",
+      "git_blob_sha": "78420473fd7c3c5779529f87ec8786f09a49997a",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-next-slice-preparation.json",
+      "bytes": 3019,
+      "sha256": "7318a2e114f00688b1750348fec3d1fb655be733b17335c904192e754324d1e6",
+      "git_blob_sha": "b6f87fb1913c95667485f4509ed8ec187ef69e6d",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-owner-validation.json",
+      "bytes": 2008,
+      "sha256": "62c91022bd08b5dc2c1d2357893e419d80764fde1a917634bfb183577228d402",
+      "git_blob_sha": "a6a362fe50857be9c5342f3c9a5f9aef8bba05d8",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-production-tsconfig.json",
+      "bytes": 641,
+      "sha256": "f41c8b79ab9ffacf36dc52983aa0b93e386b7fefd35f2c0dd2f41c0c1f5ad92a",
+      "git_blob_sha": "8546a8caec9023ad197d13abb7926eaf812a30aa",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-production-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-regressions.json",
+      "bytes": 75076,
+      "sha256": "f2faab59641afd05428ce518ca4a8c7c1e15f1fbc41188547b38a0b79b7de5cf",
+      "git_blob_sha": "3eb1cab825ba687ccfad96087ed31f7c9a3ad3a8",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-remaining-console-inventory.json",
+      "bytes": 19688,
+      "sha256": "1b32b706cd52ecf71cbffff9e547e05e8b20f96ea459ea8f9857f0f61605ffe9",
+      "git_blob_sha": "3f5a635c181ae494c53fe74859c37292052b515b",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-source-bindings.json",
+      "bytes": 3023,
+      "sha256": "1c2b8917ec9a4332cfb484756aa25c727b80d6beca4041b1a9b61a91b5921486",
+      "git_blob_sha": "5e4e5764081728dbdec495dfb250046be7a057c7",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-targeted-tests.json",
+      "bytes": 20573,
+      "sha256": "98bc3b177ecc50fac69a2002c8b0c94fc4a094fc9d93ee8b4ef9f72e8fd0affb",
+      "git_blob_sha": "c68092b047d57d90ab406b5c41136fb126b63cee",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-tsconfig.json",
+      "bytes": 1082,
+      "sha256": "37ffa9aaab18215d749b36a39242124a50fcdb14421e8c2528944214d969ba15",
+      "git_blob_sha": "24614d359b8c15f303f3b907a65be6ab708f87c6",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-typecheck-comparison.json",
+      "bytes": 1221,
+      "sha256": "90f44a2a9c5814a7cf3bc65b2444235cbbed27b5326ddd4924dbc5953f27ea96",
+      "git_blob_sha": "4ce339efa3b49806c5b602cc6886a661df0af970",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-logging-typecheck.txt",
+      "bytes": 250,
+      "sha256": "3ad9017d58d795099d8291c8e34dff9c89919d67816a7bcc922abd3ce094c9a8",
+      "git_blob_sha": "bb9d15b6b7d8d06e09577039d837eab4486e173c",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-safe-logging-independent-final-tests.json",
+      "bytes": 17255,
+      "sha256": "f48cd06a2b5995f80a4d49c9c9b9374f5d2b1ad1c75839d4bd0eab41f94922ba",
+      "git_blob_sha": "8cfe34aab6c3dc21a084055af0e71f01b6e67348",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-safe-logging-independent-preliminary-20261006.json",
+      "bytes": 11979,
+      "sha256": "2e340f123370f6942e638e8b9e6377a28de1f3654f3e9a2127bb1ecaacda0de9",
+      "git_blob_sha": "77df4eaa4b461433dd73a0e5e03921044445b7a1",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-safe-logging-independent-review-bindings.json",
+      "bytes": 3019,
+      "sha256": "76dc0c495c82ff24d34a99cca9a1815af4b777df4835581fb0f8d89cf0e13027",
+      "git_blob_sha": "f11c06dc75f68453ace8a3cb0c249deaedce6037",
+      "original_byte_equal": true
+    },
+    {
+      "name": "hrm-safe-logging-independent-tests.json",
+      "bytes": 18665,
+      "sha256": "0be79cb5eea95f2f17f03be02b0549f8df07f86c1d7a38c42b43cb936fbe87b7",
+      "git_blob_sha": "971951f68396c63eb305be5f35d08d0e222f1668",
+      "original_byte_equal": true
+    },
+    {
+      "name": "manifest.json",
+      "bytes": 3396,
+      "sha256": "3b029684e667b45fd1ce9c96dbfef6148033a89b5bdbc1a63e354ac0647be119",
+      "git_blob_sha": "cf7140ecfe2ecb0f4676a1c4526f4d65f51d7724",
+      "original_byte_equal": true
+    }
+  ],
+  "actions": {
+    "source_or_remote_writes": false,
+    "tests_or_CI_repeated": false,
+    "raw_logs_read": false
+  },
+  "remaining_blockers": "No source archive durability blocker. New-head hosted acceptance remains pending and independent of this check."
+}
