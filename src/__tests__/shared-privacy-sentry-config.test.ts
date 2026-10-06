@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { minimizeSentryEnvelope, privateSentryOptions } from "@/lib/telemetry/sentry-privacy"
+import { minimizeSentryEnvelope, privateSentryOptions, privateSentryIntegrations } from "@/lib/telemetry/sentry-privacy"
 const mocks = vi.hoisted(() => ({ init: vi.fn(), on: vi.fn(), browserTracingIntegration: vi.fn(() => ({ name: "BrowserTracing" })), replayIntegration: vi.fn(), getReplay: vi.fn(), captureRouterTransitionStart: vi.fn() }))
 vi.mock("@sentry/nextjs", () => mocks)
 afterEach(() => vi.clearAllMocks())
@@ -11,6 +11,10 @@ describe("all configured Sentry runtimes share the destination boundary", () => 
     else await import("../../instrumentation-client")
     expect(mocks.init).toHaveBeenCalledOnce()
     expect(mocks.init.mock.calls[0][0]).toMatchObject(privateSentryOptions)
+    const integrations = mocks.init.mock.calls[0][0].integrations([{ name: "BrowserSession" }, { name: "BrowserTracing" }])
+    expect(integrations.map((item: { name: string }) => item.name)).toEqual(["ApplicationPrivacyBoundary", "BrowserTracing"])
+    expect(mocks.init.mock.calls[0][0].integrations).toBe(privateSentryIntegrations)
+    integrations[0].beforeSetup({ on: mocks.on })
     expect(mocks.on).toHaveBeenCalledWith("beforeEnvelope", minimizeSentryEnvelope)
     expect(mocks.replayIntegration).not.toHaveBeenCalled()
     if (runtime === "client") expect(mocks.init.mock.calls[0][0]).toMatchObject({ replaysSessionSampleRate: 0, replaysOnErrorSampleRate: 0 })

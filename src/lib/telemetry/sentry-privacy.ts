@@ -1,4 +1,4 @@
-import type { Envelope, Event } from "@sentry/core"
+import type { Envelope, Event, Integration } from "@sentry/core"
 import { boundedNumber, hex, oneOf, own } from "./safe-fields"
 
 const LEVELS = ["fatal", "error", "warning", "log", "info", "debug"] as const
@@ -45,6 +45,7 @@ function frame(value: unknown) {
 export function minimizeSentryEvent<T extends Event>(event: T): T {
   const transaction = own(event, "type") === "transaction"
   const safe: Event = {
+    sdk: { settings: { infer_ip: "never" } },
     level: oneOf(own(event, "level"), LEVELS, "error"),
     ...(transaction ? { type: "transaction", transaction: "application.transaction", transaction_info: { source: "custom" } } : { message: "Application error" }),
   }
@@ -97,7 +98,17 @@ export function minimizeSentryEnvelope(envelope: Envelope): void {
   })
 }
 
+/** beforeSetup runs before any default integration setupOnce/setup. A hidden
+ * browser document can otherwise send its initial session inside init(). */
+export function privateSentryIntegrations(defaults: Integration[]): Integration[] {
+  return [{
+    name: "ApplicationPrivacyBoundary",
+    beforeSetup(client) { client.on("beforeEnvelope", minimizeSentryEnvelope) },
+  }, ...defaults.filter(integration => integration.name !== "BrowserSession")]
+}
+
 export const privateSentryOptions = {
+  integrations: privateSentryIntegrations,
   sendDefaultPii: false,
   enableLogs: false,
   dataCollection: {

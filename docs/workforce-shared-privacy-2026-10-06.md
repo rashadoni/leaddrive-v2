@@ -17,8 +17,8 @@ Exact candidate, independent receipts and hosted results are recorded separately
 | Prisma audit fallback | Emits only `audit-persist`; no action, entity, identity or raw exception in console. | The full audit database write is unchanged and still tenant-scoped. Existing `logAudit` catch resolves on persistence failure; this patch does not convert it into transactional failure or claim stronger audit durability. |
 | Prisma RLS guard | Retains finite model/operation and fixed guidance; drops captured caller stack. Unknown operations collapse to `unknown`. A console failure cannot block the query. | Org-scoped model queries still throw before execution in the existing test guard. Raw queries remain warn-only. Actual production driver/native-engine output is not proved exhaustively. |
 | Pino | Fixed-shape event projection before serialization, plus recursive child-binding sanitization before child construction. Only existing application methods are exposed. | Existing Support and Routes observation schemas/counts/status/durations remain. ERP/social free messages become `application log`; arbitrary context, errors, stacks, causes, host/process and request/principal identifiers are dropped. No `setBindings`, raw instance or arbitrary child configuration escape is exposed. |
-| Sentry server/edge/client | Shared event/transaction projection and final `beforeEnvelope` filter on the existing transport. Collection options disable identities, cookies, headers, bodies, query parameters, model inputs/outputs, local variables and source context. | Existing DSNs, authentication, destination and transaction sampling rates are unchanged. Only bounded minimized events/transactions survive; IDs/timing and finite type/operation/status/code area remain. Free messages, URLs, custom context/tags, request/user data, breadcrumbs, source snippets and span attributes are dropped. |
-| Replay and other Sentry envelope channels | Replay integration removed and both replay rates set to zero. Final envelope boundary drops attachments, replay, sessions, logs, profiles, metrics, check-ins and other unreviewed item types. | This intentionally reduces observability, including session/release-health and profiling channels; it does not claim equivalent diagnostic coverage. Error grouping is coarser because filenames/functions/messages are minimized. Future channels require a separate reviewed contract. |
+| Sentry server/edge/client | Shared event/transaction projection and final `beforeEnvelope` filter installed before default SDK integration setup on the existing transport. Collection options disable identities, cookies, headers, bodies, query parameters, model inputs/outputs, local variables and source context. | Existing DSNs, authentication, destination and transaction sampling rates are unchanged. Only bounded minimized events/transactions survive; IDs/timing and finite type/operation/status/code area remain. Free messages, URLs, custom context/tags, request/user data, breadcrumbs, source snippets and span attributes are dropped. |
+| Replay and other Sentry envelope channels | Replay integration removed, both replay rates set to zero, and default BrowserSession integration omitted. Final envelope boundary drops attachments, replay, sessions, logs, profiles, metrics, check-ins and other unreviewed item types. | This intentionally reduces observability, including session/release-health and profiling channels; it does not claim equivalent diagnostic coverage. Error grouping is coarser because filenames/functions/messages are minimized. Future channels require a separate reviewed contract. |
 | Browser error boundary | Logs the fixed `application-render` event instead of the Error. | UI and effect dependency unchanged. Global/request capture continues through the configured Sentry hooks. |
 
 No schema, migration, historical `api_keys` assumption, access grant, credential,
@@ -33,12 +33,22 @@ only the event still leaked a synthetic organization identifier. The corrected
 facade sanitizes bindings before every child is constructed. The failing probe
 and corrected independent probe are retained as separate evidence.
 
+An independent hidden-document BrowserSession probe also found an initialization
+race: post-init hook registration allowed a session envelope during `init()`.
+The boundary now registers as the first integration's `beforeSetup`, before any
+integration setup, including synchronous setup-time sends. BrowserSession is
+omitted because that channel has no accepted payload contract. The failed
+initialization probe is retained; neither initial frozen candidate nor old tests
+alone establishes final acceptance.
+
 Sentry event hooks do not cover attachment/Replay/session envelopes. The shared
 policy also runs at `Client.sendEnvelope` immediately before its existing
 transport. Unsupported item types are discarded rather than recursively scanning
 arbitrary data. Values are projected from own data properties, with no getter,
 `toJSON` or string coercion. Only finite categorical values, bounded numbers and
-explicitly allowed pseudonymous correlation fields survive. This is a reviewed
+explicitly allowed pseudonymous correlation fields survive. A fixed
+`sdk.settings.infer_ip="never"` preserves the BrowserClient privacy directive
+through both projections; untrusted SDK metadata cannot override it. This is a reviewed
 contract, not a whole-program taint proof or an assertion that correlation IDs
 are anonymous. The physical collector can still see transport-level network
 metadata; no remote retention/access claim follows from payload minimization.
@@ -61,7 +71,9 @@ not claim a live database write or complete native driver coverage. Existing
 RLS/auth/Support/Routes tests provide separate behavior regressions.
 
 Source-mode Sentry configuration wiring is executed for server/edge/client;
-actual browser collector behavior, session Replay and signed devices are not
+an actual BrowserClient hidden-document initialization is exercised with a
+synthetic document and memory transport. Live browser collector behavior, session
+Replay and signed devices are not
 credited. A hosted Linux production build is requested through the existing
 PR label gate, separately from tests and source typing. Its outcome must be read
 from current exact-candidate metadata; an old build or skipped job is not PASS.

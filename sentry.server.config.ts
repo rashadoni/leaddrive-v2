@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs"
-import { minimizeSentryEnvelope, privateSentryOptions } from "./src/lib/telemetry/sentry-privacy"
+import { privateSentryOptions } from "./src/lib/telemetry/sentry-privacy"
 
-const client = Sentry.init({
+Sentry.init({
   dsn: process.env.SENTRY_DSN,
 
   environment: process.env.NODE_ENV,
@@ -13,4 +13,3 @@ const client = Sentry.init({
   debug: false,
   ...privateSentryOptions,
 })
-client?.on("beforeEnvelope", minimizeSentryEnvelope)
