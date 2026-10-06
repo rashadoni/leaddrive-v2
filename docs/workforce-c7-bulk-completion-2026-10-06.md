@@ -23,6 +23,10 @@ behavior. Main integration is verified against exact repository bytes.
 - Bulk review and publish controls wrap within the available width while
   retaining visible keyboard focus and minimum target height. The original
   nowrap publish button overflowed the main viewport at 320 CSS pixels.
+- The two publication controls use a darker orange background for readable
+  normal-size white text. Actual computed colors are checked in normal/hover
+  states under both light and dark root styles; the former default measured
+  only 3.62:1 for 14px text.
 - Site overlap preview reports bounded conflicts before publication, while
   retaining valid no-change and secondary-site behavior.
 - The assignment guard allows narrowing an old team assignment after an
@@ -42,7 +46,8 @@ Actual React tests exercise request races, confirmation, retry, scope changes
 and conflicts. The browser workflow uses real credentials sessions and named
 synthetic records with English, Russian and Azerbaijani UI, a phone viewport,
 200-person selection boundaries and real native browser zoom in all three
-languages, with keyboard publication and four-sided action geometry. It preserves only
+languages, with keyboard publication, four-sided action geometry and 24 actual
+text-contrast measurements requiring at least 4.5:1. It preserves only
 minimized JSON metadata, outcomes and source hashes; no screenshots, credentials
 or raw application/CI logs are acceptance artifacts.
 
@@ -67,3 +72,12 @@ whole item has exact-source acceptance; no helper-level percentage increment.
 This document does not approve merge, deployment, tenant activation, credentials,
 permissions, retention changes or production migration execution. Those remain
 subject to the user's separate scoped release authorization.
+
+The existing [rollback runbook, section 8](./workforce-pilot-rollback-retention-runbook-2026-08-28.md#8-rollback)
+governs any later release rollback. Bulk assignments, immutable operation
+receipts, audit entries and pinned snapshots must be preserved. Local draft
+discard is not unpublish; a later corrected future assignment follows the
+existing explicit publication rules. The function-only narrowing repair can
+remain during a UI rollback. Restoring a prior function or disabling a live
+capability requires separate scoped authorization; no destructive down migration
+or reversal of saved employee facts is assumed.
