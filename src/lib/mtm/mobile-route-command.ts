@@ -639,7 +639,7 @@ async function applyPublish(
     primaryAgentId: route.agentId,
     assignedAgentIds: route.assignments.map((assignment) => assignment.agentId),
     status: "DRAFT",
-  }, input.settings.routeSelfPublish)) return forbidden()
+  })) return forbidden()
   if (input.command.payload.expectedVersion !== route.version) {
     return conflict(
       "ROUTE_VERSION_CONFLICT",
@@ -806,7 +806,7 @@ async function applyUpdatePublished(
     primaryAgentId: route.agentId,
     assignedAgentIds: route.assignments.map((assignment) => assignment.agentId),
     status: route.status,
-  }, input.settings.routeSelfPublish)) return editForbidden()
+  })) return editForbidden()
   if (input.command.payload.expectedVersion !== route.version) {
     return conflict(
       "ROUTE_VERSION_CONFLICT",

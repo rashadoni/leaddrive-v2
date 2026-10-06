@@ -149,7 +149,7 @@ export function MtmAccessPanel() {
       )}
 
       {/* What every agent may do — the organization's switches and the system's rules. */}
-      <MtmAgentPermissionMatrix cards={cards} />
+      <MtmAgentPermissionMatrix cards={cards} onCardsChanged={loadCards} />
     </div>
   )
 }

@@ -63,7 +63,6 @@ beforeEach(() => {
   mocks.getMtmSettings.mockResolvedValue({
     timezone: "UTC",
     enforceWorkCalendarForRoutes: false,
-    routeSelfPublish: true,
   })
   mocks.resolveMtmRouteActor.mockResolvedValue({
     agentId: "agent-1",

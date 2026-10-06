@@ -79,17 +79,24 @@ export function canAssignMtmRouteAgents(
   return [primaryAgentId, ...assignedAgentIds].every((agentId) => isAgentInRouteScope(actor, agentId))
 }
 
+/**
+ * An agent publishes their own route when their card says so — and that is the
+ * whole rule. Until 2026-10-06 a second, organization-wide switch
+ * (`routeSelfPublish`) had to be on as well: a ticked agent in an organization
+ * that never touched it saved a route, could not start it, and nothing said
+ * why. The owner: «что за включение компании, зачем усложняешь». The grant is
+ * off on every new card and only a manager or an administrator sets it, so the
+ * switch guarded nothing the tick does not.
+ */
 export function canPublishMtmRoute(
   actor: MtmRouteActor,
   target: MtmRouteAccessTarget,
-  selfPublishEnabled: boolean,
 ): boolean {
   if (target.status !== "DRAFT") return false
   if (actor.role === "ADMIN") return true
   if (actor.role === "AGENT") {
     return actor.canPlanOwnRoutes !== false
       && actor.canSelfPublishRoutes === true
-      && selfPublishEnabled
       && actor.agentId === target.primaryAgentId
   }
   return isAgentInRouteScope(actor, target.primaryAgentId)
@@ -104,10 +111,9 @@ export function canPublishMtmRoute(
 export function canSelfUpdatePublishedMtmRoute(
   actor: MtmRouteActor,
   target: MtmRouteAccessTarget,
-  selfPublishEnabled: boolean,
 ): boolean {
   if (target.status !== "PLANNED" && target.status !== "IN_PROGRESS") return false
-  return canPublishMtmRoute(actor, { ...target, status: "DRAFT" }, selfPublishEnabled)
+  return canPublishMtmRoute(actor, { ...target, status: "DRAFT" })
 }
 
 export function canReviewMtmRouteRequest(

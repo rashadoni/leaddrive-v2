@@ -100,11 +100,6 @@ function mobileTargetAssignmentRequired() {
   }, { status: 403 })
 }
 
-function settingEnabled(value: unknown): boolean {
-  if (value === true) return true
-  return Boolean(value && typeof value === "object" && "enabled" in value && value.enabled === true)
-}
-
 class RouteCreateScheduleConflict extends Error {
   constructor(readonly conflicts: MtmRouteConflict[]) {
     super("Route conflicts require draft review and manager approval")
@@ -167,7 +162,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       }
     }
 
-    const [routes, total, selfPublishSetting, customerRequestSetting] = await Promise.all([
+    const [routes, total, customerRequestSetting] = await Promise.all([
       prisma.mtmRoute.findMany({
         where,
         skip: (page - 1) * limit,
@@ -176,12 +171,6 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         include: routeInclude,
       }),
       prisma.mtmRoute.count({ where }),
-      actor.role === "AGENT"
-        ? prisma.mtmSetting.findUnique({
-            where: { organizationId_key: { organizationId: auth.orgId, key: "routeSelfPublish" } },
-            select: { value: true },
-          })
-        : Promise.resolve(null),
       // "What an agent may do": the organization can switch the request for a
       // new organization off. Absent row = the default, which is on.
       actor.role === "AGENT"
@@ -201,10 +190,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         limit,
         capabilities: {
           canCreateRoute: actor.role !== "AGENT" || actor.canPlanOwnRoutes !== false,
+          // The agent's own card decides (canPublishMtmRoute); there is no
+          // organization-wide switch above it any more.
           canPublish: actor.role !== "AGENT" || (
             actor.canPlanOwnRoutes !== false
             && actor.canSelfPublishRoutes === true
-            && settingEnabled(selfPublishSetting?.value)
           ),
           canReview: actor.role === "ADMIN" || actor.role === "MANAGER" || actor.role === "SUPERVISOR",
           canRequestCustomer: actor.agentId !== null && (

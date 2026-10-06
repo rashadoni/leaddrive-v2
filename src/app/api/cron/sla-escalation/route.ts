@@ -6,6 +6,7 @@ import { autoAssignTicket } from "@/lib/auto-assign"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { PRIORITY_TIERS } from "@/lib/sla-resolver"
 import { evaluateEntitlementMilestones } from "@/lib/entitlement-process/milestone-automation"
+import { escalationNotificationText } from "@/lib/escalation-rules/notification-text"
 
 // Single source of truth for the priority tiers, shared with the SLA resolver's
 // normalizeTicketPriority — keeps cron indexing and write-site normalization in
@@ -135,12 +136,14 @@ export async function POST(req: NextRequest) {
           for (const action of actions) {
             switch (action.type) {
               case "notify": {
-                // Notify target (manager, admin, or specific user)
+                // Who the rule names: managers, admins, the assigned agent, or
+                // one specific user. Whatever it names, the assigned agent
+                // always hears about an escalation of their own ticket.
                 const target = action.target || "manager"
-                let notifyUsers: { id: string }[] = []
+                const recipientIds = new Set<string>()
 
                 if (target === "manager" || target === "admin") {
-                  notifyUsers = await prisma.user.findMany({
+                  const staff = await prisma.user.findMany({
                     where: {
                       organizationId,
                       role: { in: target === "manager" ? ["manager", "admin"] : ["admin"] },
@@ -148,24 +151,36 @@ export async function POST(req: NextRequest) {
                     },
                     select: { id: true },
                   })
-                } else {
-                  // Specific user ID
-                  notifyUsers = [{ id: target }]
+                  for (const user of staff) recipientIds.add(user.id)
+                } else if (target !== "assigned_agent") {
+                  recipientIds.add(target)
                 }
+                if (ticket.assignedTo) recipientIds.add(ticket.assignedTo)
 
-                // Also notify the assigned agent
-                if (ticket.assignedTo) {
-                  notifyUsers.push({ id: ticket.assignedTo })
-                }
-
-                const uniqueUserIds = [...new Set(notifyUsers.map((u) => u.id))]
-                for (const userId of uniqueUserIds) {
+                // Only active members of this tenant are notified, each in
+                // their own language. A rule naming a removed user, or the
+                // literal "assigned_agent" on an unassigned ticket, reaches
+                // nobody instead of leaving a notification no one can open.
+                const recipients = recipientIds.size > 0
+                  ? await prisma.user.findMany({
+                      where: { id: { in: [...recipientIds] }, organizationId, isActive: true },
+                      select: { id: true, preferredLanguage: true },
+                    })
+                  : []
+                for (const recipient of recipients) {
+                  const text = escalationNotificationText(recipient.preferredLanguage, {
+                    level: rule.level,
+                    ticketNumber: ticket.ticketNumber,
+                    subject: ticket.subject,
+                    triggerType: rule.triggerType,
+                    ruleName: rule.name,
+                  })
                   await createNotification({
                     organizationId,
-                    userId,
+                    userId: recipient.id,
                     type: rule.level >= 3 ? "error" : rule.level >= 2 ? "warning" : "info",
-                    title: `SLA Escalation L${rule.level}: ${ticket.ticketNumber}`,
-                    message: `Ticket "${ticket.subject}" — ${rule.triggerType.replace(/_/g, " ")}. ${rule.name}`,
+                    title: text.title,
+                    message: text.message,
                     entityType: "ticket",
                     entityId: ticket.id,
                   })

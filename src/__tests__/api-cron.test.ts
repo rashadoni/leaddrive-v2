@@ -76,6 +76,7 @@ import { POST as purgeTenantsPOST } from "@/app/api/cron/purge-tenants/route"
 import { POST as scheduledReportsPOST } from "@/app/api/cron/scheduled-reports/route"
 import { POST as slaEscalationPOST } from "@/app/api/cron/sla-escalation/route"
 import { prisma } from "@/lib/prisma"
+import { createNotification } from "@/lib/notifications"
 import {
   assertTenantWorkforceRetentionClear,
   purgeScheduledTenants,
@@ -290,6 +291,85 @@ describe("Cron — POST /api/cron/sla-escalation", () => {
       .filter((p: unknown): p is string => typeof p === "string")
     expect(priorityWrites).toContain("high")     // medium-baseline → next tier
     expect(priorityWrites).not.toContain("low")  // the silent-downgrade bug
+  })
+
+  it("tells managers and the assigned agent, each in their own language", async () => {
+    const past = new Date(Date.now() - 3_600_000)
+    vi.mocked(prisma.escalationRule.findMany).mockResolvedValue([
+      {
+        id: "r-notify", organizationId: "org1", name: "Первый ответ", level: 1,
+        triggerType: "first_response_breach", triggerMinutes: 0,
+        actions: [{ type: "notify", target: "manager" }], isActive: true,
+      },
+    ] as never)
+    vi.mocked(prisma.ticket.findMany).mockResolvedValue([
+      {
+        id: "t-notify", organizationId: "org1", ticketNumber: "DV-7", subject: "Портал недоступен",
+        priority: "medium", status: "open", slaDueAt: null,
+        slaFirstResponseDueAt: past, firstResponseAt: null,
+        escalationLevel: 0, lastEscalatedAt: null, assignedTo: "u-agent",
+      },
+    ] as never)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.user.findMany)
+      .mockResolvedValueOnce([{ id: "u-manager" }] as never)
+      .mockResolvedValueOnce([
+        { id: "u-manager", preferredLanguage: "en" },
+        { id: "u-agent", preferredLanguage: null },
+      ] as never)
+
+    const res = await slaEscalationPOST(cronReq("http://localhost/api/cron/sla-escalation"))
+    expect((await res.json()).data.notifiedCount).toBe(2)
+
+    // Recipients are re-read as active members of this tenant before anything is sent.
+    expect(vi.mocked(prisma.user.findMany).mock.calls[1][0]).toMatchObject({
+      where: { id: { in: ["u-manager", "u-agent"] }, organizationId: "org1", isActive: true },
+    })
+    const sent = vi.mocked(createNotification).mock.calls.map(([n]) => [n.userId, n.title, n.message])
+    expect(sent).toEqual([
+      ["u-manager", "SLA escalation, level 1: DV-7", "«Портал недоступен» — the first response is overdue. Rule: Первый ответ"],
+      ["u-agent", "Эскалация SLA, уровень 1: DV-7", "«Портал недоступен» — нарушен срок первого ответа. Правило: Первый ответ"],
+    ])
+  })
+
+  it("reads a rule that names the assigned agent as that agent, never as a user id", async () => {
+    // Rules created before the editor was narrowed still carry
+    // {"type":"notify","target":"assigned_agent"}. The handler used to store a
+    // notification for a user literally called "assigned_agent".
+    const soon = new Date(Date.now() + 20 * 60_000)
+    const rule = {
+      id: "r-warn", organizationId: "org1", name: "Срок близко", level: 1,
+      triggerType: "resolution_warning", triggerMinutes: 60,
+      actions: [{ type: "notify", target: "assigned_agent" }, { type: "add_comment", value: "ignored" }], isActive: true,
+    }
+    const ticket = {
+      id: "t-warn", organizationId: "org1", ticketNumber: "DV-8", subject: "x",
+      priority: "medium", status: "open", slaDueAt: soon,
+      slaFirstResponseDueAt: null, firstResponseAt: null,
+      escalationLevel: 0, lastEscalatedAt: null,
+    }
+    vi.mocked(prisma.escalationRule.findMany).mockResolvedValue([rule] as never)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as never)
+
+    vi.mocked(prisma.ticket.findMany).mockResolvedValue([{ ...ticket, assignedTo: "u-agent" }] as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValueOnce([{ id: "u-agent", preferredLanguage: "az" }] as never)
+    await slaEscalationPOST(cronReq("http://localhost/api/cron/sla-escalation"))
+
+    expect(vi.mocked(prisma.user.findMany).mock.calls).toHaveLength(1)
+    expect(vi.mocked(prisma.user.findMany).mock.calls[0][0]).toMatchObject({ where: { id: { in: ["u-agent"] } } })
+    expect(vi.mocked(createNotification).mock.calls.map(([n]) => [n.userId, n.title])).toEqual([
+      ["u-agent", "SLA eskalasiyası, səviyyə 1: DV-8"],
+    ])
+
+    // Unassigned: nobody to tell, and still no lookup of a user named after the target.
+    vi.mocked(prisma.user.findMany).mockClear()
+    vi.mocked(createNotification).mockClear()
+    vi.mocked(prisma.ticket.findMany).mockResolvedValue([{ ...ticket, assignedTo: null }] as never)
+    const res = await slaEscalationPOST(cronReq("http://localhost/api/cron/sla-escalation"))
+
+    expect((await res.json()).data.escalatedCount).toBe(1)
+    expect(prisma.user.findMany).not.toHaveBeenCalled()
+    expect(createNotification).not.toHaveBeenCalled()
   })
 
   it("waits for the configured delay after a first-response breach", async () => {
