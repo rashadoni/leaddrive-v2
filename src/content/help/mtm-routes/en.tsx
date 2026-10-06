@@ -205,9 +205,15 @@ export default function MtmroutesHelpEn() {
 
       <HelpSection title="Excel exchange for routes and reference data">
         <p>
-          Administrators and enabled managers can open <HelpKey>Excel exchange</HelpKey>, choose Customers,
-          Routes, Sales facts or Plan, and download a localized template. Uploading validates every row first:
+          Administrators and enabled managers can open <HelpKey>Excel exchange</HelpKey>, choose Institutions,
+          Clients, Routes, Sales facts or Plan, and download a localized template. Uploading validates every row first:
           create, update, unchanged and error counts are shown before any business data is written.
+        </p>
+        <p>
+          A client file (doctors, pharmacists) can be loaded by anyone who may add a client by hand; the same
+          dialog opens from <HelpKey>Import from Excel</HelpKey> on the Clients page. It only adds: a client
+          whose code already exists is reported, never overwritten. An institution that is not in the base yet
+          is created from its name, and a client can be assigned to a field agent in the same file.
         </p>
         <HelpCallout kind="tip">
           Fix the downloadable row-and-column error workbook before applying. Route external IDs, agent codes

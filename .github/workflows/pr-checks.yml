@@ -218,6 +218,17 @@ jobs:
           MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_CONTACT_CATEGORIES_DB_GATE: required
 
+      - name: MTM client import database gate
+        # The real upload and apply handlers of the Excel client import over
+        # the real schema on a real Postgres: what a file writes (institutions,
+        # clients, workplaces, owners), that a stale file writes nothing, and
+        # that the field agent then sees his clients. Its unit tests check the
+        # row rules on a read-only stub and cannot see any of that.
+        run: npx vitest run src/__tests__/mtm-excel-contacts-import-postgres.test.ts
+        env:
+          MTM_EXCEL_CONTACTS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          MTM_EXCEL_CONTACTS_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:

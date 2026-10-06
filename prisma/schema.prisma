@@ -5222,6 +5222,8 @@ enum MtmImportType {
   SALES_FACTS
   VISIT_RESULTS
   PLAN_FACT
+  /// Clients of the field team (MtmContact: doctors, pharmacists, others).
+  CONTACTS
 }
 
 enum MtmImportStatus {

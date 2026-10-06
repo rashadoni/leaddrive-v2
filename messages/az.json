@@ -11528,6 +11528,7 @@
     "title": "Müştərilər",
     "subtitle": "Şəxsi siyahı, peşəkar profil, iş yeri və məsul təyinat",
     "createClient": "Müştəri əlavə et",
+    "importFromExcel": "Excel-dən yüklə",
     "clarityGuide": {
       "title": "Bu bölmə nə üçündür?",
       "description": "Burada həkim, əczaçı və digər sahə kontaktlarının iş yerini, məsul əməkdaşını və ziyarət tarixçəsini tapır, sonra onları komandaya və ya marşruta hazırlayırsınız."
@@ -13697,8 +13698,21 @@
     "applyFailed": "İdxal tətbiq edilmədi.",
     "queued": "Böyük idxal fon növbəsinə əlavə edildi.",
     "applied": "İdxal uğurla tətbiq edildi.",
+    "warningsTitle": "{count, plural, one {# qeyd — tətbiq etməzdən əvvəl yoxlayın} other {# qeyd — tətbiq etməzdən əvvəl yoxlayın}}",
+    "warningAt": "Sətir {row}: {message}",
+    "moreWarnings": "…və daha {count}.",
+    "contactsExtras": "İdxal həmçinin {institutions} yeni müəssisə əlavə edəcək və {assigned} müştərini əməkdaşlara təhkim edəcək.",
+    "previewColumns": {
+      "rowNumber": "Sətir",
+      "externalCode": "Kod",
+      "displayName": "Müştəri",
+      "specialty": "İxtisas",
+      "institution": "Müəssisə",
+      "agent": "Təhkim olunub"
+    },
     "types": {
-      "CUSTOMERS": "Müştərilər",
+      "CUSTOMERS": "Müəssisələr (apteklər, klinikalar)",
+      "CONTACTS": "Müştərilər (həkimlər, əczaçılar)",
       "ROUTES": "Marşrut planları",
       "SALES_FACTS": "Xarici sifarişlər və satışlar",
       "VISIT_RESULTS": "Ziyarət nəticələri və hərəkətlər",

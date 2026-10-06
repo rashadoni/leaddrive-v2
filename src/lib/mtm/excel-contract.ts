@@ -13,7 +13,7 @@ const PREFIXED_SPREADSHEETML_NAMESPACE = new RegExp(
   `xmlns:([A-Za-z_][\\w.-]*)=["']${SPREADSHEETML_NAMESPACE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`,
 )
 
-export type MtmExcelImportType = "CUSTOMERS" | "ROUTES" | "SALES_FACTS" | "PLAN_FACT"
+export type MtmExcelImportType = "CUSTOMERS" | "ROUTES" | "SALES_FACTS" | "PLAN_FACT" | "CONTACTS"
 export type MtmExcelLocale = "az" | "ru" | "en"
 
 export interface MtmExcelColumn {
@@ -21,6 +21,8 @@ export interface MtmExcelColumn {
   required: boolean
   example: string | number
   values?: string[]
+  /** Keep the column as text in the template (phone numbers, codes typed as digits). */
+  text?: boolean
 }
 
 export interface MtmExcelContract {
@@ -114,26 +116,87 @@ const CONTRACTS: Record<MtmExcelImportType, MtmExcelContract> = {
       { key: "currency", required: false, example: "AZN" },
     ],
   },
+  // One row is one client of the field team. The example names are invented
+  // and the row is refused on upload (TEMPLATE_EXAMPLE_ROW), so a template
+  // uploaded as downloaded cannot add a made-up doctor to a real base.
+  CONTACTS: {
+    type: "CONTACTS",
+    sheet: "contacts",
+    columns: [
+      { key: "external_code", required: true, example: "DOC-0001" },
+      { key: "last_name", required: true, example: "Sample" },
+      { key: "first_name", required: true, example: "Doctor" },
+      { key: "middle_name", required: false, example: "" },
+      { key: "contact_type", required: false, example: "doctor", values: ["doctor", "pharmacist", "other"] },
+      { key: "specialty", required: false, example: "Terapevt" },
+      { key: "institution_code", required: false, example: "" },
+      { key: "institution_name", required: false, example: "Sample Clinic" },
+      { key: "institution_address", required: false, example: "1 Example Street" },
+      { key: "institution_city", required: false, example: "Baku" },
+      { key: "phone", required: false, example: "+994500000000", text: true },
+      { key: "notes", required: false, example: "" },
+      { key: "agent_code_or_email", required: false, example: "" },
+    ],
+  },
 }
 
-const COPY: Record<MtmExcelLocale, { title: string; steps: string[]; required: string; optional: string }> = {
+interface MtmExcelTemplateCopy {
+  title: string
+  steps: string[]
+  required: string
+  optional: string
+  /** Rules that belong to one kind of file, shown under the common steps. */
+  typeSteps?: Partial<Record<MtmExcelImportType, string[]>>
+}
+
+const COPY: Record<MtmExcelLocale, MtmExcelTemplateCopy> = {
   en: {
     title: "LeadDrive MTM Excel template",
     steps: ["Keep machine column names unchanged.", "Use ISO dates (YYYY-MM-DD) and 24-hour time (HH:mm).", "External codes are text; keep leading zeroes.", "Remove formulas from data cells before upload."],
     required: "Required",
     optional: "Optional",
+    typeSteps: {
+      CONTACTS: [
+        "One row is one client: a doctor, a pharmacist or another contact. Delete the example row before uploading.",
+        "external_code must be unique. A code that already exists is reported as an error; the import never overwrites a client.",
+        "Workplace: fill institution_code for an institution you already have, or institution_name. A name is matched ignoring letter case and extra spaces; if no institution has that name, it is created with institution_address and institution_city.",
+        "contact_type is doctor, pharmacist or other. Empty means doctor.",
+        "agent_code_or_email assigns the client to a field agent: the agent's external code or e-mail. Leave it empty to assign later.",
+        "Cells such as \"-\", \"[Address pending]\" or \"Təyin edilməyib\" are read as empty.",
+      ],
+    },
   },
   ru: {
     title: "Шаблон LeadDrive MTM для Excel",
     steps: ["Не изменяйте машинные имена столбцов.", "Используйте даты YYYY-MM-DD и время HH:mm.", "Внешние коды являются текстом; сохраняйте ведущие нули.", "Перед загрузкой удалите формулы из ячеек данных."],
     required: "Обязательно",
     optional: "Необязательно",
+    typeSteps: {
+      CONTACTS: [
+        "Одна строка — один клиент: врач, фармацевт или другой контакт. Перед загрузкой удалите строку с примером.",
+        "external_code должен быть уникальным. Уже существующий код сообщается как ошибка: импорт никогда не перезаписывает клиента.",
+        "Место работы: укажите institution_code учреждения, которое уже есть, или institution_name. Название сверяется без учёта регистра и лишних пробелов; если такого учреждения нет, оно будет создано с institution_address и institution_city.",
+        "contact_type: doctor, pharmacist или other. Пусто — значит doctor (врач).",
+        "agent_code_or_email закрепляет клиента за полевым сотрудником: его внешний код или e-mail. Оставьте пустым, чтобы закрепить позже.",
+        "Ячейки вида «-», «[Адрес ожидает обработки]» или «Təyin edilməyib» читаются как пустые.",
+      ],
+    },
   },
   az: {
     title: "LeadDrive MTM Excel şablonu",
     steps: ["Maşın sütun adlarını dəyişməyin.", "Tarix üçün YYYY-MM-DD, vaxt üçün HH:mm istifadə edin.", "Xarici kodlar mətndir; başlanğıc sıfırlarını saxlayın.", "Yükləməzdən əvvəl məlumat xanalarındakı formulları silin."],
     required: "Məcburi",
     optional: "İstəyə bağlı",
+    typeSteps: {
+      CONTACTS: [
+        "Bir sətir — bir müştəri: həkim, əczaçı və ya başqa kontakt. Yükləməzdən əvvəl nümunə sətrini silin.",
+        "external_code təkrarlanmamalıdır. Artıq mövcud olan kod xəta kimi göstərilir: idxal heç vaxt mövcud müştərinin üzərinə yazmır.",
+        "İş yeri: artıq mövcud olan müəssisənin institution_code dəyərini və ya institution_name yazın. Ad böyük-kiçik hərf və artıq boşluqlar nəzərə alınmadan yoxlanılır; belə müəssisə yoxdursa, institution_address və institution_city ilə yaradılır.",
+        "contact_type: doctor, pharmacist və ya other. Boş xana doctor (həkim) deməkdir.",
+        "agent_code_or_email müştərini sahə əməkdaşına təhkim edir: əməkdaşın xarici kodu və ya e-poçtu. Sonra təhkim etmək üçün boş saxlayın.",
+        "«-», «[Адрес ожидает обработки]» və ya «Təyin edilməyib» kimi xanalar boş sayılır.",
+      ],
+    },
   },
 }
 
@@ -142,8 +205,10 @@ export function getMtmExcelContract(type: MtmExcelImportType): MtmExcelContract 
 }
 
 export function isMtmExcelImportType(value: string): value is MtmExcelImportType {
-  return value in CONTRACTS
+  return Object.hasOwn(CONTRACTS, value)
 }
+
+export const MTM_EXCEL_IMPORT_TYPES = Object.keys(CONTRACTS) as MtmExcelImportType[]
 
 export function mtmExcelChecksum(bytes: Buffer | Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex")
@@ -171,7 +236,7 @@ export function buildMtmExcelTemplate(type: MtmExcelImportType, locale: MtmExcel
   instructions.addRow([`template_type: ${type}`])
   instructions.addRow([`template_version: ${MTM_EXCEL_TEMPLATE_VERSION}`])
   instructions.addRow([])
-  for (const step of copy.steps) instructions.addRow([step])
+  for (const step of [...copy.steps, ...(copy.typeSteps?.[type] ?? [])]) instructions.addRow([step])
   instructions.addRow([])
   instructions.addRow(["column", "requirement"])
   contract.columns.forEach((column) => instructions.addRow([column.key, column.required ? copy.required : copy.optional]))
@@ -187,7 +252,7 @@ export function buildMtmExcelTemplate(type: MtmExcelImportType, locale: MtmExcel
   contract.columns.forEach((column, index) => {
     const excelColumn = sheet.getColumn(index + 1)
     excelColumn.width = Math.max(14, Math.min(32, column.key.length + 4))
-    if (column.key.includes("code") || column.key.includes("external_id") || column.key.includes("document_no")) setTextFormat(excelColumn)
+    if (column.text || column.key.includes("code") || column.key.includes("external_id") || column.key.includes("document_no")) setTextFormat(excelColumn)
     if (column.values) {
       for (let row = 2; row <= 5000; row += 1) {
         sheet.getCell(row, index + 1).dataValidation = {
@@ -322,8 +387,12 @@ export async function parseMtmExcelWorkbook(bytes: Buffer, expectedType: MtmExce
   })
 
   const rows: ParsedMtmWorkbook["rows"] = []
-  for (let rowNumber = 2; rowNumber <= sheet.actualRowCount; rowNumber += 1) {
-    const row = sheet.getRow(rowNumber)
+  // Walk the rows that hold something, wherever they are. `actualRowCount` is
+  // how many such rows exist, not where the last one is: used as the loop's
+  // end, one blank line between two pasted lists silently dropped the last
+  // row of the file.
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return
     const values: Record<string, unknown> = {}
     let hasValue = false
     headers.forEach((header, index) => {
@@ -337,7 +406,7 @@ export async function parseMtmExcelWorkbook(bytes: Buffer, expectedType: MtmExce
       if (value !== null && String(value).trim() !== "") hasValue = true
     })
     if (hasValue) rows.push({ rowNumber, values })
-  }
+  })
   return { type: expectedType, templateVersion, sheetName: contract.sheet, headers, rows, errors }
 }
 

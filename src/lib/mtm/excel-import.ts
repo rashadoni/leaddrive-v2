@@ -5,7 +5,8 @@ import type { prisma as appPrisma } from "@/lib/prisma"
 import { buildMtmRouteDedupeKey, detectMtmRouteConflicts } from "@/lib/mtm/route-planning"
 import { rankMtmCustomerDuplicates } from "@/lib/mtm/customer-request"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
-import type { MtmExcelRowError, MtmExcelImportType, ParsedMtmWorkbook } from "@/lib/mtm/excel-contract"
+import type { MtmExcelLocale, MtmExcelRowError, MtmExcelImportType, ParsedMtmWorkbook } from "@/lib/mtm/excel-contract"
+import { applyContactRows, validateContactRows, type MtmContactImportPolicy } from "@/lib/mtm/excel-contacts-import"
 
 type AppPrisma = typeof appPrisma
 type DbClient = AppPrisma | Prisma.TransactionClient
@@ -20,9 +21,19 @@ export interface MtmExcelSummary {
   errorRows: number
   warningRows: number
   requiresConflictOverride: boolean
+  /** CONTACTS only: institutions the import creates alongside the clients. */
+  createInstitutions?: number
+  /** CONTACTS only: clients the import assigns to a field agent. */
+  assignRows?: number
 }
 
-interface SnapshotRow {
+export interface MtmExcelWarning {
+  rowNumber: number
+  code: string
+  message: string
+}
+
+export interface MtmExcelSnapshotRow {
   rowNumber: number
   sourceRows?: number[]
   operation: RowOperation
@@ -30,6 +41,8 @@ interface SnapshotRow {
   warnings?: Array<{ code: string; message: string }>
   data: Record<string, unknown>
 }
+
+type SnapshotRow = MtmExcelSnapshotRow
 
 interface ExistingCustomerRow {
   id: string
@@ -495,15 +508,30 @@ export async function validateMtmExcelImport(params: {
   parsed: ParsedMtmWorkbook
   checksum: string
   actor: MtmRouteActor
+  /** Language of the row messages a CONTACTS file gets; other types answer in English. */
+  locale?: MtmExcelLocale
+  /** CONTACTS only: the tenant's client-card settings. */
+  contactPolicy?: MtmContactImportPolicy
 }): Promise<MtmExcelValidationResult> {
-  const validated = params.parsed.type === "CUSTOMERS"
-    ? await validateCustomers(params.db, params.organizationId, params.parsed)
-    : params.parsed.type === "ROUTES"
-      ? await validateRoutes(params.db, params.organizationId, params.parsed, params.actor)
-      : params.parsed.type === "SALES_FACTS"
-        ? await validateSalesFacts(params.db, params.organizationId, params.parsed)
-        : await validatePlanFact(params.db, params.organizationId, params.parsed)
-  const summary = summaryFor(params.parsed, validated.rows, validated.errors)
+  const contacts = params.parsed.type === "CONTACTS"
+    ? await validateContactRows(params.db, params.organizationId, params.parsed, {
+        actor: params.actor,
+        locale: params.locale,
+        policy: params.contactPolicy,
+      })
+    : null
+  const validated = contacts
+    ?? (params.parsed.type === "CUSTOMERS"
+      ? await validateCustomers(params.db, params.organizationId, params.parsed)
+      : params.parsed.type === "ROUTES"
+        ? await validateRoutes(params.db, params.organizationId, params.parsed, params.actor)
+        : params.parsed.type === "SALES_FACTS"
+          ? await validateSalesFacts(params.db, params.organizationId, params.parsed)
+          : await validatePlanFact(params.db, params.organizationId, params.parsed))
+  const summary: MtmExcelSummary = {
+    ...summaryFor(params.parsed, validated.rows, validated.errors),
+    ...(contacts ? { createInstitutions: contacts.createInstitutions, assignRows: contacts.assignRows } : {}),
+  }
   const snapshot: MtmValidatedExcelSnapshot = {
     snapshotVersion: 1,
     templateVersion: params.parsed.templateVersion,
@@ -516,8 +544,27 @@ export async function validateMtmExcelImport(params: {
   return {
     snapshot,
     errors: validated.errors,
-    preview: validated.rows.slice(0, 20).map((row) => ({ rowNumber: row.rowNumber, operation: row.operation, warnings: row.warnings ?? [], ...row.data })),
+    preview: contacts?.preview
+      ?? validated.rows.slice(0, 20).map((row) => ({ rowNumber: row.rowNumber, operation: row.operation, warnings: row.warnings ?? [], ...row.data })),
   }
+}
+
+/**
+ * Every warning of a validated file, in row order. Warnings never block an
+ * import, so they are the one thing the administrator has to be shown before
+ * pressing "apply" — the preview table only carries the first rows.
+ */
+export function mtmExcelSnapshotWarnings(snapshot: unknown, limit = 200): { warnings: MtmExcelWarning[]; total: number } {
+  if (!isMtmValidatedExcelSnapshot(snapshot)) return { warnings: [], total: 0 }
+  const warnings: MtmExcelWarning[] = []
+  let total = 0
+  for (const row of snapshot.rows) {
+    for (const warning of row.warnings ?? []) {
+      total += 1
+      if (warnings.length < limit) warnings.push({ rowNumber: row.rowNumber, code: warning.code, message: warning.message })
+    }
+  }
+  return { warnings, total }
 }
 
 export function isMtmValidatedExcelSnapshot(value: unknown): value is MtmValidatedExcelSnapshot {
@@ -797,6 +844,14 @@ export async function applyMtmExcelImportJob(params: {
   jobId: string
   requestedBy: string
   allowConflictOverride: boolean
+  /**
+   * CONTACTS only. Who is applying: clients and their owners are written under
+   * the same rules as the single-client and assignment endpoints, which need
+   * the acting person's role and scope. Other types ignore both.
+   */
+  actor?: MtmRouteActor | null
+  /** CONTACTS only: today in the tenant's timezone (YYYY-MM-DD), the day ownership starts. */
+  effectiveFrom?: string
 }): Promise<{ status: string; replayed: boolean; summary: MtmExcelSummary }> {
   return params.db.$transaction(async (tx: Prisma.TransactionClient) => {
     const job = await tx.mtmImportJob.findFirst({ where: { id: params.jobId, organizationId: params.organizationId } })
@@ -816,7 +871,21 @@ export async function applyMtmExcelImportJob(params: {
     })
     if (claim.count !== 1) throw new Error("Import job was already claimed")
 
-    if (snapshot.type === "CUSTOMERS") await applyCustomerRows(tx, params.organizationId, snapshot.rows)
+    let contactsResult: Awaited<ReturnType<typeof applyContactRows>> | null = null
+    if (snapshot.type === "CONTACTS") {
+      if (!params.actor || !params.effectiveFrom || !/^\d{4}-\d{2}-\d{2}$/.test(params.effectiveFrom)) {
+        throw new Error("A client import needs the acting user and the tenant's current date")
+      }
+      contactsResult = await applyContactRows(tx, {
+        organizationId: params.organizationId,
+        jobId: job.id,
+        requestedBy: params.requestedBy,
+        actor: params.actor,
+        effectiveFrom: params.effectiveFrom,
+        fileName: job.originalFileName,
+        rows: snapshot.rows,
+      })
+    } else if (snapshot.type === "CUSTOMERS") await applyCustomerRows(tx, params.organizationId, snapshot.rows)
     else if (snapshot.type === "ROUTES") await applyRouteRows(tx, params.organizationId, params.requestedBy, snapshot.rows)
     else if (snapshot.type === "SALES_FACTS") await applySalesRows(tx, params.organizationId, job.id, snapshot.rows)
     else await applyPlanRows(tx, params.organizationId, job.id, snapshot.rows)
@@ -837,6 +906,7 @@ export async function applyMtmExcelImportJob(params: {
           summary: snapshot.summary,
           requestedBy: params.requestedBy,
           conflictOverride: params.allowConflictOverride,
+          ...(contactsResult ? { contacts: contactsResult } : {}),
         } as unknown as Prisma.InputJsonValue,
       },
     })

@@ -15,6 +15,7 @@ import {
   Bookmark,
   ChevronLeft,
   ChevronRight,
+  FileSpreadsheet,
   Mail,
   Phone,
   RefreshCw,
@@ -46,6 +47,7 @@ import {
 } from "@/components/mtm/filter-bar"
 import { ContactAssignmentDialog } from "@/components/mtm/contact-assignment-dialog"
 import { MtmContactCreateDialog } from "@/components/mtm/contact-create-dialog"
+import { MtmExcelExchangePanel } from "@/components/mtm/excel-exchange-panel"
 import {
   applyContactTransferReconciliation,
   loadContactTransferReceipt,
@@ -376,6 +378,7 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
   const [assignmentOpen, setAssignmentOpen] = useState(false)
   const [assignmentMode, setAssignmentMode] = useState<"ASSIGN" | "UNASSIGN">("ASSIGN")
   const [createOpen, setCreateOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(
     !agentScope && ADVANCED_FILTER_KEYS.some((key) => contactFilterIsActive(initial.filters, key)),
@@ -844,6 +847,12 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
             <UserRoundPlus className="mr-1.5 h-4 w-4" />
             {t("createClient")}
           </Button>
+          {payload?.capabilities.canManage ? (
+            <Button data-testid="mtm-contacts-excel-import" type="button" variant="outline" size="sm" className="min-h-11" onClick={() => setImportOpen(true)}>
+              <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+              {t("importFromExcel")}
+            </Button>
+          ) : null}
           <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={refresh} disabled={loading}>
             <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             {t("refresh")}
@@ -1277,6 +1286,15 @@ export function MtmContactExplorer({ agentScope }: { agentScope?: MtmContactExpl
             toast.success(t("routeFlowReturningToRoute", { count: result.summary.changed }))
             router.push(routeAssignmentHandoff.returnTo)
           }
+        }}
+      />
+      <MtmExcelExchangePanel
+        open={importOpen}
+        initialType="CONTACTS"
+        onClose={() => setImportOpen(false)}
+        onApplied={() => {
+          setPage(1)
+          refresh()
         }}
       />
       <MtmContactCreateDialog

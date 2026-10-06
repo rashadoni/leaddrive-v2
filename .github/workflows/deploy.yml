@@ -396,6 +396,16 @@ jobs:
           MTM_CONTACT_CATEGORIES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_CONTACT_CATEGORIES_DB_GATE: required
 
+      - name: MTM client import database gate
+        # Same gate as in pr-checks, which does not run static-checks on a
+        # main push: the real upload and apply handlers of the Excel client
+        # import on a real Postgres. Its scratch schema leaves the pgvector
+        # columns out, so it runs on this job's plain postgres:16.
+        run: npx vitest run src/__tests__/mtm-excel-contacts-import-postgres.test.ts
+        env:
+          MTM_EXCEL_CONTACTS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_EXCEL_CONTACTS_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:
