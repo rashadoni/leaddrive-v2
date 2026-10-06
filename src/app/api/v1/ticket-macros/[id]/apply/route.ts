@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { createHash } from "node:crypto"
 
+import { markTicketMilestonesMet, milestoneTypesForStatusChange } from "@/lib/entitlement-process/ticket-milestones"
+import type { MilestoneType } from "@/lib/entitlement-process/types"
 import { prisma } from "@/lib/prisma"
 import { MACRO_ASSIGNABLE_ROLES } from "@/lib/ticket-macros/presentation"
 import { macroActionsSchema } from "@/lib/ticket-macros/schema"
@@ -34,6 +36,11 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
       return NextResponse.json({ error: "Macro contains an unsupported action.", code: "MACRO_ACTION_INVALID" }, { status: 422 })
     }
 
+    // What a manual change would have recorded. Filled only when the actions
+    // really run, so a replayed request never completes a milestone twice.
+    const completedMilestones = new Set<MilestoneType>()
+    let firstResponseAt: Date | null = null
+
     const updated = await prisma.$transaction(async (tx) => {
       let ticket = await tx.ticket.findFirst({ where: { id: parsedRequest.data.ticketId, organizationId: auth.orgId } })
       if (!ticket) return null
@@ -59,12 +66,25 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
         if (digest(expectedActions) !== digest(parsedActions.data)) throw new Error("macro_preview_stale")
       }
       let tags = [...(ticket.tags || [])]
+      let status = ticket.status
 
       for (const action of parsedActions.data) {
         switch (action.type) {
-          case "set_status":
-            await tx.ticket.update({ where: { id: ticket.id }, data: { status: action.value } })
+          case "set_status": {
+            // Reports and SLA read these timestamps; a macro keeps them exactly
+            // as the ticket card does for the same change.
+            const now = new Date()
+            const reopened = (status === "resolved" || status === "closed") && action.value === "in_progress"
+            await tx.ticket.update({ where: { id: ticket.id }, data: {
+              status: action.value,
+              ...(action.value === "resolved" && status !== "resolved" ? { resolvedAt: now } : {}),
+              ...(action.value === "closed" && status !== "closed" ? { closedAt: now } : {}),
+              ...(reopened ? { reopenCount: { increment: 1 }, resolvedAt: null, closedAt: null } : {}),
+            } })
+            for (const type of milestoneTypesForStatusChange(status, action.value)) completedMilestones.add(type)
+            status = action.value
             break
+          }
           case "set_priority":
             await tx.ticket.update({ where: { id: ticket.id }, data: { priority: action.value } })
             break
@@ -84,6 +104,8 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
           }
           case "add_comment":
             await tx.ticketComment.create({ data: { ticketId: ticket.id, comment: action.value, userId: auth.userId || null, isInternal: false } })
+            // The first public reply stops the first-response clock, whoever sends it.
+            if (!ticket.firstResponseAt && !firstResponseAt) firstResponseAt = new Date()
             break
           case "add_internal_note":
             await tx.ticketComment.create({ data: { ticketId: ticket.id, comment: action.value, userId: auth.userId || null, isInternal: true } })
@@ -97,6 +119,11 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
             await tx.ticket.update({ where: { id: ticket.id }, data: { tags } })
             break
         }
+      }
+
+      if (firstResponseAt) {
+        await tx.ticket.update({ where: { id: ticket.id }, data: { firstResponseAt } })
+        completedMilestones.add("first_response")
       }
 
       if (receiptId) {
@@ -114,6 +141,19 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
     })
 
     if (!updated) return NextResponse.json({ error: "Ticket not found.", code: "TICKET_NOT_FOUND" }, { status: 404 })
+    if (completedMilestones.size > 0) {
+      try {
+        await markTicketMilestonesMet(prisma, {
+          organizationId: auth.orgId,
+          ticketId: updated.id,
+          types: [...completedMilestones],
+          eventName: "ticket_macro_applied",
+          actorUserId: auth.userId,
+        })
+      } catch (error) {
+        console.error("[ticket-milestones] macro milestone sync failed:", error)
+      }
+    }
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     if (error instanceof Error && error.message === "macro_preview_stale") {
