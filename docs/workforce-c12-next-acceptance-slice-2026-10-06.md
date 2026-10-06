@@ -1,6 +1,6 @@
 # Next prepared slice — existing C12 reconciliation worker acceptance
 
-Status: PREPARED, NOT EXECUTED. WF-C12-008 remains PARTIAL. This slice follows whole WF-C8-002 acceptance and preserves accepted PR589/source lineage. Fresh source/ownership/dependencies must be checked before starting.
+Status: bounded schema/reader slice EXECUTED; [reader-profile acceptance](./workforce-c12-reader-profile-acceptance-2026-10-06.md) preserves the reproduced hidden-root defect, correction, 35-case matrix and 152-test regression. WF-C12-008 remains PARTIAL. This slice follows whole WF-C8-002 acceptance and preserves accepted PR589 → PR605 lineage. The preparation below records its original scope; historical staging and operational evidence remain separate.
 
 Current source already contains the complete selected approval-group reader, bounded export-audit projection, all-eight-family snapshot/dependency traversal, dense keysets, dormant lease/version/attempt-fenced sweep and multi-tenant due selection/backoff. It also contains a separate eligible-roster diagnostic that refuses unverified visibility. Older plan paragraphs calling those helpers missing predate this implementation; do not implement duplicates. Exact 12-file bindings and the finite plan are in [next-c12-prepared.json](./evidence/workforce-c8-whole-item-2026-10-06/next-c12-prepared.json).
 

@@ -1,0 +1,167 @@
+{
+  "scope": "bounded C12 reader profile; no full-task credit",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1027,
+      "sha256": "37cd4fe8e323f47de6382a70e2f18ab39add97a6e1a5ac274370806169532e49",
+      "gitBlob": "c15b537805033de4503aa966031f8ec355a1d62e"
+    },
+    {
+      "path": "existing-pg-regression-final.json",
+      "bytes": 5342,
+      "sha256": "d4f274af4781a9f285940b27af294fdedfed9732151c77f20880c82ec5eb7ea2",
+      "gitBlob": "f0d2a2163a5c65ba20f697dfe17f1cddd1463ead"
+    },
+    {
+      "path": "existing-pg-regression.json",
+      "bytes": 1114,
+      "sha256": "7e4bd3f30eb056c72cceddd9aea4616bb3b644cf92c171f31bd232b8d9db23c6",
+      "gitBlob": "0a8ddb73870bd25878ba834d787f7a0521eea74f"
+    },
+    {
+      "path": "hrm-c12-independent-profile-semantic-revision-20261006.json",
+      "bytes": 2437,
+      "sha256": "c64945bb304ea7ecb2f19aab196af198f7a0ebb676e8cfbe5289a4a8b8fef169",
+      "gitBlob": "8a97368ec2f04108db1a147db742f0e053fd34f2"
+    },
+    {
+      "path": "hrm-c12-independent-reader-profile-local-acceptance-20261006.json",
+      "bytes": 16946,
+      "sha256": "a065fda96462597b684e285468af218190879ea98b22a1eefdf6e5194605ec5f",
+      "gitBlob": "abb48ad7ada1796660c99542246f1e41d0a065d2"
+    },
+    {
+      "path": "hrm-c12-independent-reader-profile-preliminary-20261006.json",
+      "bytes": 4398,
+      "sha256": "a865bd85d55a468ef90ebd21654d9cd67a4d95afdc92b9c6a16116cdd50e3e5e",
+      "gitBlob": "70d3e0c260d51f7afe8b29ce310093ca6d4fff7f"
+    },
+    {
+      "path": "hrm-c12-independent-reader-visibility-assessment-20261006.json",
+      "bytes": 18068,
+      "sha256": "25cb3be974b2f92f780ca6f91cb45fc400114076affff9bab40db0f01576b694",
+      "gitBlob": "706d5b4ee59c320b6b59a21eda5cbba710c0774a"
+    },
+    {
+      "path": "hrm-c12-independent-visibility-repro-addendum-20261006.json",
+      "bytes": 3271,
+      "sha256": "796fcad11cea6a156f49362187e96ccb6d4ea7c46cc8178e58ff8c63befccf68",
+      "gitBlob": "c6d902146a5140e65bbe1c8aea4c950c1a0c1675"
+    },
+    {
+      "path": "initial-visibility-probe.json",
+      "bytes": 4063,
+      "sha256": "11e2c406221657b859ba556cc1cee5cb17ee13b3ccf1f4fd2af2362969c108a6",
+      "gitBlob": "809b65455604b7e11ff7301a66909e0ae5618d50"
+    },
+    {
+      "path": "original-fixture-cleanup.json",
+      "bytes": 198,
+      "sha256": "f47913c2c7b590faab317268360b3abca03ba22214013b81ec2f1e3d0840b05b",
+      "gitBlob": "1355ed977b99e87e139cfdd33e68cf4eeecc1baf"
+    },
+    {
+      "path": "postfix-probe-result.json",
+      "bytes": 309,
+      "sha256": "4879aede6ab007ce96e0d4fd4f32e955c465cc565bf2853098127b5e8690bca4",
+      "gitBlob": "7f6fb897b2e3b7c21c25a6098c0820a25e8dfb01"
+    },
+    {
+      "path": "postfix-probe.mjs",
+      "bytes": 2388,
+      "sha256": "4b619e546d0c95d9374462ccedac7273812e9650659cbbc6d15a34df3951797d",
+      "gitBlob": "806bcca68b4c78b65dd93c6af1476b47b226eb44"
+    },
+    {
+      "path": "probe.mjs",
+      "bytes": 5878,
+      "sha256": "ea4a6a71083f0e66f08a3c9a5b12d6476a091cbcbbd16ebbea64ea6a6133cfab",
+      "gitBlob": "80eef59b60ed6bbddc7884a32d2aba3ffaed0aac"
+    },
+    {
+      "path": "profile-lint-final.json",
+      "bytes": 73,
+      "sha256": "f27e1ad33efdf785355e0a2865eea7da5ad1066fe26989bb86f3533ed0463da5",
+      "gitBlob": "56b16bcd0b8e5b0fad83c6be9a73e36346aedd16"
+    },
+    {
+      "path": "profile-lint-initial.json",
+      "bytes": 73,
+      "sha256": "f27e1ad33efdf785355e0a2865eea7da5ad1066fe26989bb86f3533ed0463da5",
+      "gitBlob": "56b16bcd0b8e5b0fad83c6be9a73e36346aedd16"
+    },
+    {
+      "path": "profile-matrix-attempt1-harness.mjs",
+      "bytes": 16342,
+      "sha256": "fc18a5873d332ab4661e44c1376ae8863d04701e7256badd3c99ef82e17acd11",
+      "gitBlob": "29905b30174bb829ca4ed7d2ff5eeeb9aa0cc1a5"
+    },
+    {
+      "path": "profile-matrix-attempt1.json",
+      "bytes": 3033,
+      "sha256": "32fd9f47cc6f2ea8f05180d4efeb415468d8d4aafbeaa063532658a845562c19",
+      "gitBlob": "17ef8e8886b019b5d67d95b168d50ff60cb339b2"
+    },
+    {
+      "path": "profile-matrix-attempt2.json",
+      "bytes": 18288,
+      "sha256": "aa62d9c4afb4ff5ad7fcc1a7a099122598a49daecbf783a47639a571d27baff6",
+      "gitBlob": "ec607f301bd278cda73716cac80465e0910d9e34"
+    },
+    {
+      "path": "profile-matrix-attempt3-reconciliation-reader-profile.ts",
+      "bytes": 4536,
+      "sha256": "b2f4e2e1f5d1e886f536ecbda31b8a84fb68baa0d9eb2223242cbf653b62df20",
+      "gitBlob": "0c38741cb69ec40ec20d1e183bf6363e2ba3a98f"
+    },
+    {
+      "path": "profile-matrix-attempt3-workforce-reconciliation-reader-profile-evidence.mjs",
+      "bytes": 18461,
+      "sha256": "2b828ba5c14c0be338bff6b28fe1647ab1fe37cc4fdb470e6f90200e781c85a5",
+      "gitBlob": "6e085c58d257ebd7a08c9d7f7eb8af49a7e6fb8e"
+    },
+    {
+      "path": "profile-matrix-attempt3.json",
+      "bytes": 18694,
+      "sha256": "6152b5266261d4932164f7894c1c6018b3ce269a4d0f14f7a180f9882eddc570",
+      "gitBlob": "08f623c2f6046122c8acc4a81d1ea4be04a1d0b0"
+    },
+    {
+      "path": "profile-matrix-attempt4-reconciliation-reader-profile.ts",
+      "bytes": 5391,
+      "sha256": "c336446067a9e4e6a26bdf0403579317b34e2615983aa29640325569b552342e",
+      "gitBlob": "bc7b7a7600f2c06800cccd2c3e60876b360f0d56"
+    },
+    {
+      "path": "profile-matrix-attempt4-workforce-reconciliation-reader-profile-evidence.mjs",
+      "bytes": 20413,
+      "sha256": "114b047baa5190f7e0d2db949cfc2d8e52317a978876ccca0d6e0ebcda37003e",
+      "gitBlob": "bf91b98a6042930033376ec38ea58cbb84fa9efb"
+    },
+    {
+      "path": "profile-matrix-attempt4.json",
+      "bytes": 8040,
+      "sha256": "cf9471952b3ab019b388d137d00ac8a8ce125dad47d8a1b0f3b06c5fa344cbea",
+      "gitBlob": "9ef41a72ac9199bc2cafe73a0c679c1716b1646d"
+    },
+    {
+      "path": "profile-matrix-attempt5.json",
+      "bytes": 19136,
+      "sha256": "770f2133adea25fe3ecf569406c24836f6a949fb1bb23531ba45ba222ca5b9b9",
+      "gitBlob": "09d6f7f8f28ff17d307d1acba0dd3d67d8bef6c2"
+    },
+    {
+      "path": "run-regression.py",
+      "bytes": 3863,
+      "sha256": "1a8edc724916e51195dadbc8df3e0bfd8e5b741ac0892da4e4339cd3fc8d389b",
+      "gitBlob": "3de8bbc13a0a2eaccf25d1f67d53c8864d5ce2b6"
+    },
+    {
+      "path": "schema-push-result.json",
+      "bytes": 209,
+      "sha256": "dd97fa20a1347ec4389598ec345c6b4ffcd2a9dcb46a307033732f0b94267490",
+      "gitBlob": "56b1492e5fd85d5d2a577449dc6663fdfbfb1536"
+    }
+  ]
+}

@@ -1,0 +1,604 @@
+{
+  "status": "PASS_SUPPORTED_READER_PROFILE_ACCEPTANCE_ONLY",
+  "fixture": "FULL_CURRENT_PRISMA_SCHEMA_PLUS_EXACT_C12_MIGRATION_AND_SYNTHETIC_RLS",
+  "historicalReplay": false,
+  "productionAccess": false,
+  "stage": "checked-policy-ddl-cannot-change-before-snapshot-finishes",
+  "cases": [
+    {
+      "name": "supported-current-policy-sees-one-tenant-root-and-excludes-foreign-root",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:mtm_agent_workdays",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:mtm_agent_workday_events",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_site_transitions",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_attendance_evidence",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_evidence_assessments",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_exception_cases",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_timesheet_approvals",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:mtm_audit_logs",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:mtm_agents",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_employee_team_memberships",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_shift_templates",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_shift_segments",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_shift_assignments",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_shift_default_assignments",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_shift_team_default_assignments",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_workday_schedule_snapshots",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_shift_snapshots",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "hidden-roots-or-dependencies-refused:workforce_policy_snapshots",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "narrowed-permissive-policy-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "supported-tenant-only-policy",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "public-column-write-grant-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "table-write-grant-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "inherited-column-write-grant-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "inherited-restrictive-select-policy-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "non-applicable-select-policy-does-not-narrow-reader",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "missing-select-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "disabled-force-rls-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "temporary-shadow-relation-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "view-replacement-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "missing-table-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "unrelated-insert-policy-does-not-narrow-select",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "custom-equality-operator-policy-refused-despite-canonical-display",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "nondefault-tenant-column-collation-refused",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    },
+    {
+      "name": "checked-policy-ddl-cannot-change-before-snapshot-finishes",
+      "status": "PASS",
+      "businessFactsUnchanged": true
+    }
+  ],
+  "cleanup": [
+    {
+      "action": "disconnect",
+      "status": "PASS"
+    },
+    {
+      "action": "disconnect",
+      "status": "PASS"
+    },
+    {
+      "action": "remove-owned-disposable-container-and-volumes",
+      "status": "PASS"
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 958771,
+      "sha256": "fd2e0a5b835669dafa736943fd9e5ee403a81dd0dd28d127e895e1f19232eae7"
+    },
+    {
+      "path": "prisma/migrations/20261005193000_workforce_reconciliation_operations/migration.sql",
+      "bytes": 2721,
+      "sha256": "c452e7f6d13dca1e5257d8353c252745d05cd4f18eae83cd45501f61664ef719"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-reader-profile.ts",
+      "bytes": 5391,
+      "sha256": "c336446067a9e4e6a26bdf0403579317b34e2615983aa29640325569b552342e"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11784,
+      "sha256": "2031a6dc00b16c508120d584f6b9c4f038a36aa78068e1161c99de06a5f919de"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-sweep.ts",
+      "bytes": 3049,
+      "sha256": "309ce1eabde967c795c47bb4a123f7c4cfd73a2a13638d8937327d8db4b0024c"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-dense.ts",
+      "bytes": 8490,
+      "sha256": "500f3f9b68cb68a0ab0ee6085814961b359b46ceb3b18a5ba38d9cafbd175959"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-source-page.ts",
+      "bytes": 5013,
+      "sha256": "7c45f9b7d1b621d7418e4ce18cdbace2bfed1a9a3a522944c5504c1259da03fe"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-snapshot.ts",
+      "bytes": 9679,
+      "sha256": "bdba98ef3f2d18b916200673038b4ad3eb523f2a5e3d12c864198eac26f490a3"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-approval-group.ts",
+      "bytes": 4263,
+      "sha256": "aa45ab91f54678c457d066a9a8bc044acabbd5cd29df4bad1b1924f7c0632a05"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-export-audit.ts",
+      "bytes": 7445,
+      "sha256": "38094ed52225428eb46eae6247f4a618a98d66e4e83151b7ba217168c6722409"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-schedule-subject.ts",
+      "bytes": 9921,
+      "sha256": "6ef11cc56e3132e4e48ba99cb57e021b9fed425488aea11c12864e9025eae9d9"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation.ts",
+      "bytes": 10678,
+      "sha256": "292720bc88e8484dd173e6ed50d7616f008e5524201dc756f40ab3fabca20a27"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-cursor-store.ts",
+      "bytes": 6533,
+      "sha256": "8b04ef4d1c7ea5cca424ef13e7c0d80e949271523a22cf4d43a545049949a6bd"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-reader-profile-evidence.mjs",
+      "bytes": 20955,
+      "sha256": "768bf3fb8434117d541a72bb15e4aac48dc8367b9c61492fd2588ed761e0c507"
+    }
+  ],
+  "imageId": "sha256:f1447071e6c8449dcf4056aa0994c81d3566ce5ee232de36b04dc25696a116dd",
+  "customOperatorCanonicalDisplayConfirmed": true,
+  "catalog": {
+    "server": [
+      {
+        "version": "160015",
+        "encoding": "UTF8"
+      }
+    ],
+    "relations": [
+      {
+        "name": "mtm_agent_workday_events",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "ccda06d67c9c818db7878b8420618002"
+      },
+      {
+        "name": "mtm_agent_workdays",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "c0355279f0531073f07ccd16b7da866e"
+      },
+      {
+        "name": "mtm_agents",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "e59c5fe5f7b07b01b7cac4ecdeb16637"
+      },
+      {
+        "name": "mtm_audit_logs",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "3c8990321cb46b9a309f90b653f45858"
+      },
+      {
+        "name": "workforce_attendance_evidence",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "f6f06c75c5521b5cc997c2ffb20061ef"
+      },
+      {
+        "name": "workforce_employee_team_memberships",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "33ef31e26c48d4a938645bbbe7d9c6bb"
+      },
+      {
+        "name": "workforce_evidence_assessments",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "d77f831c3edf6aa7b4c6d8f1df264da7"
+      },
+      {
+        "name": "workforce_exception_cases",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "bebf6d0ec42f06c623c53834f715ea26"
+      },
+      {
+        "name": "workforce_policy_snapshots",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "b79769cf66db53a924e1b1b702dc9bdf"
+      },
+      {
+        "name": "workforce_shift_assignments",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "bd4ceaad4862afa7d03c905c32a0ae7a"
+      },
+      {
+        "name": "workforce_shift_default_assignments",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "a40b626db7b7dcac9c36c761fb970e21"
+      },
+      {
+        "name": "workforce_shift_segments",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "36ab0572640543967b062c3fc0e8be34"
+      },
+      {
+        "name": "workforce_shift_snapshots",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "83a93945f7aef4508d210df8b2d9a0f1"
+      },
+      {
+        "name": "workforce_shift_team_default_assignments",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "321d01726c98261090793e31cb5305a5"
+      },
+      {
+        "name": "workforce_shift_templates",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "823a2d5b0377730eb35f5eedbbf14aa5"
+      },
+      {
+        "name": "workforce_site_transitions",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "f85df4d0cfb1b3f19f5e0e53ebad1108"
+      },
+      {
+        "name": "workforce_timesheet_approvals",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "e12c821b98fd611cd55c72688550b3fc"
+      },
+      {
+        "name": "workforce_workday_schedule_snapshots",
+        "kind": "r",
+        "rls": true,
+        "force": true,
+        "user_triggers": 0,
+        "column_shape_hash": "84154aa4a44285033d7b372f3e983233"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "wf_recon_approval_group_c_idx",
+        "definition": "CREATE INDEX wf_recon_approval_group_c_idx ON public.workforce_timesheet_approvals USING btree (\"organizationId\", \"agentId\" COLLATE \"C\", \"periodStart\", \"periodEnd\", id COLLATE \"C\")",
+        "valid": true
+      },
+      {
+        "name": "wf_recon_approvals_c_idx",
+        "definition": "CREATE INDEX wf_recon_approvals_c_idx ON public.workforce_timesheet_approvals USING btree (\"organizationId\", id COLLATE \"C\")",
+        "valid": true
+      },
+      {
+        "name": "wf_recon_assessments_c_idx",
+        "definition": "CREATE INDEX wf_recon_assessments_c_idx ON public.workforce_evidence_assessments USING btree (\"organizationId\", id COLLATE \"C\")",
+        "valid": true
+      },
+      {
+        "name": "wf_recon_events_c_idx",
+        "definition": "CREATE INDEX wf_recon_events_c_idx ON public.mtm_agent_workday_events USING btree (\"organizationId\", id COLLATE \"C\")",
+        "valid": true
+      },
+      {
+        "name": "wf_recon_evidence_c_idx",
+        "definition": "CREATE INDEX wf_recon_evidence_c_idx ON public.workforce_attendance_evidence USING btree (\"organizationId\", id COLLATE \"C\")",
+        "valid": true
+      },
+      {
+        "name": "wf_recon_exceptions_c_idx",
+        "definition": "CREATE INDEX wf_recon_exceptions_c_idx ON public.workforce_exception_cases USING btree (\"organizationId\", id COLLATE \"C\")",
+        "valid": true
+      },
+      {
+        "name": "wf_recon_exports_c_idx",
+        "definition": "CREATE INDEX wf_recon_exports_c_idx ON public.mtm_audit_logs USING btree (\"organizationId\", id COLLATE \"C\")",
+        "valid": true
+      },
+      {
+        "name": "wf_recon_transitions_c_idx",
+        "definition": "CREATE INDEX wf_recon_transitions_c_idx ON public.workforce_site_transitions USING btree (\"organizationId\", id COLLATE \"C\")",
+        "valid": true
+      },
+      {
+        "name": "wf_recon_workdays_c_idx",
+        "definition": "CREATE INDEX wf_recon_workdays_c_idx ON public.mtm_agent_workdays USING btree (\"organizationId\", id COLLATE \"C\")",
+        "valid": true
+      }
+    ],
+    "operationalChecks": [
+      {
+        "name": "workforce_reconciliation_tenant_state_consecutiveFailures_check",
+        "definition": "CHECK (((\"consecutiveFailures\" >= 0) AND (\"consecutiveFailures\" <= 1000)))"
+      },
+      {
+        "name": "workforce_reconciliation_tenant_states_durationMs_check",
+        "definition": "CHECK (((\"durationMs\" >= 0) AND (\"durationMs\" <= 3600000)))"
+      },
+      {
+        "name": "workforce_reconciliation_tenant_states_examinedCount_check",
+        "definition": "CHECK (((\"examinedCount\" >= 0) AND (\"examinedCount\" <= 100000)))"
+      },
+      {
+        "name": "workforce_reconciliation_tenant_states_lastOutcome_check",
+        "definition": "CHECK ((\"lastOutcome\" = ANY (ARRAY['NEVER'::text, 'RUNNING'::text, 'MATCHED'::text, 'MISMATCH'::text, 'INCOMPLETE'::text, 'FENCED_OUT'::text, 'VERSION_EXHAUSTED'::text, 'UNKNOWN'::text])))"
+      },
+      {
+        "name": "workforce_reconciliation_tenant_states_mismatchCount_check",
+        "definition": "CHECK (((\"mismatchCount\" >= 0) AND (\"mismatchCount\" <= 1000000)))"
+      },
+      {
+        "name": "workforce_reconciliation_tenant_states_organizationId_fkey",
+        "definition": "FOREIGN KEY (\"organizationId\") REFERENCES organizations(id) ON DELETE CASCADE"
+      },
+      {
+        "name": "workforce_reconciliation_tenant_states_pkey",
+        "definition": "PRIMARY KEY (\"organizationId\")"
+      }
+    ],
+    "historicalTriggersApplied": false,
+    "policyProvenance": "Synthetic explicit supported tenant policy; not production policy/ACL acceptance"
+  },
+  "facts": [
+    {
+      "table": "mtm_agent_workdays",
+      "count": 2,
+      "hash": "b9589db738483057f42b7da3e4600665"
+    },
+    {
+      "table": "mtm_agent_workday_events",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_site_transitions",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_attendance_evidence",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_evidence_assessments",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_exception_cases",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_timesheet_approvals",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "mtm_audit_logs",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "mtm_agents",
+      "count": 2,
+      "hash": "19387e6ffd4c59d550a8c21bb4b4fd05"
+    },
+    {
+      "table": "workforce_employee_team_memberships",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_shift_templates",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_shift_segments",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_shift_assignments",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_shift_default_assignments",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_shift_team_default_assignments",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_workday_schedule_snapshots",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_shift_snapshots",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "table": "workforce_policy_snapshots",
+      "count": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+  ],
+  "limitations": [
+    "Two tenants with one workday/agent each; other source tables empty. Existing dense/closure suites remain separate coverage.",
+    "Full current generated schema plus exact C12 operational migration; no historical migration replay or complete trigger restoration.",
+    "Supported exact SELECT profile only; non-owner and whole-table SELECT are conservative admission rules, not a universal role policy.",
+    "Administrative role attributes/membership must remain stable; relation locks cover relation/policy DDL, not role changes.",
+    "Control-client visibility, collector/retention/alerts, representative density and production staging remain separate."
+  ]
+}

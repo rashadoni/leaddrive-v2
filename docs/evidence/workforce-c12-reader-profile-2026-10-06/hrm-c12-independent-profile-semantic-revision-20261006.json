@@ -1,0 +1,55 @@
+{
+  "createdAt": "2026-10-06T22:31:25.140764+00:00",
+  "status": "BOUNDED_SOURCE_CONCERNS_RESOLVED_MATRIX_NOT_ALL_GREEN",
+  "sourceBindings": [
+    {
+      "path": "src/lib/workforce/reconciliation-reader-profile.ts",
+      "bytes": 5391,
+      "sha256": "c336446067a9e4e6a26bdf0403579317b34e2615983aa29640325569b552342e"
+    },
+    {
+      "path": "src/lib/workforce/reconciliation-operations.ts",
+      "bytes": 11784,
+      "sha256": "2031a6dc00b16c508120d584f6b9c4f038a36aa78068e1161c99de06a5f919de"
+    },
+    {
+      "path": "scripts/workforce-reconciliation-reader-profile-evidence.mjs",
+      "bytes": 20955,
+      "sha256": "768bf3fb8434117d541a72bb15e4aac48dc8367b9c61492fd2588ed761e0c507"
+    }
+  ],
+  "resolvedFindings": [
+    "PROFILE-SEMANTIC-DEPENDENCIES: fixed pg_catalog/public resolution, pg_catalog.text/default collation tenant column, deny-by-default policy dependencies with only own relation/tenant column and built-in current_setting allowed.",
+    "PROFILE-ROLE-STABILITY: helper and evidence limitations explicitly require stable administrative role attributes/membership and claim only relation/policy DDL locks."
+  ],
+  "newBlockingSourceFindings": [],
+  "ownerMatrixAttempt4": {
+    "path": "/tmp/hrm-c12-acceptance-20261006/profile-matrix-attempt4.json",
+    "bytes": 8040,
+    "sha256": "cf9471952b3ab019b388d137d00ac8a8ce125dad47d8a1b0f3b06c5fa344cbea",
+    "status": "FAIL",
+    "passedCases": 33,
+    "stage": "nondefault-tenant-column-collation-refused",
+    "failure": {
+      "name": "PrismaClientKnownRequestError",
+      "code": "P2010"
+    },
+    "customOperatorCanonicalDisplayConfirmed": true,
+    "cleanup": [
+      {
+        "action": "disconnect",
+        "status": "PASS"
+      },
+      {
+        "action": "disconnect",
+        "status": "PASS"
+      },
+      {
+        "action": "remove-owned-disposable-container-and-volumes",
+        "status": "PASS"
+      }
+    ]
+  },
+  "failureAssessment": "Nondefault-collation case failed with P2010. Existing policy dependency may prevent ALTER COLUMN setup; this is an inference, not established cause. No product contrast/refusal failure inferred. Preserve failed attempt and rerun corrected fixture only after root confirms cause.",
+  "qualification": "Read-only source and sanitized receipt review; no DB/test execution, source writes, remote writes or raw logs. Final source freeze/complete matrix and exact-head acceptance remain pending."
+}

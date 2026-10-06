@@ -1,0 +1,17 @@
+{
+  "hidden": {
+    "status": "INCOMPLETE",
+    "eligible": 1,
+    "examined": 0,
+    "mismatches": 0,
+    "attemptRecorded": true
+  },
+  "good": {
+    "status": "MATCHED",
+    "eligible": 1,
+    "examined": 1,
+    "mismatches": 0,
+    "attemptRecorded": true
+  },
+  "status": "PASS_CORRECTED_SAME_FIXTURE"
+}
