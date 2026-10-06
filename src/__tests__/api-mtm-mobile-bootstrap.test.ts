@@ -492,7 +492,6 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     const permissions = async () => (await (await GET(request())).json()).data.policies.agentPermissions
     // Nothing configured: exactly what agents could do before the matrix existed.
     expect(await permissions()).toEqual({
-      routeSelfPublish: false,
       teamSchedule: false,
       contactCreateRequest: true,
       contactChangeRequest: true,
@@ -504,12 +503,10 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
       { key: "agentContactCreateRequests", value: false },
       { key: "taskSelfCreate", value: false },
-      { key: "routeSelfPublish", value: true },
     ] as never)
     expect(await permissions()).toMatchObject({
       contactCreateRequest: false,
       contactChangeRequest: true,
-      routeSelfPublish: true,
       taskSelfCreate: false,
       // Recurring own tasks mean nothing without own tasks.
       taskSelfRecurring: false,
@@ -706,7 +703,13 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(json.data.policies.canSelfPublishRoutes).toBe(false)
   })
 
-  it("advertises self-publishing only after both the tenant and manager allow this agent", async () => {
+  // 2026-10-06: the grant on the agent's card is the whole rule. The
+  // organization that hit this had never stored the old switch at all, and a
+  // row left over from before must not take the grant away either.
+  it.each([
+    ["never stored", []],
+    ["left over as off", [{ key: "routeSelfPublish", value: false }]],
+  ])("advertises self-publishing on the manager's grant alone — old organization switch %s", async (_state, stored) => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
       id: AGENT,
       name: "Agent",
@@ -715,9 +718,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       canPlanOwnRoutes: true,
       canSelfPublishRoutes: true,
     } as never)
-    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
-      { key: "routeSelfPublish", value: true },
-    ] as never)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue(stored as never)
 
     const json = await (await GET(request())).json()
 
@@ -726,6 +727,22 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       canSelfPublishRoutes: true,
     })
     expect(json.data.permissions).toContain("ROUTE_SELF_PUBLISH")
+  })
+
+  it("does not advertise self-publishing to an agent whose card lacks the grant", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: AGENT,
+      name: "Agent",
+      email: "agent@example.test",
+      role: "AGENT",
+      canPlanOwnRoutes: true,
+      canSelfPublishRoutes: false,
+    } as never)
+
+    const json = await (await GET(request())).json()
+
+    expect(json.data.policies.canSelfPublishRoutes).toBe(false)
+    expect(json.data.permissions).not.toContain("ROUTE_SELF_PUBLISH")
   })
 
   it("restores a still-open shift from a previous tenant date", async () => {

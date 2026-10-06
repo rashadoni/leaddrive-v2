@@ -328,7 +328,9 @@ describe("GET /api/v1/mtm/mobile/week", () => {
     })
   })
 
-  it("exposes self-publish only when the organization and manager both enable it", async () => {
+  // The grant on the agent's card is the whole rule (2026-10-06); a row of the
+  // removed organization switch left over as "off" does not take it away.
+  it("exposes self-publish on the manager's grant alone", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
       id: AGENT_ID,
       teamId: "team-1",
@@ -338,7 +340,7 @@ describe("GET /api/v1/mtm/mobile/week", () => {
     } as any)
     vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{
       key: "routeSelfPublish",
-      value: true,
+      value: false,
     }] as any)
     vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([{
       id: "draft-1",

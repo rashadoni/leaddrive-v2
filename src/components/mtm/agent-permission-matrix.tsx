@@ -82,10 +82,11 @@ export function MtmAgentPermissionMatrix({
   }
 
   // A grant that lives on the employee card is given in the row that names it.
-  // It used to be a count and a link to another page: the owner was told to
-  // flip a switch here and tick a box in «Агенты», and said settings must not
-  // hide (2026-10-06). The write is the card's own audited update; the row
-  // re-reads the cards afterwards and shows what the server now holds.
+  // It used to be a count and a link to another page — and, for publishing, an
+  // organization switch on top; the owner said settings must not hide and must
+  // not be doubled (2026-10-06). One tick is the whole rule. The write is the
+  // card's own audited update; the row re-reads the cards afterwards and shows
+  // what the server now holds.
   const grant = async (cardId: string, flag: AgentCardFlag, next: boolean) => {
     setCardBusy(cardId)
     setCardErrors((current) => ({ ...current, [flag]: "" }))
@@ -140,7 +141,7 @@ export function MtmAgentPermissionMatrix({
                     title={title}
                     onToggle={toggle}
                     cardBusy={cardBusy !== null}
-                    cardError={"cardFlag" in row && row.cardFlag ? cardErrors[row.cardFlag] ?? "" : ""}
+                    cardError={row.kind === "perAgent" ? cardErrors[row.cardFlag] ?? "" : ""}
                     onGrant={grant}
                   />
                 ))}
@@ -176,15 +177,13 @@ function MatrixRow({
     : undefined
   const blocked = row.kind === "switch" && row.requires !== undefined && settings[row.requires] !== true
   const on = row.kind === "switch" && settings[row.setting] === true && !blocked
-  const cardFlag = row.kind === "perAgent" || row.kind === "switch" ? row.cardFlag : undefined
+  const cardFlag = row.kind === "perAgent" ? row.cardFlag : undefined
   const count = cardFlag ? agentCardFlagCount(cards, cardFlag) : null
   // The same people the count is about: active agents, by name.
   const agents = cardFlag ? cards.filter((card) => card.role === "AGENT" && card.status === "ACTIVE") : []
   const granted = (card: AccessCard) => (
     cardFlag === "canPlanOwnRoutes" ? card.canPlanOwnRoutes !== false : card.canSelfPublishRoutes === true
   )
-  // A tick under an organization switch that is off changes nothing yet.
-  const ticksWait = row.kind === "switch" && cardFlag !== undefined && !on
 
   return (
     <li
@@ -196,9 +195,6 @@ function MatrixRow({
         <p className="mt-0.5 text-xs text-muted-foreground">{t(`perm_${row.id}_hint` as never)}</p>
         {row.kind === "switch" && (
           <p className="mt-0.5 text-xs text-muted-foreground">{t(`surface_${row.surfaces.join("_")}` as never)}</p>
-        )}
-        {row.kind === "switch" && count && count.total > 0 && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{t("alsoPerAgent", count)}</p>
         )}
         {blocked && requiredRow && (
           <p className="mt-0.5 text-xs text-muted-foreground">{t("requiresHint", { name: title(requiredRow.id) })}</p>
@@ -221,7 +217,6 @@ function MatrixRow({
                 </label>
               ))}
             </div>
-            {ticksWait && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{t("perAgentTicksWait")}</p>}
             {cardError && <p className="mt-1 text-xs text-red-500">{cardError}</p>}
           </fieldset>
         )}

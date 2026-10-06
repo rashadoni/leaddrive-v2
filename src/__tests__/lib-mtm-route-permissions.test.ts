@@ -72,17 +72,24 @@ describe("MTM route permissions", () => {
     expect(canCreateMtmRouteFor(blockedAgent, "agent-1")).toBe(false)
     expect(canEditMtmRouteDraft(blockedAgent, { primaryAgentId: "agent-1", status: "DRAFT" })).toBe(false)
     expect(canAssignMtmRouteAgents(blockedAgent, "agent-1", [])).toBe(false)
-    expect(canPublishMtmRoute(blockedAgent, { primaryAgentId: "agent-1", status: "DRAFT" }, true)).toBe(false)
+    expect(canPublishMtmRoute(blockedAgent, { primaryAgentId: "agent-1", status: "DRAFT" })).toBe(false)
   })
 
-  it("keeps agent self-publish configurable while manager scope can publish", () => {
+  // 2026-10-06: an agent with the grant on his card saved a route and could
+  // not start it, because a second, organization-wide switch was off and
+  // nothing said so. The owner: «что за включение компании, зачем усложняешь».
+  // The card's grant is now the whole rule.
+  it("lets an agent publish their own draft on the card's grant alone", () => {
     const ownDraft = { primaryAgentId: "agent-1", status: "DRAFT" as const }
-    expect(canPublishMtmRoute(agent, ownDraft, false)).toBe(false)
-    expect(canPublishMtmRoute(agent, ownDraft, true)).toBe(true)
-    expect(canPublishMtmRoute({ ...agent, canSelfPublishRoutes: false }, ownDraft, true)).toBe(false)
-    expect(canPublishMtmRoute({ ...agent, canSelfPublishRoutes: undefined }, ownDraft, true)).toBe(false)
-    expect(canPublishMtmRoute(manager, ownDraft, false)).toBe(true)
-    expect(canPublishMtmRoute(admin, { primaryAgentId: "outside", status: "DRAFT" }, false)).toBe(true)
+    expect(canPublishMtmRoute(agent, ownDraft)).toBe(true)
+    expect(canPublishMtmRoute({ ...agent, canSelfPublishRoutes: false }, ownDraft)).toBe(false)
+    expect(canPublishMtmRoute({ ...agent, canSelfPublishRoutes: undefined }, ownDraft)).toBe(false)
+    // His own routes only, whatever the card says.
+    expect(canPublishMtmRoute(agent, { primaryAgentId: "agent-2", status: "DRAFT" })).toBe(false)
+    expect(canPublishMtmRoute(manager, ownDraft)).toBe(true)
+    expect(canPublishMtmRoute(admin, { primaryAgentId: "outside", status: "DRAFT" })).toBe(true)
+    // Nothing else is asked: there is no organization switch to pass in.
+    expect([canPublishMtmRoute.length, canSelfUpdatePublishedMtmRoute.length]).toEqual([2, 2])
   })
 
   it("prevents self-approval and requires manager scope", () => {
@@ -281,17 +288,16 @@ describe("visit policy write rules", () => {
 describe("canSelfUpdatePublishedMtmRoute", () => {
   it("follows the self-publish rule on the agent's own planned or started route", () => {
     for (const status of ["PLANNED", "IN_PROGRESS"] as const) {
-      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-1", status }, true)).toBe(true)
-      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-1", status }, false)).toBe(false)
-      expect(canSelfUpdatePublishedMtmRoute({ ...agent, canSelfPublishRoutes: false }, { primaryAgentId: "agent-1", status }, true)).toBe(false)
-      expect(canSelfUpdatePublishedMtmRoute({ ...agent, canPlanOwnRoutes: false }, { primaryAgentId: "agent-1", status }, true)).toBe(false)
-      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-2", status }, true)).toBe(false)
+      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-1", status })).toBe(true)
+      expect(canSelfUpdatePublishedMtmRoute({ ...agent, canSelfPublishRoutes: false }, { primaryAgentId: "agent-1", status })).toBe(false)
+      expect(canSelfUpdatePublishedMtmRoute({ ...agent, canPlanOwnRoutes: false }, { primaryAgentId: "agent-1", status })).toBe(false)
+      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-2", status })).toBe(false)
     }
   })
 
   it("never applies to drafts or finished routes", () => {
     for (const status of ["DRAFT", "COMPLETED", "INCOMPLETE", "CANCELLED"] as const) {
-      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-1", status }, true)).toBe(false)
+      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-1", status })).toBe(false)
     }
   })
 })

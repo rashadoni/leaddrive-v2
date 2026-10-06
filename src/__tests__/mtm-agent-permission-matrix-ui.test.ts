@@ -137,7 +137,6 @@ describe("«Что может агент»", () => {
     expect(state("contactChangeRequest")).toEqual(["true", "Может"])
     expect(state("customerCreateRequest")).toEqual(["true", "Может"])
     expect(state("taskSelfCreate")).toEqual(["true", "Может"])
-    expect(state("routeSelfPublish")).toEqual(["false", "Не может"])
     expect(state("teamSchedule")).toEqual(["false", "Не может"])
   })
 
@@ -155,22 +154,21 @@ describe("«Что может агент»", () => {
     expect(row("routePlanOwn").textContent).toContain("Могут: 1 из 2")
     // The grant is given in this row now; it no longer sends anyone to «Агенты».
     expect(["routePlanOwn", "routeSelfPublish"].filter((id) => row(id).querySelector('a[href="/mtm/agents"]'))).toEqual([])
-    // The organization-wide switch is not enough on its own, and the row says so.
-    expect(row("routeSelfPublish").textContent).toContain("Сейчас она есть у 1 из 2")
+    expect(row("routeSelfPublish").textContent).toContain("Могут: 1 из 2")
   })
 
   it("gives a per-agent grant in the row that names it — no other page to find", async () => {
-    await open({ routeSelfPublish: true })
+    await open()
     // Active agents by name; a manager's card is not an agent.
     expect([...row("routeSelfPublish").querySelectorAll("label")].map((label) => label.textContent)).toEqual(["a1", "a2"])
     expect([agentBox("routeSelfPublish", "a1")?.checked, agentBox("routeSelfPublish", "a2")?.checked]).toEqual([true, false])
 
     await tick("routeSelfPublish", "a2")
     expect(cardWrites).toEqual([{ id: "a2", body: { canSelfPublishRoutes: true } }])
-    // The organization's switch was not touched by a tick.
+    // The card's own update and nothing else: no organization setting is written.
     expect(writes).toEqual([])
     expect(agentBox("routeSelfPublish", "a2")?.checked).toBe(true)
-    expect(row("routeSelfPublish").textContent).toContain("Сейчас она есть у 2 из 2")
+    expect(row("routeSelfPublish").textContent).toContain("Могут: 2 из 2")
   })
 
   it("takes the right to plan away from one agent, in the row about planning", async () => {
@@ -184,21 +182,17 @@ describe("«Что может агент»", () => {
     expect(row("routePlanOwn").textContent).not.toContain("Галочки начнут действовать")
   })
 
-  it("says the ticks wait while the organization's switch is off, and stops once it is on", async () => {
+  // «Что за включение компании, зачем усложняешь» (owner, 2026-10-06): publishing
+  // one's own routes had an organization switch on top of the tick. It is gone.
+  it("has no organization switch above the tick: one tick is the whole rule", async () => {
     await open()
-    expect(toggleOf("routeSelfPublish").getAttribute("aria-checked")).toBe("false")
-    expect(row("routeSelfPublish").textContent).toContain("Галочки начнут действовать, когда включён переключатель этой строки")
-
-    await press("routeSelfPublish")
-    expect(writes).toEqual([{ routeSelfPublish: true }])
-    expect(row("routeSelfPublish").textContent).not.toContain("Галочки начнут действовать")
-    // Turning the switch on ticked nobody.
-    expect(cardWrites).toEqual([])
-    expect([agentBox("routeSelfPublish", "a1")?.checked, agentBox("routeSelfPublish", "a2")?.checked]).toEqual([true, false])
+    expect(["routePlanOwn", "routeSelfPublish"].filter((id) => row(id).querySelector('[role="switch"]'))).toEqual([])
+    expect(container.textContent).not.toContain("Галочки начнут действовать")
+    expect(container.textContent).not.toContain("Кроме общего разрешения")
   })
 
   it("says so when a grant was refused, and keeps showing what the card holds", async () => {
-    await open({ routeSelfPublish: true })
+    await open()
     refuseCardWrites = true
     await tick("routeSelfPublish", "a2")
     expect(row("routeSelfPublish").textContent).toContain("Не удалось сохранить: Forbidden")
